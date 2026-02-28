@@ -20,7 +20,7 @@
 - [x] AI + Vector/Embeddings Toolkit. [Docs](https://indobase.fun/docs/guides/ai)
 - [x] Dashboard
 
-![Indobase Dashboard](https://raw.githubusercontent.com/indobase/indobase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/indobase/indobase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 Watch "releases" of this repo to get notified of major updates.
 
@@ -48,7 +48,7 @@ Indobase is a combination of open source tools. We’re building the features of
 Indobase is a [hosted platform](https://indobase.fun/dashboard). You can sign up and start using Indobase without installing anything.
 You can also [self-host](https://indobase.fun/docs/guides/hosting/overview) and [develop locally](https://indobase.fun/docs/guides/local-development).
 
-![Architecture](apps/docs/public/img/supabase-architecture.svg)
+![Architecture](apps/docs/public/img/indobase-architecture.svg)
 
 - [Postgres](https://www.postgresql.org/) is an object-relational database system with over 30 years of active development that has earned it a strong reputation for reliability, feature robustness, and performance.
 - [Realtime](https://github.com/supabase/realtime) is an Elixir server that allows you to listen to PostgreSQL inserts, updates, and deletes using websockets. Realtime polls Postgres' built-in replication functionality for database changes, converts changes to JSON, then broadcasts the JSON over websockets to authorized clients.
@@ -83,11 +83,11 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   <!-- START ROW
   <tr>
     <td>lang</td>
-    <td><a href="https://github.com/supabase-community/supabase-lang" target="_blank" rel="noopener noreferrer">supabase-lang</a></td>
-    <td><a href="https://github.com/supabase-community/postgrest-lang" target="_blank" rel="noopener noreferrer">postgrest-lang</a></td>
-    <td><a href="https://github.com/supabase-community/gotrue-lang" target="_blank" rel="noopener noreferrer">gotrue-lang</a></td>
-    <td><a href="https://github.com/supabase-community/realtime-lang" target="_blank" rel="noopener noreferrer">realtime-lang</a></td>
-    <td><a href="https://github.com/supabase-community/storage-lang" target="_blank" rel="noopener noreferrer">storage-lang</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-lang" target="_blank" rel="noopener noreferrer">indobase-lang</a></td>
+    <td><a href="https://github.com/indobase-community/postgrest-lang" target="_blank" rel="noopener noreferrer">postgrest-lang</a></td>
+    <td><a href="https://github.com/indobase-community/gotrue-lang" target="_blank" rel="noopener noreferrer">gotrue-lang</a></td>
+    <td><a href="https://github.com/indobase-community/realtime-lang" target="_blank" rel="noopener noreferrer">realtime-lang</a></td>
+    <td><a href="https://github.com/indobase-community/storage-lang" target="_blank" rel="noopener noreferrer">storage-lang</a></td>
   </tr>
   END ROW -->
   <!-- /notranslate -->
@@ -104,7 +104,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/indobase/indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/indobase/indobase-flutter" target="_blank" rel="noopener noreferrer">indobase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -113,7 +113,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   </tr>
   <tr>
     <td>Swift</td>
-    <td><a href="https://github.com/indobase/indobase-swift" target="_blank" rel="noopener noreferrer">supabase-swift</a></td>
+    <td><a href="https://github.com/indobase/indobase-swift" target="_blank" rel="noopener noreferrer">indobase-swift</a></td>
     <td><a href="https://github.com/indobase/indobase-swift/tree/main/Sources/PostgREST" target="_blank" rel="noopener noreferrer">postgrest-swift</a></td>
     <td><a href="https://github.com/indobase/indobase-swift/tree/main/Sources/Auth" target="_blank" rel="noopener noreferrer">auth-swift</a></td>
     <td><a href="https://github.com/indobase/indobase-swift/tree/main/Sources/Realtime" target="_blank" rel="noopener noreferrer">realtime-swift</a></td>
@@ -122,7 +122,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   </tr>
   <tr>
     <td>Python</td>
-    <td><a href="https://github.com/indobase/indobase-py" target="_blank" rel="noopener noreferrer">supabase-py</a></td>
+    <td><a href="https://github.com/indobase/indobase-py" target="_blank" rel="noopener noreferrer">indobase-py</a></td>
     <td><a href="https://github.com/supabase/postgrest-py" target="_blank" rel="noopener noreferrer">postgrest-py</a></td>
     <td><a href="https://github.com/supabase/gotrue-py" target="_blank" rel="noopener noreferrer">gotrue-py</a></td>
     <td><a href="https://github.com/supabase/realtime-py" target="_blank" rel="noopener noreferrer">realtime-py</a></td>
@@ -134,44 +134,44 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   <!-- notranslate -->
   <tr>
     <td>C#</td>
-    <td><a href="https://github.com/supabase-community/supabase-csharp" target="_blank" rel="noopener noreferrer">supabase-csharp</a></td>
-    <td><a href="https://github.com/supabase-community/postgrest-csharp" target="_blank" rel="noopener noreferrer">postgrest-csharp</a></td>
-    <td><a href="https://github.com/supabase-community/gotrue-csharp" target="_blank" rel="noopener noreferrer">gotrue-csharp</a></td>
-    <td><a href="https://github.com/supabase-community/realtime-csharp" target="_blank" rel="noopener noreferrer">realtime-csharp</a></td>
-    <td><a href="https://github.com/supabase-community/storage-csharp" target="_blank" rel="noopener noreferrer">storage-csharp</a></td>
-    <td><a href="https://github.com/supabase-community/functions-csharp" target="_blank" rel="noopener noreferrer">functions-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-csharp" target="_blank" rel="noopener noreferrer">indobase-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/postgrest-csharp" target="_blank" rel="noopener noreferrer">postgrest-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/gotrue-csharp" target="_blank" rel="noopener noreferrer">gotrue-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/realtime-csharp" target="_blank" rel="noopener noreferrer">realtime-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/storage-csharp" target="_blank" rel="noopener noreferrer">storage-csharp</a></td>
+    <td><a href="https://github.com/indobase-community/functions-csharp" target="_blank" rel="noopener noreferrer">functions-csharp</a></td>
   </tr>
   <tr>
     <td>Go</td>
     <td>-</td>
-    <td><a href="https://github.com/supabase-community/postgrest-go" target="_blank" rel="noopener noreferrer">postgrest-go</a></td>
-    <td><a href="https://github.com/supabase-community/gotrue-go" target="_blank" rel="noopener noreferrer">gotrue-go</a></td>
+    <td><a href="https://github.com/indobase-community/postgrest-go" target="_blank" rel="noopener noreferrer">postgrest-go</a></td>
+    <td><a href="https://github.com/indobase-community/gotrue-go" target="_blank" rel="noopener noreferrer">gotrue-go</a></td>
     <td>-</td>
-    <td><a href="https://github.com/supabase-community/storage-go" target="_blank" rel="noopener noreferrer">storage-go</a></td>
-    <td><a href="https://github.com/supabase-community/functions-go" target="_blank" rel="noopener noreferrer">functions-go</a></td>
+    <td><a href="https://github.com/indobase-community/storage-go" target="_blank" rel="noopener noreferrer">storage-go</a></td>
+    <td><a href="https://github.com/indobase-community/functions-go" target="_blank" rel="noopener noreferrer">functions-go</a></td>
   </tr>
   <tr>
     <td>Java</td>
     <td>-</td>
     <td>-</td>
-    <td><a href="https://github.com/supabase-community/gotrue-java" target="_blank" rel="noopener noreferrer">gotrue-java</a></td>
+    <td><a href="https://github.com/indobase-community/gotrue-java" target="_blank" rel="noopener noreferrer">gotrue-java</a></td>
     <td>-</td>
-    <td><a href="https://github.com/supabase-community/storage-java" target="_blank" rel="noopener noreferrer">storage-java</a></td>
+    <td><a href="https://github.com/indobase-community/storage-java" target="_blank" rel="noopener noreferrer">storage-java</a></td>
     <td>-</td>
   </tr>
   <tr>
     <td>Kotlin</td>
-    <td><a href="https://github.com/supabase-community/supabase-kt" target="_blank" rel="noopener noreferrer">supabase-kt</a></td>
-    <td><a href="https://github.com/supabase-community/supabase-kt/tree/master/Postgrest" target="_blank" rel="noopener noreferrer">postgrest-kt</a></td>
-    <td><a href="https://github.com/supabase-community/supabase-kt/tree/master/Auth" target="_blank" rel="noopener noreferrer">auth-kt</a></td>
-    <td><a href="https://github.com/supabase-community/supabase-kt/tree/master/Realtime" target="_blank" rel="noopener noreferrer">realtime-kt</a></td>
-    <td><a href="https://github.com/supabase-community/supabase-kt/tree/master/Storage" target="_blank" rel="noopener noreferrer">storage-kt</a></td>
-    <td><a href="https://github.com/supabase-community/supabase-kt/tree/master/Functions" target="_blank" rel="noopener noreferrer">functions-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt" target="_blank" rel="noopener noreferrer">indobase-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt/tree/master/Postgrest" target="_blank" rel="noopener noreferrer">postgrest-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt/tree/master/Auth" target="_blank" rel="noopener noreferrer">auth-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt/tree/master/Realtime" target="_blank" rel="noopener noreferrer">realtime-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt/tree/master/Storage" target="_blank" rel="noopener noreferrer">storage-kt</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-kt/tree/master/Functions" target="_blank" rel="noopener noreferrer">functions-kt</a></td>
   </tr>
   <tr>
     <td>Ruby</td>
-    <td><a href="https://github.com/supabase-community/supabase-rb" target="_blank" rel="noopener noreferrer">supabase-rb</a></td>
-    <td><a href="https://github.com/supabase-community/postgrest-rb" target="_blank" rel="noopener noreferrer">postgrest-rb</a></td>
+    <td><a href="https://github.com/indobase-community/indobase-rb" target="_blank" rel="noopener noreferrer">indobase-rb</a></td>
+    <td><a href="https://github.com/indobase-community/postgrest-rb" target="_blank" rel="noopener noreferrer">postgrest-rb</a></td>
     <td>-</td>
     <td>-</td>
     <td>-</td>
@@ -180,7 +180,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   <tr>
     <td>Rust</td>
     <td>-</td>
-    <td><a href="https://github.com/supabase-community/postgrest-rs" target="_blank" rel="noopener noreferrer">postgrest-rs</a></td>
+    <td><a href="https://github.com/indobase-community/postgrest-rs" target="_blank" rel="noopener noreferrer">postgrest-rs</a></td>
     <td>-</td>
     <td>-</td>
     <td>-</td>
@@ -188,7 +188,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   </tr>
   <tr>
     <td>Godot Engine (GDScript)</td>
-    <td><a href="https://github.com/supabase-community/godot-engine.supabase" target="_blank" rel="noopener noreferrer">supabase-gdscript</a></td>
+    <td><a href="https://github.com/indobase-community/godot-engine.indobase" target="_blank" rel="noopener noreferrer">indobase-gdscript</a></td>
     <td>-</td>
     <td>-</td>
     <td>-</td>
@@ -203,10 +203,10 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
 
 ## Badges
 
-![Made with Indobase](./apps/www/public/badge-made-with-supabase.svg)
+![Made with Indobase](./apps/www/public/badge-made-with-indobase.svg)
 
 ```md
-[![Made with Indobase](https://indobase.fun/badge-made-with-supabase.svg)](https://indobase.fun)
+[![Made with Indobase](https://indobase.fun/badge-made-with-indobase.svg)](https://indobase.fun)
 ```
 
 ```html
@@ -214,16 +214,16 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   <img
     width="168"
     height="30"
-    src="https://indobase.fun/badge-made-with-supabase.svg"
+    src="https://indobase.fun/badge-made-with-indobase.svg"
     alt="Made with Indobase"
   />
 </a>
 ```
 
-![Made with Indobase (dark)](./apps/www/public/badge-made-with-supabase-dark.svg)
+![Made with Indobase (dark)](./apps/www/public/badge-made-with-indobase-dark.svg)
 
 ```md
-[![Made with Indobase](https://indobase.fun/badge-made-with-supabase-dark.svg)](https://indobase.fun)
+[![Made with Indobase](https://indobase.fun/badge-made-with-indobase-dark.svg)](https://indobase.fun)
 ```
 
 ```html
@@ -231,7 +231,7 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
   <img
     width="168"
     height="30"
-    src="https://indobase.fun/badge-made-with-supabase-dark.svg"
+    src="https://indobase.fun/badge-made-with-indobase-dark.svg"
     alt="Made with Indobase"
   />
 </a>
