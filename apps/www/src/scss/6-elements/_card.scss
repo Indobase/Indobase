@@ -1,0 +1,105 @@
+@use '../abstract' as *;
+
+.#{$p}-card {
+  --p-card-padding: var(--card-padding, #{pxToRem(24)});
+  --p-card-border-radius: var(--card-border-radius, #{pxToRem(16)});
+  outline: 0;
+
+  &.is-normal {
+    --p-card-bg-color: var(--p-card-bg-color-default);
+    --p-card-bg-color-default: var(--web-color-card);
+    --p-card-bg-color-hover: var(--web-color-smooth);
+
+    --p-card-border-color: var(--p-card-border-color-default);
+    --p-card-border-color-default: var(--web-color-offset);
+
+    --p-card-shadow-color: var(--p-card-shadow-color-default);
+    --p-card-shadow-color-default: var(--web-color-black) / 0;
+    --p-card-shadow-color-focus-visible: var(--web-color-tertiary);
+
+    --card-padding: #{pxToRem(16)};
+
+    display:block;
+    background-color: hsl(var(--p-card-bg-color));
+    border: solid pxToRem(1) hsl(var(--p-card-border-color));
+    padding: var(--p-card-padding);
+    border-radius: var(--p-card-border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: #{pxToRem(4)};
+    padding: #{pxToRem(20)};
+
+    &:where(a, button) {
+      cursor:pointer;
+      box-shadow: 0 0 0 pxToRem(2) hsl(var(--p-card-shadow-color));
+      transition:var(--transition);
+
+      &:where(:hover, :active, :focus):not(#{$disabled}) {
+        --p-card-bg-color: var(--p-card-bg-color-hover);
+      }
+      &:where(:focus-visible):not(#{$disabled}) {
+        --p-card-shadow-color: var(--p-card-shadow-color-focus-visible);
+      }
+      &:where(#{$disabled}) { opacity:0.4; }
+    }
+
+    #{$theme-dark} & {
+      --p-card-border-color-default: var(--web-color-white) / 0.10;
+    }
+  }
+  &.is-white {
+    display:flex; flex-direction:column;
+    padding:var(--p-card-padding);
+    background: linear-gradient(360deg, rgba(255, 255, 255, 0.90) 0%, rgba(255, 255, 255, 0.64) 100%);
+    -webkit-backdrop-filter:blur(pxToRem(12)); backdrop-filter:blur(pxToRem(12));
+    border-radius: var(--p-card-border-radius);
+  }
+  &.is-transparent {
+    --p-card-padding: var(--card-padding, #{pxToRem(20)});
+    padding: var(--p-card-padding);
+    border:solid pxToRem(1) rgba(255 255 255 / 0.12);
+    border-radius:pxToRem(16);
+    background: linear-gradient(136deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.04) 30.91%, rgba(255, 255, 255, 0.00) 100%, rgba(255, 255, 255, 0.01) 100%);
+    -webkit-backdrop-filter:blur(pxToRem(100));
+    backdrop-filter:blur(pxToRem(100));
+    &-pink {
+      background: linear-gradient(180deg, rgba(253, 54, 110, 0.04) 61.28%, rgba(253, 54, 110, 0.00) 100%);
+      border-color:hsl(var(--web-color-pink-500) / 0.5);
+    }
+  }
+  &.is-full-color {
+    --card-bg-color: var(--web-color-white);
+    padding: var(--p-card-padding, #{pxToRem(20)});
+     border-radius:pxToRem(16);
+    background-color:hsl(var(--card-bg-color) / 0.9);
+    border:solid pxToRem(1) hsl(var(--web-color-subtle));
+
+    -webkit-backdrop-filter:blur(pxToRem(8));
+    backdrop-filter:blur(pxToRem(8));
+
+    #{$theme-dark} & {
+      --card-bg-color: var(--web-color-greyscale-850);
+    }
+
+    #{$theme-light} & {
+      --card-bg-color: var(--web-color-white);
+    }
+  }
+
+  &.has-border-gradient {
+    @include border-gradient;
+    --m-border-radius: var(--p-card-border-radius);
+    --m-border-size: #{pxToRem(1)};
+    border: none;
+    --m-border-gradient-before: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.00) 100%);
+
+    &.is-transparent-pink {
+      --m-border-gradient-before: linear-gradient(180deg, rgba(253, 54, 110, 0.48) 0%, rgba(253, 54, 110, 0.00) 100%);
+      --m-border-gradient-after: radial-gradient(42.86% 42.86% at 50.55% 0%, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%);
+    }
+  }
+
+  @media #{$break1} {
+    --p-card-padding: var(--card-padding-mobile, #{pxToRem(24)});
+  }
+}

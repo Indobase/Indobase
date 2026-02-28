@@ -1,0 +1,9 @@
+@use '../abstract' as *;
+
+.#{$p}-gradient-text {
+	display: block;
+	background: linear-gradient(6deg, rgba(248,161,186,1) 0%, rgba(255,255,255,1) 35%);
+	background-clip: text;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}

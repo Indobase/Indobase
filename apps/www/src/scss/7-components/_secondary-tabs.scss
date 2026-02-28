@@ -1,0 +1,90 @@
+@use '../abstract' as *;
+/* currently unused */
+.#{$p}-secondary-tabs {
+  @mixin light-mode() {
+    --p-secondary-tabs-text-color-default: var(--web-color-greyscale-700);
+    --p-secondary-tabs-text-color-hover: var(--web-color-greyscale-900);
+    --p-secondary-tabs-text-color-active: var(--web-color-greyscale-900);
+    --p-secondary-tabs-text-color-selected: var(--web-color-greyscale-900);
+    --p-secondary-tabs-text-color-disabled: var(--web-color-greyscale-900) / 0.48;
+    --p-secondary-tabs-text-color-focus: var(--web-color-greyscale-700);
+
+    --p-secondary-tabs-bg-color-default: var(--web-color-white);
+    --p-secondary-tabs-bg-color-hover: var(--web-color-greyscale-50);
+    --p-secondary-tabs-bg-color-active: var(--web-color-greyscale-100);
+    --p-secondary-tabs-bg-color-selected: var(--web-color-greyscale-100);
+    --p-secondary-tabs-bg-color-disabled: var(--transparent);
+    --p-secondary-tabs-bg-color-focus: var(--p-secondary-tabs-bg-color-default);
+
+    --p-secondary-tabs-shadow-color-defalut: var(--transparent);
+    --p-secondary-tabs-shadow-color-focus: var(--color-neutral-1000) / 0.16;
+  }
+  @mixin dark-mode() {
+    --p-secondary-tabs-text-color-default: var(--web-color-greyscale-200) / 0.48;
+    --p-secondary-tabs-text-color-hover: var(--web-color-greyscale-100);
+    --p-secondary-tabs-text-color-active: var(--web-color-greyscale-50);
+    --p-secondary-tabs-text-color-selected: var(--web-color-greyscale-100);
+    --p-secondary-tabs-text-color-disabled: var(--web-color-greyscale-200) / 0.48;
+    --p-secondary-tabs-text-color-focus: var(--web-color-greyscale-200) / 0.48;
+
+    --p-secondary-tabs-bg-color-default: var(--transparent);
+    --p-secondary-tabs-bg-color-hover: var(--color-neutral-0) / 0.04;
+    --p-secondary-tabs-bg-color-active: var(--color-neutral-0) / 0.08;
+    --p-secondary-tabs-bg-color-selected: var(--color-neutral-0) / 0.08;
+    --p-secondary-tabs-bg-color-disabled: var(--transparent);
+    --p-secondary-tabs-bg-color-focus: var(--p-secondary-tabs-bg-color-default);
+
+    --p-secondary-tabs-shadow-color-defalut: var(--transparent);
+    --p-secondary-tabs-shadow-color-focus: var(--color-neutral-0) / 0.16;
+  }
+
+  @include light-mode();
+  --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-default);
+  --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-default);
+  --p-secondary-tabs-shadow-color: var(--p-secondary-tabs-shadow-color-defalut);
+
+  display:flex; gap:pxToRem(4); padding:pxToRem(4); border-radius:pxToRem(12); line-height:1.5;
+  background: linear-gradient(134deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.10) 52.97%, rgba(255, 255, 255, 0.08) 100%, rgba(255, 255, 255, 0.00) 100%);
+  -webkit-backdrop-filter:blur(pxToRem(8)); backdrop-filter:blur(pxToRem(8));
+  &.is-transparent { background:transparent; }
+  &-item { }
+  &-button {
+    color:hsl(var(--p-secondary-tabs-text-color));
+    background-color: hsl(var(--p-secondary-tabs-bg-color));
+    box-shadow:0 0 0 pxToRem(4) hsl(var(--p-secondary-tabs-shadow-color));
+
+    padding-inline:pxToRem(12); padding-block:pxToRem(6); user-select:none; text-align:center;
+    border-radius:var(--border-radius-small); border-width:0; transition:var(--transition);
+    &:focus-visible {
+      --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-focus);
+      --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-focus);
+      --p-secondary-tabs-shadow-color: var(--p-secondary-tabs-shadow-color-focus);
+    }
+    &:hover {
+      --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-hover);
+      --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-hover);
+    }
+    &:active {
+      --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-active);
+      --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-active);
+    }
+    &.is-selected {
+      --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-selected);
+      --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-selected);
+    }
+    &:is(#{$disabled}) {
+      --p-secondary-tabs-text-color: var(--p-secondary-tabs-text-color-disabled);
+      --p-secondary-tabs-bg-color: var(--p-secondary-tabs-bg-color-disabled);
+      opacity: 0.4;
+      cursor: initial;
+    }
+  }
+
+  #{$theme-dark} & {
+    @include dark-mode();
+  }
+
+  #{$theme-light} & {
+    @include light-mode();
+  }
+}

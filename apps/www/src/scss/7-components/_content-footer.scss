@@ -1,0 +1,29 @@
+@use '../abstract' as *;
+
+.#{$p}-content-footer {
+  padding-block-start: pxToRem(32);
+  border-block-start: solid pxToRem(1) hsl(var(--web-color-border));
+  &-header-end {
+    @media #{$break1} { 
+      ul.#{$p}-metadata {
+        padding-inline-start: 0 !important;
+      }
+      li {
+        padding-inline-start: 0 !important;
+        margin-inline-start: 0 !important;
+      }
+    }
+  }
+  
+  &-header {
+    display:flex; justify-content:space-between;
+    &-start { display:flex; gap:pxToRem(16); }
+    @media #{$break1} { flex-direction:column-reverse; gap:pxToRem(32); }
+    @media #{$break2open} { justify-items:center; gap:pxToRem(16); }
+  }
+
+  .#{$p}-card {
+    @media #{$break1} { margin-block-start:pxToRem(16); }
+    @media #{$break2open} { margin-block-start:pxToRem(32); }
+  }
+}

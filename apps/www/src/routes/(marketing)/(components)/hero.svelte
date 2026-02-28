@@ -1,0 +1,62 @@
+<script lang="ts">
+    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { trackEvent } from '$lib/actions/analytics';
+    import AppwriteIn100Seconds from '$lib/components/AppwriteIn100Seconds.svelte';
+    import GradientText from '$lib/components/fancy/gradient-text.svelte';
+    import { Button } from '$lib/components/ui';
+    import { cn } from '$lib/utils/cn';
+    import Dashboard from './dashboard.svelte';
+    import HeroBanner from './hero-banner.svelte';
+
+    type Props = {
+        title?: string;
+        subtitle?: string;
+    };
+
+    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+
+    const {
+        title = 'All-in-one infra for solo devs & SMBs',
+        subtitle = 'Indobase is an open-source, developer infrastructure platform with Auth, Database, Storage, Functions, Realtime, SMS, Email, Push, and Hosting.'
+    }: Props = $props();
+</script>
+
+<div class="relative flex max-w-screen items-center overflow-hidden py-12 md:py-0 lg:min-h-[700px]">
+    <div
+        class={cn(
+            'animate-lighting absolute top-0 left-0 -z-10 h-screen w-[200vw] -translate-x-[25%] translate-y-8 rotate-25 overflow-hidden blur-3xl md:w-full',
+            'bg-[image:radial-gradient(ellipse_390px_50px_at_10%_30%,_rgba(254,_149,_103,_0.2)_0%,_rgba(254,_149,_103,_0)_70%),_radial-gradient(ellipse_1100px_170px_at_15%_40%,rgba(253,_54,_110,_0.08)_0%,_rgba(253,_54,_110,_0)_70%),_radial-gradient(ellipse_1200px_180px_at_30%_30%,_rgba(253,_54,_110,_0.08)_0%,_rgba(253,_54,_110,_0)_70%)]',
+            'bg-position-[0%_0%]'
+        )}
+    ></div>
+
+    <div
+        class="relative container mx-auto grid h-full grid-cols-1 place-items-center gap-24 md:grid-cols-2"
+    >
+        <div
+            class="animate-blur-in flex flex-col gap-4 [animation-delay:150ms] [animation-duration:1000ms] md:ml-12 lg:ml-0"
+        >
+            
+
+            <h1 class="font-aeonik-pro text-headline text-pretty text-primary animate-fade-in">
+                {title}<span class="text-accent">_</span>
+            </h1>
+
+            <p class="text-description text-secondary font-medium">
+                {subtitle}
+            </p>
+
+            <div class="mt-4 flex flex-col gap-2 lg:flex-row">
+                <Button
+                    href={DASHBOARD_URL}
+                    class="w-full! lg:w-fit!"
+                    onclick={() => {
+                        trackEvent(`main-get_started_btn_hero-click`);
+                    }}>Start building for free</Button
+                >
+                <AppwriteIn100Seconds />
+            </div>
+        </div>
+        <Dashboard />
+    </div>
+</div>

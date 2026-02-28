@@ -1,0 +1,163 @@
+@use '../abstract' as *;
+
+.#{$p}-grid-huge-navs {
+  --p-grid-huge-navs-padding-inline: #{pxToRem(32)};
+  --p-grid-huge-navs-main-header-height: #{pxToRem(73)};
+  --p-grid-huge-navs-secondary-header-height: #{pxToRem(116)};
+  --p-grid-huge-navs-secondary-sticky-position: #{pxToRem(189)}; /* 72 + 116 */
+
+  --p-grid-huge-navs-side-nav-width-closed: #{pxToRem(73)};
+  --p-grid-huge-navs-side-nav-width-opened: #{pxToRem(280)};
+
+  max-inline-size:var(--container-size-huge); margin-inline:auto;
+  //.#{$p}-mobile-header    { grid-area:header; block-size:var(--p-grid-huge-navs-main-header-height); }
+  //.#{$p}-main-header      { grid-area:header; block-size:var(--p-grid-huge-navs-main-header-height); /*padding-inline:var(--p-grid-huge-navs-padding-inline);*/ }
+  .#{$p}-article-header   { grid-area:a-header; }
+  .#{$p}-side-nav         { grid-area:side-a; }
+  .#{$p}-article          { grid-area:main;   }
+  .#{$p}-references-menu  { grid-area:side-b; padding-inline-end:var(--p-grid-huge-navs-padding-inline); }
+  .#{$p}-main-footer      { grid-area:footer; margin-inline:var(--p-grid-huge-navs-padding-inline); }
+
+  .#{$p}-icon-button [class*="icon"]{transition:var(--transition); }
+
+  .#{$p}-main-header-wrapper { max-inline-size:none; }
+
+  @media #{$break1} {
+    --p-grid-huge-navs-padding-inline: #{pxToRem(20)};
+    padding-inline:var(--p-grid-huge-navs-padding-inline);
+    .#{$p}-mobile-header { margin-inline: calc(var(--p-grid-huge-navs-padding-inline) * -1); }
+    .#{$p}-side-nav {display:none;  max-inline-size:none; }
+    &.is-open {
+      > *:not(.#{$p}-mobile-header, .#{$p}-side-nav) { display:none!important; }
+      .#{$p}-side-nav { display:block!important; }
+    }
+    .#{$p}-references-menu { display:none!important; }
+  }
+
+  @media #{$break1}, #{$break2}, #{$break6open} {
+    .#{$p}-side-nav {
+      .#{$p}-icon-button {display:none; }
+    }
+  }
+
+  @media #{$break2} {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:  "a-header a-header"
+                          "main     side-b"
+                          "footer   footer";
+    .#{$p}-side-nav       {
+      display:none;
+      position:fixed; inset-inline-start:pxToRem(0); inset-block-start:var(--p-grid-huge-navs-main-header-height); inset-block-end:0;
+      inline-size:var(--p-grid-huge-navs-side-nav-width-opened);
+    }
+    &.is-open {
+      .#{$p}-side-nav { display:block!important; }
+    }
+  }
+
+  @media #{$break2}, #{$break3}, #{$break4} {
+    .#{$p}-references-menu {
+      #refOpen { position:sticky; inset-block-start:pxToRem(213); }
+      &-content {
+        display:none; /* hide */
+        gap:0;
+        padding-inline-start:pxToRem(24);  padding-inline-end:var(--p-grid-huge-navs-padding-inline);
+        border-inline-start:solid pxToRem(1) hsl(var(--web-color-border));
+        background-color:hsl(var(--p-body-bg-color)); inline-size:var(--p-grid-huge-navs-side-nav-width-opened);
+      }
+      &-list { margin-block-start:pxToRem(8); padding-block-end:pxToRem(24); }
+      &.is-open {
+        .#{$p}-references-menu-content {
+          display:flex; /* show */
+          position:fixed; inset-inline-end:0; inset-block-start:var(--p-grid-huge-navs-secondary-sticky-position); inset-block-end:0;
+        }
+      }
+
+    }
+  }
+
+  @media #{$break2open} {
+    .#{$p}-side-nav-wrapper { border-inline-end:solid pxToRem(1) hsl(var(--web-color-border)); }
+    .#{$p}-article {
+      &-header  {
+        block-size:var(--p-grid-huge-navs-secondary-header-height);
+        padding-inline-end:var(--p-grid-huge-navs-padding-inline);
+        margin-inline-start:var(--p-grid-huge-navs-padding-inline);
+        inset-block-start:var(--p-grid-huge-navs-main-header-height);
+        //&::after {
+        //  content:""; display:block; block-size:pxToRem(24); position:absolute; inset-block-start:calc(100% + pxToRem(0.9)); inset-inline:0;
+        //  background-color:hsl(var(--p-body-bg-color));
+        //}
+      }
+      &-content { padding-inline:var(--p-grid-huge-navs-padding-inline); }
+    }
+    .#{$p}-references-menu {
+      border-inline-start:solid pxToRem(1) hsl(var(--web-color-border));
+      &-content { position:sticky; inset-block-start:var(--p-grid-huge-navs-secondary-sticky-position); }
+    }
+  }
+  @media #{$break3open} {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto; /* header article-header content footer */
+    grid-template-areas:  "side-a a-header a-header"
+                          "side-a main side-b"
+                          "side-a footer footer";
+  }
+  @media #{$break3}, #{$break4}, #{$break5} {
+    .#{$p}-side-nav {
+      max-inline-size:var(--p-grid-huge-navs-side-nav-width-closed);
+      &-wrapper {
+        inline-size:var(--p-grid-huge-navs-side-nav-width-closed); max-inline-size:var(--p-grid-huge-navs-side-nav-width-closed);
+        &-parent {
+          &-title { opacity:0; }
+        }
+      }
+      &-header { opacity:0; transition:var(--transition); }
+      &-button {
+        > *:not(:first-child) { opacity:0; transition:var(--transition); }
+      }
+    }
+    &.is-open {
+      .#{$p}-side-nav {
+        &-wrapper {
+          max-inline-size:var(--p-grid-huge-navs-side-nav-width-opened); inline-size:var(--p-grid-huge-navs-side-nav-width-opened);
+          &-parent {
+            &-title { opacity:1; }
+          }
+        }
+        &-header { opacity:1; }
+        &-button {
+          > *:not(:first-child) { opacity:1; }
+        }
+        .#{$p}-icon-button { rotate:180deg; }
+      }
+    }
+  }
+  @media #{$break5open} {
+    .#{$p}-references-menu {
+      #refOpen, #refClose { display:none; }
+      &-content {
+        @include scroll();
+        position:sticky; inset-block-start:pxToRem(213);  max-block-size:calc(100dvh - #{pxToRem(213)});
+      }
+    }
+  }
+  @media #{$break6open} {
+    .#{$p}-side-nav {
+      inline-size:var(--p-grid-huge-navs-side-nav-width-opened);
+      &-wrapper { padding-block:0; }
+      &-scroll  { padding-block:pxToRem(16); }
+    }
+    .#{$p}-article {
+      &-header {
+        padding-inline-end: 0;
+      }
+    }
+  }
+  /* work around spacing issue on huge screen between 1920px to 1984px */
+  @media (min-width: 1920px) And (max-width:1940.9px){  .web-article-header { padding-inline-end:32px; }  }
+  @media (min-width: 1941px) And (max-width:1960.9px){  .web-article-header { padding-inline-end:20px; }  }
+  @media (min-width: 1961px) And (max-width:1983.9px){  .web-article-header { padding-inline-end:10px; }  }
+}

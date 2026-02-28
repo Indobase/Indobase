@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ['nodejs_22', 'pnpm-9_x', 'openssl']
+
+# Node heap for build (8GB VPS: 6GB Node, ~2GB for esbuild + system).
+[phases.build]
+cmds = ['NODE_OPTIONS="--max-old-space-size=6144" pnpm run build']
+
+[variables]
+NODE_OPTIONS = '--max-old-space-size=4096'
+ENABLE_IMAGE_OPTIMIZER = 'false'
+NODE_ENV = 'production'
+UV_THREADPOOL_SIZE = '1'

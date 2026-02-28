@@ -1,0 +1,90 @@
+import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+
+export interface HomepageVariationConfig {
+    title: string;
+    subtitle: string;
+    pageTitle: string;
+    slug?: string;
+    ctaLabel?: string;
+    ctaHref?: string;
+    showDashboard?: boolean;
+    showPlatforms?: boolean;
+    showLogoList?: boolean;
+    showBento?: boolean;
+    showPullquote?: boolean;
+    showCaseStudies?: boolean;
+    showFeatures?: boolean;
+    showMap?: boolean;
+    showScale?: boolean;
+    showPricing?: boolean;
+}
+
+export type VariationKey =
+    | 'all-in-one-cloud'
+    | 'supabase-alternative'
+    | 'firebase-alternative'
+    | 'all-in-one-development'
+    | 'all-in-one-cloud-offer';
+
+const baseConfig: Partial<HomepageVariationConfig> = {
+    showDashboard: true,
+    showPlatforms: true,
+    showLogoList: true,
+    showBento: true,
+    showPullquote: true,
+    showCaseStudies: true,
+    showFeatures: true,
+    showMap: true,
+    showScale: true,
+    showPricing: true
+};
+
+// Predefined configurations for common variations
+export const variationConfigs: Record<VariationKey, HomepageVariationConfig> = {
+    'all-in-one-cloud': {
+        title: "The Developers' Cloud",
+        subtitle:
+            'Indobase is an open-source, cloud platform tailored for developers who like to get stuff done. Use built-in backend infrastructure and web hosting, all from a single place.',
+        pageTitle: "Indobase - The Developers' Cloud",
+        slug: '/all-in-one-cloud',
+        ...baseConfig
+    },
+    'supabase-alternative': {
+        title: 'Open-source Supabase Alternative',
+        subtitle:
+            'Indobase is a truly open-source, all-in-one development platform that offers backend infrastructure and web hosting from a single place.',
+        pageTitle: 'Indobase - Open-source Supabase Alternative',
+        slug: '/supabase-alternative',
+        ...baseConfig
+    },
+    'firebase-alternative': {
+        title: 'Open-source Firebase Alternative',
+        subtitle:
+            'Indobase is a truly open-source, all-in-one development platform that offers backend infrastructure and web hosting from a single place.',
+        pageTitle: 'Indobase - Open-source Firebase Alternative',
+        slug: '/firebase-alternative',
+        ...baseConfig
+    },
+    'all-in-one-development': {
+        title: 'All-in-one Development Platform',
+        subtitle:
+            'Indobase is an all-in-one development platform that offers backend infrastructure and web hosting from a single place. Open-source and no vendor lock-in.',
+        pageTitle: 'Indobase - All-in-one Development Platform',
+        slug: '/all-in-one-development',
+        ...baseConfig
+    },
+    'all-in-one-cloud-offer': {
+        title: 'All-in-one Cloud Platform',
+        subtitle:
+            'Indobase is an all-in-one development platform that offers backend infrastructure and web hosting from a single place. Open-source and no vendor lock-in.',
+        pageTitle: 'Indobase - All-in-one Cloud Platform',
+        slug: '/all-in-one-cloud-offer',
+        ctaLabel: 'Claim your $300 Credits',
+        ctaHref: getAppwriteDashboardUrl('/sign-up?code=sites300'),
+        ...baseConfig
+    }
+};
+
+export function getVariationConfig(name: VariationKey): HomepageVariationConfig {
+    return variationConfigs[name];
+}

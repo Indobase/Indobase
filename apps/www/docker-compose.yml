@@ -1,0 +1,16 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        - PUBLIC_GROWTH_ENDPOINT=${PUBLIC_GROWTH_ENDPOINT}
+    container_name: frontend_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PUBLIC_GROWTH_ENDPOINT=${PUBLIC_GROWTH_ENDPOINT}
+    restart: unless-stopped
+    env_file:
+      - .env

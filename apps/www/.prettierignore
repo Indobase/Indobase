@@ -1,0 +1,28 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+deploy
+
+# Ignore files for Bun
+bun.lock
+
+*.scss
+
+# Assets
+*.jpg
+*.png
+*.webp
+*.avif
+
+# Media
+*.mp3
+*.wav
+*.mp4
+*.mpv
+
+.optimize-cache.json

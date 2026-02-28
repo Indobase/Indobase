@@ -1,0 +1,36 @@
+@use '../abstract' as *;
+
+.#{$p}-badges {
+  --p-badges-shadow-bg-color: #f2c8d6;
+  --p-badges-shadow-border-color: #f69db7;
+  --p-badges-shadowopacity: 0.4;
+
+  align-self:center; color:hsl(var(--color-neutral-0));
+  padding-block:pxToRem(6); padding-inline:pxToRem(12); border-radius:pxToRem(6);
+  // background: linear-gradient(175deg, hsl(var(--web-color-pink-500)) 25.03%, hsl(var(--web-color-secondary-100)) 100%);
+  background: radial-gradient(98.13% 199.7% at 98.13% 100%, #FE6947 0%, #FD366E 41.6%, #FD366E 100%);
+
+  -webkit-backdrop-filter:blur(pxToRem(40));
+  backdrop-filter:blur(pxToRem(40));
+
+  box-shadow:
+          pxToRem(3) pxToRem(3) var(--p-badges-shadow-bg-color),
+          pxToRem(4) pxToRem(3) var(--p-badges-shadow-border-color),
+          pxToRem(3) pxToRem(4) var(--p-badges-shadow-border-color),
+          pxToRem(2) pxToRem(3) var(--p-badges-shadow-border-color),
+          pxToRem(3) pxToRem(2) var(--p-badges-shadow-border-color);
+
+
+  #{$theme-dark} & {
+    --p-badges-shadow-bg-color: #2c2c2f;
+    --p-badges-shadow-border-color: #39393c;
+    --p-badges-shadowopacity: 0.13;
+  }
+
+  #{$theme-light} &{
+    --p-badges-shadow-bg-color: #f2c8d6;
+    --p-badges-shadow-border-color: #f69db7;
+    --p-badges-shadowopacity: 0.4;
+  }
+
+}

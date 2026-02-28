@@ -1,0 +1,61 @@
+# VCS
+.git
+**/.git
+.gitignore
+
+# Node and build artifacts
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+.next
+**/.next
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+.cache
+**/.cache
+
+# Package manager stores
+.pnpm-store
+**/.pnpm-store
+pnpm-store
+
+# IDE/editor
+.vscode
+**/.vscode
+.idea
+**/.idea
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs and reports
+*.log
+**/*.log
+playwright-report
+test-results
+
+# Temporary files
+tmp
+**/tmp
+*.swp
+
+# Archives
+*.zip
+*.tgz
+*.gz
+
+# dotenv (avoid baking secrets into images)
+.env
+**/.env
+*.env*
+**/*.env*
+
+# Unnecessary app outputs
+apps/**/.svelte-kit
+

@@ -1,0 +1,11 @@
+packages:
+  - .
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@sentry/cli'
+  - core-js
+  - esbuild
+  - protobufjs
+  - sharp
+  - ttf2woff2

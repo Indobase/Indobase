@@ -1,0 +1,14 @@
+@use '../abstract' as *;
+
+.#{$p}-author-section {
+  display:flex; flex-direction:column; gap:pxToRem(24); align-items:center;
+  max-inline-size:pxToRem(500); margin-inline:auto; text-align:center;
+  &-image {
+    padding:pxToRem(14);
+    //background:linear-gradient(155deg, rgba(255, 255, 255, 0.06) 1.16%, rgba(255, 255, 255, 0.06) 84.17%);
+    border:solid pxToRem(1) hsl(var(--web-color-border));
+    border-radius:50%; margin-block-end:pxToRem(24);
+    img { display:block; border-radius:50%; }
+  }
+  &-info { text-wrap:balance; }
+}

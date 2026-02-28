@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="twitter:site" content="@Indobase" />
+        <link rel="icon" type="image/svg+xml" href="/favicon-indobase.svg" />
+
+        <!-- apple touch icons -->
+        <link
+            rel="apple-touch-icon"
+            href="/images/logos/icons/apple-touch-icon-180x180.png"
+            sizes="180x180"
+        />
+        <link
+            rel="apple-touch-icon"
+            href="/images/logos/icons/apple-touch-icon-167x167.png"
+            sizes="167x167"
+        />
+        <link
+            rel="apple-touch-icon"
+            href="/images/logos/icons/apple-touch-icon-152x152.png"
+            sizes="152x152"
+        />
+        <link
+            rel="apple-touch-icon"
+            href="/images/logos/icons/apple-touch-icon-120x120.png"
+            sizes="120x120"
+        />
+
+        <!-- apple startup screen -->
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Indobase" />
+        <!-- preload font for headlines -->
+        <link
+            rel="preload"
+            href="/fonts/aeonik-pro/AeonikPro-Regular.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+        />
+        %sveltekit.head%
+    </head>
+    <body class="dark group/body antialiased" data-sveltekit-preload-data="hover">
+        <script>
+            // Theme
+            const isDocs = window.location.pathname.startsWith('/docs');
+            if (isDocs) {
+                const theme = localStorage.getItem('theme');
+                if (theme) {
+                    document.body.classList.remove('dark', 'light');
+                    if (theme === 'system') {
+                        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+                            .matches
+                            ? 'dark'
+                            : 'light';
+                        document.body.classList.add(systemTheme);
+                    } else {
+                        document.body.classList.add(theme);
+                        // Color scheme in html
+                        document.documentElement.style.setProperty('color-scheme', theme);
+                    }
+                }
+            }
+
+            // Progressive enhancement
+            document.body.dataset.jsEnabled = '';
+
+            // Banner
+            const BANNER_KEY = '%aw_banner_key%';
+            const hideBanner = localStorage.getItem(BANNER_KEY);
+            if (hideBanner === 'true') {
+                document.body.dataset.bannerHidden = '';
+            }
+            // Is logged in
+            const isLoggedIn = localStorage.getItem('Indobase:user');
+            if (isLoggedIn) {
+                document.body.dataset.loggedIn = '';
+            }
+        </script>
+        <div style="display: contents">%sveltekit.body%</div>
+    </body>
+</html>

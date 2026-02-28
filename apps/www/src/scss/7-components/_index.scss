@@ -1,0 +1,34 @@
+/* Layout partials */
+@forward "mobile-header";
+@forward "main-header";
+@forward "footer-nav";
+@forward "main-footer";
+@forward "side-nav";
+@forward "references-menu";
+
+/* inner partials */
+@forward "hero";
+@forward "info-boxes";
+@forward "user-box";
+@forward "social-item";
+@forward "big-list-info";
+@forward "secondary-tabs";
+@forward "strip-plans";
+@forward "code-snippet";
+@forward "code-console";
+@forward "articles";
+@forward "pricing-cards";
+@forward "page-steps";
+@forward "compare-table";
+@forward "info-table";
+@forward "content-footer";
+@forward "top-banner";
+@forward "timeline-content";
+@forward "investor-cards";
+@forward "chat";
+@forward "carousel";
+
+/*article content */
+@forward "article";
+@forward "content";
+@forward "inline-info";

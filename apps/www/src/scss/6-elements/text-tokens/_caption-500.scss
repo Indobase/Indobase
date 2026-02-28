@@ -1,0 +1,18 @@
+@use '../../abstract' as *;
+.#{$p}-caption-500 {
+  --p-font-family: var(--web-font-family-inter);
+  --p-font-size: var(--web-font-size-tiny);
+  --p-line-height: var(--web-line-height-xs);
+  --p-letter-spacing: var(--web-letter-spacing-tight);
+  --p-font-weight: var(--web-font-weight-medium);
+
+  font-family: var(--p-font-family);
+  font-size: var(--p-font-size);
+  line-height: var(--p-line-height);
+  letter-spacing: var(--p-letter-spacing);
+  font-weight: var(--p-font-weight);
+
+  @media #{$break2open} {
+
+  }
+}

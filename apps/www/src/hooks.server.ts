@@ -1,0 +1,175 @@
+import * as Sentry from '@sentry/sveltekit';
+import type { Handle } from '@sveltejs/kit';
+import redirects from './redirects.json';
+import { sequence } from '@sveltejs/kit/hooks';
+import { getMarkdownContent } from '$lib/server/markdown';
+
+const redirectMap = new Map(redirects.map(({ link, redirect }) => [link, redirect]));
+
+const markdownHandler: Handle = async ({ event, resolve }) => {
+    const pathname = event.url.pathname;
+    if (!pathname.endsWith('.md')) {
+        return resolve(event);
+    }
+
+    // strip trailing ".md" from the pathname to get the underlying route id
+    const withoutExt = pathname.replace(/\.md$/, '');
+    const routeId = withoutExt;
+
+    const content = await getMarkdownContent(routeId);
+    if (content == null) {
+        return new Response('Not found', { status: 404 });
+    }
+
+    return new Response(content, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/markdown; charset=utf-8'
+        }
+    });
+};
+
+const redirecter: Handle = async ({ event, resolve }) => {
+    const currentPath = event.url.pathname;
+    if (redirectMap.has(currentPath)) {
+        return new Response(null, {
+            status: 308,
+            headers: {
+                location: redirectMap.get(currentPath) ?? ''
+            }
+        });
+    }
+
+    return resolve(event);
+};
+
+const wwwRedirecter: Handle = async ({ event, resolve }) => {
+    if (event.url.host.startsWith('www.')) {
+        const location = new URL(event.url);
+        location.host = location.host.replace(/^www\./, '');
+        return new Response(null, {
+            status: 308,
+            headers: {
+                location: location.href
+            }
+        });
+    }
+
+    return resolve(event);
+};
+
+const securityheaders: Handle = async ({ event, resolve }) => {
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+    event.locals.nonce = nonce;
+
+    const response = await resolve(event, {
+        transformPageChunk: ({ html }) => {
+            return html.replace(/%sveltekit.nonce%/g, nonce);
+        }
+    });
+
+    // `true` if deployed via Coolify.
+    const isPreview = !!process.env.COOLIFY_FQDN || process.env.NODE_ENV === 'development';
+    // COOLIFY_FQDN already includes `http`.
+    const previewDomain = isPreview ? `${process.env.COOLIFY_FQDN}` : null;
+    const join = (arr: string[]) => arr.join(' ');
+
+    const cspDirectives: Record<string, string> = {
+        'default-src': "'self'",
+        'script-src': join([
+            "'self'",
+            'blob:',
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            'https://*.posthog.com',
+            'https://*.plausible.io',
+            'https://*.reo.dev',
+            'https://plausible.io',
+            'https://js.zi-scripts.com',
+            'https://ws.zoominfo.com',
+            'https://*.cookieyes.com',
+            'https://cdn-cookieyes.com'
+        ]),
+        'style-src': "'self' 'unsafe-inline'",
+        'img-src': "'self' data: https:",
+        'font-src': "'self'",
+        'object-src': "'none'",
+        'base-uri': "'self'",
+        'form-action': "'self'",
+        'frame-ancestors': join(["'self'", 'https://www.youtube.com', 'https://*.vimeo.com']),
+        'block-all-mixed-content': '',
+        'upgrade-insecure-requests': '',
+        'connect-src': join([
+            "'self'",
+            'https://indobase.fun',
+            'https://*.indobase.fun',
+            'https://*.posthog.com',
+            'https://*.sentry.io',
+            'https://*.plausible.io',
+            'https://plausible.io',
+            'https://*.reo.dev',
+            'https://js.zi-scripts.com',
+            'https://aorta.clickagy.com',
+            'https://hemsync.clickagy.com',
+            'https://ws.zoominfo.com ',
+            'https://*.cookieyes.com',
+            'https://cdn-cookieyes.com'
+        ]),
+        'frame-src': join([
+            "'self'",
+            'https://www.youtube.com',
+            'https://status.indobase.fun',
+            'https://www.youtube-nocookie.com',
+            'https://player.vimeo.com',
+            'https://hemsync.clickagy.com',
+            'https://cdn-cookieyes.com'
+        ])
+    };
+
+    if (isPreview) {
+        delete cspDirectives['block-all-mixed-content'];
+        delete cspDirectives['upgrade-insecure-requests'];
+        ['default-src', 'script-src', 'style-src', 'img-src', 'font-src', 'connect-src'].forEach(
+            (key) => {
+                cspDirectives[key] += ` ${previewDomain}`;
+            }
+        );
+    }
+
+    const cspDirectivesString = Object.entries(cspDirectives)
+        .map(([key, value]) => `${key} ${value}`.trim())
+        .join('; ');
+
+    // Set security headers
+    response.headers.set('Content-Security-Policy', cspDirectivesString);
+
+    // HTTP Strict Transport Security
+    // max-age is set to 1 year in seconds
+    response.headers.set(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload'
+    );
+
+    // X-Content-Type-Options
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+
+    // X-Frame-Options
+    response.headers.set('X-Frame-Options', 'DENY');
+
+    return response;
+};
+
+const initLocals: Handle = async ({ event, resolve }) => {
+    event.locals.initUser = { github: null, appwrite: null };
+    return resolve(event);
+};
+
+export const handle = sequence(
+    Sentry.sentryHandle(),
+    markdownHandler,
+    redirecter,
+    wwwRedirecter,
+    securityheaders,
+    initLocals
+);
+export const handleError = Sentry.handleErrorWithSentry();
