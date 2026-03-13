@@ -2,7 +2,6 @@
     import { cn } from '$lib/utils/cn';
     import Python from '../(assets)/icons/python.svg';
     import Node from '../(assets)/icons/node.svg';
-    import Javascript from '../(assets)/icons/javascript.svg';
     import Flutter from '../(assets)/icons/flutter.svg';
     import Kotlin from '../(assets)/icons/kotlin.svg';
     import Apple from '../(assets)/icons/apple.svg';
@@ -25,7 +24,6 @@
     import ReactNative from '../(assets)/icons/react-native.svg';
     import TanStack from '../(assets)/icons/tanstack.svg';
     import TanStackLight from '../(assets)/icons/light/tanstack.svg';
-    import GradientText from '$lib/components/fancy/gradient-text.svelte';
     import Noise from '$lib/components/fancy/noise.svelte';
     import { Tooltip } from 'bits-ui';
     import { trackEvent } from '$lib/actions/analytics';
@@ -134,7 +132,9 @@
         })}
     >
         {#if headline}
-            <span class="flex items-center pr-4 text-sm font-medium text-primary md:w-full md:max-w-[175px]">
+            <span
+                class="text-primary flex items-center pr-4 text-sm font-medium md:w-full md:max-w-[175px]"
+            >
                 {headline}
             </span>
         {/if}
@@ -145,7 +145,7 @@
                 'mask-r-from-75% mask-r-to-99% mask-l-from-75% mask-l-to-99% mask-alpha backdrop-blur-3xl md:mask-none'
             )}
         >
-            {#each [1, 2] as _, i}
+            {#each [1, 2] as iteration, i (iteration)}
                 <div
                     class={cn(
                         'divide-smooth animate-scroll-x flex w-max flex-1 grow flex-nowrap divide-dashed md:w-full md:[animation:none] md:divide-x md:[animation-play-state:paused]',
@@ -155,21 +155,21 @@
                     )}
                 >
                     <Tooltip.Provider delayDuration={0} disableCloseOnTriggerClick>
-                        {#each platforms as platform, i}
+                        {#each platforms as platform, platformIndex (platform.name)}
                             <Tooltip.Root>
                                 <div
                                     class="contents"
-                                    style="--primary-color:{platform.primary};--secondary-color:{platform.secondary};--animation-delay:{i *
+                                    style="--primary-color:{platform.primary};--secondary-color:{platform.secondary};--animation-delay:{platformIndex *
                                         25}ms"
                                 >
                                     <Tooltip.Trigger
                                         class={cn(
                                             'border-smooth group animate-fade-in /mt-4 relative flex h-16 w-16 items-center justify-center border-dashed md:mt-0 md:w-full lg:border-r',
                                             {
-                                                'lg:border-l': i === 0
+                                                'lg:border-l': platformIndex === 0
                                             }
                                         )}
-                                        aria-hidden={i < platforms.length - 1}
+                                        aria-hidden={platformIndex < platforms.length - 1}
                                     >
                                         <a
                                             href={platform.href}

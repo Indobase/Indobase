@@ -13,7 +13,7 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env.local" />
-        <ConnectTabTrigger value="utils/supabase.ts" />
+        <ConnectTabTrigger value="utils/indobase.ts" />
         <ConnectTabTrigger value="src/App.jsx" />
       </ConnectTabTriggers>
 
@@ -21,24 +21,24 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {[
             '',
-            `SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+            `INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
             projectKeys?.publishableKey
-              ? `SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-              : `SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+              ? `INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+              : `INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
             '',
           ].join('\n')}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="utils/supabase.ts">
+      <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.${projectKeys.publishableKey ? 'SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'SUPABASE_ANON_KEY'};
+const indobaseUrl = process.env.INDOBASE_URL;
+const indobaseKey = process.env.${projectKeys.publishableKey ? 'INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'INDOBASE_ANON_KEY'};
 
-export const supabase = createClient(supabaseUrl!, supabaseKey!);
+export const indobase = createClient(indobaseUrl!, indobaseKey!);
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
@@ -46,12 +46,12 @@ export const supabase = createClient(supabaseUrl!, supabaseKey!);
       <ConnectTabContent value="src/App.jsx">
         <SimpleCodeBlock className="jsx" parentClassName="min-h-72">
           {`
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 import { createResource, For } from "solid-js";
 
 async function getTodos() {
-  const { data: todos } = await supabase.from("todos").select();
-  return data;
+  const { data: todos } = await indobase.from("todos").select();
+  return todos;
 }
 
 function App() {
@@ -59,7 +59,7 @@ function App() {
 
   return (
     <ul>
-      <For each={todos()}>{(country) => <li>{todo.name}</li>}</For>
+      <For each={todos()}>{(todo) => <li>{todo.name}</li>}</For>
     </ul>
   );
 }

@@ -120,7 +120,7 @@
             )}
         >
             <div class="flex h-max flex-col items-center gap-3 [animation-duration:10s]!">
-                {#each commands.slice(0, 2) as command, i}
+                {#each commands.slice(0, 2) as command (command)}
                     {@render Command({ command })}
                 {/each}
                 <div
@@ -140,7 +140,7 @@
                         class="absolute inset-0 -z-1 bg-linear-to-l from-white/12 to-transparent"
                     ></div>
                 </div>
-                {#each commands.slice(3) as command, i}
+                {#each commands.slice(3) as command (command)}
                     {@render Command({ command })}
                 {/each}
             </div>

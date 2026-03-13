@@ -82,7 +82,7 @@
             class="mx-auto grid grid-cols-2 overflow-hidden lg:grid-cols-4"
             style="max-width: 1200px; margin-inline: auto;"
         >
-            {#each benefits as box}
+            {#each benefits as box (box.label)}
                 <div
                     class="text-sub-body group relative border-dashed border-black/8 px-4 py-6 font-medium last-of-type:border-0 sm:px-2.5 sm:py-8 sm:pr-8 sm:max-lg:even:border-r-0 md:border-r md:border-b md:p-8 md:pr-8 lg:nth-of-type-[5]:border-b-0 lg:nth-of-type-[6]:border-b-0 lg:nth-of-type-[8]:border-b-0"
                 >

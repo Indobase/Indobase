@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { DEFAULT_DESCRIPTION, DEFAULT_HOST } from '$lib/utils/metadata';
+    import { DEFAULT_HOST } from '$lib/utils/metadata';
     import { Main } from '$lib/layouts';
     import { TITLE_SUFFIX } from '$routes/titles';
     import FooterNav from '../../lib/components/FooterNav.svelte';
@@ -123,7 +123,7 @@
                                 >
                                     <h2 class="text-label text-primary">Follow us</h2>
                                     <ul class="flex gap-2">
-                                        {#each socials as social}
+                                        {#each socials as social (social.label)}
                                             <li>
                                                 <a
                                                     href={social.link}

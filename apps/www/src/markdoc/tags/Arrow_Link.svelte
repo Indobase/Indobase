@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Icon } from '$lib/components/ui';
-    import { setContext, type Snippet } from 'svelte';
+    import type { Snippet } from 'svelte';
 
     interface ArrowLinkProps {
         href: string;

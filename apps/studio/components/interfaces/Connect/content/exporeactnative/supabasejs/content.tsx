@@ -13,29 +13,29 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env.local" />
-        <ConnectTabTrigger value="utils/supabase.ts" />
+        <ConnectTabTrigger value="utils/indobase.ts" />
         <ConnectTabTrigger value="App.tsx" />
       </ConnectTabTriggers>
 
       <ConnectTabContent value=".env.local">
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {`
-EXPO_PUBLIC_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-EXPO_PUBLIC_SUPABASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile and desktop apps>'}
+EXPO_PUBLIC_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+EXPO_PUBLIC_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile and desktop apps>'}
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="utils/supabase.ts">
+      <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import 'react-native-url-polyfill/auto'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient, processLock } from '@supabase/supabase-js'
 
-export const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_KEY!,
+export const indobase = createClient(
+  process.env.EXPO_PUBLIC_INDOBASE_URL!,
+  process.env.EXPO_PUBLIC_INDOBASE_KEY!,
   {
     auth: {
       storage: AsyncStorage,
@@ -54,7 +54,7 @@ export const supabase = createClient(
           {`
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList } from 'react-native';
-import { supabase } from '../utils/supabase';
+import { indobase } from '../utils/indobase';
 
 export default function App() {
   const [todos, setTodos] = useState([]);
@@ -62,7 +62,7 @@ export default function App() {
   useEffect(() => {
     const getTodos = async () => {
       try {
-        const { data: todos, error } = await supabase.from('todos').select();
+        const { data: todos, error } = await indobase.from('todos').select();
 
         if (error) {
           console.error('Error fetching todos:', error.message);

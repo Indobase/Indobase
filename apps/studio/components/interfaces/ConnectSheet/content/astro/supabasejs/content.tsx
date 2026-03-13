@@ -8,20 +8,20 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: `
-SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
+INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
         `,
     },
     {
-      name: 'src/db/supabase.js',
+      name: 'src/db/indobase.js',
       language: 'js',
       code: `
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
-const supabaseUrl = import.meta.env.SUPABASE_URL;
-const supabaseKey = import.meta.env.SUPABASE_KEY;
+const indobaseUrl = import.meta.env.INDOBASE_URL;
+const indobaseKey = import.meta.env.INDOBASE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const indobase = createClient(indobaseUrl, indobaseKey);
         `,
     },
     {
@@ -29,9 +29,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
       language: 'html',
       code: `
 ---
-import { supabase } from '../db/supabase';
+import { indobase } from '../db/indobase';
 
-const { data, error } = await supabase.from("todos").select('*');
+const { data, error } = await indobase.from("todos").select('*');
 ---
 
 {

@@ -1,10 +1,14 @@
 <script lang="ts">
     import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { onMount } from 'svelte';
     import { Button } from '../ui';
     import HamburgerMenu from './navigation/hamburger-menu.svelte';
     import PrimaryNav from './navigation/primary-nav.svelte';
 
-    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    let DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    onMount(() => {
+        DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    });
 </script>
 
 <header

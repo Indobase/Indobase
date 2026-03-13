@@ -1,7 +1,7 @@
 <script lang="ts">
     import { colorSchemes, MEDIA } from './constants';
     import { disableAnimation, getSystemTheme, getTheme } from './helpers';
-    import { themeStore, setTheme, setResolvedTheme, setSystemTheme, setThemes } from './index';
+    import { themeStore, setTheme, setResolvedTheme, setSystemTheme } from './index';
     import ThemeScript from './theme-script.svelte';
     import { browser } from '$app/environment';
 
@@ -70,7 +70,7 @@
         if (updateStorage) {
             try {
                 localStorage.setItem(storageKey, newTheme);
-            } catch (e) {
+            } catch {
                 // Ignore storage errors
             }
         }

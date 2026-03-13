@@ -5,8 +5,6 @@ import { useEffect, useRef } from 'react'
 import { useParams } from 'common'
 import { AdvisorWidget } from 'components/interfaces/Home/AdvisorWidget'
 import { ClientLibrary } from 'components/interfaces/Home/ClientLibrary'
-import { ExampleProject } from 'components/interfaces/Home/ExampleProject'
-import { EXAMPLE_PROJECTS } from 'components/interfaces/Home/Home.constants'
 import { NewProjectPanel } from 'components/interfaces/Home/NewProjectPanel/NewProjectPanel'
 import { ProjectUsageSection } from 'components/interfaces/Home/ProjectUsageSection'
 import { ServiceStatus } from 'components/interfaces/Home/ServiceStatus'
@@ -28,10 +26,6 @@ import { useAppStateSnapshot } from 'state/app-state'
 import {
   Badge,
   cn,
-  Tabs_Shadcn_,
-  TabsContent_Shadcn_,
-  TabsList_Shadcn_,
-  TabsTrigger_Shadcn_,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -49,10 +43,9 @@ export const Home = () => {
   const { projectHomepageExampleProjects, projectHomepageClientLibraries: clientLibraries } =
     useCustomContent(['project_homepage:example_projects', 'project_homepage:client_libraries'])
 
-  const {
-    projectHomepageShowInstanceSize: showInstanceSize,
-    projectHomepageShowExamples: showExamples,
-  } = useIsFeatureEnabled(['project_homepage:show_instance_size', 'project_homepage:show_examples'])
+  const { projectHomepageShowInstanceSize: showInstanceSize } = useIsFeatureEnabled([
+    'project_homepage:show_instance_size',
+  ])
 
   const hasShownEnableBranchingModalRef = useRef(false)
   const isPaused = project?.status === PROJECT_STATUS.INACTIVE
@@ -232,50 +225,7 @@ export const Home = () => {
                     ))}
                   </div>
                 </div>
-                {showExamples && (
-                  <div className="flex flex-col gap-y-8">
-                    <h4 className="text-lg">Example projects</h4>
-                    {!!projectHomepageExampleProjects ? (
-                      <div className="grid gap-2 md:gap-8 md:grid-cols-2 lg:grid-cols-3">
-                        {/* [Alaister]: Looks like the useCustomContent has wonky types. I'll look at a fix later. */}
-                        {(projectHomepageExampleProjects as any)
-                          .sort((a: any, b: any) => a.title.localeCompare(b.title))
-                          .map((project: any) => (
-                            <ExampleProject key={project.url} {...project} />
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="flex justify-center">
-                        <Tabs_Shadcn_ defaultValue="app" className="w-full">
-                          <TabsList_Shadcn_ className="flex gap-4 mb-8">
-                            <TabsTrigger_Shadcn_ value="app">App Frameworks</TabsTrigger_Shadcn_>
-                            <TabsTrigger_Shadcn_ value="mobile">
-                              Mobile Frameworks
-                            </TabsTrigger_Shadcn_>
-                          </TabsList_Shadcn_>
-                          <TabsContent_Shadcn_ value="app">
-                            <div className="grid gap-2 md:gap-8 md:grid-cols-2 lg:grid-cols-3">
-                              {EXAMPLE_PROJECTS.filter((project) => project.type === 'app')
-                                .sort((a, b) => a.title.localeCompare(b.title))
-                                .map((project) => (
-                                  <ExampleProject key={project.url} {...project} />
-                                ))}
-                            </div>
-                          </TabsContent_Shadcn_>
-                          <TabsContent_Shadcn_ value="mobile">
-                            <div className="grid gap-2 md:gap-8 md:grid-cols-2 lg:grid-cols-3">
-                              {EXAMPLE_PROJECTS.filter((project) => project.type === 'mobile')
-                                .sort((a, b) => a.title.localeCompare(b.title))
-                                .map((project) => (
-                                  <ExampleProject key={project.url} {...project} />
-                                ))}
-                            </div>
-                          </TabsContent_Shadcn_>
-                        </Tabs_Shadcn_>
-                      </div>
-                    )}
-                  </div>
-                )}
+                
               </>
             )}
           </div>

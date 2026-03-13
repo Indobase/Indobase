@@ -8,29 +8,29 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env',
       language: 'bash',
       code: [
-        `VITE_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `VITE_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
         projectKeys?.publishableKey
-          ? `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-          : `VITE_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+          ? `VITE_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+          : `VITE_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
     {
-      name: 'app/utils/supabase.server.ts',
+      name: 'app/utils/indobase.server.ts',
       language: 'ts',
       code: `
 import {
   createServerClient,
   parseCookieHeader,
   serializeCookieHeader,
-} from "@supabase/ssr";
+} from "indobase-ssr";
 
 export function createClient(request: Request) {
   const headers = new Headers();
 
-  const supabase = createServerClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.VITE_${projectKeys.publishableKey ? 'SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'SUPABASE_ANON_KEY'},
+  const indobase = createServerClient(
+    process.env.VITE_INDOBASE_URL!,
+    process.env.VITE_${projectKeys.publishableKey ? 'INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'INDOBASE_ANON_KEY'},
     {
       cookies: {
         getAll() {
@@ -51,7 +51,7 @@ export function createClient(request: Request) {
     }
   );
 
-  return { supabase, headers };
+  return { indobase, headers };
 }
 `,
     },
@@ -60,11 +60,11 @@ export function createClient(request: Request) {
       language: 'tsx',
       code: `
 import type { Route } from "./+types/home";
-import { createClient } from "~/utils/supabase.server";
+import { createClient } from "~/utils/indobase.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { supabase } = createClient(request);
-  const { data: todos } = await supabase.from("todos").select();
+  const { indobase } = createClient(request);
+  const { data: todos } = await indobase.from("todos").select();
 
   return { todos };
 }

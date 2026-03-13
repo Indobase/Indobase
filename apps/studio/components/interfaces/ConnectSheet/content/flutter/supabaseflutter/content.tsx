@@ -9,10 +9,10 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       language: 'dart',
       code: `
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:indobase_flutter/indobase_flutter.dart';
 
 Future<void> main() async {
-  await Supabase.initialize(
+  await Indobase.initialize(
     url: '${projectKeys.apiUrl ?? 'your-project-url'}',
     anonKey: '${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile and desktop apps>'}',
   );
@@ -44,7 +44,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _future = Supabase.instance.client
+  final _future = Indobase.instance.client
       .from('todos')
       .select();
 

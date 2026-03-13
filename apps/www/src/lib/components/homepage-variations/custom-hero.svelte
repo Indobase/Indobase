@@ -51,10 +51,11 @@
             <div class="mt-4 flex flex-col gap-2 lg:flex-row">
                 <Button
                     href={ctaHref}
-                    class="w-full! lg:w-fit! saffron-button"
+                    class="saffron-button w-full! lg:w-fit!"
                     onclick={() => {
                         trackEvent(`main-get_started_btn_hero-click`);
-                    }}>{ctaLabel}</Button>
+                    }}>{ctaLabel}</Button
+                >
                 >
             </div>
         </div>

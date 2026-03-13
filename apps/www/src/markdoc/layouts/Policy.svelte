@@ -28,7 +28,6 @@
 
     import TocNav from '$lib/components/TocNav.svelte';
     import TocRoot from '$lib/components/TocRoot.svelte';
-    import { isHeaderHidden } from '$lib/layouts/Main.svelte';
     import { getContext, hasContext, setContext } from 'svelte';
 
     export let title: string;

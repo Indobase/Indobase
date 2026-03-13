@@ -8,34 +8,34 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `PUBLIC_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `PUBLIC_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
         projectKeys?.publishableKey
-          ? `PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-          : `PUBLIC_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+          ? `PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+          : `PUBLIC_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
     {
-      name: 'src/lib/supabaseClient.js',
+      name: 'src/lib/indobaseClient.js',
       language: 'js',
       code: `
-import { createClient } from "@supabase/supabase-js";
-import { PUBLIC_SUPABASE_URL, ${projectKeys.publishableKey ? 'PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'PUBLIC_SUPABASE_ANON_KEY'} } from "$env/static/public"
+import { createClient } from "indobase-js";
+import { PUBLIC_INDOBASE_URL, ${projectKeys.publishableKey ? 'PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'PUBLIC_INDOBASE_ANON_KEY'} } from "$env/static/public"
 
-const supabaseUrl = PUBLIC_SUPABASE_URL;
-const supabaseKey = ${projectKeys.publishableKey ? 'PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'PUBLIC_SUPABASE_ANON_KEY'};
+const indobaseUrl = PUBLIC_INDOBASE_URL;
+const indobaseKey = ${projectKeys.publishableKey ? 'PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'PUBLIC_INDOBASE_ANON_KEY'};
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const indobase = createClient(indobaseUrl, indobaseKey);
         `,
     },
     {
       name: 'src/routes/+page.server.js',
       language: 'js',
       code: `
-import { supabase } from "$lib/supabaseClient";
+import { indobase } from "$lib/indobaseClient";
 
 export async function load() {
-  const { data } = await supabase.from("countries").select();
+  const { data } = await indobase.from("countries").select();
   return {
     countries: data ?? [],
   };

@@ -7,7 +7,6 @@
     interface TeaserBannerProps extends HTMLAttributes<HTMLDivElement> {
         class?: string;
         leftText?: string;
-        logoText?: string;
         rightText?: string;
         showLabel?: boolean;
     }
@@ -15,7 +14,6 @@
     const {
         class: classNames,
         leftText = 'Introducing',
-        logoText = 'Imagine',
         rightText = 'Build something real',
         showLabel = true,
         ...restProps

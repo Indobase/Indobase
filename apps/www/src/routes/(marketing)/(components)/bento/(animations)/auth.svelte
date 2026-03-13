@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { animate, hover, inView, motionValue, type AnimationSequence } from 'motion';
+    import { animate, hover, inView } from 'motion';
 
     import Google from '../../../(assets)/logos/google.svg';
 

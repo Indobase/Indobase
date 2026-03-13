@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { browser } from '$app/environment';
     import { cn } from '$lib/utils/cn';
     import AnimatedLogo from './animated-logo.svelte';
 
@@ -111,9 +110,9 @@
             {title}
         </h2>
         <div class="relative grid grid-cols-2 gap-8 py-10 md:grid-cols-4 md:gap-4">
-            {#each logoGroups as group, i}
+            {#each logoGroups as group, i (i)}
                 <div class="relative flex aspect-[8/2] flex-col items-center justify-center">
-                    {#each group as { src, alt, width, height }, index}
+                    {#each group as { src, alt, width, height }, index (src)}
                         <AnimatedLogo
                             repeatDelay={baseDelay * 2}
                             delay={index * baseDelay + i * 0.1}

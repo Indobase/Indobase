@@ -125,7 +125,7 @@
 
                         <img loading="lazy" src={Email} alt="" class="size-6" />
                     </div>
-                    {#each [Messages, Settings, Calendar] as icon}
+                    {#each [Messages, Settings, Calendar] as icon (icon)}
                         <div
                             class="flex aspect-square size-full shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-white/10 to-white/3 shadow-sm shadow-black/5"
                         >
@@ -133,7 +133,7 @@
                         </div>
                     {/each}
 
-                    {#each Array.from({ length: 12 }) as _, index}
+                    {#each Array.from({ length: 12 }, (_, index) => index) as index (index)}
                         <div
                             class="aspect-square size-full shrink-0 rounded-xl bg-gradient-to-br from-white/10 to-white/3 shadow-sm shadow-black/5"
                         ></div>

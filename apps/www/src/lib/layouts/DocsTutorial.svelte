@@ -210,7 +210,7 @@
                     <h5 class="web-references-menu-title text-eyebrow uppercase">Tutorial Steps</h5>
                 </div>
                 <ol class="web-references-menu-list">
-                    {#each tutorials as tutorial, index}
+                    {#each tutorials as tutorial, index (tutorial.href)}
                         {@const isCurrentStep = currentStep === tutorial.step}
                         {@const absoluteToc = toc.slice(1)}
                         <li class="web-references-menu-item">
@@ -230,7 +230,7 @@
                                 <ol
                                     class="web-references-menu-list u-margin-block-start-16 u-margin-inline-start-32"
                                 >
-                                    {#each absoluteToc as parent, innerIndex}
+                                    {#each absoluteToc as parent, innerIndex (parent.href)}
                                         <li class="web-references-menu-item">
                                             <a
                                                 href={parent.href}
@@ -244,7 +244,7 @@
                                             </a>
                                             {#if parent.children}
                                                 <ol class="web-references-menu-list mt-4 ml-8">
-                                                    {#each parent.children as child}
+                                                    {#each parent.children as child (child.href)}
                                                         <li class="web-references-menu-item">
                                                             <a
                                                                 href={child.href}

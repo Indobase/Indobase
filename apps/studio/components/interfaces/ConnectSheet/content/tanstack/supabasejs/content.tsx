@@ -8,19 +8,19 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env',
       language: 'bash',
       code: `
-VITE_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-VITE_SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
+VITE_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+VITE_INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
         `,
     },
     {
-      name: 'src/utils/supabase.ts',
+      name: 'src/utils/indobase.ts',
       language: 'ts',
       code: `
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_KEY
+export const indobase = createClient(
+  import.meta.env.VITE_INDOBASE_URL,
+  import.meta.env.VITE_INDOBASE_KEY
 );
         `,
     },
@@ -29,11 +29,11 @@ export const supabase = createClient(
       language: 'tsx',
       code: `
 import { createFileRoute } from '@tanstack/react-router'
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const { data: todos } = await supabase.from('todos').select()
+    const { data: todos } = await indobase.from('todos').select()
     return { todos }
   },
   component: Home,

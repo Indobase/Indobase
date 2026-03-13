@@ -92,7 +92,8 @@ export const prepareBlogCtaState = ({
               return {
                   heading: callToAction.heading ?? 'Start building with Indobase today',
                   label: callToAction.label ?? 'Get started',
-                  href: callToAction.href ?? callToAction.url ?? getAppwriteDashboardUrl('/sign-up'),
+                  href:
+                      callToAction.href ?? callToAction.url ?? getAppwriteDashboardUrl('/sign-up'),
                   description: callToAction.description ?? '',
                   event: callToAction.event,
                   points: [point1, point2, point3, point4]

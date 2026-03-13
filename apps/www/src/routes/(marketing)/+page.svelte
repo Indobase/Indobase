@@ -15,15 +15,13 @@
             name: 'Sivakumar Gingee',
             title: 'Founder & CEO, Indobase',
             avatar: '/images/testimonials/phil.jpg',
-            quote:
-                'Indobase is the control plane Indian startups have been waiting for – a single platform that removes infra complexity so founders can ship faster and focus on customers instead of servers.'
+            quote: 'Indobase is the control plane Indian startups have been waiting for – a single platform that removes infra complexity so founders can ship faster and focus on customers instead of servers.'
         },
         {
             name: 'Roshan Raghavander',
             title: 'Co-founder & CTO, Indobase',
             avatar: '/images/testimonials/phil.jpg',
-            quote:
-                'We designed Indobase for the realities of building in India – unpredictable scale, tight budgets, and lean teams. It gives startups cloud-level reliability with predictable pricing and a developer experience that feels native to how Indian teams actually work.'
+            quote: 'We designed Indobase for the realities of building in India – unpredictable scale, tight budgets, and lean teams. It gives startups cloud-level reliability with predictable pricing and a developer experience that feels native to how Indian teams actually work.'
         }
     ] as const;
 

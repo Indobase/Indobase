@@ -1,8 +1,7 @@
 import type { AnimationConfig, FlipParams } from 'svelte/animate';
 import { cubicOut } from 'svelte/easing';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export function is_function(thing: unknown): thing is Function {
+export function is_function(thing: unknown): thing is (...args: unknown[]) => unknown {
     return typeof thing === 'function';
 }
 

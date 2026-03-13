@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { useTheme } from 'next-themes'
 
 import { LOCAL_STORAGE_KEYS } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
@@ -9,6 +10,7 @@ import { IS_PLATFORM } from 'lib/constants'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 
 export const HomeIcon = () => {
+  const { resolvedTheme } = useTheme()
   const { data: selectedOrganization } = useSelectedOrganizationQuery()
   const { data: organizations } = useOrganizationsQuery()
 
@@ -33,7 +35,11 @@ export const HomeIcon = () => {
     <Link href={href} className="items-center justify-center flex-shrink-0 hidden md:flex">
       <img
         alt="Indobase Logo"
-        src={`${router.basePath}/img/indobase-logo.svg`}
+        src={
+          resolvedTheme?.includes('dark')
+            ? `${router.basePath}/img/indobase-dark.svg`
+            : `${router.basePath}/img/indobase-light.svg`
+        }
         className={largeLogo ? 'h-[20px]' : 'h-[18px]'}
       />
     </Link>

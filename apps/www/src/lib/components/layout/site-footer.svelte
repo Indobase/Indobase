@@ -14,7 +14,7 @@
 
     const links: Record<string, { label: string; href: string; target?: string; rel?: string }[]> =
         {
-            'Links': [
+            Links: [
                 { label: 'Pricing', href: '/pricing' },
                 { label: 'Contact us', href: '/contact-us' },
                 { label: 'Enterprise', href: '/contact-us/enterprise' },

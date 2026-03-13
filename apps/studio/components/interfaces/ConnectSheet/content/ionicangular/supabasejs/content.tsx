@@ -9,33 +9,33 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       language: 'ts',
       code: `
 export const environment = {
-  supabaseUrl: '${projectKeys.apiUrl ?? 'your-project-url'}',
-  supabaseKey: '${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile apps>'}',
+  indobaseUrl: '${projectKeys.apiUrl ?? 'your-project-url'}',
+  indobaseKey: '${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile apps>'}',
 };
 `,
     },
     {
-      name: 'src/app/supabase.service.ts',
+      name: 'src/app/indobase.service.ts',
       language: 'ts',
       code: `
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from 'indobase-js';
 import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SupabaseService {
-  private supabase: SupabaseClient;
+export class IndobaseService {
+  private indobase: SupabaseClient;
   constructor() {
-    this.supabase = createClient(
-      environment.supabaseUrl,
-      environment.supabaseKey
+    this.indobase = createClient(
+      environment.indobaseUrl,
+      environment.indobaseKey
     );
   }
 
   getTodos() {
-    return this.supabase.from('todos').select('*');
+    return this.indobase.from('todos').select('*');
   }
 }
 `,
@@ -45,7 +45,7 @@ export class SupabaseService {
       language: 'ts',
       code: `
 import { Component, OnInit } from '@angular/core';
-import { SupabaseService } from './supabase.service';
+import { IndobaseService } from './indobase.service';
 
 @Component({
   selector: 'app-root',
@@ -55,14 +55,14 @@ import { SupabaseService } from './supabase.service';
 export class AppComponent implements OnInit {
   todos: any[] = [];
 
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private indobaseService: IndobaseService) {}
 
   async ngOnInit() {
     await this.loadTodos();
   }
 
   async loadTodos() {
-    const { data, error } = await this.supabaseService.getTodos();
+    const { data, error } = await this.indobaseService.getTodos();
     if (error) {
       console.error('Error fetching todos:', error);
     } else {
@@ -103,7 +103,7 @@ import { RouterModule } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 
 import { AppComponent } from './app.component';
-import { SupabaseService } from './supabase.service';
+import { IndobaseService } from './indobase.service';
 
 @NgModule({
   imports: [
@@ -113,7 +113,7 @@ import { SupabaseService } from './supabase.service';
     IonicModule.forRoot({ mode: 'ios' }),
   ],
   declarations: [AppComponent],
-  providers: [SupabaseService],
+  providers: [IndobaseService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

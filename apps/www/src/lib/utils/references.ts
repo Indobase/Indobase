@@ -65,7 +65,6 @@ export const Platform = {
     ServerRest: 'server-rest'
 } as const;
 
-type PlatformType = typeof Platform;
 export type Platform = (typeof Platform)[keyof typeof Platform];
 export const VALID_PLATFORMS = new Set(Object.values(Platform));
 

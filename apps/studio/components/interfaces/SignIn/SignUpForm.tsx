@@ -219,6 +219,7 @@ export const SignUpForm = () => {
               form={formId}
               htmlType="submit"
               size="large"
+              type="warning"
               disabled={password.length === 0 || isSubmitting}
               loading={isSubmitting}
             >

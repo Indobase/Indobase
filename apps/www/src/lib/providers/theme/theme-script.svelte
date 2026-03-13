@@ -43,45 +43,47 @@
 
     // Script implementation varies based on configuration
     let themeScript = $derived(
-        `<${'script'}>
-            (function() {
-                ${classListPrep}
-                ${
-                    forcedTheme
-                        ? getThemeUpdate(forcedTheme)
-                        : enableSystem
-                          ? `try {
-                            var storedTheme = localStorage.getItem('${storageKey}');
-                            ${!defaultSystem ? `${getThemeUpdate(defaultTheme)};` : ''}
-                            
-                            if ("system" === storedTheme || (!storedTheme && ${defaultSystem})) {
-                                var mediaQuery = "${MEDIA}";
-                                var mql = window.matchMedia(mediaQuery);
-                                if (mql.media !== mediaQuery || mql.matches) {
-                                    ${getThemeUpdate('dark')}
-                                } else {
-                                    ${getThemeUpdate('light')}
-                                }
-                            } else if (storedTheme) {
-                                ${value ? `var themeMapping = ${JSON.stringify(value)};` : ''}
-                                ${getThemeUpdate(value ? 'themeMapping[storedTheme]' : 'storedTheme', true)}
-                            }
-                        } catch(e) { console.error("Theme initialization error:", e); }`
-                          : `try {
-                            var storedTheme = localStorage.getItem("${storageKey}");
-                            if (storedTheme) {
-                                ${value ? `var themeMapping = ${JSON.stringify(value)};` : ''}
-                                ${getThemeUpdate(value ? 'themeMapping[storedTheme]' : 'storedTheme', true)}
+        `(function() {
+            ${classListPrep}
+            ${
+                forcedTheme
+                    ? getThemeUpdate(forcedTheme)
+                    : enableSystem
+                      ? `try {
+                        var storedTheme = localStorage.getItem('${storageKey}');
+                        ${!defaultSystem ? `${getThemeUpdate(defaultTheme)};` : ''}
+                        
+                        if ("system" === storedTheme || (!storedTheme && ${defaultSystem})) {
+                            var mediaQuery = "${MEDIA}";
+                            var mql = window.matchMedia(mediaQuery);
+                            if (mql.media !== mediaQuery || mql.matches) {
+                                ${getThemeUpdate('dark')}
                             } else {
-                                ${getThemeUpdate(defaultTheme)};
+                                ${getThemeUpdate('light')}
                             }
-                        } catch(e) { console.error("Theme initialization error:", e); }`
-                }
-            })();
-        </${'script'}>`
+                        } else if (storedTheme) {
+                            ${value ? `var themeMapping = ${JSON.stringify(value)};` : ''}
+                            ${getThemeUpdate(value ? 'themeMapping[storedTheme]' : 'storedTheme', true)}
+                        }
+                    } catch(e) { console.error("Theme initialization error:", e); }`
+                      : `try {
+                        var storedTheme = localStorage.getItem("${storageKey}");
+                        if (storedTheme) {
+                            ${value ? `var themeMapping = ${JSON.stringify(value)};` : ''}
+                            ${getThemeUpdate(value ? 'themeMapping[storedTheme]' : 'storedTheme', true)}
+                        } else {
+                            ${getThemeUpdate(defaultTheme)};
+                        }
+                    } catch(e) { console.error("Theme initialization error:", e); }`
+            }
+        })();`
     );
 </script>
 
 <svelte:head>
-    {@html themeScript}
+    <script>
+        {
+            themeScript;
+        }
+    </script>
 </svelte:head>

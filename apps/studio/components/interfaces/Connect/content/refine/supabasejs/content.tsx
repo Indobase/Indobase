@@ -13,7 +13,7 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env.local" />
-        <ConnectTabTrigger value="src/utility/supabaseClient.ts" />
+        <ConnectTabTrigger value="src/utility/indobaseClient.ts" />
         <ConnectTabTrigger value="src/App.tsx" />
       </ConnectTabTriggers>
 
@@ -21,22 +21,22 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {[
             '',
-            `SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
-            `SUPABASE_KEY=${projectKeys?.publishableKey ?? projectKeys?.anonKey ?? 'your-anon-key'}`,
+            `INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+            `INDOBASE_KEY=${projectKeys?.publishableKey ?? projectKeys?.anonKey ?? 'your-anon-key'}`,
             '',
           ].join('\n')}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="src/utility/supabaseClient.ts">
+      <ConnectTabContent value="src/utility/indobaseClient.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from "@refinedev/supabase";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const INDOBASE_URL = process.env.INDOBASE_URL;
+const INDOBASE_KEY = process.env.INDOBASE_KEY;
 
-export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
+export const indobaseClient = createClient(INDOBASE_URL, INDOBASE_KEY, {
   db: {
     schema: "public",
   },
@@ -63,7 +63,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import "./App.css";
 import authProvider from "./authProvider";
-import { supabaseClient } from "./utility";
+import { indobaseClient } from "./utility";
 import { CountriesCreate, CountriesEdit, CountriesList, CountriesShow } from "./pages/countries";
 
 function App() {
@@ -71,8 +71,8 @@ function App() {
     <BrowserRouter>
       <RefineKbarProvider>
         <Refine
-          dataProvider={dataProvider(supabaseClient)}
-          liveProvider={liveProvider(supabaseClient)}
+          dataProvider={dataProvider(indobaseClient)}
+          liveProvider={liveProvider(indobaseClient)}
           authProvider={authProvider}
           routerProvider={routerProvider}
           options={{

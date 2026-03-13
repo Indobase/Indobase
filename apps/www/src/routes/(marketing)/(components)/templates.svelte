@@ -59,7 +59,7 @@
         </p>
     </div>
     <div class="flex flex-nowrap gap-4 pl-36">
-        {#each templates as template}
+        {#each templates as template (template.label)}
             <div class="relative z-5 basis-[33vw] rounded-2xl bg-white/90 p-2 drop-shadow-xl">
                 <GridPaper
                     class="border-smooth relative z-5 flex h-[11.25rem] w-full grow items-center justify-center rounded-xl border bg-size-[calc(100%/7)]"
@@ -67,7 +67,11 @@
                     <div
                         class="relative z-20 flex size-[5.375rem] items-center justify-center rounded-xl bg-white/90 p-4 drop-shadow-2xl"
                     >
-                        {@html template.icon}
+                        <img
+                            src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(template.icon)}`}
+                            alt={`${template.label} icon`}
+                            class="h-full w-full"
+                        />
                     </div>
                 </GridPaper>
 

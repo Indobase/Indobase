@@ -5,7 +5,6 @@ import { Query, type Models } from '@appwrite.io/console';
 import { env as publicEnv } from '$env/dynamic/public';
 // import {PUBLIC_APPWRITE_ENDPOINT} from '$env/static/public';
 
-
 const client = new Client();
 
 const endpoint = publicEnv.PUBLIC_APPWRITE_ENDPOINT ?? 'https://indobase.fun/api/v1';
@@ -72,8 +71,7 @@ export async function createSource(
     // const uri = new URL(client.config.endpoint + path);
     if (!SAFE_ENDPOINT) return null;
 
-const uri = new URL(SAFE_ENDPOINT + path);
-
+    const uri = new URL(SAFE_ENDPOINT + path);
 
     return await client.call(
         'POST',

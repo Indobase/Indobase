@@ -102,7 +102,7 @@
                     >
                 </section>
             {/if}
-            {#each navigation as navGroup, index}
+            {#each navigation as navGroup, index (index)}
                 <section>
                     {#if isNavLink(navGroup)}
                         {#if expandable && !$layoutState.showSidenav}
@@ -148,7 +148,7 @@
                         {/if}
                         {#if !navGroup.collapsible || !isCollapsed(index)}
                             <ul>
-                                {#each navGroup.items as groupItem}
+                                {#each navGroup.items as groupItem (groupItem.href)}
                                     <li>
                                         {#if expandable && !$layoutState.showSidenav}
                                             <Tooltip placement="right">

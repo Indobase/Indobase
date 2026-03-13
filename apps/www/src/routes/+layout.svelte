@@ -1,20 +1,21 @@
 <script lang="ts" module>
+    import { browser } from '$app/environment';
     import { type Reo, loadReoScript } from '$lib/reodotdev';
     import { derived as storeDerived, writable } from 'svelte/store';
 
     export type Theme = 'dark' | 'light' | 'system';
     export const currentTheme = (() => {
-        const store = writable<Theme>(getPreferredTheme());
+        const { subscribe, set: baseSet, update } = writable<Theme>(getPreferredTheme());
 
-        const set: typeof store.set = (value) => {
-            store.set(value);
+        const set: typeof baseSet = (value) => {
+            baseSet(value);
             if (browser) {
                 localStorage.setItem('theme', value);
                 document.documentElement.style.setProperty('color-scheme', value);
             }
         };
 
-        return { ...store, set };
+        return { subscribe, set, update };
     })();
 
     export const themeInUse = storeDerived(currentTheme, (theme) => {
@@ -26,6 +27,7 @@
     }
 
     function getSystemTheme(): Theme {
+        if (!browser) return 'dark';
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
@@ -51,8 +53,9 @@
 
     import { browser, dev } from '$app/environment';
     import { page } from '$app/state';
-    import { navigating, updated } from '$app/state';
+    import { updated } from '$app/state';
     import { onMount } from 'svelte';
+    import { SvelteSet } from 'svelte/reactivity';
     import { loggedIn } from '$lib/utils/console';
     import { beforeNavigate } from '$app/navigation';
     import { trackEvent } from '$lib/actions/analytics';
@@ -71,7 +74,7 @@
     }
 
     const thresholds = [0.25, 0.5, 0.75];
-    const tracked = new Set();
+    const tracked = new SvelteSet<number>();
 
     onMount(() => {
         displayHiringMessage();

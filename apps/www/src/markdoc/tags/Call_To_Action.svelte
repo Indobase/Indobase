@@ -44,7 +44,7 @@
     </div>
 
     <ul class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {#each benefits as benefit}
+        {#each benefits as benefit (benefit)}
             <li class="text-sub-body text-primary flex items-center gap-2 font-medium">
                 <img
                     src="/images/icons/colored/check.svg"

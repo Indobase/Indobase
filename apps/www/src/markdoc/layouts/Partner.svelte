@@ -6,7 +6,6 @@
 
     import { cn } from '$lib/utils/cn';
     import type { Partner } from '$routes/partners/catalog/+page';
-    import ContactPartner from '$routes/partners/catalog/(components)/contact-partner.svelte';
     import Icon from '$lib/components/ui/icon';
     import type { Snippet } from 'svelte';
     import Button from '$lib/components/ui/button.svelte';
@@ -90,7 +89,7 @@
                                     Technologies
                                 </dt>
                                 <dd class="flex flex-wrap gap-2">
-                                    {#each technologies as technology}
+                                    {#each technologies as technology (technology)}
                                         <div
                                             class="text-primary text-caption bg-smooth rounded-full px-3 py-1"
                                         >
@@ -105,7 +104,7 @@
                                     Services
                                 </dt>
                                 <dd class="flex flex-wrap gap-2">
-                                    {#each services as service}
+                                    {#each services as service (service)}
                                         <div
                                             class="text-primary text-caption bg-smooth rounded-full px-3 py-1"
                                         >
@@ -160,7 +159,7 @@
                                     Languages
                                 </dt>
                                 <dd class="flex flex-wrap gap-2">
-                                    {#each languages as language}
+                                    {#each languages as language (language)}
                                         <div
                                             class="text-primary text-caption bg-smooth rounded-full px-3 py-1"
                                         >

@@ -19,8 +19,8 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
       <ConnectTabContent value=".env">
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {`
-SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
+INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
@@ -37,14 +37,14 @@ load_dotenv()
 
 app = Flask(__name__)
 
-supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL"),
-    os.environ.get("SUPABASE_KEY")
+indobase: Client = create_client(
+    os.environ.get("INDOBASE_URL"),
+    os.environ.get("INDOBASE_KEY")
 )
 
 @app.route('/')
 def index():
-    response = supabase.table('todos').select("*").execute()
+    response = indobase.table('todos').select("*").execute()
     todos = response.data
 
     html = '<h1>Todos</h1><ul>'

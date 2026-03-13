@@ -15,9 +15,7 @@
     import { addEventListener } from '@melt-ui/svelte/internal/helpers';
     import { onMount } from 'svelte';
     import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
-    import { trackEvent } from '$lib/actions/analytics';
     import MainNav from '$lib/components/MainNav.svelte';
-    import { page } from '$app/state';
     import { Button, Icon } from '$lib/components/ui';
 
     export let omitMainId = false;
@@ -94,7 +92,7 @@
         return setupThemeObserver();
     });
 
-    $: navLinks = [
+    const navLinks = [
         { label: 'Pricing', href: '/pricing' },
         { label: 'Contact', href: '/contact-us' },
         { label: 'Terms', href: '/terms' },
@@ -117,11 +115,9 @@
         return $scrollInfo.deltaDirChange < 200;
     })();
 
-    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
-
-    $: mobileButtonHref = DASHBOARD_URL;
-    $: mobileButtonEvent = 'main-start_building_btn-click';
-    $: mobileButtonText = 'Start building';
+    const mobileButtonHref = getAppwriteDashboardUrl('/sign-up');
+    const mobileButtonEvent = 'main-start_building_btn-click';
+    const mobileButtonText = 'Start building';
 
     const handleNav = () => {
         $isMobileNavOpen = !$isMobileNavOpen;
@@ -197,7 +193,7 @@
                 {/if}
             </div>
             <div class="web-main-header-end">
-                <span class="nav-badge text-sub-body font-medium text-primary">
+                <span class="nav-badge text-sub-body text-primary font-medium">
                     Made in India
                 </span>
                 <IsLoggedIn offerButton={false} />

@@ -61,7 +61,7 @@
         >
             <span class="text-eyebrow text-secondary font-aeonik-fono ml-3 uppercase">Build</span>
             <div class="flex h-full w-full justify-between gap-2">
-                {#each build as product}
+                {#each build as product (product.label)}
                     <a
                         href={product.href}
                         class="bg-smooth hover:bg-smooth/50 flex h-full w-fit items-center justify-center gap-2 rounded-full px-0.5 backdrop-blur-lg transition-opacity sm:px-1 md:px-2 lg:px-3"
@@ -91,7 +91,7 @@
         >
             <span class="text-eyebrow text-secondary font-aeonik-fono ml-3 uppercase">Deploy</span>
             <div class="flex h-full w-full justify-between gap-2">
-                {#each deploy as product}
+                {#each deploy as product (product.label)}
                     <a
                         href={product.href}
                         class="bg-smooth hover:bg-smooth/50 flex h-full w-fit items-center justify-center gap-2 rounded-full px-0.5 backdrop-blur-lg transition-opacity sm:px-1 md:px-2 lg:px-3"

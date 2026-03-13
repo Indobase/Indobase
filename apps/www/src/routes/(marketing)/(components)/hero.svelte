@@ -1,12 +1,9 @@
 <script lang="ts">
     import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
     import { trackEvent } from '$lib/actions/analytics';
-    import AppwriteIn100Seconds from '$lib/components/AppwriteIn100Seconds.svelte';
-    import GradientText from '$lib/components/fancy/gradient-text.svelte';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
     import Dashboard from './dashboard.svelte';
-    import HeroBanner from './hero-banner.svelte';
 
     type Props = {
         title?: string;
@@ -36,9 +33,7 @@
         <div
             class="animate-blur-in flex flex-col gap-4 [animation-delay:150ms] [animation-duration:1000ms] md:ml-12 lg:ml-0"
         >
-            
-
-            <h1 class="font-aeonik-pro text-headline text-pretty text-primary animate-fade-in">
+            <h1 class="font-aeonik-pro text-headline text-primary animate-fade-in text-pretty">
                 {title}<span class="text-accent">_</span>
             </h1>
 
@@ -54,7 +49,6 @@
                         trackEvent(`main-get_started_btn_hero-click`);
                     }}>Start building for free</Button
                 >
-                <AppwriteIn100Seconds />
             </div>
         </div>
         <Dashboard />

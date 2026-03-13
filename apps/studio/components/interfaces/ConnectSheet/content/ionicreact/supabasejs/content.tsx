@@ -8,20 +8,20 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env',
       language: 'bash',
       code: `
-REACT_APP_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-REACT_APP_SUPABASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile or desktop apps>'}
+REACT_APP_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+REACT_APP_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile or desktop apps>'}
         `,
     },
     {
-      name: 'src/supabaseClient.tsx',
+      name: 'src/indobaseClient.tsx',
       language: 'ts',
       code: `
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_KEY
+const indobaseUrl = process.env.REACT_APP_INDOBASE_URL
+const indobaseAnonKey = process.env.REACT_APP_INDOBASE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const indobase = createClient(indobaseUrl, indobaseAnonKey)
 `,
     },
     {
@@ -45,7 +45,7 @@ import '@ionic/react/css/core.css';
 /* Theme variables */
 import './theme/variables.css';
 
-import { supabase } from './supabaseClient';
+import { indobase } from './indobaseClient';
 
 setupIonicReact();
 
@@ -57,7 +57,7 @@ export default function App() {
 
   const getTodos = async () => {
     try {
-      const { data, error } = await supabase.from('todos').select();
+      const { data, error } = await indobase.from('todos').select();
 
       if (error) {
         console.error('Error fetching todos:', error.message);

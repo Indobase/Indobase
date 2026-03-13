@@ -8,9 +8,9 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: 'MainActivity.kt',
       language: 'kotlin',
       code: `
-val supabase = createSupabaseClient(
-    supabaseUrl = "${projectKeys.apiUrl ?? 'your-project-url'}",
-    supabaseKey = "${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile apps>'}"
+val indobase = createIndobaseClient(
+    indobaseUrl = "${projectKeys.apiUrl ?? 'your-project-url'}",
+    indobaseKey = "${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile apps>'}"
   ) {
     install(Postgrest)
 }
@@ -37,7 +37,7 @@ fun TodoList() {
     var items by remember { mutableStateOf<List<TodoItem>>(listOf()) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            items = supabase.from("todos")
+            items = indobase.from("todos")
                               .select().decodeList<TodoItem>()
         }
     }

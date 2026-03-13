@@ -132,7 +132,7 @@
     </div>
 
     <div class="z-0 mt-12 block space-y-8 md:hidden">
-        {#each localStats as stat, i}
+        {#each localStats as stat (stat.description)}
             <div class="h-full pl-6">
                 <div class="relative">
                     {#if browser}
@@ -156,7 +156,7 @@
     >
         <div class="relative container mx-auto h-full">
             <div class="absolute inset-0 z-10 grid grid-cols-4">
-                {#each localStats as stat, i}
+                {#each localStats as stat, i (stat.description)}
                     <div
                         class:border-[#27272A]={theme === 'dark'}
                         class:border-greyscale-200={theme === 'light'}

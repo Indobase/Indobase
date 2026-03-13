@@ -21,6 +21,8 @@ export const ConnectionIcon = ({
 }: ConnectionIconProps) => {
   const { resolvedTheme } = useTheme()
 
+  const iconLower = icon.toLowerCase()
+
   const imageFolder =
     iconFolder || (['ionic-angular'].includes(icon) ? 'icons/frameworks' : 'libraries')
 
@@ -28,13 +30,17 @@ export const ConnectionIcon = ({
 
   const shouldUseDarkMode =
     supportsDarkMode ||
-    ['expo', 'nextjs', 'prisma', 'drizzle', 'astro', 'remix', 'refine'].includes(icon.toLowerCase())
+    ['expo', 'nextjs', 'prisma', 'drizzle', 'astro', 'remix', 'refine'].includes(iconLower)
 
-  const iconImgSrc = icon.startsWith('http')
-    ? icon
-    : `${BASE_PATH}/img/${imageFolder}/${icon.toLowerCase()}${
-        shouldUseDarkMode && resolvedTheme?.includes('dark') ? '-dark' : ''
-      }${imageExtension}.svg`
+  const indobaseThemeVariant = resolvedTheme?.includes('dark') ? 'dark' : 'light'
+  const iconImgSrc =
+    iconLower === 'indobase'
+      ? `${BASE_PATH}/img/indobase-${indobaseThemeVariant}.svg`
+      : icon.startsWith('http')
+        ? icon
+        : `${BASE_PATH}/img/${imageFolder}/${iconLower}${
+            shouldUseDarkMode && resolvedTheme?.includes('dark') ? '-dark' : ''
+          }${imageExtension}.svg`
 
   return (
     <Image

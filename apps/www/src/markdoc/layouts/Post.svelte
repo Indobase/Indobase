@@ -191,7 +191,9 @@
                 <h3 class="text-label text-primary">Read next</h3>
                 <section class="mt-8">
                     <div class="grid grid-cols-1 gap-12 md:grid-cols-3">
-                        {#each posts.filter((p) => p.title !== title).slice(0, 3) as post}
+                        {#each posts
+                            .filter((p) => p.title !== title)
+                            .slice(0, 3) as post (post.href)}
                             {@const { postAuthors, authorAvatars, primaryAuthor } = getPostAuthors(
                                 post.author,
                                 authors

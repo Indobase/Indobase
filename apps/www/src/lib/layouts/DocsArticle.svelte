@@ -20,8 +20,8 @@
 </script>
 
 <script lang="ts">
-    import { getContext, hasContext, setContext } from 'svelte';
-    import { readable, type Readable, writable } from 'svelte/store';
+    import { setContext } from 'svelte';
+    import { writable } from 'svelte/store';
     import { Feedback } from '$lib/components';
     import TableOfContents from '$lib/components/blog/table-of-contents.svelte';
     import { Button, Icon } from '$lib/components/ui';
@@ -35,9 +35,6 @@
     export let date: string | undefined = undefined;
 
     const reducedArticleSize = setContext('articleHasNumericBadge', writable(false));
-    const headerSectionInfoAlert = hasContext('headerSectionInfoAlert')
-        ? getContext<Readable<HeaderSectionInfoAlert | null>>('headerSectionInfoAlert')
-        : readable(null);
 
     const showCopyPage = !hasRoutePrompt();
 </script>

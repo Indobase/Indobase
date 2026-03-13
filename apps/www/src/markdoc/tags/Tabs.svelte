@@ -50,7 +50,7 @@
         class="flex items-center gap-4 overflow-scroll [-ms-overflow-style:none] [scrollbar-width:none]"
     >
         <div class="hidden items-center gap-4 sm:flex" {...tabs.triggerList}>
-            {#each $ctx.triggers.slice(0, 7) as { title, id }}
+            {#each $ctx.triggers.slice(0, 7) as { title, id } (id)}
                 <button
                     class={cn(
                         'shrink-0 rounded-t-[0.625rem] text-center hover:bg-white/4',
@@ -80,7 +80,7 @@
             {/if}
         </div>
         <div class="flex items-center gap-4 sm:hidden" {...tabs.triggerList}>
-            {#each $ctx.triggers.slice(0, 2) as { title, id }}
+            {#each $ctx.triggers.slice(0, 2) as { title, id } (id)}
                 <button
                     class={cn(
                         'shrink-0 rounded-t-[0.625rem] text-center hover:bg-white/4',

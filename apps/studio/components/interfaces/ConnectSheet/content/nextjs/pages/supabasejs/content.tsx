@@ -8,23 +8,23 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `NEXT_PUBLIC_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `NEXT_PUBLIC_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
         projectKeys?.publishableKey
-          ? `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-          : `NEXT_PUBLIC_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+          ? `NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+          : `NEXT_PUBLIC_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
     {
-      name: 'utils/supabase.ts',
+      name: 'utils/indobase.ts',
       language: 'ts',
       code: `
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'}!;
+const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL!;
+const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'}!;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const indobase = createClient(indobaseUrl, indobaseKey);
 `,
     },
     {
@@ -32,14 +32,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
       language: 'tsx',
       code: `
 import { useState, useEffect } from 'react'
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 
 export default function Page() {
   const [todos, setTodos] = useState([])
 
   useEffect(() => {
     async function getTodos() {
-      const { data: todos } = await supabase.from('todos').select()
+      const { data: todos } = await indobase.from('todos').select()
 
       if (todos) {
         setTodos(todos)
