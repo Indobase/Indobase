@@ -44,7 +44,7 @@
     import { getContext, setContext } from 'svelte';
     import { SOCIAL_STATS } from '$lib/constants';
     import { page } from '$app/state';
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { Button, Icon, InlineTag } from '$lib/components/ui';
     import { afterNavigate } from '$app/navigation';
 
@@ -116,7 +116,7 @@
         </div>
         <div class="web-mobile-header-end">
             <Button
-                href={getAppwriteDashboardUrl('/sign-up')}
+                href={getSignUpUrl()}
                 class="hidden md:flex"
                 event="docs-go_to_console-click"
             >

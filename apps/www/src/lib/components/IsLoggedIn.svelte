@@ -2,7 +2,7 @@
     import { browser } from '$app/environment';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
 
     interface Props {
         class?: string;
@@ -14,7 +14,7 @@
 </script>
 
 <Button
-    href={offerButton ? 'https://apwr.dev/DCMWDSw' : getAppwriteDashboardUrl('/sign-up')}
+    href={offerButton ? 'https://apwr.dev/DCMWDSw' : getSignUpUrl()}
     event={offerButton ? 'main-claim_300_credits_btn_nav-click' : 'main-get_started_btn_nav-click'}
     class={cn('web-u-inline-width-100-percent-mobile', className)}
 >

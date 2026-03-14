@@ -1,4 +1,4 @@
-import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+import { getSignUpUrl } from '$lib/utils/dashboard';
 
 export interface HomepageVariationConfig {
     title: string;
@@ -80,7 +80,7 @@ export const variationConfigs: Record<VariationKey, HomepageVariationConfig> = {
         pageTitle: 'Indobase - All-in-one Cloud Platform',
         slug: '/all-in-one-cloud-offer',
         ctaLabel: 'Claim your $300 Credits',
-        ctaHref: getAppwriteDashboardUrl('/sign-up?code=sites300'),
+        ctaHref: getSignUpUrl({ code: 'sites300' }),
         ...baseConfig
     }
 };

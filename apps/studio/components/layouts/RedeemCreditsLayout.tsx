@@ -16,7 +16,7 @@ const RedeemCreditsLayout = ({ children }: PropsWithChildren<RedeemCreditsLayout
   return (
     <>
       <Head>
-        <title>Redeem Credits | {appTitle || 'Supabase'}</title>
+        <title>Redeem Credits | {appTitle || 'Indobase'}</title>
       </Head>
       <main className="flex flex-col flex-grow w-full h-full overflow-y-auto">
         <div>
@@ -24,7 +24,7 @@ const RedeemCreditsLayout = ({ children }: PropsWithChildren<RedeemCreditsLayout
             <div className="max-w-xl flex justify-between items-center py-4">
               <div className="flex justify-start lg:w-0 lg:flex-1">
                 <div>
-                  <span className="sr-only">Supabase</span>
+                  <span className="sr-only">Indobase</span>
                   <Image
                     src={
                       resolvedTheme?.includes('dark')

@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
 
-    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    const DASHBOARD_URL = getSignUpUrl();
 
     interface Props {
         title?: string;

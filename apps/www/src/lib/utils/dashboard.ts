@@ -42,3 +42,9 @@ export function getAppwriteDashboardUrl(path = ''): string {
     const separator = resolvedPath.includes('?') ? '&' : '?';
     return `${resolvedPath}${separator}${utmParams}`;
 }
+
+/** Sign-up URL that sends users to plan selection after first sign-in (marketing → create account → choose plan → product). */
+export function getSignUpUrl(extraParams: Record<string, string> = {}): string {
+    const params = new URLSearchParams({ returnTo: '/billing/plans', ...extraParams });
+    return getAppwriteDashboardUrl(`/sign-up?${params.toString()}`);
+}
