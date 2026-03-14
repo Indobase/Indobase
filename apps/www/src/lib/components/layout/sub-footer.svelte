@@ -24,17 +24,17 @@
     <div class="flex items-center gap-3">
         <div>Copyright © {year} Indobase</div>
 
-        <iframe
-            class="status w-fit max-w-[230px]"
-            title="Indobase Status"
-            src="https://status.indobase.fun/badge?theme=dark"
-            height="35"
-            frameborder="0"
-            scrolling="no"
-            style:color-scheme="none"
-        ></iframe>
-
         <ul class="flex gap-4">
+            <li>
+                <a
+                    class="web-link"
+                    href="https://status.indobase.fun"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Status
+                </a>
+            </li>
             <li><a class="web-link" href="/terms">Terms</a></li>
             <li><a class="web-link" href="/privacy">Privacy</a></li>
             <li><a class="web-link" href="/privacy">Cookies</a></li>
