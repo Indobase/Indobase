@@ -3,7 +3,7 @@
     import { IsLoggedIn } from '$lib/components';
     import { SOCIAL_STATS } from '$lib/constants';
     import type { NavLink } from './MainNav.svelte';
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { Button } from '$lib/components/ui';
     import { GithubStats } from '$lib/components/shared';
     import { trackEvent } from '$lib/actions/analytics';
@@ -32,7 +32,7 @@
                 <IsLoggedIn class="flex-1" offerButton />
             {:else}
                 <Button
-                    href={getAppwriteDashboardUrl('/sign-up')}
+                    href={getSignUpUrl()}
                     variant="secondary"
                     class="flex-1"
                     event="mobile_nav-sign_up-click"

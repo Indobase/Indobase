@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 type Cancel = () => void;
 type Promised<T> = T extends Promise<infer U> ? U : T;
 
@@ -119,21 +118,24 @@ interface ChainFn {
  * The execute method will execute the callbacks in order.
  * The cancel method will cancel the execution of the remaining callbacks.
  */
-export const chain: ChainFn = (...fns: Function[]) => {
+type ChainCallback = (args: { returned: unknown; cancel: Cancel }) => unknown | Promise<unknown>;
+
+const chainImpl = (...fns: unknown[]): Chain => {
+    const callbacks = fns.filter((fn): fn is ChainCallback => typeof fn === 'function');
     const cancelled = {} as Record<string, boolean>;
 
     const cancel = () => {
         Object.keys(cancelled).forEach((key) => (cancelled[key] = true));
     };
 
-    let lastRes: any = undefined;
+    let lastRes: unknown = undefined;
 
     const execute = async () => {
         const executionId = stupidId();
         cancelled[executionId] = false;
 
-        for (let i = 0; i < fns.length; i++) {
-            const fn = fns[i];
+        for (let i = 0; i < callbacks.length; i++) {
+            const fn = callbacks[i];
             if (cancelled[executionId]) {
                 delete cancelled[executionId];
                 return;
@@ -150,3 +152,5 @@ export const chain: ChainFn = (...fns: Function[]) => {
 
 // Stupid way of generating unique id
 const stupidId = () => Math.random().toString(36).substr(2, 9);
+
+export const chain = chainImpl as unknown as ChainFn;

@@ -1,7 +1,3 @@
-import { browser } from '$app/environment';
-
-const IS_MAC = browser && /Mac|iPod|iPhone|iPad/.test(window.navigator.userAgent);
-
 export const useHotkeys = (hotkeys: string[], callback: () => void) => {
     const handleKeyDown = (event: KeyboardEvent) => {
         const pressedKeys = hotkeys.map((key) => key.toLowerCase());

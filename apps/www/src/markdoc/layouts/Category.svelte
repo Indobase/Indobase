@@ -58,7 +58,7 @@
 
                 <div class="mt-12">
                     <ul class="web-grid-articles">
-                        {#each posts as post}
+                        {#each posts as post (post.href)}
                             {@const { postAuthors, authorAvatars, primaryAuthor } = getPostAuthors(
                                 post.author,
                                 authors

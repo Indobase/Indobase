@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { trackEvent } from '$lib/actions/analytics';
     import GradientText from '$lib/components/fancy/gradient-text.svelte';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
     import Dashboard from '$routes/(marketing)/(components)/dashboard.svelte';
 
-    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    const DASHBOARD_URL = getSignUpUrl();
 
     const {
         title = 'Build like a team of hundreds',
@@ -51,10 +51,11 @@
             <div class="mt-4 flex flex-col gap-2 lg:flex-row">
                 <Button
                     href={ctaHref}
-                    class="w-full! lg:w-fit! saffron-button"
+                    class="saffron-button w-full! lg:w-fit!"
                     onclick={() => {
                         trackEvent(`main-get_started_btn_hero-click`);
-                    }}>{ctaLabel}</Button>
+                    }}>{ctaLabel}</Button
+                >
                 >
             </div>
         </div>

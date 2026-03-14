@@ -3,7 +3,7 @@
     import { cn } from '$lib/utils/cn';
     import { isMobile } from '$lib/utils/is-mobile';
     import GridPaper from '../../grid-paper.svelte';
-    import { animate, hover, inView, stagger, transform, type AnimationSequence } from 'motion';
+    import { animate, hover, inView } from 'motion';
 
     const collections = [
         {
@@ -177,7 +177,7 @@
                         <tr
                             class="bg-greyscale-900 border-smooth text-primary text-eyebrow w-full border-b font-normal tracking-tight"
                         >
-                            {#each collectionKeys as heading}
+                            {#each collectionKeys as heading (heading)}
                                 <th
                                     class="p-2 text-left first-of-type:rounded-tl-xl last-of-type:rounded-tr-xl"
                                 >
@@ -202,14 +202,14 @@
                         </tr>
                     </thead>
                     <tbody class="text-eyebrow divide-smooth divide-y">
-                        {#each collections as collection, c}
+                        {#each collections as collection, c (collection.Category)}
                             {@const isSweaters = collection.Category === 'Sweaters'}
                             <tr
                                 class={cn('bg-[#1D1D21] transition-colors', {
                                     'bg-white/2': isSweaters && shouldAnimate
                                 })}
                             >
-                                {#each Object.values(collection) as item, i}
+                                {#each Object.values(collection) as item, i (`${collection.Category}-${i}`)}
                                     {@const isLastProduct = c === products.length - 1}
                                     {@const isLastItem = i === Object.values(collection).length - 1}
                                     <td
@@ -268,7 +268,7 @@
                             <tr
                                 class="bg-greyscale-900 border-smooth text-primary text-eyebrow w-full border-b font-normal"
                             >
-                                {#each keys as key}
+                                {#each keys as key (key)}
                                     <th
                                         class="p-2 text-left first-of-type:rounded-tl-xl last-of-type:rounded-tr-xl"
                                     >
@@ -293,9 +293,9 @@
                             </tr>
                         </thead>
                         <tbody class="text-eyebrow divide-smooth divide-y">
-                            {#each products as product, p}
+                            {#each products as product, p (product.ID)}
                                 <tr class="bg-[#1D1D21]">
-                                    {#each Object.values(product) as item, i}
+                                    {#each Object.values(product) as item, i (`${product.ID}-${i}`)}
                                         {@const isLastProduct = p === products.length - 1}
                                         {@const isLastItem =
                                             i === Object.values(product).length - 1}

@@ -1,6 +1,6 @@
 <script lang="ts">
     import Tooltip from '$lib/components/Tooltip.svelte';
-    import { Button, Icon } from '$lib/components/ui';
+    import { Button } from '$lib/components/ui';
     import { createDialog, melt } from '@melt-ui/svelte';
     import { quadInOut } from 'svelte/easing';
     import { fade, scale } from 'svelte/transition';

@@ -391,7 +391,7 @@ export const StripeSyncInstallationPage = () => {
                   <Admonition type="warning">
                     <h5 className="mb-0.5">
                       This integration currently requires{' '}
-                      <InlineLink href="https://supabase.com/docs/guides/platform/ssl-enforcement">
+                      <InlineLink href="https://indobase.fun/docs/guides/platform/ssl-enforcement">
                         SSL Enforcement
                       </InlineLink>{' '}
                       to be disabled during initial setup.

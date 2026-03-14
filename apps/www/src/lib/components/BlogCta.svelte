@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { Button } from '$lib/components/ui';
 
     let {
         heading = 'Start building with Indobase today',
         label = 'Get started',
         description = undefined,
-        href = getAppwriteDashboardUrl('/sign-up'),
+        href = getSignUpUrl(),
         event = 'blog-cta-get_started_btn-click'
     }: {
         heading?: string;

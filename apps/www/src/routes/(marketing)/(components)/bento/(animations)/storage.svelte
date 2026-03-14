@@ -1,7 +1,7 @@
 <script lang="ts">
     import { cn } from '$lib/utils/cn';
     import Image from '../../../(assets)/images/storage.webp';
-    import { animate, hover, inView, type AnimationSequence } from 'motion';
+    import { animate, hover, inView } from 'motion';
     import GridPaper from '../../grid-paper.svelte';
     import { isMobile } from '$lib/utils/is-mobile';
     import { trackEvent } from '$lib/actions/analytics';
@@ -83,7 +83,7 @@
         class="relative mt-auto mb-0 flex h-85 items-center justify-center overflow-clip rounded-xl bg-black/24 p-8"
     >
         <div class="relative h-fit border border-white/50 p-1">
-            {#each [1, 2, 3, 4] as _, i}
+            {#each [0, 1, 2, 3] as i (i)}
                 <div
                     class={cn(
                         'absolute z-10 flex h-1 w-1 items-center justify-center border border-white/24 bg-white/24 backdrop-blur-sm',

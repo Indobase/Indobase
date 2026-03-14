@@ -25,7 +25,7 @@
         error = undefined;
         submitting = true;
 
-        const cloudEmail = loggedIn && $user?.email ? $user.email : undefined;
+        const cloudEmail = $loggedIn && $user?.email ? $user.email : undefined;
 
         const endpoint = publicEnv.PUBLIC_GROWTH_ENDPOINT;
         if (!endpoint) {

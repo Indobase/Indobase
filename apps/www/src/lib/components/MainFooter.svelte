@@ -28,7 +28,7 @@
         <div class="mt-1 grid grid-cols-1 gap-y-4 md:grid-cols-3">
             <div>Copyright © {year} Indobase</div>
 
-                <iframe
+            <iframe
                 class="w-full md:w-fit md:max-w-[230px]"
                 title="Status"
                 src="https://status.indobase.fun/badge?theme=dark"

@@ -58,7 +58,7 @@
 
                     {#if images.length > 1}
                         <Root>
-                            {#each images as slide}
+                            {#each images as slide (slide)}
                                 <Slide>
                                     <img
                                         src={slide}

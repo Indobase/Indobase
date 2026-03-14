@@ -321,7 +321,7 @@ export const FunctionsList = () => {
                         side: 'bottom',
                         text: !canCreateFunctions
                           ? 'You need additional permissions to create functions'
-                          : 'Create with Supabase Assistant',
+                          : 'Create with Indobase Assistant',
                       },
                     }}
                   />

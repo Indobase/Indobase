@@ -24,6 +24,7 @@ import { InlineLink } from 'components/ui/InlineLink'
 import Panel from 'components/ui/Panel'
 import { useOrganizationCreateMutation } from 'data/organizations/organization-create-mutation'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
+import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import type { CustomerAddress, CustomerTaxId } from 'data/organizations/types'
 import { useProjectsInfiniteQuery } from 'data/projects/projects-infinite-query'
 import { SetupIntentResponse } from 'data/stripe/setup-intent-mutation'
@@ -74,6 +75,11 @@ interface NewOrgFormProps {
 }
 
 const plans = ['FREE', 'PRO', 'TEAM'] as const
+
+function normalizePlan(plan: string): (typeof plans)[number] {
+  const u = plan.toUpperCase()
+  return (plans as readonly string[]).includes(u) ? (u as (typeof plans)[number]) : 'FREE'
+}
 
 const formSchema = z.object({
   plan: z
@@ -158,7 +164,7 @@ export const NewOrgForm = ({
   const form = useForm<FormState>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      plan: defaultValues.plan.toUpperCase() as (typeof plans)[number],
+      plan: normalizePlan(defaultValues.plan),
       name: defaultValues.name,
       kind: defaultValues.kind as typeof ORG_KIND_DEFAULT,
       size: defaultValues.size as keyof typeof ORG_SIZE_TYPES,
@@ -168,7 +174,7 @@ export const NewOrgForm = ({
 
   useEffect(() => {
     form.reset({
-      plan: defaultValues.plan.toUpperCase() as (typeof plans)[number],
+      plan: normalizePlan(defaultValues.plan),
       name: defaultValues.name,
       kind: defaultValues.kind as typeof ORG_KIND_DEFAULT,
       size: defaultValues.size as keyof typeof ORG_SIZE_TYPES,
@@ -196,11 +202,16 @@ export const NewOrgForm = ({
     [freeOrgs, projectsByOrg]
   )
 
+  const { mutate: sendEvent } = useSendEventMutation()
   const { mutate: createOrganization } = useOrganizationCreateMutation({
     onSuccess: async (org) => {
       if ('pending_payment_intent_secret' in org && org.pending_payment_intent_secret) {
         setPaymentIntentSecret(org.pending_payment_intent_secret)
       } else {
+        sendEvent({
+          action: 'organization_created',
+          properties: { plan: form.getValues('plan') },
+        })
         onOrganizationCreated(org as { slug: string })
       }
     },
@@ -214,6 +225,10 @@ export const NewOrgForm = ({
   const { mutate: confirmPendingSubscriptionChange } = useConfirmPendingSubscriptionCreateMutation({
     onSuccess: (data) => {
       if (data && 'slug' in data) {
+        sendEvent({
+          action: 'organization_created',
+          properties: { plan: form.getValues('plan') },
+        })
         onOrganizationCreated({ slug: data.slug })
       }
     },

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, type Variant } from '$lib/components/ui';
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { SHOW_SCALE_PLAN } from '$lib/constants/feature-flags';
 
     const plans: Array<{
@@ -19,7 +19,7 @@
             price: '$0',
             description: 'A great fit for passion projects and small applications.',
             buttonText: 'Get started',
-            buttonLink: getAppwriteDashboardUrl('/sign-up'),
+            buttonLink: getSignUpUrl(),
             buttonVariant: 'secondary',
             eventName: 'footer-plans-free-click'
         },
@@ -31,7 +31,7 @@
             description:
                 'For production applications that need powerful functionality and resources to scale.',
             buttonText: 'Start building',
-            buttonLink: getAppwriteDashboardUrl('/sign-up'),
+            buttonLink: getSignUpUrl(),
             buttonVariant: 'primary',
             eventName: 'footer-plans-pro-click'
         },
@@ -42,7 +42,7 @@
             description:
                 'For teams that handle more complex and large projects and need more control and support.',
             buttonText: 'Start building',
-            buttonLink: getAppwriteDashboardUrl('/sign-up'),
+            buttonLink: getSignUpUrl(),
             buttonVariant: 'secondary',
             eventName: 'footer-plans-scale-click'
         },
@@ -76,7 +76,7 @@
         <Button
             variant="transparent"
             class="self-center"
-            href={getAppwriteDashboardUrl('/sign-up')}
+            href={getSignUpUrl()}
             event="footer-plans-get_started-click"
         >
             <span class="text">Get started</span>

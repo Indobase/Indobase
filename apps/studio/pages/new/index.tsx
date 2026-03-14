@@ -6,10 +6,11 @@ import AppLayout from 'components/layouts/AppLayout/AppLayout'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import WizardLayout from 'components/layouts/WizardLayout'
 import { SetupIntentResponse, useSetupIntent } from 'data/stripe/setup-intent-mutation'
+import { withAuth } from 'hooks/misc/withAuth'
 import type { NextPageWithLayout } from 'types'
 
 /**
- * No org selected yet, create a new one
+ * No org selected yet, create a new one (plan selection → create org → product access).
  */
 const Wizard: NextPageWithLayout = () => {
   const [intent, setIntent] = useState<SetupIntentResponse>()
@@ -105,4 +106,4 @@ Wizard.getLayout = (page) => (
   </AppLayout>
 )
 
-export default Wizard
+export default withAuth(Wizard)

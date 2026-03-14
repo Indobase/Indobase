@@ -3,5 +3,5 @@ declare module 'reodotdev' {
         clientID: string;
         version?: string;
         scriptUrlPattern?: string | string[];
-    }): Promise<any>;
+    }): Promise<unknown>;
 }

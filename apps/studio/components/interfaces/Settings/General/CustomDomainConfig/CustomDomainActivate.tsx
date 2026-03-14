@@ -127,7 +127,7 @@ const CustomDomainActivate = ({ projectRef, customDomain }: CustomDomainActivate
       >
         <p className="text-sm">
           Activating <code className="text-code-inline !break-normal">{customDomain.hostname}</code>{' '}
-          will make it visible to users in place of your project’s Supabase domain. The Supabase
+          will make it visible to users in place of your project’s default domain. The default
           domain will continue to work too.
         </p>
       </ConfirmationModal>

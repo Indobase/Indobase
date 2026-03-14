@@ -42,11 +42,45 @@
                     d="M28.4434 21.4336V24.4746H23.0391C23.6022 23.9203 23.9535 23.1346 23.9535 22.263C23.9535 21.9755 23.9153 21.6973 23.8438 21.4336H28.4434Z"
                     fill="#D8D8DB"
                 />
-                <text x="55" y="32" fill="#EDEDF0" font-size="14" font-family="system-ui, sans-serif">indobase</text>
-                <text x="130" y="32" fill="#ADADB0" font-size="14" font-family="system-ui, sans-serif"> / </text>
-                <text x="150" y="32" fill="#D8D8DB" font-size="14" font-family="system-ui, sans-serif">Indobase Corp</text>
-                <text x="230" y="32" fill="#ADADB0" font-size="14" font-family="system-ui, sans-serif"> / </text>
-                <text x="250" y="32" fill="#D8D8DB" font-size="14" font-family="system-ui, sans-serif">First Indobase project</text>
+                <text
+                    x="55"
+                    y="32"
+                    fill="#EDEDF0"
+                    font-size="14"
+                    font-family="system-ui, sans-serif">indobase</text
+                >
+                <text
+                    x="130"
+                    y="32"
+                    fill="#ADADB0"
+                    font-size="14"
+                    font-family="system-ui, sans-serif"
+                >
+                    /
+                </text>
+                <text
+                    x="150"
+                    y="32"
+                    fill="#D8D8DB"
+                    font-size="14"
+                    font-family="system-ui, sans-serif">Indobase Corp</text
+                >
+                <text
+                    x="230"
+                    y="32"
+                    fill="#ADADB0"
+                    font-size="14"
+                    font-family="system-ui, sans-serif"
+                >
+                    /
+                </text>
+                <text
+                    x="250"
+                    y="32"
+                    fill="#D8D8DB"
+                    font-size="14"
+                    font-family="system-ui, sans-serif">First Indobase project</text
+                >
             </svg>
         </div>
         <div class="flex">

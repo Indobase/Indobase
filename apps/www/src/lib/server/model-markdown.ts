@@ -1,6 +1,6 @@
 export async function generateModelMarkdown(
-    versionParam: string,
-    modelName: string
+    _versionParam: string,
+    _modelName: string
 ): Promise<string | null> {
     return null;
 }

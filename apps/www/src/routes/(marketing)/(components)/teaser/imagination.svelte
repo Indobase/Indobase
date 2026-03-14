@@ -68,7 +68,7 @@
         }
     });
 
-    let material = $state(new MeshBasicMaterial());
+    let material = $state<Material>(new MeshBasicMaterial());
 
     onMount(() => {
         uAspect = new Uniform($viewport.width / $viewport.height);
@@ -295,6 +295,6 @@
 </script>
 
 <T.OrthographicCamera position={[0, 0, 10]} fov={10} near={0.1} far={1000} makeDefault />
-<T.Mesh scale={[$viewport.width, $viewport.height, 1]} material={material as any}>
+<T.Mesh scale={[$viewport.width, $viewport.height, 1]} {material}>
     <T.PlaneGeometry args={[1, 1]} />
 </T.Mesh>

@@ -3,5 +3,5 @@
   because this component is only mounted in the browser.
 -->
 <script lang="ts">
-	import '$scss/index.scss';
+    import '$scss/index.scss';
 </script>

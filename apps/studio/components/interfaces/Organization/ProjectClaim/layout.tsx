@@ -18,7 +18,7 @@ export const ProjectClaimLayout = ({
     <>
       <div className="flex flex-row justify-between mx-auto w-full h-[52px] items-center px-4">
         <div className="flex items-center gap-2">
-          <span className="sr-only">Supabase</span>
+          <span className="sr-only">Indobase</span>
           <Image
             src={`${BASE_PATH}/img/indobase-logo.svg`}
             alt="Indobase Logo"

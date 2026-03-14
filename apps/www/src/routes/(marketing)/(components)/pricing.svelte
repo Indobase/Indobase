@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import { trackEvent } from '$lib/actions/analytics';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
@@ -54,7 +54,7 @@
 
     const gridCols = `lg:grid-cols-${visiblePlans.length}`;
 
-    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
+    const DASHBOARD_URL = getSignUpUrl();
 </script>
 
 <div

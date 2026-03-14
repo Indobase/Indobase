@@ -30,7 +30,9 @@ Watch "releases" of this repo to get notified of major updates.
 
 For full documentation, visit [indobase.fun/docs](https://indobase.fun/docs)
 
-To see how to Contribute, visit [Getting Started](./DEVELOPERS.md)
+To see how to Contribute, visit [Getting Started](./DEVELOPERS.md).
+
+For a production launch checklist (billing, auth, infra, monitoring), see [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md).
 
 ## Community & Support
 

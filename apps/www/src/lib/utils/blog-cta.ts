@@ -1,4 +1,4 @@
-import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+import { getSignUpUrl } from '$lib/utils/dashboard';
 
 export type BlogCtaConfig = {
     heading: string;
@@ -27,7 +27,7 @@ const DEVELOPERS_CLOUD_CTA: BlogCtaConfig = {
     heading: 'Build fast, scale faster',
     description: 'Backend infrastructure and web hosting built for developers who ship.',
     label: 'Start building for free',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-cloud-btn-click',
     points: DEFAULT_CTA_POINTS
 };
@@ -59,7 +59,7 @@ const SITES_CTA: BlogCtaConfig = {
     heading: 'Deploy in seconds, scale globally',
     description: 'Host your websites and web apps with zero infrastructure headaches.',
     label: 'Get started for free',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-sites-btn-click',
     points: [
         'Open source and no vendor lock-in',
@@ -73,7 +73,7 @@ const CUSTOMER_STORIES_CTA: BlogCtaConfig = {
     heading: 'Join thousands of developers shipping faster',
     description: 'See how Indobase can accelerate your development.',
     label: 'Start your project',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-customer-stories-btn-click',
     points: DEFAULT_CTA_POINTS
 };
@@ -82,7 +82,7 @@ const OPEN_SOURCE_CTA: BlogCtaConfig = {
     heading: 'Open source, built for developers',
     description: 'Self-host or use Indobase Cloud. No vendor lock-in, ever.',
     label: 'Get started',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-open-source-btn-click',
     points: [
         'Start for free',
@@ -124,7 +124,7 @@ const HACKATHON_CTA: BlogCtaConfig = {
     heading: 'Build something amazing',
     description: 'Ship your hackathon project faster with Indobase.',
     label: 'Start building',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-hackathon-btn-click',
     points: [
         'Free to start',
@@ -152,7 +152,7 @@ const DEBUGGING_CTA: BlogCtaConfig = {
     heading: 'Debug with confidence',
     description: 'Track executions, view logs, and identify issues in the Console.',
     label: 'Try Indobase',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-debugging-btn-click',
     points: [
         'Execution tracking and status',
@@ -166,7 +166,7 @@ const DESIGN_CTA: BlogCtaConfig = {
     heading: 'Build beautiful apps faster',
     description: 'Focus on design while Indobase handles your backend.',
     label: 'Start building',
-    href: getAppwriteDashboardUrl('/sign-up'),
+    href: getSignUpUrl(),
     event: 'blog-cta-design-btn-click',
     points: DEFAULT_CTA_POINTS
 };

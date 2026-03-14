@@ -1,7 +1,7 @@
 <script lang="ts">
     import { isMobile } from '$lib/utils/is-mobile';
     import GridPaper from '../../grid-paper.svelte';
-    import { animate, hover, inView, stagger, transform } from 'motion';
+    import { animate, hover, inView } from 'motion';
     import Site from '../../../(assets)/images/site.png';
     import { cn } from '$lib/utils/cn';
     import Spinner from '../../spinner.svelte';
@@ -128,7 +128,7 @@
             class="mx-auto mt-6 hidden w-full flex-col overflow-hidden rounded-[1.25rem] bg-[#232325]/90 mask-b-from-60% mask-b-to-100% px-1 pb-1 backdrop-blur-md md:mt-12 md:flex"
         >
             <div class="flex h-8 w-full items-center gap-1 pl-2">
-                {#each Array.from({ length: 3 }) as _}
+                {#each Array.from({ length: 3 }, (_, index) => index) as index (index)}
                     <div class="size-2 rounded-full bg-[#D9D9D9]"></div>
                 {/each}
             </div>
@@ -162,7 +162,7 @@
                 class="text-eyebrow font-fira-code flex flex-col flex-nowrap overflow-hidden rounded-[12px] bg-[#19191C] p-4"
             >
                 <div class="w-[900px]">
-                    {#each text as { timestamp, content }, i}
+                    {#each text as { timestamp, content }, i (timestamp)}
                         <div class="flex flex-nowrap gap-2">
                             <span class="text-secondary block">{timestamp}</span>
                             <span

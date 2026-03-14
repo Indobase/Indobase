@@ -14,4 +14,3 @@
 <div class="container">
     <MainFooter />
 </div>
-

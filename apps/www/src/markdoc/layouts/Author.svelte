@@ -170,7 +170,7 @@
 
                 <div class="mt-12">
                     <ul class="web-grid-articles">
-                        {#each posts.filter( (p) => (Array.isArray(p.author) ? p.author.includes(author?.slug ?? '') : p.author === author?.slug) ) as post}
+                        {#each posts.filter( (p) => (Array.isArray(p.author) ? p.author.includes(author?.slug ?? '') : p.author === author?.slug) ) as post (post.href)}
                             {@const authorData = getPostAuthors(post.author, authors)}
                             {@const primaryAuthor = authorData.primaryAuthor ?? author}
                             <Article

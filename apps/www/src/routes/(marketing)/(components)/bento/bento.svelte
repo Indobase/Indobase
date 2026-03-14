@@ -67,7 +67,7 @@
                     >Build</span
                 >
                 <div class="flex h-full w-full justify-between gap-2">
-                    {#each build as product}
+                    {#each build as product (product.label)}
                         <a
                             href={product.href}
                             class="bg-greyscale-800 hover:bg-greyscale-750/50 flex h-full w-fit items-center justify-center gap-2 rounded-full px-3 backdrop-blur-lg transition-opacity"
@@ -95,7 +95,7 @@
                     >Deploy</span
                 >
                 <div class="flex h-full w-full justify-between gap-2">
-                    {#each deploy as product}
+                    {#each deploy as product (product.label)}
                         <a
                             href={product.href}
                             class="bg-greyscale-800 hover:bg-greyscale-750/50 flex h-full w-fit items-center justify-center gap-2 rounded-full px-3 backdrop-blur-lg transition-opacity"
