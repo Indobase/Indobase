@@ -34,7 +34,6 @@
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
             >
-<<<<<<< HEAD
                 <path
                     d="M28.4447 25.3038V28.3448H21.041C18.8839 28.3448 17.0005 27.1218 15.9929 25.3038C15.8464 25.0395 15.7182 24.7622 15.6107 24.4744C15.3995 23.9104 15.2668 23.3053 15.2266 22.6738V21.8516C15.2353 21.7109 15.2491 21.5713 15.2671 21.4334C15.3039 21.1503 15.3595 20.8733 15.4326 20.604C16.1243 18.0512 18.3732 16.1807 21.041 16.1807C23.7087 16.1807 25.9574 18.0512 26.649 20.604H23.4833C22.9636 19.7719 22.064 19.2217 21.041 19.2217C20.0179 19.2217 19.1184 19.7719 18.5986 20.604C18.4402 20.857 18.3173 21.1359 18.2368 21.4334C18.1653 21.6971 18.1271 21.9752 18.1271 22.2627C18.1271 23.1344 18.4784 23.9201 19.0415 24.4744C19.5634 24.9889 20.2669 25.3038 21.041 25.3038H28.4447Z"
                     fill="#D8D8DB"
@@ -82,15 +81,6 @@
                     font-size="14"
                     font-family="system-ui, sans-serif">First Indobase project</text
                 >
-=======
-                <circle cx="18" cy="23" r="6" fill="#ff9900" />
-                <circle cx="32" cy="23" r="6" fill="#ff9900" />
-                <text x="55" y="32" fill="#EDEDF0" font-size="14" font-family="system-ui, sans-serif">indobase</text>
-                <text x="130" y="32" fill="#ADADB0" font-size="14" font-family="system-ui, sans-serif"> / </text>
-                <text x="150" y="32" fill="#D8D8DB" font-size="14" font-family="system-ui, sans-serif">Indobase Corp</text>
-                <text x="230" y="32" fill="#ADADB0" font-size="14" font-family="system-ui, sans-serif"> / </text>
-                <text x="250" y="32" fill="#D8D8DB" font-size="14" font-family="system-ui, sans-serif">indobase</text>
->>>>>>> 2eee4746 (Update footer and status styling)
             </svg>
         </div>
         <div class="flex">
