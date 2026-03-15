@@ -1,8 +1,8 @@
 import { useRouter } from 'next/router'
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Card, Text, Button, Badge, Toggle } from '@ui-library/components';
-import { Icon } from '@ui-library/components';
+import { Card, CardContent, Button, Badge, Toggle } from 'ui';
+import { CheckCircle } from 'lucide-react';
 
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
@@ -117,7 +117,7 @@ function PricingPlansPage() {
   if (loading && plans.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Text>Loading plans...</Text>
+        <span>Loading plans...</span>
       </div>
     );
   }
@@ -125,8 +125,8 @@ function PricingPlansPage() {
   if (fetchError && plans.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-        <Text className="text-center text-gray-600">Could not load plans. Please try again.</Text>
-        <Button variant="primary" onClick={() => { setLoading(true); fetchPlans(); }}>
+        <span className="text-center text-gray-600">Could not load plans. Please try again.</span>
+        <Button variant="default" onClick={() => { setLoading(true); fetchPlans(); }}>
           Retry
         </Button>
       </div>
@@ -186,11 +186,11 @@ function PricingPlansPage() {
 
           {currency === 'INR' && (
             <div className="flex items-center gap-2">
-              <Text className="text-sm">Monthly</Text>
-              <Toggle checked={annualBilling} onChange={setAnnualBilling} />
-              <Text className="text-sm">Annual</Text>
+              <span className="text-sm">Monthly</span>
+              <Toggle pressed={annualBilling} onPressedChange={setAnnualBilling} />
+              <span className="text-sm">Annual</span>
               {annualBilling && (
-                <Badge color="green">Save up to 17%</Badge>
+                <Badge variant="success">Save up to 17%</Badge>
               )}
             </div>
           )}
@@ -208,35 +208,35 @@ function PricingPlansPage() {
           >
             {plan.popular && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge color="green" size="lg">Most Popular</Badge>
+                <Badge variant="success" className="text-xs px-2 py-0.5">Most Popular</Badge>
               </div>
             )}
 
-            <Card.Content className="pt-6 pb-4">
+            <CardContent className="pt-6 pb-4">
               <div className="space-y-4">
                 {/* Plan Name */}
                 <div>
-                  <Text className="text-xl font-bold text-gray-900">{plan.display_name}</Text>
-                  <Text className="text-sm text-gray-500 mt-1">{plan.description}</Text>
+                  <span className="text-xl font-bold text-gray-900">{plan.display_name}</span>
+                  <span className="text-sm text-gray-500 mt-1">{plan.description}</span>
                 </div>
 
                 {/* Price */}
                 <div className="py-4">
                   {plan.contact_sales ? (
                     <div className="text-center">
-                      <Text className="text-3xl font-bold text-gray-900">Custom</Text>
-                      <Text className="text-sm text-gray-500 mt-1">Contact sales for pricing</Text>
+                      <span className="text-3xl font-bold text-gray-900">Custom</span>
+                      <span className="text-sm text-gray-500 mt-1">Contact sales for pricing</span>
                     </div>
                   ) : (
                     <div className="text-center">
                       <div className="text-4xl font-bold text-gray-900">
                         {formatPrice(annualBilling ? plan.annual_price : plan.monthly_price)}
                       </div>
-                      <Text className="text-sm text-gray-500 mt-1">
+                      <span className="text-sm text-gray-500 mt-1">
                         {annualBilling && plan.annual_price ? '/year' : '/month'}
-                      </Text>
+                      </span>
                       {plan.gst_notice && (
-                        <Text className="text-xs text-gray-500 mt-2">{plan.gst_notice}</Text>
+                        <span className="text-xs text-gray-500 mt-2">{plan.gst_notice}</span>
                       )}
                     </div>
                   )}
@@ -246,8 +246,8 @@ function PricingPlansPage() {
                 <ul className="space-y-3">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <Icon name="check-circle" className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <Text className="text-sm text-gray-700">{feature}</Text>
+                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -265,16 +265,16 @@ function PricingPlansPage() {
                 {/* Payment Methods for INR */}
                 {currency === 'INR' && plan.payment_methods && (
                   <div className="mt-4 pt-4 border-t">
-                    <Text className="text-xs font-medium text-gray-500 mb-2">Accepted Payments:</Text>
+                    <span className="text-xs font-medium text-gray-500 mb-2">Accepted Payments:</span>
                     <div className="flex flex-wrap gap-1">
                       {plan.payment_methods.slice(0, 3).map((method, idx) => (
-                        <Badge key={idx} color="gray" size="sm">{method.split(' ')[0]}</Badge>
+                        <Badge key={idx} variant="default" className="text-[9px]">{method.split(' ')[0]}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-            </Card.Content>
+            </CardContent>
           </Card>
         ))}
       </div>
@@ -282,19 +282,19 @@ function PricingPlansPage() {
       {/* Enterprise Banner */}
       <div className="max-w-7xl mx-auto mt-12">
         <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
-          <Card.Content>
+          <CardContent>
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <Text className="text-lg font-bold text-gray-900">Need a Custom Solution?</Text>
-                <Text className="text-sm text-gray-600">
+                <span className="text-lg font-bold text-gray-900">Need a Custom Solution?</span>
+                <span className="text-sm text-gray-600">
                   Our Enterprise plan offers custom limits, dedicated support, and advanced compliance features.
-                </Text>
+                </span>
               </div>
-              <Button variant="primary" onClick={() => (window.location.href = getContactSalesUrl())}>
+              <Button variant="default" onClick={() => (window.location.href = getContactSalesUrl())}>
                 Contact Sales
               </Button>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       </div>
 
@@ -347,10 +347,10 @@ interface FAQItemProps {
 
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => (
   <Card>
-    <Card.Content>
+    <CardContent>
       <h3 className="font-semibold text-gray-900 mb-2">{question}</h3>
       <p className="text-sm text-gray-600">{answer}</p>
-    </Card.Content>
+    </CardContent>
   </Card>
 );
 

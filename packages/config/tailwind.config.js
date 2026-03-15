@@ -2,7 +2,13 @@ const ui = require('./ui.config.js')
 const deepMerge = require('deepmerge')
 const plugin = require('tailwindcss/plugin')
 
-const color = require('./../ui/build/css/tw-extend/color')
+// Optional: ui build may be missing in CI/Docker; use minimal theme so build succeeds
+let color = {}
+try {
+  color = require('./../ui/build/css/tw-extend/color')
+} catch (e) {
+  color = { 'colors-default': { cssVariable: '0 0% 50%' } }
+}
 
 /**
  *

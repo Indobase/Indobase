@@ -1,3 +1,7 @@
+# macOS resource forks (avoid xattr errors when building on Docker Desktop)
+._*
+**/._*
+
 # VCS
 .git
 **/.git
@@ -58,4 +62,7 @@ tmp
 
 # Unnecessary app outputs
 apps/**/.svelte-kit
+
+# Studio needs packages/ui/build (theme CSS) at build time — do not exclude
+!packages/ui/build
 

@@ -125,7 +125,6 @@
         "zod": "^3.25.76"
     },
     "overrides": {
-        "@sveltejs/adapter-node": "npm:@dittmann/adapter-node@latest",
-        "vite": "npm:rolldown-vite@latest"
+        "@sveltejs/adapter-node": "npm:@dittmann/adapter-node@latest"
     }
 }

@@ -51,7 +51,7 @@
     import '$icons/output/web-icon.css';
     import ClientScss from '$lib/ClientScss.svelte';
 
-    import { browser, dev } from '$app/environment';
+    import { dev } from '$app/environment';
     import { page } from '$app/state';
     import { updated } from '$app/state';
     import { onMount } from 'svelte';
