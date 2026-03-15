@@ -8,8 +8,8 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
-        `SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}`,
+        `INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
@@ -20,8 +20,8 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY,
+      indobaseUrl: process.env.INDOBASE_URL,
+      indobaseKey: process.env.INDOBASE_KEY,
     },
   },
 })
@@ -33,15 +33,15 @@ export default defineNuxtConfig({
       code: `
 <script setup>
 import { ref, onMounted } from 'vue'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const config = useRuntimeConfig()
-const supabase = createClient(config.public.supabaseUrl, config.public.supabaseKey)
+const indobase = createClient(config.public.indobaseUrl, config.public.indobaseKey)
 
 const todos = ref([])
 
 async function getTodos() {
-  const { data } = await supabase.from('todos').select()
+  const { data } = await indobase.from('todos').select()
   todos.value = data
 }
 

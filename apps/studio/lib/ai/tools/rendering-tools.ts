@@ -23,7 +23,7 @@ export const getRenderingTools = () => ({
   }),
   deploy_edge_function: tool({
     description:
-      'Ask the user to deploy an Indobase Edge Function from provided code on the client. Client will confirm before deploying and return the result',
+      'Ask the user to deploy a Supabase Edge Function from provided code on the client. Client will confirm before deploying and return the result',
     inputSchema: z.object({
       name: z.string().describe('The URL-friendly name/slug of the Edge Function.'),
       code: z.string().describe('The TypeScript code for the Edge Function.'),

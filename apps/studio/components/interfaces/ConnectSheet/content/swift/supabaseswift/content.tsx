@@ -5,15 +5,15 @@ import type { StepContentProps } from '@/components/interfaces/ConnectSheet/Conn
 const ContentFile = ({ projectKeys }: StepContentProps) => {
   const files = [
     {
-      name: 'Supabase.swift',
+      name: 'Indobase.swift',
       language: 'swift',
       code: `
 import Foundation
-import Supabase
+import Indobase
 
-let supabase = SupabaseClient(
-  supabaseURL: URL(string: "${projectKeys.apiUrl ?? 'your-project-url'}")!,
-  supabaseKey: "${projectKeys.publishableKey ?? '<prefer publishable key for native apps instead of anon key>'}"
+let indobase = IndobaseClient(
+  indobaseURL: URL(string: "${projectKeys.apiUrl ?? 'your-project-url'}")!,
+  indobaseKey: "${projectKeys.publishableKey ?? '<prefer publishable key for native apps instead of anon key>'}"
 )
         `,
     },
@@ -33,7 +33,7 @@ struct Todo: Identifiable, Decodable {
       name: 'ContentView.swift',
       language: 'swift',
       code: `
-import Supabase
+import Indobase
 import SwiftUI
 
 struct ContentView: View {
@@ -47,7 +47,7 @@ struct ContentView: View {
       .navigationTitle("Todos")
       .task {
         do {
-          todos = try await supabase.from("todos").select().execute().value
+          todos = try await indobase.from("todos").select().execute().value
         } catch {
           debugPrint(error)
         }

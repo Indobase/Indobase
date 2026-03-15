@@ -2694,55 +2694,11 @@ export interface LogExplorerQueryRunButtonClickedEvent {
 }
 
 /**
- * User viewed the billing plans page (onboarding funnel: choose plan).
- *
- * @group Events
- * @source studio
- * @page /billing/plans
- */
-export interface BillingPlansPageViewedEvent {
-  action: 'billing_plans_page_viewed'
-  properties: Record<string, never>
-}
-
-/**
- * User selected a plan on the billing plans page (Get Started or Contact Sales).
- *
- * @group Events
- * @source studio
- * @page /billing/plans
- */
-export interface BillingPlanSelectedEvent {
-  action: 'billing_plan_selected'
-  properties: {
-    plan_id: string
-    contact_sales: boolean
-  }
-}
-
-/**
- * User created a new organization (onboarding funnel: product access).
- *
- * @group Events
- * @source studio
- * @page /new
- */
-export interface OrganizationCreatedEvent {
-  action: 'organization_created'
-  properties: {
-    plan: string
-  }
-}
-
-/**
  * @hidden
  */
 export type TelemetryEvent =
   | SignUpEvent
   | SignInEvent
-  | BillingPlansPageViewedEvent
-  | BillingPlanSelectedEvent
-  | OrganizationCreatedEvent
   | ConnectionStringCopiedEvent
   | McpInstallButtonClickedEvent
   | ApiDocsOpenedEvent

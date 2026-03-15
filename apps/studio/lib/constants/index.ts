@@ -11,16 +11,14 @@ export const IS_PLATFORM = process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
 export const IS_TEST_ENV = process.env.NEXT_PUBLIC_NODE_ENV === 'test'
 
 export const API_URL = (() => {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
   if (process.env.NODE_ENV === 'test') return 'http://localhost:3000/api'
-  //  If running in platform, use API_URL from the env var
   if (IS_PLATFORM) return process.env.NEXT_PUBLIC_API_URL!
-  // If running in browser, let it add the host
-  if (typeof window !== 'undefined') return '/api'
-  // If running self-hosted Vercel preview, use VERCEL_URL
-  if (!!process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api`
-  // If running on self-hosted, use NEXT_PUBLIC_SITE_URL
-  if (!!process.env.NEXT_PUBLIC_SITE_URL) return `${process.env.NEXT_PUBLIC_SITE_URL}/api`
-  return '/api'
+  if (typeof window !== 'undefined') return `${basePath}/api`
+  if (!!process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}${basePath}/api`
+  if (!!process.env.NEXT_PUBLIC_SITE_URL)
+    return `${process.env.NEXT_PUBLIC_SITE_URL}${basePath}/api`
+  return `${basePath}/api`
 })()
 
 export const PG_META_URL = IS_PLATFORM

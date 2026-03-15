@@ -34,8 +34,10 @@ const HOSTED_SUPPORTED_API_URLS = [
 export function proxy(request: NextRequest) {
   // API route filtering for hosted platform
   if (request.nextUrl.pathname.startsWith('/api/')) {
+    const isHostedRuntime = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
     if (
       IS_PLATFORM &&
+      isHostedRuntime &&
       !HOSTED_SUPPORTED_API_URLS.some((url) => request.nextUrl.pathname.endsWith(url))
     ) {
       return Response.json(

@@ -85,8 +85,8 @@ export const FRAMEWORKS: ConnectionType[] = [
         children: [
           {
             key: 'supabasejs',
-            label: 'supabase-js',
-            icon: 'supabase',
+            label: 'indobase-js',
+            icon: 'indobase',
             children: [],
           },
         ],
@@ -98,9 +98,9 @@ export const FRAMEWORKS: ConnectionType[] = [
         children: [
           {
             key: 'supabasejs',
-            label: 'Supabase-js',
+            label: 'indobase-js',
             children: [],
-            icon: 'supabase',
+            icon: 'indobase',
           },
         ],
       },
@@ -114,9 +114,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -133,9 +133,9 @@ export const FRAMEWORKS: ConnectionType[] = [
         children: [
           {
             key: 'supabasejs',
-            label: 'Supabase-js',
+            label: 'indobase-js',
             children: [],
-            icon: 'supabase',
+            icon: 'indobase',
           },
         ],
       },
@@ -146,8 +146,8 @@ export const FRAMEWORKS: ConnectionType[] = [
         children: [
           {
             key: 'supabasejs',
-            label: 'supabase-js',
-            icon: 'supabase',
+            label: 'indobase-js',
+            icon: 'indobase',
             children: [],
           },
         ],
@@ -162,9 +162,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -176,9 +176,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -191,9 +191,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -205,9 +205,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -215,13 +215,13 @@ export const FRAMEWORKS: ConnectionType[] = [
     key: 'astro',
     label: 'Astro',
     icon: 'astro',
-    guideLink: 'https://docs.astro.build/en/guides/backend/supabase/',
+    guideLink: `${DOCS_URL}/guides/getting-started/quickstarts/astro`,
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -233,9 +233,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -247,9 +247,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -261,9 +261,9 @@ export const FRAMEWORKS: ConnectionType[] = [
     children: [
       {
         key: 'supabasepy',
-        label: 'supabase-py',
+        label: 'indobase-py',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -278,9 +278,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -292,9 +292,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabaseflutter',
-        label: 'supabase-flutter',
+        label: 'indobase-flutter',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -306,9 +306,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -320,9 +320,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabaseswift',
-        label: 'supabase-swift',
+        label: 'indobase-swift',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -334,9 +334,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabasekt',
-        label: 'supabase-kt',
+        label: 'indobase-kt',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -348,9 +348,9 @@ export const MOBILES: ConnectionType[] = [
     children: [
       {
         key: 'supabasejs',
-        label: 'Supabase-js',
+        label: 'indobase-js',
         children: [],
-        icon: 'supabase',
+        icon: 'indobase',
       },
     ],
   },
@@ -361,7 +361,7 @@ export const ORMS: ConnectionType[] = [
     key: 'prisma',
     label: 'Prisma',
     icon: 'prisma',
-    guideLink: 'https://supabase.com/partners/integrations/prisma',
+    guideLink: 'https://indobase.com/partners/integrations/prisma',
     children: [],
   },
   {

@@ -8,10 +8,10 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `NEXT_PUBLIC_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `NEXT_PUBLIC_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
         projectKeys?.publishableKey
-          ? `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-          : `NEXT_PUBLIC_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+          ? `NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+          : `NEXT_PUBLIC_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
@@ -19,14 +19,14 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: 'page.tsx',
       language: 'tsx',
       code: `
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/utils/indobase/server'
 import { cookies } from 'next/headers'
 
 export default async function Page() {
   const cookieStore = await cookies()
-  const supabase = createClient(cookieStore)
+  const indobase = createClient(cookieStore)
 
-  const { data: todos } = await supabase.from('todos').select()
+  const { data: todos } = await indobase.from('todos').select()
 
   return (
     <ul>
@@ -39,19 +39,19 @@ export default async function Page() {
 `,
     },
     {
-      name: 'utils/supabase/server.ts',
+      name: 'utils/indobase/server.ts',
       language: 'ts',
       code: `
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "indobase-ssr";
 import { cookies } from "next/headers";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'};
+const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
+const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'};
 
 export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
   return createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    indobaseUrl!,
+    indobaseKey!,
     {
       cookies: {
         getAll() {
@@ -73,30 +73,30 @@ export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) =
 `,
     },
     {
-      name: 'utils/supabase/client.ts',
+      name: 'utils/indobase/client.ts',
       language: 'ts',
       code: `
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "indobase-ssr";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'};
+const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
+const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'};
 
 export const createClient = () =>
   createBrowserClient(
-    supabaseUrl!,
-    supabaseKey!,
+    indobaseUrl!,
+    indobaseKey!,
   );
 `,
     },
     {
-      name: 'utils/supabase/middleware.ts',
+      name: 'utils/indobase/middleware.ts',
       language: 'ts',
       code: `
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "indobase-ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'};
+const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
+const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'};
 
 export const createClient = (request: NextRequest) => {
   // Create an unmodified response
@@ -107,8 +107,8 @@ export const createClient = (request: NextRequest) => {
   });
 
   const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    indobaseUrl!,
+    indobaseKey!,
     {
       cookies: {
         getAll() {

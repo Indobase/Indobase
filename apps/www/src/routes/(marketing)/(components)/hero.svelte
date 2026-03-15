@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { getSignUpUrl } from '$lib/utils/dashboard';
+    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
     import { trackEvent } from '$lib/actions/analytics';
+    import GradientText from '$lib/components/fancy/gradient-text.svelte';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
     import Dashboard from './dashboard.svelte';
@@ -10,7 +11,7 @@
         subtitle?: string;
     };
 
-    const DASHBOARD_URL = getSignUpUrl();
+    const DASHBOARD_URL = getAppwriteDashboardUrl('/sign-up');
 
     const {
         title = 'All-in-one infra for solo devs & SMBs',

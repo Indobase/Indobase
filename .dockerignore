@@ -9,59 +9,61 @@
 
 # Node and build artifacts
 node_modules
-**/node_modules
-.turbo
-**/.turbo
-.next
-**/.next
-dist
-**/dist
-build
-**/build
-coverage
-**/coverage
-.cache
-**/.cache
-
-# Package manager stores
 .pnpm-store
-**/.pnpm-store
-pnpm-store
 
-# IDE/editor
+# Build outputs
+**/dist
+**/build
+**/.next
+**/.turbo
+
+# IDE files
 .vscode
-**/.vscode
 .idea
-**/.idea
+*.swp
+*.swo
 
-# OS junk
+# OS files
 .DS_Store
 Thumbs.db
 
-# Logs and reports
+# Logs
 *.log
-**/*.log
-playwright-report
-test-results
+logs
+
+# Test files
+**/*.test.*
+**/*.spec.*
+coverage
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github
+
+# Documentation
+*.md
+docs
 
 # Temporary files
 tmp
-**/tmp
-*.swp
+temp
+*.tmp
 
-# Archives
-*.zip
-*.tgz
-*.gz
+# Environment files
+.env*
+!.env.example
 
-# dotenv (avoid baking secrets into images)
-.env
-**/.env
-*.env*
-**/*.env*
-
-# Unnecessary app outputs
-apps/**/.svelte-kit
+# Package manager files
+package-lock.json
+yarn.lock
 
 # Studio needs packages/ui/build (theme CSS) at build time — do not exclude
 !packages/ui/build

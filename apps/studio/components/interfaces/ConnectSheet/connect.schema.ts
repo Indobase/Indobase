@@ -4,11 +4,11 @@ import type { ConnectSchema, StepDefinition } from './Connect.types'
  * Install commands for different packages
  */
 export const INSTALL_COMMANDS: Record<string, string> = {
-  supabasejs: 'npm install @supabase/supabase-js',
+  supabasejs: 'npm install indobase-js',
   supabasepy: 'pip install supabase',
-  supabaseflutter: 'flutter pub add supabase_flutter',
+  supabaseflutter: 'flutter pub add indobase_flutter',
   supabaseswift:
-    'swift package add-dependency https://github.com/supabase-community/supabase-swift',
+    'swift package add-dependency https://github.com/indobase-community/indobase-swift',
   supabasekt: 'implementation("io.github.jan-tennert.supabase:supabase-kt:VERSION")',
 }
 
@@ -35,21 +35,21 @@ const frameworkNextJsFilesStep: StepDefinition = {
   id: 'configure-nextjs',
   title: 'Add files',
   description:
-    'Add env variables, create Supabase client helpers, and set up middleware to keep sessions refreshed.',
+    'Add env variables, create Indobase client helpers, and set up middleware to keep sessions refreshed.',
   content: '{{framework}}/{{frameworkVariant}}/{{library}}',
 }
 
 const frameworkReactFilesStep: StepDefinition = {
   id: 'configure-react',
   title: 'Add files',
-  description: 'Add env variables, create a Supabase client, and use it in your app to query data.',
+  description: 'Add env variables, create an Indobase client, and use it in your app to query data.',
   content: '{{framework}}/{{frameworkVariant}}/{{library}}',
 }
 
 const frameworkShadcnStep: StepDefinition = {
   id: 'shadcn-add',
-  title: 'Add Supabase UI components',
-  description: 'Run this command to install the Supabase shadcn components.',
+  title: 'Add Indobase UI components',
+  description: 'Run this command to install the shadcn components.',
   content: 'steps/shadcn/command',
 }
 
@@ -91,7 +91,7 @@ const mcpConfigureStep: StepDefinition = {
 // Codex-specific MCP steps
 const codexAddServerStep: StepDefinition = {
   id: 'codex-add-server',
-  title: 'Add the Supabase MCP server to Codex',
+  title: 'Add the Indobase MCP server to Codex',
   description: 'Run this command to add the server.',
   content: 'steps/mcp/codex/add-server',
 }
@@ -150,7 +150,7 @@ const skillsInstallStep: StepDefinition = {
   id: 'install-skills',
   title: 'Install Agent Skills (Optional)',
   description:
-    'Agent Skills give AI coding tools ready-made instructions, scripts, and resources for working with Supabase more accurately and efficiently.',
+    'Agent Skills give AI coding tools ready-made instructions, scripts, and resources for working with Indobase more accurately and efficiently.',
   content: 'steps/skills-install',
 }
 
@@ -220,7 +220,7 @@ export const connectSchema: ConnectSchema = {
       id: 'frameworkUi',
       type: 'switch',
       label: 'Shadcn',
-      description: 'Install components via the Supabase shadcn registry.',
+      description: 'Install components via the shadcn registry.',
       defaultValue: false,
       dependsOn: { framework: ['nextjs', 'react'] },
     },

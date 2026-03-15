@@ -99,14 +99,12 @@ export const SignUpForm = () => {
     if (isInsideOAuthFlow) {
       redirectTo = `${redirectUrlBase}/authorize?auth_id=${searchParams.auth_id}${searchParams.token && `&token=${searchParams.token}`}`
     } else {
-      // After email confirmation, send user to sign-in (so session is established), with returnTo so they are then redirected to plan selection or product
+      // Use getRedirectToPath to handle redirect_to parameter and other query params
       const { returnTo } = router.query
-      const basePath =
-        typeof returnTo === 'string' && returnTo
-          ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}`
-          : '/sign-in'
-      const fullPath = buildPathWithParams(basePath)
-      redirectTo = `${redirectUrlBase}${fullPath}`
+      const basePath = returnTo || '/sign-in'
+      const fullPath = buildPathWithParams(basePath as string)
+      const fullRedirectUrl = `${redirectUrlBase}${fullPath}`
+      redirectTo = fullRedirectUrl
     }
 
     signup({
@@ -134,7 +132,7 @@ export const SignUpForm = () => {
             <AlertTitle_Shadcn_>Check your email to confirm</AlertTitle_Shadcn_>
             <AlertDescription_Shadcn_ className="text-xs">
               You've successfully signed up. Please check your email to confirm your account before
-              signing in to the dashboard. The confirmation link expires in 10 minutes.
+              signing in to the Supabase dashboard. The confirmation link expires in 10 minutes.
             </AlertDescription_Shadcn_>
           </Alert_Shadcn_>
         </motion.div>

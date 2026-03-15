@@ -40,6 +40,15 @@ export default defineConfig({
             algorithms: ['sha384']
         })
     ],
+    server: {
+        proxy: {
+            '/dashboard': {
+                target: 'http://localhost:8082',
+                changeOrigin: true,
+                ws: true
+            }
+        }
+    },
     css: {
         devSourcemap: !isProd
     },

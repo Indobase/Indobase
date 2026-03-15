@@ -40,7 +40,8 @@ describe('/api/mcp', () => {
         body: {},
       })
 
-      await handler(req, res)
+      ;(req as any).env = (req as any).env ?? {}
+      await handler(req as any, res as any)
 
       expect(res._getStatusCode()).not.toBe(405)
     })
@@ -50,7 +51,8 @@ describe('/api/mcp', () => {
         method: 'GET',
       })
 
-      await handler(req, res)
+      ;(req as any).env = (req as any).env ?? {}
+      await handler(req as any, res as any)
 
       expect(res._getStatusCode()).toBe(405)
       expect(JSON.parse(res._getData())).toEqual({
@@ -68,7 +70,8 @@ describe('/api/mcp', () => {
         body: {},
       })
 
-      await handler(req, res)
+      ;(req as any).env = (req as any).env ?? {}
+      await handler(req as any, res as any)
 
       expect(res._getStatusCode()).not.toBe(400)
     })
@@ -80,7 +83,8 @@ describe('/api/mcp', () => {
         body: {},
       })
 
-      await handler(req, res)
+      ;(req as any).env = (req as any).env ?? {}
+      await handler(req as any, res as any)
 
       expect(res._getStatusCode()).toBe(400)
       expect(JSON.parse(res._getData())).toHaveProperty('error')
@@ -93,7 +97,8 @@ describe('/api/mcp', () => {
         body: {},
       })
 
-      await handler(req, res)
+      ;(req as any).env = (req as any).env ?? {}
+      await handler(req as any, res as any)
 
       expect(res._getStatusCode()).not.toBe(400)
     })

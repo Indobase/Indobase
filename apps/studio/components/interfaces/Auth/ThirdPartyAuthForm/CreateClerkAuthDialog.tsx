@@ -112,7 +112,7 @@ export const CreateClerkAuthIntegrationDialog = ({
                   target="_blank"
                   rel="noopener"
                 >
-                  Clerk's Connect with Indobase page
+                  Clerk's Connect with Supabase page
                 </InlineLink>{' '}
                 to configure your Clerk instance.
               </p>

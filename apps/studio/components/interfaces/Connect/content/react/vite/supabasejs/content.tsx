@@ -13,7 +13,7 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env" />
-        <ConnectTabTrigger value="utils/supabase.ts" />
+        <ConnectTabTrigger value="utils/indobase.ts" />
         <ConnectTabTrigger value="App.tsx" />
       </ConnectTabTriggers>
 
@@ -21,26 +21,24 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {[
             '',
-            `VITE_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+            `VITE_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
             projectKeys?.publishableKey
-              ? `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-              : `VITE_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+              ? `VITE_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+              : `VITE_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
             '',
           ].join('\n')}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="utils/supabase.ts">
+      <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.${projectKeys.publishableKey ? 'VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'VITE_SUPABASE_ANON_KEY'};
+const indobaseUrl = import.meta.env.VITE_INDOBASE_URL;
+const indobaseKey = import.meta.env.${projectKeys.publishableKey ? 'VITE_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'VITE_INDOBASE_ANON_KEY'};
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-export default supabase
+export const indobase = createClient(indobaseUrl, indobaseKey);
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
@@ -49,14 +47,14 @@ export default supabase
         <SimpleCodeBlock className="tsx" parentClassName="min-h-72">
           {`
 import { useState, useEffect } from 'react'
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 
 function Page() {
   const [todos, setTodos] = useState([])
 
   useEffect(() => {
     function getTodos() {
-      const { data: todos } = await supabase.from('todos').select()
+      const { data: todos } = await indobase.from('todos').select()
 
       if (todos.length > 1) {
         setTodos(todos)

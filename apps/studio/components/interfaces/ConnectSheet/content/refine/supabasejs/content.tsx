@@ -8,21 +8,21 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
-        `SUPABASE_KEY=${projectKeys?.publishableKey ?? projectKeys?.anonKey ?? 'your-anon-key'}`,
+        `INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `INDOBASE_KEY=${projectKeys?.publishableKey ?? projectKeys?.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
     {
-      name: 'src/utility/supabaseClient.ts',
+      name: 'src/utility/indobaseClient.ts',
       language: 'ts',
       code: `
 import { createClient } from "@refinedev/supabase";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const INDOBASE_URL = process.env.INDOBASE_URL;
+const INDOBASE_KEY = process.env.INDOBASE_KEY;
 
-export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
+export const indobaseClient = createClient(INDOBASE_URL, INDOBASE_KEY, {
   db: {
     schema: "public",
   },
@@ -48,7 +48,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import "./App.css";
 import authProvider from "./authProvider";
-import { supabaseClient } from "./utility";
+import { indobaseClient } from "./utility";
 import { CountriesCreate, CountriesEdit, CountriesList, CountriesShow } from "./pages/countries";
 
 function App() {
@@ -56,8 +56,8 @@ function App() {
     <BrowserRouter>
       <RefineKbarProvider>
         <Refine
-          dataProvider={dataProvider(supabaseClient)}
-          liveProvider={liveProvider(supabaseClient)}
+          dataProvider={dataProvider(indobaseClient)}
+          liveProvider={liveProvider(indobaseClient)}
           authProvider={authProvider}
           routerProvider={routerProvider}
           options={{

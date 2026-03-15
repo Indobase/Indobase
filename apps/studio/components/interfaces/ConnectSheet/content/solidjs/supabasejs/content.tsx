@@ -8,34 +8,34 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: '.env.local',
       language: 'bash',
       code: [
-        `VITE_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
+        `VITE_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}`,
         projectKeys?.publishableKey
-          ? `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
-          : `VITE_SUPABASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
+          ? `VITE_INDOBASE_PUBLISHABLE_DEFAULT_KEY=${projectKeys.publishableKey}`
+          : `VITE_INDOBASE_ANON_KEY=${projectKeys.anonKey ?? 'your-anon-key'}`,
         '',
       ].join('\n'),
     },
     {
-      name: 'utils/supabase.ts',
+      name: 'utils/indobase.ts',
       language: 'ts',
       code: `
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.${projectKeys.publishableKey ? 'VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY' : 'VITE_SUPABASE_ANON_KEY'};
+const indobaseUrl = import.meta.env.VITE_INDOBASE_URL;
+const indobaseKey = import.meta.env.${projectKeys.publishableKey ? 'VITE_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'VITE_INDOBASE_ANON_KEY'};
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const indobase = createClient(indobaseUrl, indobaseKey);
 `,
     },
     {
       name: 'src/App.tsx',
       language: 'tsx',
       code: `
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 import { createResource, For } from "solid-js";
 
 async function getTodos() {
-  const { data: todos } = await supabase.from("todos").select();
+  const { data: todos } = await indobase.from("todos").select();
   return todos;
 }
 

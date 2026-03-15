@@ -1,4 +1,4 @@
-import { getSignUpUrl } from '$lib/utils/dashboard';
+import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
 import { DEFAULT_CTA_POINTS, resolveBlogCta, type BlogCtaConfig } from '$lib/utils/blog-cta';
 
 export type BlogCallToActionInput =
@@ -93,7 +93,7 @@ export const prepareBlogCtaState = ({
                   heading: callToAction.heading ?? 'Start building with Indobase today',
                   label: callToAction.label ?? 'Get started',
                   href:
-                      callToAction.href ?? callToAction.url ?? getSignUpUrl(),
+                      callToAction.href ?? callToAction.url ?? getAppwriteDashboardUrl('/sign-up'),
                   description: callToAction.description ?? '',
                   event: callToAction.event,
                   points: [point1, point2, point3, point4]

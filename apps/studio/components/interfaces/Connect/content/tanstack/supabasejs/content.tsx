@@ -13,27 +13,27 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env" />
-        <ConnectTabTrigger value="src/utils/supabase.ts" />
+        <ConnectTabTrigger value="src/utils/indobase.ts" />
         <ConnectTabTrigger value="src/routes/index.tsx" />
       </ConnectTabTriggers>
 
       <ConnectTabContent value=".env">
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {`
-VITE_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-VITE_SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
+VITE_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+VITE_INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="src/utils/supabase.ts">
+      <ConnectTabContent value="src/utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from "@supabase/supabase-js";
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_KEY
+export const indobase = createClient(
+  import.meta.env.VITE_INDOBASE_URL,
+  import.meta.env.VITE_INDOBASE_KEY
 );
         `}
         </SimpleCodeBlock>
@@ -43,11 +43,11 @@ export const supabase = createClient(
         <SimpleCodeBlock className="tsx" parentClassName="min-h-72">
           {`
 import { createFileRoute } from '@tanstack/react-router'
-import { supabase } from '../utils/supabase'
+import { indobase } from '../utils/indobase'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const { data: todos } = await supabase.from('todos').select()
+    const { data: todos } = await indobase.from('todos').select()
     return { todos }
   },
   component: Home,

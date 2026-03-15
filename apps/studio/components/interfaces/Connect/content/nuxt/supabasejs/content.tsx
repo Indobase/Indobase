@@ -13,28 +13,28 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env.local" />
-        <ConnectTabTrigger value="utils/supabase.ts" />
+        <ConnectTabTrigger value="utils/indobase.ts" />
         <ConnectTabTrigger value="src/App.vue" />
       </ConnectTabTriggers>
 
       <ConnectTabContent value=".env.local">
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {`
-SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-SUPABASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
+INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-key'}
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="utils/supabase.ts">
+      <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const indobaseUrl = process.env.INDOBASE_URL;
+const indobaseKey = process.env.INDOBASE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const indobase = createClient(indobaseUrl, indobaseKey);
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
@@ -43,11 +43,11 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
         <SimpleCodeBlock className="jsx" parentClassName="min-h-72">
           {`
 <script setup>
-  import { supabase } from '../utils/supabase'
+  import { indobase } from '../utils/indobase'
   const todos = ref([])
 
   async function getTodos() {
-    const { data } = await supabase.from('todos').select()
+    const { data } = await indobase.from('todos').select()
     todos.value = data
   }
 

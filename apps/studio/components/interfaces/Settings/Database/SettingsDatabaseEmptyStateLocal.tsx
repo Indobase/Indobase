@@ -22,7 +22,7 @@ export function SettingsDatabaseEmptyStateLocal() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          Self-Hosted Indobase
+          Self-Hosted Supabase
           <div className="flex items-center gap-x-2">
             <DocsButton
               href={`${DOCS_URL}/guides/self-hosting/docker#configuring-and-securing-supabase`}

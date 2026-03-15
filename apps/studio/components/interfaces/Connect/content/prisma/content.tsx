@@ -22,7 +22,7 @@ const ContentFile = ({ connectionStringPooler }: ContentFileProps) => {
           {connectionStringPooler.ipv4SupportedForDedicatedPooler &&
           connectionStringPooler.transactionDedicated
             ? `
-# Connect to Supabase via connection pooling.
+# Connect to Indobase via connection pooling.
 DATABASE_URL="${connectionStringPooler.transactionDedicated}?pgbouncer=true"
 
 # Direct connection to the database. Used for migrations.
@@ -31,7 +31,7 @@ DIRECT_URL="${connectionStringPooler.sessionDedicated}"
             : connectionStringPooler.transactionDedicated &&
                 !connectionStringPooler.ipv4SupportedForDedicatedPooler
               ? `
-# Connect to Supabase via Shared Connection Pooler
+# Connect to Indobase via Shared Connection Pooler
 DATABASE_URL="${connectionStringPooler.transactionShared}?pgbouncer=true"
 
 # Direct connection to the database through Shared Pooler (supports IPv4/IPv6). Used for migrations.
@@ -42,7 +42,7 @@ DIRECT_URL="${connectionStringPooler.sessionShared}"
 # DIRECT_URL="${connectionStringPooler.sessionDedicated}"
  `
               : `
-# Connect to Supabase ${IS_PLATFORM ? 'via connection pooling' : ''}
+# Connect to Indobase ${IS_PLATFORM ? 'via connection pooling' : ''}
 DATABASE_URL="${IS_PLATFORM ? `${connectionStringPooler.transactionShared}?pgbouncer=true` : connectionStringPooler.direct}"
 
 # Direct connection to the database. Used for migrations

@@ -13,28 +13,28 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
     <ConnectTabs>
       <ConnectTabTriggers>
         <ConnectTabTrigger value=".env" />
-        <ConnectTabTrigger value="src/supabaseClient.tsx" />
+        <ConnectTabTrigger value="src/indobaseClient.tsx" />
         <ConnectTabTrigger value="src/App.tsx" />
       </ConnectTabTriggers>
 
       <ConnectTabContent value=".env">
         <SimpleCodeBlock className="bash" parentClassName="min-h-72">
           {`
-REACT_APP_SUPABASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
-REACT_APP_SUPABASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile or desktop apps>'}
+REACT_APP_INDOBASE_URL=${projectKeys.apiUrl ?? 'your-project-url'}
+REACT_APP_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key instead of anon key for mobile or desktop apps>'}
         `}
         </SimpleCodeBlock>
       </ConnectTabContent>
 
-      <ConnectTabContent value="src/supabaseClient.tsx">
+      <ConnectTabContent value="src/indobaseClient.tsx">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
-const supabaseKey = process.env.REACT_APP_SUPABASE_KEY
+const indobaseUrl = process.env.REACT_APP_INDOBASE_URL
+const indobaseKey = process.env.REACT_APP_INDOBASE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const indobase = createClient(indobaseUrl, indobaseKey)
 `}
         </SimpleCodeBlock>
       </ConnectTabContent>
@@ -59,7 +59,7 @@ import '@ionic/react/css/core.css';
 /* Theme variables */
 import './theme/variables.css';
 
-import { supabase } from './supabaseClient';
+import { indobase } from './indobaseClient';
 
 setupIonicReact();
 
@@ -71,7 +71,7 @@ export default function App() {
 
   const getTodos = async () => {
     try {
-      const { data, error } = await supabase.from('todos').select();
+      const { data, error } = await indobase.from('todos').select();
 
       if (error) {
         console.error('Error fetching todos:', error.message);

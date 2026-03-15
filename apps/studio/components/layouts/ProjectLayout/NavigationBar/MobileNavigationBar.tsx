@@ -2,6 +2,7 @@ import { Menu, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
+import { useTheme } from 'next-themes'
 
 import { useParams } from 'common'
 import { SidebarContent } from 'components/interfaces/Sidebar'
@@ -15,6 +16,7 @@ export const ICON_STROKE_WIDTH = 1.5
 
 const MobileNavigationBar = ({ hideMobileMenu }: { hideMobileMenu?: boolean }) => {
   const router = useRouter()
+  const { resolvedTheme } = useTheme()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const { ref: projectRef } = useParams()
 
@@ -34,7 +36,11 @@ const MobileNavigationBar = ({ hideMobileMenu }: { hideMobileMenu?: boolean }) =
         >
           <img
             alt="Indobase Logo"
-            src={`${router.basePath}/img/indobase-logo.svg`}
+            src={
+              resolvedTheme?.includes('dark')
+                ? `${router.basePath}/img/indobase-dark.svg`
+                : `${router.basePath}/img/indobase-light.svg`
+            }
             className="absolute h-[26px] w-[26px] cursor-pointer rounded"
           />
         </Link>

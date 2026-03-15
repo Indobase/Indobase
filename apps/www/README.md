@@ -1,6 +1,3 @@
-
-
-
 The Indobase Website repo features the main Indobase website, including our [homepage](https://indobase.fun), [docs](https://indobase.fun/docs), and upcoming blog.
 
 The Indobase Website has been built with the following frameworks:
