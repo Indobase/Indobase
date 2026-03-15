@@ -39,10 +39,14 @@ ENV STUDIO_PORT=8082
 RUN apk add --no-cache nginx && \
     mkdir -p /run/nginx /var/cache/nginx
 
-# Copy Studio standalone (monorepo: server at apps/studio/server.js)
+# Copy Studio standalone (server.js may be at root or apps/studio/ depending on Next.js/monorepo)
 COPY --from=build-studio /workspace/apps/studio/.next/standalone /srv/studio
-COPY --from=build-studio /workspace/apps/studio/.next/static /srv/studio/apps/studio/.next/static
-COPY --from=build-studio /workspace/apps/studio/public /srv/studio/apps/studio/public
+# Static assets: copy to both possible server locations so server finds .next/static and public
+COPY --from=build-studio /workspace/apps/studio/.next/static /srv/studio/.next/static
+COPY --from=build-studio /workspace/apps/studio/public /srv/studio/public
+RUN mkdir -p /srv/studio/apps/studio/.next /srv/studio/apps/studio/public && \
+    cp -a /srv/studio/.next/static /srv/studio/apps/studio/.next/ && \
+    cp -a /srv/studio/public/. /srv/studio/apps/studio/public/
 
 # Copy marketing static site output
 COPY --from=build-www /workspace/apps/www/build /usr/share/nginx/html
