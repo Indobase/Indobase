@@ -39,10 +39,10 @@ ENV STUDIO_PORT=8082
 RUN apk add --no-cache nginx && \
     mkdir -p /run/nginx /var/cache/nginx
 
-# Copy Studio standalone server and assets
+# Copy Studio standalone (monorepo: server at apps/studio/server.js)
 COPY --from=build-studio /workspace/apps/studio/.next/standalone /srv/studio
-COPY --from=build-studio /workspace/apps/studio/.next/static /srv/studio/.next/static
-COPY --from=build-studio /workspace/apps/studio/public /srv/studio/public
+COPY --from=build-studio /workspace/apps/studio/.next/static /srv/studio/apps/studio/.next/static
+COPY --from=build-studio /workspace/apps/studio/public /srv/studio/apps/studio/public
 
 # Copy marketing static site output
 COPY --from=build-www /workspace/apps/www/build /usr/share/nginx/html

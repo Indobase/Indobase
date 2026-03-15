@@ -5,8 +5,8 @@ set -e
 export PORT="${STUDIO_PORT:-8082}"
 NODE_BIN="$(command -v node)"
 
-# Start Studio in background
-"$NODE_BIN" /srv/studio/server.js &
+# Start Studio in background (monorepo standalone: server is at apps/studio/server.js)
+"$NODE_BIN" /srv/studio/apps/studio/server.js &
 STUDIO_PID=$!
 
 # Start nginx in foreground
