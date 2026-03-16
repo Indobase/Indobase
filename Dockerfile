@@ -27,8 +27,12 @@ RUN mkdir -p /tmp/studio-public && cp -r /workspace/apps/studio/public/. /tmp/st
     cp -r /tmp/studio-public/. /workspace/apps/studio/public/
 ARG NEXT_PUBLIC_BASE_PATH=/dashboard
 ARG SKIP_ASSET_UPLOAD=1
+ARG NEXT_PUBLIC_IS_PLATFORM=true
+ARG NEXT_PUBLIC_API_URL=https://api.indobase.fun
 ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 ENV SKIP_ASSET_UPLOAD=${SKIP_ASSET_UPLOAD}
+ENV NEXT_PUBLIC_IS_PLATFORM=${NEXT_PUBLIC_IS_PLATFORM}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 # Next.js build can be memory-heavy; increase Node heap if Docker has enough RAM
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm run build

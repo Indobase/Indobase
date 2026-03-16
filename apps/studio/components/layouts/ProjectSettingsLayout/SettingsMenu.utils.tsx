@@ -19,26 +19,11 @@ export const generateSettingsMenu = (
     billing?: boolean
   }
 ): ProductMenuGroup[] => {
-  if (!IS_PLATFORM) {
-    return [
-      {
-        title: 'Project Settings',
-        items: [
-          {
-            name: `Log Drains`,
-            key: `log-drains`,
-            url: `/project/${ref}/settings/log-drains`,
-            items: [],
-          },
-        ],
-      },
-    ]
-  }
-
   const isProjectActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
 
   const legacyJwtKeysEnabled = features?.legacyJwtKeys ?? true
-  const billingEnabled = features?.billing ?? true
+  // Only show billing subscription links on the hosted platform.
+  const billingEnabled = IS_PLATFORM && (features?.billing ?? true)
 
   return [
     {
