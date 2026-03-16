@@ -35,6 +35,13 @@ const nextConfig = {
   output: 'standalone',
   async rewrites() {
     return [
+      // Marketing site (www) is in public/; serve index.html for SPA routes
+      { source: '/', destination: '/index.html' },
+      { source: '/pricing', destination: '/index.html' },
+      { source: '/terms', destination: '/index.html' },
+      { source: '/privacy', destination: '/index.html' },
+      { source: '/contact-us', destination: '/index.html' },
+      { source: '/contact-us/enterprise', destination: '/index.html' },
       {
         source: `/.well-known/vercel/flags`,
         destination: `https://indobase.fun/.well-known/vercel/flags`,

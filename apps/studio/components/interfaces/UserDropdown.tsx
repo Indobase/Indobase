@@ -51,66 +51,69 @@ export function UserDropdown() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side="bottom" align="end">
-        {IS_PLATFORM && (
-          <>
-            <div className="px-2 py-1 flex flex-col gap-0 text-sm">
-              {!!username ? (
-                <>
-                  <span title={username} className="w-full text-left text-foreground truncate">
-                    {username}
-                  </span>
-                  {primaryEmail !== username && profileShowEmailEnabled && (
-                    <span
-                      title={primaryEmail}
-                      className="w-full text-left text-foreground-light text-xs truncate"
-                    >
-                      {primaryEmail}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <span title={primaryEmail} className="w-full text-left text-foreground truncate">
-                  {primaryEmail}
+        {/* Username/email and Account preferences: show for both platform and self-hosted */}
+        <>
+          <div className="px-2 py-1 flex flex-col gap-0 text-sm">
+            {!!username ? (
+              <>
+                <span title={username} className="w-full text-left text-foreground truncate">
+                  {username}
                 </span>
-              )}
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem className="flex gap-2" asChild>
-                <Link
-                  href="/account/me"
-                  onClick={() => {
-                    if (router.pathname !== '/account/me') {
-                      appStateSnapshot.setLastRouteBeforeVisitingAccountPage(router.asPath)
-                    }
-                  }}
-                >
-                  <Settings size={14} strokeWidth={1.5} className="text-foreground-lighter" />
-                  Account preferences
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex gap-2"
-                onClick={() => toggleFeaturePreviewModal(true)}
-                // onSelect={() => toggleFeaturePreviewModal(true)}
+                {primaryEmail !== username && profileShowEmailEnabled && (
+                  <span
+                    title={primaryEmail}
+                    className="w-full text-left text-foreground-light text-xs truncate"
+                  >
+                    {primaryEmail}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span title={primaryEmail} className="w-full text-left text-foreground truncate">
+                {primaryEmail}
+              </span>
+            )}
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem className="flex gap-2" asChild>
+              <Link
+                href="/account/me"
+                onClick={() => {
+                  if (router.pathname !== '/account/me') {
+                    appStateSnapshot.setLastRouteBeforeVisitingAccountPage(router.asPath)
+                  }
+                }}
               >
-                <FlaskConical size={14} strokeWidth={1.5} className="text-foreground-lighter" />
-                Feature previews
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex gap-2" asChild>
-                <Link
-                  href="https://supabase.com/changelog"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Settings size={14} strokeWidth={1.5} className="text-foreground-lighter" />
+                Account preferences
+              </Link>
+            </DropdownMenuItem>
+            {IS_PLATFORM && (
+              <>
+                <DropdownMenuItem
+                  className="flex gap-2"
+                  onClick={() => toggleFeaturePreviewModal(true)}
+                  // onSelect={() => toggleFeaturePreviewModal(true)}
                 >
-                  <ScrollText size={14} strokeWidth={1.5} className="text-foreground-lighter" />
-                  Changelog
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </DropdownMenuGroup>
-          </>
-        )}
+                  <FlaskConical size={14} strokeWidth={1.5} className="text-foreground-lighter" />
+                  Feature previews
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex gap-2" asChild>
+                  <Link
+                    href="https://supabase.com/changelog"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ScrollText size={14} strokeWidth={1.5} className="text-foreground-lighter" />
+                    Changelog
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
+          </DropdownMenuGroup>
+        </>
         <DropdownMenuGroup>
           <DropdownMenuLabel>Theme</DropdownMenuLabel>
           <DropdownMenuRadioGroup
@@ -126,20 +129,16 @@ export function UserDropdown() {
             ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuGroup>
-        {IS_PLATFORM && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                onSelect={() => {
-                  router.push('/logout')
-                }}
-              >
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </>
-        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onSelect={() => {
+              router.push('/logout')
+            }}
+          >
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

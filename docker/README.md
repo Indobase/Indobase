@@ -2,6 +2,27 @@
 
 This is the Docker Compose setup for self-hosted Indobase. It provides a complete stack with all Indobase services running locally or on your infrastructure.
 
+## Single image (marketing + Studio) – for infra-as-a-service
+
+The **root `Dockerfile`** builds one image and **one Node server** (no Nginx):
+
+- **Marketing site** at `/` (built from `apps/www`, merged into Studio’s `public/` and served via rewrites)
+- **Studio (dashboard)** at `/dashboard`
+
+Use this image when you deploy the front-end (e.g. Dokploy, k8s) and point it at your existing backend or at Indobase platform.
+
+- **Build (from repo root):** `docker build -t ind-repo:latest .`  
+  Or use the GitHub Actions workflow to build and push for `linux/amd64`.
+- **Port:** Expose `8080`. The container runs Nginx (front) and the Studio Node server (internal).
+- **Env (set in your orchestrator):**
+  - **Self-hosted backend** (your Postgres + Kong + meta, etc.):  
+    `STUDIO_PG_META_URL`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `AUTH_JWT_SECRET`, and optionally `LOGFLARE_*` / `PROJECT_ANALYTICS_URL` for logs.  
+    Override `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEMENT_FOLDER` if you mount volumes for functions/snippets.
+  - **Platform (Indobase cloud API):**  
+    `NEXT_PUBLIC_IS_PLATFORM=true`, `NEXT_PUBLIC_API_URL=<your platform API URL>`.
+
+The image sets default `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEMENT_FOLDER` so Studio starts without asserting; override them when you attach real storage.
+
 ## Getting Started
 
 For setup and configuration, see:

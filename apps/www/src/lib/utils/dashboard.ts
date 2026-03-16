@@ -28,15 +28,20 @@ const DASHBOARD_BASE = normalizeConsoleBase(
         DEFAULT_CONSOLE_BASE
 );
 
+/** Use relative /dashboard when same-origin (no console URL set) or dev/localhost. */
+function getDashboardBase(): string {
+    const isDev = import.meta.env?.DEV === true;
+    if (isDev) return '/dashboard';
+    if (browser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+        return '/dashboard';
+    if (!publicEnv.PUBLIC_APPWRITE_DASHBOARD && !publicEnv.PUBLIC_INDOBASE_CONSOLE_URL)
+        return '/dashboard';
+    return DASHBOARD_BASE;
+}
+
 export function getAppwriteDashboardUrl(path = ''): string {
     const utmParams = getUtmSourceForLink();
-    const isDev = import.meta.env?.DEV === true;
-    const base = isDev
-        ? '/dashboard'
-        : browser &&
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? '/dashboard'
-          : DASHBOARD_BASE;
+    const base = getDashboardBase();
     const resolvedPath = path ? `${base}${path.startsWith('/') ? path : `/${path}`}` : base;
     if (!utmParams) return resolvedPath;
     const separator = resolvedPath.includes('?') ? '&' : '?';

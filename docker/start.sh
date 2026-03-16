@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-# Start the Next.js (Studio) server on internal port
-export PORT="${STUDIO_PORT:-8082}"
+# Single server: Next.js serves / (marketing from public/) and /dashboard (Studio)
+export PORT="${PORT:-8080}"
 NODE_BIN="$(command -v node)"
 
 # Locate server.js (path varies: root in some setups, apps/studio/server.js in monorepo standalone)
@@ -20,13 +20,6 @@ if [ -z "$SERVER_JS" ] || [ ! -f "$SERVER_JS" ]; then
   exit 1
 fi
 
-# Start Studio in background
-"$NODE_BIN" "$SERVER_JS" &
-STUDIO_PID=$!
-
-# Start nginx in foreground
-nginx -g 'daemon off;'
-
-# In case nginx exits, also stop the background node process
-kill $STUDIO_PID 2>/dev/null || true
+# Run Next.js (serves marketing at / and Studio at /dashboard)
+exec "$NODE_BIN" "$SERVER_JS"
 

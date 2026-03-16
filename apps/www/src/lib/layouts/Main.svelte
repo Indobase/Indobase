@@ -14,7 +14,7 @@
     import { createScrollInfo } from '$lib/utils/scroll';
     import { addEventListener } from '@melt-ui/svelte/internal/helpers';
     import { onMount } from 'svelte';
-    import { getAppwriteDashboardUrl } from '$lib/utils/dashboard';
+    import { getSignUpUrl } from '$lib/utils/dashboard';
     import MainNav from '$lib/components/MainNav.svelte';
     import { Button, Icon } from '$lib/components/ui';
 
@@ -115,7 +115,7 @@
         return $scrollInfo.deltaDirChange < 200;
     })();
 
-    const mobileButtonHref = getAppwriteDashboardUrl('/sign-up');
+    const mobileButtonHref = getSignUpUrl();
     const mobileButtonEvent = 'main-start_building_btn-click';
     const mobileButtonText = 'Start building';
 
