@@ -55,6 +55,18 @@ const config = {
                     return;
                 }
                 throw new Error(message);
+            },
+            /**
+             * @type {import('@sveltejs/kit').PrerenderHttpErrorHandler}
+             */
+            handleHttpError: ({ path, referrer, message }) => {
+                // Marketing links like /dashboard/sign-up are served by Studio, not www.
+                // Ignore 404s for those during prerender so the Docker build doesn't fail.
+                if (path.startsWith('/dashboard')) {
+                    console.warn(`Ignoring prerender 404 for ${path} (linked from ${referrer}): ${message}`);
+                    return;
+                }
+                throw new Error(message);
             }
         },
         experimental: {
