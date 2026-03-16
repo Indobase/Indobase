@@ -24,7 +24,7 @@ const metadata: Metadata = {
   title: metadataTitle,
   description:
     'Indobase is the Postgres development platform providing all the backend features you need to build a product.',
-  metadataBase: new URL('https://indobase.fun'),
+  metadataBase: new URL('https://indobase.in'),
   icons: genFaviconData(BASE_PATH),
   robots: {
     index: IS_PRODUCTION,

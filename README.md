@@ -1,18 +1,18 @@
 # Indobase
 
-[Indobase](https://indobase.fun) is the Postgres development platform. We're building the features of Firebase using enterprise-grade open source tools.
+[Indobase](https://indobase.in) is the Postgres development platform. We're building the features of Firebase using enterprise-grade open source tools.
 
-- [x] Hosted Postgres Database. [Docs](https://indobase.fun/docs/guides/database)
-- [x] Authentication and Authorization. [Docs](https://indobase.fun/docs/guides/auth)
+- [x] Hosted Postgres Database. [Docs](https://indobase.in/docs/guides/database)
+- [x] Authentication and Authorization. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Auto-generated APIs.
-  - [x] REST. [Docs](https://indobase.fun/docs/guides/api)
-  - [x] GraphQL. [Docs](https://indobase.fun/docs/guides/graphql)
-  - [x] Realtime subscriptions. [Docs](https://indobase.fun/docs/guides/realtime)
+  - [x] REST. [Docs](https://indobase.in/docs/guides/api)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/graphql)
+  - [x] Realtime subscriptions. [Docs](https://indobase.in/docs/guides/realtime)
 - [x] Functions.
-  - [x] Database Functions. [Docs](https://indobase.fun/docs/guides/database/functions)
-  - [x] Edge Functions [Docs](https://indobase.fun/docs/guides/functions)
-- [x] File Storage. [Docs](https://indobase.fun/docs/guides/storage)
-- [x] AI + Vector/Embeddings Toolkit. [Docs](https://indobase.fun/docs/guides/ai)
+  - [x] Database Functions. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge Functions [Docs](https://indobase.in/docs/guides/functions)
+- [x] File Storage. [Docs](https://indobase.in/docs/guides/storage)
+- [x] AI + Vector/Embeddings Toolkit. [Docs](https://indobase.in/docs/guides/ai)
 - [x] Dashboard
 
 ![Indobase Dashboard](https://raw.githubusercontent.com/indobase/indobase/master/apps/www/public/images/github/indobase-dashboard.png)
@@ -23,7 +23,7 @@ Watch "releases" of this repo to get notified of major updates.
 
 ## Documentation
 
-For full documentation, visit [indobase.fun/docs](https://indobase.fun/docs)
+For full documentation, visit [indobase.in/docs](https://indobase.in/docs)
 
 To see how to Contribute, visit [Getting Started](./DEVELOPERS.md).
 
@@ -33,8 +33,8 @@ For a production launch checklist (billing, auth, infra, monitoring), see [PRODU
 
 - [Community Forum](https://github.com/indobase/indobase/discussions). Best for: help with building, discussion about database best practices.
 - [GitHub Issues](https://github.com/indobase/indobase/issues). Best for: bugs and errors you encounter using Indobase.
-- [Email Support](https://indobase.fun/docs/support#business-support). Best for: problems with your database or infrastructure.
-- [Discord](https://discord.indobase.fun). Best for: sharing your applications and hanging out with the community.
+- [Email Support](https://indobase.in/docs/support#business-support). Best for: problems with your database or infrastructure.
+- [Discord](https://discord.indobase.in). Best for: sharing your applications and hanging out with the community.
 
 ## How it works
 
@@ -42,8 +42,8 @@ Indobase is a combination of open source tools. We’re building the features of
 
 **Architecture**
 
-Indobase is a [hosted platform](https://indobase.fun/dashboard). You can sign up and start using Indobase without installing anything.
-You can also [self-host](https://indobase.fun/docs/guides/hosting/overview) and [develop locally](https://indobase.fun/docs/guides/local-development).
+Indobase is a [hosted platform](https://indobase.in/dashboard). You can sign up and start using Indobase without installing anything.
+You can also [self-host](https://indobase.in/docs/guides/hosting/overview) and [develop locally](https://indobase.in/docs/guides/local-development).
 
 ![Architecture](apps/docs/public/img/indobase-architecture.svg)
 
@@ -203,15 +203,15 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
 ![Made with Indobase](./apps/www/public/badge-made-with-indobase.svg)
 
 ```md
-[![Made with Indobase](https://indobase.fun/badge-made-with-indobase.svg)](https://indobase.fun)
+[![Made with Indobase](https://indobase.in/badge-made-with-indobase.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://indobase.fun">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://indobase.fun/badge-made-with-indobase.svg"
+    src="https://indobase.in/badge-made-with-indobase.svg"
     alt="Made with Indobase"
   />
 </a>
@@ -220,15 +220,15 @@ Our approach for client libraries is modular. Each sub-library is a standalone i
 ![Made with Indobase (dark)](./apps/www/public/badge-made-with-indobase-dark.svg)
 
 ```md
-[![Made with Indobase](https://indobase.fun/badge-made-with-indobase-dark.svg)](https://indobase.fun)
+[![Made with Indobase](https://indobase.in/badge-made-with-indobase-dark.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://indobase.fun">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://indobase.fun/badge-made-with-indobase-dark.svg"
+    src="https://indobase.in/badge-made-with-indobase-dark.svg"
     alt="Made with Indobase"
   />
 </a>

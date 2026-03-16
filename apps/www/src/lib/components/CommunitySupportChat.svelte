@@ -78,7 +78,7 @@
                 <div class="web-user-box-content text-caption text-primary">
                     You should be able to debug this with a few steps. Just follow this blog:
                     <a class="web-link is-pink" href="/blog/post/cors-error" target="_blank"
-                        >https://indobase.fun/blog/post/cors-error</a
+                        >https://indobase.in/blog/post/cors-error</a
                     >. Let me know if this helps 🙂
                 </div>
             </div>

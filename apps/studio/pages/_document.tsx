@@ -18,11 +18,11 @@ class MyDocument extends Document {
           <meta property="og:title" content="Indobase Studio – Project Dashboard" />
           <meta property="og:description" content="Operate your Indobase projects, inspect databases, manage auth, and monitor infrastructure in one place." />
           <meta property="og:type" content="website" />
-          <meta property="og:image" content="https://indobase.fun/assets/og/indobase-studio.png" />
+          <meta property="og:image" content="https://indobase.in/assets/og/indobase-studio.png" />
           <meta property="twitter:card" content="summary_large_image" />
           <meta property="twitter:title" content="Indobase Studio – Project Dashboard" />
           <meta property="twitter:description" content="Operate your Indobase projects, inspect databases, manage auth, and monitor infrastructure in one place." />
-          <meta property="twitter:image" content="https://indobase.fun/assets/og/indobase-studio.png" />
+          <meta property="twitter:image" content="https://indobase.in/assets/og/indobase-studio.png" />
           {/* Workaround for https://github.com/suren-atoyan/monaco-react/issues/272 */}
           <link
             rel="stylesheet"

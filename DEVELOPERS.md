@@ -26,13 +26,13 @@
 
 ## Getting started
 
-Thank you for your interest in [Indobase](https://indobase.fun) and your willingness to contribute!
+Thank you for your interest in [Indobase](https://indobase.in) and your willingness to contribute!
 
 To ensure a positive and inclusive environment, please read our [code of conduct](./CODE_OF_CONDUCT.md). We encourage you to explore the existing [issues](https://github.com/indobase/indobase/issues) to see how you can make a meaningful impact. This document will help you setup your development environment.
 
 ### Install dependencies
 
-You will need to install and configure the following dependencies on your machine to build [Indobase](https://indobase.fun):
+You will need to install and configure the following dependencies on your machine to build [Indobase](https://indobase.in):
 
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org) version as documented in [.nvmrc](./.nvmrc)
@@ -86,9 +86,9 @@ Then visit, and edit, any of the following sites:
 
 | Site                                                     | Directory      | Scope name | Description                                   | Local development server   |
 | -------------------------------------------------------- | -------------- | ---------- | --------------------------------------------- | -------------------------- |
-| [indobase.fun](https://indobase.fun)                     | `/apps/www`    | www        | The main website                              | http://localhost:3000      |
-| [indobase.fun/dashboard](https://indobase.fun/dashboard) | `/apps/studio` | studio     | Studio dashboard (requires Docker, see below) | http://localhost:8082      |
-| [indobase.fun/docs](https://indobase.fun/docs)           | `/apps/docs`   | docs       | Guides and Reference (Next.js based)          | http://localhost:3001/docs |
+| [indobase.in](https://indobase.in)                     | `/apps/www`    | www        | The main website                              | http://localhost:3000      |
+| [indobase.in/dashboard](https://indobase.in/dashboard) | `/apps/studio` | studio     | Studio dashboard (requires Docker, see below) | http://localhost:8082      |
+| [indobase.in/docs](https://indobase.in/docs)           | `/apps/docs`   | docs       | Guides and Reference (Next.js based)          | http://localhost:3001/docs |
 
 #### Running sites individually
 

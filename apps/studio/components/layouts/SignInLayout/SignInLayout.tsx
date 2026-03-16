@@ -117,7 +117,7 @@ const SignInLayout = ({
           <nav className="relative flex items-center justify-between sm:h-10">
             <div className="flex items-center flex-grow flex-shrink-0 lg:flex-grow-0">
               <div className="flex items-center justify-between w-full md:w-auto">
-                <Link href={logoLinkToMarketingSite ? 'https://indobase.fun' : '/organizations'}>
+                <Link href={logoLinkToMarketingSite ? 'https://indobase.in' : '/organizations'}>
                   <img
                     src={
                       resolvedTheme?.includes('dark')
@@ -151,16 +151,16 @@ const SignInLayout = ({
             {showDisclaimer && showTos && (
               <div className="text-center text-balance">
                 <p className="text-xs text-foreground-lighter sm:mx-auto sm:max-w-sm">
-                  By continuing, you agree to Supabase’s{' '}
+                  By continuing, you agree to Indobase’s{' '}
                   <Link
-                    href="https://supabase.com/terms"
+                    href="https://indobase.in/terms"
                     className="underline hover:text-foreground-light"
                   >
                     Terms of Service
                   </Link>{' '}
                   and{' '}
                   <Link
-                    href="https://supabase.com/privacy"
+                    href="https://indobase.in/privacy"
                     className="underline hover:text-foreground-light"
                   >
                     Privacy Policy

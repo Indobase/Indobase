@@ -21,7 +21,7 @@ export function saveReferrerAndUtmSource(url: URL) {
     const utmSource = params.get('utm_source');
     const utmMedium = params.get('utm_medium');
     const utmCampaign = params.get('utm_campaign');
-    const referrer = document.referrer.includes('//indobase.fun')
+    const referrer = document.referrer.includes('//indobase.in')
         ? null
         : document.referrer || null;
 

@@ -162,7 +162,7 @@ export const socials: Array<Social> = [
     {
         icon: 'web-icon-discord',
         label: 'Discord',
-        link: 'https://indobase.fun/discord'
+        link: 'https://indobase.in/discord'
     },
     {
         icon: 'web-icon-github',
@@ -192,7 +192,7 @@ export const socials: Array<Social> = [
     {
         icon: 'web-icon-bluesky',
         label: 'Bluesky',
-        link: 'https://bsky.app/profile/indobase.fun'
+        link: 'https://bsky.app/profile/indobase.in'
     },
     {
         icon: 'web-icon-tiktok',
@@ -202,6 +202,6 @@ export const socials: Array<Social> = [
     {
         icon: 'web-icon-instagram',
         label: 'Instagram',
-        link: 'https://instagram.com/indobase.fun'
+        link: 'https://instagram.com/indobase.in'
     }
 ];

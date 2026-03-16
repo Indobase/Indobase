@@ -8,7 +8,7 @@
     const { class: className }: Props = $props();
 </script>
 
-<Button variant="secondary" class={className} href="https://indobase.fun/discord">
+<Button variant="secondary" class={className} href="https://indobase.in/discord">
     <Icon name="discord" />
     <span class="text">Join Discord</span>
 </Button>

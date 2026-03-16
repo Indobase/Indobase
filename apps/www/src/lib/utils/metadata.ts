@@ -1,6 +1,6 @@
 import type { AuthorData } from '$routes/blog/content';
 
-export const DEFAULT_HOST = 'https://indobase.fun';
+export const DEFAULT_HOST = 'https://indobase.in';
 export const DEFAULT_DESCRIPTION =
     'Indobase is an open-source platform for building applications at any scale, using your preferred programming languages and tools.';
 
@@ -27,7 +27,7 @@ export function organizationJsonSchema() {
     return JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        url: 'https://indobase.fun',
+        url: 'https://indobase.in',
         sameAs: [
             'https://www.linkedin.com/company/indobase',
             'https://github.com/indobase/indobase',
@@ -38,7 +38,7 @@ export function organizationJsonSchema() {
         legalName: 'Indobase Technologies Ltd.',
         description:
             'A secure open-source backend server provides the core APIs required to build web and mobile applications. Indobase provides authentication, database, storage, functions, messaging, and advanced realtime capabilities.',
-        logo: 'https://indobase.fun/assets/logotype/indobase-white.png'
+        logo: 'https://indobase.in/assets/logotype/indobase-white.png'
     });
 }
 
@@ -106,14 +106,14 @@ export function createBreadcrumbsSchema(articleInfo: {
             {
                 '@type': 'ListItem',
                 position: 1,
-                name: 'Blog',
-                item: 'https://indobase.fun/blog'
+                    name: 'Blog',
+                    item: 'https://indobase.in/blog'
             },
             {
                 '@type': 'ListItem',
                 position: 2,
                 name: articleInfo.category,
-                item: `https://indobase.fun/blog?category=${articleInfo.category}`
+                item: `https://indobase.in/blog?category=${articleInfo.category}`
             },
             {
                 '@type': 'ListItem',

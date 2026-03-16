@@ -7,7 +7,7 @@ import { env as publicEnv } from '$env/dynamic/public';
 
 const client = new Client();
 
-const endpoint = publicEnv.PUBLIC_APPWRITE_ENDPOINT ?? 'https://indobase.fun/api/v1';
+const endpoint = publicEnv.PUBLIC_APPWRITE_ENDPOINT ?? 'https://indobase.in/api/v1';
 
 // Guard for SSR
 if (endpoint) {
@@ -44,7 +44,7 @@ export function displayHiringMessage() {
             'font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px;'
         );
         console.log(
-            '%cCheck out our open positions at https://indobase.fun/careers',
+            '%cCheck out our open positions at https://indobase.in/careers',
             'font-family: monospace; color: #666;'
         );
     }

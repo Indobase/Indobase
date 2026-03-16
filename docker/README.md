@@ -27,7 +27,7 @@ The image sets default `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEME
 
 For setup and configuration, see:
 
-- **[Indobase self-hosting](https://indobase.fun/docs/guides/hosting/overview)** – Overview and options
+- **[Indobase self-hosting](https://indobase.in/docs/guides/hosting/overview)** – Overview and options
 - **[Single-domain deployment](../SINGLE_DOMAIN.md)** – Deploy marketing, Studio, and backend on one domain (e.g. indobase.fun)
 - **[WIRING.md](../WIRING.md)** – How marketing, Studio, and backend URLs and env are wired
 
@@ -59,7 +59,7 @@ This Docker Compose configuration includes the following services:
 
 ## Documentation
 
-- **[Indobase docs](https://indobase.fun/docs)** – Guides and reference
+- **[Indobase docs](https://indobase.in/docs)** – Guides and reference
 - **[CHANGELOG.md](./CHANGELOG.md)** – Recent changes to services
 - **[versions.md](./versions.md)** – Docker image versions for rollback
 
@@ -80,7 +80,7 @@ To update your self-hosted Indobase instance:
 
 - [GitHub Discussions](https://github.com/indobase/indobase/discussions) – Questions and feature requests
 - [GitHub Issues](https://github.com/indobase/indobase/issues) – Bug reports
-- [Discord](https://discord.indobase.fun) – Community chat
+- [Discord](https://discord.indobase.in) – Community chat
 
 ## Important Notes
 
@@ -97,7 +97,7 @@ Before deploying to production you must:
 - Review network security (ACLs, etc.)
 - Set up backup procedures
 
-See the [security section](https://indobase.fun/docs/guides/hosting/overview) in the documentation where applicable.
+See the [security section](https://indobase.in/docs/guides/hosting/overview) in the documentation where applicable.
 
 ## License
 

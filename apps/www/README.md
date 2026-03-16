@@ -1,4 +1,4 @@
-The Indobase Website repo features the main Indobase website, including our [homepage](https://indobase.fun), [docs](https://indobase.fun/docs), and upcoming blog.
+The Indobase Website repo features the main Indobase website, including our [homepage](https://indobase.in), [docs](https://indobase.in/docs), and upcoming blog.
 
 The Indobase Website has been built with the following frameworks:
 
@@ -25,11 +25,11 @@ We truly ❤️ pull requests! If you wish to help, you can learn more about how
 
 ## Security
 
-For security issues, kindly email us at [security@indobase.fun](mailto:security@indobase.fun) instead of posting a public issue on GitHub.
+For security issues, kindly email us at [security@indobase.in](mailto:security@indobase.in) instead of posting a public issue on GitHub.
 
 ## Follow Us
 
-Join our growing community around the world! See our official [Blog](https://indobase.fun/blog). Follow us on [X](https://twitter.com/indobase), [Facebook Page](https://www.facebook.com/indobase), [Facebook Group](https://www.facebook.com/groups/indobase.developers/), and [Dev Community](https://dev.to/indobase) or join our live [Discord server](https://indobase.fun/discord) for more help, ideas, and discussions.
+Join our growing community around the world! See our official [Blog](https://indobase.in/blog). Follow us on [X](https://twitter.com/indobase), [Facebook Page](https://www.facebook.com/indobase), [Facebook Group](https://www.facebook.com/groups/indobase.developers/), and [Dev Community](https://dev.to/indobase) or join our live [Discord server](https://indobase.in/discord) for more help, ideas, and discussions.
 
 ## License
 

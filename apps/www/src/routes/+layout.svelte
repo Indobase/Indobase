@@ -157,7 +157,7 @@
         <!-- End cookieyes banner -->
 
         <!--suppress JSUnresolvedLibraryURL -->
-        <script defer data-domain="indobase.fun" src="https://plausible.io/js/script.js"></script>
+        <script defer data-domain="indobase.in" src="https://plausible.io/js/script.js"></script>
 
         <!-- ZoomInfo snippet -->
         <script defer src="/scripts/zoominfo.js"></script>

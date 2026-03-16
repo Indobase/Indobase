@@ -9,7 +9,7 @@
 
     let { href, title, children }: LinkProps = $props();
 
-    const whitelisted = ['indobase.fun'];
+    const whitelisted = ['indobase.in'];
 
     const isExternal = ['http://', 'https://'].some((prefix) => {
         if (href.startsWith(prefix)) {

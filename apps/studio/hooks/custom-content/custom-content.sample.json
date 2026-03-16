@@ -14,7 +14,7 @@
       "description": "This is a description of Document 1",
       "action": {
         "text": "Download document",
-        "url": "https://indobase.fun"
+        "url": "https://indobase.in"
       }
     },
     {
@@ -23,7 +23,7 @@
       "description": "This is a description of Document 2",
       "action": {
         "text": "Download document",
-        "url": "https://indobase.fun"
+        "url": "https://indobase.in"
       }
     }
   ],
@@ -40,14 +40,14 @@
     {
       "title": "Framework 1",
       "description": "This is a description of Framework 1",
-      "iconUrl": "https://indobase.fun/dashboard/img/indobase-logo.svg",
-      "url": "https://indobase.fun"
+      "iconUrl": "https://indobase.in/dashboard/img/indobase-logo.svg",
+      "url": "https://indobase.in"
     },
     {
       "title": "Framework 2",
       "description": "This is a description of Framework 2",
-      "iconUrl": "https://indobase.fun/dashboard/img/indobase-logo.svg",
-      "url": "https://indobase.fun"
+      "iconUrl": "https://indobase.in/dashboard/img/indobase-logo.svg",
+      "url": "https://indobase.in"
     }
   ],
 

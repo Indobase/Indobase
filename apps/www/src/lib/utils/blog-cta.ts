@@ -45,7 +45,7 @@ const AUTH_CTA: BlogCtaConfig = {
     heading: 'Customer identity without the hassle',
     description: 'Add secure authentication in minutes, not weeks.',
     label: 'Request a demo',
-    href: 'https://indobase.fun/contact-us/enterprise',
+    href: 'https://indobase.in/contact-us/enterprise',
     event: 'blog-cta-auth-demo-btn-click',
     points: [
         'Built-in security and compliance',

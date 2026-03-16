@@ -28,7 +28,7 @@
             <li>
                 <a
                     class="web-link"
-                    href="https://status.indobase.fun"
+                    href="https://status.indobase.in"
                     target="_blank"
                     rel="noopener noreferrer"
                 >

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   applicationName: 'Learn Indobase',
   title: 'Learn Indobase',
   description: 'Learn Indobase.',
-  metadataBase: new URL('https://indobase.fun/learn'),
+  metadataBase: new URL('https://indobase.in/learn'),
   icons: genFaviconData(BASE_PATH),
   openGraph: {
     type: 'article',

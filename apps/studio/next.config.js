@@ -44,7 +44,7 @@ const nextConfig = {
       { source: '/contact-us/enterprise', destination: '/index.html' },
       {
         source: `/.well-known/vercel/flags`,
-        destination: `https://indobase.fun/.well-known/vercel/flags`,
+        destination: `https://indobase.in/.well-known/vercel/flags`,
         basePath: false,
       },
     ]

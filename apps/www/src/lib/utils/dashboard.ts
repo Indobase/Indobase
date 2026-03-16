@@ -2,7 +2,7 @@ import { getUtmSourceForLink } from '$lib/utils/utm';
 import { browser } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
 
-const DEFAULT_CONSOLE_BASE = 'https://indobase.fun/dashboard';
+const DEFAULT_CONSOLE_BASE = 'https://indobase.in/dashboard';
 
 function normalizeConsoleBase(raw: string): string {
     const trimmed = raw.replace(/\/$/, '');
@@ -10,11 +10,11 @@ function normalizeConsoleBase(raw: string): string {
         const url = new URL(trimmed);
         const host = url.host;
         const path = url.pathname;
-        if (host === 'studio.indobase.fun') {
-            return 'https://indobase.fun/dashboard';
+        if (host === 'studio.indobase.in') {
+            return 'https://indobase.in/dashboard';
         }
-        if (host === 'indobase.fun' && path === '') {
-            return 'https://indobase.fun/dashboard';
+        if (host === 'indobase.in' && path === '') {
+            return 'https://indobase.in/dashboard';
         }
     } catch {
         return trimmed;
