@@ -12,6 +12,7 @@ class MyDocument extends Document {
     return (
       <Html lang="en">
         <Head>
+          <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/favicon-indobase.svg`} />
           {/* Workaround for https://github.com/suren-atoyan/monaco-react/issues/272 */}
           <link
             rel="stylesheet"
