@@ -9,7 +9,6 @@ on:
 
 env:
   DOCKERHUB_REPO: roshanraghavander/ind-repo
-  NEXT_PUBLIC_BASE_PATH: /dashboard
   SKIP_ASSET_UPLOAD: "1"
 
 jobs:
@@ -40,7 +39,6 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_BASE_PATH=${{ env.NEXT_PUBLIC_BASE_PATH }}
             SKIP_ASSET_UPLOAD=${{ env.SKIP_ASSET_UPLOAD }}
           push: true
           tags: |
