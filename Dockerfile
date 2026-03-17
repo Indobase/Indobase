@@ -25,7 +25,7 @@ COPY --from=build-www /workspace/apps/www/build/client /tmp/www-client
 RUN mkdir -p /tmp/studio-public && cp -r /workspace/apps/studio/public/. /tmp/studio-public/ && \
     cp -r /tmp/www-client/. /workspace/apps/studio/public/ && \
     cp -r /tmp/studio-public/. /workspace/apps/studio/public/
-ARG NEXT_PUBLIC_BASE_PATH=/dashboard
+ARG NEXT_PUBLIC_BASE_PATH=
 ARG SKIP_ASSET_UPLOAD=1
 ARG NEXT_PUBLIC_IS_PLATFORM=true
 ARG NEXT_PUBLIC_API_URL=https://api.indobase.fun
