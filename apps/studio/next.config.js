@@ -56,6 +56,12 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Keep marketing at /, but make /dashboard land in Studio
+      {
+        source: '/dashboard',
+        destination: '/dashboard/sign-in',
+        permanent: false,
+      },
       ...(process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
         ? [
             {
