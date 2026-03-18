@@ -27,16 +27,16 @@
 <feGaussianBlur stdDeviation="34.8011" result="effect1_foregroundBlur_147_2"/>
 </filter>
 <radialGradient id="paint0_radial_147_2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(364.108 363.846) rotate(37.0985) scale(209.04 209.04)">
-<stop offset="0.0625" stop-color="#FE9567"/>
-<stop offset="0.421875" stop-color="#FD366E"/>
+<stop offset="0.0625" stop-color="#FF9933"/>
+<stop offset="0.421875" stop-color="#FF9933"/>
 </radialGradient>
 <radialGradient id="paint1_radial_147_2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(426.888 326.547) rotate(90) scale(41.5954 119.581)">
-<stop stop-color="#FE9567"/>
-<stop offset="1" stop-color="#FE9567" stop-opacity="0"/>
+<stop stop-color="#FF9933"/>
+<stop offset="1" stop-color="#FF9933" stop-opacity="0"/>
 </radialGradient>
 <radialGradient id="paint2_radial_147_2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(412.369 262.027) rotate(90) scale(40.0587 98.4768)">
-<stop stop-color="#FE9567"/>
-<stop offset="1" stop-color="#FD366E"/>
+<stop stop-color="#FF9933"/>
+<stop offset="1" stop-color="#FF9933"/>
 </radialGradient>
 </defs>
 </svg>
