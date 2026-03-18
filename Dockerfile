@@ -27,8 +27,8 @@ RUN mkdir -p /tmp/studio-public && cp -r /workspace/apps/studio/public/. /tmp/st
     cp -r /tmp/studio-public/. /workspace/apps/studio/public/
 ARG NEXT_PUBLIC_BASE_PATH=
 ARG SKIP_ASSET_UPLOAD=1
-ARG NEXT_PUBLIC_IS_PLATFORM=true
-ARG NEXT_PUBLIC_API_URL=https://api.indobase.fun
+ARG NEXT_PUBLIC_IS_PLATFORM=false
+ARG NEXT_PUBLIC_API_URL=https://api.indobase.in
 ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 ENV SKIP_ASSET_UPLOAD=${SKIP_ASSET_UPLOAD}
 ENV NEXT_PUBLIC_IS_PLATFORM=${NEXT_PUBLIC_IS_PLATFORM}
