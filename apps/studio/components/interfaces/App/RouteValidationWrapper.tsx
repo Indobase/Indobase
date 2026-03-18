@@ -40,6 +40,12 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     // this is used by database.dev, usually as /new/new-project
     '/new/[slug]',
     '/join',
+    '/sign-in',
+    '/sign-up',
+    '/sign-in-sso',
+    '/sign-in-mfa',
+    '/sign-in-partner',
+    '/sign-in-fly-tos',
   ]
 
   /**
@@ -75,6 +81,29 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
       }
     }
   }, [orgsInitialized])
+
+  // In self-hosted mode, `withAuth()` intentionally skips auth checks.
+  // To make sure users land on the signup/signin flow instead of dashboard pages,
+  // we do a lightweight redirect here when there is no session.
+  useEffect(() => {
+    if (IS_PLATFORM) return
+    if (isLoggedIn) return
+    if (isExceptUrl()) return
+
+    const asPath = router.asPath ?? ''
+    const dashboardPrefix = asPath.startsWith('/dashboard') ? '/dashboard' : ''
+
+    // Avoid a redirect loop if we are already on the sign-in pages.
+    if (
+      router.pathname === '/sign-in' ||
+      router.pathname === '/sign-up' ||
+      router.pathname.startsWith('/sign-in')
+    ) {
+      return
+    }
+
+    router.push(`${dashboardPrefix}/sign-in`)
+  }, [IS_PLATFORM, isLoggedIn, router, router.asPath])
 
   useEffect(() => {
     // check if current route is excempted from route validation check

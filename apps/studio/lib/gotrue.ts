@@ -27,13 +27,49 @@ export const getUserClaims = async (
   token: String
 ): Promise<{ error: any | null; claims: JwtPayload | null }> => {
   try {
-    const { data, error } = await auth.getClaims(token.replace(/bearer /i, ''))
+    const accessToken = token.replace(/^bearer\s+/i, '')
+    const { data, error } = await auth.getClaims(accessToken)
     if (error) throw error
 
     return { claims: data?.claims ?? null, error: null }
   } catch (err) {
-    console.error(err)
-    return { claims: null, error: err }
+    // Fallback for self-hosted setups where NEXT_PUBLIC_GOTRUE_URL might not be set
+    // (we still have SUPABASE_URL + SUPABASE_ANON_KEY in the backend stack).
+    try {
+      const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_ANON_KEY
+      const supabaseUrl = process.env.SUPABASE_URL
+
+      const gotrueBaseUrl =
+        process.env.NEXT_PUBLIC_GOTRUE_URL ||
+        (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/auth/v1` : undefined)
+
+      if (!anonKey || !gotrueBaseUrl) {
+        console.error(err)
+        return { claims: null, error: err }
+      }
+
+      const claimsUrl = `${gotrueBaseUrl.replace(/\/$/, '')}/claims`
+      const r = await fetch(claimsUrl, {
+        method: 'GET',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const json = await r.json().catch(() => null)
+      if (!r.ok) {
+        return { claims: null, error: json ?? err }
+      }
+
+      // auth-js typically returns { claims: <jwt> }
+      const claims = json?.claims ?? json
+      return { claims: (claims ?? null) as JwtPayload | null, error: null }
+    } catch (fallbackErr) {
+      console.error(fallbackErr)
+      return { claims: null, error: fallbackErr }
+    }
   }
 }
 
