@@ -34,7 +34,7 @@ export async function apiAuthenticate(
  *  user with only id prop or detail object. It depends on requireUserDetail config
  */
 export async function fetchUserClaims(req: NextApiRequest): Promise<JwtPayload> {
-  const token = req.headers.authorization?.replace(/bearer /i, '')
+  const token = req.headers.authorization?.replace(/^bearer\s+/i, '')
   if (!token) {
     throw new Error('missing access token')
   }

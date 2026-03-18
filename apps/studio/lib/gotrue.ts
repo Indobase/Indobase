@@ -27,7 +27,8 @@ export const getUserClaims = async (
   token: String
 ): Promise<{ error: any | null; claims: JwtPayload | null }> => {
   try {
-    const { data, error } = await auth.getClaims(token.replace(/bearer /i, ''))
+    const accessToken = token.replace(/^bearer\s+/i, '')
+    const { data, error } = await auth.getClaims(accessToken)
     if (error) throw error
 
     return { claims: data?.claims ?? null, error: null }
@@ -35,7 +36,6 @@ export const getUserClaims = async (
     // Fallback for self-hosted setups where NEXT_PUBLIC_GOTRUE_URL might not be set
     // (we still have SUPABASE_URL + SUPABASE_ANON_KEY in the backend stack).
     try {
-      const accessToken = token.replace(/bearer /i, '')
       const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_ANON_KEY
       const supabaseUrl = process.env.SUPABASE_URL
 
