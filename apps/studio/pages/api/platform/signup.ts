@@ -38,15 +38,17 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_ANON_KEY
+  // IMPORTANT: Avoid using NEXT_PUBLIC_* vars in server routes as they can be
+  // inlined at build time. Always prefer runtime server env values.
   const gotrueUrl =
-    process.env.NEXT_PUBLIC_GOTRUE_URL ||
+    process.env.GOTRUE_URL ||
     (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKey) {
     return res.status(500).json({ message: 'Missing SUPABASE_ANON_KEY' })
   }
   if (!gotrueUrl) {
-    return res.status(500).json({ message: 'Missing NEXT_PUBLIC_GOTRUE_URL (or SUPABASE_URL)' })
+    return res.status(500).json({ message: 'Missing GOTRUE_URL (or SUPABASE_URL)' })
   }
 
   const signupUrl = new URL(gotrueUrl.replace(/\/$/, '') + '/signup')
@@ -77,7 +79,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       message: 'Failed to reach GoTrue signup endpoint',
       error: {
         target: signupUrl.toString(),
-        gotrueUrlSource: process.env.NEXT_PUBLIC_GOTRUE_URL ? 'NEXT_PUBLIC_GOTRUE_URL' : 'SUPABASE_URL',
+        gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
         gotrueUrl,
         cause: e?.cause?.code ?? e?.code ?? e?.message ?? String(e),
       },
