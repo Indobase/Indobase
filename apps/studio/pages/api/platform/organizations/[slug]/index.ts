@@ -37,6 +37,15 @@ async function handler(
   }
 }
 
+const parseRequestBody = (body: NextApiRequest['body']) => {
+  if (typeof body !== 'string') return body ?? {}
+  try {
+    return JSON.parse(body)
+  } catch {
+    return null
+  }
+}
+
 const handleGet = async (
   _req: NextApiRequest,
   res: NextApiResponse,
@@ -54,7 +63,8 @@ const handlePatch = async (
   claims: JwtPayload | undefined,
   slug: string
 ) => {
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}
+  const body = parseRequestBody(req.body)
+  if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
 
   const org = await updateOrganization({
     claims: claims as any,

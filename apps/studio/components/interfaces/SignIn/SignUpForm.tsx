@@ -88,11 +88,8 @@ export const SignUpForm = () => {
     }
 
     const isInsideOAuthFlow = !!searchParams.auth_id
-    const redirectUrlBase = `${
-      process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
-        ? location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL
-    }${BASE_PATH}`
+    // Use browser origin at runtime so deploy-time env mismatches don't force localhost.
+    const redirectUrlBase = `${location.origin}${BASE_PATH}`
 
     let redirectTo: string
 
@@ -132,7 +129,7 @@ export const SignUpForm = () => {
             <AlertTitle_Shadcn_>Check your email to confirm</AlertTitle_Shadcn_>
             <AlertDescription_Shadcn_ className="text-xs">
               You've successfully signed up. Please check your email to confirm your account before
-              signing in to the Supabase dashboard. The confirmation link expires in 10 minutes.
+              signing in to the Indobase dashboard. The confirmation link expires in 10 minutes.
             </AlertDescription_Shadcn_>
           </Alert_Shadcn_>
         </motion.div>

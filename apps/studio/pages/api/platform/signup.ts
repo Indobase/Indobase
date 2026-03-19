@@ -37,7 +37,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ message: 'Email and password are required' })
   }
 
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_ANON_KEY
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY
   // IMPORTANT: Avoid using NEXT_PUBLIC_* vars in server routes as they can be
   // inlined at build time. Always prefer runtime server env values.
   const gotrueUrl =

@@ -12,7 +12,7 @@ import {
 } from 'react'
 
 import { clearLocalStorage } from './constants/local-storage'
-import { gotrueClient, type User } from './gotrue'
+import { gotrueClient, STORAGE_KEY, type User } from './gotrue'
 
 export type { User }
 
@@ -176,5 +176,24 @@ export async function getAccessToken() {
     throw error
   }
 
-  return session?.access_token
+  // In some auth timing/storage mismatch scenarios, `getSession()` may return null
+  // even though the token was just issued. Fall back to the persisted session
+  // payload from localStorage so API calls still carry Authorization header.
+  if (session?.access_token) return session.access_token
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return undefined
+
+    const parsed = JSON.parse(raw)
+    const token =
+      parsed?.access_token ??
+      // Older shapes may nest under session
+      parsed?.session?.access_token ??
+      parsed?.data?.session?.access_token
+
+    return typeof token === 'string' ? token : undefined
+  } catch {
+    return undefined
+  }
 }

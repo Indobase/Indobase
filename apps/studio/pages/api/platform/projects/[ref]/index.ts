@@ -23,6 +23,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
   }
 }
 
+const parseRequestBody = (body: NextApiRequest['body']) => {
+  if (typeof body !== 'string') return body ?? {}
+  try {
+    return JSON.parse(body)
+  } catch {
+    return null
+  }
+}
+
 const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const { ref } = req.query
   if (typeof ref !== 'string' || !ref) return res.status(400).json({ message: 'Project ref is required' })
@@ -36,7 +45,8 @@ const handlePatch = async (req: NextApiRequest, res: NextApiResponse, claims?: J
   const { ref } = req.query
   if (typeof ref !== 'string' || !ref) return res.status(400).json({ message: 'Project ref is required' })
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}
+  const body = parseRequestBody(req.body)
+  if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
   const updated = await updateProject({
     claims: claims as any,
     ref,

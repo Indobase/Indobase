@@ -640,11 +640,20 @@ export async function deleteOrganization({ claims, slug }: { claims: Claims; slu
   await ensurePlatformTables()
   const gotrueId = getGotrueUserId(claims)
 
-  // Delete projects first so we don't leave orphans.
-  await executeQuery({
-    query: `delete from platform.projects where organization_slug = $1`,
-    parameters: [slug],
+  // Delete only projects that belong to an organization the current user owns.
+  // This avoids accidental cross-tenant deletion when a slug is provided for an org
+  // the user does not own.
+  const deleteProjects = await executeQuery({
+    query: `
+      delete from platform.projects p
+      using platform.organizations o
+      where o.id = p.organization_id
+        and o.slug = $1
+        and o.owner_gotrue_id = $2
+    `,
+    parameters: [slug, gotrueId],
   })
+  if (deleteProjects.error) throw deleteProjects.error
 
   const deleted = await executeQuery<{ slug: string }>({
     query: `delete from platform.organizations where slug = $1 and owner_gotrue_id = $2 returning slug`,

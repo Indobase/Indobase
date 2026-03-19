@@ -23,6 +23,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
   }
 }
 
+const parseRequestBody = (body: NextApiRequest['body']) => {
+  if (typeof body !== 'string') return body ?? {}
+  try {
+    return JSON.parse(body)
+  } catch {
+    return null
+  }
+}
+
 const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const profile = await getProfile({ claims: claims as any })
   if (!profile) return res.status(404).json({ message: "User's profile not found" })
@@ -35,7 +44,8 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
 }
 
 const handlePatch = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}
+  const body = parseRequestBody(req.body)
+  if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
 
   const updated = await updateProfile({
     claims: claims as any,
