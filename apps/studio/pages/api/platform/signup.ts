@@ -34,7 +34,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
 
   const { email, password, hcaptchaToken, redirectTo } = payload
   if (!email || !password) {
-    return res.status(400).json({ error: { message: 'Email and password are required' } })
+    return res.status(400).json({ message: 'Email and password are required' })
   }
 
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_ANON_KEY
@@ -43,10 +43,10 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKey) {
-    return res.status(500).json({ error: { message: 'Missing SUPABASE_ANON_KEY' } })
+    return res.status(500).json({ message: 'Missing SUPABASE_ANON_KEY' })
   }
   if (!gotrueUrl) {
-    return res.status(500).json({ error: { message: 'Missing NEXT_PUBLIC_GOTRUE_URL (or SUPABASE_URL)' } })
+    return res.status(500).json({ message: 'Missing NEXT_PUBLIC_GOTRUE_URL (or SUPABASE_URL)' })
   }
 
   const signupUrl = new URL(gotrueUrl.replace(/\/$/, '') + '/signup')
@@ -74,8 +74,8 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     // Make debugging deploy/network issues possible from the browser.
     // Do not include secrets in the response.
     return res.status(502).json({
+      message: 'Failed to reach GoTrue signup endpoint',
       error: {
-        message: 'Failed to reach GoTrue signup endpoint',
         target: signupUrl.toString(),
         gotrueUrlSource: process.env.NEXT_PUBLIC_GOTRUE_URL ? 'NEXT_PUBLIC_GOTRUE_URL' : 'SUPABASE_URL',
         gotrueUrl,
@@ -87,8 +87,29 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const text = await r.text()
   try {
     const json = text ? JSON.parse(text) : null
+
+    // Normalize error shape so `handleError()` can surface a useful message in the UI.
+    if (!r.ok) {
+      const message =
+        json?.message ??
+        json?.msg ??
+        json?.error_description ??
+        json?.error?.message ??
+        'Signup failed'
+
+      // Preserve original response payload for debugging.
+      return res.status(r.status).json({
+        ...(typeof json === 'object' && json ? json : {}),
+        message,
+        error: json?.error ?? json,
+      })
+    }
+
     return res.status(r.status).json(json)
   } catch {
+    if (!r.ok) {
+      return res.status(r.status).json({ message: text || 'Signup failed' })
+    }
     return res.status(r.status).send(text)
   }
 }
