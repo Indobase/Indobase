@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   sync:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
 
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SEARCH_SUPABASE_URL }}

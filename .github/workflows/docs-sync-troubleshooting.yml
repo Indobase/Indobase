@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   update-troubleshooting:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
 
     env:
       DOCS_GITHUB_APP_ID: ${{ secrets.SEARCH_GITHUB_APP_ID }}

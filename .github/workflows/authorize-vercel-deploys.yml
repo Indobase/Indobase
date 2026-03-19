@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   authorize-vercel-deploys:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
 
     steps:
       # Checkout the master branch from the supabase repo and run that script to authorize Vercel deploys
