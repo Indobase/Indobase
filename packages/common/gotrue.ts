@@ -182,6 +182,11 @@ export const gotrueClient = new AuthClient({
   url: process.env.NEXT_PUBLIC_GOTRUE_URL,
   storageKey: STORAGE_KEY,
   detectSessionInUrl: shouldDetectSessionInUrl,
+  // Kong's `key-auth` plugin for `/auth/v1/*` expects an `apikey` header.
+  // `NEXT_PUBLIC_ANON_KEY` is baked at build-time into this client bundle.
+  headers: {
+    apikey: process.env.NEXT_PUBLIC_ANON_KEY ?? '',
+  },
   debug: debug ? (persistedDebug ? logIndexedDB : true) : false,
   lock: navigatorLockEnabled ? debuggableNavigatorLock : undefined,
   ...('localStorage' in globalThis
