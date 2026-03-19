@@ -59,15 +59,30 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     body.captcha_token = hcaptchaToken
   }
 
-  const r = await fetch(signupUrl.toString(), {
-    method: 'POST',
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  let r: Response
+  try {
+    r = await fetch(signupUrl.toString(), {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (e: any) {
+    // Make debugging deploy/network issues possible from the browser.
+    // Do not include secrets in the response.
+    return res.status(502).json({
+      error: {
+        message: 'Failed to reach GoTrue signup endpoint',
+        target: signupUrl.toString(),
+        gotrueUrlSource: process.env.NEXT_PUBLIC_GOTRUE_URL ? 'NEXT_PUBLIC_GOTRUE_URL' : 'SUPABASE_URL',
+        gotrueUrl,
+        cause: e?.cause?.code ?? e?.code ?? e?.message ?? String(e),
+      },
+    })
+  }
 
   const text = await r.text()
   try {
