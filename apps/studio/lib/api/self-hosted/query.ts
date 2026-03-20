@@ -1,6 +1,6 @@
 import { PG_META_URL } from 'lib/constants/index'
 import { constructHeaders } from '../apiHelpers'
-import { PgMetaDatabaseError, databaseErrorSchema, WrappedResult } from './types'
+import { PgMetaDatabaseError, WrappedResult } from './types'
 import { assertSelfHosted, encryptString, getConnectionString } from './util'
 
 export type QueryOptions = {
@@ -45,7 +45,19 @@ export async function executeQuery<T = unknown>({
     const result = await response.json()
 
     if (!response.ok) {
-      const { message, code, formattedError } = databaseErrorSchema.parse(result)
+      // pg-meta error payloads are not always consistent; in particular,
+      // `formattedError` may be missing. Never let schema validation crash
+      // the self-hosted platform API.
+      const raw: any = result
+      const message = typeof raw?.message === 'string' ? raw.message : 'Database error'
+      const code = typeof raw?.code === 'string' ? raw.code : 'UNKNOWN'
+      const formattedError =
+        typeof raw?.formattedError === 'string'
+          ? raw.formattedError
+          : typeof raw?.formatted_error === 'string'
+            ? raw.formatted_error
+            : ''
+
       const error = new PgMetaDatabaseError(message, code, response.status, formattedError)
       return { data: undefined, error }
     }
