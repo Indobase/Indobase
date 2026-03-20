@@ -10,8 +10,7 @@ export default (req: NextApiRequest, res: NextApiResponse) =>
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case 'POST':
-      // OpenAPI expects `201` with no response body.
-      res.status(201).end()
+      res.status(201).json({})
       return
     default:
       res.setHeader('Allow', ['POST'])

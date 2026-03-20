@@ -56,7 +56,7 @@ import { ProfileProvider } from 'lib/profile'
 import { Telemetry } from 'lib/telemetry'
 import Head from 'next/head'
 import { NuqsAdapter } from 'nuqs/adapters/next/pages'
-import { ErrorInfo, useCallback, type ComponentProps } from 'react'
+import { ErrorInfo, useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { AiAssistantStateContextProvider } from 'state/ai-assistant-state'
 import type { AppPropsWithLayout } from 'types'
@@ -124,6 +124,12 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
 
   const cloudProvider = useDefaultProvider()
 
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const getConfigCatFlags = useCallback(
     (userEmail?: string) => {
       const customAttributes = cloudProvider ? { cloud_provider: cloudProvider } : undefined
@@ -131,6 +137,8 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
     },
     [cloudProvider]
   )
+
+  if (!isMounted) return null
 
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorBoundaryState} onError={errorBoundaryHandler}>

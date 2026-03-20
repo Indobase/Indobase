@@ -198,7 +198,14 @@ export const SignInForm = () => {
         </div>
 
         <LastSignInWrapper type="email">
-          <Button block form={formId} htmlType="submit" size="large" loading={isSubmitting}>
+          <Button
+            block
+            form={formId}
+            htmlType="submit"
+            size="large"
+            type="warning"
+            loading={isSubmitting}
+          >
             Sign in
           </Button>
         </LastSignInWrapper>

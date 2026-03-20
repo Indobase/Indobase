@@ -9,7 +9,35 @@ import { DocsButton } from 'components/ui/DocsButton'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { BASE_PATH, DOCS_URL } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
-import { tweets } from 'shared-data'
+
+type Testimonial = {
+  text: string
+  name: string
+  role?: string
+}
+
+const testimonials: Testimonial[] = [
+  {
+    text: 'Indobase made our onboarding flow simple and fast. The setup felt effortless.',
+    name: 'Sivakumar gingee',
+    role: 'Engineering Lead',
+  },
+  {
+    text: 'The dashboard is clean, fast, and easy to understand. Indobase just works.',
+    name: 'Roshan Raghavander',
+    role: 'Product Manager',
+  },
+  {
+    text: 'We shipped our MVP in days with Indobase. The developer experience is excellent.',
+    name: 'Prabhu',
+    role: 'Founder',
+  },
+  {
+    text: 'Indobase helped us move from idea to production quickly and confidently.',
+    name: 'Aniket',
+    role: 'Full-stack Developer',
+  },
+]
 
 type SignInLayoutProps = {
   heading: string
@@ -78,33 +106,35 @@ const SignInLayout = ({
       .catch(() => {}) // catch all errors thrown by auth methods
   }, [])
 
-  const [quote, setQuote] = useState<{
-    text: string
-    url: string
-    handle: string
-    img_url: string
-  } | null>(null)
+  const [quote, setQuote] = useState<Testimonial | null>(null)
 
   useEffect(() => {
     // Weighted random selection
     // Calculate total weight (default weight is fallbackWeight for tweets without weight specified)
     const fallbackWeight = 1
-    const totalWeight = tweets.reduce((sum, tweet) => sum + (tweet.weight ?? fallbackWeight), 0)
+    const totalWeight = testimonials.reduce((sum) => sum + fallbackWeight, 0)
 
     // Generate random number between 0 and totalWeight
     const random = Math.random() * totalWeight
 
     // Find the selected tweet based on cumulative weights
     let accumulatedWeight = 0
-    for (const tweet of tweets) {
-      const weight = tweet.weight ?? fallbackWeight
+    for (const testimonial of testimonials) {
+      const weight = fallbackWeight
       accumulatedWeight += weight
       if (random <= accumulatedWeight) {
-        setQuote(tweet)
+        setQuote(testimonial)
         break
       }
     }
   }, [])
+
+  const initials = quote?.name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
 
   return (
     <>
@@ -180,24 +210,19 @@ const SignInLayout = ({
 
                 <blockquote className="z-10 max-w-lg text-3xl">{quote.text}</blockquote>
 
-                <a
-                  href={quote.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4"
-                >
-                  <img
-                    src={`https://supabase.com${quote.img_url}`}
-                    alt={quote.handle}
-                    className="w-12 h-12 rounded-full"
-                  />
-
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-surface-200 border border-default flex items-center justify-center text-sm text-foreground">
+                    {initials}
+                  </div>
                   <div className="flex flex-col">
                     <cite className="not-italic font-medium text-foreground-light whitespace-nowrap">
-                      @{quote.handle}
+                      {quote.name}
                     </cite>
+                    {quote.role && (
+                      <span className="text-xs text-foreground-lighter">{quote.role}</span>
+                    )}
                   </div>
-                </a>
+                </div>
               </div>
             )}
           </aside>
