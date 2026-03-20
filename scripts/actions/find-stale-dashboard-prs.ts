@@ -5,6 +5,12 @@ const REPO_NAME = 'supabase'
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
+// In CI, stdout can be piped to other processes. If the downstream process
+// exits early, writing to stdout can throw `EPIPE` and crash the workflow.
+process.stdout.on('error', (err: any) => {
+  if (err?.code === 'EPIPE') process.exit(0)
+})
+
 class RateLimitError extends Error {
   constructor(resetAt: string) {
     super(`GitHub API rate limit exceeded. Resets at ${resetAt}`)
@@ -258,7 +264,12 @@ async function findStalePRs(): Promise<StalePR[]> {
 findStalePRs()
   .then((stalePRs) => {
     // Output JSON to stdout for piping to the next script
-    console.log(JSON.stringify(stalePRs))
+    try {
+      process.stdout.write(JSON.stringify(stalePRs) + '\n')
+    } catch (e: any) {
+      if (e?.code !== 'EPIPE') throw e
+      process.exit(0)
+    }
   })
   .catch((error) => {
     console.error('Error:', error.message)
