@@ -8,6 +8,27 @@ import { getUserClaims } from 'lib/gotrue'
 
 export const maxDuration = 120
 
+function getGotrueUserIdFromClaims(claims: any): string {
+  const id =
+    claims?.sub ??
+    claims?.id ??
+    claims?.uid ??
+    claims?.user_metadata?.sub ??
+    claims?.user_metadata?.id ??
+    claims?.user_metadata?.user_id ??
+    claims?.user_id ??
+    claims?.gotrue_id ??
+    claims?.user?.id ??
+    claims?.app_metadata?.sub
+
+  if (typeof id !== 'string' || !id) {
+    const keys = Object.keys(claims ?? {})
+    throw new Error(`Missing gotrue user id in JWT claims (keys=${keys.join(',')})`)
+  }
+
+  return id
+}
+
 const GenerateAttachmentUrlSchema = z.object({
   filenames: z.array(z.string()),
   bucket: z
@@ -20,7 +41,12 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   if (userClaimsError || !claims) {
     return res.status(401).json({ error: { message: 'Unauthorized' } })
   }
-  const userId = claims.sub
+  let userId: string
+  try {
+    userId = getGotrueUserIdFromClaims(claims)
+  } catch {
+    return res.status(401).json({ error: { message: 'Unauthorized' } })
+  }
 
   const json = JSON.parse(req.body)
   const parseResult = GenerateAttachmentUrlSchema.safeParse(json)

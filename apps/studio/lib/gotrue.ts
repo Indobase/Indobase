@@ -40,6 +40,8 @@ export const getUserClaims = async (
       const supabaseUrl = process.env.SUPABASE_URL
 
       const gotrueBaseUrl =
+        // Prefer runtime server env to avoid build-time inlining issues.
+        process.env.GOTRUE_URL ||
         process.env.NEXT_PUBLIC_GOTRUE_URL ||
         (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/auth/v1` : undefined)
 

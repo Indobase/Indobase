@@ -66,8 +66,23 @@ function uniqueProjectRef(base: string) {
 
 function getGotrueUserId(claims: Claims): string {
   // GoTrue uses `sub` as the stable user id.
-  const id = claims.sub ?? claims.user_id ?? claims.gotrue_id
-  if (typeof id !== 'string' || !id) throw new Error('Missing gotrue user id in JWT claims')
+  // Depending on the GoTrue/JWT version and claim mapping, the user id can be nested.
+  const id =
+    claims.sub ??
+    (claims as any).id ??
+    (claims as any).uid ??
+    (claims as any).user_metadata?.sub ??
+    (claims as any).user_metadata?.id ??
+    (claims as any).user_metadata?.user_id ??
+    claims.user_id ??
+    claims.gotrue_id ??
+    (claims as any).user?.id ??
+    (claims as any).app_metadata?.sub
+
+  if (typeof id !== 'string' || !id) {
+    const keys = Object.keys(claims ?? {})
+    throw new Error(`Missing gotrue user id in JWT claims (keys=${keys.join(',')})`)
+  }
   return id
 }
 
@@ -76,7 +91,16 @@ function getPrimaryEmail(claims: Claims): string {
   const email = claims.email ?? claims.user_metadata?.email ?? claims.user_metadata?.primary_email
   if (typeof email === 'string' && email) return email
   // Fallback so the API never explodes; UI can still handle missing email.
-  return claims.sub ? `${claims.sub}@localhost` : 'unknown@example.com'
+  // Prefer any resolved gotrue id (sub/user_id/etc) over claims.sub specifically.
+  const gotrueId = (() => {
+    try {
+      return getGotrueUserId(claims)
+    } catch {
+      return undefined
+    }
+  })()
+
+  return gotrueId ? `${gotrueId}@localhost` : 'unknown@example.com'
 }
 
 function getUsernameFromEmail(email: string) {

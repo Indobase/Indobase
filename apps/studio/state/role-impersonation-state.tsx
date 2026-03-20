@@ -68,7 +68,14 @@ export const RoleImpersonationStateContextProvider = ({ children }: PropsWithChi
     functionName: string
     claims: ReturnType<typeof getPostgrestClaims>
   }) {
-    const event = { user_id: claims.sub, claims, authentication_method: 'password' }
+    const userId =
+      claims.sub ??
+      (claims as any).user_id ??
+      (claims as any).id ??
+      (claims as any).uid ??
+      (claims as any).user_metadata?.sub
+
+    const event = { user_id: userId, claims, authentication_method: 'password' }
 
     const result = await executeSql({
       projectRef: project?.ref,

@@ -27,7 +27,8 @@ export function constructHeaders(headers: { [prop: string]: any }) {
       ...cleansedHeaders,
       // [Joshen] JFYI both Alaister and I checked on this and realised this might not be used actually
       // Could be safe to remove but leaving it here for now
-      ...(!IS_PLATFORM && { apiKey: `${process.env.SUPABASE_SERVICE_KEY}` }),
+      // Kong `key-auth` plugin expects `apikey` header name (not `apiKey`).
+      ...(!IS_PLATFORM && { apikey: `${process.env.SUPABASE_SERVICE_KEY}` }),
     }
   } else {
     return {
