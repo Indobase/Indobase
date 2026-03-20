@@ -61,64 +61,72 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     body.captcha_token = hcaptchaToken
   }
 
-  let r: Response
-  try {
-    r = await fetch(signupUrl.toString(), {
-      method: 'POST',
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-  } catch (e: any) {
-    // Make debugging deploy/network issues possible from the browser.
-    // Do not include secrets in the response.
-    const cause = e?.cause?.code ?? e?.code ?? e?.message ?? String(e)
+  const timeoutMs = parseInt(process.env.GOTRUE_SIGNUP_TIMEOUT_MS || '8000', 10)
 
-    // Some self-hosted networks can block outbound 443 while still allowing 80.
-    // If the configured GoTrue URL is https, retry once using http.
-    if (signupUrl.protocol === 'https:' && process.env.ENABLE_HTTP_GOTRUE_RETRY !== 'false') {
-      try {
-        const httpSignupUrl = new URL(signupUrl.toString())
-        httpSignupUrl.protocol = 'http:'
+  async function fetchSignupWithTimeout(url: string): Promise<Response> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-        r = await fetch(httpSignupUrl.toString(), {
-          method: 'POST',
-          headers: {
-            apikey: anonKey,
-            Authorization: `Bearer ${anonKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        })
-      } catch (retryError: any) {
-        const retryCause =
-          retryError?.cause?.code ?? retryError?.code ?? retryError?.message ?? String(retryError)
-        return res.status(502).json({
-          message: `Failed to reach GoTrue signup endpoint (${cause}); http retry failed (${retryCause})`,
-          error: {
-            target: signupUrl.toString(),
-            httpTarget: signupUrl.toString().replace(/^https:/, 'http:'),
-            gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
-            gotrueUrl,
-            cause,
-            retryCause,
-          },
-        })
-      }
-    } else {
-      return res.status(502).json({
-        message: `Failed to reach GoTrue signup endpoint (${cause})`,
-        error: {
-          target: signupUrl.toString(),
-          gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
-          gotrueUrl,
-          cause,
+    try {
+      return await fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
+        signal: controller.signal,
       })
+    } finally {
+      clearTimeout(timeoutId)
     }
+  }
+
+  const kongInternalGotrueBaseUrl =
+    process.env.KONG_INTERNAL_GOTRUE_URL || 'http://kong:8000/auth/v1'
+
+  const gotrueBaseCandidates = [
+    gotrueUrl,
+    // If https is blocked but http works, try it.
+    signupUrl.protocol === 'https:' && process.env.ENABLE_HTTP_GOTRUE_RETRY !== 'false'
+      ? gotrueUrl.replace(/^https:/, 'http:')
+      : undefined,
+    // Final fallback: try kong directly (server-to-server in compose).
+    kongInternalGotrueBaseUrl,
+  ].filter(Boolean) as string[]
+
+  // Deduplicate candidates.
+  const uniqueCandidates = Array.from(new Set(gotrueBaseCandidates))
+
+  let r: Response | undefined
+  const causes: Array<{ baseUrl: string; cause: string }> = []
+
+  for (const baseUrlCandidate of uniqueCandidates) {
+    const candidateSignupUrl = new URL(baseUrlCandidate.replace(/\/$/, '') + '/signup')
+    if (typeof redirectTo === 'string' && redirectTo.length > 0) {
+      candidateSignupUrl.searchParams.set('redirect_to', redirectTo)
+    }
+
+    try {
+      r = await fetchSignupWithTimeout(candidateSignupUrl.toString())
+      break
+    } catch (e: any) {
+      const cause = e?.cause?.code ?? e?.code ?? e?.message ?? String(e)
+      causes.push({ baseUrl: baseUrlCandidate, cause })
+    }
+  }
+
+  if (!r) {
+    return res.status(502).json({
+      message: `Failed to reach GoTrue signup endpoint`,
+      error: {
+        gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
+        gotrueUrl,
+        tried: uniqueCandidates,
+        causes,
+      },
+    })
   }
 
   const text = await r.text()
