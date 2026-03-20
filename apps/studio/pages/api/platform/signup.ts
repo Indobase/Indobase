@@ -75,15 +75,50 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   } catch (e: any) {
     // Make debugging deploy/network issues possible from the browser.
     // Do not include secrets in the response.
-    return res.status(502).json({
-      message: 'Failed to reach GoTrue signup endpoint',
-      error: {
-        target: signupUrl.toString(),
-        gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
-        gotrueUrl,
-        cause: e?.cause?.code ?? e?.code ?? e?.message ?? String(e),
-      },
-    })
+    const cause = e?.cause?.code ?? e?.code ?? e?.message ?? String(e)
+
+    // Some self-hosted networks can block outbound 443 while still allowing 80.
+    // If the configured GoTrue URL is https, retry once using http.
+    if (signupUrl.protocol === 'https:' && process.env.ENABLE_HTTP_GOTRUE_RETRY !== 'false') {
+      try {
+        const httpSignupUrl = new URL(signupUrl.toString())
+        httpSignupUrl.protocol = 'http:'
+
+        r = await fetch(httpSignupUrl.toString(), {
+          method: 'POST',
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        })
+      } catch (retryError: any) {
+        const retryCause =
+          retryError?.cause?.code ?? retryError?.code ?? retryError?.message ?? String(retryError)
+        return res.status(502).json({
+          message: `Failed to reach GoTrue signup endpoint (${cause}); http retry failed (${retryCause})`,
+          error: {
+            target: signupUrl.toString(),
+            httpTarget: signupUrl.toString().replace(/^https:/, 'http:'),
+            gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
+            gotrueUrl,
+            cause,
+            retryCause,
+          },
+        })
+      }
+    } else {
+      return res.status(502).json({
+        message: `Failed to reach GoTrue signup endpoint (${cause})`,
+        error: {
+          target: signupUrl.toString(),
+          gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
+          gotrueUrl,
+          cause,
+        },
+      })
+    }
   }
 
   const text = await r.text()
