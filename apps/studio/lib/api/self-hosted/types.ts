@@ -7,7 +7,8 @@ export type WrappedResult<R> = WrappedSuccessResult<R> | WrappedErrorResult
 export const databaseErrorSchema = z.object({
   message: z.string(),
   code: z.string(),
-  formattedError: z.string(),
+  // pg-meta doesn't always include `formattedError`; don't crash the whole API on that.
+  formattedError: z.string().optional().default(''),
 })
 
 export class PgMetaDatabaseError extends Error {

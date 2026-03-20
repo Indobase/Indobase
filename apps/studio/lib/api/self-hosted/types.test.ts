@@ -35,14 +35,17 @@ describe('api/self-hosted/types', () => {
       expect(result.success).toBe(false)
     })
 
-    it('should reject error missing formattedError', () => {
+    it('should accept error missing formattedError', () => {
       const invalidError = {
         message: 'Database connection failed',
         code: '08006',
       }
 
       const result = databaseErrorSchema.safeParse(invalidError)
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.formattedError).toBe('')
+      }
     })
 
     it('should reject non-string values', () => {
