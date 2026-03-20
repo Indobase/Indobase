@@ -9,17 +9,20 @@ import { getUserClaims } from 'lib/gotrue'
 export const maxDuration = 120
 
 function getGotrueUserIdFromClaims(claims: any): string {
+  const normalized: any =
+    claims && typeof claims.claims === 'object' ? claims.claims : claims
+
   const id =
-    claims?.sub ??
-    claims?.id ??
-    claims?.uid ??
-    claims?.user_metadata?.sub ??
-    claims?.user_metadata?.id ??
-    claims?.user_metadata?.user_id ??
-    claims?.user_id ??
-    claims?.gotrue_id ??
-    claims?.user?.id ??
-    claims?.app_metadata?.sub
+    normalized?.sub ??
+    normalized?.id ??
+    normalized?.uid ??
+    normalized?.user_metadata?.sub ??
+    normalized?.user_metadata?.id ??
+    normalized?.user_metadata?.user_id ??
+    normalized?.user_id ??
+    normalized?.gotrue_id ??
+    normalized?.user?.id ??
+    normalized?.app_metadata?.sub
 
   if (typeof id !== 'string' || !id) {
     const keys = Object.keys(claims ?? {})

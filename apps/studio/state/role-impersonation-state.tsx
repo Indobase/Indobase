@@ -68,12 +68,15 @@ export const RoleImpersonationStateContextProvider = ({ children }: PropsWithChi
     functionName: string
     claims: ReturnType<typeof getPostgrestClaims>
   }) {
+    const normalized: any =
+      claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
+
     const userId =
-      claims.sub ??
-      (claims as any).user_id ??
-      (claims as any).id ??
-      (claims as any).uid ??
-      (claims as any).user_metadata?.sub
+      normalized.sub ??
+      (normalized as any).user_id ??
+      (normalized as any).id ??
+      (normalized as any).uid ??
+      (normalized as any).user_metadata?.sub
 
     const event = { user_id: userId, claims, authentication_method: 'password' }
 

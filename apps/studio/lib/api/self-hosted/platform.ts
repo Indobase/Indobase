@@ -65,19 +65,25 @@ function uniqueProjectRef(base: string) {
 }
 
 function getGotrueUserId(claims: Claims): string {
+  // In some self-hosted flows, `getUserClaims()` returns a wrapper like:
+  //   { claims: <actual_jwt_payload> }
+  // Handle that to avoid "missing gotrue user id" crashes.
+  const normalized: any =
+    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
+
   // GoTrue uses `sub` as the stable user id.
   // Depending on the GoTrue/JWT version and claim mapping, the user id can be nested.
   const id =
-    claims.sub ??
-    (claims as any).id ??
-    (claims as any).uid ??
-    (claims as any).user_metadata?.sub ??
-    (claims as any).user_metadata?.id ??
-    (claims as any).user_metadata?.user_id ??
-    claims.user_id ??
-    claims.gotrue_id ??
-    (claims as any).user?.id ??
-    (claims as any).app_metadata?.sub
+    normalized.sub ??
+    normalized.id ??
+    normalized.uid ??
+    normalized.user_metadata?.sub ??
+    normalized.user_metadata?.id ??
+    normalized.user_metadata?.user_id ??
+    normalized.user_id ??
+    normalized.gotrue_id ??
+    normalized.user?.id ??
+    normalized.app_metadata?.sub
 
   if (typeof id !== 'string' || !id) {
     const keys = Object.keys(claims ?? {})
@@ -87,8 +93,10 @@ function getGotrueUserId(claims: Claims): string {
 }
 
 function getPrimaryEmail(claims: Claims): string {
+  const normalized: any =
+    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
   // JWT claims typically include `email`.
-  const email = claims.email ?? claims.user_metadata?.email ?? claims.user_metadata?.primary_email
+  const email = normalized.email ?? normalized.user_metadata?.email ?? normalized.user_metadata?.primary_email
   if (typeof email === 'string' && email) return email
   // Fallback so the API never explodes; UI can still handle missing email.
   // Prefer any resolved gotrue id (sub/user_id/etc) over claims.sub specifically.
