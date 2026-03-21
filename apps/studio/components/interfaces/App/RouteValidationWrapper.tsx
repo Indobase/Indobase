@@ -33,6 +33,9 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
       : '/organizations'
     : selfHostedDashboardPath(user?.id)
 
+  // Self-hosted projects use ref `p-<gotrue_sub>`, not `default`. Old links/bookmarks still use /project/default.
+  const skipLegacyDefaultProjectFetch = !IS_PLATFORM && ref === 'default'
+
   /**
    * Array of urls/routes that should be ignored
    */
@@ -60,7 +63,10 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     return excemptUrls.includes(router?.pathname)
   }
 
-  const { isError: isErrorProject } = useProjectDetailQuery({ ref })
+  const { isError: isErrorProject } = useProjectDetailQuery(
+    { ref },
+    { enabled: !skipLegacyDefaultProjectFetch }
+  )
 
   const { data: organizations, isSuccess: orgsInitialized } = useOrganizationsQuery({
     enabled: isLoggedIn,
@@ -106,6 +112,18 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
 
     router.push(`${dashboardPrefix}/sign-in`)
   }, [IS_PLATFORM, isLoggedIn, router, router.asPath])
+
+  useEffect(() => {
+    if (IS_PLATFORM || !router.isReady) return
+    if (!isLoggedIn || !user?.id || ref !== 'default') return
+    const suffix = router.asPath.startsWith('/project/default')
+      ? router.asPath.slice('/project/default'.length)
+      : ''
+    const target = `${selfHostedDashboardPath(user.id)}${suffix}`
+    if (router.asPath !== target) {
+      router.replace(target)
+    }
+  }, [IS_PLATFORM, isLoggedIn, ref, router, router.asPath, router.isReady, user?.id])
 
   useEffect(() => {
     // check if current route is excempted from route validation check
