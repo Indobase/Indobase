@@ -10,8 +10,9 @@ import { toast } from 'sonner'
 import z from 'zod'
 
 import { useSignUpMutation } from 'data/misc/signup-mutation'
-import { BASE_PATH } from 'lib/constants'
-import { buildPathWithParams } from 'lib/gotrue'
+import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { auth, buildPathWithParams } from 'lib/gotrue'
+import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import {
   AlertDescription_Shadcn_,
   AlertTitle_Shadcn_,
@@ -68,8 +69,21 @@ export const SignUpForm = () => {
   })
 
   const { mutate: signup, isPending: isSigningUp } = useSignUpMutation({
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       toast.success(`Signed up successfully!`)
+      if (!IS_PLATFORM) {
+        const { data } = await auth.getSession()
+        const uid = data.session?.user?.id
+        if (uid) {
+          router.replace(selfHostedDashboardPath(uid))
+          return
+        }
+        // Faster path when email confirmation is required: go straight to sign-in with email prefilled.
+        router.replace(
+          `/sign-in?email=${encodeURIComponent(variables.email)}&pendingConfirmation=1`
+        )
+        return
+      }
       setIsSubmitted(true)
     },
     onError: (error) => {

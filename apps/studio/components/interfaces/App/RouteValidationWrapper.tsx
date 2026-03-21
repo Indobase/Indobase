@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_KEYS, useIsLoggedIn, useIsMFAEnabled, useParams } from 'common'
+import { LOCAL_STORAGE_KEYS, useIsLoggedIn, useIsMFAEnabled, useParams, useUser } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useProjectDetailQuery } from 'data/projects/project-detail-query'
 import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
@@ -6,6 +6,7 @@ import useLatest from 'hooks/misc/useLatest'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { IS_PLATFORM } from 'lib/constants'
+import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -15,6 +16,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   const router = useRouter()
   const { ref, slug, id } = useParams()
   const { data: organization } = useSelectedOrganizationQuery()
+  const user = useUser()
 
   const isLoggedIn = useIsLoggedIn()
   const isUserMFAEnabled = useIsMFAEnabled()
@@ -29,7 +31,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     ? !!lastVisitedOrganization
       ? `/org/${lastVisitedOrganization}`
       : '/organizations'
-    : '/project/default'
+    : selfHostedDashboardPath(user?.id)
 
   /**
    * Array of urls/routes that should be ignored

@@ -3,6 +3,7 @@ import type { JwtPayload } from '@supabase/supabase-js'
 import { executeQuery } from './query'
 import { encryptString } from './util'
 import { makeRandomString } from 'lib/helpers'
+import { IS_PLATFORM } from 'lib/constants'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
 import { getConnectionString } from './util'
 
@@ -117,7 +118,7 @@ function getUsernameFromEmail(email: string) {
 }
 
 async function ensurePlatformTables() {
-  await executeQuery({
+  const bootstrap = await executeQuery({
     query: `
       create schema if not exists platform;
 
@@ -187,6 +188,121 @@ async function ensurePlatformTables() {
         on platform.projects (organization_slug);
     `,
   })
+  if (bootstrap.error) {
+    throw bootstrap.error
+  }
+}
+
+/** Stable project ref per GoTrue user for self-hosted (must match client routes). */
+export function selfHostedDefaultProjectRef(gotrueUserId: string) {
+  return `p-${gotrueUserId}`
+}
+
+/**
+ * Ensures the user has one free-tier org and a default project (self-hosted only).
+ * Idempotent; safe to call from list/get entry points.
+ */
+export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
+  if (IS_PLATFORM) return
+
+  await ensurePlatformTables()
+  const gotrueId = getGotrueUserId(claims)
+  const email = getPrimaryEmail(claims)
+
+  const count = await executeQuery<{ count: string }>({
+    query: `select count(*)::text as count from platform.organizations where owner_gotrue_id = $1`,
+    parameters: [gotrueId],
+  })
+  if (count.error) throw count.error
+  if (parseInt(count.data?.[0]?.count ?? '0', 10) > 0) return
+
+  const orgName =
+    (process.env.DEFAULT_ORGANIZATION_NAME || process.env.STUDIO_DEFAULT_ORGANIZATION || 'My workspace').trim() ||
+    'My workspace'
+  const slug = uniqueSlug(orgName)
+  const projectRef = selfHostedDefaultProjectRef(gotrueId)
+  const projectName =
+    (process.env.DEFAULT_PROJECT_NAME || process.env.STUDIO_DEFAULT_PROJECT || 'Default Project').trim() ||
+    'Default Project'
+
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? ''
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? ''
+
+  const orgInsert = await executeQuery<{ id: number }>({
+    query: `
+      insert into platform.organizations (
+        owner_gotrue_id,
+        slug,
+        name,
+        kind,
+        size,
+        plan,
+        opt_in_tags,
+        billing_email,
+        billing_partner,
+        organization_missing_address,
+        organization_requires_mfa,
+        restriction_data,
+        restriction_status,
+        usage_billing_enabled,
+        stripe_customer_id,
+        subscription_id
+      ) values (
+        $1, $2, $3, 'PERSONAL', null, 'free',
+        '{}',
+        $4,
+        null,
+        false,
+        false,
+        null,
+        null,
+        false,
+        null,
+        null
+      )
+      returning id
+    `,
+    parameters: [gotrueId, slug, orgName, email],
+  })
+  if (orgInsert.error || !orgInsert.data?.length) throw orgInsert.error ?? new Error('Failed to create default organization')
+
+  const organizationId = orgInsert.data[0].id
+
+  const projectInsert = await executeQuery({
+    query: `
+      insert into platform.projects (
+        organization_id,
+        organization_slug,
+        ref,
+        name,
+        cloud_provider,
+        region,
+        status,
+        service_key,
+        anon_key,
+        subscription_id,
+        rest_url,
+        db_host,
+        connection_string,
+        db_pass_enc
+      ) values (
+        $1, $2, $3, $4, 'localhost', 'local', 'ACTIVE_HEALTHY',
+        $5, $6, '',
+        $7, '127.0.0.1', null, $8
+      )
+    `,
+    parameters: [
+      organizationId,
+      slug,
+      projectRef,
+      projectName,
+      serviceKey,
+      anonKey,
+      PROJECT_REST_URL,
+      encryptString(''),
+    ],
+  })
+  if (projectInsert.error) throw projectInsert.error
 }
 
 export async function getOrCreateProfile(claims: Claims) {
@@ -216,6 +332,7 @@ export async function getOrCreateProfile(claims: Claims) {
 
   if (!existing.error && existing.data?.length) {
     const row = existing.data[0]
+    await ensureSelfHostedDefaultWorkspace(claims)
     return {
       id: row.id,
       gotrue_id: row.gotrue_id,
@@ -260,6 +377,7 @@ export async function getOrCreateProfile(claims: Claims) {
   }
 
   const row = insert.data[0]
+  await ensureSelfHostedDefaultWorkspace(claims)
   return {
     id: row.id,
     gotrue_id: row.gotrue_id,
@@ -386,6 +504,7 @@ export async function listOrganizations({
   offset?: number
 }) {
   await ensurePlatformTables()
+  await ensureSelfHostedDefaultWorkspace(claims)
   const gotrueId = getGotrueUserId(claims)
   const qLimit = Math.min(Math.max(limit ?? 100, 1), 200)
   const qOffset = Math.max(offset ?? 0, 0)
@@ -708,6 +827,7 @@ export async function listProjects({
   search?: string
 }) {
   await ensurePlatformTables()
+  await ensureSelfHostedDefaultWorkspace(claims)
   const gotrueId = getGotrueUserId(claims)
   const qLimit = Math.min(Math.max(limit ?? 100, 1), 200)
   const qOffset = Math.max(offset ?? 0, 0)
@@ -907,7 +1027,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   await ensurePlatformTables()
   const gotrueId = getGotrueUserId(claims)
 
-  const rows = await executeQuery<{
+  let rows = await executeQuery<{
     id: number
     ref: string
     name: string
@@ -946,6 +1066,49 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   })
 
   if (rows.error) throw rows.error
+  if (!rows.data?.length && !IS_PLATFORM) {
+    await ensureSelfHostedDefaultWorkspace(claims)
+    const retry = await executeQuery<{
+      id: number
+      ref: string
+      name: string
+      organization_id: number
+      organization_slug: string
+      cloud_provider: string
+      region: string
+      status: string
+      inserted_at: string | null
+      is_branch: boolean
+      preview_branch_refs: string[]
+      service_key: string
+      anon_key: string
+    }>({
+      query: `
+      select
+        p.id,
+        p.ref,
+        p.name,
+        p.organization_id,
+        p.organization_slug,
+        p.cloud_provider,
+        p.region,
+        p.status,
+        p.inserted_at,
+        p.is_branch,
+        p.preview_branch_refs,
+        p.service_key,
+        p.anon_key
+      from platform.projects p
+      join platform.organizations o on o.id = p.organization_id
+      where p.ref = $1 and o.owner_gotrue_id = $2
+      limit 1
+    `,
+      parameters: [ref, gotrueId],
+    })
+    if (retry.error) throw retry.error
+    rows = retry
+  }
+
   if (!rows.data?.length) return null
 
   const p = rows.data[0]

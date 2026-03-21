@@ -120,5 +120,20 @@ describe('api/self-hosted/util', () => {
       expect(resultReadWrite).toBe('postgresql://supabase_admin:postgres@db:5432/postgres')
       expect(resultReadOnly).toBe('postgresql://supabase_read_only_user:postgres@db:5432/postgres')
     })
+
+    it('should percent-encode @ and other special chars in user and password', async () => {
+      vi.stubEnv('POSTGRES_HOST', 'db.internal')
+      vi.stubEnv('POSTGRES_PORT', '5432')
+      vi.stubEnv('POSTGRES_DB', 'postgres')
+      vi.stubEnv('POSTGRES_PASSWORD', 'Indobase@100')
+      vi.stubEnv('POSTGRES_USER_READ_WRITE', 'my:user')
+      vi.stubEnv('POSTGRES_USER_READ_ONLY', 'ro_user')
+
+      const { getConnectionString } = await import('./util')
+
+      expect(getConnectionString({ readOnly: false })).toBe(
+        'postgresql://my%3Auser:Indobase%40100@db.internal:5432/postgres'
+      )
+    })
   })
 })

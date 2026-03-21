@@ -2,15 +2,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useTheme } from 'next-themes'
 
-import { LOCAL_STORAGE_KEYS } from 'common'
+import { LOCAL_STORAGE_KEYS, useUser } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { IS_PLATFORM } from 'lib/constants'
+import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 
 export const HomeIcon = () => {
   const { resolvedTheme } = useTheme()
+  const user = useUser()
   const { data: selectedOrganization } = useSelectedOrganizationQuery()
   const { data: organizations } = useOrganizationsQuery()
 
@@ -29,7 +31,7 @@ export const HomeIcon = () => {
     return '/organizations'
   }
 
-  const href = IS_PLATFORM ? getDefaultOrgRedirect() : '/project/default'
+  const href = IS_PLATFORM ? getDefaultOrgRedirect() : selfHostedDashboardPath(user?.id)
 
   return (
     <Link href={href} className="items-center justify-center flex-shrink-0 hidden md:flex">

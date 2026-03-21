@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
-import { useParams } from 'common'
+import { useParams, useUser } from 'common'
 import { NoOrganizationsState } from 'components/interfaces/Home/ProjectList/EmptyStates'
 import { OrganizationCard } from 'components/interfaces/Organization/OrganizationCard'
 import AppLayout from 'components/layouts/AppLayout/AppLayout'
@@ -15,6 +15,8 @@ import { NoSearchResults } from 'components/ui/NoSearchResults'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { withAuth } from 'hooks/misc/withAuth'
+import { IS_PLATFORM } from 'lib/constants'
+import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import type { NextPageWithLayout } from 'types'
 import { Button, Skeleton } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
@@ -23,6 +25,7 @@ import { Input } from 'ui-patterns/DataInputs/Input'
 const OrganizationsPage: NextPageWithLayout = () => {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  const user = useUser()
   const { error: orgNotFoundError, org: orgSlug } = useParams()
   const orgNotFound = orgNotFoundError === 'org_not_found'
 
@@ -43,12 +46,17 @@ const OrganizationsPage: NextPageWithLayout = () => {
         )
 
   useEffect(() => {
-    // If there are no organizations, force the user to create one
+    // Self-hosted: default org/project are provisioned automatically — go to dashboard.
+    if (!IS_PLATFORM && user?.id) {
+      router.replace(selfHostedDashboardPath(user.id))
+      return
+    }
+    // Platform: if there are no organizations, force the user to create one
     // unless the user is on the not found page
-    if (isSuccess && organizations.length <= 0 && !orgNotFound) {
+    if (IS_PLATFORM && isSuccess && organizations.length <= 0 && !orgNotFound) {
       router.push('/new')
     }
-  }, [isSuccess, organizations])
+  }, [IS_PLATFORM, isSuccess, organizations, orgNotFound, router, user?.id])
 
   return (
     <ScaffoldContainer>

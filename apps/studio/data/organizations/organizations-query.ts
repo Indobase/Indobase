@@ -1,7 +1,9 @@
 import { QueryClient, useQuery } from '@tanstack/react-query'
 
 import { components } from 'api-types'
+import { useIsLoggedIn } from 'common'
 import { get, handleError } from 'data/fetchers'
+import { IS_PLATFORM } from 'lib/constants'
 import { MANAGED_BY, ManagedBy } from 'lib/constants/infrastructure'
 import { useProfile } from 'lib/profile'
 import type { Organization, ResponseError, UseCustomQueryOptions } from 'types'
@@ -54,10 +56,17 @@ export const useOrganizationsQuery = <TData = OrganizationsData>({
   ...options
 }: UseCustomQueryOptions<OrganizationsData, OrganizationsError, TData> = {}) => {
   const { profile } = useProfile()
+  const isLoggedIn = useIsLoggedIn()
+  // Supabase cloud may depend on profile being resolved first. Self-hosted
+  // `/platform/organizations` only needs JWT claims; waiting on `profile` here
+  // causes infinite skeletons when GET /platform/profile is slow, 404→create
+  // is in flight, or profile errors without resolving `data`.
+  const readyToFetchOrgs = IS_PLATFORM ? profile !== undefined : isLoggedIn
+
   return useQuery<OrganizationsData, OrganizationsError, TData>({
     queryKey: organizationKeys.list(),
     queryFn: ({ signal }) => getOrganizations({ signal }),
-    enabled: enabled && profile !== undefined,
+    enabled: enabled && readyToFetchOrgs,
     ...options,
     staleTime: 30 * 60 * 1000,
   })

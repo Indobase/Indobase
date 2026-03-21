@@ -14,8 +14,11 @@ import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticato
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { captureCriticalError } from 'lib/error-reporting'
+import { IS_PLATFORM } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
+import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
+import { Admonition } from 'ui-patterns/admonition'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 import { LastSignInWrapper } from './LastSignInWrapper'
 import { Eye, EyeOff } from 'lucide-react'
@@ -41,12 +44,22 @@ export const SignInForm = () => {
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+  const { setValue } = form
   const isSubmitting = form.formState.isSubmitting
 
   useEffect(() => {
     // Only call getReturnToPath after component mounts client-side
     setReturnTo(getReturnToPath())
   }, [])
+
+  useEffect(() => {
+    if (!router.isReady) return
+    const raw = router.query.email
+    const emailFromQuery = Array.isArray(raw) ? raw[0] : raw
+    if (typeof emailFromQuery === 'string' && emailFromQuery.length > 0) {
+      setValue('email', emailFromQuery)
+    }
+  }, [router.isReady, router.query.email, setValue])
 
   const { mutate: sendEvent } = useSendEventMutation()
   const { mutate: addLoginEvent } = useAddLoginEvent()
@@ -94,8 +107,11 @@ export const SignInForm = () => {
 
         await queryClient.resetQueries()
         // since we're already on the /sign-in page, prevent redirect loops
-        let redirectPath = '/organizations'
-        if (returnTo && returnTo !== '/sign-in') {
+        let redirectPath = IS_PLATFORM ? '/organizations' : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
+        if (IS_PLATFORM && returnTo && returnTo !== '/sign-in') {
+          redirectPath = returnTo
+        }
+        if (!IS_PLATFORM && returnTo && returnTo !== '/sign-in' && !returnTo.startsWith('/organizations')) {
           redirectPath = returnTo
         }
         router.push(redirectPath)
@@ -118,9 +134,19 @@ export const SignInForm = () => {
     }
   }
 
+  const showPendingConfirmationHint =
+    !IS_PLATFORM && router.query.pendingConfirmation === '1'
+
   return (
     <Form_Shadcn_ {...form}>
       <form id={formId} className="flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
+        {showPendingConfirmationHint && (
+          <Admonition
+            type="default"
+            title="Confirm your email"
+            description="We sent a link to your inbox. After you confirm, sign in below — your email is already filled in."
+          />
+        )}
         <FormField_Shadcn_
           key="email"
           name="email"

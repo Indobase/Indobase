@@ -49,8 +49,20 @@ export default async function apiWrapper(
       claims = response
     }
 
-    return handler(req, res, claims)
+    return await handler(req, res, claims)
   } catch (error) {
-    return res.status(500).json({ error })
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : 'Internal server error'
+    return res.status(500).json({
+      message,
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { message: String(error) },
+    })
   }
 }
