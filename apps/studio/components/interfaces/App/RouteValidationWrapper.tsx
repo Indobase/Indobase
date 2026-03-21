@@ -10,6 +10,7 @@ import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect } from 'react'
 import { toast } from 'sonner'
+import { ResponseError } from 'types'
 
 // Ideally these could all be within a _middleware when we use Next 12
 export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
@@ -63,7 +64,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     return excemptUrls.includes(router?.pathname)
   }
 
-  const { isError: isErrorProject } = useProjectDetailQuery(
+  const { isError: isErrorProject, error: projectDetailError } = useProjectDetailQuery(
     { ref },
     { enabled: !skipLegacyDefaultProjectFetch }
   )
@@ -126,16 +127,49 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   }, [IS_PLATFORM, isLoggedIn, ref, router, router.asPath, router.isReady, user?.id])
 
   useEffect(() => {
-    // check if current route is excempted from route validation check
     if (isExceptUrl() || !isLoggedIn) return
+    // No project-detail fetch for legacy /project/default — redirect effect handles it.
+    if (skipLegacyDefaultProjectFetch) return
+    if (!ref || !isErrorProject) return
 
-    // A successful request to project details will validate access to both project and branches
-    if (!!ref && isErrorProject) {
+    const code =
+      projectDetailError instanceof ResponseError ? projectDetailError.code : undefined
+
+    if (IS_PLATFORM) {
       toast.error('You do not have access to this project')
       router.push(DEFAULT_HOME)
       return
     }
-  }, [isErrorProject])
+
+    // Self-hosted: 5xx / network errors are not "no access" (fixes misleading toast when platform API fails).
+    if (code === undefined || code >= 500) {
+      toast.error(
+        code !== undefined && code >= 500
+          ? 'Could not load project (server error). Check Studio logs and STUDIO_PG_META_URL / Postgres env.'
+          : 'Could not load project. Check your connection and try again.'
+      )
+      return
+    }
+
+    if (code === 401) return
+
+    if (code !== 403 && code !== 404) {
+      toast.error(projectDetailError?.message ?? 'Could not load project.')
+      return
+    }
+
+    toast.error('You do not have access to this project')
+    router.push(DEFAULT_HOME)
+  }, [
+    DEFAULT_HOME,
+    IS_PLATFORM,
+    isErrorProject,
+    isLoggedIn,
+    projectDetailError,
+    ref,
+    router,
+    skipLegacyDefaultProjectFetch,
+  ])
 
   useEffect(() => {
     if (ref !== undefined && id !== undefined) {
