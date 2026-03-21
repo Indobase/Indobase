@@ -15,7 +15,11 @@ import {
  */
 export function assertSelfHosted() {
   if (IS_PLATFORM) {
-    throw new Error('This function can only be called in self-hosted environments')
+    throw new Error(
+      'Self-hosted platform SQL is disabled because NEXT_PUBLIC_IS_PLATFORM=true. ' +
+        'For docker/self-hosted Studio, unset it or set NEXT_PUBLIC_IS_PLATFORM=false so ' +
+        'STUDIO_PG_META_URL and POSTGRES_* can be used for /api/platform/*.'
+    )
   }
 }
 

@@ -199,6 +199,14 @@ export function selfHostedDefaultProjectRef(gotrueUserId: string) {
 }
 
 /**
+ * Legacy URLs use `/project/default`; the DB stores `p-<gotrue_sub>`. Resolve for API handlers.
+ */
+function resolveSelfHostedProjectRef(claims: Claims, ref: string): string {
+  if (IS_PLATFORM || ref !== 'default') return ref
+  return selfHostedDefaultProjectRef(getGotrueUserId(claims))
+}
+
+/**
  * Ensures the user has one free-tier org and a default project (self-hosted only).
  * Idempotent; safe to call from list/get entry points.
  */
@@ -1026,6 +1034,7 @@ export async function createProject({
 export async function getProject({ claims, ref }: { claims: Claims; ref: string }) {
   await ensurePlatformTables()
   const gotrueId = getGotrueUserId(claims)
+  const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
 
   let rows = await executeQuery<{
     id: number
@@ -1062,7 +1071,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
       where p.ref = $1 and o.owner_gotrue_id = $2
       limit 1
     `,
-    parameters: [ref, gotrueId],
+    parameters: [resolvedRef, gotrueId],
   })
 
   if (rows.error) throw rows.error
@@ -1103,7 +1112,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
       where p.ref = $1 and o.owner_gotrue_id = $2
       limit 1
     `,
-      parameters: [ref, gotrueId],
+      parameters: [resolvedRef, gotrueId],
     })
     if (retry.error) throw retry.error
     rows = retry
@@ -1143,6 +1152,7 @@ export async function updateProject({
 }) {
   await ensurePlatformTables()
   const gotrueId = getGotrueUserId(claims)
+  const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
 
   const updated = await executeQuery<{
     id: number
@@ -1157,7 +1167,7 @@ export async function updateProject({
       where o.id = p.organization_id and o.owner_gotrue_id = $2 and p.ref = $3
       returning p.id, p.ref, p.name
     `,
-    parameters: [updates.name ?? null, gotrueId, ref],
+    parameters: [updates.name ?? null, gotrueId, resolvedRef],
   })
 
   if (updated.error) throw updated.error
@@ -1170,6 +1180,7 @@ export async function updateProject({
 export async function deleteProject({ claims, ref }: { claims: Claims; ref: string }) {
   await ensurePlatformTables()
   const gotrueId = getGotrueUserId(claims)
+  const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
 
   const deleted = await executeQuery<{
     id: number
@@ -1182,7 +1193,7 @@ export async function deleteProject({ claims, ref }: { claims: Claims; ref: stri
       where o.id = p.organization_id and o.owner_gotrue_id = $1 and p.ref = $2
       returning p.id, p.name, p.ref
     `,
-    parameters: [gotrueId, ref],
+    parameters: [gotrueId, resolvedRef],
   })
 
   if (deleted.error) throw deleted.error

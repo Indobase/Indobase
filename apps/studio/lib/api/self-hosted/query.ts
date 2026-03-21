@@ -3,6 +3,12 @@ import { constructHeaders } from '../apiHelpers'
 import { PgMetaDatabaseError, WrappedResult } from './types'
 import { assertSelfHosted, encryptString, getConnectionString } from './util'
 
+const missingPgMetaUrlError = () =>
+  new Error(
+    'STUDIO_PG_META_URL is not set. Self-hosted Studio needs the postgres-meta base URL ' +
+      '(e.g. http://meta:8080 from the Studio container).'
+  )
+
 export type QueryOptions = {
   query: string
   parameters?: unknown[]
@@ -22,6 +28,10 @@ export async function executeQuery<T = unknown>({
   headers,
 }: QueryOptions): Promise<WrappedResult<T[]>> {
   assertSelfHosted()
+
+  if (!PG_META_URL) {
+    return { data: undefined, error: missingPgMetaUrlError() }
+  }
 
   const connectionString = getConnectionString({ readOnly })
   const connectionStringEncrypted = encryptString(connectionString)

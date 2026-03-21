@@ -75,3 +75,14 @@ NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 2. All required env vars set in Dokploy (or your runtime).
 3. Dashboard container can reach Postgres, meta, and Kong (test with curl or from another container on the same network).
 4. Open `https://your-dashboard-url/dashboard` and log in / use the project linked to that backend.
+
+---
+
+## Troubleshooting: 500 on `/api/platform/organizations` or `/api/platform/projects/...`
+
+1. **`NEXT_PUBLIC_IS_PLATFORM`** – For this self-hosted dashboard image it must **not** be `true`. If it is, Studio disables postgres-meta SQL and platform routes fail. Unset it or set `NEXT_PUBLIC_IS_PLATFORM=false` (note: `NEXT_PUBLIC_*` is baked in at **build** time for Next.js—rebuild the image if you change it).
+2. **`STUDIO_PG_META_URL`** – Must be set to the postgres-meta base URL reachable from the Studio container (e.g. `http://meta:8080`).
+3. **`PG_META_CRYPTO_KEY`** – Must match `CRYPTO_KEY` / `PG_META_CRYPTO_KEY` on the **meta** service so connection encryption matches.
+4. **Postgres from Studio** – `POSTGRES_HOST`, `POSTGRES_PASSWORD`, etc. must point at the same DB meta uses; otherwise bootstrap of `platform.*` tables fails.
+
+Open the failing response in DevTools → **Response** body; newer builds include clearer error messages for misconfiguration.
