@@ -2,7 +2,7 @@ import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { executeQuery } from 'lib/api/self-hosted/query'
 import { PgMetaDatabaseError } from 'lib/api/self-hosted/types'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_PLATFORM, IS_SAAS } from 'lib/constants'
 import { JwtPayload } from '@supabase/supabase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -29,7 +29,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
 
   // Self-hosted Studio should not expose every auth user to every dashboard user.
   // Enforce that auth.users listing queries include a current-user filter.
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     const userId = getGotrueUserId(claims)
     if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {
       return res.status(403).json({

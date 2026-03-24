@@ -47,6 +47,7 @@ import {
   useIsAPIDocsSidePanelEnabled,
   useUnifiedLogsPreview,
 } from './App/FeaturePreview/FeaturePreviewContext'
+import { IS_SAAS } from 'lib/constants'
 
 export const ICON_SIZE = 32
 export const ICON_STROKE_WIDTH = 1.5
@@ -380,25 +381,29 @@ const OrganizationLinks = () => {
       key: 'projects',
       icon: <Boxes size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
     },
-    {
-      label: 'Team',
-      href: `/org/${organizationSlug}/team`,
-      key: 'team',
-      icon: <Users size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
-    },
-    {
-      label: 'Integrations',
-      href: `/org/${organizationSlug}/integrations`,
-      key: 'integrations',
-      icon: <Blocks size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
-    },
-    {
-      label: 'Usage',
-      href: `/org/${organizationSlug}/usage`,
-      key: 'usage',
-      icon: <ChartArea size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
-    },
-    ...(showBilling
+    ...(IS_SAAS
+      ? [
+          {
+            label: 'Team',
+            href: `/org/${organizationSlug}/team`,
+            key: 'team',
+            icon: <Users size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
+          },
+          {
+            label: 'Integrations',
+            href: `/org/${organizationSlug}/integrations`,
+            key: 'integrations',
+            icon: <Blocks size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
+          },
+          {
+            label: 'Usage',
+            href: `/org/${organizationSlug}/usage`,
+            key: 'usage',
+            icon: <ChartArea size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
+          },
+        ]
+      : []),
+    ...(IS_SAAS && showBilling
       ? [
           {
             label: 'Billing',

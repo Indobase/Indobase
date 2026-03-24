@@ -10,6 +10,7 @@ import {
   ORG_SETTINGS_PANEL_KEYS,
   useOrgSettingsPageStateSnapshot,
 } from 'state/organization-settings'
+import { IS_SAAS } from 'lib/constants'
 import type { NextPageWithLayout } from 'types'
 
 const OrgBillingSettings: NextPageWithLayout = () => {
@@ -17,6 +18,10 @@ const OrgBillingSettings: NextPageWithLayout = () => {
   const snap = useOrgSettingsPageStateSnapshot()
 
   const showBilling = useIsFeatureEnabled('billing:all')
+
+  if (!IS_SAAS) {
+    return <UnknownInterface urlBack={`/org/${slug}`} />
+  }
 
   useEffect(() => {
     const allowedValues = ['subscriptionPlan', 'costControl']

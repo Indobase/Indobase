@@ -1,9 +1,10 @@
 import type { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
 import { getUsersCountSQL } from '@supabase/pg-meta/src/sql/studio/get-users-count'
 import { useQuery } from '@tanstack/react-query'
-import { IS_PLATFORM, useUser } from 'common'
+import { useUser } from 'common'
 
 import { executeSql, type ExecuteSqlError } from 'data/sql/execute-sql-query'
+import { IS_SAAS } from 'lib/constants'
 import { UseCustomQueryOptions } from 'types'
 import { authKeys } from './keys'
 import { type Filter } from './users-infinite-query'
@@ -83,7 +84,7 @@ export const useUsersCountQuery = <TData = UsersCountData>(
   { enabled = true, ...options }: UseCustomQueryOptions<UsersCountData, UsersCountError, TData> = {}
 ) => {
   const user = useUser()
-  const scopedUserId = !IS_PLATFORM ? user?.id : undefined
+  const scopedUserId = IS_SAAS ? undefined : user?.id
 
   return useQuery<UsersCountData, UsersCountError, TData>({
     queryKey: authKeys.usersCount(projectRef, {

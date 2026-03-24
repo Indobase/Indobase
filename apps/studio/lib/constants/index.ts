@@ -3,6 +3,7 @@
 export * from './infrastructure'
 
 export const IS_PLATFORM = process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
+export const IS_SAAS = IS_PLATFORM || process.env.NEXT_PUBLIC_INDOBASE_SAAS === 'true'
 
 /**
  * Indicates that the app is running in a test environment (E2E tests).

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { IS_SAAS } from 'lib/constants'
 
 import { get, handleError } from 'data/fetchers'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
@@ -52,6 +53,35 @@ type APIKey = LegacyKeys | SecretKeys | PublishableKeys
 
 async function getAPIKeys({ projectRef, reveal }: APIKeysVariables, signal?: AbortSignal) {
   if (!projectRef) throw new Error('projectRef is required')
+
+  // Self-hosted setups often don't expose the platform /v1 api-keys endpoint.
+  // Build a compatible legacy payload from local project settings + anon key
+  // so API key dependent UIs do not get stuck in loading/error loops.
+  if (!IS_SAAS) {
+    const { data: settings, error: settingsError } = await get('/platform/projects/{ref}/settings', {
+      params: { path: { ref: projectRef } },
+      signal,
+    })
+    if (settingsError) handleError(settingsError)
+
+    const anonKey = process.env.NEXT_PUBLIC_ANON_KEY ?? ''
+    const serviceKey = (settings as any)?.api_key ?? ''
+
+    const legacyKeys: APIKey[] = [
+      {
+        name: 'anon',
+        api_key: anonKey,
+        type: null,
+      },
+      {
+        name: 'service_role',
+        api_key: serviceKey,
+        type: null,
+      },
+    ].filter((k) => Boolean(k.api_key))
+
+    return legacyKeys
+  }
 
   const { data, error } = await get(`/v1/projects/{ref}/api-keys`, {
     params: { path: { ref: projectRef }, query: { reveal } },

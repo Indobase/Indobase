@@ -26,8 +26,8 @@ export const validateReturnTo = (
 export const getUserClaims = async (
   token: String
 ): Promise<{ error: any | null; claims: JwtPayload | null }> => {
+  const accessToken = token.replace(/^bearer\s+/i, '')
   try {
-    const accessToken = token.replace(/^bearer\s+/i, '')
     const { data, error } = await auth.getClaims(accessToken)
     if (error) throw error
 

@@ -3,13 +3,14 @@ import {
   UsersCursor,
 } from '@supabase/pg-meta/src/sql/studio/get-users-paginated'
 import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
-import { IS_PLATFORM, useUser } from 'common'
+import { useUser } from 'common'
 
 import { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
 import type { components } from 'data/api'
 import { executeSql, ExecuteSqlError } from 'data/sql/execute-sql-query'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { PROJECT_STATUS } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { UseCustomInfiniteQueryOptions } from 'types'
 import { authKeys } from './keys'
 
@@ -62,7 +63,7 @@ export const useUsersInfiniteQuery = <TData = UsersData>(
   const { data: project } = useSelectedProjectQuery()
   const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
   const user = useUser()
-  const scopedUserId = !IS_PLATFORM ? user?.id : undefined
+  const scopedUserId = IS_SAAS ? undefined : user?.id
 
   return useInfiniteQuery({
     queryKey: authKeys.usersInfinite(projectRef, {
