@@ -2,25 +2,42 @@ import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { executeQuery } from 'lib/api/self-hosted/query'
 import { PgMetaDatabaseError } from 'lib/api/self-hosted/types'
+import { IS_PLATFORM } from 'lib/constants'
+import { JwtPayload } from '@supabase/supabase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   const { method } = req
 
   switch (method) {
     case 'POST':
-      return handlePost(req, res)
+      return handlePost(req, res, claims)
     default:
       res.setHeader('Allow', ['POST'])
       res.status(405).json({ error: { message: `Method ${method} Not Allowed` } })
   }
 }
 
-const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
+const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const { query } = req.body
+  if (typeof query !== 'string' || !query.trim()) {
+    return res.status(400).json({ message: 'SQL query is required' })
+  }
+
+  // Self-hosted Studio should not expose every auth user to every dashboard user.
+  // Enforce that auth.users listing queries include a current-user filter.
+  if (!IS_PLATFORM) {
+    const userId = getGotrueUserId(claims)
+    if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {
+      return res.status(403).json({
+        message: 'auth.users queries must be scoped to the current user in self-hosted mode',
+      })
+    }
+  }
+
   const headers = constructHeaders(req.headers)
   const { data, error } = await executeQuery({ query, headers })
 
@@ -34,4 +51,34 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
   } else {
     return res.status(200).json(data)
   }
+}
+
+function containsAuthUsersQuery(query: string) {
+  return /\bfrom\s+auth\.users\b/i.test(query)
+}
+
+function queryIncludesScopedUser(query: string, userId: string) {
+  // Accept either `id = '<uuid>'` or `auth.users.id = '<uuid>'`.
+  const escaped = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`\\b(?:auth\\.users\\.)?id\\s*=\\s*'${escaped}'`, 'i').test(query)
+}
+
+function getGotrueUserId(claims?: JwtPayload): string {
+  const normalized: any =
+    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
+  const id =
+    normalized?.sub ??
+    normalized?.id ??
+    normalized?.uid ??
+    normalized?.user_metadata?.sub ??
+    normalized?.user_metadata?.id ??
+    normalized?.user_metadata?.user_id ??
+    normalized?.user_id ??
+    normalized?.gotrue_id ??
+    normalized?.user?.id ??
+    normalized?.app_metadata?.sub
+  if (typeof id !== 'string' || !id) {
+    throw new Error('Missing gotrue user id in JWT claims')
+  }
+  return id
 }

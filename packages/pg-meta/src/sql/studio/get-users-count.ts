@@ -11,6 +11,7 @@ export const getUsersCountSQL = ({
   providers,
   forceExactCount = false,
   column,
+  scopedUserId,
 }: {
   filter?: 'verified' | 'unverified' | 'anonymous'
   keywords?: string
@@ -18,6 +19,7 @@ export const getUsersCountSQL = ({
   forceExactCount?: boolean
   /** If set, uses optimized prefix search for the specified column */
   column?: OptimizedSearchColumns
+  scopedUserId?: string
 }) => {
   const hasValidKeywords = keywords && keywords !== ''
 
@@ -78,6 +80,10 @@ export const getUsersCountSQL = ({
         conditions.push(`(raw_app_meta_data->>'providers')::jsonb ?| array[${literal(providers)}]`)
       }
     }
+  }
+
+  if (scopedUserId) {
+    conditions.push(`id = ${literal(scopedUserId)}::uuid`)
   }
 
   const combinedConditions = conditions.map((x) => `(${x})`).join(' and ')

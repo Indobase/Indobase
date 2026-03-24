@@ -3,6 +3,7 @@ import {
   UsersCursor,
 } from '@supabase/pg-meta/src/sql/studio/get-users-paginated'
 import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
+import { IS_PLATFORM, useUser } from 'common'
 
 import { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
 import type { components } from 'data/api'
@@ -60,6 +61,8 @@ export const useUsersInfiniteQuery = <TData = UsersData>(
 ) => {
   const { data: project } = useSelectedProjectQuery()
   const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const user = useUser()
+  const scopedUserId = !IS_PLATFORM ? user?.id : undefined
 
   return useInfiniteQuery({
     queryKey: authKeys.usersInfinite(projectRef, {
@@ -87,6 +90,7 @@ export const useUsersInfiniteQuery = <TData = UsersData>(
             startAt: column ? (pageParam as string) : undefined,
             cursor: improvedSearchEnabled ? (pageParam as UsersCursor) : undefined,
             improvedSearchEnabled,
+            scopedUserId,
           }),
         },
         signal

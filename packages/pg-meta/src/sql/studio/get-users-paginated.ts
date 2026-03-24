@@ -23,6 +23,7 @@ interface getPaginatedUsersSQLProps {
   /** Cursor for cursor-based pagination (used by improved search) */
   cursor?: UsersCursor
   improvedSearchEnabled?: boolean
+  scopedUserId?: string
 }
 
 const DEFAULT_LIMIT = 50
@@ -39,6 +40,7 @@ export const getPaginatedUsersSQL = ({
   column,
   startAt,
   cursor,
+  scopedUserId,
 
   improvedSearchEnabled = false,
 }: getPaginatedUsersSQLProps) => {
@@ -52,6 +54,7 @@ export const getPaginatedUsersSQL = ({
       order,
       limit,
       cursor,
+      scopedUserId,
     })
   }
 
@@ -88,6 +91,10 @@ export const getPaginatedUsersSQL = ({
         `(raw_app_meta_data->>'providers')::jsonb ?| array[${providers.map((p) => literal(p)).join(', ')}]`
       )
     }
+  }
+
+  if (scopedUserId) {
+    conditions.push(`auth.users.id = ${literal(scopedUserId)}::uuid`)
   }
 
   const combinedConditions = conditions.map((x) => `(${x})`).join(' and ')
@@ -185,6 +192,7 @@ export const getImprovedPaginatedUsersSQL = ({
   order,
   cursor,
   limit = DEFAULT_LIMIT,
+  scopedUserId,
 }: getPaginatedUsersSQLProps) => {
   const hasValidKeywords = keywords && keywords !== ''
 
@@ -244,6 +252,10 @@ export const getImprovedPaginatedUsersSQL = ({
         `(raw_app_meta_data->>'providers')::jsonb ?| array[${providers.map((p) => literal(p)).join(', ')}]`
       )
     }
+  }
+
+  if (scopedUserId) {
+    conditions.push(`id = ${literal(scopedUserId)}::uuid`)
   }
 
   const sortOn = sort ?? 'created_at'

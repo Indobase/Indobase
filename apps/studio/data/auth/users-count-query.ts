@@ -1,6 +1,7 @@
 import type { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
 import { getUsersCountSQL } from '@supabase/pg-meta/src/sql/studio/get-users-count'
 import { useQuery } from '@tanstack/react-query'
+import { IS_PLATFORM, useUser } from 'common'
 
 import { executeSql, type ExecuteSqlError } from 'data/sql/execute-sql-query'
 import { UseCustomQueryOptions } from 'types'
@@ -17,6 +18,7 @@ type UsersCountVariables = {
 
   /** If set, uses optimized prefix search for the specified column */
   column?: OptimizedSearchColumns
+  scopedUserId?: string
 }
 
 export async function getUsersCount(
@@ -28,10 +30,18 @@ export async function getUsersCount(
     providers,
     forceExactCount,
     column,
+    scopedUserId,
   }: UsersCountVariables,
   signal?: AbortSignal
 ) {
-  const sql = getUsersCountSQL({ filter, keywords, providers, forceExactCount, column })
+  const sql = getUsersCountSQL({
+    filter,
+    keywords,
+    providers,
+    forceExactCount,
+    column,
+    scopedUserId,
+  })
 
   const { result } = await executeSql(
     {
@@ -71,14 +81,18 @@ export const useUsersCountQuery = <TData = UsersCountData>(
     column,
   }: UsersCountVariables,
   { enabled = true, ...options }: UseCustomQueryOptions<UsersCountData, UsersCountError, TData> = {}
-) =>
-  useQuery<UsersCountData, UsersCountError, TData>({
+) => {
+  const user = useUser()
+  const scopedUserId = !IS_PLATFORM ? user?.id : undefined
+
+  return useQuery<UsersCountData, UsersCountError, TData>({
     queryKey: authKeys.usersCount(projectRef, {
       keywords,
       filter,
       providers,
       forceExactCount,
       column,
+      scopedUserId,
     }),
     queryFn: ({ signal }) =>
       getUsersCount(
@@ -90,9 +104,11 @@ export const useUsersCountQuery = <TData = UsersCountData>(
           providers,
           forceExactCount,
           column,
+          scopedUserId,
         },
         signal
       ),
     enabled: enabled && typeof projectRef !== 'undefined',
     ...options,
   })
+}
