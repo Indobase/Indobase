@@ -20,8 +20,15 @@
                 class="hidden dark:block"
                 src="/images/logos/indobase.svg"
                 alt="Indobase"
-                height="24"
-                width="130"
+                height="32"
+                width="173"
+            />
+            <img
+                class="block dark:hidden"
+                src="/images/logos/indobase-light.svg"
+                alt="Indobase"
+                height="32"
+                width="173"
             /></a
         >
 

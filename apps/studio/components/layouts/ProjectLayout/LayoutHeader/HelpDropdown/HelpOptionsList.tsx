@@ -9,8 +9,8 @@ import { AiIconAnimation, ButtonGroup, ButtonGroupItem } from 'ui'
 import type { HelpOptionId } from './HelpDropdown.constants'
 import { HELP_OPTION_IDS } from './HelpDropdown.constants'
 
-const DISCORD_URL = 'https://discord.supabase.com'
-const STATUS_URL = 'https://status.supabase.com'
+const DISCORD_URL = 'https://discord.gg/indobase'
+const STATUS_URL = 'https://status.indobase.in'
 
 type HelpOptionsListProps = {
   excludeIds?: HelpOptionId[]
@@ -56,7 +56,7 @@ export const HelpOptionsList = ({
                 icon={<AiIconAnimation allowHoverEffect size={14} />}
                 onClick={onAssistantClick}
               >
-                Supabase Assistant
+                Indobase Assistant
               </ButtonGroupItem>
             )
           case 'docs':
@@ -111,7 +111,7 @@ export const HelpOptionsList = ({
                 asChild
               >
                 <a href={STATUS_URL} target="_blank" rel="noreferrer">
-                  Supabase status
+                  Indobase status
                 </a>
               </ButtonGroupItem>
             )

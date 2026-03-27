@@ -155,7 +155,7 @@ const SignInLayout = ({
                         : `${BASE_PATH}/img/indobase-light.svg`
                     }
                     alt="Indobase Logo"
-                    className={largeLogo ? 'h-[48px]' : 'h-[24px]'}
+                    className={largeLogo ? 'h-[48px]' : 'h-[32px]'}
                   />
                 </Link>
               </div>

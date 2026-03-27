@@ -31,11 +31,18 @@
 >
     <div class="web-footer-nav container">
         <img
-            class="web-logo"
+            class="web-logo hidden dark:block"
             src="/images/logos/indobase.svg"
             alt="Indobase"
-            height="24"
-            width="130"
+            height="32"
+            width="173"
+        />
+        <img
+            class="web-logo block dark:hidden"
+            src="/images/logos/indobase-light.svg"
+            alt="Indobase"
+            height="32"
+            width="173"
         />
         <ul class="web-footer-nav-main-list" use:melt={$root}>
             {#each Object.entries(links) as [title, items], i (i)}

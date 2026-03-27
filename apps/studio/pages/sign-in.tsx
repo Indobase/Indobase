@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 
 import { SignInForm } from 'components/interfaces/SignIn/SignInForm'
-import { AuthenticationLayout } from 'components/layouts/AuthenticationLayout'
 import SignInLayout from 'components/layouts/SignInLayout/SignInLayout'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import type { NextPageWithLayout } from 'types'
@@ -42,15 +41,9 @@ const SignInPage: NextPageWithLayout = () => {
 }
 
 SignInPage.getLayout = (page) => (
-  <AuthenticationLayout>
-    <SignInLayout
-      heading="Welcome back"
-      subheading="Sign in to your account"
-      logoLinkToMarketingSite={true}
-    >
-      {page}
-    </SignInLayout>
-  </AuthenticationLayout>
+  <SignInLayout heading="Welcome back" subheading="Sign in to your account">
+    {page}
+  </SignInLayout>
 )
 
 export default SignInPage
