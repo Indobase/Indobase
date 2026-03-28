@@ -61,6 +61,7 @@ async function downloadSupabaseFunctionsJsTypes() {
     console.error('Error downloading Supabase Functions JS types', error)
     process.exit(1)
   }
+  
 }
 
 Promise.all([downloadTypes(), downloadSupabaseFunctionsJsTypes()])
