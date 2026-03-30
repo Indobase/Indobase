@@ -58,6 +58,18 @@
             : 'is-split'
         : '';
     const buttonClasses = cn(button({ variant }), splitClasses, classes);
+
+    const isDashboardLink = (() => {
+        if (!href) return false;
+        try {
+            const urlStr = href.toString();
+            if (urlStr.startsWith('/dashboard')) return true;
+            const url = new URL(urlStr, 'http://localhost');
+            return url.pathname.startsWith('/dashboard');
+        } catch {
+            return false;
+        }
+    })();
 </script>
 
 {#if href}
@@ -66,6 +78,7 @@
         {href}
         class={buttonClasses}
         onclick={() => event && trackEvent(event)}
+        data-sveltekit-reload={isDashboardLink || undefined}
         {...rest as HTMLAnchorAttributes}
     >
         {@render children()}

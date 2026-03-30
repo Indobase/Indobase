@@ -132,11 +132,14 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
   })
 
   const onForgotPassword: SubmitHandler<ForgotPasswordFormData> = async (data) => {
+    /*
     let token = captchaToken
     if (!token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
+    */
+    let token: string | null = null
 
     resetPassword({
       email: data.email,
@@ -174,6 +177,7 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
           )}
         />
 
+        {/*
         <div className="self-center">
           <HCaptcha
             ref={captchaRef}
@@ -187,6 +191,7 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
             }}
           />
         </div>
+        */}
 
         <div className="border-t border-overlay-border" />
 

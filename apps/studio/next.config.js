@@ -35,11 +35,6 @@ const nextConfig = {
   output: 'standalone',
   async rewrites() {
     return [
-      // Make Studio work under /dashboard without requiring basePath at build time
-      { source: '/dashboard/_next/:path*', destination: '/_next/:path*' },
-      { source: '/dashboard/api/:path*', destination: '/api/:path*' },
-      { source: '/dashboard/:path*', destination: '/:path*' },
-
       // Marketing site (www) is in public/; serve index.html for SPA routes
       { source: '/', destination: '/index.html' },
       { source: '/pricing', destination: '/index.html' },

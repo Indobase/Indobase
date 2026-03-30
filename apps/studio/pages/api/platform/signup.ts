@@ -37,18 +37,23 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ message: 'Email and password are required' })
   }
 
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_ANON_KEY
   // IMPORTANT: Avoid using NEXT_PUBLIC_* vars in server routes as they can be
   // inlined at build time. Always prefer runtime server env values.
   const gotrueUrl =
     process.env.GOTRUE_URL ||
+    process.env.NEXT_PUBLIC_GOTRUE_URL ||
     (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKey) {
-    return res.status(500).json({ message: 'Missing SUPABASE_ANON_KEY' })
+    return res.status(500).json({ message: 'Missing SUPABASE_ANON_KEY (checked ANON_KEY and NEXT_PUBLIC_ versions)' })
   }
   if (!gotrueUrl) {
-    return res.status(500).json({ message: 'Missing GOTRUE_URL (or SUPABASE_URL)' })
+    return res.status(500).json({ message: 'Missing GOTRUE_URL (checked SUPABASE_URL and NEXT_PUBLIC_ versions)' })
   }
 
   const signupUrl = new URL(gotrueUrl.replace(/\/$/, '') + '/signup')

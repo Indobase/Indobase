@@ -133,18 +133,18 @@
         <div class="web-mobile-header-start">
             <a href="/">
                 <img
-                    class="web-logo web-u-only-dark"
+                    class="web-logo hidden dark:block"
                     src="/images/logos/indobase.svg"
                     alt="indobase"
-                    height="24"
-                    width="130"
+                    height="32"
+                    width="173"
                 />
                 <img
-                    class="web-logo web-u-only-light"
+                    class="web-logo block dark:hidden"
                     src="/images/logos/indobase-light.svg"
                     alt="indobase"
-                    height="24"
-                    width="130"
+                    height="32"
+                    width="173"
                 />
             </a>
         </div>
@@ -174,18 +174,18 @@
             <div class="web-main-header-start">
                 <a href="/">
                     <img
-                        class="web-logo web-u-only-dark"
+                        class="web-logo hidden dark:block"
                         src="/images/logos/indobase.svg"
                         alt="indobase"
-                        height="24"
-                        width="130"
+                        height="32"
+                        width="173"
                     />
                     <img
-                        class="web-logo web-u-only-light"
+                        class="web-logo block dark:hidden"
                         src="/images/logos/indobase-light.svg"
                         alt="indobase"
-                        height="24"
-                        width="130"
+                        height="32"
+                        width="173"
                     />
                 </a>
                 {#if !hideNavigation}

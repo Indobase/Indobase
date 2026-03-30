@@ -721,9 +721,17 @@ function createStorageExplorerState({
           state.setSelectedFilePreview(undefined)
           state.popOpenedFoldersAtIndex(columnIndex - 1)
         }
-        await state.refetchAllOpenedFolders()
 
-        // TODO: Should we invalidate the file preview cache when renaming folders?
+        // Invalidate file preview cache for all files under the renamed folder
+        const queryClient = getQueryClient()
+        for (const file of files) {
+          const fromPath = `${file.prefix}/${file.name}`
+          queryClient.invalidateQueries({
+            queryKey: [state.projectRef, 'buckets', state.selectedBucket.public, state.selectedBucket.id, 'file', fromPath],
+          })
+        }
+
+        await state.refetchAllOpenedFolders()
       } catch (e: any) {
         toast.error(`Failed to rename folder to ${newName}: ${e.message}`, {
           id: toastId,
@@ -1435,7 +1443,19 @@ function createStorageExplorerState({
 
       toast.dismiss(toastId)
 
-      // TODO: invalidate the file preview cache when moving files
+      // Invalidate file preview cache for all moved files
+      const queryClient = getQueryClient()
+      state.selectedItemsToMove.forEach((item) => {
+        const pathToFile = state.openedFolders
+          .slice(0, item.columnIndex)
+          .map((folder) => folder.name)
+          .join('/')
+        const fromPath = pathToFile.length > 0 ? `${pathToFile}/${item.name}` : item.name
+        queryClient.invalidateQueries({
+          queryKey: [state.projectRef, 'buckets', state.selectedBucket.id, 'file', fromPath],
+        })
+      })
+
       await state.refetchAllOpenedFolders()
       state.setSelectedItemsToMove([])
     },
@@ -1685,7 +1705,11 @@ function createStorageExplorerState({
 
           toast.success(`Successfully renamed "${originalName}" to "${newName}"`)
 
-          // TODO: Should we invalidate the file preview cache when renaming files?
+          // Invalidate file preview cache for the old file path
+          const queryClient = getQueryClient()
+          queryClient.invalidateQueries({
+            queryKey: [state.projectRef, 'buckets', state.selectedBucket.id, 'file', fromPath],
+          })
 
           if (state.selectedFilePreview?.name === originalName) {
             const { previewUrl, ...fileData } = file as any

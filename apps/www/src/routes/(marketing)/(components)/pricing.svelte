@@ -190,6 +190,7 @@
                     <a
                         href={isEnterprise ? '/contact-us/enterprise' : DASHBOARD_URL}
                         onclick={() => trackEvent(event)}
+                        data-sveltekit-reload={isEnterprise ? undefined : ''}
                         class={cn(
                             "mt-auto flex w-full items-center justify-center rounded-md px-4 py-2.5 text-[14px] font-semibold text-white transition-all",
                             isEnterprise 

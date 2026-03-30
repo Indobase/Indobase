@@ -95,11 +95,14 @@ export const SignUpForm = () => {
 
   const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email, password }) => {
     // [Joshen] Separate submitting state as there's 2 async processes here
+    /*
     let token = captchaToken
     if (!token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
+    */
+    let token: string | null = null
 
     const isInsideOAuthFlow = !!searchParams.auth_id
     // Use browser origin at runtime so deploy-time env mismatches don't force localhost.
@@ -215,6 +218,7 @@ export const SignUpForm = () => {
               <PasswordConditionsHelper password={password} />
             </div>
 
+            {/*
             <div className="self-center">
               <HCaptcha
                 ref={captchaRef}
@@ -224,6 +228,7 @@ export const SignUpForm = () => {
                 onExpire={() => setCaptchaToken(null)}
               />
             </div>
+            */}
 
             <Button
               block

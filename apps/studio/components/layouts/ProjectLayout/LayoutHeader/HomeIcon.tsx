@@ -42,7 +42,7 @@ export const HomeIcon = () => {
             ? `${router.basePath}/img/indobase-dark.svg`
             : `${router.basePath}/img/indobase-light.svg`
         }
-        className={largeLogo ? 'h-[20px]' : 'h-[18px]'}
+        className="h-[32px]"
       />
     </Link>
   )

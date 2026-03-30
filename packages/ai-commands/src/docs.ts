@@ -22,15 +22,33 @@ export async function clippy(
   messages: Message[],
   options?: { useAltSearchIndex?: boolean }
 ) {
-  // TODO: better sanitization
+  // Sanitize and validate messages
+  const MAX_MESSAGE_LENGTH = 10000 // Prevent excessively long messages
   const contextMessages = messages.map(({ role, content }) => {
+    // Validate role
     if (!['user', 'assistant'].includes(role)) {
       throw new Error(`Invalid message role '${role}'`)
     }
 
+    // Sanitize content
+    const sanitized = content.trim()
+
+    // Validate content is not empty
+    if (!sanitized) {
+      throw new UserError('Message content cannot be empty', { role })
+    }
+
+    // Validate content length
+    if (sanitized.length > MAX_MESSAGE_LENGTH) {
+      throw new UserError(
+        `Message content exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`,
+        { role, length: sanitized.length }
+      )
+    }
+
     return {
       role,
-      content: content.trim(),
+      content: sanitized,
     }
   })
 

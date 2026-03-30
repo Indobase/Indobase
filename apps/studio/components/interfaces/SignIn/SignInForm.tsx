@@ -73,11 +73,14 @@ export const SignInForm = () => {
   const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email, password }) => {
     const toastId = toast.loading('Signing in...')
 
+    /*
     let token = captchaToken
     if (!token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
+    */
+    let token: string | null = null
 
     const { error } = await auth.signInWithPassword({
       email,
@@ -209,6 +212,7 @@ export const SignInForm = () => {
           </Link>
         </div>
 
+        {/*
         <div className="self-center">
           <HCaptcha
             ref={captchaRef}
@@ -222,6 +226,7 @@ export const SignInForm = () => {
             }}
           />
         </div>
+        */}
 
         <LastSignInWrapper type="email">
           <Button
