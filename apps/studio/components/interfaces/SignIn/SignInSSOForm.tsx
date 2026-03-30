@@ -33,11 +33,14 @@ export const SignInSSOForm = () => {
   const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email }) => {
     const toastId = toast.loading('Signing in...')
 
+    /*
     let token = captchaToken
     if (!token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
+    */
+    let token: string | null = null
 
     // redirects to /sign-in to check if the user has MFA setup (handled in SignInLayout.tsx)
     const redirectTo = buildPathWithParams(
@@ -93,6 +96,7 @@ export const SignInSSOForm = () => {
           )}
         />
 
+        {/*
         <div className="self-center">
           <HCaptcha
             ref={captchaRef}
@@ -106,6 +110,7 @@ export const SignInSSOForm = () => {
             }}
           />
         </div>
+        */}
 
         <Button block form={formId} htmlType="submit" size="large" loading={isSubmitting}>
           Sign in
