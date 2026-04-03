@@ -5,12 +5,12 @@
 #   Destroy:            docker compose -f docker-compose.yml -f ./dev/docker-compose.dev.yml down -v --remove-orphans
 #   Reset everything:  ./reset.sh
 
-name: supabase
+name: indobase
 
 services:
 
   studio:
-    container_name: supabase-studio
+    container_name: indobase-studio
     image: supabase/studio:2026.02.16-sha-26c615c
     restart: unless-stopped
     healthcheck:
@@ -69,14 +69,14 @@ services:
       - ./volumes/functions:/app/edge-functions:Z
 
   kong:
-    container_name: supabase-kong
+    container_name: indobase-kong
     image: kong:2.8.1
     restart: unless-stopped
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
-      # https://github.com/supabase/supabase/issues/12661
+      # https://github.com/Indobase/Indobase/issues/12661
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     depends_on:
       analytics:
@@ -84,7 +84,7 @@ services:
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
-      # https://github.com/supabase/cli/issues/14
+      # https://github.com/Indobase/Indobase/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
@@ -97,7 +97,7 @@ services:
     entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
   auth:
-    container_name: supabase-auth
+    container_name: indobase-auth
     image: supabase/gotrue:v2.186.0
     restart: unless-stopped
     healthcheck:
@@ -159,7 +159,7 @@ services:
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
-      # Uncomment to enable custom access token hook. Please see: https://supabase.com/docs/guides/auth/auth-hooks for full list of hooks and additional details about custom_access_token_hook
+      # Uncomment to enable custom access token hook. Please see: https://indobase.in/docs/guides/auth/auth-hooks for full list of hooks and additional details about custom_access_token_hook
 
       # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: "true"
       # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: "pg-functions://postgres/public/custom_access_token_hook"
@@ -180,7 +180,7 @@ services:
       # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
 
   rest:
-    container_name: supabase-rest
+    container_name: indobase-rest
     image: postgrest/postgrest:v14.5
     restart: unless-stopped
     depends_on:
@@ -204,7 +204,7 @@ services:
 
   realtime:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
-    container_name: realtime-dev.supabase-realtime
+    container_name: realtime-dev.indobase-realtime
     image: supabase/realtime:v2.76.5
     restart: unless-stopped
     depends_on:
@@ -244,7 +244,7 @@ services:
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
-    container_name: supabase-storage
+    container_name: indobase-storage
     image: supabase/storage-api:v1.37.8
     restart: unless-stopped
     depends_on:
@@ -287,7 +287,7 @@ services:
       #AWS_SECRET_ACCESS_KEY: your-secret-access-key
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: ${STORAGE_TENANT_ID}
-      # TODO: https://github.com/supabase/storage-api/issues/55
+      # TODO: https://github.com/Indobase/Indobase/issues/55
       REGION: ${REGION}
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
@@ -298,7 +298,7 @@ services:
       - ./volumes/storage:/var/lib/storage:z
 
   imgproxy:
-    container_name: supabase-imgproxy
+    container_name: indobase-imgproxy
     image: darthsim/imgproxy:v3.30.1
     restart: unless-stopped
     volumes:
@@ -321,7 +321,7 @@ services:
       IMGPROXY_MAX_SRC_RESOLUTION: 16.8
 
   meta:
-    container_name: supabase-meta
+    container_name: indobase-meta
     image: supabase/postgres-meta:v0.95.2
     restart: unless-stopped
     depends_on:
@@ -340,7 +340,7 @@ services:
       CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
 
   functions:
-    container_name: supabase-edge-functions
+    container_name: indobase-edge-functions
     image: supabase/edge-runtime:v1.70.3
     restart: unless-stopped
     volumes:
@@ -355,7 +355,7 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
+      # TODO: Allow configuring VERIFY_JWT per function
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command:
       [
@@ -365,7 +365,7 @@ services:
       ]
 
   analytics:
-    container_name: supabase-analytics
+    container_name: indobase-analytics
     image: supabase/logflare:1.31.2
     restart: unless-stopped
     # ports:
@@ -413,7 +413,7 @@ services:
 
   # Comment out everything below this point if you are using an external Postgres database
   db:
-    container_name: supabase-db
+    container_name: indobase-db
     image: supabase/postgres:15.8.1.085
     restart: unless-stopped
     volumes:
@@ -426,7 +426,7 @@ services:
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
       # PGDATA directory is persisted between restarts
       - ./volumes/db/data:/var/lib/postgresql/data:Z
-      # Changes required for internal supabase data such as _analytics
+      # Changes required for internal indobase data such as _analytics
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       # Changes required for Analytics support
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
@@ -470,7 +470,7 @@ services:
       ]
 
   vector:
-    container_name: supabase-vector
+    container_name: indobase-vector
     image: timberio/vector:0.53.0-alpine
     restart: unless-stopped
     volumes:
@@ -501,7 +501,7 @@ services:
 
   # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
-    container_name: supabase-pooler
+    container_name: indobase-pooler
     image: supabase/supavisor:2.7.4
     restart: unless-stopped
     ports:

@@ -19,7 +19,7 @@ export type Scalars = {
   Float: { input: number; output: number }
 }
 
-/** A reference document containing a description of a Supabase CLI command */
+/** A reference document containing a description of an Indobase CLI command */
 export type CliCommandReference = SearchResult & {
   __typename?: 'CLICommandReference'
   /** The content of the reference document, as text */
@@ -30,7 +30,7 @@ export type CliCommandReference = SearchResult & {
   title?: Maybe<Scalars['String']['output']>
 }
 
-/** A reference document containing a description of a function from a Supabase client library */
+/** A reference document containing a description of a function from an Indobase client library */
 export type ClientLibraryFunctionReference = SearchResult & {
   __typename?: 'ClientLibraryFunctionReference'
   /** The content of the reference document, as text */
@@ -45,7 +45,7 @@ export type ClientLibraryFunctionReference = SearchResult & {
   title?: Maybe<Scalars['String']['output']>
 }
 
-/** An error returned by a Supabase service */
+/** An error returned by an Indobase service */
 export type Error = {
   __typename?: 'Error'
   /** The unique code identifying the error. The code is stable, and can be used for string matching during error handling. */
@@ -54,7 +54,7 @@ export type Error = {
   httpStatusCode?: Maybe<Scalars['Int']['output']>
   /** A human-readable message describing the error. The message is not stable, and should not be used for string matching during error handling. Use the code instead. */
   message?: Maybe<Scalars['String']['output']>
-  /** The Supabase service that returns this error. */
+  /** The Indobase service that returns this error. */
   service: Service
 }
 
@@ -80,7 +80,7 @@ export type ErrorEdge = {
   node: Error
 }
 
-/** A document containing content from the Supabase docs. This is a guide, which might describe a concept, or explain the steps for using or implementing a feature. */
+/** A document containing content from the Indobase docs. This is a guide, which might describe a concept, or explain the steps for using or implementing a feature. */
 export type Guide = SearchResult & {
   __typename?: 'Guide'
   /** The full content of the document, including all subsections (both those matching and not matching any query string) and possibly more content */
@@ -117,13 +117,13 @@ export type PageInfo = {
 
 export type RootQueryType = {
   __typename?: 'RootQueryType'
-  /** Get the details of an error code returned from a Supabase service */
+  /** Get the details of an error code returned from an Indobase service */
   error?: Maybe<Error>
-  /** Get error codes that can potentially be returned by Supabase services */
+  /** Get error codes that can potentially be returned by Indobase services */
   errors?: Maybe<ErrorCollection>
   /** Get the GraphQL schema for this endpoint */
   schema: Scalars['String']['output']
-  /** Search the Supabase docs for content matching a query string */
+  /** Search the Indobase docs for content matching a query string */
   searchDocs?: Maybe<SearchResultCollection>
 }
 
@@ -156,7 +156,7 @@ export type SearchResult = {
   title?: Maybe<Scalars['String']['output']>
 }
 
-/** A collection of search results containing content from Supabase docs */
+/** A collection of search results containing content from Indobase docs */
 export type SearchResultCollection = {
   __typename?: 'SearchResultCollection'
   /** A list of edges containing nodes in this collection */
@@ -180,7 +180,7 @@ export enum Service {
   Storage = 'STORAGE',
 }
 
-/** A content chunk taken from a larger document in the Supabase docs */
+/** A content chunk taken from a larger document in the Indobase docs */
 export type Subsection = {
   __typename?: 'Subsection'
   /** The content of the subsection */
@@ -191,7 +191,7 @@ export type Subsection = {
   title?: Maybe<Scalars['String']['output']>
 }
 
-/** A collection of content chunks from a larger document in the Supabase docs. */
+/** A collection of content chunks from a larger document in the Indobase docs. */
 export type SubsectionCollection = {
   __typename?: 'SubsectionCollection'
   /** A list of edges containing nodes in this collection */
@@ -209,7 +209,7 @@ export type SubsectionEdge = {
   node: Subsection
 }
 
-/** A document describing how to troubleshoot an issue when using Supabase */
+/** A document describing how to troubleshoot an issue when using Indobase */
 export type TroubleshootingGuide = SearchResult & {
   __typename?: 'TroubleshootingGuide'
   /** The full content of the troubleshooting guide */

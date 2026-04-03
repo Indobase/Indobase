@@ -48,7 +48,7 @@ supabase: Client = create_client(url, key)
 const supabaseUrl = '${endpoint}';
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 Future<void> main() async {
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  await Indobase.initialize(url: supabaseUrl, anonKey: supabaseKey);
   runApp(MyApp());
 }`,
     },

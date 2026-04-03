@@ -135,9 +135,9 @@ export const AwsMarketplaceLinkExistingOrg = ({
           <ScaffoldSectionDetail className="text-base">
             <>
               <p>
-                You’ve subscribed to the Supabase{' '}
+                You’ve subscribed to the Indobase{' '}
                 {onboardingInfo?.plan_name_selected_on_marketplace} Plan via the AWS Marketplace. As
-                a final step, you need to link a Supabase organization to that subscription. Select
+                a final step, you need to link a Indobase organization to that subscription. Select
                 the organization you want to be managed and billed through AWS.
               </p>
 

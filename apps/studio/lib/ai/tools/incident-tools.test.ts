@@ -35,7 +35,7 @@ describe('ai/tools/incident-tools', () => {
       const tools = getIncidentTools({ baseUrl: 'https://supabase.com/dashboard' })
 
       expect(tools.get_active_incidents.description).toContain('Check for active incidents')
-      expect(tools.get_active_incidents.description).toContain('Supabase service')
+      expect(tools.get_active_incidents.description).toContain('Indobase service')
     })
 
     it('should have empty input schema', () => {
@@ -57,7 +57,7 @@ describe('ai/tools/incident-tools', () => {
 
         expect(result).toEqual({
           incidents: [],
-          message: 'Incident checking is only available on Supabase platform.',
+          message: 'Incident checking is only available on Indobase platform.',
         })
         expect(mockFetch).not.toHaveBeenCalled()
       })

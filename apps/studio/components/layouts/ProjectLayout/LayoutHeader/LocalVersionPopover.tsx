@@ -59,7 +59,7 @@ export const LocalVersionPopover = () => {
         {hasLatestCLIVersion ? (
           !isBeta && hasUpdate ? (
             <div className="px-4 mb-3">
-              <p className="text-sm mb-2">A new version of Supabase CLI is available:</p>
+              <p className="text-sm mb-2">A new version of Indobase CLI is available:</p>
               <Tabs_Shadcn_ defaultValue="macos">
                 <TabsList_Shadcn_ className="mt-2">
                   <TabsTrigger_Shadcn_ className="px-2 text-xs" value="macos">
@@ -100,9 +100,9 @@ export const LocalVersionPopover = () => {
           ) : (
             <div className="px-4 mb-3">
               {isBeta ? (
-                <p className="text-sm">You're on the Beta version of Supabase CLI</p>
+                <p className="text-sm">You're on the Beta version of Indobase CLI</p>
               ) : (
-                <p className="text-sm">You're on the latest version of Supabase CLI</p>
+                <p className="text-sm">You're on the latest version of Indobase CLI</p>
               )}
             </div>
           )
@@ -133,7 +133,7 @@ export const LocalVersionPopover = () => {
                     Approximate next release: {approximateNextRelease}
                   </p>
                   <p className="text-sm">
-                    Supabase CLI releases follows a two-week schedule, with stable updates available
+                    Indobase CLI releases follows a two-week schedule, with stable updates available
                     through the{' '}
                     <InlineLink
                       href={`${DOCS_URL}/guides/local-development/cli/getting-started?queryGroups=platform&platform=linux#updating-the-supabase-cli`}

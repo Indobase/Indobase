@@ -1,6 +1,6 @@
 // Constants specific to self-hosted environments
 
-// Supabase compose uses `CRYPTO_KEY` for pg-meta, while Studio sometimes uses `PG_META_CRYPTO_KEY`.
+// Indobase compose uses `CRYPTO_KEY` for pg-meta, while Studio sometimes uses `PG_META_CRYPTO_KEY`.
 // Support both so encryption/decryption matches.
 export const ENCRYPTION_KEY = process.env.PG_META_CRYPTO_KEY || process.env.CRYPTO_KEY || 'SAMPLE_KEY'
 export const POSTGRES_PORT = parseInt(process.env.POSTGRES_PORT || '5432', 10)

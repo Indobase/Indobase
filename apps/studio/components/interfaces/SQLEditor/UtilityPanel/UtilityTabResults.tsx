@@ -36,7 +36,7 @@ const UtilityTabResults = forwardRef<HTMLDivElement, UtilityTabResultsProps>(
     const result = snapV2.results[id]?.[0]
     const { data: subscription } = useOrgSubscriptionQuery({ orgSlug: organization?.slug })
 
-    // Customers on HIPAA plans should not have access to Supabase AI
+    // Customers on HIPAA plans should not have access to Indobase AI
     const { data: projectSettings } = useProjectSettingsV2Query({ projectRef: ref })
     const hasHipaaAddon = subscriptionHasHipaaAddon(subscription) && projectSettings?.is_sensitive
 

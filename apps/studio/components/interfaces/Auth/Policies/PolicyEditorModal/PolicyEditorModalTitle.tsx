@@ -57,7 +57,7 @@ const PolicyEditorModalTitle = ({
       <div className="flex items-center gap-x-2 pr-6">
         {showAssistantPreview && view === POLICY_MODAL_VIEWS.EDITOR && (
           <Button type="default" icon={<FlaskConical />} onClick={onToggleFeaturePreviewModal}>
-            Try Supabase Assistant
+            Try Indobase Assistant
           </Button>
         )}
         <DocsButton className="mt-[-4px]" href={`${DOCS_URL}/learn/auth-deep-dive/auth-policies`} />

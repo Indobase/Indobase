@@ -69,7 +69,7 @@ const PolicySelection = ({
       {showAssistantPreview && onToggleFeaturePreviewModal !== undefined && (
         <Alert_Shadcn_>
           <FlaskConical />
-          <AlertTitle_Shadcn_>Try the new Supabase Assistant for RLS policies</AlertTitle_Shadcn_>
+          <AlertTitle_Shadcn_>Try the new Indobase Assistant for RLS policies</AlertTitle_Shadcn_>
           <AlertDescription_Shadcn_>
             Create RLS policies for your tables with the help of AI
           </AlertDescription_Shadcn_>

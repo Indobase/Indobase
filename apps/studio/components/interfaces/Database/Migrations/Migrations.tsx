@@ -153,7 +153,7 @@ const Migrations = () => {
                                       <InlineLink
                                         href={`${DOCS_URL}/guides/deployment/database-migrations`}
                                       >
-                                        Supabase CLI
+                                        Indobase CLI
                                       </InlineLink>{' '}
                                       and hence we're unable to parse when this migration was
                                       inserted at.

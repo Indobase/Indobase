@@ -48,7 +48,7 @@ export const dataset: AssistantEvalCase[] = [
     metadata: { category: ['general_help'] },
   },
   {
-    input: { prompt: 'Restore my Supabase Storage files to the state from 3 days ago' },
+    input: { prompt: 'Restore my Indobase Storage files to the state from 3 days ago' },
     expected: {
       requiredTools: ['search_docs'],
       correctAnswer:
@@ -57,10 +57,10 @@ export const dataset: AssistantEvalCase[] = [
     metadata: { category: ['general_help'] },
   },
   {
-    input: { prompt: 'How do I enable S3 versioning in Supabase Storage?' },
+    input: { prompt: 'How do I enable S3 versioning in Indobase Storage?' },
     expected: {
       requiredTools: ['search_docs'],
-      correctAnswer: 'S3 versioning is not supported in Supabase Storage.',
+      correctAnswer: 'S3 versioning is not supported in Indobase Storage.',
     },
     metadata: { category: ['general_help'] },
   },

@@ -12,12 +12,12 @@ const GrafanaPromoBanner = () => (
     <div className="absolute inset-0 z-0">
       <img
         src={`${BASE_PATH}/img/reports/bg-grafana-dark.svg`}
-        alt="Supabase Grafana"
+        alt="Indobase Grafana"
         className="w-full h-full object-cover object-right hidden dark:block"
       />
       <img
         src={`${BASE_PATH}/img/reports/bg-grafana-light.svg`}
-        alt="Supabase Grafana"
+        alt="Indobase Grafana"
         className="w-full h-full object-cover object-right dark:hidden"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-background-alternative to-transparent" />
@@ -42,8 +42,8 @@ const GrafanaPromoBanner = () => (
     </div>
     <AlertDescription_Shadcn_ className="relative flex flex-col xl:flex-row gap-2 md:max-w-lg">
       <p className="flex-grow">
-        Set up the Supabase Grafana Dashboard to visualize over 200 database performance and health
-        metrics on your Supabase project.
+        Set up the Indobase Grafana Dashboard to visualize over 200 database performance and health
+        metrics on your Indobase project.
       </p>
       <GrafanaBannerActions className="xl:hidden" />
     </AlertDescription_Shadcn_>

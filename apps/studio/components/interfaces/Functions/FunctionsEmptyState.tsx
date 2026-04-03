@@ -142,7 +142,7 @@ export const FunctionsEmptyState = () => {
               <h4 className="text-base text-foreground">Via CLI</h4>
             </div>
             <p className="text-sm text-foreground-light mb-4 mt-1">
-              Create and deploy functions using the Supabase CLI. Ideal for local development and
+              Create and deploy functions using the Indobase CLI. Ideal for local development and
               version control.
             </p>
 
@@ -221,7 +221,7 @@ export const FunctionsInstructionsLocal = () => {
               </div>
               <p className="text-sm text-foreground-light mt-1 mb-4 prose [&>code]:text-xs text-sm max-w-full">
                 Create a new edge function called <code>hello-world</code> in your project via the
-                Supabase CLI.
+                Indobase CLI.
               </p>
               <div className="mb-4">
                 <CodeBlock
@@ -304,7 +304,7 @@ curl --request POST 'http://localhost:54321/functions/v1/hello-world' \\
                 <h4 className="text-base text-foreground">Self-hosting Edge Functions</h4>
               </div>
               <p className="text-sm text-foreground-light mt-1 mb-4 max-w-3xl">
-                Supabase Edge Runtime consists of a web server based on the Deno runtime, capable of
+                Indobase Edge Runtime consists of a web server based on the Deno runtime, capable of
                 running Javascript, Typescript, and WASM services. You may self-host edge functions
                 on providers like Fly.io, Digital Ocean, or AWS.
               </p>
@@ -390,7 +390,7 @@ export const FunctionsSecretsEmptyStateLocal = () => {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          Self-Hosted Supabase
+          Self-Hosted Indobase
           <div className="flex items-center gap-x-2">
             <DocsButton href={`${DOCS_URL}/guides/self-hosting/docker#configuring-services`} />
           </div>

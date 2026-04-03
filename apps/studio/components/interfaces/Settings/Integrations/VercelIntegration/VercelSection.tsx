@@ -124,22 +124,22 @@ export const VercelSection = ({ isProjectScoped }: { isProjectScoped: boolean })
 
   const VercelDetailsSection = `
 
-Connect your Vercel teams to your Supabase organization.
+Connect your Vercel teams to your Indobase organization.
 `
 
   const VercelContentSectionTop = `
 
 ### How does the Vercel integration work?
 
-Supabase will keep your environment variables up to date in each of the projects you assign to a Supabase project.
-You can also link multiple Vercel Projects to the same Supabase project.
+Indobase will keep your environment variables up to date in each of the projects you assign to a Indobase project.
+You can also link multiple Vercel Projects to the same Indobase project.
 `
 
   const VercelContentSectionBottom =
     vercelProjectCount > 0 && vercelIntegration !== undefined
       ? `
 Your Vercel connection has access to ${vercelProjectCount} Vercel Projects.
-You can change the scope of the access for Supabase by configuring
+You can change the scope of the access for Indobase by configuring
 [here](${getIntegrationConfigurationUrl(vercelIntegration)}).
 `
       : ''

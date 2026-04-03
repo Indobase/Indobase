@@ -73,7 +73,7 @@ const UpgradeSurveyModal = ({
       >
         <Modal.Content className="space-y-4">
           <p className="text-sm text-foreground-light">
-            What reasons motivated your decision to upgrade? Your feedback helps us improve Supabase
+            What reasons motivated your decision to upgrade? Your feedback helps us improve Indobase
             as much as we can.
           </p>
           <div className="space-y-8 mt-6">

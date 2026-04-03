@@ -125,7 +125,7 @@ export const CreateFirebaseAuthIntegrationDialog = ({
 
               <p className="text-sm text-foreground-light">
                 This will enable a JWT token from a specific Firebase project to access data from
-                this Supabase project.
+                this Indobase project.
               </p>
               <FormField_Shadcn_
                 key="firebaseProjectId"

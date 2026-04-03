@@ -18,7 +18,7 @@ describe('project-supabase-client', () => {
   })
 
   describe('createProjectSupabaseClient', () => {
-    it('should create a Supabase client with temporary API key', async () => {
+    it('should create an Indobase client with temporary API key', async () => {
       const mockApiKey = 'test-api-key-123'
       const mockClient = { from: vi.fn() }
       const projectRef = 'test-project-ref'

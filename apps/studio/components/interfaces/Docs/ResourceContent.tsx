@@ -129,7 +129,7 @@ export const ResourceContent = ({
                 <InlineLink href={`${DOCS_URL}/reference/javascript/select`}>Learn more</InlineLink>
               </p>
               <h4 className="text-default">Filtering</h4>
-              <p>Supabase provides a wide range of filters.</p>
+              <p>Indobase provides a wide range of filters.</p>
               <p>
                 <InlineLink href={`${DOCS_URL}/reference/javascript/using-filters`}>
                   Learn more
@@ -261,7 +261,7 @@ export const ResourceContent = ({
             content={
               <>
                 <p>
-                  Supabase provides realtime functionality and broadcasts database changes to
+                  Indobase provides realtime functionality and broadcasts database changes to
                   authorized users depending on Row Level Security (RLS) policies.
                 </p>
                 <p>

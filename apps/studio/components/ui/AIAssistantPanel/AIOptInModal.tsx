@@ -47,7 +47,7 @@ export const AIOptInModal = ({ visible, onCancel }: AIOptInModalProps) => {
         <Form_Shadcn_ {...form}>
           <form id="ai-opt-in-form" onSubmit={form.handleSubmit(onSubmit)}>
             <DialogHeader padding="small">
-              <DialogTitle>Update Supabase Assistant Opt-in Level</DialogTitle>
+              <DialogTitle>Update Indobase Assistant Opt-in Level</DialogTitle>
             </DialogHeader>
 
             <DialogSectionSeparator />

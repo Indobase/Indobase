@@ -112,7 +112,7 @@ export const DestinationTypeSelection = () => {
                   {unifiedReplication && <Badge>Alpha</Badge>}
                 </div>
                 <p className="text-foreground-lighter">
-                  Send data to Apache Iceberg tables in your Supabase Storage for flexible analytics
+                  Send data to Apache Iceberg tables in your Indobase Storage for flexible analytics
                   workflows
                 </p>
               </div>

@@ -65,7 +65,7 @@ export const AWSPrivateLinkSection = () => {
       <ScaffoldContainer>
         <ScaffoldSection className="py-12">
           <ScaffoldSectionDetail title="AWS PrivateLink">
-            <p>Connect to your Supabase project from your AWS VPC using AWS PrivateLink.</p>
+            <p>Connect to your Indobase project from your AWS VPC using AWS PrivateLink.</p>
             <IntegrationImageHandler title="aws" />
           </ScaffoldSectionDetail>
           <ScaffoldSectionContent>
@@ -76,14 +76,14 @@ export const AWSPrivateLinkSection = () => {
                 </h5>
                 <p className="text-foreground-light text-sm mb-6">
                   Connecting to AWS PrivateLink allows you to create a private connection between
-                  your AWS VPC and your Supabase project.
+                  your AWS VPC and your Indobase project.
                 </p>
                 {promptPlanUpgrade && (
                   <div className="mb-6">
                     <UpgradeToPro
                       layout="vertical"
                       primaryText="Only available on Team or Enterprise Plan and above"
-                      secondaryText="Connect your AWS VPC privately to your Supabase project using AWS PrivateLink."
+                      secondaryText="Connect your AWS VPC privately to your Indobase project using AWS PrivateLink."
                       buttonText="Upgrade to Team"
                       source="aws-privatelink-integration"
                     />

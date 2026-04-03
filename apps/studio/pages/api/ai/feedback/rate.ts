@@ -115,7 +115,7 @@ export async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       providerOptions,
       schema: rateMessageResponseSchema,
       prompt: `
-Your job is to look at a Supabase Assistant conversation, which the user has given feedback on, and classify it.
+Your job is to look at an Indobase Assistant conversation, which the user has given feedback on, and classify it.
 
 The user gave this feedback: ${rating === 'positive' ? 'THUMBS UP (positive)' : 'THUMBS DOWN (negative)'}
 ${reason ? `\nUser's reason: ${reason}` : ''}
@@ -131,7 +131,7 @@ Instructions:
    - edge_functions: Edge Functions or serverless functions
    - database_optimization: Performance, indexes, optimization
    - debugging: Helping debug errors or issues
-   - general_help: General questions about Supabase features
+   - general_help: General questions about Indobase features
    - other: Anything else
 `,
     })

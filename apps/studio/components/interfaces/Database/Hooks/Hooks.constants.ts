@@ -30,8 +30,8 @@ export const AVAILABLE_WEBHOOK_TYPES = [
         {
           value: 'supabase_function',
           icon: `${BASE_PATH}/img/function-providers/supabase-severless-function.png`,
-          label: 'Supabase Edge Functions',
-          description: 'Choose a Supabase edge function to run.',
+          label: 'Indobase Edge Functions',
+          description: 'Choose a Indobase edge function to run.',
         },
       ]
     : []),

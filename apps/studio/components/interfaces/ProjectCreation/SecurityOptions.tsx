@@ -52,7 +52,7 @@ export const SecurityOptions = ({ form, layout = 'horizontal' }: SecurityOptions
                     Autogenerate a RESTful API for your public schema. Recommended if using a client
                     library like{' '}
                     <Link
-                      href="https://supabase.com/docs/reference/javascript/introduction"
+                      href="https://indobase.in/docs/reference/javascript/introduction"
                       target="_blank"
                       className="text-link"
                     >

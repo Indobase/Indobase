@@ -166,8 +166,8 @@ const ProjectLinker = ({
 
   const noSupabaseProjects = numProjects === 0
   const noForeignProjects = foreignProjects.length === 0
-  const missingEntity = noSupabaseProjects ? 'Supabase' : mode
-  const oppositeMissingEntity = noSupabaseProjects ? mode : 'Supabase'
+  const missingEntity = noSupabaseProjects ? 'Indobase' : mode
+  const oppositeMissingEntity = noSupabaseProjects ? mode : 'Indobase'
 
   return (
     <div className="flex flex-col bg border shadow rounded-lg overflow-hidden">
@@ -216,7 +216,7 @@ const ProjectLinker = ({
                         <div className="bg-white shadow border rounded p-1 w-6 h-6 flex justify-center items-center">
                           <img
                             src={`${BASE_PATH}/img/indobase-logo.svg`}
-                            alt="Supabase"
+                            alt="Indobase"
                             className="w-4"
                           />
                         </div>
@@ -248,13 +248,13 @@ const ProjectLinker = ({
                         <div className="bg-white shadow border rounded p-1 w-6 h-6 flex justify-center items-center">
                           <img
                             src={`${BASE_PATH}/img/indobase-logo.svg`}
-                            alt="Supabase"
+                            alt="Indobase"
                             className="w-4"
                           />
                         </div>
                         {selectedSupabaseProject
                           ? selectedSupabaseProject.name
-                          : 'Choose Supabase Project'}
+                          : 'Choose Indobase Project'}
                       </div>
                     </Button>
                   )

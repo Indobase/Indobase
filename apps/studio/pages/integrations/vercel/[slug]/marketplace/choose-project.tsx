@@ -123,7 +123,7 @@ const VercelIntegration: NextPageWithLayout = () => {
             <Markdown
               className="text-foreground-lighter"
               content={`
-This Supabase integration manages your environment variables automatically to provide the latest keys in the unlikely event that you will need to refresh your JWT token.
+This Indobase integration manages your environment variables automatically to provide the latest keys in the unlikely event that you will need to refresh your JWT token.
 `}
             />
           </header>

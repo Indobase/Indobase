@@ -78,7 +78,7 @@ export const ThemeSettings = () => {
         <PageSectionSummary>
           <PageSectionTitle>Appearance</PageSectionTitle>
           <PageSectionDescription>
-            Choose how Supabase looks and behaves in the dashboard.
+            Choose how Indobase looks and behaves in the dashboard.
           </PageSectionDescription>
         </PageSectionSummary>
       </PageSectionMeta>
@@ -90,7 +90,7 @@ export const ThemeSettings = () => {
                 Theme mode
               </Label_Shadcn_>
               <p className="text-sm text-foreground-light">
-                Choose how Supabase looks to you. Select a single theme, or sync with your system.
+                Choose how Indobase looks to you. Select a single theme, or sync with your system.
               </p>
             </div>
 

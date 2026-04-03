@@ -57,7 +57,7 @@ export const useOrganizationsQuery = <TData = OrganizationsData>({
 }: UseCustomQueryOptions<OrganizationsData, OrganizationsError, TData> = {}) => {
   const { profile } = useProfile()
   const isLoggedIn = useIsLoggedIn()
-  // Supabase cloud may depend on profile being resolved first. Self-hosted
+  // Indobase cloud may depend on profile being resolved first. Self-hosted
   // `/platform/organizations` only needs JWT claims; waiting on `profile` here
   // causes infinite skeletons when GET /platform/profile is slow, 404→create
   // is in flight, or profile errors without resolving `data`.

@@ -198,7 +198,7 @@ export const FeedbackWidget = ({ onClose, onSwitchToIssueOptions }: FeedbackWidg
     <>
       <div className="p-4">
         <TextArea_Shadcn_
-          placeholder="My idea for improving Supabase is..."
+          placeholder="My idea for improving Indobase is..."
           rows={6}
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}

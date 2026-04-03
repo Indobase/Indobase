@@ -1,6 +1,6 @@
 # Usage Tracking System for BaaS/IaaS Platform
 
-A comprehensive usage tracking, metering, and billing system built on top of Indobase/Supabase.
+A comprehensive usage tracking, metering, and billing system built on top of Indobase.
 
 ## 📋 Overview
 
@@ -57,13 +57,13 @@ This system provides:
 
 ### 1. Install the Schema
 
-Run the migration in your Supabase project:
+Run the migration in your Indobase project:
 
 ```bash
 supabase db push
 ```
 
-Or apply manually via SQL Editor in Supabase Dashboard.
+Or apply manually via SQL Editor in Indobase Dashboard.
 
 ### 2. Deploy Edge Functions
 
@@ -501,7 +501,7 @@ If migrating from another system:
 
 ## 📚 Additional Resources
 
-- [Supabase Edge Functions Docs](https://supabase.com/docs/guides/functions)
+- [Indobase Edge Functions Docs](https://indobase.in/docs/guides/functions)
 - [PostgreSQL Time-Series Best Practices](https://www.postgresql.org/docs/current/)
 - [Stripe Billing Integration](https://stripe.com/docs/billing)
 
