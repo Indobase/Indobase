@@ -117,7 +117,7 @@ export const ReviewWithAI = ({
       tooltip={{
         content: {
           side: 'bottom',
-          text: 'Ask Supabase Assistant to review the merge request',
+          text: 'Ask Indobase Assistant to review the merge request',
         },
       }}
     >

@@ -326,7 +326,7 @@ export const ApiAccessToggle = ({
               </InfoTooltip>
             </p>
             <p className="text-sm text-foreground-lighter">
-              Allow this table to be queried via Supabase client libraries or the API directly
+              Allow this table to be queried via Indobase client libraries or the API directly
             </p>
           </div>
           <div className="flex items-center gap-2">

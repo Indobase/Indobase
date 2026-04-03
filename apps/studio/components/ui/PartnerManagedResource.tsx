@@ -21,7 +21,7 @@ interface PartnerManagedResourceProps {
 export const PARTNER_TO_NAME = {
   [MANAGED_BY.VERCEL_MARKETPLACE]: 'Vercel Marketplace',
   [MANAGED_BY.AWS_MARKETPLACE]: 'AWS Marketplace',
-  [MANAGED_BY.SUPABASE]: 'Supabase',
+  [MANAGED_BY.SUPABASE]: 'Indobase',
 } as const
 
 function PartnerManagedResource({ managedBy, resource, cta }: PartnerManagedResourceProps) {

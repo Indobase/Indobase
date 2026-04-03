@@ -293,19 +293,19 @@ export const getReportAttributesV2: (
           provider: 'infra-monitoring',
           label: 'Reserved',
           tooltip:
-            'Administrative connections used by various Supabase services for internal operations and maintenance tasks',
+            'Administrative connections used by various Indobase services for internal operations and maintenance tasks',
         },
         {
           attribute: 'client_connections_supabase_auth_admin',
           provider: 'infra-monitoring',
           label: 'Auth',
-          tooltip: 'Connection pool managed by Supabase Auth',
+          tooltip: 'Connection pool managed by Indobase Auth',
         },
         {
           attribute: 'client_connections_supabase_storage_admin',
           provider: 'infra-monitoring',
           label: 'Storage',
-          tooltip: 'Connection pool managed by Supabase Storage',
+          tooltip: 'Connection pool managed by Indobase Storage',
         },
         {
           attribute: 'client_connections_other',

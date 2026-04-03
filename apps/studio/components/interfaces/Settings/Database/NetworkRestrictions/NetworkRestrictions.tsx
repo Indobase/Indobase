@@ -237,7 +237,7 @@ export const NetworkRestrictions = () => {
                         database.
                       </p>
                       <p className="text-foreground-light text-sm">
-                        Note: Restrictions only apply to your database, and not to Supabase services
+                        Note: Restrictions only apply to your database, and not to Indobase services
                       </p>
                     </div>
                   </div>
@@ -258,7 +258,7 @@ export const NetworkRestrictions = () => {
                         database.
                       </p>
                       <p>
-                        Note: Restrictions only apply to your database, and not to Supabase services
+                        Note: Restrictions only apply to your database, and not to Indobase services
                       </p>
                     </CardDescription>
                     <div className="flex items-center space-x-2">

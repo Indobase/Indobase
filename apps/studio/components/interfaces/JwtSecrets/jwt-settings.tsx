@@ -206,7 +206,7 @@ const JWTSettings = () => {
                           <em className="text-foreground not-italic">
                             {legacyKey.status === 'in_use' ? 'sign and verify' : 'only verify'}
                           </em>{' '}
-                          JSON Web Tokens by Supabase products.
+                          JSON Web Tokens by Indobase products.
                         </p>
 
                         {legacyAPIKeysStatus && legacyAPIKeysStatus.enabled && (
@@ -230,7 +230,7 @@ const JWTSettings = () => {
                       <Admonition
                         type="note"
                         title="Your project has revoked the legacy JWT secret"
-                        description="No new JSON Web Tokens are issued nor verified with it by Supabase products."
+                        description="No new JSON Web Tokens are issued nor verified with it by Indobase products."
                       />
                     )}
                     <Input
@@ -257,9 +257,9 @@ const JWTSettings = () => {
                       className="input-mono"
                       descriptionText={
                         legacyKey?.status === 'revoked'
-                          ? 'No longer used to sign JWTs by Supabase Auth.'
+                          ? 'No longer used to sign JWTs by Indobase Auth.'
                           : !legacyKey || legacyKey.status === 'in_use'
-                            ? 'Used to sign and verify JWTs issued by Supabase Auth.'
+                            ? 'Used to sign and verify JWTs issued by Indobase Auth.'
                             : 'Used only to verify JWTs.'
                       }
                       layout="horizontal"
@@ -289,7 +289,7 @@ const JWTSettings = () => {
 
                         {isJwtSecretUpdateFailed && (
                           <Admonition type="warning" title="Failed to update JWT secret">
-                            Please try again. If the failures persist, please contact Supabase
+                            Please try again. If the failures persist, please contact Indobase
                             support with the following details: <br />
                             Change tracking ID: {data?.changeTrackingId} <br />
                             Error message: {jwtSecretUpdateErrorMessage}
@@ -463,7 +463,7 @@ const JWTSettings = () => {
                         </div>
                         {isJwtSecretUpdateFailed ? (
                           <Admonition type="warning" title="Failed to update JWT secret">
-                            Please try again. If the failures persist, please contact Supabase
+                            Please try again. If the failures persist, please contact Indobase
                             support with the following details: <br />
                             Change tracking ID: {data?.changeTrackingId} <br />
                             Error message: {jwtSecretUpdateErrorMessage}

@@ -69,7 +69,7 @@ export const AccountConnections = () => {
         <PageSectionSummary>
           <PageSectionTitle>Connections</PageSectionTitle>
           <PageSectionDescription>
-            Connect your Supabase account with other services.
+            Connect your Indobase account with other services.
           </PageSectionDescription>
         </PageSectionSummary>
       </PageSectionMeta>
@@ -100,7 +100,7 @@ export const AccountConnections = () => {
                 <div>
                   <p className="text-sm">GitHub</p>
                   <p className="text-sm text-foreground-lighter">
-                    Sync repos to Supabase projects for automatic branch creation and merging
+                    Sync repos to Indobase projects for automatic branch creation and merging
                   </p>
                 </div>
               </div>
@@ -156,7 +156,7 @@ export const AccountConnections = () => {
           loading={isRemoving}
         >
           <p className="text-sm text-foreground-light">
-            Removing this authorization will disconnect your GitHub account from Supabase. You can
+            Removing this authorization will disconnect your GitHub account from Indobase. You can
             reconnect at any time.
           </p>
         </ConfirmationModal>

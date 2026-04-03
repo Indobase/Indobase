@@ -122,7 +122,7 @@ export const CreateAuth0IntegrationDialog = ({
             <Separator /> */}
               <p className="text-sm text-foreground-light">
                 This will enable a JWT token from your Auth0 project to access data from this
-                Supabase project.
+                Indobase project.
               </p>
               <FormField_Shadcn_
                 key="auth0DomainName"

@@ -16,7 +16,7 @@ export const AccountDeletion = () => {
         <PageSectionSummary>
           <PageSectionTitle>Danger zone</PageSectionTitle>
           <PageSectionDescription>
-            Permanently delete your Supabase account and data.
+            Permanently delete your Indobase account and data.
           </PageSectionDescription>
         </PageSectionSummary>
       </PageSectionMeta>

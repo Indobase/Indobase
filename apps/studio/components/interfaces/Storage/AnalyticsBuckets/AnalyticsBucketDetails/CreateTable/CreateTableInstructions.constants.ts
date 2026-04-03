@@ -22,7 +22,7 @@ from pyiceberg.catalog import load_catalog
 import pyarrow as pa
 import datetime
 
-# Supabase project ref
+# Indobase project ref
 PROJECT_REF = "${ref ?? '<your-supabase-project-ref>'}"
 
 # Configuration for Iceberg REST Catalog

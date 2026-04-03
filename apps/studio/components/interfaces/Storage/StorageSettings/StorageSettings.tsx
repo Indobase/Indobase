@@ -266,7 +266,7 @@ export const StorageSettings = () => {
               <Admonition
                 type="default"
                 title="Storage settings are not available for self-hosted projects"
-                description="Storage settings are only available for Supabase Platform projects."
+                description="Storage settings are only available for Indobase Platform projects."
               />
             ) : isLoading ? (
               <GenericSkeletonLoader />

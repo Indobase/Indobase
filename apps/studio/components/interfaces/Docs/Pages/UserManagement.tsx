@@ -37,14 +37,14 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
         title="User Management"
         content={
           <>
-            <p>Supabase makes it easy to manage your users.</p>
+            <p>Indobase makes it easy to manage your users.</p>
             <p>
-              Supabase assigns each user a unique ID. You can reference this ID anywhere in your
+              Indobase assigns each user a unique ID. You can reference this ID anywhere in your
               database. For example, you might create a <code>profiles</code> table that references
               the user using a <code>user_id</code> field.
             </p>
             <p>
-              Supabase already has built in the routes to sign up, login, and log out for managing
+              Indobase already has built in the routes to sign up, login, and log out for managing
               users in your apps and websites.
             </p>
           </>
@@ -57,7 +57,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
           <>
             <p>Allow your users to sign up and create a new account.</p>
             <p>
-              After they have signed up, all interactions using the Supabase JS client will be
+              After they have signed up, all interactions using the Indobase JS client will be
               performed as "that user".
             </p>
           </>
@@ -76,7 +76,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
           <>
             <p>If an account is created, users can login to your app.</p>
             <p>
-              After they have logged in, all interactions using the Supabase JS client will be
+              After they have logged in, all interactions using the Indobase JS client will be
               performed as "that user".
             </p>
           </>
@@ -95,7 +95,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
           <>
             <p>Send a user a passwordless link which they can use to redeem an access_token.</p>
             <p>
-              After they have clicked the link, all interactions using the Supabase JS client will
+              After they have clicked the link, all interactions using the Indobase JS client will
               be performed as "that user".
             </p>
           </>
@@ -200,7 +200,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
                 </InlineLink>
               </p>
               <p>
-                After they have logged in, all interactions using the Supabase JS client will be
+                After they have logged in, all interactions using the Indobase JS client will be
                 performed as "that user".
               </p>
               <p>
@@ -276,7 +276,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
         title="Log out"
         content={
           <p>
-            After calling log out, all interactions using the Supabase JS client will be
+            After calling log out, all interactions using the Indobase JS client will be
             "anonymous".
           </p>
         }
@@ -294,7 +294,7 @@ export const UserManagement = ({ selectedLang, showApiKey }: UserManagementProps
           <>
             <p>Send a user a passwordless link which they can use to sign up and log in.</p>
             <p>
-              After they have clicked the link, all interactions using the Supabase JS client will
+              After they have clicked the link, all interactions using the Indobase JS client will
               be performed as "that user".
             </p>
             <p>

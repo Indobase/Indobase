@@ -389,7 +389,7 @@ const getAuthLogsQuery = () => {
 }
 
 /**
- * Supabase storage logs query fragment
+ * Indobase storage logs query fragment
  */
 const getSupabaseStorageLogsQuery = () => {
   return `

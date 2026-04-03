@@ -22,7 +22,7 @@ describe('ai/tools/rendering-tools', () => {
       const tools = getRenderingTools()
 
       expect(tools.deploy_edge_function).toBeDefined()
-      expect(tools.deploy_edge_function.description).toContain('deploy a Supabase Edge Function')
+      expect(tools.deploy_edge_function.description).toContain('deploy an Indobase Edge Function')
     })
 
     it('should include rename_chat tool', () => {

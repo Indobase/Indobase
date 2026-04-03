@@ -7,7 +7,7 @@ import {
   PLAN_DETAILS,
 } from '../DiskManagement/ui/DiskManagement.constants'
 
-// Ref: https://supabase.com/docs/guides/platform/compute-and-disk
+// Ref: https://indobase.in/docs/guides/platform/compute-and-disk
 const maxDiskForCompute = new Map([
   [10, instanceSizeSpecs.micro],
   [50, instanceSizeSpecs.small],

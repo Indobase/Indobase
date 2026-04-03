@@ -56,7 +56,7 @@ export const HelpOptionsList = ({
                 icon={<AiIconAnimation allowHoverEffect size={14} />}
                 onClick={onAssistantClick}
               >
-                Supabase Assistant
+                Indobase Assistant
               </ButtonGroupItem>
             )
           case 'docs':
@@ -111,7 +111,7 @@ export const HelpOptionsList = ({
                 asChild
               >
                 <a href={STATUS_URL} target="_blank" rel="noreferrer">
-                  Supabase status
+                  Indobase status
                 </a>
               </ButtonGroupItem>
             )

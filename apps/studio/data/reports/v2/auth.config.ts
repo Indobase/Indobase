@@ -715,7 +715,7 @@ export const createErrorsReportConfig = ({
     hideChartType: false,
     defaultChartStyle: 'line',
     titleTooltip:
-      'The total number of auth errors by Supabase Auth error code from the API Gateway.',
+      'The total number of auth errors by Indobase Auth error code from the API Gateway.',
     availableIn: ['free', 'pro', 'team', 'enterprise', 'platform'],
     dataProvider: async () => {
       const sql = AUTH_REPORT_SQL.ErrorsByAuthCode(interval, filters)

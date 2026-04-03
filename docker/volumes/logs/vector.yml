@@ -6,7 +6,7 @@ sources:
   docker_host:
     type: docker_logs
     exclude_containers:
-      - supabase-vector
+      - indobase-vector
 
 transforms:
   project_logs:
@@ -30,13 +30,13 @@ transforms:
     inputs:
       - project_logs
     route:
-      kong: '.appname == "supabase-kong"'
-      auth: '.appname == "supabase-auth"'
-      rest: '.appname == "supabase-rest"'
-      realtime: '.appname == "realtime-dev.supabase-realtime"'
-      storage: '.appname == "supabase-storage"'
-      functions: '.appname == "supabase-edge-functions"'
-      db: '.appname == "supabase-db"'
+      kong: '.appname == "indobase-kong"'
+      auth: '.appname == "indobase-auth"'
+      rest: '.appname == "indobase-rest"'
+      realtime: '.appname == "realtime-dev.indobase-realtime"'
+      storage: '.appname == "indobase-storage"'
+      functions: '.appname == "indobase-edge-functions"'
+      db: '.appname == "indobase-db"'
   # Ignores non nginx errors since they are related with kong booting up
   kong_logs:
     type: remap

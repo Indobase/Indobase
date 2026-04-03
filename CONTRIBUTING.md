@@ -1,6 +1,6 @@
 # CONTRIBUTING.md
 
-Thank you for contributing to Supabase! We’re a big, exciting open source project and we’d love to have you contribute! Here’s some resources and guidance to help you get started:
+Thank you for contributing to Indobase! We’re a big, exciting open source project and we’d love to have you contribute! Here’s some resources and guidance to help you get started:
 
 [1. Getting Started](#getting-started)
 [2. Issues](#issues)

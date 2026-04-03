@@ -22,8 +22,8 @@ function determineCardContent(reason: CloudMarketplaceContractLinkingIneligibili
     case 'NO_ACTIVE_CONTRACT_FOUND':
       return (
         <p>
-          Thanks for purchasing Supabase through the AWS Marketplace. It’ll take a moment for all
-          systems to sync before you can link your Supabase organization to the AWS Marketplace.
+          Thanks for purchasing Indobase through the AWS Marketplace. It’ll take a moment for all
+          systems to sync before you can link your Indobase organization to the AWS Marketplace.
           Please try again in a few minutes.
         </p>
       )
@@ -32,11 +32,11 @@ function determineCardContent(reason: CloudMarketplaceContractLinkingIneligibili
       return (
         <>
           <p className="mb-4">
-            You’ve accepted a private offer for Supabase credits as part of AWS Activate. No further
+            You’ve accepted a private offer for Indobase credits as part of AWS Activate. No further
             action is required on your end.
           </p>
           <p>
-            Your Supabase organization’s credit balance will be updated accordingly. Please note
+            Your Indobase organization’s credit balance will be updated accordingly. Please note
             that it may take 1 or 2 days for this change to appear on the Dashboard. You can find
             the credit balance on the{' '}
             <Link className="underline" href={'/org/_/billing'}>
@@ -55,9 +55,9 @@ function determineCardContent(reason: CloudMarketplaceContractLinkingIneligibili
       return (
         <>
           <p>
-            You’ve accepted a private offer that updated or extended an existing Supabase
+            You’ve accepted a private offer that updated or extended an existing Indobase
             subscription on the AWS Marketplace. No further action is required on your end. Your
-            Supabase organization will remain linked to the AWS Marketplace, and your projects will
+            Indobase organization will remain linked to the AWS Marketplace, and your projects will
             continue to run as usual.
           </p>
 

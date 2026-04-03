@@ -75,7 +75,7 @@ export const OAuthApps = () => {
               <div>
                 <p>Published Apps</p>
                 <p className="text-foreground-light text-sm">
-                  Build integrations that extend Supabase's functionality
+                  Build integrations that extend Indobase's functionality
                 </p>
               </div>
               <ButtonTooltip

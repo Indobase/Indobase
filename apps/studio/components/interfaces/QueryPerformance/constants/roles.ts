@@ -69,7 +69,7 @@ export const ROLE_INFO: Record<KnownRole, RoleInfo> = {
     displayName: 'Dashboard User',
   },
   supabase_admin: {
-    displayName: 'Supabase Admin',
+    displayName: 'Indobase Admin',
   },
 }
 

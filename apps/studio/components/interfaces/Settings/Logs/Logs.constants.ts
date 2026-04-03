@@ -40,7 +40,7 @@ group by
   },
   {
     label: 'Metadata IP',
-    description: 'List all IP addresses that used the Supabase API',
+    description: 'List all IP addresses that used the Indobase API',
     mode: 'custom',
     searchString: `select
   cast(timestamp as datetime) as timestamp,
@@ -55,7 +55,7 @@ where h.x_real_ip is not null
   },
   {
     label: 'Requests by Geography',
-    description: 'List all ISO 3166-1 alpha-2 country codes that used the Supabase API',
+    description: 'List all ISO 3166-1 alpha-2 country codes that used the Indobase API',
     mode: 'custom',
     searchString: `select
   cf.country,
@@ -74,7 +74,7 @@ order by
   {
     label: 'Slow Response Time',
     mode: 'custom',
-    description: 'List all Supabase API requests that are slow',
+    description: 'List all Indobase API requests that are slow',
     searchString: `select
   cast(timestamp as datetime) as timestamp,
   event_message,
@@ -92,7 +92,7 @@ limit 100
   },
   {
     label: '500 Request Codes',
-    description: 'List all Supabase API requests that responded witha 5XX status code',
+    description: 'List all Indobase API requests that responded witha 5XX status code',
     mode: 'custom',
     searchString: `select
   cast(timestamp as datetime) as timestamp,
@@ -111,7 +111,7 @@ limit 100
   },
   {
     label: 'Top Paths',
-    description: 'List the most requested Supabase API paths',
+    description: 'List the most requested Indobase API paths',
     mode: 'custom',
     searchString: `select
   r.path as path,

@@ -808,7 +808,7 @@ function createStorageExplorerState({
               | boolean
             >(async (resolve) => {
               try {
-                // Get authenticated Supabase client for Storage API access
+                // Get authenticated Indobase client for Storage API access
                 const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
 
                 // Use Storage API directly instead of Management API to avoid throttling

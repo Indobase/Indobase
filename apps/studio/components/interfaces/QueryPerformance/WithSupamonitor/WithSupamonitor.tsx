@@ -121,7 +121,7 @@ export const WithSupamonitor = ({ dateRange, onDateRangeChange }: WithSupamonito
         actions={
           <DownloadResultsButton
             results={aggregatedGridData}
-            fileName={`Supabase Query Performance Supamonitor (${ref})`}
+            fileName={`Indobase Query Performance Supamonitor (${ref})`}
             align="end"
           />
         }

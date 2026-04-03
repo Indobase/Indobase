@@ -128,12 +128,12 @@ export function CopyPromptAdmonition({ stepsContainerRef }: CopyPromptAdmonition
       <div className="absolute -inset-16 z-0 opacity-50">
         <img
           src={`${BASE_PATH}/img/reports/bg-grafana-dark.svg`}
-          alt="Supabase Grafana"
+          alt="Indobase Grafana"
           className="w-full h-full object-cover object-right hidden dark:block"
         />
         <img
           src={`${BASE_PATH}/img/reports/bg-grafana-light.svg`}
-          alt="Supabase Grafana"
+          alt="Indobase Grafana"
           className="w-full h-full object-cover object-right dark:hidden"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-background-alternative to-transparent" />

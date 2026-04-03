@@ -8,7 +8,7 @@ Deploy the **marketing site**, **Studio**, and **backend** on one domain: **indo
 |------|-----|--------|
 | `/` | Marketing site (SvelteKit) | Landing, docs, blog |
 | `/dashboard` | Studio (Next.js) | Dashboard, projects, DB, Auth, Storage |
-| `/api` | Backend / Platform API | Your Supabase/Indobase API (Kong, PostgREST, GoTrue, etc.) |
+| `/api` | Backend / Platform API | Your Indobase API (Kong, PostgREST, GoTrue, etc.) |
 
 You need a **reverse proxy** (e.g. Nginx, Caddy, or your host’s routing) that:
 
@@ -40,7 +40,7 @@ Build:
 NEXT_PUBLIC_BASE_PATH=/dashboard NEXT_PUBLIC_SITE_URL=https://indobase.in/dashboard pnpm build --filter=studio
 ```
 
-### Backend (Supabase stack)
+### Backend (Indobase stack)
 
 - In **supabase/config.toml** → `[auth]`:
   - **site_url** = `https://indobase.in/dashboard` (Studio).

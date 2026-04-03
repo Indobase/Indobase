@@ -1056,7 +1056,7 @@ describe('SupportFormPage', () => {
     renderSupportFormPage()
 
     await waitFor(() => {
-      expect(screen.getByText('Try Supabase Assistant')).toBeInTheDocument()
+      expect(screen.getByText('Try Indobase Assistant')).toBeInTheDocument()
     })
   })
 
@@ -1682,7 +1682,7 @@ describe('SupportFormPage', () => {
     expect(dashboardLogToggle).not.toBeChecked()
 
     await userEvent.type(getSummaryField(screen), 'Cannot access my account')
-    await userEvent.type(getMessageField(screen), 'I need help accessing my Supabase account')
+    await userEvent.type(getMessageField(screen), 'I need help accessing my Indobase account')
 
     await userEvent.click(getSubmitButton(screen))
 
@@ -1704,7 +1704,7 @@ describe('SupportFormPage', () => {
       browserInformation: 'Chrome',
       dashboardStudioVersion: mockStudioVersion,
     })
-    expect(payload.message).toBe('I need help accessing my Supabase account')
+    expect(payload.message).toBe('I need help accessing my Indobase account')
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /support request sent/i })).toBeInTheDocument()

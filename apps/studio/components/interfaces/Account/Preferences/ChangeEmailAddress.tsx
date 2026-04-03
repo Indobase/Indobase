@@ -25,7 +25,7 @@ export const GitHubChangeEmailAddress = () => {
         Email addresses for GitHub identities should be updated through GitHub
       </p>
       <ol className="flex flex-col gap-y-0.5 text-sm ml-4 pl-2 list-decimal text-foreground-light">
-        <li>Log out of Supabase</li>
+        <li>Log out of Indobase</li>
         <li>
           Change your Primary Email in{' '}
           <InlineLink href="https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/changing-your-primary-email-address">
@@ -35,7 +35,7 @@ export const GitHubChangeEmailAddress = () => {
         </li>
         <li>Log out of GitHub</li>
         <li>Log back into GitHub (with the new, desired email set as primary)</li>
-        <li>Log back into Supabase</li>
+        <li>Log back into Indobase</li>
       </ol>
     </DialogSection>
   )

@@ -478,7 +478,7 @@ export const Connect = () => {
                         <p>
                           To learn more about the new API keys, read the{' '}
                           <a
-                            href="https://supabase.com/docs/guides/api/api-keys"
+                            href="https://indobase.in/docs/guides/api/api-keys"
                             target="_blank"
                             rel="noreferrer"
                           >

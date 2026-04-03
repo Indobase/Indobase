@@ -19,7 +19,7 @@ services:
           path: package.json
 
   mail:
-    container_name: supabase-mail
+    container_name: indobase-mail
     image: inbucket/inbucket:3.0.3
     ports:
       - '2500:2500' # SMTP

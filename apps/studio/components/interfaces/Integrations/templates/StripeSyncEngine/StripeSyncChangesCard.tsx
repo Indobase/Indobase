@@ -11,7 +11,7 @@ const ListItemClassName = 'flex items-center gap-x-3 py-2 px-3 border-b'
 export const StripeSyncChangesCard = ({ className }: StripeSyncChangesCardProps) => {
   return (
     <div className="flex flex-col gap-y-4">
-      <h4>This integration will modify your Supabase project:</h4>
+      <h4>This integration will modify your Indobase project:</h4>
       <Card className={cn(className)}>
         <CardContent className="p-0">
           <ul className="text-foreground-light text-sm">
@@ -38,7 +38,7 @@ export const StripeSyncChangesCard = ({ className }: StripeSyncChangesCardProps)
             </li>
             <li className="flex items-center gap-x-3 py-2 px-3">
               <Layers size={16} strokeWidth={1.5} className="text-foreground-muted shrink-0" />
-              <span>Schedules automatic Stripe data syncs using Supabase Queues</span>
+              <span>Schedules automatic Stripe data syncs using Indobase Queues</span>
             </li>
           </ul>
         </CardContent>

@@ -79,7 +79,7 @@ const MOCK_ADVISORIES_DATA = [
     category: 'security',
     message: 'Materialized views in API schema can bypass RLS. Move them to private schema.',
     remediationUrl:
-      'https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0016_materialized_view_in_api',
+      'https://indobase.in/docs/guides/database/database-advisors?queryGroups=lint&lint=0016_materialized_view_in_api',
   },
   {
     id: '0031_functions_no_rls_guard',
@@ -87,7 +87,7 @@ const MOCK_ADVISORIES_DATA = [
     category: 'security',
     message: 'Function api.health_check should verify auth context before querying tables.',
     remediationUrl:
-      'https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0031_functions_no_rls_guard',
+      'https://indobase.in/docs/guides/database/database-advisors?queryGroups=lint&lint=0031_functions_no_rls_guard',
   },
   {
     id: '1012_slow_query',
@@ -95,7 +95,7 @@ const MOCK_ADVISORIES_DATA = [
     category: 'performance',
     message:
       'Query on table edge_function_logs exceeded 3s average execution time over the last hour.',
-    remediationUrl: 'https://supabase.com/docs/guides/platform/performance-advisors#slow-queries',
+    remediationUrl: 'https://indobase.in/docs/guides/platform/performance-advisors#slow-queries',
   },
 ]
 
@@ -195,7 +195,7 @@ function createMockListExtensionsTool() {
 
 function createMockListEdgeFunctionsTool() {
   return tool({
-    description: 'Lists available Supabase Edge Functions.',
+    description: 'Lists available Indobase Edge Functions.',
     inputSchema: z.object({}),
     execute: async () => {
       return MOCK_EDGE_FUNCTIONS_DATA

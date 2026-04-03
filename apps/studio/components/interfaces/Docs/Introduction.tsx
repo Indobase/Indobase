@@ -41,9 +41,9 @@ export default function Introduction({ selectedLang }: Props) {
             .
           </p>
           <p>
-            You can initialize a new Supabase client using the <code>createClient()</code> method.
-            The Supabase client is your entrypoint to the rest of the Supabase functionality and is
-            the easiest way to interact with everything we offer within the Supabase ecosystem.
+            You can initialize a new Indobase client using the <code>createClient()</code> method.
+            The Indobase client is your entrypoint to the rest of the Indobase functionality and is
+            the easiest way to interact with everything we offer within the Indobase ecosystem.
           </p>
         </>
       }

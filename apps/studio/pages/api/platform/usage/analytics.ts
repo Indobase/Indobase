@@ -30,7 +30,7 @@ async function getUsageAnalytics(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Organization ID is required');
     }
 
-    // Initialize Supabase client
+    // Initialize Indobase client
     const supabaseAdmin = createClient(
       process.env.SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || ''

@@ -108,7 +108,7 @@ export const AWSPrivateLinkForm = ({ account, open, onOpenChange }: AWSPrivateLi
         <SheetHeader>
           <SheetTitle>{isNew ? 'Add AWS Account' : 'AWS Account Details'}</SheetTitle>
           <SheetDescription>
-            Connect to your Supabase project from your AWS VPC using AWS PrivateLink.{' '}
+            Connect to your Indobase project from your AWS VPC using AWS PrivateLink.{' '}
             <InlineLink href={`${DOCS_URL}/guides/platform/privatelink`}>Learn more</InlineLink>
           </SheetDescription>
         </SheetHeader>

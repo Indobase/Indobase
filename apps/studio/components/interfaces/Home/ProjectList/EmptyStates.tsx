@@ -25,7 +25,7 @@ export const Header = () => {
         <Link href="/projects">
           <img
             src={`${BASE_PATH}/img/indobase-logo.svg`}
-            alt="Supabase"
+            alt="Indobase"
             className="border-default rounded border p-1 hover:border-white"
             style={{ height: 24 }}
           />

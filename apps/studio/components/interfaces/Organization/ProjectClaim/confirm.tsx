@@ -126,7 +126,7 @@ export const ProjectClaimConfirm = ({
                 <CheckCircle2 className="text-brand h-5 w-5" />
               </span>
               <span>
-                The project will be transferred to your Supabase organization{' '}
+                The project will be transferred to your Indobase organization{' '}
                 <span className="text-foreground">{selectedOrganization.name}.</span>{' '}
                 <a
                   href="#"

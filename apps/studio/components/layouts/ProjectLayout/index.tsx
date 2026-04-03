@@ -102,7 +102,7 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
     const combinedRef = mergeRefs(ref, setMainScrollContainer)
 
     const { appTitle } = useCustomContent(['app:title'])
-    const titleSuffix = appTitle || 'Supabase'
+    const titleSuffix = appTitle || 'Indobase'
 
     const isMobile = useIsMobile()
 
@@ -138,7 +138,7 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
                     ? `${organizationName} | ${titleSuffix}`
                     : titleSuffix}
           </title>
-          <meta name="description" content="Supabase Studio" />
+          <meta name="description" content="Indobase Studio" />
         </Head>
         <div className="flex flex-row h-full w-full">
           <ResizablePanelGroup orientation="horizontal">

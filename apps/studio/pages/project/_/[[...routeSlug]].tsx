@@ -113,7 +113,7 @@ const GenericProjectPage: NextPage = () => {
             ) : isErrorOrganizations ? (
               <Alert_Shadcn_ variant="warning">
                 <AlertTriangleIcon />
-                <AlertTitle_Shadcn_>Failed to load your Supabase organizations</AlertTitle_Shadcn_>
+                <AlertTitle_Shadcn_>Failed to load your Indobase organizations</AlertTitle_Shadcn_>
                 <AlertDescription_Shadcn_>Try refreshing the page</AlertDescription_Shadcn_>
               </Alert_Shadcn_>
             ) : organizations.length === 0 ? (

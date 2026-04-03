@@ -24,7 +24,7 @@ export interface IntegrationInstallationProps extends RefAttributes<HTMLLIElemen
   disabled?: boolean
 }
 
-type HandleIconType = Integration['integration']['name'] | 'Supabase'
+type HandleIconType = Integration['integration']['name'] | 'Indobase'
 
 const HandleIcon = ({ type, className }: { type: HandleIconType; className?: string }) => {
   switch (type) {
@@ -47,7 +47,7 @@ const HandleIcon = ({ type, className }: { type: HandleIconType; className?: str
       )
 
       break
-    case 'Supabase':
+    case 'Indobase':
       return <img src={`${BASE_PATH}/img/indobase-logo.svg`} alt="Indobase Logo" className="w-3.5"></img>
       break
 
@@ -173,7 +173,7 @@ export const IntegrationConnection = forwardRef<HTMLLIElement, IntegrationConnec
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
               <div className="flex-shrink-0 flex gap-x-2 items-center max-w-40 ">
-                <HandleIcon type={'Supabase'} />
+                <HandleIcon type={'Indobase'} />
                 <span title={project?.name} className="text-sm truncate">
                   {project?.name}
                 </span>
@@ -248,7 +248,7 @@ export const IntegrationConnectionOption = forwardRef<HTMLLIElement, Integration
       >
         <div className="flex flex-col gap-1">
           <div className="flex gap-2 items-center">
-            <HandleIcon type={'Supabase'} />
+            <HandleIcon type={'Indobase'} />
             <span className="text-sm">{project?.name}</span>
             <ArrowRight size={14} className="text-foreground-lighter" strokeWidth={1.5} />
             <HandleIcon type={type} />

@@ -118,7 +118,7 @@ const PolicyTableRowComponent = ({
           className="border-0 border-y rounded-none min-h-12 flex items-center"
         >
           <p className="text-foreground-light">
-            No data will be selectable via Supabase APIs as this schema is not exposed. You may
+            No data will be selectable via Indobase APIs as this schema is not exposed. You may
             configure this in your project’s{' '}
             <InlineLink href={`/project/${ref}/integrations/data_api/settings`}>
               API settings

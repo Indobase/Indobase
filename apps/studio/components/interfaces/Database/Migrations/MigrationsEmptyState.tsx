@@ -48,7 +48,7 @@ export const MigrationsEmptyState = () => {
     <EmptyStatePresentational
       icon={Terminal}
       title="Run your first migration"
-      description="Create and run your first migration using the Supabase CLI."
+      description="Create and run your first migration using the Indobase CLI."
       className="gap-y-6"
     >
       <Card>
