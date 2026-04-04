@@ -75,6 +75,15 @@ services:
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.indobase-kong.rule=Host(`api.indobase.in`)"
+      - "traefik.http.routers.indobase-kong.entrypoints=websecure"
+      - "traefik.http.routers.indobase-kong.tls.certresolver=letsencrypt"
+      - "traefik.http.services.indobase-kong.loadbalancer.server.port=8000"
     volumes:
       # https://github.com/Indobase/Indobase/issues/12661
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
@@ -556,3 +565,7 @@ services:
 volumes:
   db-config:
   deno-cache:
+
+networks:
+  dokploy-network:
+    external: true
