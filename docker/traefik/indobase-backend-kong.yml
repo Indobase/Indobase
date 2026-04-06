@@ -1,0 +1,42 @@
+# Traefik dynamic config for routing api.indobase.in to Kong.
+# This file must be placed at /etc/dokploy/traefik/dynamic/indobase-backend-kong.yml on the VPS.
+#
+# It is NOT auto-deployed. After any change, copy it to the VPS:
+#   scp docker/traefik/indobase-backend-kong.yml root@<VPS_IP>:/etc/dokploy/traefik/dynamic/
+#
+# Traefik watches the dynamic/ directory and picks up changes within seconds.
+
+http:
+  routers:
+    indobase-backend-kong-router:
+      rule: Host(`api.indobase.in`)
+      service: indobase-backend-kong-service
+      middlewares:
+        - cors-headers
+      entryPoints:
+        - web
+        - websecure
+
+  middlewares:
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+        accessControlAllowHeaders:
+          - "*"
+        accessControlAllowOriginList:
+          - "https://studio.indobase.in"
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 86400
+
+  services:
+    indobase-backend-kong-service:
+      loadBalancer:
+        servers:
+          - url: http://indobase-kong:8000
+        passHostHeader: true

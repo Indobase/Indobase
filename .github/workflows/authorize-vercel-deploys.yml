@@ -1,7 +1,7 @@
 name: Authorize Vercel Deploys
 
 # This workflow is triggered by the validate-pr workflow. When it's triggered, it will run the
-# authorize-vercel-deploys.yml in master branch. If you want to change it, you'll have to merge it into master.
+# authorize-vercel-deploys.yml in main branch. If you want to change it, you'll have to merge it into main.
 on:
   # only run this workflow when the validate-pr workflow completes (successfully or not)
   workflow_run:
@@ -21,11 +21,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the master branch from the supabase repo and run that script to authorize Vercel deploys
+      # Checkout the main branch from the repo and run that script to authorize Vercel deploys
       - name: Check out repo
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          ref: master
+          ref: main
           # fetch only the root files and scripts folder
           sparse-checkout: |
             scripts
