@@ -10,7 +10,7 @@ describe('Auth.constants: urlRegex', () => {
       'www.test-domain.com',
       'exp://exp.host/some-app',
       'exp://exp.host/some-app?release-channel=default',
-      'https://supabase.com/dashboard',
+      'https://studio.indobase.in',
       'http://localhost:3000',
       'https://supabase.com?name=test',
       'https://supabase.com?name=test&description=hello&page=2',

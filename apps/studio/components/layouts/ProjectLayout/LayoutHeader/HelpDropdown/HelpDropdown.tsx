@@ -99,7 +99,7 @@ export const HelpDropdown = () => {
               style={{ background: '#404EED' }}
             >
               <a
-                href="https://discord.supabase.com"
+                href="https://discord.gg/indobase"
                 target="_blank"
                 rel="noreferrer"
                 className="group dark block cursor-pointer"

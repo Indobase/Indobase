@@ -101,7 +101,7 @@ export function UserDropdown() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex gap-2" asChild>
                   <Link
-                    href="https://supabase.com/changelog"
+                    href="https://indobase.in/changelog"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
