@@ -83,7 +83,7 @@ export function generateLink(pageType: PageType, link: string): string {
     case PageType.Reference:
       return `${DOCS_URL}${link}`
     case PageType.Integration:
-      return `https://supabase.com${link}`
+      return `https://indobase.in${link}`
     case PageType.GithubDiscussion:
       return link
     default:

@@ -1,5 +1,6 @@
 import { ProfileImage } from 'components/ui/ProfileImage'
 import { Command, FlaskConical } from 'lucide-react'
+import { useRouter } from 'next/router'
 import { useTheme } from 'next-themes'
 import {
   Button,
@@ -20,6 +21,7 @@ import { useSetCommandMenuOpen } from 'ui-patterns'
 import { useFeaturePreviewModal } from './App/FeaturePreview/FeaturePreviewContext'
 
 export const LocalDropdown = () => {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const setCommandMenuOpen = useSetCommandMenuOpen()
   const { toggleFeaturePreviewModal } = useFeaturePreviewModal()
@@ -62,6 +64,16 @@ export const LocalDropdown = () => {
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onSelect={() => {
+              router.push('/logout')
+            }}
+          >
+            Log out
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

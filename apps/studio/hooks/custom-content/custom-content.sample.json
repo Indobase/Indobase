@@ -14,7 +14,7 @@
       "description": "This is a description of Document 1",
       "action": {
         "text": "Download document",
-        "url": "https://indobase.in"
+        "url": "https://supabase.com"
       }
     },
     {
@@ -23,7 +23,7 @@
       "description": "This is a description of Document 2",
       "action": {
         "text": "Download document",
-        "url": "https://indobase.in"
+        "url": "https://supabase.com"
       }
     }
   ],
@@ -32,8 +32,8 @@
     {
       "language": "JavaScript",
       "officialSupport": true,
-      "docsUrl": "https://supabase.com/docs/reference/javascript/installing",
-      "gitUrl": "https://github.com/supabase/supabase-js"
+      "docsUrl": "https://indobase.in/docs/reference/javascript/installing",
+      "gitUrl": "https://github.com/Indobase/supabase-js"
     }
   ],
   "project_homepage:example_projects": [
@@ -41,13 +41,13 @@
       "title": "Framework 1",
       "description": "This is a description of Framework 1",
       "iconUrl": "https://indobase.in/dashboard/img/indobase-logo.svg",
-      "url": "https://indobase.in"
+      "url": "https://supabase.com"
     },
     {
       "title": "Framework 2",
       "description": "This is a description of Framework 2",
       "iconUrl": "https://indobase.in/dashboard/img/indobase-logo.svg",
-      "url": "https://indobase.in"
+      "url": "https://supabase.com"
     }
   ],
 

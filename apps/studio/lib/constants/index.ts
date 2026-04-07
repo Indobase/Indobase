@@ -46,7 +46,7 @@ export const POSTHOG_URL =
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' ||
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'local'
     ? 'https://ph.supabase.green'
-    : 'https://ph.supabase.com'
+    : 'https://ph.indobase.in'
 
 export const USAGE_APPROACHING_THRESHOLD = 0.75
 

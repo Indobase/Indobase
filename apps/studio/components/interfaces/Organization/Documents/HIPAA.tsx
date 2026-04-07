@@ -36,7 +36,7 @@ export const HIPAA = () => {
         <div className="@lg:flex items-center justify-center h-full">
           <Button asChild type="default" iconRight={<ExternalLink />}>
             <a
-              href="https://forms.supabase.com/hipaa2"
+              href="https://forms.indobase.in/hipaa2"
               target="_blank"
               rel="noreferrer noopener"
               onClick={() =>
