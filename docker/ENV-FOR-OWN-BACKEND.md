@@ -86,3 +86,31 @@ NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 4. **Postgres from Studio** – `POSTGRES_HOST`, `POSTGRES_PASSWORD`, etc. must point at the same DB meta uses; otherwise bootstrap of `platform.*` tables fails.
 
 Open the failing response in DevTools → **Response** body; newer builds include clearer error messages for misconfiguration.
+
+---
+
+## Troubleshooting: Sign up fails with `Database error finding user`
+
+That string is returned by **GoTrue** (your Auth service) when a query against `auth.users` fails. Studio only proxies the request to `/auth/v1/signup`; fixing it is always on the **database + Auth container** side.
+
+1. **Read Auth logs** – Find the real Postgres error (the UI message is generic), e.g.  
+   `docker logs <auth-container> 2>&1 | tail -n 80`  
+   or your Dokploy service logs for `auth` / `gotrue`.
+
+2. **`auth` schema must match your GoTrue version** – If the DB was created from ad-hoc SQL, restored from backup, or only partly migrated, tables/columns may not match what Auth expects. Use the **same migration set** as your Supabase/Auth Docker images, or re-init the DB from the official compose flow in dev.
+
+3. **NULL token columns** – GoTrue can fail when token columns are `NULL` but scanned as non-null strings. As a superuser (e.g. `postgres`), in the **same** database Auth uses (`GOTRUE_DB_DATABASE_URL`):
+
+   ```sql
+   UPDATE auth.users SET confirmation_token = '' WHERE confirmation_token IS NULL;
+   UPDATE auth.users SET recovery_token = '' WHERE recovery_token IS NULL;
+   UPDATE auth.users SET email_change_token_new = '' WHERE email_change_token_new IS NULL;
+   UPDATE auth.users SET email_change_token_current = '' WHERE email_change_token_current IS NULL;
+   UPDATE auth.users SET reauthentication_token = '' WHERE reauthentication_token IS NULL;
+   ```
+
+4. **Triggers on `auth.users`** – A trigger that runs on insert/update (e.g. copying into `public.profiles`) can fail and surface as an Auth error. Temporarily disable to confirm, then fix the function (e.g. `SECURITY DEFINER`, valid `search_path`, no missing tables).
+
+5. **Roles / grants** – `supabase_auth_admin` must retain intended privileges on `auth.*`. Tools that rewrite the `auth` schema (e.g. some Prisma workflows) can break Auth; restore grants per [Supabase + Prisma docs](https://supabase.com/docs/guides/database/prisma) if applicable.
+
+6. **Auth must point at the right Postgres** – In compose, `GOTRUE_DB_DATABASE_URL` should match the same `POSTGRES_*` database where `auth` migrations were applied. Wrong host DB → empty or wrong schema → “finding user” errors.
