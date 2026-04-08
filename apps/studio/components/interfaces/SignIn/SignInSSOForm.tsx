@@ -19,6 +19,9 @@ const schema = z.object({
 
 const formId = 'sso-sign-in-form'
 
+const hcaptchaSiteKey =
+  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+
 export const SignInSSOForm = () => {
   const queryClient = useQueryClient()
   const captchaRef = useRef<HCaptcha>(null)
@@ -34,7 +37,7 @@ export const SignInSSOForm = () => {
     const toastId = toast.loading('Signing in...')
 
     let token = captchaToken
-    if (!token) {
+    if (hcaptchaSiteKey && !token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
@@ -93,19 +96,21 @@ export const SignInSSOForm = () => {
           )}
         />
 
-        <div className="self-center">
-          <HCaptcha
-            ref={captchaRef}
-            sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
-            size="invisible"
-            onVerify={(token) => {
-              setCaptchaToken(token)
-            }}
-            onExpire={() => {
-              setCaptchaToken(null)
-            }}
-          />
-        </div>
+        {hcaptchaSiteKey ? (
+          <div className="self-center">
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={hcaptchaSiteKey}
+              size="invisible"
+              onVerify={(token) => {
+                setCaptchaToken(token)
+              }}
+              onExpire={() => {
+                setCaptchaToken(null)
+              }}
+            />
+          </div>
+        ) : null}
 
         <Button block form={formId} htmlType="submit" size="large" loading={isSubmitting}>
           Sign in

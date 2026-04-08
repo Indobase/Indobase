@@ -51,6 +51,9 @@ const schema = z.object({
 
 const formId = 'sign-up-form'
 
+const hcaptchaSiteKey =
+  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+
 export const SignUpForm = () => {
   const captchaRef = useRef<HCaptcha>(null)
   const [showConditions, setShowConditions] = useState(false)
@@ -96,7 +99,7 @@ export const SignUpForm = () => {
   const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email, password }) => {
     // [Joshen] Separate submitting state as there's 2 async processes here
     let token = captchaToken
-    if (!token) {
+    if (hcaptchaSiteKey && !token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
@@ -215,15 +218,17 @@ export const SignUpForm = () => {
               <PasswordConditionsHelper password={password} />
             </div>
 
-            <div className="self-center">
-              <HCaptcha
-                ref={captchaRef}
-                sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
-                size="invisible"
-                onVerify={(token) => setCaptchaToken(token)}
-                onExpire={() => setCaptchaToken(null)}
-              />
-            </div>
+            {hcaptchaSiteKey ? (
+              <div className="self-center">
+                <HCaptcha
+                  ref={captchaRef}
+                  sitekey={hcaptchaSiteKey}
+                  size="invisible"
+                  onVerify={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                />
+              </div>
+            ) : null}
 
             <Button
               block

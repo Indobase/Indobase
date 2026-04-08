@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import * as z from 'zod'
 
 import { useResetPasswordMutation } from 'data/misc/reset-password-mutation'
-import { BASE_PATH } from 'lib/constants'
+import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
 import { auth } from 'lib/gotrue'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns'
@@ -23,6 +23,9 @@ const codeSchema = z.object({
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 type CodeFormData = z.infer<typeof codeSchema>
+
+const hcaptchaSiteKey =
+  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
 
 export const ForgotPasswordWizard = () => {
   const [email, setEmail] = useState('')
@@ -131,9 +134,14 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
     },
   })
 
+  const resetRedirectTarget =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${BASE_PATH}/reset-password`
+      : `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}${BASE_PATH}/reset-password`
+
   const onForgotPassword: SubmitHandler<ForgotPasswordFormData> = async (data) => {
     let token = captchaToken
-    if (!token) {
+    if (hcaptchaSiteKey && !token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
@@ -141,11 +149,7 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
     resetPassword({
       email: data.email,
       hcaptchaToken: token,
-      redirectTo: `${
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
-          ? location.origin
-          : process.env.NEXT_PUBLIC_SITE_URL
-      }${BASE_PATH}/reset-password`,
+      redirectTo: resetRedirectTarget,
     })
   }
 
@@ -156,6 +160,13 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
         className="flex flex-col pt-4 space-y-4"
         onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)}
       >
+        {!IS_PLATFORM && (
+          <Admonition
+            type="warning"
+            title="Email delivery"
+            description="Password reset sends mail through your Auth (GoTrue) service. Configure SMTP and site URL on the Auth container or emails will never arrive."
+          />
+        )}
         <FormField_Shadcn_
           control={forgotPasswordForm.control}
           name="email"
@@ -174,19 +185,21 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
           )}
         />
 
-        <div className="self-center">
-          <HCaptcha
-            ref={captchaRef}
-            sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
-            size="invisible"
-            onVerify={(token) => {
-              setCaptchaToken(token)
-            }}
-            onExpire={() => {
-              setCaptchaToken(null)
-            }}
-          />
-        </div>
+        {hcaptchaSiteKey ? (
+          <div className="self-center">
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={hcaptchaSiteKey}
+              size="invisible"
+              onVerify={(token) => {
+                setCaptchaToken(token)
+              }}
+              onExpire={() => {
+                setCaptchaToken(null)
+              }}
+            />
+          </div>
+        ) : null}
 
         <div className="border-t border-overlay-border" />
 

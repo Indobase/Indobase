@@ -30,6 +30,9 @@ const schema = z.object({
 
 const formId = 'sign-in-form'
 
+const hcaptchaSiteKey =
+  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+
 export const SignInForm = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -74,7 +77,7 @@ export const SignInForm = () => {
     const toastId = toast.loading('Signing in...')
 
     let token = captchaToken
-    if (!token) {
+    if (hcaptchaSiteKey && !token) {
       const captchaResponse = await captchaRef.current?.execute({ async: true })
       token = captchaResponse?.response ?? null
     }
@@ -209,19 +212,21 @@ export const SignInForm = () => {
           </Link>
         </div>
 
-        <div className="self-center">
-          <HCaptcha
-            ref={captchaRef}
-            sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
-            size="invisible"
-            onVerify={(token) => {
-              setCaptchaToken(token)
-            }}
-            onExpire={() => {
-              setCaptchaToken(null)
-            }}
-          />
-        </div>
+        {hcaptchaSiteKey ? (
+          <div className="self-center">
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={hcaptchaSiteKey}
+              size="invisible"
+              onVerify={(token) => {
+                setCaptchaToken(token)
+              }}
+              onExpire={() => {
+                setCaptchaToken(null)
+              }}
+            />
+          </div>
+        ) : null}
 
         <LastSignInWrapper type="email">
           <Button

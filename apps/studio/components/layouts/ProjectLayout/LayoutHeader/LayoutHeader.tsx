@@ -1,6 +1,5 @@
 import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { useIsBranching2Enabled } from 'components/interfaces/App/FeaturePreview/FeaturePreviewContext'
-import { LocalDropdown } from 'components/interfaces/LocalDropdown'
 import { UserDropdown } from 'components/interfaces/UserDropdown'
 import { AdvisorButton } from 'components/layouts/AppLayout/AdvisorButton'
 import { AssistantButton } from 'components/layouts/AppLayout/AssistantButton'
@@ -268,7 +267,7 @@ export const LayoutHeader = ({
                     )}
                   </AnimatePresence>
                 </div>
-                <LocalDropdown />
+                <UserDropdown />
               </>
             )}
           </div>

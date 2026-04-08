@@ -30,6 +30,7 @@ import RestoringState from './RestoringState'
 import { UpgradingState } from './UpgradingState'
 import { CreateBranchModal } from '@/components/interfaces/BranchManagement/CreateBranchModal'
 import { ProjectAPIDocs } from '@/components/interfaces/ProjectAPIDocs/ProjectAPIDocs'
+import { SelfHostedTenantNotice } from '@/components/interfaces/App/SelfHostedTenantNotice'
 import { ResourceExhaustionWarningBanner } from '@/components/ui/ResourceExhaustionWarningBanner/ResourceExhaustionWarningBanner'
 import { useCustomContent } from '@/hooks/custom-content/useCustomContent'
 import { useSelectedOrganizationQuery } from '@/hooks/misc/useSelectedOrganization'
@@ -195,6 +196,7 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
                   </div>
                 ) : (
                   <ContentWrapper isLoading={isLoading} isBlocking={isBlocking}>
+                    <SelfHostedTenantNotice />
                     <ResourceExhaustionWarningBanner />
                     {children}
                   </ContentWrapper>
