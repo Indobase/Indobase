@@ -42,19 +42,33 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ message: 'Email is required' })
   }
 
-  const anonKeyRaw = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY
-  const gotrueUrl =
+  const anonKeyRaw =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  const supabaseUrlBase =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+
+  const gotrueUrlRaw =
     process.env.GOTRUE_URL ||
-    (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1` : '')
+    (supabaseUrlBase ? `${supabaseUrlBase.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKeyRaw) {
-    return res.status(500).json({ message: 'Missing SUPABASE_ANON_KEY' })
+    return res.status(500).json({
+      message:
+        'Missing anon key. Set SUPABASE_ANON_KEY or ANON_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) on the Studio server.',
+    })
   }
-  if (!gotrueUrl) {
-    return res.status(500).json({ message: 'Missing GOTRUE_URL (or SUPABASE_URL)' })
+  if (!gotrueUrlRaw) {
+    return res.status(500).json({
+      message:
+        'Missing GoTrue URL. Set GOTRUE_URL or SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) on the Studio server.',
+    })
   }
 
   const anonKey = anonKeyRaw
+  const gotrueUrl = gotrueUrlRaw
 
   const body: any = { email }
   if (typeof hcaptchaToken === 'string' && hcaptchaToken.length > 0) {
@@ -95,19 +109,34 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   ].filter(Boolean) as string[]
 
   const uniqueCandidates = Array.from(new Set(baseCandidates))
+  const gatewayRetryStatuses = new Set([502, 503, 504])
 
   let r: Response | undefined
   const causes: Array<{ baseUrl: string; cause: string }> = []
 
   for (const baseUrlCandidate of uniqueCandidates) {
-    const recoverUrl = new URL(baseUrlCandidate.replace(/\/$/, '') + '/recover')
+    let recoverUrl: URL
+    try {
+      recoverUrl = new URL(baseUrlCandidate.replace(/\/$/, '') + '/recover')
+    } catch {
+      causes.push({ baseUrl: baseUrlCandidate, cause: 'invalid_base_url' })
+      continue
+    }
     if (typeof redirectTo === 'string' && redirectTo.length > 0) {
       recoverUrl.searchParams.set('redirect_to', redirectTo)
     }
 
     try {
-      r = await fetchRecoverWithTimeout(recoverUrl.toString())
-      break
+      const attempt = await fetchRecoverWithTimeout(recoverUrl.toString())
+      if (attempt.ok || !gatewayRetryStatuses.has(attempt.status)) {
+        r = attempt
+        break
+      }
+      r = attempt
+      causes.push({
+        baseUrl: baseUrlCandidate,
+        cause: `http_${attempt.status}_retrying_next_host`,
+      })
     } catch (e: any) {
       const cause = e?.cause?.code ?? e?.code ?? e?.message ?? String(e)
       causes.push({ baseUrl: baseUrlCandidate, cause })
@@ -118,7 +147,11 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return res.status(502).json({
       message: 'Failed to reach GoTrue password recovery endpoint',
       error: {
-        gotrueUrlSource: process.env.GOTRUE_URL ? 'GOTRUE_URL' : 'SUPABASE_URL',
+        gotrueUrlSource: process.env.GOTRUE_URL
+          ? 'GOTRUE_URL'
+          : process.env.SUPABASE_URL
+            ? 'SUPABASE_URL'
+            : 'NEXT_PUBLIC_SUPABASE_URL',
         gotrueUrl,
         tried: uniqueCandidates,
         causes,
