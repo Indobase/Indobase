@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from 'lib/constants'
+import { IS_PLATFORM } from 'lib/constants'
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -134,7 +134,7 @@ export const LayoutHeader = ({
           <div className="flex items-center text-sm">
             <HomeIcon />
             <div className="flex items-center md:pl-2">
-              {showOrgSelection && (IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) ? (
+              {showOrgSelection && IS_PLATFORM ? (
                 <>
                   <LayoutHeaderDivider className="hidden md:block" />
                   <OrganizationDropdown />
@@ -166,7 +166,7 @@ export const LayoutHeader = ({
                     {selectedProject && (
                       <>
                         <LayoutHeaderDivider />
-                        {(IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && <BranchDropdown />}
+                        {IS_PLATFORM && <BranchDropdown />}
                       </>
                     )}
                   </motion.div>
@@ -204,7 +204,7 @@ export const LayoutHeader = ({
                     ease: 'easeOut',
                   }}
                 >
-                  {(IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && gitlessBranching && <MergeRequestButton />}
+                  {IS_PLATFORM && gitlessBranching && <MergeRequestButton />}
                   <ConnectButton />
                 </motion.div>
               )}
@@ -213,7 +213,7 @@ export const LayoutHeader = ({
           </div>
           <div className="flex items-center gap-x-2">
             {customHeaderComponents && customHeaderComponents}
-            {IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH ? (
+            {IS_PLATFORM ? (
               <>
                 <DevToolbarTrigger />
                 <FeedbackDropdown />

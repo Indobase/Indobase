@@ -10,7 +10,7 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
-import { GOTRUE_ERRORS, IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from './constants'
+import { GOTRUE_ERRORS, IS_PLATFORM } from './constants'
 
 const AuthErrorToaster = ({ children }: PropsWithChildren) => {
   const error = useAuthError()
@@ -34,7 +34,7 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   return (
-    <AuthProviderInternal alwaysLoggedIn={!IS_PLATFORM && !ENABLE_SELF_HOSTED_AUTH}>
+    <AuthProviderInternal alwaysLoggedIn={!IS_PLATFORM}>
       <AuthErrorToaster>{children}</AuthErrorToaster>
     </AuthProviderInternal>
   )

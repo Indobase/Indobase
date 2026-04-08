@@ -3,7 +3,7 @@ import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeout
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
 import { useSignOut } from 'lib/auth'
-import { BASE_PATH, IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from 'lib/constants'
+import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -25,8 +25,8 @@ export function withAuth<T>(
     useHighestAAL: boolean
   } = { useHighestAAL: true }
 ) {
-  // ignore auth in self-hosted by default, unless ENABLE_SELF_HOSTED_AUTH is true
-  if (!IS_PLATFORM && !ENABLE_SELF_HOSTED_AUTH) {
+  // ignore auth in self-hosted
+  if (!IS_PLATFORM) {
     return WrappedComponent
   }
 

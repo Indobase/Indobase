@@ -14,7 +14,7 @@ import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticato
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { captureCriticalError } from 'lib/error-reporting'
-import { IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from 'lib/constants'
+import { IS_PLATFORM } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
@@ -110,11 +110,11 @@ export const SignInForm = () => {
 
         await queryClient.resetQueries()
         // since we're already on the /sign-in page, prevent redirect loops
-        let redirectPath = (IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) ? '/organizations' : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
-        if ((IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && returnTo && returnTo !== '/sign-in') {
+        let redirectPath = IS_PLATFORM ? '/organizations' : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
+        if (IS_PLATFORM && returnTo && returnTo !== '/sign-in') {
           redirectPath = returnTo
         }
-        if (!(IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && returnTo && returnTo !== '/sign-in' && !returnTo.startsWith('/organizations')) {
+        if (!IS_PLATFORM && returnTo && returnTo !== '/sign-in' && !returnTo.startsWith('/organizations')) {
           redirectPath = returnTo
         }
         router.push(redirectPath)
