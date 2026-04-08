@@ -15,7 +15,7 @@ import { NoSearchResults } from 'components/ui/NoSearchResults'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { withAuth } from 'hooks/misc/withAuth'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from 'lib/constants'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import type { NextPageWithLayout } from 'types'
 import { Button, Skeleton } from 'ui'
@@ -46,17 +46,19 @@ const OrganizationsPage: NextPageWithLayout = () => {
         )
 
   useEffect(() => {
-    // Self-hosted: default org/project are provisioned automatically — go to dashboard.
-    if (!IS_PLATFORM && user?.id) {
+    // Self-hosted (without auth): default org/project are provisioned automatically — go to dashboard.
+    if (!(IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && user?.id) {
       router.replace(selfHostedDashboardPath(user.id))
       return
     }
-    // Platform: if there are no organizations, force the user to create one
+    // Platform or Self-Hosted with auth: if there are no organizations, force the user to create one
     // unless the user is on the not found page
-    if (IS_PLATFORM && isSuccess && organizations.length <= 0 && !orgNotFound) {
-      router.push('/new')
+    if ((IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && isSuccess && organizations.length <= 0 && !orgNotFound) {
+      // In platform we can redirect to /new, but you might want them to stay and see EmptyState.
+      // We will let the user stay here and see NoOrganizationsState instead of auto-redirecting to /new.
+      // Removing the router.push('/new') so they see the blank state ("No projects found").
     }
-  }, [IS_PLATFORM, isSuccess, organizations, orgNotFound, router, user?.id])
+  }, [IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH, isSuccess, organizations, orgNotFound, router, user?.id])
 
   return (
     <ScaffoldContainer>

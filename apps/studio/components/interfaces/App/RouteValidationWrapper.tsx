@@ -5,7 +5,7 @@ import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
 import useLatest from 'hooks/misc/useLatest'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH } from 'lib/constants'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect } from 'react'
@@ -28,14 +28,14 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     ''
   )
 
-  const DEFAULT_HOME = IS_PLATFORM
+  const DEFAULT_HOME = IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH
     ? !!lastVisitedOrganization
       ? `/org/${lastVisitedOrganization}`
       : '/organizations'
     : selfHostedDashboardPath(user?.id)
 
   // Self-hosted projects use ref `p-<gotrue_sub>`, not `default`. Old links/bookmarks still use /project/default.
-  const skipLegacyDefaultProjectFetch = !IS_PLATFORM && ref === 'default'
+  const skipLegacyDefaultProjectFetch = !(IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) && ref === 'default'
 
   /**
    * Array of urls/routes that should be ignored
@@ -95,7 +95,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   // To make sure users land on the signup/signin flow instead of dashboard pages,
   // we do a lightweight redirect here when there is no session.
   useEffect(() => {
-    if (IS_PLATFORM) return
+    if (IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) return
     if (isLoggedIn) return
     if (isExceptUrl()) return
 
@@ -112,10 +112,10 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     }
 
     router.push(`${dashboardPrefix}/sign-in`)
-  }, [IS_PLATFORM, isLoggedIn, router, router.asPath])
+  }, [IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH, isLoggedIn, router, router.asPath])
 
   useEffect(() => {
-    if (IS_PLATFORM || !router.isReady) return
+    if (IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH || !router.isReady) return
     if (!isLoggedIn || !user?.id || ref !== 'default') return
     const suffix = router.asPath.startsWith('/project/default')
       ? router.asPath.slice('/project/default'.length)
@@ -124,7 +124,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     if (router.asPath !== target) {
       router.replace(target)
     }
-  }, [IS_PLATFORM, isLoggedIn, ref, router, router.asPath, router.isReady, user?.id])
+  }, [IS_PLATFORM, ENABLE_SELF_HOSTED_AUTH, isLoggedIn, ref, router, router.asPath, router.isReady, user?.id])
 
   useEffect(() => {
     if (isExceptUrl() || !isLoggedIn) return
@@ -135,7 +135,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     const code =
       projectDetailError instanceof ResponseError ? projectDetailError.code : undefined
 
-    if (IS_PLATFORM) {
+    if (IS_PLATFORM || ENABLE_SELF_HOSTED_AUTH) {
       toast.error('You do not have access to this project')
       router.push(DEFAULT_HOME)
       return
@@ -163,6 +163,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   }, [
     DEFAULT_HOME,
     IS_PLATFORM,
+    ENABLE_SELF_HOSTED_AUTH,
     isErrorProject,
     isLoggedIn,
     projectDetailError,
