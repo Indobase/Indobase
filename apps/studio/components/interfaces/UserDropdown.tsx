@@ -2,7 +2,7 @@ import { ProfileImage } from 'components/ui/ProfileImage'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { IS_PLATFORM } from 'lib/constants'
 import { useProfileNameAndPicture } from 'lib/profile'
-import { Command, FlaskConical, Loader2, ScrollText, Settings } from 'lucide-react'
+import { FlaskConical, Loader2, ScrollText, Settings } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -21,7 +21,6 @@ import {
   singleThemes,
   Theme,
 } from 'ui'
-import { useSetCommandMenuOpen } from 'ui-patterns'
 
 import { useFeaturePreviewModal } from './App/FeaturePreview/FeaturePreviewContext'
 
@@ -33,7 +32,6 @@ export function UserDropdown() {
   const { username, avatarUrl, primaryEmail, isLoading } = useProfileNameAndPicture()
 
   const { toggleFeaturePreviewModal } = useFeaturePreviewModal()
-  const setCommandMenuOpen = useSetCommandMenuOpen()
 
   return (
     <DropdownMenu>
@@ -91,21 +89,6 @@ export function UserDropdown() {
                 Account preferences
               </Link>
             </DropdownMenuItem>
-            {!IS_PLATFORM && (
-              <>
-                <DropdownMenuItem
-                  className="flex gap-2"
-                  onSelect={() => toggleFeaturePreviewModal(true)}
-                >
-                  <FlaskConical size={14} strokeWidth={1.5} className="text-foreground-lighter" />
-                  Feature previews
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex gap-2" onClick={() => setCommandMenuOpen(true)}>
-                  <Command size={14} strokeWidth={1.5} className="text-foreground-lighter" />
-                  Command menu
-                </DropdownMenuItem>
-              </>
-            )}
             {IS_PLATFORM && (
               <>
                 <DropdownMenuItem
@@ -118,7 +101,7 @@ export function UserDropdown() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex gap-2" asChild>
                   <Link
-                    href="https://supabase.com/changelog"
+                    href="https://indobase.in/changelog"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

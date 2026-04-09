@@ -35,14 +35,14 @@ export const SignInPartner = () => {
       <p className="text-xs text-foreground-lighter text-center max-w-[220px] sm:max-w-full">
         By continuing, you agree to Indobase’s{' '}
         <InlineLink
-          href="https://supabase.com/terms"
+          href="https://indobase.in/terms"
           className="text-foreground-lighter hover:text-foreground"
         >
           Terms of Service
         </InlineLink>{' '}
         and{' '}
         <InlineLink
-          href="https://supabase.com/privacy"
+          href="https://indobase.in/privacy"
           className="text-foreground-lighter hover:text-foreground"
         >
           Privacy Policy

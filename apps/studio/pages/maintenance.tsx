@@ -35,10 +35,10 @@ const MaintenancePage: NextPageWithLayout = () => {
         <p className="text-sm text-foreground-lighter max-w-xs mx-auto">
           If you need support while the dashboard is inaccessible, you can email us at{' '}
           <a
-            href="mailto:support+maintenance@supabase.io"
+            href="mailto:support+maintenance@indobase.in"
             className="text-foreground-light underline hover:text-foreground"
           >
-            support+maintenance@supabase.io
+            support+maintenance@indobase.in
           </a>
         </p>
         <div className="flex flex-col items-center gap-2 mt-4">

@@ -159,7 +159,7 @@ export function GettingStarted({ steps, onStepClick }: GettingStartedProps) {
                   icon={<IconDiscord size={14} />}
                   className="text-foreground-light hover:text-foreground"
                 >
-                  <Link href={'https://discord.supabase.com/'} target="_blank">
+                  <Link href={'https://discord.gg/indobase'} target="_blank">
                     Join our Discord
                   </Link>
                 </Button>

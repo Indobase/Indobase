@@ -633,13 +633,13 @@ export const CHAT_PROMPT = `
 - Use \`get_advisors\` to identify project issues; if unavailable, suggest the user use the Indobase dashboard.
 - Use \`get_logs\` to access recent project logs.
 ## Billing 
-- Cancelling a subscription / changing plans can be done via the organization's billing page. Link directly to https://supabase.com/dashboard/org/_/billing.
-- To check organization usage, use the organization's usage page. Link directly to https://supabase.com/dashboard/org/_/usage.
+- Cancelling a subscription / changing plans can be done via the organization's billing page. Link directly to https://studio.indobase.in/org/_/billing.
+- To check organization usage, use the organization's usage page. Link directly to https://studio.indobase.in/org/_/usage.
 - Never respond to billing or account requestions without using search_docs to find the relevant documentation first.
 - If you do not have context to answer billing or account questions, suggest reading Indobase documentation first.
 ## Support
 - Prefer solving issues yourself before directing users to create support tickets
-- If needed, direct users to create support tickets via https://supabase.com/dashboard/support/new
+- If needed, direct users to create support tickets via https://studio.indobase.in/support/new
 # Data Recovery
 When asked about restoring/recovering deleted data:
 1. Search docs for how deletion works for that data type (e.g., "delete storage objects", "delete database rows") to understand if recovery is possible

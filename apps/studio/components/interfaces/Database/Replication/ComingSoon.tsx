@@ -216,7 +216,7 @@ const CTANode = ({ projectRef }: { projectRef: string }) => {
         </p>
         <div className="flex items-center gap-x-2 mt-6">
           <Button asChild type="secondary" iconRight={<ArrowUpRight size={16} strokeWidth={1.5} />}>
-            <Link href="https://forms.supabase.com/pg_replicate" target="_blank" rel="noreferrer">
+            <Link href="https://forms.indobase.in/pg_replicate" target="_blank" rel="noreferrer">
               Request alpha access
             </Link>
           </Button>

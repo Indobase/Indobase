@@ -48,7 +48,7 @@ export type IntegrationDefinition = {
 
 const authorSupabase = {
   name: 'Indobase',
-  websiteUrl: 'https://supabase.com',
+  websiteUrl: 'https://indobase.in',
 }
 
 const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
