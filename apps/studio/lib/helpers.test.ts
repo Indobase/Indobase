@@ -97,7 +97,7 @@ describe('getURL', () => {
   it('should return prod url by default', () => {
     const result = getURL()
 
-    expect(result).toEqual('https://supabase.com/dashboard')
+    expect(result).toEqual('https://studio.indobase.in')
   })
 })
 

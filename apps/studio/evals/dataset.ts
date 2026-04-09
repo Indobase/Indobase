@@ -109,7 +109,7 @@ export const dataset: AssistantEvalCase[] = [
   {
     input: { prompt: 'Where can I go to create a support ticket?' },
     expected: {
-      correctAnswer: 'https://supabase.com/dashboard/support/new',
+      correctAnswer: 'https://studio.indobase.in/support/new',
     },
     metadata: {
       category: ['general_help'],

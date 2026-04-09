@@ -35,20 +35,24 @@ export const generateSettingsMenu = (
           url: `/project/${ref}/settings/general`,
           items: [],
         },
-        {
-          name: 'Compute and Disk',
-          key: 'compute-and-disk',
-          url: `/project/${ref}/settings/compute-and-disk`,
-          items: [],
-          disabled: !isProjectActive,
-        },
-        {
-          name: 'Infrastructure',
-          key: 'infrastructure',
-          url: `/project/${ref}/settings/infrastructure`,
-          items: [],
-          disabled: !isProjectActive,
-        },
+        ...(IS_PLATFORM
+          ? [
+              {
+                name: 'Compute and Disk',
+                key: 'compute-and-disk',
+                url: `/project/${ref}/settings/compute-and-disk`,
+                items: [],
+                disabled: !isProjectActive,
+              },
+              {
+                name: 'Infrastructure',
+                key: 'infrastructure',
+                url: `/project/${ref}/settings/infrastructure`,
+                items: [],
+                disabled: !isProjectActive,
+              },
+            ]
+          : []),
 
         {
           name: 'Integrations',
@@ -75,19 +79,23 @@ export const generateSettingsMenu = (
           disabled: !isProjectActive,
         },
 
-        {
-          name: `Log Drains`,
-          key: `log-drains`,
-          url: `/project/${ref}/settings/log-drains`,
-          items: [],
-          disabled: !isProjectActive,
-        },
-        {
-          name: 'Add Ons',
-          key: 'addons',
-          url: `/project/${ref}/settings/addons`,
-          items: [],
-        },
+        ...(IS_PLATFORM
+          ? [
+              {
+                name: `Log Drains`,
+                key: `log-drains`,
+                url: `/project/${ref}/settings/log-drains`,
+                items: [],
+                disabled: !isProjectActive,
+              },
+              {
+                name: 'Add Ons',
+                key: 'addons',
+                url: `/project/${ref}/settings/addons`,
+                items: [],
+              },
+            ]
+          : []),
       ],
     },
     {

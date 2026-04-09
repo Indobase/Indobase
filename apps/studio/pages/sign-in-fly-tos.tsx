@@ -115,12 +115,12 @@ const SignInFlyTos = () => {
       <div className="text-center text-balance">
         <p className="text-xs text-foreground-lighter sm:mx-auto sm:max-w-sm">
           By continuing, you agree to Indobase{"'"}s{' '}
-          <Link href="https://supabase.com/terms" className="underline hover:text-foreground-light">
+          <Link href="https://indobase.in/terms" className="underline hover:text-foreground-light">
             Terms of Service
           </Link>{' '}
           and{' '}
           <Link
-            href="https://supabase.com/privacy"
+            href="https://indobase.in/privacy"
             className="underline hover:text-foreground-light"
           >
             Privacy Policy

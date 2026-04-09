@@ -96,6 +96,28 @@ services:
     # https://unix.stackexchange.com/a/294837
     entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
+  # One-off migration runner — ensures auth schema is up-to-date before GoTrue starts.
+  # Uses IF NOT EXISTS / ADD COLUMN IF NOT EXISTS so it is safe to run on every deploy.
+  db-migrations:
+    container_name: indobase-db-migrations
+    image: supabase/postgres:15.8.1.085
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ./volumes/db/migrations:/migrations:ro,Z
+    entrypoint:
+      [
+        "sh", "-c",
+        "PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U supabase_admin -d ${POSTGRES_DB} -f /migrations/20260409_gotrue_v2_schema.sql"
+      ]
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
   auth:
     container_name: indobase-auth
     image: supabase/gotrue:v2.186.0
@@ -117,6 +139,8 @@ services:
       db:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
+      db-migrations:
+        condition: service_completed_successfully
       analytics:
         condition: service_healthy
     environment:

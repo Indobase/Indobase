@@ -220,7 +220,7 @@ const VercelIntegration: NextPageWithLayout = () => {
                 <AlertDescription_Shadcn_ className="prose">
                   You will need to create an Indobase Organization before you can install the Vercel
                   Integration. You can create a new organization{' '}
-                  <Link href="https://supabase.com/dashboard/new" target="_blank">
+                  <Link href="https://studio.indobase.in/new" target="_blank">
                     here
                   </Link>
                   .

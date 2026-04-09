@@ -13,40 +13,40 @@
     {
       "language": "JavaScript",
       "officialSupport": true,
-      "docsUrl": "https://supabase.com/docs/reference/javascript/installing",
-      "gitUrl": "https://github.com/supabase/supabase-js"
+      "docsUrl": "https://indobase.in/docs/reference/javascript/installing",
+      "gitUrl": "https://github.com/Indobase/supabase-js"
     },
     {
       "language": "Flutter",
       "officialSupport": true,
-      "docsUrl": "https://supabase.com/docs/reference/dart/installing",
-      "gitUrl": "https://github.com/supabase/supabase-flutter"
+      "docsUrl": "https://indobase.in/docs/reference/dart/installing",
+      "gitUrl": "https://github.com/Indobase/supabase-flutter"
     },
     {
       "language": "Python",
       "officialSupport": true,
       "releaseState": "Alpha",
-      "docsUrl": "https://supabase.com/docs/reference/python/initializing",
-      "gitUrl": "https://github.com/supabase/supabase-py"
+      "docsUrl": "https://indobase.in/docs/reference/python/initializing",
+      "gitUrl": "https://github.com/Indobase/supabase-py"
     },
     {
       "language": "C#",
       "officialSupport": false,
-      "docsUrl": "https://supabase.com/docs/reference/csharp/installing",
-      "gitUrl": "https://github.com/supabase-community/supabase-csharp",
+      "docsUrl": "https://indobase.in/docs/reference/csharp/installing",
+      "gitUrl": "https://github.com/Indobase/supabase-csharp",
       "altIconName": "c-sharp"
     },
     {
       "language": "Swift",
       "officialSupport": true,
-      "docsUrl": "https://supabase.com/docs/reference/swift/initializing",
-      "gitUrl": "https://github.com/supabase/supabase-swift"
+      "docsUrl": "https://indobase.in/docs/reference/swift/initializing",
+      "gitUrl": "https://github.com/Indobase/supabase-swift"
     },
     {
       "language": "Kotlin",
       "officialSupport": false,
-      "docsUrl": "https://supabase.com/docs/reference/kotlin/installing",
-      "gitUrl": "https://github.com/supabase-community/supabase-kt"
+      "docsUrl": "https://indobase.in/docs/reference/kotlin/installing",
+      "gitUrl": "https://github.com/Indobase/supabase-kt"
     }
   ],
   "project_homepage:example_projects": null,

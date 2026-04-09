@@ -274,7 +274,7 @@ export const LayoutHeader = ({
         </div>
       </header>
 
-      {isFlagResolved ? isConnectSheetEnabled ? <ConnectSheet /> : <Connect /> : null}
+      {isFlagResolved ? (isConnectSheetEnabled ? <ConnectSheet /> : <Connect />) : <Connect />}
     </>
   )
 }

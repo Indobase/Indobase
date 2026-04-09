@@ -33,7 +33,7 @@ export const NoticeBanner = () => {
             label="02:30 UTC on Jan 16, 2026"
           />
           .{' '}
-          <InlineLink href="https://status.supabase.com/incidents/lg4j8mcn50zb">
+          <InlineLink href="https://status.indobase.in/incidents/lg4j8mcn50zb">
             Learn more
           </InlineLink>
         </>

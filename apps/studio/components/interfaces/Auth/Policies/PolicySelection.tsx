@@ -79,7 +79,7 @@ const PolicySelection = ({
             </Button>
             <Button asChild type="default" icon={<ExternalLink strokeWidth={1.5} />}>
               <a
-                href="https://supabase.com/blog/studio-introducing-assistant#introducing-the-supabase-assistant"
+                href="https://indobase.in/blog/studio-introducing-assistant#introducing-the-supabase-assistant"
                 target="_blank"
                 rel="noreferrer"
               >

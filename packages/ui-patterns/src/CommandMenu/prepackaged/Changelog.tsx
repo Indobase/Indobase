@@ -10,7 +10,7 @@ const useChangelogCommand = ({ enabled = true }: { enabled?: boolean } = {}) => 
       {
         id: 'changelog',
         name: 'View changelog',
-        route: BASE_PATH ? 'https://supabase.com/changelog' : '/changelog',
+        route: BASE_PATH ? 'https://indobase.in/changelog' : '/changelog',
         icon: () => <Inbox />,
       },
     ],

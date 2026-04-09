@@ -24,7 +24,7 @@ export function SubmitButton({ isSubmitting, userEmail, onClick }: SubmitButtonP
       </Button>
       <p className="text-xs text-foreground-lighter text-balance pr-4">
         We will contact you at <span className="text-foreground font-medium">{userEmail}</span>.
-        Please ensure emails from supabase.com are allowed.
+        Please ensure emails from indobase.in are allowed.
       </p>
     </div>
   )

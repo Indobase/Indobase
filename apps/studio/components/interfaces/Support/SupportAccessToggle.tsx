@@ -74,7 +74,7 @@ export function SupportAccessToggle({ form }: SupportAccessToggleProps) {
                       We are committed to maintaining strict data privacy and security standards in
                       all support activities.{' '}
                       <Link
-                        href="https://supabase.com/privacy"
+                        href="https://indobase.in/privacy"
                         target="_blank"
                         rel="noreferrer"
                         className="text-foreground-light underline hover:text-foreground transition"

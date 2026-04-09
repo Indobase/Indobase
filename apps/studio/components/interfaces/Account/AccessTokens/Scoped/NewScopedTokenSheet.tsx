@@ -265,7 +265,7 @@ export const NewScopedTokenSheet = ({
                       <div className="mt-4">
                         <Button asChild type="default" icon={<ExternalLink />}>
                           <Link
-                            href="https://api.supabase.com/api/v0"
+                            href="https://api.indobase.in/api/v0"
                             target="_blank"
                             rel="noreferrer"
                           >
