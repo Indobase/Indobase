@@ -24,6 +24,13 @@ export function useProjectSettingsGotoCommands(options?: CommandOptions) {
     COMMAND_MENU_SECTIONS.NAVIGATE,
     [
       {
+        id: 'nav-project-settings-add-ons',
+        name: 'Add-ons',
+        value: 'Add-ons addons add ons add on add-on',
+        route: `/project/${ref}/settings/addons`,
+        defaultHidden: true,
+      },
+      {
         id: 'nav-project-settings-general',
         name: 'General Settings',
         route: `/project/${ref}/settings/general`,
@@ -135,16 +142,12 @@ export function useProjectSettingsGotoCommands(options?: CommandOptions) {
         route: `/project/${ref}/database/settings#banned-ips`,
         defaultHidden: true,
       },
-      ...(projectSettingsLogDrains
-        ? [
-            {
-              id: 'nav-project-settings-log-drains',
-              name: 'Log drains',
-              route: `/project/${ref}/settings/log-drains`,
-              defaultHidden: true,
-            } as IRouteCommand,
-          ]
-        : []),
+      {
+        id: 'nav-project-settings-log-drains',
+        name: 'Log drains',
+        route: `/project/${ref}/settings/log-drains`,
+        defaultHidden: true,
+      } as IRouteCommand,
     ],
     { ...options, deps: [ref] }
   )

@@ -8,16 +8,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
 
   const missingEnvVars = envVarsSet()
-
-  if (missingEnvVars !== true) {
-    return res
-      .status(500)
-      .json({ error: { message: `${missingEnvVars.join(', ')} env variables are not set` } })
-  }
-
   const baseUrl = PROJECT_ANALYTICS_URL
-  if (!baseUrl) {
-    return res.status(500).json({ error: { message: `LOGFLARE_URL env variable is not set` } })
+
+  if (missingEnvVars !== true || !baseUrl) {
+    if (method === 'GET') {
+      // Gracefully return empty log drains instead of crashing the UI
+      return res.status(200).json([])
+    }
+    const errMsg = missingEnvVars !== true 
+      ? `${missingEnvVars.join(', ')} env variables are not set`
+      : `LOGFLARE_URL env variable is not set`
+    return res.status(500).json({ error: { message: errMsg } })
   }
 
   switch (method) {

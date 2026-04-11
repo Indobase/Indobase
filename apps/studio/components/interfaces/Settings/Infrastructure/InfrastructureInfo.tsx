@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { Badge, Button, Input, Tooltip, TooltipContent, TooltipTrigger } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
+import { IS_PLATFORM } from 'lib/constants'
 
 import { ProjectUpgradeAlert } from '../General/Infrastructure/ProjectUpgradeAlert'
 import { InstanceConfiguration } from './InfrastructureConfiguration/InstanceConfiguration'
@@ -108,7 +109,23 @@ export const InfrastructureInfo = () => {
             </p>
           </ScaffoldSectionDetail>
           <ScaffoldSectionContent>
-            {isInactive ? (
+            {!IS_PLATFORM ? (
+              <>
+                <Input readOnly disabled label="Auth version" value="Local Deployment" />
+                <Input readOnly disabled label="PostgREST version" value="Local Deployment" />
+                <Input
+                  readOnly
+                  disabled
+                  value="Local Docker Container"
+                  label="Postgres version"
+                  actions={[
+                    <Badge key="local-badge" variant="brand" className="mr-1">
+                      Local Environment
+                    </Badge>,
+                  ]}
+                />
+              </>
+            ) : isInactive ? (
               <Admonition
                 type="note"
                 showIcon={false}

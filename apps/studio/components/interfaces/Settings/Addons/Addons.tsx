@@ -32,7 +32,7 @@ import {
   useSelectedProjectQuery,
 } from 'hooks/misc/useSelectedProject'
 import { getCloudProviderArchitecture } from 'lib/cloudprovider-utils'
-import { BASE_PATH, DOCS_URL, INSTANCE_MICRO_SPECS, INSTANCE_NANO_SPECS } from 'lib/constants'
+import { BASE_PATH, DOCS_URL, INSTANCE_MICRO_SPECS, INSTANCE_NANO_SPECS, IS_PLATFORM } from 'lib/constants'
 import { getDatabaseMajorVersion, getSemanticVersion } from 'lib/helpers'
 import { AlertCircle, ChevronRight, ExternalLink, Info } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -149,7 +149,22 @@ export const Addons = () => {
         </ScaffoldContainer>
       )}
 
-      {isLoading && (
+      {!IS_PLATFORM && (
+        <ScaffoldContainer>
+          <ScaffoldSection>
+            <div className="col-span-12">
+              <NoticeBar
+                visible={true}
+                type="default"
+                title="Add-ons are not available locally"
+                description="In local and self-hosted environments, add-ons such as Custom Domains, IPv4, and PITR backups are managed through your infrastructure and Docker configuration rather than the dashboard."
+              />
+            </div>
+          </ScaffoldSection>
+        </ScaffoldContainer>
+      )}
+
+      {IS_PLATFORM && isLoading && (
         <ScaffoldContainer>
           <ScaffoldSection>
             <div className="col-span-12">
@@ -159,7 +174,7 @@ export const Addons = () => {
         </ScaffoldContainer>
       )}
 
-      {isError && (
+      {IS_PLATFORM && isError && (
         <ScaffoldContainer>
           <ScaffoldSection>
             <div className="col-span-12">
@@ -169,7 +184,7 @@ export const Addons = () => {
         </ScaffoldContainer>
       )}
 
-      {isSuccess && (
+      {IS_PLATFORM && isSuccess && (
         <>
           {selectedProject?.infra_compute_size === 'nano' && subscription?.plan.id !== 'free' && (
             <ScaffoldContainer className="mt-4">

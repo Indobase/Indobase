@@ -29,7 +29,7 @@ import {
   useIsAwsNimbusCloudProvider,
   useSelectedProjectQuery,
 } from 'hooks/misc/useSelectedProject'
-import { DOCS_URL, GB, PROJECT_STATUS } from 'lib/constants'
+import { DOCS_URL, GB, PROJECT_STATUS, IS_PLATFORM } from 'lib/constants'
 import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -327,6 +327,19 @@ export function DiskManagementForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess, isDiskAttributesSuccess])
+
+  if (!IS_PLATFORM) {
+    return (
+      <ScaffoldContainer className="relative flex flex-col gap-10" bottomPadding>
+        <NoticeBar
+          visible={true}
+          type="default"
+          title="Compute and disk are managed locally"
+          description="In self-hosted and local environments, your database computes scaling and disk configuration are managed via your Docker environment. These cannot be adjusted through the dashboard."
+        />
+      </ScaffoldContainer>
+    )
+  }
 
   return (
     <>
