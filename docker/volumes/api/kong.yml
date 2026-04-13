@@ -47,6 +47,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -58,7 +59,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
   - name: auth-v1-open-callback
     url: http://auth:9999/callback
@@ -72,6 +73,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -83,7 +85,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
   - name: auth-v1-open-authorize
     url: http://auth:9999/authorize
@@ -97,6 +99,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -108,7 +111,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
 
   ## Secure Auth routes
@@ -125,6 +128,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -136,7 +140,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
       - name: key-auth
         config:
@@ -162,6 +166,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -173,7 +178,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
       - name: key-auth
         config:
@@ -199,6 +204,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -210,7 +216,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
       - name: key-auth
         config:
@@ -242,6 +248,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -253,7 +260,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
       - name: key-auth
         config:
@@ -278,6 +285,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -289,7 +297,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
       - name: key-auth
         config:
@@ -314,6 +322,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -325,7 +334,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
 
   ## Edge Functions routes
@@ -342,6 +351,7 @@ services:
         config:
           origins:
             - "*"
+            - "http://localhost:5173"
           methods:
             - GET
             - POST
@@ -353,7 +363,7 @@ services:
             - "*"
           exposed_headers:
             - "*"
-          credentials: true
+          credentials: false
           max_age: 3600
 
   ## Analytics routes
