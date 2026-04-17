@@ -29,9 +29,18 @@ export async function retrieveAnalyticsData({
   projectRef,
   params,
 }: RetrieveAnalyticsDataOptions): Promise<WrappedResult<AnalyticsResult>> {
-  assertSelfHosted()
-  assert(PROJECT_ANALYTICS_URL, 'PROJECT_ANALYTICS_URL is required')
-  assert(process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN, 'LOGFLARE_PRIVATE_ACCESS_TOKEN is required')
+  if (!PROJECT_ANALYTICS_URL || !process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN) {
+    return {
+      data: undefined,
+      error: new Error(
+        `Analytics is not configured: ${
+          [!PROJECT_ANALYTICS_URL ? 'PROJECT_ANALYTICS_URL' : null, !process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN ? 'LOGFLARE_PRIVATE_ACCESS_TOKEN' : null]
+            .filter(Boolean)
+            .join(', ')
+        } is missing`
+      ),
+    }
+  }
 
   const url = new URL(`${PROJECT_ANALYTICS_URL}endpoints/query/${name}`)
   url.searchParams.set('project', projectRef)

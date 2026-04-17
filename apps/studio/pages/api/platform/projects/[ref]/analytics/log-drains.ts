@@ -9,16 +9,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const missingEnvVars = envVarsSet()
 
-  if (missingEnvVars !== true) {
+  if (missingEnvVars !== true || !PROJECT_ANALYTICS_URL) {
+    if (method === 'GET') {
+      return res.status(200).json([])
+    }
+    const missing = missingEnvVars === true ? ['LOGFLARE_URL'] : missingEnvVars
     return res
       .status(500)
-      .json({ error: { message: `${missingEnvVars.join(', ')} env variables are not set` } })
+      .json({ error: { message: `${missing.join(', ')} env variables are not set` } })
   }
 
   const baseUrl = PROJECT_ANALYTICS_URL
-  if (!baseUrl) {
-    return res.status(500).json({ error: { message: `LOGFLARE_URL env variable is not set` } })
-  }
 
   switch (method) {
     case 'GET':

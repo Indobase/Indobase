@@ -26,6 +26,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (data) {
         return res.status(200).json(data)
       } else {
+        if (error.message.includes('Analytics is not configured')) {
+          return res.status(200).json({ result: [] })
+        }
         return res.status(500).json({ error: { message: error.message } })
       }
     default:
