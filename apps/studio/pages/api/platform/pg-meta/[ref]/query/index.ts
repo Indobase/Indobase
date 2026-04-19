@@ -39,7 +39,14 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     }
 
     // Automatically enforce Row Level Security for data-related queries in multi-tenant self-hosted setups
-    const isDataQuery = /^\s*(select|insert|update|delete|with|explain)\b/i.test(query)
+    // Strip frontend's role impersonation wrapper if present to prevent it from overriding the server's enforcement
+    let innerQuery = query
+    const marker = 'select 1 as "ROLE_IMPERSONATION_NO_RESULTS";'
+    if (innerQuery.includes(marker)) {
+      innerQuery = innerQuery.split(marker).pop() || innerQuery
+    }
+
+    const isDataQuery = /^\s*(select|insert|update|delete|with|explain)\b/i.test(innerQuery.trim())
     if (isDataQuery) {
       const ref = typeof req.query.ref === 'string' ? req.query.ref : 'default'
       const role = { 
@@ -49,7 +56,9 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
         externalAuth: { sub: userId } 
       }
       const impersonationClaims = getPostgrestClaims(ref, role)
-      query = wrapWithRoleImpersonation(query, { role, claims: impersonationClaims })
+      query = wrapWithRoleImpersonation(innerQuery, { role, claims: impersonationClaims })
+    } else {
+      query = innerQuery // If it's a DDL query, we still want to strip the frontend wrapper so it runs as the default pg-meta role (superuser)
     }
   }
 
