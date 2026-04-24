@@ -1,11 +1,12 @@
 import type { JwtPayload } from '@supabase/supabase-js'
 
+import crypto from 'node:crypto'
 import { executeQuery } from './query'
-import { encryptString } from './util'
+import { decryptString, encryptString, encryptedConnectionForPgMeta } from './util'
 import { makeRandomString } from 'lib/helpers'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_PLATFORM, IS_SAAS } from 'lib/constants'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
-import { getConnectionString } from './util'
+import { provisionTenantDatabase } from './provision-tenant-db'
 
 type Claims = JwtPayload & Record<string, any>
 
@@ -117,12 +118,21 @@ function getUsernameFromEmail(email: string) {
   return slugify(base) || `user-${makeRandomString(6).toLowerCase()}`
 }
 
-async function ensurePlatformTables() {
+async function ensureSaasTables() {
   const bootstrap = await executeQuery({
     query: `
-      create schema if not exists platform;
+      do $saas_migration$
+      begin
+        if exists (select 1 from information_schema.schemata where schema_name = 'platform')
+           and not exists (select 1 from information_schema.schemata where schema_name = 'saas') then
+          execute 'alter schema platform rename to saas';
+        end if;
+      end
+      $saas_migration$;
 
-      create table if not exists platform.profiles (
+      create schema if not exists saas;
+
+      create table if not exists saas.profiles (
         id serial primary key,
         gotrue_id uuid not null unique,
         primary_email text not null,
@@ -138,7 +148,7 @@ async function ensurePlatformTables() {
         updated_at timestamptz not null default now()
       );
 
-      create table if not exists platform.organizations (
+      create table if not exists saas.organizations (
         id serial primary key,
         owner_gotrue_id uuid not null,
         slug text not null unique,
@@ -161,9 +171,41 @@ async function ensurePlatformTables() {
       );
 
       create index if not exists organizations_owner_gotrue_id_idx
-        on platform.organizations (owner_gotrue_id);
+        on saas.organizations (owner_gotrue_id);
 
-      create table if not exists platform.projects (
+      -- Organization membership / RBAC (SaaS isolation).
+      create table if not exists saas.organization_members (
+        organization_id integer not null,
+        gotrue_id uuid not null,
+        role text not null default 'owner', -- owner|admin|developer|viewer
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        primary key (organization_id, gotrue_id)
+      );
+
+      create index if not exists organization_members_gotrue_id_idx
+        on saas.organization_members (gotrue_id);
+
+      create index if not exists organization_members_org_id_idx
+        on saas.organization_members (organization_id);
+
+      -- Email-based invitations (minimal, for future UI/API expansion).
+      create table if not exists saas.organization_invites (
+        id bigserial primary key,
+        organization_id integer not null,
+        email text not null,
+        role text not null default 'developer',
+        token text not null unique,
+        invited_by_gotrue_id uuid not null,
+        accepted_at timestamptz null,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      );
+
+      create index if not exists organization_invites_org_id_idx
+        on saas.organization_invites (organization_id);
+
+      create table if not exists saas.projects (
         id serial primary key,
         organization_id integer not null,
         organization_slug text not null,
@@ -175,17 +217,24 @@ async function ensurePlatformTables() {
         inserted_at timestamptz not null default now(),
         is_branch boolean not null default false,
         preview_branch_refs text[] not null default '{}',
+        -- Legacy plaintext keys (deprecated). Prefer *_enc below.
         service_key text not null default '',
         anon_key text not null default '',
+        service_key_enc text null,
+        anon_key_enc text null,
         subscription_id text not null default '',
         rest_url text not null default '',
         db_host text not null default '127.0.0.1',
+        -- Data-plane: per-project stack ports (Traefik routes Host(<ref>.<domain>) to localhost:<port>).
+        -- Convention: base + 1..N per service (rest/auth/storage/realtime/functions/etc).
+        data_plane_port_base integer null,
         connection_string text null,
+                    connection_string_enc text null,
         db_pass_enc text null
       );
 
       create index if not exists projects_org_slug_idx
-        on platform.projects (organization_slug);
+        on saas.projects (organization_slug);
     `,
   })
   if (bootstrap.error) {
@@ -213,13 +262,14 @@ function resolveSelfHostedProjectRef(claims: Claims, ref: string): string {
 export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
   if (IS_PLATFORM) return
 
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const email = getPrimaryEmail(claims)
 
   const count = await executeQuery<{ count: string }>({
-    query: `select count(*)::text as count from platform.organizations where owner_gotrue_id = $1`,
+    query: `select count(*)::text as count from saas.organizations where owner_gotrue_id = $1`,
     parameters: [gotrueId],
+    actorId: gotrueId,
   })
   if (count.error) throw count.error
   if (parseInt(count.data?.[0]?.count ?? '0', 10) > 0) return
@@ -238,7 +288,7 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
 
   const orgInsert = await executeQuery<{ id: number }>({
     query: `
-      insert into platform.organizations (
+      insert into saas.organizations (
         owner_gotrue_id,
         slug,
         name,
@@ -271,6 +321,7 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
       returning id
     `,
     parameters: [gotrueId, slug, orgName, email],
+    actorId: gotrueId,
   })
   if (orgInsert.error || !orgInsert.data?.length) throw orgInsert.error ?? new Error('Failed to create default organization')
 
@@ -278,7 +329,7 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
 
   const projectInsert = await executeQuery({
     query: `
-      insert into platform.projects (
+      insert into saas.projects (
         organization_id,
         organization_slug,
         ref,
@@ -309,12 +360,13 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
       PROJECT_REST_URL,
       encryptString(''),
     ],
+    actorId: gotrueId,
   })
   if (projectInsert.error) throw projectInsert.error
 }
 
 export async function getOrCreateProfile(claims: Claims) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const email = getPrimaryEmail(claims)
   const username = getUsernameFromEmail(email)
@@ -334,8 +386,9 @@ export async function getOrCreateProfile(claims: Claims) {
     free_project_limit: number | null
   }>({
     query:
-      'select id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit from platform.profiles where gotrue_id = $1',
+      'select id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit from saas.profiles where gotrue_id = $1',
     parameters: [gotrueId],
+    actorId: gotrueId,
   })
 
   if (!existing.error && existing.data?.length) {
@@ -371,13 +424,14 @@ export async function getOrCreateProfile(claims: Claims) {
     free_project_limit: number | null
   }>({
     query: `
-      insert into platform.profiles
+      insert into saas.profiles
         (gotrue_id, primary_email, username, first_name, last_name, mobile)
       values
         ($1, $2, $3, null, null, null)
       returning id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit
     `,
     parameters: [gotrueId, email, username],
+    actorId: gotrueId,
   })
 
   if (insert.error || !insert.data?.length) {
@@ -403,7 +457,7 @@ export async function getOrCreateProfile(claims: Claims) {
 }
 
 export async function getProfile(claims: Claims) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   const profile = await executeQuery<{
@@ -420,8 +474,9 @@ export async function getProfile(claims: Claims) {
     free_project_limit: number | null
   }>({
     query:
-      'select id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit from platform.profiles where gotrue_id = $1',
+      'select id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit from saas.profiles where gotrue_id = $1',
     parameters: [gotrueId],
+    actorId: gotrueId,
   })
 
   if (profile.error) throw profile.error
@@ -451,7 +506,7 @@ export async function updateProfile({
   claims: Claims
   updates: { username?: string; first_name?: string; last_name?: string; primary_email?: string }
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   const { username, first_name, last_name, primary_email } = updates
@@ -470,7 +525,7 @@ export async function updateProfile({
     free_project_limit: number | null
   }>({
     query: `
-      update platform.profiles
+      update saas.profiles
       set
         username = coalesce($1, username),
         first_name = coalesce($2, first_name),
@@ -481,6 +536,7 @@ export async function updateProfile({
       returning id, gotrue_id, primary_email, username, first_name, last_name, mobile, is_alpha_user, is_sso_user, disabled_features, free_project_limit
     `,
     parameters: [username ?? null, first_name ?? null, last_name ?? null, primary_email ?? null, gotrueId],
+    actorId: gotrueId,
   })
 
   if (updated.error || !updated.data?.length) throw updated.error ?? new Error('Failed to update profile')
@@ -511,7 +567,7 @@ export async function listOrganizations({
   limit?: number
   offset?: number
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   await ensureSelfHostedDefaultWorkspace(claims)
   const gotrueId = getGotrueUserId(claims)
   const qLimit = Math.min(Math.max(limit ?? 100, 1), 200)
@@ -532,6 +588,7 @@ export async function listOrganizations({
     usage_billing_enabled: boolean
     stripe_customer_id: string | null
     subscription_id: string | null
+    member_role: string
   }>({
     query: `
       select
@@ -549,12 +606,15 @@ export async function listOrganizations({
         usage_billing_enabled,
         stripe_customer_id,
         subscription_id
-      from platform.organizations
-      where owner_gotrue_id = $1
+      , m.role as member_role
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where m.gotrue_id = $1
       order by name asc
       limit $2 offset $3
     `,
     parameters: [gotrueId, qLimit, qOffset],
+    actorId: gotrueId,
   })
 
   if (rows.error) throw rows.error
@@ -567,7 +627,7 @@ export async function listOrganizations({
       name: o.name,
       billing_email: o.billing_email,
       billing_partner: (o.billing_partner as any) ?? null,
-      is_owner: true,
+      is_owner: o.member_role === 'owner',
       plan: { id: planId, name: PLAN_NAME[planId] },
       opt_in_tags: o.opt_in_tags ?? [],
       organization_missing_address: o.organization_missing_address,
@@ -581,8 +641,279 @@ export async function listOrganizations({
   })
 }
 
+export async function listOrganizationMembers({ claims, slug }: { claims: Claims; slug: string }) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+
+  const rows = await executeQuery<{
+    gotrue_id: string
+    role: string
+    inserted_at: string
+  }>({
+    query: `
+      select
+        m.gotrue_id,
+        m.role,
+        m.inserted_at
+      from saas.organization_members m
+      join saas.organizations o on o.id = m.organization_id
+      where o.slug = $1
+        and exists (
+          select 1
+          from saas.organization_members me
+          where me.organization_id = o.id
+            and me.gotrue_id = $2
+        )
+      order by m.inserted_at asc
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  return rows.data ?? []
+}
+
+export async function addOrganizationMember({
+  claims,
+  slug,
+  member_gotrue_id,
+  role,
+}: {
+  claims: Claims
+  slug: string
+  member_gotrue_id: string
+  role: 'owner' | 'admin' | 'developer' | 'viewer'
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+
+  const org = await executeQuery<{ id: number }>({
+    query: `
+      select o.id
+      from saas.organizations o
+      join saas.organization_members me on me.organization_id = o.id
+      where o.slug = $1
+        and me.gotrue_id = $2
+        and me.role in ('owner','admin')
+      limit 1
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (org.error) throw org.error
+  if (!org.data?.length) throw new Error('Organization not found or insufficient permissions')
+
+  const inserted = await executeQuery({
+    query: `
+      insert into saas.organization_members (organization_id, gotrue_id, role)
+      values ($1, $2, $3)
+      on conflict (organization_id, gotrue_id) do update
+        set role = excluded.role,
+            updated_at = now()
+    `,
+    parameters: [org.data[0].id, member_gotrue_id, role],
+    actorId: gotrueId,
+  })
+  if (inserted.error) throw inserted.error
+  return true
+}
+
+export async function removeOrganizationMember({
+  claims,
+  slug,
+  member_gotrue_id,
+}: {
+  claims: Claims
+  slug: string
+  member_gotrue_id: string
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+
+  const del = await executeQuery({
+    query: `
+      delete from saas.organization_members m
+      using saas.organizations o
+      where o.id = m.organization_id
+        and o.slug = $1
+        and m.gotrue_id = $2
+        and exists (
+          select 1
+          from saas.organization_members me
+          where me.organization_id = o.id
+            and me.gotrue_id = $3
+            and me.role = 'owner'
+        )
+        and not (m.gotrue_id = $3 and m.role = 'owner')
+    `,
+    parameters: [slug, member_gotrue_id, gotrueId],
+    actorId: gotrueId,
+  })
+  if (del.error) throw del.error
+  return true
+}
+
+export async function listOrganizationInvites({ claims, slug }: { claims: Claims; slug: string }) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+
+  const rows = await executeQuery<{
+    id: string
+    email: string
+    role: string
+    token: string
+    invited_by_gotrue_id: string
+    accepted_at: string | null
+    inserted_at: string
+  }>({
+    query: `
+      select
+        i.id::text,
+        i.email,
+        i.role,
+        i.token,
+        i.invited_by_gotrue_id::text,
+        i.accepted_at,
+        i.inserted_at
+      from saas.organization_invites i
+      join saas.organizations o on o.id = i.organization_id
+      where o.slug = $1
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = o.id
+            and m.gotrue_id = $2
+        )
+      order by i.inserted_at desc
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  return rows.data ?? []
+}
+
+export async function createOrganizationInvite({
+  claims,
+  slug,
+  email,
+  role,
+}: {
+  claims: Claims
+  slug: string
+  email: string
+  role: 'admin' | 'developer' | 'viewer'
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+
+  const org = await executeQuery<{ id: number }>({
+    query: `
+      select o.id
+      from saas.organizations o
+      join saas.organization_members me on me.organization_id = o.id
+      where o.slug = $1
+        and me.gotrue_id = $2
+        and me.role in ('owner','admin')
+      limit 1
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (org.error) throw org.error
+  if (!org.data?.length) throw new Error('Organization not found or insufficient permissions')
+
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) throw new Error('Email is required')
+
+  const token = makeRandomString(48)
+
+  const inserted = await executeQuery<{
+    id: string
+    email: string
+    role: string
+    token: string
+    accepted_at: string | null
+    inserted_at: string
+  }>({
+    query: `
+      insert into saas.organization_invites (
+        organization_id,
+        email,
+        role,
+        token,
+        invited_by_gotrue_id,
+        expires_at
+      ) values ($1, $2, $3, $4, $5, now() + interval '7 days')
+      returning id::text, email, role, token, accepted_at, inserted_at
+    `,
+    parameters: [org.data[0].id, normalizedEmail, role, token, gotrueId],
+    actorId: gotrueId,
+  })
+  if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create invite')
+  return inserted.data[0]
+}
+
+export async function acceptOrganizationInvite({ claims, token }: { claims: Claims; token: string }) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const email = getPrimaryEmail(claims).trim().toLowerCase()
+  const cleanToken = token.trim()
+  if (!cleanToken) throw new Error('Invite token is required')
+
+  const invite = await executeQuery<{
+    organization_id: number
+    role: string
+    email: string
+    accepted_at: string | null
+    expires_at: string | null
+  }>({
+    query: `
+      select organization_id, role, email, accepted_at, expires_at
+      from saas.organization_invites
+      where token = $1
+      limit 1
+    `,
+    parameters: [cleanToken],
+    actorId: gotrueId,
+  })
+  if (invite.error) throw invite.error
+  if (!invite.data?.length) throw new Error('Invite not found')
+  const row = invite.data[0]
+  if (row.accepted_at) throw new Error('Invite already accepted')
+  if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
+    throw new Error('Invite expired')
+  }
+  if (row.email.trim().toLowerCase() !== email) {
+    throw new Error('Invite email does not match the signed-in account')
+  }
+
+  const tx = await executeQuery({
+    query: `
+      with updated as (
+        update saas.organization_invites
+        set accepted_at = now(), updated_at = now()
+        where token = $1
+          and accepted_at is null
+          and (expires_at is null or expires_at > now())
+        returning organization_id, role
+      )
+      insert into saas.organization_members (organization_id, gotrue_id, role)
+      select organization_id, $2::uuid, role
+      from updated
+      on conflict (organization_id, gotrue_id) do update
+        set role = excluded.role,
+            updated_at = now()
+    `,
+    parameters: [cleanToken, gotrueId],
+    actorId: gotrueId,
+  })
+  if (tx.error) throw tx.error
+  return true
+}
+
 export async function getOrganization({ claims, slug }: { claims: Claims; slug: string }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   const rows = await executeQuery<{
@@ -600,6 +931,7 @@ export async function getOrganization({ claims, slug }: { claims: Claims; slug: 
     usage_billing_enabled: boolean
     stripe_customer_id: string | null
     subscription_id: string | null
+    member_role: string
   }>({
     query: `
       select
@@ -617,11 +949,14 @@ export async function getOrganization({ claims, slug }: { claims: Claims; slug: 
         usage_billing_enabled,
         stripe_customer_id,
         subscription_id
-      from platform.organizations
-      where slug = $1 and owner_gotrue_id = $2
+      , m.role as member_role
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1 and m.gotrue_id = $2
       limit 1
     `,
     parameters: [slug, gotrueId],
+    actorId: gotrueId,
   })
 
   if (rows.error) throw rows.error
@@ -661,7 +996,7 @@ export async function createOrganization({
     tax_id?: unknown
   }
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const email = getPrimaryEmail(claims)
 
@@ -688,7 +1023,7 @@ export async function createOrganization({
     subscription_id: string | null
   }>({
     query: `
-      insert into platform.organizations (
+      insert into saas.organizations (
         owner_gotrue_id,
         slug,
         name,
@@ -724,10 +1059,25 @@ export async function createOrganization({
         restriction_status, usage_billing_enabled, stripe_customer_id, subscription_id
     `,
     parameters: [gotrueId, slug, name, body.kind ?? null, body.size ?? null, planId, body.billing_name ?? null, email],
+    actorId: gotrueId,
   })
 
   if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create organization')
   const o = inserted.data[0]
+
+  // Seed membership for the creator so SaaS authorization is membership-based, not owner-column-based.
+  const memberInsert = await executeQuery({
+    query: `
+      insert into saas.organization_members (organization_id, gotrue_id, role)
+      values ($1, $2, 'owner')
+      on conflict (organization_id, gotrue_id) do update
+        set role = excluded.role,
+            updated_at = now()
+    `,
+    parameters: [o.id, gotrueId],
+    actorId: gotrueId,
+  })
+  if (memberInsert.error) throw memberInsert.error
 
   return {
     billing_email: o.billing_email,
@@ -757,7 +1107,7 @@ export async function updateOrganization({
   slug: string
   updates: { name?: string; billing_email?: string; opt_in_tags?: string[]; additional_billing_emails?: string[] }
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   const updated = await executeQuery<{
@@ -769,16 +1119,24 @@ export async function updateOrganization({
     stripe_customer_id: string | null
   }>({
     query: `
-      update platform.organizations
+      update saas.organizations
       set
         name = coalesce($1, name),
         billing_email = coalesce($2, billing_email),
         opt_in_tags = coalesce($3, opt_in_tags),
         updated_at = now()
-      where slug = $4 and owner_gotrue_id = $5
+      where slug = $4
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = saas.organizations.id
+            and m.gotrue_id = $5
+            and m.role in ('owner', 'admin')
+        )
       returning id, slug, name, billing_email, opt_in_tags, stripe_customer_id
     `,
     parameters: [updates.name ?? null, updates.billing_email ?? null, updates.opt_in_tags ?? null, slug, gotrueId],
+    actorId: gotrueId,
   })
 
   if (updated.error) throw updated.error
@@ -796,7 +1154,7 @@ export async function updateOrganization({
 }
 
 export async function deleteOrganization({ claims, slug }: { claims: Claims; slug: string }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   // Delete only projects that belong to an organization the current user owns.
@@ -804,19 +1162,38 @@ export async function deleteOrganization({ claims, slug }: { claims: Claims; slu
   // the user does not own.
   const deleteProjects = await executeQuery({
     query: `
-      delete from platform.projects p
-      using platform.organizations o
+      delete from saas.projects p
+      using saas.organizations o
       where o.id = p.organization_id
         and o.slug = $1
-        and o.owner_gotrue_id = $2
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = o.id
+            and m.gotrue_id = $2
+            and m.role = 'owner'
+        )
     `,
     parameters: [slug, gotrueId],
+    actorId: gotrueId,
   })
   if (deleteProjects.error) throw deleteProjects.error
 
   const deleted = await executeQuery<{ slug: string }>({
-    query: `delete from platform.organizations where slug = $1 and owner_gotrue_id = $2 returning slug`,
+    query: `
+      delete from saas.organizations o
+      where o.slug = $1
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = o.id
+            and m.gotrue_id = $2
+            and m.role = 'owner'
+        )
+      returning o.slug
+    `,
     parameters: [slug, gotrueId],
+    actorId: gotrueId,
   })
 
   if (deleted.error) throw deleted.error
@@ -834,7 +1211,7 @@ export async function listProjects({
   offset?: number
   search?: string
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   await ensureSelfHostedDefaultWorkspace(claims)
   const gotrueId = getGotrueUserId(claims)
   const qLimit = Math.min(Math.max(limit ?? 100, 1), 200)
@@ -844,12 +1221,13 @@ export async function listProjects({
   const count = await executeQuery<{ count: string }>({
     query: `
       select count(*)::text as count
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
-      where o.owner_gotrue_id = $1
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where m.gotrue_id = $1
       ${qSearch ? `and (p.name ilike '%' || $2 || '%' or p.ref ilike '%' || $2 || '%')` : ''}
     `,
     parameters: qSearch ? [gotrueId, qSearch] : [gotrueId],
+    actorId: gotrueId,
   })
   if (count.error) throw count.error
 
@@ -881,14 +1259,15 @@ export async function listProjects({
         p.is_branch,
         p.preview_branch_refs,
         p.subscription_id
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
-      where o.owner_gotrue_id = $1
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where m.gotrue_id = $1
       ${qSearch ? `and (p.name ilike '%' || $2 || '%' or p.ref ilike '%' || $2 || '%')` : ''}
       order by p.name asc
       limit $${qSearch ? 3 : 2} offset $${qSearch ? 4 : 3}
     `,
     parameters: qSearch ? [gotrueId, qSearch, qLimit, qOffset] : [gotrueId, qLimit, qOffset],
+    actorId: gotrueId,
   })
   if (projects.error) throw projects.error
 
@@ -935,30 +1314,64 @@ export async function createProject({
     release_channel?: string
   }
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
-  const anonKey = process.env.SUPABASE_ANON_KEY ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? ''
+  const jwtSecret = process.env.AUTH_JWT_SECRET ?? ''
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error('Missing/invalid AUTH_JWT_SECRET (must be >= 32 chars) for per-project key generation')
+  }
+
+  function base64Url(input: Buffer | string) {
+    const buf = typeof input === 'string' ? Buffer.from(input) : input
+    return buf
+      .toString('base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+  }
+
+  function makeProjectJwt(role: 'anon' | 'service_role', projectRef: string) {
+    const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+    const now = Math.floor(Date.now() / 1000)
+    const payloadB64 = base64Url(
+      JSON.stringify({
+        role,
+        iss: 'indobase',
+        project_ref: projectRef,
+        iat: now,
+        exp: now + 60 * 60 * 24 * 365 * 10, // ~10y
+      })
+    )
+
+    const data = `${headerB64}.${payloadB64}`
+    const sig = crypto.createHmac('sha256', jwtSecret).update(data).digest()
+    return `${data}.${base64Url(sig)}`
+  }
 
   const orgRows = await executeQuery<{
     id: number
     organization_slug: string
-    owner_gotrue_id: string
+    role: string
   }>({
     query: `
-      select id, slug as organization_slug, owner_gotrue_id
-      from platform.organizations
-      where slug = $1 and owner_gotrue_id = $2
+      select o.id, o.slug as organization_slug, m.role
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1 and m.gotrue_id = $2
       limit 1
     `,
     parameters: [body.organization_slug, gotrueId],
+    actorId: gotrueId,
   })
   if (orgRows.error) throw orgRows.error
   if (!orgRows.data?.length) throw new Error('Organization not found')
+  if (orgRows.data[0].role === 'viewer') throw new Error('Insufficient permissions to create projects')
 
   const org = orgRows.data[0]
   const ref = uniqueProjectRef(body.name)
   const region = body.db_region || body.region_selection?.code || 'local'
+  const anonKey = makeProjectJwt('anon', ref)
+  const serviceKey = makeProjectJwt('service_role', ref)
 
   const inserted = await executeQuery<{
     id: number
@@ -972,7 +1385,7 @@ export async function createProject({
     inserted_at: string
   }>({
     query: `
-      insert into platform.projects (
+      insert into saas.projects (
         organization_id,
         organization_slug,
         ref,
@@ -982,15 +1395,19 @@ export async function createProject({
         status,
         service_key,
         anon_key,
+        service_key_enc,
+        anon_key_enc,
         subscription_id,
         rest_url,
         db_host,
         connection_string,
+        connection_string_enc,
         db_pass_enc
       ) values (
-        $1, $2, $3, $4, $5, $6, 'ACTIVE_HEALTHY',
-        $7, $8, '',
-        $9, '127.0.0.1', null, $10
+        $1, $2, $3, $4, $5, $6, 'PROVISIONING',
+        '', '', $7, $8,
+        '',
+        $9, '127.0.0.1', null, null, $10
       )
       returning id, ref, name, organization_id, organization_slug, cloud_provider, region, status, inserted_at
     `,
@@ -1001,15 +1418,60 @@ export async function createProject({
       body.name,
       body.cloud_provider || 'localhost',
       region,
-      serviceKey,
-      anonKey,
+      encryptString(serviceKey),
+      encryptString(anonKey),
       PROJECT_REST_URL,
       encryptString(body.db_pass),
     ],
+    actorId: gotrueId,
   })
 
   if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create project')
   const p = inserted.data[0]
+
+  // MVP provisioning: create a dedicated tenant DB and store its DSN encrypted-at-rest.
+  const pgHost = process.env.TENANT_PG_HOST || process.env.POSTGRES_HOST || 'db'
+  const pgPort = parseInt(process.env.TENANT_PG_PORT || process.env.POSTGRES_PORT || '5432', 10)
+  const pgAdminUser = process.env.TENANT_PG_ADMIN_USER || process.env.POSTGRES_USER || 'postgres'
+  const pgAdminPassword = process.env.TENANT_PG_ADMIN_PASSWORD || process.env.POSTGRES_PASSWORD || ''
+  if (!pgAdminPassword) {
+    throw new Error('Missing TENANT_PG_ADMIN_PASSWORD/POSTGRES_PASSWORD for tenant provisioning')
+  }
+
+  const provisioned = await provisionTenantDatabase({
+    projectRef: p.ref,
+    host: pgHost,
+    port: Number.isFinite(pgPort) ? pgPort : 5432,
+    adminUser: pgAdminUser,
+    adminPassword: pgAdminPassword,
+  })
+
+  // Deterministic port allocation for per-project isolated data-plane stacks.
+  // - The generator uses this base to map localhost ports in Traefik dynamic config.
+  // - Convention: rest/auth/storage/realtime/functions map to base+1..base+5.
+  // - Keep spacing for future services.
+  const dataPlanePortBase = 20000 + p.id * 10
+
+  const saved = await executeQuery({
+    query: `
+      update saas.projects p
+      set connection_string = null,
+          connection_string_enc = $1,
+          data_plane_port_base = $4,
+          status = 'ACTIVE_HEALTHY'
+      where p.ref = $2
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = p.organization_id
+            and m.gotrue_id = $3
+            and m.role in ('owner','admin','developer')
+        )
+    `,
+    parameters: [encryptString(provisioned.connectionString), p.ref, gotrueId, dataPlanePortBase],
+    actorId: gotrueId,
+  })
+  if (saved.error) throw saved.error
 
   return {
     anon_key: anonKey,
@@ -1023,7 +1485,7 @@ export async function createProject({
     ref: p.ref,
     region: p.region,
     service_key: serviceKey,
-    status: p.status,
+    status: 'ACTIVE_HEALTHY',
     subscription_id: null,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : null,
     is_branch_enabled: false,
@@ -1032,7 +1494,7 @@ export async function createProject({
 }
 
 export async function getProject({ claims, ref }: { claims: Claims; ref: string }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
 
@@ -1050,6 +1512,8 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     preview_branch_refs: string[]
     service_key: string
     anon_key: string
+    connection_string: string | null
+    connection_string_enc: string | null
   }>({
     query: `
       select
@@ -1065,13 +1529,16 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.is_branch,
         p.preview_branch_refs,
         p.service_key,
-        p.anon_key
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
-      where p.ref = $1 and o.owner_gotrue_id = $2
+        p.anon_key,
+        p.connection_string,
+        p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
       limit 1
     `,
     parameters: [resolvedRef, gotrueId],
+    actorId: gotrueId,
   })
 
   if (rows.error) throw rows.error
@@ -1091,6 +1558,8 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
       preview_branch_refs: string[]
       service_key: string
       anon_key: string
+      connection_string: string | null
+      connection_string_enc: string | null
     }>({
       query: `
       select
@@ -1106,13 +1575,16 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.is_branch,
         p.preview_branch_refs,
         p.service_key,
-        p.anon_key
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
-      where p.ref = $1 and o.owner_gotrue_id = $2
+        p.anon_key,
+        p.connection_string,
+        p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
       limit 1
     `,
       parameters: [resolvedRef, gotrueId],
+      actorId: gotrueId,
     })
     if (retry.error) throw retry.error
     rows = retry
@@ -1121,11 +1593,51 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   if (!rows.data?.length) return null
 
   const p = rows.data[0]
+  const tenantDatabaseUrl =
+    p.connection_string_enc && p.connection_string_enc.trim()
+      ? decryptString(p.connection_string_enc)
+      : p.connection_string
+
+  // Lazy backfill: migrate plaintext -> encrypted-at-rest when an owner/admin loads the project.
+  // Keeps existing deployments working without requiring a one-off script.
+  if (
+    tenantDatabaseUrl?.trim() &&
+    (!p.connection_string_enc || !p.connection_string_enc.trim()) &&
+    p.connection_string?.trim()
+  ) {
+    const migrate = await executeQuery({
+      query: `
+        update saas.projects p
+        set connection_string = null,
+            connection_string_enc = $1
+        where p.ref = $2
+          and exists (
+            select 1
+            from saas.organization_members m
+            where m.organization_id = p.organization_id
+              and m.gotrue_id = $3
+              and m.role in ('owner','admin')
+          )
+      `,
+      parameters: [encryptString(tenantDatabaseUrl), p.ref, gotrueId],
+      actorId: gotrueId,
+    })
+    if (migrate.error) throw migrate.error
+  }
+
+  // In SaaS mode, every project must point to its own tenant database.
+  // Falling back to POSTGRES_* would cause cross-tenant visibility.
+  if (IS_SAAS && !tenantDatabaseUrl?.trim()) {
+    throw new Error(
+      'Project is missing tenant database connection_string. Set saas.projects.connection_string to a tenant Postgres URI.'
+    )
+  }
   return {
     cloud_provider: p.cloud_provider,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
     // The frontend forwards this `connectionString` into that header.
-    connectionString: encryptString(getConnectionString({ readOnly: true })),
+    // Per-tenant DB: plaintext URI in saas.projects.connection_string; else POSTGRES_* fallback.
+    connectionString: encryptedConnectionForPgMeta(tenantDatabaseUrl),
     db_host: '127.0.0.1',
     id: p.id,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString(),
@@ -1141,6 +1653,254 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   }
 }
 
+export async function getTenantStackArtifacts({
+  claims,
+  ref,
+  publicDomain,
+}: {
+  claims: Claims
+  ref: string
+  publicDomain: string
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
+
+  const jwtSecret = process.env.AUTH_JWT_SECRET ?? process.env.JWT_SECRET ?? ''
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error('Missing/invalid AUTH_JWT_SECRET/JWT_SECRET (must be >= 32 chars)')
+  }
+
+  const row = await executeQuery<{
+    id: number
+    ref: string
+    data_plane_port_base: number | null
+    connection_string: string | null
+    connection_string_enc: string | null
+    service_key: string
+    anon_key: string
+    service_key_enc: string | null
+    anon_key_enc: string | null
+  }>({
+    query: `
+      select
+        p.id,
+        p.ref,
+        p.data_plane_port_base,
+        p.connection_string,
+        p.connection_string_enc,
+        p.service_key,
+        p.anon_key,
+        p.service_key_enc,
+        p.anon_key_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [resolvedRef, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  if (!row.data?.length) return null
+
+  const p = row.data[0]
+  const base = p.data_plane_port_base ?? 0
+  if (!Number.isFinite(base) || base < 1024) {
+    throw new Error('Project is missing data_plane_port_base (re-provision project or set it in saas.projects)')
+  }
+
+  const tenantDbUrl =
+    p.connection_string_enc && p.connection_string_enc.trim()
+      ? decryptString(p.connection_string_enc)
+      : p.connection_string
+
+  if (IS_SAAS && !tenantDbUrl?.trim()) {
+    throw new Error('Project is missing tenant DB connection_string (cannot render tenant stack)')
+  }
+
+  const anonKey = p.anon_key_enc ? decryptString(p.anon_key_enc) : p.anon_key
+  const serviceKey = p.service_key_enc ? decryptString(p.service_key_enc) : p.service_key
+
+  const ports = {
+    rest: base + 1,
+    auth: base + 2,
+    storage: base + 3,
+    realtime: base + 4,
+    functions: base + 5,
+  }
+
+  const stablePassword = crypto.createHash('sha256').update(`indobase-tenant-${p.ref}`).digest('hex').slice(0, 24)
+
+  const dockerComposeYml = `# Generated by Studio (Option A per-project stack)
+name: indobase-tenant-${p.ref}
+
+services:
+  tenant-db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${stablePassword}
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:${base}:5432"
+    volumes:
+      - tenant-db-${p.ref}:/var/lib/postgresql/data:Z
+
+  tenant-rest:
+    image: postgrest/postgrest:v14.5
+    restart: unless-stopped
+    depends_on: [tenant-db]
+    environment:
+      PGRST_DB_URI: ${tenantDbUrl?.trim() ?? ''}
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${jwtSecret}
+    ports:
+      - "127.0.0.1:${ports.rest}:3000"
+
+  tenant-auth:
+    image: supabase/gotrue:v2.186.0
+    restart: unless-stopped
+    depends_on: [tenant-db]
+    environment:
+      GOTRUE_SITE_URL: https://${p.ref}.${publicDomain}
+      GOTRUE_URI_ALLOW_LIST: https://${p.ref}.${publicDomain}
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: ${tenantDbUrl?.trim() ?? ''}
+      GOTRUE_JWT_SECRET: ${jwtSecret}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SMTP_HOST: supabase-mail
+      GOTRUE_SMTP_PORT: 2500
+      GOTRUE_SMTP_USER: fake_mail_user
+      GOTRUE_SMTP_PASS: fake_mail_password
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
+      GOTRUE_SMTP_SENDER_NAME: fake_sender
+    ports:
+      - "127.0.0.1:${ports.auth}:9999"
+
+  tenant-storage:
+    image: supabase/storage-api:v1.23.0
+    restart: unless-stopped
+    depends_on: [tenant-db, tenant-rest]
+    environment:
+      ANON_KEY: ${anonKey}
+      SERVICE_KEY: ${serviceKey}
+      POSTGREST_URL: http://host.docker.internal:${ports.rest}
+      PGRST_JWT_SECRET: ${jwtSecret}
+      DATABASE_URL: ${tenantDbUrl?.trim() ?? ''}
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      REGION: local
+      TENANT_ID: ${p.ref}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - tenant-storage-${p.ref}:/var/lib/storage:Z
+    ports:
+      - "127.0.0.1:${ports.storage}:5000"
+
+  tenant-realtime:
+    image: supabase/realtime:v2.76.5
+    restart: unless-stopped
+    depends_on: [tenant-db]
+    environment:
+      PORT: 4000
+      DB_HOST: host.docker.internal
+      DB_PORT: ${base}
+      DB_USER: postgres
+      DB_PASSWORD: ${stablePassword}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      JWT_SECRET: ${jwtSecret}
+      SECURE_CHANNELS: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${ports.realtime}:4000"
+
+  tenant-functions:
+    image: supabase/edge-runtime:v1.67.1
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: https://${p.ref}.${publicDomain}
+      SUPABASE_ANON_KEY: ${anonKey}
+      SUPABASE_SERVICE_ROLE_KEY: ${serviceKey}
+      SUPABASE_DB_URL: ${tenantDbUrl?.trim() ?? ''}
+    volumes:
+      - ./volumes/functions:/home/deno/functions:Z
+    ports:
+      - "127.0.0.1:${ports.functions}:9000"
+
+volumes:
+  tenant-db-${p.ref}:
+  tenant-storage-${p.ref}:
+`
+
+  const traefikYml = `# Generated by Studio (Option A per-project routing)
+http:
+  routers:
+    tenant-${p.ref}-rest:
+      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/rest/v1\`)
+      service: tenant-${p.ref}-rest
+      entryPoints: [web, websecure]
+    tenant-${p.ref}-auth:
+      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/auth/v1\`)
+      service: tenant-${p.ref}-auth
+      entryPoints: [web, websecure]
+    tenant-${p.ref}-storage:
+      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/storage/v1\`)
+      service: tenant-${p.ref}-storage
+      entryPoints: [web, websecure]
+    tenant-${p.ref}-realtime:
+      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/realtime/v1\`)
+      service: tenant-${p.ref}-realtime
+      entryPoints: [web, websecure]
+    tenant-${p.ref}-functions:
+      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/functions/v1\`)
+      service: tenant-${p.ref}-functions
+      entryPoints: [web, websecure]
+
+  services:
+    tenant-${p.ref}-rest:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${ports.rest}" }]
+        passHostHeader: true
+    tenant-${p.ref}-auth:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${ports.auth}" }]
+        passHostHeader: true
+    tenant-${p.ref}-storage:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${ports.storage}" }]
+        passHostHeader: true
+    tenant-${p.ref}-realtime:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${ports.realtime}" }]
+        passHostHeader: true
+    tenant-${p.ref}-functions:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${ports.functions}" }]
+        passHostHeader: true
+`
+
+  return {
+    project_ref: p.ref,
+    public_domain: publicDomain,
+    data_plane_port_base: base,
+    ports,
+    docker_compose_yml: dockerComposeYml,
+    traefik_yml: traefikYml,
+  }
+}
+
 export async function updateProject({
   claims,
   ref,
@@ -1148,11 +1908,52 @@ export async function updateProject({
 }: {
   claims: Claims
   ref: string
-  updates: { name?: string }
+  updates: { name?: string | null; connection_string?: string | null }
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
+
+  const setParts: string[] = []
+  const parameters: unknown[] = []
+  let i = 1
+  const isUpdatingConnectionString = 'connection_string' in updates
+
+  if ('name' in updates) {
+    setParts.push(`name = coalesce($${i++}, p.name)`)
+    parameters.push(updates.name ?? null)
+  }
+  if ('connection_string' in updates) {
+    const raw = updates.connection_string
+    const normalized =
+      raw == null || (typeof raw === 'string' && raw.trim() === '') ? null : String(raw).trim()
+    // Encrypted-at-rest storage: stop writing plaintext.
+    setParts.push(`connection_string = null`)
+    setParts.push(`connection_string_enc = $${i++}`)
+    parameters.push(normalized ? encryptString(normalized) : null)
+  }
+
+  if (!setParts.length) {
+    const current = await executeQuery<{ id: number; ref: string; name: string }>({
+      query: `
+        select p.id, p.ref, p.name
+        from saas.projects p
+        join saas.organization_members m on m.organization_id = p.organization_id
+        where m.gotrue_id = $1 and p.ref = $2
+        limit 1
+      `,
+      parameters: [gotrueId, resolvedRef],
+      actorId: gotrueId,
+    })
+    if (current.error) throw current.error
+    if (!current.data?.length) return null
+    const p = current.data[0]
+    return { id: p.id, ref: p.ref, name: p.name }
+  }
+
+  const ownerIdx = i++
+  const refIdx = i++
+  parameters.push(gotrueId, resolvedRef)
 
   const updated = await executeQuery<{
     id: number
@@ -1160,14 +1961,20 @@ export async function updateProject({
     name: string
   }>({
     query: `
-      update platform.projects p
-      set
-        name = coalesce($1, p.name)
-      from platform.organizations o
-      where o.id = p.organization_id and o.owner_gotrue_id = $2 and p.ref = $3
+      update saas.projects p
+      set ${setParts.join(', ')}
+      where exists (
+        select 1
+        from saas.organization_members m
+        where m.organization_id = p.organization_id
+          and m.gotrue_id = $${ownerIdx}
+          and m.role in (${isUpdatingConnectionString ? "'owner','admin'" : "'owner','admin','developer'"})
+      )
+        and p.ref = $${refIdx}
       returning p.id, p.ref, p.name
     `,
-    parameters: [updates.name ?? null, gotrueId, resolvedRef],
+    parameters,
+    actorId: gotrueId,
   })
 
   if (updated.error) throw updated.error
@@ -1178,7 +1985,7 @@ export async function updateProject({
 }
 
 export async function deleteProject({ claims, ref }: { claims: Claims; ref: string }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
 
@@ -1188,12 +1995,19 @@ export async function deleteProject({ claims, ref }: { claims: Claims; ref: stri
     ref: string
   }>({
     query: `
-      delete from platform.projects p
-      using platform.organizations o
-      where o.id = p.organization_id and o.owner_gotrue_id = $1 and p.ref = $2
+      delete from saas.projects p
+      where exists (
+        select 1
+        from saas.organization_members m
+        where m.organization_id = p.organization_id
+          and m.gotrue_id = $1
+          and m.role in ('owner','admin')
+      )
+        and p.ref = $2
       returning p.id, p.name, p.ref
     `,
     parameters: [gotrueId, resolvedRef],
+    actorId: gotrueId,
   })
 
   if (deleted.error) throw deleted.error
@@ -1215,7 +2029,7 @@ export async function listOrganizationProjects({
   statuses?: string[] | undefined
   search?: string | undefined
 }) {
-  await ensurePlatformTables()
+  await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
   const qLimit = Math.min(Math.max(limit ?? 100, 1), 200)
@@ -1223,7 +2037,7 @@ export async function listOrganizationProjects({
   const qSearch = search?.trim()
 
   // Minimal filtering: ignore `statuses` for now (frontend uses it, but it isn't essential for CRUD).
-  const baseWhere = `o.slug = $1 and o.owner_gotrue_id = $2`
+  const baseWhere = `o.slug = $1 and m.gotrue_id = $2`
 
   const countParams: any[] = [slug, gotrueId]
   const countWhere = qSearch
@@ -1234,11 +2048,13 @@ export async function listOrganizationProjects({
   const count = await executeQuery<{ count: string }>({
     query: `
       select count(*)::text as count
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
+      from saas.projects p
+      join saas.organizations o on o.id = p.organization_id
+      join saas.organization_members m on m.organization_id = o.id
       where ${countWhere}
     `,
     parameters: countParams,
+    actorId: gotrueId,
   })
   if (count.error) throw count.error
 
@@ -1273,13 +2089,15 @@ export async function listOrganizationProjects({
         p.inserted_at,
         p.is_branch,
         p.preview_branch_refs
-      from platform.projects p
-      join platform.organizations o on o.id = p.organization_id
+      from saas.projects p
+      join saas.organizations o on o.id = p.organization_id
+      join saas.organization_members m on m.organization_id = o.id
       where ${countWhere}
       order by p.name asc
       limit $${limitIndex} offset $${offsetIndex}
     `,
     parameters: params,
+    actorId: gotrueId,
   })
   if (projects.error) throw projects.error
 

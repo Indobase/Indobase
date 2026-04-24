@@ -110,6 +110,7 @@
     "papaparse": "^5.3.1",
     "path-to-regexp": "^8.0.0",
     "pg-minify": "^1.6.3",
+    "pg": "^8.13.1",
     "randombytes": "^2.1.0",
     "react": "catalog:",
     "react-beautiful-dnd": "^13.1.0",

@@ -2,8 +2,15 @@
 // eslint-disable-next-line barrel-files/avoid-re-export-all
 export * from './infrastructure'
 
-export const IS_PLATFORM = process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
-export const IS_SAAS = IS_PLATFORM || process.env.NEXT_PUBLIC_INDOBASE_SAAS === 'true'
+import { IS_PLATFORM } from 'common'
+
+export {
+  ENABLE_SELF_HOSTED_AUTH,
+  IS_INDOBASE_SAAS,
+  IS_MULTI_ORG_DASHBOARD,
+  IS_PLATFORM,
+  IS_SAAS,
+} from 'common'
 
 /**
  * Indicates that the app is running in a test environment (E2E tests).
@@ -46,7 +53,7 @@ export const POSTHOG_URL =
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' ||
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'local'
     ? 'https://ph.supabase.green'
-    : 'https://ph.indobase.in'
+    : 'https://ph.supabase.com'
 
 export const USAGE_APPROACHING_THRESHOLD = 0.75
 

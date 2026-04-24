@@ -1,11 +1,11 @@
--- Minimal platform API schema to support self-hosted multi-tenant CRUD.
--- This is intentionally lightweight (metadata only) so the Studio frontend
--- can manage orgs/projects without requiring a separate Platform service.
+-- SaaS metadata schema for self-hosted multi-tenant CRUD (Studio orgs/projects).
+-- Lightweight metadata only so the Studio frontend can manage orgs/projects
+-- without a separate hosted Platform service.
 
-create schema if not exists platform;
+create schema if not exists saas;
 
 -- User profile (Studio account-level data)
-create table if not exists platform.profiles (
+create table if not exists saas.profiles (
   id serial primary key,
   gotrue_id uuid not null unique,
   primary_email text not null,
@@ -22,7 +22,7 @@ create table if not exists platform.profiles (
 );
 
 -- Organizations (tenant root)
-create table if not exists platform.organizations (
+create table if not exists saas.organizations (
   id serial primary key,
   owner_gotrue_id uuid not null,
   slug text not null unique,
@@ -45,10 +45,43 @@ create table if not exists platform.organizations (
 );
 
 create index if not exists organizations_owner_gotrue_id_idx
-  on platform.organizations (owner_gotrue_id);
+  on saas.organizations (owner_gotrue_id);
+
+-- Organization membership / RBAC
+create table if not exists saas.organization_members (
+  organization_id integer not null,
+  gotrue_id uuid not null,
+  role text not null default 'owner', -- owner|admin|developer|viewer
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (organization_id, gotrue_id)
+);
+
+create index if not exists organization_members_gotrue_id_idx
+  on saas.organization_members (gotrue_id);
+
+create index if not exists organization_members_org_id_idx
+  on saas.organization_members (organization_id);
+
+-- Email-based invitations (minimal)
+create table if not exists saas.organization_invites (
+  id bigserial primary key,
+  organization_id integer not null,
+  email text not null,
+  role text not null default 'developer',
+  token text not null unique,
+  invited_by_gotrue_id uuid not null,
+  accepted_at timestamptz null,
+  expires_at timestamptz null,
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists organization_invites_org_id_idx
+  on saas.organization_invites (organization_id);
 
 -- Projects (logical database instances)
-create table if not exists platform.projects (
+create table if not exists saas.projects (
   id serial primary key,
   organization_id integer not null,
   organization_slug text not null,
@@ -60,18 +93,24 @@ create table if not exists platform.projects (
   inserted_at timestamptz not null default now(),
   is_branch boolean not null default false,
   preview_branch_refs text[] not null default '{}',
+  -- Legacy plaintext keys (deprecated). Prefer *_enc below.
   service_key text not null default '',
   anon_key text not null default '',
+  service_key_enc text null,
+  anon_key_enc text null,
   subscription_id text not null default '',
   -- Detail endpoint requirements
   rest_url text not null default '',
   db_host text not null default '127.0.0.1',
+  -- Data-plane: per-project stack ports (Traefik routes Host(<ref>.<domain>) to localhost:<port>).
+  data_plane_port_base integer null,
   -- Connection string is optional in the API schema; store for UI polling logic
   connection_string text null,
+  -- Encrypted-at-rest connection string (preferred).
+  connection_string_enc text null,
   -- Optional: if you want to persist the provided DB password, encrypt it in the app layer.
   db_pass_enc text null
 );
 
 create index if not exists projects_org_slug_idx
-  on platform.projects (organization_slug);
-
+  on saas.projects (organization_slug);

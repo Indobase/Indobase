@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { getLogsChartQuery } from 'components/interfaces/UnifiedLogs/UnifiedLogs.queries'
 import { handleError, post } from 'data/fetchers'
@@ -155,7 +155,6 @@ export const useUnifiedLogsChartQuery = <TData = UnifiedLogsChartData>(
     queryKey: logsKeys.unifiedLogsChart(projectRef, search),
     queryFn: ({ signal }) => getUnifiedLogsChart({ projectRef, search }, signal),
     enabled: enabled && typeof projectRef !== 'undefined',
-    placeholderData: keepPreviousData,
     ...UNIFIED_LOGS_QUERY_OPTIONS,
     ...options,
   })

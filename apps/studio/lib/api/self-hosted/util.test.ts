@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { assertSelfHosted, encryptString, getConnectionString } from './util'
+import { assertSelfHosted, encryptString, encryptedConnectionForPgMeta, getConnectionString } from './util'
 
 vi.mock('lib/constants', () => ({
   IS_PLATFORM: false,
@@ -37,9 +37,7 @@ describe('api/self-hosted/util', () => {
       const constants = await import('lib/constants')
       vi.spyOn(constants, 'IS_PLATFORM', 'get').mockReturnValue(true)
 
-      expect(() => assertSelfHosted()).toThrow(
-        'This function can only be called in self-hosted environments'
-      )
+      expect(() => assertSelfHosted()).toThrow(/Self-hosted platform SQL is disabled/)
     })
   })
 
@@ -134,6 +132,59 @@ describe('api/self-hosted/util', () => {
       expect(getConnectionString({ readOnly: false })).toBe(
         'postgresql://my%3Auser:Indobase%40100@db.internal:5432/postgres'
       )
+    })
+  })
+
+  describe('encryptedConnectionForPgMeta', () => {
+    it('encrypts tenant database URL when non-empty after trim', async () => {
+      const crypto = await import('crypto-js')
+      vi.mocked(crypto.default.AES.encrypt).mockReturnValue({
+        toString: () => 'tenant-encrypted',
+      } as any)
+
+      const result = encryptedConnectionForPgMeta(' postgresql://u:p@tenant:5432/db ')
+
+      expect(crypto.default.AES.encrypt).toHaveBeenCalledTimes(1)
+      expect(crypto.default.AES.encrypt).toHaveBeenCalledWith(
+        'postgresql://u:p@tenant:5432/db',
+        expect.any(String)
+      )
+      expect(result).toBe('tenant-encrypted')
+    })
+
+    it('falls back to global POSTGRES_* when tenant URL is nullish or blank (non-SaaS)', async () => {
+      vi.resetModules()
+      vi.stubEnv('POSTGRES_HOST', 'db.fallback')
+      vi.stubEnv('POSTGRES_PORT', '5432')
+      vi.stubEnv('POSTGRES_DB', 'postgres')
+      vi.stubEnv('POSTGRES_PASSWORD', 'pw')
+      vi.stubEnv('POSTGRES_USER_READ_ONLY', 'ro')
+      vi.stubEnv('NEXT_PUBLIC_IS_PLATFORM', 'false')
+      vi.stubEnv('NEXT_PUBLIC_INDOBASE_SAAS', 'false')
+
+      const crypto = await import('crypto-js')
+      vi.mocked(crypto.default.AES.encrypt).mockReturnValue({
+        toString: () => 'fallback-encrypted',
+      } as any)
+
+      const { encryptedConnectionForPgMeta: enc } = await import('./util')
+
+      expect(enc(null)).toBe('fallback-encrypted')
+      expect(enc(undefined)).toBe('fallback-encrypted')
+      expect(enc('   ')).toBe('fallback-encrypted')
+
+      expect(crypto.default.AES.encrypt).toHaveBeenCalledWith(
+        'postgresql://ro:pw@db.fallback:5432/postgres',
+        expect.any(String)
+      )
+    })
+
+    it('throws in SaaS mode when tenant URL is missing', async () => {
+      vi.resetModules()
+      vi.stubEnv('NEXT_PUBLIC_INDOBASE_SAAS', 'true')
+
+      const { encryptedConnectionForPgMeta: enc } = await import('./util')
+      expect(() => enc(null)).toThrow(/Missing tenant database connection_string/i)
     })
   })
 })

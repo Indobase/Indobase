@@ -7,11 +7,11 @@ import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { IS_PLATFORM } from 'lib/constants'
 import { Box, Check, ChevronsUpDown, Plus } from 'lucide-react'
-import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { Badge, Button, cn, CommandGroup_Shadcn_, CommandItem_Shadcn_ } from 'ui'
 import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
+import { toast } from 'sonner'
 
 export const sanitizeRoute = (route: string, routerQueries: ParsedUrlQuery) => {
   const queryArray = Object.entries(routerQueries)
@@ -30,6 +30,15 @@ export const sanitizeRoute = (route: string, routerQueries: ParsedUrlQuery) => {
     return route
   }
 }
+
+const SAFE_PROJECT_SWITCH_PATHS = new Set([
+  '/project/[ref]',
+  '/project/[ref]/logs',
+  '/project/[ref]/logs/explorer',
+  '/project/[ref]/sql',
+  '/project/[ref]/sql/[id]',
+  '/project/[ref]/editor',
+])
 
 export const ProjectDropdown = () => {
   const router = useRouter()
@@ -72,8 +81,14 @@ export const ProjectDropdown = () => {
         setOpen={setOpen}
         selectedRef={ref}
         onSelect={(project) => {
-          const sanitizedRoute = sanitizeRoute(router.route, router.query)
+          const canKeepPath = SAFE_PROJECT_SWITCH_PATHS.has(router.route)
+          const sanitizedRoute = canKeepPath ? sanitizeRoute(router.route, router.query) : '/project/[ref]'
           const href = sanitizedRoute?.replace('[ref]', project.ref) ?? `/project/${project.ref}`
+          if (!canKeepPath) {
+            toast.message(`Switched project. This page isn't available across projects.`, {
+              description: 'We took you to the project overview.',
+            })
+          }
           router.push(href)
         }}
         renderTrigger={() => (
@@ -92,13 +107,13 @@ export const ProjectDropdown = () => {
           const isPaused = project.status === 'INACTIVE'
 
           return (
-            <Link href={href} className="w-full flex items-center justify-between">
+            <div className="w-full flex items-center justify-between">
               <span className={cn('truncate', isSelected ? 'max-w-60' : 'max-w-64')}>
                 {project.name}
                 {isPaused && <Badge className="ml-2">Paused</Badge>}
               </span>
               {isSelected && <Check size={16} />}
-            </Link>
+            </div>
           )
         }}
         renderActions={() => {
@@ -113,16 +128,10 @@ export const ProjectDropdown = () => {
                   }}
                   onClick={() => setOpen(false)}
                 >
-                  <Link
-                    href={`/new/${selectedOrganization?.slug}`}
-                    onClick={() => {
-                      setOpen(false)
-                    }}
-                    className="w-full flex items-center gap-2"
-                  >
+                  <div className="w-full flex items-center gap-2">
                     <Plus size={14} strokeWidth={1.5} />
                     <p>New project</p>
-                  </Link>
+                  </div>
                 </CommandItem_Shadcn_>
               </CommandGroup_Shadcn_>
             )

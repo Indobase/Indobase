@@ -8,7 +8,7 @@ import PartnerIcon from 'components/ui/PartnerIcon'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import {
   Badge,
@@ -47,19 +47,16 @@ export const OrganizationDropdown = () => {
   }
 
   const orgHomeHref = slug
-    ? IS_PLATFORM
+    ? IS_SAAS
       ? `/org/${slug}`
       : `/org/${slug}/general`
-    : IS_PLATFORM
+    : IS_SAAS
       ? '/organizations'
       : selfHostedDashboardPath(user?.id)
 
   return (
     <>
-      <Link
-        href={orgHomeHref}
-        className="flex items-center gap-2 flex-shrink-0 text-sm"
-      >
+      <Link href={orgHomeHref} className="flex items-center gap-2 flex-shrink-0 text-sm">
         <Boxes size={14} strokeWidth={1.5} className="text-foreground-lighter" />
         <span
           className={cn(
@@ -73,7 +70,7 @@ export const OrganizationDropdown = () => {
           <Badge variant="default">{selectedOrganization?.plan.name}</Badge>
         )}
       </Link>
-      {IS_PLATFORM ? (
+      {IS_SAAS ? (
         <Popover_Shadcn_ open={open} onOpenChange={setOpen} modal={false}>
           <PopoverTrigger_Shadcn_ asChild>
             <Button
@@ -90,7 +87,18 @@ export const OrganizationDropdown = () => {
                 <CommandGroup_Shadcn_>
                   <ScrollArea className={(organizations || []).length > 7 ? 'h-[210px]' : ''}>
                     {organizations?.map((org) => {
-                      const href = !!routeSlug
+                      // Org switching: avoid carrying users onto incompatible org-scoped subpages.
+                      // Only preserve current pathname for routes that are known to be safe org-scoped screens.
+                      const safeSamePaths = new Set([
+                        '/org/[slug]',
+                        '/org/[slug]/general',
+                        '/org/[slug]/team',
+                        '/org/[slug]/audit',
+                        '/org/[slug]/billing',
+                        '/org/[slug]/usage',
+                      ])
+                      const canKeepPath = safeSamePaths.has(router.pathname)
+                      const href = canKeepPath
                         ? router.pathname.replace('[slug]', org.slug)
                         : `/org/${org.slug}`
 
@@ -105,13 +113,13 @@ export const OrganizationDropdown = () => {
                           }}
                           onClick={() => setOpen(false)}
                         >
-                          <Link href={href} className="w-full flex items-center justify-between">
+                          <div className="w-full flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span>{org.name}</span>
                               <PartnerIcon organization={org} />
                             </div>
                             {org.slug === slug && <Check size={16} />}
-                          </Link>
+                          </div>
                         </CommandItem_Shadcn_>
                       )
                     })}
@@ -127,9 +135,9 @@ export const OrganizationDropdown = () => {
                     }}
                     onClick={() => setOpen(false)}
                   >
-                    <Link href="/organizations" className="flex items-center gap-2 w-full">
+                    <div className="flex items-center gap-2 w-full">
                       <p>All Organizations</p>
-                    </Link>
+                    </div>
                   </CommandItem_Shadcn_>
                 </CommandGroup_Shadcn_>
                 {organizationCreationEnabled && (
@@ -144,10 +152,10 @@ export const OrganizationDropdown = () => {
                         }}
                         onClick={() => setOpen(false)}
                       >
-                        <Link href="/new" className="flex items-center gap-2 w-full">
+                        <div className="flex items-center gap-2 w-full">
                           <Plus size={14} strokeWidth={1.5} />
                           <p>New organization</p>
-                        </Link>
+                        </div>
                       </CommandItem_Shadcn_>
                     </CommandGroup_Shadcn_>
                   </>

@@ -51,7 +51,14 @@ import { customFont, sourceCodePro } from 'fonts'
 import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { AuthProvider } from 'lib/auth'
-import { API_URL, BASE_PATH, IS_PLATFORM, useDefaultProvider } from 'lib/constants'
+import {
+  API_URL,
+  BASE_PATH,
+  IS_MULTI_ORG_DASHBOARD,
+  IS_PLATFORM,
+  IS_SAAS,
+  useDefaultProvider,
+} from 'lib/constants'
 import { ProfileProvider } from 'lib/profile'
 import { Telemetry } from 'lib/telemetry'
 import Head from 'next/head'
@@ -72,7 +79,9 @@ const FeatureFlagProviderWithOrgContext = ({
   children,
   ...props
 }: ComponentProps<typeof FeatureFlagProvider>) => {
-  const { data: selectedOrganization } = useSelectedOrganizationQuery({ enabled: IS_PLATFORM })
+  const { data: selectedOrganization } = useSelectedOrganizationQuery({
+    enabled: IS_MULTI_ORG_DASHBOARD,
+  })
 
   return (
     <FeatureFlagProvider {...props} organizationSlug={selectedOrganization?.slug ?? undefined}>
@@ -88,7 +97,7 @@ loader.config({
   // use cloudflare or find some way to pull all the files from a CDN via a CLI, rather than tracking individual files
   // The alternative was to import * as monaco from 'monaco-editor' but i couldn't get it working
   paths: {
-    vs: IS_PLATFORM
+    vs: IS_SAAS
       ? 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs'
       : `${BASE_PATH}/monaco-editor`,
   },
@@ -148,7 +157,7 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
             <AuthProvider>
               <FeatureFlagProviderWithOrgContext
                 API_URL={API_URL}
-                enabled={IS_PLATFORM}
+                enabled={IS_MULTI_ORG_DASHBOARD}
                 getConfigCatFlags={getConfigCatFlags}
               >
                 <ProfileProvider>
