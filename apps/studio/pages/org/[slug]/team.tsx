@@ -1,5 +1,5 @@
 import { useParams } from 'common'
-import { TeamSettings } from 'components/interfaces/Organization/TeamSettings/TeamSettings'
+import { SaasTeamSettings } from 'components/interfaces/SaasTeamSettings/SaasTeamSettings'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import OrganizationLayout from 'components/layouts/OrganizationLayout'
 import { UnknownInterface } from 'components/ui/UnknownInterface'
@@ -18,11 +18,17 @@ const OrgTeamSettings: NextPageWithLayout = () => {
     return <UnknownInterface urlBack={`/org/${slug ?? '_'}`} />
   }
 
-  return selectedOrganization === undefined && isLoadingPermissions ? (
-    <LogoLoader />
-  ) : (
-    <TeamSettings />
-  )
+  if (selectedOrganization === undefined) {
+    return <LogoLoader />
+  }
+
+  // If the org slug is invalid or user lacks access, the OrganizationLayout/RouteValidation should handle redirect,
+  // but we still guard against rendering a broken page.
+  if (slug && selectedOrganization.slug !== slug) {
+    return <LogoLoader />
+  }
+
+  return <SaasTeamSettings />
 }
 
 OrgTeamSettings.getLayout = (page) => (

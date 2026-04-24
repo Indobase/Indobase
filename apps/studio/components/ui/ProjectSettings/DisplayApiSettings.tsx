@@ -51,6 +51,22 @@ export const DisplayApiSettings = ({
   // api keys should not be empty. However it can be populated with a delay on project creation
   const isApiKeysEmpty = apiKeys.length === 0
 
+  const protocol = settings?.app_config?.protocol ?? 'https'
+  const endpoint = settings?.app_config?.endpoint
+  const baseUrl = endpoint ? `${protocol}://${endpoint}` : ''
+  const endpoints = useMemo(() => {
+    if (!baseUrl) return null
+    return [
+      { label: 'API URL', value: baseUrl },
+      { label: 'REST', value: `${baseUrl}/rest/v1` },
+      { label: 'Auth', value: `${baseUrl}/auth/v1` },
+      { label: 'Realtime', value: `${baseUrl}/realtime/v1` },
+      { label: 'Storage', value: `${baseUrl}/storage/v1` },
+      { label: 'Functions', value: `${baseUrl}/functions/v1` },
+      { label: 'GraphQL', value: `${baseUrl}/graphql/v1` },
+    ]
+  }, [baseUrl])
+
   const showApiKeyLastUsed = useFlag('showApiKeysLastUsed')
   const { isLoading: isLoadingLastUsed, logData: lastUsedLogData } = useLastUsedAPIKeysLogQuery({
     projectRef: projectRef ?? '',
@@ -123,101 +139,126 @@ export const DisplayApiSettings = ({
           </p>
         </div>
       ) : (
-        apiKeys.map((x, i: number) => (
-          <Panel.Content
-            key={x.api_key}
-            className={
-              i >= 1 &&
-              'border-t border-panel-border-interior-light [[data-theme*=dark]_&]:border-panel-border-interior-dark'
-            }
-          >
-            <FormLayout
-              layout="horizontal"
-              label={
-                <div className="flex items-center space-x-1">
-                  {x.tags?.split(',').map((x, i: number) => (
-                    <code key={`${x}${i}`} className="text-code-inline">
-                      {x}
-                    </code>
+        <>
+          {endpoints ? (
+            <Panel.Content>
+              <FormLayout
+                layout="vertical"
+                label={<h6 className="text-sm text-foreground">Project endpoints</h6>}
+                description="Use these URLs with client libraries, HTTP requests, and SDKs."
+              >
+                <div className="grid gap-3 md:grid-cols-2">
+                  {endpoints.map((e) => (
+                    <FormLayout
+                      key={e.label}
+                      layout="vertical"
+                      label={<span className="text-xs text-foreground-light">{e.label}</span>}
+                    >
+                      <Input readOnly className="font-mono" copy value={e.value} onChange={() => {}} />
+                    </FormLayout>
                   ))}
-                  {x.tags === 'service_role' && (
-                    <>
-                      <code className="text-code-inline !bg-destructive !text-white !border-destructive">
-                        secret
-                      </code>
-                    </>
-                  )}
-                  {x.tags === 'anon' && <code className="text-code-inline">public</code>}
                 </div>
-              }
-              description={
-                x.tags === 'service_role' ? (
-                  <>
-                    This key has the ability to bypass Row Level Security. Never share it publicly.
-                    If leaked, generate a new JWT secret immediately.{' '}
-                    {showLegacyText && (
-                      <span>
-                        Prefer using{' '}
-                        <Link
-                          href={`/project/${projectRef}/settings/api-keys/new`}
-                          className="text-link underline"
-                        >
-                          Secret API keys
-                        </Link>{' '}
-                        instead.
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    This key is safe to use in a browser if you have enabled Row Level Security for
-                    your tables and configured policies.{' '}
-                    {showLegacyText && (
-                      <span>
-                        Prefer using{' '}
-                        <Link
-                          href={`/project/${projectRef}/settings/api-keys/new`}
-                          className="text-link underline"
-                        >
-                          Publishable API keys
-                        </Link>{' '}
-                        instead.
-                      </span>
-                    )}
-                  </>
-                )
+              </FormLayout>
+            </Panel.Content>
+          ) : null}
+
+          {apiKeys.map((x, i: number) => (
+            <Panel.Content
+              key={x.api_key}
+              className={
+                i >= 1 || endpoints
+                  ? 'border-t border-panel-border-interior-light [[data-theme*=dark]_&]:border-panel-border-interior-dark'
+                  : undefined
               }
             >
-              <Input
-                readOnly
-                className="font-mono"
-                copy={canReadAPIKeys && isNotUpdatingJwtSecret}
-                reveal={x.tags !== 'anon' && canReadAPIKeys && isNotUpdatingJwtSecret}
-                value={
-                  !canReadAPIKeys
-                    ? 'You need additional permissions to view API keys'
-                    : jwtSecretUpdateStatus === JwtSecretUpdateStatus.Failed
-                      ? 'JWT secret update failed, new API key may have issues'
-                      : jwtSecretUpdateStatus === JwtSecretUpdateStatus.Updating
-                        ? 'Updating JWT secret...'
-                        : x?.api_key ?? 'You need additional permissions to view API keys'
+              <FormLayout
+                layout="horizontal"
+                label={
+                  <div className="flex items-center space-x-1">
+                    {x.tags?.split(',').map((x, i: number) => (
+                      <code key={`${x}${i}`} className="text-code-inline">
+                        {x}
+                      </code>
+                    ))}
+                    {x.tags === 'service_role' && (
+                      <>
+                        <code className="text-code-inline !bg-destructive !text-white !border-destructive">
+                          secret
+                        </code>
+                      </>
+                    )}
+                    {x.tags === 'anon' && <code className="text-code-inline">public</code>}
+                  </div>
                 }
-                onChange={() => {}}
-              />
-            </FormLayout>
-
-            {showApiKeyLastUsed && (
-              <div
-                className="pt-2 text-foreground-lighter w-full text-sm data-[invisible=true]:invisible"
-                data-invisible={isLoadingLastUsed}
+                description={
+                  x.tags === 'service_role' ? (
+                    <>
+                      This key has the ability to bypass Row Level Security. Never share it publicly.
+                      If leaked, generate a new JWT secret immediately.{' '}
+                      {showLegacyText && (
+                        <span>
+                          Prefer using{' '}
+                          <Link
+                            href={`/project/${projectRef}/settings/api-keys/new`}
+                            className="text-link underline"
+                          >
+                            Secret API keys
+                          </Link>{' '}
+                          instead.
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      This key is safe to use in a browser if you have enabled Row Level Security for
+                      your tables and configured policies.{' '}
+                      {showLegacyText && (
+                        <span>
+                          Prefer using{' '}
+                          <Link
+                            href={`/project/${projectRef}/settings/api-keys/new`}
+                            className="text-link underline"
+                          >
+                            Publishable API keys
+                          </Link>{' '}
+                          instead.
+                        </span>
+                      )}
+                    </>
+                  )
+                }
               >
-                {lastUsedAPIKeys[x.api_key]
-                  ? `Last request was ${lastUsedAPIKeys[x.api_key]} ago.`
-                  : 'No requests in the past 24 hours.'}
-              </div>
-            )}
-          </Panel.Content>
-        ))
+                <Input
+                  readOnly
+                  className="font-mono"
+                  copy={canReadAPIKeys && isNotUpdatingJwtSecret}
+                  reveal={x.tags !== 'anon' && canReadAPIKeys && isNotUpdatingJwtSecret}
+                  value={
+                    !canReadAPIKeys
+                      ? 'You need additional permissions to view API keys'
+                      : jwtSecretUpdateStatus === JwtSecretUpdateStatus.Failed
+                        ? 'JWT secret update failed, new API key may have issues'
+                        : jwtSecretUpdateStatus === JwtSecretUpdateStatus.Updating
+                          ? 'Updating JWT secret...'
+                          : x?.api_key ?? 'You need additional permissions to view API keys'
+                  }
+                  onChange={() => {}}
+                />
+              </FormLayout>
+
+              {showApiKeyLastUsed && (
+                <div
+                  className="pt-2 text-foreground-lighter w-full text-sm data-[invisible=true]:invisible"
+                  data-invisible={isLoadingLastUsed}
+                >
+                  {lastUsedAPIKeys[x.api_key]
+                    ? `Last request was ${lastUsedAPIKeys[x.api_key]} ago.`
+                    : 'No requests in the past 24 hours.'}
+                </div>
+              )}
+            </Panel.Content>
+          ))}
+        </>
       )}
       {showNotice ? (
         <Panel.Notice

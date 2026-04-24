@@ -1,10 +1,4 @@
-import {
-  InfiniteData,
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import { components } from 'api-types'
@@ -171,7 +165,6 @@ export const usePaginatedBucketsQuery = <TData = BucketsWithPaginationData>(
   const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
 
   const { placeholderData, ...restOptions } = options
-  const resolvedPlaceholderData = placeholderData ?? keepPreviousData
 
   return useInfiniteQuery({
     queryKey: storageKeys.bucketsList(projectRef, params),
@@ -188,7 +181,8 @@ export const usePaginatedBucketsQuery = <TData = BucketsWithPaginationData>(
       return nextPageNumber
     },
     ...restOptions,
-    placeholderData: resolvedPlaceholderData,
+    // Avoid stale cross-project flashes by default.
+    placeholderData,
     retry: shouldRetryBucketsQuery,
   })
 }

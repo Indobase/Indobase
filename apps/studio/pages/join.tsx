@@ -23,7 +23,7 @@ const JoinOrganizationPage: NextPageWithLayout = () => {
 
   return (
     <>
-      <Link href="/projects" className="flex items-center justify-center gap-4">
+      <Link href="/organizations" className="flex items-center justify-center gap-4">
         {mounted && (
           <img src={imgUrl} alt="Indobase Logo" className="block h-[24px] cursor-pointer rounded" />
         )}

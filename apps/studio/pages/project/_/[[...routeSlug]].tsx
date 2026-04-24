@@ -15,6 +15,7 @@ import { AlertTriangleIcon } from 'lucide-react'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
+import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import {
   Alert_Shadcn_,
   AlertDescription_Shadcn_,
@@ -46,7 +47,7 @@ const GenericProjectPage: NextPage = () => {
     isPending: isLoadingOrganizations,
     isError: isErrorOrganizations,
   } = useOrganizationsQuery({
-    enabled: IS_PLATFORM,
+    enabled: IS_MULTI_ORG_DASHBOARD,
   })
 
   const [selectedSlug, setSlug] = useState<string>(
@@ -79,6 +80,13 @@ const GenericProjectPage: NextPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastVisitedOrgSlug, isSuccessOrganizations])
+
+  useEffect(() => {
+    if (!isSuccessOrganizations) return
+    if (organizations.length === 0) return
+    if (selectedSlug && organizations.some((o) => o.slug === selectedSlug)) return
+    setSlug(organizations[0].slug)
+  }, [isSuccessOrganizations, organizations, selectedSlug])
 
   return (
     <div className="h-screen flex flex-col">
@@ -123,7 +131,15 @@ const GenericProjectPage: NextPage = () => {
                 organization={selectedOrganization}
                 rewriteHref={urlRewriterFactory(routeSlug)}
               />
-            ) : null}
+            ) : (
+              <Alert_Shadcn_ variant="warning">
+                <AlertTriangleIcon />
+                <AlertTitle_Shadcn_>Organization not available</AlertTitle_Shadcn_>
+                <AlertDescription_Shadcn_>
+                  Your last organization is no longer available. Select another organization to continue.
+                </AlertDescription_Shadcn_>
+              </Alert_Shadcn_>
+            )}
           </ScaffoldSection>
         </ScaffoldContainer>
       </PageLayout>

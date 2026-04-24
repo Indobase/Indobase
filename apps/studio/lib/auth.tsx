@@ -10,7 +10,7 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
-import { GOTRUE_ERRORS, IS_PLATFORM } from './constants'
+import { GOTRUE_ERRORS, IS_MULTI_ORG_DASHBOARD } from './constants'
 
 const AuthErrorToaster = ({ children }: PropsWithChildren) => {
   const error = useAuthError()
@@ -20,7 +20,7 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
       // Check for unverified GitHub users after a GitHub sign in
       if (error.message === GOTRUE_ERRORS.UNVERIFIED_GITHUB_USER) {
         toast.error(
-          'Please verify your email on GitHub first, then reach out to us at support@indobase.in to log into the dashboard'
+          'Please verify your email on GitHub first, then reach out to us at support@supabase.io to log into the dashboard'
         )
         return
       }
@@ -34,7 +34,7 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   return (
-    <AuthProviderInternal alwaysLoggedIn={!IS_PLATFORM}>
+    <AuthProviderInternal alwaysLoggedIn={!IS_MULTI_ORG_DASHBOARD}>
       <AuthErrorToaster>{children}</AuthErrorToaster>
     </AuthProviderInternal>
   )

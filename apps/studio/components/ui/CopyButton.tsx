@@ -1,5 +1,6 @@
 import { Check, Copy } from 'lucide-react'
 import { ComponentProps, forwardRef, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button, cn, copyToClipboard } from 'ui'
 
@@ -47,11 +48,16 @@ const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
     return (
       <Button
         ref={ref}
-        onClick={(e) => {
-          const textToCopy = asyncText ? asyncText() : text
-          setShowCopied(true)
-          copyToClipboard(textToCopy)
-          onClick?.(e)
+        onClick={async (e) => {
+          try {
+            const textToCopy = asyncText ? await asyncText() : text
+            copyToClipboard(textToCopy)
+            setShowCopied(true)
+          } catch (err) {
+            toast.error('Failed to copy')
+          } finally {
+            onClick?.(e)
+          }
         }}
         {...props}
         className={cn({ 'px-1': iconOnly }, props.className)}

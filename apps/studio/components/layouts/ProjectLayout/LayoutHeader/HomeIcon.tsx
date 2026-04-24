@@ -6,7 +6,7 @@ import { LOCAL_STORAGE_KEYS, useUser } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 
@@ -31,7 +31,7 @@ export const HomeIcon = () => {
     return '/organizations'
   }
 
-  const href = IS_PLATFORM ? getDefaultOrgRedirect() : selfHostedDashboardPath(user?.id)
+  const href = IS_SAAS ? getDefaultOrgRedirect() : selfHostedDashboardPath(user?.id)
 
   return (
     <Link href={href} className="items-center justify-center flex-shrink-0 hidden md:flex">

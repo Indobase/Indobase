@@ -38,6 +38,17 @@ PG_META_CRYPTO_KEY=your-32-char-encryption-key
 - **SUPABASE_ANON_KEY**, **SUPABASE_SERVICE_KEY**, **AUTH_JWT_SECRET** – Same as in your backend (e.g. from the `.env` you use with `docker-compose`).
 - **PG_META_CRYPTO_KEY** – Same as in your backend (e.g. from `.env`).
 
+### One database per tenant (optional)
+
+Studio can keep **control-plane** metadata in the Postgres denoted by **POSTGRES_**\* (`saas.organizations`, `saas.projects`, etc.) while each **project** uses its **own** Postgres for the SQL editor / schema UI:
+
+- **POSTGRES_**\* should point at the DB where the `saas` schema lives (often a small shared admin database).
+- Store the tenant’s Postgres URI via `PATCH /api/platform/projects/:ref` with **`tenant_database_url`** / **`connection_string`**.
+  - New writes are stored **encrypted-at-rest** in **`saas.projects.connection_string_enc`**.
+  - `saas.projects.connection_string` is legacy-only (lazy-migrated to encrypted on access).
+- In **SaaS mode**, tenant DB routing is **fail-closed**: missing tenant URL does **not** fall back to **POSTGRES_***.
+- Treat the control-plane database and any per-tenant URIs as secrets; restrict who can read `saas.projects`.
+
 ---
 
 ## Optional (nicer defaults + logs)
@@ -83,7 +94,7 @@ NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 1. **`NEXT_PUBLIC_IS_PLATFORM`** – For this self-hosted dashboard image it must **not** be `true`. If it is, Studio disables postgres-meta SQL and platform routes fail. Unset it or set `NEXT_PUBLIC_IS_PLATFORM=false` (note: `NEXT_PUBLIC_*` is baked in at **build** time for Next.js—rebuild the image if you change it).
 2. **`STUDIO_PG_META_URL`** – Must be set to the postgres-meta base URL reachable from the Studio container (e.g. `http://meta:8080`).
 3. **`PG_META_CRYPTO_KEY`** – Must match `CRYPTO_KEY` / `PG_META_CRYPTO_KEY` on the **meta** service so connection encryption matches.
-4. **Postgres from Studio** – `POSTGRES_HOST`, `POSTGRES_PASSWORD`, etc. must point at the same DB meta uses; otherwise bootstrap of `platform.*` tables fails.
+4. **Postgres from Studio** – `POSTGRES_HOST`, `POSTGRES_PASSWORD`, etc. must point at the same DB meta uses; otherwise bootstrap of `saas.*` tables fails.
 
 Open the failing response in DevTools → **Response** body; newer builds include clearer error messages for misconfiguration.
 

@@ -16,6 +16,7 @@ import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { DOCS_URL, PROJECT_STATUS } from 'lib/constants'
 import { Badge, Button } from 'ui'
+import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
 
 const BuildingState = () => {
   const { ref } = useParams()
@@ -57,7 +58,26 @@ const BuildingState = () => {
     invalidateProjectsQuery,
   ])
 
-  if (project === undefined) return null
+  if (project === undefined) {
+    return (
+      <div className="mx-auto my-8 md:my-16 w-full md:max-w-7xl items-center justify-center">
+        <div className="px-4 md:px-6 flex flex-col space-y-6">
+          <div className="w-full flex flex-col gap-4">
+            <div className="w-full flex items-center gap-3">
+              <ShimmeringLoader className="w-64" />
+              <Badge>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={12} />
+                  <span>Setting up project</span>
+                </div>
+              </Badge>
+            </div>
+            <p className="text-sm text-foreground-light">Loading project details…</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto my-8 md:my-16 w-full md:max-w-7xl items-center justify-center">

@@ -11,7 +11,8 @@ services:
 
   studio:
     container_name: indobase-studio
-    image: supabase/studio:2026.02.16-sha-26c615c
+    # Override with your Indobase/Indo-repo image for SaaS features (NEXT_PUBLIC_INDOBASE_SAAS, branding, platform APIs).
+    image: ${STUDIO_DOCKER_IMAGE:-supabase/studio:2026.02.16-sha-26c615c}
     restart: unless-stopped
     healthcheck:
       test:
@@ -27,6 +28,8 @@ services:
     depends_on:
       analytics:
         condition: service_healthy
+      data-plane-provisioner:
+        condition: service_started
     environment:
       # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
@@ -51,6 +54,16 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
 
+      # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
+      NEXT_PUBLIC_IS_PLATFORM: ${NEXT_PUBLIC_IS_PLATFORM:-false}
+      NEXT_PUBLIC_INDOBASE_SAAS: ${NEXT_PUBLIC_INDOBASE_SAAS:-false}
+      # Browser-visible Studio origin (match public URL; with default Kong routing this is usually SUPABASE_PUBLIC_URL).
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${SUPABASE_PUBLIC_URL}}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_PUBLIC_URL}}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${ANON_KEY}}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://indobase.in/docs}
+
       # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
@@ -64,9 +77,31 @@ services:
       # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
       SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
       EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
+      # Option A (data-plane isolation): send "provision data-plane" requests here.
+      DATA_PLANE_PROVISIONER_URL: http://data-plane-provisioner:8787
+      DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
     volumes:
       - ./volumes/snippets:/app/snippets:Z
       - ./volumes/functions:/app/edge-functions:Z
+
+  # Option A: provision isolated per-project data-plane stacks.
+  # This service must run on the host that has:
+  # - access to the Traefik dynamic config directory
+  # - access to Docker (via /var/run/docker.sock)
+  data-plane-provisioner:
+    container_name: indobase-data-plane-provisioner
+    build:
+      context: ./provisioner
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
+      PROVISIONER_TENANTS_DIR: /mnt/tenants
+      PROVISIONER_TRAEFIK_DYNAMIC_DIR: /mnt/traefik
+    volumes:
+      - ${DATA_PLANE_TENANTS_DIR:-./tenants}:/mnt/tenants:Z
+      - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/mnt/traefik:Z
+      - /var/run/docker.sock:/var/run/docker.sock
 
   kong:
     container_name: indobase-kong
@@ -86,37 +121,21 @@ services:
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       # https://github.com/Indobase/Indobase/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
-      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,pre-function,rate-limiting
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      # Add explicit Host + x-project-ref to access logs for per-project analytics attribution.
+      # Vector parses these as `host=<...>` and `x_project_ref=<...>`.
+      KONG_NGINX_HTTP_LOG_FORMAT: >-
+        indobase_combined '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent
+        "$http_referer" "$http_user_agent" host=$host x_project_ref=$http_x_project_ref'
+      KONG_NGINX_PROXY_ACCESS_LOG: /dev/stdout indobase_combined
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
     # https://unix.stackexchange.com/a/294837
     entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
-
-  # One-off migration runner — ensures auth schema is up-to-date before GoTrue starts.
-  # Uses IF NOT EXISTS / ADD COLUMN IF NOT EXISTS so it is safe to run on every deploy.
-  db-migrations:
-    container_name: indobase-db-migrations
-    image: supabase/postgres:15.8.1.085
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    volumes:
-      - ./volumes/db/migrations:/migrations:ro,Z
-    entrypoint:
-      [
-        "sh", "-c",
-        "PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U supabase_admin -d ${POSTGRES_DB} -f /migrations/20260409_gotrue_v2_schema.sql"
-      ]
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
 
   auth:
     container_name: indobase-auth
@@ -139,8 +158,6 @@ services:
       db:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
-      db-migrations:
-        condition: service_completed_successfully
       analytics:
         condition: service_healthy
     environment:
@@ -154,7 +171,6 @@ services:
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
-      GOTRUE_CORS_ALLOWED_ORIGINS: "*"
 
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
@@ -219,7 +235,6 @@ services:
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      PGRST_CORS_ALLOWED_ORIGINS: "*"
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}

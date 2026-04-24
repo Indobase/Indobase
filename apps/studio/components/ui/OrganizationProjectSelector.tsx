@@ -97,7 +97,11 @@ export const OrganizationProjectSelector = ({
     fetchNextPage,
   } = useOrgProjectsInfiniteQuery(
     { slug, search: search.length === 0 ? search : debouncedSearch },
-    { enabled: fetchOnMount || open, placeholderData: keepPreviousData }
+    {
+      enabled: Boolean(slug) && (fetchOnMount || open),
+      // Never show another org’s cached projects during org switching.
+      placeholderData: debouncedSearch ? keepPreviousData : undefined,
+    }
   )
 
   const projects = useMemo(() => data?.pages.flatMap((page) => page.projects), [data?.pages]) || []

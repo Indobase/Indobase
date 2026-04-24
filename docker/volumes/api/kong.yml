@@ -2,6 +2,38 @@ _format_version: '2.1'
 _transform: true
 
 ###
+### Global plugins
+###
+plugins:
+  # Best-effort attribution for logs/quotas.
+  # If you run per-project subdomains like `<project-ref>.<domain>`,
+  # this injects `x-project-ref` for all upstream services.
+  - name: pre-function
+    config:
+      access:
+        - |
+          local host = ngx.var.host or ""
+          if not kong.request.get_header("x-project-ref") then
+            local first = host:match("^([a-z0-9%-]+)%.")
+            if first then
+              local reserved = {
+                api = true,
+                dashboard = true,
+                studio = true,
+                auth = true,
+                realtime = true,
+                storage = true,
+                functions = true,
+                meta = true,
+                kong = true,
+              }
+              if not reserved[first] then
+                kong.service.request.set_header("x-project-ref", first)
+              end
+            end
+          end
+
+###
 ### Consumers / Users
 ###
 consumers:
@@ -145,6 +177,13 @@ services:
       - name: key-auth
         config:
           hide_credentials: false
+      # MVP quota enforcement: per-project RPM keyed by `x-project-ref` injected globally.
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -183,6 +222,13 @@ services:
       - name: key-auth
         config:
           hide_credentials: true
+      # MVP quota enforcement: per-project RPM keyed by `x-project-ref` injected globally.
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -221,6 +267,12 @@ services:
       - name: key-auth
         config:
           hide_credentials: true
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: request-transformer
         config:
           add:
@@ -265,6 +317,12 @@ services:
       - name: key-auth
         config:
           hide_credentials: false
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -302,6 +360,12 @@ services:
       - name: key-auth
         config:
           hide_credentials: false
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -336,6 +400,12 @@ services:
             - "*"
           credentials: false
           max_age: 3600
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
 
   ## Edge Functions routes
   - name: functions-v1
@@ -365,6 +435,12 @@ services:
             - "*"
           credentials: false
           max_age: 3600
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
 
   ## Analytics routes
   ## Not used - Studio and Vector talk directly to analytics via Docker networking.

@@ -78,7 +78,8 @@ export function SidebarCollapsible({
 
 export function LogsSidebarMenuV2() {
   const router = useRouter()
-  const { ref } = useParams() as { ref: string }
+  const { ref } = useParams() as { ref?: string }
+  if (!ref) return <GenericSkeletonLoader className="px-4 py-3" />
 
   const unifiedLogsFlagEnabled = useFlag('unifiedLogs')
   const { selectFeaturePreview } = useFeaturePreviewModal()

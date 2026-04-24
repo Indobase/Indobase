@@ -47,10 +47,23 @@ const handlePatch = async (req: NextApiRequest, res: NextApiResponse, claims?: J
 
   const body = parseRequestBody(req.body)
   if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
+
+  const updates: { name?: string | null; connection_string?: string | null } = {}
+  if (body && typeof body === 'object' && 'name' in body) {
+    updates.name = (body as any).name
+  }
+  if (body && typeof body === 'object' && 'tenant_database_url' in body) {
+    const v = (body as any).tenant_database_url
+    updates.connection_string = v == null || v === '' ? null : String(v)
+  } else if (body && typeof body === 'object' && 'connection_string' in body) {
+    const v = (body as any).connection_string
+    updates.connection_string = v == null || v === '' ? null : String(v)
+  }
+
   const updated = await updateProject({
     claims: claims as any,
     ref,
-    updates: { name: body?.name },
+    updates,
   })
 
   if (!updated) return res.status(404).json({ message: 'Project not found' })

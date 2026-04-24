@@ -19,7 +19,9 @@ export const validateReturnTo = (
   // 1. Must start with /
   // 2. Only allow alphanumeric chars, slashes, hyphens, underscores
   // 3. For query params, also allow =, &, and ?
-  const safePathPattern = /^\/[a-zA-Z0-9/\-_]*(?:\?[a-zA-Z0-9\-_=&]*)?$/
+  // 4. For hash fragments, allow a constrained set (no / or protocol chars)
+  const safePathPattern =
+    /^\/[a-zA-Z0-9/\-_]*(?:\?[a-zA-Z0-9\-_=&]*)?(?:#[a-zA-Z0-9\-_=&]*)?$/
   return safePathPattern.test(returnTo) ? returnTo : fallback
 }
 
@@ -128,7 +130,8 @@ export const getReturnToPath = (fallback = DEFAULT_FALLBACK_PATH) => {
   const remainingSearchParams = searchParams.toString()
   const validReturnTo = validateReturnTo(returnTo, fallback)
 
-  const [path, existingQuery] = validReturnTo.split('?')
+  const [beforeHash, hashFragment] = validReturnTo.split('#', 2)
+  const [path, existingQuery] = beforeHash.split('?', 2)
 
   const finalSearchParams = new URLSearchParams(existingQuery || '')
 
@@ -141,5 +144,6 @@ export const getReturnToPath = (fallback = DEFAULT_FALLBACK_PATH) => {
   }
 
   const finalQuery = finalSearchParams.toString()
-  return path + (finalQuery ? `?${finalQuery}` : '')
+  const finalHash = hashFragment ? `#${hashFragment}` : ''
+  return path + (finalQuery ? `?${finalQuery}` : '') + finalHash
 }

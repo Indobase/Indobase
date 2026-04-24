@@ -14,6 +14,11 @@ export type QueryOptions = {
   parameters?: unknown[]
   readOnly?: boolean
   headers?: HeadersInit
+  /**
+   * Optional GoTrue user id (uuid) to set as DB actor for RLS via `set_config('app.uid', ...)`.
+   * When provided, the query is prefixed with a `set_config` call (no parameter renumbering).
+   */
+  actorId?: string
 }
 
 /**
@@ -26,6 +31,7 @@ export async function executeQuery<T = unknown>({
   parameters,
   readOnly = false,
   headers,
+  actorId,
 }: QueryOptions): Promise<WrappedResult<T[]>> {
   assertSelfHosted()
 
@@ -36,7 +42,12 @@ export async function executeQuery<T = unknown>({
   const connectionString = getConnectionString({ readOnly })
   const connectionStringEncrypted = encryptString(connectionString)
 
-  const requestBody: { query: string; parameters?: unknown[] } = { query }
+  const actorPrelude =
+    actorId && typeof actorId === 'string' && actorId.trim()
+      ? `select set_config('app.uid', '${actorId.trim()}', true);\n`
+      : ''
+
+  const requestBody: { query: string; parameters?: unknown[] } = { query: `${actorPrelude}${query}` }
   if (parameters !== undefined) {
     requestBody.parameters = parameters
   }
