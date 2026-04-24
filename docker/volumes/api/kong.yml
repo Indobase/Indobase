@@ -16,7 +16,7 @@ plugins:
           -- Use single quotes in Lua strings to avoid breaking the surrounding double-quoted echo.
           local host = ngx.var.host or ''
           if not kong.request.get_header('x-project-ref') then
-            local first = host:match("^([a-z0-9%-]+)%.")
+            local first = host:match('^([a-z0-9%-]+)%.')
             if first then
               local reserved = {
                 api = true,
