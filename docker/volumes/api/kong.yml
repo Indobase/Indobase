@@ -12,8 +12,10 @@ plugins:
     config:
       access:
         - |
-          local host = ngx.var.host or ""
-          if not kong.request.get_header("x-project-ref") then
+          -- NOTE: this file is env-substituted via a shell `eval` in docker-compose.
+          -- Use single quotes in Lua strings to avoid breaking the surrounding double-quoted echo.
+          local host = ngx.var.host or ''
+          if not kong.request.get_header('x-project-ref') then
             local first = host:match("^([a-z0-9%-]+)%.")
             if first then
               local reserved = {
@@ -28,7 +30,7 @@ plugins:
                 kong = true,
               }
               if not reserved[first] then
-                kong.service.request.set_header("x-project-ref", first)
+                kong.service.request.set_header('x-project-ref', first)
               end
             end
           end
