@@ -6,13 +6,13 @@ _transform: true
 ###
 plugins:
   # Best-effort attribution for logs/quotas.
-  # If you run per-project subdomains like `<project-ref>.<domain>`,
-  # this injects `x-project-ref` for all upstream services.
+  # If you run per-project subdomains like <project-ref>.<domain>,
+  # this injects the x-project-ref header for all upstream services.
   - name: pre-function
     config:
       access:
         - |
-          -- NOTE: this file is env-substituted via a shell `eval` in docker-compose.
+          -- NOTE: this file is env-substituted via a shell eval in docker-compose.
           -- Use single quotes in Lua strings to avoid breaking the surrounding double-quoted echo.
           local host = ngx.var.host or ''
           if not kong.request.get_header('x-project-ref') then
@@ -179,7 +179,7 @@ services:
       - name: key-auth
         config:
           hide_credentials: false
-      # MVP quota enforcement: per-project RPM keyed by `x-project-ref` injected globally.
+      # MVP quota enforcement: per-project RPM keyed by x-project-ref injected globally.
       - name: rate-limiting
         config:
           policy: local
@@ -224,7 +224,7 @@ services:
       - name: key-auth
         config:
           hide_credentials: true
-      # MVP quota enforcement: per-project RPM keyed by `x-project-ref` injected globally.
+      # MVP quota enforcement: per-project RPM keyed by x-project-ref injected globally.
       - name: rate-limiting
         config:
           policy: local
