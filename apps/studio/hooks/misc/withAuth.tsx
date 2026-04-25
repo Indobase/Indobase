@@ -3,7 +3,7 @@ import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeout
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
 import { useSignOut } from 'lib/auth'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -25,8 +25,8 @@ export function withAuth<T>(
     useHighestAAL: boolean
   } = { useHighestAAL: true }
 ) {
-  // ignore auth in self-hosted
-  if (!IS_PLATFORM) {
+  // ignore auth in anonymous open Studio; require auth for cloud, Indobase SaaS, or self-host + auth
+  if (!IS_MULTI_ORG_DASHBOARD) {
     return WrappedComponent
   }
 
@@ -78,7 +78,8 @@ export function withAuth<T>(
       }
 
       const searchParams = new URLSearchParams(location.search)
-      searchParams.set('returnTo', pathname)
+      const returnTo = `${pathname}${location.search}${location.hash}`
+      searchParams.set('returnTo', returnTo)
 
       // Sign out before redirecting to sign in page incase the user is stuck in a loading state
       signOut().finally(() => {

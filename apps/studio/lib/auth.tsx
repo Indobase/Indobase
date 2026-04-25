@@ -11,7 +11,7 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
-import { GOTRUE_ERRORS, IS_PLATFORM } from './constants'
+import { GOTRUE_ERRORS, IS_MULTI_ORG_DASHBOARD } from './constants'
 
 const UNAUTH_ROUTES = [
   '/sign-in',
@@ -40,22 +40,16 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
   const router = useRouter()
 
   useEffect(() => {
-    if (error === null) return
+    if (error !== null) {
+      // Check for unverified GitHub users after a GitHub sign in
+      if (error.message === GOTRUE_ERRORS.UNVERIFIED_GITHUB_USER) {
+        toast.error(
+          'Please verify your email on GitHub first, then reach out to us at support@supabase.io to log into the dashboard'
+        )
+        return
+      }
 
-    // Suppress initialization/session errors on unauthenticated pages — the user
-    // hasn't attempted an action yet, so the toast is just noise.
-    const onUnauthRoute = UNAUTH_ROUTES.some((p) => router.pathname.startsWith(p))
-    if (onUnauthRoute) return
-
-    // Network-level failures from the GoTrue client aren't actionable by the user.
-    if (isUnactionableFetchError(error.message)) return
-
-    // Check for unverified GitHub users after a GitHub sign in
-    if (error.message === GOTRUE_ERRORS.UNVERIFIED_GITHUB_USER) {
-      toast.error(
-        'Please verify your email on GitHub first, then reach out to us at support@indobase.in to log into the dashboard'
-      )
-      return
+      toast.error(error.message)
     }
 
     toast.error(error.message)
@@ -66,7 +60,7 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   return (
-    <AuthProviderInternal alwaysLoggedIn={!IS_PLATFORM}>
+    <AuthProviderInternal alwaysLoggedIn={!IS_MULTI_ORG_DASHBOARD}>
       <AuthErrorToaster>{children}</AuthErrorToaster>
     </AuthProviderInternal>
   )

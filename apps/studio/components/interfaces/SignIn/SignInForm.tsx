@@ -14,14 +14,16 @@ import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticato
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { captureCriticalError } from 'lib/error-reporting'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_MULTI_ORG_DASHBOARD, IS_SAAS } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
-import { LastSignInWrapper } from './LastSignInWrapper'
+
 import { Eye, EyeOff } from 'lucide-react'
+
+import { LastSignInWrapper } from './LastSignInWrapper'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Must be a valid email'),
@@ -109,14 +111,23 @@ export const SignInForm = () => {
         addLoginEvent({})
 
         await queryClient.resetQueries()
+
         // since we're already on the /sign-in page, prevent redirect loops
-        let redirectPath = IS_PLATFORM ? '/organizations' : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
-        if (IS_PLATFORM && returnTo && returnTo !== '/sign-in') {
+        let redirectPath = IS_MULTI_ORG_DASHBOARD
+          ? '/organizations'
+          : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
+        if (IS_MULTI_ORG_DASHBOARD && returnTo && returnTo !== '/sign-in') {
           redirectPath = returnTo
         }
-        if (!IS_PLATFORM && returnTo && returnTo !== '/sign-in' && !returnTo.startsWith('/organizations')) {
+        if (
+          !IS_MULTI_ORG_DASHBOARD &&
+          returnTo &&
+          returnTo !== '/sign-in' &&
+          !returnTo.startsWith('/organizations')
+        ) {
           redirectPath = returnTo
         }
+
         router.push(redirectPath)
       } catch (error: any) {
         toast.error(`Failed to sign in: ${(error as AuthError).message}`, { id: toastId })
@@ -137,8 +148,7 @@ export const SignInForm = () => {
     }
   }
 
-  const showPendingConfirmationHint =
-    !IS_PLATFORM && router.query.pendingConfirmation === '1'
+  const showPendingConfirmationHint = !IS_SAAS && router.query.pendingConfirmation === '1'
 
   return (
     <Form_Shadcn_ {...form}>
@@ -150,6 +160,7 @@ export const SignInForm = () => {
             description="We sent a link to your inbox. After you confirm, sign in below — your email is already filled in."
           />
         )}
+
         <FormField_Shadcn_
           key="email"
           name="email"
@@ -204,10 +215,7 @@ export const SignInForm = () => {
           />
 
           {/* positioned using absolute instead of labelOptional prop so tabbing between inputs works smoothly */}
-          <Link
-            href={forgotPasswordUrl}
-            className="absolute top-0 right-0 text-sm text-foreground-lighter"
-          >
+          <Link href={forgotPasswordUrl} className="absolute top-0 right-0 text-sm text-foreground-lighter">
             Forgot password?
           </Link>
         </div>
@@ -244,3 +252,4 @@ export const SignInForm = () => {
     </Form_Shadcn_>
   )
 }
+

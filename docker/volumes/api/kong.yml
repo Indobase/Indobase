@@ -2,6 +2,40 @@ _format_version: '2.1'
 _transform: true
 
 ###
+### Global plugins
+###
+plugins:
+  # Best-effort attribution for logs/quotas.
+  # If you run per-project subdomains like <project-ref>.<domain>,
+  # this injects the x-project-ref header for all upstream services.
+  - name: pre-function
+    config:
+      access:
+        - |
+          -- NOTE: this file is env-substituted via a shell eval in docker-compose.
+          -- Use single quotes in Lua strings to avoid breaking the surrounding double-quoted echo.
+          local host = ngx.var.host or ''
+          if not kong.request.get_header('x-project-ref') then
+            local first = host:match('^([a-z0-9%-]+)%.')
+            if first then
+              local reserved = {
+                api = true,
+                dashboard = true,
+                studio = true,
+                auth = true,
+                realtime = true,
+                storage = true,
+                functions = true,
+                meta = true,
+                kong = true,
+              }
+              if not reserved[first] then
+                kong.service.request.set_header('x-project-ref', first)
+              end
+            end
+          end
+
+###
 ### Consumers / Users
 ###
 consumers:
@@ -46,8 +80,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -56,9 +89,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
   - name: auth-v1-open-callback
@@ -72,8 +105,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -82,9 +114,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
   - name: auth-v1-open-authorize
@@ -98,8 +130,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -108,9 +139,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
 
@@ -127,8 +158,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -137,14 +167,21 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
+      # MVP quota enforcement: per-project RPM keyed by x-project-ref injected globally.
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -165,8 +202,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -175,14 +211,21 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
         config:
           hide_credentials: true
+      # MVP quota enforcement: per-project RPM keyed by x-project-ref injected globally.
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -203,8 +246,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -213,14 +255,20 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
         config:
           hide_credentials: true
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: request-transformer
         config:
           add:
@@ -247,8 +295,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -257,14 +304,20 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -284,8 +337,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -294,14 +346,20 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
       - name: acl
         config:
           hide_groups_header: true
@@ -321,8 +379,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -331,11 +388,17 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
 
   ## Edge Functions routes
   - name: functions-v1
@@ -350,8 +413,7 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
           methods:
             - GET
             - POST
@@ -360,11 +422,17 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
+      - name: rate-limiting
+        config:
+          policy: local
+          limit_by: header
+          header_name: x-project-ref
+          minute: 600
 
   ## Analytics routes
   ## Not used - Studio and Vector talk directly to analytics via Docker networking.
@@ -423,7 +491,7 @@ services:
       - name: request-termination
         config:
           status_code: 403
-          message: "Access is forbidden."
+          message: 'Access is forbidden.'
 
   ## MCP endpoint - local access
   - name: mcp
@@ -439,7 +507,7 @@ services:
       - name: request-termination
         config:
           status_code: 403
-          message: "Access is forbidden."
+          message: 'Access is forbidden.'
       # Enable local access (danger zone!)
       # 1. Comment out the 'request-termination' section above
       # 2. Uncomment the entire section below, including 'deny'
@@ -466,3 +534,4 @@ services:
       - name: basic-auth
         config:
           hide_credentials: true
+

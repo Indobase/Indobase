@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -134,7 +134,7 @@ export const LayoutHeader = ({
           <div className="flex items-center text-sm">
             <HomeIcon />
             <div className="flex items-center md:pl-2">
-              {showOrgSelection && IS_PLATFORM ? (
+              {showOrgSelection && IS_MULTI_ORG_DASHBOARD ? (
                 <>
                   <LayoutHeaderDivider className="hidden md:block" />
                   <OrganizationDropdown />
@@ -166,7 +166,7 @@ export const LayoutHeader = ({
                     {selectedProject && (
                       <>
                         <LayoutHeaderDivider />
-                        {IS_PLATFORM && <BranchDropdown />}
+                        {IS_MULTI_ORG_DASHBOARD && <BranchDropdown />}
                       </>
                     )}
                   </motion.div>
@@ -204,7 +204,7 @@ export const LayoutHeader = ({
                     ease: 'easeOut',
                   }}
                 >
-                  {IS_PLATFORM && gitlessBranching && <MergeRequestButton />}
+                  {IS_MULTI_ORG_DASHBOARD && gitlessBranching && <MergeRequestButton />}
                   <ConnectButton />
                 </motion.div>
               )}
@@ -213,7 +213,7 @@ export const LayoutHeader = ({
           </div>
           <div className="flex items-center gap-x-2">
             {customHeaderComponents && customHeaderComponents}
-            {IS_PLATFORM ? (
+            {IS_MULTI_ORG_DASHBOARD ? (
               <>
                 <DevToolbarTrigger />
                 <FeedbackDropdown />
@@ -274,7 +274,7 @@ export const LayoutHeader = ({
         </div>
       </header>
 
-      {isFlagResolved ? (isConnectSheetEnabled ? <ConnectSheet /> : <Connect />) : <Connect />}
+      {isFlagResolved ? isConnectSheetEnabled ? <ConnectSheet /> : <Connect /> : null}
     </>
   )
 }

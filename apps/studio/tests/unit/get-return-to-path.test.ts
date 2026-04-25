@@ -28,6 +28,15 @@ describe(`getReturnToPath`, () => {
     expect(getReturnToPath()).toBe('/custom?foo=bar')
   })
 
+  it(`returns to /custom?foo=bar#baz`, () => {
+    // @ts-ignore
+    delete window.location
+    // @ts-ignore
+    window.location = { search: `?returnTo=/custom?foo=bar%23baz` }
+
+    expect(getReturnToPath()).toBe('/custom?foo=bar#baz')
+  })
+
   it(`does not return to https://google.com`, () => {
     // @ts-ignore
     delete window.location

@@ -1,6 +1,6 @@
 import type { ProductMenuGroup } from 'components/ui/ProductMenu/ProductMenu.types'
 import type { Project } from 'data/projects/project-detail-query'
-import { IS_PLATFORM, PROJECT_STATUS } from 'lib/constants'
+import { IS_PLATFORM, IS_SAAS, PROJECT_STATUS } from 'lib/constants'
 import { ArrowUpRight } from 'lucide-react'
 import type { Organization } from 'types'
 
@@ -22,8 +22,8 @@ export const generateSettingsMenu = (
   const isProjectActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
 
   const legacyJwtKeysEnabled = features?.legacyJwtKeys ?? true
-  // Only show billing subscription links on the hosted platform.
-  const billingEnabled = IS_PLATFORM && (features?.billing ?? true)
+  // Hosted Supabase cloud or Indobase SaaS image (not anonymous self-host).
+  const billingEnabled = IS_SAAS && (features?.billing ?? true)
 
   return [
     {

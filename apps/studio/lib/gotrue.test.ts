@@ -8,6 +8,7 @@ describe('validateReturnTo', () => {
     expect(validateReturnTo('/dashboard')).toBe('/dashboard')
     expect(validateReturnTo('/settings/profile')).toBe('/settings/profile')
     expect(validateReturnTo('/projects?id=123')).toBe('/projects?id=123')
+    expect(validateReturnTo('/project/abc/logs#explorer')).toBe('/project/abc/logs#explorer')
   })
 
   it('should return fallback if given an external URL', () => {

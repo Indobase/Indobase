@@ -17,6 +17,7 @@ import {
   Button,
 } from 'ui'
 import { SupportLink } from '../Support/SupportLink'
+import { LOCAL_STORAGE_KEYS } from 'common'
 
 interface SessionTimeoutModalProps {
   visible: boolean
@@ -40,7 +41,30 @@ export const SessionTimeoutModal = ({
 
   const handleClearStorage = () => {
     try {
-      localStorage.clear()
+      const localStorageKeysToClear: (string | RegExp)[] = [
+        LOCAL_STORAGE_KEYS.LAST_VISITED_ORGANIZATION,
+        LOCAL_STORAGE_KEYS.PROJECTS_VIEW,
+        LOCAL_STORAGE_KEYS.HOTKEY_COMMAND_MENU,
+        LOCAL_STORAGE_KEYS.MAINTENANCE_WINDOW_BANNER,
+        LOCAL_STORAGE_KEYS.SIDEBAR_BEHAVIOR,
+        LOCAL_STORAGE_KEYS.LINTER_SHOW_FOOTER,
+        LOCAL_STORAGE_KEYS.CLS_DIFF_WARNING,
+        LOCAL_STORAGE_KEYS.CLS_SELECT_STAR_WARNING,
+        // Project-scoped + dynamic keys
+        /^supabase\.studio\./,
+        /^supabase_studio_/,
+        /^studio_/,
+      ]
+
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (!key) continue
+        if (
+          localStorageKeysToClear.some((k) => (typeof k === 'string' ? k === key : k.test(key)))
+        ) {
+          localStorage.removeItem(key)
+        }
+      }
       sessionStorage.clear()
     } catch (e) {
       toast.error('Failed to clear browser storage')

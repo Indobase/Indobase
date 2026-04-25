@@ -170,3 +170,19 @@ CREATE TABLE IF NOT EXISTS auth.one_time_tokens (
 );
 CREATE INDEX IF NOT EXISTS one_time_tokens_user_id_idx ON auth.one_time_tokens(user_id);
 CREATE INDEX IF NOT EXISTS one_time_tokens_relates_to_idx ON auth.one_time_tokens(relates_to);
+
+-- ============================================================
+-- Grant Ownership to supabase_auth_admin
+-- GoTrue runs its own internal migrations as supabase_auth_admin.
+-- If these tables are created by supabase_admin, GoTrue will crash.
+-- ============================================================
+ALTER TABLE auth.sessions OWNER TO supabase_auth_admin;
+ALTER TABLE auth.mfa_factors OWNER TO supabase_auth_admin;
+ALTER TABLE auth.mfa_challenges OWNER TO supabase_auth_admin;
+ALTER TABLE auth.identities OWNER TO supabase_auth_admin;
+ALTER TABLE auth.sso_providers OWNER TO supabase_auth_admin;
+ALTER TABLE auth.sso_domains OWNER TO supabase_auth_admin;
+ALTER TABLE auth.saml_providers OWNER TO supabase_auth_admin;
+ALTER TABLE auth.saml_relay_states OWNER TO supabase_auth_admin;
+ALTER TABLE auth.flow_state OWNER TO supabase_auth_admin;
+ALTER TABLE auth.one_time_tokens OWNER TO supabase_auth_admin;

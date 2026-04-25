@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@supabase/pg-meta/src/constants'
-import { IS_PLATFORM, getAccessToken } from 'common'
+import { IS_PLATFORM, IS_SAAS, getAccessToken } from 'common'
 import { API_URL } from 'lib/constants'
 import { uuidv4 } from 'lib/helpers'
 import createClient from 'openapi-fetch'
@@ -44,7 +44,8 @@ export function isValidConnString(connString?: string | null) {
   // If there is no `connectionString` on platform, pg-meta will necessarily fail to connect to the target database.
   // This only applies if IS_PLATFORM is true; otherwise (test/local-dev), pg-meta won't need this parameter
   // and will connect to the locally running DB_URL instead.
-  return IS_PLATFORM ? Boolean(connString) : true
+  // In SaaS mode, tenant isolation depends on always providing a per-project connection string.
+  return IS_SAAS || IS_PLATFORM ? Boolean(connString) : true
 }
 
 export async function constructHeaders(headersInit?: HeadersInit | undefined) {

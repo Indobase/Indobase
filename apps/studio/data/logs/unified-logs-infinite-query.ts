@@ -1,4 +1,4 @@
-import { InfiniteData, keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
 
 import { getUnifiedLogsQuery } from 'components/interfaces/UnifiedLogs/UnifiedLogs.queries'
 import {
@@ -173,7 +173,6 @@ export const useUnifiedLogsInfiniteQuery = <TData = UnifiedLogsData>(
       return getUnifiedLogs({ projectRef, search, pageParam }, signal)
     },
     enabled: enabled && typeof projectRef !== 'undefined',
-    placeholderData: keepPreviousData,
     getPreviousPageParam: (firstPage) => {
       if (!firstPage.prevCursor) return null
       return { cursor: firstPage.prevCursor, direction: 'prev' } as const
