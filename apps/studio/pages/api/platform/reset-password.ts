@@ -48,10 +48,16 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   const supabaseUrlBase =
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    process.env.SUPABASE_URL ||
+    process.env.SUPABASE_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.INDOBASE_URL ||
+    process.env.INDOBASE_PUBLIC_URL ||
+    ''
 
   const gotrueUrlRaw =
     process.env.GOTRUE_URL ||
+    process.env.NEXT_PUBLIC_GOTRUE_URL ||
     (supabaseUrlBase ? `${supabaseUrlBase.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKeyRaw) {
@@ -100,11 +106,20 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const kongInternalGotrueBaseUrl =
     process.env.KONG_INTERNAL_GOTRUE_URL || 'http://kong:8000/auth/v1'
 
+  const publicSupabaseUrl =
+    process.env.SUPABASE_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.INDOBASE_PUBLIC_URL
+  const publicGotrueUrl = publicSupabaseUrl
+    ? `${publicSupabaseUrl.replace(/\/$/, '')}/auth/v1`
+    : undefined
+
   const baseCandidates = [
     gotrueUrl,
     gotrueUrl.startsWith('https:') && process.env.ENABLE_HTTP_GOTRUE_RETRY !== 'false'
       ? gotrueUrl.replace(/^https:/, 'http:')
       : undefined,
+    publicGotrueUrl,
     kongInternalGotrueBaseUrl,
   ].filter(Boolean) as string[]
 

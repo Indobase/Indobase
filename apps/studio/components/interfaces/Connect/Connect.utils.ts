@@ -46,10 +46,10 @@ export const getContentFilePath = ({
 
 export function inferConnectTabFromParentKey(
   parentKey: string | null
-): 'frameworks' | 'mobiles' | 'orms' | null {
+): 'framework' | 'orms' | null {
   if (!parentKey) return null
-  if (FRAMEWORKS.find((x: ConnectionType) => x.key === parentKey)) return 'frameworks'
-  if (MOBILES.find((x: ConnectionType) => x.key === parentKey)) return 'mobiles'
+  if (FRAMEWORKS.find((x: ConnectionType) => x.key === parentKey)) return 'framework'
+  if (MOBILES.find((x: ConnectionType) => x.key === parentKey)) return 'framework'
   if (ORMS.find((x: ConnectionType) => x.key === parentKey)) return 'orms'
   return null
 }
