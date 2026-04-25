@@ -80,8 +80,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -90,9 +90,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
   - name: auth-v1-open-callback
@@ -106,8 +106,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -116,9 +116,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
   - name: auth-v1-open-authorize
@@ -132,8 +132,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -142,9 +142,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
 
@@ -161,8 +161,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -171,9 +171,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
@@ -206,8 +206,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -216,9 +216,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
@@ -251,8 +251,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -261,9 +261,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
@@ -301,8 +301,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -311,9 +311,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
@@ -344,8 +344,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -354,9 +354,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: key-auth
@@ -387,8 +387,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -397,9 +397,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: rate-limiting
@@ -422,8 +422,8 @@ services:
       - name: cors
         config:
           origins:
-            - "*"
-            - "http://localhost:5173"
+            - '*'
+            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -432,9 +432,9 @@ services:
             - DELETE
             - OPTIONS
           headers:
-            - "*"
+            - '*'
           exposed_headers:
-            - "*"
+            - '*'
           credentials: false
           max_age: 3600
       - name: rate-limiting
@@ -501,7 +501,7 @@ services:
       - name: request-termination
         config:
           status_code: 403
-          message: "Access is forbidden."
+          message: 'Access is forbidden.'
 
   ## MCP endpoint - local access
   - name: mcp
@@ -517,7 +517,7 @@ services:
       - name: request-termination
         config:
           status_code: 403
-          message: "Access is forbidden."
+          message: 'Access is forbidden.'
       # Enable local access (danger zone!)
       # 1. Comment out the 'request-termination' section above
       # 2. Uncomment the entire section below, including 'deny'
@@ -544,3 +544,4 @@ services:
       - name: basic-auth
         config:
           hide_credentials: true
+
