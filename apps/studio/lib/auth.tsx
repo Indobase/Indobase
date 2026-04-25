@@ -40,16 +40,22 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
   const router = useRouter()
 
   useEffect(() => {
-    if (error !== null) {
-      // Check for unverified GitHub users after a GitHub sign in
-      if (error.message === GOTRUE_ERRORS.UNVERIFIED_GITHUB_USER) {
-        toast.error(
-          'Please verify your email on GitHub first, then reach out to us at support@supabase.io to log into the dashboard'
-        )
-        return
-      }
+    if (error === null) return
 
-      toast.error(error.message)
+    // Suppress initialization/session errors on unauthenticated pages — the user
+    // hasn't attempted an action yet, so the toast is just noise.
+    const onUnauthRoute = UNAUTH_ROUTES.some((p) => router.pathname.startsWith(p))
+    if (onUnauthRoute) return
+
+    // Network-level failures from the GoTrue client aren't actionable by the user.
+    if (isUnactionableFetchError(error.message)) return
+
+    // Check for unverified GitHub users after a GitHub sign in
+    if (error.message === GOTRUE_ERRORS.UNVERIFIED_GITHUB_USER) {
+      toast.error(
+        'Please verify your email on GitHub first, then reach out to us at support@indobase.in to log into the dashboard'
+      )
+      return
     }
 
     toast.error(error.message)
