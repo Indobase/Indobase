@@ -1,7 +1,8 @@
 FROM node:20-alpine
 
 WORKDIR /app
-COPY server.mjs /app/server.mjs
+COPY provisioner/server.mjs /app/server.mjs
+COPY tenants /mnt/tenants
 
 EXPOSE 8787
 ENV NODE_ENV=production

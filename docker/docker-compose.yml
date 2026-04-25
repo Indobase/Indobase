@@ -30,6 +30,8 @@ services:
         condition: service_healthy
       data-plane-provisioner:
         condition: service_started
+      functions:
+        condition: service_started
     environment:
       # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
@@ -81,8 +83,8 @@ services:
       DATA_PLANE_PROVISIONER_URL: http://data-plane-provisioner:8787
       DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
     volumes:
-      - ./volumes/snippets:/app/snippets
-      - ./volumes/functions:/app/edge-functions
+      - snippets-data:/app/snippets
+      - functions-data:/app/edge-functions
 
   # Option A: provision isolated per-project data-plane stacks.
   # This service must run on the host that has:
@@ -91,7 +93,8 @@ services:
   data-plane-provisioner:
     container_name: indobase-data-plane-provisioner
     build:
-      context: ./provisioner
+      context: .
+      dockerfile: ./provisioner/Dockerfile
     restart: unless-stopped
     environment:
       PORT: 8787
@@ -99,7 +102,7 @@ services:
       PROVISIONER_TENANTS_DIR: /mnt/tenants
       PROVISIONER_TRAEFIK_DYNAMIC_DIR: /mnt/traefik
     volumes:
-      - ${DATA_PLANE_TENANTS_DIR:-./tenants}:/mnt/tenants:Z
+      - tenants-data:/mnt/tenants
       - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/mnt/traefik:Z
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -382,10 +385,11 @@ services:
 
   functions:
     container_name: indobase-edge-functions
-    image: supabase/edge-runtime:v1.70.3
+    build:
+      context: ./volumes/functions
     restart: unless-stopped
     volumes:
-      - ./volumes/functions:/home/deno/functions
+      - functions-data:/home/deno/functions
       - deno-cache:/root/.cache/deno
     depends_on:
       analytics:
@@ -600,3 +604,6 @@ volumes:
   deno-cache:
   db-data:
   storage-data:
+  functions-data:
+  snippets-data:
+  tenants-data:
