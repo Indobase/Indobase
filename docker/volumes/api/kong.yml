@@ -79,8 +79,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -104,8 +102,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -129,8 +125,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -157,8 +151,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -201,8 +193,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -245,8 +235,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -294,8 +282,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -336,8 +322,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -378,8 +362,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -412,8 +394,6 @@ services:
     plugins:
       - name: cors
         config:
-          origins:
-            - '*'
           methods:
             - GET
             - POST
@@ -534,4 +514,5 @@ services:
       - name: basic-auth
         config:
           hide_credentials: true
+
 
