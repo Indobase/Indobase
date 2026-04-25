@@ -81,8 +81,8 @@ services:
       DATA_PLANE_PROVISIONER_URL: http://data-plane-provisioner:8787
       DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
     volumes:
-      - snippets-data:/app/snippets:Z
-      - functions-data:/app/edge-functions:Z
+      - snippets-data:/app/snippets
+      - functions-data:/app/edge-functions
 
   # Option A: provision isolated per-project data-plane stacks.
   # This service must run on the host that has:
@@ -336,14 +336,14 @@ services:
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
     volumes:
-      - storage-data:/var/lib/storage:z
+      - storage-data:/var/lib/storage
 
   imgproxy:
     container_name: indobase-imgproxy
     image: darthsim/imgproxy:v3.30.1
     restart: unless-stopped
     volumes:
-      - storage-data:/var/lib/storage:z
+      - storage-data:/var/lib/storage
     healthcheck:
       test:
         [
@@ -385,7 +385,7 @@ services:
     image: supabase/edge-runtime:v1.70.3
     restart: unless-stopped
     volumes:
-      - functions-data:/home/deno/functions:Z
+      - functions-data:/home/deno/functions
       - deno-cache:/root/.cache/deno
     depends_on:
       analytics:
@@ -466,7 +466,7 @@ services:
       # Initialize the database settings with JWT_SECRET and JWT_EXP
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
       # PGDATA directory is persisted between restarts
-      - db-data:/var/lib/postgresql/data:Z
+      - db-data:/var/lib/postgresql/data
       # Changes required for internal indobase data such as _analytics
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       # Changes required for Analytics support
@@ -495,6 +495,7 @@ services:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: ${POSTGRES_PORT}
       POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
