@@ -81,7 +81,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -107,7 +106,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -133,7 +131,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -162,7 +159,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -207,7 +203,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -252,7 +247,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -302,7 +296,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -345,7 +338,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -388,7 +380,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
@@ -423,7 +414,6 @@ services:
         config:
           origins:
             - '*'
-            - 'http://localhost:5173'
           methods:
             - GET
             - POST
