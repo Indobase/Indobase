@@ -1,6 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
 import { IS_PLATFORM, useParams } from 'common'
-import { ApiKeysTabContent } from 'components/interfaces/Connect/ApiKeysTabContent'
 import { DatabaseConnectionString } from 'components/interfaces/Connect/DatabaseConnectionString'
 import { McpTabContent } from 'components/interfaces/Connect/McpTabContent'
 import Panel from 'components/ui/Panel'
@@ -50,12 +49,11 @@ export const Connect = () => {
     'project_connection:show_orms',
   ])
 
+  const combinedFrameworks = useMemo(() => [...FRAMEWORKS, ...MOBILES], [])
+
   const connectionTypes = CONNECTION_TYPES.filter(({ key }) => {
-    if (key === 'frameworks') {
-      return showAppFrameworks
-    }
-    if (key === 'mobiles') {
-      return showMobileFrameworks
+    if (key === 'framework') {
+      return showAppFrameworks || showMobileFrameworks
     }
     if (key === 'orms') {
       return showOrms
@@ -66,19 +64,17 @@ export const Connect = () => {
   // helper to get the connection type object
   function getConnectionObjectForTab(tab: string | null) {
     switch (tab) {
-      case 'frameworks':
-        return FRAMEWORKS
-      case 'mobiles':
-        return MOBILES
+      case 'framework':
+        return combinedFrameworks
       case 'orms':
         return ORMS
       default:
-        return FRAMEWORKS
+        return combinedFrameworks
     }
   }
 
   const [open, setOpen] = useQueryState('showConnect', parseAsBoolean.withDefault(false))
-  const [tab, setTab] = useQueryState('connectTab', parseAsString.withDefault('direct'))
+  const [tab, setTab] = useQueryState('connectTab', parseAsString.withDefault('framework'))
   const [queryFramework, setQueryFramework] = useQueryState('framework', parseAsString)
   const [queryUsing, setQueryUsing] = useQueryState('using', parseAsString)
   const [queryWith, setQueryWith] = useQueryState('with', parseAsString)
@@ -86,7 +82,7 @@ export const Connect = () => {
   const [, setQuerySource] = useQueryState('source', parseAsString)
   const [, setQueryMethod] = useQueryState('method', parseAsString)
 
-  const [connectionObject, setConnectionObject] = useState<ConnectionType[]>(FRAMEWORKS)
+  const [connectionObject, setConnectionObject] = useState<ConnectionType[]>(combinedFrameworks)
   const [selectedParent, setSelectedParent] = useState(connectionObject[0].key) // aka nextjs
   const [selectedChild, setSelectedChild] = useState(
     connectionObject.find((item) => item.key === selectedParent)?.children[0]?.key ?? ''
@@ -177,14 +173,9 @@ export const Connect = () => {
   function handleConnectionType(type: string) {
     setTab(type)
 
-    if (type === 'frameworks') {
-      setConnectionObject(FRAMEWORKS)
-      handleConnectionTypeChange(FRAMEWORKS)
-    }
-
-    if (type === 'mobiles') {
-      setConnectionObject(MOBILES)
-      handleConnectionTypeChange(MOBILES)
+    if (type === 'framework') {
+      setConnectionObject(combinedFrameworks)
+      handleConnectionTypeChange(combinedFrameworks)
     }
 
     if (type === 'orms') {
@@ -265,11 +256,10 @@ export const Connect = () => {
 
     if (noConnectTabInUrl && hasQuery && inferred) {
       setTab(inferred)
-      if (inferred === 'frameworks') setConnectionObject(FRAMEWORKS)
-      if (inferred === 'mobiles') setConnectionObject(MOBILES)
+      if (inferred === 'framework') setConnectionObject(combinedFrameworks)
       if (inferred === 'orms') setConnectionObject(ORMS)
     }
-  }, [open, router.query.connectTab, queryFramework, queryUsing, queryWith, setTab])
+  }, [open, router.query.connectTab, queryFramework, queryUsing, queryWith, setTab, combinedFrameworks])
 
   useEffect(() => {
     if (!open) return
@@ -378,27 +368,13 @@ export const Connect = () => {
               )
             }
 
-            if (type.key === 'api-keys') {
-              return (
-                <TabsContent_Shadcn_
-                  key="api-keys"
-                  value="api-keys"
-                  className={cn(DIALOG_PADDING_X, DIALOG_PADDING_Y, '!mt-0')}
-                >
-                  <ApiKeysTabContent projectKeys={projectKeys} />
-                </TabsContent_Shadcn_>
-              )
-            }
-
-            const connectionTabMap: Record<
-              string,
-              'App Frameworks' | 'Mobile Frameworks' | 'ORMs'
-            > = {
-              frameworks: 'App Frameworks',
-              mobiles: 'Mobile Frameworks',
-              orms: 'ORMs',
-            }
-            const connectionTab = connectionTabMap[type.key] || 'App Frameworks'
+            const selectedIsMobile = !!MOBILES.find((m) => m.key === selectedParent)
+            const connectionTab: 'App Frameworks' | 'Mobile Frameworks' | 'ORMs' =
+              type.key === 'orms'
+                ? 'ORMs'
+                : selectedIsMobile
+                  ? 'Mobile Frameworks'
+                  : 'App Frameworks'
             const selectedFrameworkOrTool =
               connectionObject.find((item) => item.key === selectedParent)?.label || ''
 
@@ -413,11 +389,7 @@ export const Connect = () => {
                     <ConnectDropdown
                       state={selectedParent}
                       updateState={handleParentChange}
-                      label={
-                        connectionObject === FRAMEWORKS || connectionObject === MOBILES
-                          ? 'Framework'
-                          : 'Tool'
-                      }
+                      label={type.key === 'framework' ? 'Framework' : 'Tool'}
                       items={connectionObject}
                     />
                     {selectedParent && hasChildOptions && (

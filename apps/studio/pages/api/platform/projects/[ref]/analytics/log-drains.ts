@@ -24,35 +24,35 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (method) {
     case 'GET':
       // list log drains
-      const url = new URL(baseUrl)
-      url.pathname = '/api/backends'
-      url.search = new URLSearchParams({
-        'metadata[type]': 'log-drain',
-      }).toString()
-      const upstream = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      })
+      try {
+        const url = new URL(baseUrl)
+        url.pathname = '/api/backends'
+        url.search = new URLSearchParams({
+          'metadata[type]': 'log-drain',
+        }).toString()
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 8000)
+        const upstream = await fetch(url, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+        }).finally(() => clearTimeout(timeout))
 
-      if (!upstream.ok) {
-        return res
-          .status(500)
-          .json({ error: { message: 'Failed to fetch log drains from upstream' } })
+        if (!upstream.ok) {
+          // Upstream unreachable/unauthorized on self-hosted — degrade to empty list
+          return res.status(200).json([])
+        }
+
+        const resp = await upstream.json()
+        return res.status(200).json(Array.isArray(resp) ? resp : [])
+      } catch (err) {
+        // Network/DNS/timeout — keep the settings UI usable
+        return res.status(200).json([])
       }
-
-      const resp = await upstream.json()
-
-      if (!Array.isArray(resp)) {
-        return res
-          .status(500)
-          .json({ error: { message: 'Unexpected response format from upstream' } })
-      }
-
-      return res.status(200).json(resp)
     case 'POST':
       // create the log drain
       const postUrl = new URL(baseUrl)
