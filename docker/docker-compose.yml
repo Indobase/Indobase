@@ -81,8 +81,8 @@ services:
       DATA_PLANE_PROVISIONER_URL: http://data-plane-provisioner:8787
       DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
     volumes:
-      - snippets-data:/app/snippets
-      - functions-data:/app/edge-functions
+      - ./volumes/snippets:/app/snippets
+      - ./volumes/functions:/app/edge-functions
 
   # Option A: provision isolated per-project data-plane stacks.
   # This service must run on the host that has:
@@ -135,7 +135,7 @@ services:
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
     # https://unix.stackexchange.com/a/294837
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'set -f; eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml; set +f; /docker-entrypoint.sh kong docker-start'
 
   auth:
     container_name: indobase-auth
@@ -385,7 +385,7 @@ services:
     image: supabase/edge-runtime:v1.70.3
     restart: unless-stopped
     volumes:
-      - functions-data:/home/deno/functions
+      - ./volumes/functions:/home/deno/functions
       - deno-cache:/root/.cache/deno
     depends_on:
       analytics:
@@ -600,5 +600,3 @@ volumes:
   deno-cache:
   db-data:
   storage-data:
-  functions-data:
-  snippets-data:
