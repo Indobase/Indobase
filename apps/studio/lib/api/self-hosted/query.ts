@@ -16,7 +16,9 @@ export type QueryOptions = {
   headers?: HeadersInit
   /**
    * Optional GoTrue user id (uuid) to set as DB actor for RLS via `set_config('app.uid', ...)`.
-   * When provided, the query is prefixed with a `set_config` call (no parameter renumbering).
+   * When provided alongside `parameters`, set_config is injected as a MATERIALIZED CTE
+   * (single statement, required by the extended-query protocol). Without `parameters`,
+   * it is prepended as a separate statement.
    */
   actorId?: string
 }
@@ -42,14 +44,35 @@ export async function executeQuery<T = unknown>({
   const connectionString = getConnectionString({ readOnly })
   const connectionStringEncrypted = encryptString(connectionString)
 
-  const actorPrelude =
-    actorId && typeof actorId === 'string' && actorId.trim()
-      ? `select set_config('app.uid', '${actorId.trim()}', true);\n`
-      : ''
+  // pg-meta uses the extended-query (prepared-statement) protocol whenever
+  // `parameters` is present, which rejects multi-statement query strings
+  // ("cannot insert multiple commands into a prepared statement"). When we
+  // need to set `app.uid` for RLS, inject set_config as a MATERIALIZED CTE
+  // so the whole thing is one statement.
+  const trimmedActor =
+    actorId && typeof actorId === 'string' && actorId.trim() ? actorId.trim() : ''
 
-  const requestBody: { query: string; parameters?: unknown[] } = { query: `${actorPrelude}${query}` }
-  if (parameters !== undefined) {
-    requestBody.parameters = parameters
+  let finalQuery = query
+  let finalParameters = parameters
+
+  if (trimmedActor) {
+    if (parameters !== undefined) {
+      const actorParamNum = parameters.length + 1
+      const setActorCte = `_set_actor AS MATERIALIZED (SELECT set_config('app.uid', $${actorParamNum}, true))`
+      const leadingQuery = query.replace(/^\s+/, '')
+      finalQuery = /^with\s/i.test(leadingQuery)
+        ? leadingQuery.replace(/^with\s+/i, `WITH ${setActorCte}, `)
+        : `WITH ${setActorCte} ${leadingQuery}`
+      finalParameters = [...parameters, trimmedActor]
+    } else {
+      // Simple-query protocol allows multi-statement; keep the simpler form.
+      finalQuery = `select set_config('app.uid', '${trimmedActor}', true);\n${query}`
+    }
+  }
+
+  const requestBody: { query: string; parameters?: unknown[] } = { query: finalQuery }
+  if (finalParameters !== undefined) {
+    requestBody.parameters = finalParameters
   }
 
   const response = await fetch(`${PG_META_URL}/query`, {
