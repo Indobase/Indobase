@@ -36,7 +36,7 @@ services:
       # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
 
-      STUDIO_PG_META_URL: http://meta:8080
+      STUDIO_PG_META_URL: http://indobase-meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -50,11 +50,12 @@ services:
       DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
-      SUPABASE_URL: http://kong:8000
+      SUPABASE_URL: http://indobase-kong:8000
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_URL: http://indobase-kong:8000/auth/v1
 
       # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
       NEXT_PUBLIC_IS_PLATFORM: ${NEXT_PUBLIC_IS_PLATFORM:-false}
@@ -71,7 +72,7 @@ services:
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
 
-      LOGFLARE_URL: http://analytics:4000
+      LOGFLARE_URL: http://indobase-analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: true
       # Comment to use Big Query backend for analytics
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
@@ -80,7 +81,7 @@ services:
       SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
       EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
       # Option A (data-plane isolation): send "provision data-plane" requests here.
-      DATA_PLANE_PROVISIONER_URL: http://data-plane-provisioner:8787
+      DATA_PLANE_PROVISIONER_URL: http://indobase-data-plane-provisioner:8787
       DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
     volumes:
       - snippets-data:/app/snippets
@@ -315,7 +316,7 @@ services:
     environment:
       ANON_KEY: ${ANON_KEY}
       SERVICE_KEY: ${SERVICE_ROLE_KEY}
-      POSTGREST_URL: http://rest:3000
+      POSTGREST_URL: http://indobase-rest:3000
       PGRST_JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
@@ -334,7 +335,7 @@ services:
       # TODO: https://github.com/Indobase/Indobase/issues/55
       REGION: ${REGION}
       ENABLE_IMAGE_TRANSFORMATION: "true"
-      IMGPROXY_URL: http://imgproxy:5001
+      IMGPROXY_URL: http://indobase-imgproxy:5001
       # S3 protocol endpoint configuration
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
@@ -396,7 +397,7 @@ services:
         condition: service_healthy
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      SUPABASE_URL: http://kong:8000
+      SUPABASE_URL: http://indobase-kong:8000
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
