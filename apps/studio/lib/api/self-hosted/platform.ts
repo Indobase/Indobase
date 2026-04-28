@@ -266,103 +266,117 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
   const gotrueId = getGotrueUserId(claims)
   const email = getPrimaryEmail(claims)
 
-  const count = await executeQuery<{ count: string }>({
-    query: `select count(*)::text as count from saas.organizations where owner_gotrue_id = $1`,
+  // 1. Get or create organization
+  let orgRow: { id: number; slug: string } | undefined
+  const existingOrgs = await executeQuery<{ id: number; slug: string }>({
+    query: `select id, slug from saas.organizations where owner_gotrue_id = $1 order by id asc limit 1`,
     parameters: [gotrueId],
     actorId: gotrueId,
   })
-  if (count.error) throw count.error
-  if (parseInt(count.data?.[0]?.count ?? '0', 10) > 0) return
+  if (existingOrgs.error) throw existingOrgs.error
 
-  const orgName =
-    (process.env.DEFAULT_ORGANIZATION_NAME || process.env.STUDIO_DEFAULT_ORGANIZATION || 'My workspace').trim() ||
-    'My workspace'
-  const slug = uniqueSlug(orgName)
+  if (existingOrgs.data?.length) {
+    orgRow = existingOrgs.data[0]
+  } else {
+    const orgName =
+      (process.env.DEFAULT_ORGANIZATION_NAME || process.env.STUDIO_DEFAULT_ORGANIZATION || 'My workspace').trim() ||
+      'My workspace'
+    const slug = uniqueSlug(orgName)
+    const orgInsert = await executeQuery<{ id: number; slug: string }>({
+      query: `
+        insert into saas.organizations (
+          owner_gotrue_id,
+          slug,
+          name,
+          kind,
+          size,
+          plan,
+          opt_in_tags,
+          billing_email,
+          billing_partner,
+          organization_missing_address,
+          organization_requires_mfa,
+          restriction_data,
+          restriction_status,
+          usage_billing_enabled,
+          stripe_customer_id,
+          subscription_id
+        ) values (
+          $1, $2, $3, 'PERSONAL', null, 'free',
+          '{}',
+          $4,
+          null,
+          false,
+          false,
+          null,
+          null,
+          false,
+          null,
+          null
+        )
+        returning id, slug
+      `,
+      parameters: [gotrueId, slug, orgName, email],
+      actorId: gotrueId,
+    })
+    if (orgInsert.error || !orgInsert.data?.length) throw orgInsert.error ?? new Error('Failed to create default organization')
+    orgRow = orgInsert.data[0]
+  }
+
+  // 2. Ensure default project exists for this org
   const projectRef = selfHostedDefaultProjectRef(gotrueId)
-  const projectName =
-    (process.env.DEFAULT_PROJECT_NAME || process.env.STUDIO_DEFAULT_PROJECT || 'Default Project').trim() ||
-    'Default Project'
-
-  const anonKey = process.env.SUPABASE_ANON_KEY ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? ''
-
-  const orgInsert = await executeQuery<{ id: number }>({
-    query: `
-      insert into saas.organizations (
-        owner_gotrue_id,
-        slug,
-        name,
-        kind,
-        size,
-        plan,
-        opt_in_tags,
-        billing_email,
-        billing_partner,
-        organization_missing_address,
-        organization_requires_mfa,
-        restriction_data,
-        restriction_status,
-        usage_billing_enabled,
-        stripe_customer_id,
-        subscription_id
-      ) values (
-        $1, $2, $3, 'PERSONAL', null, 'free',
-        '{}',
-        $4,
-        null,
-        false,
-        false,
-        null,
-        null,
-        false,
-        null,
-        null
-      )
-      returning id
-    `,
-    parameters: [gotrueId, slug, orgName, email],
+  const existingProjects = await executeQuery<{ id: number }>({
+    query: `select id from saas.projects where ref = $1`,
+    parameters: [projectRef],
     actorId: gotrueId,
   })
-  if (orgInsert.error || !orgInsert.data?.length) throw orgInsert.error ?? new Error('Failed to create default organization')
+  if (existingProjects.error) throw existingProjects.error
 
-  const organizationId = orgInsert.data[0].id
+  if (!existingProjects.data?.length) {
+    const projectName =
+      (process.env.DEFAULT_PROJECT_NAME || process.env.STUDIO_DEFAULT_PROJECT || 'Default Project').trim() ||
+      'Default Project'
 
-  const projectInsert = await executeQuery({
-    query: `
-      insert into saas.projects (
-        organization_id,
-        organization_slug,
-        ref,
-        name,
-        cloud_provider,
-        region,
-        status,
-        service_key,
-        anon_key,
-        subscription_id,
-        rest_url,
-        db_host,
-        connection_string,
-        db_pass_enc
-      ) values (
-        $1, $2, $3, $4, 'localhost', 'local', 'ACTIVE_HEALTHY',
-        $5, $6, '',
-        $7, '127.0.0.1', null, $8
-      )
-    `,
-    parameters: [
-      organizationId,
-      slug,
-      projectRef,
-      projectName,
-      serviceKey,
-      anonKey,
-      PROJECT_REST_URL,
-      encryptString(''),
-    ],
-    actorId: gotrueId,
-  })
-  if (projectInsert.error) throw projectInsert.error
+    const anonKey = process.env.SUPABASE_ANON_KEY ?? ''
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? ''
+
+    const projectInsert = await executeQuery({
+      query: `
+        insert into saas.projects (
+          organization_id,
+          organization_slug,
+          ref,
+          name,
+          cloud_provider,
+          region,
+          status,
+          service_key,
+          anon_key,
+          subscription_id,
+          rest_url,
+          db_host,
+          connection_string,
+          db_pass_enc
+        ) values (
+          $1, $2, $3, $4, 'localhost', 'local', 'ACTIVE_HEALTHY',
+          $5, $6, '',
+          $7, '127.0.0.1', null, $8
+        )
+      `,
+      parameters: [
+        orgRow.id,
+        orgRow.slug,
+        projectRef,
+        projectName,
+        serviceKey,
+        anonKey,
+        PROJECT_REST_URL,
+        encryptString(''),
+      ],
+      actorId: gotrueId,
+    })
+    if (projectInsert.error) throw projectInsert.error
+  }
 }
 
 export async function getOrCreateProfile(claims: Claims) {
