@@ -70,7 +70,7 @@ basicauth_credentials:
 services:
   ## Open Auth routes
   - name: auth-v1-open
-    url: http://auth:9999/verify
+    url: http://indobase-auth:9999/verify
     routes:
       - name: auth-v1-open
         strip_path: true
@@ -93,7 +93,7 @@ services:
           credentials: false
           max_age: 3600
   - name: auth-v1-open-callback
-    url: http://auth:9999/callback
+    url: http://indobase-auth:9999/callback
     routes:
       - name: auth-v1-open-callback
         strip_path: true
@@ -116,7 +116,7 @@ services:
           credentials: false
           max_age: 3600
   - name: auth-v1-open-authorize
-    url: http://auth:9999/authorize
+    url: http://indobase-auth:9999/authorize
     routes:
       - name: auth-v1-open-authorize
         strip_path: true
@@ -142,7 +142,7 @@ services:
   ## Secure Auth routes
   - name: auth-v1
     _comment: 'Indobase Auth (GoTrue): /auth/v1/* -> http://auth:9999/*'
-    url: http://auth:9999/
+    url: http://indobase-auth:9999/
     routes:
       - name: auth-v1-all
         strip_path: true
@@ -184,7 +184,7 @@ services:
   ## Secure REST routes
   - name: rest-v1
     _comment: 'Indobase REST (PostgREST): /rest/v1/* -> http://rest:3000/*'
-    url: http://rest:3000/
+    url: http://indobase-rest:3000/
     routes:
       - name: rest-v1-all
         strip_path: true
@@ -226,7 +226,7 @@ services:
   ## Secure GraphQL routes
   - name: graphql-v1
     _comment: 'Indobase GraphQL (PostgREST): /graphql/v1/* -> http://rest:3000/rpc/graphql'
-    url: http://rest:3000/rpc/graphql
+    url: http://indobase-rest:3000/rpc/graphql
     routes:
       - name: graphql-v1-all
         strip_path: true
@@ -353,7 +353,7 @@ services:
   ## Storage routes: the storage server manages its own auth
   - name: storage-v1
     _comment: 'Indobase Storage: /storage/v1/* -> http://storage:5000/*'
-    url: http://storage:5000/
+    url: http://indobase-storage:5000/
     routes:
       - name: storage-v1-all
         strip_path: true
@@ -385,7 +385,7 @@ services:
   ## Edge Functions routes
   - name: functions-v1
     _comment: 'Indobase Edge Functions: /functions/v1/* -> http://functions:9000/*'
-    url: http://functions:9000/
+    url: http://indobase-edge-functions:9000/
     routes:
       - name: functions-v1-all
         strip_path: true
@@ -442,7 +442,7 @@ services:
   ## Secure Database routes
   - name: meta
     _comment: 'Indobase Meta (pg-meta): /pg/* -> http://pg-meta:8080/*'
-    url: http://meta:8080/
+    url: http://indobase-meta:8080/
     routes:
       - name: meta-all
         strip_path: true
@@ -461,7 +461,7 @@ services:
   ## Block access to /api/mcp
   - name: mcp-blocker
     _comment: 'Block direct access to /api/mcp'
-    url: http://studio:3000/api/mcp
+    url: http://indobase-studio:3000/api/mcp
     routes:
       - name: mcp-blocker-route
         strip_path: true
@@ -476,7 +476,7 @@ services:
   ## MCP endpoint - local access
   - name: mcp
     _comment: 'MCP: /mcp -> http://studio:3000/api/mcp (local access)'
-    url: http://studio:3000/api/mcp
+    url: http://indobase-studio:3000/api/mcp
     routes:
       - name: mcp
         strip_path: true
@@ -503,7 +503,7 @@ services:
   ## Protected Dashboard - catch all remaining routes
   - name: dashboard
     _comment: 'Indobase Studio: /* -> http://studio:3000/*'
-    url: http://studio:3000/
+    url: http://indobase-studio:3000/
     routes:
       - name: dashboard-all
         strip_path: true
