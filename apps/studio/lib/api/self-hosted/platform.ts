@@ -1430,7 +1430,7 @@ export async function createProject({
   const p = inserted.data[0]
 
   // MVP provisioning: create a dedicated tenant DB and store its DSN encrypted-at-rest.
-  const pgHost = process.env.TENANT_PG_HOST || process.env.POSTGRES_HOST || 'db'
+  const pgHost = process.env.TENANT_PG_HOST || process.env.POSTGRES_HOST || 'indobase-db'
   const pgPort = parseInt(process.env.TENANT_PG_PORT || process.env.POSTGRES_PORT || '5432', 10)
   const pgAdminUser = process.env.TENANT_PG_ADMIN_USER || process.env.POSTGRES_USER || 'postgres'
   const pgAdminPassword = process.env.TENANT_PG_ADMIN_PASSWORD || process.env.POSTGRES_PASSWORD || ''
