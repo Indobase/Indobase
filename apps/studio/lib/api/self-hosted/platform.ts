@@ -323,6 +323,19 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
     orgRow = orgInsert.data[0]
   }
 
+  // Seed owner membership: getProject (and other reads) join on saas.organization_members,
+  // so without this row the user appears to "not have access" to their own default project.
+  const memberInsert = await executeQuery({
+    query: `
+      insert into saas.organization_members (organization_id, gotrue_id, role)
+      values ($1, $2, 'owner')
+      on conflict (organization_id, gotrue_id) do nothing
+    `,
+    parameters: [orgRow.id, gotrueId],
+    actorId: gotrueId,
+  })
+  if (memberInsert.error) throw memberInsert.error
+
   // 2. Ensure default project exists for this org
   const projectRef = selfHostedDefaultProjectRef(gotrueId)
   const existingProjects = await executeQuery<{ id: number }>({
