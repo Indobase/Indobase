@@ -323,27 +323,35 @@ export async function ensureSelfHostedDefaultWorkspace(claims: Claims) {
     orgRow = orgInsert.data[0]
   }
 
-  // Seed owner membership: getProject (and other reads) join on saas.organization_members,
-  // so without this row the user appears to "not have access" to their own default project.
-  const memberInsert = await executeQuery({
-    query: `
-      insert into saas.organization_members (organization_id, gotrue_id, role)
-      values ($1, $2, 'owner')
-      on conflict (organization_id, gotrue_id) do nothing
-    `,
-    parameters: [orgRow.id, gotrueId],
-    actorId: gotrueId,
-  })
-  if (memberInsert.error) throw memberInsert.error
-
   // 2. Ensure default project exists for this org
   const projectRef = selfHostedDefaultProjectRef(gotrueId)
-  const existingProjects = await executeQuery<{ id: number }>({
-    query: `select id from saas.projects where ref = $1`,
+  const existingProjects = await executeQuery<{ id: number; organization_id: number }>({
+    query: `select id, organization_id from saas.projects where ref = $1`,
     parameters: [projectRef],
     actorId: gotrueId,
   })
   if (existingProjects.error) throw existingProjects.error
+
+  // Seed owner membership for every org the user must be in: the org we just found/created,
+  // and (if different) the org that the existing default project actually belongs to.
+  // getProject joins on saas.organization_members via the project's organization_id, so a
+  // legacy mismatch (e.g. project created against an older org_id) would still 404 without this.
+  const orgIdsToSeed = new Set<number>([orgRow.id])
+  if (existingProjects.data?.length) {
+    orgIdsToSeed.add(existingProjects.data[0].organization_id)
+  }
+  for (const orgId of orgIdsToSeed) {
+    const memberInsert = await executeQuery({
+      query: `
+        insert into saas.organization_members (organization_id, gotrue_id, role)
+        values ($1, $2, 'owner')
+        on conflict (organization_id, gotrue_id) do nothing
+      `,
+      parameters: [orgId, gotrueId],
+      actorId: gotrueId,
+    })
+    if (memberInsert.error) throw memberInsert.error
+  }
 
   if (!existingProjects.data?.length) {
     const projectName =
