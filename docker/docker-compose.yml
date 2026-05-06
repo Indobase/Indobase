@@ -38,7 +38,10 @@ services:
 
       STUDIO_PG_META_URL: http://indobase-meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_HOST: ${POSTGRES_HOST}
+      # Prefer the actual DB container name in Dokploy/self-hosted setups.
+      # If Studio runs in a different stack/network, override POSTGRES_HOST to a reachable host
+      # (e.g. host.docker.internal, VPS private IP, or a managed Postgres hostname).
+      POSTGRES_HOST: ${POSTGRES_HOST:-indobase-db}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # Must match roles that can reach the same DB as postgres-meta (defaults match `meta` service)
@@ -92,6 +95,9 @@ services:
     volumes:
       - snippets-data:/app/snippets
       - functions-data:/app/edge-functions
+    extra_hosts:
+      # Allows connecting to services on the Dokploy/VPS host when Studio is deployed separately.
+      - "host.docker.internal:host-gateway"
 
   # Option A: provision isolated per-project data-plane stacks.
   # This service must run on the host that has:
