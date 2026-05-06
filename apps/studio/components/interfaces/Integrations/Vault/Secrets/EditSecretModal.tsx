@@ -66,11 +66,21 @@ export const EditSecretModal = () => {
 
   const form = useForm<z.infer<typeof SecretSchema>>({
     resolver: zodResolver(SecretSchema),
-    defaultValues: values,
-    values,
+    defaultValues: {
+      name: '',
+      description: '',
+      secret: '',
+    },
   })
 
   const { mutate: updateSecret, isPending: isSubmitting } = useVaultSecretUpdateMutation()
+
+  useEffect(() => {
+    if (!secretIdToEdit) return
+    if (form.formState.isDirty) return
+    form.reset(values)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secretIdToEdit, secret?.id, data])
 
   const onSubmit: SubmitHandler<z.infer<typeof SecretSchema>> = async (values) => {
     if (!project) return console.error('Project is required')

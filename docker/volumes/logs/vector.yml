@@ -324,7 +324,10 @@ sinks:
     endpoint: ${USAGE_METERING_DB_URL?USAGE_METERING_DB_URL is required}
     table: saas.usage_events
     healthcheck:
-      enabled: true
+      # In Dokploy/compose startups, Postgres may not be reachable yet when Vector starts.
+      # If enabled, Vector can report unhealthy and block the whole stack.
+      # The sink will still retry on failures; disabling healthcheck avoids deployment deadlocks.
+      enabled: false
     batch:
       max_events: 5000
       timeout_secs: 1

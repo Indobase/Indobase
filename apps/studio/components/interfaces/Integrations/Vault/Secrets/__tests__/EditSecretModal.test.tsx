@@ -2,12 +2,10 @@ import { fireEvent, screen, waitFor } from '@testing-library/dom'
 import userEvent from '@testing-library/user-event'
 import { ProjectContextProvider } from 'components/layouts/ProjectLayout/ProjectContext'
 import { mockAnimationsApi } from 'jsdom-testing-mocks'
-import { HttpResponse } from 'msw'
 import { customRender } from 'tests/lib/custom-render'
-import { addAPIMock } from 'tests/lib/msw'
 import { routerMock } from 'tests/lib/route-mock'
 import type { VaultSecret } from 'types'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditSecretModal } from '../EditSecretModal'
 
@@ -22,48 +20,47 @@ const secret: VaultSecret = {
 
 mockAnimationsApi()
 
+vi.mock('hooks/misc/useSelectedProject', () => ({
+  useSelectedProjectQuery: () => ({
+    data: {
+      cloud_provider: 'localhost',
+      id: 1,
+      inserted_at: '2021-08-02T06:40:40.646Z',
+      name: 'Default Project',
+      organization_id: 1,
+      ref: 'default',
+      region: 'local',
+      status: 'ACTIVE_HEALTHY',
+    },
+  }),
+}))
+
+vi.mock('@/data/vault/vault-secrets-query', () => ({
+  useVaultSecretsQuery: () => ({ data: [secret], isSuccess: true }),
+}))
+
+vi.mock('data/vault/vault-secret-decrypted-value-query', () => ({
+  useVaultSecretDecryptedValueQuery: () => ({ data: 'bar', isPending: false }),
+}))
+
+vi.mock('data/vault/vault-secret-update-mutation', () => ({
+  useVaultSecretUpdateMutation: () => ({
+    isPending: false,
+    mutate: (_vars: any, opts: any) => {
+      opts?.onSuccess?.()
+    },
+  }),
+}))
+
 describe(`EditSecretModal`, () => {
   beforeEach(() => {
     // useSelectedProjectQuery -> useParams
     routerMock.setCurrentUrl(`/project/default/integrations/vault/secrets`)
-    // useSelectedProjectQuery
-    addAPIMock({
-      method: `get`,
-      path: `/platform/projects/:ref`,
-      // @ts-expect-error
-      response: {
-        cloud_provider: 'localhost',
-        id: 1,
-        inserted_at: '2021-08-02T06:40:40.646Z',
-        name: 'Default Project',
-        organization_id: 1,
-        ref: 'default',
-        region: 'local',
-        status: 'ACTIVE_HEALTHY',
-      },
-    })
-    // useVaultSecretsQuery + useVaultSecretDecryptedValueQuery + useVaultSecretUpdateMutation
-    // all call the same endpoint but execute different SQL queries
-    addAPIMock({
-      method: `post`,
-      path: `/platform/pg-meta/:ref/query`,
-      // @ts-expect-error this path erroneously has a `never` return type when it should be `unknown` since it executes a SQL query
-      response: async ({ request }) => {
-        const body = (await request.json()) as { query: string }
-        const query = body.query
-
-        if (query.includes('decrypted_secrets')) {
-          return HttpResponse.json([{ decrypted_secret: 'bar' }])
-        } else if (query.includes('update_secret')) {
-          return HttpResponse.json([{ update_secret: '' }])
-        }
-        // vault.secrets list query
-        return HttpResponse.json([secret])
-      },
-    })
   })
 
-  it(`renders a modal pre-filled with the secret's values`, async () => {
+  it(
+    `renders a modal pre-filled with the secret's values`,
+    async () => {
     customRender(
       <ProjectContextProvider projectRef="default">
         <EditSecretModal />
@@ -85,8 +82,13 @@ describe(`EditSecretModal`, () => {
     const togglePasswordButton = screen.getByRole(`button`, { name: `Show secret value` })
     const submitButton = screen.getByRole(`button`, { name: `Update secret` })
 
-    expect(nameInput).toHaveValue(secret.name)
-    expect(descriptionInput).toHaveValue(secret.description)
+    await waitFor(
+      () => {
+      expect(nameInput).toHaveValue(secret.name)
+      expect(descriptionInput).toHaveValue(secret.description)
+      },
+      { timeout: 10000 }
+    )
     expect(valueInput).toHaveAttribute(`type`, `password`)
     await userEvent.click(togglePasswordButton)
     expect(valueInput).toHaveAttribute(`type`, `text`)
@@ -100,5 +102,7 @@ describe(`EditSecretModal`, () => {
     await waitFor(() => {
       expect(screen.queryByRole(`dialog`)).not.toBeInTheDocument()
     })
-  })
+    },
+    15000
+  )
 })

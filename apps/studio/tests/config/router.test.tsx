@@ -17,7 +17,7 @@ suite('Router Mock', () => {
 
     link.click()
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(routerMock.pathname).toBe('/test')
       expect(comp.container.textContent).toContain('path: /test')
     })
