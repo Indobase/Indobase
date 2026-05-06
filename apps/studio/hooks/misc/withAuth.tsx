@@ -125,6 +125,21 @@ export function withAuth<T>(
 
     const InnerComponent = WrappedComponent as any
 
+    // Important: don't render the wrapped page while redirecting.
+    // Some pages (e.g. /new/*) kick off authenticated queries immediately and can throw
+    // before the redirect effect runs, which results in a client-side exception screen.
+    if (shouldRedirect) {
+      return (
+        <>
+          <SessionTimeoutModal
+            visible={isSessionTimeoutModalOpen}
+            onClose={() => setIsSessionTimeoutModalOpen(false)}
+            redirectToSignIn={redirectToSignIn}
+          />
+        </>
+      )
+    }
+
     const supportContext =
       typeof router.query.ref === 'string' && router.pathname.startsWith('/project/')
         ? {
