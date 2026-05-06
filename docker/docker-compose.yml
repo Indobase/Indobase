@@ -58,8 +58,12 @@ services:
       GOTRUE_URL: http://indobase-kong:8000/auth/v1
 
       # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
+      # SaaS mode (multi-org dashboard + /organizations, /org/* routes).
+      # For Indobase self-hosted SaaS: set NEXT_PUBLIC_INDOBASE_SAAS=true and keep NEXT_PUBLIC_IS_PLATFORM=false.
       NEXT_PUBLIC_IS_PLATFORM: ${NEXT_PUBLIC_IS_PLATFORM:-false}
-      NEXT_PUBLIC_INDOBASE_SAAS: ${NEXT_PUBLIC_INDOBASE_SAAS:-false}
+      NEXT_PUBLIC_INDOBASE_SAAS: ${NEXT_PUBLIC_INDOBASE_SAAS:-true}
+      # Optional: self-hosted SaaS can also enable explicit auth-gating even when not running Platform API.
+      NEXT_PUBLIC_ENABLE_SELF_HOSTED_AUTH: ${NEXT_PUBLIC_ENABLE_SELF_HOSTED_AUTH:-true}
       # Browser-visible Studio origin (match public URL; with default Kong routing this is usually SUPABASE_PUBLIC_URL).
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${SUPABASE_PUBLIC_URL}}
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_PUBLIC_URL}}
