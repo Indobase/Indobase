@@ -524,6 +524,32 @@ services:
         "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
       ]
 
+  # Runs idempotent SQL "migrations" on every deploy (so you don't need manual psql
+  # and you don't need to wipe the Postgres volume for init scripts to re-run).
+  db-migrator:
+    container_name: indobase-db-migrator
+    image: postgres:15-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./volumes/db/tenant-rls.sql:/migrations/tenant-rls.sql:ro,z
+      - ./volumes/db/storage-tenant-rls.sql:/migrations/storage-tenant-rls.sql:ro,z
+      - ./volumes/db/saas-usage-metering.sql:/migrations/saas-usage-metering.sql:ro,z
+    command:
+      [
+        "/bin/sh",
+        "-lc",
+        "psql -v ON_ERROR_STOP=1 -f /migrations/tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/storage-tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql"
+      ]
+
   vector:
     container_name: indobase-vector
     image: timberio/vector:0.53.0-alpine
