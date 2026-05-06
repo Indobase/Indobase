@@ -132,7 +132,7 @@ services:
       # Vector parses these as `host=<...>` and `x_project_ref=<...>`.
       KONG_NGINX_HTTP_LOG_FORMAT: >-
         indobase_combined '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent
-        "$http_referer" "$http_user_agent" host=$host x_project_ref=$http_x_project_ref'
+        "$http_referer" "$http_user_agent" host=$host x_project_ref=$http_x_project_ref rt=$request_time urt=$upstream_response_time'
       KONG_NGINX_PROXY_ACCESS_LOG: /dev/stdout indobase_combined
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
@@ -470,6 +470,10 @@ services:
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
       # Single-DB multi-tenancy foundation (project_ref context + RLS policy template)
       - ./volumes/db/tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/97-tenant-rls.sql:Z
+      # Tenantized Storage metadata (storage.buckets/objects + FORCE RLS)
+      - ./volumes/db/storage-tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/97-storage-tenant-rls.sql:Z
+      # Direct metering tables/views for Vector -> Postgres usage ingestion
+      - ./volumes/db/saas-usage-metering.sql:/docker-entrypoint-initdb.d/init-scripts/97-saas-usage-metering.sql:Z
       # Must be superuser to alter reserved role
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       # Initialize the database settings with JWT_SECRET and JWT_EXP
@@ -542,6 +546,9 @@ services:
       retries: 3
     environment:
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      # Vector Postgres sink endpoint for direct metering.
+      # Use your existing Postgres connection settings (works for local + Dokploy).
+      USAGE_METERING_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     command:
       [
         "--config",

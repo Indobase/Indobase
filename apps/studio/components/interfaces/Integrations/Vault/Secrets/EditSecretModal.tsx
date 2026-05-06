@@ -48,13 +48,14 @@ export const EditSecretModal = () => {
 
   const [showSecretValue, setShowSecretValue] = useState(false)
 
+  const shouldLoadSecretValue = !!project?.ref && !!secret?.id
   const { data, isPending: isLoadingSecretValue } = useVaultSecretDecryptedValueQuery(
     {
       projectRef: project?.ref,
       id: secret?.id,
       connectionString: project?.connectionString,
     },
-    { enabled: !!project?.ref }
+    { enabled: shouldLoadSecretValue }
   )
 
   const values = {
@@ -111,7 +112,8 @@ export const EditSecretModal = () => {
 
   return (
     <Dialog
-      open={!!secret}
+      // Open as soon as the query param is present; `secret` may still be loading.
+      open={!!secretIdToEdit}
       onOpenChange={(open) => {
         if (!open) {
           form.reset()
@@ -124,7 +126,7 @@ export const EditSecretModal = () => {
           <DialogTitle>Edit secret</DialogTitle>
         </DialogHeader>
         <DialogSectionSeparator />
-        {isLoadingSecretValue ? (
+        {shouldLoadSecretValue && isLoadingSecretValue ? (
           <DialogSection>
             <GenericSkeletonLoader />
           </DialogSection>

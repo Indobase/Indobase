@@ -44,10 +44,10 @@ transforms:
       - router.kong
     source: |-
       # Kong access logs use a custom format (see docker-compose) that appends:
-      # `host=<...> x_project_ref=<...>`
+      # `host=<...> x_project_ref=<...> rt=<...> urt=<...>`
       parsed, err = parse_regex(
         .event_message,
-        r'^(?P<remote_addr>\\S+) \\S+ \\S+ \\[(?P<time>[^\\]]+)\\] "(?P<request>[^"]*)" (?P<status>\\d{3}) (?P<body_bytes_sent>\\d+) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)" host=(?P<host>\\S+) x_project_ref=(?P<x_project_ref>\\S+)$'
+        r'^(?P<remote_addr>\\S+) \\S+ \\S+ \\[(?P<time>[^\\]]+)\\] "(?P<request>[^"]*)" (?P<status>\\d{3}) (?P<body_bytes_sent>\\d+) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)" host=(?P<host>\\S+) x_project_ref=(?P<x_project_ref>\\S+) rt=(?P<request_time>\\S+) urt=(?P<upstream_response_time>\\S+)$'
       )
       if err != null { abort }
 
@@ -56,6 +56,12 @@ transforms:
       .metadata.request.headers.referer = parsed.referer
       .metadata.request.headers.user_agent = parsed.user_agent
       .metadata.response.status_code = to_int!(parsed.status)
+      .metadata.response.bytes_sent = to_int!(parsed.body_bytes_sent)
+      # Nginx times are seconds (float). Upstream response time may be "-" on some responses.
+      .metadata.response.request_time_s = to_float!(parsed.request_time)
+      if parsed.upstream_response_time != "-" {
+        .metadata.response.upstream_response_time_s = to_float!(parsed.upstream_response_time)
+      }
 
       url, split_err = split(parsed.request, " ")
       if split_err == null {
@@ -74,6 +80,30 @@ transforms:
           if !includes(reserved, first[0]) { .metadata.project_ref = first[0] }
         }
       }
+
+  usage_events:
+    type: remap
+    inputs:
+      - kong_logs
+    source: |-
+      # Shape event keys to match `saas.usage_events` columns for Vector's `postgres` sink.
+      .event_id = uuid_v4()
+      .occurred_at = .timestamp
+      .project_ref = string!(.metadata.project_ref)
+      .host = string!(.metadata.request.host) ?? null
+      .method = string!(.metadata.request.method) ?? null
+      .path = string!(.metadata.request.path) ?? null
+      .status_code = to_int(.metadata.response.status_code) ?? null
+      .bytes_sent = to_int(.metadata.response.bytes_sent) ?? null
+      .request_time_s = to_float(.metadata.response.request_time_s) ?? null
+      .upstream_response_time_s = to_float(.metadata.response.upstream_response_time_s) ?? null
+      .service = "kong"
+
+      del(.metadata)
+      del(.event_message)
+      del(.appname)
+      del(.project)
+      del(.timestamp)
   # Ignores non nginx errors since they are related with kong booting up
   kong_err:
     type: remap
@@ -286,3 +316,15 @@ sinks:
       headers:
         x-api-key: ${LOGFLARE_PUBLIC_ACCESS_TOKEN?LOGFLARE_PUBLIC_ACCESS_TOKEN is required}
     uri: 'http://analytics:4000/api/logs?source_name=cloudflare.logs.prod'
+
+  postgres_usage_events:
+    type: postgres
+    inputs:
+      - usage_events
+    endpoint: ${USAGE_METERING_DB_URL?USAGE_METERING_DB_URL is required}
+    table: saas.usage_events
+    healthcheck:
+      enabled: true
+    batch:
+      max_events: 5000
+      timeout_secs: 1

@@ -32,7 +32,14 @@ export const DeleteBucketModal = ({ visible, bucket, onClose }: DeleteBucketModa
 
   const { mutate: deleteBucket, isPending: isDeletingBucket } = useBucketDeleteMutation({
     onSuccess: async () => {
-      if (!project) return console.error('Project is required')
+      // We can still complete the "delete bucket" UX even if the selected project
+      // query hasn't resolved yet (common in tests / fast responses).
+      if (!project) {
+        toast.success(`Successfully deleted bucket ${bucket.id}`)
+        if (!!bucketId) router.push(`/project/${projectRef}/storage/files`)
+        onClose()
+        return
+      }
 
       // Clean up policies from the corresponding bucket that was deleted
       const bucketPolicies = (policies ?? []).filter((policy) => {

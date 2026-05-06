@@ -178,7 +178,6 @@ services:
         config:
           hide_groups_header: true
           allow:
-            - admin
             - anon
 
   ## Secure REST routes
@@ -220,7 +219,6 @@ services:
         config:
           hide_groups_header: true
           allow:
-            - admin
             - anon
 
   ## Secure GraphQL routes
@@ -266,7 +264,6 @@ services:
         config:
           hide_groups_header: true
           allow:
-            - admin
             - anon
 
   ## Secure Realtime routes
@@ -308,7 +305,6 @@ services:
         config:
           hide_groups_header: true
           allow:
-            - admin
             - anon
   - name: realtime-v1-rest
     _comment: 'Indobase Realtime: /realtime/v1/* -> ws://realtime:4000/socket/*'
@@ -348,7 +344,6 @@ services:
         config:
           hide_groups_header: true
           allow:
-            - admin
             - anon
   ## Storage routes: the storage server manages its own auth
   - name: storage-v1
@@ -381,6 +376,14 @@ services:
           limit_by: header
           header_name: x-project-ref
           minute: 600
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
 
   ## Edge Functions routes
   - name: functions-v1
@@ -413,6 +416,14 @@ services:
           limit_by: header
           header_name: x-project-ref
           minute: 600
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
 
   ## Analytics routes
   ## Not used - Studio and Vector talk directly to analytics via Docker networking.
