@@ -1,9 +1,30 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { routerMock } from '../lib/route-mock'
-import { expect, suite, test } from 'vitest'
+import { afterEach, expect, suite, test, vi } from 'vitest'
 import { RouterComponent } from './router'
 
+// Prevent JSDOM navigation errors from Next.js Link by rendering a simple anchor.
+// next-router-mock listens to router.push/replace, which our component displays.
+vi.mock('next/link', () => ({
+  default: ({ href, children }: { href: string; children: any }) => (
+    <a
+      href={href}
+      onClick={(e) => {
+        e.preventDefault()
+        routerMock.push(href)
+      }}
+    >
+      {children}
+    </a>
+  ),
+}))
+
 suite('Router Mock', () => {
+  afterEach(() => {
+    routerMock.setCurrentUrl('/')
+  })
+
   test('Router mock works as expected', async () => {
     const comp = render(<RouterComponent />)
     expect(comp.container.textContent).toContain('path: /')
@@ -15,7 +36,7 @@ suite('Router Mock', () => {
 
     const link = screen.getByRole('link')
 
-    link.click()
+    await userEvent.click(link)
 
     await waitFor(() => {
       expect(routerMock.pathname).toBe('/test')

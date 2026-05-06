@@ -6,6 +6,9 @@ import { Admonition } from 'ui-patterns/admonition'
  * that schemas and data are visible across accounts on one Postgres instance.
  */
 export function SelfHostedTenantNotice() {
+  // Allow explicitly hiding this banner in hosted/self-hosted setups (e.g. when you’ve implemented strict tenant isolation).
+  if (process.env.NEXT_PUBLIC_HIDE_SHARED_DB_BANNER === 'true') return null
+
   // Only show this in anonymous self-hosted “single-tenant” mode.
   // SaaS (Indobase SaaS or Supabase cloud) and self-hosted-with-auth are multi-org experiences.
   if (IS_MULTI_ORG_DASHBOARD) return null

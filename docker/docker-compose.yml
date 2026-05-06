@@ -66,6 +66,8 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${ANON_KEY}}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
       NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://indobase.in/docs}
+      # Hide the self-hosted "shared database" warning banner in Studio.
+      NEXT_PUBLIC_HIDE_SHARED_DB_BANNER: ${NEXT_PUBLIC_HIDE_SHARED_DB_BANNER:-true}
 
       # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
