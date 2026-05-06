@@ -34,8 +34,10 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
       : '/organizations'
     : selfHostedDashboardPath(user?.id)
 
-  // Self-hosted projects use ref `p-<gotrue_sub>`, not `default`. Old links/bookmarks still use /project/default.
-  const skipLegacyDefaultProjectFetch = !IS_MULTI_ORG_DASHBOARD && ref === 'default'
+  // Legacy links/bookmarks may still use /project/default.
+  // - Self-hosted: redirect to /project/p-<gotrue_sub>
+  // - SaaS/multi-org: redirect to org home (a project ref of "default" doesn't exist)
+  const skipLegacyDefaultProjectFetch = ref === 'default'
 
   /**
    * Array of urls/routes that should be ignored
@@ -125,6 +127,16 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
       router.replace(target)
     }
   }, [IS_MULTI_ORG_DASHBOARD, isLoggedIn, ref, router, router.asPath, router.isReady, user?.id])
+
+  useEffect(() => {
+    if (!IS_MULTI_ORG_DASHBOARD || !router.isReady) return
+    if (!isLoggedIn) return
+    if (ref !== 'default') return
+    // In SaaS mode, "default" is never a real project ref.
+    if (router.asPath !== DEFAULT_HOME) {
+      router.replace(DEFAULT_HOME)
+    }
+  }, [DEFAULT_HOME, IS_MULTI_ORG_DASHBOARD, isLoggedIn, ref, router, router.asPath, router.isReady])
 
   useEffect(() => {
     if (isExceptUrl() || !isLoggedIn) return
