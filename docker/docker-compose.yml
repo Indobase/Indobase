@@ -239,6 +239,8 @@ services:
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
+      # Single-DB multi-tenancy: fail-closed unless a tenant context is provided (JWT claim `project_ref` or header `x-project-ref`).
+      PGRST_DB_PRE_REQUEST: app.set_project_ref
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
@@ -466,6 +468,8 @@ services:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      # Single-DB multi-tenancy foundation (project_ref context + RLS policy template)
+      - ./volumes/db/tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/97-tenant-rls.sql:Z
       # Must be superuser to alter reserved role
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       # Initialize the database settings with JWT_SECRET and JWT_EXP
