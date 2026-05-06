@@ -5,7 +5,7 @@ import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
 import useLatest from 'hooks/misc/useLatest'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
+import { BASE_PATH, IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect } from 'react'
@@ -97,7 +97,6 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   // To make sure users land on the signup/signin flow instead of dashboard pages,
   // we do a lightweight redirect here when there is no session.
   useEffect(() => {
-    if (IS_MULTI_ORG_DASHBOARD) return
     if (isLoggedIn) return
     if (isExceptUrl()) return
 
@@ -113,7 +112,18 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
       return
     }
 
-    router.push(`${dashboardPrefix}/sign-in`)
+    // In SaaS/multi-org mode we must also enforce sign-in here, because some pages
+    // (e.g. /project/default) can render without being wrapped in withAuth().
+    if (IS_MULTI_ORG_DASHBOARD) {
+      let pathname = location.pathname
+      if (BASE_PATH) pathname = pathname.replace(BASE_PATH, '')
+      const searchParams = new URLSearchParams(location.search)
+      const returnTo = `${pathname}${location.search}${location.hash}`
+      searchParams.set('returnTo', returnTo)
+      router.push(`${dashboardPrefix}/sign-in?${searchParams.toString()}`)
+    } else {
+      router.push(`${dashboardPrefix}/sign-in`)
+    }
   }, [IS_MULTI_ORG_DASHBOARD, isLoggedIn, router, router.asPath])
 
   useEffect(() => {
