@@ -49,11 +49,11 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     const isDataQuery = /^\s*(select|insert|update|delete|with|explain)\b/i.test(innerQuery.trim())
     if (isDataQuery) {
       const ref = typeof req.query.ref === 'string' ? req.query.ref : 'default'
-      const role = { 
-        type: 'postgrest' as const, 
-        role: 'authenticated' as const, 
-        userType: 'external' as const, 
-        externalAuth: { sub: userId } 
+      const role = {
+        type: 'postgrest' as const,
+        role: 'authenticated' as const,
+        userType: 'external' as const,
+        externalAuth: { sub: userId }
       }
       const impersonationClaims = getPostgrestClaims(ref, role)
       query = wrapWithRoleImpersonation(innerQuery, { role, claims: impersonationClaims })
@@ -75,9 +75,9 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   } else {
     let resultData = data
     if (
-      !IS_SAAS && 
-      Array.isArray(resultData) && 
-      resultData.length > 0 && 
+      !IS_SAAS &&
+      Array.isArray(resultData) &&
+      resultData.length > 0 &&
       resultData[0]?.ROLE_IMPERSONATION_NO_RESULTS === 1
     ) {
       resultData = []
