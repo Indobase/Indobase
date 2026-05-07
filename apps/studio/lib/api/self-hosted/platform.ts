@@ -6,6 +6,7 @@ import { decryptString, encryptString, encryptedConnectionForPgMeta } from './ut
 import { makeRandomString } from 'lib/helpers'
 import { IS_PLATFORM, IS_SAAS } from 'lib/constants'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
+// NOTE: Model A (single DB + RLS) does not provision per-project databases.
 import { provisionTenantDatabase } from './provision-tenant-db'
 
 type Claims = JwtPayload & Record<string, any>
@@ -1464,46 +1465,25 @@ export async function createProject({
   if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create project')
   const p = inserted.data[0]
 
-  // MVP provisioning: create a dedicated tenant DB and store its DSN encrypted-at-rest.
-  const pgHost = process.env.TENANT_PG_HOST || process.env.POSTGRES_HOST || 'indobase-db'
-  const pgPort = parseInt(process.env.TENANT_PG_PORT || process.env.POSTGRES_PORT || '5432', 10)
-  const pgAdminUser = process.env.TENANT_PG_ADMIN_USER || process.env.POSTGRES_USER || 'postgres'
-  const pgAdminPassword = process.env.TENANT_PG_ADMIN_PASSWORD || process.env.POSTGRES_PASSWORD || ''
-  if (!pgAdminPassword) {
-    throw new Error('Missing TENANT_PG_ADMIN_PASSWORD/POSTGRES_PASSWORD for tenant provisioning')
-  }
-
-  const provisioned = await provisionTenantDatabase({
-    projectRef: p.ref,
-    host: pgHost,
-    port: Number.isFinite(pgPort) ? pgPort : 5432,
-    adminUser: pgAdminUser,
-    adminPassword: pgAdminPassword,
-  })
-
-  // Deterministic port allocation for per-project isolated data-plane stacks.
-  // - The generator uses this base to map localhost ports in Traefik dynamic config.
-  // - Convention: rest/auth/storage/realtime/functions map to base+1..base+5.
-  // - Keep spacing for future services.
-  const dataPlanePortBase = 20000 + p.id * 10
-
+  // Model A (single DB + RLS): do NOT provision per-project databases or data-plane stacks.
+  // All projects share the same data-plane; tenant isolation is enforced via `project_ref`.
   const saved = await executeQuery({
     query: `
       update saas.projects p
-      set connection_string = null,
-          connection_string_enc = $1,
-          data_plane_port_base = $4,
-          status = 'ACTIVE_HEALTHY'
-      where p.ref = $2
+      set status = 'ACTIVE_HEALTHY',
+          data_plane_port_base = null,
+          connection_string = null,
+          connection_string_enc = null
+      where p.ref = $1
         and exists (
           select 1
           from saas.organization_members m
           where m.organization_id = p.organization_id
-            and m.gotrue_id = $3
+            and m.gotrue_id = $2
             and m.role in ('owner','admin','developer')
         )
     `,
-    parameters: [encryptString(provisioned.connectionString), p.ref, gotrueId, dataPlanePortBase],
+    parameters: [p.ref, gotrueId],
     actorId: gotrueId,
   })
   if (saved.error) throw saved.error
@@ -1660,19 +1640,22 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     if (migrate.error) throw migrate.error
   }
 
-  // In SaaS mode, every project must point to its own tenant database.
-  // Falling back to POSTGRES_* would cause cross-tenant visibility.
-  if (IS_SAAS && !tenantDatabaseUrl?.trim()) {
-    throw new Error(
-      'Project is missing tenant database connection_string. Set saas.projects.connection_string to a tenant Postgres URI.'
-    )
-  }
+  // Model A (single DB + RLS): project does not require a per-tenant DB URI.
+  // Use the shared Postgres configured for Studio (POSTGRES_* env).
+  const sharedDbUrl =
+    process.env.POSTGRES_PASSWORD && process.env.POSTGRES_HOST && process.env.POSTGRES_DB
+      ? `postgres://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD}@${
+          process.env.POSTGRES_HOST
+        }:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`
+      : null
+
+  const effectiveDbUrl = tenantDatabaseUrl?.trim() ? tenantDatabaseUrl : sharedDbUrl
   return {
     cloud_provider: p.cloud_provider,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
     // The frontend forwards this `connectionString` into that header.
     // Per-tenant DB: plaintext URI in saas.projects.connection_string; else POSTGRES_* fallback.
-    connectionString: encryptedConnectionForPgMeta(tenantDatabaseUrl),
+    connectionString: encryptedConnectionForPgMeta(effectiveDbUrl ?? ''),
     db_host: '127.0.0.1',
     id: p.id,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString(),
@@ -1697,6 +1680,9 @@ export async function getTenantStackArtifacts({
   ref: string
   publicDomain: string
 }) {
+  // Model A (single DB + RLS) does not use per-project tenant stacks.
+  throw new Error('Tenant stack artifacts are not available in single-DB RLS mode')
+
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   const resolvedRef = resolveSelfHostedProjectRef(claims, ref)
