@@ -4,6 +4,7 @@ import { assertSelfHosted, encryptString, encryptedConnectionForPgMeta, getConne
 
 vi.mock('lib/constants', () => ({
   IS_PLATFORM: false,
+  IS_SAAS: false,
 }))
 
 vi.mock('crypto-js', () => {
@@ -115,8 +116,12 @@ describe('api/self-hosted/util', () => {
       const resultReadWrite = getConnectionString({ readOnly: false })
       const resultReadOnly = getConnectionString({ readOnly: true })
 
-      expect(resultReadWrite).toBe('postgresql://supabase_admin:postgres@db:5432/postgres')
-      expect(resultReadOnly).toBe('postgresql://supabase_read_only_user:postgres@db:5432/postgres')
+      expect(resultReadWrite).toBe(
+        'postgresql://supabase_admin:postgres@indobase-db:5432/postgres'
+      )
+      expect(resultReadOnly).toBe(
+        'postgresql://supabase_read_only_user:postgres@indobase-db:5432/postgres'
+      )
     })
 
     it('should percent-encode @ and other special chars in user and password', async () => {
@@ -182,6 +187,7 @@ describe('api/self-hosted/util', () => {
     it('throws in SaaS mode when tenant URL is missing', async () => {
       vi.resetModules()
       vi.stubEnv('NEXT_PUBLIC_INDOBASE_SAAS', 'true')
+      vi.doMock('lib/constants', () => ({ IS_PLATFORM: false, IS_SAAS: true }))
 
       const { encryptedConnectionForPgMeta: enc } = await import('./util')
       expect(() => enc(null)).toThrow(/Missing tenant database connection_string/i)

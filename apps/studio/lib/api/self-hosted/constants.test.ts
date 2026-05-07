@@ -40,10 +40,10 @@ describe('api/self-hosted/constants', () => {
       expect(POSTGRES_HOST).toBe('my-db-host.example.com')
     })
 
-    it('should default to db', async () => {
+    it('should default to indobase-db', async () => {
       vi.stubEnv('POSTGRES_HOST', '')
       const { POSTGRES_HOST } = await import('./constants')
-      expect(POSTGRES_HOST).toBe('db')
+      expect(POSTGRES_HOST).toBe('indobase-db')
     })
   })
 

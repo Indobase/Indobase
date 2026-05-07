@@ -33,6 +33,9 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       `.next/*`,
+      // macOS AppleDouble resource-fork files created on non-HFS+ volumes
+      // (e.g. ssd mounted at /Volumes/ssd). They are not real test files.
+      '**/._*',
       'tests/features/logs/logs-query.test.tsx',
       'tests/features/reports/storage-report.test.tsx',
     ],
