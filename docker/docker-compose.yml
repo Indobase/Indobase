@@ -59,6 +59,9 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_URL: http://indobase-kong:8000/auth/v1
+      # Internal Kong URL used by signup/reset-password server handlers when
+      # they need to reach GoTrue from inside the Studio container.
+      KONG_INTERNAL_GOTRUE_URL: ${KONG_INTERNAL_GOTRUE_URL:-http://indobase-kong:8000/auth/v1}
 
       # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
       # SaaS mode (multi-org dashboard + /organizations, /org/* routes).
@@ -182,7 +185,7 @@ services:
       API_EXTERNAL_URL: ${API_EXTERNAL_URL}
 
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
 
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
@@ -247,12 +250,15 @@ services:
       analytics:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      # Single-DB multi-tenancy: fail-closed unless a tenant context is provided (JWT claim `project_ref` or header `x-project-ref`).
-      # PGRST_DB_PRE_REQUEST: app.set_project_ref
+      # Single-DB multi-tenancy: every request runs `app.set_project_ref(...)`
+      # before query execution, which fail-closes when the JWT lacks a
+      # `project_ref` claim (or no `x-project-ref` header is set). Disable
+      # only if you intentionally want REST without tenant isolation.
+      PGRST_DB_PRE_REQUEST: app.set_project_ref
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
@@ -284,11 +290,11 @@ services:
       start_period: 10s
     environment:
       PORT: 4000
-      DB_HOST: ${POSTGRES_HOST}
-      DB_PORT: ${POSTGRES_PORT}
+      DB_HOST: ${POSTGRES_HOST:-indobase-db}
+      DB_PORT: ${POSTGRES_PORT:-5432}
       DB_USER: supabase_admin
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: ${POSTGRES_DB}
+      DB_NAME: ${POSTGRES_DB:-postgres}
       DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
       DB_ENC_KEY: supabaserealtime
       API_JWT_SECRET: ${JWT_SECRET}
@@ -332,7 +338,7 @@ services:
       SERVICE_KEY: ${SERVICE_ROLE_KEY}
       POSTGREST_URL: http://indobase-rest:3000
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: file
@@ -391,9 +397,9 @@ services:
         condition: service_healthy
     environment:
       PG_META_PORT: 8080
-      PG_META_DB_HOST: ${POSTGRES_HOST}
-      PG_META_DB_PORT: ${POSTGRES_PORT}
-      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_HOST: ${POSTGRES_HOST:-indobase-db}
+      PG_META_DB_PORT: ${POSTGRES_PORT:-5432}
+      PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
       PG_META_DB_USER: supabase_admin
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
       CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
@@ -414,7 +420,7 @@ services:
       SUPABASE_URL: http://indobase-kong:8000
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
-      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
       # TODO: Allow configuring VERIFY_JWT per function
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command:
@@ -454,8 +460,8 @@ services:
       LOGFLARE_NODE_HOST: 127.0.0.1
       DB_USERNAME: supabase_admin
       DB_DATABASE: _supabase
-      DB_HOSTNAME: ${POSTGRES_HOST}
-      DB_PORT: ${POSTGRES_PORT}
+      DB_HOSTNAME: ${POSTGRES_HOST:-indobase-db}
+      DB_PORT: ${POSTGRES_PORT:-5432}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_SCHEMA: _analytics
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
@@ -464,7 +470,7 @@ services:
       LOGFLARE_SUPABASE_MODE: true
 
       # Comment variables to use Big Query backend for analytics
-      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/_supabase
       POSTGRES_BACKEND_SCHEMA: _analytics
       LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
       # Uncomment to use Big Query backend for analytics
@@ -543,9 +549,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGHOST: ${POSTGRES_HOST}
-      PGPORT: ${POSTGRES_PORT}
-      PGDATABASE: ${POSTGRES_DB}
+      PGHOST: ${POSTGRES_HOST:-indobase-db}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGDATABASE: ${POSTGRES_DB:-postgres}
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
@@ -583,7 +589,7 @@ services:
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       # Vector Postgres sink endpoint for direct metering.
       # Use your existing Postgres connection settings (works for local + Dokploy).
-      USAGE_METERING_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      USAGE_METERING_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
     command:
       [
         "--config",
@@ -626,7 +632,7 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
+      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/_supabase
       CLUSTER_POSTGRES: true
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       VAULT_ENC_KEY: ${VAULT_ENC_KEY}

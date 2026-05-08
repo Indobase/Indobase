@@ -2,8 +2,8 @@
 // Returns detailed usage metrics with cost calculations
 
 import apiWrapper from 'lib/api/apiWrapper';
+import { getStorageAdminClient } from 'lib/api/storage-admin';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
 
 export default (req: NextApiRequest, res: NextApiResponse) => 
   apiWrapper(req, res, handler);
@@ -30,11 +30,8 @@ async function getUsageAnalytics(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Organization ID is required');
     }
 
-    // Initialize Indobase client
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
+    // Initialize Indobase client (lazy: throws a clear error if env is missing)
+    const supabaseAdmin = getStorageAdminClient();
 
     // Get current billing period
     const now = new Date();
@@ -150,8 +147,9 @@ async function getUsageAnalytics(req: NextApiRequest, res: NextApiResponse) {
 
   } catch (error) {
     console.error('Error fetching usage analytics:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error'
     return res.status(500).json({
-      error: { message: error.message }
+      error: { message }
     });
   }
 }

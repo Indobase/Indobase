@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import apiWrapper from 'lib/api/apiWrapper'
+import { getStorageAdminClient } from 'lib/api/storage-admin'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -22,7 +20,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
   const { id } = req.query
   const { from, to } = req.body
 
-  const { data, error } = await supabase.storage.from(id as string).move(from, to)
+  const { data, error } = await getStorageAdminClient().storage.from(id as string).move(from, to)
   if (error) {
     return res.status(400).json({ error: { message: error.message } })
   }

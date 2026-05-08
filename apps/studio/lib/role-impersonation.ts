@@ -4,6 +4,23 @@ import { RoleImpersonationState as ValtioRoleImpersonationState } from 'state/ro
 
 import { uuidv4 } from './helpers'
 
+/**
+ * Build the `iss` claim for impersonation JWTs. On cloud Supabase the
+ * canonical issuer is `https://<ref>.supabase.co/auth/v1`. For self-hosted
+ * (incl. Indobase SaaS) we use `NEXT_PUBLIC_GOTRUE_URL` if set, otherwise
+ * `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1`, falling back to a stable
+ * `indobase://<ref>/auth/v1` URN if neither is available.
+ */
+function getImpersonationIssuer(projectRef: string) {
+  const explicit = process.env.NEXT_PUBLIC_GOTRUE_URL
+  if (explicit) return explicit
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (supabaseUrl) return `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`
+
+  return `indobase://${projectRef}/auth/v1`
+}
+
 type PostgrestImpersonationRole =
   | {
       type: 'postgrest'
@@ -60,7 +77,7 @@ export function getPostgrestClaims(projectRef: string, role: PostgrestImpersonat
         email: user.email,
         exp,
         iat: nowTimestamp,
-        iss: `https://${projectRef}.supabase.co/auth/v1`,
+        iss: getImpersonationIssuer(projectRef),
         phone: user.phone,
         role: user.role ?? role.role,
         session_id: uuidv4(),

@@ -78,8 +78,17 @@ export const useRealtimeMessages = (
 
   const protocol = settings?.app_config?.protocol ?? 'https'
   const endpoint = settings?.app_config?.endpoint
-  // the default host is prod until the correct one comes through an API call.
-  const host = settings ? `${protocol}://${endpoint}` : `https://${projectRef}.supabase.co`
+  // Default host comes from the public Supabase URL (set via env at build/run
+  // time). On cloud this resolves to `<ref>.supabase.co`; on self-hosted
+  // (incl. Indobase SaaS) it points to the platform's public Kong URL. Once
+  // the project-settings request lands, we switch to its `app_config.endpoint`.
+  const fallbackPublicUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
+  const host = settings
+    ? `${protocol}://${endpoint}`
+    : fallbackPublicUrl.replace(/\/+$/, '')
 
   const realtimeUrl = `${host}/realtime/v1`.replace(/^http/i, 'ws')
 

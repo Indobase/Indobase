@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { get, handleError } from 'data/fetchers'
 import type { AuditLog } from 'data/organizations/organization-audit-logs-query'
-import { IS_PLATFORM } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { profileKeys } from './keys'
 
@@ -46,7 +45,8 @@ export const useProfileAuditLogsQuery = <TData = ProfileAuditLogsData>(
       date_end: iso_timestamp_end,
     }),
     queryFn: ({ signal }) => getProfileAuditLogs(vars, signal),
-    enabled: IS_PLATFORM && options.enabled,
+    // Local /platform/profile/audit handler is implemented for both cloud
+    // and self-hosted modes — no need to gate on IS_PLATFORM.
     ...options,
   })
 }

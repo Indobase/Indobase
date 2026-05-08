@@ -113,7 +113,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const kongInternalGotrueBaseUrl =
-    process.env.KONG_INTERNAL_GOTRUE_URL || 'http://kong:8000/auth/v1'
+    process.env.KONG_INTERNAL_GOTRUE_URL || 'http://indobase-kong:8000/auth/v1'
 
   const gotrueBaseCandidates = [
     gotrueUrl,

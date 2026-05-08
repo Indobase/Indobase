@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import apiWrapper from 'lib/api/apiWrapper'
+import { getStorageAdminClient } from 'lib/api/storage-admin'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -23,6 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
 const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
   const { limit, offset, search, sortColumn, sortOrder } = parseStoragePaginationParams(req)
+  const supabase = getStorageAdminClient()
 
   const { data, error } = await supabase.storage.listBuckets({
     ...(limit ? { limit } : {}),
@@ -45,6 +44,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
     allowed_mime_types: allowedMimeTypes,
     file_size_limit: fileSizeLimit,
   } = req.body
+  const supabase = getStorageAdminClient()
 
   const { data, error } = await supabase.storage.createBucket(id, {
     public: isPublicBucket,

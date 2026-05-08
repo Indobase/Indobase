@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { components } from 'api-types'
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { edgeFunctionsKeys } from './keys'
 
@@ -15,6 +14,9 @@ export async function getEdgeFunctions(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
+  // Note: in self-hosted Studio, `/v1/projects/{ref}/functions` is served
+  // locally by `apps/studio/pages/api/v1/projects/[ref]/functions/index.ts`,
+  // which reads from the EDGE_FUNCTIONS_MANAGEMENT_FOLDER. No cloud round-trip.
   const { data, error } = await get(`/v1/projects/{ref}/functions`, {
     params: { path: { ref: projectRef } },
     signal,

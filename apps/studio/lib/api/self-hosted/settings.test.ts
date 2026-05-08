@@ -41,8 +41,16 @@ describe('api/self-hosted/settings', () => {
       expect(settings).toHaveProperty('service_api_keys')
     })
 
-    it('should return correct default values', () => {
-      const settings = getProjectSettings()
+    it('should return correct default values', async () => {
+      vi.stubEnv('POSTGRES_HOST', '')
+      vi.stubEnv('POSTGRES_DB', '')
+      vi.stubEnv('POSTGRES_PORT', '')
+      vi.stubEnv('POSTGRES_USER_READ_WRITE', '')
+      vi.stubEnv('POSTGRES_USER', '')
+
+      vi.resetModules()
+      const { getProjectSettings: getSettings } = await import('./settings')
+      const settings = getSettings()
 
       expect(settings.cloud_provider).toBe('AWS')
       expect(settings.db_host).toBe('localhost')
@@ -94,14 +102,17 @@ describe('api/self-hosted/settings', () => {
       expect(settings.service_api_keys[1].api_key).toBe('custom-anon-key')
     })
 
-    it('should use default JWT secret when not set', async () => {
+    it('should return empty JWT secret when not set (no leak of placeholder)', async () => {
       vi.unstubAllEnvs()
+      vi.stubEnv('AUTH_JWT_SECRET', '')
 
       vi.resetModules()
       const { getProjectSettings: getSettings } = await import('./settings')
       const settings = getSettings()
 
-      expect(settings.jwt_secret).toBe('super-secret-jwt-token-with-at-least-32-characters-long')
+      // We intentionally do NOT ship a literal default for the JWT secret —
+      // see comment in settings.ts. Empty string surfaces "missing" cleanly.
+      expect(settings.jwt_secret).toBe('')
     })
 
     it('should use default project name when not set', async () => {

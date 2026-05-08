@@ -69,7 +69,10 @@ export const getURL = () => {
       : process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL &&
           process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL !== ''
         ? process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL
-        : 'https://studio.indobase.in'
+        : typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : ''
+  if (!url) return ''
   return url.includes('http') ? url : `https://${url}`
 }
 

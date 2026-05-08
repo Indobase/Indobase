@@ -94,10 +94,39 @@ describe('timeout', () => {
 })
 
 describe('getURL', () => {
-  it('should return prod url by default', () => {
-    const result = getURL()
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
 
-    expect(result).toEqual('https://studio.indobase.in')
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it('returns NEXT_PUBLIC_SITE_URL when set', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://studio.example.com')
+    expect(getURL()).toEqual('https://studio.example.com')
+  })
+
+  it('falls back to NEXT_PUBLIC_VERCEL_BRANCH_URL when SITE_URL is unset', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'preview-abc.vercel.app')
+    expect(getURL()).toEqual('https://preview-abc.vercel.app')
+  })
+
+  it('falls back to window.location.origin in the browser when no env is set', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', '')
+    vi.stubGlobal('window', { location: { origin: 'http://localhost:3000' } })
+    expect(getURL()).toEqual('http://localhost:3000')
+  })
+
+  it('returns empty string when nothing is available (server-side, no env)', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', '')
+    vi.stubGlobal('window', undefined)
+    expect(getURL()).toEqual('')
   })
 })
 

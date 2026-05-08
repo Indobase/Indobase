@@ -30,11 +30,18 @@ export const convertToBytes = (size: number, unit: StorageSizeUnits = StorageSiz
 }
 
 function getStorageURL(projectRef: string, protocol: string, endpoint?: string) {
-  const projUrl = endpoint
-    ? `${protocol}://${endpoint}`
-    : `https://${projectRef}.storage.supabase.co`
-  const url = new URL(projUrl)
-  return url
+  if (endpoint) {
+    return new URL(`${protocol}://${endpoint}`)
+  }
+
+  // Self-hosted (incl. Indobase SaaS): no per-project subdomain, so anchor on
+  // the platform's public Supabase URL. Falls back to a synthetic indobase URN
+  // until the project-settings query lands and supplies a real endpoint.
+  const publicBase = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_API_URL
+  if (publicBase) {
+    return new URL(publicBase)
+  }
+  return new URL(`https://${projectRef}.storage.supabase.co`)
 }
 
 export function getConnectionURL(projectRef: string, protocol: string, endpoint?: string) {

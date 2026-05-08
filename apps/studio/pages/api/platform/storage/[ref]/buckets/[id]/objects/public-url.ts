@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import apiWrapper from 'lib/api/apiWrapper'
+import { getStorageAdminClient } from 'lib/api/storage-admin'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -22,15 +20,18 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
   const { id } = req.query
   const { path } = req.body
 
-  const { data } = supabase.storage.from(id as string).getPublicUrl(path)
+  const { data } = getStorageAdminClient().storage.from(id as string).getPublicUrl(path)
 
   // change the domain name to the SUPABASE_PUBLIC_URL since SUPABASE_URL is not accessible from the client
-  const publicUrl = new URL(data.publicUrl)
-  const parsed = new URL(process.env.SUPABASE_PUBLIC_URL!)
-  publicUrl.protocol = parsed.protocol
-  publicUrl.host = parsed.host
-  publicUrl.port = parsed.port
-  data.publicUrl = publicUrl.href
+  const publicEnv = process.env.SUPABASE_PUBLIC_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (publicEnv) {
+    const publicUrl = new URL(data.publicUrl)
+    const parsed = new URL(publicEnv)
+    publicUrl.protocol = parsed.protocol
+    publicUrl.host = parsed.host
+    publicUrl.port = parsed.port
+    data.publicUrl = publicUrl.href
+  }
 
   return res.status(200).json(data)
 }

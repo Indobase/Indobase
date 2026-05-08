@@ -179,6 +179,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
 
   ## Secure REST routes
   - name: rest-v1
@@ -220,6 +221,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
 
   ## Secure GraphQL routes
   - name: graphql-v1
@@ -265,6 +267,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
 
   ## Secure Realtime routes
   - name: realtime-v1-ws
@@ -306,6 +309,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
   - name: realtime-v1-rest
     _comment: 'Indobase Realtime: /realtime/v1/* -> ws://realtime:4000/socket/*'
     url: http://realtime-dev.indobase-realtime:4000/api
@@ -345,6 +349,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
   ## Storage routes: the storage server manages its own auth
   - name: storage-v1
     _comment: 'Indobase Storage: /storage/v1/* -> http://storage:5000/*'
@@ -384,6 +389,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
 
   ## Edge Functions routes
   - name: functions-v1
@@ -424,6 +430,7 @@ services:
           hide_groups_header: true
           allow:
             - anon
+            - admin
 
   ## Analytics routes
   ## Not used - Studio and Vector talk directly to analytics via Docker networking.
@@ -450,15 +457,15 @@ services:
   #       config:
   #         hide_credentials: true
 
-  ## Secure Database routes
+  ## Secure Database routes (pg-meta)
   - name: meta
-    _comment: 'Indobase Meta (pg-meta): /pg/* -> http://pg-meta:8080/*'
+    _comment: 'Indobase Meta (pg-meta): /pg/v1/* -> http://pg-meta:8080/*'
     url: http://indobase-meta:8080/
     routes:
       - name: meta-all
         strip_path: true
         paths:
-          - /pg/
+          - /pg/v1/
     plugins:
       - name: key-auth
         config:

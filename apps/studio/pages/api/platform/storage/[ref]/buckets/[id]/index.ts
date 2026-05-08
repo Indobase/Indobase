@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import apiWrapper from 'lib/api/apiWrapper'
+import { getStorageAdminClient } from 'lib/api/storage-admin'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -25,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
   const { id } = req.query
 
-  const { data, error } = await supabase.storage.getBucket(id as string)
+  const { data, error } = await getStorageAdminClient().storage.getBucket(id as string)
   if (error) {
     return res.status(400).json({ error: { message: error.message } })
   }
@@ -41,7 +39,7 @@ const handlePatch = async (req: NextApiRequest, res: NextApiResponse) => {
     file_size_limit: fileSizeLimit,
   } = req.body
 
-  const { data, error } = await supabase.storage.updateBucket(id as string, {
+  const { data, error } = await getStorageAdminClient().storage.updateBucket(id as string, {
     public: isPublicBucket,
     allowedMimeTypes,
     fileSizeLimit,
@@ -56,7 +54,7 @@ const handlePatch = async (req: NextApiRequest, res: NextApiResponse) => {
 const handleDelete = async (req: NextApiRequest, res: NextApiResponse) => {
   const { id } = req.query
 
-  const { data, error } = await supabase.storage.deleteBucket(id as string)
+  const { data, error } = await getStorageAdminClient().storage.deleteBucket(id as string)
   if (error) {
     return res.status(400).json({ error: { message: error.message } })
   }

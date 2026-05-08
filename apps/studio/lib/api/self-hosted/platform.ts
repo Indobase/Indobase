@@ -1656,7 +1656,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     // The frontend forwards this `connectionString` into that header.
     // Per-tenant DB: plaintext URI in saas.projects.connection_string; else POSTGRES_* fallback.
     connectionString: encryptedConnectionForPgMeta(effectiveDbUrl ?? ''),
-    db_host: '127.0.0.1',
+    db_host: process.env.POSTGRES_HOST || '127.0.0.1',
     id: p.id,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString(),
     is_branch_enabled: p.is_branch,
