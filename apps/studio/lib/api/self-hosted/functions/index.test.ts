@@ -45,13 +45,35 @@ describe('api/self-hosted/functions/index', () => {
       )
     })
 
-    it('should create FileSystemFunctionsArtifactStore with correct path', () => {
+    it('should fall back to the root folder when no project ref is given', () => {
       process.env.EDGE_FUNCTIONS_MANAGEMENT_FOLDER = '/var/lib/functions'
 
       getFunctionsArtifactStore()
 
       expect(fileSystemStore.FileSystemFunctionsArtifactStore).toHaveBeenCalledWith(
         '/var/lib/functions'
+      )
+    })
+
+    it('should scope the store to a per-tenant subfolder when project ref is provided', () => {
+      process.env.EDGE_FUNCTIONS_MANAGEMENT_FOLDER = '/var/lib/functions'
+
+      getFunctionsArtifactStore('p-abcdef-1234')
+
+      expect(fileSystemStore.FileSystemFunctionsArtifactStore).toHaveBeenCalledWith(
+        '/var/lib/functions/p-abcdef-1234'
+      )
+    })
+
+    it('should sanitize unsafe characters out of the project ref', () => {
+      process.env.EDGE_FUNCTIONS_MANAGEMENT_FOLDER = '/var/lib/functions'
+
+      getFunctionsArtifactStore('../escape')
+
+      // path separators and dots should be replaced (never preserved verbatim)
+      // so we can never escape the root.
+      expect(fileSystemStore.FileSystemFunctionsArtifactStore).toHaveBeenCalledWith(
+        '/var/lib/functions/___escape'
       )
     })
 

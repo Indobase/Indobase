@@ -8,6 +8,7 @@ import { IS_PLATFORM, IS_SAAS } from 'lib/constants'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
 // NOTE: Model A (single DB + RLS) does not provision per-project databases.
 import { provisionTenantDatabase } from './provision-tenant-db'
+import { recordAuditLog } from './audit'
 
 type Claims = JwtPayload & Record<string, any>
 
@@ -751,6 +752,16 @@ export async function addOrganizationMember({
     actorId: gotrueId,
   })
   if (inserted.error) throw inserted.error
+
+  await recordAuditLog({
+    claims,
+    organizationId: org.data[0].id,
+    action: 'org.member.added',
+    targetType: 'user',
+    targetDescription: member_gotrue_id,
+    metadata: { role, member_gotrue_id },
+  })
+
   return true
 }
 
@@ -786,6 +797,23 @@ export async function removeOrganizationMember({
     actorId: gotrueId,
   })
   if (del.error) throw del.error
+
+  // Best-effort: capture the org id for audit metadata (membership delete returns
+  // no rows, so look it up after the fact via a non-RLS-restricted query).
+  const orgLookup = await executeQuery<{ id: number }>({
+    query: `select id from saas.organizations where slug = $1 limit 1`,
+    parameters: [slug],
+    actorId: gotrueId,
+  })
+  await recordAuditLog({
+    claims,
+    organizationId: orgLookup.data?.[0]?.id ?? null,
+    action: 'org.member.removed',
+    targetType: 'user',
+    targetDescription: member_gotrue_id,
+    metadata: { member_gotrue_id, slug },
+  })
+
   return true
 }
 
@@ -1115,6 +1143,15 @@ export async function createOrganization({
   })
   if (memberInsert.error) throw memberInsert.error
 
+  await recordAuditLog({
+    claims,
+    organizationId: o.id,
+    action: 'org.create',
+    targetType: 'organization',
+    targetDescription: `Organization "${o.name}" (${o.slug})`,
+    metadata: { plan: planId },
+  })
+
   return {
     billing_email: o.billing_email,
     billing_partner: (o.billing_partner as any) ?? null,
@@ -1179,6 +1216,20 @@ export async function updateOrganization({
   if (!updated.data?.length) return null
 
   const o = updated.data[0]
+
+  await recordAuditLog({
+    claims,
+    organizationId: o.id,
+    action: 'org.update',
+    targetType: 'organization',
+    targetDescription: `Organization "${o.name}" (${o.slug})`,
+    metadata: {
+      ...(updates.name !== undefined && { name: updates.name }),
+      ...(updates.billing_email !== undefined && { billing_email: updates.billing_email }),
+      ...(updates.opt_in_tags !== undefined && { opt_in_tags: updates.opt_in_tags }),
+    },
+  })
+
   return {
     id: o.id,
     slug: o.slug,
@@ -1192,6 +1243,27 @@ export async function updateOrganization({
 export async function deleteOrganization({ claims, slug }: { claims: Claims; slug: string }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
+
+  // Capture the org id BEFORE deletion so we can record an audit log entry.
+  const orgRow = await executeQuery<{ id: number; name: string }>({
+    query: `
+      select o.id, o.name
+      from saas.organizations o
+      where o.slug = $1
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = o.id
+            and m.gotrue_id = $2
+            and m.role = 'owner'
+        )
+      limit 1
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (orgRow.error) throw orgRow.error
+  const targetOrg = orgRow.data?.[0]
 
   // Delete only projects that belong to an organization the current user owns.
   // This avoids accidental cross-tenant deletion when a slug is provided for an org
@@ -1233,7 +1305,20 @@ export async function deleteOrganization({ claims, slug }: { claims: Claims; slu
   })
 
   if (deleted.error) throw deleted.error
-  return Boolean(deleted.data?.length)
+  const wasDeleted = Boolean(deleted.data?.length)
+
+  if (wasDeleted && targetOrg) {
+    await recordAuditLog({
+      claims,
+      organizationId: null, // org row no longer exists
+      action: 'org.delete',
+      targetType: 'organization',
+      targetDescription: `Organization "${targetOrg.name}" (${slug})`,
+      metadata: { slug, organization_id: targetOrg.id },
+    })
+  }
+
+  return wasDeleted
 }
 
 export async function listProjects({
@@ -1487,6 +1572,16 @@ export async function createProject({
     actorId: gotrueId,
   })
   if (saved.error) throw saved.error
+
+  await recordAuditLog({
+    claims,
+    organizationId: p.organization_id,
+    projectRef: p.ref,
+    action: 'project.create',
+    targetType: 'project',
+    targetDescription: `Project "${p.name}" (${p.ref})`,
+    metadata: { project_id: p.id, organization_slug: p.organization_slug },
+  })
 
   return {
     anon_key: anonKey,
@@ -2014,6 +2109,7 @@ export async function deleteProject({ claims, ref }: { claims: Claims; ref: stri
     id: number
     name: string
     ref: string
+    organization_id: number
   }>({
     query: `
       delete from saas.projects p
@@ -2025,14 +2121,28 @@ export async function deleteProject({ claims, ref }: { claims: Claims; ref: stri
           and m.role in ('owner','admin')
       )
         and p.ref = $2
-      returning p.id, p.name, p.ref
+      returning p.id, p.name, p.ref, p.organization_id
     `,
     parameters: [gotrueId, resolvedRef],
     actorId: gotrueId,
   })
 
   if (deleted.error) throw deleted.error
-  return deleted.data?.[0] ?? null
+  const row = deleted.data?.[0]
+
+  if (row) {
+    await recordAuditLog({
+      claims,
+      organizationId: row.organization_id,
+      projectRef: row.ref,
+      action: 'project.delete',
+      targetType: 'project',
+      targetDescription: `Project "${row.name}" (${row.ref})`,
+      metadata: { project_id: row.id },
+    })
+  }
+
+  return row ?? null
 }
 
 export async function listOrganizationProjects({

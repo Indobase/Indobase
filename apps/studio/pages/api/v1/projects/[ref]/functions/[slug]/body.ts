@@ -30,7 +30,13 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     return
   }
 
-  const store = getFunctionsArtifactStore()
+  const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
+  if (!ref) {
+    res.status(400).json({ error: { message: `Missing project 'ref' parameter` } })
+    return
+  }
+
+  const store = getFunctionsArtifactStore(ref)
   const fileEntries = await store.getFileEntriesBySlug(slug)
 
   const boundary = `----FormBoundary${uuidv4().replace(/-/g, '')}`

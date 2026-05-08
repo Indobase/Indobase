@@ -131,7 +131,16 @@ export const useRealtimeMessages = (
       return
     }
     dispatch({ type: 'clear' })
-    const newChannel = client?.channel(channelName, {
+    // Namespace the channel topic with the project_ref so two projects on the
+    // same shared Realtime tenant can never collide. Customer apps that connect
+    // via supabase-js do this automatically because their `apikey` JWT carries
+    // a `project_ref` claim, but the Inspector lets users pick arbitrary topic
+    // names — without the prefix, a user in project P1 subscribing to "lobby"
+    // would receive broadcasts from project P2's "lobby".
+    const namespacedChannelName = channelName?.startsWith(`${projectRef}:`)
+      ? channelName
+      : `${projectRef}:${channelName}`
+    const newChannel = client?.channel(namespacedChannelName, {
       config: { broadcast: { self: true }, private: isChannelPrivate },
     })
     // Hack to confirm Postgres is subscribed
@@ -217,6 +226,7 @@ export const useRealtimeMessages = (
   }, [
     client,
     channelName,
+    projectRef,
     enableBroadcast,
     enableDbChanges,
     enablePresence,

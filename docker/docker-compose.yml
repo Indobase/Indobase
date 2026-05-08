@@ -558,11 +558,12 @@ services:
       - ./volumes/db/tenant-rls.sql:/migrations/tenant-rls.sql:ro,z
       - ./volumes/db/storage-tenant-rls.sql:/migrations/storage-tenant-rls.sql:ro,z
       - ./volumes/db/saas-usage-metering.sql:/migrations/saas-usage-metering.sql:ro,z
+      - ./volumes/db/saas-features.sql:/migrations/saas-features.sql:ro,z
     command:
       [
         "/bin/sh",
         "-lc",
-        "psql -v ON_ERROR_STOP=1 -f /migrations/tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/storage-tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql"
+        "psql -v ON_ERROR_STOP=1 -f /migrations/tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/storage-tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-features.sql"
       ]
 
   vector:

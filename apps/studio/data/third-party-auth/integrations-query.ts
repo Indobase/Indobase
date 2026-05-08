@@ -3,7 +3,6 @@ import { components } from 'api-types'
 
 import { keys } from './keys'
 import { get, handleError } from '@/data/fetchers'
-import { IS_PLATFORM } from '@/lib/constants'
 import type { ResponseError } from '@/types'
 
 export type ThirdPartyAuthIntegrationsVariables = {
@@ -20,11 +19,8 @@ async function getThirdPartyAuthIntegrations(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Self-hosted (incl. Indobase SaaS) doesn't expose third-party auth
-  // integrations via a cloud API; return an empty list so the UI shows the
-  // "no integrations configured" empty state.
-  if (!IS_PLATFORM) return [] as ThirdPartyAuthIntegration[]
-
+  // Both cloud and self-hosted Studio expose the same `/v1/...third-party-auth`
+  // endpoint. Self-hosted persists integrations in saas.third_party_auth_integrations.
   const { data, error } = await get('/v1/projects/{ref}/config/auth/third-party-auth', {
     params: { path: { ref: projectRef } },
     signal,

@@ -29,7 +29,10 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!slug)
     return res.status(404).json({ error: { message: `Missing function 'slug' parameter` } })
 
-  const store = getFunctionsArtifactStore()
+  const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
+  if (!ref) return res.status(400).json({ message: 'Project ref is required' })
+
+  const store = getFunctionsArtifactStore(ref)
 
   const functionsArtifact = await store.getFunctionBySlug(slug)
   if (!functionsArtifact) return res.status(404).json({ error: { message: `Function not found` } })

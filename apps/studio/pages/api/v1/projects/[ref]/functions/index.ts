@@ -3,7 +3,10 @@ import { type NextApiRequest, type NextApiResponse } from 'next'
 import type { components } from 'api-types'
 import { uuidv4 } from 'lib/helpers'
 import apiWrapper from 'lib/api/apiWrapper'
-import { getFunctionsArtifactStore } from 'lib/api/self-hosted/functions'
+import {
+  getFunctionsArtifactStore,
+  migrateLegacyFunctionsForProject,
+} from 'lib/api/self-hosted/functions'
 
 export default function handlerWithErrorCatching(req: NextApiRequest, res: NextApiResponse) {
   return apiWrapper(req, res, handler, { withAuth: true })
@@ -23,8 +26,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
 type EdgeFunctionsResponse = components['schemas']['FunctionResponse']
 
-const handleGetAll = async (_req: NextApiRequest, res: NextApiResponse) => {
-  const store = getFunctionsArtifactStore()
+const handleGetAll = async (req: NextApiRequest, res: NextApiResponse) => {
+  const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
+  if (!ref) return res.status(400).json({ message: 'Project ref is required' })
+
+  // Best-effort: migrate any flat (pre-tenant) function folders into this
+  // project's subdirectory so legacy deployments keep working.
+  await migrateLegacyFunctionsForProject(ref).catch(() => {})
+
+  const store = getFunctionsArtifactStore(ref)
 
   const functionsArtifacts = await store.getFunctions()
   if (functionsArtifacts.length === 0) return res.status(200).json([])

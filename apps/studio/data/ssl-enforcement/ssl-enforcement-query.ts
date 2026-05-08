@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
 import { sslEnforcementKeys } from './keys'
 import { UseCustomQueryOptions } from 'types'
 
@@ -12,16 +11,8 @@ export async function getSSLEnforcementConfiguration(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Self-hosted: SSL enforcement is configured at the Postgres / TLS layer
-  // outside of Studio. Report the feature as not allowed so the UI hides it.
-  if (!IS_PLATFORM) {
-    return {
-      appliedSuccessfully: false,
-      currentConfig: { database: false },
-      isNotAllowed: true,
-    } as const
-  }
-
+  // Both cloud and self-hosted Studio expose `/v1/projects/{ref}/ssl-enforcement`.
+  // Self-hosted backs it with the saas.projects.ssl_enforced flag.
   const { data, error } = await get(`/v1/projects/{ref}/ssl-enforcement`, {
     params: { path: { ref: projectRef } },
     signal,
