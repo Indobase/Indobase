@@ -1,4 +1,4 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import { type User } from 'common/auth'
 import { gotrueClient } from 'common/gotrue'
 
@@ -35,7 +35,7 @@ export const getUserClaims = async (
 
     return { claims: data?.claims ?? null, error: null }
   } catch (err) {
-    // Fallback for self-hosted setups where NEXT_PUBLIC_GOTRUE_URL might not be set
+    // Fallback for SaaS setups where NEXT_PUBLIC_GOTRUE_URL might not be set
     // (we still have SUPABASE_URL + SUPABASE_ANON_KEY in the backend stack).
     try {
       const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_ANON_KEY

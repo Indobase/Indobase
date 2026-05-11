@@ -5,8 +5,9 @@ import { useProjectDetailQuery } from 'data/projects/project-detail-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Box, Check, ChevronsUpDown, Plus } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { Badge, Button, cn, CommandGroup_Shadcn_, CommandItem_Shadcn_ } from 'ui'
@@ -61,7 +62,7 @@ export const ProjectDropdown = () => {
     return <ShimmeringLoader className="w-[90px]" />
   }
 
-  return IS_PLATFORM ? (
+  return IS_SAAS ? (
     <>
       <Link
         href={`/project/${project?.ref}`}

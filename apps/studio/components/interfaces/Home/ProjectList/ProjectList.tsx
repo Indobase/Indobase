@@ -9,7 +9,7 @@ import { useOrgProjectsInfiniteQuery } from 'data/projects/org-projects-infinite
 import { useResourceWarningsQuery } from 'data/usage/resource-warnings-query'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo } from 'react'
 import type { Organization } from 'types'
@@ -97,7 +97,7 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
   const { data: integrations } = useOrgIntegrationsQuery({ orgSlug: organization?.slug })
   const { data: connections } = useGitHubConnectionsQuery({ organizationId: organization?.id })
 
-  const isLoadingPermissions = IS_PLATFORM ? _isLoadingPermissions : false
+  const isLoadingPermissions = IS_SAAS ? _isLoadingPermissions : false
 
   const isEmpty =
     debouncedSearch.length === 0 &&

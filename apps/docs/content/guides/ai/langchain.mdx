@@ -80,7 +80,7 @@ You can now search your documents using any Node.js application. This is intende
 ```js
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase'
 import { OpenAIEmbeddings } from '@langchain/openai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!supabaseKey) throw new Error(`Expected SUPABASE_SERVICE_ROLE_KEY`)
@@ -115,7 +115,7 @@ Given the above `match_documents` Postgres function, you can also pass a filter 
 ```js
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase'
 import { OpenAIEmbeddings } from '@langchain/openai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 // First, follow set-up instructions above
 
@@ -154,7 +154,7 @@ You can also use query builder-style filtering ([similar to how the Supabase Jav
 ```js
 import { SupabaseFilterRPCCall, SupabaseVectorStore } from '@langchain/community/vectorstores/supabase'
 import { OpenAIEmbeddings } from '@langchain/openai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 // First, follow set-up instructions above
 

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const SUPPORT_API_URL = process.env.NEXT_PUBLIC_SUPPORT_API_URL || ''
 const SUPPORT_API_KEY = process.env.NEXT_PUBLIC_SUPPORT_ANON_KEY || ''

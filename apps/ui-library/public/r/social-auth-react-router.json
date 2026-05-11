@@ -8,7 +8,7 @@
     "@supabase/ssr@latest",
     "@react-router/dev@latest",
     "@react-router/fs-routes@latest",
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "button",

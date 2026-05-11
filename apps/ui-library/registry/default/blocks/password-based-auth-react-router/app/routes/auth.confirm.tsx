@@ -1,4 +1,4 @@
-import { type EmailOtpType } from '@supabase/supabase-js'
+import { type EmailOtpType } from 'indobase-js'
 import { redirect, type LoaderFunctionArgs } from 'react-router'
 
 import { createClient } from '@/registry/default/clients/react-router/lib/supabase/server'

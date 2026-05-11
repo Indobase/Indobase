@@ -1,4 +1,4 @@
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import AlertError from 'components/ui/AlertError'
 import { useDeleteLogDrainMutation } from 'data/log-drains/delete-log-drain-mutation'
 import { LogDrainData, useLogDrainsQuery } from 'data/log-drains/log-drains-query'
@@ -107,7 +107,7 @@ export function LogDrains({
               title={src.name}
               description={src.description}
               icon={src.icon}
-              rightLabel={IS_PLATFORM ? 'Additional $60' : undefined}
+              rightLabel={IS_SAAS ? 'Additional $60' : undefined}
               onClick={() => {
                 onNewDrainClick(src.value)
               }}

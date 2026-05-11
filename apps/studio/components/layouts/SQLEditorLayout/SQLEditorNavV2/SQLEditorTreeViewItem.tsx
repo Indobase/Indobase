@@ -16,7 +16,7 @@ import { useRouter } from 'next/router'
 import { ComponentProps, useEffect } from 'react'
 
 import { keepPreviousData } from '@tanstack/react-query'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { useParams } from 'common/hooks/useParams'
 import { createSqlSnippetSkeletonV2 } from 'components/interfaces/SQLEditor/SQLEditor.utils'
 import { getContentById } from 'data/content/content-id-query'
@@ -357,7 +357,7 @@ export const SQLEditorTreeViewItem = ({
               {onSelectShare !== undefined &&
                 !isSharedSnippet &&
                 canCreateSQLSnippet &&
-                IS_PLATFORM && (
+                IS_SAAS && (
                   <ContextMenuItem_Shadcn_
                     className="gap-x-2"
                     onSelect={() => onSelectShare()}
@@ -387,7 +387,7 @@ export const SQLEditorTreeViewItem = ({
                   Duplicate query
                 </ContextMenuItem_Shadcn_>
               )}
-              {IS_PLATFORM && (
+              {IS_SAAS && (
                 <ContextMenuItem_Shadcn_
                   className="gap-x-2"
                   onSelect={() => onToggleFavorite()}
@@ -402,7 +402,7 @@ export const SQLEditorTreeViewItem = ({
                   {isFavorite ? 'Remove from' : 'Add to'} favorites
                 </ContextMenuItem_Shadcn_>
               )}
-              {onSelectDownload !== undefined && IS_PLATFORM && (
+              {onSelectDownload !== undefined && IS_SAAS && (
                 <ContextMenuItem_Shadcn_
                   className="gap-x-2"
                   onSelect={() => onSelectDownload()}

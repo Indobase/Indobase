@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { FileData } from '@/components/ui/FileExplorerAndEditor/FileExplorerAndEditor.types'
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { edgeFunctionsKeys } from './keys'
 

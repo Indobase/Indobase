@@ -1,7 +1,7 @@
 import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { ExternalLink, Eye, EyeOff, FlaskConical } from 'lucide-react'
 import Link from 'next/link'
 import { ReactNode } from 'react'
@@ -59,7 +59,7 @@ export const FeaturePreviewModal = () => {
     featurePreviews.find((preview) => preview.key === selectedFeatureKey) ?? featurePreviews[0]
   const isSelectedFeatureEnabled = flags[selectedFeatureKey]
 
-  const allFeaturePreviews = IS_PLATFORM
+  const allFeaturePreviews = IS_SAAS
     ? featurePreviews
     : featurePreviews.filter((x) => !x.isPlatformOnly)
 

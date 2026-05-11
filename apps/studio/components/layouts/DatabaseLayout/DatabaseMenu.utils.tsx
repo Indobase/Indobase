@@ -2,7 +2,7 @@ import { ArrowUpRight } from 'lucide-react'
 
 import type { ProductMenuGroup } from 'components/ui/ProductMenu/ProductMenu.types'
 import type { Project } from 'data/projects/project-detail-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 
 export const generateDatabaseMenu = (
   project?: Project,
@@ -106,7 +106,7 @@ export const generateDatabaseMenu = (
     {
       title: 'Platform',
       items: [
-        ...(IS_PLATFORM && showPgReplicate
+        ...(IS_SAAS && showPgReplicate
           ? [
               {
                 name: 'Replication',
@@ -117,7 +117,7 @@ export const generateDatabaseMenu = (
               },
             ]
           : []),
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 name: 'Backups',

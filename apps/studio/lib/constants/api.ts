@@ -9,9 +9,10 @@ export const PROJECT_REST_URL = `${PUBLIC_URL.origin}/rest/v1/`
 export const PROJECT_ENDPOINT = PUBLIC_URL.host
 export const PROJECT_ENDPOINT_PROTOCOL = PUBLIC_URL.protocol.replace(':', '')
 
+/** Placeholder project ref for local mocks only (not a routable legacy `/project/default` slug). */
 export const DEFAULT_PROJECT = {
   id: 1,
-  ref: 'default',
+  ref: 'abcdefghijklmnopqrst',
   name: process.env.DEFAULT_PROJECT_NAME || 'Default Project',
   organization_id: 1,
   cloud_provider: 'localhost',

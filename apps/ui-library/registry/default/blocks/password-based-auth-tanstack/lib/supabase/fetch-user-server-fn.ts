@@ -1,4 +1,4 @@
-import type { Factor, User } from '@supabase/supabase-js'
+import type { Factor, User } from 'indobase-js'
 import { createServerFn } from '@tanstack/react-start'
 
 import { createClient } from '@/registry/default/clients/tanstack/lib/supabase/server'

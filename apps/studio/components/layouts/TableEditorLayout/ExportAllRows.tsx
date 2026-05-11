@@ -3,7 +3,7 @@ import saveAs from 'file-saver'
 import Papa from 'papaparse'
 import { useCallback, useState, type ReactNode } from 'react'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { parseSupaTable } from 'components/grid/SupabaseGrid.utils'
 import type { Filter, Sort, SupaTable } from 'components/grid/types'
 import { formatTableRowsToSQL } from 'components/interfaces/TableGridEditor/TableEntity.utils'
@@ -86,7 +86,7 @@ const fetchAllRows = async ({
   convertToBlob,
   save,
 }: FetchAllRowsParams): Promise<FetchAllRowsReturn> => {
-  if (IS_PLATFORM && !connectionString) {
+  if (IS_SAAS && !connectionString) {
     return { status: 'error', error: new NoConnectionStringError() }
   }
 

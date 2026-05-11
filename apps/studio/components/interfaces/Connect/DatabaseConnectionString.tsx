@@ -9,7 +9,7 @@ import { useReadReplicasQuery } from 'data/read-replicas/replicas-query'
 import { useProjectAddonsQuery } from 'data/subscriptions/project-addons-query'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { DOCS_URL, IS_PLATFORM } from 'lib/constants'
+import { DOCS_URL, IS_SAAS } from 'lib/constants'
 import { pluckObjectFields } from 'lib/helpers'
 import { BookOpen, ChevronDown, ExternalLink } from 'lucide-react'
 import { parseAsString, useQueryState } from 'nuqs'
@@ -160,17 +160,17 @@ export const DatabaseConnectionString = () => {
   } = useReadReplicasQuery({ projectRef })
 
   const poolerError = sharedPoolerPreferred ? pgbouncerError : supavisorConfigError
-  const isLoadingPoolerConfig = !IS_PLATFORM
+  const isLoadingPoolerConfig = !IS_SAAS
     ? false
     : sharedPoolerPreferred
       ? isLoadingPgbouncerConfig
       : isLoadingSupavisorConfig
-  const isErrorPoolerConfig = !IS_PLATFORM
+  const isErrorPoolerConfig = !IS_SAAS
     ? undefined
     : sharedPoolerPreferred
       ? isErrorPgbouncerConfig
       : isErrorSupavisorConfig
-  const isSuccessPoolerConfig = !IS_PLATFORM
+  const isSuccessPoolerConfig = !IS_SAAS
     ? true
     : sharedPoolerPreferred
       ? isSuccessPgBouncerConfig
@@ -436,7 +436,7 @@ export const DatabaseConnectionString = () => {
                 />
               )}
 
-              {selectedMethod === 'transaction' && IS_PLATFORM && (
+              {selectedMethod === 'transaction' && IS_SAAS && (
                 <ConnectionPanel
                   type="transaction"
                   title={connectionStringMethodOptions.transaction.label}
@@ -526,7 +526,7 @@ export const DatabaseConnectionString = () => {
                 </ConnectionPanel>
               )}
 
-              {selectedMethod === 'session' && IS_PLATFORM && (
+              {selectedMethod === 'session' && IS_SAAS && (
                 <ConnectionPanel
                   type="session"
                   title={connectionStringMethodOptions.session.label}

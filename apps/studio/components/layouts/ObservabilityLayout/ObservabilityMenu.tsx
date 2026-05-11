@@ -7,7 +7,7 @@ import { useContentDeleteMutation } from 'data/content/content-delete-mutation'
 import { Content, ContentBase, useContentQuery } from 'data/content/content-query'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useProfile } from 'lib/profile'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
@@ -147,7 +147,7 @@ const ObservabilityMenu = () => {
           key: 'query-performance',
           url: `/project/${ref}/observability/query-performance${preservedQueryParams}`,
         },
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 name: 'API Gateway',
@@ -162,7 +162,7 @@ const ObservabilityMenu = () => {
       title: 'PRODUCT',
       key: 'product-section',
       items: [
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 name: 'Database',
@@ -264,7 +264,7 @@ const ObservabilityMenu = () => {
             </Fragment>
           ))}
 
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <Fragment>
               <div className="h-px w-full bg-border-overlay" />
               <div className="mx-2">

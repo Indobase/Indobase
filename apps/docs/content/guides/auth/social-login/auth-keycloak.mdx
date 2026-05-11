@@ -75,7 +75,7 @@ Since Keycloak version 22, the `openid` scope must be passed. Add this to the [`
 When your user signs in, call [`signInWithOAuth()`](/docs/reference/javascript/auth-signinwithoauth) with `keycloak` as the `provider`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---
@@ -160,7 +160,7 @@ Future<void> signOut() async {
 When your user signs out, call [signOut()](/docs/reference/kotlin/auth-signout) to remove them from the browser session and any objects from localStorage:
 
 ```kotlin
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'indobase-js';
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>');
 
 // ---cut---

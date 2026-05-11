@@ -6,7 +6,7 @@
   "description": "Social Auth flow for Nuxt and Supabase",
   "dependencies": [
     "@supabase/ssr@latest",
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "button",

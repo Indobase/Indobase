@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { InternalServerError } from 'lib/api/apiHelpers'
 
 export type IncidentCache = {
@@ -61,7 +61,7 @@ const StatusPageIncidentsSchema = z.array(
  * @throws InternalServerError if StatusPage is not configured or returns an error
  */
 export async function getActiveIncidents(): Promise<IncidentInfo[]> {
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     return []
   }
 

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { components } from 'api-types'
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { storageCredentialsKeys } from './s3-access-key-keys'
 
@@ -39,6 +39,6 @@ export const useStorageCredentialsQuery = <TData = StorageCredentialsData>(
   useQuery<StorageCredentialsData, ResponseError, TData>({
     queryKey: storageCredentialsKeys.credentials(projectRef),
     queryFn: ({ signal }) => fetchStorageCredentials({ projectRef }, signal),
-    enabled: enabled && IS_PLATFORM && typeof projectRef !== 'undefined',
+    enabled: enabled && IS_SAAS && typeof projectRef !== 'undefined',
     ...options,
   })

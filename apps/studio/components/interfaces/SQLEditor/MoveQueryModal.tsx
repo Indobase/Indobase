@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { getContentById } from 'data/content/content-id-query'
 import { useContentUpsertMutation } from 'data/content/content-upsert-mutation'
 import { useSQLSnippetFolderCreateMutation } from 'data/content/sql-folder-create-mutation'
@@ -162,14 +162,14 @@ export const MoveQueryModal = ({ visible, snippets = [], onClose }: MoveQueryMod
                 content: snippetContent as any,
               },
             })
-            if (IS_PLATFORM) {
+            if (IS_SAAS) {
               snapV2.updateSnippet({
                 id: snippet.id,
                 snippet: { ...snippet, folder_id: selectedId === 'root' ? null : folderId },
                 skipSave: true,
               })
             } else if (movedSnippet) {
-              // On selfhosted, we need to update the state with the moved snippet because the snippet depends on the
+              // On Indobase SaaS / local Studio, we need to update the state with the moved snippet because the snippet depends on the
               // folder_id the moved snippet has a different id than the original snippet.
 
               // remove the old snippet from the state without saving to API

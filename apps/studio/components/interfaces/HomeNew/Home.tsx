@@ -3,7 +3,7 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-ki
 import dayjs from 'dayjs'
 import { useEffect, useRef } from 'react'
 
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import { ProjectUsageSection as ProjectUsageSectionV1 } from 'components/interfaces/Home/ProjectUsageSection'
 import { SortableSection } from 'components/interfaces/HomeNew/SortableSection'
 import { TopSection } from 'components/interfaces/HomeNew/TopSection'
@@ -105,7 +105,7 @@ export const HomeV2 = () => {
                 strategy={verticalListSortingStrategy}
               >
                 {sectionOrder.map((id) => {
-                  if (IS_PLATFORM && id === 'usage') {
+                  if (IS_SAAS && id === 'usage') {
                     return (
                       <div key={id} className={cn(isComingUp && 'opacity-60 pointer-events-none')}>
                         <SortableSection id={id}>

@@ -47,7 +47,7 @@ With OTP, a user can sign in without setting a password on their account. They n
 <TabPanel id="js" label="JavaScript">
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('url', 'anonKey')
 
 // ---cut---
@@ -131,7 +131,7 @@ To verify the one-time password (OTP) sent to the user's phone number, call [`ve
 You should present a form to the user so they can input the 6 digit pin, then send it along with the phone number to `verifyOtp`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('url', 'anonKey')
 
 // ---cut---
@@ -234,7 +234,7 @@ To update a user's phone number, the user must be logged in. Call [`updateUser()
 <TabPanel id="js" label="JavaScript">
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('url', 'anonKey')
 
 // ---cut---

@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { acceptOrganizationInvite } from 'lib/api/self-hosted/platform'
+import { acceptOrganizationInvite } from 'lib/api/saas/platform'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })

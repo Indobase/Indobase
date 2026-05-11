@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS, useParams } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS, useParams } from 'common'
 import DownloadSnippetModal from 'components/interfaces/SQLEditor/DownloadSnippetModal'
 import { MoveQueryModal } from 'components/interfaces/SQLEditor/MoveQueryModal'
 import RenameQueryModal from 'components/interfaces/SQLEditor/RenameQueryModal'
@@ -449,7 +449,7 @@ export const SQLEditorNav = ({ sort = 'inserted_at' }: SQLEditorNavProps) => {
   return (
     <>
       <InnerSideMenuSeparator />
-      {IS_PLATFORM && (
+      {IS_SAAS && (
         <>
           <InnerSideMenuCollapsible
             className="px-0"

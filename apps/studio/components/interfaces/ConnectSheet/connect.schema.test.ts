@@ -130,7 +130,7 @@ describe('connect.schema:fields', () => {
 
 describe('connect.schema:INSTALL_COMMANDS', () => {
   test('should have install command for supabase-js', () => {
-    expect(INSTALL_COMMANDS.supabasejs).toBe('npm install @supabase/supabase-js')
+    expect(INSTALL_COMMANDS.supabasejs).toBe('npm install indobase-js')
   })
 
   test('should have install command for supabase-py', () => {

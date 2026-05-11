@@ -1,8 +1,8 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { listProfileAuditLogs } from 'lib/api/self-hosted/audit'
+import { listProfileAuditLogs } from 'lib/api/saas/audit'
 import type { AuditLog } from 'data/organizations/organization-audit-logs-query'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>

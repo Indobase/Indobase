@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react'
 import Link from 'next/link'
 
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { BASE_PATH, IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
+import { BASE_PATH } from 'lib/constants'
 import {
   Button,
   Card,
@@ -22,7 +22,7 @@ export const Header = () => {
   return (
     <div className="border-default border-b p-3">
       <div className="flex items-center space-x-2">
-        <Link href={IS_MULTI_ORG_DASHBOARD ? '/organizations' : '/projects'}>
+        <Link href="/organizations">
           <img
             src={`${BASE_PATH}/img/indobase-logo.svg`}
             alt="Indobase"

@@ -12,7 +12,7 @@ For a PKCE flow, for example in Server-Side Auth, you need an extra step to hand
 In the browser, `signInWithOAuth` automatically redirects to the OAuth provider's authentication endpoint, which then redirects to your endpoint.
 
 ```js
-import { createClient, type Provider } from '@supabase/supabase-js';
+import { createClient, type Provider } from 'indobase-js';
 const supabase = createClient('url', 'anonKey')
 const provider = 'provider' as Provider
 
@@ -32,7 +32,7 @@ await supabase.auth.signInWithOAuth({
 In the server, you need to handle the redirect to the OAuth provider's authentication endpoint. The `signInWithOAuth` method returns the endpoint URL, which you can redirect to.
 
 ```js
-import { createClient, type Provider } from '@supabase/supabase-js'
+import { createClient, type Provider } from 'indobase-js'
 const supabase = createClient('url', 'anonKey')
 const provider = 'provider' as Provider
 const redirect = (url: string) => {}

@@ -13,7 +13,7 @@ import { useAWSAccountDeleteMutation } from 'data/aws-accounts/aws-account-delet
 import { useAWSAccountsQuery } from 'data/aws-accounts/aws-accounts-query'
 import { useCheckEntitlements } from 'hooks/misc/useCheckEntitlements'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Button, Card, CardContent, cn } from 'ui'
 import { ConfirmationModal } from 'ui-patterns/Dialogs/ConfirmationModal'
 import { IntegrationImageHandler } from '../IntegrationsSettings'
@@ -37,7 +37,7 @@ export const AWSPrivateLinkSection = () => {
   })
 
   const { hasAccess: hasPrivateLinkAccess } = useCheckEntitlements('security.private_link')
-  const promptPlanUpgrade = IS_PLATFORM && !hasPrivateLinkAccess
+  const promptPlanUpgrade = IS_SAAS && !hasPrivateLinkAccess
 
   const onAddAccount = () => {
     setSelectedAccount(null)

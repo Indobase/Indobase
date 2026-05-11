@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
     description: 'Example using Indobase client to query your database',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient } from 'jsr:indobase-js@2'
 
 Deno.serve(async (req) => {
   try {
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     description: 'Upload files to Indobase Storage',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient } from 'jsr:indobase-js@2'
 import { randomUUID } from 'node:crypto'
 
 const supabase = createClient(

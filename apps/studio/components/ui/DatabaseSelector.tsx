@@ -5,7 +5,7 @@ import { useShowNewReplicaPanel } from 'components/interfaces/Settings/Infrastru
 import { useReadReplicasQuery } from 'data/read-replicas/replicas-query'
 import { formatDatabaseID, formatDatabaseRegion } from 'data/read-replicas/replicas.utils'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { timeout } from 'lib/helpers'
 import { noop } from 'lodash'
 import { Check, ChevronDown, Loader2, Plus } from 'lucide-react'
@@ -213,7 +213,7 @@ export const DatabaseSelector = ({
                 })}
               </ScrollArea>
             </CommandGroup_Shadcn_>
-            {IS_PLATFORM && infrastructureReadReplicas && (
+            {IS_SAAS && infrastructureReadReplicas && (
               <CommandGroup_Shadcn_ className="border-t">
                 <CommandItem_Shadcn_
                   className="cursor-pointer w-full"

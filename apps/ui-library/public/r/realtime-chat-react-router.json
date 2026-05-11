@@ -7,7 +7,7 @@
   "dependencies": [
     "lucide-react",
     "@supabase/ssr@latest",
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "input",

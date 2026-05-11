@@ -40,7 +40,7 @@ export const usePermissionsQuery = <TData = PermissionsData>({
     queryFn: ({ signal }) => getPermissions(signal),
     ...options,
     // Local /platform/profile/permissions handler is implemented for both
-    // cloud and self-hosted modes — gate only on `isLoggedIn`.
+    // cloud and SaaS modes — gate only on `isLoggedIn`.
     enabled: enabled && isLoggedIn,
     staleTime: 5 * 60 * 1000,
   })

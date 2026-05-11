@@ -1,5 +1,4 @@
-import { IS_PLATFORM } from 'common'
-import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
+import { IS_SAAS } from 'common'
 import { subscriptionHasHipaaAddon } from 'components/interfaces/Billing/Subscription/Subscription.utils'
 import { ComplianceConfig } from 'components/interfaces/Settings/General/ComplianceConfig/ProjectComplianceMode'
 import { CustomDomainConfig } from 'components/interfaces/Settings/General/CustomDomainConfig/CustomDomainConfig'
@@ -32,14 +31,6 @@ const ProjectSettings: NextPageWithLayout = () => {
   const { projectsTransfer: projectTransferEnabled, projectSettingsCustomDomains } =
     useIsFeatureEnabled(['projects:transfer', 'project_settings:custom_domains'])
   const router = useRouter()
-
-  useEffect(() => {
-    // Self-hosted legacy redirect: older self-hosted settings routes lived under /project/default.
-    // In SaaS/multi-org mode, this redirect breaks because "default" is not a real project ref.
-    if (!IS_PLATFORM && !IS_MULTI_ORG_DASHBOARD) {
-      router.push(`/project/default/settings/log-drains`)
-    }
-  }, [router])
 
   const { data: subscription } = useOrgSubscriptionQuery({ orgSlug: selectedOrganization?.slug })
   const hasHipaaAddon = subscriptionHasHipaaAddon(subscription)

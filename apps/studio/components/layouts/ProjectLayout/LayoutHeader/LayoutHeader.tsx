@@ -14,7 +14,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -82,7 +81,6 @@ export const LayoutHeader = ({
 
   const isAccountPage = router.pathname.startsWith('/account')
 
-  // We only want to query the org usage and check for possible over-ages for plans without usage billing enabled (free or pro with spend cap)
   const { data: orgUsage } = useOrgUsageQuery(
     { orgSlug: selectedOrganization?.slug },
     { enabled: selectedOrganization?.usage_billing_enabled === false }
@@ -96,7 +94,6 @@ export const LayoutHeader = ({
     }
   }, [orgUsage])
 
-  // show org selection if we are on a project page or on a explicit org route
   const showOrgSelection = slug || (selectedOrganization && projectRef)
 
   return (
@@ -134,12 +131,12 @@ export const LayoutHeader = ({
           <div className="flex items-center text-sm">
             <HomeIcon />
             <div className="flex items-center md:pl-2">
-              {showOrgSelection && IS_MULTI_ORG_DASHBOARD ? (
+              {showOrgSelection && (
                 <>
                   <LayoutHeaderDivider className="hidden md:block" />
                   <OrganizationDropdown />
                 </>
-              ) : null}
+              )}
               <AnimatePresence>
                 {projectRef && (
                   <motion.div
@@ -166,7 +163,7 @@ export const LayoutHeader = ({
                     {selectedProject && (
                       <>
                         <LayoutHeaderDivider />
-                        {IS_MULTI_ORG_DASHBOARD && <BranchDropdown />}
+                        <BranchDropdown />
                       </>
                     )}
                   </motion.div>
@@ -204,7 +201,7 @@ export const LayoutHeader = ({
                     ease: 'easeOut',
                   }}
                 >
-                  {IS_MULTI_ORG_DASHBOARD && gitlessBranching && <MergeRequestButton />}
+                  {gitlessBranching && <MergeRequestButton />}
                   <ConnectButton />
                 </motion.div>
               )}
@@ -213,63 +210,35 @@ export const LayoutHeader = ({
           </div>
           <div className="flex items-center gap-x-2">
             {customHeaderComponents && customHeaderComponents}
-            {IS_MULTI_ORG_DASHBOARD ? (
-              <>
-                <DevToolbarTrigger />
-                <FeedbackDropdown />
+            <>
+              <DevToolbarTrigger />
+              <FeedbackDropdown />
 
-                <div className="flex items-center gap-2">
-                  <CommandMenuTriggerInput
-                    showShortcut={commandMenuEnabled}
-                    placeholder="Search..."
-                    className={cn(
-                      'hidden md:flex md:min-w-32 xl:min-w-32 rounded-full bg-transparent',
-                      '[&_.command-shortcut>div]:border-none',
-                      '[&_.command-shortcut>div]:pr-2',
-                      '[&_.command-shortcut>div]:bg-transparent',
-                      '[&_.command-shortcut>div]:text-foreground-lighter'
-                    )}
-                  />
-                  <HelpDropdown />
-                  <AdvisorButton projectRef={projectRef} />
-                  <AnimatePresence initial={false}>
-                    {!!projectRef && (
-                      <>
-                        <InlineEditorButton />
-                        <AssistantButton />
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <UserDropdown />
-              </>
-            ) : (
-              <>
-                <LocalVersionPopover />
-                <div className="flex items-center gap-2">
-                  <CommandMenuTriggerInput
-                    placeholder="Search..."
-                    className="hidden md:flex md:min-w-32 xl:min-w-32 rounded-full bg-transparent
-                        [&_.command-shortcut>div]:border-none
-                        [&_.command-shortcut>div]:pr-2
-                        [&_.command-shortcut>div]:bg-transparent
-                        [&_.command-shortcut>div]:text-foreground-lighter
-                      "
-                  />
-                  <HelpDropdown />
-                  <AdvisorButton projectRef={projectRef} />
-                  <AnimatePresence initial={false}>
-                    {!!projectRef && (
-                      <>
-                        <InlineEditorButton />
-                        <AssistantButton />
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <UserDropdown />
-              </>
-            )}
+              <div className="flex items-center gap-2">
+                <CommandMenuTriggerInput
+                  showShortcut={commandMenuEnabled}
+                  placeholder="Search..."
+                  className={cn(
+                    'hidden md:flex md:min-w-32 xl:min-w-32 rounded-full bg-transparent',
+                    '[&_.command-shortcut>div]:border-none',
+                    '[&_.command-shortcut>div]:pr-2',
+                    '[&_.command-shortcut>div]:bg-transparent',
+                    '[&_.command-shortcut>div]:text-foreground-lighter'
+                  )}
+                />
+                <HelpDropdown />
+                <AdvisorButton projectRef={projectRef} />
+                <AnimatePresence initial={false}>
+                  {!!projectRef && (
+                    <>
+                      <InlineEditorButton />
+                      <AssistantButton />
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+              <UserDropdown />
+            </>
           </div>
         </div>
       </header>

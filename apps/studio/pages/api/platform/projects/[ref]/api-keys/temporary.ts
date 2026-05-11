@@ -10,7 +10,8 @@ export type ProjectSettings = components['schemas']['ProjectSettingsResponse'] &
   app_config?: ProjectAppConfig
 }
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: true })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
@@ -25,6 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
+  res.setHeader('Cache-Control', 'no-store')
   const response = {
     api_key: process.env.SUPABASE_SERVICE_KEY ?? '',
   }

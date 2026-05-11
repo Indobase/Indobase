@@ -80,7 +80,7 @@ curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
 When your user signs in, call [`signInWithOAuth()`](/docs/reference/javascript/auth-signinwithoauth) with `linkedin_oidc` as the `provider`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---
@@ -137,7 +137,7 @@ suspend fun signInWithKaLinkedIn() {
 When your user signs out, call [signOut()](/docs/reference/javascript/auth-signout) to remove them from the browser session and any objects from localStorage:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---

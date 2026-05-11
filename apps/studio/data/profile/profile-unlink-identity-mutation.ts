@@ -1,4 +1,4 @@
-import type { UserIdentity } from '@supabase/supabase-js'
+import type { UserIdentity } from 'indobase-js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 

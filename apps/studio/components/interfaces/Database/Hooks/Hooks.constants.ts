@@ -1,4 +1,4 @@
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 
 export const HOOK_EVENTS = [
   {
@@ -25,7 +25,7 @@ export const AVAILABLE_WEBHOOK_TYPES = [
     label: 'HTTP Request',
     description: 'Send an HTTP request to any URL.',
   },
-  ...(IS_PLATFORM
+  ...(IS_SAAS
     ? [
         {
           value: 'supabase_function',

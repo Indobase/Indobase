@@ -1,5 +1,5 @@
 import { useParams } from 'common'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { useEffect } from 'react'
 
@@ -11,7 +11,7 @@ const ApiSettings: NextPageWithLayout = () => {
 
   useEffect(() => {
     if (!ref) return
-    if (IS_PLATFORM) {
+    if (IS_SAAS) {
       router.replace(`/project/${ref}/integrations/data_api/overview`)
     } else {
       router.replace(`/project/${ref}/settings/general`)

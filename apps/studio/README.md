@@ -1,6 +1,6 @@
 # Indobase Studio
 
-A dashboard for managing your self-hosted Indobase project, and used on our [hosted platform](https://indobase.in/dashboard). Built with:
+A dashboard for **Indobase SaaS** (organizations, projects, SQL editor, auth, storage APIs), also used on [indobase.in/dashboard](https://indobase.in/dashboard). Built with:
 
 - [Next.js](https://nextjs.org/)
 - [Tailwind](https://tailwindcss.com/)
@@ -53,9 +53,9 @@ pnpm run test # run tests
 pnpm run test -- --watch # run tests in watch mode
 ```
 
-## Running within a self-hosted environment
+## Running within a SaaS environment
 
-Follow the [self-hosting guide](https://indobase.in/docs/guides/hosting/docker) to get started.
+Follow the [Docker deployment guide](https://indobase.in/docs/guides/hosting/docker) to run the full stack locally.
 
 ```
 cd ..

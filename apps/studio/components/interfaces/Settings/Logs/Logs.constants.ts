@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 
 import { DOCS_URL } from 'lib/constants'
 import type { DatetimeHelper, FilterTableSet, LogTemplate } from './Logs.types'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 
 export const LOGS_EXPLORER_DOCS_URL = `${DOCS_URL}/guides/platform/logs#querying-with-the-logs-explorer`
 
@@ -539,7 +539,7 @@ export const FILTER_OPTIONS: FilterTableSet = {
     },
   },
   // function_edge_logs
-  ...(IS_PLATFORM
+  ...(IS_SAAS
     ? {
         function_edge_logs: {
           status_code: {

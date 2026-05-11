@@ -5,7 +5,7 @@ import React, { useEffect, useState, type PropsWithChildren } from 'react'
 import { toast } from 'sonner'
 
 import { BlobReader, BlobWriter, ZipWriter } from '@zip.js/zip.js'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { useIsAPIDocsSidePanelEnabled } from 'components/interfaces/App/FeaturePreview/FeaturePreviewContext'
 import { EdgeFunctionTesterSheet } from 'components/interfaces/Functions/EdgeFunctionDetails/EdgeFunctionTesterSheet'
 import { APIDocsButton } from 'components/ui/APIDocsButton'
@@ -105,7 +105,7 @@ const EdgeFunctionDetailsLayout = ({
 
   const navigationItems = functionSlug
     ? [
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 label: 'Overview',
@@ -271,7 +271,7 @@ const EdgeFunctionDetailsLayout = ({
                     </Button>
                   </PopoverTrigger_Shadcn_>
                   <PopoverContent_Shadcn_ align="end" className="p-0">
-                    {IS_PLATFORM && (
+                    {IS_SAAS && (
                       <>
                         <div className="p-3 flex flex-col gap-y-2">
                           <p className="text-xs text-foreground-light">Download via CLI</p>
@@ -305,7 +305,7 @@ const EdgeFunctionDetailsLayout = ({
                     icon={<Send />}
                     onClick={() => {
                       setIsOpen(true)
-                      if (IS_PLATFORM) {
+                      if (IS_SAAS) {
                         sendEvent({
                           action: 'edge_function_test_side_panel_opened',
                           groups: {

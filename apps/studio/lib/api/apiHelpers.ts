@@ -1,4 +1,3 @@
-import { IS_PLATFORM } from 'lib/constants'
 import { snakeCase } from 'lodash'
 import type { IncomingHttpHeaders } from 'node:http'
 import z from 'zod'
@@ -28,7 +27,9 @@ export function constructHeaders(headers: { [prop: string]: any }) {
       // [Joshen] JFYI both Alaister and I checked on this and realised this might not be used actually
       // Could be safe to remove but leaving it here for now
       // Kong `key-auth` plugin expects `apikey` header name (not `apiKey`).
-      ...(!IS_PLATFORM && { apikey: `${process.env.SUPABASE_SERVICE_KEY}` }),
+      ...(process.env.SUPABASE_SERVICE_KEY
+        ? { apikey: `${process.env.SUPABASE_SERVICE_KEY}` }
+        : {}),
     }
   } else {
     return {

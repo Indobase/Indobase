@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from 'indobase-js'
 
 export const createSupportStorageClient = (): SupabaseClient => {
   const SUPPORT_API_URL = process.env.NEXT_PUBLIC_SUPPORT_API_URL || ''

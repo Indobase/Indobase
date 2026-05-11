@@ -35,7 +35,7 @@ export const toolSetValidationSchema = z.record(
     'rename_chat',
     'list_policies',
 
-    // Fallback tools for self-hosted
+    // Fallback tools for SaaS
     'getSchemaTables',
     'getRlsKnowledge',
     'getFunctions',

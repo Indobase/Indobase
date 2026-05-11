@@ -29,7 +29,7 @@ REACT_APP_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key 
       <ConnectTabContent value="src/indobaseClient.tsx">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const indobaseUrl = process.env.REACT_APP_INDOBASE_URL
 const indobaseKey = process.env.REACT_APP_INDOBASE_KEY

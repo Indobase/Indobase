@@ -19,8 +19,8 @@ async function getThirdPartyAuthIntegrations(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Both cloud and self-hosted Studio expose the same `/v1/...third-party-auth`
-  // endpoint. Self-hosted persists integrations in saas.third_party_auth_integrations.
+  // Both cloud and SaaS Studio expose the same `/v1/...third-party-auth`
+  // endpoint. SaaS persists integrations in saas.third_party_auth_integrations.
   const { data, error } = await get('/v1/projects/{ref}/config/auth/third-party-auth', {
     params: { path: { ref: projectRef } },
     signal,

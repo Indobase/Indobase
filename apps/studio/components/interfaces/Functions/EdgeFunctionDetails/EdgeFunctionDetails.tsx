@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import dayjs from 'dayjs'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
@@ -83,7 +83,7 @@ export const EdgeFunctionDetails = () => {
     '*'
   )
 
-  const canUpdateEdgeFunction = IS_PLATFORM && canUpdateEdgeFunctionPermission
+  const canUpdateEdgeFunction = IS_SAAS && canUpdateEdgeFunctionPermission
 
   const { can: canReadAPIKeys } = useAsyncCheckPermissions(PermissionAction.SECRETS_READ, '*')
   const { data: apiKeys } = useAPIKeysQuery(
@@ -199,7 +199,7 @@ export const EdgeFunctionDetails = () => {
                 />
               </dd>
 
-              {IS_PLATFORM && (
+              {IS_SAAS && (
                 <>
                   <dt className="text-sm text-foreground-light">Region</dt>
                   <dd className="text-sm @lg:text-left">All functions are deployed globally</dd>
@@ -284,7 +284,7 @@ export const EdgeFunctionDetails = () => {
                         )}
                       />
                     </CardContent>
-                    {IS_PLATFORM && (
+                    {IS_SAAS && (
                       <>
                         <CardContent>
                           <FormField_Shadcn_
@@ -412,7 +412,7 @@ export const EdgeFunctionDetails = () => {
             </PageSectionContent>
           </PageSection>
 
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <>
               <PageSection>
                 <PageSectionMeta>

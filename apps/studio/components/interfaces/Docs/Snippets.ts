@@ -15,7 +15,7 @@ const snippets = {
     bash: null,
     js: {
       language: 'bash',
-      code: `npm install --save @supabase/supabase-js`,
+      code: `npm install --save indobase-js`,
     },
   }),
   init: (endpoint: string) => ({
@@ -27,7 +27,7 @@ const snippets = {
     js: {
       language: 'js',
       code: `
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabaseUrl = '${endpoint}'
 const supabaseKey = process.env.SUPABASE_KEY
 const supabase = createClient(supabaseUrl, supabaseKey)`,

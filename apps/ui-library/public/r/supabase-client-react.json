@@ -5,13 +5,13 @@
   "title": "Supabase Client for React",
   "description": "",
   "dependencies": [
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [],
   "files": [
     {
       "path": "registry/default/clients/react/lib/supabase/client.ts",
-      "content": "import { createClient as createSupabaseClient } from '@supabase/supabase-js'\n\nexport function createClient() {\n  return createSupabaseClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
+      "content": "import { createClient as createSupabaseClient } from 'indobase-js'\n\nexport function createClient() {\n  return createSupabaseClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
       "type": "registry:lib"
     }
   ],

@@ -43,7 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }).finally(() => clearTimeout(timeout))
 
         if (!upstream.ok) {
-          // Upstream unreachable/unauthorized on self-hosted — degrade to empty list
+          // Upstream unreachable/unauthorized on SaaS — degrade to empty list
           return res.status(200).json([])
         }
 

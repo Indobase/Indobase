@@ -14,7 +14,7 @@ import { InlineLink } from 'components/ui/InlineLink'
 import { useProjectStorageConfigQuery } from 'data/config/project-storage-config-query'
 import { useBucketUpdateMutation } from 'data/storage/bucket-update-mutation'
 import { Bucket } from 'data/storage/buckets-query'
-import { DOCS_URL, IS_PLATFORM } from 'lib/constants'
+import { DOCS_URL, IS_SAAS } from 'lib/constants'
 import {
   Button,
   Dialog,
@@ -61,7 +61,7 @@ const formId = 'edit-storage-bucket-form'
 export const EditBucketModal = ({ visible, bucket, onClose }: EditBucketModalProps) => {
   const { ref } = useParams()
 
-  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_PLATFORM })
+  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const { value, unit } = convertFromBytes(data?.fileSizeLimit ?? 0)
   const formattedGlobalUploadLimit = `${value} ${unit}`
 
@@ -365,7 +365,7 @@ export const EditBucketModal = ({ visible, bucket, onClose }: EditBucketModalPro
                     </FormMessage_Shadcn_>
                   )}
 
-                  {IS_PLATFORM && (
+                  {IS_SAAS && (
                     <p className="text-sm text-foreground-lighter mt-2">
                       This project has a{' '}
                       <InlineLink

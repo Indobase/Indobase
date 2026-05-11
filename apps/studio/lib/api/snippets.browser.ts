@@ -1,14 +1,14 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { compact } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
 
 /**
- * Generates a UUID v4. If the platform is self-hosted, it will generate a deterministic UUID v4 from the inputs.
+ * Generates a UUID v4. If the platform is SaaS, it will generate a deterministic UUID v4 from the inputs.
  */
 export const generateUuid = (inputs: (string | undefined | null)[] = []) => {
   const cleaned = compact(inputs)
-  if (!IS_PLATFORM && cleaned.length === 0) return uuidv4()
-  return IS_PLATFORM ? uuidv4() : generateDeterministicUuid(cleaned)
+  if (!IS_SAAS && cleaned.length === 0) return uuidv4()
+  return IS_SAAS ? uuidv4() : generateDeterministicUuid(cleaned)
 }
 
 /**

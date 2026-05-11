@@ -19,7 +19,7 @@ import { useOrgAiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { useHotKey } from 'hooks/ui/useHotKey'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { uuidv4 } from 'lib/helpers'
 import type { AssistantModel } from 'state/ai-assistant-state'
 import { useAiAssistantState, useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
@@ -94,7 +94,7 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
 
   const { aiOptInLevel, isHipaaProjectDisallowed } = useOrgAiOptInLevel()
   const showMetadataWarning =
-    IS_PLATFORM &&
+    IS_SAAS &&
     !!selectedOrganization &&
     (aiOptInLevel === 'disabled' || aiOptInLevel === 'schema')
 
@@ -422,7 +422,7 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
                     error={
                       isContextExceededError
                         ? ASSISTANT_ERRORS['context-exceeded']
-                        : IS_PLATFORM
+                        : IS_SAAS
                           ? ASSISTANT_ERRORS['default']
                           : error
                     }

@@ -1,5 +1,5 @@
 import type { ProductMenuGroup } from 'components/ui/ProductMenu/ProductMenu.types'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 
 export const generateAuthMenu = (
   ref: string,
@@ -45,7 +45,7 @@ export const generateAuthMenu = (
           : []),
       ],
     },
-    ...(authenticationEmails && IS_PLATFORM
+    ...(authenticationEmails && IS_SAAS
       ? [
           {
             title: 'Notifications',
@@ -74,7 +74,7 @@ export const generateAuthMenu = (
           url: `/project/${ref}/auth/policies`,
           items: [],
         },
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               ...(authenticationSignInProviders
                 ? [

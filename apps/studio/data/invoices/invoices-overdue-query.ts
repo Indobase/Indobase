@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useIsLoggedIn } from 'common'
 import type { components } from 'data/api'
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { invoicesKeys } from './keys'
 import { UseCustomQueryOptions } from 'types'
 
@@ -28,7 +28,7 @@ export const useOverdueInvoicesQuery = <TData = OverdueInvoicesData>({
   return useQuery<OverdueInvoicesData, OverdueInvoicesError, TData>({
     queryKey: invoicesKeys.overdueInvoices(),
     queryFn: ({ signal }) => getOverdueInvoices(signal),
-    enabled: enabled && isLoggedIn && IS_PLATFORM,
+    enabled: enabled && isLoggedIn && IS_SAAS,
     staleTime: 30 * 60 * 1000,
     ...options,
   })

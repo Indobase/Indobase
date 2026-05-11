@@ -119,7 +119,7 @@ describe('getPostgrestClaims', () => {
 
 describe('wrapWithRoleImpersonation', () => {
   const sql = 'select * from colors;'
-  const ref = 'default'
+  const ref = 'abcdefghijklmnopqrst'
 
   describe('postgres role (undefined)', () => {
     it('returns SQL as is when no role is selected', () => {

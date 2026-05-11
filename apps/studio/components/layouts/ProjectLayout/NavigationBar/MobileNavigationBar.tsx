@@ -6,7 +6,7 @@ import { useTheme } from 'next-themes'
 
 import { useParams } from 'common'
 import { SidebarContent } from 'components/interfaces/Sidebar'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Button, cn } from 'ui'
 import { CommandMenuTrigger } from 'ui-patterns'
 import MobileSheetNav from 'ui-patterns/MobileSheetNav/MobileSheetNav'
@@ -31,7 +31,7 @@ const MobileNavigationBar = ({ hideMobileMenu }: { hideMobileMenu?: boolean }) =
         )}
       >
         <Link
-          href={IS_PLATFORM ? '/organizations' : `/project/${projectRef}`}
+          href={IS_SAAS ? '/organizations' : `/project/${projectRef}`}
           className="flex items-center h-[26px] w-[26px] min-w-[26px]"
         >
           <img

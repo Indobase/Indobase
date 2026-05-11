@@ -11,7 +11,7 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
-import { GOTRUE_ERRORS, IS_MULTI_ORG_DASHBOARD } from './constants'
+import { GOTRUE_ERRORS } from './constants'
 
 const UNAUTH_ROUTES = [
   '/sign-in',
@@ -66,7 +66,7 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   return (
-    <AuthProviderInternal alwaysLoggedIn={!IS_MULTI_ORG_DASHBOARD}>
+    <AuthProviderInternal>
       <AuthErrorToaster>{children}</AuthErrorToaster>
     </AuthProviderInternal>
   )

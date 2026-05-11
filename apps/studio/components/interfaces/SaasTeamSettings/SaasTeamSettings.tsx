@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'common'
 import { useSaasOrganizationMembersQuery } from 'data/saas/organization-memberships-query'
 import { useSaasOrganizationInvitesQuery } from 'data/saas/organization-invites-query'
 import { useCreateSaasInviteMutation } from 'data/saas/organization-invite-create-mutation'
+import { useOrganizationRolesV2Query } from 'data/organization-members/organization-roles-query'
 import {
   Button,
   Input_Shadcn_,
@@ -18,12 +19,14 @@ export const SaasTeamSettings = () => {
   const { slug } = useParams()
   const [tab, setTab] = useState<'members' | 'invites'>('members')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'admin' | 'developer' | 'viewer'>('developer')
+  const [roleId, setRoleId] = useState<number | undefined>(undefined)
 
   const { data: members, isPending: membersLoading, error: membersError } =
     useSaasOrganizationMembersQuery({ slug })
   const { data: invites, isPending: invitesLoading, error: invitesError } =
     useSaasOrganizationInvitesQuery({ slug })
+  const { data: rolesData } = useOrganizationRolesV2Query({ slug })
+  const roles = rolesData?.org_scoped_roles ?? []
 
   const { mutate: createInvite, isPending: creatingInvite } = useCreateSaasInviteMutation({
     onSuccess: () => {
@@ -32,10 +35,18 @@ export const SaasTeamSettings = () => {
     },
   })
 
-  const activeInvites = useMemo(
-    () => (invites ?? []).filter((i) => !i.accepted_at),
-    [invites]
-  )
+  const activeInvites = invites ?? []
+
+  const defaultRoleId = useMemo(() => {
+    const developer = roles.find((r) => r.name.toLowerCase() === 'developer')
+    return developer?.id ?? roles[0]?.id
+  }, [roles])
+
+  useEffect(() => {
+    if (roleId === undefined && defaultRoleId !== undefined) {
+      setRoleId(defaultRoleId)
+    }
+  }, [defaultRoleId, roleId])
 
   return (
     <div className="flex flex-col gap-4">
@@ -59,22 +70,27 @@ export const SaasTeamSettings = () => {
         </div>
         <div className="w-40">
           <label className="text-sm text-foreground-lighter">Role</label>
-          <Select_Shadcn_ value={role} onValueChange={(v) => setRole(v as any)}>
+          <Select_Shadcn_
+            value={roleId === undefined ? undefined : String(roleId)}
+            onValueChange={(v) => setRoleId(Number(v))}
+          >
             <SelectTrigger_Shadcn_>
               <SelectValue_Shadcn_ />
             </SelectTrigger_Shadcn_>
             <SelectContent_Shadcn_>
-              <SelectItem_Shadcn_ value="viewer">Viewer</SelectItem_Shadcn_>
-              <SelectItem_Shadcn_ value="developer">Developer</SelectItem_Shadcn_>
-              <SelectItem_Shadcn_ value="admin">Admin</SelectItem_Shadcn_>
+              {roles.map((r) => (
+                <SelectItem_Shadcn_ key={r.id} value={String(r.id)}>
+                  {r.name}
+                </SelectItem_Shadcn_>
+              ))}
             </SelectContent_Shadcn_>
           </Select_Shadcn_>
         </div>
         <Button
           type="primary"
           loading={creatingInvite}
-          disabled={!slug || !email.trim()}
-          onClick={() => createInvite({ slug, email: email.trim(), role })}
+          disabled={!slug || !email.trim() || roleId === undefined}
+          onClick={() => slug && roleId !== undefined && createInvite({ slug, email: email.trim(), roleId })}
         >
           Invite
         </Button>
@@ -119,9 +135,9 @@ export const SaasTeamSettings = () => {
               </div>
               {(invitesLoading ? [] : activeInvites).map((i) => (
                 <div key={i.id} className="grid grid-cols-4 gap-2 px-3 py-2 text-sm border-b last:border-b-0">
-                  <div className="truncate">{i.email}</div>
-                  <div>{i.role}</div>
-                  <div className="text-foreground-lighter">{new Date(i.inserted_at).toLocaleString()}</div>
+                  <div className="truncate">{i.invited_email}</div>
+                  <div>{roles.find((r) => r.id === i.role_id)?.name ?? i.role_id}</div>
+                  <div className="text-foreground-lighter">{new Date(i.invited_at).toLocaleString()}</div>
                   <div className="text-foreground-lighter">Pending</div>
                 </div>
               ))}
@@ -136,4 +152,3 @@ export const SaasTeamSettings = () => {
     </div>
   )
 }
-

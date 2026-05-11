@@ -1,6 +1,8 @@
 # Indobase
 
-[Indobase](https://indobase.in) is the Postgres development platform. We're building the features of Firebase using enterprise-grade open source tools.
+[Indobase](https://indobase.in) is a **managed Postgres BaaS** (database, Auth, REST, Realtime, Storage, Edge Functions, and a multi-tenant dashboard) you can run as your own product—similar surface area to **Supabase**, with orgs, teams, usage views, and a control plane in this repo.
+
+We ship the **Firebase-shaped developer experience** on enterprise-grade open source (Postgres, Kong, GoTrue, PostgREST, etc.), tuned for **SaaS**: sign-up → org → plan → projects, not a single-tenant-only fork.
 
 - [x] Hosted Postgres Database. [Docs](https://indobase.in/docs/guides/database)
 - [x] Authentication and Authorization. [Docs](https://indobase.in/docs/guides/auth)
@@ -42,8 +44,7 @@ Indobase is a combination of open source tools. We’re building the features of
 
 **Architecture**
 
-Indobase is a [hosted platform](https://indobase.in/dashboard). You can sign up and start using Indobase without installing anything.
-You can also [self-host](https://indobase.in/docs/guides/hosting/overview) and [develop locally](https://indobase.in/docs/guides/local-development).
+Indobase is a **Postgres BaaS**: auth, REST, realtime, storage, and edge functions behind a single dashboard. You can run the [hosted product](https://indobase.in/dashboard) or deploy the **same stack** yourself (Docker, single image + your Postgres/Kong/meta) using this repo—see [WIRING.md](./WIRING.md), [docker/README.md](./docker/README.md), and [local development](https://indobase.in/docs/guides/local-development).
 
 ![Architecture](apps/docs/public/img/indobase-architecture.svg)
 

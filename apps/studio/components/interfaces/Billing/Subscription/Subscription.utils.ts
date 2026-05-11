@@ -1,5 +1,5 @@
 import type { OrgSubscription, PlanId, ProjectSelectedAddon } from 'data/subscriptions/types'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 
 export const getAddons = (selectedAddons: ProjectSelectedAddon[]) => {
   const computeInstance = selectedAddons.find((addon) => addon.type === 'compute_instance')
@@ -11,7 +11,7 @@ export const getAddons = (selectedAddons: ProjectSelectedAddon[]) => {
 }
 
 export const subscriptionHasHipaaAddon = (subscription?: OrgSubscription): boolean => {
-  if (!IS_PLATFORM) return false
+  if (!IS_SAAS) return false
 
   return (subscription?.addons ?? []).some(
     (addon) => addon.supabase_prod_id === 'addon_security_hipaa'

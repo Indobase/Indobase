@@ -6,7 +6,7 @@
   "description": "Social Auth flow for TanStack and Supabase",
   "dependencies": [
     "@supabase/ssr@latest",
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "button",
@@ -20,7 +20,7 @@
     },
     {
       "path": "registry/default/blocks/social-auth-tanstack/lib/supabase/fetch-user-server-fn.ts",
-      "content": "import type { Factor, User } from '@supabase/supabase-js'\nimport { createServerFn } from '@tanstack/react-start'\n\nimport { createClient } from '@/registry/default/clients/tanstack/lib/supabase/server'\n\ntype SSRSafeUser = User & {\n  factors: (Factor & { factor_type: 'phone' | 'totp' })[]\n}\n\nexport const fetchUser: () => Promise<SSRSafeUser | null> = createServerFn({\n  method: 'GET',\n}).handler(async () => {\n  const supabase = createClient()\n  const { data, error } = await supabase.auth.getUser()\n\n  if (error) {\n    return null\n  }\n\n  return data.user as SSRSafeUser\n})\n",
+      "content": "import type { Factor, User } from 'indobase-js'\nimport { createServerFn } from '@tanstack/react-start'\n\nimport { createClient } from '@/registry/default/clients/tanstack/lib/supabase/server'\n\ntype SSRSafeUser = User & {\n  factors: (Factor & { factor_type: 'phone' | 'totp' })[]\n}\n\nexport const fetchUser: () => Promise<SSRSafeUser | null> = createServerFn({\n  method: 'GET',\n}).handler(async () => {\n  const supabase = createClient()\n  const { data, error } = await supabase.auth.getUser()\n\n  if (error) {\n    return null\n  }\n\n  return data.user as SSRSafeUser\n})\n",
       "type": "registry:lib"
     },
     {

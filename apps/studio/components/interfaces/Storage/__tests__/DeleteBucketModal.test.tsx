@@ -28,7 +28,7 @@ const bucket: Bucket = {
 const Page = ({ onClose }: { onClose: () => void }) => {
   const [open, setOpen] = useState(false)
   return (
-    <ProjectContextProvider projectRef="default">
+    <ProjectContextProvider projectRef="abcdefghijklmnopqrst">
       <button onClick={() => setOpen(true)}>Open</button>
 
       <DeleteBucketModal
@@ -46,7 +46,7 @@ const Page = ({ onClose }: { onClose: () => void }) => {
 describe(`DeleteBucketModal`, () => {
   beforeEach(() => {
     // useParams
-    routerMock.setCurrentUrl(`/project/default/storage/files`)
+    routerMock.setCurrentUrl(`/project/abcdefghijklmnopqrst/storage/files`)
     // useProjectContext
     addAPIMock({
       method: `get`,
@@ -58,7 +58,7 @@ describe(`DeleteBucketModal`, () => {
         inserted_at: '2021-08-02T06:40:40.646Z',
         name: 'Default Project',
         organization_id: 1,
-        ref: 'default',
+        ref: 'abcdefghijklmnopqrst',
         region: 'local',
         status: 'ACTIVE_HEALTHY',
       },
@@ -123,6 +123,6 @@ describe(`DeleteBucketModal`, () => {
     fireEvent.click(confirmButton)
 
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    expect(routerMock.asPath).toStrictEqual(`/project/default/storage/files`)
+    expect(routerMock.asPath).toStrictEqual(`/project/abcdefghijklmnopqrst/storage/files`)
   })
 })

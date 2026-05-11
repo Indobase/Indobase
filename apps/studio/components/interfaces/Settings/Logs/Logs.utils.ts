@@ -4,7 +4,7 @@ import { get } from 'lodash'
 import uniqBy from 'lodash/uniqBy'
 import { useEffect } from 'react'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import BackwardIterator from 'components/ui/CodeEditor/Providers/BackwardIterator'
 import type { PlanId } from 'data/subscriptions/types'
 import logConstants from 'shared-data/logConstants'
@@ -143,7 +143,7 @@ export const genDefaultQuery = (table: LogsTableName, filters: Filters, limit: n
 
   switch (table) {
     case 'edge_logs':
-      if (!IS_PLATFORM) {
+      if (!IS_SAAS) {
         return `
 -- local dev edge_logs query
 select id, edge_logs.timestamp, event_message, request.method, request.path, request.search, response.status_code
@@ -163,7 +163,7 @@ limit ${limit};
   `
 
     case 'postgres_logs':
-      if (!IS_PLATFORM) {
+      if (!IS_SAAS) {
         return `
 select postgres_logs.timestamp, id, event_message, parsed.error_severity, parsed.detail, parsed.hint
 from postgres_logs
@@ -197,7 +197,7 @@ limit ${limit}
     `
 
     case 'function_edge_logs':
-      if (!IS_PLATFORM) {
+      if (!IS_SAAS) {
         return `
 select id, function_edge_logs.timestamp, event_message
 from function_edge_logs
@@ -339,8 +339,8 @@ const calcChartStart = (params: Partial<LogsEndpointParams>): [Dayjs, string] =>
   return [its.add(-extendValue, trunc), trunc]
 }
 
-// TODO(qiao): workaround for self-hosted cron logs error until logflare is fixed
-const basePgCronWhere = IS_PLATFORM
+// TODO(qiao): workaround for SaaS cron logs error until logflare is fixed
+const basePgCronWhere = IS_SAAS
   ? `where ( parsed.application_name = 'pg_cron' or regexp_contains(event_message, 'cron job') )`
   : `where ( parsed.application_name = 'pg_cron' or event_message::text LIKE '%cron job%' )`
 /**

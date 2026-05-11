@@ -9,7 +9,7 @@ import {
 } from './apiHelpers'
 
 vi.mock('lib/constants', () => ({
-  IS_PLATFORM: false,
+  IS_SAAS: false,
 }))
 
 describe('apiHelpers', () => {
@@ -44,7 +44,7 @@ describe('apiHelpers', () => {
         'Content-Type': 'application/json',
         'x-connection-encrypted': 'true',
         cookie: 'test-cookie',
-        apiKey: 'test-service-key',
+        apikey: 'test-service-key',
       })
     })
 
@@ -60,7 +60,7 @@ describe('apiHelpers', () => {
       expect(result).toEqual({
         Authorization: 'Bearer token',
         'Content-Type': 'application/json',
-        apiKey: 'test-service-key',
+        apikey: 'test-service-key',
       })
     })
   })

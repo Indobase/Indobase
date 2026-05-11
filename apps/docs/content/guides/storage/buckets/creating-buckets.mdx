@@ -18,7 +18,7 @@ Here we create a bucket called "avatars":
 <TabPanel id="javascript" label="JavaScript">
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!)
 
 // ---cut---
@@ -106,7 +106,7 @@ When creating a bucket you can add additional configurations to restrict the typ
 For example, imagine you want to allow your users to upload only images to the `avatars` bucket and the size must not be greater than 1MB. You can achieve the following by providing `allowedMimeTypes` and `maxFileSize`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!)
 
 // ---cut---

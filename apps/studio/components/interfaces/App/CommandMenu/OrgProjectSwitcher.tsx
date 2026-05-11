@@ -1,7 +1,7 @@
 import { Building, Forward, Wrench } from 'lucide-react'
 import { useMemo } from 'react'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useProjectsInfiniteQuery } from 'data/projects/projects-infinite-query'
 import { PageType, useRegisterCommands, useRegisterPage, useSetPage } from 'ui-patterns/CommandMenu'
@@ -16,7 +16,7 @@ export function useProjectSwitchCommand() {
   // [Joshen] Using paginated data here which means we won't be showing all projects
   // Ideally we somehow support searching with Cmd K if we want to make this ideal
   // e.g Cmd K input to support async searching while in "switch project" state
-  const { data } = useProjectsInfiniteQuery({}, { enabled: IS_PLATFORM })
+  const { data } = useProjectsInfiniteQuery({}, { enabled: IS_SAAS })
   const projects = useMemo(() => data?.pages.flatMap((page) => page.projects), [data?.pages]) || []
 
   useRegisterPage(
@@ -58,7 +58,7 @@ export function useProjectSwitchCommand() {
 export function useConfigureOrganizationCommand() {
   const setPage = useSetPage()
 
-  const { data: organizations } = useOrganizationsQuery({ enabled: IS_PLATFORM })
+  const { data: organizations } = useOrganizationsQuery({ enabled: IS_SAAS })
 
   useRegisterPage(
     ORGANIZATION_SWITCHER_PAGE_NAME,

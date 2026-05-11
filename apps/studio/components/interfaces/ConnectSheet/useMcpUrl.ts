@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useMemo } from 'react'
 import { FEATURE_GROUPS_NON_PLATFORM, FEATURE_GROUPS_PLATFORM } from 'ui-patterns/McpUrlBuilder'
 
@@ -9,14 +9,14 @@ export function useMcpUrl(
   projectKeys: StepContentProps['projectKeys']
 ): string {
   const readonly = Boolean(state.mcpReadonly)
-  const baseUrl = IS_PLATFORM ? 'https://mcp.indobase.in' : projectKeys.apiUrl ?? ''
+  const baseUrl = IS_SAAS ? 'https://mcp.indobase.in' : projectKeys.apiUrl ?? ''
 
   return useMemo(() => {
     const params = new URLSearchParams()
     if (readonly) params.set('readonly', 'true')
 
     const selectedFeatures = Array.isArray(state.mcpFeatures) ? state.mcpFeatures : []
-    const supportedFeatures = IS_PLATFORM ? FEATURE_GROUPS_PLATFORM : FEATURE_GROUPS_NON_PLATFORM
+    const supportedFeatures = IS_SAAS ? FEATURE_GROUPS_PLATFORM : FEATURE_GROUPS_NON_PLATFORM
     const validFeatures = selectedFeatures.filter((f) =>
       supportedFeatures.some((group) => group.id === f)
     )

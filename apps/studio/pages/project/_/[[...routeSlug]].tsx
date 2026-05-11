@@ -1,4 +1,4 @@
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS, useParams } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS, useParams } from 'common'
 import {
   Header,
   LoadingCardView,
@@ -15,7 +15,6 @@ import { AlertTriangleIcon } from 'lucide-react'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
-import { IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
 import {
   Alert_Shadcn_,
   AlertDescription_Shadcn_,
@@ -47,7 +46,7 @@ const GenericProjectPage: NextPage = () => {
     isPending: isLoadingOrganizations,
     isError: isErrorOrganizations,
   } = useOrganizationsQuery({
-    enabled: IS_MULTI_ORG_DASHBOARD,
+    enabled: true,
   })
 
   const [selectedSlug, setSlug] = useState<string>(

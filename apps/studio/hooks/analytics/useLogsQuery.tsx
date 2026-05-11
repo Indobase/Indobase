@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import {
   EXPLORER_DATEPICKER_HELPERS,
   getDefaultHelper,
@@ -96,7 +96,7 @@ export const useLogsQuery = (
     error = data?.error
   }
 
-  if (IS_PLATFORM) {
+  if (IS_SAAS) {
     if (usesWith) {
       error = {
         message: 'The parser does not yet support WITH and subquery statements.',

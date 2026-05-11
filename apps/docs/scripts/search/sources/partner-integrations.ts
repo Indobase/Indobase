@@ -1,4 +1,4 @@
-import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import { type SupabaseClient, createClient } from 'indobase-js'
 import { upperFirst } from 'lodash-es'
 import { processMdx } from '../../helpers.mdx.js'
 import { BaseLoader, BaseSource } from './base.js'

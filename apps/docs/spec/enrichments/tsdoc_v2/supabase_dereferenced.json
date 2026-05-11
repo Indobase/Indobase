@@ -1,6 +1,6 @@
 {
   "id": 0,
-  "name": "@supabase/supabase-js",
+  "name": "indobase-js",
   "variant": "project",
   "kind": 1,
   "flags": {},
@@ -25,7 +25,7 @@
             "content": [
               {
                 "kind": "code",
-                "text": "```typescript\nimport { corsHeaders } from '@supabase/supabase-js/cors'\n\nDeno.serve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response('ok', { headers: corsHeaders })\n  }\n\n  return new Response(\n    JSON.stringify({ data: 'Hello' }),\n    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n  )\n})\n```"
+                "text": "```typescript\nimport { corsHeaders } from 'indobase-js/cors'\n\nDeno.serve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response('ok', { headers: corsHeaders })\n  }\n\n  return new Response(\n    JSON.stringify({ data: 'Hello' }),\n    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n  )\n})\n```"
               }
             ]
           }
@@ -95,7 +95,7 @@
                 "content": [
                   {
                     "kind": "code",
-                    "text": "```typescript\nimport { corsHeaders } from '@supabase/supabase-js/cors'\n\nDeno.serve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response('ok', { headers: corsHeaders })\n  }\n\n  return new Response(\n    JSON.stringify({ data: 'Hello' }),\n    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n  )\n})\n```"
+                    "text": "```typescript\nimport { corsHeaders } from 'indobase-js/cors'\n\nDeno.serve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response('ok', { headers: corsHeaders })\n  }\n\n  return new Response(\n    JSON.stringify({ data: 'Hello' }),\n    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n  )\n})\n```"
                   }
                 ]
               }
@@ -113,7 +113,7 @@
             "type": "reference",
             "target": 13,
             "name": "CorsHeaders",
-            "package": "@supabase/supabase-js"
+            "package": "indobase-js"
           },
           "defaultValue": "..."
         }
@@ -23311,7 +23311,7 @@
                         "content": [
                           {
                             "kind": "code",
-                            "text": "```ts\nimport { createClient } from '@supabase/supabase-js'\n\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\nconst { data } = await supabase.from('profiles').select('*')\n```"
+                            "text": "```ts\nimport { createClient } from 'indobase-js'\n\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\nconst { data } = await supabase.from('profiles').select('*')\n```"
                           }
                         ]
                       }
@@ -23417,7 +23417,7 @@
                                 "type": "reference",
                                 "target": 121,
                                 "name": "Database",
-                                "package": "@supabase/supabase-js",
+                                "package": "indobase-js",
                                 "qualifiedName": "default.Database",
                                 "refersToTypeParameter": true
                               }
@@ -23455,7 +23455,7 @@
                                     "type": "reference",
                                     "target": 121,
                                     "name": "Database",
-                                    "package": "@supabase/supabase-js",
+                                    "package": "indobase-js",
                                     "qualifiedName": "default.Database",
                                     "refersToTypeParameter": true
                                   }
@@ -23488,7 +23488,7 @@
                           "type": "reference",
                           "target": 122,
                           "name": "SchemaNameOrClientOptions",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "qualifiedName": "default.SchemaNameOrClientOptions",
                           "refersToTypeParameter": true
                         },
@@ -23513,7 +23513,7 @@
                                     "type": "reference",
                                     "target": 121,
                                     "name": "Database",
-                                    "package": "@supabase/supabase-js",
+                                    "package": "indobase-js",
                                     "qualifiedName": "default.Database",
                                     "refersToTypeParameter": true
                                   }
@@ -23536,13 +23536,13 @@
                               "type": "reference",
                               "target": 122,
                               "name": "SchemaNameOrClientOptions",
-                              "package": "@supabase/supabase-js",
+                              "package": "indobase-js",
                               "qualifiedName": "default.SchemaNameOrClientOptions",
                               "refersToTypeParameter": true
                             }
                           ],
                           "name": "SchemaNameOrClientOptions",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "qualifiedName": "default.SchemaNameOrClientOptions",
                           "refersToTypeParameter": true
                         },
@@ -23566,7 +23566,7 @@
                                   "type": "reference",
                                   "target": 121,
                                   "name": "Database",
-                                  "package": "@supabase/supabase-js",
+                                  "package": "indobase-js",
                                   "qualifiedName": "default.Database",
                                   "refersToTypeParameter": true
                                 }
@@ -23611,7 +23611,7 @@
                                           "type": "reference",
                                           "target": 121,
                                           "name": "Database",
-                                          "package": "@supabase/supabase-js",
+                                          "package": "indobase-js",
                                           "qualifiedName": "default.Database",
                                           "refersToTypeParameter": true
                                         }
@@ -23650,7 +23650,7 @@
                           "qualifiedName": "GenericSchema"
                         },
                         "name": "GenericSchema",
-                        "package": "@supabase/supabase-js"
+                        "package": "indobase-js"
                       },
                       "default": {
                         "type": "conditional",
@@ -23660,7 +23660,7 @@
                             "type": "reference",
                             "target": 125,
                             "name": "SchemaName",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.SchemaName",
                             "refersToTypeParameter": true
                           },
@@ -23675,7 +23675,7 @@
                                 "type": "reference",
                                 "target": 121,
                                 "name": "Database",
-                                "package": "@supabase/supabase-js",
+                                "package": "indobase-js",
                                 "qualifiedName": "default.Database",
                                 "refersToTypeParameter": true
                               },
@@ -23695,7 +23695,7 @@
                             "qualifiedName": "GenericSchema"
                           },
                           "name": "GenericSchema",
-                          "package": "@supabase/supabase-js"
+                          "package": "indobase-js"
                         },
                         "trueType": {
                           "type": "indexedAccess",
@@ -23771,7 +23771,7 @@
                           "type": "reference",
                           "target": 122,
                           "name": "SchemaNameOrClientOptions",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "qualifiedName": "default.SchemaNameOrClientOptions",
                           "refersToTypeParameter": true
                         },
@@ -23796,7 +23796,7 @@
                                     "type": "reference",
                                     "target": 121,
                                     "name": "Database",
-                                    "package": "@supabase/supabase-js",
+                                    "package": "indobase-js",
                                     "qualifiedName": "default.Database",
                                     "refersToTypeParameter": true
                                   }
@@ -23817,7 +23817,7 @@
                             "type": "reference",
                             "target": 121,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Database",
                             "refersToTypeParameter": true
                           },
@@ -23921,13 +23921,13 @@
                                   "type": "reference",
                                   "target": 121,
                                   "name": "Database",
-                                  "package": "@supabase/supabase-js",
+                                  "package": "indobase-js",
                                   "qualifiedName": "default.Database",
                                   "refersToTypeParameter": true
                                 }
                               ],
                               "name": "Database",
-                              "package": "@supabase/supabase-js",
+                              "package": "indobase-js",
                               "qualifiedName": "default.Database",
                               "refersToTypeParameter": true
                             }
@@ -23984,7 +23984,7 @@
                             "type": "reference",
                             "target": 122,
                             "name": "SchemaNameOrClientOptions",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.SchemaNameOrClientOptions",
                             "refersToTypeParameter": true
                           },
@@ -24041,13 +24041,13 @@
                                 "type": "reference",
                                 "target": 122,
                                 "name": "SchemaNameOrClientOptions",
-                                "package": "@supabase/supabase-js",
+                                "package": "indobase-js",
                                 "qualifiedName": "default.SchemaNameOrClientOptions",
                                 "refersToTypeParameter": true
                               }
                             ],
                             "name": "SchemaNameOrClientOptions",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.SchemaNameOrClientOptions",
                             "refersToTypeParameter": true
                           },
@@ -24114,13 +24114,13 @@
                             "type": "reference",
                             "target": 125,
                             "name": "SchemaName",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.SchemaName",
                             "refersToTypeParameter": true
                           }
                         ],
                         "name": "SupabaseClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "highlightedProperties": {
                           "realtime": [
                             {
@@ -24146,7 +24146,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -24154,7 +24154,7 @@
                         "type": "reference",
                         "target": 122,
                         "name": "SchemaNameOrClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.SchemaNameOrClientOptions",
                         "refersToTypeParameter": true
                       },
@@ -24162,7 +24162,7 @@
                         "type": "reference",
                         "target": 125,
                         "name": "SchemaName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.SchemaName",
                         "refersToTypeParameter": true
                       },
@@ -24170,7 +24170,7 @@
                         "type": "reference",
                         "target": 126,
                         "name": "Schema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Schema",
                         "refersToTypeParameter": true
                       },
@@ -24178,13 +24178,13 @@
                         "type": "reference",
                         "target": 127,
                         "name": "ClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.ClientOptions",
                         "refersToTypeParameter": true
                       }
                     ],
                     "name": "SupabaseClient",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default"
                   }
                 }
@@ -24296,7 +24296,7 @@
                   "qualifiedName": "SupabaseAuthClient"
                 },
                 "name": "SupabaseAuthClient",
-                "package": "@supabase/supabase-js"
+                "package": "indobase-js"
               }
             },
             {
@@ -24714,7 +24714,7 @@
                     "type": "reference",
                     "target": 121,
                     "name": "Database",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.Database",
                     "refersToTypeParameter": true
                   },
@@ -24722,7 +24722,7 @@
                     "type": "reference",
                     "target": 127,
                     "name": "ClientOptions",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.ClientOptions",
                     "refersToTypeParameter": true
                   },
@@ -24730,7 +24730,7 @@
                     "type": "reference",
                     "target": 125,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaName",
                     "refersToTypeParameter": true
                   }
@@ -25099,7 +25099,7 @@
                           "qualifiedName": "GenericTable"
                         },
                         "name": "GenericTable",
-                        "package": "@supabase/supabase-js"
+                        "package": "indobase-js"
                       }
                     }
                   ],
@@ -25114,7 +25114,7 @@
                         "type": "reference",
                         "target": 169,
                         "name": "TableName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     }
@@ -25130,7 +25130,7 @@
                         "type": "reference",
                         "target": 127,
                         "name": "ClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.ClientOptions",
                         "refersToTypeParameter": true
                       },
@@ -25138,7 +25138,7 @@
                         "type": "reference",
                         "target": 126,
                         "name": "Schema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Schema",
                         "refersToTypeParameter": true
                       },
@@ -25146,14 +25146,14 @@
                         "type": "reference",
                         "target": 170,
                         "name": "Table",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       },
                       {
                         "type": "reference",
                         "target": 169,
                         "name": "TableName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     ],
@@ -25200,7 +25200,7 @@
                           "qualifiedName": "GenericView"
                         },
                         "name": "GenericView",
-                        "package": "@supabase/supabase-js"
+                        "package": "indobase-js"
                       }
                     }
                   ],
@@ -25215,7 +25215,7 @@
                         "type": "reference",
                         "target": 173,
                         "name": "ViewName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     }
@@ -25231,7 +25231,7 @@
                         "type": "reference",
                         "target": 127,
                         "name": "ClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.ClientOptions",
                         "refersToTypeParameter": true
                       },
@@ -25239,7 +25239,7 @@
                         "type": "reference",
                         "target": 126,
                         "name": "Schema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Schema",
                         "refersToTypeParameter": true
                       },
@@ -25247,14 +25247,14 @@
                         "type": "reference",
                         "target": 174,
                         "name": "View",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       },
                       {
                         "type": "reference",
                         "target": 173,
                         "name": "ViewName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     ],
@@ -25573,12 +25573,12 @@
                             "type": "reference",
                             "target": 182,
                             "name": "FnName",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           }
                         ],
                         "name": "RpcFunctionNotFound",
-                        "package": "@supabase/supabase-js"
+                        "package": "indobase-js"
                       },
                       "default": {
                         "type": "reference",
@@ -25591,7 +25591,7 @@
                             "type": "reference",
                             "target": 126,
                             "name": "Schema",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Schema",
                             "refersToTypeParameter": true
                           },
@@ -25599,19 +25599,19 @@
                             "type": "reference",
                             "target": 182,
                             "name": "FnName",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           },
                           {
                             "type": "reference",
                             "target": 183,
                             "name": "Args",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           }
                         ],
                         "name": "GetRpcFunctionFilterBuilderByArgs",
-                        "package": "@supabase/supabase-js"
+                        "package": "indobase-js"
                       }
                     }
                   ],
@@ -25634,7 +25634,7 @@
                         "type": "reference",
                         "target": 182,
                         "name": "FnName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     },
@@ -25656,7 +25656,7 @@
                         "type": "reference",
                         "target": 183,
                         "name": "Args",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       },
                       "defaultValue": "..."
@@ -25871,7 +25871,7 @@
                         "type": "reference",
                         "target": 127,
                         "name": "ClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.ClientOptions",
                         "refersToTypeParameter": true
                       },
@@ -25879,7 +25879,7 @@
                         "type": "reference",
                         "target": 126,
                         "name": "Schema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Schema",
                         "refersToTypeParameter": true
                       },
@@ -25893,7 +25893,7 @@
                           "type": "reference",
                           "target": 184,
                           "name": "FilterBuilder",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "refersToTypeParameter": true
                         }
                       },
@@ -25907,7 +25907,7 @@
                           "type": "reference",
                           "target": 184,
                           "name": "FilterBuilder",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "refersToTypeParameter": true
                         }
                       },
@@ -25921,7 +25921,7 @@
                           "type": "reference",
                           "target": 184,
                           "name": "FilterBuilder",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "refersToTypeParameter": true
                         }
                       },
@@ -25935,7 +25935,7 @@
                           "type": "reference",
                           "target": 184,
                           "name": "FilterBuilder",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "refersToTypeParameter": true
                         }
                       },
@@ -26019,7 +26019,7 @@
                         "type": "reference",
                         "target": 178,
                         "name": "DynamicSchema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     }
@@ -26035,7 +26035,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26043,7 +26043,7 @@
                         "type": "reference",
                         "target": 127,
                         "name": "ClientOptions",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.ClientOptions",
                         "refersToTypeParameter": true
                       },
@@ -26051,7 +26051,7 @@
                         "type": "reference",
                         "target": 178,
                         "name": "DynamicSchema",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       },
                       {
@@ -26062,14 +26062,14 @@
                             "type": "reference",
                             "target": 178,
                             "name": "DynamicSchema",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           },
                           "objectType": {
                             "type": "reference",
                             "target": 121,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Database",
                             "refersToTypeParameter": true
                           }
@@ -26081,7 +26081,7 @@
                             "qualifiedName": "GenericSchema"
                           },
                           "name": "GenericSchema",
-                          "package": "@supabase/supabase-js"
+                          "package": "indobase-js"
                         },
                         "trueType": {
                           "type": "indexedAccess",
@@ -26177,7 +26177,7 @@
                               "type": "reference",
                               "target": 121,
                               "name": "Database",
-                              "package": "@supabase/supabase-js",
+                              "package": "indobase-js",
                               "qualifiedName": "default.Database",
                               "refersToTypeParameter": true
                             },
@@ -26259,7 +26259,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26297,7 +26297,7 @@
                             "type": "reference",
                             "target": 121,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Database",
                             "refersToTypeParameter": true
                           },
@@ -26341,7 +26341,7 @@
                           "type": "reference",
                           "target": 121,
                           "name": "Database",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "qualifiedName": "default.Database",
                           "refersToTypeParameter": true
                         },
@@ -26362,7 +26362,7 @@
                   "type": "reference",
                   "target": 122,
                   "name": "SchemaNameOrClientOptions",
-                  "package": "@supabase/supabase-js",
+                  "package": "indobase-js",
                   "qualifiedName": "default.SchemaNameOrClientOptions",
                   "refersToTypeParameter": true
                 },
@@ -26387,7 +26387,7 @@
                             "type": "reference",
                             "target": 121,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Database",
                             "refersToTypeParameter": true
                           },
@@ -26406,7 +26406,7 @@
                   "type": "reference",
                   "target": 122,
                   "name": "SchemaNameOrClientOptions",
-                  "package": "@supabase/supabase-js",
+                  "package": "indobase-js",
                   "qualifiedName": "default.SchemaNameOrClientOptions",
                   "refersToTypeParameter": true
                 },
@@ -26430,7 +26430,7 @@
                           "type": "reference",
                           "target": 121,
                           "name": "Database",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "qualifiedName": "default.Database",
                           "refersToTypeParameter": true
                         },
@@ -26475,7 +26475,7 @@
                                   "type": "reference",
                                   "target": 121,
                                   "name": "Database",
-                                  "package": "@supabase/supabase-js",
+                                  "package": "indobase-js",
                                   "qualifiedName": "default.Database",
                                   "refersToTypeParameter": true
                                 },
@@ -26515,7 +26515,7 @@
                     "type": "reference",
                     "target": 125,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaName",
                     "refersToTypeParameter": true
                   },
@@ -26530,7 +26530,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26550,7 +26550,7 @@
                     "qualifiedName": "GenericSchema"
                   },
                   "name": "GenericSchema",
-                  "package": "@supabase/supabase-js"
+                  "package": "indobase-js"
                 },
                 "trueType": {
                   "type": "indexedAccess",
@@ -26558,7 +26558,7 @@
                     "type": "reference",
                     "target": 125,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaName",
                     "refersToTypeParameter": true
                   },
@@ -26573,7 +26573,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26599,7 +26599,7 @@
                     "type": "reference",
                     "target": 125,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaName",
                     "refersToTypeParameter": true
                   },
@@ -26614,7 +26614,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26634,7 +26634,7 @@
                     "qualifiedName": "GenericSchema"
                   },
                   "name": "GenericSchema",
-                  "package": "@supabase/supabase-js"
+                  "package": "indobase-js"
                 },
                 "trueType": {
                   "type": "indexedAccess",
@@ -26642,7 +26642,7 @@
                     "type": "reference",
                     "target": 125,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaName",
                     "refersToTypeParameter": true
                   },
@@ -26657,7 +26657,7 @@
                         "type": "reference",
                         "target": 121,
                         "name": "Database",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "qualifiedName": "default.Database",
                         "refersToTypeParameter": true
                       },
@@ -26733,7 +26733,7 @@
                   "type": "reference",
                   "target": 122,
                   "name": "SchemaNameOrClientOptions",
-                  "package": "@supabase/supabase-js",
+                  "package": "indobase-js",
                   "qualifiedName": "default.SchemaNameOrClientOptions",
                   "refersToTypeParameter": true
                 },
@@ -26758,7 +26758,7 @@
                             "type": "reference",
                             "target": 121,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "qualifiedName": "default.Database",
                             "refersToTypeParameter": true
                           },
@@ -26779,7 +26779,7 @@
                     "type": "reference",
                     "target": 121,
                     "name": "Database",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.Database",
                     "refersToTypeParameter": true
                   },
@@ -26879,7 +26879,7 @@
                       "type": "reference",
                       "target": 121,
                       "name": "Database",
-                      "package": "@supabase/supabase-js",
+                      "package": "indobase-js",
                       "qualifiedName": "default.Database",
                       "refersToTypeParameter": true
                     }
@@ -26936,7 +26936,7 @@
                     "type": "reference",
                     "target": 122,
                     "name": "SchemaNameOrClientOptions",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaNameOrClientOptions",
                     "refersToTypeParameter": true
                   },
@@ -26989,7 +26989,7 @@
                     "type": "reference",
                     "target": 122,
                     "name": "SchemaNameOrClientOptions",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "qualifiedName": "default.SchemaNameOrClientOptions",
                     "refersToTypeParameter": true
                   },
@@ -39083,7 +39083,7 @@
                 "type": "reference",
                 "target": 292,
                 "name": "DB",
-                "package": "@supabase/supabase-js",
+                "package": "indobase-js",
                 "refersToTypeParameter": true
               },
               {
@@ -45774,7 +45774,7 @@
               "type": "reference",
               "target": 289,
               "name": "T",
-              "package": "@supabase/supabase-js",
+              "package": "indobase-js",
               "refersToTypeParameter": true
             },
             "extendsType": {
@@ -45847,7 +45847,7 @@
                     "qualifiedName": "U"
                   },
                   "name": "U",
-                  "package": "@supabase/supabase-js",
+                  "package": "indobase-js",
                   "refersToTypeParameter": true
                 },
                 {
@@ -45922,7 +45922,7 @@
               "type": "reference",
               "target": 285,
               "name": "T",
-              "package": "@supabase/supabase-js",
+              "package": "indobase-js",
               "refersToTypeParameter": true
             },
             "extendsType": {
@@ -45947,7 +45947,7 @@
                 "qualifiedName": "U"
               },
               "name": "U",
-              "package": "@supabase/supabase-js",
+              "package": "indobase-js",
               "refersToTypeParameter": true
             },
             "falseType": {
@@ -52758,7 +52758,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         },
@@ -52952,7 +52952,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         },
@@ -52994,7 +52994,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         },
@@ -53064,7 +53064,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         },
@@ -53134,7 +53134,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         },
@@ -53176,7 +53176,7 @@
                                 "qualifiedName": "SupabaseAuthClientOptions"
                               },
                               "name": "SupabaseAuthClientOptions",
-                              "package": "@supabase/supabase-js"
+                              "package": "indobase-js"
                             }
                           }
                         }
@@ -53259,7 +53259,7 @@
                             "type": "reference",
                             "target": 283,
                             "name": "SchemaName",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           }
                         },
@@ -53425,7 +53425,7 @@
                               "qualifiedName": "Fetch"
                             },
                             "name": "Fetch",
-                            "package": "@supabase/supabase-js"
+                            "package": "indobase-js"
                           }
                         },
                         {
@@ -54341,7 +54341,7 @@
                 "content": [
                   {
                     "kind": "code",
-                    "text": "```ts\nimport { createClient } from '@supabase/supabase-js'\n\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\nconst { data, error } = await supabase.from('profiles').select('*')\n```"
+                    "text": "```ts\nimport { createClient } from 'indobase-js'\n\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\nconst { data, error } = await supabase.from('profiles').select('*')\n```"
                   }
                 ]
               }
@@ -54462,7 +54462,7 @@
                             "type": "reference",
                             "target": 4,
                             "name": "Database",
-                            "package": "@supabase/supabase-js",
+                            "package": "indobase-js",
                             "refersToTypeParameter": true
                           }
                         },
@@ -54499,7 +54499,7 @@
                                 "type": "reference",
                                 "target": 4,
                                 "name": "Database",
-                                "package": "@supabase/supabase-js",
+                                "package": "indobase-js",
                                 "refersToTypeParameter": true
                               }
                             },
@@ -54531,7 +54531,7 @@
                       "type": "reference",
                       "target": 5,
                       "name": "SchemaNameOrClientOptions",
-                      "package": "@supabase/supabase-js",
+                      "package": "indobase-js",
                       "refersToTypeParameter": true
                     },
                     "extendsType": {
@@ -54555,7 +54555,7 @@
                                 "type": "reference",
                                 "target": 4,
                                 "name": "Database",
-                                "package": "@supabase/supabase-js",
+                                "package": "indobase-js",
                                 "refersToTypeParameter": true
                               }
                             },
@@ -54577,12 +54577,12 @@
                           "type": "reference",
                           "target": 5,
                           "name": "SchemaNameOrClientOptions",
-                          "package": "@supabase/supabase-js",
+                          "package": "indobase-js",
                           "refersToTypeParameter": true
                         }
                       ],
                       "name": "SchemaNameOrClientOptions",
-                      "package": "@supabase/supabase-js",
+                      "package": "indobase-js",
                       "refersToTypeParameter": true
                     },
                     "falseType": {
@@ -54605,7 +54605,7 @@
                               "type": "reference",
                               "target": 4,
                               "name": "Database",
-                              "package": "@supabase/supabase-js",
+                              "package": "indobase-js",
                               "refersToTypeParameter": true
                             }
                           },
@@ -54649,7 +54649,7 @@
                                       "type": "reference",
                                       "target": 4,
                                       "name": "Database",
-                                      "package": "@supabase/supabase-js",
+                                      "package": "indobase-js",
                                       "refersToTypeParameter": true
                                     }
                                   },
@@ -54714,12 +54714,12 @@
                         "type": "reference",
                         "target": 8,
                         "name": "SchemaName",
-                        "package": "@supabase/supabase-js",
+                        "package": "indobase-js",
                         "refersToTypeParameter": true
                       }
                     ],
                     "name": "SupabaseClientOptions",
-                    "package": "@supabase/supabase-js"
+                    "package": "indobase-js"
                   }
                 }
               ],
@@ -54731,26 +54731,26 @@
                     "type": "reference",
                     "target": 4,
                     "name": "Database",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "refersToTypeParameter": true
                   },
                   {
                     "type": "reference",
                     "target": 5,
                     "name": "SchemaNameOrClientOptions",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "refersToTypeParameter": true
                   },
                   {
                     "type": "reference",
                     "target": 8,
                     "name": "SchemaName",
-                    "package": "@supabase/supabase-js",
+                    "package": "indobase-js",
                     "refersToTypeParameter": true
                   }
                 ],
                 "name": "SupabaseClient",
-                "package": "@supabase/supabase-js",
+                "package": "indobase-js",
                 "qualifiedName": "default"
               }
             }
@@ -55658,15 +55658,15 @@
       "children": [12, 1]
     }
   ],
-  "packageName": "@supabase/supabase-js",
+  "packageName": "indobase-js",
   "readme": [
     {
       "kind": "text",
-      "text": "<br />\n<p align=\"center\">\n  <a href=\"https://supabase.io\">\n        <picture>\n      <source media=\"(prefers-color-scheme: dark)\" srcset=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/supabase-logo-wordmark--dark.svg\">\n      <source media=\"(prefers-color-scheme: light)\" srcset=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/supabase-logo-wordmark--light.svg\">\n      <img alt=\"Supabase Logo\" width=\"300\" src=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/logo-preview.jpg\">\n    </picture>\n  </a>\n\n  <h1 align=\"center\">Supabase JS SDK</h1>\n\n  <h3 align=\"center\">Isomorphic JavaScript SDK for Supabase - combining Auth, Database, Storage, Functions, and Realtime.</h3>\n\n  <p align=\"center\">\n    <a href=\"https://supabase.com/docs/guides/getting-started\">Guides</a>\n    ·\n    <a href=\"https://supabase.com/docs/reference/javascript/start\">Reference Docs</a>\n    ·\n    <a href=\"https://supabase.github.io/supabase-js/supabase-js/v2/spec.json\">TypeDoc</a>\n  </p>\n</p>\n\n<div align=\"center\">\n\n[![Build](https://github.com/supabase/supabase-js/workflows/CI/badge.svg)](https://github.com/supabase/supabase-js/actions?query=branch%3Amaster)\n[![Package](https://img.shields.io/npm/v/@supabase/supabase-js)](https://www.npmjs.com/package/@supabase/supabase-js)\n[![License: MIT](https://img.shields.io/npm/l/@supabase/supabase-js)](#license)\n[![pkg.pr.new](https://pkg.pr.new/badge/supabase/supabase-js)](https://pkg.pr.new/~/supabase/supabase-js)\n\n</div>\n\n## Usage\n\nFirst of all, you need to install the library:\n\n"
+      "text": "<br />\n<p align=\"center\">\n  <a href=\"https://supabase.io\">\n        <picture>\n      <source media=\"(prefers-color-scheme: dark)\" srcset=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/supabase-logo-wordmark--dark.svg\">\n      <source media=\"(prefers-color-scheme: light)\" srcset=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/supabase-logo-wordmark--light.svg\">\n      <img alt=\"Supabase Logo\" width=\"300\" src=\"https://raw.githubusercontent.com/supabase/supabase/master/packages/common/assets/images/logo-preview.jpg\">\n    </picture>\n  </a>\n\n  <h1 align=\"center\">Supabase JS SDK</h1>\n\n  <h3 align=\"center\">Isomorphic JavaScript SDK for Supabase - combining Auth, Database, Storage, Functions, and Realtime.</h3>\n\n  <p align=\"center\">\n    <a href=\"https://supabase.com/docs/guides/getting-started\">Guides</a>\n    ·\n    <a href=\"https://supabase.com/docs/reference/javascript/start\">Reference Docs</a>\n    ·\n    <a href=\"https://supabase.github.io/supabase-js/supabase-js/v2/spec.json\">TypeDoc</a>\n  </p>\n</p>\n\n<div align=\"center\">\n\n[![Build](https://github.com/supabase/supabase-js/workflows/CI/badge.svg)](https://github.com/supabase/supabase-js/actions?query=branch%3Amaster)\n[![Package](https://img.shields.io/npm/v/indobase-js)](https://www.npmjs.com/package/indobase-js)\n[![License: MIT](https://img.shields.io/npm/l/indobase-js)](#license)\n[![pkg.pr.new](https://pkg.pr.new/badge/supabase/supabase-js)](https://pkg.pr.new/~/supabase/supabase-js)\n\n</div>\n\n## Usage\n\nFirst of all, you need to install the library:\n\n"
     },
     {
       "kind": "code",
-      "text": "```sh\nnpm install @supabase/supabase-js\n```"
+      "text": "```sh\nnpm install indobase-js\n```"
     },
     {
       "kind": "text",
@@ -55674,7 +55674,7 @@
     },
     {
       "kind": "code",
-      "text": "```js\nimport { createClient } from '@supabase/supabase-js'\n\n// Create a single supabase client for interacting with your database\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\n```"
+      "text": "```js\nimport { createClient } from 'indobase-js'\n\n// Create a single supabase client for interacting with your database\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\n```"
     },
     {
       "kind": "text",
@@ -55690,7 +55690,7 @@
     },
     {
       "kind": "code",
-      "text": "```html\n<script src=\"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2\"></script>\n```"
+      "text": "```html\n<script src=\"https://cdn.jsdelivr.net/npm/indobase-js@2\"></script>\n```"
     },
     {
       "kind": "text",
@@ -55698,7 +55698,7 @@
     },
     {
       "kind": "code",
-      "text": "```html\n<script src=\"https://unpkg.com/@supabase/supabase-js@2\"></script>\n```"
+      "text": "```html\n<script src=\"https://unpkg.com/indobase-js@2\"></script>\n```"
     },
     {
       "kind": "text",
@@ -55730,15 +55730,15 @@
     },
     {
       "kind": "code",
-      "text": "```html\n<script type=\"module\">\n  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'\n  const supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\n\n  console.log('Supabase Instance: ', supabase)\n  // ...\n</script>\n```"
+      "text": "```html\n<script type=\"module\">\n  import { createClient } from 'https://cdn.jsdelivr.net/npm/indobase-js/+esm'\n  const supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')\n\n  console.log('Supabase Instance: ', supabase)\n  // ...\n</script>\n```"
     },
     {
       "kind": "text",
-      "text": "\n\n### Deno\n\nYou can use supabase-js in the Deno runtime via [JSR](https://jsr.io/@supabase/supabase-js):\n\n"
+      "text": "\n\n### Deno\n\nYou can use supabase-js in the Deno runtime via [JSR](https://jsr.io/indobase-js):\n\n"
     },
     {
       "kind": "code",
-      "text": "```js\nimport { createClient } from 'jsr:@supabase/supabase-js@2'\n```"
+      "text": "```js\nimport { createClient } from 'jsr:indobase-js@2'\n```"
     },
     {
       "kind": "text",
@@ -55786,7 +55786,7 @@
     },
     {
       "kind": "code",
-      "text": "```js\nimport { createClient } from '@supabase/supabase-js'\n\n// Provide a custom `fetch` implementation as an option\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key', {\n  global: {\n    fetch: (...args) => fetch(...args),\n  },\n})\n```"
+      "text": "```js\nimport { createClient } from 'indobase-js'\n\n// Provide a custom `fetch` implementation as an option\nconst supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key', {\n  global: {\n    fetch: (...args) => fetch(...args),\n  },\n})\n```"
     },
     {
       "kind": "text",
@@ -55858,7 +55858,7 @@
     },
     {
       "kind": "code",
-      "text": "`@supabase/supabase-js`"
+      "text": "`indobase-js`"
     },
     {
       "kind": "text",
@@ -55882,7 +55882,7 @@
     },
     {
       "kind": "code",
-      "text": "`@supabase/supabase-js`"
+      "text": "`indobase-js`"
     },
     {
       "kind": "text",

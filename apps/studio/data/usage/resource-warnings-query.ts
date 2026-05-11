@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import type { components } from 'data/api'
 import { get, handleError } from 'data/fetchers'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
@@ -44,7 +44,7 @@ export const useResourceWarningsQuery = <TData = ResourceWarningsData>(
     queryKey: usageKeys.resourceWarnings(variables.slug, variables.ref),
     queryFn: ({ signal }) => getResourceWarnings(variables, signal),
     enabled:
-      IS_PLATFORM && enabled && (variables.ref !== undefined || variables.slug !== undefined),
+      IS_SAAS && enabled && (variables.ref !== undefined || variables.slug !== undefined),
     staleTime: 1000 * 60 * 60,
     ...options,
   })

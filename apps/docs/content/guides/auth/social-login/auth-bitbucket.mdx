@@ -60,7 +60,7 @@ Setting up Bitbucket logins for your application consists of 3 parts:
 When your user signs in, call [`signInWithOAuth()`](/docs/reference/javascript/auth-signinwithoauth) with `bitbucket` as the `provider`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient(
   'https://your-project-id.supabase.co',
   'sb_publishable_... or anon key'
@@ -120,7 +120,7 @@ suspend fun signInWithBitbucket() {
 When your user signs out, call [signOut()](/docs/reference/javascript/auth-signout) to remove them from the browser session and any objects from localStorage:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient(
   'https://your-project-id.supabase.co',
   'sb_publishable_... or anon key'

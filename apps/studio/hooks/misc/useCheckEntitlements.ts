@@ -5,7 +5,7 @@ import type {
   FeatureKey,
 } from 'data/entitlements/entitlements-query'
 import { useEntitlementsQuery } from 'data/entitlements/entitlements-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useMemo } from 'react'
 import { useSelectedOrganizationQuery } from './useSelectedOrganization'
 
@@ -79,7 +79,7 @@ export function useCheckEntitlements(
   })
 
   const finalOrgSlug = organizationSlug || selectedOrg?.slug
-  const enabled = IS_PLATFORM ? options?.enabled !== false && !!finalOrgSlug : false
+  const enabled = IS_SAAS ? options?.enabled !== false && !!finalOrgSlug : false
 
   const {
     data: entitlementsData,
@@ -110,9 +110,9 @@ export function useCheckEntitlements(
     : isSuccessEntitlements
 
   return {
-    hasAccess: IS_PLATFORM ? entitlement?.hasAccess ?? false : true,
-    isLoading: IS_PLATFORM ? isLoading : false,
-    isSuccess: IS_PLATFORM ? isSuccess : true,
+    hasAccess: IS_SAAS ? entitlement?.hasAccess ?? false : true,
+    isLoading: IS_SAAS ? isLoading : false,
+    isSuccess: IS_SAAS ? isSuccess : true,
     getEntitlementNumericValue: () => getEntitlementNumericValue(entitlement),
     isEntitlementUnlimited: () => isEntitlementUnlimited(entitlement),
     getEntitlementSetValues: () => getEntitlementSetValues(entitlement),

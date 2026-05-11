@@ -50,7 +50,7 @@ beforeAll(() => {
     const actual = await importOriginal()
     return {
       ...(typeof actual === 'object' ? actual : {}),
-      useParams: () => ({ ref: 'default' }),
+      useParams: () => ({ ref: 'abcdefghijklmnopqrst' }),
     }
   })
 

@@ -2,15 +2,7 @@
 // eslint-disable-next-line barrel-files/avoid-re-export-all
 export * from './infrastructure'
 
-import { IS_PLATFORM } from 'common'
-
-export {
-  ENABLE_SELF_HOSTED_AUTH,
-  IS_INDOBASE_SAAS,
-  IS_MULTI_ORG_DASHBOARD,
-  IS_PLATFORM,
-  IS_SAAS,
-} from 'common'
+export { IS_INDOBASE_SAAS, IS_PLATFORM, IS_SAAS } from 'common'
 
 /**
  * Indicates that the app is running in a test environment (E2E tests).
@@ -21,7 +13,6 @@ export const IS_TEST_ENV = process.env.NEXT_PUBLIC_NODE_ENV === 'test'
 export const API_URL = (() => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
   if (process.env.NODE_ENV === 'test') return 'http://localhost:3000/api'
-  if (IS_PLATFORM) return process.env.NEXT_PUBLIC_API_URL!
   if (typeof window !== 'undefined') return `${basePath}/api`
   if (!!process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}${basePath}/api`
   if (!!process.env.NEXT_PUBLIC_SITE_URL)
@@ -29,9 +20,7 @@ export const API_URL = (() => {
   return `${basePath}/api`
 })()
 
-export const PG_META_URL = IS_PLATFORM
-  ? process.env.PLATFORM_PG_META_URL
-  : process.env.STUDIO_PG_META_URL
+export const PG_META_URL = process.env.STUDIO_PG_META_URL
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 /**

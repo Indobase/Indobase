@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from 'indobase-js'
 import { codeBlock, oneLine } from 'common-tags'
 import type OpenAI from 'openai'
 

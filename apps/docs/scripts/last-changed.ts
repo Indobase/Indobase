@@ -13,7 +13,7 @@
 
 import _configureDotEnv from './utils/dotenv.js'
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from 'indobase-js'
 import matter from 'gray-matter'
 import { createHash } from 'node:crypto'
 import { readdirSync } from 'node:fs'

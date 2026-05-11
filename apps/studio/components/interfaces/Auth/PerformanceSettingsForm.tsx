@@ -15,7 +15,7 @@ import { useMaxConnectionsQuery } from 'data/database/max-connections-query'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import {
   Button,
   Card,
@@ -73,7 +73,7 @@ export const PerformanceSettingsForm = () => {
   const maxConnectionLimit = maxConnData?.maxConnections ?? 60
 
   const isProPlan = organization?.plan.id !== 'free'
-  const promptProPlanUpgrade = IS_PLATFORM && !isProPlan
+  const promptProPlanUpgrade = IS_SAAS && !isProPlan
 
   const { mutate: updateAuthConfig, isPending: isSaving } = useAuthConfigUpdateMutation()
 

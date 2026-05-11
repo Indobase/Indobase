@@ -27,7 +27,7 @@
 
   "billing:all": true,
 
-  "branding:large_logo": false,
+  "branding:large_logo": true,
 
   "cli:disable_custom_profiles": true,
 

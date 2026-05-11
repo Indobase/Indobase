@@ -41,7 +41,7 @@ The following script is a good example to get started with testing your Edge Fun
 ```typescript function-one-test.ts
 // Import required libraries and modules
 import { assert, assertEquals } from 'jsr:@std/assert@1'
-import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'npm:indobase-js@2'
 
 // Will load the .env file to Deno.env
 import 'jsr:@std/dotenv/load'
@@ -107,7 +107,7 @@ This test case consists of two parts.
 1. The first part tests the client library and verifies that the database can be connected to and returns values from a table (`my_table`).
 2. The second part tests the edge function and checks if the received value matches the expected value. Here's a brief overview of the code:
    - We import various testing functions from the Deno standard library, including `assert`, `assertExists`, and `assertEquals`.
-   - We import the `createClient` and `SupabaseClient` classes from the `@supabase/supabase-js` library to interact with the Supabase client.
+   - We import the `createClient` and `SupabaseClient` classes from the `indobase-js` library to interact with the Supabase client.
    - We define the necessary configuration for the Supabase client, including the Supabase URL, API key, and authentication options.
    - The `testClientCreation` function tests the creation of a Supabase client instance and queries the database for data from a table. It verifies that data is returned from the query.
    - The `testHelloWorld` function tests the "Hello-world" Edge Function by invoking it using the Supabase client's `functions.invoke` method. It checks if the response message matches the expected greeting.

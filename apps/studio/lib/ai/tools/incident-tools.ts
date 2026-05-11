@@ -1,7 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { IS_PLATFORM } from 'common'
 import type { IncidentInfo } from 'lib/api/incident-status'
 
 /**
@@ -16,13 +15,6 @@ export const getIncidentTools = ({ baseUrl }: { baseUrl: string }) => ({
       'Check for active incidents. Use this tool when the user reports issues with any Indobase service, including the database, authentication, realtime, storage, and functions. Possible problems include, but are not limited to, connection issues, timeouts, service unavailability, authentication failures, or unexpected errors.',
     inputSchema: z.object({}),
     execute: async () => {
-      if (!IS_PLATFORM) {
-        return {
-          incidents: [],
-          message: 'Incident checking is only available on Indobase platform.',
-        }
-      }
-
       try {
         const response = await fetch(`${baseUrl}/api/incident-status`, {
           signal: AbortSignal.timeout(5_000),

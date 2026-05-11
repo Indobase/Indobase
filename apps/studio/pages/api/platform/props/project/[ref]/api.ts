@@ -8,7 +8,8 @@ import {
   PROJECT_REST_URL,
 } from 'lib/constants/api'
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: true })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
@@ -23,6 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 const handleGetAll = async (req: NextApiRequest, res: NextApiResponse) => {
+  res.setHeader('Cache-Control', 'no-store')
   // Platform specific endpoint
   const response = {
     project: {
@@ -61,7 +63,7 @@ const handleGetAll = async (req: NextApiRequest, res: NextApiResponse) => {
     autoApiService: {
       id: 1,
       name: 'Default API',
-      project: { ref: 'default' },
+      project: { ref: DEFAULT_PROJECT.ref },
       app: { id: 1, name: 'Auto API' },
       app_config: {
         db_schema: 'public',

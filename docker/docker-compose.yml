@@ -38,7 +38,7 @@ services:
 
       STUDIO_PG_META_URL: http://indobase-meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
-      # Prefer the actual DB container name in Dokploy/self-hosted setups.
+      # Prefer the actual DB container name in Dokploy / single-server setups.
       # If Studio runs in a different stack/network, override POSTGRES_HOST to a reachable host
       # (e.g. host.docker.internal, VPS private IP, or a managed Postgres hostname).
       POSTGRES_HOST: ${POSTGRES_HOST:-indobase-db}
@@ -64,20 +64,14 @@ services:
       KONG_INTERNAL_GOTRUE_URL: ${KONG_INTERNAL_GOTRUE_URL:-http://indobase-kong:8000/auth/v1}
 
       # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
-      # SaaS mode (multi-org dashboard + /organizations, /org/* routes).
-      # For Indobase self-hosted SaaS: set NEXT_PUBLIC_INDOBASE_SAAS=true and keep NEXT_PUBLIC_IS_PLATFORM=false.
-      NEXT_PUBLIC_IS_PLATFORM: ${NEXT_PUBLIC_IS_PLATFORM:-false}
+      # Multi-org dashboard + /organizations, /org/* routes (default on).
       NEXT_PUBLIC_INDOBASE_SAAS: ${NEXT_PUBLIC_INDOBASE_SAAS:-true}
-      # Optional: self-hosted SaaS can also enable explicit auth-gating even when not running Platform API.
-      NEXT_PUBLIC_ENABLE_SELF_HOSTED_AUTH: ${NEXT_PUBLIC_ENABLE_SELF_HOSTED_AUTH:-true}
       # Browser-visible Studio origin (match public URL; with default Kong routing this is usually SUPABASE_PUBLIC_URL).
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${SUPABASE_PUBLIC_URL}}
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_PUBLIC_URL}}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${ANON_KEY}}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
       NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://indobase.in/docs}
-      # Hide the self-hosted "shared database" warning banner in Studio.
-      NEXT_PUBLIC_HIDE_SHARED_DB_BANNER: ${NEXT_PUBLIC_HIDE_SHARED_DB_BANNER:-true}
 
       # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
@@ -421,6 +415,7 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
+      # Keep JWT verification enabled by default; only disable for intentionally public endpoints.
       # TODO: Allow configuring VERIFY_JWT per function
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command:

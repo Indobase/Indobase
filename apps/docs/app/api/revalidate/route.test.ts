@@ -1,6 +1,6 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { NextRequest } from 'next/server'
@@ -18,7 +18,7 @@ vi.mock('next/headers', () => ({
 }))
 
 // Mock Supabase client
-vi.mock('@supabase/supabase-js', () => ({
+vi.mock('indobase-js', () => ({
   createClient: vi.fn(),
 }))
 

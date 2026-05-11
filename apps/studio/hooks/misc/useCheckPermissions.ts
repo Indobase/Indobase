@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 
 import { useIsLoggedIn, useParams } from 'common'
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { Permission } from 'types'
 import { useSelectedOrganizationQuery } from './useSelectedOrganization'
 import { useSelectedProjectQuery } from './useSelectedProject'
@@ -158,7 +158,7 @@ export function useAsyncCheckPermissions(
   } = useGetProjectPermissions(permissions, organizationSlug, projectRef, isLoggedIn)
 
   const can = useMemo(() => {
-    if (!IS_PLATFORM) return true
+    if (!IS_SAAS) return true
     if (!isLoggedIn) return false
     if (!isPermissionsSuccess || !allPermissions) return false
 
@@ -182,9 +182,9 @@ export function useAsyncCheckPermissions(
   ])
 
   // Derive loading/success consistently from the same branches
-  const isLoading = !IS_PLATFORM ? false : !isLoggedIn ? true : isPermissionsLoading
+  const isLoading = !IS_SAAS ? false : !isLoggedIn ? true : isPermissionsLoading
 
-  const isSuccess = !IS_PLATFORM ? true : !isLoggedIn ? false : isPermissionsSuccess
+  const isSuccess = !IS_SAAS ? true : !isLoggedIn ? false : isPermissionsSuccess
 
   return { isLoading, isSuccess, can }
 }

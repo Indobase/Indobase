@@ -3,7 +3,7 @@ import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { DatabaseSelector } from 'components/ui/DatabaseSelector'
 import { DownloadResultsButton } from 'components/ui/DownloadResultsButton'
 import { useLoadBalancersQuery } from 'data/read-replicas/load-balancers-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Eye, EyeOff, RefreshCw, Search, Terminal, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -78,7 +78,7 @@ const PreviewFilterPanel = ({
 
   // [Joshen] These are the routes tested that can show replica logs
   const showDatabaseSelector =
-    IS_PLATFORM && LOG_ROUTES_WITH_REPLICA_SUPPORT.includes(router.pathname)
+    IS_SAAS && LOG_ROUTES_WITH_REPLICA_SUPPORT.includes(router.pathname)
 
   const hasEdits = search !== defaultSearchValue
 

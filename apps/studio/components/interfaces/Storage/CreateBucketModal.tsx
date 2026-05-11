@@ -11,7 +11,7 @@ import { useProjectStorageConfigQuery } from 'data/config/project-storage-config
 import { useBucketCreateMutation } from 'data/storage/bucket-create-mutation'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import {
   Button,
   Dialog,
@@ -90,7 +90,7 @@ export const CreateBucketModal = ({ open, onOpenChange }: CreateBucketModalProps
   const [selectedUnit, setSelectedUnit] = useState<string>(StorageSizeUnits.MB)
   const [hasAllowedMimeTypes, setHasAllowedMimeTypes] = useState(false)
 
-  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_PLATFORM })
+  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const { value, unit } = convertFromBytes(data?.fileSizeLimit ?? 0)
   const formattedGlobalUploadLimit = `${value} ${unit}`
 
@@ -343,7 +343,7 @@ export const CreateBucketModal = ({ open, onOpenChange }: CreateBucketModalProps
                     </FormMessage_Shadcn_>
                   )}
 
-                  {IS_PLATFORM && (
+                  {IS_SAAS && (
                     <p className="text-sm text-foreground-lighter mt-2">
                       This project has a{' '}
                       <InlineLink

@@ -1,5 +1,5 @@
 import { useParams } from 'common'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { useTrack } from 'lib/telemetry/track'
 import { useMemo } from 'react'
 import {
@@ -49,7 +49,7 @@ function McpCursorContentInner({
   const selectedFeatures = Array.isArray(state.mcpFeatures) ? state.mcpFeatures : []
 
   const selectedFeaturesSupported = useMemo(() => {
-    const supportedFeatures = IS_PLATFORM ? FEATURE_GROUPS_PLATFORM : FEATURE_GROUPS_NON_PLATFORM
+    const supportedFeatures = IS_SAAS ? FEATURE_GROUPS_PLATFORM : FEATURE_GROUPS_NON_PLATFORM
     return selectedFeatures.filter((feature) =>
       supportedFeatures.some((group) => group.id === feature)
     )
@@ -68,7 +68,7 @@ function McpCursorContentInner({
 
   const { clientConfig } = getMcpUrl({
     projectRef,
-    isPlatform: IS_PLATFORM,
+    isPlatform: IS_SAAS,
     apiUrl: projectKeys.apiUrl ?? undefined,
     readonly,
     features: selectedFeaturesSupported,

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { getOrRefreshTemporaryApiKey } from 'data/api-keys/temp-api-keys-utils'
 
 /**

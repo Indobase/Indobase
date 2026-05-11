@@ -25,7 +25,7 @@ const bucket: Bucket = {
 const Page = ({ onClose }: { onClose: () => void }) => {
   const [open, setOpen] = useState(false)
   return (
-    <ProjectContextProvider projectRef="default">
+    <ProjectContextProvider projectRef="abcdefghijklmnopqrst">
       <button onClick={() => setOpen(true)}>Open</button>
 
       <EditBucketModal
@@ -53,7 +53,7 @@ describe(`EditBucketModal`, () => {
         inserted_at: '2021-08-02T06:40:40.646Z',
         name: 'Default Project',
         organization_id: 1,
-        ref: 'default',
+        ref: 'abcdefghijklmnopqrst',
         region: 'local',
         status: 'ACTIVE_HEALTHY',
       },

@@ -5,13 +5,13 @@
   "title": "Supabase Client for Vue",
   "description": "",
   "dependencies": [
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [],
   "files": [
     {
       "path": "registry/default/clients/vue/lib/supabase/client.ts",
-      "content": "/// <reference types=\"vite/types/importMeta.d.ts\" />\nimport { createClient as createSupabaseClient } from '@supabase/supabase-js'\n\nexport function createClient() {\n  return createSupabaseClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
+      "content": "/// <reference types=\"vite/types/importMeta.d.ts\" />\nimport { createClient as createSupabaseClient } from 'indobase-js'\n\nexport function createClient() {\n  return createSupabaseClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
       "type": "registry:lib"
     }
   ],

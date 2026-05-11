@@ -2,7 +2,7 @@ import { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
 import { filterToolsByOptInLevel } from '../tool-filter'
 import { getFallbackTools } from './fallback-tools'
 import { ToolSet } from 'ai'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { getIncidentTools } from './incident-tools'
 import { getMcpTools } from './mcp-tools'
 import { getSchemaTools } from './schema-tools'
@@ -26,8 +26,8 @@ export const getTools = async ({
   // Always include rendering tools
   let tools: ToolSet = getRenderingTools()
 
-  // If self-hosted, only add fallback tools
-  if (!IS_PLATFORM) {
+  // If SaaS, only add fallback tools
+  if (!IS_SAAS) {
     tools = {
       ...tools,
       ...getFallbackTools({

@@ -1,7 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from 'indobase-js'
 
 /**
- * Creates a service-role Supabase client for the self-hosted Studio backend.
+ * Creates a service-role Supabase client for the SaaS Studio backend.
  *
  * Module-scope `createClient(...)` calls were causing every request through
  * the storage / auth proxy handlers to 500 when one of the env vars was

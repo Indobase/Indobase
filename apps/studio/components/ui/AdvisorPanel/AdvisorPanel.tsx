@@ -8,7 +8,7 @@ import {
 import { useNotificationsV2UpdateMutation } from 'data/notifications/notifications-v2-update-mutation'
 import dayjs from 'dayjs'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useTrack } from 'lib/telemetry/track'
 import { useMemo, useRef } from 'react'
 import { AdvisorSeverity, AdvisorTab, useAdvisorStateSnapshot } from 'state/advisor-state'
@@ -81,7 +81,7 @@ export const AdvisorPanel = () => {
   )
 
   // Notifications should always load when sidebar is open (shown in both 'all' and 'messages' tabs)
-  const shouldLoadNotifications = isSidebarOpen && IS_PLATFORM
+  const shouldLoadNotifications = isSidebarOpen && IS_SAAS
 
   const notificationStatus = useMemo(() => {
     if (notificationFilterStatuses.includes('archived')) {
@@ -153,7 +153,7 @@ export const AdvisorPanel = () => {
   }, [lintData])
 
   const notificationItems = useMemo<AdvisorItem[]>(() => {
-    if (!IS_PLATFORM) return []
+    if (!IS_SAAS) return []
     return notifications?.map((notification): AdvisorItem => {
       const data = notification.data as NotificationData
       return {
@@ -323,7 +323,7 @@ export const AdvisorPanel = () => {
                 .forEach((status) => setNotificationFilters(status, 'status'))
             }}
             onClose={handleClose}
-            isPlatform={IS_PLATFORM}
+            isPlatform={IS_SAAS}
           />
           <div className="flex-1 overflow-y-auto">
             <AdvisorPanelBody

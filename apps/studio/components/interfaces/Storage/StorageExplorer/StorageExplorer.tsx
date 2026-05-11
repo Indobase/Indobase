@@ -7,7 +7,7 @@ import { useParams } from 'common'
 import { useProjectStorageConfigQuery } from 'data/config/project-storage-config-query'
 import type { Bucket } from 'data/storage/buckets-query'
 import { useLatest } from 'hooks/misc/useLatest'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useStorageExplorerStateSnapshot } from 'state/storage-explorer'
 import { useSelectedBucket } from '../FilesBuckets/useSelectedBucket'
 import { STORAGE_ROW_TYPES, STORAGE_VIEWS } from '../Storage.constants'
@@ -44,7 +44,7 @@ export const StorageExplorer = () => {
     setSelectedItemsToMove,
   } = useStorageExplorerStateSnapshot()
 
-  useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_PLATFORM })
+  useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const { data: bucket, isLoading: isBucketQueryLoading } = useSelectedBucket()
 
   // Detect when transitioning between buckets to avoid showing stale content from the previous bucket.

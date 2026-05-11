@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import {
   useIsAnalyticsBucketsEnabled,
   useIsVectorBucketsEnabled,
@@ -23,8 +23,8 @@ export const StorageMenuV2 = () => {
   const isVectorBucketsEnabled = useIsVectorBucketsEnabled({ projectRef: ref })
 
   const bucketTypes = Object.entries(BUCKET_TYPES).filter(([key]) => {
-    if (key === 'analytics') return IS_PLATFORM && storageAnalytics
-    if (key === 'vectors') return IS_PLATFORM && storageVectors
+    if (key === 'analytics') return IS_SAAS && storageAnalytics
+    if (key === 'vectors') return IS_SAAS && storageVectors
     return true
   })
 
@@ -53,7 +53,7 @@ export const StorageMenuV2 = () => {
           })}
         </div>
 
-        {IS_PLATFORM && (
+        {IS_SAAS && (
           <>
             <div className="h-px w-full bg-border" />
             <div className="mx-3">

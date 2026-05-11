@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import { LogDrainData, useLogDrainsQuery } from 'data/log-drains/log-drains-query'
 import { DOCS_URL } from 'lib/constants'
 import { useTrack } from 'lib/telemetry/track'
@@ -807,7 +807,7 @@ export function LogDrainDestinationSheetForm({
         <div className="mt-auto">
           <SheetSection
             className={cn(
-              `border-t bg-background-alternative-200 mt-auto py-1.5 ${!IS_PLATFORM && 'hidden'}`
+              `border-t bg-background-alternative-200 mt-auto py-1.5 ${!IS_SAAS && 'hidden'}`
             )}
           >
             <ul className="text-right text-foreground-light divide-y divide-dashed text-sm">

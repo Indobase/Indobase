@@ -2,11 +2,15 @@
 
 Use this in **project** databases (the DB your app connects to), not the docs/website DB.
 
+The **Studio control plane** (`saas` schema on the same Postgres instance Studio uses) gets RLS automatically when Studio runs—see [MULTITENANCY_RLS.md](../../MULTITENANCY_RLS.md) § *Indobase control plane*. This template is for **your application tables** in `public` (or other schemas) that need `tenant_id` isolation.
+
 ## What’s in the migration
 
-- **`public.current_tenant_id()`** – returns the current tenant UUID from:
-  - JWT claim `tenant_id`, or
-  - Session variable `app.tenant_id` (set via `set_tenant_id()`).
+- **`public.current_tenant_id()`** – returns the current tenant UUID from (in order):
+    - top-level `tenant_id` on `request.jwt.claims` JSON,
+    - `app_metadata.tenant_id` (typical when set via GoTrue Admin `app_metadata`),
+    - `request.jwt.claim.tenant_id` (alternate PostgREST shape),
+    - session `app.tenant_id` (set via `set_tenant_id()` or `set_config`).
 - **`public.set_tenant_id(uuid)`** – sets `app.tenant_id` for the current transaction.
 - **Example table `public.devices`** – `tenant_id` + RLS so each tenant only sees their own rows.
 

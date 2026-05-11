@@ -1,14 +1,14 @@
-export const IS_PLATFORM = process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
-/** Indobase multi-tenant product image (billing/orgs UI) without hosted Supabase Platform API. */
-export const IS_INDOBASE_SAAS = process.env.NEXT_PUBLIC_INDOBASE_SAAS === 'true'
-/** Any managed multi-tenant dashboard mode: Supabase cloud or Indobase SaaS. */
-export const IS_SAAS = IS_PLATFORM || IS_INDOBASE_SAAS
-/** Self-hosted Studio with mandatory auth and org flows (Compose, etc.). */
-export const ENABLE_SELF_HOSTED_AUTH = process.env.NEXT_PUBLIC_ENABLE_SELF_HOSTED_AUTH === 'true'
 /**
- * Uses organizations, sign-in, and /org routes (not anonymous “open” Studio).
- * Cloud, Indobase SaaS, or self-hosted + auth.
+ * Hosted Supabase Platform API dashboard (legacy upstream mode).
+ * Indobase ships as SaaS only; runtime value is always false (`NEXT_PUBLIC_IS_PLATFORM` is ignored).
  */
-export const IS_MULTI_ORG_DASHBOARD = IS_SAAS || ENABLE_SELF_HOSTED_AUTH
+export const IS_PLATFORM: boolean = false
+/**
+ * Indobase multi-tenant product (orgs, billing, local `/api/platform/*` control plane).
+ * Defaults on unless explicitly set to the string `"false"`.
+ */
+export const IS_INDOBASE_SAAS = process.env.NEXT_PUBLIC_INDOBASE_SAAS !== 'false'
+/** SaaS dashboard (Indobase); hosted Supabase Platform is not supported in this fork. */
+export const IS_SAAS = IS_INDOBASE_SAAS
 
 export const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'

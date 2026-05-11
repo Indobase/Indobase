@@ -9,13 +9,13 @@ import { saasOrgKeys } from './organization-memberships-query'
 export type CreateSaasInviteVariables = {
   slug: string
   email: string
-  role: 'admin' | 'developer' | 'viewer'
+  roleId: number
 }
 
-export async function createSaasInvite({ slug, email, role }: CreateSaasInviteVariables) {
-  const { data, error } = await post('/platform/organizations/{slug}/invites', {
+export async function createSaasInvite({ slug, email, roleId }: CreateSaasInviteVariables) {
+  const { data, error } = await post('/platform/organizations/{slug}/members/invitations', {
     params: { path: { slug } },
-    body: { email, role },
+    body: { email, role_id: roleId },
   })
   if (error) handleError(error)
   return data
@@ -45,4 +45,3 @@ export const useCreateSaasInviteMutation = ({
     ...options,
   })
 }
-

@@ -38,7 +38,7 @@
   },
   "peerDependencies": {
     "@supabase/auth-js": "catalog:",
-    "@supabase/supabase-js": "catalog:",
+    "indobase-js": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

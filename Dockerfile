@@ -27,17 +27,19 @@ RUN mkdir -p /tmp/studio-public && cp -r /workspace/apps/studio/public/. /tmp/st
     cp -r /tmp/studio-public/. /workspace/apps/studio/public/
 ARG NEXT_PUBLIC_BASE_PATH=
 ARG SKIP_ASSET_UPLOAD=1
-ARG NEXT_PUBLIC_IS_PLATFORM=false
+ARG NEXT_PUBLIC_INDOBASE_SAAS=true
 ARG NEXT_PUBLIC_API_URL=https://api.indobase.in
 ARG NEXT_PUBLIC_GOTRUE_URL=https://api.indobase.in/auth/v1
 ARG NEXT_PUBLIC_SITE_URL=https://studio.indobase.in
+ARG NEXT_PUBLIC_SUPABASE_URL=https://api.indobase.in
 ARG NEXT_PUBLIC_ANON_KEY=
 ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 ENV SKIP_ASSET_UPLOAD=${SKIP_ASSET_UPLOAD}
-ENV NEXT_PUBLIC_IS_PLATFORM=${NEXT_PUBLIC_IS_PLATFORM}
+ENV NEXT_PUBLIC_INDOBASE_SAAS=${NEXT_PUBLIC_INDOBASE_SAAS}
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_GOTRUE_URL=${NEXT_PUBLIC_GOTRUE_URL}
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
 ENV NEXT_PUBLIC_ANON_KEY=${NEXT_PUBLIC_ANON_KEY}
 # Next.js build can be memory-heavy; increase Node heap if Docker has enough RAM
 ENV NODE_OPTIONS="--max-old-space-size=4096"
@@ -49,7 +51,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Self-hosted Studio: required env so APIs don't assert (override in Dokploy if using volumes)
+# SaaS Studio: default folders so APIs start (override in Dokploy if using volumes)
 ENV EDGE_FUNCTIONS_MANAGEMENT_FOLDER=/app/edge-functions
 ENV SNIPPETS_MANAGEMENT_FOLDER=/app/snippets
 RUN mkdir -p /app/edge-functions /app/snippets

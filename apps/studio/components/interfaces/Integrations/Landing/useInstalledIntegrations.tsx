@@ -4,7 +4,7 @@ import { useSchemasQuery } from 'data/database/schemas-query'
 import { useFDWsQuery } from 'data/fdw/fdws-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { EMPTY_ARR } from 'lib/void'
 import { useMemo } from 'react'
 
@@ -32,7 +32,7 @@ export const useInstalledIntegrations = () => {
       if (!stripeSyncEnabled && integration.id === 'stripe_sync_engine') {
         return false
       }
-      if (!IS_PLATFORM && integration.id === 'data_api') {
+      if (!IS_SAAS && integration.id === 'data_api') {
         return false
       }
       return true

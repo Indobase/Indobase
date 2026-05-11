@@ -2,14 +2,10 @@ import { QueryClient, onlineManager } from '@tanstack/react-query'
 import { match } from 'path-to-regexp'
 import { useState } from 'react'
 
-import { IS_PLATFORM } from 'lib/constants'
 import { ResponseError } from 'types'
 
-// When running locally we don't need the internet
-// so we can pretend we're online all the time
-if (!IS_PLATFORM) {
-  onlineManager.setOnline(true)
-}
+// Studio runs against local Docker or same-origin APIs; avoid flaky offline state in dev.
+onlineManager.setOnline(true)
 
 const SKIP_RETRY_PATHNAME_MATCHERS = [
   '/platform/projects/:ref/run-lints',

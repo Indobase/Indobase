@@ -1,6 +1,6 @@
 import { useMonaco } from '@monaco-editor/react'
 import { useLocalStorage } from '@uidotdev/usehooks'
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS, useParams } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS, useParams } from 'common'
 import {
   EXPLORER_DATEPICKER_HELPERS,
   getDefaultHelper,
@@ -97,7 +97,7 @@ export const LogsExplorerPage: NextPageWithLayout = () => {
   const [datePickerValue, setDatePickerValue] = useState<DatePickerValue>(initialDatePickerValue)
 
   const { logsDefaultQuery } = useCustomContent(['logs:default_query'])
-  const PLACEHOLDER_QUERY = IS_PLATFORM
+  const PLACEHOLDER_QUERY = IS_SAAS
     ? logsDefaultQuery ?? PLATFORM_PLACEHOLDER_QUERY
     : LOCAL_PLACEHOLDER_QUERY
 

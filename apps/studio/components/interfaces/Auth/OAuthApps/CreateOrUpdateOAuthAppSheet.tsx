@@ -3,7 +3,7 @@ import type {
   CreateOAuthClientParams,
   OAuthClient,
   UpdateOAuthClientParams,
-} from '@supabase/supabase-js'
+} from 'indobase-js'
 import { useParams } from 'common'
 import { InlineLink } from 'components/ui/InlineLink'
 import Panel from 'components/ui/Panel'

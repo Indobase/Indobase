@@ -59,7 +59,7 @@ function categorizeMethod(methodPath: string): 'public' | 'constructor' | 'error
 }
 
 // Dynamically detect re-exports from typeSpec data
-// If a class exists in both @supabase/supabase-js and another @supabase/* package,
+// If a class exists in both indobase-js and another @supabase/* package,
 // prefer the other package (which is the original source)
 function buildReexportMap(typeSpecModules: TypeSpecModule[]): Map<string, string> {
   const classToPackages = new Map<string, Set<string>>()
@@ -81,10 +81,10 @@ function buildReexportMap(typeSpecModules: TypeSpecModule[]): Map<string, string
   // For classes in multiple packages, map supabase-js to the original package
   const reexportMap = new Map<string, string>()
   for (const [className, packages] of classToPackages) {
-    if (packages.has('@supabase/supabase-js') && packages.size > 1) {
+    if (packages.has('indobase-js') && packages.size > 1) {
       // Find the original package (not supabase-js)
       for (const pkg of packages) {
-        if (pkg !== '@supabase/supabase-js') {
+        if (pkg !== 'indobase-js') {
           reexportMap.set(className, pkg)
           break
         }
@@ -96,12 +96,12 @@ function buildReexportMap(typeSpecModules: TypeSpecModule[]): Map<string, string
 
 // Get the "canonical" path (prefer original package over supabase-js re-exports)
 function getCanonicalPath(methodPath: string, reexportMap: Map<string, string>): string {
-  if (methodPath.startsWith('@supabase/supabase-js.')) {
+  if (methodPath.startsWith('indobase-js.')) {
     const parts = methodPath.split('.')
     const className = parts[1]
     const originalPkg = reexportMap.get(className)
     if (originalPkg) {
-      return methodPath.replace('@supabase/supabase-js', originalPkg)
+      return methodPath.replace('indobase-js', originalPkg)
     }
   }
   return methodPath

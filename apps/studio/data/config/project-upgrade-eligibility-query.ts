@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { components } from 'api-types'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { get, handleError } from 'data/fetchers'
 import { useProjectDetailQuery } from 'data/projects/project-detail-query'
 import { PROJECT_STATUS } from 'lib/constants/infrastructure'
@@ -60,7 +60,7 @@ export const useProjectUpgradeEligibilityQuery = <TData = ProjectUpgradeEligibil
       project !== undefined &&
       project.status === PROJECT_STATUS.ACTIVE_HEALTHY &&
       typeof projectRef !== 'undefined' &&
-      IS_PLATFORM,
+      IS_SAAS,
     ...options,
   })
 }

@@ -21,16 +21,16 @@ function safeGetLocalStorage(key: string) {
   }
 }
 
-const debug =
-  process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' && safeGetLocalStorage(AUTH_DEBUG_KEY) === 'true'
+// Indobase ships as SaaS by default. Keep auth debug controls keyed off the
+// same SaaS flag as Studio (`NEXT_PUBLIC_INDOBASE_SAAS`), not legacy platform mode.
+const isSaaS = process.env.NEXT_PUBLIC_INDOBASE_SAAS !== 'false'
+const debug = isSaaS && safeGetLocalStorage(AUTH_DEBUG_KEY) === 'true'
 
 const persistedDebug =
-  process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' &&
-  safeGetLocalStorage(AUTH_DEBUG_PERSISTED_KEY) === 'true'
+  isSaaS && safeGetLocalStorage(AUTH_DEBUG_PERSISTED_KEY) === 'true'
 
 const shouldEnableNavigatorLock =
-  process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' &&
-  !(safeGetLocalStorage(AUTH_NAVIGATOR_LOCK_DISABLED_KEY) === 'true')
+  isSaaS && !(safeGetLocalStorage(AUTH_NAVIGATOR_LOCK_DISABLED_KEY) === 'true')
 
 const shouldDetectSessionInUrl = process.env.NEXT_PUBLIC_AUTH_DETECT_SESSION_IN_URL
   ? process.env.NEXT_PUBLIC_AUTH_DETECT_SESSION_IN_URL === 'true'

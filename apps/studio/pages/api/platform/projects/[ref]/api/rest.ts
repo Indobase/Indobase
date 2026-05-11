@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: true })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
@@ -30,7 +31,9 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json(data)
   }
 
-  return res.status(500).json({ error: { message: 'Internal Server Error' } })
+  return res.status(response.status).json({
+    error: { message: `REST API health check failed (${response.status})` },
+  })
 }
 
 const handleHead = async (req: NextApiRequest, res: NextApiResponse) => {

@@ -1,6 +1,6 @@
 # Production readiness checklist
 
-Use this checklist before running Indobase as a production platform (hosted or self-hosted).
+Use this checklist before running Indobase as a production **BaaS / SaaS** stack (dashboard + API + Postgres).
 
 ## User flow & onboarding
 
@@ -9,6 +9,7 @@ Use this checklist before running Indobase as a production platform (hosted or s
 - [x] "Go to dashboard" for existing users on plans page; "Start with Free" shortcut
 - [ ] **Verify** Email delivery (SMTP / provider) for sign-up and password reset
 - [ ] **Verify** Auth redirect URLs and `site_url` in backend auth config match your domain (see [WIRING.md](WIRING.md))
+- [ ] **Verify** SaaS mode is explicitly enabled where expected (`NEXT_PUBLIC_INDOBASE_SAAS=true`), and do not rely on legacy `NEXT_PUBLIC_IS_PLATFORM`
 
 ## Billing & payments
 
@@ -29,8 +30,13 @@ Use this checklist before running Indobase as a production platform (hosted or s
 
 - [ ] **Verify** Single domain or multi-domain setup (see [SINGLE_DOMAIN.md](SINGLE_DOMAIN.md))
 - [ ] **Verify** `NEXT_PUBLIC_BASE_PATH` is set correctly when Studio is served under a path (e.g. `/dashboard`) so API and assets resolve
+- [ ] **Verify** public URL envs are aligned (`SITE_URL`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_PUBLIC_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `API_EXTERNAL_URL`)
 - [ ] **Verify** TLS/SSL for all public endpoints
 - [ ] **Verify** Auth (GoTrue) and API (Kong/PostgREST) rate limits and abuse protection
+- [ ] **Verify** Studio public auth endpoints (`/api/platform/signup`, `/api/platform/reset-password`) have abuse controls (IP rate limiting/WAF)
+- [ ] **Verify** readiness surface from public origin (`GET https://studio.indobase.in/api/health` should be `200` when healthy)
+- [ ] **Verify** Edge Functions JWT enforcement for public APIs (`FUNCTIONS_VERIFY_JWT=true` unless endpoint is intentionally public)
+- [ ] **Verify** sensitive Studio platform APIs require auth and are uncached (`Cache-Control: no-store`)
 - [ ] **Verify** Backups and point-in-time recovery for Postgres
 - [ ] **Verify** Secrets and API keys not committed; use env or secret manager
 
@@ -53,6 +59,7 @@ Use this checklist before running Indobase as a production platform (hosted or s
 - [ ] Run `pnpm build` (or `npm run build`) and fix any type or build errors
 - [ ] Run `pnpm lint` and fix reported issues
 - [ ] Run critical test suites (e.g. `pnpm test:studio`) if available
+- [ ] Run smoke check: `./scripts/studio-production-smoke.sh https://your-studio-domain`
 
 ---
 

@@ -31,7 +31,7 @@ EXPO_PUBLIC_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable ke
           {`
 import 'react-native-url-polyfill/auto'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createClient, processLock } from '@supabase/supabase-js'
+import { createClient, processLock } from 'indobase-js'
 
 export const indobase = createClient(
   process.env.EXPO_PUBLIC_INDOBASE_URL!,

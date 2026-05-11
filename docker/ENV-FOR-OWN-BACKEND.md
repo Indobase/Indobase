@@ -91,7 +91,7 @@ NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 
 ## Troubleshooting: 500 on `/api/platform/organizations` or `/api/platform/projects/...`
 
-1. **`NEXT_PUBLIC_IS_PLATFORM`** – For this self-hosted dashboard image it must **not** be `true`. If it is, Studio disables postgres-meta SQL and platform routes fail. Unset it or set `NEXT_PUBLIC_IS_PLATFORM=false` (note: `NEXT_PUBLIC_*` is baked in at **build** time for Next.js—rebuild the image if you change it).
+1. **`NEXT_PUBLIC_INDOBASE_SAAS` / public URLs** – Org and billing routes expect SaaS mode (default on). Public URLs are baked in at **build** time: rebuild the image if you change `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, or `NEXT_PUBLIC_GOTRUE_URL`.
 2. **`STUDIO_PG_META_URL`** – Must be set to the postgres-meta base URL reachable from the Studio container (e.g. `http://meta:8080`).
 3. **`PG_META_CRYPTO_KEY`** – Must match `CRYPTO_KEY` / `PG_META_CRYPTO_KEY` on the **meta** service so connection encryption matches.
 4. **Postgres from Studio** – `POSTGRES_HOST`, `POSTGRES_PASSWORD`, etc. must point at the same DB meta uses; otherwise bootstrap of `saas.*` tables fails.

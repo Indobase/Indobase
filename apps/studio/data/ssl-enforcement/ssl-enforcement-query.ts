@@ -11,8 +11,8 @@ export async function getSSLEnforcementConfiguration(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Both cloud and self-hosted Studio expose `/v1/projects/{ref}/ssl-enforcement`.
-  // Self-hosted backs it with the saas.projects.ssl_enforced flag.
+  // Both cloud and SaaS Studio expose `/v1/projects/{ref}/ssl-enforcement`.
+  // SaaS backs it with the saas.projects.ssl_enforced flag.
   const { data, error } = await get(`/v1/projects/{ref}/ssl-enforcement`, {
     params: { path: { ref: projectRef } },
     signal,

@@ -39,7 +39,7 @@ const LOG_DATA = {
 test('can display log data', async () => {
   render(
     <>
-      <LogTable projectRef="default" data={[LOG_DATA]} />
+      <LogTable projectRef="abcdefghijklmnopqrst" data={[LOG_DATA]} />
     </>
   )
 
@@ -47,7 +47,7 @@ test('can display log data', async () => {
 })
 
 test('Shows total results', async () => {
-  render(<LogTable projectRef="default" data={[LOG_DATA]} />)
+  render(<LogTable projectRef="abcdefghijklmnopqrst" data={[LOG_DATA]} />)
 
   await screen.getByText(/results \(1\)/i)
 })

@@ -1,15 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { constructHeaders, fetchHandler } from 'data/fetchers'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { ResponseError, UseCustomQueryOptions } from 'types'
 import { aiKeys } from './keys'
 
-// check to see if the OPENAI_API_KEY env var is set in self-hosted
+// check to see if the OPENAI_API_KEY env var is set in SaaS
 // so we can disable the chat editor and add a warning about manually adding the key
 
 export async function checkOpenAIKey(signal?: AbortSignal) {
-  if (IS_PLATFORM) {
+  if (IS_SAAS) {
     return { hasKey: true }
   }
 

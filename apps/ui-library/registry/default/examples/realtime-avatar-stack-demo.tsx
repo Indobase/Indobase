@@ -1,6 +1,6 @@
 'use client'
 
-import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
+import { REALTIME_SUBSCRIBE_STATES } from 'indobase-js'
 import { useUser } from 'common'
 import { useEffect, useMemo, useState } from 'react'
 import { Label_Shadcn_, Switch } from 'ui'

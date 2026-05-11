@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { get, handleError } from 'data/fetchers'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { profileKeys } from './keys'
 import type { Profile } from './types'
@@ -14,7 +14,7 @@ export async function getProfile(signal?: AbortSignal) {
 
   if (error) handleError(error)
 
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     return {
       ...data,
       disabled_features: process.env.NEXT_PUBLIC_DISABLED_FEATURES?.split(',') ?? [],

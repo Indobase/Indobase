@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { usePathname } from 'next/navigation'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useGetUnifiedLogsMutation } from 'data/logs/get-unified-logs'
 import {
@@ -102,7 +102,7 @@ export const DownloadLogsButton = ({ searchParameters }: DownloadLogsButtonProps
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          {isLogs && IS_PLATFORM && (
+          {isLogs && IS_SAAS && (
             <DropdownMenuItem asChild className="gap-x-2">
               <Link href={`/project/${ref}/settings/log-drains`}>
                 <Settings size={14} />

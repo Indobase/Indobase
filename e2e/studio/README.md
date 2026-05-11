@@ -4,9 +4,9 @@
 
 ### Prerequisites
 
-#### For Self-Hosted Tests
+#### For Indobase SaaS / local Studio tests
 
-- Nothing is required, running with IS_PLATFORM=false should run the tests locally with a self hosted docker container
+- Nothing extra is required: `IS_PLATFORM=false` runs tests against the local Docker stack (see root `docker-compose`).
 
 #### For Platform Tests
 
@@ -21,10 +21,10 @@
 
 Choose the appropriate example file based on your testing scenario:
 
-**For self-hosted tests:**
+**For Indobase SaaS / local Studio tests:**
 
 ```bash
-cp .env.local.self-hosted.example .env.local
+cp .env.local.saas.example .env.local
 ```
 
 **For platform tests with email authentication:**
@@ -53,13 +53,13 @@ pnpm exec playwright install
 
 ### Environment Variables
 
-Configure your tests by setting the following environment variables in `.env.local`. We have examples of what required on self hosted and platform:
+Configure your tests by setting the following environment variables in `.env.local`. Examples cover local SaaS Studio and hosted platform runs:
 
 #### Core Configuration
 
 - **`STUDIO_URL`**: The URL where Studio is running (default: `http://localhost:8082`)
 - **`API_URL`**: The Supabase API endpoint (default: `https://localhost:8080`)
-- **`IS_PLATFORM`**: Set to `true` for platform tests, `false` for self-hosted (default: `false`)
+- **`IS_PLATFORM`**: Set to `true` for hosted Supabase Platform API tests, `false` for Indobase SaaS / local Studio (default: `false`)
   - When `true`: Tests run serially (1 worker) due to API rate limits
   - When `false`: Tests run in parallel (5 workers)
 
@@ -112,7 +112,7 @@ The test setup automatically runs different commands based on your environment:
 
 - **Platform + Localhost** (`IS_PLATFORM=true` and `STUDIO_URL=localhost`): Runs `pnpm run e2e:setup:platform`
 - **Platform + Remote** (`IS_PLATFORM=true` and remote `STUDIO_URL`): No web server setup
-- **Self-hosted** (`IS_PLATFORM=false`): Runs `pnpm run e2e:setup:selfhosted`
+- **Indobase SaaS / local Studio** (`IS_PLATFORM=false`): Runs `pnpm run e2e:setup:saas`
 
 ---
 

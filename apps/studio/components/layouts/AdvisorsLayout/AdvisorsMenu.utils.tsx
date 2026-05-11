@@ -1,6 +1,6 @@
 import type { ProductMenuGroup } from 'components/ui/ProductMenu/ProductMenu.types'
 import type { Project } from 'data/projects/project-detail-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { ArrowUpRight } from 'lucide-react'
 
 export const generateAdvisorsMenu = (
@@ -34,7 +34,7 @@ export const generateAdvisorsMenu = (
         },
       ],
     },
-    ...(IS_PLATFORM && features?.advisorRules
+    ...(IS_SAAS && features?.advisorRules
       ? [
           {
             title: 'Configuration',

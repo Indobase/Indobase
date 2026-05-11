@@ -13,14 +13,14 @@ Validate DB performance characteristics:
 ## What exists in this codebase
 ### Control-plane DB access
 - RLS-scoped control-plane queries via `actorId` → `set_config('app.uid', ...)`
-  - `apps/studio/lib/api/self-hosted/query.ts`
-  - `apps/studio/lib/api/self-hosted/platform.ts`
+  - `apps/studio/lib/api/saas/query.ts`
+  - `apps/studio/lib/api/saas/platform.ts`
 
 ### Tenant DB provisioning
 - Creates `tenantdb_<ref>` and login role `tenant_<ref>` (MVP)
-  - `apps/studio/lib/api/self-hosted/provision-tenant-db.ts`
+  - `apps/studio/lib/api/saas/provision-tenant-db.ts`
 - Stores DSN encrypted-at-rest in `saas.projects.connection_string_enc`
-  - `apps/studio/lib/api/self-hosted/platform.ts`
+  - `apps/studio/lib/api/saas/platform.ts`
 
 ### Major gap: tenant DB bootstrap
 New tenant DBs are created empty. There is no in-repo step to apply baseline schemas/roles/extensions

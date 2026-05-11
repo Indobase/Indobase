@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { serviceStatusKeys } from './keys'
 
@@ -12,7 +12,7 @@ export async function getEdgeFunctionServiceStatus(signal?: AbortSignal) {
   // Self-hosted (incl. Indobase SaaS) runs the edge-functions service in the
   // same compose stack as Studio. If Studio is up, the service is up — don't
   // probe a third-party Supabase URL from the user's browser.
-  if (!IS_PLATFORM) return { healthy: true }
+  if (!IS_SAAS) return { healthy: true }
 
   try {
     const res = await fetch('https://obuldanrptloktxcffvn.supabase.co/functions/v1/health-check', {

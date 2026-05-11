@@ -28,7 +28,7 @@ import { branchKeys } from 'data/branches/keys'
 import { useCheckEntitlements } from 'hooks/misc/useCheckEntitlements'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import {
   Button,
   DropdownMenu,
@@ -115,7 +115,7 @@ export const Overview = ({
         {isSuccess &&
           !isLoadingEntitlement &&
           !hasAccessToPersistentBranching &&
-          IS_PLATFORM &&
+          IS_SAAS &&
           persistentBranches.length === 0 && (
             <div className="px-6 py-10 flex items-center justify-between">
               <div className="flex flex-col gap-0.5">

@@ -5,9 +5,9 @@ import { RoleImpersonationState as ValtioRoleImpersonationState } from 'state/ro
 import { uuidv4 } from './helpers'
 
 /**
- * Build the `iss` claim for impersonation JWTs. On cloud Supabase the
- * canonical issuer is `https://<ref>.supabase.co/auth/v1`. For self-hosted
- * (incl. Indobase SaaS) we use `NEXT_PUBLIC_GOTRUE_URL` if set, otherwise
+ * Build the `iss` claim for impersonation JWTs. On hosted Supabase Platform the
+ * canonical issuer is `https://<ref>.supabase.co/auth/v1`. For Indobase SaaS /
+ * local Studio we use `NEXT_PUBLIC_GOTRUE_URL` if set, otherwise
  * `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1`, falling back to a stable
  * `indobase://<ref>/auth/v1` URN if neither is available.
  */

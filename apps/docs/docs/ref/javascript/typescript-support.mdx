@@ -83,7 +83,7 @@ With TypeScript, `supabase-js` detects things like `not null` constraints and [g
   </RefSubLayout.Details>
   <RefSubLayout.Examples>
     ```ts ./index.tsx
-    import { createClient } from '@supabase/supabase-js'
+    import { createClient } from 'indobase-js'
     import { Database } from './database.types'
 
     const supabase = createClient<Database>(
@@ -212,7 +212,7 @@ const { data } = await supabase.from('countries').select().single().overrideType
   <RefSubLayout.Examples>
 
     ```ts
-    import { QueryResult, QueryData, QueryError } from '@supabase/supabase-js'
+    import { QueryResult, QueryData, QueryError } from 'indobase-js'
 
     const countriesWithCitiesQuery = supabase
       .from("countries")

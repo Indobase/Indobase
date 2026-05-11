@@ -2,6 +2,16 @@
 
 All users share **one large cluster**. Row Level Security (RLS) separates each tenant’s data in shared tables.
 
+## Indobase control plane (`saas` schema)
+
+Studio bootstraps **`saas.*`** tables from code, then applies **membership-based RLS** in one shot (same rules as `supabase/migrations/20260421101500_saas_tenant_isolation.sql` plus `docker/volumes/db/saas-features.sql` for `audit_logs`, `custom_domains`, `third_party_auth_integrations`):
+
+- Helper **`saas.current_user_id()`** reads **`app.uid`** (set by every `executeQuery` server call from the signed-in user’s GoTrue id) or PostgREST’s **`request.jwt.claim.sub`** when present.
+- **`saas.is_member_of_project` / `saas.is_member_of_org`** back RLS on feature tables.
+- First successful API hit after deploy runs this DDL **once** (skipped if `saas.current_user_id` already exists).
+
+For **FORCE ROW LEVEL SECURITY** (RLS even for table owners), see comments at the end of that migration; enable only after you confirm all Studio paths set `app.uid` correctly.
+
 ## Model
 
 - **One database**, one set of tables (e.g. `devices`, `organizations`, app tables).
@@ -18,9 +28,12 @@ Use the template that adds the helper and an example tenant-scoped table:
 - **Path:** [`templates/shared_table_rls/`](templates/shared_table_rls/)
 - **Migration:** `001_shared_table_rls_multitenancy.sql`
 
-Copy that migration into your **project’s** `supabase/migrations/` (with a new timestamp if needed) and run it against your **project database**. It provides:
+**This repo’s main DB** also ships a **helpers-only** migration (no example table):  
+[`supabase/migrations/20260512120000_public_app_multitenancy_helpers.sql`](supabase/migrations/20260512120000_public_app_multitenancy_helpers.sql). Use that when you already have app tables and only need `current_tenant_id` / `set_tenant_id`.
 
-- `public.current_tenant_id()` – returns the current tenant UUID from JWT or `app.tenant_id`.
+Copy the template (or the helpers migration) into your **project’s** `supabase/migrations/` (with a new timestamp if needed) and run it against your **project database**. The full template provides:
+
+- `public.current_tenant_id()` – tenant UUID from JWT: top-level `tenant_id`, then `app_metadata.tenant_id`, then `request.jwt.claim.tenant_id`, then `app.tenant_id`.
 - `public.set_tenant_id(uuid)` – sets `app.tenant_id` for the current transaction (e.g. from a backend).
 - Example table `public.devices` with `tenant_id` and RLS policies.
 
@@ -36,11 +49,22 @@ So that RLS sees the right tenant for each request:
    `{ "tenant_id": "uuid-of-org-or-tenant" }`.
 
 2. **Include it in the JWT**  
-   GoTrue can map `app_metadata` (or custom logic) into the JWT. Ensure the JWT payload includes a top-level claim **`tenant_id`** (UUID string).  
-   - If your JWT uses a different claim name, either change the template’s `current_tenant_id()` to read that claim, or add a hook that copies it to `tenant_id` in the token.
+   Ensure the access token seen by PostgREST includes a **`tenant_id`** claim (UUID string). Common approaches:
+
+   - **Admin API (no hook):** After you know the user’s tenant, call GoTrue Admin **`updateUserById`** (or equivalent) with `app_metadata: { ..., tenant_id: "<uuid>" }`, then have the client **`refreshSession()`** so the next JWT carries the update. `current_tenant_id()` reads **`app_metadata.tenant_id`** (and top-level `tenant_id` if you add it via a hook) from `request.jwt.claims`.
+   - **Custom Access Token hook:** Point Auth at an Edge Function (or HTTP endpoint) that adds `tenant_id` to the JWT claims from your org-membership table. Configure this in the Supabase / Indobase Auth dashboard or your hosted GoTrue settings; see upstream Supabase docs for *Custom Access Token Hook*.
+   - **Different claim name:** Change `public.current_tenant_id()` in your migration to read your claim, or copy the value into `tenant_id` inside the hook.
 
 3. **Per-request override (optional)**  
-   Backend code using the **service role** can call `select set_tenant_id('...')` at the start of a request so that RLS still applies with the desired tenant (e.g. for server-side APIs that act on behalf of a tenant).
+   Backend code using the **service role** can run `select public.set_tenant_id('<uuid>'::uuid)` (or `set_config('app.tenant_id', '<uuid>', true)`) at the start of a transaction so RLS evaluates with that tenant (e.g. server-side jobs acting for one tenant). Only grant `execute` on `set_tenant_id` to roles you trust.
+
+### Indobase Studio (SaaS console)
+
+Studio keeps the signed-in user’s JWT aligned with the **selected organization**:
+
+- **`POST /api/platform/profile/sync-tenant-claim`** (authenticated) with body `{ "organizationSlug": "<slug>" }` verifies membership, then sets GoTrue **`app_metadata.tenant_id`** and **`app_metadata.saas_organization_id`** via the service role.
+- **`tenant_id`** is a **stable UUID** derived from the integer `saas.organizations.id` (uuid v5; namespace constant in `apps/studio/lib/saas-organization-tenant-uuid.ts`). Use the same derivation in SQL or app code if you need to match rows to the console org without storing the integer on the JWT.
+- **`TenantJwtClaimSync`** in the Studio app calls that endpoint when the selected org changes, then **`refreshSession()`** so the next access token includes the updated `app_metadata`.
 
 ## Summary
 

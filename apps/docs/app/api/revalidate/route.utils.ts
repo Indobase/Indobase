@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { type Database } from 'common'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'

@@ -5,7 +5,7 @@
   "title": "Supabase Client for Nuxt.js",
   "description": "",
   "registryDependencies": [],
-  "dependencies": ["@supabase/ssr@latest", "@supabase/supabase-js@latest"],
+  "dependencies": ["@supabase/ssr@latest", "indobase-js@latest"],
   "docs": "You'll need to set the following environment variables in your project: `NUXT_PUBLIC_SUPABASE_URL` and `NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.",
   "envVars": {
     "NUXT_PUBLIC_SUPABASE_URL": "",

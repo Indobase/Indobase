@@ -1,8 +1,8 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { activateCustomDomain } from 'lib/api/self-hosted/custom-domains'
+import { activateCustomDomain } from 'lib/api/saas/custom-domains'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })

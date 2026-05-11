@@ -1,4 +1,4 @@
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import {
   useFeaturePreviewModal,
   useUnifiedLogsPreview,
@@ -152,7 +152,7 @@ export function LogsSidebarMenuV2() {
       url: `/project/${ref}/logs/postgrest-logs`,
       items: [],
     },
-    IS_PLATFORM
+    IS_SAAS
       ? {
           name: isFreePlan ? 'Pooler' : 'Shared Pooler',
           key: 'pooler-logs',
@@ -160,7 +160,7 @@ export function LogsSidebarMenuV2() {
           items: [],
         }
       : null,
-    !isFreePlan && IS_PLATFORM
+    !isFreePlan && IS_SAAS
       ? {
           name: 'Dedicated Pooler',
           key: 'dedicated-pooler-logs',
@@ -214,7 +214,7 @@ export function LogsSidebarMenuV2() {
       : null,
   ].filter((x) => x !== null)
 
-  const OPERATIONAL_COLLECTIONS = IS_PLATFORM
+  const OPERATIONAL_COLLECTIONS = IS_SAAS
     ? [
         {
           name: 'Postgres Version Upgrade',
@@ -234,7 +234,7 @@ export function LogsSidebarMenuV2() {
 
   return (
     <div className="pb-4 relative">
-      {IS_PLATFORM && !unifiedLogsFlagEnabled && (
+      {IS_SAAS && !unifiedLogsFlagEnabled && (
         <FeaturePreviewSidebarPanel
           className="mx-4 mt-4"
           illustration={<Badge variant="default">Coming soon</Badge>}

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AuthError, Session } from '@supabase/supabase-js'
+import type { AuthError, Session } from 'indobase-js'
 import {
   createContext,
   PropsWithChildren,
@@ -15,29 +15,6 @@ import { clearLocalStorage } from './constants/local-storage'
 import { gotrueClient, STORAGE_KEY, type User } from './gotrue'
 
 export type { User }
-
-const DEFAULT_SESSION: any = {
-  access_token: undefined,
-  expires_at: 0,
-  expires_in: 0,
-  refresh_token: '',
-  token_type: '',
-  user: {
-    aud: '',
-    app_metadata: {},
-    confirmed_at: '',
-    created_at: '',
-    email: '',
-    email_confirmed_at: '',
-    id: '',
-    identities: [],
-    last_signed_in_at: '',
-    phone: '',
-    role: '',
-    updated_at: '',
-    user_metadata: {},
-  },
-} as unknown as Session
 
 /* Auth Context */
 
@@ -62,14 +39,7 @@ export const AuthContext = createContext<AuthContext>({
   refreshSession: () => Promise.resolve(null),
 })
 
-export type AuthProviderProps = {
-  alwaysLoggedIn?: boolean
-}
-
-export const AuthProvider = ({
-  alwaysLoggedIn,
-  children,
-}: PropsWithChildren<AuthProviderProps>) => {
+export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [state, setState] = useState<AuthState>({ session: null, error: null, isLoading: true })
 
   useEffect(() => {
@@ -112,11 +82,7 @@ export const AuthProvider = ({
   }, [])
 
   const value = useMemo(() => {
-    if (alwaysLoggedIn) {
-      return { session: DEFAULT_SESSION, error: null, isLoading: false, refreshSession } as const
-    } else {
-      return { ...state, refreshSession } as const
-    }
+    return { ...state, refreshSession } as const
   }, [state, refreshSession])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

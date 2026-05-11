@@ -21,7 +21,7 @@ import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useIsOrioleDb, useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { DOCS_URL, IS_PLATFORM, PROJECT_STATUS } from 'lib/constants'
+import { DOCS_URL, IS_SAAS, PROJECT_STATUS } from 'lib/constants'
 import { useAppStateSnapshot } from 'state/app-state'
 import {
   Badge,
@@ -174,7 +174,7 @@ export const Home = () => {
                     )}
                   </div>
 
-                  {IS_PLATFORM && (
+                  {IS_SAAS && (
                     <div className="flex flex-col gap-y-1">
                       <Link
                         href={`/project/${ref}/settings/infrastructure`}
@@ -191,7 +191,7 @@ export const Home = () => {
                   )}
                 </div>
               )}
-              {IS_PLATFORM && project?.status === PROJECT_STATUS.ACTIVE_HEALTHY && (
+              {IS_SAAS && project?.status === PROJECT_STATUS.ACTIVE_HEALTHY && (
                 <div className="ml-6 border-l flex items-center w-[145px] justify-end">
                   <ServiceStatus />
                 </div>
@@ -205,7 +205,7 @@ export const Home = () => {
       <>
         <div className="py-16 border-b border-muted">
           <div className="mx-auto max-w-7xl space-y-16 @container">
-            {IS_PLATFORM && project?.status !== PROJECT_STATUS.INACTIVE && (
+            {IS_SAAS && project?.status !== PROJECT_STATUS.INACTIVE && (
               <>{isNewProject ? <NewProjectPanel /> : <ProjectUsageSection />}</>
             )}
             {!isNewProject && project?.status !== PROJECT_STATUS.INACTIVE && <AdvisorWidget />}

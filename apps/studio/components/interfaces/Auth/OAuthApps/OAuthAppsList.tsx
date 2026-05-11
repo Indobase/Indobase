@@ -1,4 +1,4 @@
-import type { OAuthClient } from '@supabase/supabase-js'
+import type { OAuthClient } from 'indobase-js'
 import { useParams } from 'common'
 import AlertError from 'components/ui/AlertError'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'

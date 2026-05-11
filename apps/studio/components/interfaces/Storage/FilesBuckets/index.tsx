@@ -7,7 +7,7 @@ import AlertError from 'components/ui/AlertError'
 import { InlineLink } from 'components/ui/InlineLink'
 import { useProjectStorageConfigQuery } from 'data/config/project-storage-config-query'
 import { usePaginatedBucketsQuery } from 'data/storage/buckets-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { formatBytes } from 'lib/helpers'
 import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useStorageExplorerStateSnapshot } from 'state/storage-explorer'
@@ -47,7 +47,7 @@ export const FilesBuckets = () => {
     parseAsBoolean.withDefault(false).withOptions({ history: 'push', clearOnDefault: true })
   )
 
-  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_PLATFORM })
+  const { data } = useProjectStorageConfigQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const {
     data: bucketsData,
     error: bucketsError,

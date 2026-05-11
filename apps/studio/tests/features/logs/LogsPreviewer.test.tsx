@@ -42,7 +42,7 @@ beforeEach(() => {
 
 test('search loads with whatever is on the URL', async () => {
   customRender(
-    <LogsPreviewer queryType="api" projectRef="default" tableName={LogsTableName.EDGE} />,
+    <LogsPreviewer queryType="api" projectRef="abcdefghijklmnopqrst" tableName={LogsTableName.EDGE} />,
     {
       nuqs: {
         searchParams: {
@@ -64,7 +64,7 @@ test('search loads with whatever is on the URL', async () => {
 test('useLogsPreview returns data from MSW', async () => {
   const { result } = customRenderHook(() =>
     useLogsPreview({
-      projectRef: 'default',
+      projectRef: 'abcdefghijklmnopqrst',
       table: LogsTableName.EDGE,
     })
   )
@@ -82,7 +82,7 @@ test('useLogsPreview returns data from MSW', async () => {
 
 test('LogsPreviewer renders the expected data from the API', async () => {
   customRender(
-    <LogsPreviewer queryType="api" projectRef="default" tableName={LogsTableName.EDGE} />
+    <LogsPreviewer queryType="api" projectRef="abcdefghijklmnopqrst" tableName={LogsTableName.EDGE} />
   )
 
   await waitFor(() => {
@@ -98,7 +98,7 @@ test('LogsPreviewer renders the expected data from the API', async () => {
 
 test('can toggle log event chart', async () => {
   customRender(
-    <LogsPreviewer queryType="api" projectRef="default" tableName={LogsTableName.EDGE} />
+    <LogsPreviewer queryType="api" projectRef="abcdefghijklmnopqrst" tableName={LogsTableName.EDGE} />
   )
 
   expect(screen.getByRole('button', { name: /Chart/i })).toBeInTheDocument()
@@ -116,7 +116,7 @@ test('can toggle log event chart', async () => {
 
 test('can click load older', async () => {
   customRender(
-    <LogsPreviewer queryType="api" projectRef="default" tableName={LogsTableName.EDGE} />
+    <LogsPreviewer queryType="api" projectRef="abcdefghijklmnopqrst" tableName={LogsTableName.EDGE} />
   )
 
   const loadOlder = await waitFor(

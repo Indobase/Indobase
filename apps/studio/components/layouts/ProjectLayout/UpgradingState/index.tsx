@@ -19,7 +19,7 @@ import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { useProjectUpgradingStatusQuery } from 'data/config/project-upgrade-status-query'
 import { useInvalidateProjectDetailsQuery } from 'data/projects/project-detail-query'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from 'ui'
 import { DATABASE_UPGRADE_MESSAGES } from './UpgradingState.constants'
 
@@ -39,7 +39,7 @@ export const UpgradingState = () => {
       trackingId: queryParams.get('trackingId'),
     },
     {
-      enabled: IS_PLATFORM,
+      enabled: IS_SAAS,
     }
   )
 

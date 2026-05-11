@@ -5,7 +5,7 @@ import { useProjectSettingsV2Query } from 'data/config/project-settings-v2-query
 import { useOrgSubscriptionQuery } from 'data/subscriptions/org-subscription-query'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { IS_PLATFORM, OPT_IN_TAGS } from 'lib/constants'
+import { IS_SAAS, OPT_IN_TAGS } from 'lib/constants'
 
 export const aiOptInLevelSchema = z.enum([
   'disabled',
@@ -39,7 +39,7 @@ export const getAiOptInLevel = (tags: string[] | undefined): AiOptInLevel => {
  */
 export function useOrgOptedIntoAi(): boolean {
   const { aiOptInLevel } = useOrgAiOptInLevel()
-  return !IS_PLATFORM || aiOptInLevel !== 'disabled'
+  return !IS_SAAS || aiOptInLevel !== 'disabled'
 }
 
 /**
@@ -69,12 +69,12 @@ export function useOrgAiOptInLevel(): {
   const preventProjectFromUsingAI = hasHipaaAddon && isProjectSensitive
 
   // [Joshen] For CLI / self-host, we'd default to 'schema' as opt in level
-  const aiOptInLevel = !IS_PLATFORM
+  const aiOptInLevel = !IS_SAAS
     ? 'schema'
     : (isOptedIntoAI && !selectedProject) || (isOptedIntoAI && !preventProjectFromUsingAI)
       ? level
       : 'disabled'
-  const includeSchemaMetadata = !IS_PLATFORM || aiOptInLevel !== 'disabled'
+  const includeSchemaMetadata = !IS_SAAS || aiOptInLevel !== 'disabled'
 
   return {
     aiOptInLevel,

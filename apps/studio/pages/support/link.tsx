@@ -6,18 +6,18 @@ import AppLayout from 'components/layouts/AppLayout/AppLayout'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import { withAuth } from 'hooks/misc/withAuth'
 import type { NextPageWithLayout } from 'types'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 
 const LinkSupportTicketPageRoute: NextPageWithLayout = () => {
   const router = useRouter()
 
   useEffect(() => {
-    if (!IS_PLATFORM) {
+    if (!IS_SAAS) {
       router.push('/404')
     }
   }, [router])
 
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     return null
   }
 

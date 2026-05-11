@@ -1,6 +1,6 @@
 import type { Monaco } from '@monaco-editor/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS, useFlag, useParams } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS, useFlag, useParams } from 'common'
 import {
   isExplainQuery,
   isExplainSql,
@@ -311,7 +311,7 @@ export const SQLEditor = () => {
         if (
           !isHipaaProjectDisallowed &&
           snippet?.snippet.name.startsWith(untitledSnippetTitle) &&
-          IS_PLATFORM
+          IS_SAAS
         ) {
           // Intentionally don't await title gen (lazy)
           setAiTitle(id, sql)

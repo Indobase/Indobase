@@ -6,7 +6,7 @@ const IS_CI = !!process.env.CI
 const WEB_SERVER_TIMEOUT = Number(process.env.WEB_SERVER_TIMEOUT) || 10 * 60 * 1000
 const WEB_SERVER_PORT = Number(process.env.WEB_SERVER_PORT) || 8082
 
-// 15 minutes for platform, 2 minutes for self-hosted. Takes longer to setup a full project on platform.
+// 15 minutes for platform, 2 minutes for local SaaS Studio. Takes longer to setup a full project on platform.
 const setupTimeout = env.IS_PLATFORM ? 15 * 60 * 1000 : 120 * 1000
 
 const createWebServerConfig = () => {
@@ -25,7 +25,7 @@ const createWebServerConfig = () => {
   }
 
   return {
-    command: 'pnpm --workspace-root run e2e:setup:selfhosted',
+    command: 'pnpm --workspace-root run e2e:setup:saas',
     port: WEB_SERVER_PORT,
     timeout: WEB_SERVER_TIMEOUT,
     reuseExistingServer: true,

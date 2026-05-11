@@ -1,4 +1,4 @@
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { SIDEBAR_KEYS } from 'components/layouts/ProjectLayout/LayoutSidebar/LayoutSidebarProvider'
 import { BASE_PATH } from 'lib/constants'
 import { useTrack } from 'lib/telemetry/track'
@@ -78,7 +78,7 @@ export function GettingStartedSection({ value, onChange }: GettingStartedSection
   const hasTrackedExposure = useRef(false)
 
   useEffect(() => {
-    if (!IS_PLATFORM) return
+    if (!IS_SAAS) return
     if (hasTrackedExposure.current) return
 
     hasTrackedExposure.current = true

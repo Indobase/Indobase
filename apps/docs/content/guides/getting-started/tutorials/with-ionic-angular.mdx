@@ -33,7 +33,7 @@ cd supabase-ionic-angular
 Then let's install the only additional dependency: [supabase-js](https://github.com/supabase/supabase-js)
 
 ```bash
-npm install @supabase/supabase-js
+npm install indobase-js
 ```
 
 And finally, we want to save the environment variables in the `src/environments/environment.ts` file.
@@ -59,7 +59,7 @@ Now that we have the API credentials in place, let's create a `SupabaseService` 
 ```ts name=src/app/supabase.service.ts
 import { Injectable } from '@angular/core'
 import { LoadingController, ToastController } from '@ionic/angular'
-import { AuthChangeEvent, createClient, Session, SupabaseClient } from '@supabase/supabase-js'
+import { AuthChangeEvent, createClient, Session, SupabaseClient } from 'indobase-js'
 import { environment } from '../environments/environment'
 
 export interface Profile {

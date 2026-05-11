@@ -1,5 +1,5 @@
 import apiWrapper from 'lib/api/apiWrapper'
-import { retrieveAnalyticsData } from 'lib/api/self-hosted/logs'
+import { retrieveAnalyticsData } from 'lib/api/saas/logs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import assert from 'node:assert'
 

@@ -1,6 +1,6 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { zodResolver } from '@hookform/resolvers/zod'
-import type { AuthError } from '@supabase/supabase-js'
+import type { AuthError } from 'indobase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -14,9 +14,8 @@ import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticato
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { captureCriticalError } from 'lib/error-reporting'
-import { IS_MULTI_ORG_DASHBOARD, IS_SAAS } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
-import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
@@ -53,7 +52,6 @@ export const SignInForm = () => {
   const isSubmitting = form.formState.isSubmitting
 
   useEffect(() => {
-    // Only call getReturnToPath after component mounts client-side
     setReturnTo(getReturnToPath())
   }, [])
 
@@ -112,19 +110,8 @@ export const SignInForm = () => {
 
         await queryClient.resetQueries()
 
-        // since we're already on the /sign-in page, prevent redirect loops
-        let redirectPath = IS_MULTI_ORG_DASHBOARD
-          ? '/organizations'
-          : selfHostedDashboardPath((await auth.getSession()).data.session?.user?.id)
-        if (IS_MULTI_ORG_DASHBOARD && returnTo && returnTo !== '/sign-in') {
-          redirectPath = returnTo
-        }
-        if (
-          !IS_MULTI_ORG_DASHBOARD &&
-          returnTo &&
-          returnTo !== '/sign-in' &&
-          !returnTo.startsWith('/organizations')
-        ) {
+        let redirectPath = '/organizations'
+        if (returnTo && returnTo !== '/sign-in') {
           redirectPath = returnTo
         }
 
@@ -214,7 +201,6 @@ export const SignInForm = () => {
             )}
           />
 
-          {/* positioned using absolute instead of labelOptional prop so tabbing between inputs works smoothly */}
           <Link href={forgotPasswordUrl} className="absolute top-0 right-0 text-sm text-foreground-lighter">
             Forgot password?
           </Link>
@@ -252,4 +238,3 @@ export const SignInForm = () => {
     </Form_Shadcn_>
   )
 }
-

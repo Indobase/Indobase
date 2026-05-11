@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { MultipleCodeBlock } from 'ui-patterns/MultipleCodeBlock'
 
 import type { StepContentProps } from '@/components/interfaces/ConnectSheet/Connect.types'
@@ -32,11 +32,11 @@ DIRECT_URL="${connectionStringPooler.sessionShared}"
 # DIRECT_URL="${connectionStringPooler.sessionDedicated}"
  `
             : `
-# Connect to Indobase ${IS_PLATFORM ? 'via connection pooling' : ''}
-DATABASE_URL="${IS_PLATFORM ? `${connectionStringPooler.transactionShared}?pgbouncer=true` : connectionStringPooler.direct}"
+# Connect to Indobase ${IS_SAAS ? 'via connection pooling' : ''}
+DATABASE_URL="${IS_SAAS ? `${connectionStringPooler.transactionShared}?pgbouncer=true` : connectionStringPooler.direct}"
 
 # Direct connection to the database. Used for migrations
-DIRECT_URL="${IS_PLATFORM ? connectionStringPooler.sessionShared : connectionStringPooler.direct}"
+DIRECT_URL="${IS_SAAS ? connectionStringPooler.sessionShared : connectionStringPooler.direct}"
 `,
     },
     {

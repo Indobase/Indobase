@@ -10,7 +10,7 @@ import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { useDatabaseSelectorStateSnapshot } from 'state/database-selector'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { DOCS_URL, IS_PLATFORM } from 'lib/constants'
+import { DOCS_URL, IS_SAAS } from 'lib/constants'
 import { executeSql } from 'data/sql/execute-sql-query'
 import { toast } from 'sonner'
 import { useReadReplicasQuery } from 'data/read-replicas/replicas-query'
@@ -252,7 +252,7 @@ export const WithStatements = ({
             (db) => db.identifier === state.selectedDatabaseId
           )?.connectionString
 
-          if (IS_PLATFORM && !connectionString) {
+          if (IS_SAAS && !connectionString) {
             return toast.error('Unable to run query: Connection string is missing')
           }
 

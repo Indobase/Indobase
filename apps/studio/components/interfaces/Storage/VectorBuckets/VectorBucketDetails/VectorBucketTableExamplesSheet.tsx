@@ -175,7 +175,7 @@ values
     '{${metadataKeys.map((key) => `"${key}": "${key} value"`).join(', ')}}'::jsonb
   );`
 
-  const jsCode = `import { createClient } from '@supabase/supabase-js'
+  const jsCode = `import { createClient } from 'indobase-js'
 
 // Adding vector data requires a secret or service role key 
 // This code SHOULD NOT be run on the client side as you will be vulnerable to a data leak

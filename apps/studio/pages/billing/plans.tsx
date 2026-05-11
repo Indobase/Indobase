@@ -1,8 +1,8 @@
 import { useRouter } from 'next/router'
-import { useRef, useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Card, CardContent, Button, Badge, Toggle } from 'ui';
-import { CheckCircle } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Card, CardContent, Button, Badge, Switch } from 'ui'
+import { CheckCircle } from 'lucide-react'
 
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
@@ -10,19 +10,19 @@ import { withAuth } from 'hooks/misc/withAuth'
 import { BASE_PATH } from 'lib/constants'
 
 interface Plan {
-  id: string;
-  name: string;
-  display_name: string;
-  monthly_price: number | null;
-  annual_price: number | null;
-  currency: string;
-  description: string;
-  features: string[];
-  popular?: boolean;
-  contact_sales?: boolean;
-  available?: boolean;
-  gst_notice?: string;
-  payment_methods?: string[];
+  id: string
+  name: string
+  display_name: string
+  monthly_price: number | null
+  annual_price: number | null
+  currency: string
+  description: string
+  features: string[]
+  popular?: boolean
+  contact_sales?: boolean
+  available?: boolean
+  gst_notice?: string
+  payment_methods?: string[]
 }
 
 // Contact sales URL: same origin so it works for single-domain (e.g. indobase.fun/dashboard → indobase.fun/contact-us/enterprise)
@@ -31,57 +31,63 @@ const getContactSalesUrl = () =>
 
 function PricingPlansPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
-  const [annualBilling, setAnnualBilling] = useState(false);
+  const [loading, setLoading] = useState(true)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR')
+  const [annualBilling, setAnnualBilling] = useState(false)
 
   const { data: organizations = [] } = useOrganizationsQuery()
   const hasExistingOrgs = organizations.length > 0
+  const orgSlugForTelemetry = organizations[0]?.slug ?? 'Unknown'
   const { mutate: sendEvent } = useSendEventMutation()
   const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null)
   const hasTrackedPageView = useRef(false)
 
   useEffect(() => {
-    fetchPlans();
-  }, [currency]);
+    fetchPlans()
+  }, [currency])
 
   useEffect(() => {
     if (!loading && plans.length > 0 && !hasTrackedPageView.current) {
       hasTrackedPageView.current = true
-      sendEvent({ action: 'billing_plans_page_viewed', properties: {} })
+      sendEvent({
+        action: 'studio_pricing_side_panel_opened',
+        properties: {},
+        groups: { organization: orgSlugForTelemetry },
+      })
     }
-  }, [loading, plans.length, sendEvent])
+  }, [loading, orgSlugForTelemetry, plans.length, sendEvent])
 
   const fetchPlans = async () => {
     setFetchError(null)
     try {
-      const response = await fetch(`${BASE_PATH}/api/platform/billing/plans?currency=${currency}`);
-      const result = await response.json();
+      const response = await fetch(`${BASE_PATH}/api/platform/billing/plans?currency=${currency}`)
+      const result = await response.json()
       if (!response.ok) {
-        setFetchError(result.error?.message ?? `Failed to load plans (${response.status})`);
-        return;
+        setFetchError(result.error?.message ?? `Failed to load plans (${response.status})`)
+        return
       }
       if (result.data && Array.isArray(result.data)) {
-        setPlans(result.data);
+        setPlans(result.data)
       } else {
-        setFetchError(result.error?.message ?? 'Failed to load plans');
+        setFetchError(result.error?.message ?? 'Failed to load plans')
       }
     } catch (error) {
-      console.error('Error fetching plans:', error);
-      setFetchError(error instanceof Error ? error.message : 'Failed to load plans');
+      console.error('Error fetching plans:', error)
+      setFetchError(error instanceof Error ? error.message : 'Failed to load plans')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSelectPlan = (plan: Plan) => {
     if (selectingPlanId) return
     setSelectingPlanId(plan.id)
     sendEvent({
-      action: 'billing_plan_selected',
-      properties: { plan_id: plan.id, contact_sales: Boolean(plan.contact_sales) },
+      action: 'studio_pricing_plan_cta_clicked',
+      properties: { selectedPlan: plan.id },
+      groups: { organization: orgSlugForTelemetry },
     })
     // Enterprise / contact sales → contact page; free, pro, team → create org (product access)
     if (plan.contact_sales || plan.id === 'enterprise') {
@@ -95,42 +101,49 @@ function PricingPlansPage() {
     if (selectingPlanId) return
     setSelectingPlanId('free')
     sendEvent({
-      action: 'billing_plan_selected',
-      properties: { plan_id: 'free', contact_sales: false },
+      action: 'studio_pricing_plan_cta_clicked',
+      properties: { selectedPlan: 'free' },
+      groups: { organization: orgSlugForTelemetry },
     })
     router.push('/new?plan=free')
   }
 
   const formatPrice = (price: number | null) => {
-    if (price === null || price === 0) return 'Free';
+    if (price === null || price === 0) return 'Free'
     
     if (currency === 'INR') {
       if (price >= 100000) {
-        return `₹${(price / 100000).toFixed(2)} L`;
+        return `₹${(price / 100000).toFixed(2)} L`
       }
-      return `₹${price.toLocaleString('en-IN')}`;
+      return `₹${price.toLocaleString('en-IN')}`
     }
     
-    return `$${price.toLocaleString('en-US')}`;
-  };
+    return `$${price.toLocaleString('en-US')}`
+  }
 
   if (loading && plans.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <span>Loading plans...</span>
       </div>
-    );
+    )
   }
 
   if (fetchError && plans.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
         <span className="text-center text-gray-600">Could not load plans. Please try again.</span>
-        <Button variant="default" onClick={() => { setLoading(true); fetchPlans(); }}>
+        <Button
+          type="default"
+          onClick={() => {
+            setLoading(true)
+            fetchPlans()
+          }}
+        >
           Retry
         </Button>
       </div>
-    );
+    )
   }
 
   return (
@@ -169,15 +182,15 @@ function PricingPlansPage() {
         <div className="flex justify-center items-center gap-4 mb-8">
           <div className="flex rounded-lg border p-1">
             <Button
-              variant={currency === 'INR' ? 'primary' : 'outline'}
-              size="sm"
+              type={currency === 'INR' ? 'primary' : 'outline'}
+              size="small"
               onClick={() => setCurrency('INR')}
             >
               ₹ INR
             </Button>
             <Button
-              variant={currency === 'USD' ? 'primary' : 'outline'}
-              size="sm"
+              type={currency === 'USD' ? 'primary' : 'outline'}
+              size="small"
               onClick={() => setCurrency('USD')}
             >
               $ USD
@@ -187,7 +200,7 @@ function PricingPlansPage() {
           {currency === 'INR' && (
             <div className="flex items-center gap-2">
               <span className="text-sm">Monthly</span>
-              <Toggle pressed={annualBilling} onPressedChange={setAnnualBilling} />
+              <Switch size="small" checked={annualBilling} onCheckedChange={setAnnualBilling} />
               <span className="text-sm">Annual</span>
               {annualBilling && (
                 <Badge variant="success">Save up to 17%</Badge>
@@ -255,7 +268,7 @@ function PricingPlansPage() {
                 {/* CTA Button */}
                 <Button
                   className="w-full mt-6"
-                  variant={plan.popular ? 'primary' : 'outline'}
+                  type={plan.popular ? 'primary' : 'outline'}
                   onClick={() => handleSelectPlan(plan)}
                   disabled={plan.available === false || selectingPlanId !== null}
                 >
@@ -290,7 +303,7 @@ function PricingPlansPage() {
                   Our Enterprise plan offers custom limits, dedicated support, and advanced compliance features.
                 </span>
               </div>
-              <Button variant="default" onClick={() => (window.location.href = getContactSalesUrl())}>
+              <Button type="default" onClick={() => (window.location.href = getContactSalesUrl())}>
                 Contact Sales
               </Button>
             </div>
@@ -337,7 +350,7 @@ function PricingPlansPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 interface FAQItemProps {
@@ -352,6 +365,6 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => (
       <p className="text-sm text-gray-600">{answer}</p>
     </CardContent>
   </Card>
-);
+)
 
 export default withAuth(PricingPlansPage)

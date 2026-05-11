@@ -1,4 +1,4 @@
-import type { EmailOtpType } from '@supabase/supabase-js'
+import type { EmailOtpType } from 'indobase-js'
 import { defineEventHandler, getQuery, sendRedirect } from 'h3'
 
 import { createSupabaseServerClient } from '@/registry/default/clients/nuxtjs/server/supabase/client'

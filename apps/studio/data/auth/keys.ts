@@ -22,6 +22,7 @@ export const authKeys = {
       providers?: string[]
       forceExactCount?: boolean
       column?: OptimizedSearchColumns
+      scopedUserId?: string
     }
   ) => ['projects', projectRef, 'users-count', params].filter(Boolean),
 

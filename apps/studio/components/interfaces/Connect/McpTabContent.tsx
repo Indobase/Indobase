@@ -1,4 +1,4 @@
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import Panel from 'components/ui/Panel'
 import { BASE_PATH } from 'lib/constants'
 import { useTrack } from 'lib/telemetry/track'
@@ -67,7 +67,7 @@ const McpTabContentInnerLoaded = ({
       basePath={BASE_PATH}
       projectRef={projectRef}
       theme={resolvedTheme as 'light' | 'dark'}
-      isPlatform={IS_PLATFORM}
+      isPlatform={IS_SAAS}
       apiUrl={projectKeys.apiUrl ?? undefined}
       onCopyCallback={handleCopy}
       onInstallCallback={handleInstall}

@@ -1,6 +1,6 @@
 import type { ProductMenuGroup } from 'components/ui/ProductMenu/ProductMenu.types'
 import type { Project } from 'data/projects/project-detail-query'
-import { IS_PLATFORM, IS_SAAS, PROJECT_STATUS } from 'lib/constants'
+import { IS_SAAS, PROJECT_STATUS } from 'lib/constants'
 import { ArrowUpRight } from 'lucide-react'
 import type { Organization } from 'types'
 
@@ -35,7 +35,7 @@ export const generateSettingsMenu = (
           url: `/project/${ref}/settings/general`,
           items: [],
         },
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 name: 'Compute and Disk',
@@ -79,7 +79,7 @@ export const generateSettingsMenu = (
           disabled: !isProjectActive,
         },
 
-        ...(IS_PLATFORM
+        ...(IS_SAAS
           ? [
               {
                 name: `Log Drains`,

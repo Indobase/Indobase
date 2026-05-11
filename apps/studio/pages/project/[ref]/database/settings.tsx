@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { ConnectionPooling } from 'components/interfaces/Settings/Database/ConnectionPooling/ConnectionPooling'
 import { DatabaseReadOnlyAlert } from 'components/interfaces/Settings/Database/DatabaseReadOnlyAlert'
 import ResetDbPassword from 'components/interfaces/Settings/Database/DatabaseSettings/ResetDbPassword'
@@ -52,7 +52,7 @@ const ProjectSettings: NextPageWithLayout = () => {
           </PageHeaderSummary>
         </PageHeaderMeta>
       </PageHeader>
-      {IS_PLATFORM ? (
+      {IS_SAAS ? (
         <>
           <PageContainer className="pb-12">
             <PageSection>

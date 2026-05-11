@@ -11,5 +11,5 @@
       "target": "components/login-form.vue"
     }
   ],
-  "dependencies": ["@supabase/supabase-js@latest"]
+  "dependencies": ["indobase-js@latest"]
 }

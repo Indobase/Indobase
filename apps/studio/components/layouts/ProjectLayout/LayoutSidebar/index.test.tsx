@@ -30,7 +30,7 @@ vi.mock('nuqs', async () => {
 
 const mockProject = {
   id: 1,
-  ref: 'default',
+  ref: 'abcdefghijklmnopqrst',
   name: 'Project 1',
   status: 'ACTIVE_HEALTHY' as const,
   organization_id: 1,

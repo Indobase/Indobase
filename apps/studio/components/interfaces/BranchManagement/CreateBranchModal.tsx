@@ -31,7 +31,7 @@ import { useCheckEntitlements } from 'hooks/misc/useCheckEntitlements'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { useAppStateSnapshot } from 'state/app-state'
 import {
   Badge,
@@ -82,7 +82,7 @@ export const CreateBranchModal = () => {
 
   const { hasAccess: hasAccessToBranching, isLoading: isLoadingEntitlement } =
     useCheckEntitlements('branching_limit')
-  const promptPlanUpgrade = IS_PLATFORM && !hasAccessToBranching
+  const promptPlanUpgrade = IS_SAAS && !hasAccessToBranching
 
   const isBranch = projectDetails?.parent_project_ref !== undefined
   const projectRef =

@@ -5,11 +5,11 @@
 - Added runbooks and tightened routing so wildcard tenant traffic can’t bypass per-tenant configs.
 - Added encrypted storage for per-project credentials and deterministic per-project data-plane port allocation.
 
-### Deployment reliability (Dokploy + self-hosted)
+### Deployment reliability (Dokploy + Indobase SaaS)
 - Fixed Kong declarative config rendering issues (safe quoting for Lua snippets, removed problematic characters in comments, normalized line endings).
 - Fixed Kong upstream routing / Docker DNS issues by using explicit container names.
-- Improved Studio/self-hosted service URLs (internal GoTrue URL) to avoid external network calls during auth validation.
-- Made default workspace creation idempotent and improved self-hosted stability.
+- Improved Studio/Indobase SaaS service URLs (internal GoTrue URL) to avoid external network calls during auth validation.
+- Made default workspace creation idempotent and improved Indobase SaaS stability.
 
 ### Single-DB multi-tenancy (RLS foundation)
 - Implemented strict, fail-closed tenant context:

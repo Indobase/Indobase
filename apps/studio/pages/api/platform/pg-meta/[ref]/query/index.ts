@@ -1,9 +1,9 @@
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
-import { executeQuery } from 'lib/api/self-hosted/query'
-import { PgMetaDatabaseError } from 'lib/api/self-hosted/types'
-import { IS_PLATFORM, IS_SAAS } from 'lib/constants'
-import { JwtPayload } from '@supabase/supabase-js'
+import { executeQuery } from 'lib/api/saas/query'
+import { PgMetaDatabaseError } from 'lib/api/saas/types'
+import { IS_SAAS } from 'lib/constants'
+import { JwtPayload } from 'indobase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getPostgrestClaims, wrapWithRoleImpersonation } from 'lib/role-impersonation'
 
@@ -28,17 +28,17 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     return res.status(400).json({ message: 'SQL query is required' })
   }
 
-  // Self-hosted Studio should not expose every auth user to every dashboard user.
+  // Non-SaaS local Studio: do not expose every auth user to every dashboard user.
   // Enforce that auth.users listing queries include a current-user filter.
   if (!IS_SAAS) {
     const userId = getGotrueUserId(claims)
     if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {
       return res.status(403).json({
-        message: 'auth.users queries must be scoped to the current user in self-hosted mode',
+        message: 'auth.users queries must be scoped to the current user',
       })
     }
 
-    // Automatically enforce Row Level Security for data-related queries in multi-tenant self-hosted setups
+    // Automatically enforce Row Level Security for data-related queries in multi-tenant setups.
     // Strip frontend's role impersonation wrapper if present to prevent it from overriding the server's enforcement
     let innerQuery = query
     const marker = 'select 1 as "ROLE_IMPERSONATION_NO_RESULTS";'
@@ -48,15 +48,20 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
 
     const isDataQuery = /^\s*(select|insert|update|delete|with|explain)\b/i.test(innerQuery.trim())
     if (isDataQuery) {
-      const ref = typeof req.query.ref === 'string' ? req.query.ref : 'default'
-      const role = {
-        type: 'postgrest' as const,
-        role: 'authenticated' as const,
-        userType: 'external' as const,
-        externalAuth: { sub: userId }
+      const rawRef = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
+      const ref = rawRef && rawRef !== 'default' ? rawRef : ''
+      if (!ref) {
+        query = innerQuery
+      } else {
+        const role = {
+          type: 'postgrest' as const,
+          role: 'authenticated' as const,
+          userType: 'external' as const,
+          externalAuth: { sub: userId }
+        }
+        const impersonationClaims = getPostgrestClaims(ref, role)
+        query = wrapWithRoleImpersonation(innerQuery, { role, claims: impersonationClaims })
       }
-      const impersonationClaims = getPostgrestClaims(ref, role)
-      query = wrapWithRoleImpersonation(innerQuery, { role, claims: impersonationClaims })
     } else {
       query = innerQuery // If it's a DDL query, we still want to strip the frontend wrapper so it runs as the default pg-meta role (superuser)
     }
@@ -75,10 +80,9 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   } else {
     let resultData = data
     if (
-      !IS_SAAS &&
       Array.isArray(resultData) &&
       resultData.length > 0 &&
-      resultData[0]?.ROLE_IMPERSONATION_NO_RESULTS === 1
+      (resultData[0] as any)?.ROLE_IMPERSONATION_NO_RESULTS === 1
     ) {
       resultData = []
     }

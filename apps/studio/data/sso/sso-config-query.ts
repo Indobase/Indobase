@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { get, handleError } from 'data/fetchers'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { orgSSOKeys } from './keys'
 
@@ -49,7 +49,7 @@ export const useOrgSSOConfigQuery = <TData = OrgSSOConfigData>(
   return useQuery<OrgSSOConfigData, OrgSSOConfigError, TData>({
     queryKey: orgSSOKeys.orgSSOConfig(orgSlug),
     queryFn: ({ signal }) => getOrgSSOConfig({ orgSlug }, signal),
-    enabled: enabled && IS_PLATFORM && typeof orgSlug !== 'undefined' && canSetupSSOConfig,
+    enabled: enabled && IS_SAAS && typeof orgSlug !== 'undefined' && canSetupSSOConfig,
     ...options,
   })
 }

@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { currentLogger } from 'braintrust'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { rateMessageResponseSchema } from 'components/ui/AIAssistantPanel/Message.utils'
 import type { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
 import { IS_TRACING_ENABLED } from 'lib/ai/braintrust-logger'
@@ -39,7 +39,7 @@ export async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const authorization = req.headers.authorization
   const accessToken = authorization?.replace('Bearer ', '')
 
-  if (IS_PLATFORM && !accessToken) {
+  if (IS_SAAS && !accessToken) {
     return res.status(401).json({ error: 'Authorization token is required' })
   }
 
@@ -55,11 +55,11 @@ export async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   let aiOptInLevel: AiOptInLevel = 'disabled'
   let isHipaaEnabled = false
 
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     aiOptInLevel = 'schema'
   }
 
-  if (IS_PLATFORM && orgSlug && authorization && projectRef) {
+  if (IS_SAAS && orgSlug && authorization && projectRef) {
     try {
       // Get organizations and compute opt in level server-side
       const { aiOptInLevel: orgAIOptInLevel, isHipaaEnabled: orgIsHipaaEnabled } =

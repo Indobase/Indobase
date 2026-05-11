@@ -1,4 +1,4 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ResponseError, ResponseFailure } from 'types'
 

@@ -41,5 +41,5 @@
       "target": "server/routes/auth/oauth.ts"
     }
   ],
-  "dependencies": ["@supabase/ssr@latest", "@supabase/supabase-js@latest"]
+  "dependencies": ["@supabase/ssr@latest", "indobase-js@latest"]
 }

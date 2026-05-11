@@ -5,7 +5,7 @@
   "title": "Social Auth flow for Vue and Supabase",
   "description": "Social Auth flow for Vue and Supabase",
   "dependencies": [
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "button",

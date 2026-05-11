@@ -28,7 +28,7 @@ vi.mock('hooks/misc/useSelectedProject', () => ({
       inserted_at: '2021-08-02T06:40:40.646Z',
       name: 'Default Project',
       organization_id: 1,
-      ref: 'default',
+      ref: 'abcdefghijklmnopqrst',
       region: 'local',
       status: 'ACTIVE_HEALTHY',
     },
@@ -55,14 +55,14 @@ vi.mock('data/vault/vault-secret-update-mutation', () => ({
 describe(`EditSecretModal`, () => {
   beforeEach(() => {
     // useSelectedProjectQuery -> useParams
-    routerMock.setCurrentUrl(`/project/default/integrations/vault/secrets`)
+    routerMock.setCurrentUrl(`/project/abcdefghijklmnopqrst/integrations/vault/secrets`)
   })
 
   it(
     `renders a modal pre-filled with the secret's values`,
     async () => {
     customRender(
-      <ProjectContextProvider projectRef="default">
+      <ProjectContextProvider projectRef="abcdefghijklmnopqrst">
         <EditSecretModal />
       </ProjectContextProvider>,
       {

@@ -10,7 +10,7 @@ import { useEdgeFunctionTestMutation } from 'data/edge-functions/edge-function-t
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { prettifyJSON } from 'lib/helpers'
 import { getRoleImpersonationJWT } from 'lib/role-impersonation'
 import { Loader2, Plus, Send, X } from 'lucide-react'
@@ -93,7 +93,7 @@ export const EdgeFunctionTesterSheet = ({ visible, onClose }: EdgeFunctionTester
   const { data: apiKeys } = useAPIKeysQuery({ projectRef }, { enabled: canReadAPIKeys })
   const { data: config } = useProjectPostgrestConfigQuery({ projectRef })
   const { data: settings } = useProjectSettingsV2Query({ projectRef })
-  const { data: accessToken } = useSessionAccessTokenQuery({ enabled: IS_PLATFORM })
+  const { data: accessToken } = useSessionAccessTokenQuery({ enabled: IS_SAAS })
   const { serviceKey } = getKeys(apiKeys)
 
   const { mutate: sendEvent } = useSendEventMutation()

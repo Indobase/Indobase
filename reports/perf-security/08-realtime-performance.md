@@ -13,7 +13,7 @@ Benchmark realtime:
 - Realtime service exists in `docker/docker-compose.yml` (shared stack).
 - Option A tenant stacks also include a `tenant-realtime` service in generated artifacts:
   - `docker/tenants/render-tenant-stack.mjs`
-  - `apps/studio/lib/api/self-hosted/platform.ts` (`getTenantStackArtifacts()`)
+  - `apps/studio/lib/api/saas/platform.ts` (`getTenantStackArtifacts()`)
 
 ## Major gap (functional)
 Current generated tenant stack can be inconsistent about which DB realtime uses vs rest/auth/storage

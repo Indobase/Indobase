@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 /**
  * Creates an Indobase client using the secret key.

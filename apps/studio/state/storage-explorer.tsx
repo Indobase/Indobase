@@ -1,5 +1,5 @@
 import { BlobReader, BlobWriter, ZipWriter } from '@zip.js/zip.js'
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS } from 'common'
 import { capitalize, chunk, compact, find, findIndex, has, isObject, uniq, uniqBy } from 'lodash'
 import { createContext, PropsWithChildren, useContext, useEffect, useState } from 'react'
 import { useLatest } from 'react-use'
@@ -1196,7 +1196,7 @@ function createStorageExplorerState({
                   // This checks if the key is still valid and refreshes if needed
                   const { apiKey } = await getOrRefreshTemporaryApiKey(state.projectRef)
                   req.setHeader('apikey', apiKey)
-                  if (!IS_PLATFORM) {
+                  if (!IS_SAAS) {
                     req.setHeader('Authorization', `Bearer ${apiKey}`)
                   }
                 } catch (error) {

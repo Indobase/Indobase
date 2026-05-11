@@ -32,7 +32,7 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
       <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
 const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
 const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'};

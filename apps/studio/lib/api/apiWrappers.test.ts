@@ -1,4 +1,4 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ResponseError } from 'types'
@@ -6,7 +6,7 @@ import apiWrapper from './apiWrapper'
 import { apiAuthenticate } from './apiAuthenticate'
 
 vi.mock('lib/constants', () => ({
-  IS_PLATFORM: true,
+  IS_SAAS: true,
   API_URL: 'https://api.example.com',
 }))
 

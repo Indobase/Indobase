@@ -1,7 +1,7 @@
 import pgMeta from '@supabase/pg-meta'
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import { safeValidateUIMessages } from 'ai'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { executeSql } from 'data/sql/execute-sql-query'
 import type { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
 import { generateAssistantResponse } from 'lib/ai/generate-assistant-response'
@@ -9,7 +9,7 @@ import { getModel } from 'lib/ai/model'
 import { getOrgAIDetails } from 'lib/ai/org-ai-details'
 import { getTools } from 'lib/ai/tools'
 import apiWrapper from 'lib/api/apiWrapper'
-import { executeQuery } from 'lib/api/self-hosted/query'
+import { executeQuery } from 'lib/api/saas/query'
 import { getURL } from 'lib/helpers'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import z from 'zod'
@@ -60,7 +60,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, claims?: Jw
   const authorization = req.headers.authorization
   const accessToken = authorization?.replace('Bearer ', '')
 
-  if (IS_PLATFORM && !accessToken) {
+  if (IS_SAAS && !accessToken) {
     return res.status(401).json({ error: 'Authorization token is required' })
   }
 
@@ -97,11 +97,11 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, claims?: Jw
   let orgId: number | undefined
   let planId: string | undefined
 
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     aiOptInLevel = 'schema'
   }
 
-  if (IS_PLATFORM && orgSlug && authorization && projectRef) {
+  if (IS_SAAS && orgSlug && authorization && projectRef) {
     try {
       // Get organizations and compute opt in level server-side
       const {
@@ -174,7 +174,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, claims?: Jw
           'Content-Type': 'application/json',
           ...(authorization && { Authorization: authorization }),
         },
-        IS_PLATFORM ? undefined : executeQuery
+        IS_SAAS ? undefined : executeQuery
       )
 
       return schemas?.length > 0

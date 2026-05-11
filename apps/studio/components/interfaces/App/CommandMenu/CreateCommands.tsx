@@ -1,6 +1,6 @@
 'use client'
 
-import { IS_PLATFORM, useFlag } from 'common'
+import { IS_SAAS, useFlag } from 'common'
 import { SIDEBAR_KEYS } from 'components/layouts/ProjectLayout/LayoutSidebar/LayoutSidebarProvider'
 import {
   Clock5,
@@ -136,7 +136,7 @@ export function useCreateCommands(options?: CommandOptions) {
               route: `/project/${ref}/auth/policies?new=true`,
               icon: () => <ShieldPlus />,
             },
-            ...(IS_PLATFORM
+            ...(IS_SAAS
               ? [
                   {
                     id: 'create-auth-hook-sms',
@@ -184,7 +184,7 @@ export function useCreateCommands(options?: CommandOptions) {
                   },
                 ]
               : []),
-            ...(IS_PLATFORM && authenticationOauth21
+            ...(IS_SAAS && authenticationOauth21
               ? [
                   {
                     id: 'create-oauth-app',
@@ -368,7 +368,7 @@ export function useCreateCommands(options?: CommandOptions) {
 
   const observabilityCommands = useMemo(
     () => [
-      ...(IS_PLATFORM && reportsEnabled
+      ...(IS_SAAS && reportsEnabled
         ? ([
             {
               id: 'create-observability-report',

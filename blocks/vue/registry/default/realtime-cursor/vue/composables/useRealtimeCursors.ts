@@ -1,4 +1,4 @@
-import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel } from '@supabase/supabase-js'
+import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel } from 'indobase-js'
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
 
 // @ts-ignore

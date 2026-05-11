@@ -6,7 +6,7 @@
   "description": "Component which renders the current user's avatar.",
   "dependencies": [
     "@supabase/ssr@latest",
-    "@supabase/supabase-js@latest"
+    "indobase-js@latest"
   ],
   "registryDependencies": [
     "avatar"

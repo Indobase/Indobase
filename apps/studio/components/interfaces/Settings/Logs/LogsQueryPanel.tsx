@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import Table from 'components/to-be-cleaned/Table'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { DOCS_URL } from 'lib/constants'
@@ -109,7 +109,7 @@ const LogsQueryPanel = ({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {IS_PLATFORM && logsTemplates && (
+            {IS_SAAS && logsTemplates && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button type="default" iconRight={<ChevronDown />}>

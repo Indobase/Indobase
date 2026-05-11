@@ -1,6 +1,6 @@
 import pgMeta from '@supabase/pg-meta'
 import { generateText, ModelMessage, stepCountIs } from 'ai'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { source } from 'common-tags'
 import { executeSql } from 'data/sql/execute-sql-query'
 import { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
@@ -16,7 +16,7 @@ import {
 } from 'lib/ai/prompts'
 import { getTools } from 'lib/ai/tools'
 import apiWrapper from 'lib/api/apiWrapper'
-import { executeQuery } from 'lib/api/self-hosted/query'
+import { executeQuery } from 'lib/api/saas/query'
 import { NextApiRequest, NextApiResponse } from 'next'
 import z from 'zod'
 
@@ -48,11 +48,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     let aiOptInLevel: AiOptInLevel = 'disabled'
 
-    if (!IS_PLATFORM) {
+    if (!IS_SAAS) {
       aiOptInLevel = 'schema'
     }
 
-    if (IS_PLATFORM && orgSlug && authorization && projectRef) {
+    if (IS_SAAS && orgSlug && authorization && projectRef) {
       // Get organizations and compute opt in level server-side
       const { aiOptInLevel: orgAIOptInLevel } = await getOrgAIDetails({
         orgSlug,
@@ -95,7 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               'Content-Type': 'application/json',
               ...(authorization && { Authorization: authorization }),
             },
-            IS_PLATFORM ? undefined : executeQuery
+            IS_SAAS ? undefined : executeQuery
           )
         : { result: [] }
 

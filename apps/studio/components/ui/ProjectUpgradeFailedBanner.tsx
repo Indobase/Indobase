@@ -7,7 +7,7 @@ import { SupportCategories } from '@supabase/shared-types/out/constants'
 import { useParams } from 'common'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { useProjectUpgradingStatusQuery } from 'data/config/project-upgrade-status-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { Alert, Button } from 'ui'
 import { InlineLink } from './InlineLink'
 
@@ -15,7 +15,7 @@ import { InlineLink } from './InlineLink'
 
 export const ProjectUpgradeFailedBanner = () => {
   const { ref } = useParams()
-  const { data } = useProjectUpgradingStatusQuery({ projectRef: ref }, { enabled: IS_PLATFORM })
+  const { data } = useProjectUpgradingStatusQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const { status, initiated_at, latest_status_at, error } = data?.databaseUpgradeStatus ?? {}
 
   const key = `supabase-upgrade-${ref}-${initiated_at}`

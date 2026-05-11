@@ -34,7 +34,7 @@ cd expo-user-management
 Then let's install the additional dependencies: [supabase-js](https://github.com/supabase/supabase-js)
 
 ```bash
-npx expo install @supabase/supabase-js @rneui/themed expo-sqlite
+npx expo install indobase-js @rneui/themed expo-sqlite
 ```
 
 Now let's create a helper file to initialize the Supabase client.
@@ -55,7 +55,7 @@ These variables are safe to expose in your Expo app since Supabase has
 
     ```ts name=lib/supabase.ts
     import 'expo-sqlite/localStorage/install';
-    import { createClient } from '@supabase/supabase-js'
+    import { createClient } from 'indobase-js'
 
     const supabaseUrl = YOUR_REACT_NATIVE_SUPABASE_URL
     const supabasePublishableKey = YOUR_REACT_NATIVE_SUPABASE_PUBLISHABLE_KEY
@@ -85,7 +85,7 @@ These variables are safe to expose in your Expo app since Supabase has
     Install the necessary dependencies in the root of your Expo project:
 
     ```bash
-    npm install @supabase/supabase-js
+    npm install indobase-js
     npm install @rneui/themed @react-native-async-storage/async-storage
     npm install aes-js react-native-get-random-values
     npm install --save-dev @types/aes-js
@@ -97,7 +97,7 @@ These variables are safe to expose in your Expo app since Supabase has
     <$CodeTabs>
 
     ```ts name=lib/supabase.ts
-    import { createClient } from "@supabase/supabase-js";
+    import { createClient } from "indobase-js";
     import AsyncStorage from "@react-native-async-storage/async-storage";
     import * as SecureStore from 'expo-secure-store';
     import * as aesjs from 'aes-js';
@@ -295,7 +295,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { StyleSheet, View, Alert } from 'react-native'
 import { Button, Input } from '@rneui/themed'
-import { Session } from '@supabase/supabase-js'
+import { Session } from 'indobase-js'
 
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true)
@@ -427,7 +427,7 @@ import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import Account from './components/Account'
 import { View } from 'react-native'
-import { Session } from '@supabase/supabase-js'
+import { Session } from 'indobase-js'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)

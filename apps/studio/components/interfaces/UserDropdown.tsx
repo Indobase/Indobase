@@ -1,6 +1,6 @@
 import { ProfileImage } from 'components/ui/ProfileImage'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useProfileNameAndPicture } from 'lib/profile'
 import { FlaskConical, Loader2, ScrollText, Settings } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -51,7 +51,7 @@ export function UserDropdown() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side="bottom" align="end">
-        {/* Username/email and Account preferences: show for both platform and self-hosted */}
+        {/* Username/email and Account preferences: show for both platform and SaaS */}
         <>
           <div className="px-2 py-1 flex flex-col gap-0 text-sm">
             {!!username ? (
@@ -89,7 +89,7 @@ export function UserDropdown() {
                 Account preferences
               </Link>
             </DropdownMenuItem>
-            {IS_PLATFORM && (
+            {IS_SAAS && (
               <>
                 <DropdownMenuItem
                   className="flex gap-2"

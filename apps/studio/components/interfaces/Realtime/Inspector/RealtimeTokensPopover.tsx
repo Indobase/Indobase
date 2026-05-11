@@ -10,7 +10,7 @@ import { useProjectPostgrestConfigQuery } from 'data/config/project-postgrest-co
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { getRoleImpersonationJWT } from 'lib/role-impersonation'
 import { useRoleImpersonationStateSnapshot } from 'state/role-impersonation-state'
 import { RealtimeConfig } from './useRealtimeMessages'
@@ -37,7 +37,7 @@ export const RealtimeTokensPopover = ({ config, onChangeConfig }: RealtimeTokens
 
   const { data: postgrestConfig } = useProjectPostgrestConfigQuery(
     { projectRef: config.projectRef },
-    { enabled: IS_PLATFORM }
+    { enabled: IS_SAAS }
   )
 
   const jwtSecret = postgrestConfig?.jwt_secret

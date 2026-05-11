@@ -1,10 +1,10 @@
-import * as supabaseJs from '@supabase/supabase-js'
+import * as supabaseJs from 'indobase-js'
 import * as apiKeysUtils from 'data/api-keys/temp-api-keys-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createProjectSupabaseClient } from './project-supabase-client'
 
-vi.mock('@supabase/supabase-js', () => ({
+vi.mock('indobase-js', () => ({
   createClient: vi.fn(),
 }))
 

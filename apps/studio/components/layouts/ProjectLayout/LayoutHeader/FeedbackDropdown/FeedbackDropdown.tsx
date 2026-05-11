@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { SIDEBAR_KEYS } from 'components/layouts/ProjectLayout/LayoutSidebar/LayoutSidebarProvider'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
@@ -94,7 +94,7 @@ export const FeedbackDropdown = ({ className }: { className?: string }) => {
             <div className="flex flex-col gap-4 p-4">
               <HelpSection
                 excludeIds={[]}
-                isPlatform={IS_PLATFORM}
+                isPlatform={IS_SAAS}
                 projectRef={projectRef}
                 supportLinkQueryParams={supportLinkQueryParams}
                 onAssistantClick={() => {

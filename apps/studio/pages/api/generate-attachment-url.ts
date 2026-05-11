@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import z from 'zod'
 

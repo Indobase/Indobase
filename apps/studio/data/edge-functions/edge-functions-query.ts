@@ -14,7 +14,7 @@ export async function getEdgeFunctions(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Note: in self-hosted Studio, `/v1/projects/{ref}/functions` is served
+  // Note: in SaaS Studio, `/v1/projects/{ref}/functions` is served
   // locally by `apps/studio/pages/api/v1/projects/[ref]/functions/index.ts`,
   // which reads from the EDGE_FUNCTIONS_MANAGEMENT_FOLDER. No cloud round-trip.
   const { data, error } = await get(`/v1/projects/{ref}/functions`, {

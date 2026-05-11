@@ -1,6 +1,6 @@
 'use client'
 
-import type { User } from '@supabase/supabase-js'
+import type { User } from 'indobase-js'
 import { isFeatureEnabled, logOut } from 'common'
 import { Database, Globe, Home, LifeBuoy, LogOut, Settings, UserIcon } from 'lucide-react'
 

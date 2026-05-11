@@ -16,7 +16,7 @@ Measure “time to first success” for a new developer:
 - Studio UI for org/project management and endpoints display
   - `apps/studio/components/ui/ProjectSettings/DisplayApiSettings.tsx` (project endpoints panel)
 - Provisioning pipeline (MVP) creates tenant DB and stores encrypted DSN:
-  - `apps/studio/lib/api/self-hosted/platform.ts` + `provision-tenant-db.ts`
+  - `apps/studio/lib/api/saas/platform.ts` + `provision-tenant-db.ts`
 
 ### Gaps impacting DX
 - Tenant DB bootstrap is missing; new projects may not be immediately usable without manual steps.

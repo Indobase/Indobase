@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useParams } from 'common'
 import { usePathname } from 'next/navigation'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 
 import {
   Button,
@@ -113,7 +113,7 @@ export const DownloadResultsButton = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-44">
-        {isLogs && IS_PLATFORM && (
+        {isLogs && IS_SAAS && (
           <DropdownMenuItem asChild className="gap-x-2">
             <Link href={`/project/${ref}/settings/log-drains`}>
               <Settings size={14} />

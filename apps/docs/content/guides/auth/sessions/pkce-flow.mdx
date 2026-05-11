@@ -26,7 +26,7 @@ For security purposes, the code has a validity of 5 minutes and can only be exch
 As the flow is run server side, `localStorage` may not be available. You may configure the client library to use a custom storage adapter and an alternate backing storage such as cookies by setting the `storage` option to an object with the following methods:
 
 ```js
-import { type SupportedStorage } from '@supabase/supabase-js';
+import { type SupportedStorage } from 'indobase-js';
 const supportsLocalStorage = () => true
 
 // ---cut---
@@ -60,7 +60,7 @@ You may also configure the client library to automatically exchange it for a ses
 Putting it all together, your client library initialization may look like this:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 // ---cut---
 const supabase = createClient('https://xyzcompany.supabase.co', 'publishable-or-anon-key', {

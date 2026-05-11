@@ -18,11 +18,11 @@ export const useStorageReport = () => {
 
   const queryHooks = queriesFactory<keyof typeof PRESET_CONFIG.api.queries>(
     PRESET_CONFIG.api.queries,
-    projectRef ?? 'default'
+    projectRef ?? 'abcdefghijklmnopqrst'
   )
   const storageQueryHooks = queriesFactory<keyof typeof PRESET_CONFIG.storage.queries>(
     PRESET_CONFIG.storage.queries,
-    projectRef ?? 'default'
+    projectRef ?? 'abcdefghijklmnopqrst'
   )
   const totalRequests = queryHooks.totalRequests()
   const topRoutes = queryHooks.topRoutes()

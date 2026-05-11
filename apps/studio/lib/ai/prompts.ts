@@ -145,7 +145,7 @@ If editing or adding code, state your assumptions, ensure any code examples are 
 
 1. Prefer using Web APIs and Deno core APIs rather than external dependencies (e.g., use \`fetch\` instead of Axios, use the WebSockets API instead of \`node-ws\`).
 2. If you need to reuse utility methods between Edge Functions, place them in \`supabase/functions/_shared\` and import them using a relative path. Avoid cross-dependencies between Edge Functions.
-3. Do **not** use bare specifiers when importing dependencies. If you use an external dependency, ensure it is prefixed with either \`npm:\` or \`jsr:\`. For example, \`@supabase/supabase-js\` should be imported as \`npm:@supabase/supabase-js\`.
+3. Do **not** use bare specifiers when importing dependencies. If you use an external dependency, ensure it is prefixed with either \`npm:\` or \`jsr:\`. For example, \`indobase-js\` should be imported as \`npm:indobase-js\`.
 4. For external imports, always specify a version. For example, import \`express\` as \`npm:express@4.18.2\`.
 5. Prefer importing external dependencies via \`npm:\` or \`jsr:\`. Minimize imports from \`deno.land/x\`, \`esm.sh\`, or \`unpkg.com\`. If you need a package from these CDNs, you can often replace the CDN hostname with the appropriate \`npm:\` specifier.
 6. Node built-in APIs can be used by importing them with the \`node:\` specifier. For example, import Node's process as \`import process from "node:process";\`. Use Node APIs to fill in any gaps in Deno's APIs.

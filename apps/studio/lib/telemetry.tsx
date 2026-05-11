@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 
 import { LOCAL_STORAGE_KEYS, PageTelemetry, useUser } from 'common'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { API_URL, IS_PLATFORM } from 'lib/constants'
+import { API_URL, IS_SAAS } from 'lib/constants'
 import { useConsentToast } from 'ui-patterns/consent'
 
 const getAnonId = async (id: string) => {
@@ -18,9 +18,9 @@ const getAnonId = async (id: string) => {
 
 export function Telemetry() {
   // Although this is "technically" breaking the rules of hooks
-  // IS_PLATFORM never changes within a session, so this won't cause any issues
+  // IS_SAAS never changes within a session, so this won't cause any issues
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { hasAcceptedConsent } = IS_PLATFORM ? useConsentToast() : { hasAcceptedConsent: true }
+  const { hasAcceptedConsent } = IS_SAAS ? useConsentToast() : { hasAcceptedConsent: true }
 
   // Get org from selected organization query because it's not
   // always available in the URL params
@@ -51,7 +51,7 @@ export function Telemetry() {
     <PageTelemetry
       API_URL={API_URL}
       hasAcceptedConsent={hasAcceptedConsent}
-      enabled={IS_PLATFORM}
+      enabled={IS_SAAS}
       organizationSlug={organization?.slug}
     />
   )

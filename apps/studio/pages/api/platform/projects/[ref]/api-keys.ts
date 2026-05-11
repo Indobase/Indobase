@@ -1,20 +1,16 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { decryptString } from 'lib/api/self-hosted/util'
-import { executeQuery } from 'lib/api/self-hosted/query'
-import { selfHostedDefaultProjectRef } from 'lib/api/self-hosted/platform'
-import { IS_PLATFORM } from 'lib/constants'
+import { setNoStore } from 'lib/api/no-store'
+import { decryptString } from 'lib/api/saas/util'
+import { executeQuery } from 'lib/api/saas/query'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
 
 async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
-  if (IS_PLATFORM) {
-    return res.status(400).json({ message: 'Not available in platform mode' })
-  }
-
+  setNoStore(res)
   const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
   if (!ref) return res.status(400).json({ message: 'Project ref is required' })
 
@@ -22,8 +18,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
   const gotrueId: string | undefined = normalizedClaims?.sub
   if (!gotrueId) return res.status(401).json({ message: 'Missing user session' })
-
-  const resolvedRef = ref === 'default' ? selfHostedDefaultProjectRef(gotrueId) : ref
 
   const row = await executeQuery<{
     anon_key: string
@@ -42,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
       where p.ref = $1 and m.gotrue_id = $2
       limit 1
     `,
-    parameters: [resolvedRef, gotrueId],
+    parameters: [ref, gotrueId],
     actorId: gotrueId,
   })
 

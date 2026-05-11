@@ -2,8 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
-import { applyAndTrackMigrations, listMigrationVersions } from 'lib/api/self-hosted/migrations'
-import { PgMetaDatabaseError } from 'lib/api/self-hosted/types'
+import { applyAndTrackMigrations, listMigrationVersions } from 'lib/api/saas/migrations'
+import { PgMetaDatabaseError } from 'lib/api/saas/types'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })

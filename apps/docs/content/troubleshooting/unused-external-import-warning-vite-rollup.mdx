@@ -4,7 +4,7 @@ topics = [ "platform" ]
 keywords = [ "UNUSED_EXTERNAL_IMPORT", "vite", "rollup", "nuxt", "build warning", "false positive", "bundler", "supabase-js" ]
 ---
 
-When bundling an application that uses `@supabase/supabase-js`, you may see warnings like:
+When bundling an application that uses `indobase-js`, you may see warnings like:
 
 ```
 "PostgrestError" is imported from external module "@supabase/postgrest-js" but never used in "...supabase-js/dist/index.mjs".
@@ -15,7 +15,7 @@ When bundling an application that uses `@supabase/supabase-js`, you may see warn
 
 ## Why this happens
 
-`@supabase/supabase-js` re-exports error types like `PostgrestError` and `FunctionsError` so you can import them directly from `@supabase/supabase-js`. The build tool merges all imports from the same package into a single statement in the output:
+`indobase-js` re-exports error types like `PostgrestError` and `FunctionsError` so you can import them directly from `indobase-js`. The build tool merges all imports from the same package into a single statement in the output:
 
 ```js
 // dist/index.mjs (simplified)

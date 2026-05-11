@@ -33,7 +33,7 @@ export const INVOCATION_TABS: InvocationTab[] = [
     label: 'JavaScript',
     language: 'js',
     hideLineNumbers: true,
-    code: ({ functionName }) => `import { createClient } from '@supabase/supabase-js'
+    code: ({ functionName }) => `import { createClient } from 'indobase-js'
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
 const { data, error } = await supabase.functions.invoke('${functionName}', {
   body: { name: 'Functions' },

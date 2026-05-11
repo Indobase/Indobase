@@ -3,12 +3,12 @@ import { stripIndent } from 'common-tags'
 import { z } from 'zod'
 
 // import { processSql, renderSupabaseJs } from '@supabase/sql-to-rest'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { getDatabaseFunctions } from 'data/database-functions/database-functions-query'
 import { getDatabasePolicies } from 'data/database-policies/database-policies-query'
 import { getEntityDefinitionsSql } from 'data/database/entity-definitions-query'
 import { executeSql } from 'data/sql/execute-sql-query'
-import { executeQuery } from 'lib/api/self-hosted/query'
+import { executeQuery } from 'lib/api/saas/query'
 
 export const getFallbackTools = ({
   projectRef,
@@ -46,7 +46,7 @@ export const getFallbackTools = ({
                 },
                 undefined,
                 headers,
-                IS_PLATFORM ? undefined : executeQuery
+                IS_SAAS ? undefined : executeQuery
               )
             : { result: [] }
 
@@ -407,7 +407,7 @@ export const getFallbackTools = ({
         ## Guidelines
 
         1. Try to use Web APIs and Deno's core APIs instead of external dependencies (eg: use fetch instead of Axios, use WebSockets API instead of node-ws)
-        2. Do NOT use bare specifiers when importing dependencies. If you need to use an external dependency, make sure it's prefixed with either \`npm:\` or \`jsr:\`. For example, \`@supabase/supabase-js\` should be written as \`npm:@supabase/supabase-js\`.
+        2. Do NOT use bare specifiers when importing dependencies. If you need to use an external dependency, make sure it's prefixed with either \`npm:\` or \`jsr:\`. For example, \`indobase-js\` should be written as \`npm:indobase-js\`.
         3. For external imports, always define a version. For example, \`npm:@express\` should be written as \`npm:express@4.18.2\`.
         4. For external dependencies, importing via \`npm:\` and \`jsr:\` is preferred. Minimize the use of imports from @\`deno.land/x\` , \`esm.sh\` and @\`unpkg.com\` . If you have a package from one of those CDNs, you can replace the CDN hostname with \`npm:\` specifier.
         5. You can also use Node built-in APIs. You will need to import them using \`node:\` specifier. For example, to import Node process: \`import process from "node:process"\`. Use Node APIs when you find gaps in Deno APIs.
@@ -517,7 +517,7 @@ export const getFallbackTools = ({
         \`\`\`edge
           // Setup type definitions for built-in Indobase Runtime APIs
           import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-          import { createClient } from \\'jsr:@supabase/supabase-js@2\\'
+          import { createClient } from \\'jsr:indobase-js@2\\'
           import { corsHeaders } from \\'../_shared/cors.ts\\'
 
           console.log(\`Function "select-from-table-with-auth-rls" up and running!\`)

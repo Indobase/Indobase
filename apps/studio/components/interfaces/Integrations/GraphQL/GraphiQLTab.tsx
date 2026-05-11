@@ -8,7 +8,7 @@ import { useParams } from 'common'
 import GraphiQL from 'components/interfaces/GraphQL/GraphiQL'
 import { useSessionAccessTokenQuery } from 'data/auth/session-access-token-query'
 import { useProjectPostgrestConfigQuery } from 'data/config/project-postgrest-config-query'
-import { API_URL, IS_PLATFORM } from 'lib/constants'
+import { API_URL, IS_SAAS } from 'lib/constants'
 import { getRoleImpersonationJWT } from 'lib/role-impersonation'
 import { useGetImpersonatedRoleState } from 'state/role-impersonation-state'
 import { LogoLoader } from 'ui'
@@ -17,7 +17,7 @@ export const GraphiQLTab = () => {
   const { resolvedTheme } = useTheme()
   const { ref: projectRef } = useParams()
   const currentTheme = resolvedTheme?.includes('dark') ? 'dark' : 'light'
-  const { data: accessToken } = useSessionAccessTokenQuery({ enabled: IS_PLATFORM })
+  const { data: accessToken } = useSessionAccessTokenQuery({ enabled: IS_SAAS })
 
   const { data: config } = useProjectPostgrestConfigQuery({ projectRef })
   const jwtSecret = config?.jwt_secret
@@ -27,7 +27,7 @@ export const GraphiQLTab = () => {
   const fetcher = useMemo(() => {
     const fetcherFn = createGraphiQLFetcher({
       // [Joshen] Opting to hard code /platform for local to match the routes, so that it's clear what's happening
-      url: `${API_URL}${IS_PLATFORM ? '' : '/platform'}/projects/${projectRef}/api/graphql`,
+      url: `${API_URL}${IS_SAAS ? '' : '/platform'}/projects/${projectRef}/api/graphql`,
       fetch,
     })
     const customFetcher: Fetcher = async (graphqlParams, opts) => {
@@ -67,7 +67,7 @@ export const GraphiQLTab = () => {
     return customFetcher
   }, [projectRef, getImpersonatedRoleState, jwtSecret, accessToken])
 
-  if (IS_PLATFORM && !accessToken) {
+  if (IS_SAAS && !accessToken) {
     return <LogoLoader />
   }
 

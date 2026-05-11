@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import type { JwtPayload } from '@supabase/supabase-js'
-import { deleteProject, getProject, updateProject } from 'lib/api/self-hosted/platform'
+import type { JwtPayload } from 'indobase-js'
+import { deleteProject, getProject, updateProject } from 'lib/api/saas/platform'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })

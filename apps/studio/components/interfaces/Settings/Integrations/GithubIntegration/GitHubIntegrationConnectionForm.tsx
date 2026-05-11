@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { useBranchCreateMutation } from 'data/branches/branch-create-mutation'
 import { useBranchUpdateMutation } from 'data/branches/branch-update-mutation'
 import { useBranchesQuery } from 'data/branches/branches-query'
@@ -80,7 +80,7 @@ const GitHubIntegrationConnectionForm = ({
   const isParentProject = !selectedProject?.parent_project_ref
 
   const isProPlanAndUp = selectedOrganization?.plan?.id !== 'free'
-  const promptProPlanUpgrade = IS_PLATFORM && !isProPlanAndUp
+  const promptProPlanUpgrade = IS_SAAS && !isProPlanAndUp
 
   const { can: canUpdateGitHubConnection } = useAsyncCheckPermissions(
     PermissionAction.UPDATE,

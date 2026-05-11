@@ -98,7 +98,7 @@ test.describe('SQL Editor', () => {
     }
 
     if (isCLI()) {
-      //  In self-hosted environments, we don't have access to the supabase platform, reloading would clear/reset all the sql snippets.
+      //  In Indobase SaaS / local Studio we don't have access to the hosted Supabase platform; reloading would clear/reset all the sql snippets.
       await page.reload()
       return
     }
@@ -215,7 +215,7 @@ hello world`)
   })
 
   test('snippet favourite works as expected', async ({ ref }) => {
-    test.skip(isCLI(), 'This test does not work in self-hosted environments.')
+    test.skip(isCLI(), 'This test does not run against Indobase SaaS / local Studio.')
 
     // clean up private snippets and snippets shared with the team
     await waitForApiResponseWithTimeout(
@@ -375,7 +375,7 @@ hello world`)
   })
 
   test('folders works as expected', async ({ ref }) => {
-    test.skip(isCLI(), 'This test does not work in self-hosted environments.')
+    test.skip(isCLI(), 'This test does not run against Indobase SaaS / local Studio.')
     // clean up folders and snippets
     await waitForApiResponseWithTimeout(
       page,
@@ -464,7 +464,7 @@ hello world`)
   })
 
   test('other SQL snippets actions work as expected', async ({ ref }) => {
-    test.skip(isCLI(), 'This test does not work in self-hosted environments.')
+    test.skip(isCLI(), 'This test does not run against Indobase SaaS / local Studio.')
     // clean up 'Untitled query', 'pw_sql_snippet' and 'pw_sql_snippet (Duplicate)' snippets if exists
     await waitForApiResponseWithTimeout(
       page,

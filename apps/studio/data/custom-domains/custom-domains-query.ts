@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { get, handleError } from 'data/fetchers'
-import { useProjectAddonsQuery } from 'data/subscriptions/project-addons-query'
-import { IS_PLATFORM } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { customDomainKeys } from './keys'
 
-// On self-hosted, custom domains are managed by the local /v1/.../custom-hostname
+// On SaaS, custom domains are managed by the local /v1/.../custom-hostname
 // handlers (no Cloudflare addon required). On the cloud platform we keep the
 // original addon gate so users without the add-on don't issue billable requests.
 
@@ -114,16 +112,10 @@ export const useCustomDomainsQuery = <TData = CustomDomainsData>(
     ...options
   }: UseCustomQueryOptions<CustomDomainsData, CustomDomainsError, TData> = {}
 ) => {
-  const { data } = useProjectAddonsQuery({ projectRef })
-  const hasCustomDomainsAddon = !!data?.selected_addons.find((x) => x.type === 'custom_domain')
-
-  // Self-hosted: no add-on gating. Cloud: only enable when the add-on is purchased.
-  const isAvailable = IS_PLATFORM ? hasCustomDomainsAddon : true
-
   return useQuery<CustomDomainsData, CustomDomainsError, TData>({
     queryKey: customDomainKeys.list(projectRef),
     queryFn: ({ signal }) => getCustomDomains({ projectRef }, signal),
-    enabled: enabled && typeof projectRef !== 'undefined' && isAvailable,
+    enabled: enabled && typeof projectRef !== 'undefined',
     ...options,
   })
 }

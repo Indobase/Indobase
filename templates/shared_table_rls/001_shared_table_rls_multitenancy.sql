@@ -2,7 +2,7 @@
 -- One cluster; all tenants share tables. RLS restricts rows by tenant_id from JWT.
 -- Copy this migration into your project's supabase/migrations and run it there.
 
--- Helper: current tenant from JWT or app.tenant_id (set by your app or auth hook)
+-- Helper: current tenant from JWT (PostgREST shapes) or app.tenant_id (backend / service role)
 create or replace function public.current_tenant_id()
 returns uuid
 language sql
@@ -11,12 +11,19 @@ security definer
 set search_path = public
 as $$
   select coalesce(
-    nullif(current_setting('request.jwt.claims', true)::json->>'tenant_id', '')::uuid,
+    nullif(j->>'tenant_id', '')::uuid,
+    nullif(j->'app_metadata'->>'tenant_id', '')::uuid,
+    nullif(
+      trim(both '"' from coalesce(current_setting('request.jwt.claim.tenant_id', true), '')),
+      ''
+    )::uuid,
     nullif(current_setting('app.tenant_id', true), '')::uuid
-  );
+  )
+  from (select current_setting('request.jwt.claims', true)::json as j) c;
 $$;
 
-comment on function public.current_tenant_id() is 'Tenant id for RLS; read from JWT claim tenant_id or app.tenant_id.';
+comment on function public.current_tenant_id() is
+  'RLS tenant: JWT tenant_id, app_metadata.tenant_id, request.jwt.claim.tenant_id, or app.tenant_id.';
 
 -- Optional: allow setting tenant per-request (e.g. from backend with service role)
 create or replace function public.set_tenant_id(tenant uuid)
@@ -25,8 +32,14 @@ language sql
 security definer
 set search_path = public
 as $$
-  perform set_config('app.tenant_id', coalesce(tenant::text, ''), true);
+  select set_config('app.tenant_id', coalesce(tenant::text, ''), true);
 $$;
+
+comment on function public.set_tenant_id(uuid) is
+  'Sets app.tenant_id for the current transaction (service role / backend).';
+
+grant execute on function public.current_tenant_id() to authenticated, service_role;
+grant execute on function public.set_tenant_id(uuid) to service_role;
 
 -- Example: devices table (tenant-scoped). Add tenant_id to all shared tenant tables.
 create table if not exists public.devices (

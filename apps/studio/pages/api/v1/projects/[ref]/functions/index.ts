@@ -6,7 +6,7 @@ import apiWrapper from 'lib/api/apiWrapper'
 import {
   getFunctionsArtifactStore,
   migrateLegacyFunctionsForProject,
-} from 'lib/api/self-hosted/functions'
+} from 'lib/api/saas/functions'
 
 export default function handlerWithErrorCatching(req: NextApiRequest, res: NextApiResponse) {
   return apiWrapper(req, res, handler, { withAuth: true })

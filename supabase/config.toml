@@ -65,6 +65,8 @@ additional_redirect_urls = [
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
 # week).
 jwt_expiry = 3600
+# App shared-table RLS: add tenant_id to JWT claims (app_metadata + refresh, or Custom Access Token hook).
+# Helpers: public.current_tenant_id() / set_tenant_id — see MULTITENANCY_RLS.md (separate from saas.* control plane RLS).
 # Allow/disallow new user signups to your project.
 enable_signup = true
 
@@ -104,5 +106,7 @@ redirect_uri = ""
 # or any other third-party OIDC providers.
 url = ""
 
+# Production recommendation: keep JWT verification enabled for Edge Functions by default.
+# The `search-embeddings` endpoint is intentionally left public for local/docs indexing flows.
 [functions.search-embeddings]
 verify_jwt = false

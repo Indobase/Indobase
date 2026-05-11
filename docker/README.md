@@ -1,25 +1,26 @@
-# Self-Hosted Indobase with Docker
+# Indobase with Docker (SaaS stack)
 
-This is the Docker Compose setup for self-hosted Indobase. It provides a complete stack with all Indobase services running locally or on your infrastructure.
+This Docker Compose setup runs the **Indobase SaaS** stack (Studio, Kong, Postgres, etc.) locally or on your own servers.
 
 ## Single image (marketing + Studio) – for infra-as-a-service
 
-The **root `Dockerfile`** builds one image and **one Node server** (no Nginx):
+The **root `Dockerfile`** builds one image and **one Node server** (Next.js standalone on port 8080):
 
 - **Marketing site** at `/` (built from `apps/www`, merged into Studio’s `public/` and served via rewrites)
 - **Studio (dashboard)** at `/dashboard`
 
-Use this image when you deploy the front-end (e.g. Dokploy, k8s) and point it at your existing backend or at Indobase platform.
+Use this image when you deploy the front-end (e.g. Dokploy, k8s) and point it at **your** Postgres + Kong + postgres-meta stack (Indobase BaaS / SaaS control plane).
 
 - **Build (from repo root):** `docker build -t ind-repo:latest .`  
   Or use the GitHub Actions workflow to build and push for `linux/amd64`.
-- **Port:** Expose `8080`. The container runs Nginx (front) and the Studio Node server (internal).
-- **Env (set in your orchestrator):**
-  - **Self-hosted backend** (your Postgres + Kong + meta, etc.):  
-    `STUDIO_PG_META_URL`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `AUTH_JWT_SECRET`, and optionally `LOGFLARE_*` / `PROJECT_ANALYTICS_URL` for logs.  
+- **Port:** Expose **8080** (the Node process).
+- **Env (set in your orchestrator or compose):**
+  - **Control plane + data plane** (required for a working dashboard):  
+    `STUDIO_PG_META_URL`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `AUTH_JWT_SECRET`, `PG_META_CRYPTO_KEY`, and optionally `LOGFLARE_*` / `PROJECT_ANALYTICS_URL` for logs.  
     Override `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEMENT_FOLDER` if you mount volumes for functions/snippets.
-  - **Platform (Indobase cloud API):**  
-    `NEXT_PUBLIC_IS_PLATFORM=true`, `NEXT_PUBLIC_API_URL=<your platform API URL>`.
+  - **SaaS UI (build-time `NEXT_PUBLIC_*` in CI/Dockerfile):**  
+    `NEXT_PUBLIC_INDOBASE_SAAS` (default on unless `"false"`), `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_GOTRUE_URL`, optional `NEXT_PUBLIC_BASE_PATH`.  
+    See **[WIRING.md](../WIRING.md)** and **[ENV-FOR-OWN-BACKEND.md](./ENV-FOR-OWN-BACKEND.md)**.
 
 The image sets default `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEMENT_FOLDER` so Studio starts without asserting; override them when you attach real storage.
 
@@ -27,7 +28,7 @@ The image sets default `EDGE_FUNCTIONS_MANAGEMENT_FOLDER` and `SNIPPETS_MANAGEME
 
 For setup and configuration, see:
 
-- **[Indobase self-hosting](https://indobase.in/docs/guides/hosting/overview)** – Overview and options
+- **[Indobase hosting overview](https://indobase.in/docs/guides/hosting/overview)** – Overview and options
 - **[Single-domain deployment](../SINGLE_DOMAIN.md)** – Deploy marketing, Studio, and backend on one domain (e.g. indobase.fun)
 - **[WIRING.md](../WIRING.md)** – How marketing, Studio, and backend URLs and env are wired
 
@@ -43,7 +44,7 @@ The setup typically covers:
 
 This Docker Compose configuration includes the following services:
 
-- **[Studio](https://github.com/indobase/indobase/tree/master/apps/studio)** – Dashboard for managing your self-hosted Indobase project
+- **[Studio](https://github.com/indobase/indobase/tree/master/apps/studio)** – Dashboard for Indobase SaaS projects
 - **[Kong](https://github.com/Kong/kong)** – API gateway
 - **[Auth](https://github.com/supabase/gotrue)** – JWT-based authentication API for sign-ups, logins, and session management
 - **[PostgREST](https://github.com/PostgREST/postgrest)** – Web server that turns PostgreSQL into a RESTful API
@@ -65,7 +66,7 @@ This Docker Compose configuration includes the following services:
 
 ## Updates
 
-To update your self-hosted Indobase instance:
+To update your Indobase Docker deployment:
 
 1. Review [CHANGELOG.md](./CHANGELOG.md) for breaking changes
 2. Check [versions.md](./versions.md) for new image versions

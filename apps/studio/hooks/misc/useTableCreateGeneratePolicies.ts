@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import { useTrackExperimentExposure } from 'hooks/misc/useTrackExperimentExposure'
 import { usePHFlag } from 'hooks/ui/useFlag'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useMemo } from 'react'
 
 dayjs.extend(utc)
@@ -52,7 +52,7 @@ export function useTableCreateGeneratePolicies({
   const tableCreateGeneratePoliciesFlag = usePHFlag<string>('tableCreateGeneratePolicies')
 
   const enabled = useMemo(() => {
-    if (!IS_PLATFORM) return false
+    if (!IS_SAAS) return false
     if (tableCreateGeneratePoliciesFlag !== 'variation') return false
     return true
   }, [tableCreateGeneratePoliciesFlag])
@@ -65,7 +65,7 @@ export function useTableCreateGeneratePolicies({
   }, [projectInsertedAt])
 
   const shouldTrack =
-    IS_PLATFORM &&
+    IS_SAAS &&
     isNewRecord &&
     isValidExperimentVariant(tableCreateGeneratePoliciesFlag) &&
     daysSinceCreation !== undefined

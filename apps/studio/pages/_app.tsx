@@ -51,14 +51,8 @@ import { customFont, sourceCodePro } from 'fonts'
 import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { AuthProvider } from 'lib/auth'
-import {
-  API_URL,
-  BASE_PATH,
-  IS_MULTI_ORG_DASHBOARD,
-  IS_PLATFORM,
-  IS_SAAS,
-  useDefaultProvider,
-} from 'lib/constants'
+import { API_URL, BASE_PATH, IS_SAAS, useDefaultProvider } from 'lib/constants'
+import { TenantJwtClaimSync } from 'components/misc/TenantJwtClaimSync'
 import { ProfileProvider } from 'lib/profile'
 import { Telemetry } from 'lib/telemetry'
 import Head from 'next/head'
@@ -80,7 +74,7 @@ const FeatureFlagProviderWithOrgContext = ({
   ...props
 }: ComponentProps<typeof FeatureFlagProvider>) => {
   const { data: selectedOrganization } = useSelectedOrganizationQuery({
-    enabled: IS_MULTI_ORG_DASHBOARD,
+    enabled: true,
   })
 
   return (
@@ -157,10 +151,11 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
             <AuthProvider>
               <FeatureFlagProviderWithOrgContext
                 API_URL={API_URL}
-                enabled={IS_MULTI_ORG_DASHBOARD}
+                enabled={true}
                 getConfigCatFlags={getConfigCatFlags}
               >
                 <ProfileProvider>
+                  <TenantJwtClaimSync />
                   <Head>
                     <title>{appTitle ?? 'Indobase'}</title>
                     <meta name="viewport" content="initial-scale=1.0, width=device-width" />
@@ -173,7 +168,7 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
                       }}
                     />
                     {/* Speed up initial API loading times by pre-connecting to the API domain */}
-                    {IS_PLATFORM && (
+                    {IS_SAAS && (
                       <link
                         rel="preconnect"
                         href={new URL(API_URL).origin}

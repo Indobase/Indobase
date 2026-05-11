@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@serafin/schema-builder": "^0.18.5",
-    "@supabase/supabase-js": "catalog:",
+    "indobase-js": "workspace:*",
     "ai": "5.0.52",
     "common-tags": "^1.8.2",
     "config": "workspace:*",

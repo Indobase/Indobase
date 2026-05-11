@@ -25,7 +25,7 @@ import { useTableUpdateMutation } from 'data/tables/table-update-mutation'
 import { useTablesQuery } from 'data/tables/tables-query'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { DOCS_URL, IS_PLATFORM } from 'lib/constants'
+import { DOCS_URL, IS_SAAS } from 'lib/constants'
 import {
   Button,
   Form_Shadcn_,
@@ -110,7 +110,7 @@ export const QueuesSettings = () => {
 
   const { mutate: toggleExposeQueuePostgrest } = useDatabaseQueueToggleExposeMutation({
     onSuccess: (_, values) => {
-      if (!IS_PLATFORM) return onPostgrestConfigUpdateSuccess()
+      if (!IS_SAAS) return onPostgrestConfigUpdateSuccess()
       if (project && config) {
         if (values.enable) {
           const updatedSchemas = schemas.concat([QUEUES_SCHEMA])
@@ -226,7 +226,7 @@ export const QueuesSettings = () => {
                               <code className="text-code-inline">archive</code>, and{' '}
                               <code className="text-code-inline">delete</code>
                             </p>
-                            {!IS_PLATFORM ? (
+                            {!IS_SAAS ? (
                               <div className="mt-6 max-w-2xl">
                                 When running Indobase locally with the CLI or self-hosting using
                                 Docker Compose, you also need to update your configuration to expose

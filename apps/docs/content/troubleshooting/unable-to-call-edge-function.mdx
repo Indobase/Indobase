@@ -21,13 +21,13 @@ Make sure your function handles OPTIONS preflight requests.
 
 <Admonition type="tip">
 
-**For `@supabase/supabase-js` v2.95.0 and later:** Import CORS headers directly from the SDK to ensure they stay synchronized with any new headers added to the client libraries.
+**For `indobase-js` v2.95.0 and later:** Import CORS headers directly from the SDK to ensure they stay synchronized with any new headers added to the client libraries.
 
 </Admonition>
 
 ```tsx
 // Recommended approach
-import { corsHeaders } from '@supabase/supabase-js/cors' // v2.95.0+
+import { corsHeaders } from 'indobase-js/cors' // v2.95.0+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
 ### For versions before 2.95.0
 
-If you're using `@supabase/supabase-js` before v2.95.0, you'll need to hardcode the CORS headers. Add a `cors.ts` file within a [`_shared` folder](/docs/guides/functions/quickstart#organizing-your-edge-functions):
+If you're using `indobase-js` before v2.95.0, you'll need to hardcode the CORS headers. Add a `cors.ts` file within a [`_shared` folder](/docs/guides/functions/quickstart#organizing-your-edge-functions):
 
 ```ts
 // _shared/cors.ts

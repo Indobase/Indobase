@@ -28,7 +28,7 @@ INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-k
       <ConnectTabContent value="src/db/indobase.js">
         <SimpleCodeBlock className="js" parentClassName="min-h-72">
           {`
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "indobase-js";
 
 const indobaseUrl = import.meta.env.INDOBASE_URL;
 const indobaseKey = import.meta.env.INDOBASE_KEY;

@@ -6,7 +6,7 @@ import {
   getDatabaseOperations,
   getDebuggingOperations,
   getDevelopmentOperations,
-} from 'lib/api/self-hosted/mcp'
+} from 'lib/api/saas/mcp'
 import { DEFAULT_PROJECT } from 'lib/constants/api'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'

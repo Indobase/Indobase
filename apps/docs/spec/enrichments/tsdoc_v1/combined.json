@@ -3,7 +3,7 @@
   "children": [
     {
       "id": 0,
-      "name": "@supabase/supabase-js",
+      "name": "indobase-js",
       "kind": 1,
       "flags": {},
       "originalName": "",

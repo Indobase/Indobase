@@ -12,8 +12,8 @@ Validate auth/security properties:
 ## What exists in this codebase
 ### Control-plane isolation
 - `actorId` is applied to many control-plane queries via:
-  - `apps/studio/lib/api/self-hosted/query.ts` (sets `app.uid`)
-  - `apps/studio/lib/api/self-hosted/platform.ts`
+  - `apps/studio/lib/api/saas/query.ts` (sets `app.uid`)
+  - `apps/studio/lib/api/saas/platform.ts`
 - `saas.*` schema includes RLS migration:
   - `supabase/migrations/20260421101500_saas_tenant_isolation.sql`
 
@@ -29,7 +29,7 @@ Validate auth/security properties:
 ## Key gaps (Supabase Cloud parity)
 - Gateway does **not validate** that `x-project-ref` exists in `saas.projects` (it’s best-effort).
 - Tenant DB bootstrap is missing; full auth/storage policies per tenant are not guaranteed yet.
-- Audit log persistence for self-hosted control-plane is largely missing/stubbed.
+- Audit log persistence for Indobase SaaS control-plane is largely missing/stubbed.
 
 ## Recommended tests (manual + automated)
 ### A) Tenant isolation tests (must-have)

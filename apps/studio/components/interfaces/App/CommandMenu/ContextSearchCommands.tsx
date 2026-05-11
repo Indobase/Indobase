@@ -18,7 +18,7 @@ import { COMMAND_MENU_SECTIONS } from './CommandMenu.utils'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { orderCommandSectionsByPriority } from './ordering'
 import { ContextSearchResults } from './ContextSearchResults'
-import { useFlag, IS_PLATFORM } from 'common'
+import { useFlag, IS_SAAS } from 'common'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import type { SearchContextValue } from './SearchContext.types'
 
@@ -129,12 +129,12 @@ export function useContextSearchCommands() {
 
       if (!isFeatureEnabled) return false
 
-      // If self-hosted, show if feature is enabled
-      if (!IS_PLATFORM) {
+      // Indobase SaaS / local Studio (`!IS_SAAS`): show when the feature is enabled.
+      if (!IS_SAAS) {
         return true
       }
 
-      // only show when inside a project if not self-hosted
+      // Hosted Supabase Platform: only show when inside a project.
       return !!project
     }).map((option) => ({
       id: `search-${option.value}`,
@@ -147,6 +147,6 @@ export function useContextSearchCommands() {
   useRegisterCommands(COMMAND_MENU_SECTIONS.QUERY, contextCommands, {
     orderSection: orderCommandSectionsByPriority,
     sectionMeta: { priority: 3 },
-    enabled: !IS_PLATFORM || (enableSearchEntitiesCommandMenu && !!project),
+    enabled: !IS_SAAS || (enableSearchEntitiesCommandMenu && !!project),
   })
 }

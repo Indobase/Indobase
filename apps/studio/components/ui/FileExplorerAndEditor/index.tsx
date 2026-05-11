@@ -27,7 +27,7 @@ import {
   isBinaryFile,
   isZipFile,
 } from './FileExplorerAndEditor.utils'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 
 interface FileExplorerAndEditorProps {
   files: FileData[]
@@ -374,7 +374,7 @@ export const FileExplorerAndEditor = ({
           <h3 className="text-sm font-normal font-mono uppercase text-lighter tracking-wide">
             Files
           </h3>
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <Button size="tiny" type="default" icon={<Plus size={14} />} onClick={addNewFile}>
               Add File
             </Button>
@@ -417,7 +417,7 @@ export const FileExplorerAndEditor = ({
                         icon={<File size={14} className="text-foreground-light shrink-0" />}
                         isEditing={isEditing}
                         onEditSubmit={(value) => {
-                          if (IS_PLATFORM && originalId !== null) {
+                          if (IS_SAAS && originalId !== null) {
                             handleFileNameChange(originalId, value)
                           }
                         }}
@@ -427,7 +427,7 @@ export const FileExplorerAndEditor = ({
                           }
                         }}
                         onDoubleClick={() => {
-                          if (IS_PLATFORM && originalId !== null) {
+                          if (IS_SAAS && originalId !== null) {
                             handleStartRename(originalId)
                           }
                         }}
@@ -448,7 +448,7 @@ export const FileExplorerAndEditor = ({
                       />
                     </div>
                   </ContextMenuTrigger_Shadcn_>
-                  {IS_PLATFORM && (
+                  {IS_SAAS && (
                     <ContextMenuContent_Shadcn_ onCloseAutoFocus={(e) => e.stopPropagation()}>
                       <ContextMenuItem_Shadcn_
                         className="gap-x-2"
@@ -514,7 +514,7 @@ export const FileExplorerAndEditor = ({
               padding: { top: 20, bottom: 20 },
               lineNumbersMinChars: 3,
               fixedOverflowWidgets: true,
-              readOnly: !IS_PLATFORM,
+              readOnly: !IS_SAAS,
             }}
           />
         )}

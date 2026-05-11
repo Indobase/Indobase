@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { InternalServerError } from '@/lib/api/apiHelpers'
@@ -52,7 +52,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Array<IncidentInfo> | { error: string }>
 ) {
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     return res.status(404).end()
   }
 

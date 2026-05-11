@@ -8,7 +8,7 @@ export const useDatabaseReport = () => {
 
   const queryHooks = queriesFactory<keyof typeof PRESET_CONFIG.database.queries>(
     PRESET_CONFIG.database.queries,
-    projectRef ?? 'default'
+    projectRef ?? 'abcdefghijklmnopqrst'
   )
   const largeObjects = queryHooks.largeObjects() as DbQueryHook
   const activeHooks = [largeObjects]

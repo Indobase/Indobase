@@ -4,7 +4,7 @@ import { PropsWithChildren, ReactNode } from 'react'
 
 import { useParams } from 'common'
 import { useSupavisorConfigurationQuery } from 'data/database/supavisor-configuration-query'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useDatabaseSelectorStateSnapshot } from 'state/database-selector'
 import {
   Badge,
@@ -189,7 +189,7 @@ export const ConnectionPanel = ({
           )}
         </div>
         <div className="flex flex-col -space-y-px w-full">
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <div className="border border-muted px-5 flex gap-7 items-center py-3 first:rounded-t last:rounded-b">
               <div className="flex items-center gap-2">
                 <IPv4StatusIcon active={ipv4Status.type === 'success'} />
@@ -234,7 +234,7 @@ export const ConnectionPanel = ({
             </div>
           )}
 
-          {IS_PLATFORM && ipv4Status.type === 'error' && (
+          {IS_SAAS && ipv4Status.type === 'error' && (
             <Collapsible_Shadcn_ className="group -space-y-px">
               <CollapsibleTrigger_Shadcn_
                 asChild

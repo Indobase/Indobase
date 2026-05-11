@@ -29,7 +29,7 @@ Vector buckets and any [Foreign Data Wrappers (FDW)](/docs/guides/database/exten
 <TabPanel id="javascript" label="JavaScript">
 
 ```typescript
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
 
@@ -121,7 +121,7 @@ Find documents similar to a query by embedding the query text:
 <TabPanel id="javascript" label="JavaScript">
 
 ```typescript
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import OpenAI from 'openai'
 
 const supabase = createClient(...)
@@ -592,7 +592,7 @@ LIMIT 50;
 
 ```typescript
 import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 async function retrieveContextForLLM(userQuery) {
   const supabase = createClient(...)

@@ -1,7 +1,7 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
 import { useQuery } from '@tanstack/react-query'
 
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { get, handleError } from 'data/fetchers'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
@@ -58,7 +58,7 @@ export const useOrganizationCustomerProfileQuery = <TData = OrganizationCustomer
   return useQuery<OrganizationCustomerProfileData, OrganizationCustomerProfileError, TData>({
     queryKey: organizationKeys.customerProfile(slug),
     queryFn: ({ signal }) => getOrganizationCustomerProfile({ slug }, signal),
-    enabled: IS_PLATFORM && enabled && canReadCustomerProfile && typeof slug !== 'undefined',
+    enabled: IS_SAAS && enabled && canReadCustomerProfile && typeof slug !== 'undefined',
     ...options,
   })
 }

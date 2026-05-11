@@ -1,7 +1,7 @@
 import { Query, type QueryFilter } from '@supabase/pg-meta/src/query'
 import { getTableRowsSql } from '@supabase/pg-meta/src/query/table-row-query'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { parseSupaTable } from 'components/grid/SupabaseGrid.utils'
 import { Filter, Sort, SupaRow, SupaTable } from 'components/grid/types'
 import { ENTITY_TYPE } from 'data/entity-types/entity-type-constants'
@@ -218,7 +218,7 @@ export const fetchAllTableRows = async ({
   roleImpersonationState?: RoleImpersonationState
   progressCallback?: (value: number) => void
 }) => {
-  if (IS_PLATFORM && !connectionString) {
+  if (IS_SAAS && !connectionString) {
     console.error('Connection string is required')
     return []
   }

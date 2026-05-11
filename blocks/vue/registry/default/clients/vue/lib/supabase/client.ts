@@ -1,5 +1,5 @@
 /// <reference types="vite/types/importMeta.d.ts" />
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from 'indobase-js'
 
 export function createClient() {
   return createSupabaseClient(

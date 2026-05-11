@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { COMMAND_MENU_SECTIONS } from 'components/interfaces/App/CommandMenu/CommandMenu.utils'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
@@ -12,7 +12,7 @@ export function useBillingGotoCommands(options?: CommandOptions) {
 
   useRegisterCommands(
     COMMAND_MENU_SECTIONS.NAVIGATE,
-    IS_PLATFORM && billingEnabled
+    IS_SAAS && billingEnabled
       ? [
           {
             id: 'nav-billing',

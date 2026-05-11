@@ -390,7 +390,7 @@ export const FunctionsSecretsEmptyStateLocal = () => {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          Self-Hosted Indobase
+          Indobase SaaS
           <div className="flex items-center gap-x-2">
             <DocsButton href={`${DOCS_URL}/guides/self-hosting/docker#configuring-services`} />
           </div>

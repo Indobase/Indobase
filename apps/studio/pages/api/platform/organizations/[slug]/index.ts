@@ -1,13 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import {
   deleteOrganization,
   getOrganization,
   updateOrganization,
-} from 'lib/api/self-hosted/platform'
+} from 'lib/api/saas/platform'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
@@ -21,19 +21,24 @@ async function handler(
   const { slug } = req.query
 
   if (typeof slug !== 'string' || !slug) {
-    return res.status(400).json({ message: 'Organization slug is required' })
+    res.status(400).json({ message: 'Organization slug is required' })
+    return
   }
 
   switch (method) {
     case 'GET':
-      return handleGet(req, res, claims, slug)
+      await handleGet(req, res, claims, slug)
+      return
     case 'PATCH':
-      return handlePatch(req, res, claims, slug)
+      await handlePatch(req, res, claims, slug)
+      return
     case 'DELETE':
-      return handleDelete(req, res, claims, slug)
+      await handleDelete(req, res, claims, slug)
+      return
     default:
       res.setHeader('Allow', ['GET', 'PATCH', 'DELETE'])
       res.status(405).json({ data: null, error: { message: `Method ${method} Not Allowed` } })
+      return
   }
 }
 
@@ -53,8 +58,11 @@ const handleGet = async (
   slug: string
 ) => {
   const org = await getOrganization({ claims: claims as any, slug })
-  if (!org) return res.status(404).json({ message: 'Organization not found' })
-  return res.status(200).json(org)
+  if (!org) {
+    res.status(404).json({ message: 'Organization not found' })
+    return
+  }
+  res.status(200).json(org)
 }
 
 const handlePatch = async (
@@ -64,7 +72,10 @@ const handlePatch = async (
   slug: string
 ) => {
   const body = parseRequestBody(req.body)
-  if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
+  if (body === null) {
+    res.status(400).json({ message: 'Invalid JSON body' })
+    return
+  }
 
   const org = await updateOrganization({
     claims: claims as any,
@@ -76,8 +87,11 @@ const handlePatch = async (
     },
   })
 
-  if (!org) return res.status(404).json({ message: 'Organization not found' })
-  return res.status(200).json(org)
+  if (!org) {
+    res.status(404).json({ message: 'Organization not found' })
+    return
+  }
+  res.status(200).json(org)
 }
 
 const handleDelete = async (
@@ -87,7 +101,9 @@ const handleDelete = async (
   slug: string
 ) => {
   const ok = await deleteOrganization({ claims: claims as any, slug })
-  if (!ok) return res.status(404).json({ message: 'Organization not found' })
-  return res.status(200).end()
+  if (!ok) {
+    res.status(404).json({ message: 'Organization not found' })
+    return
+  }
+  res.status(200).end()
 }
-

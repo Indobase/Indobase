@@ -1,5 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import { EdgeFunctionRecentInvocations } from 'components/interfaces/Functions/EdgeFunctionRecentInvocations'
 import ReportWidget from 'components/interfaces/Reports/ReportWidget'
 import DefaultLayout from 'components/layouts/DefaultLayout'
@@ -138,7 +138,7 @@ const PageLayout: NextPageWithLayout = () => {
     <PageContainer size="full">
       <PageSection>
         <PageSectionContent>
-          {IS_PLATFORM && id && (
+          {IS_SAAS && id && (
             <div className="mb-8">
               <EdgeFunctionRecentInvocations
                 functionId={id}

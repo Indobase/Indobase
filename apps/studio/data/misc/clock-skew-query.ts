@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchHandler } from 'data/fetchers'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { miscKeys } from './keys'
 
@@ -33,7 +33,7 @@ export const useClockSkewQuery = <TData = ClockSkewData>({
   useQuery<ClockSkewData, ClockSkewError, TData>({
     queryKey: miscKeys.clockSkew(),
     queryFn: () => getClockSkew(),
-    enabled: enabled && IS_PLATFORM,
+    enabled: enabled && IS_SAAS,
     refetchInterval,
     ...options,
   })

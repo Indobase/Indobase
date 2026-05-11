@@ -1,5 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { DatabaseConnectionString } from 'components/interfaces/Connect/DatabaseConnectionString'
 import { McpTabContent } from 'components/interfaces/Connect/McpTabContent'
 import Panel from 'components/ui/Panel'
@@ -434,7 +434,7 @@ export const Connect = () => {
                   selectedFrameworkOrTool={selectedFrameworkOrTool}
                   className="rounded-b-none"
                 />
-                {IS_PLATFORM && (
+                {IS_SAAS && (
                   <Panel.Notice
                     className="border border-t-0 rounded-lg rounded-t-none"
                     badgeLabel="Changelog"

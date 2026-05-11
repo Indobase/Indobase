@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import { IS_PLATFORM, useFlag } from 'common'
+import { IS_SAAS, useFlag } from 'common'
 import { useDeploymentCommitQuery } from 'data/utils/deployment-commit-query'
 import { Button, StatusIcon } from 'ui'
 
@@ -40,7 +40,7 @@ export function useCheckLatestDeploy() {
   const [isToastShown, setIsToastShown] = useState(false)
 
   const { data: commit } = useDeploymentCommitQuery({
-    enabled: IS_PLATFORM,
+    enabled: IS_SAAS,
     staleTime: 1000 * 60 * 10, // 10 minutes
   })
 

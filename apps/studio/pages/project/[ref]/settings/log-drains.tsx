@@ -1,5 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import { LogDrainDestinationSheetForm } from 'components/interfaces/LogDrains/LogDrainDestinationSheetForm'
 import { LogDrains } from 'components/interfaces/LogDrains/LogDrains'
 import { LOG_DRAIN_TYPES, LogDrainType } from 'components/interfaces/LogDrains/LogDrains.constants'
@@ -172,7 +172,7 @@ const LogDrainsSettings: NextPageWithLayout = () => {
             You are about to create a new log drain destination:{' '}
             <span className="text-foreground">{pendingLogDrainValues?.name}</span>
           </p>
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <p>
               This will incur an additional <span className="text-foreground">$60 per month</span>{' '}
               charge to your subscription.
@@ -232,7 +232,7 @@ const LogDrainsSettings: NextPageWithLayout = () => {
                           {cloneElement(drainType.icon, { height: 16, width: 16 })}
                           <div className="space-y-1">
                             <p className="block text-foreground">{drainType.name}</p>
-                            {IS_PLATFORM && (
+                            {IS_SAAS && (
                               <p className="text-xs text-foreground-lighter">Additional $60</p>
                             )}
                           </div>

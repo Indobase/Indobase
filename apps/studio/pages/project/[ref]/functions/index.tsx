@@ -18,7 +18,7 @@ import EdgeFunctionsLayout from 'components/layouts/EdgeFunctionsLayout/EdgeFunc
 import AlertError from 'components/ui/AlertError'
 import { DocsButton } from 'components/ui/DocsButton'
 import { useEdgeFunctionsQuery } from 'data/edge-functions/edge-functions-query'
-import { DOCS_URL, IS_PLATFORM } from 'lib/constants'
+import { DOCS_URL, IS_SAAS } from 'lib/constants'
 import { ExternalLink, Search, X } from 'lucide-react'
 import { parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import React, { useMemo } from 'react'
@@ -87,7 +87,7 @@ const EdgeFunctionsPage: NextPageWithLayout = () => {
           <div className="flex flex-col gap-6">
             {isLoading && <GenericSkeletonLoader />}
             {isError &&
-              (IS_PLATFORM ? (
+              (IS_SAAS ? (
                 <AlertError error={error} subject="Failed to retrieve edge functions" />
               ) : (
                 <Admonition type="warning" title="Failed to retrieve edge functions">
@@ -167,7 +167,7 @@ const EdgeFunctionsPage: NextPageWithLayout = () => {
                 )}
               </>
             )}
-            {!IS_PLATFORM && <FunctionsInstructionsLocal />}
+            {!IS_SAAS && <FunctionsInstructionsLocal />}
           </div>
         </PageSectionContent>
       </PageSection>
@@ -199,7 +199,7 @@ EdgeFunctionsPage.getLayout = (page: React.ReactElement) => {
                     Examples
                   </a>
                 </Button>
-                {IS_PLATFORM && <DeployEdgeFunctionButton />}
+                {IS_SAAS && <DeployEdgeFunctionButton />}
               </PageHeaderAside>
             </PageHeaderMeta>
           </PageHeader>

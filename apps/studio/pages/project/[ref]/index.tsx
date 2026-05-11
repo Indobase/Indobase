@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { Home } from 'components/interfaces/Home/Home'
 import { HomeV2 } from 'components/interfaces/HomeNew/Home'
 import DefaultLayout from 'components/layouts/DefaultLayout'
@@ -13,7 +13,7 @@ const HomePage: NextPageWithLayout = () => {
 
   useTrackExperimentExposure(
     'home_new',
-    IS_PLATFORM && typeof homeNewVariant !== 'boolean' ? homeNewVariant : undefined
+    IS_SAAS && typeof homeNewVariant !== 'boolean' ? homeNewVariant : undefined
   )
 
   if (isHomeNew) {

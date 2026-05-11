@@ -194,7 +194,7 @@ To initiate a sign-in request from your application's user interface (i.e. the S
 <TabPanel id="js" label="JavaScript">
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---
@@ -486,7 +486,7 @@ This setup allows you to implement multi-tenant SSO for multiple clients or orga
 Yes, also referred to as [cross-origin authentication within the same site](https://web.dev/articles/same-site-same-origin). To redirect to a URL other than the [Site URL](/docs/guides/auth/redirect-urls), following the SAML response from the IdP, the `redirectTo` option can be added to [`signInWithSSO`](/docs/reference/javascript/auth-signinwithsso).
 
 ```ts
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('https://your-project.supabase.co', 'sb_publishable_... or anon key')
 
 // ---cut---

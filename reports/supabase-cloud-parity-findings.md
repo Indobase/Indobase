@@ -14,9 +14,9 @@ Scope: Review of this repository’s current implementation for “Supabase Clou
 
 ### Partially present (UI present, backend missing or external dependency)
 - **Backups / PITR / restore**: Studio UI and “platform” API clients exist, but the actual backup/PITR engine is not implemented in this repo.
-- **Billing / subscriptions**: Studio UI exists; self-hosted API routes are stubbed/hard-coded; real Stripe billing lifecycle is not implemented here.
-- **Ops controls (pause/restart)**: Studio UI/mutations exist, but self-hosted data-plane execution is not fully implemented for your per-project stacks.
-- **Audit logs**: Studio UI exists; self-hosted audit endpoints are largely no-op / empty results.
+- **Billing / subscriptions**: Studio UI exists; Indobase SaaS API routes are stubbed/hard-coded; real Stripe billing lifecycle is not implemented here.
+- **Ops controls (pause/restart)**: Studio UI/mutations exist, but Indobase SaaS data-plane execution is not fully implemented for your per-project stacks.
+- **Audit logs**: Studio UI exists; Indobase SaaS audit endpoints are largely no-op / empty results.
 
 ### Missing (true Supabase Cloud parity gaps)
 - **Tenant DB bootstrap** (auth/storage/realtime schema + roles + extensions) for new tenant DBs.
@@ -42,7 +42,7 @@ Scope: Review of this repository’s current implementation for “Supabase Clou
   - `apps/studio/pages/api/platform/projects/[ref]/tenant-stack.ts`
   - `apps/studio/pages/api/platform/projects/[ref]/provision-data-plane.ts`
 - Tenant artifacts generation (compose + Traefik routers):
-  - `apps/studio/lib/api/self-hosted/platform.ts` (`getTenantStackArtifacts()`)
+  - `apps/studio/lib/api/saas/platform.ts` (`getTenantStackArtifacts()`)
   - `docker/tenants/render-tenant-stack.mjs`
 
 #### Critical gaps
@@ -65,9 +65,9 @@ Scope: Review of this repository’s current implementation for “Supabase Clou
     - `supabase/migrations/20260424095500_saas_project_jwt_keys_enc.sql`
     - `supabase/migrations/20260424096000_saas_project_data_plane_port_base.sql`
 - Key generation + encrypted writes:
-  - `apps/studio/lib/api/self-hosted/platform.ts` (`createProject()`)
+  - `apps/studio/lib/api/saas/platform.ts` (`createProject()`)
 - Encryption utilities:
-  - `apps/studio/lib/api/self-hosted/util.ts`
+  - `apps/studio/lib/api/saas/util.ts`
 
 **Gap:** Rotation workflows and audit logging for sensitive operations are not yet implemented for these per-project keys.
 
@@ -75,7 +75,7 @@ Scope: Review of this repository’s current implementation for “Supabase Clou
 **Status: Partially present**
 
 - Tenant DB provisioning (DB + role):
-  - `apps/studio/lib/api/self-hosted/provision-tenant-db.ts`
+  - `apps/studio/lib/api/saas/provision-tenant-db.ts`
 - Control-plane metadata schema + RLS migration:
   - `docker/volumes/db/saas.sql`
   - `supabase/migrations/20260421101500_saas_tenant_isolation.sql`
@@ -116,8 +116,8 @@ Implemented in Studio (frontend + API client calls):
   - `supabase/functions/quota-enforcer/index.ts` (hard enforcement is a placeholder)
   - `supabase/functions/send-alert-email/index.ts`
 
-#### Billing (Studio UI + stubbed self-hosted APIs)
-- Studio subscription UI exists; self-hosted API routes are stubbed:
+#### Billing (Studio UI + stubbed Indobase SaaS APIs)
+- Studio subscription UI exists; Indobase SaaS API routes are stubbed:
   - `apps/studio/pages/api/platform/organizations/[slug]/billing/subscription.ts` (hard-coded response)
   - `apps/studio/pages/api/platform/billing/plans.ts` (hard-coded plans)
 - Stripe “Sync Engine” integration exists (not billing lifecycle):
@@ -129,7 +129,7 @@ Implemented in Studio (frontend + API client calls):
 
 **Key gaps:**
 - Hard quota enforcement is not wired into the real gateway/service mesh for all metrics.
-- Billing lifecycle (Stripe subscriptions, invoices, cancellations, proration, plan enforcement) is not implemented in self-hosted mode.
+- Billing lifecycle (Stripe subscriptions, invoices, cancellations, proration, plan enforcement) is not implemented in Indobase SaaS mode.
 - Studio usage endpoint appears mismatched to schema in places (stale naming vs migration tables).
 
 ### 6) Ops controls (pause/restart) + recovery
@@ -142,7 +142,7 @@ Implemented in Studio (frontend + API client calls):
   - `apps/studio/data/projects/project-restart-mutation.ts`
   - `apps/studio/data/projects/project-restart-services-mutation.ts`
 
-**Gap:** self-hosted implementation must map these actions to your per-project Docker stacks (stop/start/recreate + health validation).
+**Gap:** Indobase SaaS implementation must map these actions to your per-project Docker stacks (stop/start/recreate + health validation).
 
 ### 7) Audit logs
 **Status: Partially present**
@@ -150,7 +150,7 @@ Implemented in Studio (frontend + API client calls):
 - Org audit logs UI exists:
   - `apps/studio/components/interfaces/Organization/AuditLogs/AuditLogs.tsx`
   - `apps/studio/data/organizations/organization-audit-logs-query.ts`
-- Self-hosted profile audit endpoints are stub/no-op:
+- Indobase SaaS profile audit endpoints are stub/no-op:
   - `apps/studio/pages/api/platform/profile/audit.ts`
   - `apps/studio/pages/api/platform/profile/audit-login.ts`
 
@@ -164,5 +164,5 @@ Implemented in Studio (frontend + API client calls):
 4) **Backups/PITR implementation** for tenant DBs on VPS (pgBackRest/WAL-G) + retention jobs + restore flows.
 5) **Key rotation + audit trail**: per-project anon/service key rotation + per-project JWT secret rotation, with grace periods.
 6) **Usage metering + enforcement**: implement real collectors + integrate hard enforcement into gateway/services.
-7) **Billing lifecycle**: implement Stripe subscription management for self-hosted SaaS mode (or a dedicated control-plane service).
+7) **Billing lifecycle**: implement Stripe subscription management for Indobase SaaS (or a dedicated control-plane service).
 

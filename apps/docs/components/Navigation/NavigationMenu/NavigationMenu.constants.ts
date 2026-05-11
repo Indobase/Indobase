@@ -3094,7 +3094,7 @@ export const reference_javascript_v1 = {
   url: '/guides/reference/javascript',
   parent: '/reference',
   pkg: {
-    name: '@supabase/supabase-js',
+    name: 'indobase-js',
     repo: 'https://github.com/supabase/supabase-js',
   },
 }
@@ -3105,7 +3105,7 @@ export const reference_javascript_v2 = {
   url: '/guides/reference/javascript',
   parent: '/reference',
   pkg: {
-    name: '@supabase/supabase-js',
+    name: 'indobase-js',
     repo: 'https://github.com/supabase/supabase-js',
   },
 }

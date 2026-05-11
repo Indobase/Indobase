@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { useParams } from 'common/hooks'
 import dayjs from 'dayjs'
 import { Check, Copy } from 'lucide-react'
@@ -32,7 +32,7 @@ export const EdgeFunctionsListItem = ({ function: item }: EdgeFunctionsListItemP
       : `${protocol}://${endpoint}/functions/v1/${item.slug}`
 
   const handleNavigation = createNavigationHandler(
-    `/project/${ref}/functions/${item.slug}${IS_PLATFORM ? '' : `/details`}`,
+    `/project/${ref}/functions/${item.slug}${IS_SAAS ? '' : `/details`}`,
     router
   )
 

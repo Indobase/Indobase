@@ -1,5 +1,5 @@
 import { generateText, Output, stepCountIs } from 'ai'
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { source } from 'common-tags'
 import type { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
 import { getModel } from 'lib/ai/model'
@@ -54,7 +54,7 @@ export async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const authorization = req.headers.authorization
   const accessToken = authorization?.replace('Bearer ', '')
 
-  if (IS_PLATFORM && !accessToken) {
+  if (IS_SAAS && !accessToken) {
     return res.status(401).json({ error: 'Authorization token is required' })
   }
 
@@ -69,11 +69,11 @@ export async function handlePost(req: NextApiRequest, res: NextApiResponse) {
 
   let aiOptInLevel: AiOptInLevel = 'disabled'
 
-  if (!IS_PLATFORM) {
+  if (!IS_SAAS) {
     aiOptInLevel = 'schema'
   }
 
-  if (IS_PLATFORM && orgSlug && authorization) {
+  if (IS_SAAS && orgSlug && authorization) {
     try {
       const { aiOptInLevel: orgAIOptInLevel } = await getOrgAIDetails({
         orgSlug,

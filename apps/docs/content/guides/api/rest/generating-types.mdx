@@ -92,7 +92,7 @@ export interface Database {
 You can supply the type definitions to `supabase-js` like so:
 
 ```ts ./index.tsx
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { Database } from './database.types'
 
 const supabase = createClient<Database>(
@@ -274,7 +274,7 @@ create table cities (
 We can get the nested `CountriesWithCities` type like this:
 
 ```ts
-import { QueryResult, QueryData, QueryError } from '@supabase/supabase-js'
+import { QueryResult, QueryData, QueryError } from 'indobase-js'
 
 const countriesWithCitiesQuery = supabase.from('countries').select(`
   id,

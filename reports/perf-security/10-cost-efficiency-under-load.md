@@ -30,7 +30,7 @@ Quantify cost efficiency:
   - accurate metering collectors (requests/egress/storage/db size/realtime/functions)
   - a pricing model per plan
   - infrastructure cost inputs (Hostinger VPS costs, storage costs, bandwidth)
-None of that is fully implemented in self-hosted mode yet.
+None of that is fully implemented in Indobase SaaS mode yet.
 
 ## Recommended methodology (practical)
 1) Define your unit costs:

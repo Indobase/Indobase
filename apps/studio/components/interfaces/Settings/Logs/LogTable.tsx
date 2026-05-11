@@ -1,5 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { isEqual } from 'lodash'
 import { Copy, Eye, EyeOff, Play } from 'lucide-react'
 import { Key, ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
@@ -280,7 +280,7 @@ export const LogTable = ({
       )}
 
       <div className="space-x-2">
-        {IS_PLATFORM && (
+        {IS_SAAS && (
           <ButtonTooltip
             type="default"
             onClick={onSave}

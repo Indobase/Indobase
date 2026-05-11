@@ -15,7 +15,7 @@ import { Snippet } from 'data/content/sql-folders-query'
 import type { SqlSnippet } from 'data/content/sql-snippets-query'
 import { useOrgSubscriptionQuery } from 'data/subscriptions/org-subscription-query'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { useSqlEditorV2StateSnapshot } from 'state/sql-editor-v2'
 import { createTabId, useTabsStateSnapshot } from 'state/tabs'
@@ -113,13 +113,13 @@ const RenameQueryModal = ({
         } as UpsertContentPayload,
       })
 
-      if (IS_PLATFORM) {
+      if (IS_SAAS) {
         snapV2.renameSnippet({ id, name: nameInput, description: descriptionInput })
 
         const tabId = createTabId('sql', { id })
         tabsSnap.updateTab(tabId, { label: nameInput })
       } else if (changedSnippet) {
-        // In self-hosted, the snippet also updates the id when renaming it. This code is to ensure the previous snippet
+        // In SaaS, the snippet also updates the id when renaming it. This code is to ensure the previous snippet
         // is removed, new one is added, tab state is updated and the router is updated.
 
         // remove the old snippet from the state without saving to API

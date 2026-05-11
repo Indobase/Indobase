@@ -197,10 +197,7 @@ module.exports.getCSP = function getCSP() {
     `form-action 'self'`,
     `frame-ancestors 'none'`,
     `block-all-mixed-content`,
-    ...(process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' &&
-    process.env.NEXT_PUBLIC_ENVIRONMENT === 'prod'
-      ? [`upgrade-insecure-requests`]
-      : []),
+    ...(process.env.NEXT_PUBLIC_ENVIRONMENT === 'prod' ? [`upgrade-insecure-requests`] : []),
   ]
 
   const csp = cspDirectives.join('; ') + ';'

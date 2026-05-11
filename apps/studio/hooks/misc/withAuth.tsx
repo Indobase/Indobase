@@ -3,7 +3,7 @@ import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeout
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
 import { useSignOut } from 'lib/auth'
-import { BASE_PATH, IS_MULTI_ORG_DASHBOARD } from 'lib/constants'
+import { BASE_PATH } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -25,11 +25,6 @@ export function withAuth<T>(
     useHighestAAL: boolean
   } = { useHighestAAL: true }
 ) {
-  // ignore auth in anonymous open Studio; require auth for cloud, Indobase SaaS, or self-host + auth
-  if (!IS_MULTI_ORG_DASHBOARD) {
-    return WrappedComponent
-  }
-
   const WithAuthHOC: ComponentType<T> = (props) => {
     const router = useRouter()
     const signOut = useSignOut()

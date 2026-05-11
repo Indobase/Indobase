@@ -1,11 +1,11 @@
-import type { JwtPayload } from '@supabase/supabase-js'
+import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import {
   createThirdPartyAuthIntegration,
   listThirdPartyAuthIntegrations,
-} from 'lib/api/self-hosted/third-party-auth'
+} from 'lib/api/saas/third-party-auth'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })

@@ -8,7 +8,7 @@ import { proxy, ref, snapshot, subscribe, useSnapshot } from 'valtio'
 
 import { constructHeaders } from 'data/fetchers'
 import { prepareMessagesForAPI } from 'lib/ai/message-utils'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 
 import { LOCAL_STORAGE_KEYS } from 'common'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
@@ -263,7 +263,7 @@ function createChatInstance(
             model: state.model,
             ...opts.body,
           },
-          ...(IS_PLATFORM ? { headers: { Authorization: authorizationHeader ?? '' } } : {}),
+          ...(IS_SAAS ? { headers: { Authorization: authorizationHeader ?? '' } } : {}),
         }
       },
     }),

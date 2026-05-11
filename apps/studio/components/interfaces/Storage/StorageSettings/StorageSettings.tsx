@@ -5,7 +5,7 @@ import { SubmitHandler, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
-import { IS_PLATFORM, useFlag, useParams } from 'common'
+import { IS_SAAS, useFlag, useParams } from 'common'
 import AlertError from 'components/ui/AlertError'
 import { InlineLink } from 'components/ui/InlineLink'
 import NoPermission from 'components/ui/NoPermission'
@@ -262,10 +262,10 @@ export const StorageSettings = () => {
       <PageSection>
         <PageSectionContent className="flex flex-col gap-y-8">
           <Form_Shadcn_ {...form}>
-            {!IS_PLATFORM ? (
+            {!IS_SAAS ? (
               <Admonition
                 type="default"
-                title="Storage settings are not available for self-hosted projects"
+                title="Storage settings are not available in Indobase SaaS"
                 description="Storage settings are only available for Indobase Platform projects."
               />
             ) : isLoading ? (

@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { useBranchCommands } from 'components/interfaces/BranchManagement/Branch.Commands'
 import {
   useQueryTableCommands,
@@ -40,7 +40,7 @@ export default function StudioCommandMenu() {
     options: { orderSection: orderCommandSectionsByPriority, sectionMeta: { priority: 3 } },
   })
   useSupportCommands()
-  useChangelogCommand({ enabled: IS_PLATFORM })
+  useChangelogCommand({ enabled: IS_SAAS })
   useThemeSwitcherCommands()
   useContextSearchCommands()
 

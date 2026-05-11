@@ -1,4 +1,4 @@
-import { IS_PLATFORM } from 'common'
+import { IS_SAAS } from 'common'
 import { SIDEBAR_KEYS } from 'components/layouts/ProjectLayout/LayoutSidebar/LayoutSidebarProvider'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
@@ -74,7 +74,7 @@ export const HelpDropdown = () => {
         <HelpSection
           className="px-5"
           excludeIds={['discord']}
-          isPlatform={IS_PLATFORM}
+          isPlatform={IS_SAAS}
           projectRef={projectRef}
           supportLinkQueryParams={supportLinkQueryParams}
           onAssistantClick={() => {

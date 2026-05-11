@@ -5,7 +5,7 @@ import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { RoleImpersonationPopover } from 'components/interfaces/RoleImpersonationSelector/RoleImpersonationPopover'
 import { DatabaseSelector } from 'components/ui/DatabaseSelector'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useSqlEditorV2StateSnapshot } from 'state/sql-editor-v2'
 import {
   Button,
@@ -73,7 +73,7 @@ const UtilityActions = ({
 
   return (
     <div className="inline-flex items-center justify-end gap-x-2">
-      {IS_PLATFORM && <SavingIndicator id={id} />}
+      {IS_SAAS && <SavingIndicator id={id} />}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -92,7 +92,7 @@ const UtilityActions = ({
             </span>
             {intellisenseEnabled && <Check className="text-brand" size={16} />}
           </DropdownMenuItem>
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -137,7 +137,7 @@ const UtilityActions = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {IS_PLATFORM && (
+        {IS_SAAS && (
           <Tooltip>
             <TooltipTrigger asChild>
               {isFavorite ? (
@@ -179,7 +179,7 @@ const UtilityActions = ({
 
       <div className="flex items-center justify-between gap-x-2">
         <div className="flex items-center">
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <DatabaseSelector
               selectedDatabaseId={lastSelectedDb.length === 0 ? undefined : lastSelectedDb}
               variant="connected-on-right"
@@ -188,7 +188,7 @@ const UtilityActions = ({
           )}
           <RoleImpersonationPopover
             serviceRoleLabel="postgres"
-            variant={IS_PLATFORM ? 'connected-on-both' : 'connected-on-right'}
+            variant={IS_SAAS ? 'connected-on-both' : 'connected-on-right'}
           />
           <SqlRunButton
             hasSelection={hasSelection}

@@ -852,7 +852,7 @@ const EXTERNAL_PROVIDER_GITLAB = {
       isSecret: true,
     },
     EXTERNAL_GITLAB_URL: {
-      title: 'Self Hosted GitLab URL',
+      title: 'Self-managed GitLab base URL',
       descriptionOptional: 'Optional',
       type: 'string',
     },

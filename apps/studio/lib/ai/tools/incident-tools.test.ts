@@ -2,11 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getIncidentTools } from './incident-tools'
 
-// Mock IS_PLATFORM
-vi.mock('common', () => ({
-  IS_PLATFORM: true,
-}))
-
 describe('ai/tools/incident-tools', () => {
   let mockFetch: ReturnType<typeof vi.fn>
   let mockAbortSignal: AbortSignal
@@ -48,24 +43,7 @@ describe('ai/tools/incident-tools', () => {
     })
 
     describe('execute function', () => {
-      it('should return empty incidents when not on platform', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(false)
-
-        const tools = getIncidentTools({ baseUrl: 'https://studio.indobase.in' })
-        const result = await (tools.get_active_incidents.execute as any)({})
-
-        expect(result).toEqual({
-          incidents: [],
-          message: 'Incident checking is only available on Indobase platform.',
-        })
-        expect(mockFetch).not.toHaveBeenCalled()
-      })
-
       it('should fetch incidents from correct URL', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         mockFetch.mockResolvedValue({
           ok: true,
           json: async () => [],
@@ -84,9 +62,6 @@ describe('ai/tools/incident-tools', () => {
       })
 
       it('should return message when no incidents', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         mockFetch.mockResolvedValue({
           ok: true,
           json: async () => [],
@@ -102,9 +77,6 @@ describe('ai/tools/incident-tools', () => {
       })
 
       it('should return incident summaries when incidents exist', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         const mockIncidents = [
           {
             name: 'Database slowness',
@@ -132,13 +104,10 @@ describe('ai/tools/incident-tools', () => {
           },
         ])
         expect((result as any).message).toContain('1 active incident')
-        expect((result as any).message).toContain('status.supabase.com')
+        expect((result as any).message).toContain('status.indobase.in')
       })
 
       it('should handle multiple incidents', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         const mockIncidents = [
           {
             name: 'Database issue',
@@ -167,9 +136,6 @@ describe('ai/tools/incident-tools', () => {
       })
 
       it('should handle fetch errors', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         mockFetch.mockRejectedValue(new Error('Network error'))
 
         const tools = getIncidentTools({ baseUrl: 'https://studio.indobase.in' })
@@ -182,9 +148,6 @@ describe('ai/tools/incident-tools', () => {
       })
 
       it('should handle non-ok responses', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         mockFetch.mockResolvedValue({
           ok: false,
           status: 500,
@@ -200,9 +163,6 @@ describe('ai/tools/incident-tools', () => {
       })
 
       it('should use timeout signal', async () => {
-        const common = await import('common')
-        vi.spyOn(common, 'IS_PLATFORM', 'get').mockReturnValue(true)
-
         mockFetch.mockResolvedValue({
           ok: true,
           json: async () => [],

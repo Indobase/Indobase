@@ -1,39 +1,54 @@
-// Billing Plans API
-// Returns available plans with INR pricing
+import type { NextApiRequest, NextApiResponse } from 'next'
 
-import apiWrapper from 'lib/api/apiWrapper';
-import { NextApiRequest, NextApiResponse } from 'next';
+import apiWrapper from 'lib/api/apiWrapper'
 
-export default (req: NextApiRequest, res: NextApiResponse) => 
-  apiWrapper(req, res, handler);
+type Plan = {
+  id: string
+  name: string
+  display_name: string
+  monthly_price: number | null
+  annual_price: number | null
+  currency: string
+  description: string
+  features: string[]
+  limits: Record<string, number>
+  overage_rates: Record<string, number>
+  popular: boolean
+  available: boolean
+  savings?: string
+  contact_sales?: boolean
+  gst_notice?: string
+  payment_methods?: string[]
+}
+
+export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { method } = req;
+  const { method } = req
 
   switch (method) {
     case 'GET':
-      return await getPlans(req, res);
+      await getPlans(req, res)
+      return
     default:
-      res.setHeader('Allow', ['GET']);
-      res.status(405).json({ 
-        error: { message: `Method ${method} Not Allowed` } 
-      });
+      res.setHeader('Allow', ['GET'])
+      res.status(405).json({ error: { message: `Method ${method} Not Allowed` } })
+      return
   }
 }
 
 async function getPlans(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { currency = 'INR' } = req.query;
-    
-    // Plans configuration with INR pricing
-    const plans = [
+    const currency = typeof req.query.currency === 'string' ? req.query.currency : 'INR'
+
+    const plans: Plan[] = [
       {
         id: 'free',
         name: 'Free',
         display_name: 'Free',
         monthly_price: 0,
         annual_price: 0,
-        currency: currency as string,
+        currency,
         description: 'Perfect for trying out the platform',
         features: [
           '500MB Database',
@@ -41,24 +56,24 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
           '1GB Storage',
           '500K Function Invocations',
           'Community Support',
-          'Unlimited API Requests'
+          'Unlimited API Requests',
         ],
         limits: {
-          database_size: 536870912, // 500MB
+          database_size: 536870912,
           auth_maus: 50000,
-          storage_size: 1073741824, // 1GB
+          storage_size: 1073741824,
           functions_invocations: 500000,
           realtime_connections: 200,
-          realtime_messages: 2000000
+          realtime_messages: 2000000,
         },
         overage_rates: {
           database_size: currency === 'INR' ? 0.000010417 : 0.000000125,
           auth_maus: currency === 'INR' ? 0.27 : 0.00325,
           storage_size: currency === 'INR' ? 1.75 : 0.021,
-          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002
+          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002,
         },
         popular: false,
-        available: true
+        available: true,
       },
       {
         id: 'pro',
@@ -66,7 +81,7 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
         display_name: 'Pro',
         monthly_price: currency === 'INR' ? 2083 : 25,
         annual_price: currency === 'INR' ? 19997 : 240,
-        currency: currency as string,
+        currency,
         description: 'For growing applications and startups',
         features: [
           '8GB Database',
@@ -76,25 +91,25 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
           'Email Support',
           'Remove Branding',
           'Unlimited API Requests',
-          'Advanced Disk Config'
+          'Advanced Disk Config',
         ],
         limits: {
-          database_size: 8589934592, // 8GB
+          database_size: 8589934592,
           auth_maus: 100000,
-          storage_size: 107374182400, // 100GB
+          storage_size: 107374182400,
           functions_invocations: 2000000,
           realtime_connections: 500,
-          realtime_messages: 5000000
+          realtime_messages: 5000000,
         },
         overage_rates: {
           database_size: currency === 'INR' ? 0.000010417 : 0.000000125,
           auth_maus: currency === 'INR' ? 0.27 : 0.00325,
           storage_size: currency === 'INR' ? 1.75 : 0.021,
-          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002
+          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002,
         },
         popular: true,
         available: true,
-        savings: currency === 'INR' ? 'Save ₹6,983 with annual billing' : 'Save $60 with annual billing'
+        savings: currency === 'INR' ? 'Save ₹6,983 with annual billing' : 'Save $60 with annual billing',
       },
       {
         id: 'team',
@@ -102,7 +117,7 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
         display_name: 'Team',
         monthly_price: currency === 'INR' ? 49717 : 599,
         annual_price: currency === 'INR' ? 477283 : 5750,
-        currency: currency as string,
+        currency,
         description: 'For scaling businesses with advanced needs',
         features: [
           '8GB Database',
@@ -113,25 +128,25 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
           'Platform Audit Logs',
           'SLA Support',
           'Advanced Security Features',
-          'Priority Support'
+          'Priority Support',
         ],
         limits: {
-          database_size: 8589934592, // 8GB
+          database_size: 8589934592,
           auth_maus: 100000,
-          storage_size: 107374182400, // 100GB
+          storage_size: 107374182400,
           functions_invocations: 2000000,
           realtime_connections: 500,
-          realtime_messages: 5000000
+          realtime_messages: 5000000,
         },
         overage_rates: {
           database_size: currency === 'INR' ? 0.000010417 : 0.000000125,
           auth_maus: currency === 'INR' ? 0.27 : 0.00325,
           storage_size: currency === 'INR' ? 1.75 : 0.021,
-          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002
+          functions_invocations: currency === 'INR' ? 0.000167 : 0.000002,
         },
         popular: false,
         available: true,
-        savings: currency === 'INR' ? 'Save ₹119,321 with annual billing' : 'Save $1,438 with annual billing'
+        savings: currency === 'INR' ? 'Save ₹119,321 with annual billing' : 'Save $1,438 with annual billing',
       },
       {
         id: 'enterprise',
@@ -139,7 +154,7 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
         display_name: 'Enterprise',
         monthly_price: null,
         annual_price: null,
-        currency: currency as string,
+        currency,
         description: 'Custom solutions for large organizations',
         features: [
           'Custom Database Size',
@@ -151,42 +166,38 @@ async function getPlans(req: NextApiRequest, res: NextApiResponse) {
           'Dedicated Support',
           'Custom SLA',
           'Private Link',
-          'SSO/SAML'
+          'SSO/SAML',
         ],
         limits: {},
         overage_rates: {},
         popular: false,
         available: true,
-        contact_sales: true
-      }
-    ];
+        contact_sales: true,
+      },
+    ]
 
-    // Add India-specific information for INR
     if (currency === 'INR') {
-      plans.forEach(plan => {
-        if (!plan.contact_sales) {
-          plan.gst_notice = '+ 18% GST applicable';
-          plan.payment_methods = [
-            'UPI (Google Pay, PhonePe, Paytm)',
-            'Credit/Debit Cards (RuPay, Visa, Mastercard)',
-            'Net Banking',
-            'Digital Wallets',
-            'EMI available for annual plans'
-          ];
-        }
-      });
+      plans.forEach((plan) => {
+        if (plan.contact_sales) return
+        plan.gst_notice = '+ 18% GST applicable'
+        plan.payment_methods = [
+          'UPI (Google Pay, PhonePe, Paytm)',
+          'Credit/Debit Cards (RuPay, Visa, Mastercard)',
+          'Net Banking',
+          'Digital Wallets',
+          'EMI available for annual plans',
+        ]
+      })
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       data: plans,
       currency,
-      exchange_rate: currency === 'INR' ? 83 : 1
-    });
-
+      exchange_rate: currency === 'INR' ? 83 : 1,
+    })
   } catch (error) {
-    console.error('Error fetching plans:', error);
-    return res.status(500).json({
-      error: { message: error.message }
-    });
+    console.error('Error fetching plans:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    res.status(500).json({ error: { message } })
   }
 }

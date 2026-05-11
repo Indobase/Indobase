@@ -29,7 +29,7 @@ You can monitor heartbeat lifecycle events using the `onHeartbeat` method:
 
 ```tsx
 import { useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 function MyComponent() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -73,7 +73,7 @@ The client automatically attempts reconnection with exponential backoff (1s, 2s,
 
 ```tsx
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 function ConnectionStatus() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -107,7 +107,7 @@ function ConnectionStatus() {
 You can adjust the heartbeat frequency when creating your Supabase client in React:
 
 ```tsx
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { useMemo } from 'react'
 
 function App() {
@@ -132,7 +132,7 @@ Note: Increasing the interval reduces network traffic but delays detection of co
 For React applications with long-running connections, use Web Workers to prevent browser tab throttling:
 
 ```tsx
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 import { useMemo } from 'react'
 
 function App() {
@@ -165,7 +165,7 @@ Display connection status with a simple indicator:
 
 ```tsx
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 function ConnectionIndicator() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -198,7 +198,7 @@ Ensure connection is active when user opens your app:
 ```tsx
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 function App() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -226,7 +226,7 @@ function App() {
 Set up monitoring when you create your Supabase client:
 
 ```tsx
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   realtime: {

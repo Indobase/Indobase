@@ -135,7 +135,7 @@ vi.mock(import('common'), async (importOriginal) => {
   })
   return {
     ...actual,
-    useParams: vi.fn().mockReturnValue({ ref: 'default' }),
+    useParams: vi.fn().mockReturnValue({ ref: 'abcdefghijklmnopqrst' }),
     useIsLoggedIn: vi.fn().mockReturnValue(true),
     isFeatureEnabled: vi.fn((feature: any, disabledFeatures: any) => {
       if (typeof feature === 'string') {
@@ -178,7 +178,7 @@ vi.mock(import('lib/constants'), async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
-    IS_PLATFORM: true,
+    IS_SAAS: true,
   }
 })
 

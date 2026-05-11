@@ -1,4 +1,4 @@
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS, useParams } from 'common'
+import { IS_SAAS, LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { useIndexAdvisorStatus } from 'components/interfaces/QueryPerformance/hooks/useIsIndexAdvisorStatus'
 import { BannerIndexAdvisor } from 'components/ui/BannerStack/Banners/BannerIndexAdvisor'
 import { BannerMetricsAPI } from 'components/ui/BannerStack/Banners/BannerMetricsAPI'
@@ -37,7 +37,7 @@ const ObservabilityLayoutContent = ({
   )
 
   useEffect(() => {
-    if (!isMetricsBannerDismissed && IS_PLATFORM) {
+    if (!isMetricsBannerDismissed && IS_SAAS) {
       addBanner({
         id: 'metrics-api-banner',
         isDismissed: false,

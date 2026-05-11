@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import * as z from 'zod'
 
 import { useResetPasswordMutation } from 'data/misc/reset-password-mutation'
-import { BASE_PATH, IS_PLATFORM } from 'lib/constants'
+import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { auth } from 'lib/gotrue'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns'
@@ -160,7 +160,7 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
         className="flex flex-col pt-4 space-y-4"
         onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)}
       >
-        {!IS_PLATFORM && (
+        {!IS_SAAS && (
           <Admonition
             type="warning"
             title="Email delivery"

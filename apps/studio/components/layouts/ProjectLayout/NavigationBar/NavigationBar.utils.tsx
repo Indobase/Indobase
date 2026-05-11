@@ -6,7 +6,7 @@ import type { Route } from 'components/ui/ui.types'
 import { EditorIndexPageLink } from 'data/prefetchers/project.$ref.editor'
 import type { Project } from 'data/projects/project-detail-query'
 import { Auth, Database, EdgeFunctions, Realtime, SqlEditor, Storage, TableEditor } from 'icons'
-import { IS_PLATFORM, PROJECT_STATUS } from 'lib/constants'
+import { IS_SAAS, PROJECT_STATUS } from 'lib/constants'
 import { Blocks, FileText, Lightbulb, List, Settings, Telescope } from 'lucide-react'
 
 export const generateToolRoutes = (ref?: string, project?: Project, features?: {}): Route[] => {
@@ -148,7 +148,7 @@ export const generateOtherRoutes = (
       icon: <Lightbulb size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
       link: ref && (isProjectBuilding ? buildingUrl : `/project/${ref}/advisors/security`),
     },
-    ...(IS_PLATFORM && reportsEnabled
+    ...(IS_SAAS && reportsEnabled
       ? [
           {
             key: 'observability',
@@ -198,7 +198,7 @@ export const generateSettingsRoutes = (ref?: string, project?: Project): Route[]
       icon: <Settings size={ICON_SIZE} strokeWidth={ICON_STROKE_WIDTH} />,
       link:
         ref &&
-        (IS_PLATFORM ? `/project/${ref}/settings/general` : `/project/${ref}/settings/log-drains`),
+        (IS_SAAS ? `/project/${ref}/settings/general` : `/project/${ref}/settings/log-drains`),
       items: settingsMenu,
       disabled: false,
     },

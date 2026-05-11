@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import type { Factor } from '@supabase/supabase-js'
+import type { Factor } from 'indobase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'

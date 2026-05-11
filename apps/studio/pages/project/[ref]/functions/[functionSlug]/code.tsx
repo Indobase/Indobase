@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { formatFunctionBodyToFiles } from '@/components/interfaces/EdgeFunctions/EdgeFunctions.utils'
 import { FileData } from '@/components/ui/FileExplorerAndEditor/FileExplorerAndEditor.types'
 import { useLatest } from '@/hooks/misc/useLatest'
-import { IS_PLATFORM, useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import { DeployEdgeFunctionWarningModal } from 'components/interfaces/EdgeFunctions/DeployEdgeFunctionWarningModal'
 import { DefaultLayout } from 'components/layouts/DefaultLayout'
 import EdgeFunctionDetailsLayout from 'components/layouts/EdgeFunctionsLayout/EdgeFunctionDetailsLayout'
@@ -214,7 +214,7 @@ const CodePage = () => {
               orgSlug: org?.slug,
             }}
           />
-          {IS_PLATFORM && (
+          {IS_SAAS && (
             <div className="flex items-center bg-background-muted justify-end p-4 border-t bg-surface-100 shrink-0">
               <ButtonTooltip
                 loading={isDeploying}

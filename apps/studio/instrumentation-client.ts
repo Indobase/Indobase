@@ -4,7 +4,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { hasConsented } from 'common'
-import { IS_PLATFORM } from 'common/constants/environment'
+import { IS_SAAS } from 'common/constants/environment'
 import { MIRRORED_BREADCRUMBS } from 'lib/breadcrumbs'
 import { sanitizeArrayOfObjects, sanitizeUrlHashParams } from 'lib/sanitize'
 
@@ -130,7 +130,7 @@ Sentry.init({
       return null
     }
 
-    if (!IS_PLATFORM) {
+    if (!IS_SAAS) {
       return null
     }
 

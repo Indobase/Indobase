@@ -341,8 +341,8 @@ test.describe('Storage', () => {
   })
 })
 
-test.describe('Storage Settings - Self Hosted', () => {
-  test.skip(env.IS_PLATFORM, 'Storage settings are only disabled on self-hosted')
+test.describe('Storage Settings - Indobase SaaS', () => {
+  test.skip(env.IS_PLATFORM, 'Storage settings are only disabled on Indobase SaaS / local Studio')
 
   test('settings tab should not be visible in navigation', async ({ page, ref }) => {
     // Navigate to storage files page
@@ -366,7 +366,7 @@ test.describe('Storage Settings - Self Hosted', () => {
     ).toBeVisible()
     await expect(
       page.locator(`a[href="/project/${ref}/storage/files/settings"]`),
-      'Settings tab should NOT be visible for self-hosted'
+      'Settings tab should NOT be visible for Indobase SaaS'
     ).not.toBeVisible()
   })
 
@@ -376,7 +376,7 @@ test.describe('Storage Settings - Self Hosted', () => {
 
     // Should show an error message indicating settings are not available
     await expect(
-      page.getByText('Storage settings are not available for self-hosted projects'),
+      page.getByText('Storage settings are not available in Indobase SaaS'),
       'Error message should be visible'
     ).toBeVisible()
   })

@@ -690,7 +690,7 @@
       "lib/ai/test-fixtures.ts": 1,
       "lib/ai/tool-filter.ts": 4,
       "lib/api/apiHelpers.ts": 2,
-      "lib/api/self-hosted/logs.ts": 2,
+      "lib/api/saas/logs.ts": 2,
       "lib/gotrue.ts": 1,
       "lib/helpers.ts": 11,
       "lib/integration-utils.ts": 2,

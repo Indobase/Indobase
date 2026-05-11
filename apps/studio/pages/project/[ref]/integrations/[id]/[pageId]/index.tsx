@@ -1,5 +1,5 @@
 import { useFlag, useParams } from 'common'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { INTEGRATIONS } from 'components/interfaces/Integrations/Landing/Integrations.constants'
 import { useInstalledIntegrations } from 'components/interfaces/Integrations/Landing/useInstalledIntegrations'
 import { DefaultLayout } from 'components/layouts/DefaultLayout'
@@ -136,7 +136,7 @@ const IntegrationPage: NextPageWithLayout = () => {
     return null
   }
 
-  if (id === 'data_api' && !IS_PLATFORM) {
+  if (id === 'data_api' && !IS_SAAS) {
     return <UnknownInterface urlBack={`/project/${ref}/integrations`} />
   }
 

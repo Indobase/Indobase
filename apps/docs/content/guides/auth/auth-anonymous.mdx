@@ -56,7 +56,7 @@ For self-hosting, you can update your project configuration using the files and 
 Call the [`signInAnonymously()`](/docs/reference/javascript/auth-signinanonymously) method:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('https://your-project.supabase.co', 'sb_publishable_... or anon key')
 
 // ---cut---
@@ -128,7 +128,7 @@ Converting an anonymous user to a permanent user requires [linking an identity](
 You can use the [`updateUser()`](/docs/reference/javascript/auth-updateuser) method to link an email or phone identity to the anonymous user. To add a password for the anonymous user, the user's email or phone number needs to be verified first.
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('https://your-project.supabase.co', 'sb_publishable_... or anon key')
 
 // ---cut---
@@ -220,7 +220,7 @@ response = supabase.auth.update_user({
 You can use the [`linkIdentity()`](/docs/reference/javascript/auth-linkidentity) method to link an OAuth identity to the anonymous user.
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('https://your-project.supabase.co', 'sb_publishable_... or anon key')
 
 // ---cut---

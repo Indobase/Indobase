@@ -46,7 +46,7 @@ export const useProfileAuditLogsQuery = <TData = ProfileAuditLogsData>(
     }),
     queryFn: ({ signal }) => getProfileAuditLogs(vars, signal),
     // Local /platform/profile/audit handler is implemented for both cloud
-    // and self-hosted modes — no need to gate on IS_PLATFORM.
+    // and SaaS modes — no need to gate on IS_SAAS.
     ...options,
   })
 }

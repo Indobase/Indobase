@@ -26,5 +26,5 @@
       "target": "app/composables/useSupabaseUpload.ts"
     }
   ],
-  "dependencies": ["@supabase/supabase-js@latest", "@vueuse/core", "lucide-vue-next"]
+  "dependencies": ["indobase-js@latest", "@vueuse/core", "lucide-vue-next"]
 }

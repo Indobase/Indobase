@@ -12,7 +12,6 @@ import z from 'zod'
 import { useSignUpMutation } from 'data/misc/signup-mutation'
 import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { auth, buildPathWithParams } from 'lib/gotrue'
-import { selfHostedDashboardPath } from 'lib/self-hosted-dashboard'
 import {
   AlertDescription_Shadcn_,
   AlertTitle_Shadcn_,
@@ -74,19 +73,6 @@ export const SignUpForm = () => {
   const { mutate: signup, isPending: isSigningUp } = useSignUpMutation({
     onSuccess: async (_data, variables) => {
       toast.success(`Signed up successfully!`)
-      if (!IS_SAAS) {
-        const { data } = await auth.getSession()
-        const uid = data.session?.user?.id
-        if (uid) {
-          router.replace(selfHostedDashboardPath(uid))
-          return
-        }
-        // Faster path when email confirmation is required: go straight to sign-in with email prefilled.
-        router.replace(
-          `/sign-in?email=${encodeURIComponent(variables.email)}&pendingConfirmation=1`
-        )
-        return
-      }
       setIsSubmitted(true)
     },
     onError: (error) => {

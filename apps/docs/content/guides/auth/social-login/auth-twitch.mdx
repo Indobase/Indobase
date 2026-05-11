@@ -75,7 +75,7 @@ Setting up Twitch logins for your application consists of 3 parts:
 When your user signs in, call [`signInWithOAuth()`](/docs/reference/javascript/auth-signinwithoauth) with `twitch` as the `provider`:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---
@@ -132,7 +132,7 @@ suspend fun signInWithTwitch() {
 When your user signs out, call [signOut()](/docs/reference/javascript/auth-signout) to remove them from the browser session and any objects from localStorage:
 
 ```js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'indobase-js'
 const supabase = createClient('<your-project-url>', '<sb_publishable_... or anon key>')
 
 // ---cut---

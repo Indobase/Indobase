@@ -2,7 +2,7 @@
 // Runs hourly/daily to aggregate raw metrics into billing-ready data
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/indobase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -1,4 +1,4 @@
-import { CreateOAuthClientParams } from '@supabase/supabase-js'
+import { CreateOAuthClientParams } from 'indobase-js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 

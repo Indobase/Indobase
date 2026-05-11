@@ -8,7 +8,7 @@ import { useAuthConfigQuery } from 'data/auth/auth-config-query'
 import { useAuthConfigUpdateMutation } from 'data/auth/auth-config-update-mutation'
 import { useCheckEntitlements } from 'hooks/misc/useCheckEntitlements'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
-import { IS_PLATFORM } from 'lib/constants'
+import { IS_SAAS } from 'lib/constants'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -118,15 +118,15 @@ export const MfaAuthSettingsForm = () => {
 
   const { hasAccess: hasAccessToMFAEntitlement, isLoading: isLoadingEntitlement } =
     useCheckEntitlements('auth.mfa_phone')
-  const hasAccessToMFA = !IS_PLATFORM || hasAccessToMFAEntitlement
-  const promptProPlanUpgrade = IS_PLATFORM && !hasAccessToMFAEntitlement
+  const hasAccessToMFA = !IS_SAAS || hasAccessToMFAEntitlement
+  const promptProPlanUpgrade = IS_SAAS && !hasAccessToMFAEntitlement
 
   const {
     hasAccess: hasAccessToEnhanceSecurityEntitlement,
     isLoading: isLoadingEntitlementEnhanceSecurity,
   } = useCheckEntitlements('auth.mfa_enhanced_security')
-  const hasAccessToEnhanceSecurity = !IS_PLATFORM || hasAccessToEnhanceSecurityEntitlement
-  const promptEnhancedSecurityUpgrade = IS_PLATFORM && !hasAccessToEnhanceSecurityEntitlement
+  const hasAccessToEnhanceSecurity = !IS_SAAS || hasAccessToEnhanceSecurityEntitlement
+  const promptEnhancedSecurityUpgrade = IS_SAAS && !hasAccessToEnhanceSecurityEntitlement
 
   // For now, we support Twilio and Vonage. Twilio Verify is not supported and the remaining providers are community maintained.
   const sendSMSHookIsEnabled =
