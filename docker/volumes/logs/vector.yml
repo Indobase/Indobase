@@ -47,7 +47,7 @@ transforms:
       # `host=<...> x_project_ref=<...> rt=<...> urt=<...>`
       parsed, err = parse_regex(
         .event_message,
-        r'^(?P<remote_addr>\\S+) \\S+ \\S+ \\[(?P<time>[^\\]]+)\\] "(?P<request>[^"]*)" (?P<status>\\d{3}) (?P<body_bytes_sent>\\d+) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)" host=(?P<host>\\S+) x_project_ref=(?P<x_project_ref>\\S+) rt=(?P<request_time>\\S+) urt=(?P<upstream_response_time>\\S+)$'
+        r'^(?P<remote_addr>\S+) \S+ \S+ \[(?P<time>[^\]]+)\] "(?P<request>[^"]*)" (?P<status>\d{3}) (?P<body_bytes_sent>\d+) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)" host=(?P<host>\S+) x_project_ref=(?P<x_project_ref>\S+) rt=(?P<request_time>\S+) urt=(?P<upstream_response_time>\S+)$'
       )
       if err != null { abort }
 
@@ -63,22 +63,24 @@ transforms:
         .metadata.response.upstream_response_time_s = to_float!(parsed.upstream_response_time)
       }
 
-      url, split_err = split(parsed.request, " ")
-      if split_err == null {
-        .metadata.request.method = url[0]
-        .metadata.request.path = url[1]
-        .metadata.request.protocol = url[2]
+      ._req_parts = split!(string!(parsed.request), " ")
+      if length(._req_parts) >= 3 {
+        .metadata.request.method = ._req_parts[0]
+        .metadata.request.path = ._req_parts[1]
+        .metadata.request.protocol = ._req_parts[2]
       }
+      del(._req_parts)
 
       if parsed.x_project_ref != "-" && parsed.x_project_ref != "" {
         .metadata.project_ref = parsed.x_project_ref
       } else {
-        host = string!(parsed.host) ?? ""
-        first, ferr = split(host, ".")
-        if ferr == null && length(first) > 0 {
+        host = string!(parsed.host)
+        ._host_parts = split!(host, ".")
+        if length(._host_parts) > 0 {
           reserved = ["api","dashboard","studio","auth","realtime","storage","functions","meta","kong"]
-          if !includes(reserved, first[0]) { .metadata.project_ref = first[0] }
+          if !includes(reserved, ._host_parts[0]) { .metadata.project_ref = ._host_parts[0] }
         }
+        del(._host_parts)
       }
 
   usage_events:
@@ -90,9 +92,9 @@ transforms:
       .event_id = uuid_v4()
       .occurred_at = .timestamp
       .project_ref = string!(.metadata.project_ref)
-      .host = string!(.metadata.request.host) ?? null
-      .method = string!(.metadata.request.method) ?? null
-      .path = string!(.metadata.request.path) ?? null
+      .host = string!(.metadata.request.host)
+      .method = string!(.metadata.request.method)
+      .path = string!(.metadata.request.path)
       .status_code = to_int(.metadata.response.status_code) ?? null
       .bytes_sent = to_int(.metadata.response.bytes_sent) ?? null
       .request_time_s = to_float(.metadata.response.request_time_s) ?? null
@@ -118,18 +120,20 @@ transforms:
           .severity = parsed.severity
           .metadata.request.host = parsed.host
           .metadata.request.headers.cf_connecting_ip = parsed.client
-          host = string!(.metadata.request.host) ?? ""
-          first, ferr = split(host, ".")
-          if ferr == null && length(first) > 0 {
+          host = string!(.metadata.request.host)
+          ._host_parts = split!(host, ".")
+          if length(._host_parts) > 0 {
             reserved = ["api","dashboard","studio","auth","realtime","storage","functions","meta","kong"]
-            if !includes(reserved, first[0]) { .metadata.project_ref = first[0] }
+            if !includes(reserved, ._host_parts[0]) { .metadata.project_ref = ._host_parts[0] }
           }
-          url, err = split(parsed.request, " ")
-          if err == null {
-              .metadata.request.method = url[0]
-              .metadata.request.path = url[1]
-              .metadata.request.protocol = url[2]
+          del(._host_parts)
+          ._req_parts = split!(string!(parsed.request), " ")
+          if length(._req_parts) >= 3 {
+              .metadata.request.method = ._req_parts[0]
+              .metadata.request.path = ._req_parts[1]
+              .metadata.request.protocol = ._req_parts[2]
           }
+          del(._req_parts)
       }
       if err != null {
         abort

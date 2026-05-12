@@ -141,6 +141,15 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
     [cloudProvider]
   )
 
+  const preconnectOrigin = (() => {
+    if (!IS_SAAS || typeof window === 'undefined') return null
+    try {
+      return new URL(API_URL, window.location.origin).origin
+    } catch {
+      return null
+    }
+  })()
+
   if (!isMounted) return null
 
   return (
@@ -168,10 +177,10 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
                       }}
                     />
                     {/* Speed up initial API loading times by pre-connecting to the API domain */}
-                    {IS_SAAS && (
+                    {preconnectOrigin && (
                       <link
                         rel="preconnect"
-                        href={new URL(API_URL).origin}
+                        href={preconnectOrigin}
                         crossOrigin="use-credentials"
                       />
                     )}
