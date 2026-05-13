@@ -6,8 +6,25 @@ import { listOrganizations } from 'lib/api/saas/platform'
 
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
+function isProxyLoopback(req: NextApiRequest, target: string) {
+  try {
+    const parsed = new URL(target)
+    const requestHost = req.headers.host
+    return !!requestHost && parsed.host === requestHost
+  } catch {
+    return false
+  }
+}
+
 const proxyRequest = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!proxyTarget) return false
+  if (isProxyLoopback(req, proxyTarget)) {
+    res.status(500).json({
+      message:
+        'PLATFORM_API_PROXY appears to point back to this Studio host (would recurse). Please set it to the external Platform API base URL (no trailing /api).',
+    })
+    return true
+  }
   const targetUrl = `${proxyTarget}${req.url?.replace(/^\/api/, '') ?? ''}`
   const headers = new Headers()
   Object.entries(req.headers).forEach(([key, value]) => {
