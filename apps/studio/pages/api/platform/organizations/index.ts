@@ -7,8 +7,20 @@ import { createOrganization, listOrganizations } from 'lib/api/saas/platform'
 
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
+function isProxyLoopback(req: NextApiRequest, proxyTarget: string) {
+  try {
+    const target = new URL(proxyTarget)
+    const requestHost = req.headers.host
+    return !!requestHost && target.host === requestHost
+  } catch {
+    return false
+  }
+}
+
 const proxyRequest = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!proxyTarget) return false
+  // Prevent infinite recursion if PLATFORM_API_PROXY points back to Studio itself.
+  if (isProxyLoopback(req, proxyTarget)) return false
   const targetUrl = `${proxyTarget}${req.url?.replace(/^\/api/, '') ?? ''}`
   const headers = new Headers()
   Object.entries(req.headers).forEach(([key, value]) => {

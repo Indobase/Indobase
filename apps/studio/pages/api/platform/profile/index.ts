@@ -6,8 +6,21 @@ import { getOrCreateProfile, getProfile, updateProfile } from 'lib/api/saas/plat
 
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
+function isProxyLoopback(req: NextApiRequest, proxyTarget: string) {
+  try {
+    const target = new URL(proxyTarget)
+    const requestHost = req.headers.host
+    return !!requestHost && target.host === requestHost
+  } catch {
+    return false
+  }
+}
+
 const proxyRequest = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!proxyTarget) return false
+  // Prevent infinite recursion if PLATFORM_API_PROXY points back to Studio itself.
+  // e.g. PLATFORM_API_PROXY="https://studio.example.com/api" + req.url "/api/platform/profile" => loops.
+  if (isProxyLoopback(req, proxyTarget)) return false
   const targetUrl = `${proxyTarget}${req.url?.replace(/^\/api/, '') ?? ''}`
   const headers = new Headers()
   Object.entries(req.headers).forEach(([key, value]) => {

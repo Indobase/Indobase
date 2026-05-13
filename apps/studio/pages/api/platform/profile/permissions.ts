@@ -2,9 +2,27 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
+function isProxyLoopback(req: NextApiRequest, proxyTarget: string) {
+  try {
+    const target = new URL(proxyTarget)
+    const requestHost = req.headers.host
+    return !!requestHost && target.host === requestHost
+  } catch {
+    return false
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!proxyTarget) {
     res.status(500).json({ message: 'PLATFORM_API_PROXY is not configured' })
+    return
+  }
+
+  if (isProxyLoopback(req, proxyTarget)) {
+    res.status(500).json({
+      message:
+        'PLATFORM_API_PROXY appears to point back to this Studio host (would recurse). Please set it to the external Platform API base URL (no trailing /api).',
+    })
     return
   }
 
