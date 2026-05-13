@@ -13,6 +13,7 @@ services:
     container_name: indobase-studio
     # Override with your Indobase/Indo-repo image for SaaS features (NEXT_PUBLIC_INDOBASE_SAAS, branding, platform APIs).
     image: ${STUDIO_DOCKER_IMAGE:-supabase/studio:2026.02.16-sha-26c615c}
+    pull_policy: always
     restart: unless-stopped
     healthcheck:
       test:
