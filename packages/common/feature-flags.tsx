@@ -19,7 +19,8 @@ export async function getFeatureFlags(
   options: { organizationSlug?: string; projectRef?: string } = {}
 ) {
   try {
-    const url = new URL(`${ensurePlatformSuffix(API_URL)}/telemetry/feature-flags`)
+    const base = typeof window !== 'undefined' ? window.location.origin : undefined
+    const url = new URL(`${ensurePlatformSuffix(API_URL)}/telemetry/feature-flags`, base)
 
     if (options.organizationSlug) {
       url.searchParams.set('organization_slug', options.organizationSlug)
