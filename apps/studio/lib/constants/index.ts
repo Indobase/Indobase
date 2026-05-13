@@ -13,7 +13,10 @@ export const IS_TEST_ENV = process.env.NEXT_PUBLIC_NODE_ENV === 'test'
 export const API_URL = (() => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
   if (process.env.NODE_ENV === 'test') return 'http://localhost:3000/api'
-  if (typeof window !== 'undefined') return `${basePath}/api`
+  // Browser: must be an absolute URL — shared code (e.g. feature flags) uses `new URL(API_URL + ...)`.
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${basePath}/api`
+  }
   if (!!process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}${basePath}/api`
   if (!!process.env.NEXT_PUBLIC_SITE_URL)
     return `${process.env.NEXT_PUBLIC_SITE_URL}${basePath}/api`
