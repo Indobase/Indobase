@@ -1,13 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import apiWrapper from 'lib/api/apiWrapper'
+import type { JwtPayload } from 'indobase-js'
+import { listOrganizations } from 'lib/api/saas/platform'
+
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!proxyTarget) {
-    res.status(500).json({ message: 'PLATFORM_API_PROXY is not configured' })
-    return
-  }
-
+const proxyRequest = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (!proxyTarget) return false
   const targetUrl = `${proxyTarget}${req.url?.replace(/^\/api/, '') ?? ''}`
   const headers = new Headers()
   Object.entries(req.headers).forEach(([key, value]) => {
@@ -27,4 +27,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   })
   const text = await response.text()
   res.send(text)
+  return true
+}
+
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: true })
+
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET'])
+    return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
+  }
+
+  if (await proxyRequest(req, res)) return
+
+  // Self-hosted SaaS: grant full org-level access on every org the caller belongs to.
+  // Per-project checks fall back to the org-level entry via doPermissionsCheck.
+  const orgs = await listOrganizations({ claims: claims as any })
+  const permissions = (orgs ?? []).map((o) => ({
+    actions: ['%'],
+    resources: ['%'],
+    condition: null,
+    organization_slug: o.slug,
+    project_refs: [],
+    restrictive: false,
+  }))
+  return res.status(200).json(permissions)
 }
