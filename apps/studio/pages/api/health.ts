@@ -114,7 +114,8 @@ async function ping(url: string): Promise<CheckResult> {
       cache: 'no-store',
       signal: timeoutSignal,
     })
-    if (!response.ok) {
+    // Kong/PostgREST often return 401 on unauthenticated HEAD; that still means the service is up.
+    if (!response.ok && response.status !== 401) {
       return { status: 'degraded', message: `upstream responded ${response.status}` }
     }
     return { status: 'ok' }
