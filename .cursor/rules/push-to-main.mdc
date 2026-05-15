@@ -1,0 +1,12 @@
+---
+description: Always commit and push to the main branch on origin (not feature branches).
+alwaysApply: true
+---
+
+# Git: push to main
+
+- Use branch `main` as the default working branch unless the user explicitly asks for a feature branch.
+- When the user asks to push, ship, or publish changes: commit on `main` (only when they asked to commit or push), then push to `origin main`.
+- Before pushing, sync with remote: `git fetch origin` and integrate if behind (`git pull --rebase origin main`, or merge if rebase fails).
+- Do not force-push `main` unless the user explicitly requests it.
+- Do not push to a different branch unless the user explicitly names one.
