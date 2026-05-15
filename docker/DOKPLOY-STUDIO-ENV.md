@@ -20,7 +20,12 @@ CRYPTO_KEY="your-key-with-plus-signs="
 | Studio + meta in same Compose stack | `http://meta:8080` or `http://indobase-meta:8080` |
 | Studio cannot resolve `meta` | `http://indobase-meta:8080` (container name) |
 
-Do **not** use `https://api.indobase.in` — that is Kong, not postgres-meta.
+Do **not** use:
+
+- `https://api.indobase.in` (public Kong)
+- `http://indobase-kong:8000/pg` (Kong has no postgres-meta route — causes **Unauthorized** / 502)
+
+Use the **meta** service on port **8080** only.
 
 ## Studio service — minimum env block
 
