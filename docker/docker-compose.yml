@@ -15,20 +15,28 @@ services:
     image: ${STUDIO_DOCKER_IMAGE:-supabase/studio:2026.02.16-sha-26c615c}
     pull_policy: always
     restart: unless-stopped
+    # Indobase image listens on PORT (default 8080). Do not use /api/platform/profile here — it requires auth (401).
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})"
+          "const p=process.env.PORT||'8080';fetch('http://127.0.0.1:'+p+'/api/health').then(r=>{if(r.status!==200)throw new Error('health '+r.status)})"
         ]
       timeout: 10s
       interval: 5s
-      retries: 3
+      retries: 5
+      start_period: 40s
     depends_on:
       analytics:
         condition: service_healthy
+      db:
+        condition: service_healthy
+      kong:
+        condition: service_started
+      meta:
+        condition: service_started
       data-plane-provisioner:
         condition: service_started
       functions:
@@ -36,6 +44,14 @@ services:
     environment:
       # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
+      # Must match the image entrypoint (ind-repo Dockerfile uses 8080; override if you use another Studio image).
+      PORT: ${STUDIO_PORT:-8080}
+
+      # Default: each new project gets its own Postgres database + role on this cluster (see lib/api/saas/provision-tenant-db.ts).
+      # Set to "false" only for legacy single-DB + RLS (Model A) where all projects share POSTGRES_DB.
+      SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE: ${SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE:-true}
+      # Optional: superuser/createdb user for CREATE DATABASE (defaults to POSTGRES_USER_READ_WRITE or postgres).
+      # SAAS_TENANT_PROVISION_ADMIN_USER=postgres
 
       STUDIO_PG_META_URL: http://indobase-meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -249,11 +265,6 @@ services:
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      # Single-DB multi-tenancy: every request runs `app.set_project_ref(...)`
-      # before query execution, which fail-closes when the JWT lacks a
-      # `project_ref` claim (or no `x-project-ref` header is set). Disable
-      # only if you intentionally want REST without tenant isolation.
-      PGRST_DB_PRE_REQUEST: app.set_project_ref
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
@@ -482,10 +493,6 @@ services:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
-      # Single-DB multi-tenancy foundation (project_ref context + RLS policy template)
-      - ./volumes/db/tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/97-tenant-rls.sql:Z
-      # Tenantized Storage metadata (storage.buckets/objects + FORCE RLS)
-      - ./volumes/db/storage-tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/97-storage-tenant-rls.sql:Z
       # Direct metering tables/views for Vector -> Postgres usage ingestion
       - ./volumes/db/saas-usage-metering.sql:/docker-entrypoint-initdb.d/init-scripts/97-saas-usage-metering.sql:Z
       # Must be superuser to alter reserved role
@@ -551,15 +558,13 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./volumes/db/tenant-rls.sql:/migrations/tenant-rls.sql:ro,z
-      - ./volumes/db/storage-tenant-rls.sql:/migrations/storage-tenant-rls.sql:ro,z
       - ./volumes/db/saas-usage-metering.sql:/migrations/saas-usage-metering.sql:ro,z
       - ./volumes/db/saas-features.sql:/migrations/saas-features.sql:ro,z
     command:
       [
         "/bin/sh",
         "-lc",
-        "psql -v ON_ERROR_STOP=1 -f /migrations/tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/storage-tenant-rls.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-features.sql"
+        "psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-features.sql"
       ]
 
   vector:

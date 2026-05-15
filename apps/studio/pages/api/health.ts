@@ -11,12 +11,49 @@ type HealthResponse = {
   timestamp: string
   checks: {
     env: CheckResult & { missing?: string[] }
+    /** SaaS control plane: postgres-meta + Postgres credentials (skipped when NEXT_PUBLIC_INDOBASE_SAAS=false) */
+    saasInfra: CheckResult & { missing?: string[] }
     gotrue: CheckResult
     rest: CheckResult
   }
 }
 
 const REQUIRED_ENV_VARS = ['NEXT_PUBLIC_INDOBASE_SAAS', 'NEXT_PUBLIC_SITE_URL', 'SUPABASE_URL'] as const
+
+function isSaaSMode() {
+  return process.env.NEXT_PUBLIC_INDOBASE_SAAS !== 'false'
+}
+
+function checkSaaSInfra(): HealthResponse['checks']['saasInfra'] {
+  if (!isSaaSMode()) {
+    return { status: 'ok' }
+  }
+
+  const missing: string[] = []
+  if (!process.env.STUDIO_PG_META_URL?.trim()) {
+    missing.push('STUDIO_PG_META_URL')
+  }
+  if (!process.env.POSTGRES_PASSWORD?.trim()) {
+    missing.push('POSTGRES_PASSWORD')
+  }
+  const cryptoConfigured = Boolean(
+    process.env.PG_META_CRYPTO_KEY?.trim() || process.env.CRYPTO_KEY?.trim()
+  )
+  if (!cryptoConfigured) {
+    missing.push('PG_META_CRYPTO_KEY')
+  }
+
+  if (missing.length > 0) {
+    return {
+      status: 'degraded',
+      missing,
+      message:
+        'SaaS platform APIs need postgres-meta (STUDIO_PG_META_URL), matching PG_META_CRYPTO_KEY, and POSTGRES_PASSWORD — see docker/ENV-FOR-OWN-BACKEND.md',
+    }
+  }
+
+  return { status: 'ok' }
+}
 
 function resolveGoTrueBaseUrl() {
   if (process.env.GOTRUE_URL) return process.env.GOTRUE_URL
@@ -66,8 +103,11 @@ export async function computeHealth(): Promise<HealthResponse> {
     ? await ping(`${restBaseUrl}/rest/v1/`)
     : { status: 'degraded', message: 'SUPABASE_URL is not configured' }
 
+  const saasInfraCheck = checkSaaSInfra()
+
   const checks = {
     env: envCheck,
+    saasInfra: saasInfraCheck,
     gotrue: gotrueCheck,
     rest: restCheck,
   }

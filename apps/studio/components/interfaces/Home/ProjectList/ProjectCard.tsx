@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from 'ui'
 
+import { DataPlaneListBadge } from './DataPlaneListBadge'
 import { inferProjectStatus } from './ProjectCard.utils'
 import { ProjectCardStatus } from './ProjectCardStatus'
 
@@ -122,6 +123,7 @@ export const ProjectCard = ({
                   resourceWarnings={resourceWarnings}
                   renderMode="badge"
                 />
+                <DataPlaneListBadge project={project} />
                 {project.status !== 'INACTIVE' && projectHomepageShowInstanceSize && (
                   <ComputeBadgeWrapper
                     slug={slug}

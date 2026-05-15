@@ -114,3 +114,35 @@ create table if not exists saas.projects (
 
 create index if not exists projects_org_slug_idx
   on saas.projects (organization_slug);
+
+create table if not exists saas.user_notifications (
+  id uuid primary key default gen_random_uuid(),
+  gotrue_id uuid not null,
+  name text not null,
+  priority text not null default 'Info',
+  status text not null default 'new',
+  data jsonb not null default '{}'::jsonb,
+  meta jsonb not null default '{}'::jsonb,
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint user_notifications_priority_check
+    check (priority in ('Critical','Warning','Info')),
+  constraint user_notifications_status_check
+    check (status in ('new','seen','archived'))
+);
+create index if not exists user_notifications_gotrue_inserted_idx
+  on saas.user_notifications (gotrue_id, inserted_at desc);
+create index if not exists user_notifications_gotrue_status_idx
+  on saas.user_notifications (gotrue_id, status);
+
+create table if not exists saas.integration_connections (
+  id serial primary key,
+  organization_id integer not null references saas.organizations(id) on delete cascade,
+  integration_slug text not null,
+  connection jsonb not null default '{}'::jsonb,
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_id, integration_slug)
+);
+create index if not exists integration_connections_org_idx
+  on saas.integration_connections (organization_id);

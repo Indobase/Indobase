@@ -38,7 +38,7 @@ export function getConnectionString({ readOnly }: { readOnly: boolean }) {
 /**
  * Returns the AES value for pg-meta `x-connection-encrypted` when browsing a project.
  * For one-database-per-tenant, pass the plaintext URI from `saas.projects.connection_string`.
- * When absent, uses global POSTGRES_* (single-stack / dev).
+ * When absent in SaaS, callers typically fall back to shared POSTGRES_* (legacy Model A projects).
  */
 export function encryptedConnectionForPgMeta(tenantDatabaseUrl: string | null | undefined): string {
   const trimmed = tenantDatabaseUrl?.trim()

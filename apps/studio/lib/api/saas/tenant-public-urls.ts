@@ -1,0 +1,37 @@
+import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL, PROJECT_REST_URL } from 'lib/constants/api'
+
+/** Hostname for `ref.<domain>` tenant routing (Traefik / GoTrue). */
+export function resolvePublicDomainForTenantStack(): string {
+  const raw = process.env.SAAS_PUBLIC_DOMAIN?.trim()
+  if (raw) {
+    const noProto = raw.replace(/^https?:\/\//i, '')
+    return noProto.split('/')[0]!.split(':')[0]!
+  }
+  const u = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_PUBLIC_URL || '').trim()
+  if (u) {
+    try {
+      const parsed = new URL(u.startsWith('http') ? u : `https://${u}`)
+      if (parsed.hostname) return parsed.hostname
+    } catch {
+      // ignore
+    }
+  }
+  return 'localhost'
+}
+
+/** REST + API host for Studio clients: dedicated DB → `ref.<public domain>`; else shared Kong (`PROJECT_*`). */
+export function resolveSaaSTenantRestUrls(ref: string, hasDedicatedTenantDb: boolean) {
+  if (!hasDedicatedTenantDb) {
+    return {
+      endpointHost: PROJECT_ENDPOINT,
+      restUrl: PROJECT_REST_URL,
+      protocol: PROJECT_ENDPOINT_PROTOCOL,
+    }
+  }
+  const domain = resolvePublicDomainForTenantStack().trim() || 'localhost'
+  const tls = domain !== 'localhost' && domain !== '127.0.0.1'
+  const protocol = tls ? 'https' : 'http'
+  const endpointHost = `${ref}.${domain}`
+  const restUrl = `${protocol}://${endpointHost}/rest/v1/`
+  return { endpointHost, restUrl, protocol }
+}

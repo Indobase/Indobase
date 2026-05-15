@@ -3358,6 +3358,10 @@ export interface components {
           | 'RESTARTING'
           | 'PAUSE_FAILED'
           | 'RESIZING'
+        /** Indobase SaaS: dedicated tenant DB (per-project data plane eligible). */
+        has_dedicated_database?: boolean
+        data_plane_last_provisioned_at?: string | null
+        data_plane_last_provision_ok?: boolean | null
       }[]
     }
     OrganizationResponseV1: {

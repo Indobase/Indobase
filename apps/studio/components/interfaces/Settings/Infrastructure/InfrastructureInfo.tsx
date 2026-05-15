@@ -19,6 +19,7 @@ import { Admonition } from 'ui-patterns/admonition'
 import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
 
 import { ProjectUpgradeAlert } from '../General/Infrastructure/ProjectUpgradeAlert'
+import { DataPlanePanel } from './DataPlanePanel'
 import { InstanceConfiguration } from './InfrastructureConfiguration/InstanceConfiguration'
 import { ReadReplicasWarning, ValidationErrorsWarning } from './UpgradeWarnings'
 
@@ -98,6 +99,10 @@ export const InfrastructureInfo = () => {
             <ScaffoldDivider />
           </>
         ))}
+
+      <ScaffoldContainer>
+        <DataPlanePanel />
+      </ScaffoldContainer>
 
       <ScaffoldContainer>
         <ScaffoldSection>

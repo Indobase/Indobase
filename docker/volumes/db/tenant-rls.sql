@@ -10,7 +10,7 @@ create schema if not exists app;
 create schema if not exists tenant;
 
 -- Returns the current project ref (tenant identifier) for this request.
--- Priority: JWT claim -> request header -> existing session GUC (if already set).
+-- Priority: JWT claim -> existing session GUC (if already set).
 create or replace function app.project_ref()
 returns text
 language sql
@@ -20,7 +20,6 @@ as $$
     nullif(
       coalesce(
         (current_setting('request.jwt.claims', true)::json ->> 'project_ref'),
-        (current_setting('request.headers', true)::json ->> 'x-project-ref'),
         current_setting('app.project_ref', true)
       ),
       ''
@@ -33,6 +32,7 @@ create or replace function app.set_project_ref()
 returns void
 language plpgsql
 security definer
+set search_path = pg_catalog, app, public
 as $$
 declare
   ref text;
@@ -64,6 +64,7 @@ create or replace function app.tenantize_table(target regclass)
 returns void
 language plpgsql
 security definer
+set search_path = pg_catalog, app, public
 as $$
 declare
   sch text;
@@ -79,6 +80,10 @@ begin
 
   if sch is null or tbl is null then
     raise exception 'Table not found for %', target;
+  end if;
+
+  if sch <> 'tenant' then
+    raise exception 'tenantize_table only allowed for schema tenant' using errcode = '42501';
   end if;
 
   -- Add project_ref column if missing (nullable by default to avoid breaking existing rows).
@@ -115,12 +120,14 @@ begin
 end;
 $$;
 
-grant execute on function app.tenantize_table(regclass) to public;
+revoke execute on function app.tenantize_table(regclass) from public;
+grant execute on function app.tenantize_table(regclass) to postgres, service_role;
 
 create or replace function app.on_create_tenant_table()
 returns event_trigger
 language plpgsql
 security definer
+set search_path = pg_catalog, app, public
 as $$
 declare
   rec record;

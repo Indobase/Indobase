@@ -1,8 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next'
+import { PermissionAction } from '@supabase/shared-types/out/constants'
+import type { JwtPayload } from 'indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import type { JwtPayload } from 'indobase-js'
-import { listOrganizations } from 'lib/api/saas/platform'
+import { listOrganizationsWithRoles } from 'lib/api/saas/platform'
+import type { Permission } from 'types'
 
 const proxyTarget = process.env.PLATFORM_API_PROXY
 
@@ -58,16 +60,28 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
 
   if (await proxyRequest(req, res)) return
 
-  // Self-hosted SaaS: grant full org-level access on every org the caller belongs to.
-  // Per-project checks fall back to the org-level entry via doPermissionsCheck.
-  const orgs = await listOrganizations({ claims: claims as any })
-  const permissions = (orgs ?? []).map((o) => ({
-    actions: ['%'],
-    resources: ['%'],
-    condition: null,
-    organization_slug: o.slug,
-    project_refs: [],
-    restrictive: false,
-  }))
+  // Self-hosted SaaS: role-based permissions from saas.organization_members.
+  // viewer → read-only; owner / admin / developer → full org/project access (wildcard).
+  const memberships = await listOrganizationsWithRoles({ claims: claims as any })
+  const permissions: Permission[] = memberships.map(({ slug, role }) => {
+    if (role === 'viewer') {
+      return {
+        actions: [PermissionAction.READ],
+        resources: ['%'],
+        condition: null,
+        organization_slug: slug,
+        project_refs: [],
+        restrictive: false,
+      }
+    }
+    return {
+      actions: ['%' as unknown as PermissionAction],
+      resources: ['%'],
+      condition: null,
+      organization_slug: slug,
+      project_refs: [],
+      restrictive: false,
+    }
+  })
   return res.status(200).json(permissions)
 }

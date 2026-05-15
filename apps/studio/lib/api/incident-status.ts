@@ -57,20 +57,16 @@ const StatusPageIncidentsSchema = z.array(
  * Fetches active incidents from the StatusPage API.
  * This function is used both by the API route and the AI assistant.
  *
- * @returns Array of active incidents
- * @throws InternalServerError if StatusPage is not configured or returns an error
+ * @returns Array of active incidents (empty when not in SaaS mode, or when StatusPage env is not set)
+ * @throws InternalServerError if StatusPage is configured but the API returns an error
  */
 export async function getActiveIncidents(): Promise<IncidentInfo[]> {
   if (!IS_SAAS) {
     return []
   }
 
-  if (!STATUSPAGE_PAGE_ID) {
-    throw new InternalServerError('StatusPage page ID is not configured')
-  }
-
-  if (!STATUSPAGE_API_KEY) {
-    throw new InternalServerError('StatusPage API key is not configured')
+  if (!STATUSPAGE_PAGE_ID || !STATUSPAGE_API_KEY) {
+    return []
   }
 
   const response = await fetch(getIncidentsEndpoint(), {

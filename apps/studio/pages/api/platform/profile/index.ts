@@ -75,7 +75,19 @@ const parseRequestBody = (body: NextApiRequest['body']) => {
 }
 
 const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
-  const profile = await getProfile(claims as any)
+  let profile
+  try {
+    profile = await getProfile(claims as any)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    if (msg.includes('Missing gotrue user id')) {
+      return res.status(401).json({
+        data: null,
+        error: { message: 'Invalid session: could not resolve user id from token.' },
+      })
+    }
+    throw error
+  }
   if (!profile) return res.status(404).json({ message: "User's profile not found" })
   return res.status(200).json(profile)
 }

@@ -20,6 +20,7 @@ import {
   Button,
 } from 'ui'
 import { TimestampInfo } from 'ui-patterns'
+import { DataPlaneListBadge } from './DataPlaneListBadge'
 import { inferProjectStatus } from './ProjectCard.utils'
 import { ProjectCardStatus } from './ProjectCardStatus'
 import { DeleteProjectModal } from 'components/interfaces/Settings/General/DeleteProjectPanel/DeleteProjectModal'
@@ -125,11 +126,14 @@ export const ProjectTableRow = ({
           </div>
         </TableCell>
         <TableCell>
-          <ProjectCardStatus
-            projectStatus={projectStatus}
-            resourceWarnings={resourceWarnings}
-            renderMode="badge"
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ProjectCardStatus
+              projectStatus={projectStatus}
+              resourceWarnings={resourceWarnings}
+              renderMode="badge"
+            />
+            <DataPlaneListBadge project={project} />
+          </div>
         </TableCell>
         <TableCell>
           <div className="w-fit">

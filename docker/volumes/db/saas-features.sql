@@ -15,6 +15,17 @@
 
 create schema if not exists saas;
 
+create or replace function saas.current_user_id()
+returns uuid
+language sql
+stable
+as $$
+  select coalesce(
+    nullif(current_setting('app.uid', true), '')::uuid,
+    nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+  )
+$$;
+
 -- ---------------------------------------------------------------------------
 -- saas.projects: ssl_enforced flag (advisory in Model A)
 -- ---------------------------------------------------------------------------
@@ -120,6 +131,7 @@ $$;
 
 -- saas.audit_logs RLS: members can read their org / project events.
 alter table saas.audit_logs enable row level security;
+alter table saas.audit_logs force row level security;
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname = 'saas' and tablename = 'audit_logs' and policyname = 'audit_logs_member_select') then
@@ -127,10 +139,10 @@ begin
       for select
       using (
         (organization_id is not null
-          and saas.is_member_of_org(organization_id, nullif(current_setting('app.uid', true), '')::uuid))
+          and saas.is_member_of_org(organization_id, saas.current_user_id()))
         or
         (project_ref is not null
-          and saas.is_member_of_project(project_ref, nullif(current_setting('app.uid', true), '')::uuid))
+          and saas.is_member_of_project(project_ref, saas.current_user_id()))
       );
   end if;
 end
@@ -138,121 +150,44 @@ $$;
 
 -- saas.custom_domains RLS: scoped to project membership.
 alter table saas.custom_domains enable row level security;
+alter table saas.custom_domains force row level security;
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname = 'saas' and tablename = 'custom_domains' and policyname = 'custom_domains_member_all') then
     create policy custom_domains_member_all on saas.custom_domains
       for all
-      using (saas.is_member_of_project(project_ref, nullif(current_setting('app.uid', true), '')::uuid))
-      with check (saas.is_member_of_project(project_ref, nullif(current_setting('app.uid', true), '')::uuid));
+      using (saas.is_member_of_project(project_ref, saas.current_user_id()))
+      with check (saas.is_member_of_project(project_ref, saas.current_user_id()));
   end if;
 end
 $$;
 
 -- saas.third_party_auth_integrations RLS.
 alter table saas.third_party_auth_integrations enable row level security;
+alter table saas.third_party_auth_integrations force row level security;
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname = 'saas' and tablename = 'third_party_auth_integrations' and policyname = 'third_party_auth_member_all') then
     create policy third_party_auth_member_all on saas.third_party_auth_integrations
       for all
-      using (saas.is_member_of_project(project_ref, nullif(current_setting('app.uid', true), '')::uuid))
-      with check (saas.is_member_of_project(project_ref, nullif(current_setting('app.uid', true), '')::uuid));
+      using (saas.is_member_of_project(project_ref, saas.current_user_id()))
+      with check (saas.is_member_of_project(project_ref, saas.current_user_id()));
   end if;
 end
 $$;
 
 -- Grants for service-role + authenticated paths used by Studio handlers.
-grant usage on schema saas to public;
-grant select, insert, update, delete on saas.audit_logs to public;
-grant select, insert, update, delete on saas.custom_domains to public;
-grant select, insert, update, delete on saas.third_party_auth_integrations to public;
-grant usage, select on sequence saas.audit_logs_id_seq to public;
-grant usage, select on sequence saas.custom_domains_id_seq to public;
-grant usage, select on sequence saas.third_party_auth_integrations_id_seq to public;
-
--- ---------------------------------------------------------------------------
--- Realtime tenant isolation (channel-topic prefix)
---
--- The shared Realtime tenant `realtime-dev` serves every Indobase project
--- on this Postgres instance. To prevent cross-tenant message leakage between
--- two clients connecting with different project_refs but subscribing to the
--- same logical topic name (e.g. "lobby"), we install:
---   1. A trigger on `realtime.messages` that rejects writes whose `topic`
---      doesn't start with the caller's project_ref.
---   2. An RLS policy that hides messages whose topic doesn't match the
---      caller's project_ref claim.
---
--- Customer apps using supabase-js automatically include the project_ref claim
--- in their JWT (issued by createProject); they MUST namespace channel topics
--- as `<project_ref>:<your_topic>` (Indobase Studio's Realtime Inspector does
--- this automatically). This is documented in our SaaS readiness notes.
--- ---------------------------------------------------------------------------
-
-do $realtime_isolation$
-declare
-  has_messages boolean;
-begin
-  select exists (
-    select 1
-    from information_schema.tables
-    where table_schema = 'realtime' and table_name = 'messages'
-  ) into has_messages;
-
-  if not has_messages then
-    -- Realtime hasn't booted yet; skip — the migrator will pick this up next run.
-    return;
-  end if;
-
-  -- Drop and recreate the trigger so we can iterate on the rule without
-  -- requiring operators to manually drop old versions.
-  execute 'drop trigger if exists indobase_enforce_topic_project_ref on realtime.messages';
-
-  execute $func$
-    create or replace function realtime.indobase_enforce_topic_project_ref()
-    returns trigger
-    language plpgsql
-    security definer
-    as $body$
-    declare
-      ref text;
-      prefix text;
-    begin
-      ref := app.project_ref();
-      if ref is null then
-        return new; -- no tenant context; let RLS / role checks handle it
-      end if;
-      prefix := ref || ':';
-      if new.topic is null or position(prefix in new.topic) <> 1 then
-        raise exception 'Realtime channel topic must be namespaced with project_ref ("%:<topic>"). Topic was: "%"',
-          ref, new.topic
-          using errcode = '42501';
-      end if;
-      return new;
-    end;
-    $body$;
-  $func$;
-
-  execute 'create trigger indobase_enforce_topic_project_ref'
-       || ' before insert or update on realtime.messages'
-       || ' for each row execute function realtime.indobase_enforce_topic_project_ref()';
-
-  -- Add an RLS policy that filters reads by topic prefix.
-  -- We don't drop existing Realtime policies; we just add ours alongside.
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'realtime' and tablename = 'messages'
-      and policyname = 'indobase_isolate_topic_by_project_ref'
-  ) then
-    execute 'alter table realtime.messages enable row level security';
-    execute $pol$
-      create policy indobase_isolate_topic_by_project_ref on realtime.messages
-        for select
-        using (
-          app.project_ref() is null
-          or topic like (app.project_ref() || ':%')
-        )
-    $pol$;
-  end if;
-end
-$realtime_isolation$;
+revoke usage on schema saas from public;
+revoke all on saas.audit_logs from public;
+revoke all on saas.custom_domains from public;
+revoke all on saas.third_party_auth_integrations from public;
+revoke all on sequence saas.audit_logs_id_seq from public;
+revoke all on sequence saas.custom_domains_id_seq from public;
+revoke all on sequence saas.third_party_auth_integrations_id_seq from public;
+grant usage on schema saas to postgres, authenticated, service_role;
+grant select, insert, update, delete on saas.audit_logs to postgres, authenticated, service_role;
+grant select, insert, update, delete on saas.custom_domains to postgres, authenticated, service_role;
+grant select, insert, update, delete on saas.third_party_auth_integrations to postgres, authenticated, service_role;
+grant usage, select on sequence saas.audit_logs_id_seq to postgres, authenticated, service_role;
+grant usage, select on sequence saas.custom_domains_id_seq to postgres, authenticated, service_role;
+grant usage, select on sequence saas.third_party_auth_integrations_id_seq to postgres, authenticated, service_role;

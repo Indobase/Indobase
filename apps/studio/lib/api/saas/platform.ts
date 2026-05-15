@@ -4,10 +4,15 @@ import crypto from 'node:crypto'
 import { executeQuery } from './query'
 import { decryptString, encryptString, encryptedConnectionForPgMeta } from './util'
 import { makeRandomString } from 'lib/helpers'
-import { IS_SAAS } from 'lib/constants'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
-// NOTE: Model A (single DB + RLS) does not provision per-project databases.
-import { provisionTenantDatabase } from './provision-tenant-db'
+import { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
+import {
+  bootstrapMinimalSupabaseRoles,
+  bootstrapTenantDatabaseExtensions,
+  bootstrapTenantDataPlaneSchemas,
+  provisionTenantDatabase,
+  runTenantDataPlaneBootstrapFromConnectionString,
+} from './provision-tenant-db'
 import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
 
@@ -69,7 +74,97 @@ function uniqueProjectRef(base: string) {
   return `${clean || 'project'}-${suffix}`.replace(/[^a-z0-9-]/g, '').slice(0, 40)
 }
 
-function getGotrueUserId(claims: Claims): string {
+/** Deterministic localhost bind range for per-project PostgREST/GoTrue (base+1, base+2, …). */
+export function computeDataPlanePortBase(projectRef: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < projectRef.length; i++) {
+    h ^= projectRef.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return 12000 + (h % 38000)
+}
+
+function composeYamlSingleQuoted(value: string): string {
+  return `'${String(value).replace(/'/g, "''")}'`
+}
+
+export function postgresJdbcUrlToEcto(jdbc: string): string {
+  const t = jdbc.trim()
+  if (t.startsWith('postgres://')) return `ecto://${t.slice('postgres://'.length)}`
+  if (t.startsWith('postgresql://')) return `ecto://${t.slice('postgresql://'.length)}`
+  return t.startsWith('ecto://') ? t : `ecto://${t}`
+}
+
+function sanitizeComposeRefToken(ref: string): string {
+  return ref.replace(/[^a-zA-Z0-9_]/g, '_')
+}
+
+function buildTenantSupavisorPoolerExs(opts: { ref: string; dbHost: string; dbPort: string; dbName: string }): string {
+  const { ref, dbHost, dbPort, dbName } = opts
+  return `{:ok, _} = Application.ensure_all_started(:supavisor)
+
+{:ok, version} =
+  case Supavisor.Repo.query!("select version()") do
+    %{rows: [[ver]]} -> Supavisor.Helpers.parse_pg_version(ver)
+    _ -> nil
+  end
+
+aux_pwd = System.get_env("TENANT_POOLER_AUX_DB_PASSWORD") || ""
+
+params = %{
+  "external_id" => "${ref}",
+  "db_host" => "${dbHost}",
+  "db_port" => "${dbPort}",
+  "db_database" => "${dbName}",
+  "require_user" => false,
+  "auth_query" => "SELECT * FROM pgbouncer.get_auth($1)",
+  "default_max_clients" => "200",
+  "default_pool_size" => "15",
+  "default_parameter_status" => %{"server_version" => version},
+  "users" => [%{
+    "db_user" => "authenticator",
+    "db_password" => aux_pwd,
+    "mode_type" => "transaction",
+    "pool_size" => "15",
+    "is_manager" => true
+  }]
+}
+
+if !Supavisor.Tenants.get_tenant_by_external_id(params["external_id"]) do
+  {:ok, _} = Supavisor.Tenants.create_tenant(params)
+end
+`
+}
+
+function indentLinesForComposeConfig(body: string, indent: string): string {
+  return body
+    .split('\n')
+    .map((line) => (line.length ? indent + line : line))
+    .join('\n')
+}
+
+/** Same host/db as `baseUrl`, swap login role; optional `rolePassword` overrides URL password (aux split-secrets). */
+export function postgresUrlWithDbRole(
+  baseUrl: string,
+  roleUser: string,
+  rolePassword?: string
+): string {
+  const normalized = baseUrl.startsWith('postgres://')
+    ? `postgresql://${baseUrl.slice('postgres://'.length)}`
+    : baseUrl
+  const u = new URL(normalized)
+  const password =
+    rolePassword !== undefined && rolePassword !== ''
+      ? rolePassword
+      : u.password
+        ? decodeURIComponent(u.password)
+        : ''
+  u.username = encodeURIComponent(roleUser)
+  u.password = encodeURIComponent(password)
+  return u.toString()
+}
+
+export function getGotrueUserId(claims: Claims): string {
   // Some JWT middleware returns a wrapper like:
   //   { claims: <actual_jwt_payload> }
   // Handle that to avoid "missing gotrue user id" crashes.
@@ -236,8 +331,43 @@ async function ensureSaasTables() {
         db_pass_enc text null
       );
 
+      alter table saas.projects add column if not exists data_plane_last_provisioned_at timestamptz null;
+      alter table saas.projects add column if not exists data_plane_last_provision_result jsonb null;
+
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
+
+      create table if not exists saas.user_notifications (
+        id uuid primary key default gen_random_uuid(),
+        gotrue_id uuid not null,
+        name text not null,
+        priority text not null default 'Info',
+        status text not null default 'new',
+        data jsonb not null default '{}'::jsonb,
+        meta jsonb not null default '{}'::jsonb,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        constraint user_notifications_priority_check
+          check (priority in ('Critical','Warning','Info')),
+        constraint user_notifications_status_check
+          check (status in ('new','seen','archived'))
+      );
+      create index if not exists user_notifications_gotrue_inserted_idx
+        on saas.user_notifications (gotrue_id, inserted_at desc);
+      create index if not exists user_notifications_gotrue_status_idx
+        on saas.user_notifications (gotrue_id, status);
+
+      create table if not exists saas.integration_connections (
+        id serial primary key,
+        organization_id integer not null references saas.organizations(id) on delete cascade,
+        integration_slug text not null,
+        connection jsonb not null default '{}'::jsonb,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        unique (organization_id, integration_slug)
+      );
+      create index if not exists integration_connections_org_idx
+        on saas.integration_connections (organization_id);
     `,
   })
   if (bootstrap.error) {
@@ -518,6 +648,97 @@ export async function listOrganizations({
       subscription_id: o.subscription_id,
     }
   })
+}
+
+export async function listOrganizationsWithRoles({ claims }: { claims: Claims }) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const rows = await executeQuery<{ slug: string; role: string }>({
+    query: `
+      select o.slug, m.role
+      from saas.organization_members m
+      join saas.organizations o on o.id = m.organization_id
+      where m.gotrue_id = $1
+      order by o.slug
+    `,
+    parameters: [gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  return rows.data ?? []
+}
+
+export async function getOrganizationBillingView({
+  claims,
+  slug,
+}: {
+  claims: Claims
+  slug: string
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const rows = await executeQuery<{
+    plan: string
+    usage_billing_enabled: boolean
+    stripe_customer_id: string | null
+    subscription_id: string | null
+    billing_partner: string | null
+  }>({
+    query: `
+      select o.plan, o.usage_billing_enabled, o.stripe_customer_id, o.subscription_id, o.billing_partner
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  const row = rows.data?.[0]
+  if (!row) return null
+  const planId = normalizePlanId(row.plan)
+  return {
+    plan: { id: planId, name: PLAN_NAME[planId] },
+    usage_billing_enabled: row.usage_billing_enabled,
+    stripe_customer_id: row.stripe_customer_id,
+    subscription_id: row.subscription_id,
+    billing_partner: row.billing_partner ?? null,
+  }
+}
+
+export async function listIntegrationRowsForOrganization({
+  claims,
+  orgSlug,
+}: {
+  claims: Claims
+  orgSlug: string
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const rows = await executeQuery<{
+    id: number
+    integration_slug: string
+    connection: Record<string, unknown>
+    inserted_at: string
+    updated_at: string
+  }>({
+    query: `
+      select ic.id, ic.integration_slug, ic.connection, ic.inserted_at::text, ic.updated_at::text
+      from saas.integration_connections ic
+      join saas.organizations o on o.id = ic.organization_id
+      where o.slug = $1
+        and exists (
+          select 1 from saas.organization_members m
+          where m.organization_id = o.id and m.gotrue_id = $2
+        )
+      order by ic.integration_slug
+    `,
+    parameters: [orgSlug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  return rows.data ?? []
 }
 
 export async function listOrganizationMembers({ claims, slug }: { claims: Claims; slug: string }) {
@@ -1206,6 +1427,9 @@ export async function listProjects({
     is_branch: boolean
     preview_branch_refs: string[]
     subscription_id: string
+    has_dedicated_database: boolean
+    data_plane_last_provisioned_at: string | null
+    data_plane_last_provision_ok: string | null
   }>({
     query: `
       select
@@ -1220,7 +1444,10 @@ export async function listProjects({
         p.inserted_at as inserted_at,
         p.is_branch,
         p.preview_branch_refs,
-        p.subscription_id
+        p.subscription_id,
+        (coalesce(trim(p.connection_string_enc), '') <> '' or coalesce(trim(p.connection_string), '') <> '') as has_dedicated_database,
+        p.data_plane_last_provisioned_at,
+        (p.data_plane_last_provision_result->>'ok') as data_plane_last_provision_ok
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where m.gotrue_id = $1
@@ -1253,6 +1480,16 @@ export async function listProjects({
       region: p.region,
       status: p.status,
       subscription_id: p.subscription_id ?? null,
+      has_dedicated_database: p.has_dedicated_database,
+      data_plane_last_provisioned_at: p.data_plane_last_provisioned_at
+        ? new Date(p.data_plane_last_provisioned_at).toISOString()
+        : null,
+      data_plane_last_provision_ok:
+        p.data_plane_last_provision_ok === 'true'
+          ? true
+          : p.data_plane_last_provision_ok === 'false'
+            ? false
+            : null,
     })),
   }
 }
@@ -1391,10 +1628,14 @@ export async function createProject({
   if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create project')
   const p = inserted.data[0]
 
-  // Model A (single DB + RLS): do NOT provision per-project databases or data-plane stacks.
-  // All projects share the same data-plane; tenant isolation is enforced via `project_ref`.
-  const saved = await executeQuery({
-    query: `
+  // Default: provision a dedicated Postgres database + role per project on the same cluster
+  // (connection_string_enc). Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false for legacy
+  // single shared data-plane DB + RLS (Model A).
+  const dedicatedOnCreate = process.env.SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE !== 'false'
+
+  if (!dedicatedOnCreate) {
+    const saved = await executeQuery({
+      query: `
       update saas.projects p
       set status = 'ACTIVE_HEALTHY',
           data_plane_port_base = null,
@@ -1409,10 +1650,95 @@ export async function createProject({
             and m.role in ('owner','admin','developer')
         )
     `,
-    parameters: [p.ref, gotrueId],
-    actorId: gotrueId,
-  })
-  if (saved.error) throw saved.error
+      parameters: [p.ref, gotrueId],
+      actorId: gotrueId,
+    })
+    if (saved.error) throw saved.error
+  } else {
+    const host = process.env.POSTGRES_HOST?.trim()
+    const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
+    const adminUser =
+      process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim() ||
+      process.env.POSTGRES_USER ||
+      process.env.POSTGRES_USER_READ_WRITE ||
+      'postgres'
+    const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
+    if (!host || !adminPassword) {
+      await executeQuery({
+        query: 'delete from saas.projects where ref = $1',
+        parameters: [p.ref],
+        actorId: gotrueId,
+      })
+      throw new Error(
+        'Dedicated project databases require POSTGRES_HOST and POSTGRES_PASSWORD on the Studio server. Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false to use legacy shared-database (Model A) mode.'
+      )
+    }
+
+    try {
+      const provisioned = await provisionTenantDatabase({
+        projectRef: ref,
+        host,
+        port,
+        adminUser,
+        adminPassword,
+      })
+      await bootstrapTenantDatabaseExtensions({
+        host,
+        port,
+        adminUser,
+        adminPassword,
+        dbName: provisioned.dbName,
+      })
+      await bootstrapMinimalSupabaseRoles({
+        host,
+        port,
+        adminUser,
+        adminPassword,
+        dbName: provisioned.dbName,
+        tenantRoleName: provisioned.roleName,
+      })
+      await bootstrapTenantDataPlaneSchemas({
+        host,
+        port,
+        adminUser,
+        adminPassword,
+        dbName: provisioned.dbName,
+        tenantRolePassword: provisioned.rolePassword,
+        auxiliaryRolePassword:
+          process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || provisioned.rolePassword,
+      })
+      const enc = encryptString(provisioned.connectionString)
+      const portBase = computeDataPlanePortBase(ref)
+      const saved = await executeQuery({
+        query: `
+          update saas.projects p
+          set status = 'ACTIVE_HEALTHY',
+              data_plane_port_base = $1,
+              connection_string = null,
+              connection_string_enc = $2,
+              db_host = $3
+          where p.ref = $4
+            and exists (
+              select 1
+              from saas.organization_members m
+              where m.organization_id = p.organization_id
+                and m.gotrue_id = $5
+                and m.role in ('owner','admin','developer')
+            )
+        `,
+        parameters: [portBase, enc, host, p.ref, gotrueId],
+        actorId: gotrueId,
+      })
+      if (saved.error) throw saved.error
+    } catch (err) {
+      await executeQuery({
+        query: 'delete from saas.projects where ref = $1',
+        parameters: [p.ref],
+        actorId: gotrueId,
+      })
+      throw err
+    }
+  }
 
   await recordAuditLog({
     claims,
@@ -1464,6 +1790,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     anon_key: string
     connection_string: string | null
     connection_string_enc: string | null
+    data_plane_last_provisioned_at: string | null
   }>({
     query: `
       select
@@ -1481,7 +1808,8 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.service_key,
         p.anon_key,
         p.connection_string,
-        p.connection_string_enc
+        p.connection_string_enc,
+        p.data_plane_last_provisioned_at
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -1528,8 +1856,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     if (migrate.error) throw migrate.error
   }
 
-  // Model A (single DB + RLS): project does not require a per-tenant DB URI.
-  // Use the shared Postgres configured for Studio (POSTGRES_* env).
+  // Prefer per-project database URI (encrypted). Fall back to shared POSTGRES_* when unset (legacy Model A).
   const sharedDbUrl =
     process.env.POSTGRES_PASSWORD && process.env.POSTGRES_HOST && process.env.POSTGRES_DB
       ? `postgres://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD}@${
@@ -1538,6 +1865,9 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
       : null
 
   const effectiveDbUrl = tenantDatabaseUrl?.trim() ? tenantDatabaseUrl : sharedDbUrl
+  const hasDedicated = Boolean(tenantDatabaseUrl?.trim())
+  const hasProvisionedDataPlane = Boolean(p.data_plane_last_provisioned_at)
+  const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated && hasProvisionedDataPlane)
   return {
     cloud_provider: p.cloud_provider,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
@@ -1553,10 +1883,735 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     organization_id: p.organization_id,
     ref: p.ref,
     region: p.region,
-    restUrl: PROJECT_REST_URL,
+    restUrl,
     status: p.status,
     subscription_id: '',
   }
+}
+
+function parsePostgresUrlForSupavisorDisplay(url: string): {
+  host: string
+  port: number
+  database: string
+  user: string
+} | null {
+  try {
+    const u = new URL(url.trim().replace(/^postgres:\/\//, 'postgresql://'))
+    const db = (u.pathname.replace(/^\//, '') || 'postgres').split('?')[0]!
+    return {
+      host: u.hostname,
+      port: u.port ? parseInt(u.port, 10) : 5432,
+      database: db,
+      user: u.username ? decodeURIComponent(u.username) : 'postgres',
+    }
+  } catch {
+    return null
+  }
+}
+
+type SupavisorConfigRow = {
+  connection_string: string
+  connectionString: string
+  database_type: 'PRIMARY' | 'READ_REPLICA'
+  db_host: string
+  db_name: string
+  db_port: number
+  db_user: string
+  default_pool_size: number | null
+  identifier: string
+  is_using_scram_auth: boolean
+  max_client_conn: number | null
+  pool_mode: 'transaction' | 'session'
+}
+
+/**
+ * Supavisor-shaped rows for Connect / pooling UI.
+ * Dedicated DB: `db_*` come from the decrypted tenant connection URL (no password returned).
+ * Optional pooler URI when `SAAS_TENANT_POOLER_HOST` is set (Supavisor-style `postgres.<ref>` user).
+ */
+export async function getSaaSSupavisorConfigRows({
+  claims,
+  ref,
+}: {
+  claims: JwtPayload
+  ref: string
+}): Promise<SupavisorConfigRow[] | null> {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims as Claims)
+
+  const row = await executeQuery<{
+    ref: string
+    connection_string: string | null
+    connection_string_enc: string | null
+  }>({
+    query: `
+      select p.ref, p.connection_string, p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  if (!row.data?.length) return null
+
+  const p = row.data[0]!
+  const enc = (p.connection_string_enc ?? '').trim()
+  const tenantUrl = enc.length > 0 ? decryptString(enc) : p.connection_string
+  const parsed = tenantUrl?.trim() ? parsePostgresUrlForSupavisorDisplay(tenantUrl.trim()) : null
+
+  const dbHost = parsed?.host ?? (process.env.POSTGRES_HOST || '127.0.0.1')
+  const dbName = parsed?.database ?? (process.env.POSTGRES_DB || 'postgres')
+  const dbPort = parsed?.port ?? parseInt(process.env.POSTGRES_PORT || '5432', 10)
+  const dbUser = parsed?.user ?? (process.env.POSTGRES_USER || 'postgres')
+
+  const primary: SupavisorConfigRow = {
+    connection_string: '',
+    connectionString: '',
+    database_type: 'PRIMARY',
+    db_host: dbHost,
+    db_name: dbName,
+    db_port: dbPort,
+    db_user: dbUser,
+    default_pool_size: null,
+    identifier: ref,
+    is_using_scram_auth: false,
+    max_client_conn: null,
+    pool_mode: 'transaction',
+  }
+
+  const out: SupavisorConfigRow[] = [primary]
+
+  const embedPooler = process.env.SAAS_TENANT_EMBED_SUPAVISOR === 'true'
+  const poolHost =
+    process.env.SAAS_TENANT_POOLER_HOST?.trim() ||
+    (embedPooler && parsed
+      ? `${ref}.${resolvePublicDomainForTenantStack().trim() || 'localhost'}`
+      : '')
+  if (poolHost && parsed) {
+    const poolPort = parseInt(process.env.SAAS_TENANT_POOLER_PORT || '6543', 10)
+    const poolUser = `postgres.${ref}`
+    const poolUri = `postgresql://${encodeURIComponent(poolUser)}@${poolHost}:${poolPort}/${encodeURIComponent(parsed.database)}`
+    out.push({
+      connection_string: poolUri,
+      connectionString: poolUri,
+      database_type: 'READ_REPLICA',
+      db_host: poolHost,
+      db_name: parsed.database,
+      db_port: poolPort,
+      db_user: poolUser,
+      default_pool_size: null,
+      identifier: `${ref}-pooler`,
+      is_using_scram_auth: false,
+      max_client_conn: null,
+      pool_mode: 'transaction',
+    })
+  }
+
+  return out
+}
+
+/**
+ * Payload for `/api/platform/props/project/[ref]/api` — real project ref, keys, and API host.
+ * Dedicated-tenant DB: `endpoint` = `ref.<SAAS_PUBLIC_DOMAIN>` and REST URL on that host (per Traefik).
+ * Shared stack: uses `SUPABASE_PUBLIC_URL` from env (same as Kong).
+ */
+export async function getSaaSProjectPropsApiPayload({
+  claims,
+  ref,
+}: {
+  claims: JwtPayload
+  ref: string
+}): Promise<{
+  project: Record<string, unknown>
+  autoApiService: Record<string, unknown>
+} | null> {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims as Claims)
+
+  const row = await executeQuery<{
+    id: number
+    ref: string
+    name: string
+    organization_id: number
+    organization_slug: string
+    cloud_provider: string
+    region: string
+    status: string
+    inserted_at: string | null
+    service_key: string
+    anon_key: string
+    service_key_enc: string | null
+    anon_key_enc: string | null
+    connection_string: string | null
+    connection_string_enc: string | null
+  }>({
+    query: `
+      select
+        p.id,
+        p.ref,
+        p.name,
+        p.organization_id,
+        p.organization_slug,
+        p.cloud_provider,
+        p.region,
+        p.status,
+        p.inserted_at,
+        p.service_key,
+        p.anon_key,
+        p.service_key_enc,
+        p.anon_key_enc,
+        p.connection_string,
+        p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  if (!row.data?.length) return null
+
+  const p = row.data[0]!
+  const anon = p.anon_key_enc?.trim() ? decryptString(p.anon_key_enc) : p.anon_key
+  const service = p.service_key_enc?.trim() ? decryptString(p.service_key_enc) : p.service_key
+
+  const enc = (p.connection_string_enc ?? '').trim()
+  const tenantDbUrl = enc.length > 0 ? decryptString(enc) : p.connection_string
+  const hasDedicated = Boolean(tenantDbUrl?.trim())
+
+  const { endpointHost, restUrl, protocol: endpointProtocol } = resolveSaaSTenantRestUrls(p.ref, hasDedicated)
+
+  const pgHost = process.env.POSTGRES_HOST || '127.0.0.1'
+  const pgPort = parseInt(process.env.POSTGRES_PORT || '5432', 10)
+  const pgDb = process.env.POSTGRES_DB || 'postgres'
+  const pgUser = process.env.POSTGRES_USER || 'postgres'
+
+  const insertedAt = p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString()
+
+  const project = {
+    id: p.id,
+    ref: p.ref,
+    name: p.name,
+    organization_id: p.organization_id,
+    organization_slug: p.organization_slug,
+    cloud_provider: p.cloud_provider,
+    region: p.region,
+    status: p.status,
+    inserted_at: insertedAt,
+    api_key_supabase_encrypted: '',
+    db_host: pgHost,
+    db_name: pgDb,
+    db_port: pgPort,
+    db_ssl: false,
+    db_user: pgUser,
+    services: [
+      {
+        id: 1,
+        name: 'Default API',
+        app: { id: 1, name: 'Auto API' },
+        app_config: {
+          db_schema: 'public',
+          endpoint: endpointHost,
+          realtime_enabled: true,
+        },
+        service_api_keys: [
+          { api_key_encrypted: '-', name: 'service_role key', tags: 'service_role' },
+          { api_key_encrypted: '-', name: 'anon key', tags: 'anon' },
+        ],
+      },
+    ],
+  }
+
+  const autoApiService = {
+    id: 1,
+    name: 'Default API',
+    project: { ref: p.ref },
+    app: { id: 1, name: 'Auto API' },
+    app_config: {
+      db_schema: 'public',
+      endpoint: endpointHost,
+      realtime_enabled: true,
+    },
+    protocol: endpointProtocol,
+    endpoint: endpointHost,
+    restUrl,
+    defaultApiKey: anon,
+    serviceApiKey: service,
+    service_api_keys: [
+      { api_key_encrypted: '-', name: 'service_role key', tags: 'service_role' },
+      { api_key_encrypted: '-', name: 'anon key', tags: 'anon' },
+    ],
+  }
+
+  return { project, autoApiService }
+}
+
+/** Org-level props for `/api/platform/props/org/[slug]` (billing UI expects stable keys). */
+export async function getSaaSOrgPropsPayload({
+  claims,
+  slug,
+}: {
+  claims: JwtPayload
+  slug: string
+}): Promise<{
+  members: { gotrue_id: string; role: string; inserted_at: string }[]
+  products: unknown[]
+  customer: {
+    customer: Record<string, unknown>
+    subscriptions: Record<string, unknown>
+    total_paid_projects: number
+    total_free_projects: number
+    total_pro_projects: number
+    total_team_projects: number
+    total_payg_projects: number
+  }
+} | null> {
+  const c = claims as Claims
+  const org = await getOrganization({ claims: c, slug })
+  if (!org) return null
+
+  const members = await listOrganizationMembers({ claims: c, slug })
+  const gotrueId = getGotrueUserId(c)
+
+  const cnt = await executeQuery<{ cnt: string }>({
+    query: `
+      select count(*)::text as cnt
+      from saas.projects p
+      join saas.organizations o on o.id = p.organization_id
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1 and m.gotrue_id = $2
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (cnt.error) throw cnt.error
+  const total = parseInt(cnt.data?.[0]?.cnt ?? '0', 10) || 0
+
+  return {
+    members: members.map((m) => ({
+      gotrue_id: m.gotrue_id,
+      role: m.role,
+      inserted_at: m.inserted_at,
+    })),
+    products: [],
+    customer: {
+      customer: {},
+      subscriptions: {},
+      total_paid_projects: 0,
+      total_free_projects: total,
+      total_pro_projects: 0,
+      total_team_projects: 0,
+      total_payg_projects: 0,
+    },
+  }
+}
+
+export async function bulkBackfillTenantDataPlaneBootstrap({
+  claims,
+  slug,
+}: {
+  claims: JwtPayload
+  slug: string
+}): Promise<{
+  results: { ref: string; skipped: boolean; ok: boolean; message?: string }[]
+} | null> {
+  const c = claims as Claims
+  const gotrueId = getGotrueUserId(c)
+
+  const admin = await executeQuery<{ id: number }>({
+    query: `
+      select o.id
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1
+        and m.gotrue_id = $2
+        and m.role in ('owner', 'admin')
+      limit 1
+    `,
+    parameters: [slug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (admin.error) throw admin.error
+  if (!admin.data?.length) return null
+
+  const rows = await executeQuery<{
+    ref: string
+    connection_string: string | null
+    connection_string_enc: string | null
+  }>({
+    query: `
+      select p.ref, p.connection_string, p.connection_string_enc
+      from saas.projects p
+      join saas.organizations o on o.id = p.organization_id
+      where o.slug = $1
+      order by p.name asc
+    `,
+    parameters: [slug],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+
+  const results: { ref: string; skipped: boolean; ok: boolean; message?: string }[] = []
+  for (const p of rows.data ?? []) {
+    const enc = (p.connection_string_enc ?? '').trim()
+    const url = enc.length > 0 ? decryptString(enc) : p.connection_string
+    if (!url?.trim()) {
+      results.push({ ref: p.ref, skipped: true, ok: true, message: 'No dedicated tenant database URL' })
+      continue
+    }
+    try {
+      await runTenantDataPlaneBootstrapFromConnectionString(url.trim())
+      results.push({ ref: p.ref, skipped: false, ok: true })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      results.push({ ref: p.ref, skipped: false, ok: false, message })
+    }
+  }
+
+  return { results }
+}
+
+function buildSlimTenantDockerCompose(opts: {
+  ref: string
+  ports: {
+    rest: number
+    auth: number
+    storage: number
+    realtime: number
+    functions: number
+    pooler?: number
+  }
+  restDbUri: string
+  authDbUri: string
+  storageDbUri: string
+  jwtSecret: string
+  anonKey: string
+  serviceKey: string
+  apiExternalUrl: string
+  siteUrl: string
+  uriAllowList: string
+  realtime: {
+    dbHost: string
+    dbPort: string
+    dbName: string
+    dbUser: string
+    dbPassword: string
+    secretKeyBase: string
+    dbEncKey: string
+  }
+  /** When set, appends Supavisor (transaction pool on 6543) + compose `configs` for pooler.exs. */
+  pooler?: {
+    ectoMetadataUrl: string
+    exsBody: string
+    secretKeyBase: string
+    vaultEncKey: string
+    auxDbPassword: string
+  } | null
+}): string {
+  const net = (process.env.SAAS_DOCKER_NETWORK_NAME || 'indobase_default').trim()
+  const functionsHostPath = (
+    process.env.SAAS_TENANT_FUNCTIONS_HOST_PATH || process.env.INDOBASE_FUNCTIONS_DIR || ''
+  ).trim()
+  const useBindMountFunctions = functionsHostPath.length > 0
+  const functionsVolumeYaml = useBindMountFunctions
+    ? `      - ${composeYamlSingleQuoted(functionsHostPath)}:/home/deno/functions:Z`
+    : `      - tenant-functions-${opts.ref}:/home/deno/functions:Z`
+
+  const restUri = composeYamlSingleQuoted(opts.restDbUri.trim())
+  const authUri = composeYamlSingleQuoted(opts.authDbUri.trim())
+  const storageUri = composeYamlSingleQuoted(opts.storageDbUri.trim())
+  const jwt = composeYamlSingleQuoted(opts.jwtSecret)
+  const apiEx = composeYamlSingleQuoted(opts.apiExternalUrl)
+  const site = composeYamlSingleQuoted(opts.siteUrl)
+  const allow = composeYamlSingleQuoted(opts.uriAllowList)
+  const anon = composeYamlSingleQuoted(opts.anonKey)
+  const svc = composeYamlSingleQuoted(opts.serviceKey)
+  const rtHost = composeYamlSingleQuoted(opts.realtime.dbHost)
+  const rtPort = composeYamlSingleQuoted(opts.realtime.dbPort)
+  const rtName = composeYamlSingleQuoted(opts.realtime.dbName)
+  const rtUser = composeYamlSingleQuoted(opts.realtime.dbUser)
+  const rtPass = composeYamlSingleQuoted(opts.realtime.dbPassword)
+  const rtSkb = composeYamlSingleQuoted(opts.realtime.secretKeyBase)
+  const rtEnc = composeYamlSingleQuoted(opts.realtime.dbEncKey)
+  const bucket = composeYamlSingleQuoted(`tenant-${opts.ref}`)
+  const tenantId = composeYamlSingleQuoted(opts.ref)
+  const supabaseUrl = composeYamlSingleQuoted(opts.apiExternalUrl)
+
+  const pool = opts.pooler
+  const cfgName = pool && opts.ports.pooler != null ? `tpooler_exs_${sanitizeComposeRefToken(opts.ref)}` : ''
+  const poolerServiceBlock =
+    pool && opts.ports.pooler != null
+      ? `
+  tenant-pooler:
+    image: supabase/supavisor:2.7.4
+    container_name: supavisor-tenant-${sanitizeComposeRefToken(opts.ref)}
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    depends_on:
+      tenant-realtime:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${opts.ports.pooler}:6543"
+    environment:
+      PORT: "4000"
+      REGION: local
+      API_JWT_SECRET: ${composeYamlSingleQuoted(opts.jwtSecret)}
+      METRICS_JWT_SECRET: ${composeYamlSingleQuoted(opts.jwtSecret)}
+      SECRET_KEY_BASE: ${composeYamlSingleQuoted(pool.secretKeyBase)}
+      VAULT_ENC_KEY: ${composeYamlSingleQuoted(pool.vaultEncKey)}
+      DATABASE_URL: ${composeYamlSingleQuoted(pool.ectoMetadataUrl)}
+      CLUSTER_POSTGRES: "false"
+      DB_POOL_SIZE: "5"
+      POOLER_TENANT_ID: ${composeYamlSingleQuoted(opts.ref)}
+      POOLER_DEFAULT_POOL_SIZE: "15"
+      POOLER_MAX_CLIENT_CONN: "200"
+      POOLER_POOL_MODE: transaction
+      TENANT_POOLER_AUX_DB_PASSWORD: ${composeYamlSingleQuoted(pool.auxDbPassword)}
+    configs:
+      - source: ${cfgName}
+        target: /etc/pooler/pooler.exs
+    command:
+      - /bin/sh
+      - -c
+      - ${composeYamlSingleQuoted(
+          '/app/bin/migrate && /app/bin/supavisor eval "$$(cat /etc/pooler/pooler.exs)" && /app/bin/server'
+        )}
+    healthcheck:
+      test: ["CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "http://127.0.0.1:4000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+`
+      : ''
+
+  const poolerConfigsBlock =
+    pool && opts.ports.pooler != null && cfgName
+      ? `
+configs:
+  ${cfgName}:
+    content: |
+${indentLinesForComposeConfig(pool.exsBody, '      ')}
+`
+      : ''
+
+  return `# Generated by Studio — per-project data plane (PostgREST, GoTrue, Storage, Realtime, Functions, Imgproxy)
+name: indobase-tenant-${opts.ref}
+
+services:
+  tenant-rest:
+    image: postgrest/postgrest:v14.5
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    environment:
+      PGRST_DB_URI: ${restUri}
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${jwt}
+    ports:
+      - "127.0.0.1:${opts.ports.rest}:3000"
+
+  tenant-auth:
+    image: supabase/gotrue:v2.186.0
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    environment:
+      API_EXTERNAL_URL: ${apiEx}
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: ${authUri}
+      GOTRUE_SITE_URL: ${site}
+      GOTRUE_URI_ALLOW_LIST: ${allow}
+      GOTRUE_JWT_SECRET: ${jwt}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: ""
+      GOTRUE_SMTP_PORT: "587"
+      GOTRUE_SMTP_USER: ""
+      GOTRUE_SMTP_PASS: ""
+      GOTRUE_SMTP_ADMIN_EMAIL: "noreply@localhost"
+      GOTRUE_SMTP_SENDER_NAME: local
+    ports:
+      - "127.0.0.1:${opts.ports.auth}:9999"
+
+  tenant-imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    volumes:
+      - tenant-storage-${opts.ref}:/var/lib/storage:Z
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+      IMGPROXY_MAX_SRC_RESOLUTION: "16.8"
+    expose:
+      - "5001"
+
+  tenant-storage:
+    image: supabase/storage-api:v1.37.8
+    restart: unless-stopped
+    depends_on:
+      tenant-rest:
+        condition: service_started
+      tenant-imgproxy:
+        condition: service_started
+    networks:
+      - tenant_data_plane
+    environment:
+      ANON_KEY: ${anon}
+      SERVICE_KEY: ${svc}
+      POSTGREST_URL: http://tenant-rest:3000
+      PGRST_JWT_SECRET: ${jwt}
+      DATABASE_URL: ${storageUri}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: "52428800"
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: ${bucket}
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: ${tenantId}
+      REGION: local
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://tenant-imgproxy:5001
+    volumes:
+      - tenant-storage-${opts.ref}:/var/lib/storage:Z
+    ports:
+      - "127.0.0.1:${opts.ports.storage}:5000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  tenant-realtime:
+    container_name: ${opts.ref}.indobase-realtime
+    image: supabase/realtime:v2.76.5
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    environment:
+      PORT: "4000"
+      DB_HOST: ${rtHost}
+      DB_PORT: ${rtPort}
+      DB_USER: ${rtUser}
+      DB_PASSWORD: ${rtPass}
+      DB_NAME: ${rtName}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: ${rtEnc}
+      API_JWT_SECRET: ${jwt}
+      SECRET_KEY_BASE: ${rtSkb}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+    ports:
+      - "127.0.0.1:${opts.ports.realtime}:4000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  tenant-functions:
+    image: supabase/edge-runtime:v1.67.1
+    restart: unless-stopped
+    depends_on:
+      tenant-rest:
+        condition: service_started
+    networks:
+      - tenant_data_plane
+    environment:
+      SUPABASE_URL: ${supabaseUrl}
+      SUPABASE_ANON_KEY: ${anon}
+      SUPABASE_SERVICE_ROLE_KEY: ${svc}
+    volumes:
+${functionsVolumeYaml}
+    ports:
+      - "127.0.0.1:${opts.ports.functions}:9000"${poolerServiceBlock}${poolerConfigsBlock}
+networks:
+  tenant_data_plane:
+    external: true
+    name: ${net}
+
+volumes:
+  tenant-storage-${opts.ref}:
+${useBindMountFunctions ? '' : `  tenant-functions-${opts.ref}:\n`}
+`
+}
+
+function buildSlimTenantTraefikYml(opts: {
+  ref: string
+  publicDomain: string
+  ports: { rest: number; auth: number; storage: number; realtime: number; functions: number }
+}): string {
+  const hostRule = `${opts.ref}.${opts.publicDomain}`
+  return `# Generated by Studio — per-project routing (REST, Auth, Storage, Realtime, Functions)
+http:
+  routers:
+    tenant-${opts.ref}-rest:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`/rest/v1\`)
+      service: tenant-${opts.ref}-rest
+      entryPoints: [web, websecure]
+    tenant-${opts.ref}-auth:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`/auth/v1\`)
+      service: tenant-${opts.ref}-auth
+      entryPoints: [web, websecure]
+    tenant-${opts.ref}-storage:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`/storage/v1\`)
+      service: tenant-${opts.ref}-storage
+      entryPoints: [web, websecure]
+    tenant-${opts.ref}-realtime:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`/realtime/v1\`)
+      service: tenant-${opts.ref}-realtime
+      entryPoints: [web, websecure]
+    tenant-${opts.ref}-functions:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`/functions/v1\`)
+      service: tenant-${opts.ref}-functions
+      entryPoints: [web, websecure]
+
+  services:
+    tenant-${opts.ref}-rest:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${opts.ports.rest}" }]
+        passHostHeader: true
+    tenant-${opts.ref}-auth:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${opts.ports.auth}" }]
+        passHostHeader: true
+    tenant-${opts.ref}-storage:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${opts.ports.storage}" }]
+        passHostHeader: true
+    tenant-${opts.ref}-realtime:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${opts.ports.realtime}" }]
+        passHostHeader: true
+    tenant-${opts.ref}-functions:
+      loadBalancer:
+        servers: [{ url: "http://127.0.0.1:${opts.ports.functions}" }]
+        passHostHeader: true
+`
 }
 
 export async function getTenantStackArtifacts({
@@ -1568,9 +2623,6 @@ export async function getTenantStackArtifacts({
   ref: string
   publicDomain: string
 }) {
-  // Model A (single DB + RLS) does not use per-project tenant stacks.
-  throw new Error('Tenant stack artifacts are not available in single-DB RLS mode')
-
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
@@ -1589,6 +2641,8 @@ export async function getTenantStackArtifacts({
     anon_key: string
     service_key_enc: string | null
     anon_key_enc: string | null
+    data_plane_last_provisioned_at: string | null
+    data_plane_last_provision_result: unknown | null
   }>({
     query: `
       select
@@ -1600,7 +2654,9 @@ export async function getTenantStackArtifacts({
         p.service_key,
         p.anon_key,
         p.service_key_enc,
-        p.anon_key_enc
+        p.anon_key_enc,
+        p.data_plane_last_provisioned_at,
+        p.data_plane_last_provision_result
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -1614,16 +2670,12 @@ export async function getTenantStackArtifacts({
   if (rows.length === 0) return null
 
   const p = rows[0]!
-  const base = p.data_plane_port_base ?? 0
-  if (!Number.isFinite(base) || base < 1024) {
-    throw new Error('Project is missing data_plane_port_base (re-provision project or set it in saas.projects)')
-  }
 
   const connectionStringEnc = (p.connection_string_enc ?? '').trim()
   const tenantDbUrl = connectionStringEnc.length > 0 ? decryptString(connectionStringEnc) : p.connection_string
 
-  if (IS_SAAS && !tenantDbUrl?.trim()) {
-    throw new Error('Project is missing tenant DB connection_string (cannot render tenant stack)')
+  if (!tenantDbUrl?.trim()) {
+    return null
   }
 
   const anonKeyEnc = (p.anon_key_enc ?? '').trim()
@@ -1631,183 +2683,180 @@ export async function getTenantStackArtifacts({
   const serviceKeyEnc = (p.service_key_enc ?? '').trim()
   const serviceKey = serviceKeyEnc.length > 0 ? decryptString(serviceKeyEnc) : p.service_key
 
-  const ports = {
+  let base = p.data_plane_port_base ?? 0
+  if (!Number.isFinite(base) || base < 1024) {
+    base = computeDataPlanePortBase(p.ref)
+    const persist = await executeQuery({
+      query: `
+        update saas.projects p
+        set data_plane_port_base = $1
+        from saas.organization_members m
+        where p.id = $2
+          and m.organization_id = p.organization_id
+          and m.gotrue_id = $3
+      `,
+      parameters: [base, p.id, gotrueId],
+      actorId: gotrueId,
+    })
+    if (persist.error) throw persist.error
+  }
+
+  const domain = (publicDomain || resolvePublicDomainForTenantStack()).trim() || 'localhost'
+  const tls = domain !== 'localhost' && domain !== '127.0.0.1'
+  const origin = `${tls ? 'https' : 'http'}://${p.ref}.${domain}`
+  const embedPooler = process.env.SAAS_TENANT_EMBED_SUPAVISOR === 'true'
+  const ports: {
+    rest: number
+    auth: number
+    storage: number
+    realtime: number
+    functions: number
+    pooler?: number
+  } = {
     rest: base + 1,
     auth: base + 2,
     storage: base + 3,
     realtime: base + 4,
     functions: base + 5,
   }
+  if (embedPooler) {
+    ports.pooler = base + 6
+  }
 
-  const stablePassword = crypto.createHash('sha256').update(`indobase-tenant-${p.ref}`).digest('hex').slice(0, 24)
+  const normalizedTenantUrl = tenantDbUrl.trim().replace(/^postgres:\/\//, 'postgresql://')
+  const dbUrl = new URL(normalizedTenantUrl)
+  const tenantConnPass = dbUrl.password ? decodeURIComponent(dbUrl.password) : ''
+  const auxDbPass =
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || tenantConnPass || ''
 
-  const dockerComposeYml = `# Generated by Studio (Option A per-project stack)
-name: indobase-tenant-${p.ref}
+  const restDbUri = postgresUrlWithDbRole(normalizedTenantUrl, 'authenticator', auxDbPass)
+  const authDbUri = postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_auth_admin', auxDbPass)
+  const storageDbUri = postgresUrlWithDbRole(
+    normalizedTenantUrl,
+    'supabase_storage_admin',
+    auxDbPass
+  )
 
-services:
-  tenant-db:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: ${stablePassword}
-      POSTGRES_DB: postgres
-    ports:
-      - "127.0.0.1:${base}:5432"
-    volumes:
-      - tenant-db-${p.ref}:/var/lib/postgresql/data:Z
+  const realtimeSecretKeyBase = Buffer.concat([
+    crypto.createHmac('sha384', jwtSecret).update(`rt:skb1:${p.ref}`).digest(),
+    crypto.createHmac('sha384', jwtSecret).update(`rt:skb2:${p.ref}`).digest(),
+  ])
+    .toString('base64')
+    .slice(0, 128)
+  const realtimeDbEncKey = crypto
+    .createHmac('sha256', jwtSecret)
+    .update(`rt:dbenc:${p.ref}`)
+    .digest('hex')
+    .slice(0, 24)
 
-  tenant-rest:
-    image: postgrest/postgrest:v14.5
-    restart: unless-stopped
-    depends_on: [tenant-db]
-    environment:
-      PGRST_DB_URI: ${tenantDbUrl?.trim() ?? ''}
-      PGRST_DB_SCHEMAS: public,storage,graphql_public
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${jwtSecret}
-    ports:
-      - "127.0.0.1:${ports.rest}:3000"
+  const adminMetaJdbc = postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_admin', auxDbPass)
+  const poolerCompose =
+    embedPooler && ports.pooler != null
+      ? {
+          ectoMetadataUrl: postgresJdbcUrlToEcto(adminMetaJdbc),
+          exsBody: buildTenantSupavisorPoolerExs({
+            ref: p.ref,
+            dbHost: dbUrl.hostname,
+            dbPort: dbUrl.port || '5432',
+            dbName: dbUrl.pathname.replace(/^\//, '') || 'postgres',
+          }),
+          secretKeyBase: crypto.createHmac('sha512', jwtSecret).update(`pool:skb:${p.ref}`).digest('base64'),
+          vaultEncKey: crypto.createHash('sha256').update(`${jwtSecret}:vault:${p.ref}`).digest('hex').slice(0, 32),
+          auxDbPassword: auxDbPass,
+        }
+      : null
 
-  tenant-auth:
-    image: supabase/gotrue:v2.186.0
-    restart: unless-stopped
-    depends_on: [tenant-db]
-    environment:
-      GOTRUE_SITE_URL: https://${p.ref}.${publicDomain}
-      GOTRUE_URI_ALLOW_LIST: https://${p.ref}.${publicDomain}
-      GOTRUE_API_HOST: 0.0.0.0
-      GOTRUE_API_PORT: 9999
-      GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: ${tenantDbUrl?.trim() ?? ''}
-      GOTRUE_JWT_SECRET: ${jwtSecret}
-      GOTRUE_JWT_EXP: 3600
-      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
-      GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
-      GOTRUE_MAILER_AUTOCONFIRM: "false"
-      GOTRUE_SMTP_HOST: supabase-mail
-      GOTRUE_SMTP_PORT: 2500
-      GOTRUE_SMTP_USER: fake_mail_user
-      GOTRUE_SMTP_PASS: fake_mail_password
-      GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
-      GOTRUE_SMTP_SENDER_NAME: fake_sender
-    ports:
-      - "127.0.0.1:${ports.auth}:9999"
+  const dockerComposeYml = buildSlimTenantDockerCompose({
+    ref: p.ref,
+    ports: {
+      rest: ports.rest,
+      auth: ports.auth,
+      storage: ports.storage,
+      realtime: ports.realtime,
+      functions: ports.functions,
+      ...(ports.pooler != null ? { pooler: ports.pooler } : {}),
+    },
+    restDbUri,
+    authDbUri,
+    storageDbUri,
+    jwtSecret,
+    anonKey,
+    serviceKey,
+    apiExternalUrl: origin,
+    siteUrl: origin,
+    uriAllowList: origin,
+    realtime: {
+      dbHost: dbUrl.hostname,
+      dbPort: dbUrl.port || '5432',
+      dbName: dbUrl.pathname.replace(/^\//, ''),
+      dbUser: 'supabase_admin',
+      dbPassword: auxDbPass,
+      secretKeyBase: realtimeSecretKeyBase,
+      dbEncKey: realtimeDbEncKey,
+    },
+    pooler: poolerCompose,
+  })
 
-  tenant-storage:
-    image: supabase/storage-api:v1.23.0
-    restart: unless-stopped
-    depends_on: [tenant-db, tenant-rest]
-    environment:
-      ANON_KEY: ${anonKey}
-      SERVICE_KEY: ${serviceKey}
-      POSTGREST_URL: http://host.docker.internal:${ports.rest}
-      PGRST_JWT_SECRET: ${jwtSecret}
-      DATABASE_URL: ${tenantDbUrl?.trim() ?? ''}
-      FILE_SIZE_LIMIT: 52428800
-      STORAGE_BACKEND: file
-      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
-      REGION: local
-      TENANT_ID: ${p.ref}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - tenant-storage-${p.ref}:/var/lib/storage:Z
-    ports:
-      - "127.0.0.1:${ports.storage}:5000"
+  const traefikYml = buildSlimTenantTraefikYml({
+    ref: p.ref,
+    publicDomain: domain,
+    ports: {
+      rest: ports.rest,
+      auth: ports.auth,
+      storage: ports.storage,
+      realtime: ports.realtime,
+      functions: ports.functions,
+    },
+  })
 
-  tenant-realtime:
-    image: supabase/realtime:v2.76.5
-    restart: unless-stopped
-    depends_on: [tenant-db]
-    environment:
-      PORT: 4000
-      DB_HOST: host.docker.internal
-      DB_PORT: ${base}
-      DB_USER: postgres
-      DB_PASSWORD: ${stablePassword}
-      DB_NAME: postgres
-      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
-      JWT_SECRET: ${jwtSecret}
-      SECURE_CHANNELS: "true"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "127.0.0.1:${ports.realtime}:4000"
-
-  tenant-functions:
-    image: supabase/edge-runtime:v1.67.1
-    restart: unless-stopped
-    environment:
-      SUPABASE_URL: https://${p.ref}.${publicDomain}
-      SUPABASE_ANON_KEY: ${anonKey}
-      SUPABASE_SERVICE_ROLE_KEY: ${serviceKey}
-      SUPABASE_DB_URL: ${tenantDbUrl?.trim() ?? ''}
-    volumes:
-      - ./volumes/functions:/home/deno/functions:Z
-    ports:
-      - "127.0.0.1:${ports.functions}:9000"
-
-volumes:
-  tenant-db-${p.ref}:
-  tenant-storage-${p.ref}:
-`
-
-  const traefikYml = `# Generated by Studio (Option A per-project routing)
-http:
-  routers:
-    tenant-${p.ref}-rest:
-      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/rest/v1\`)
-      service: tenant-${p.ref}-rest
-      entryPoints: [web, websecure]
-    tenant-${p.ref}-auth:
-      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/auth/v1\`)
-      service: tenant-${p.ref}-auth
-      entryPoints: [web, websecure]
-    tenant-${p.ref}-storage:
-      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/storage/v1\`)
-      service: tenant-${p.ref}-storage
-      entryPoints: [web, websecure]
-    tenant-${p.ref}-realtime:
-      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/realtime/v1\`)
-      service: tenant-${p.ref}-realtime
-      entryPoints: [web, websecure]
-    tenant-${p.ref}-functions:
-      rule: Host(\`${p.ref}.${publicDomain}\`) && PathPrefix(\`/functions/v1\`)
-      service: tenant-${p.ref}-functions
-      entryPoints: [web, websecure]
-
-  services:
-    tenant-${p.ref}-rest:
-      loadBalancer:
-        servers: [{ url: "http://127.0.0.1:${ports.rest}" }]
-        passHostHeader: true
-    tenant-${p.ref}-auth:
-      loadBalancer:
-        servers: [{ url: "http://127.0.0.1:${ports.auth}" }]
-        passHostHeader: true
-    tenant-${p.ref}-storage:
-      loadBalancer:
-        servers: [{ url: "http://127.0.0.1:${ports.storage}" }]
-        passHostHeader: true
-    tenant-${p.ref}-realtime:
-      loadBalancer:
-        servers: [{ url: "http://127.0.0.1:${ports.realtime}" }]
-        passHostHeader: true
-    tenant-${p.ref}-functions:
-      loadBalancer:
-        servers: [{ url: "http://127.0.0.1:${ports.functions}" }]
-        passHostHeader: true
-`
+  const poolerHostEnv = process.env.SAAS_TENANT_POOLER_HOST?.trim()
+  const tenant_pooler = poolerHostEnv
+    ? { host: poolerHostEnv, port: parseInt(process.env.SAAS_TENANT_POOLER_PORT || '6543', 10) }
+    : embedPooler
+      ? { host: `${p.ref}.${domain}`, port: 6543 }
+      : null
 
   return {
     project_ref: p.ref,
-    public_domain: publicDomain,
+    public_domain: domain,
+    tenant_api_url: origin,
+    tenant_pooler,
     data_plane_port_base: base,
+    data_plane_last_provisioned_at: p.data_plane_last_provisioned_at,
+    data_plane_last_provision_result: p.data_plane_last_provision_result,
     ports,
     docker_compose_yml: dockerComposeYml,
     traefik_yml: traefikYml,
   }
+}
+
+export async function recordDataPlaneProvisionSuccess({
+  claims,
+  ref,
+  provisionResult,
+}: {
+  claims: Claims
+  ref: string
+  provisionResult: Record<string, unknown>
+}) {
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims)
+  const r = await executeQuery({
+    query: `
+      update saas.projects p
+      set
+        data_plane_last_provisioned_at = now(),
+        data_plane_last_provision_result = $1::jsonb
+      from saas.organization_members m
+      where p.ref = $2
+        and m.organization_id = p.organization_id
+        and m.gotrue_id = $3
+        and m.role in ('owner', 'admin', 'developer')
+    `,
+    parameters: [JSON.stringify(provisionResult), ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (r.error) throw r.error
 }
 
 export async function updateProject({
@@ -1997,6 +3046,9 @@ export async function listOrganizationProjects({
     inserted_at: string | null
     is_branch: boolean
     preview_branch_refs: string[]
+    has_dedicated_database: boolean
+    data_plane_last_provisioned_at: string | null
+    data_plane_last_provision_ok: string | null
   }>({
     query: `
       select
@@ -2010,7 +3062,10 @@ export async function listOrganizationProjects({
         p.status,
         p.inserted_at,
         p.is_branch,
-        p.preview_branch_refs
+        p.preview_branch_refs,
+        (coalesce(trim(p.connection_string_enc), '') <> '' or coalesce(trim(p.connection_string), '') <> '') as has_dedicated_database,
+        p.data_plane_last_provisioned_at,
+        (p.data_plane_last_provision_result->>'ok') as data_plane_last_provision_ok
       from saas.projects p
       join saas.organizations o on o.id = p.organization_id
       join saas.organization_members m on m.organization_id = o.id
@@ -2046,6 +3101,18 @@ export async function listOrganizationProjects({
       ref: p.ref,
       region: p.region,
       status: p.status as any,
+      has_dedicated_database: p.has_dedicated_database,
+      data_plane_last_provisioned_at: p.data_plane_last_provisioned_at
+        ? new Date(p.data_plane_last_provisioned_at).toISOString()
+        : null,
+      data_plane_last_provision_ok:
+        p.data_plane_last_provision_ok === 'true'
+          ? true
+          : p.data_plane_last_provision_ok === 'false'
+            ? false
+            : null,
     })),
   }
 }
+
+export { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'

@@ -100,6 +100,8 @@ export class ResponseError extends Error {
   retryAfter?: number
   requestPathname?: string
   metadata?: CostMetadata
+  /** JSON body from a failed dashboard fetch (e.g. provision-data-plane `provisioner_body`). */
+  jsonBody?: Record<string, unknown>
 
   constructor(
     message: string | undefined,
