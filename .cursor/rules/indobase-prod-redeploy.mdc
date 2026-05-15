@@ -1,0 +1,42 @@
+---
+description: How to redeploy Indobase Studio to production (GitHub + VPS Docker Swarm)
+alwaysApply: true
+---
+
+# Indobase production redeploy (Studio)
+
+When the user asks to **deploy**, **redeploy**, **ship to prod**, or after **production-facing** Studio/control-plane changes are merged, use this flow unless they opt out.
+
+## 1. Source of truth
+
+- **Repo:** `main` on GitHub (`Indobase/Indobase`).
+- **CI:** Push triggers `.github/workflows/docker-publish.yml` → Docker Hub `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<full-git-sha>`.
+- **Prefer the commit SHA tag** for rollout — `:latest` on the server can lag right after CI finishes.
+
+## 2. Git (when there are local commits to ship)
+
+- `git fetch origin && git pull --rebase origin main`
+- Commit if needed, then **`git push origin main`** (workspace default branch).
+
+## 3. VPS rollout (Docker Swarm Studio service)
+
+- **Host:** `root@187.77.30.165`
+- **SSH key:** `~/.ssh/id_ed25519_indobase_vps`
+- **Commit SHA:** `SHA=$(git rev-parse HEAD)` from the repo **after** the push you intend to deploy.
+- **Service name:** resolve dynamically: `docker service ls --format '{{.Name}}' | grep -E 'indobase-studio' | head -1` (expect `indobase-studio-erpgp1` or similar).
+
+**Script pattern:**
+
+1. Confirm the image tag exists (optional):  
+   `GET https://hub.docker.com/v2/repositories/roshanraghavander/ind-repo/tags/<SHA>/` → HTTP 200 after CI publishes.
+2. On VPS:
+   - `docker pull roshanraghavander/ind-repo:<SHA>`
+   - `docker service update --image roshanraghavander/ind-repo:<SHA> <swarm_service_name>`
+   - `/usr/local/bin/indobase-studio-attach-compose-network.sh` (split Studio ↔ compose backend network; safe if already attached).
+3. Verify: `curl -sS https://studio.indobase.in/api/health/live` → JSON **`version`** equals **`<SHA>`**.
+
+If the SHA tag is not on Docker Hub yet, wait/retry (CI build ~minutes) before `docker pull`.
+
+## 4. Docs
+
+Details and secrets (Dokploy API, webhooks): `docker/DOKPLOY-STUDIO-DEPLOY.md`.
