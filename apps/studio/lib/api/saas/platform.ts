@@ -15,6 +15,7 @@ import {
 } from './provision-tenant-db'
 import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
+import { ensureSaasStudioDbPrivileges } from './ensureSaasStudioDbPrivileges'
 import { ensureSaasPreventLastOwnerAllowsOrgCascade } from './preventLastOwnerTeardown'
 
 type Claims = JwtPayload & Record<string, any>
@@ -377,6 +378,7 @@ export async function ensureSaasTables() {
   }
 
   await ensureSaasControlPlaneRlsApplied()
+  await ensureSaasStudioDbPrivileges()
   await ensureSaasPreventLastOwnerAllowsOrgCascade()
 }
 
