@@ -15,7 +15,15 @@ CRYPTO_KEY="your-key-with-plus-signs="
 
 ## Split deploy: Compose backend + separate Studio Application
 
-If Studio is a **separate Dokploy Application** (your setup), it cannot resolve `indobase-meta`. Automate via CI:
+If Studio is a **separate Dokploy Application** (your setup), it cannot resolve `indobase-meta` until it shares the Compose Docker network.
+
+**VPS fix (installed via `docker/scripts/indobase-studio-attach-compose-network.sh` + systemd timer):** every 2 minutes (and on boot) the Studio task is connected to `indobase-backend-bmqhan_default`. After a Dokploy redeploy, wait up to 2 minutes or run:
+
+```bash
+sudo /usr/local/bin/indobase-studio-attach-compose-network.sh
+```
+
+Automate via CI (alternative — host-published meta port):
 
 1. Compose publishes meta on the host (`PG_META_PUBLISH_PORT=8081` in `docker-compose.yml`).
 2. GitHub Actions runs `docker/scripts/dokploy-studio-split-env.sh` when these secrets exist:
