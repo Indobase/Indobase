@@ -15,6 +15,7 @@ import {
 } from './provision-tenant-db'
 import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
+import { ensureSaasPreventLastOwnerAllowsOrgCascade } from './preventLastOwnerTeardown'
 
 type Claims = JwtPayload & Record<string, any>
 
@@ -376,6 +377,7 @@ export async function ensureSaasTables() {
   }
 
   await ensureSaasControlPlaneRlsApplied()
+  await ensureSaasPreventLastOwnerAllowsOrgCascade()
 }
 
 export async function getOrCreateProfile(claims: Claims) {
@@ -1359,9 +1361,10 @@ export async function deleteOrganization({ claims, slug }: { claims: Claims; slu
           select 1
           from saas.organization_members m
           where m.organization_id = o.id
-            and m.gotrue_id = $2
+            and m.gotrue_id = $2::uuid
             and m.role = 'owner'
         )
+        and (select set_config('app.allow_organization_teardown', 'true', true)) is not null
       returning o.slug
     `,
     parameters: [slug, gotrueId],

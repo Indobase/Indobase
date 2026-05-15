@@ -15,6 +15,16 @@ function safeIdentifier(prefix: string, ref: string) {
   return `${prefix}_${cleaned}`
 }
 
+/** Double-quote an identifier for dynamic DDL (`ROLE`/database names from `safeIdentifier`). */
+function quotePgIdent(ident: string): string {
+  return `"${ident.replace(/"/g, '""')}"`
+}
+
+/** Escape a value as a single-quoted Postgres string literal for DDL that cannot use bind params. */
+function quotePgLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
 /**
  * MVP provisioning: creates a tenant database and login role on the same Postgres cluster.
  *
@@ -46,23 +56,31 @@ export async function provisionTenantDatabase({
 
   try {
     // Idempotent-ish: if role/db exist, keep going (so retries don’t brick the project).
-    await client.query(`do $$
-begin
-  if not exists (select 1 from pg_roles where rolname = $1) then
-    execute format('create role %I login password %L nocreatedb nocreaterole nosuperuser', $1, $2);
-  else
-    execute format('alter role %I login password %L', $1, $2);
-  end if;
-end
-$$;`, [roleName, rolePassword])
+    //
+    // IMPORTANT: Do not put `$1`, `$2`, … inside dollar-quoted `DO $$ … $$` bodies — those are
+    // literals, not extended-query placeholders. node-postgres would send bind parameters while
+    // Postgres parses zero placeholders → "bind message supplies N parameters … requires 0".
+    const roleExists = await client.query<{ exists: boolean }>(
+      'select exists(select 1 from pg_roles where rolname = $1)',
+      [roleName]
+    )
+    const roleIdent = quotePgIdent(roleName)
+    const roleLit = quotePgLiteral(rolePassword)
+    if (!roleExists.rows[0]?.exists) {
+      await client.query(
+        `create role ${roleIdent} login password ${roleLit} nocreatedb nocreaterole nosuperuser`
+      )
+    } else {
+      await client.query(`alter role ${roleIdent} login password ${roleLit}`)
+    }
 
-    await client.query(`do $$
-begin
-  if not exists (select 1 from pg_database where datname = $1) then
-    execute format('create database %I owner %I', $1, $2);
-  end if;
-end
-$$;`, [dbName, roleName])
+    const dbExists = await client.query<{ exists: boolean }>(
+      'select exists(select 1 from pg_database where datname = $1)',
+      [dbName]
+    )
+    if (!dbExists.rows[0]?.exists) {
+      await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
+    }
   } finally {
     await client.end()
   }
@@ -209,18 +227,16 @@ export async function bootstrapTenantDataPlaneSchemas({
   const client = new Client({ connectionString: adminConn })
   await client.connect()
   try {
-    const pwLit = "'" + auxPass.replace(/'/g, "''") + "'"
+    const pwLit = quotePgLiteral(auxPass)
     for (const role of DATA_PLANE_AUX_ROLES) {
-      await client.query(
-        `do $b$
-        begin
-          if not exists (select 1 from pg_roles where rolname = $1) then
-            execute format('create role %I login', $1);
-          end if;
-        end $b$`,
+      const exists = await client.query<{ exists: boolean }>(
+        'select exists(select 1 from pg_roles where rolname = $1)',
         [role]
       )
-      await client.query(`alter role ${role} password ${pwLit}`)
+      if (!exists.rows[0]?.exists) {
+        await client.query(`create role ${quotePgIdent(role)} login`)
+      }
+      await client.query(`alter role ${quotePgIdent(role)} password ${pwLit}`)
     }
 
     const dbLit = `"${dbName.replace(/"/g, '""')}"`
