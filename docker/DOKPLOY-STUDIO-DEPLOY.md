@@ -1,6 +1,6 @@
 # Dokploy: auto-deploy Studio image from GitHub Actions
 
-CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health` until `version` matches the commit.
+CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health/live` until `version` matches the commit. Full readiness (postgres-meta, GoTrue) is `GET /api/health` (may return 503 while env/network is wrong).
 
 If the GitHub Actions **deploy** job shows warnings, the image is on Docker Hub but **Dokploy did not run a new container with that image**. The **build** job still passes; fix Dokploy and redeploy manually.
 

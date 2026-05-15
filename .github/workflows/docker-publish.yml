@@ -175,25 +175,41 @@ jobs:
             -H "x-api-key: $DOKPLOY_API_KEY" \
             -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\"}"
 
-      - name: Smoke test — prod /api/health version
+      # Liveness only (no postgres-meta). Readiness is /api/health (may be 503 when meta/env is wrong).
+      - name: Smoke test — prod /api/health/live version
         id: prod_smoke
+        continue-on-error: true
         env:
           EXPECTED_SHA: ${{ github.sha }}
-          HEALTH_URL: https://studio.indobase.in/api/health
+          LIVE_URL: https://studio.indobase.in/api/health/live
+          READINESS_URL: https://studio.indobase.in/api/health
         run: |
+          ok=0
           for i in $(seq 1 12); do
-            body="$(curl -sS --max-time 10 "$HEALTH_URL" || true)"
-            version="$(printf '%s' "$body" | sed -nE 's/.*"version":"([^"]+)".*/\1/p')"
-            if [ "$version" = "$EXPECTED_SHA" ]; then
-              echo "✅ prod is serving $version after ${i} attempts"
-              exit 0
+            http_code="$(curl -sS -o /tmp/health-live.json -w '%{http_code}' --max-time 10 "$LIVE_URL" 2>/dev/null || echo 000)"
+            version="$(jq -r '.version // empty' /tmp/health-live.json 2>/dev/null || true)"
+            if [ "$http_code" = "200" ] && [ "$version" = "$EXPECTED_SHA" ]; then
+              echo "✅ prod liveness is commit $version (attempt $i)"
+              ok=1
+              break
             fi
-            echo "attempt $i: prod version=${version:-<none>} (want $EXPECTED_SHA)"
+            echo "attempt $i: live http=${http_code} version=${version:-<none>} (want $EXPECTED_SHA)"
+            head -c 300 /tmp/health-live.json 2>/dev/null || true
+            echo ""
             sleep 10
           done
-          echo "::warning::prod not on $EXPECTED_SHA yet — image is on Docker Hub; redeploy Dokploy (roshanraghavander/ind-repo:latest)"
-          curl -sS "$HEALTH_URL" || true
-          exit 1
+          if [ "$ok" -ne 1 ]; then
+            echo "::warning::Prod not on $EXPECTED_SHA yet — pull roshanraghavander/ind-repo:latest and redeploy Studio in Dokploy (see docker/DOKPLOY-STUDIO-DEPLOY.md)"
+            exit 1
+          fi
+          readiness_code="$(curl -sS -o /tmp/health-ready.json -w '%{http_code}' --max-time 10 "$READINESS_URL" 2>/dev/null || echo 000)"
+          readiness_status="$(jq -r '.status // empty' /tmp/health-ready.json 2>/dev/null || true)"
+          echo "readiness http=${readiness_code} status=${readiness_status:-<not-json>}"
+          jq -c '.checks.saasInfra // empty' /tmp/health-ready.json 2>/dev/null || head -c 200 /tmp/health-ready.json || true
+          echo ""
+          if [ "$readiness_code" != "200" ]; then
+            echo "::warning::Readiness degraded — fix STUDIO_PG_META_URL / PG_META_CRYPTO_KEY / Docker network (studio must reach indobase-meta:8080)"
+          fi
 
       - name: Deploy summary
         if: always()

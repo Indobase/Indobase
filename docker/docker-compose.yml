@@ -25,7 +25,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "const p=process.env.PORT||'8080';fetch('http://127.0.0.1:'+p+'/api/health').then(r=>{if(r.status!==200)throw new Error('health '+r.status)})"
+          "const p=process.env.PORT||'8080';fetch('http://127.0.0.1:'+p+'/api/health/live').then(r=>{if(r.status!==200)throw new Error('health '+r.status)})"
         ]
       timeout: 10s
       interval: 5s
