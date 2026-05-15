@@ -27,6 +27,16 @@ The Git webhook triggers a **full stack** `docker compose up` in Dokploy. That o
    - `DOKPLOY_COMPOSE_ID` — from `GET /api/project.all` → your compose stack `composeId`  
    CI will call `POST /api/compose.deploy` instead of relying on the Git webhook.
 
+### Sign-in works but `/organizations` shows 502 / "Unexpected token &lt;!DOCTYPE"
+
+`/api/health` reports `saasInfra: postgres-meta query failed: Unauthorized`. Platform APIs (`/api/platform/profile`, `/permissions`, `/notifications`) return **502** until this is fixed.
+
+1. In Dokploy → **Compose** (or Studio service) **Environment**, set the **same** `PG_META_CRYPTO_KEY` on **both** `studio` and `meta` (meta uses it as `CRYPTO_KEY` in `docker-compose.yml`).
+2. Copy the value from your server `docker/.env` — do not invent a new key; if keys diverged, pick one value, set it on both services, then **restart meta and studio**.
+3. Confirm `STUDIO_PG_META_URL=http://indobase-meta:8080` (Docker network hostname, not `https://api.indobase.in`).
+4. Confirm `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DB` match the running `db` service.
+5. After restart: `curl -sS https://studio.indobase.in/api/health` → `checks.saasInfra.status` should be `"ok"`.
+
 ## Checklist (fix in Dokploy UI)
 
 1. **Image tag must be `latest` (recommended)**  

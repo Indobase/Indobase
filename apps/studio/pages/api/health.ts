@@ -70,11 +70,25 @@ async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> 
     }
   }
 
-  const probe = await executeQuery<{ ok: number }>({ query: 'select 1 as ok' })
-  if (probe.error) {
+  const metaUrl = process.env.STUDIO_PG_META_URL?.trim() ?? ''
+  if (metaUrl && !/meta/i.test(metaUrl)) {
     return {
       status: 'degraded',
-      message: `postgres-meta query failed: ${probe.error.message}`,
+      message:
+        `STUDIO_PG_META_URL looks wrong (${metaUrl}): use internal postgres-meta, e.g. http://indobase-meta:8080 — not the public API/Kong URL`,
+    }
+  }
+
+  const probe = await executeQuery<{ ok: number }>({ query: 'select 1 as ok' })
+  if (probe.error) {
+    const raw = probe.error.message
+    const hint =
+      /unauthorized/i.test(raw)
+        ? 'PG_META_CRYPTO_KEY on Studio must exactly match CRYPTO_KEY on the meta container (see docker-compose.yml). Restart studio + meta after fixing.'
+        : raw
+    return {
+      status: 'degraded',
+      message: `postgres-meta query failed: ${hint}`,
     }
   }
 

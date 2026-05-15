@@ -53,10 +53,12 @@ export default async function apiWrapper(
     return await handler(req, res, claims)
   } catch (error) {
     if (error instanceof PgMetaDatabaseError) {
+      const cryptoHint = /unauthorized/i.test(error.message)
+        ? 'PG_META_CRYPTO_KEY on Studio must match CRYPTO_KEY on the meta service (same value in both containers).'
+        : 'Check STUDIO_PG_META_URL (http://indobase-meta:8080), PG_META_CRYPTO_KEY, and POSTGRES_* — see docker/ENV-FOR-OWN-BACKEND.md'
       return res.status(502).json({
         message: `SaaS database error: ${error.message}`,
-        hint:
-          'Check STUDIO_PG_META_URL, PG_META_CRYPTO_KEY (must match postgres-meta), and POSTGRES_* credentials — see docker/ENV-FOR-OWN-BACKEND.md',
+        hint: cryptoHint,
         error: {
           name: error.name,
           message: error.message,
