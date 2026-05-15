@@ -216,7 +216,7 @@ function getUsernameFromEmail(email: string) {
   return slugify(base) || `user-${makeRandomString(6).toLowerCase()}`
 }
 
-async function ensureSaasTables() {
+export async function ensureSaasTables() {
   const bootstrap = await executeQuery({
     query: `
       do $saas_migration$
