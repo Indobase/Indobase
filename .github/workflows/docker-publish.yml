@@ -99,13 +99,17 @@ jobs:
       # Optional: pin Dokploy Application image to this commit SHA (avoids stale :latest on the host).
       - name: Deploy via Dokploy API
         continue-on-error: true
-        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.DOKPLOY_API_URL != '' && secrets.DOKPLOY_API_KEY != '' && secrets.DOKPLOY_APPLICATION_ID != '' }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         env:
           DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
           IMAGE: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
         run: |
+          if [ -z "$DOKPLOY_API_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_ID" ]; then
+            echo "::notice::Skipping Dokploy API deploy (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID to enable)"
+            exit 0
+          fi
           base="${DOKPLOY_API_URL%/}"
           echo "Updating application image to $IMAGE"
           curl -fsS -X POST "$base/api/application.update" \
