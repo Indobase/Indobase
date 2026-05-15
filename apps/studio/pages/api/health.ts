@@ -9,6 +9,10 @@ type HealthResponse = {
   status: 'ok' | 'degraded'
   service: 'studio'
   timestamp: string
+  // Commit SHA the image was built from. Baked in at Docker build time via the BUILD_SHA
+  // build-arg (see Dockerfile + .github/workflows/docker-publish.yml). Post-deploy smoke
+  // tests assert this equals the just-pushed commit to catch stale-image deploys.
+  version: string
   checks: {
     env: CheckResult & { missing?: string[] }
     /** SaaS control plane: postgres-meta + Postgres credentials (skipped when NEXT_PUBLIC_INDOBASE_SAAS=false) */
@@ -120,6 +124,7 @@ export async function computeHealth(): Promise<HealthResponse> {
     status,
     service: 'studio',
     timestamp: new Date().toISOString(),
+    version: process.env.BUILD_SHA || 'unknown',
     checks,
   }
 }
