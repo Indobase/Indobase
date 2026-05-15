@@ -27,6 +27,8 @@ The Git webhook triggers a **full stack** `docker compose up` in Dokploy. That o
    - `DOKPLOY_COMPOSE_ID` — from `GET /api/project.all` → your compose stack `composeId`  
    CI will call `POST /api/compose.deploy` instead of relying on the Git webhook.
 
+See **[DOKPLOY-STUDIO-ENV.md](./DOKPLOY-STUDIO-ENV.md)** for a full studio env block mapped from your backend `.env`.
+
 ### Sign-in works but `/organizations` shows 502 / "Unexpected token &lt;!DOCTYPE"
 
 `/api/health` reports `saasInfra: postgres-meta query failed: Unauthorized`. Platform APIs (`/api/platform/profile`, `/permissions`, `/notifications`) return **502** until this is fixed.
