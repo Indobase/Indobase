@@ -68,8 +68,10 @@ STUDIO_DOCKER_IMAGE=roshanraghavander/ind-repo:latest
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
 POSTGRES_DB=postgres
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-postgres-password
-POSTGRES_USER_READ_WRITE=supabase_admin
+# Role used by postgres-meta / Studio for SQL — must match whoever owns POSTGRES_PASSWORD (defaults to POSTGRES_USER).
+POSTGRES_USER_READ_WRITE=postgres
 POSTGRES_USER_READ_ONLY=supabase_read_only_user
 
 # postgres-meta (quoted if value contains +)
@@ -130,6 +132,12 @@ curl -sS https://studio.indobase.in/api/health | jq '.checks.saasInfra'
 ```
 
 Expected: `"status": "ok"`. If still `Unauthorized`, re-check quoted crypto keys on **both** studio and meta.
+
+## "password authentication failed for user supabase_admin" when creating a project
+
+postgres-meta runs Studio’s SaaS SQL using **`POSTGRES_USER_READ_WRITE`** together with **`POSTGRES_PASSWORD`**. If those pointed at **`supabase_admin`** while your password is only valid for the **`postgres`** superuser (typical Docker `POSTGRES_USER`), Postgres rejects the connection.
+
+**Fix:** Set **`POSTGRES_USER=postgres`** (or whatever your DB container uses) and **`POSTGRES_USER_READ_WRITE=postgres`**, or remove `POSTGRES_USER_READ_WRITE` so Studio defaults it from `POSTGRES_USER`. Only use `supabase_admin` here if that role exists **and** its password matches `POSTGRES_PASSWORD`.
 
 ## JWT / anon key
 

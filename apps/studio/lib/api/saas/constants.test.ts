@@ -75,6 +75,20 @@ describe('api/saas/constants', () => {
     })
   })
 
+  describe('POSTGRES_USER', () => {
+    it('should use POSTGRES_USER when set', async () => {
+      vi.stubEnv('POSTGRES_USER', 'mydbowner')
+      const { POSTGRES_USER } = await import('./constants')
+      expect(POSTGRES_USER).toBe('mydbowner')
+    })
+
+    it('should default to postgres', async () => {
+      vi.stubEnv('POSTGRES_USER', '')
+      const { POSTGRES_USER } = await import('./constants')
+      expect(POSTGRES_USER).toBe('postgres')
+    })
+  })
+
   describe('POSTGRES_USER_READ_WRITE', () => {
     it('should use POSTGRES_USER_READ_WRITE when set', async () => {
       vi.stubEnv('POSTGRES_USER_READ_WRITE', 'custom_admin')
@@ -82,10 +96,18 @@ describe('api/saas/constants', () => {
       expect(POSTGRES_USER_READ_WRITE).toBe('custom_admin')
     })
 
-    it('should default to supabase_admin', async () => {
+    it('should default to POSTGRES_USER', async () => {
       vi.stubEnv('POSTGRES_USER_READ_WRITE', '')
+      vi.stubEnv('POSTGRES_USER', 'staging_owner')
       const { POSTGRES_USER_READ_WRITE } = await import('./constants')
-      expect(POSTGRES_USER_READ_WRITE).toBe('supabase_admin')
+      expect(POSTGRES_USER_READ_WRITE).toBe('staging_owner')
+    })
+
+    it('should default to postgres when neither override is set', async () => {
+      vi.stubEnv('POSTGRES_USER_READ_WRITE', '')
+      vi.stubEnv('POSTGRES_USER', '')
+      const { POSTGRES_USER_READ_WRITE } = await import('./constants')
+      expect(POSTGRES_USER_READ_WRITE).toBe('postgres')
     })
   })
 

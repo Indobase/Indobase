@@ -106,7 +106,7 @@ describe('api/saas/util', () => {
       const resultReadOnly = getConnectionString({ readOnly: true })
 
       expect(resultReadWrite).toBe(
-        'postgresql://supabase_admin:postgres@indobase-db:5432/postgres'
+        'postgresql://postgres:postgres@indobase-db:5432/postgres'
       )
       expect(resultReadOnly).toBe(
         'postgresql://supabase_read_only_user:postgres@indobase-db:5432/postgres'
