@@ -14,3 +14,8 @@ export const POSTGRES_USER_READ_WRITE =
   process.env.POSTGRES_USER_READ_WRITE?.trim() || POSTGRES_USER
 export const POSTGRES_USER_READ_ONLY =
   process.env.POSTGRES_USER_READ_ONLY || 'supabase_read_only_user'
+
+/** Session advisory lock id for `saas.grant_studio_access()` (must match migration SQL). */
+export const SAAS_PG_ADVISORY_LOCK_GRANT_STUDIO_ACCESS = 9625844491
+/** Serialize control-plane RLS bootstrap so parallel `ensureSaasTables` calls cannot apply DDL twice. */
+export const SAAS_PG_ADVISORY_LOCK_CONTROL_PLANE_RLS = 9625844493

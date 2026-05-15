@@ -1,5 +1,6 @@
 import { POSTGRES_USER_READ_WRITE } from './constants'
 import { executeQuery } from './query'
+import { PgMetaDatabaseError } from './types'
 
 /**
  * Studio connects to the control-plane DB as POSTGRES_USER_READ_WRITE (often `postgres`)
@@ -60,6 +61,30 @@ $studio_grants$;
 /** @deprecated Use buildSaasStudioDbPrivilegesSql() — kept for grep/docs parity with migrations. */
 export const SAAS_STUDIO_DB_PRIVILEGES_SQL = buildSaasStudioDbPrivilegesSql()
 
+const TRANSIENT_PG_META =
+  /tuple concurrently updated|deadlock detected|could not serialize access due to concurrent update/i
+
+async function selectGrantStudioAccessWithRetry(): Promise<void> {
+  const maxAttempts = 6
+  let lastError: Error | undefined
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const boosted = await executeQuery({ query: `select saas.grant_studio_access()` })
+    if (!boosted.error) return
+    lastError = boosted.error
+    const msg = boosted.error.message
+    const transientCode =
+      boosted.error instanceof PgMetaDatabaseError &&
+      (boosted.error.code === 'XX000' || boosted.error.code === '40P01')
+    if (!TRANSIENT_PG_META.test(msg) && !transientCode) {
+      throw boosted.error
+    }
+    if (attempt < maxAttempts - 1) {
+      await new Promise((r) => setTimeout(r, 45 * (attempt + 1)))
+    }
+  }
+  throw lastError ?? new Error('grant_studio_access failed')
+}
+
 async function grantStudioPrivilegesViaSecurityDefinerFn(): Promise<boolean> {
   const probe = await executeQuery<{ exists: boolean }>({
     query: `
@@ -80,8 +105,7 @@ export async function ensureSaasStudioDbPrivileges(): Promise<void> {
   const hasFn = await grantStudioPrivilegesViaSecurityDefinerFn()
 
   if (hasFn) {
-    const boosted = await executeQuery({ query: `select saas.grant_studio_access()` })
-    if (boosted.error) throw boosted.error
+    await selectGrantStudioAccessWithRetry()
 
     const rw = assertPgRoleName(POSTGRES_USER_READ_WRITE)
     if (rw !== 'postgres' && rw !== 'supabase_admin') {

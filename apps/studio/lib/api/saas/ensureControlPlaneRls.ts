@@ -1,3 +1,4 @@
+import { SAAS_PG_ADVISORY_LOCK_CONTROL_PLANE_RLS } from './constants'
 import { SAAS_CONTROL_PLANE_RLS_SQL } from './controlPlaneRlsBootstrapSql'
 import { executeQuery } from './query'
 import { repairSaasOrganizationMemberships } from './repairOrganizationMemberships'
@@ -7,20 +8,35 @@ import { repairSaasOrganizationMemberships } from './repairOrganizationMembershi
  * control-plane DB once per database. Idempotent DDL; skipped if already applied.
  */
 export async function ensureSaasControlPlaneRlsApplied(): Promise<void> {
-  const probe = await executeQuery<{ n: number }>({
-    query: `
+  const lockKey = SAAS_PG_ADVISORY_LOCK_CONTROL_PLANE_RLS
+  const lock = await executeQuery({
+    query: `select pg_advisory_lock($1::bigint)`,
+    parameters: [lockKey],
+  })
+  if (lock.error) throw lock.error
+
+  try {
+    const probe = await executeQuery<{ n: number }>({
+      query: `
       select count(*)::int as n
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'saas'
         and p.proname = 'current_user_id'
     `,
-  })
-  if (probe.error) throw probe.error
-  if ((probe.data?.[0]?.n ?? 0) > 0) return
+    })
+    if (probe.error) throw probe.error
+    if ((probe.data?.[0]?.n ?? 0) > 0) return
 
-  await repairSaasOrganizationMemberships()
+    await repairSaasOrganizationMemberships()
 
-  const applied = await executeQuery({ query: SAAS_CONTROL_PLANE_RLS_SQL })
-  if (applied.error) throw applied.error
+    const applied = await executeQuery({ query: SAAS_CONTROL_PLANE_RLS_SQL })
+    if (applied.error) throw applied.error
+  } finally {
+    const unlock = await executeQuery({
+      query: `select pg_advisory_unlock($1::bigint)`,
+      parameters: [lockKey],
+    })
+    if (unlock.error) throw unlock.error
+  }
 }
