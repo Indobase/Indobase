@@ -59,19 +59,63 @@ jobs:
           cache-from: type=gha,scope=ind-repo-v2
           cache-to: type=gha,mode=max,scope=ind-repo-v2
 
+      - name: Verify image on Docker Hub
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:${{ github.sha }}"
+          docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:latest"
+
       # Tell Dokploy to redeploy the studio service. Webhook URL is set up in Dokploy
-      # under the Backend app → Deployments → "Deploy Webhook" and saved as a repo secret.
-      # Without this step, the new image sits on Docker Hub until someone manually clicks redeploy.
+      # under the Studio app → Deployments → "Deploy Webhook" and saved as a repo secret.
+      # Without this step, the new image sits on Docker Hub until someone manually redeploys.
+      # See docker/DOKPLOY-STUDIO-DEPLOY.md if prod stays on an old /api/health version.
       - name: Trigger Dokploy deploy
         if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         env:
           DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
         run: |
           if [ -z "$DOKPLOY_DEPLOY_WEBHOOK" ]; then
-            echo "::error::DOKPLOY_DEPLOY_WEBHOOK secret is not set; add it to repo secrets to enable autodeploy."
+            echo "::error::DOKPLOY_DEPLOY_WEBHOOK secret is not set. Add it from Dokploy → Studio → Deployments → Deploy Webhook. See docker/DOKPLOY-STUDIO-DEPLOY.md"
             exit 1
           fi
-          curl -fsS -X POST "$DOKPLOY_DEPLOY_WEBHOOK"
+          for attempt in 1 2 3; do
+            echo "Dokploy webhook attempt $attempt"
+            http_code="$(curl -sS -o /tmp/dokploy-webhook.out -w '%{http_code}' -X POST "$DOKPLOY_DEPLOY_WEBHOOK" || true)"
+            echo "HTTP $http_code"
+            head -c 2000 /tmp/dokploy-webhook.out || true
+            echo ""
+            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Dokploy deploy webhook failed after 3 attempts (last HTTP $http_code)"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      # Optional: pin Dokploy Application image to this commit SHA (avoids stale :latest on the host).
+      - name: Deploy via Dokploy API
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.DOKPLOY_API_URL != '' && secrets.DOKPLOY_API_KEY != '' && secrets.DOKPLOY_APPLICATION_ID != '' }}
+        env:
+          DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
+          IMAGE: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
+        run: |
+          base="${DOKPLOY_API_URL%/}"
+          echo "Updating application image to $IMAGE"
+          curl -fsS -X POST "$base/api/application.update" \
+            -H "accept: application/json" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\",\"dockerImage\":\"$IMAGE\"}"
+          echo "Triggering application.deploy"
+          curl -fsS -X POST "$base/api/application.deploy" \
+            -H "accept: application/json" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\"}"
 
       # Poll prod /api/health.version until it equals this commit. Catches the whole class
       # of "deploy reported success but old code is still being served" bugs (stale image,
@@ -97,4 +141,11 @@ jobs:
           echo "::error::prod did not pick up commit $EXPECTED_SHA after 10 minutes"
           echo "Last response from $HEALTH_URL:"
           curl -sS "$HEALTH_URL" || true
+          echo ""
+          echo "::error::Dokploy did not redeploy the new image. Fix in Dokploy UI:"
+          echo "  1. Image must be roshanraghavander/ind-repo:latest (not a pinned old SHA)"
+          echo "  2. STUDIO_DOCKER_IMAGE=roshanraghavander/ind-repo:latest for Compose deploys"
+          echo "  3. Confirm DOKPLOY_DEPLOY_WEBHOOK is the Studio app deploy URL; check Deployments tab for a new run"
+          echo "  4. Manually click Deploy, then re-run this workflow"
+          echo "See docker/DOKPLOY-STUDIO-DEPLOY.md"
           exit 1

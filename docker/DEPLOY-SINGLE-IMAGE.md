@@ -60,6 +60,8 @@ docker run -d \
 2. Set the variables from **ENV-FOR-OWN-BACKEND.md** (and any `NEXT_PUBLIC_*` you override at build time).
 3. Ensure the dashboard container can reach Postgres, meta, and Kong (DNS / network / firewall).
 
+**Dokploy auto-deploy from GitHub Actions:** see **[DOKPLOY-STUDIO-DEPLOY.md](./DOKPLOY-STUDIO-DEPLOY.md)** if CI builds succeed but `studio.indobase.in/api/health` `version` stays on an old commit.
+
 ---
 
 ## 5. Quick checklist
