@@ -1,4 +1,30 @@
-<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="10" cy="16" r="7" fill="#FF9933" />
-  <circle cx="24" cy="16" r="4.5" fill="#FF9933" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Indobase">
+  <rect width="24" height="24" rx="5" fill="#161616"/>
+  <!-- Bottom tile — yellow outline -->
+  <path
+    fill="none"
+    stroke="#FFC107"
+    stroke-width="1.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 19.25 L18.75 14.75 L12 10.25 L5.25 14.75 Z"
+  />
+  <!-- Middle tile — white fill, yellow stroke -->
+  <path
+    fill="#FFFFFF"
+    stroke="#FFC107"
+    stroke-width="1.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 16.85 L17.35 13.55 L12 10.25 L6.65 13.55 Z"
+  />
+  <!-- Top tile — solid yellow -->
+  <path
+    fill="#FFC107"
+    stroke="#FFC107"
+    stroke-width="0.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 14.35 L15.85 12 L12 9.65 L8.15 12 Z"
+  />
 </svg>

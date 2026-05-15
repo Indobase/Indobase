@@ -13,6 +13,7 @@ class MyDocument extends Document {
       <Html lang="en">
         <Head>
           <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/favicon-indobase.svg`} />
+          <link rel="apple-touch-icon" href={`${BASE_PATH}/indobase-logo-full.png`} />
           <meta name="description" content="Indobase Studio is the control plane for Indobase – manage projects, databases, storage, and infrastructure from a single dashboard." />
           <meta property="og:site_name" content="Indobase Studio" />
           <meta property="og:title" content="Indobase Studio – Project Dashboard" />

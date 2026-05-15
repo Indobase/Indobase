@@ -1,5 +1,23 @@
 # Dokploy: auto-deploy Studio image from GitHub Actions
 
+## Automatic deploy after every change
+
+**Deploy only runs when code reaches GitHub:** merge or push to **`main`** (or **`master`**). That triggers [`docker-publish.yml`](../.github/workflows/docker-publish.yml): build → push image → Dokploy deploy (API / webhook) → optional prod smoke check.
+
+Local edits are **not** deployed until they are **committed and pushed** to `main`.
+
+To actually roll out new containers on each push, configure **one** of these in GitHub → **Settings → Secrets and variables → Actions**:
+
+| Goal | Secrets |
+|------|---------|
+| **Studio as Dokploy Application** (recommended for split deploy) | `DOKPLOY_API_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_ID` |
+| **Full stack as Dokploy Compose** | Same plus `DOKPLOY_COMPOSE_ID` (optional **instead of** relying on Git webhook for Compose) |
+| **Git / generic deploy webhook** | `DOKPLOY_DEPLOY_WEBHOOK` |
+
+Without these, CI still builds and pushes Docker Hub; Dokploy steps are skipped or webhook-only (see warnings in the Actions log).
+
+---
+
 CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health/live` until `version` matches the commit. Full readiness (postgres-meta, GoTrue) is `GET /api/health` (may return 503 while env/network is wrong).
 
 If the GitHub Actions **deploy** job shows warnings, the image is on Docker Hub but **Dokploy did not run a new container with that image**. The **build** job still passes; fix Dokploy and redeploy manually.

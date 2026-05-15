@@ -7,6 +7,11 @@ on:
       - master
   workflow_dispatch:
 
+# Latest push wins: cancel older runs so Dokploy isn’t triggered multiple times for superseded commits.
+concurrency:
+  group: docker-publish-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   DOCKERHUB_REPO: roshanraghavander/ind-repo
   SKIP_ASSET_UPLOAD: "1"
@@ -71,12 +76,12 @@ jobs:
           echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Image:** \`${{ env.DOCKERHUB_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
 
-  # Optional rollout — never fails the workflow (build job is the required gate).
+  # Rollout after image push: fails the workflow if Dokploy API deploy steps fail (secrets must be set).
+  # Skipped steps (missing secrets) exit 0; webhook failures only warn. Smoke test is best-effort.
   deploy:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Trigger Dokploy deploy (Git webhook payload)

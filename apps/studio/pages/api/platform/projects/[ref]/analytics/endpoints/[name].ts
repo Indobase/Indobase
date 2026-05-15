@@ -1,4 +1,5 @@
 import apiWrapper from 'lib/api/apiWrapper'
+import { emptyUsageAnalyticsResult, isUsageAnalyticsEndpoint } from 'lib/api/saas/analyticsUsage'
 import { retrieveAnalyticsData } from 'lib/api/saas/logs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import assert from 'node:assert'
@@ -26,8 +27,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (data) {
         return res.status(200).json(data)
       } else {
-        if (error.message.includes('Analytics is not configured')) {
-          return res.status(200).json({ result: [] })
+        if (
+          error.message.includes('Analytics is not configured') ||
+          isUsageAnalyticsEndpoint(name)
+        ) {
+          return res.status(200).json(emptyUsageAnalyticsResult())
         }
         return res.status(500).json({ error: { message: error.message } })
       }

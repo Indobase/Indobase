@@ -7,7 +7,7 @@ import { VIOLATION_TYPE_LABELS } from 'data/usage/constants'
 import { useOrgUsageQuery } from 'data/usage/org-usage-query'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { DOCS_URL } from 'lib/constants'
-import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/router'
 import {
   AlertDescription_Shadcn_,
   AlertTitle_Shadcn_,
@@ -21,8 +21,9 @@ export const Restriction = () => {
   const { data: org } = useSelectedOrganizationQuery()
   const { data: usage, isSuccess: isSuccessOrgUsage } = useOrgUsageQuery({ orgSlug: org?.slug })
 
-  const pathname = usePathname()
-  const isUsagePage = pathname?.endsWith('/usage')
+  const router = useRouter()
+  const pathWithoutQuery = router.asPath?.split('?')[0] ?? ''
+  const isUsagePage = pathWithoutQuery.endsWith('/usage')
 
   const hasExceededAnyLimits = Boolean(
     usage?.usages.find(
@@ -75,7 +76,7 @@ export const Restriction = () => {
           <AlertDescription_Shadcn_>
             <p>
               Your projects can become unresponsive or enter read-only mode.{' '}
-              {org.plan.id === 'free'
+              {(org.plan?.id ?? 'free') === 'free'
                 ? 'Please upgrade to the Pro Plan to ensure that your projects remain available.'
                 : 'Please disable spend cap to ensure that your projects remain available.'}
             </p>
@@ -83,10 +84,10 @@ export const Restriction = () => {
               <Button key="upgrade-button" asChild type="default">
                 <Link
                   href={`/org/${org?.slug}/billing?panel=${
-                    org.plan.id === 'free' ? 'subscriptionPlan' : 'costControl'
+                    (org.plan?.id ?? 'free') === 'free' ? 'subscriptionPlan' : 'costControl'
                   }`}
                 >
-                  {org.plan.id === 'free' ? 'Upgrade plan' : 'Change spend cap'}
+                  {(org.plan?.id ?? 'free') === 'free' ? 'Upgrade plan' : 'Change spend cap'}
                 </Link>
               </Button>
               {!isUsagePage && (
@@ -114,7 +115,7 @@ export const Restriction = () => {
                 {dayjs(org.restriction_data['grace_period_end']).format('DD MMM, YYYY')}
               </span>
               . After that, the Fair Use Policy will apply. If you plan to maintain this level of
-              usage, {org.plan.id === 'free' ? 'upgrade your plan' : 'disable spend cap'} to avoid
+              usage, {(org.plan?.id ?? 'free') === 'free' ? 'upgrade your plan' : 'disable spend cap'} to avoid
               any restrictions. If restrictions are applied, requests to your projects will return a
               402 status code.
             </p>
@@ -122,12 +123,12 @@ export const Restriction = () => {
               <Button asChild key="upgrade-button" type="default">
                 <Link
                   href={`/org/${org?.slug}/billing?panel=${
-                    org.plan.id === 'free'
+                    (org.plan?.id ?? 'free') === 'free'
                       ? 'subscriptionPlan&source=fairUseGracePeriodStarted'
                       : 'costControl&source=fairUseGracePeriodStarted'
                   }`}
                 >
-                  {org.plan.id === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
+                  {(org.plan?.id ?? 'free') === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
                 </Link>
               </Button>
 
@@ -157,19 +158,19 @@ export const Restriction = () => {
                 {dayjs(org.restriction_data['grace_period_end']).format('DD MMM, YYYY')}
               </span>
               . Fair Use Policy applies now. Stay below your plan’s quota or{' '}
-              {org.plan.id === 'free' ? 'upgrade your plan' : 'disable spend cap'} if you expect to
+              {(org.plan?.id ?? 'free') === 'free' ? 'upgrade your plan' : 'disable spend cap'} if you expect to
               exceed it. If you exceed your quota, requests will respond with a 402 status code.
             </p>
             <div className="flex items-center gap-x-2 mt-3">
               <Button key="upgrade-button" asChild type="default">
                 <Link
                   href={`/org/${org?.slug}/billing?panel=${
-                    org.plan.id === 'free'
+                    (org.plan?.id ?? 'free') === 'free'
                       ? 'subscriptionPlan&source=fairUseGracePeriodOver'
                       : 'costControl&source=fairUseGracePeriodOver'
                   }`}
                 >
-                  {org.plan.id === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
+                  {(org.plan?.id ?? 'free') === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
                 </Link>
               </Button>
               {!isUsagePage && (
@@ -195,19 +196,19 @@ export const Restriction = () => {
               Fair Use Policy applies and your service is restricted. Your projects are not able to
               serve requests and will respond with a 402 status code. You have exceeded your plan’s
               quota{violationLabels && ` ${violationLabels}`}.{' '}
-              {org.plan.id === 'free' ? 'Upgrade your plan' : 'Disable spend cap'} to lift
+              {(org.plan?.id ?? 'free') === 'free' ? 'Upgrade your plan' : 'Disable spend cap'} to lift
               restrictions or wait until your quota refills on your next billing period.
             </p>
             <div className="flex items-center gap-x-2 mt-3">
               <Button key="upgrade-button" asChild type="default">
                 <Link
                   href={`/org/${org?.slug}/billing?panel=${
-                    org.plan.id === 'free'
+                    (org.plan?.id ?? 'free') === 'free'
                       ? 'subscriptionPlan&source=fairUseRestricted'
                       : 'costControl&source=fairUseRestricted'
                   }`}
                 >
-                  {org.plan.id === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
+                  {(org.plan?.id ?? 'free') === 'free' ? 'Upgrade plan' : 'Disable spend cap'}
                 </Link>
               </Button>
               {!isUsagePage && (

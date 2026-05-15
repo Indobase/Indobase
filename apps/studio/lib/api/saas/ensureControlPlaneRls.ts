@@ -1,5 +1,6 @@
 import { SAAS_CONTROL_PLANE_RLS_SQL } from './controlPlaneRlsBootstrapSql'
 import { executeQuery } from './query'
+import { repairSaasOrganizationMemberships } from './repairOrganizationMemberships'
 
 /**
  * Applies membership RLS + feature tables (audit_logs, custom_domains, …) on the
@@ -17,6 +18,8 @@ export async function ensureSaasControlPlaneRlsApplied(): Promise<void> {
   })
   if (probe.error) throw probe.error
   if ((probe.data?.[0]?.n ?? 0) > 0) return
+
+  await repairSaasOrganizationMemberships()
 
   const applied = await executeQuery({ query: SAAS_CONTROL_PLANE_RLS_SQL })
   if (applied.error) throw applied.error

@@ -1,4 +1,9 @@
 import { PROJECT_ANALYTICS_URL } from 'lib/constants/api'
+import {
+  emptyUsageAnalyticsResult,
+  hasAnalyticsPayloadError,
+  mapAnalyticsQueryParams,
+} from './analyticsUsage'
 import { WrappedResult } from './types'
 import { assertSaaSBackend } from './util'
 import assert from 'node:assert'
@@ -42,33 +47,44 @@ export async function retrieveAnalyticsData({
     }
   }
 
+  const mappedParams = mapAnalyticsQueryParams(params)
   const url = new URL(`${PROJECT_ANALYTICS_URL}endpoints/query/${name}`)
   url.searchParams.set('project', projectRef)
 
-  // Add all other params
-  Object.entries(params).forEach(([key, value]) => {
+  Object.entries(mappedParams).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value)
     }
   })
 
+  const accessToken = process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN
+
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-api-key': process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
     })
 
-    const result = await response.json()
+    const result = (await response.json()) as AnalyticsResult
 
     if (!response.ok) {
+      if (name.startsWith('usage.')) {
+        return { data: emptyUsageAnalyticsResult(), error: undefined }
+      }
       const error = new Error(
-        result?.error?.message ?? `Failed to retrieve analytics data: ${response.statusText}`
+        (typeof result?.error === 'object' && result?.error?.message) ||
+          (typeof result?.error === 'string' ? result.error : null) ||
+          `Failed to retrieve analytics data: ${response.statusText}`
       )
       return { data: undefined, error }
+    }
+
+    if (hasAnalyticsPayloadError(result) && name.startsWith('usage.')) {
+      return { data: emptyUsageAnalyticsResult(), error: undefined }
     }
 
     return { data: result, error: undefined }

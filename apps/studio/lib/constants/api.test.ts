@@ -17,6 +17,16 @@ describe('constants/api', () => {
       const { PROJECT_ANALYTICS_URL } = await import('./api')
       expect(PROJECT_ANALYTICS_URL).toBe('https://logflare.example.com/api/')
     })
+
+    it('strips ingestion path and query from misconfigured LOGFLARE_URL', async () => {
+      vi.stubEnv(
+        'LOGFLARE_URL',
+        'https://api.logflare.app/api/logs?source=3459d0cb-fb46-4573-adb4-f9fab40b5402'
+      )
+      const { PROJECT_ANALYTICS_URL, getLogflareBaseUrl } = await import('./api')
+      expect(getLogflareBaseUrl()).toBe('https://api.logflare.app')
+      expect(PROJECT_ANALYTICS_URL).toBe('https://api.logflare.app/api/')
+    })
   })
 
   describe('PROJECT_REST_URL', () => {

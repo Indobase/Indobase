@@ -91,7 +91,8 @@ NEXT_PUBLIC_INDOBASE_SAAS=true
 SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=true
 
 # Logs (optional)
-LOGFLARE_URL=http://analytics:4000
+# Base URL only — do NOT use cloud ingestion URLs like api.logflare.app/api/logs?source=...
+LOGFLARE_URL=http://indobase-analytics:4000
 LOGFLARE_PUBLIC_ACCESS_TOKEN=your-token
 LOGFLARE_PRIVATE_ACCESS_TOKEN=your-token
 NEXT_PUBLIC_ENABLE_LOGS=true

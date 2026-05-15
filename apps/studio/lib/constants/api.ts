@@ -1,8 +1,21 @@
 const PUBLIC_URL = new URL(process.env.SUPABASE_PUBLIC_URL || 'http://localhost:8000')
 
+/** Base Logflare origin (no path/query). Strips misconfigured ingestion URLs. */
+export function getLogflareBaseUrl(): string | undefined {
+  const raw = process.env.LOGFLARE_URL?.trim()
+  if (!raw) return undefined
+
+  try {
+    const url = new URL(raw)
+    return `${url.protocol}//${url.host}`
+  } catch {
+    return raw.split('?')[0]?.replace(/\/+$/, '') || undefined
+  }
+}
+
 // Use LOGFLARE_URL until analytics/v1/ routing is supported
-export const PROJECT_ANALYTICS_URL = process.env.LOGFLARE_URL
-  ? `${process.env.LOGFLARE_URL}/api/`
+export const PROJECT_ANALYTICS_URL = getLogflareBaseUrl()
+  ? `${getLogflareBaseUrl()}/api/`
   : undefined
 
 export const PROJECT_REST_URL = `${PUBLIC_URL.origin}/rest/v1/`
