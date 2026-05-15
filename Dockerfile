@@ -50,6 +50,9 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
+# Surfaced at /api/health as `version` so smoke tests can verify the running build matches the commit.
+ARG BUILD_SHA=unknown
+ENV BUILD_SHA=${BUILD_SHA}
 
 # SaaS Studio: default folders so APIs start (override in Dokploy if using volumes)
 ENV EDGE_FUNCTIONS_MANAGEMENT_FOLDER=/app/edge-functions

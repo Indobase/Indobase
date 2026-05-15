@@ -25,14 +25,14 @@ begin
     create or replace function storage.set_bucket_project_ref()
     returns trigger
     language plpgsql
-    as $$
+    as $body$
     begin
       if new.project_ref is null then
         new.project_ref := app.project_ref();
       end if;
       return new;
     end;
-    $$;
+    $body$;
   $fn$;
 
   execute 'drop trigger if exists tr_storage_buckets_project_ref on storage.buckets';
@@ -42,7 +42,7 @@ begin
     create or replace function storage.set_object_project_ref()
     returns trigger
     language plpgsql
-    as $$
+    as $body$
     begin
       if new.project_ref is null then
         select b.project_ref into new.project_ref
@@ -54,7 +54,7 @@ begin
       end if;
       return new;
     end;
-    $$;
+    $body$;
   $fn$;
 
   execute 'drop trigger if exists tr_storage_objects_project_ref on storage.objects';

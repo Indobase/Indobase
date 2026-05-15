@@ -11,8 +11,10 @@ services:
 
   studio:
     container_name: indobase-studio
-    # Override with your Indobase/Indo-repo image for SaaS features (NEXT_PUBLIC_INDOBASE_SAAS, branding, platform APIs).
-    image: ${STUDIO_DOCKER_IMAGE:-supabase/studio:2026.02.16-sha-26c615c}
+    # Must be set explicitly (e.g. roshanraghavander/ind-repo:latest). No silent fallback
+    # to upstream supabase/studio — that image lacks SaaS features and the platform API
+    # fallbacks, so a missing env var would silently degrade the deploy.
+    image: ${STUDIO_DOCKER_IMAGE:?STUDIO_DOCKER_IMAGE must be set in Dokploy env (e.g. roshanraghavander/ind-repo:latest)}
     pull_policy: always
     restart: unless-stopped
     # Indobase image listens on PORT (default 8080). Do not use /api/platform/profile here — it requires auth (401).
