@@ -219,6 +219,14 @@ function getUsernameFromEmail(email: string) {
 }
 
 export async function ensureSaasTables() {
+  // Ensure schema exists before grants: grant_studio_access targets schema saas.
+  const ensureSchema = await executeQuery({ query: 'create schema if not exists saas' })
+  if (ensureSchema.error) throw ensureSchema.error
+
+  // Apply grants before bootstrap DDL: bootstrap issues CREATE TABLE in saas; postgres needs
+  // CREATE on the schema (USAGE alone is insufficient when schema is owned by supabase_admin).
+  await ensureSaasStudioDbPrivileges()
+
   const bootstrap = await executeQuery({
     query: `
       do $saas_migration$

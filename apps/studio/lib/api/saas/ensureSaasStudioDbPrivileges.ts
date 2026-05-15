@@ -46,7 +46,7 @@ BEGIN
   FOREACH r IN ARRAY ARRAY[${literals}]::text[]
   LOOP
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
-      EXECUTE format('GRANT USAGE ON SCHEMA saas TO %I', r);
+      EXECUTE format('GRANT USAGE, CREATE ON SCHEMA saas TO %I', r);
       EXECUTE format('GRANT ALL ON ALL TABLES IN SCHEMA saas TO %I', r);
       EXECUTE format('GRANT ALL ON ALL SEQUENCES IN SCHEMA saas TO %I', r);
       EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA saas TO %I', r);
