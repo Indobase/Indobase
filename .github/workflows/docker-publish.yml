@@ -17,7 +17,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://api.indobase.in"
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -56,50 +56,75 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest
             ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
-          cache-from: type=gha,scope=ind-repo-v2
-          cache-to: type=gha,mode=max,scope=ind-repo-v2
+          # v3 scope: avoid reusing a poisoned build-studio layer from older cache entries
+          cache-from: type=gha,scope=ind-repo-v3
+          cache-to: type=gha,mode=max,scope=ind-repo-v3
 
       - name: Verify image on Docker Hub
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         run: |
           docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:${{ github.sha }}"
           docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:latest"
 
-      # Tell Dokploy to redeploy the studio service. Webhook URL is set up in Dokploy
-      # under the Studio app → Deployments → "Deploy Webhook" and saved as a repo secret.
-      # Without this step, the new image sits on Docker Hub until someone manually redeploys.
-      # See docker/DOKPLOY-STUDIO-DEPLOY.md if prod stays on an old /api/health version.
-      - name: Trigger Dokploy deploy
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-        continue-on-error: true
+      - name: Build summary
+        run: |
+          echo "## Docker build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image:** \`${{ env.DOCKERHUB_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # Optional rollout — never fails the workflow (build job is the required gate).
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger Dokploy deploy (Git webhook payload)
         id: dokploy_webhook
         env:
           DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
         run: |
           if [ -z "$DOKPLOY_DEPLOY_WEBHOOK" ]; then
-            echo "::warning::DOKPLOY_DEPLOY_WEBHOOK secret is not set — image was pushed but prod will not auto-redeploy. See docker/DOKPLOY-STUDIO-DEPLOY.md"
+            echo "::warning::DOKPLOY_DEPLOY_WEBHOOK not set — redeploy manually in Dokploy. See docker/DOKPLOY-STUDIO-DEPLOY.md"
             exit 0
           fi
+          # Dokploy Git webhooks expect a push payload with matching ref (else "Branch Not Match").
+          payload="$(jq -n \
+            --arg ref "${GITHUB_REF}" \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg name "${GITHUB_REPOSITORY#*/}" \
+            '{
+              ref: $ref,
+              repository: {
+                full_name: $repo,
+                name: $name,
+                clone_url: ("https://github.com/" + $repo + ".git")
+              }
+            }')"
+          ok=0
           for attempt in 1 2 3; do
-            echo "Dokploy webhook attempt $attempt"
-            http_code="$(curl -sS -o /tmp/dokploy-webhook.out -w '%{http_code}' -X POST "$DOKPLOY_DEPLOY_WEBHOOK" || true)"
+            echo "Dokploy webhook attempt $attempt (ref=${GITHUB_REF})"
+            http_code="$(curl -sS -o /tmp/dokploy-webhook.out -w '%{http_code}' \
+              -X POST "$DOKPLOY_DEPLOY_WEBHOOK" \
+              -H 'Content-Type: application/json' \
+              -H 'X-GitHub-Event: push' \
+              -d "$payload" || true)"
             echo "HTTP $http_code"
             head -c 2000 /tmp/dokploy-webhook.out || true
             echo ""
             if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+              ok=1
               break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "::warning::Dokploy deploy webhook failed after 3 attempts (last HTTP $http_code). Image is on Docker Hub; redeploy manually in Dokploy."
-              exit 1
             fi
             sleep 15
           done
+          if [ "$ok" -ne 1 ]; then
+            echo "::warning::Dokploy webhook failed (Branch Not Match? Set Dokploy branch to main, or use Docker-image app + Docker Hub webhook). See docker/DOKPLOY-STUDIO-DEPLOY.md"
+            exit 1
+          fi
 
-      # Optional: pin Dokploy Application image to this commit SHA (avoids stale :latest on the host).
       - name: Deploy via Dokploy API
-        continue-on-error: true
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        id: dokploy_api
         env:
           DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
@@ -107,36 +132,28 @@ jobs:
           IMAGE: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
         run: |
           if [ -z "$DOKPLOY_API_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_ID" ]; then
-            echo "::notice::Skipping Dokploy API deploy (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID to enable)"
+            echo "::notice::Skipping Dokploy API (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID)"
             exit 0
           fi
           base="${DOKPLOY_API_URL%/}"
-          echo "Updating application image to $IMAGE"
           curl -fsS -X POST "$base/api/application.update" \
             -H "accept: application/json" \
             -H "Content-Type: application/json" \
             -H "x-api-key: $DOKPLOY_API_KEY" \
             -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\",\"dockerImage\":\"$IMAGE\"}"
-          echo "Triggering application.deploy"
           curl -fsS -X POST "$base/api/application.deploy" \
             -H "accept: application/json" \
             -H "Content-Type: application/json" \
             -H "x-api-key: $DOKPLOY_API_KEY" \
             -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\"}"
 
-      # Informational only — do not fail CI when Dokploy is slow or misconfigured.
-      # Build + push is the gate; prod rollout is verified separately (manual or Dokploy UI).
-      - name: Smoke test — confirm prod is on this commit (non-blocking)
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-        continue-on-error: true
+      - name: Smoke test — prod /api/health version
         id: prod_smoke
         env:
           EXPECTED_SHA: ${{ github.sha }}
           HEALTH_URL: https://studio.indobase.in/api/health
         run: |
-          # Use -sS (not -fsS): /api/health returns 503 when degraded, but the body still
-          # carries `version`. We care about identity (which commit is running), not health.
-          for i in $(seq 1 60); do
+          for i in $(seq 1 12); do
             body="$(curl -sS --max-time 10 "$HEALTH_URL" || true)"
             version="$(printf '%s' "$body" | sed -nE 's/.*"version":"([^"]+)".*/\1/p')"
             if [ "$version" = "$EXPECTED_SHA" ]; then
@@ -146,25 +163,21 @@ jobs:
             echo "attempt $i: prod version=${version:-<none>} (want $EXPECTED_SHA)"
             sleep 10
           done
-          echo "::warning::prod did not pick up commit $EXPECTED_SHA after 10 minutes (CI still passes)"
-          echo "Last response from $HEALTH_URL:"
+          echo "::warning::prod not on $EXPECTED_SHA yet — image is on Docker Hub; redeploy Dokploy (roshanraghavander/ind-repo:latest)"
           curl -sS "$HEALTH_URL" || true
-          echo ""
-          echo "Image pushed: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }} and :latest"
-          echo "Redeploy in Dokploy (image roshanraghavander/ind-repo:latest). See docker/DOKPLOY-STUDIO-DEPLOY.md"
           exit 1
 
-      - name: Workflow summary
-        if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      - name: Deploy summary
+        if: always()
         run: |
-          echo "## Docker publish" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Image:** \`${{ env.DOCKERHUB_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.prod_smoke.outcome }}" = "success" ]; then
-            echo "- **Prod smoke test:** ✅ studio.indobase.in is on this commit" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.prod_smoke.outcome }}" = "failure" ]; then
-            echo "- **Prod smoke test:** ⚠️ prod not on this commit yet — redeploy Dokploy manually" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Deploy (optional)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.dokploy_webhook.outcome }}" = "success" ]; then
+            echo "- **Dokploy webhook:** ✅" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Dokploy webhook:** ⚠️ failed — set Dokploy branch to \`main\` or use Docker Hub → Dokploy webhook" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ steps.dokploy_webhook.outcome }}" = "failure" ]; then
-            echo "- **Dokploy webhook:** ⚠️ failed — check \`DOKPLOY_DEPLOY_WEBHOOK\` secret" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.prod_smoke.outcome }}" = "success" ]; then
+            echo "- **Prod:** ✅ on commit \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Prod:** ⚠️ still on old image — manual redeploy in Dokploy" >> "$GITHUB_STEP_SUMMARY"
           fi

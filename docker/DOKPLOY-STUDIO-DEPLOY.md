@@ -2,7 +2,17 @@
 
 CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health` until `version` matches the commit.
 
-If the GitHub Actions **Smoke test** step shows a warning (**prod did not pick up commit …**), the image is on Docker Hub but **Dokploy did not run a new container with that image**. The workflow still **passes** (build + push succeeded); fix Dokploy and redeploy manually.
+If the GitHub Actions **deploy** job shows warnings, the image is on Docker Hub but **Dokploy did not run a new container with that image**. The **build** job still passes; fix Dokploy and redeploy manually.
+
+### `{"message":"Branch Not Match"}` (HTTP 301) from the deploy webhook
+
+The `DOKPLOY_DEPLOY_WEBHOOK` secret is a **Git-provider** webhook. Dokploy only accepts it when the push **ref** matches the branch configured on the app (usually `main`).
+
+1. In Dokploy → Studio app → **General**, set the Git branch to **`main`** (same as GitHub default branch).
+2. CI now sends a GitHub-style payload with `"ref": "refs/heads/main"`. If it still fails, the app may be **Docker-image** based — use one of:
+   - **Docker Hub webhook:** Docker Hub → `roshanraghavander/ind-repo` → Webhooks → paste the same Dokploy deploy URL; tag must be **`latest`** in Dokploy.
+   - **Dokploy API:** set GitHub secrets `DOKPLOY_API_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_ID` (see `.github/workflows/docker-publish.yml`).
+3. For **Docker Compose** in Dokploy (not Git): webhook may not apply — click **Deploy** manually after each CI run, or switch Studio to an **Application** service pulling `roshanraghavander/ind-repo:latest`.
 
 ## Checklist (fix in Dokploy UI)
 
