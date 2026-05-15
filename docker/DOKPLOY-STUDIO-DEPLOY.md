@@ -14,6 +14,19 @@ The `DOKPLOY_DEPLOY_WEBHOOK` secret is a **Git-provider** webhook. Dokploy only 
    - **Dokploy API:** set GitHub secrets `DOKPLOY_API_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_ID` (see `.github/workflows/docker-publish.yml`).
 3. For **Docker Compose** in Dokploy (not Git): webhook may not apply — click **Deploy** manually after each CI run, or switch Studio to an **Application** service pulling `roshanraghavander/ind-repo:latest`.
 
+### `{"message":"Error deploying Compose"}` (HTTP 400)
+
+The Git webhook triggers a **full stack** `docker compose up` in Dokploy. That often fails when:
+
+1. **Missing env in Dokploy** — copy variables from `docker/.env.example` into the Compose service env (at minimum `POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `PG_META_CRYPTO_KEY`, `SUPABASE_PUBLIC_URL`).
+2. **`STUDIO_DOCKER_IMAGE`** — set `STUDIO_DOCKER_IMAGE=roshanraghavander/ind-repo:latest` in Dokploy (defaults to that in `docker-compose.yml` if unset).
+3. **Backend services down** — `studio` depends on `db`, `kong`, `meta`, `analytics`, etc. Open Dokploy → Compose → **Logs** for the failing service.
+4. **Prefer API over Git webhook for Compose** — add GitHub secrets:
+   - `DOKPLOY_API_URL` — your Dokploy panel URL (e.g. `https://dokploy.example.com`)
+   - `DOKPLOY_API_KEY` — Profile → API/CLI
+   - `DOKPLOY_COMPOSE_ID` — from `GET /api/project.all` → your compose stack `composeId`  
+   CI will call `POST /api/compose.deploy` instead of relying on the Git webhook.
+
 ## Checklist (fix in Dokploy UI)
 
 1. **Image tag must be `latest` (recommended)**  
@@ -41,10 +54,18 @@ For **Application** (not Compose) deploys, you can add a Docker Hub webhook (rep
 
 ## Optional: Dokploy API (CI)
 
-Set these GitHub secrets to deploy via API (updates image to the exact commit tag before deploy):
+**Docker Compose stack (recommended for your setup):**
 
-- `DOKPLOY_API_URL` — e.g. `https://your-dokploy-host`
-- `DOKPLOY_API_KEY` — from Dokploy profile → API/CLI
-- `DOKPLOY_APPLICATION_ID` — from `GET /api/project.all`
+| Secret | Value |
+|--------|--------|
+| `DOKPLOY_API_URL` | Dokploy panel origin, e.g. `https://dokploy.indobase.in` |
+| `DOKPLOY_API_KEY` | Profile → API/CLI |
+| `DOKPLOY_COMPOSE_ID` | `composeId` from `GET /api/project.all` |
 
-See `.github/workflows/docker-publish.yml` step **Deploy via Dokploy API**.
+**Standalone Application (Docker image only, not full compose):**
+
+| Secret | Value |
+|--------|--------|
+| `DOKPLOY_APPLICATION_ID` | `applicationId` from `GET /api/project.all` |
+
+See `.github/workflows/docker-publish.yml` deploy job.

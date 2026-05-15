@@ -119,11 +119,39 @@ jobs:
             sleep 15
           done
           if [ "$ok" -ne 1 ]; then
-            echo "::warning::Dokploy webhook failed (Branch Not Match? Set Dokploy branch to main, or use Docker-image app + Docker Hub webhook). See docker/DOKPLOY-STUDIO-DEPLOY.md"
-            exit 1
+            echo "::warning::Dokploy Git webhook failed — see deploy logs in Dokploy UI."
+            cat /tmp/dokploy-webhook.out 2>/dev/null || true
+            echo "For Compose stacks prefer DOKPLOY_COMPOSE_ID + API (see docker/DOKPLOY-STUDIO-DEPLOY.md)"
           fi
 
-      - name: Deploy via Dokploy API
+      # Preferred for Dokploy Docker Compose: avoids Git webhook redeploying the whole stack.
+      - name: Deploy via Dokploy Compose API
+        id: dokploy_compose
+        env:
+          DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+        run: |
+          if [ -z "$DOKPLOY_API_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_COMPOSE_ID" ]; then
+            echo "::notice::Skipping compose.deploy (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_COMPOSE_ID)"
+            exit 0
+          fi
+          base="${DOKPLOY_API_URL%/}"
+          echo "Triggering compose.deploy for $DOKPLOY_COMPOSE_ID"
+          curl -fsS -X POST "$base/api/compose.deploy" \
+            -H "accept: application/json" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "$(jq -n \
+              --arg id "$DOKPLOY_COMPOSE_ID" \
+              --arg sha "${{ github.sha }}" \
+              '{
+                composeId: $id,
+                title: "GitHub Actions",
+                description: ("Deploy commit " + $sha)
+              }')"
+
+      - name: Deploy via Dokploy Application API
         id: dokploy_api
         env:
           DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
@@ -132,7 +160,7 @@ jobs:
           IMAGE: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
         run: |
           if [ -z "$DOKPLOY_API_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_ID" ]; then
-            echo "::notice::Skipping Dokploy API (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID)"
+            echo "::notice::Skipping application.deploy (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID)"
             exit 0
           fi
           base="${DOKPLOY_API_URL%/}"
@@ -171,10 +199,15 @@ jobs:
         if: always()
         run: |
           echo "## Deploy (optional)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.dokploy_compose.outcome }}" = "success" ]; then
+            echo "- **Dokploy compose.deploy:** ✅" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "${{ secrets.DOKPLOY_COMPOSE_ID }}" ]; then
+            echo "- **Dokploy compose.deploy:** ⚠️ failed — check Dokploy compose logs" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "${{ steps.dokploy_webhook.outcome }}" = "success" ]; then
-            echo "- **Dokploy webhook:** ✅" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Dokploy Git webhook:** ✅" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "- **Dokploy webhook:** ⚠️ failed — set Dokploy branch to \`main\` or use Docker Hub → Dokploy webhook" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Dokploy Git webhook:** ⚠️ skipped or failed (use compose.deploy API for Compose stacks)" >> "$GITHUB_STEP_SUMMARY"
           fi
           if [ "${{ steps.prod_smoke.outcome }}" = "success" ]; then
             echo "- **Prod:** ✅ on commit \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
