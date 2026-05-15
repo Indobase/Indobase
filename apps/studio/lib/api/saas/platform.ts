@@ -229,6 +229,7 @@ async function ensureSaasTables() {
       $saas_migration$;
 
       create schema if not exists saas;
+      create extension if not exists pgcrypto;
 
       create table if not exists saas.profiles (
         id serial primary key,

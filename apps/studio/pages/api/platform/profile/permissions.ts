@@ -20,13 +20,8 @@ function isProxyLoopback(req: NextApiRequest, target: string) {
 
 const proxyRequest = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!proxyTarget) return false
-  if (isProxyLoopback(req, proxyTarget)) {
-    res.status(500).json({
-      message:
-        'PLATFORM_API_PROXY appears to point back to this Studio host (would recurse). Please set it to the external Platform API base URL (no trailing /api).',
-    })
-    return true
-  }
+  // Prevent infinite recursion if PLATFORM_API_PROXY points back to Studio itself.
+  if (isProxyLoopback(req, proxyTarget)) return false
   const targetUrl = `${proxyTarget}${req.url?.replace(/^\/api/, '') ?? ''}`
   const headers = new Headers()
   Object.entries(req.headers).forEach(([key, value]) => {

@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { executeQuery } from 'lib/api/saas/query'
+
 type CheckResult = {
   status: 'ok' | 'degraded'
   message?: string
@@ -11,7 +13,7 @@ type HealthResponse = {
   timestamp: string
   checks: {
     env: CheckResult & { missing?: string[] }
-    /** SaaS control plane: postgres-meta + Postgres credentials (skipped when NEXT_PUBLIC_INDOBASE_SAAS=false) */
+    /** SaaS control plane: env vars + live postgres-meta query (skipped when NEXT_PUBLIC_INDOBASE_SAAS=false) */
     saasInfra: CheckResult & { missing?: string[] }
     gotrue: CheckResult
     rest: CheckResult
@@ -24,11 +26,7 @@ function isSaaSMode() {
   return process.env.NEXT_PUBLIC_INDOBASE_SAAS !== 'false'
 }
 
-function checkSaaSInfra(): HealthResponse['checks']['saasInfra'] {
-  if (!isSaaSMode()) {
-    return { status: 'ok' }
-  }
-
+function checkSaaSInfraEnv(): { missing: string[]; message?: string } {
   const missing: string[] = []
   if (!process.env.STUDIO_PG_META_URL?.trim()) {
     missing.push('STUDIO_PG_META_URL')
@@ -45,10 +43,34 @@ function checkSaaSInfra(): HealthResponse['checks']['saasInfra'] {
 
   if (missing.length > 0) {
     return {
-      status: 'degraded',
       missing,
       message:
         'SaaS platform APIs need postgres-meta (STUDIO_PG_META_URL), matching PG_META_CRYPTO_KEY, and POSTGRES_PASSWORD — see docker/ENV-FOR-OWN-BACKEND.md',
+    }
+  }
+
+  return { missing: [] }
+}
+
+async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> {
+  if (!isSaaSMode()) {
+    return { status: 'ok' }
+  }
+
+  const envCheck = checkSaaSInfraEnv()
+  if (envCheck.missing.length > 0) {
+    return {
+      status: 'degraded',
+      missing: envCheck.missing,
+      message: envCheck.message,
+    }
+  }
+
+  const probe = await executeQuery<{ ok: number }>({ query: 'select 1 as ok' })
+  if (probe.error) {
+    return {
+      status: 'degraded',
+      message: `postgres-meta query failed: ${probe.error.message}`,
     }
   }
 
@@ -103,7 +125,7 @@ export async function computeHealth(): Promise<HealthResponse> {
     ? await ping(`${restBaseUrl}/rest/v1/`)
     : { status: 'degraded', message: 'SUPABASE_URL is not configured' }
 
-  const saasInfraCheck = checkSaaSInfra()
+  const saasInfraCheck = await checkSaaSInfra()
 
   const checks = {
     env: envCheck,
