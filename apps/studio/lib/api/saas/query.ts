@@ -75,15 +75,31 @@ export async function executeQuery<T = unknown>({
     requestBody.parameters = finalParameters
   }
 
-  const response = await fetch(`${PG_META_URL}/query`, {
-    method: 'POST',
-    headers: constructHeaders({
-      ...headers,
-      'Content-Type': 'application/json',
-      'x-connection-encrypted': connectionStringEncrypted,
-    }),
-    body: JSON.stringify(requestBody),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${PG_META_URL}/query`, {
+      method: 'POST',
+      headers: constructHeaders({
+        ...headers,
+        'Content-Type': 'application/json',
+        'x-connection-encrypted': connectionStringEncrypted,
+      }),
+      body: JSON.stringify(requestBody),
+    })
+  } catch (error) {
+    const cause =
+      error instanceof Error && 'cause' in error && error.cause instanceof Error
+        ? error.cause.message
+        : undefined
+    const detail = cause ? `${error instanceof Error ? error.message : 'fetch failed'} (${cause})` : error instanceof Error ? error.message : 'fetch failed'
+    return {
+      data: undefined,
+      error: new Error(
+        `Cannot reach postgres-meta at ${PG_META_URL}: ${detail}. ` +
+          'Use an internal URL reachable from the Studio container (e.g. http://indobase-meta:8080), not Kong.'
+      ),
+    }
+  }
 
   try {
     const result = await response.json()

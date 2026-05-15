@@ -171,7 +171,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).end()
   }
 
-  const payload = await computeHealth()
+  let payload: HealthResponse
+  try {
+    payload = await computeHealth()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'health check failed'
+    payload = {
+      status: 'degraded',
+      service: 'studio',
+      timestamp: new Date().toISOString(),
+      version: process.env.BUILD_SHA || 'unknown',
+      checks: {
+        env: { status: 'degraded', message },
+        saasInfra: { status: 'degraded', message },
+        gotrue: { status: 'degraded', message },
+        rest: { status: 'degraded', message },
+      },
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-store')
 
   if (req.method === 'HEAD') {

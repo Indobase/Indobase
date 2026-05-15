@@ -77,6 +77,22 @@ STUDIO_DEFAULT_PROJECT=Default Project
 
 Replace `kong` / `meta` / `db` / `analytics` with `indobase-kong`, `indobase-meta`, `indobase-db`, etc. if your Compose file uses those service names.
 
+## Studio cannot reach meta (toast: `fetch failed`)
+
+If `/api/health` returns 500 or `saasInfra` says `Cannot reach postgres-meta`, the **Studio container is not on the same Docker network** as `indobase-meta`, or `STUDIO_PG_META_URL` is wrong.
+
+**Fix (pick one):**
+
+1. Deploy Studio **inside the same Compose stack** as `meta`, `db`, and `kong` (recommended).
+2. In Dokploy, attach the Studio application to the **same network** as the Compose project.
+3. Expose meta on the host and set `STUDIO_PG_META_URL=http://host.docker.internal:<meta-port>` (last resort).
+
+Test from inside the Studio container:
+
+```bash
+wget -qO- http://indobase-meta:8080/health || curl -sS http://indobase-meta:8080/health
+```
+
 ## Verify after restart (meta, then studio)
 
 ```bash

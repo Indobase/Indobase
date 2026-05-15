@@ -76,9 +76,14 @@ export default async function apiWrapper(
 
     const missingPgMeta =
       message.includes('STUDIO_PG_META_URL is not set') ||
-      message.includes('Missing gotrue user id in JWT claims')
+      message.includes('Missing gotrue user id in JWT claims') ||
+      message.includes('Cannot reach postgres-meta')
 
     return res.status(missingPgMeta ? 503 : 500).json({
+      message,
+      hint: message.includes('Cannot reach postgres-meta')
+        ? 'Studio must reach postgres-meta on the Docker network (STUDIO_PG_META_URL=http://indobase-meta:8080). See docker/DOKPLOY-STUDIO-ENV.md'
+        : undefined,
       message,
       error:
         error instanceof Error
