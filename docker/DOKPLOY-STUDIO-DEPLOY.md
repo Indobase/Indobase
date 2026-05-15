@@ -2,7 +2,7 @@
 
 CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health` until `version` matches the commit.
 
-If CI fails with **"prod did not pick up commit … after 10 minutes"**, the image is on Docker Hub but **Dokploy did not run a new container with that image**.
+If the GitHub Actions **Smoke test** step shows a warning (**prod did not pick up commit …**), the image is on Docker Hub but **Dokploy did not run a new container with that image**. The workflow still **passes** (build + push succeeded); fix Dokploy and redeploy manually.
 
 ## Checklist (fix in Dokploy UI)
 
