@@ -398,6 +398,11 @@ services:
     container_name: indobase-meta
     image: supabase/postgres-meta:v0.95.2
     restart: unless-stopped
+    # Split deploy: Studio runs as a separate Dokploy Application (not on this network).
+    # Publish meta on the host so Studio can use STUDIO_PG_META_URL=http://172.17.0.1:8081
+    # (see docker/scripts/dokploy-studio-split-env.sh). Restrict port 8081 in your firewall.
+    ports:
+      - "${PG_META_PUBLISH_PORT:-8081}:8080"
     depends_on:
       db:
         # Disable this if you are using an external Postgres database

@@ -13,12 +13,33 @@ CRYPTO_KEY="your-key-with-plus-signs="
 
 `PG_META_CRYPTO_KEY` on **studio** must equal `CRYPTO_KEY` on **meta** (byte-for-byte).
 
+## Split deploy: Compose backend + separate Studio Application
+
+If Studio is a **separate Dokploy Application** (your setup), it cannot resolve `indobase-meta`. Automate via CI:
+
+1. Compose publishes meta on the host (`PG_META_PUBLISH_PORT=8081` in `docker-compose.yml`).
+2. GitHub Actions runs `docker/scripts/dokploy-studio-split-env.sh` when these secrets exist:
+   - `DOKPLOY_API_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_ID`, `DOKPLOY_COMPOSE_ID`
+3. Script sets on the Studio app:
+   - `STUDIO_PG_META_URL=http://172.17.0.1:8081` (override gateway with secret `DOCKER_GATEWAY_IP` if needed)
+   - `SUPABASE_URL=https://api.indobase.in` (public — not `indobase-kong`)
+
+One-time: add secrets, redeploy Compose once (to expose port 8081), push to `main`. Or run locally:
+
+```bash
+export DOKPLOY_API_URL=… DOKPLOY_API_KEY=… DOKPLOY_APPLICATION_ID=…
+./docker/scripts/dokploy-studio-split-env.sh
+```
+
+Firewall: block public access to port **8081** on the VPS (`ufw deny 8081` or cloud security group).
+
 ## `STUDIO_PG_META_URL`
 
 | Your setup | Use |
 |------------|-----|
 | Studio + meta in same Compose stack | `http://meta:8080` or `http://indobase-meta:8080` |
-| Studio cannot resolve `meta` | `http://indobase-meta:8080` (container name) |
+| Studio separate Application (split) | `http://172.17.0.1:8081` after compose publishes meta (see above) |
+| Studio cannot resolve `meta` | Join Compose network, or use split host port |
 
 Do **not** use:
 

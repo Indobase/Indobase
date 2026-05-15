@@ -175,6 +175,24 @@ jobs:
             -H "x-api-key: $DOKPLOY_API_KEY" \
             -d "{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\"}"
 
+      # Backend Compose + Studio Application: patch STUDIO_PG_META_URL to host-published meta port.
+      - name: Patch Studio split-deploy env (Dokploy API)
+        id: dokploy_studio_split
+        env:
+          DOKPLOY_API_URL: ${{ secrets.DOKPLOY_API_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
+          PG_META_PUBLISH_PORT: ${{ secrets.PG_META_PUBLISH_PORT }}
+          DOCKER_GATEWAY_IP: ${{ secrets.DOCKER_GATEWAY_IP }}
+          SUPABASE_PUBLIC_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+        run: |
+          if [ -z "$DOKPLOY_API_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_ID" ]; then
+            echo "::notice::Skipping split Studio env patch (set DOKPLOY_API_URL, DOKPLOY_API_KEY, DOKPLOY_APPLICATION_ID)"
+            exit 0
+          fi
+          chmod +x docker/scripts/dokploy-studio-split-env.sh
+          docker/scripts/dokploy-studio-split-env.sh
+
       # Liveness only (no postgres-meta). Readiness is /api/health (may be 503 when meta/env is wrong).
       - name: Smoke test — prod /api/health/live version
         id: prod_smoke
