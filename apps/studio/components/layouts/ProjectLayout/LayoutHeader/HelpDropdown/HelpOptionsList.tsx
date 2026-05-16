@@ -1,5 +1,6 @@
 import type { SupportFormUrlKeys } from 'components/interfaces/Support/SupportForm.utils'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
+import { STATUS_PAGE_URL } from 'common/constants/docs-site'
 import { DOCS_URL } from 'lib/constants'
 import { Activity, BookOpen, Mail, Wrench } from 'lucide-react'
 import { useRouter } from 'next/router'
@@ -10,7 +11,7 @@ import type { HelpOptionId } from './HelpDropdown.constants'
 import { HELP_OPTION_IDS } from './HelpDropdown.constants'
 
 const DISCORD_URL = 'https://discord.gg/indobase'
-const STATUS_URL = 'https://status.indobase.in'
+const STATUS_URL = STATUS_PAGE_URL
 
 type HelpOptionsListProps = {
   excludeIds?: HelpOptionId[]

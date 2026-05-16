@@ -71,11 +71,17 @@ async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> 
   }
 
   const metaUrl = process.env.STUDIO_PG_META_URL?.trim() ?? ''
-  if (metaUrl && !/meta/i.test(metaUrl)) {
+  const looksLikePublicApi =
+    /api\.indobase\.in|indobase-kong|:8000\/|\/pg\b/i.test(metaUrl) && !/meta|8080|8081/i.test(metaUrl)
+  const looksLikePostgresMeta =
+    /meta/i.test(metaUrl) ||
+    /:8080\b|:8081\b/.test(metaUrl) ||
+    /^https?:\/\/(127\.0\.0\.1|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(metaUrl)
+  if (metaUrl && looksLikePublicApi && !looksLikePostgresMeta) {
     return {
       status: 'degraded',
       message:
-        `STUDIO_PG_META_URL looks wrong (${metaUrl}): use internal postgres-meta, e.g. http://indobase-meta:8080 — not the public API/Kong URL`,
+        `STUDIO_PG_META_URL looks wrong (${metaUrl}): use postgres-meta on the Docker network (http://indobase-meta:8080) or host-published port (http://172.17.0.1:8081) — not Kong.`,
     }
   }
 

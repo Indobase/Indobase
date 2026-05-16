@@ -3,6 +3,8 @@ import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useReducer, useRef, useState } from 'react'
 import { SSE } from 'sse.js'
 
+import { DOCS_SITE_URL } from 'common/constants/docs-site'
+
 import { BASE_PATH } from '../shared/constants'
 import type { Message, MessageAction, SourceLink } from './utils'
 import { MessageRole, MessageStatus } from './utils'
@@ -28,7 +30,7 @@ export function parseSourcesFromContent(content: string): {
       if (path && path.startsWith('/')) {
         sources.push({
           path,
-          url: `https://supabase.com/docs${path}`,
+          url: `${DOCS_SITE_URL}${path}`,
         })
       }
     }

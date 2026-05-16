@@ -4,6 +4,7 @@ import type { UseFormReturn } from 'react-hook-form'
 // End of third-party imports
 
 import { CLIENT_LIBRARIES } from 'common/constants'
+import { GITHUB_ORG_REPO_URL } from 'common/constants/docs-site'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import {
   Button,
@@ -111,12 +112,12 @@ const LibrarySuggestions = ({ library }: LibrarySuggestionsProps) => {
           )}
         >
           <div className="space-y-1">
-            <p className="text-sm">supabase</p>
+            <p className="text-sm">Indobase</p>
             <p className="text-sm text-foreground-light">For any issues about our API</p>
           </div>
           <div>
             <Button asChild type="default" icon={<ExternalLink size={14} strokeWidth={1.5} />}>
-              <Link href="https://github.com/supabase/supabase" target="_blank" rel="noreferrer">
+              <Link href={GITHUB_ORG_REPO_URL} target="_blank" rel="noreferrer">
                 View GitHub issues
               </Link>
             </Button>

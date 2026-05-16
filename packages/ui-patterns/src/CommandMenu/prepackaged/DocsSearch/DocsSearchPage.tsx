@@ -6,6 +6,7 @@ import {
   DocsSearchResultType as PageType,
   useDocsSearch,
 } from 'common'
+import { DOCS_SITE_URL } from 'common/constants/docs-site'
 import { Book, ChevronRight, Github, Hash, Loader2, MessageSquare, Search } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { Button, CommandGroup_Shadcn_, CommandItem_Shadcn_, CommandList_Shadcn_, cn } from 'ui'
@@ -91,7 +92,7 @@ const DocsSearchPage = () => {
           router.push(`/docs${link}`)
           setIsOpen(false)
         } else {
-          window.open(`https://supabase.com/docs${link}`, '_blank', 'noreferrer,noopener')
+          window.open(`${DOCS_SITE_URL}${link}`, '_blank', 'noreferrer,noopener')
           setIsOpen(false)
         }
         break
@@ -100,7 +101,7 @@ const DocsSearchPage = () => {
           router.push(link)
           setIsOpen(false)
         } else {
-          window.open(`https://supabase.com${link}`, '_blank', 'noreferrer,noopener')
+          window.open(`${DOCS_SITE_URL.replace(/\/docs$/, '')}${link}`, '_blank', 'noreferrer,noopener')
           setIsOpen(false)
         }
         break

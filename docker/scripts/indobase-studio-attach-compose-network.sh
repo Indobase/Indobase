@@ -34,3 +34,20 @@ done
 if [ "$connected" -eq 0 ]; then
   echo "no studio containers needed $COMPOSE_NETWORK"
 fi
+
+# Optional: verify postgres-meta from the newest Studio task (non-fatal).
+studio_id="$(docker ps -q --filter "name=${STUDIO_NAME_FILTER}" --filter 'status=running' | head -1)"
+if [ -n "$studio_id" ]; then
+  if docker exec "$studio_id" wget -qO- --timeout=3 http://indobase-meta:8080/health >/dev/null 2>&1 \
+    || docker exec "$studio_id" curl -fsS -m 3 http://indobase-meta:8080/health >/dev/null 2>&1; then
+    echo "postgres-meta reachable from studio via indobase-meta:8080"
+  else
+    meta_port="${PG_META_PUBLISH_PORT:-8081}"
+    if docker exec "$studio_id" wget -qO- --timeout=3 "http://172.17.0.1:${meta_port}/health" >/dev/null 2>&1 \
+      || docker exec "$studio_id" curl -fsS -m 3 "http://172.17.0.1:${meta_port}/health" >/dev/null 2>&1; then
+      echo "postgres-meta reachable from studio via 172.17.0.1:${meta_port}"
+    else
+      echo "WARN: studio cannot reach postgres-meta (check STUDIO_PG_META_URL)" >&2
+    fi
+  fi
+fi

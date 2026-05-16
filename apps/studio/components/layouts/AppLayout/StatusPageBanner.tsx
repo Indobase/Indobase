@@ -4,7 +4,7 @@ import { useStatusPageBannerVisibility } from './useStatusPageBannerVisibility'
 
 const BANNER_DESCRIPTION = (
   <>
-    Follow the <InlineLink href="https://status.indobase.in">status page</InlineLink> for updates
+    Follow the <InlineLink href="https://studio.indobase.in/api/health/live">status page</InlineLink> for updates
   </>
 )
 

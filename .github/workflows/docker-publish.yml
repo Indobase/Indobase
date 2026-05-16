@@ -234,6 +234,24 @@ jobs:
             echo "::warning::Readiness degraded — fix STUDIO_PG_META_URL / PG_META_CRYPTO_KEY / Docker network (studio must reach indobase-meta:8080)"
           fi
 
+      - name: Post-deploy — attach Studio to compose network (VPS)
+        if: steps.prod_smoke.outcome == 'success'
+        continue-on-error: true
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          KEY="${VPS_SSH_KEY:-}"
+          if [ -z "$KEY" ]; then
+            echo "::notice::Skipping VPS attach (set VPS_SSH_KEY secret for automatic postgres-meta network fix)"
+            exit 0
+          fi
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          ssh -o StrictHostKeyChecking=accept-new -i "$KEY_FILE" root@187.77.30.165 \
+            '/usr/local/bin/indobase-studio-attach-compose-network.sh'
+
       - name: Deploy summary
         if: always()
         run: |
