@@ -311,10 +311,21 @@ export async function bootstrapTenantDataPlaneSchemas({
         'select exists(select 1 from pg_roles where rolname = $1)',
         [role]
       )
-      if (!exists.rows[0]?.exists) {
+      const roleExists = Boolean(exists.rows[0]?.exists)
+      if (!roleExists) {
+        if (!isSuperuser) {
+          console.warn(
+            '[provision-tenant-db] aux role %s missing on cluster; skip create (non-superuser provision admin)',
+            role
+          )
+          continue
+        }
         await client.query(`create role ${quotePgIdent(role)} login`)
+        await client.query(`alter role ${quotePgIdent(role)} password ${pwLit}`)
+      } else if (isSuperuser) {
+        await client.query(`alter role ${quotePgIdent(role)} password ${pwLit}`)
       }
-      await client.query(`alter role ${quotePgIdent(role)} password ${pwLit}`)
+      // Cluster-wide reserved roles already exist: non-superuser cannot alter their passwords.
     }
 
     const dbLit = `"${dbName.replace(/"/g, '""')}"`
