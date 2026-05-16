@@ -30,7 +30,22 @@ export function defaultStorageConfigResponse(): components['schemas']['StorageCo
 }
 
 export function defaultEntitlementsResponse(): components['schemas']['ListEntitlementsResponse'] {
-  return { entitlements: [] }
+  return {
+    entitlements: [
+      {
+        feature: { key: 'branching_limit' },
+        type: 'numeric',
+        hasAccess: true,
+        config: { enabled: true, unlimited: true, value: 50 },
+      },
+      {
+        feature: { key: 'branching_persistent' },
+        type: 'boolean',
+        hasAccess: true,
+        config: { enabled: true },
+      },
+    ],
+  } as components['schemas']['ListEntitlementsResponse']
 }
 
 export function defaultOrgUsageResponse(): components['schemas']['OrgUsageResponse'] {

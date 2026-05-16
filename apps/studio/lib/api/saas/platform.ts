@@ -350,9 +350,19 @@ export async function ensureSaasTables() {
       alter table saas.projects add column if not exists jwt_secret_enc text null;
       alter table saas.projects add column if not exists jwt_secret_update_meta jsonb null;
       alter table saas.projects add column if not exists auth_config jsonb null;
+      alter table saas.projects add column if not exists parent_project_ref text null;
+      alter table saas.projects add column if not exists branch_uuid uuid not null default gen_random_uuid();
+      alter table saas.projects add column if not exists branch_name text null;
+      alter table saas.projects add column if not exists git_branch text null;
+      alter table saas.projects add column if not exists branch_persistent boolean not null default false;
+      alter table saas.projects add column if not exists branch_with_data boolean not null default false;
+      alter table saas.projects add column if not exists preview_branching_enabled boolean not null default false;
 
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
+      create index if not exists projects_parent_project_ref_idx
+        on saas.projects (parent_project_ref)
+        where parent_project_ref is not null;
 
       create table if not exists saas.user_notifications (
         id uuid primary key default gen_random_uuid(),
@@ -1434,6 +1444,7 @@ export async function listProjects({
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where m.gotrue_id = $1
+        and p.is_branch = false
       ${qSearch ? `and (p.name ilike '%' || $2 || '%' or p.ref ilike '%' || $2 || '%')` : ''}
     `,
     parameters: qSearch ? [gotrueId, qSearch] : [gotrueId],
@@ -1453,6 +1464,7 @@ export async function listProjects({
     inserted_at: string | null
     is_branch: boolean
     preview_branch_refs: string[]
+    preview_branching_enabled: boolean
     subscription_id: string
     has_dedicated_database: boolean
     data_plane_last_provisioned_at: string | null
@@ -1471,6 +1483,7 @@ export async function listProjects({
         p.inserted_at as inserted_at,
         p.is_branch,
         p.preview_branch_refs,
+        coalesce(p.preview_branching_enabled, false) as preview_branching_enabled,
         p.subscription_id,
         (coalesce(trim(p.connection_string_enc), '') <> '' or coalesce(trim(p.connection_string), '') <> '') as has_dedicated_database,
         p.data_plane_last_provisioned_at,
@@ -1478,6 +1491,7 @@ export async function listProjects({
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where m.gotrue_id = $1
+        and p.is_branch = false
       ${qSearch ? `and (p.name ilike '%' || $2 || '%' or p.ref ilike '%' || $2 || '%')` : ''}
       order by p.name asc
       limit $${qSearch ? 3 : 2} offset $${qSearch ? 4 : 3}
@@ -1497,7 +1511,11 @@ export async function listProjects({
       cloud_provider: p.cloud_provider,
       id: p.id,
       inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : null,
-      is_branch_enabled: p.is_branch,
+      is_branch_enabled:
+        !p.is_branch &&
+        (process.env.SAAS_BRANCHING_ENABLED !== 'false' ||
+          Boolean(p.preview_branching_enabled) ||
+          (p.preview_branch_refs?.length ?? 0) > 0),
       is_physical_backups_enabled: false,
       name: p.name,
       organization_id: p.organization_id,
@@ -1525,7 +1543,7 @@ export async function listProjects({
  * Finishes dedicated-tenant provisioning after insert (or repairs a stuck PROVISIONING row).
  * Idempotent: reuses existing tenant DB/role when present.
  */
-async function finalizeDedicatedProjectProvisioning({
+export async function finalizeDedicatedProjectProvisioning({
   projectRef,
   gotrueId,
   deleteOnFailure,
@@ -1912,7 +1930,7 @@ export async function createProject({
     status: 'ACTIVE_HEALTHY',
     subscription_id: null,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : null,
-    is_branch_enabled: false,
+    is_branch_enabled: process.env.SAAS_BRANCHING_ENABLED !== 'false',
     is_physical_backups_enabled: false,
   }
 }
@@ -1933,7 +1951,9 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     status: string
     inserted_at: string | null
     is_branch: boolean
+    parent_project_ref: string | null
     preview_branch_refs: string[]
+    preview_branching_enabled: boolean
     service_key: string
     anon_key: string
     connection_string: string | null
@@ -1952,7 +1972,9 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.status,
         p.inserted_at,
         p.is_branch,
+        p.parent_project_ref,
         p.preview_branch_refs,
+        coalesce(p.preview_branching_enabled, false) as preview_branching_enabled,
         p.service_key,
         p.anon_key,
         p.connection_string,
@@ -2025,10 +2047,15 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     db_host: process.env.POSTGRES_HOST || '127.0.0.1',
     id: p.id,
     inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString(),
-    is_branch_enabled: p.is_branch,
+    is_branch_enabled:
+      !p.is_branch &&
+      (process.env.SAAS_BRANCHING_ENABLED !== 'false' ||
+        Boolean(p.preview_branching_enabled) ||
+        (p.preview_branch_refs?.length ?? 0) > 0),
     is_physical_backups_enabled: false,
     name: p.name,
     organization_id: p.organization_id,
+    parent_project_ref: p.parent_project_ref ?? undefined,
     ref: p.ref,
     region: p.region,
     restUrl,
@@ -3219,7 +3246,7 @@ export async function listOrganizationProjects({
   const qSearch = search?.trim()
 
   // Minimal filtering: ignore `statuses` for now (frontend uses it, but it isn't essential for CRUD).
-  const baseWhere = `o.slug = $1 and m.gotrue_id = $2`
+  const baseWhere = `o.slug = $1 and m.gotrue_id = $2 and p.is_branch = false`
 
   const countParams: any[] = [slug, gotrueId]
   const countWhere = qSearch
