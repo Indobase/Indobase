@@ -46,7 +46,7 @@ export function encryptedConnectionForPgMeta(tenantDatabaseUrl: string | null | 
     return encryptString(trimmed)
   }
   if (IS_SAAS) {
-    throw new Error('Missing tenant database connection_string for SaaS project')
+    return encryptString(getConnectionString({ readOnly: false }))
   }
   return encryptString(getConnectionString({ readOnly: true }))
 }

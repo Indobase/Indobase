@@ -1,6 +1,6 @@
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
-import { resolveEncryptedPgMetaConnectionForProject } from 'lib/api/saas/project-connection'
+import { constructSaasPgMetaHeaders } from 'lib/api/saas/pg-meta-headers'
 import { executeQuery } from 'lib/api/saas/query'
 import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
@@ -129,24 +129,11 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
 }
 
 async function buildPgMetaHeaders(req: NextApiRequest, claims?: JwtPayload) {
-  const headers = new Headers(constructHeaders(req.headers))
-  if (!IS_SAAS || !claims) return headers
-
-  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
-  if (!ref) return headers
-
-  try {
-    const encrypted = await resolveEncryptedPgMetaConnectionForProject({
-      claims,
-      ref,
-      incomingEncrypted: headers.get('x-connection-encrypted'),
-    })
-    headers.set('x-connection-encrypted', encrypted)
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    throw Object.assign(new Error(message), { statusCode: 400 })
+  const record = await constructSaasPgMetaHeaders(req, claims)
+  if (IS_SAAS && claims && !record['x-connection-encrypted']?.trim()) {
+    throw new Error('No database connection is configured for this project.')
   }
-  return headers
+  return new Headers(record)
 }
 
 function containsAuthUsersQuery(query: string) {

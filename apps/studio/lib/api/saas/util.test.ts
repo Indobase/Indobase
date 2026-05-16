@@ -172,13 +172,23 @@ describe('api/saas/util', () => {
       )
     })
 
-    it('throws in SaaS mode when tenant URL is missing', async () => {
+    it('falls back to shared POSTGRES_* when tenant URL is missing (SaaS)', async () => {
       vi.resetModules()
       vi.stubEnv('NEXT_PUBLIC_INDOBASE_SAAS', 'true')
+      vi.stubEnv('POSTGRES_HOST', 'db.saas-fallback')
+      vi.stubEnv('POSTGRES_PORT', '5432')
+      vi.stubEnv('POSTGRES_DB', 'postgres')
+      vi.stubEnv('POSTGRES_PASSWORD', 'pw')
+      vi.stubEnv('POSTGRES_USER_READ_WRITE', 'postgres')
       vi.doMock('lib/constants', () => ({ IS_SAAS: true }))
 
+      const crypto = await import('crypto-js')
+      vi.mocked(crypto.default.AES.encrypt).mockReturnValue({
+        toString: () => 'saas-fallback-encrypted',
+      } as any)
+
       const { encryptedConnectionForPgMeta: enc } = await import('./util')
-      expect(() => enc(null)).toThrow(/Missing tenant database connection_string/i)
+      expect(enc(null)).toBe('saas-fallback-encrypted')
     })
   })
 })
