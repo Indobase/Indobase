@@ -77,7 +77,8 @@ import {
 import { formatUserColumns, formatUsersData } from './Users.utils'
 import { UsersFooter } from './UsersFooter'
 import { UsersSearch } from './UsersSearch'
-import { PROJECT_STATUS } from '@/lib/constants/infrastructure'
+import { isProjectDatabaseReady } from 'lib/api/saas/project-runtime'
+import { IS_SAAS } from 'lib/constants'
 
 const SORT_BY_VALUE_COUNT_THRESHOLD = 10_000
 const IMPROVED_SEARCH_COUNT_THRESHOLD = 10_000
@@ -286,6 +287,10 @@ export const UsersV2 = () => {
     authConfig?.INDEX_WORKER_ENSURE_USER_SEARCH_INDEXES_EXIST === true &&
     indexWorkerStatus?.is_in_progress === true
 
+  const improvedSearchPrerequisitesReady =
+    !isImprovedUserSearchFlagEnabled ||
+    (!isUserSearchIndexesLoading && !isAuthConfigLoading && !isIndexWorkerStatusLoading)
+
   const {
     data,
     error,
@@ -323,9 +328,11 @@ export const UsersV2 = () => {
       // a barrage of requests to invalidate each page esp when the project has many many users.
       staleTime: Infinity,
       // NOTE(iat): query the user data only after we know whether to show improved search or not
-      enabled: !isUserSearchIndexesLoading && !isAuthConfigLoading && !isIndexWorkerStatusLoading,
+      enabled: improvedSearchPrerequisitesReady,
     }
   )
+
+  const canQueryUsers = isProjectDatabaseReady(project)
 
   const { mutateAsync: deleteUser } = useUserDeleteMutation()
   const ensureAuthSchema = useEnsureAuthSchemaMutation()
@@ -872,13 +879,14 @@ export const UsersV2 = () => {
                     <div className="absolute top-14 px-6 w-full">
                       <GenericSkeletonLoader />
                     </div>
-                  ) : project?.status !== PROJECT_STATUS.ACTIVE_HEALTHY || isProjectError ? (
+                  ) : !canQueryUsers || isProjectError ? (
                     <div className="absolute top-14 px-6 flex flex-col items-center justify-center w-full">
                       <AlertError
                         subject="Unable to load users"
                         error={{
-                          message:
-                            'Could not connect to the database. Please check your project status.',
+                          message: IS_SAAS
+                            ? 'Could not connect to the project database. Provision a dedicated database or wait for the data plane to finish starting.'
+                            : 'Could not connect to the database. Please check your project status.',
                         }}
                       />
                     </div>

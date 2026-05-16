@@ -39,6 +39,8 @@ const SAAS_POSTHOG_FEATURE_FLAGS: Record<string, boolean | string> = {
   tableEditorNewFilterBar: true,
   unifiedLogs: true,
   unifiedReplication: true,
+  connectSheet: true,
+  homeNew: 'new-home',
   // Billing / cloud-only — keep off for self-hosted SaaS
   customDomainsDisabledDueToQuota: false,
   disableProjectCreationAndUpdate: false,
@@ -116,6 +118,8 @@ const SAAS_CONFIGCAT_FEATURE_FLAGS: Record<string, boolean> = {
   textConfirmationModalClickToCopy: true,
   unifiedLogs: true,
   unifiedReplication: true,
+  connectSheet: true,
+  homeNew: true,
 }
 
 /** Default PostHog feature flags for Indobase SaaS (no cloud telemetry backend). */

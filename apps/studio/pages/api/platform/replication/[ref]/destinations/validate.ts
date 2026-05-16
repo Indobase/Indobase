@@ -6,7 +6,7 @@ import {
   methodNotAllowed,
 } from 'lib/api/saas/replication-stubs'
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler, { withAuth: true })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {

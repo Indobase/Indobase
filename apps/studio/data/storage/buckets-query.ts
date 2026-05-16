@@ -5,7 +5,7 @@ import { components } from 'api-types'
 import { get, handleError } from 'data/fetchers'
 import { MAX_RETRY_FAILURE_COUNT } from 'data/query-client'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { PROJECT_STATUS } from 'lib/constants'
+import { isProjectPlatformApiReady } from 'lib/api/saas/project-runtime'
 import {
   ResponseError,
   type UseCustomInfiniteQueryOptions,
@@ -116,12 +116,12 @@ export const useBucketQuery = <TData = BucketData>(
   { enabled = true, ...options }: UseCustomQueryOptions<BucketData, BucketsError, TData>
 ) => {
   const { data: project } = useSelectedProjectQuery()
-  const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const canLoad = isProjectPlatformApiReady(project)
 
   return useQuery<BucketData, BucketsError, TData>({
     queryKey: storageKeys.bucket(projectRef, bucketId),
     queryFn: ({ signal }) => getBucket({ projectRef, bucketId }, signal),
-    enabled: enabled && !!bucketId && isActive,
+    enabled: enabled && !!bucketId && canLoad,
     ...options,
     retry: shouldRetryBucketsQuery,
   })
@@ -162,7 +162,7 @@ export const usePaginatedBucketsQuery = <TData = BucketsWithPaginationData>(
   > = {}
 ) => {
   const { data: project } = useSelectedProjectQuery()
-  const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const canLoad = isProjectPlatformApiReady(project)
 
   const { placeholderData, ...restOptions } = options
 
@@ -170,7 +170,7 @@ export const usePaginatedBucketsQuery = <TData = BucketsWithPaginationData>(
     queryKey: storageKeys.bucketsList(projectRef, params),
     queryFn: ({ signal, pageParam }) =>
       getBucketsPaginated({ projectRef, page: pageParam, ...params }, signal),
-    enabled: enabled && typeof projectRef !== 'undefined' && isActive,
+    enabled: enabled && typeof projectRef !== 'undefined' && canLoad,
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       const nextPageNumber = pages.length

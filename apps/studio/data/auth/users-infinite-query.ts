@@ -9,8 +9,8 @@ import { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-use
 import type { components } from 'data/api'
 import { executeSql, ExecuteSqlError } from 'data/sql/execute-sql-query'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { PROJECT_STATUS } from 'lib/constants'
 import { IS_SAAS } from 'lib/constants'
+import { isProjectDatabaseReady } from 'lib/api/saas/project-runtime'
 import { UseCustomInfiniteQueryOptions } from 'types'
 import { authKeys } from './keys'
 
@@ -61,7 +61,7 @@ export const useUsersInfiniteQuery = <TData = UsersData>(
   > = {}
 ) => {
   const { data: project } = useSelectedProjectQuery()
-  const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const canQueryDatabase = isProjectDatabaseReady(project)
   const user = useUser()
   const scopedUserId = IS_SAAS ? undefined : user?.id
 
@@ -97,7 +97,7 @@ export const useUsersInfiniteQuery = <TData = UsersData>(
         signal
       )
     },
-    enabled: enabled && typeof projectRef !== 'undefined' && isActive,
+    enabled: enabled && typeof projectRef !== 'undefined' && canQueryDatabase,
     initialPageParam: undefined,
     getNextPageParam(lastPage, pages) {
       const hasNextPage = lastPage.result.length >= USERS_PAGE_LIMIT

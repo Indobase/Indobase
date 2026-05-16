@@ -34,10 +34,11 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
     ...(sortOrder ? { sortOrder } : {}),
   })
   if (error) {
-    return res.status(500).json({ error: { message: 'Internal Server Error' } })
+    console.warn('[storage/buckets] listBuckets failed: %s', error.message)
+    return res.status(200).json([])
   }
 
-  return res.status(200).json(data)
+  return res.status(200).json(data ?? [])
 }
 
 const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {

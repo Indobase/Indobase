@@ -27,7 +27,7 @@ async function fetchGoTruePublicSettings(
         apikey: apiKey,
         Authorization: `Bearer ${apiKey}`,
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(3000),
     })
     if (!res.ok) return null
     return (await res.json()) as GoTruePublicSettings
@@ -93,10 +93,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
   const hasProvisioned = Boolean(p.data_plane_last_provisioned_at)
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(
-    ref,
-    hasDedicated && hasProvisioned
-  )
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisioned)
   const apiOrigin = `${protocol}://${endpointHost}`
 
   return {
@@ -104,6 +101,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
     apiOrigin,
     siteUrl: apiOrigin,
     storedConfig: (p.auth_config ?? {}) as Partial<GoTrueConfigResponse>,
+    hasProvisionedDataPlane: hasProvisioned,
   }
 }
 
@@ -124,7 +122,7 @@ export async function getProjectGoTrueConfig({
 
   if (hasStoredOverrides) {
     Object.assign(config, ctx.storedConfig)
-  } else {
+  } else if (ctx.hasProvisionedDataPlane) {
     const live = await fetchGoTruePublicSettings(ctx.apiOrigin, ctx.anonKey)
     if (live) applyPublicSettings(config, live)
   }

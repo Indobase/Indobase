@@ -12,6 +12,8 @@ describe('platform-stubs', () => {
     expect(flags.unifiedLogs).toBe(true)
     expect(flags.gitlessBranching).toBe(true)
     expect(flags.allowDataBranching).toBe(true)
+    expect(flags.connectSheet).toBe(true)
+    expect(flags.homeNew).toBe('new-home')
     expect(flags.newHomepageUsageV2).toBe(false)
   })
 
