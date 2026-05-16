@@ -2378,6 +2378,54 @@ export async function bulkBackfillTenantDataPlaneBootstrap({
   return { results }
 }
 
+/** SMTP + mailer settings for tenant GoTrue (shared control-plane mail or SAAS_TENANT_SMTP_*). */
+function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: string }) {
+  const smtpHost =
+    process.env.SAAS_TENANT_SMTP_HOST?.trim() || process.env.SMTP_HOST?.trim() || 'indobase-mail'
+  const smtpPort =
+    process.env.SAAS_TENANT_SMTP_PORT?.trim() || process.env.SMTP_PORT?.trim() || '2500'
+  const smtpUser = process.env.SAAS_TENANT_SMTP_USER?.trim() ?? process.env.SMTP_USER?.trim() ?? ''
+  const smtpPass = process.env.SAAS_TENANT_SMTP_PASS?.trim() ?? process.env.SMTP_PASS?.trim() ?? ''
+  const smtpAdminEmail =
+    process.env.SAAS_TENANT_SMTP_ADMIN_EMAIL?.trim() ||
+    process.env.SMTP_ADMIN_EMAIL?.trim() ||
+    'auth@indobase.in'
+  const smtpSenderName =
+    process.env.SAAS_TENANT_SMTP_SENDER_NAME?.trim() ||
+    process.env.SMTP_SENDER_NAME?.trim() ||
+    'Indobase'
+  const autoConfirmRaw =
+    process.env.SAAS_TENANT_MAILER_AUTOCONFIRM?.trim() ??
+    process.env.ENABLE_EMAIL_AUTOCONFIRM?.trim() ??
+    'false'
+  const autoConfirm = autoConfirmRaw === 'true' ? 'true' : 'false'
+
+  const hosts = new Set<string>()
+  for (const raw of [opts.apiExternalUrl, opts.siteUrl]) {
+    try {
+      const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`)
+      if (u.hostname) hosts.add(u.hostname)
+    } catch {
+      // ignore
+    }
+  }
+  for (const h of (process.env.SAAS_MAILER_EXTERNAL_HOSTS ?? '').split(',')) {
+    const t = h.trim()
+    if (t) hosts.add(t)
+  }
+
+  return {
+    autoConfirm: composeYamlSingleQuoted(autoConfirm),
+    externalHosts: composeYamlSingleQuoted([...hosts].join(',')),
+    smtpHost: composeYamlSingleQuoted(smtpHost),
+    smtpPort: composeYamlSingleQuoted(smtpPort),
+    smtpUser: composeYamlSingleQuoted(smtpUser),
+    smtpPass: composeYamlSingleQuoted(smtpPass),
+    smtpAdminEmail: composeYamlSingleQuoted(smtpAdminEmail),
+    smtpSenderName: composeYamlSingleQuoted(smtpSenderName),
+  }
+}
+
 function buildSlimTenantDockerCompose(opts: {
   ref: string
   ports: {
@@ -2415,6 +2463,10 @@ function buildSlimTenantDockerCompose(opts: {
     auxDbPassword: string
   } | null
 }): string {
+  const mailer = resolveTenantGoTrueMailerEnv({
+    apiExternalUrl: opts.apiExternalUrl,
+    siteUrl: opts.siteUrl,
+  })
   const net = (process.env.SAAS_DOCKER_NETWORK_NAME || 'indobase_default').trim()
   const functionsHostPath = (
     process.env.SAAS_TENANT_FUNCTIONS_HOST_PATH || process.env.INDOBASE_FUNCTIONS_DIR || ''
@@ -2541,13 +2593,18 @@ services:
       GOTRUE_DISABLE_SIGNUP: "false"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
-      GOTRUE_MAILER_AUTOCONFIRM: "false"
-      GOTRUE_SMTP_HOST: ""
-      GOTRUE_SMTP_PORT: "587"
-      GOTRUE_SMTP_USER: ""
-      GOTRUE_SMTP_PASS: ""
-      GOTRUE_SMTP_ADMIN_EMAIL: "noreply@localhost"
-      GOTRUE_SMTP_SENDER_NAME: local
+      GOTRUE_MAILER_AUTOCONFIRM: ${mailer.autoConfirm}
+      GOTRUE_MAILER_EXTERNAL_HOSTS: ${mailer.externalHosts}
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_SMTP_HOST: ${mailer.smtpHost}
+      GOTRUE_SMTP_PORT: ${mailer.smtpPort}
+      GOTRUE_SMTP_USER: ${mailer.smtpUser}
+      GOTRUE_SMTP_PASS: ${mailer.smtpPass}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${mailer.smtpAdminEmail}
+      GOTRUE_SMTP_SENDER_NAME: ${mailer.smtpSenderName}
     ports:
       - "127.0.0.1:${opts.ports.auth}:9999"
 

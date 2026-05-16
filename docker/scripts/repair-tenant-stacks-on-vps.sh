@@ -9,6 +9,10 @@ NET_NAME="${SAAS_DOCKER_NETWORK_NAME:-indobase-backend-bmqhan_default}"
 PG_ADMIN_USER="${PG_ADMIN_USER:-supabase_admin}"
 PG_ADMIN_PASSWORD="${PG_ADMIN_PASSWORD:-${POSTGRES_PASSWORD:-}}"
 AUX_PASS="${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}"
+SMTP_HOST="${SAAS_TENANT_SMTP_HOST:-${SMTP_HOST:-indobase-mail}}"
+SMTP_PORT="${SAAS_TENANT_SMTP_PORT:-${SMTP_PORT:-2500}}"
+SMTP_ADMIN_EMAIL="${SAAS_TENANT_SMTP_ADMIN_EMAIL:-${SMTP_ADMIN_EMAIL:-auth@indobase.in}}"
+SMTP_SENDER_NAME="${SAAS_TENANT_SMTP_SENDER_NAME:-${SMTP_SENDER_NAME:-Indobase}}"
 
 if [[ -z "$PG_ADMIN_PASSWORD" ]]; then
   echo "Set PG_ADMIN_PASSWORD or POSTGRES_PASSWORD (supabase_admin login)" >&2
@@ -40,6 +44,41 @@ repair_ref() {
   if grep -q 'name: indobase_default' "$dir/docker-compose.yml" 2>/dev/null; then
     sed -i "s/name: indobase_default/name: ${NET_NAME}/g" "$dir/docker-compose.yml"
     echo "  patched external network -> $NET_NAME"
+  fi
+
+  # Tenant GoTrue must reach shared mail (Inbucket or production SMTP) on the compose network.
+  if grep -q 'GOTRUE_SMTP_HOST:' "$dir/docker-compose.yml" 2>/dev/null; then
+  python3 - "$dir/docker-compose.yml" "$ref" <<'PY'
+import re, sys
+path, ref = sys.argv[1], sys.argv[2]
+import os
+smtp_host = os.environ.get("SMTP_HOST", "indobase-mail")
+smtp_port = os.environ.get("SMTP_PORT", "2500")
+smtp_admin = os.environ.get("SMTP_ADMIN_EMAIL", "auth@indobase.in")
+smtp_sender = os.environ.get("SMTP_SENDER_NAME", "Indobase")
+domain = os.environ.get("SAAS_PUBLIC_DOMAIN", "indobase.in").strip().lstrip("https://").split("/")[0]
+api_host = f"{ref}.{domain}"
+text = open(path).read()
+replacements = {
+    r'GOTRUE_SMTP_HOST:.*': f'GOTRUE_SMTP_HOST: "{smtp_host}"',
+    r'GOTRUE_SMTP_PORT:.*': f'GOTRUE_SMTP_PORT: "{smtp_port}"',
+    r'GOTRUE_SMTP_USER:.*': 'GOTRUE_SMTP_USER: ""',
+    r'GOTRUE_SMTP_PASS:.*': 'GOTRUE_SMTP_PASS: ""',
+    r'GOTRUE_SMTP_ADMIN_EMAIL:.*': f'GOTRUE_SMTP_ADMIN_EMAIL: "{smtp_admin}"',
+    r'GOTRUE_SMTP_SENDER_NAME:.*': f'GOTRUE_SMTP_SENDER_NAME: {smtp_sender}',
+    r'GOTRUE_MAILER_AUTOCONFIRM:.*': 'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+}
+for pat, val in replacements.items():
+    text, n = re.subn(pat, val, text, count=1)
+if "GOTRUE_MAILER_EXTERNAL_HOSTS:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" in text:
+    text = text.replace(
+        'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+        f'GOTRUE_MAILER_AUTOCONFIRM: "false"\n      GOTRUE_MAILER_EXTERNAL_HOSTS: "{api_host},api.{domain},studio.{domain}"',
+        1,
+    )
+open(path, "w").write(text)
+PY
+    echo "  patched tenant-auth SMTP -> ${SMTP_HOST}:${SMTP_PORT}"
   fi
 
   for role in authenticator supabase_admin supabase_auth_admin supabase_storage_admin; do
