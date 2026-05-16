@@ -52,6 +52,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, _claims?: JwtP
 
   switch (req.method) {
     case 'GET':
+      return res.status(200).json([])
     case 'POST':
     case 'DELETE':
     case 'PATCH':

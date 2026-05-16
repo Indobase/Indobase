@@ -110,7 +110,8 @@ export function useCheckEntitlements(
     : isSuccessEntitlements
 
   return {
-    hasAccess: IS_SAAS ? entitlement?.hasAccess ?? false : true,
+    // Indobase SaaS: missing entitlement rows default to allowed (self-hosted parity).
+    hasAccess: IS_SAAS ? (entitlement?.hasAccess ?? true) : true,
     isLoading: IS_SAAS ? isLoading : false,
     isSuccess: IS_SAAS ? isSuccess : true,
     getEntitlementNumericValue: () => getEntitlementNumericValue(entitlement),
