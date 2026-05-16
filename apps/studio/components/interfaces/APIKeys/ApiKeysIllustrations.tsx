@@ -20,25 +20,25 @@ import { SupportLink } from '../Support/SupportLink'
 import { ApiKeyPill } from './ApiKeyPill'
 import { CreateNewAPIKeysButton } from './CreateNewAPIKeysButton'
 
-// Mock API Keys for demo
+// Illustration-only examples (not real keys)
 const mockApiKeys = [
   {
     id: 'mock-id-2',
     type: 'publishable',
-    api_key: 'sb_publishable_ltaNA7nnVozoSCOcZIjg',
-    name: 'web',
+    api_key: 'eyJhbGciOiJIUzI1NiIs•••••••••••••',
+    name: 'example_web',
   },
   {
     id: 'mock-id-3',
     type: 'publishable',
-    api_key: 'sb_publishable_YpotEpinEWsC2dI7FIKI',
-    name: 'mobile',
+    api_key: 'eyJhbGciOiJIUzI1NiIs•••••••••••••',
+    name: 'example_mobile',
   },
   {
     id: 'mock-id-1',
     type: 'secret',
-    api_key: 'sb_secret_8I4Se•••••••••••••',
-    name: 'backend_api',
+    api_key: 'eyJhbGciOiJIUzI1NiIs•••••••••••••',
+    name: 'example_backend',
   },
 ] as Extract<APIKeysData[number], { type: 'secret' | 'publishable' }>[]
 
@@ -49,7 +49,10 @@ const ApiKeysTableIllustration = () => {
   return (
     <Card className="w-full overflow-hidden opacity-60 pointer-events-none bg-surface-100">
       <CardContent className="p-0">
-        <Table className="p-5">
+        <p className="px-5 pt-4 text-xs font-medium uppercase tracking-wide text-foreground-lighter">
+          Example preview — not your project keys
+        </p>
+        <Table className="p-5 pt-2">
           <TableHeader>
             <TableRow className="bg-200">
               <TableHead

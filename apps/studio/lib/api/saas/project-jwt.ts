@@ -19,7 +19,8 @@ function base64Url(input: Buffer | string) {
 export function makeProjectJwt(
   jwtSecret: string,
   role: 'anon' | 'service_role',
-  projectRef: string
+  projectRef: string,
+  extraClaims?: Record<string, unknown>
 ): string {
   const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const now = Math.floor(Date.now() / 1000)
@@ -30,6 +31,7 @@ export function makeProjectJwt(
       project_ref: projectRef,
       iat: now,
       exp: now + 60 * 60 * 24 * 365 * 10,
+      ...(extraClaims ?? {}),
     })
   )
 

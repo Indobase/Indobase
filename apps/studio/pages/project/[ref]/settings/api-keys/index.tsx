@@ -1,5 +1,5 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { useParams } from 'common'
+import { IS_SAAS, useParams } from 'common'
 import {
   ApiKeysCreateCallout,
   ApiKeysFeedbackBanner,
@@ -32,12 +32,13 @@ const ApiKeysNewPage: NextPageWithLayout = () => {
     [apiKeysData]
   )
   const hasNewApiKeys = newApiKeys.length > 0
+  const lockApiKeyForms = !IS_SAAS && !hasNewApiKeys
 
   return (
     <>
       {canReadAPIKeys && !hasNewApiKeys && <ApiKeysCreateCallout />}
       {hasNewApiKeys && <ApiKeysFeedbackBanner />}
-      <DisableInteraction disabled={!hasNewApiKeys} className="flex flex-col gap-8">
+      <DisableInteraction disabled={lockApiKeyForms} className="flex flex-col gap-8">
         <PublishableAPIKeys />
         <Separator />
         <SecretAPIKeys />

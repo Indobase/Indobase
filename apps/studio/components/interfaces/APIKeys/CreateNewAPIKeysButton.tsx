@@ -28,14 +28,17 @@ export const CreateNewAPIKeysButton = () => {
     setIsCreatingKeys(true)
 
     try {
-      // Create publishable key
-      await createAPIKey({ projectRef, type: 'publishable', name: 'default' })
-
-      // Create secret key
-      await createAPIKey({ projectRef, type: 'secret', name: 'default' })
+      await createAPIKey({ projectRef, type: 'publishable', name: 'web' })
+      await createAPIKey({ projectRef, type: 'publishable', name: 'mobile' })
+      await createAPIKey({
+        projectRef,
+        type: 'secret',
+        name: 'backend_api',
+        description: 'Server-side API access',
+      })
 
       setCreateKeysDialogOpen(false)
-      toast.success('Successfully created a new set of API keys!')
+      toast.success('Created web, mobile, and backend API keys for your project.')
     } catch (error) {
       console.error('Failed to create API keys:', error)
     } finally {
@@ -50,9 +53,11 @@ export const CreateNewAPIKeysButton = () => {
         <AlertDialogHeader>
           <AlertDialogTitle>Create new API keys</AlertDialogTitle>
           <AlertDialogDescription>
-            This will create a default publishable key and a default secret key both named{' '}
-            <code className="!break-keep text-code-inline">default</code>. These keys are required
-            to connect your application to your Indobase project.
+            This creates three keys for your project: publishable keys named{' '}
+            <code className="!break-keep text-code-inline">web</code> and{' '}
+            <code className="!break-keep text-code-inline">mobile</code>, plus a secret key named{' '}
+            <code className="!break-keep text-code-inline">backend_api</code> for server-side use.
+            Each key is a JWT that works with your project API URL.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

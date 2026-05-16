@@ -1,7 +1,8 @@
-import { createHash, randomBytes } from 'crypto'
+import { createHash } from 'crypto'
 import type { JwtPayload } from 'indobase-js'
 
 import { recordAuditLog } from './audit'
+import { loadProjectJwtSecretEncForMember, makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
 import { executeQuery } from './query'
 import { decryptString, encryptString } from './util'
 
@@ -108,11 +109,24 @@ function decryptProjectKey(plain: string, enc: string | null) {
   return plain
 }
 
-function generateRawApiKey(type: 'publishable' | 'secret') {
-  const prefix = type === 'publishable' ? 'sb_publishable_' : 'sb_secret_'
-  const suffix = randomBytes(18).toString('base64url').replace(/[^a-zA-Z0-9]/g, '')
-  const apiKey = `${prefix}${suffix}`
-  const keyPrefix = apiKey.slice(0, Math.min(apiKey.length, 16))
+/** Issue a JWT that works with PostgREST / GoTrue on the tenant data plane. */
+async function generateProjectApiKey(opts: {
+  type: 'publishable' | 'secret'
+  projectRef: string
+  gotrueId: string
+  name: string
+}) {
+  const encRow = await loadProjectJwtSecretEncForMember({
+    projectRef: opts.projectRef,
+    gotrueId: opts.gotrueId,
+  })
+  if (!encRow) throw new Error('Project not found')
+  const jwtSecret = resolveProjectJwtSecret(encRow.jwtSecretEnc)
+  const role = opts.type === 'publishable' ? 'anon' : 'service_role'
+  const apiKey = makeProjectJwt(jwtSecret, role, opts.projectRef, {
+    api_key_name: opts.name,
+  })
+  const keyPrefix = apiKey.slice(0, Math.min(apiKey.length, 20))
   const keyHash = createHash('sha256').update(apiKey).digest('hex')
   return { apiKey, keyPrefix, keyHash }
 }
@@ -240,7 +254,12 @@ export async function createProjectApiKey({
     throw new Error('type must be publishable or secret')
   }
 
-  const { apiKey, keyHash, keyPrefix } = generateRawApiKey(type)
+  const { apiKey, keyHash, keyPrefix } = await generateProjectApiKey({
+    type,
+    projectRef: ref,
+    gotrueId,
+    name,
+  })
   const secretTemplate =
     type === 'secret'
       ? (body.secret_jwt_template ?? { role: 'service_role' })
