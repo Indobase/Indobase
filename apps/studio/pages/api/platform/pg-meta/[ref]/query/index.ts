@@ -1,5 +1,6 @@
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
+import { resolveEncryptedPgMetaConnectionForProject } from 'lib/api/saas/project-connection'
 import { executeQuery } from 'lib/api/saas/query'
 import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
@@ -80,7 +81,13 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     }
   }
 
-  const headers = constructHeaders(req.headers)
+  let headers: HeadersInit
+  try {
+    headers = await buildPgMetaHeaders(req, claims)
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e)
+    return res.status(400).json({ message, formattedError: message })
+  }
   let { data, error } = await executeQuery({ query, headers })
 
   const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
@@ -119,6 +126,27 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     }
     return res.status(200).json(resultData)
   }
+}
+
+async function buildPgMetaHeaders(req: NextApiRequest, claims?: JwtPayload) {
+  const headers = new Headers(constructHeaders(req.headers))
+  if (!IS_SAAS || !claims) return headers
+
+  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
+  if (!ref) return headers
+
+  try {
+    const encrypted = await resolveEncryptedPgMetaConnectionForProject({
+      claims,
+      ref,
+      incomingEncrypted: headers.get('x-connection-encrypted'),
+    })
+    headers.set('x-connection-encrypted', encrypted)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    throw Object.assign(new Error(message), { statusCode: 400 })
+  }
+  return headers
 }
 
 function containsAuthUsersQuery(query: string) {

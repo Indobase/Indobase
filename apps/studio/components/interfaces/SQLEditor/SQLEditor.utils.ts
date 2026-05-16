@@ -1,4 +1,6 @@
+import { isValidConnString } from 'data/fetchers'
 import { generateUuid } from 'lib/api/snippets.browser'
+import { IS_SAAS } from 'lib/constants'
 import { removeCommentsFromSql } from 'lib/helpers'
 import type { SnippetWithContent } from 'state/sql-editor-v2'
 import {
@@ -150,4 +152,31 @@ export const suffixWithLimit = (sql: string, limit: number = 0) => {
       : `${sql} limit ${limit};`
     : sql
   return formattedSql
+}
+
+/** Resolve pg-meta connection for SQL editor; SaaS may omit it and let the API fill from project ref. */
+export function resolveSqlEditorConnectionString({
+  databases,
+  selectedDatabaseId,
+  projectConnectionString,
+  projectRef,
+}: {
+  databases?: { identifier: string; connectionString?: string | null }[]
+  selectedDatabaseId?: string
+  projectConnectionString?: string | null
+  projectRef?: string
+}): string | null | undefined {
+  const fromSelected = databases?.find(
+    (db) =>
+      db.identifier === selectedDatabaseId ||
+      (projectRef && db.identifier === projectRef)
+  )?.connectionString
+  return fromSelected ?? databases?.[0]?.connectionString ?? projectConnectionString ?? undefined
+}
+
+export function assertSqlEditorCanRun(connectionString?: string | null) {
+  if (!IS_SAAS && !isValidConnString(connectionString)) {
+    return 'Unable to run query: Connection string is missing'
+  }
+  return null
 }

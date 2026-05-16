@@ -65,6 +65,10 @@ function pgMetaGuard(request: Request) {
     // If there is no valid `x-connection-encrypted`, pg-meta will necesseraly fail to connect to the target database
     // in such case, we save the hops and throw a 421 response instead
     if (!isValidConnString(request.headers.get('x-connection-encrypted'))) {
+      // SaaS: the pg-meta API route resolves tenant connection from project ref + session.
+      if (IS_SAAS) {
+        return request
+      }
       const retryAfterHeader = request.headers.get('Retry-After')
       throw new ResponseError(
         'API Error: happened while trying to acquire connection to the database',

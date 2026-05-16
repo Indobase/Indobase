@@ -67,9 +67,11 @@ import {
 import { DiffType, IStandaloneCodeEditor, IStandaloneDiffEditor } from './SQLEditor.types'
 import {
   checkDestructiveQuery,
+  assertSqlEditorCanRun,
   checkIfAppendLimitRequired,
   createSqlSnippetSkeletonV2,
   isUpdateWithoutWhere,
+  resolveSqlEditorConnectionString,
   suffixWithLimit,
 } from './SQLEditor.utils'
 import { useAddDefinitions } from './useAddDefinitions'
@@ -151,7 +153,7 @@ export const SQLEditor = () => {
     {
       projectRef: ref,
     },
-    { enabled: isValidConnString(project?.connectionString) }
+    { enabled: Boolean(ref) }
   )
 
   /* React query mutations */
@@ -323,14 +325,14 @@ export const SQLEditor = () => {
         }
 
         const impersonatedRoleState = getImpersonatedRoleState()
-        const connectionString =
-          databases?.find((db) => db.identifier === databaseSelectorState.selectedDatabaseId)
-            ?.connectionString ??
-          databases?.[0]?.connectionString ??
-          project?.connectionString
-        if (!isValidConnString(connectionString)) {
-          return toast.error('Unable to run query: Connection string is missing')
-        }
+        const connectionString = resolveSqlEditorConnectionString({
+          databases,
+          selectedDatabaseId: databaseSelectorState.selectedDatabaseId,
+          projectConnectionString: project?.connectionString,
+          projectRef: ref,
+        })
+        const connError = assertSqlEditorCanRun(connectionString)
+        if (connError) return toast.error(connError)
 
         const { appendAutoLimit } = checkIfAppendLimitRequired(sql, limit)
         const formattedSql = suffixWithLimit(sql, limit)
@@ -403,14 +405,14 @@ export const SQLEditor = () => {
       }
 
       const impersonatedRoleState = getImpersonatedRoleState()
-      const connectionString =
-        databases?.find((db) => db.identifier === databaseSelectorState.selectedDatabaseId)
-          ?.connectionString ??
-        databases?.[0]?.connectionString ??
-        project?.connectionString
-      if (!isValidConnString(connectionString)) {
-        return toast.error('Unable to run query: Connection string is missing')
-      }
+      const connectionString = resolveSqlEditorConnectionString({
+        databases,
+        selectedDatabaseId: databaseSelectorState.selectedDatabaseId,
+        projectConnectionString: project?.connectionString,
+        projectRef: ref,
+      })
+      const connError = assertSqlEditorCanRun(connectionString)
+      if (connError) return toast.error(connError)
 
       // Wrap the query with EXPLAIN ANALYZE only if it's not already an EXPLAIN query
       const explainSql = isExplainSql(sql) ? sql : `EXPLAIN ANALYZE ${sql}`
