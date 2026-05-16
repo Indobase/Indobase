@@ -1,0 +1,21 @@
+# Traefik dynamic config for https://status.indobase.in
+# Copy to /etc/dokploy/traefik/dynamic/status-indobase.yml on the VPS.
+# Requires DNS: status.indobase.in -> VPS IP (187.77.30.165).
+
+http:
+  middlewares:
+    indobase-status-redirect:
+      redirectRegex:
+        permanent: false
+        regex: "^https?://status\\.indobase\\.in/?(.*)"
+        replacement: "https://studio.indobase.in/api/health/live"
+
+  routers:
+    indobase-status:
+      rule: Host(`status.indobase.in`)
+      middlewares:
+        - indobase-status-redirect
+      service: noop@internal
+      entryPoints:
+        - web
+        - websecure

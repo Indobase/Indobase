@@ -14,6 +14,12 @@ describe('tenant-public-urls', () => {
     expect(resolvePublicDomainForTenantStack()).toBe('app.example.com')
   })
 
+  it('resolvePublicDomainForTenantStack strips api. from SUPABASE_PUBLIC_URL hostname', () => {
+    vi.stubEnv('SAAS_PUBLIC_DOMAIN', '')
+    vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://api.indobase.in')
+    expect(resolvePublicDomainForTenantStack()).toBe('indobase.in')
+  })
+
   it('resolveSaaSTenantRestUrls matches snapshot for dedicated tenant with TLS domain', () => {
     vi.stubEnv('SAAS_PUBLIC_DOMAIN', 'nb.example.com')
     expect(resolveSaaSTenantRestUrls('abcxyz', true)).toMatchInlineSnapshot(`

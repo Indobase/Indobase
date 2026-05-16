@@ -1,6 +1,10 @@
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL, PROJECT_REST_URL } from 'lib/constants/api'
 
-/** Hostname for `ref.<domain>` tenant routing (Traefik / GoTrue). */
+/**
+ * Hostname for `ref.<domain>` tenant routing (Traefik / GoTrue).
+ * Prefer SAAS_PUBLIC_DOMAIN (e.g. indobase.in) over the Kong hostname (api.indobase.in)
+ * so one wildcard DNS record (*.indobase.in) covers all project APIs.
+ */
 export function resolvePublicDomainForTenantStack(): string {
   const raw = process.env.SAAS_PUBLIC_DOMAIN?.trim()
   if (raw) {
@@ -11,7 +15,9 @@ export function resolvePublicDomainForTenantStack(): string {
   if (u) {
     try {
       const parsed = new URL(u.startsWith('http') ? u : `https://${u}`)
-      if (parsed.hostname) return parsed.hostname
+      const host = parsed.hostname
+      // Kong lives on api.*; tenant stacks use the registrable domain (indobase.in).
+      if (host.startsWith('api.')) return host.slice(4)
     } catch {
       // ignore
     }

@@ -2630,7 +2630,7 @@ services:
     ports:
       - "127.0.0.1:${opts.ports.realtime}:4000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/"]
+      test: ["CMD", "curl", "-sSf", "http://127.0.0.1:4000/"]
       interval: 20s
       timeout: 5s
       retries: 5
