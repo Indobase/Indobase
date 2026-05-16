@@ -349,6 +349,7 @@ export async function ensureSaasTables() {
       alter table saas.projects add column if not exists data_plane_last_provision_result jsonb null;
       alter table saas.projects add column if not exists jwt_secret_enc text null;
       alter table saas.projects add column if not exists jwt_secret_update_meta jsonb null;
+      alter table saas.projects add column if not exists auth_config jsonb null;
 
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
@@ -2522,8 +2523,9 @@ services:
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
-      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
       GOTRUE_SMTP_HOST: ""
       GOTRUE_SMTP_PORT: "587"
       GOTRUE_SMTP_USER: ""

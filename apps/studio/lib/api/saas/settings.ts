@@ -1,5 +1,10 @@
 import { components } from 'api-types'
+import type { JwtPayload } from 'indobase-js'
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL } from 'lib/constants/api'
+import { decryptString } from './util'
+import { executeQuery } from './query'
+import { ensureSaasTables, getGotrueUserId } from './platform'
+import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 import { assertSaaSBackend } from './util'
 
 type ProjectAppConfig = components['schemas']['ProjectSettingsResponse']['app_config'] & {
@@ -59,4 +64,106 @@ export function getProjectSettings() {
   } satisfies ProjectSettings
 
   return response
+}
+
+/**
+ * Per-project settings for Studio (API host, keys, DB connection metadata).
+ */
+export async function getProjectSettingsForRef({
+  claims,
+  ref,
+}: {
+  claims: JwtPayload
+  ref: string
+}): Promise<ProjectSettings | null> {
+  assertSaaSBackend()
+  await ensureSaasTables()
+  const gotrueId = getGotrueUserId(claims as JwtPayload & Record<string, unknown>)
+
+  const row = await executeQuery<{
+    ref: string
+    name: string
+    cloud_provider: string
+    region: string
+    status: string
+    inserted_at: string | null
+    service_key: string
+    anon_key: string
+    service_key_enc: string | null
+    anon_key_enc: string | null
+    connection_string: string | null
+    connection_string_enc: string | null
+    data_plane_last_provisioned_at: string | null
+    jwt_secret_enc: string | null
+  }>({
+    query: `
+      select
+        p.ref,
+        p.name,
+        p.cloud_provider,
+        p.region,
+        p.status,
+        p.inserted_at,
+        p.service_key,
+        p.anon_key,
+        p.service_key_enc,
+        p.anon_key_enc,
+        p.connection_string,
+        p.connection_string_enc,
+        p.data_plane_last_provisioned_at,
+        p.jwt_secret_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  if (!row.data?.length) return null
+
+  const p = row.data[0]!
+  const serviceKey = p.service_key_enc?.trim() ? decryptString(p.service_key_enc) : p.service_key
+  const anonKey = p.anon_key_enc?.trim() ? decryptString(p.anon_key_enc) : p.anon_key
+  const jwtSecret = p.jwt_secret_enc?.trim() ? decryptString(p.jwt_secret_enc) : process.env.AUTH_JWT_SECRET || ''
+
+  const tenantDbUrl =
+    p.connection_string_enc?.trim()
+      ? decryptString(p.connection_string_enc)
+      : p.connection_string
+  const hasDedicated = Boolean(tenantDbUrl?.trim())
+  const hasProvisioned = Boolean(p.data_plane_last_provisioned_at)
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisioned)
+
+  const base = getProjectSettings()
+
+  return {
+    ...base,
+    ref: p.ref,
+    name: p.name,
+    cloud_provider: p.cloud_provider,
+    region: p.region,
+    status: p.status,
+    inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : base.inserted_at,
+    jwt_secret: jwtSecret,
+    app_config: {
+      db_schema: 'public',
+      endpoint: endpointHost,
+      storage_endpoint: endpointHost,
+      protocol,
+    },
+    service_api_keys: [
+      {
+        api_key: serviceKey,
+        name: 'service_role key',
+        tags: 'service_role',
+      },
+      {
+        api_key: anonKey,
+        name: 'anon key',
+        tags: 'anon',
+      },
+    ],
+  }
 }
