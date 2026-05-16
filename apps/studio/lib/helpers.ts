@@ -377,16 +377,18 @@ export const getDistanceLatLonKM = (lat1: number, lon1: number, lat2: number, lo
   return d
 }
 
-const currencyFormatterDefault = Intl.NumberFormat('en-US', {
+const DEFAULT_CURRENCY = 'INR'
+
+const currencyFormatterDefault = Intl.NumberFormat('en-IN', {
   style: 'currency',
-  currency: 'USD',
+  currency: DEFAULT_CURRENCY,
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })
 
-const currencyFormatterSmallValues = Intl.NumberFormat('en-US', {
+const currencyFormatterSmallValues = Intl.NumberFormat('en-IN', {
   style: 'currency',
-  currency: 'USD',
+  currency: DEFAULT_CURRENCY,
   minimumFractionDigits: 0,
 })
 

@@ -20,6 +20,7 @@ import type { OrgPlan } from 'data/subscriptions/types'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
+import { BASE_PATH } from 'lib/constants'
 import { MANAGED_BY } from 'lib/constants/infrastructure'
 import { formatCurrency } from 'lib/helpers'
 import { plans as subscriptionsPlans } from 'shared-data/plans'
@@ -159,7 +160,7 @@ export const PlanUpdateSidePanel = () => {
           <div className="flex items-center justify-between">
             <h4>Change subscription plan for {selectedOrganization?.name}</h4>
             <Button asChild type="default" icon={<ExternalLink />}>
-              <a href="https://supabase.com/pricing" target="_blank" rel="noreferrer">
+              <a href={`${BASE_PATH}/billing/plans`} target="_blank" rel="noreferrer">
                 Pricing
               </a>
             </Button>

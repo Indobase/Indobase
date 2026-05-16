@@ -573,13 +573,13 @@ describe('formatCurrency', () => {
   it('should return the formatted currency', () => {
     const result = formatCurrency(1000)
 
-    expect(result).toEqual('$1,000.00')
+    expect(result).toEqual('₹1,000.00')
   })
 
   it('should return the formatted currency with small values', () => {
     const result = formatCurrency(0.001)
 
-    expect(result).toEqual('$0')
+    expect(result).toEqual('₹0')
   })
 
   it('should return null if the value is undefined', () => {

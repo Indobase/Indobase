@@ -26,9 +26,9 @@ type Claims = JwtPayload & Record<string, any>
 type PlanId = 'free' | 'pro' | 'team' | 'enterprise' | 'platform'
 
 const PLAN_NAME: Record<PlanId, string> = {
-  free: 'Free',
+  free: 'Starter',
   pro: 'Pro',
-  team: 'Team',
+  team: 'Business',
   enterprise: 'Enterprise',
   platform: 'Platform',
 }
