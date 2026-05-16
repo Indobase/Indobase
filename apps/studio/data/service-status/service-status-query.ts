@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { components } from 'api-types'
 import { get, handleError } from 'data/fetchers'
-import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { serviceStatusKeys } from './keys'
 
@@ -22,27 +21,6 @@ export async function getProjectServiceStatus(
   signal?: AbortSignal
 ) {
   if (!projectRef) throw new Error('projectRef is required')
-
-  // Indobase SaaS doesn't have the cloud `/v1/.../health` endpoint. Report all five
-  // core services as healthy — the data plane runs in the same compose stack as Studio.
-  if (IS_SAAS) {
-    const services: NonNullable<ServiceHealthResponse['name']>[] = [
-      'auth',
-      'realtime',
-      'rest',
-      'storage',
-      'db',
-    ]
-    return services.map(
-      (name) =>
-        ({
-          name,
-          status: 'ACTIVE_HEALTHY',
-          info: undefined,
-          error: undefined,
-        }) as unknown as ServiceHealthResponse
-    )
-  }
 
   const { data, error } = await get(`/v1/projects/{ref}/health`, {
     params: {

@@ -1,6 +1,7 @@
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { constructSaasPgMetaHeaders } from 'lib/api/saas/pg-meta-headers'
+import { provisionDedicatedTenantDatabaseForProject } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'
 import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
@@ -41,12 +42,30 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     }
 
     const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
-    const usesDedicatedTenantDb = await projectHasDedicatedTenantDatabase(ref, userId)
+    let usesDedicatedTenantDb = await projectHasDedicatedTenantDatabase(ref, userId)
+
+    if (
+      !usesDedicatedTenantDb &&
+      process.env.SAAS_AUTO_PROVISION_DEDICATED_ON_AUTH_USERS === 'true' &&
+      claims &&
+      ref
+    ) {
+      try {
+        await provisionDedicatedTenantDatabaseForProject({ claims, ref })
+        usesDedicatedTenantDb = await projectHasDedicatedTenantDatabase(ref, userId)
+      } catch (provisionErr) {
+        console.warn(
+          '[pg-meta/query] auto dedicated DB provision failed for %s: %O',
+          ref,
+          provisionErr
+        )
+      }
+    }
 
     if (!usesDedicatedTenantDb) {
       return res.status(403).json({
         message:
-          'Listing auth.users requires a dedicated project database. This project is still on the shared database, or the connection is not provisioned yet.',
+          'Listing auth.users requires a dedicated project database. This project is still on the shared database, or the connection is not provisioned yet. Provision via POST /api/platform/projects/{ref}/provision-dedicated-database or set SAAS_AUTO_PROVISION_DEDICATED_ON_AUTH_USERS=true.',
       })
     }
   }

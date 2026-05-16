@@ -1,5 +1,6 @@
 import type { components } from 'api-types'
 import type { JwtPayload } from 'indobase-js'
+import type { NextApiRequest } from 'next'
 import crypto from 'node:crypto'
 
 import { makeRandomString } from 'lib/helpers'
@@ -7,6 +8,15 @@ import { PROJECT_REST_URL } from 'lib/constants/api'
 
 import { encryptString } from './util'
 import { executeQuery } from './query'
+import {
+  computeBranchSchemaDiffSql,
+  copyParentTenantIntoBranch,
+  getProjectTenantDatabaseUrl,
+  parseIncludedSchemas,
+  resetBranchDatabaseFromParent,
+  tenantPgMetaHeaders,
+} from './branch-tenant-db'
+import { applyAndTrackMigrations } from './migrations'
 import {
   ensureSaasTables,
   finalizeDedicatedProjectProvisioning,
@@ -389,10 +399,34 @@ export async function createProjectBranch({
   }
 
   if (body.with_data) {
-    console.warn(
-      '[saas] branch with_data requested for %s; schema/data copy from parent is not implemented yet — branch starts with an empty database',
-      child.ref
-    )
+    const parentUrl = await getProjectTenantDatabaseUrl({
+      claims: claims as Claims,
+      ref: parentRef,
+    })
+    const branchUrl = await getProjectTenantDatabaseUrl({
+      claims: claims as Claims,
+      ref: child.ref,
+    })
+    if (parentUrl && branchUrl) {
+      const copy = await copyParentTenantIntoBranch({
+        parentUrl,
+        branchUrl,
+        schemas: [...parseIncludedSchemas()],
+        includeData: true,
+      })
+      if (!copy.ok) {
+        console.warn(
+          '[saas] branch with_data copy from parent failed for %s (method=%s)',
+          child.ref,
+          copy.method
+        )
+      }
+    } else {
+      console.warn(
+        '[saas] branch with_data requested for %s but tenant DB URLs are unavailable',
+        child.ref
+      )
+    }
   }
 
   const enableParent = await executeQuery({
@@ -595,6 +629,229 @@ export async function disablePreviewBranching({
     actorId: gotrueId,
   })
   if (updated.error) throw updated.error
+}
+
+async function requireBranchWithParent({
+  claims,
+  branchRef,
+}: {
+  claims: JwtPayload
+  branchRef: string
+}) {
+  const loaded = await loadBranchProject({ claims: claims as Claims, branchRef })
+  if (!loaded) throw new Error('Branch not found')
+  return loaded
+}
+
+export async function getBranchSchemaDiff({
+  claims,
+  branchRef,
+  includedSchemas,
+}: {
+  claims: JwtPayload
+  branchRef: string
+  includedSchemas?: string | string[]
+}): Promise<string> {
+  const loaded = await requireBranchWithParent({ claims, branchRef })
+  const parentRef = loaded.parent_project_ref!
+  const schemas = parseIncludedSchemas(includedSchemas)
+
+  const parentUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: parentRef })
+  const branchUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: loaded.ref })
+  if (!parentUrl || !branchUrl) return ''
+
+  try {
+    return await computeBranchSchemaDiffSql({ parentUrl, branchUrl, schemas })
+  } catch (e) {
+    console.warn('[saas] branch diff failed for %s: %O', loaded.ref, e)
+    return ''
+  }
+}
+
+export async function mergeBranchByRef({
+  claims,
+  branchRef,
+  migration_version,
+}: {
+  claims: JwtPayload
+  branchRef: string
+  migration_version?: string
+}): Promise<{ message: 'ok'; workflow_run_id: string }> {
+  const loaded = await requireBranchWithParent({ claims, branchRef })
+  const parentRef = loaded.parent_project_ref!
+  const gotrueId = getGotrueUserId(claims as Claims)
+
+  const parentUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: parentRef })
+  const branchUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: loaded.ref })
+
+  let diffSql = ''
+  if (parentUrl && branchUrl) {
+    try {
+      diffSql = await computeBranchSchemaDiffSql({
+        parentUrl,
+        branchUrl,
+        schemas: [...parseIncludedSchemas()],
+      })
+    } catch (e) {
+      console.warn('[saas] merge diff for %s failed: %O', loaded.ref, e)
+    }
+  }
+
+  if (diffSql.trim()) {
+    const headers = tenantPgMetaHeaders(parentUrl!)
+    const migrationName =
+      migration_version?.trim() || `branch_merge_${new Date().toISOString().replace(/[:.]/g, '-')}`
+    const applied = await applyAndTrackMigrations({
+      query: diffSql,
+      name: migrationName,
+      headers,
+    })
+    if (applied.error) throw applied.error
+  }
+
+  const workflowRunId = crypto.randomUUID()
+
+  await executeQuery({
+    query: `
+      update saas.projects p
+      set status = 'ACTIVE_HEALTHY'
+      where p.ref = $1 and p.is_branch = true
+    `,
+    parameters: [loaded.ref],
+    actorId: gotrueId,
+  })
+
+  return { message: 'ok', workflow_run_id: workflowRunId }
+}
+
+/**
+ * Sync branch tenant DB from parent (schema refresh). Does not modify parent/production.
+ */
+export async function pushBranchByRef({
+  claims,
+  branchRef,
+}: {
+  claims: JwtPayload
+  branchRef: string
+}): Promise<{ message: 'ok'; workflow_run_id: string }> {
+  const loaded = await requireBranchWithParent({ claims, branchRef })
+  const parentRef = loaded.parent_project_ref!
+
+  const parentUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: parentRef })
+  const branchUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: loaded.ref })
+  if (!parentUrl || !branchUrl) {
+    throw new Error('Dedicated tenant databases are required to push branch updates')
+  }
+
+  const copy = await copyParentTenantIntoBranch({
+    parentUrl,
+    branchUrl,
+    schemas: [...parseIncludedSchemas()],
+    includeData: Boolean(loaded.branch_with_data),
+  })
+  if (!copy.ok) {
+    throw new Error('Failed to sync branch database from parent')
+  }
+
+  return { message: 'ok', workflow_run_id: crypto.randomUUID() }
+}
+
+/** Drop branch user schema objects and recopy schema from parent (no data). */
+export async function resetBranchByRef({
+  claims,
+  branchRef,
+}: {
+  claims: JwtPayload
+  branchRef: string
+}): Promise<{ message: 'ok'; workflow_run_id: string }> {
+  const loaded = await requireBranchWithParent({ claims, branchRef })
+  const parentRef = loaded.parent_project_ref!
+
+  const parentUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: parentRef })
+  const branchUrl = await getProjectTenantDatabaseUrl({ claims: claims as Claims, ref: loaded.ref })
+  if (!parentUrl || !branchUrl) {
+    throw new Error('Dedicated tenant databases are required to reset a branch')
+  }
+
+  await resetBranchDatabaseFromParent({
+    parentUrl,
+    branchUrl,
+    schemas: [...parseIncludedSchemas()],
+  })
+
+  const gotrueId = getGotrueUserId(claims as Claims)
+  await executeQuery({
+    query: `
+      update saas.projects
+      set status = 'ACTIVE_HEALTHY'
+      where ref = $1 and is_branch = true
+    `,
+    parameters: [loaded.ref],
+    actorId: gotrueId,
+  })
+
+  return { message: 'ok', workflow_run_id: crypto.randomUUID() }
+}
+
+/** Mark a paused/inactive branch project as healthy again (control-plane status only). */
+export async function restoreBranchByRef({
+  claims,
+  branchRef,
+}: {
+  claims: JwtPayload
+  branchRef: string
+}): Promise<{ message: 'Branch restoration initiated' }> {
+  const loaded = await requireBranchWithParent({ claims, branchRef })
+  const gotrueId = getGotrueUserId(claims as Claims)
+
+  const updated = await executeQuery({
+    query: `
+      update saas.projects p
+      set status = 'ACTIVE_HEALTHY'
+      where p.ref = $1
+        and p.is_branch = true
+        and exists (
+          select 1 from saas.organization_members m
+          where m.organization_id = p.organization_id
+            and m.gotrue_id = $2
+            and m.role in ('owner', 'admin', 'developer')
+        )
+    `,
+    parameters: [loaded.ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (updated.error) throw updated.error
+
+  return { message: 'Branch restoration initiated' }
+}
+
+const branchingBase = process.env.BRANCHING_PLATFORM_API_URL?.replace(/\/$/, '')
+
+/** Forward to external branching platform when configured. */
+export async function proxyBranchPlatformRequest(
+  req: NextApiRequest,
+  branchIdOrRef: string,
+  suffix: string
+): Promise<{ status: number; headers: Headers; body: string } | null> {
+  if (!branchingBase) return null
+
+  const search = req.url?.includes('?') ? `?${req.url.split('?')[1]}` : ''
+  const target = `${branchingBase}/v1/branches/${encodeURIComponent(branchIdOrRef)}${suffix}${search}`
+  const headers = new Headers()
+  const auth = req.headers.authorization
+  if (typeof auth === 'string') headers.set('authorization', auth)
+  if (suffix === '/diff') {
+    headers.set('accept', 'text/plain')
+  } else {
+    headers.set('accept', 'application/json')
+  }
+  if (req.method && !['GET', 'HEAD'].includes(req.method)) {
+    headers.set('content-type', 'application/json')
+  }
+  const body =
+    req.method && ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body ?? {})
+  const upstream = await fetch(target, { method: req.method, headers, body })
+  return { status: upstream.status, headers: upstream.headers, body: await upstream.text() }
 }
 
 export function isBranchingEnabledForProject(project: {

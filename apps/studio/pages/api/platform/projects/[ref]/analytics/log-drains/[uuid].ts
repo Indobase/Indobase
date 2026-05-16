@@ -9,16 +9,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { uuid } = req.query
 
   const missingEnvVars = envVarsSet()
-
-  if (missingEnvVars !== true) {
-    return res
-      .status(500)
-      .json({ error: { message: `${missingEnvVars.join(', ')} env variables are not set` } })
-  }
-
   const baseUrl = PROJECT_ANALYTICS_URL
-  if (!baseUrl) {
-    return res.status(500).json({ error: { message: `LOGFLARE_URL env variable is not set` } })
+
+  if (missingEnvVars !== true || !baseUrl) {
+    if (method === 'GET') {
+      return res.status(404).json({ error: { message: 'Log drain not found' } })
+    }
+    if (method === 'DELETE') {
+      return res.status(204).end()
+    }
+    return res.status(503).json({
+      error: {
+        message: `Log drains require Logflare (${
+          missingEnvVars === true ? 'LOGFLARE_URL' : missingEnvVars.join(', ')
+        })`,
+      },
+    })
   }
 
   switch (method) {

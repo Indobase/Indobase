@@ -1,25 +1,31 @@
-import { NextApiRequest, NextApiResponse } from 'next'
+import type { JwtPayload } from 'indobase-js'
+import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { paths } from 'api-types'
 import apiWrapper from 'lib/api/apiWrapper'
+import { listGitHubRepositoriesForUser } from 'lib/api/saas/github-integration'
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: true })
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { method } = req
+type ResponseData =
+  paths['/platform/integrations/github/repositories']['get']['responses']['200']['content']['application/json']
 
-  switch (method) {
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
+  if (!claims) {
+    return res.status(401).json({ data: null, error: { message: 'Unauthorized' } })
+  }
+
+  switch (req.method) {
     case 'GET':
-      return handleGet(req, res)
+      return handleGet(res, claims)
     default:
       res.setHeader('Allow', ['GET'])
-      res.status(405).json({ data: null, error: { message: `Method ${method} Not Allowed` } })
+      return res.status(405).json({ data: null, error: { message: `Method ${req.method} Not Allowed` } })
   }
 }
 
-type ResponseData =
-  paths['/platform/integrations/github/repositories']['get']['responses']['200']['content']
-
-const handleGet = async (req: NextApiRequest, res: NextApiResponse<ResponseData>) => {
-  return res.status(200).json({ repositories: [] } as never)
+const handleGet = async (res: NextApiResponse<ResponseData>, claims: JwtPayload) => {
+  const payload = await listGitHubRepositoriesForUser(claims as any)
+  return res.status(200).json(payload)
 }

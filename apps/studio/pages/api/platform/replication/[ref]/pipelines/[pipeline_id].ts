@@ -1,0 +1,24 @@
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+import apiWrapper from 'lib/api/apiWrapper'
+import {
+  handleReplicationPipelineByIdDelete,
+  handleReplicationPipelineByIdGet,
+  handleReplicationPipelineByIdPost,
+  methodNotAllowed,
+} from 'lib/api/saas/replication-stubs'
+
+export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  switch (req.method) {
+    case 'GET':
+      return handleReplicationPipelineByIdGet(req, res)
+    case 'POST':
+      return handleReplicationPipelineByIdPost(req, res)
+    case 'DELETE':
+      return handleReplicationPipelineByIdDelete(req, res)
+    default:
+      return methodNotAllowed(res, req.method, ['GET', 'POST', 'DELETE'])
+  }
+}

@@ -146,3 +146,15 @@ create table if not exists saas.integration_connections (
 );
 create index if not exists integration_connections_org_idx
   on saas.integration_connections (organization_id);
+
+create table if not exists saas.github_authorizations (
+  id serial primary key,
+  gotrue_id uuid not null unique,
+  github_user_id bigint not null,
+  sender_id bigint not null,
+  access_token_enc text not null,
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists github_authorizations_gotrue_idx
+  on saas.github_authorizations (gotrue_id);

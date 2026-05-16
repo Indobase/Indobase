@@ -2,10 +2,17 @@ import type { OrgProject } from 'data/projects/org-projects-infinite-query'
 import { IS_SAAS } from 'lib/constants'
 import { Badge } from 'ui'
 
-/** SaaS org/home project list: data-plane provisioning state for dedicated-DB projects. */
+/** SaaS org/home project list: dedicated vs legacy shared control-plane DB. */
 export function DataPlaneListBadge({ project }: { project: OrgProject }) {
   if (!IS_SAAS) return null
-  if (!project.has_dedicated_database) return null
+
+  if (!project.has_dedicated_database) {
+    return (
+      <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0">
+        Shared DB
+      </Badge>
+    )
+  }
 
   if (project.data_plane_last_provisioned_at) {
     if (project.data_plane_last_provision_ok === false) {

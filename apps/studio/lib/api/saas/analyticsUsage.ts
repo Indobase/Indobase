@@ -35,6 +35,18 @@ export function emptyUsageAnalyticsResult(): AnalyticsResult {
   return { result: [] }
 }
 
+/** Logflare-shaped empty payload for observability endpoints when analytics is not configured. */
+export function emptyAnalyticsResult(name?: string): AnalyticsResult {
+  if (name === 'auth.metrics') {
+    return { result: [], error: null }
+  }
+  return { result: [] }
+}
+
+export function isAnalyticsConfigured(): boolean {
+  return Boolean(process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN && process.env.LOGFLARE_URL?.trim())
+}
+
 export function hasAnalyticsPayloadError(data: AnalyticsResult | undefined): boolean {
   if (!data?.error) return false
   if (typeof data.error === 'string') return true

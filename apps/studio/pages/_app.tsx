@@ -51,6 +51,7 @@ import { customFont, sourceCodePro } from 'fonts'
 import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { AuthProvider } from 'lib/auth'
+import { getSaasStudioConfigCatFlagValues } from 'lib/api/saas/platform-stubs'
 import { API_URL, BASE_PATH, IS_SAAS, useDefaultProvider } from 'lib/constants'
 import { TenantJwtClaimSync } from 'components/misc/TenantJwtClaimSync'
 import { ProfileProvider } from 'lib/profile'
@@ -135,6 +136,13 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
 
   const getConfigCatFlags = useCallback(
     (userEmail?: string) => {
+      if (
+        IS_SAAS &&
+        !process.env.NEXT_PUBLIC_CONFIGCAT_SDK_KEY &&
+        !process.env.NEXT_PUBLIC_CONFIGCAT_PROXY_URL
+      ) {
+        return Promise.resolve(getSaasStudioConfigCatFlagValues())
+      }
       const customAttributes = cloudProvider ? { cloud_provider: cloudProvider } : undefined
       return getFlags(userEmail, customAttributes)
     },

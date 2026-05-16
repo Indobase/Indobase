@@ -13,10 +13,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (method === 'GET') {
       return res.status(200).json([])
     }
-    const missing = missingEnvVars === true ? ['LOGFLARE_URL'] : missingEnvVars
-    return res
-      .status(500)
-      .json({ error: { message: `${missing.join(', ')} env variables are not set` } })
+    return res.status(503).json({
+      error: {
+        message: `Log drains require Logflare (${
+          missingEnvVars === true ? 'LOGFLARE_URL' : missingEnvVars.join(', ')
+        })`,
+      },
+    })
   }
 
   const baseUrl = PROJECT_ANALYTICS_URL

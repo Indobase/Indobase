@@ -1,7 +1,10 @@
 import { PROJECT_ANALYTICS_URL } from 'lib/constants/api'
 import {
+  emptyAnalyticsResult,
   emptyUsageAnalyticsResult,
   hasAnalyticsPayloadError,
+  isAnalyticsConfigured,
+  isUsageAnalyticsEndpoint,
   mapAnalyticsQueryParams,
 } from './analyticsUsage'
 import { WrappedResult } from './types'
@@ -34,17 +37,8 @@ export async function retrieveAnalyticsData({
   projectRef,
   params,
 }: RetrieveAnalyticsDataOptions): Promise<WrappedResult<AnalyticsResult>> {
-  if (!PROJECT_ANALYTICS_URL || !process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN) {
-    return {
-      data: undefined,
-      error: new Error(
-        `Analytics is not configured: ${
-          [!PROJECT_ANALYTICS_URL ? 'PROJECT_ANALYTICS_URL' : null, !process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN ? 'LOGFLARE_PRIVATE_ACCESS_TOKEN' : null]
-            .filter(Boolean)
-            .join(', ')
-        } is missing`
-      ),
-    }
+  if (!isAnalyticsConfigured() || !PROJECT_ANALYTICS_URL) {
+    return { data: emptyAnalyticsResult(name), error: undefined }
   }
 
   const mappedParams = mapAnalyticsQueryParams(params)
@@ -72,27 +66,22 @@ export async function retrieveAnalyticsData({
     const result = (await response.json()) as AnalyticsResult
 
     if (!response.ok) {
-      if (name.startsWith('usage.')) {
+      if (isUsageAnalyticsEndpoint(name)) {
         return { data: emptyUsageAnalyticsResult(), error: undefined }
       }
-      const error = new Error(
-        (typeof result?.error === 'object' && result?.error?.message) ||
-          (typeof result?.error === 'string' ? result.error : null) ||
-          `Failed to retrieve analytics data: ${response.statusText}`
-      )
-      return { data: undefined, error }
+      return { data: emptyAnalyticsResult(name), error: undefined }
     }
 
-    if (hasAnalyticsPayloadError(result) && name.startsWith('usage.')) {
-      return { data: emptyUsageAnalyticsResult(), error: undefined }
+    if (hasAnalyticsPayloadError(result)) {
+      if (isUsageAnalyticsEndpoint(name)) {
+        return { data: emptyUsageAnalyticsResult(), error: undefined }
+      }
+      return { data: emptyAnalyticsResult(name), error: undefined }
     }
 
     return { data: result, error: undefined }
   } catch (error) {
-    if (error instanceof Error) {
-      return { data: undefined, error }
-    }
-    throw error
+    return { data: emptyAnalyticsResult(name), error: undefined }
   }
 }
 

@@ -1,28 +1,36 @@
+import type { JwtPayload } from 'indobase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { getLints } from 'lib/api/saas/lints'
+import {
+  DEFAULT_POSTGREST_DB_SCHEMA,
+  resolvePostgrestDbSchemaForProject,
+} from 'lib/api/saas/postgrest-config'
+import { IS_SAAS } from 'lib/constants'
 
-export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
+export default (req: NextApiRequest, res: NextApiResponse) =>
+  apiWrapper(req, res, handler, { withAuth: IS_SAAS })
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   const { method } = req
 
   switch (method) {
-    case 'GET':
-      /**
-       * [Joshen] JFYI technically the exposed schemas is being set here via docker-compose.yml
-       * https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml#L183
-       * https://github.com/supabase/supabase/blob/474a78721e510301d15ca9dbd41f05ce10fa29e5/docker/.env.example#L55
-       *
-       * But i noticed that the local API route on config/postgrest.ts has currently hardcoded db_schema to `public, storage`
-       * As such, this is only just a temporary patch here that we're hardcoding the exposed schemas but we will need to figure
-       * out how to get the dashboard to retrieve the values from docker-compose
-       */
+    case 'GET': {
+      const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
+      let exposedSchemas = DEFAULT_POSTGREST_DB_SCHEMA
+      if (IS_SAAS && claims && ref) {
+        try {
+          exposedSchemas = await resolvePostgrestDbSchemaForProject({ claims, ref })
+        } catch {
+          // fall back to default schema list
+        }
+      }
+
       const { data, error } = await getLints({
         headers: constructHeaders(req.headers),
-        exposedSchemas: 'public, storage',
+        exposedSchemas,
       })
 
       if (error) {
@@ -30,6 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         return res.status(200).json(data)
       }
+    }
     default:
       res.setHeader('Allow', ['GET'])
       res.status(405).json({ data: null, error: { message: `Method ${method} Not Allowed` } })

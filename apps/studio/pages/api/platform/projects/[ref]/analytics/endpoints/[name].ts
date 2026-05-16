@@ -1,5 +1,5 @@
 import apiWrapper from 'lib/api/apiWrapper'
-import { emptyUsageAnalyticsResult, isUsageAnalyticsEndpoint } from 'lib/api/saas/analyticsUsage'
+import { emptyAnalyticsResult } from 'lib/api/saas/analyticsUsage'
 import { retrieveAnalyticsData } from 'lib/api/saas/logs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import assert from 'node:assert'
@@ -18,23 +18,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       assert(typeof ref === 'string', 'Invalid or missing ref parameter')
       assert(typeof name === 'string', 'Invalid or missing name parameter')
 
-      const { data, error } = await retrieveAnalyticsData({
+      const { data } = await retrieveAnalyticsData({
         name,
         params,
         projectRef: ref,
       })
 
-      if (data) {
-        return res.status(200).json(data)
-      } else {
-        if (
-          error.message.includes('Analytics is not configured') ||
-          isUsageAnalyticsEndpoint(name)
-        ) {
-          return res.status(200).json(emptyUsageAnalyticsResult())
-        }
-        return res.status(500).json({ error: { message: error.message } })
-      }
+      return res.status(200).json(data ?? emptyAnalyticsResult(name))
     default:
       res.setHeader('Allow', ['GET', 'POST'])
       res.status(405).json({ data: null, error: { message: `Method ${method} Not Allowed` } })

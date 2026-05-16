@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { get } from 'data/fetchers'
 import { IS_SAAS } from 'lib/constants'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { serviceStatusKeys } from './keys'
@@ -8,10 +9,24 @@ export type EdgeFunctionServiceStatusVariables = {
   projectRef?: string
 }
 
-export async function getEdgeFunctionServiceStatus(signal?: AbortSignal) {
-  // Indobase SaaS runs edge functions in the same compose stack as Studio — don't
-  // probe a third-party Supabase URL from the user's browser.
-  if (IS_SAAS) return { healthy: true }
+export async function getEdgeFunctionServiceStatus(
+  { projectRef }: EdgeFunctionServiceStatusVariables,
+  signal?: AbortSignal
+) {
+  if (IS_SAAS) {
+    if (!projectRef) throw new Error('projectRef is required')
+
+    const { data, error } = await get('/v1/projects/{ref}/edge-functions-health', {
+      params: { path: { ref: projectRef } },
+      signal,
+    })
+
+    if (error) {
+      return { healthy: false }
+    }
+
+    return (data ?? { healthy: false }) as { healthy: boolean }
+  }
 
   try {
     const res = await fetch('https://obuldanrptloktxcffvn.supabase.co/functions/v1/health-check', {
@@ -20,7 +35,7 @@ export async function getEdgeFunctionServiceStatus(signal?: AbortSignal) {
     })
     const response = await res.json()
     return response as { healthy: boolean }
-  } catch (err) {
+  } catch {
     return { healthy: false }
   }
 }
@@ -41,7 +56,7 @@ export const useEdgeFunctionServiceStatusQuery = <TData = EdgeFunctionServiceSta
 ) =>
   useQuery<EdgeFunctionServiceStatusData, EdgeFunctionServiceStatusError, TData>({
     queryKey: serviceStatusKeys.edgeFunctions(projectRef),
-    queryFn: ({ signal }) => getEdgeFunctionServiceStatus(signal),
+    queryFn: ({ signal }) => getEdgeFunctionServiceStatus({ projectRef }, signal),
     enabled: enabled && typeof projectRef !== 'undefined',
     ...options,
   })

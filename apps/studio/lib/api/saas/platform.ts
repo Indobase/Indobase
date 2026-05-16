@@ -357,6 +357,7 @@ export async function ensureSaasTables() {
       alter table saas.projects add column if not exists branch_persistent boolean not null default false;
       alter table saas.projects add column if not exists branch_with_data boolean not null default false;
       alter table saas.projects add column if not exists preview_branching_enabled boolean not null default false;
+      alter table saas.projects add column if not exists postgrest_config jsonb null;
 
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
