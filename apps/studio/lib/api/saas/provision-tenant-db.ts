@@ -265,6 +265,109 @@ const DATA_PLANE_AUX_ROLES = [
 ] as const
 
 /**
+ * Set aux-role passwords via `supabase_admin` when the provision admin is not a superuser
+ * (Supabase images: `postgres` cannot ALTER reserved roles).
+ */
+export async function syncTenantAuxRolePasswords({
+  host,
+  port,
+  dbName,
+  auxiliaryRolePassword,
+  tenantRolePassword,
+}: {
+  host: string
+  port: number
+  dbName: string
+  auxiliaryRolePassword: string
+  tenantRolePassword?: string
+}): Promise<void> {
+  const auxPass = auxiliaryRolePassword.trim()
+  if (!auxPass) return
+
+  const candidates = [
+    auxPass,
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim(),
+    tenantRolePassword?.trim(),
+    process.env.POSTGRES_PASSWORD?.trim(),
+  ].filter((p): p is string => Boolean(p?.length))
+
+  const pwLit = quotePgLiteral(auxPass)
+  for (const adminPassword of [...new Set(candidates)]) {
+    const client = new Client({
+      connectionString: `postgresql://${encodeURIComponent('supabase_admin')}:${encodeURIComponent(
+        adminPassword
+      )}@${host}:${port}/${dbName}`,
+    })
+    try {
+      await client.connect()
+      const superRes = await client.query<{ rolsuper: boolean }>(
+        `select rolsuper from pg_roles where rolname = current_user`
+      )
+      if (!superRes.rows[0]?.rolsuper) continue
+
+      for (const role of DATA_PLANE_AUX_ROLES) {
+        await client.query(`alter role ${quotePgIdent(role)} password ${pwLit}`)
+      }
+      await client.query('alter schema auth owner to supabase_auth_admin')
+      return
+    } catch {
+      // try next candidate password for supabase_admin
+    } finally {
+      await client.end().catch(() => undefined)
+    }
+  }
+  console.warn(
+    '[provision-tenant-db] could not sync aux role passwords via supabase_admin; tenant-auth may fail until Repair DB bootstrap'
+  )
+}
+
+export async function grantTenantRoleAuthRead({
+  host,
+  port,
+  dbName,
+  tenantRoleName,
+  auxiliaryRolePassword,
+  tenantRolePassword,
+}: {
+  host: string
+  port: number
+  dbName: string
+  tenantRoleName: string
+  auxiliaryRolePassword: string
+  tenantRolePassword?: string
+}): Promise<void> {
+  const auxPass = auxiliaryRolePassword.trim()
+  const candidates = [
+    auxPass,
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim(),
+    tenantRolePassword?.trim(),
+    process.env.POSTGRES_PASSWORD?.trim(),
+  ].filter((p): p is string => Boolean(p?.length))
+
+  const tenantIdent = quotePgIdent(tenantRoleName)
+  for (const adminPassword of [...new Set(candidates)]) {
+    const client = new Client({
+      connectionString: `postgresql://${encodeURIComponent('supabase_admin')}:${encodeURIComponent(
+        adminPassword
+      )}@${host}:${port}/${dbName}`,
+    })
+    try {
+      await client.connect()
+      await client.query(`grant usage on schema auth to ${tenantIdent}`)
+      await client.query(`grant select on all tables in schema auth to ${tenantIdent}`)
+      await client.query(
+        `alter default privileges in schema auth grant select on tables to ${tenantIdent}`
+      )
+      return
+    } catch {
+      // try next candidate
+    } finally {
+      await client.end().catch(() => undefined)
+    }
+  }
+}
+
+/**
  * Supabase-style auxiliary roles + empty auth/storage/_realtime/graphql_public schemas.
  * Uses the same password as the tenant login role for all aux roles (self-host MVP).
  * GoTrue and storage-api apply their own SQL migrations on first startup.
@@ -409,6 +512,16 @@ export async function bootstrapTenantDataPlaneSchemas({
       )
     } catch {
       // Optional: requires read on pg_authid; skip if bootstrap role cannot install Supavisor auth_query support.
+    }
+
+    if (!isSuperuser) {
+      await syncTenantAuxRolePasswords({
+        host,
+        port,
+        dbName,
+        auxiliaryRolePassword: auxPass,
+        tenantRolePassword,
+      })
     }
   } finally {
     await client.end()

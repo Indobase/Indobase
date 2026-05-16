@@ -2,6 +2,10 @@ import { Client } from 'pg'
 import type { JwtPayload } from 'indobase-js'
 
 import { executeQuery } from './query'
+import {
+  grantTenantRoleAuthRead,
+  syncTenantAuxRolePasswords,
+} from './provision-tenant-db'
 import { decryptString } from './util'
 import {
   isDataPlaneProvisionerConfigured,
@@ -113,11 +117,38 @@ export async function ensureTenantGoTrueAuthSchema({
     reason: 'ensure_auth_schema',
   })
 
+  const normalizedUrl = tenantDbUrl.trim().replace(/^postgres:\/\//, 'postgresql://')
+  const dbUrl = new URL(normalizedUrl)
+  const dbName = dbUrl.pathname.replace(/^\//, '')
+  const auxPass =
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() ||
+    (dbUrl.password ? decodeURIComponent(dbUrl.password) : '')
+  if (dbName && auxPass) {
+    await syncTenantAuxRolePasswords({
+      host: dbUrl.hostname,
+      port: parseInt(dbUrl.port || '5432', 10),
+      dbName,
+      auxiliaryRolePassword: auxPass,
+      tenantRolePassword: dbUrl.password ? decodeURIComponent(dbUrl.password) : undefined,
+    })
+  }
+
   const ready = await waitForTenantAuthUsersTable(tenantDbUrl)
   if (!ready) {
     throw new Error(
       'GoTrue did not create auth.users in time. Check tenant-auth logs on the host (docker compose for this project ref) and retry.'
     )
+  }
+
+  if (dbName && auxPass && dbUrl.username) {
+    await grantTenantRoleAuthRead({
+      host: dbUrl.hostname,
+      port: parseInt(dbUrl.port || '5432', 10),
+      dbName,
+      tenantRoleName: decodeURIComponent(dbUrl.username),
+      auxiliaryRolePassword: auxPass,
+      tenantRolePassword: dbUrl.password ? decodeURIComponent(dbUrl.password) : undefined,
+    })
   }
 
   return { ok: true, alreadyReady: false, provisioned: true }
