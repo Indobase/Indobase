@@ -24,12 +24,11 @@ export async function createAPIKey(payload: APIKeyCreateVariables) {
     body: {
       ...(payload.type === 'secret'
         ? {
-            // secret_jwt_template: payload?.secret_jwt_template || null,
             secret_jwt_template: {
               role: 'service_role',
             },
           }
-        : name),
+        : {}),
 
       type: payload.type,
       name: payload.name,

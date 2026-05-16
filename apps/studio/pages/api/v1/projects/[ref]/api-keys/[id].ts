@@ -4,9 +4,10 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
 import {
-  createProjectApiKey,
-  listProjectApiKeys,
+  deleteProjectApiKeyById,
+  getProjectApiKeyById,
   parseRevealQuery,
+  updateProjectApiKeyById,
 } from 'lib/api/saas/project-api-keys'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
@@ -15,47 +16,49 @@ export default (req: NextApiRequest, res: NextApiResponse) =>
 async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   setNoStore(res)
   const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
-  if (!ref) return res.status(400).json({ message: 'Project ref is required' })
+  const id = typeof req.query.id === 'string' ? req.query.id : ''
+  if (!ref || !id) return res.status(400).json({ message: 'ref and id are required' })
 
   const reveal = parseRevealQuery(req.query.reveal)
 
   switch (req.method) {
     case 'GET': {
       try {
-        const keys = await listProjectApiKeys({ claims: claims as any, ref, reveal })
-        return res.status(200).json(keys)
+        const key = await getProjectApiKeyById({ claims: claims as any, ref, id, reveal })
+        return res.status(200).json(key)
       } catch (err) {
         return sendError(res, err)
       }
     }
-    case 'POST': {
+    case 'PATCH': {
       const body = parseBody(req.body)
       if (body === null) return res.status(400).json({ message: 'Invalid JSON body' })
-      if (typeof body?.name !== 'string' || !body.name.trim()) {
-        return res.status(400).json({ message: 'name is required' })
-      }
-      if (body?.type !== 'publishable' && body?.type !== 'secret') {
-        return res.status(400).json({ message: 'type must be publishable or secret' })
-      }
       try {
-        const created = await createProjectApiKey({
+        const updated = await updateProjectApiKeyById({
           claims: claims as any,
           ref,
-          reveal: parseRevealQuery(req.query.reveal) || true,
+          id,
+          reveal,
           body: {
-            name: body.name,
             description: typeof body.description === 'string' ? body.description : null,
-            type: body.type,
-            secret_jwt_template: body.secret_jwt_template ?? null,
           },
         })
-        return res.status(201).json(created)
+        return res.status(200).json(updated)
+      } catch (err) {
+        return sendError(res, err)
+      }
+    }
+    case 'DELETE': {
+      try {
+        const ok = await deleteProjectApiKeyById({ claims: claims as any, ref, id })
+        if (!ok) return res.status(404).json({ message: 'API key not found' })
+        return res.status(204).end()
       } catch (err) {
         return sendError(res, err)
       }
     }
     default: {
-      res.setHeader('Allow', ['GET', 'POST'])
+      res.setHeader('Allow', ['GET', 'PATCH', 'DELETE'])
       return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
     }
   }
@@ -77,7 +80,7 @@ function sendError(res: NextApiResponse, err: unknown) {
       ? 404
       : message.includes('permissions') || message.includes('session')
         ? 403
-        : message.includes('already exists') || message.includes('must')
+        : message.includes('cannot') || message.includes('must')
           ? 400
           : 500
   return res.status(status).json({ message })

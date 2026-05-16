@@ -100,6 +100,38 @@ create index if not exists third_party_auth_project_idx
   on saas.third_party_auth_integrations (project_ref);
 
 -- ---------------------------------------------------------------------------
+-- saas.project_api_keys (publishable / secret keys for Studio API Keys UI)
+-- ---------------------------------------------------------------------------
+create table if not exists saas.project_api_keys (
+  id uuid primary key default gen_random_uuid(),
+  project_ref text not null,
+  name text not null,
+  description text null,
+  type text not null check (type in ('publishable', 'secret')),
+  key_hash text not null,
+  key_prefix text not null,
+  api_key_enc text not null,
+  secret_jwt_template jsonb null,
+  inserted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (project_ref, name)
+);
+
+create index if not exists project_api_keys_project_ref_idx
+  on saas.project_api_keys (project_ref, inserted_at desc);
+
+do $saas_features_projects_legacy_keys$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'saas' and table_name = 'projects' and column_name = 'legacy_api_keys_enabled'
+  ) then
+    alter table saas.projects add column legacy_api_keys_enabled boolean not null default true;
+  end if;
+end
+$saas_features_projects_legacy_keys$;
+
+-- ---------------------------------------------------------------------------
 -- RLS: only the project's owning organization members can read/write
 -- ---------------------------------------------------------------------------
 -- Helper that checks org membership for the given (project_ref, gotrue_id).
@@ -176,11 +208,26 @@ begin
 end
 $$;
 
+-- saas.project_api_keys RLS.
+alter table saas.project_api_keys enable row level security;
+alter table saas.project_api_keys force row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'saas' and tablename = 'project_api_keys' and policyname = 'project_api_keys_member_all') then
+    create policy project_api_keys_member_all on saas.project_api_keys
+      for all
+      using (saas.is_member_of_project(project_ref, saas.current_user_id()))
+      with check (saas.is_member_of_project(project_ref, saas.current_user_id()));
+  end if;
+end
+$$;
+
 -- Grants for service-role + authenticated paths used by Studio handlers.
 revoke usage on schema saas from public;
 revoke all on saas.audit_logs from public;
 revoke all on saas.custom_domains from public;
 revoke all on saas.third_party_auth_integrations from public;
+revoke all on saas.project_api_keys from public;
 revoke all on sequence saas.audit_logs_id_seq from public;
 revoke all on sequence saas.custom_domains_id_seq from public;
 revoke all on sequence saas.third_party_auth_integrations_id_seq from public;
@@ -188,6 +235,7 @@ grant usage on schema saas to postgres, authenticated, service_role;
 grant select, insert, update, delete on saas.audit_logs to postgres, authenticated, service_role;
 grant select, insert, update, delete on saas.custom_domains to postgres, authenticated, service_role;
 grant select, insert, update, delete on saas.third_party_auth_integrations to postgres, authenticated, service_role;
+grant select, insert, update, delete on saas.project_api_keys to postgres, authenticated, service_role;
 grant usage, select on sequence saas.audit_logs_id_seq to postgres, authenticated, service_role;
 grant usage, select on sequence saas.custom_domains_id_seq to postgres, authenticated, service_role;
 grant usage, select on sequence saas.third_party_auth_integrations_id_seq to postgres, authenticated, service_role;
