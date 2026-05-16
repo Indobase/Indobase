@@ -26,14 +26,18 @@ function quotePgLiteral(value: string): string {
 }
 
 /**
- * Login role for tenant CREATE/GRANT/bootstrap DDL.
- * On Supabase Postgres images `postgres` is often non-superuser; `supabase_admin` uses the same
- * `POSTGRES_PASSWORD` and can create databases, grant reserved roles, and set schema owners.
+ * Login role for tenant CREATE/GRANT/bootstrap DDL (TCP from Studio → `POSTGRES_HOST`).
+ * Use `postgres` + `POSTGRES_PASSWORD` by default: it authenticates over the Docker network.
+ * `supabase_admin` is often only trusted on 127.0.0.1 inside the DB container, not from Studio.
  */
 export function resolveTenantProvisionAdminUser(): string {
   const explicit = process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim()
   if (explicit) return explicit
-  return 'supabase_admin'
+  return (
+    process.env.POSTGRES_USER_READ_WRITE?.trim() ||
+    process.env.POSTGRES_USER?.trim() ||
+    'postgres'
+  )
 }
 
 async function grantRoleToSupabaseAdminIfPossible(
@@ -296,6 +300,11 @@ export async function bootstrapTenantDataPlaneSchemas({
   const client = new Client({ connectionString: adminConn })
   await client.connect()
   try {
+    const superRes = await client.query<{ rolsuper: boolean }>(
+      `select rolsuper from pg_roles where rolname = current_user`
+    )
+    const isSuperuser = superRes.rows[0]?.rolsuper === true
+
     const pwLit = quotePgLiteral(auxPass)
     for (const role of DATA_PLANE_AUX_ROLES) {
       const exists = await client.query<{ exists: boolean }>(
@@ -319,13 +328,29 @@ export async function bootstrapTenantDataPlaneSchemas({
     await client.query('grant anon, authenticated, service_role to authenticator')
 
     await client.query('create schema if not exists auth')
-    await client.query('alter schema auth owner to supabase_auth_admin')
     await client.query('create schema if not exists storage')
-    await client.query('alter schema storage owner to supabase_storage_admin')
     await client.query('create schema if not exists _realtime')
-    await client.query('alter schema _realtime owner to supabase_admin')
     await client.query('create schema if not exists graphql_public')
-    await client.query('alter schema graphql_public owner to supabase_admin')
+
+    if (isSuperuser) {
+      await client.query('alter schema auth owner to supabase_auth_admin')
+      await client.query('alter schema storage owner to supabase_storage_admin')
+      await client.query('alter schema _realtime owner to supabase_admin')
+      await client.query('alter schema graphql_public owner to supabase_admin')
+    } else {
+      // Non-superuser provision admin (typical `postgres` over TCP): cannot transfer ownership
+      // to reserved Supabase roles; grant full schema access instead.
+      await client.query(
+        'grant all on schema auth to supabase_auth_admin, supabase_admin, authenticator'
+      )
+      await client.query(
+        'grant all on schema storage to supabase_storage_admin, supabase_admin, authenticator'
+      )
+      await client.query('grant all on schema _realtime to supabase_admin, authenticator')
+      await client.query(
+        'grant all on schema graphql_public to supabase_admin, anon, authenticated, service_role, authenticator'
+      )
+    }
 
     await client.query('grant usage on schema auth to supabase_auth_admin, anon, authenticated, service_role')
     await client.query(
@@ -337,17 +362,20 @@ export async function bootstrapTenantDataPlaneSchemas({
     await client.query(
       'grant usage on schema auth, storage, graphql_public to authenticator'
     )
+
+    const defaultPrivRole = isSuperuser ? 'supabase_auth_admin' : adminUser
+    const storagePrivRole = isSuperuser ? 'supabase_storage_admin' : adminUser
     await client.query(
-      'alter default privileges for role supabase_auth_admin in schema auth grant select on tables to anon, authenticated'
+      `alter default privileges for role ${quotePgIdent(defaultPrivRole)} in schema auth grant select on tables to anon, authenticated`
     )
     await client.query(
-      'alter default privileges for role supabase_auth_admin in schema auth grant all on tables to service_role'
+      `alter default privileges for role ${quotePgIdent(defaultPrivRole)} in schema auth grant all on tables to service_role`
     )
     await client.query(
-      'alter default privileges for role supabase_storage_admin in schema storage grant select on tables to anon, authenticated'
+      `alter default privileges for role ${quotePgIdent(storagePrivRole)} in schema storage grant select on tables to anon, authenticated`
     )
     await client.query(
-      'alter default privileges for role supabase_storage_admin in schema storage grant all on tables to service_role'
+      `alter default privileges for role ${quotePgIdent(storagePrivRole)} in schema storage grant all on tables to service_role`
     )
 
     try {
