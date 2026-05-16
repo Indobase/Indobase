@@ -11,6 +11,8 @@ PG_ADMIN_PASSWORD="${PG_ADMIN_PASSWORD:-${POSTGRES_PASSWORD:-}}"
 AUX_PASS="${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}"
 SMTP_HOST="${SAAS_TENANT_SMTP_HOST:-${SMTP_HOST:-indobase-mail}}"
 SMTP_PORT="${SAAS_TENANT_SMTP_PORT:-${SMTP_PORT:-2500}}"
+SMTP_USER="${SAAS_TENANT_SMTP_USER:-${SMTP_USER:-}}"
+SMTP_PASS="${SAAS_TENANT_SMTP_PASS:-${SMTP_PASS:-}}"
 SMTP_ADMIN_EMAIL="${SAAS_TENANT_SMTP_ADMIN_EMAIL:-${SMTP_ADMIN_EMAIL:-auth@indobase.in}}"
 SMTP_SENDER_NAME="${SAAS_TENANT_SMTP_SENDER_NAME:-${SMTP_SENDER_NAME:-Indobase}}"
 
@@ -54,16 +56,20 @@ path, ref = sys.argv[1], sys.argv[2]
 import os
 smtp_host = os.environ.get("SMTP_HOST", "indobase-mail")
 smtp_port = os.environ.get("SMTP_PORT", "2500")
+smtp_user = os.environ.get("SMTP_USER", "")
+smtp_pass = os.environ.get("SMTP_PASS", "")
 smtp_admin = os.environ.get("SMTP_ADMIN_EMAIL", "auth@indobase.in")
 smtp_sender = os.environ.get("SMTP_SENDER_NAME", "Indobase")
+def yaml_quote(s):
+    return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 domain = os.environ.get("SAAS_PUBLIC_DOMAIN", "indobase.in").strip().lstrip("https://").split("/")[0]
 api_host = f"{ref}.{domain}"
 text = open(path).read()
 replacements = {
     r'GOTRUE_SMTP_HOST:.*': f'GOTRUE_SMTP_HOST: "{smtp_host}"',
     r'GOTRUE_SMTP_PORT:.*': f'GOTRUE_SMTP_PORT: "{smtp_port}"',
-    r'GOTRUE_SMTP_USER:.*': 'GOTRUE_SMTP_USER: ""',
-    r'GOTRUE_SMTP_PASS:.*': 'GOTRUE_SMTP_PASS: ""',
+    r'GOTRUE_SMTP_USER:.*': f'GOTRUE_SMTP_USER: {yaml_quote(smtp_user)}',
+    r'GOTRUE_SMTP_PASS:.*': f'GOTRUE_SMTP_PASS: {yaml_quote(smtp_pass)}',
     r'GOTRUE_SMTP_ADMIN_EMAIL:.*': f'GOTRUE_SMTP_ADMIN_EMAIL: "{smtp_admin}"',
     r'GOTRUE_SMTP_SENDER_NAME:.*': f'GOTRUE_SMTP_SENDER_NAME: {smtp_sender}',
     r'GOTRUE_MAILER_AUTOCONFIRM:.*': 'GOTRUE_MAILER_AUTOCONFIRM: "false"',
