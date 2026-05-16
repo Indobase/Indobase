@@ -27,19 +27,27 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: Jwt
   const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
   if (!ref) return res.status(400).json({ message: 'Project ref is required' })
 
-  const config = await getProjectGoTrueConfig({ claims: claims!, ref })
-  if (!config) return res.status(404).json({ message: 'Project not found' })
-
-  return res.status(200).json(config)
+  try {
+    const config = await getProjectGoTrueConfig({ claims: claims!, ref })
+    if (!config) return res.status(404).json({ message: 'Project not found' })
+    return res.status(200).json(config)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load auth configuration'
+    return res.status(500).json({ message })
+  }
 }
 
 const handlePatch = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
   if (!ref) return res.status(400).json({ message: 'Project ref is required' })
 
-  const body = req.body && typeof req.body === 'object' ? req.body : {}
-  const config = await updateProjectGoTrueConfig({ claims: claims!, ref, patch: body })
-  if (!config) return res.status(404).json({ message: 'Project not found' })
-
-  return res.status(200).json(config)
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {}
+    const config = await updateProjectGoTrueConfig({ claims: claims!, ref, patch: body })
+    if (!config) return res.status(404).json({ message: 'Project not found' })
+    return res.status(200).json(config)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to update auth configuration'
+    return res.status(500).json({ message })
+  }
 }

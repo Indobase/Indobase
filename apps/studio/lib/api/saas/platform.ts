@@ -620,25 +620,25 @@ export async function listOrganizations({
   }>({
     query: `
       select
-        id,
-        slug,
-        name,
-        billing_email,
-        billing_partner,
-        plan,
-        opt_in_tags,
-        organization_missing_address,
-        organization_requires_mfa,
-        restriction_data,
-        restriction_status,
-        usage_billing_enabled,
-        stripe_customer_id,
-        subscription_id
-      , m.role as member_role
+        o.id,
+        o.slug,
+        o.name,
+        o.billing_email,
+        o.billing_partner,
+        o.plan,
+        o.opt_in_tags,
+        o.organization_missing_address,
+        o.organization_requires_mfa,
+        o.restriction_data,
+        o.restriction_status,
+        o.usage_billing_enabled,
+        o.stripe_customer_id,
+        o.subscription_id,
+        m.role as member_role
       from saas.organizations o
       join saas.organization_members m on m.organization_id = o.id
       where m.gotrue_id = $1
-      order by name asc
+      order by o.name asc
       limit $2 offset $3
     `,
     parameters: [gotrueId, qLimit, qOffset],

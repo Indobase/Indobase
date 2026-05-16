@@ -96,10 +96,6 @@ function useGetProjectPermissions(
   } = useSelectedOrganizationQuery({
     enabled: getOrganizationDataFromParamsSlug,
   })
-  const organization =
-    organizationSlugOverride === undefined ? organizationData : { slug: organizationSlugOverride }
-  const organizationSlug = organization?.slug
-
   const { ref: urlProjectRef } = useParams()
   const getProjectDataFromParamsRef = !!urlProjectRef && projectRefOverride === undefined && enabled
   const {
@@ -116,13 +112,18 @@ function useGetProjectPermissions(
 
   const projectRef = project?.parent_project_ref ? project.parent_project_ref : project?.ref
 
+  const organization =
+    organizationSlugOverride === undefined ? organizationData : { slug: organizationSlugOverride }
+  // When /platform/organizations fails, still resolve slug from the loaded project.
+  const organizationSlug = organization?.slug ?? projectData?.organization_slug
+
   const isLoading =
     isLoadingPermissions ||
-    (getOrganizationDataFromParamsSlug && isLoadingOrganization) ||
-    (getProjectDataFromParamsRef && isLoadingProject)
+    (getProjectDataFromParamsRef && isLoadingProject) ||
+    (getOrganizationDataFromParamsSlug && isLoadingOrganization && !organizationSlug)
   const isSuccess =
     isSuccessPermissions &&
-    (!getOrganizationDataFromParamsSlug || isSuccessOrganization) &&
+    (!getOrganizationDataFromParamsSlug || isSuccessOrganization || Boolean(organizationSlug)) &&
     (!getProjectDataFromParamsRef || isSuccessProject)
 
   return {
