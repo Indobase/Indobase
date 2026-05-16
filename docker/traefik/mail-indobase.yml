@@ -1,0 +1,20 @@
+# Traefik dynamic config for https://mail.indobase.in (Inbucket web UI).
+# Copy to /etc/dokploy/traefik/dynamic/mail-indobase.yml on the VPS.
+# Requires DNS: mail.indobase.in -> VPS IP (187.77.30.165).
+# Backend: indobase-mail on the Dokploy compose network (docker-compose service: mail).
+
+http:
+  routers:
+    indobase-mail:
+      rule: Host(`mail.indobase.in`)
+      service: indobase-mail-service
+      entryPoints:
+        - web
+        - websecure
+
+  services:
+    indobase-mail-service:
+      loadBalancer:
+        servers:
+          - url: http://indobase-mail:9000
+        passHostHeader: true

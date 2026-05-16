@@ -15,6 +15,11 @@ services:
       - dokploy-network
       - default
 
+  mail:
+    networks:
+      - dokploy-network
+      - default
+
 networks:
   dokploy-network:
     external: true
