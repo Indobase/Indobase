@@ -52,6 +52,70 @@ function safeRef(ref) {
   return ref
 }
 
+const TENANT_FUNCTIONS_MAIN_STUB = `// Minimal Edge Functions router for per-tenant stacks.
+Deno.serve(async (req) => {
+  const url = new URL(req.url)
+  const parts = url.pathname.split('/').filter(Boolean)
+  const serviceName = parts[0]
+  if (!serviceName) {
+    return new Response(JSON.stringify({ msg: 'missing function name in request' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  const servicePath = \`/home/deno/functions/\${serviceName}\`
+  try {
+    const worker = await EdgeRuntime.userWorkers.create({
+      servicePath,
+      memoryLimitMb: 150,
+      workerTimeoutMs: 60_000,
+      noModuleCache: false,
+      importMapPath: null,
+      envVars: Object.entries(Deno.env.toObject()),
+    })
+    return await worker.fetch(req)
+  } catch (e) {
+    return new Response(JSON.stringify({ msg: String(e) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+})
+`
+
+function seedTenantFunctionsMain(ref) {
+  const vol = `indobase-tenant-${ref}_tenant-functions-${ref}`
+  const tmp = path.join('/tmp', `fn-main-${ref}.ts`)
+  fs.writeFileSync(tmp, TENANT_FUNCTIONS_MAIN_STUB, 'utf8')
+  return new Promise((resolve) => {
+    const p = spawn(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '-v',
+        `${vol}:/f`,
+        '-v',
+        `${tmp}:/seed/index.ts:ro`,
+        'alpine',
+        'sh',
+        '-c',
+        'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts',
+      ],
+      { stdio: 'inherit' }
+    )
+    p.on('exit', () => {
+      try {
+        fs.unlinkSync(tmp)
+      } catch {
+        // ignore
+      }
+      resolve(undefined)
+    })
+    p.on('error', () => resolve(undefined))
+  })
+}
+
 function runCompose(composePath) {
   return new Promise((resolve, reject) => {
     const p = spawn(
@@ -106,6 +170,8 @@ const server = http.createServer(async (req, res) => {
 
     fs.writeFileSync(composePath, dockerComposeYml, 'utf8')
     fs.writeFileSync(traefikPath, traefikYml, 'utf8')
+
+    await seedTenantFunctionsMain(ref)
 
     if (apply) {
       await runCompose(composePath)

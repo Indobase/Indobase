@@ -2645,11 +2645,17 @@ services:
     networks:
       - tenant_data_plane
     environment:
+      JWT_SECRET: ${jwt}
       SUPABASE_URL: ${supabaseUrl}
       SUPABASE_ANON_KEY: ${anon}
       SUPABASE_SERVICE_ROLE_KEY: ${svc}
+      VERIFY_JWT: "false"
     volumes:
 ${functionsVolumeYaml}
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
     ports:
       - "127.0.0.1:${opts.ports.functions}:9000"${poolerServiceBlock}${poolerConfigsBlock}
 networks:
@@ -2844,11 +2850,12 @@ export async function getTenantStackArtifacts({
   ])
     .toString('base64')
     .slice(0, 128)
+  // Realtime AES-128-ECB requires exactly 16 bytes (not 24 hex chars).
   const realtimeDbEncKey = crypto
     .createHmac('sha256', jwtSecret)
     .update(`rt:dbenc:${p.ref}`)
     .digest('hex')
-    .slice(0, 24)
+    .slice(0, 16)
 
   const adminMetaJdbc = postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_admin', auxDbPass)
   const poolerCompose =

@@ -3,6 +3,7 @@ import type { JwtPayload } from 'indobase-js'
 
 import { executeQuery } from './query'
 import {
+  grantTenantAuxDatabasePrivileges,
   grantTenantRoleAuthRead,
   syncTenantAuxRolePasswords,
 } from './provision-tenant-db'
@@ -125,6 +126,13 @@ export async function ensureTenantGoTrueAuthSchema({
     (dbUrl.password ? decodeURIComponent(dbUrl.password) : '')
   if (dbName && auxPass) {
     await syncTenantAuxRolePasswords({
+      host: dbUrl.hostname,
+      port: parseInt(dbUrl.port || '5432', 10),
+      dbName,
+      auxiliaryRolePassword: auxPass,
+      tenantRolePassword: dbUrl.password ? decodeURIComponent(dbUrl.password) : undefined,
+    })
+    await grantTenantAuxDatabasePrivileges({
       host: dbUrl.hostname,
       port: parseInt(dbUrl.port || '5432', 10),
       dbName,

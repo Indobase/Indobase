@@ -321,6 +321,52 @@ export async function syncTenantAuxRolePasswords({
   )
 }
 
+export async function grantTenantAuxDatabasePrivileges({
+  host,
+  port,
+  dbName,
+  auxiliaryRolePassword,
+  tenantRolePassword,
+}: {
+  host: string
+  port: number
+  dbName: string
+  auxiliaryRolePassword: string
+  tenantRolePassword?: string
+}): Promise<void> {
+  const auxPass = auxiliaryRolePassword.trim()
+  const candidates = [
+    auxPass,
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim(),
+    tenantRolePassword?.trim(),
+    process.env.POSTGRES_PASSWORD?.trim(),
+  ].filter((p): p is string => Boolean(p?.length))
+
+  const dbLit = `"${dbName.replace(/"/g, '""')}"`
+  for (const adminPassword of [...new Set(candidates)]) {
+    const client = new Client({
+      connectionString: `postgresql://${encodeURIComponent('supabase_admin')}:${encodeURIComponent(
+        adminPassword
+      )}@${host}:${port}/${dbName}`,
+    })
+    try {
+      await client.connect()
+      await client.query(
+        `grant connect, create on database ${dbLit} to authenticator, supabase_admin, supabase_auth_admin, supabase_storage_admin`
+      )
+      await client.query(
+        'grant all on schema storage to supabase_storage_admin, supabase_admin, authenticator'
+      )
+      await client.query('grant all on schema _realtime to supabase_admin, authenticator')
+      return
+    } catch {
+      // try next candidate
+    } finally {
+      await client.end().catch(() => undefined)
+    }
+  }
+}
+
 export async function grantTenantRoleAuthRead({
   host,
   port,
@@ -433,7 +479,7 @@ export async function bootstrapTenantDataPlaneSchemas({
 
     const dbLit = `"${dbName.replace(/"/g, '""')}"`
     await client.query(
-      `grant connect on database ${dbLit} to authenticator, supabase_admin, supabase_auth_admin, supabase_storage_admin`
+      `grant connect, create on database ${dbLit} to authenticator, supabase_admin, supabase_auth_admin, supabase_storage_admin`
     )
 
     await client.query(
