@@ -17,6 +17,7 @@ import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
 import { ensureSaasStudioDbPrivileges } from './ensureSaasStudioDbPrivileges'
 import { ensureSaasPreventLastOwnerAllowsOrgCascade } from './preventLastOwnerTeardown'
+import { makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
 
 type Claims = JwtPayload & Record<string, any>
 
@@ -344,6 +345,8 @@ export async function ensureSaasTables() {
 
       alter table saas.projects add column if not exists data_plane_last_provisioned_at timestamptz null;
       alter table saas.projects add column if not exists data_plane_last_provision_result jsonb null;
+      alter table saas.projects add column if not exists jwt_secret_enc text null;
+      alter table saas.projects add column if not exists jwt_secret_update_meta jsonb null;
 
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
@@ -1508,6 +1511,169 @@ export async function listProjects({
   }
 }
 
+/**
+ * Finishes dedicated-tenant provisioning after insert (or repairs a stuck PROVISIONING row).
+ * Idempotent: reuses existing tenant DB/role when present.
+ */
+async function finalizeDedicatedProjectProvisioning({
+  projectRef,
+  gotrueId,
+  deleteOnFailure,
+}: {
+  projectRef: string
+  gotrueId: string
+  deleteOnFailure: boolean
+}): Promise<void> {
+  const dedicatedOnCreate = process.env.SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE !== 'false'
+
+  if (!dedicatedOnCreate) {
+    const saved = await executeQuery({
+      query: `
+      update saas.projects p
+      set status = 'ACTIVE_HEALTHY',
+          data_plane_port_base = null,
+          connection_string = null,
+          connection_string_enc = null
+      where p.ref = $1
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = p.organization_id
+            and m.gotrue_id = $2
+            and m.role in ('owner','admin','developer')
+        )
+    `,
+      parameters: [projectRef, gotrueId],
+      actorId: gotrueId,
+    })
+    if (saved.error) throw saved.error
+    return
+  }
+
+  const host = process.env.POSTGRES_HOST?.trim()
+  const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
+  const adminUser =
+    process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim() ||
+    process.env.POSTGRES_USER ||
+    process.env.POSTGRES_USER_READ_WRITE ||
+    'postgres'
+  const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
+  if (!host || !adminPassword) {
+    throw new Error(
+      'Dedicated project databases require POSTGRES_HOST and POSTGRES_PASSWORD on the Studio server. Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false to use legacy shared-database (Model A) mode.'
+    )
+  }
+
+  try {
+    const provisioned = await provisionTenantDatabase({
+      projectRef,
+      host,
+      port,
+      adminUser,
+      adminPassword,
+    })
+    await bootstrapTenantDatabaseExtensions({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+    })
+    await bootstrapMinimalSupabaseRoles({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+      tenantRoleName: provisioned.roleName,
+    })
+    await bootstrapTenantDataPlaneSchemas({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+      tenantRolePassword: provisioned.rolePassword,
+      auxiliaryRolePassword:
+        process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || provisioned.rolePassword,
+    })
+    const enc = encryptString(provisioned.connectionString)
+    const portBase = computeDataPlanePortBase(projectRef)
+    const saved = await executeQuery({
+      query: `
+          update saas.projects p
+          set status = 'ACTIVE_HEALTHY',
+              data_plane_port_base = $1,
+              connection_string = null,
+              connection_string_enc = $2,
+              db_host = $3
+          where p.ref = $4
+            and exists (
+              select 1
+              from saas.organization_members m
+              where m.organization_id = p.organization_id
+                and m.gotrue_id = $5
+                and m.role in ('owner','admin','developer')
+            )
+        `,
+      parameters: [portBase, enc, host, projectRef, gotrueId],
+      actorId: gotrueId,
+    })
+    if (saved.error) throw saved.error
+  } catch (err) {
+    if (deleteOnFailure) {
+      await executeQuery({
+        query: 'delete from saas.projects where ref = $1',
+        parameters: [projectRef],
+        actorId: gotrueId,
+      })
+    }
+    throw err
+  }
+}
+
+/** Repair projects left in PROVISIONING when tenant DB exists but control-plane row was not finalized. */
+async function tryCompleteStuckProvisioningProject({
+  ref,
+  gotrueId,
+}: {
+  ref: string
+  gotrueId: string
+}): Promise<void> {
+  const row = await executeQuery<{ status: string; connection_string_enc: string | null }>({
+    query: `select status, connection_string_enc from saas.projects where ref = $1`,
+    parameters: [ref],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  const p = row.data?.[0]
+  if (!p || p.status !== 'PROVISIONING') return
+
+  if (p.connection_string_enc?.trim()) {
+    const saved = await executeQuery({
+      query: `
+        update saas.projects
+        set status = 'ACTIVE_HEALTHY'
+        where ref = $1 and status = 'PROVISIONING'
+      `,
+      parameters: [ref],
+      actorId: gotrueId,
+    })
+    if (saved.error) throw saved.error
+    return
+  }
+
+  try {
+    await finalizeDedicatedProjectProvisioning({
+      projectRef: ref,
+      gotrueId,
+      deleteOnFailure: false,
+    })
+  } catch (e) {
+    console.warn('[saas] tryCompleteStuckProvisioningProject failed for %s: %O', ref, e)
+  }
+}
+
 export async function createProject({
   claims,
   body,
@@ -1529,37 +1695,7 @@ export async function createProject({
 }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
-  const jwtSecret = process.env.AUTH_JWT_SECRET ?? ''
-  if (!jwtSecret || jwtSecret.length < 32) {
-    throw new Error('Missing/invalid AUTH_JWT_SECRET (must be >= 32 chars) for per-project key generation')
-  }
-
-  function base64Url(input: Buffer | string) {
-    const buf = typeof input === 'string' ? Buffer.from(input) : input
-    return buf
-      .toString('base64')
-      .replace(/=/g, '')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-  }
-
-  function makeProjectJwt(role: 'anon' | 'service_role', projectRef: string) {
-    const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-    const now = Math.floor(Date.now() / 1000)
-    const payloadB64 = base64Url(
-      JSON.stringify({
-        role,
-        iss: 'indobase',
-        project_ref: projectRef,
-        iat: now,
-        exp: now + 60 * 60 * 24 * 365 * 10, // ~10y
-      })
-    )
-
-    const data = `${headerB64}.${payloadB64}`
-    const sig = crypto.createHmac('sha256', jwtSecret).update(data).digest()
-    return `${data}.${base64Url(sig)}`
-  }
+  const jwtSecret = resolveProjectJwtSecret(null)
 
   const orgRows = await executeQuery<{
     id: number
@@ -1583,8 +1719,8 @@ export async function createProject({
   const org = orgRows.data[0]
   const ref = uniqueProjectRef(body.name)
   const region = body.db_region || body.region_selection?.code || 'local'
-  const anonKey = makeProjectJwt('anon', ref)
-  const serviceKey = makeProjectJwt('service_role', ref)
+  const anonKey = makeProjectJwt(jwtSecret, 'anon', ref)
+  const serviceKey = makeProjectJwt(jwtSecret, 'service_role', ref)
 
   const inserted = await executeQuery<{
     id: number
@@ -1642,116 +1778,21 @@ export async function createProject({
   if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create project')
   const p = inserted.data[0]
 
-  // Default: provision a dedicated Postgres database + role per project on the same cluster
-  // (connection_string_enc). Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false for legacy
-  // single shared data-plane DB + RLS (Model A).
-  const dedicatedOnCreate = process.env.SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE !== 'false'
-
-  if (!dedicatedOnCreate) {
-    const saved = await executeQuery({
-      query: `
-      update saas.projects p
-      set status = 'ACTIVE_HEALTHY',
-          data_plane_port_base = null,
-          connection_string = null,
-          connection_string_enc = null
-      where p.ref = $1
-        and exists (
-          select 1
-          from saas.organization_members m
-          where m.organization_id = p.organization_id
-            and m.gotrue_id = $2
-            and m.role in ('owner','admin','developer')
-        )
-    `,
-      parameters: [p.ref, gotrueId],
-      actorId: gotrueId,
+  try {
+    await finalizeDedicatedProjectProvisioning({
+      projectRef: p.ref,
+      gotrueId,
+      deleteOnFailure: true,
     })
-    if (saved.error) throw saved.error
-  } else {
-    const host = process.env.POSTGRES_HOST?.trim()
-    const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
-    const adminUser =
-      process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim() ||
-      process.env.POSTGRES_USER ||
-      process.env.POSTGRES_USER_READ_WRITE ||
-      'postgres'
-    const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
-    if (!host || !adminPassword) {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('POSTGRES_HOST')) {
       await executeQuery({
         query: 'delete from saas.projects where ref = $1',
         parameters: [p.ref],
         actorId: gotrueId,
       })
-      throw new Error(
-        'Dedicated project databases require POSTGRES_HOST and POSTGRES_PASSWORD on the Studio server. Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false to use legacy shared-database (Model A) mode.'
-      )
     }
-
-    try {
-      const provisioned = await provisionTenantDatabase({
-        projectRef: ref,
-        host,
-        port,
-        adminUser,
-        adminPassword,
-      })
-      await bootstrapTenantDatabaseExtensions({
-        host,
-        port,
-        adminUser,
-        adminPassword,
-        dbName: provisioned.dbName,
-      })
-      await bootstrapMinimalSupabaseRoles({
-        host,
-        port,
-        adminUser,
-        adminPassword,
-        dbName: provisioned.dbName,
-        tenantRoleName: provisioned.roleName,
-      })
-      await bootstrapTenantDataPlaneSchemas({
-        host,
-        port,
-        adminUser,
-        adminPassword,
-        dbName: provisioned.dbName,
-        tenantRolePassword: provisioned.rolePassword,
-        auxiliaryRolePassword:
-          process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || provisioned.rolePassword,
-      })
-      const enc = encryptString(provisioned.connectionString)
-      const portBase = computeDataPlanePortBase(ref)
-      const saved = await executeQuery({
-        query: `
-          update saas.projects p
-          set status = 'ACTIVE_HEALTHY',
-              data_plane_port_base = $1,
-              connection_string = null,
-              connection_string_enc = $2,
-              db_host = $3
-          where p.ref = $4
-            and exists (
-              select 1
-              from saas.organization_members m
-              where m.organization_id = p.organization_id
-                and m.gotrue_id = $5
-                and m.role in ('owner','admin','developer')
-            )
-        `,
-        parameters: [portBase, enc, host, p.ref, gotrueId],
-        actorId: gotrueId,
-      })
-      if (saved.error) throw saved.error
-    } catch (err) {
-      await executeQuery({
-        query: 'delete from saas.projects where ref = $1',
-        parameters: [p.ref],
-        actorId: gotrueId,
-      })
-      throw err
-    }
+    throw err
   }
 
   await recordAuditLog({
@@ -1787,6 +1828,7 @@ export async function createProject({
 export async function getProject({ claims, ref }: { claims: Claims; ref: string }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
+  await tryCompleteStuckProvisioningProject({ ref, gotrueId })
 
   const rows = await executeQuery<{
     id: number
@@ -2640,17 +2682,13 @@ export async function getTenantStackArtifacts({
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
 
-  const jwtSecret = process.env.AUTH_JWT_SECRET ?? process.env.JWT_SECRET ?? ''
-  if (!jwtSecret || jwtSecret.length < 32) {
-    throw new Error('Missing/invalid AUTH_JWT_SECRET/JWT_SECRET (must be >= 32 chars)')
-  }
-
   const row = await executeQuery<{
     id: number
     ref: string
     data_plane_port_base: number | null
     connection_string: string | null
     connection_string_enc: string | null
+    jwt_secret_enc: string | null
     service_key: string
     anon_key: string
     service_key_enc: string | null
@@ -2665,6 +2703,7 @@ export async function getTenantStackArtifacts({
         p.data_plane_port_base,
         p.connection_string,
         p.connection_string_enc,
+        p.jwt_secret_enc,
         p.service_key,
         p.anon_key,
         p.service_key_enc,
@@ -2684,6 +2723,7 @@ export async function getTenantStackArtifacts({
   if (rows.length === 0) return null
 
   const p = rows[0]!
+  const jwtSecret = resolveProjectJwtSecret(p.jwt_secret_enc)
 
   const connectionStringEnc = (p.connection_string_enc ?? '').trim()
   const tenantDbUrl = connectionStringEnc.length > 0 ? decryptString(connectionStringEnc) : p.connection_string
