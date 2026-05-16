@@ -38,6 +38,8 @@ interface RegionSelectorProps {
 // I tried using https://flagpack.xyz/docs/development/react/ but couldn't get it to render
 // ^ can try again next time
 
+const regionIconSrc = (code: string) => `${BASE_PATH}/img/regions/${code}.svg`
+
 // Map backend region names to user-friendly display names
 const getDisplayNameForSmartRegion = (name: string): string => {
   if (name === 'APAC') {
@@ -153,7 +155,7 @@ export const RegionSelector = ({
                           <img
                             alt="region icon"
                             className="w-5 rounded-sm"
-                            src={`${BASE_PATH}/img/regions/${selectedRegion.code}.svg`}
+                            src={regionIconSrc(selectedRegion.code)}
                           />
                         )}
                         <span className="text-foreground">
@@ -180,9 +182,9 @@ export const RegionSelector = ({
                               <div className="flex flex-row items-center justify-between w-full">
                                 <div className="flex items-center gap-x-3">
                                   <img
-                                    alt="region icon"
+                                    alt=""
                                     className="w-5 rounded-sm"
-                                    src={`${BASE_PATH}/img/regions/${value.code}.svg`}
+                                    src={regionIconSrc(value.code)}
                                   />
                                   <span className="text-foreground">
                                     {getDisplayNameForSmartRegion(value.name)}
@@ -221,16 +223,11 @@ export const RegionSelector = ({
                           <div className="flex flex-row items-center justify-between w-full gap-x-2">
                             <div className="flex items-center gap-x-3">
                               <img
-                                alt="region icon"
+                                alt=""
                                 className="w-5 rounded-sm"
-                                src={`${BASE_PATH}/img/regions/${value.code}.svg`}
+                                src={regionIconSrc(value.code)}
                               />
-                              <div className="flex items-center gap-x-2">
-                                <span className="text-foreground">{value.name}</span>
-                                <span className="text-xs text-foreground-lighter font-mono">
-                                  {value.code}
-                                </span>
-                              </div>
+                              <span className="text-foreground">{value.name}</span>
                             </div>
 
                             {recommendedSpecificRegions.has(value.code) && (

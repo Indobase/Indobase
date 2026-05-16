@@ -28,16 +28,30 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     return res.status(400).json({ message: 'SQL query is required' })
   }
 
-  // Non-SaaS local Studio: do not expose every auth user to every dashboard user.
-  // Enforce that auth.users listing queries include a current-user filter.
-  if (!IS_SAAS) {
-    const userId = getGotrueUserId(claims)
-    if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {
+  const userId = getGotrueUserId(claims)
+
+  // Do not expose every GoTrue user on the shared control-plane DB to arbitrary dashboard users.
+  if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {
+    if (!IS_SAAS) {
       return res.status(403).json({
         message: 'auth.users queries must be scoped to the current user',
       })
     }
 
+    const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
+    const incomingConn = getConnectionEncryptedHeader(req)
+    const usesDedicatedTenantDb =
+      Boolean(incomingConn) && (await projectHasDedicatedTenantDatabase(ref, userId))
+
+    if (!usesDedicatedTenantDb) {
+      return res.status(403).json({
+        message:
+          'Listing auth.users requires a dedicated project database. This project is still on the shared database, or the connection is not provisioned yet.',
+      })
+    }
+  }
+
+  if (!IS_SAAS) {
     // Automatically enforce Row Level Security for data-related queries in multi-tenant setups.
     // Strip frontend's role impersonation wrapper if present to prevent it from overriding the server's enforcement
     let innerQuery = query
@@ -98,6 +112,28 @@ function queryIncludesScopedUser(query: string, userId: string) {
   // Accept either `id = '<uuid>'` or `auth.users.id = '<uuid>'`.
   const escaped = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`\\b(?:auth\\.users\\.)?id\\s*=\\s*'${escaped}'`, 'i').test(query)
+}
+
+function getConnectionEncryptedHeader(req: NextApiRequest): string {
+  const raw = req.headers['x-connection-encrypted']
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+async function projectHasDedicatedTenantDatabase(ref: string, gotrueId: string): Promise<boolean> {
+  if (!ref) return false
+  const row = await executeQuery<{ connection_string_enc: string | null }>({
+    query: `
+      select p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  return Boolean(row.data?.[0]?.connection_string_enc?.trim())
 }
 
 function getGotrueUserId(claims?: JwtPayload): string {

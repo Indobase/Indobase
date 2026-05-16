@@ -9,6 +9,19 @@ const missingPgMetaUrlError = () =>
       '(e.g. http://meta:8080 from the Studio container).'
   )
 
+/** Prefer the per-project encrypted URI from the client; default to control-plane Postgres for saas.* APIs. */
+function resolvePgMetaConnectionEncrypted(headers?: HeadersInit, readOnly = false): string {
+  let incoming = ''
+  if (headers instanceof Headers) {
+    incoming = headers.get('x-connection-encrypted')?.trim() ?? ''
+  } else if (headers && typeof headers === 'object') {
+    const record = headers as Record<string, string>
+    incoming = (record['x-connection-encrypted'] ?? '').trim()
+  }
+  if (incoming) return incoming
+  return encryptString(getConnectionString({ readOnly }))
+}
+
 export type QueryOptions = {
   query: string
   parameters?: unknown[]
@@ -41,8 +54,7 @@ export async function executeQuery<T = unknown>({
     return { data: undefined, error: missingPgMetaUrlError() }
   }
 
-  const connectionString = getConnectionString({ readOnly })
-  const connectionStringEncrypted = encryptString(connectionString)
+  const connectionStringEncrypted = resolvePgMetaConnectionEncrypted(headers, readOnly)
 
   // pg-meta uses the extended-query (prepared-statement) protocol whenever
   // `parameters` is present, which rejects multi-statement query strings
