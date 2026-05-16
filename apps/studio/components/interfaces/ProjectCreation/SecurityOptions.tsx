@@ -56,7 +56,7 @@ export const SecurityOptions = ({ form, layout = 'horizontal' }: SecurityOptions
                       target="_blank"
                       className="text-link"
                     >
-                      supabase-js
+                      indobase-js
                     </Link>
                     .
                   </FormDescription_Shadcn_>
@@ -97,7 +97,7 @@ export const SecurityOptions = ({ form, layout = 'horizontal' }: SecurityOptions
               type="warning"
               title="Client libraries need Data API to query your database"
             >
-              Disabling it means supabase-js and similar libraries can't query or mutate data.
+              Disabling it means indobase-js and similar libraries can't query or mutate data.
             </Admonition>
           )}
         </div>

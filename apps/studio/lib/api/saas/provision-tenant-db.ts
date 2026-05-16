@@ -78,8 +78,18 @@ export async function provisionTenantDatabase({
       'select exists(select 1 from pg_database where datname = $1)',
       [dbName]
     )
+    const adminIdent = quotePgIdent(adminUser)
     if (!dbExists.rows[0]?.exists) {
+      // Owner is the tenant login role; grant it to the provision admin so bootstrap DDL
+      // (extensions, supabase_* roles) does not fail with "must be member of role <tenant>".
       await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
+    }
+    await client.query(`GRANT ${roleIdent} TO ${adminIdent}`)
+    const supabaseAdminExists = await client.query<{ exists: boolean }>(
+      `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
+    )
+    if (supabaseAdminExists.rows[0]?.exists) {
+      await client.query(`GRANT ${roleIdent} TO supabase_admin`)
     }
   } finally {
     await client.end()
@@ -90,6 +100,41 @@ export async function provisionTenantDatabase({
   )}@${host}:${port}/${dbName}`
 
   return { dbName, roleName, rolePassword, connectionString }
+}
+
+/** Set tenant login role password (e.g. user-chosen DB password from project creation UI). */
+export async function setTenantRolePassword({
+  host,
+  port,
+  adminUser,
+  adminPassword,
+  dbName,
+  tenantRoleName,
+  password,
+}: {
+  host: string
+  port: number
+  adminUser: string
+  adminPassword: string
+  dbName: string
+  tenantRoleName: string
+  password: string
+}): Promise<void> {
+  if (!/^[a-z][a-z0-9_]{0,62}$/i.test(tenantRoleName)) {
+    throw new Error('Invalid tenant role name')
+  }
+  const adminConn = `postgresql://${encodeURIComponent(adminUser)}:${encodeURIComponent(
+    adminPassword
+  )}@${host}:${port}/postgres`
+  const client = new Client({ connectionString: adminConn })
+  await client.connect()
+  try {
+    const roleIdent = quotePgIdent(tenantRoleName)
+    const roleLit = quotePgLiteral(password)
+    await client.query(`alter role ${roleIdent} login password ${roleLit}`)
+  } finally {
+    await client.end()
+  }
 }
 
 /**
@@ -331,6 +376,25 @@ export async function runTenantDataPlaneBootstrapFromConnectionString(
     process.env.POSTGRES_USER ||
     'postgres'
   if (!adminPassword) throw new Error('POSTGRES_PASSWORD is required for tenant DB bootstrap')
+
+  const adminConn = `postgresql://${encodeURIComponent(adminUser)}:${encodeURIComponent(
+    adminPassword
+  )}@${host}:${port}/postgres`
+  const grantClient = new Client({ connectionString: adminConn })
+  await grantClient.connect()
+  try {
+    const roleIdent = quotePgIdent(tenantRole)
+    const adminIdent = quotePgIdent(adminUser)
+    await grantClient.query(`GRANT ${roleIdent} TO ${adminIdent}`)
+    const supabaseAdminExists = await grantClient.query<{ exists: boolean }>(
+      `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
+    )
+    if (supabaseAdminExists.rows[0]?.exists) {
+      await grantClient.query(`GRANT ${roleIdent} TO supabase_admin`)
+    }
+  } finally {
+    await grantClient.end()
+  }
 
   await bootstrapMinimalSupabaseRoles({
     host,

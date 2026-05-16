@@ -12,6 +12,7 @@ import {
   bootstrapTenantDataPlaneSchemas,
   provisionTenantDatabase,
   runTenantDataPlaneBootstrapFromConnectionString,
+  setTenantRolePassword,
 } from './provision-tenant-db'
 import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
@@ -1519,10 +1520,12 @@ async function finalizeDedicatedProjectProvisioning({
   projectRef,
   gotrueId,
   deleteOnFailure,
+  userDbPass,
 }: {
   projectRef: string
   gotrueId: string
   deleteOnFailure: boolean
+  userDbPass?: string
 }): Promise<void> {
   const dedicatedOnCreate = process.env.SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE !== 'false'
 
@@ -1597,7 +1600,28 @@ async function finalizeDedicatedProjectProvisioning({
       auxiliaryRolePassword:
         process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || provisioned.rolePassword,
     })
-    const enc = encryptString(provisioned.connectionString)
+
+    const effectiveUserDbPass = (process.env.SAAS_APPLY_USER_DB_PASS_ON_CREATE !== 'false'
+      ? userDbPass
+      : ''
+    )?.trim()
+    let connectionString = provisioned.connectionString
+    if (effectiveUserDbPass && effectiveUserDbPass.length >= 8) {
+      await setTenantRolePassword({
+        host,
+        port,
+        adminUser,
+        adminPassword,
+        dbName: provisioned.dbName,
+        tenantRoleName: provisioned.roleName,
+        password: effectiveUserDbPass,
+      })
+      const u = new URL(connectionString.replace(/^postgres:\/\//, 'postgresql://'))
+      u.password = encodeURIComponent(effectiveUserDbPass)
+      connectionString = u.toString()
+    }
+
+    const enc = encryptString(connectionString)
     const portBase = computeDataPlanePortBase(projectRef)
     const saved = await executeQuery({
       query: `
@@ -1783,6 +1807,7 @@ export async function createProject({
       projectRef: p.ref,
       gotrueId,
       deleteOnFailure: true,
+      userDbPass: body.db_pass,
     })
   } catch (err) {
     if (err instanceof Error && err.message.includes('POSTGRES_HOST')) {

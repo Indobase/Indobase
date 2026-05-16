@@ -3,9 +3,12 @@ import { AWS_REGIONS, FLY_REGIONS } from 'shared-data'
 
 import type { components } from 'data/api'
 import { useCustomContent } from 'hooks/custom-content/useCustomContent'
+import { IS_SAAS } from 'lib/constants'
+import { INDIA_REGION_DEFAULT } from 'lib/constants/india-regions'
 
-export const AWS_REGIONS_DEFAULT =
-  process.env.NEXT_PUBLIC_ENVIRONMENT !== 'prod'
+export const AWS_REGIONS_DEFAULT = IS_SAAS
+  ? INDIA_REGION_DEFAULT
+  : process.env.NEXT_PUBLIC_ENVIRONMENT !== 'prod'
     ? AWS_REGIONS.SOUTHEAST_ASIA
     : AWS_REGIONS.EAST_US_2
 
@@ -21,9 +24,9 @@ export const MANAGED_BY = {
 export type ManagedBy = (typeof MANAGED_BY)[keyof typeof MANAGED_BY]
 
 export const PRICING_TIER_LABELS_ORG = {
-  FREE: 'Free - ₹0/month',
-  PRO: 'Pro - ₹2,083/month',
-  TEAM: 'Team - ₹49,717/month',
+  FREE: 'Starter - ₹0/month',
+  PRO: 'Pro - ₹2,499/month',
+  TEAM: 'Business - ₹49,999/month',
 }
 
 export const PRICING_TIER_PRODUCT_IDS = {

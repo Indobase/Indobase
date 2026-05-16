@@ -1,4 +1,6 @@
 import { DesiredInstanceSize, instanceSizeSpecs } from 'data/projects/new-project.constants'
+import { IS_SAAS } from 'lib/constants'
+import { INDIA_REGIONS } from 'lib/constants/india-regions'
 import type { CloudProvider, Region } from 'shared-data'
 import { AWS_REGIONS, FLY_REGIONS } from 'shared-data'
 import { SMART_REGION_TO_EXACT_REGION_MAP } from 'shared-data/regions'
@@ -8,6 +10,10 @@ export function smartRegionToExactRegion(smartOrExactRegion: string) {
 }
 
 export function getAvailableRegions(cloudProvider: CloudProvider): Region {
+  if (IS_SAAS && (cloudProvider === 'AWS' || cloudProvider === 'AWS_K8S')) {
+    return INDIA_REGIONS
+  }
+
   switch (cloudProvider) {
     case 'AWS':
     case 'AWS_K8S':
