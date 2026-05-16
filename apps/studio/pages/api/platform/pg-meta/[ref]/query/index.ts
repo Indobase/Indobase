@@ -1,6 +1,7 @@
 import { constructHeaders } from 'lib/api/apiHelpers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { executeQuery } from 'lib/api/saas/query'
+import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
 import { IS_SAAS } from 'lib/constants'
 import { JwtPayload } from 'indobase-js'
@@ -82,7 +83,25 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   }
 
   const headers = constructHeaders(req.headers)
-  const { data, error } = await executeQuery({ query, headers })
+  let { data, error } = await executeQuery({ query, headers })
+
+  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
+  if (
+    error &&
+    IS_SAAS &&
+    containsAuthUsersQuery(query) &&
+    claims &&
+    isAuthUsersMissingError(error)
+  ) {
+    try {
+      await ensureTenantGoTrueAuthSchema({ claims, ref })
+      const retry = await executeQuery({ query, headers })
+      data = retry.data
+      error = retry.error
+    } catch (repairErr) {
+      console.warn('[pg-meta/query] auth schema repair failed for %s: %O', ref, repairErr)
+    }
+  }
 
   if (error) {
     if (error instanceof PgMetaDatabaseError) {
@@ -134,6 +153,20 @@ async function projectHasDedicatedTenantDatabase(ref: string, gotrueId: string):
   })
   if (row.error) throw row.error
   return Boolean(row.data?.[0]?.connection_string_enc?.trim())
+}
+
+function isAuthUsersMissingError(error: unknown): boolean {
+  const parts: string[] = []
+  if (error instanceof PgMetaDatabaseError) {
+    parts.push(error.message, error.formattedError)
+  } else if (error instanceof Error) {
+    parts.push(error.message)
+  } else if (typeof error === 'object' && error && 'message' in error) {
+    parts.push(String((error as { message?: unknown }).message))
+  } else {
+    parts.push(String(error))
+  }
+  return parts.some((m) => /relation\s+"auth\.users"\s+does not exist/i.test(m))
 }
 
 function getGotrueUserId(claims?: JwtPayload): string {

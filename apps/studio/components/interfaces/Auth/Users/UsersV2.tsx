@@ -18,6 +18,7 @@ import { useUserDeleteMutation } from 'data/auth/user-delete-mutation'
 import { useUserIndexStatusesQuery } from 'data/auth/user-search-indexes-query'
 import { useUsersCountQuery } from 'data/auth/users-count-query'
 import { User, useUsersInfiniteQuery } from 'data/auth/users-infinite-query'
+import { useEnsureAuthSchemaMutation } from 'data/projects/project-ensure-auth-schema-mutation'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
@@ -326,6 +327,34 @@ export const UsersV2 = () => {
   )
 
   const { mutateAsync: deleteUser } = useUserDeleteMutation()
+  const ensureAuthSchema = useEnsureAuthSchemaMutation()
+  const authSchemaRepairAttempted = useRef(false)
+
+  const isAuthUsersSchemaMissing = useMemo(() => {
+    if (!isError || !error) return false
+    const msg = error instanceof Error ? error.message : String(error)
+    return /auth\.users.*does not exist|relation\s+"auth\.users"/i.test(msg)
+  }, [isError, error])
+
+  useEffect(() => {
+    if (
+      !projectRef ||
+      !isAuthUsersSchemaMissing ||
+      authSchemaRepairAttempted.current ||
+      ensureAuthSchema.isPending
+    ) {
+      return
+    }
+    authSchemaRepairAttempted.current = true
+    ensureAuthSchema.mutate(
+      { ref: projectRef },
+      {
+        onSuccess: () => {
+          void refetch()
+        },
+      }
+    )
+  }, [projectRef, isAuthUsersSchemaMissing, ensureAuthSchema, refetch])
 
   const users = useMemo(() => data?.pages.flatMap((page) => page.result) ?? [], [data?.pages])
   const selectedUser = users?.find((u) => u.id === selectedId)?.id
@@ -827,8 +856,31 @@ export const UsersV2 = () => {
                       <GenericSkeletonLoader />
                     </div>
                   ) : isError ? (
-                    <div className="absolute top-14 px-6 flex flex-col items-center justify-center w-full">
+                    <div className="absolute top-14 px-6 flex flex-col items-center justify-center w-full gap-3">
                       <AlertError subject="Failed to retrieve users" error={error} />
+                      {isAuthUsersSchemaMissing ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-sm text-foreground-light text-center m-0">
+                            {ensureAuthSchema.isPending
+                              ? 'Initializing Auth database (starting GoTrue)…'
+                              : 'Auth tables are missing on this project database. We can start the tenant Auth service to create them.'}
+                          </p>
+                          <Button
+                            type="default"
+                            loading={ensureAuthSchema.isPending}
+                            disabled={ensureAuthSchema.isPending}
+                            onClick={() =>
+                              projectRef &&
+                              ensureAuthSchema.mutate(
+                                { ref: projectRef },
+                                { onSuccess: () => void refetch() }
+                              )
+                            }
+                          >
+                            Initialize Auth schema
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   ) : isSuccess ? (
                     <div className="absolute top-20 px-6 flex flex-col items-center justify-center w-full gap-y-2">

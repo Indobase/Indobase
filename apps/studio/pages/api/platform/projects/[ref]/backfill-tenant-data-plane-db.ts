@@ -5,6 +5,7 @@ import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
 import { executeQuery } from 'lib/api/saas/query'
 import { runTenantDataPlaneBootstrapFromConnectionString } from 'lib/api/saas/provision-tenant-db'
+import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import { decryptString } from 'lib/api/saas/util'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
@@ -61,7 +62,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
 
   try {
     const result = await runTenantDataPlaneBootstrapFromConnectionString(url.trim())
-    return res.status(200).json({ ok: true, ...result })
+    let authSchema: Awaited<ReturnType<typeof ensureTenantGoTrueAuthSchema>> | null = null
+    try {
+      authSchema = await ensureTenantGoTrueAuthSchema({ claims, ref })
+    } catch (authErr) {
+      console.warn('[backfill-tenant-data-plane-db] auth schema ensure failed for %s: %O', ref, authErr)
+    }
+    return res.status(200).json({ ok: true, ...result, auth_schema: authSchema })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return res.status(500).json({ message })

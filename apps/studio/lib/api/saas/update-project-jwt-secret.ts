@@ -6,13 +6,11 @@ import {
   JwtSecretUpdateStatus,
 } from '@supabase/shared-types/out/events'
 
+import { ensureSaasTables, getGotrueUserId } from './platform'
 import {
-  getTenantStackArtifacts,
-  recordDataPlaneProvisionSuccess,
-  resolvePublicDomainForTenantStack,
-  ensureSaasTables,
-  getGotrueUserId,
-} from './platform'
+  isDataPlaneProvisionerConfigured,
+  provisionTenantDataPlaneStack,
+} from './tenant-data-plane-provision'
 import { executeQuery } from './query'
 import { encryptString } from './util'
 import { makeProjectJwt } from './project-jwt'
@@ -77,57 +75,12 @@ async function reprovisionTenantStackIfConfigured({
   claims: Claims
   ref: string
 }) {
-  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
-  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
-  if (!provisionerUrl || !provisionerToken) return
-
-  const publicDomain = resolvePublicDomainForTenantStack()
-  const artifacts = await getTenantStackArtifacts({ claims, ref, publicDomain })
-  if (!artifacts?.docker_compose_yml) return
-
-  const resp = await fetch(`${provisionerUrl}/provision`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${provisionerToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      project_ref: ref,
-      docker_compose_yml: artifacts.docker_compose_yml,
-      traefik_yml: artifacts.traefik_yml,
-      apply: true,
-    }),
-  })
-
-  const text = await resp.text()
-  let parsed: unknown
-  try {
-    parsed = text ? JSON.parse(text) : {}
-  } catch {
-    parsed = { raw: text }
-  }
-
-  if (!resp.ok) {
-    throw new Error(
-      `Data-plane provisioner failed (${resp.status}): ${
-        typeof parsed === 'object' && parsed && 'message' in parsed
-          ? String((parsed as { message?: unknown }).message)
-          : text.slice(0, 200)
-      }`
-    )
-  }
-
-  const extra = typeof parsed === 'object' && parsed !== null ? parsed : {}
-  await recordDataPlaneProvisionSuccess({
+  if (!isDataPlaneProvisionerConfigured()) return
+  await provisionTenantDataPlaneStack({
     claims,
     ref,
-    provisionResult: {
-      ok: true,
-      apply: true,
-      reason: 'jwt_secret_update',
-      provisioner_status: resp.status,
-      ...(extra as Record<string, unknown>),
-    },
+    apply: true,
+    reason: 'jwt_secret_update',
   })
 }
 

@@ -1649,6 +1649,22 @@ async function finalizeDedicatedProjectProvisioning({
       actorId: gotrueId,
     })
     if (saved.error) throw saved.error
+
+    if (process.env.SAAS_AUTO_PROVISION_DATA_PLANE_ON_CREATE !== 'false') {
+      try {
+        const { isDataPlaneProvisionerConfigured } = await import('./tenant-data-plane-provision')
+        if (isDataPlaneProvisionerConfigured()) {
+          const { ensureTenantGoTrueAuthSchemaForActor } = await import('./tenant-gotrue-schema')
+          await ensureTenantGoTrueAuthSchemaForActor({ ref: projectRef, actorId: gotrueId })
+        }
+      } catch (e) {
+        console.warn(
+          '[saas] auto data-plane/auth schema setup failed for %s (project is usable; repair from Infrastructure): %O',
+          projectRef,
+          e
+        )
+      }
+    }
   } catch (err) {
     if (deleteOnFailure) {
       await executeQuery({
