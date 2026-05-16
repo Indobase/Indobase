@@ -19,6 +19,7 @@ import { useUserIndexStatusesQuery } from 'data/auth/user-search-indexes-query'
 import { useUsersCountQuery } from 'data/auth/users-count-query'
 import { User, useUsersInfiniteQuery } from 'data/auth/users-infinite-query'
 import { useEnsureAuthSchemaMutation } from 'data/projects/project-ensure-auth-schema-mutation'
+import { useProvisionDedicatedDatabaseMutation } from 'data/projects/project-provision-dedicated-database-mutation'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
@@ -328,13 +329,43 @@ export const UsersV2 = () => {
 
   const { mutateAsync: deleteUser } = useUserDeleteMutation()
   const ensureAuthSchema = useEnsureAuthSchemaMutation()
+  const provisionDedicatedDb = useProvisionDedicatedDatabaseMutation()
   const authSchemaRepairAttempted = useRef(false)
+  const dedicatedDbRepairAttempted = useRef(false)
 
   const isAuthUsersSchemaMissing = useMemo(() => {
     if (!isError || !error) return false
     const msg = error instanceof Error ? error.message : String(error)
     return /auth\.users.*does not exist|relation\s+"auth\.users"/i.test(msg)
   }, [isError, error])
+
+  const needsDedicatedProjectDatabase = useMemo(() => {
+    if (!isError || !error) return false
+    const msg = error instanceof Error ? error.message : String(error)
+    return /requires a dedicated project database|shared database|connection is not provisioned/i.test(
+      msg
+    )
+  }, [isError, error])
+
+  useEffect(() => {
+    if (
+      !projectRef ||
+      !needsDedicatedProjectDatabase ||
+      dedicatedDbRepairAttempted.current ||
+      provisionDedicatedDb.isPending
+    ) {
+      return
+    }
+    dedicatedDbRepairAttempted.current = true
+    provisionDedicatedDb.mutate(
+      { ref: projectRef },
+      {
+        onSuccess: () => {
+          void refetch()
+        },
+      }
+    )
+  }, [projectRef, needsDedicatedProjectDatabase, provisionDedicatedDb, refetch])
 
   useEffect(() => {
     if (
@@ -858,7 +889,29 @@ export const UsersV2 = () => {
                   ) : isError ? (
                     <div className="absolute top-14 px-6 flex flex-col items-center justify-center w-full gap-3">
                       <AlertError subject="Failed to retrieve users" error={error} />
-                      {isAuthUsersSchemaMissing ? (
+                      {needsDedicatedProjectDatabase ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-sm text-foreground-light text-center m-0">
+                            {provisionDedicatedDb.isPending
+                              ? 'Provisioning a dedicated database for this project…'
+                              : 'This project still uses the shared database. Auth user listing needs a per-project database.'}
+                          </p>
+                          <Button
+                            type="default"
+                            loading={provisionDedicatedDb.isPending}
+                            disabled={provisionDedicatedDb.isPending}
+                            onClick={() =>
+                              projectRef &&
+                              provisionDedicatedDb.mutate(
+                                { ref: projectRef },
+                                { onSuccess: () => void refetch() }
+                              )
+                            }
+                          >
+                            Provision dedicated database
+                          </Button>
+                        </div>
+                      ) : isAuthUsersSchemaMissing ? (
                         <div className="flex flex-col items-center gap-2">
                           <p className="text-sm text-foreground-light text-center m-0">
                             {ensureAuthSchema.isPending

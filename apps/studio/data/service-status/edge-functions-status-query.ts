@@ -9,10 +9,9 @@ export type EdgeFunctionServiceStatusVariables = {
 }
 
 export async function getEdgeFunctionServiceStatus(signal?: AbortSignal) {
-  // Self-hosted (incl. Indobase SaaS) runs the edge-functions service in the
-  // same compose stack as Studio. If Studio is up, the service is up — don't
+  // Indobase SaaS runs edge functions in the same compose stack as Studio — don't
   // probe a third-party Supabase URL from the user's browser.
-  if (!IS_SAAS) return { healthy: true }
+  if (IS_SAAS) return { healthy: true }
 
   try {
     const res = await fetch('https://obuldanrptloktxcffvn.supabase.co/functions/v1/health-check', {

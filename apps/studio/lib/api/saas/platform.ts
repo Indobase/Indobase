@@ -1677,6 +1677,52 @@ async function finalizeDedicatedProjectProvisioning({
   }
 }
 
+/**
+ * Provisions a per-project tenant database for legacy Model A projects (shared control-plane DB).
+ * Idempotent when a dedicated connection string is already stored on the project row.
+ */
+export async function provisionDedicatedTenantDatabaseForProject({
+  claims,
+  ref,
+}: {
+  claims: Claims
+  ref: string
+}) {
+  const gotrueId = getGotrueUserId(claims)
+  const row = await executeQuery<{
+    connection_string: string | null
+    connection_string_enc: string | null
+  }>({
+    query: `
+      select p.connection_string, p.connection_string_enc
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1
+        and m.gotrue_id = $2
+        and m.role in ('owner', 'admin', 'developer')
+      limit 1
+    `,
+    parameters: [ref, gotrueId],
+    actorId: gotrueId,
+  })
+  if (row.error) throw row.error
+  if (!row.data?.length) {
+    throw new Error('Project not found')
+  }
+  const p = row.data[0]!
+  if ((p.connection_string_enc ?? '').trim() || (p.connection_string ?? '').trim()) {
+    return { ok: true as const, alreadyProvisioned: true }
+  }
+
+  await finalizeDedicatedProjectProvisioning({
+    projectRef: ref,
+    gotrueId,
+    deleteOnFailure: false,
+  })
+
+  return { ok: true as const, alreadyProvisioned: false }
+}
+
 /** Repair projects left in PROVISIONING when tenant DB exists but control-plane row was not finalized. */
 async function tryCompleteStuckProvisioningProject({
   ref,

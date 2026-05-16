@@ -23,10 +23,9 @@ export async function getProjectServiceStatus(
 ) {
   if (!projectRef) throw new Error('projectRef is required')
 
-  // Self-hosted (incl. Indobase SaaS) doesn't have the cloud `/v1/.../health`
-  // endpoint. Report all five core services as healthy — the data plane runs
-  // in the same compose stack as Studio, so if Studio is up, they're up.
-  if (!IS_SAAS) {
+  // Indobase SaaS doesn't have the cloud `/v1/.../health` endpoint. Report all five
+  // core services as healthy — the data plane runs in the same compose stack as Studio.
+  if (IS_SAAS) {
     const services: NonNullable<ServiceHealthResponse['name']>[] = [
       'auth',
       'realtime',

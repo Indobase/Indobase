@@ -40,9 +40,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     }
 
     const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
-    const incomingConn = getConnectionEncryptedHeader(req)
-    const usesDedicatedTenantDb =
-      Boolean(incomingConn) && (await projectHasDedicatedTenantDatabase(ref, userId))
+    const usesDedicatedTenantDb = await projectHasDedicatedTenantDatabase(ref, userId)
 
     if (!usesDedicatedTenantDb) {
       return res.status(403).json({
@@ -133,16 +131,14 @@ function queryIncludesScopedUser(query: string, userId: string) {
   return new RegExp(`\\b(?:auth\\.users\\.)?id\\s*=\\s*'${escaped}'`, 'i').test(query)
 }
 
-function getConnectionEncryptedHeader(req: NextApiRequest): string {
-  const raw = req.headers['x-connection-encrypted']
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
 async function projectHasDedicatedTenantDatabase(ref: string, gotrueId: string): Promise<boolean> {
   if (!ref) return false
-  const row = await executeQuery<{ connection_string_enc: string | null }>({
+  const row = await executeQuery<{
+    connection_string_enc: string | null
+    connection_string: string | null
+  }>({
     query: `
-      select p.connection_string_enc
+      select p.connection_string_enc, p.connection_string
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -152,7 +148,8 @@ async function projectHasDedicatedTenantDatabase(ref: string, gotrueId: string):
     actorId: gotrueId,
   })
   if (row.error) throw row.error
-  return Boolean(row.data?.[0]?.connection_string_enc?.trim())
+  const p = row.data?.[0]
+  return Boolean(p?.connection_string_enc?.trim() || p?.connection_string?.trim())
 }
 
 function isAuthUsersMissingError(error: unknown): boolean {
