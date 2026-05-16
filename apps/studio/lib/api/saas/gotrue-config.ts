@@ -3,7 +3,10 @@ import type { JwtPayload } from 'indobase-js'
 
 import { decryptString } from './util'
 import { executeQuery } from './query'
-import { buildDefaultGoTrueConfig, type GoTrueConfigResponse } from './gotrue-config.defaults'
+import {
+  buildDefaultGoTrueConfig,
+  type GoTrueConfigResponse,
+} from './gotrue-config.defaults'
 import { ensureSaasTables, getGotrueUserId } from './platform'
 import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 
@@ -126,7 +129,16 @@ export async function getProjectGoTrueConfig({
     if (live) applyPublicSettings(config, live)
   }
 
-  return config
+  return normalizeAuthConfigNumbers(config)
+}
+
+function normalizeAuthConfigNumbers(config: GoTrueConfigResponse): GoTrueConfigResponse {
+  return {
+    ...config,
+    SESSIONS_TIMEBOX: config.SESSIONS_TIMEBOX ?? 0,
+    SESSIONS_INACTIVITY_TIMEOUT: config.SESSIONS_INACTIVITY_TIMEOUT ?? 0,
+    SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: config.SECURITY_REFRESH_TOKEN_REUSE_INTERVAL ?? 10,
+  }
 }
 
 export async function updateProjectGoTrueConfig({
@@ -145,24 +157,26 @@ export async function updateProjectGoTrueConfig({
 
   const merged = { ...current, ...patch }
 
-  const updated = await executeQuery({
+  const updated = await executeQuery<{ ref: string }>({
     query: `
       update saas.projects p
       set auth_config = $1::jsonb
+      from saas.organization_members m
       where p.ref = $2
-        and exists (
-          select 1 from saas.organization_members m
-          where m.organization_id = p.organization_id
-            and m.gotrue_id = $3
-            and m.role in ('owner', 'admin')
-        )
+        and m.organization_id = p.organization_id
+        and m.gotrue_id = $3
+        and m.role in ('owner', 'admin', 'developer')
+      returning p.ref
     `,
     parameters: [JSON.stringify(merged), ref, gotrueId],
     actorId: gotrueId,
   })
   if (updated.error) throw updated.error
+  if (!updated.data?.length) {
+    throw new Error('Project not found or insufficient permissions to update auth configuration')
+  }
 
-  return merged
+  return normalizeAuthConfigNumbers(merged)
 }
 
 export async function updateProjectGoTrueConfigHooks({
