@@ -21,9 +21,9 @@ export const MANAGED_BY = {
 export type ManagedBy = (typeof MANAGED_BY)[keyof typeof MANAGED_BY]
 
 export const PRICING_TIER_LABELS_ORG = {
-  FREE: 'Free - $0/month',
-  PRO: 'Pro - $25/month',
-  TEAM: 'Team - $599/month',
+  FREE: 'Free - ₹0/month',
+  PRO: 'Pro - ₹2,083/month',
+  TEAM: 'Team - ₹49,717/month',
 }
 
 export const PRICING_TIER_PRODUCT_IDS = {

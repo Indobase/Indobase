@@ -205,7 +205,7 @@ const Wizard: NextPageWithLayout = () => {
       }
     )
   const recommendedSmartRegion = smartRegionEnabled
-    ? availableRegionsData?.recommendations.smartGroup.name
+    ? availableRegionsData?.recommendations?.smartGroup?.name
     : undefined
   const regionError =
     smartRegionEnabled && defaultProvider !== 'AWS_NIMBUS'

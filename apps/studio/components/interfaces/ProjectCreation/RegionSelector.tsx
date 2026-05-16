@@ -71,14 +71,14 @@ export const RegionSelector = ({
     { enabled: smartRegionEnabled, staleTime: 1000 * 60 * 5 } // 5 minutes
   )
 
-  const smartRegions = availableRegionsData?.all.smartGroup ?? []
-  const allRegions = availableRegionsData?.all.specific ?? []
+  const smartRegions = availableRegionsData?.all?.smartGroup ?? []
+  const allRegions = availableRegionsData?.all?.specific ?? []
 
   const recommendedSmartRegions = new Set(
-    [availableRegionsData?.recommendations.smartGroup.code].filter(Boolean)
+    [availableRegionsData?.recommendations?.smartGroup?.code].filter(Boolean)
   )
   const recommendedSpecificRegions = new Set(
-    availableRegionsData?.recommendations.specific.map((region) => region.code)
+    availableRegionsData?.recommendations?.specific?.map((region) => region.code) ?? []
   )
 
   const availableRegions = getAvailableRegions(PROVIDERS[cloudProvider].id)

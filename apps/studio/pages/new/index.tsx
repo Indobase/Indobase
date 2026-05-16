@@ -1,5 +1,5 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NewOrgForm } from 'components/interfaces/Organization/NewOrg/NewOrgForm'
 import AppLayout from 'components/layouts/AppLayout/AppLayout'
@@ -11,6 +11,8 @@ import type { NextPageWithLayout } from 'types'
 /**
  * No org selected yet, create a new one
  */
+const hcaptchaSiteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY?.trim() ?? ''
+
 const Wizard: NextPageWithLayout = () => {
   const [intent, setIntent] = useState<SetupIntentResponse>()
 
@@ -18,6 +20,7 @@ const Wizard: NextPageWithLayout = () => {
   const [captchaRef, setCaptchaRef] = useState<HCaptcha | null>(null)
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const captchaEnabled = hcaptchaSiteKey.length > 0
 
   const { mutate: setupIntent } = useSetupIntent({ onSuccess: (res) => setIntent(res) })
 
@@ -37,6 +40,7 @@ const Wizard: NextPageWithLayout = () => {
   const loadPaymentForm = async (force = false) => {
     if (selectedPlan == null || selectedPlan === 'FREE') return
     if (intent != null && !force) return
+    if (!captchaEnabled) return
 
     if (captchaRef) {
       let token = captchaToken
@@ -57,7 +61,7 @@ const Wizard: NextPageWithLayout = () => {
 
   useEffect(() => {
     loadPaymentForm()
-  }, [captchaRef, selectedPlan])
+  }, [captchaRef, selectedPlan, captchaEnabled])
 
   const resetSetupIntent = () => {
     setIntent(undefined)
@@ -73,20 +77,33 @@ const Wizard: NextPageWithLayout = () => {
     captchaRef?.resetCaptcha()
   }
 
+  const captchaNotice = useMemo(() => {
+    if (captchaEnabled || selectedPlan == null || selectedPlan === 'FREE') return null
+    return (
+      <p className="mb-4 text-sm text-warning">
+        Paid plans require hCaptcha, but NEXT_PUBLIC_HCAPTCHA_SITE_KEY is not configured on this
+        Studio instance. Choose the Free plan or contact your administrator.
+      </p>
+    )
+  }, [captchaEnabled, selectedPlan])
+
   return (
     <>
-      <HCaptcha
-        ref={captchaRefCallback}
-        sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
-        size="invisible"
-        onVerify={(token) => {
-          setCaptchaToken(token)
-        }}
-        onClose={onLocalCancel}
-        onExpire={() => {
-          setCaptchaToken(null)
-        }}
-      />
+      {captchaNotice}
+      {captchaEnabled && (
+        <HCaptcha
+          ref={captchaRefCallback}
+          sitekey={hcaptchaSiteKey}
+          size="invisible"
+          onVerify={(token) => {
+            setCaptchaToken(token)
+          }}
+          onClose={onLocalCancel}
+          onExpire={() => {
+            setCaptchaToken(null)
+          }}
+        />
+      )}
 
       <NewOrgForm
         setupIntent={intent}
