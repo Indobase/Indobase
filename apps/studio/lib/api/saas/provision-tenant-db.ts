@@ -74,22 +74,23 @@ export async function provisionTenantDatabase({
       await client.query(`alter role ${roleIdent} login password ${roleLit}`)
     }
 
-    const dbExists = await client.query<{ exists: boolean }>(
-      'select exists(select 1 from pg_database where datname = $1)',
-      [dbName]
-    )
     const adminIdent = quotePgIdent(adminUser)
-    if (!dbExists.rows[0]?.exists) {
-      // Owner is the tenant login role; grant it to the provision admin so bootstrap DDL
-      // (extensions, supabase_* roles) does not fail with "must be member of role <tenant>".
-      await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
-    }
+    // Grant before CREATE DATABASE: on Supabase images `postgres` is not superuser, so
+    // `CREATE DATABASE ... OWNER <tenant>` requires membership in the tenant role first.
     await client.query(`GRANT ${roleIdent} TO ${adminIdent}`)
     const supabaseAdminExists = await client.query<{ exists: boolean }>(
       `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
     )
     if (supabaseAdminExists.rows[0]?.exists) {
       await client.query(`GRANT ${roleIdent} TO supabase_admin`)
+    }
+
+    const dbExists = await client.query<{ exists: boolean }>(
+      'select exists(select 1 from pg_database where datname = $1)',
+      [dbName]
+    )
+    if (!dbExists.rows[0]?.exists) {
+      await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
     }
   } finally {
     await client.end()

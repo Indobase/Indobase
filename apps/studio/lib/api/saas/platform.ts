@@ -1206,7 +1206,14 @@ export async function createOrganization({
     actorId: gotrueId,
   })
 
-  if (inserted.error || !inserted.data?.length) throw inserted.error ?? new Error('Failed to create organization')
+  if (inserted.error) {
+    const code = (inserted.error as { code?: string }).code
+    if (code === '23505' && body.kind === 'PERSONAL') {
+      throw new Error('You already have a personal organization. Choose another type or use your existing org.')
+    }
+    throw inserted.error
+  }
+  if (!inserted.data?.length) throw new Error('Failed to create organization')
   const o = inserted.data[0]
 
   // Seed membership for the creator so SaaS authorization is membership-based, not owner-column-based.
