@@ -31,7 +31,7 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: Jwt
         db_name: process.env.POSTGRES_DB || 'postgres',
         db_port: pgPort,
         db_user: process.env.POSTGRES_USER || 'postgres',
-        identifier: 'default',
+        identifier: ref,
         inserted_at: project.inserted_at,
         region: project.region,
         restUrl: project.restUrl,

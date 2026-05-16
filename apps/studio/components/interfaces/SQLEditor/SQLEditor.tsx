@@ -323,9 +323,11 @@ export const SQLEditor = () => {
         }
 
         const impersonatedRoleState = getImpersonatedRoleState()
-        const connectionString = databases?.find(
-          (db) => db.identifier === databaseSelectorState.selectedDatabaseId
-        )?.connectionString
+        const connectionString =
+          databases?.find((db) => db.identifier === databaseSelectorState.selectedDatabaseId)
+            ?.connectionString ??
+          databases?.[0]?.connectionString ??
+          project?.connectionString
         if (!isValidConnString(connectionString)) {
           return toast.error('Unable to run query: Connection string is missing')
         }
@@ -401,9 +403,11 @@ export const SQLEditor = () => {
       }
 
       const impersonatedRoleState = getImpersonatedRoleState()
-      const connectionString = databases?.find(
-        (db) => db.identifier === databaseSelectorState.selectedDatabaseId
-      )?.connectionString
+      const connectionString =
+        databases?.find((db) => db.identifier === databaseSelectorState.selectedDatabaseId)
+          ?.connectionString ??
+        databases?.[0]?.connectionString ??
+        project?.connectionString
       if (!isValidConnString(connectionString)) {
         return toast.error('Unable to run query: Connection string is missing')
       }
@@ -719,9 +723,14 @@ export const SQLEditor = () => {
   }, [selectedDiffType, sourceSqlDiff])
 
   useEffect(() => {
-    if (isSuccessReadReplicas) {
-      const primaryDatabase = databases.find((db) => db.identifier === ref)
-      databaseSelectorState.setSelectedDatabaseId(primaryDatabase?.identifier)
+    if (isSuccessReadReplicas && databases.length > 0) {
+      const primaryDatabase =
+        databases.find((db) => db.identifier === ref) ??
+        databases.find((db) => db.identifier === 'default') ??
+        databases[0]
+      if (primaryDatabase?.identifier) {
+        databaseSelectorState.setSelectedDatabaseId(primaryDatabase.identifier)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccessReadReplicas, databases, ref])
