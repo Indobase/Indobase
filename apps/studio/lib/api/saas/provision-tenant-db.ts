@@ -26,9 +26,37 @@ function quotePgLiteral(value: string): string {
 }
 
 /**
+ * Login role for tenant CREATE/GRANT/bootstrap DDL.
+ * On Supabase Postgres images `postgres` is often non-superuser; `supabase_admin` uses the same
+ * `POSTGRES_PASSWORD` and can create databases, grant reserved roles, and set schema owners.
+ */
+export function resolveTenantProvisionAdminUser(): string {
+  const explicit = process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim()
+  if (explicit) return explicit
+  return 'supabase_admin'
+}
+
+async function grantRoleToSupabaseAdminIfPossible(
+  client: Client,
+  roleIdent: string
+): Promise<void> {
+  try {
+    const supabaseAdminExists = await client.query<{ exists: boolean }>(
+      `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
+    )
+    if (supabaseAdminExists.rows[0]?.exists) {
+      await client.query(`GRANT ${roleIdent} TO supabase_admin`)
+    }
+  } catch (e) {
+    // Non-superuser `postgres` cannot grant to the reserved `supabase_admin` role.
+    console.warn('[provision-tenant-db] GRANT tenant role to supabase_admin skipped: %O', e)
+  }
+}
+
+/**
  * MVP provisioning: creates a tenant database and login role on the same Postgres cluster.
  *
- * Requires a superuser/createdb-capable connection (defaults to `postgres` + POSTGRES_PASSWORD).
+ * Requires a superuser/createdb-capable connection (`resolveTenantProvisionAdminUser()` + POSTGRES_PASSWORD).
  */
 export async function provisionTenantDatabase({
   projectRef,
@@ -78,12 +106,7 @@ export async function provisionTenantDatabase({
     // Grant before CREATE DATABASE: on Supabase images `postgres` is not superuser, so
     // `CREATE DATABASE ... OWNER <tenant>` requires membership in the tenant role first.
     await client.query(`GRANT ${roleIdent} TO ${adminIdent}`)
-    const supabaseAdminExists = await client.query<{ exists: boolean }>(
-      `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
-    )
-    if (supabaseAdminExists.rows[0]?.exists) {
-      await client.query(`GRANT ${roleIdent} TO supabase_admin`)
-    }
+    await grantRoleToSupabaseAdminIfPossible(client, roleIdent)
 
     const dbExists = await client.query<{ exists: boolean }>(
       'select exists(select 1 from pg_database where datname = $1)',
@@ -371,11 +394,7 @@ export async function runTenantDataPlaneBootstrapFromConnectionString(
   if (!tenantRolePassword) throw new Error('Tenant connection URL is missing password')
 
   const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
-  const adminUser =
-    process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim() ||
-    process.env.POSTGRES_USER_READ_WRITE ||
-    process.env.POSTGRES_USER ||
-    'postgres'
+  const adminUser = resolveTenantProvisionAdminUser()
   if (!adminPassword) throw new Error('POSTGRES_PASSWORD is required for tenant DB bootstrap')
 
   const adminConn = `postgresql://${encodeURIComponent(adminUser)}:${encodeURIComponent(
@@ -387,12 +406,7 @@ export async function runTenantDataPlaneBootstrapFromConnectionString(
     const roleIdent = quotePgIdent(tenantRole)
     const adminIdent = quotePgIdent(adminUser)
     await grantClient.query(`GRANT ${roleIdent} TO ${adminIdent}`)
-    const supabaseAdminExists = await grantClient.query<{ exists: boolean }>(
-      `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
-    )
-    if (supabaseAdminExists.rows[0]?.exists) {
-      await grantClient.query(`GRANT ${roleIdent} TO supabase_admin`)
-    }
+    await grantRoleToSupabaseAdminIfPossible(grantClient, roleIdent)
   } finally {
     await grantClient.end()
   }

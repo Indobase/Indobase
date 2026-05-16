@@ -10,6 +10,7 @@ import {
   bootstrapMinimalSupabaseRoles,
   bootstrapTenantDatabaseExtensions,
   bootstrapTenantDataPlaneSchemas,
+  resolveTenantProvisionAdminUser,
   provisionTenantDatabase,
   runTenantDataPlaneBootstrapFromConnectionString,
   setTenantRolePassword,
@@ -1562,11 +1563,7 @@ async function finalizeDedicatedProjectProvisioning({
 
   const host = process.env.POSTGRES_HOST?.trim()
   const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
-  const adminUser =
-    process.env.SAAS_TENANT_PROVISION_ADMIN_USER?.trim() ||
-    process.env.POSTGRES_USER ||
-    process.env.POSTGRES_USER_READ_WRITE ||
-    'postgres'
+  const adminUser = resolveTenantProvisionAdminUser()
   const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
   if (!host || !adminPassword) {
     throw new Error(
