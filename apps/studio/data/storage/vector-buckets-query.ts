@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { get, handleError } from 'data/fetchers'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { PROJECT_STATUS } from 'lib/constants'
+import { isProjectPlatformApiReady } from 'lib/api/saas/project-runtime'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { storageKeys } from './keys'
 
@@ -36,12 +36,12 @@ export const useVectorBucketsQuery = <TData = VectorBucketsData>(
   }: UseCustomQueryOptions<VectorBucketsData, VectorBucketsError, TData> = {}
 ) => {
   const { data: project } = useSelectedProjectQuery()
-  const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const canLoad = isProjectPlatformApiReady(project)
 
   return useQuery<VectorBucketsData, VectorBucketsError, TData>({
     queryKey: storageKeys.vectorBuckets(projectRef),
     queryFn: ({ signal }) => getVectorBuckets({ projectRef }, signal),
-    enabled: enabled && typeof projectRef !== 'undefined' && isActive,
+    enabled: enabled && typeof projectRef !== 'undefined' && canLoad,
     ...options,
   })
 }

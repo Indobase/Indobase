@@ -225,6 +225,7 @@ export const TableList = ({
             size="tiny"
             showError={false}
             selectedSchemaName={selectedSchema}
+            excludedSchemas={['graphql_public', 'graphql']}
             onSelectSchema={setSelectedSchema}
           />
           <Popover_Shadcn_>

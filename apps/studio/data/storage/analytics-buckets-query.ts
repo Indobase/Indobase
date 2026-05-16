@@ -4,7 +4,7 @@ import { components } from 'api-types'
 import { useIsAnalyticsBucketsEnabled } from 'data/config/project-storage-config-query'
 import { get, handleError } from 'data/fetchers'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { PROJECT_STATUS } from 'lib/constants'
+import { isProjectPlatformApiReady } from 'lib/api/saas/project-runtime'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { storageKeys } from './keys'
 
@@ -38,13 +38,13 @@ export const useAnalyticsBucketsQuery = <TData = AnalyticsBucketsData>(
   }: UseCustomQueryOptions<AnalyticsBucketsData, AnalyticsBucketsError, TData> = {}
 ) => {
   const { data: project } = useSelectedProjectQuery()
-  const isActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
+  const canLoad = isProjectPlatformApiReady(project)
   const hasIcebergEnabled = useIsAnalyticsBucketsEnabled({ projectRef: project?.ref })
 
   return useQuery<AnalyticsBucketsData, AnalyticsBucketsError, TData>({
     queryKey: storageKeys.analyticsBuckets(projectRef),
     queryFn: ({ signal }) => getAnalyticsBuckets({ projectRef }, signal),
-    enabled: enabled && typeof projectRef !== 'undefined' && isActive && hasIcebergEnabled,
+    enabled: enabled && typeof projectRef !== 'undefined' && canLoad && hasIcebergEnabled,
     ...options,
   })
 }

@@ -49,30 +49,26 @@ export const TerminalInstructions = forwardRef<
       ? `https://${customDomainData.customDomain.hostname}/functions/v1`
       : `${protocol}://${endpoint}/functions/v1`
 
-  // get the .co or .net TLD from the restUrl
-  const restUrl = `https://${endpoint}`
-  const restUrlTld = !!endpoint ? new URL(restUrl).hostname.split('.').pop() : 'co'
-
   const commands: Commands[] = [
     {
-      command: 'supabase functions new hello-world',
+      command: 'indobase functions new hello-world',
       description: ' creates a function stub at ./functions/hello-world/index.ts',
       jsx: () => {
         return (
           <>
-            <span className="text-brand-600">supabase</span> functions new hello-world
+            <span className="text-brand-600">indobase</span> functions new hello-world
           </>
         )
       },
       comment: 'Create a function',
     },
     {
-      command: `supabase functions deploy hello-world --project-ref ${projectRef}`,
+      command: `indobase functions deploy hello-world --project-ref ${projectRef}`,
       description: 'Deploys function at ./functions/hello-world/index.ts',
       jsx: () => {
         return (
           <>
-            <span className="text-brand-600">supabase</span> functions deploy hello-world
+            <span className="text-brand-600">indobase</span> functions deploy hello-world
             --project-ref {projectRef}
           </>
         )
@@ -80,7 +76,7 @@ export const TerminalInstructions = forwardRef<
       comment: 'Deploy your function',
     },
     {
-      command: `curl -L -X POST 'https://${projectRef}.supabase.${restUrlTld}/functions/v1/hello-world' -H 'Authorization: Bearer ${apiKey}'${anonKey?.type === 'publishable' ? ` -H 'apikey: ${apiKey}'` : ''} --data '{"name":"Functions"}'`,
+      command: `curl -L -X POST '${functionsEndpoint}/hello-world' -H 'Authorization: Bearer ${apiKey}'${anonKey?.type === 'publishable' ? ` -H 'apikey: ${apiKey}'` : ''} --data '{"name":"Functions"}'`,
       description: 'Invokes the hello-world function',
       jsx: () => {
         return (
@@ -149,7 +145,7 @@ export const TerminalInstructions = forwardRef<
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  href="https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions"
+                  href={`${DOCS_URL}/guides/functions`}
                 >
                   Examples
                 </a>

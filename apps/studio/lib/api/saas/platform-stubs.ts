@@ -145,14 +145,14 @@ export function defaultStorageConfigResponse(): components['schemas']['StorageCo
     external: { upstreamTarget: 'main' },
     features: {
       icebergCatalog: {
-        enabled: false,
-        maxCatalogs: 0,
-        maxNamespaces: 0,
-        maxTables: 0,
+        enabled: true,
+        maxCatalogs: 10,
+        maxNamespaces: 100,
+        maxTables: 1000,
       },
       imageTransformation: { enabled: true },
       s3Protocol: { enabled: true },
-      vectorBuckets: { enabled: false, maxBuckets: 0, maxIndexes: 0 },
+      vectorBuckets: { enabled: true, maxBuckets: 10, maxIndexes: 100 },
     },
     fileSizeLimit: 52_428_800,
     migrationVersion: 'indobase',
@@ -170,6 +170,12 @@ export function defaultEntitlementsResponse(): components['schemas']['ListEntitl
       },
       {
         feature: { key: 'branching_persistent' },
+        type: 'boolean',
+        hasAccess: true,
+        config: { enabled: true },
+      },
+      {
+        feature: { key: 'assistant.advance_model' },
         type: 'boolean',
         hasAccess: true,
         config: { enabled: true },

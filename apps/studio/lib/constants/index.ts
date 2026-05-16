@@ -2,7 +2,9 @@
 // eslint-disable-next-line barrel-files/avoid-re-export-all
 export * from './infrastructure'
 
-export { IS_INDOBASE_SAAS, IS_PLATFORM, IS_SAAS } from 'common'
+import { IS_INDOBASE_SAAS, IS_PLATFORM, IS_SAAS } from 'common'
+
+export { IS_INDOBASE_SAAS, IS_PLATFORM, IS_SAAS }
 
 /**
  * Indicates that the app is running in a test environment (E2E tests).
@@ -49,7 +51,13 @@ export const POSTHOG_URL =
 
 export const USAGE_APPROACHING_THRESHOLD = 0.75
 
-export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || 'https://indobase.in/docs'
+/**
+ * Product docs base URL. Indobase docs site may not mirror all guides yet; on SaaS we fall back
+ * to Supabase docs content so "Docs" buttons do not 404 until indobase.in/docs is fully published.
+ */
+export const DOCS_URL =
+  process.env.NEXT_PUBLIC_DOCS_URL ||
+  (IS_SAAS ? 'https://supabase.com/docs' : 'https://indobase.in/docs')
 
 export const OPT_IN_TAGS = {
   AI_SQL: 'AI_SQL_GENERATOR_OPT_IN',

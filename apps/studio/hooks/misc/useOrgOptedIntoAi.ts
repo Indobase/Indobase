@@ -71,9 +71,11 @@ export function useOrgAiOptInLevel(): {
   // [Joshen] For CLI / self-host, we'd default to 'schema' as opt in level
   const aiOptInLevel = !IS_SAAS
     ? 'schema'
-    : (isOptedIntoAI && !selectedProject) || (isOptedIntoAI && !preventProjectFromUsingAI)
-      ? level
-      : 'disabled'
+    : preventProjectFromUsingAI
+      ? 'disabled'
+      : isOptedIntoAI
+        ? level
+        : 'schema'
   const includeSchemaMetadata = !IS_SAAS || aiOptInLevel !== 'disabled'
 
   return {

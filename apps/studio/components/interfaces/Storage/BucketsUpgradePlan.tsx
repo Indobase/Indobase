@@ -4,6 +4,8 @@ import { AnalyticsBucket as AnalyticsBucketIcon, VectorBucket as VectorBucketIco
 import { EmptyStatePresentational } from 'ui-patterns'
 import { PageContainer } from 'ui-patterns/PageContainer'
 import { PageSection, PageSectionContent } from 'ui-patterns/PageSection'
+import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
+
 import { BUCKET_TYPES } from './Storage.constants'
 
 export const BucketsUpgradePlan = ({ type }: { type: 'analytics' | 'vector' }) => {
@@ -13,11 +15,7 @@ export const BucketsUpgradePlan = ({ type }: { type: 'analytics' | 'vector' }) =
         <PageSectionContent className="flex flex-col gap-y-8">
           <AlphaNotice
             entity={type === 'analytics' ? 'Analytics buckets' : 'Vector buckets'}
-            feedbackUrl={
-              type === 'analytics'
-                ? 'https://github.com/orgs/supabase/discussions/40116'
-                : 'https://github.com/orgs/supabase/discussions/40815'
-            }
+            feedbackUrl={PRODUCT_FEEDBACK_URL}
           />
           <EmptyStatePresentational
             icon={type === 'analytics' ? AnalyticsBucketIcon : VectorBucketIcon}

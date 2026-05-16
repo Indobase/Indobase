@@ -9,6 +9,7 @@ import { StorageBucketsLayout } from 'components/layouts/StorageLayout/StorageBu
 import StorageLayout from 'components/layouts/StorageLayout/StorageLayout'
 import { useIsVectorBucketsEnabled } from 'data/config/project-storage-config-query'
 import { VectorBucket } from 'icons'
+import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
 import { AWS_REGIONS } from 'shared-data'
 import type { NextPageWithLayout } from 'types'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'ui'
@@ -39,7 +40,7 @@ const StorageVectorsPage: NextPageWithLayout = () => {
           <PageSectionContent className="flex flex-col gap-y-8">
             <AlphaNotice
               entity="Vector buckets"
-              feedbackUrl="https://github.com/orgs/supabase/discussions/40815"
+              feedbackUrl={PRODUCT_FEEDBACK_URL}
             />
             <EmptyStatePresentational
               icon={VectorBucket}

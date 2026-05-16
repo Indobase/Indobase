@@ -8,6 +8,7 @@ import AlertError from 'components/ui/AlertError'
 import { AlphaNotice } from 'components/ui/AlphaNotice'
 import { useVectorBucketsQuery } from 'data/storage/vector-buckets-query'
 import { VectorBucket as VectorBucketIcon } from 'icons'
+import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
 import { createNavigationHandler } from 'lib/navigation'
 import { Card, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'ui'
 import { Input } from 'ui-patterns/DataInputs/Input'
@@ -57,7 +58,7 @@ export const VectorsBuckets = () => {
           <PageSectionContent className="flex flex-col gap-y-8">
             <AlphaNotice
               entity="Vector buckets"
-              feedbackUrl="https://github.com/orgs/supabase/discussions/40815"
+              feedbackUrl={PRODUCT_FEEDBACK_URL}
             />
 
             {isLoadingBuckets && <GenericSkeletonLoader />}

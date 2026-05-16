@@ -1,5 +1,7 @@
 import { useParams } from 'common'
 import { RolesList } from 'components/interfaces/Database/Roles/RolesList'
+import { DocsButton } from 'components/ui/DocsButton'
+import { DOCS_URL } from 'lib/constants'
 import DatabaseLayout from 'components/layouts/DatabaseLayout/DatabaseLayout'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import { UnknownInterface } from 'components/ui/UnknownInterface'
@@ -33,6 +35,7 @@ const DatabaseRoles: NextPageWithLayout = () => {
               Manage access control to your database through users, groups, and permissions
             </PageHeaderDescription>
           </PageHeaderSummary>
+          <DocsButton href={`${DOCS_URL}/guides/database/postgres/roles`} />
         </PageHeaderMeta>
       </PageHeader>
       <PageContainer size="large">

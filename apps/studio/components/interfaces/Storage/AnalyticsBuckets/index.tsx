@@ -9,6 +9,7 @@ import { AlphaNotice } from 'components/ui/AlphaNotice'
 import { useProjectStorageConfigQuery } from 'data/config/project-storage-config-query'
 import { useAnalyticsBucketsQuery } from 'data/storage/analytics-buckets-query'
 import { AnalyticsBucket as AnalyticsBucketIcon } from 'icons'
+import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
 import { createNavigationHandler } from 'lib/navigation'
 import {
   Card,
@@ -69,7 +70,7 @@ export const AnalyticsBuckets = () => {
           <PageSectionContent className="flex flex-col gap-y-8">
             <AlphaNotice
               entity="Analytics buckets"
-              feedbackUrl="https://github.com/orgs/supabase/discussions/40116"
+              feedbackUrl={PRODUCT_FEEDBACK_URL}
             />
 
             {isLoadingBuckets && <GenericSkeletonLoader />}

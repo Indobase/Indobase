@@ -15,6 +15,7 @@ import { useAuthConfigUpdateMutation } from 'data/auth/auth-config-update-mutati
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { DOCS_URL } from 'lib/constants'
+import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
 import {
   Badge,
   Button,
@@ -227,7 +228,7 @@ export const EmailTemplates = () => {
                         We’ve expanded our email templates to handle security-sensitive actions. The
                         list of templates will continue to grow as our feature-set changes, and as
                         we{' '}
-                        <InlineLink href="https://github.com/orgs/supabase/discussions/40349">
+                        <InlineLink href={PRODUCT_FEEDBACK_URL}>
                           gather feedback
                         </InlineLink>{' '}
                         from our community .
