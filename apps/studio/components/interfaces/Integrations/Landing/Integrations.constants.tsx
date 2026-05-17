@@ -264,7 +264,7 @@ const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
     id: 'data_api',
     type: 'custom' as const,
     requiredExtensions: [],
-    name: `Data API`,
+    name: `Indobase Data API`,
     icon: ({ className, ...props } = {}) => (
       <Code2 className={cn('inset-0 p-2 text-black w-full h-full', className)} {...props} />
     ),

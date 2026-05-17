@@ -1,4 +1,5 @@
 import { mergeRefs, useParams } from 'common'
+import { useBannerStack } from 'components/ui/BannerStack/BannerStackProvider'
 import { AnimatePresence, motion } from 'framer-motion'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -111,6 +112,11 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
     const sideBarIsOpen = (forceShowProductMenu || showSidebar) && !isMobile
 
     const panelRef = usePanelRef()
+    const { dismissBanner } = useBannerStack()
+
+    useEffect(() => {
+      dismissBanner('metrics-api-banner')
+    }, [dismissBanner])
 
     const projectName = selectedProject?.name
     const organizationName = selectedOrganization?.name

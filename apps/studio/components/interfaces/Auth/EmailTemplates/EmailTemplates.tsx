@@ -14,7 +14,7 @@ import { useAuthConfigQuery } from 'data/auth/auth-config-query'
 import { useAuthConfigUpdateMutation } from 'data/auth/auth-config-update-mutation'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
-import { DOCS_URL } from 'lib/constants'
+import { DOCS_URL, docsUrl } from 'lib/constants'
 import { PRODUCT_FEEDBACK_URL } from 'lib/constants/feedback'
 import {
   Badge,
@@ -240,7 +240,7 @@ export const EmailTemplates = () => {
                       icon={<ExternalLink strokeWidth={1.5} />}
                       className="mt-2"
                     >
-                      <Link href={`${DOCS_URL}/guides/auth/auth-email-templates`} target="_blank">
+                      <Link href={docsUrl('guides/auth/auth-email-templates')} target="_blank">
                         Docs
                       </Link>
                     </Button>

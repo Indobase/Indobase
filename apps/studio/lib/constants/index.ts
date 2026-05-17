@@ -51,13 +51,11 @@ export const POSTHOG_URL =
 
 export const USAGE_APPROACHING_THRESHOLD = 0.75
 
-/**
- * Product docs base URL. Indobase docs site may not mirror all guides yet; on SaaS we fall back
- * to Supabase docs content so "Docs" buttons do not 404 until indobase.in/docs is fully published.
- */
+/** Product docs base URL (see {@link docsUrl} in lib/docs-url.ts for path mapping). */
 export const DOCS_URL =
-  process.env.NEXT_PUBLIC_DOCS_URL ||
-  (IS_SAAS ? 'https://supabase.com/docs' : 'https://indobase.in/docs')
+  process.env.NEXT_PUBLIC_DOCS_URL?.replace(/\/$/, '') || 'https://indobase.in/docs'
+
+export { docsUrl, resolveStudioDocsHref } from 'lib/docs-url'
 
 export const OPT_IN_TAGS = {
   AI_SQL: 'AI_SQL_GENERATOR_OPT_IN',

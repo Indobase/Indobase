@@ -1,10 +1,37 @@
 import * as Sentry from '@sentry/sveltekit';
 import type { Handle } from '@sveltejs/kit';
 import redirects from './redirects.json';
+import studioDocsPrefixes from '../../../packages/common/studio-docs-path-map.json';
 import { sequence } from '@sveltejs/kit/hooks';
 import { getMarkdownContent } from '$lib/server/markdown';
 
 const redirectMap = new Map(redirects.map(({ link, redirect }) => [link, redirect]));
+
+const studioDocsPrefixRedirects = [...studioDocsPrefixes.prefixes].sort(
+    (a, b) => b[0].length - a[0].length
+);
+
+function resolveStudioDocsRedirect(pathname: string): string | null {
+    if (!pathname.startsWith('/docs/')) return null;
+    const legacyPath = pathname.slice('/docs/'.length);
+    const exact = studioDocsPrefixes.exact[legacyPath as keyof typeof studioDocsPrefixes.exact];
+    if (exact !== undefined) {
+        return exact ? `/docs/${exact}` : '/docs';
+    }
+    for (const [prefix, target] of studioDocsPrefixRedirects) {
+        if (legacyPath === prefix || legacyPath.startsWith(`${prefix}/`)) {
+            return target ? `/docs/${target}` : '/docs';
+        }
+    }
+    if (
+        legacyPath.startsWith('guides/') ||
+        legacyPath.startsWith('reference/') ||
+        legacyPath.startsWith('learn/')
+    ) {
+        return '/docs';
+    }
+    return null;
+}
 
 const markdownHandler: Handle = async ({ event, resolve }) => {
     const pathname = event.url.pathname;
@@ -37,6 +64,17 @@ const redirecter: Handle = async ({ event, resolve }) => {
             headers: {
                 location: redirectMap.get(currentPath) ?? ''
             }
+        });
+    }
+
+    const studioDocsTarget = resolveStudioDocsRedirect(currentPath);
+    if (studioDocsTarget) {
+        const location = studioDocsTarget.includes('#')
+            ? `${studioDocsTarget}${event.url.search}`
+            : `${studioDocsTarget}${event.url.search}${event.url.hash}`;
+        return new Response(null, {
+            status: 308,
+            headers: { location }
         });
     }
 

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { executeQuery } from 'lib/api/saas/query'
+import { getLogflareBaseUrl } from 'lib/constants/api'
 
 type CheckResult = {
   status: 'ok' | 'degraded'
@@ -21,6 +22,8 @@ type HealthResponse = {
     saasInfra: CheckResult & { missing?: string[] }
     gotrue: CheckResult
     rest: CheckResult
+    /** Self-hosted Logflare (skipped when logs disabled or not configured) */
+    logflare?: CheckResult
   }
 }
 
@@ -101,6 +104,55 @@ async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> 
   return { status: 'ok' }
 }
 
+function isLogsEnabled(): boolean {
+  const raw = process.env.NEXT_PUBLIC_ENABLE_LOGS?.trim().toLowerCase()
+  return raw === 'true' || raw === '1'
+}
+
+async function checkLogflare(): Promise<HealthResponse['checks']['logflare']> {
+  if (!isLogsEnabled()) {
+    return { status: 'ok' }
+  }
+
+  const baseUrl = getLogflareBaseUrl()
+  const privateToken = process.env.LOGFLARE_PRIVATE_ACCESS_TOKEN?.trim()
+  const missing: string[] = []
+  if (!baseUrl) missing.push('LOGFLARE_URL')
+  if (!privateToken) missing.push('LOGFLARE_PRIVATE_ACCESS_TOKEN')
+
+  if (missing.length > 0) {
+    return {
+      status: 'degraded',
+      message: `logs enabled but missing ${missing.join(', ')} — run docker/scripts/sync-logflare-env-to-studio.sh on VPS`,
+    }
+  }
+
+  try {
+    const timeoutSignal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(3000)
+        : undefined
+
+    const response = await fetch(`${baseUrl.replace(/\/$/, '')}/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: timeoutSignal,
+    })
+    if (!response.ok) {
+      return { status: 'degraded', message: `logflare responded ${response.status}` }
+    }
+    return { status: 'ok' }
+  } catch (error) {
+    return {
+      status: 'degraded',
+      message:
+        error instanceof Error
+          ? `cannot reach logflare at ${baseUrl}: ${error.message}`
+          : 'logflare health check failed',
+    }
+  }
+}
+
 function resolveGoTrueBaseUrl() {
   if (process.env.GOTRUE_URL) return process.env.GOTRUE_URL
   if (process.env.NEXT_PUBLIC_GOTRUE_URL) return process.env.NEXT_PUBLIC_GOTRUE_URL
@@ -151,12 +203,14 @@ export async function computeHealth(): Promise<HealthResponse> {
     : { status: 'degraded', message: 'SUPABASE_URL is not configured' }
 
   const saasInfraCheck = await checkSaaSInfra()
+  const logflareCheck = await checkLogflare()
 
   const checks = {
     env: envCheck,
     saasInfra: saasInfraCheck,
     gotrue: gotrueCheck,
     rest: restCheck,
+    ...(logflareCheck ? { logflare: logflareCheck } : {}),
   }
 
   const status: HealthResponse['status'] = Object.values(checks).every((c) => c.status === 'ok')

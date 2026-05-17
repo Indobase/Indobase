@@ -230,7 +230,7 @@ export const FunctionsInstructionsLocal = () => {
                   className={cn(
                     'px-3.5 max-w-full prose dark:prose-dark [&>code]:m-0 2xl:min-h-28'
                   )}
-                  value="supabase functions new hello-world"
+                  value="indobase functions new hello-world"
                 />
               </div>
               <DocsButton
@@ -244,7 +244,7 @@ export const FunctionsInstructionsLocal = () => {
                 <h4 className="text-base text-foreground">Run Edge Functions locally</h4>
               </div>
               <p className="text-sm text-foreground-light mt-1 mb-4 prose [&>code]:text-xs text-sm max-w-full">
-                You can run your Edge Function locally using <code>supabase functions serve</code>.
+                You can run your Edge Function locally using <code>indobase functions serve</code>.
               </p>
               <div className="mb-4">
                 <CodeBlock
@@ -254,8 +254,8 @@ export const FunctionsInstructionsLocal = () => {
                     'px-3.5 max-w-full prose dark:prose-dark [&>code]:m-0 2xl:min-h-28'
                   )}
                   value={`
-supabase start # start the supabase stack
-supabase functions serve # start the Functions watcher`.trim()}
+indobase start # start the Indobase stack
+indobase functions serve # start the Functions watcher`.trim()}
                 />
               </div>
               <DocsButton
@@ -376,12 +376,12 @@ export const FunctionsSecretsEmptyStateLocal = () => {
             </p>
             <ul className="list-disc pl-6">
               <li className="prose [&>code]:text-xs text-sm max-w-full">
-                Through an <code>.env</code> file placed at <code>supabase/functions/.env</code>,
-                which is automatically loaded on <code>supabase start</code>
+                Through an <code>.env</code> file placed at <code>indobase/functions/.env</code>,
+                which is automatically loaded on <code>indobase start</code>
               </li>
               <li className="prose [&>code]:text-xs text-sm max-w-full">
-                Through the <code>--env-file</code> option for <code>supabase functions serve</code>
-                , for example: <code>supabase functions serve --env-file ./path/to/.env-file</code>
+                Through the <code>--env-file</code> option for <code>indobase functions serve</code>
+                , for example: <code>indobase functions serve --env-file ./path/to/.env-file</code>
               </li>
             </ul>
           </div>

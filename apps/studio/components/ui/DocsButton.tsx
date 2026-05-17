@@ -1,4 +1,5 @@
 import { BookOpen } from 'lucide-react'
+import { resolveStudioDocsHref } from 'lib/docs-url'
 import { Button } from 'ui'
 
 interface DocsButtonProps {
@@ -8,6 +9,7 @@ interface DocsButtonProps {
 }
 
 export const DocsButton = ({ href, abbrev = true, className }: DocsButtonProps) => {
+  const resolvedHref = resolveStudioDocsHref(href)
   return (
     <Button
       asChild
@@ -16,7 +18,7 @@ export const DocsButton = ({ href, abbrev = true, className }: DocsButtonProps) 
       icon={<BookOpen />}
       onClick={(e) => e.stopPropagation()}
     >
-      <a target="_blank" rel="noopener noreferrer" href={href}>
+      <a target="_blank" rel="noopener noreferrer" href={resolvedHref}>
         {abbrev ? 'Docs' : 'Documentation'}
       </a>
     </Button>

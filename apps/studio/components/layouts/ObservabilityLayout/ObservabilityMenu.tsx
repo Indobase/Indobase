@@ -174,7 +174,7 @@ const ObservabilityMenu = () => {
         ...(postgrestReportEnabled
           ? [
               {
-                name: 'Data API',
+                name: 'Indobase Data API',
                 key: 'postgrest',
                 url: `/project/${ref}/observability/postgrest${preservedQueryParams}`,
               },

@@ -145,11 +145,12 @@ You can change the scope of the access for Indobase by configuring
       : ''
 
   const integrationUrl =
-    process.env.NEXT_PUBLIC_ENVIRONMENT === 'prod'
-      ? 'https://vercel.com/integrations/supabase'
+    process.env.NEXT_PUBLIC_VERCEL_INTEGRATION_URL?.trim() ||
+    (process.env.NEXT_PUBLIC_ENVIRONMENT === 'prod'
+      ? 'https://vercel.com/integrations/indobase'
       : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
-        ? `https://vercel.com/integrations/supabase-staging`
-        : 'https://vercel.com/integrations/supabase-local'
+        ? 'https://vercel.com/integrations/indobase-staging'
+        : 'https://vercel.com/integrations/indobase-local')
 
   let connections =
     (isProjectScoped

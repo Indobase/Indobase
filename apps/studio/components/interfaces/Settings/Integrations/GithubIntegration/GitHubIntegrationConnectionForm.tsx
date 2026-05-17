@@ -557,12 +557,12 @@ const GitHubIntegrationConnectionForm = ({
                   <FormItemLayout
                     layout="flex-row-reverse"
                     label="Working directory"
-                    description="Path to working directory with your supabase folder"
+                    description="Path to working directory with your indobase folder"
                   >
                     <FormControl_Shadcn_>
                       <Input_Shadcn_
                         {...field}
-                        placeholder="supabase"
+                        placeholder="indobase"
                         autoComplete="off"
                         disabled={disabled || !canUpdateGitHubConnection}
                       />

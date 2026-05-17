@@ -42,7 +42,7 @@ export const DocsMobileNav = ({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" size="content" className="w-72 overflow-y-auto">
           <SheetHeader className="border-b-0">
-            <SheetTitle>Data API Docs</SheetTitle>
+            <SheetTitle>Indobase Data API Docs</SheetTitle>
           </SheetHeader>
           <div className="flex flex-col gap-y-6 px-5 pb-6">
             <LangSelector

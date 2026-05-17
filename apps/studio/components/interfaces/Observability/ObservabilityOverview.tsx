@@ -105,7 +105,7 @@ export const ObservabilityOverview = () => {
       },
       {
         key: 'postgrest' as const,
-        name: 'Data API',
+        name: 'Indobase Data API',
         reportUrl: `/project/${projectRef}/observability/postgrest`,
         logsUrl: `/project/${projectRef}/logs/postgrest-logs`,
         enabled: true,

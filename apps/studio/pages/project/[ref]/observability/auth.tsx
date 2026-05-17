@@ -38,8 +38,6 @@ import { useReportDateRange, useRefreshHandler } from 'hooks/misc/useReportDateR
 import { useRouter } from 'next/router'
 import { parseAsJson, useQueryState } from 'nuqs'
 import type { NextPageWithLayout } from 'types'
-import { ObservabilityLink } from 'components/ui/ObservabilityLink'
-
 const AuthReport: NextPageWithLayout = () => {
   return (
     <ReportPadding>
@@ -364,9 +362,6 @@ const AuthUsage = () => {
           </div>
         </div>
       </ReportStickyNav>
-      <div className="pb-8">
-        <ObservabilityLink />
-      </div>
     </>
   )
 }

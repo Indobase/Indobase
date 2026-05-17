@@ -426,11 +426,11 @@ export const EdgeFunctionDetails = () => {
                       <CommandRender
                         commands={[
                           {
-                            command: `supabase functions download ${selectedFunction?.slug}`,
+                            command: `indobase functions download ${selectedFunction?.slug}`,
                             description: 'Download the function to your local machine',
                             jsx: () => (
                               <>
-                                <span className="text-brand-600">supabase</span> functions download{' '}
+                                <span className="text-brand-600">indobase</span> functions download{' '}
                                 {selectedFunction?.slug}
                               </>
                             ),

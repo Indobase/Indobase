@@ -20,6 +20,10 @@ env:
   NEXT_PUBLIC_SITE_URL: "https://studio.indobase.in"
   NEXT_PUBLIC_API_URL: "https://api.indobase.in"
   NEXT_PUBLIC_SUPABASE_URL: "https://api.indobase.in"
+  NEXT_PUBLIC_GITHUB_INTEGRATION_CLIENT_ID: "Ov23lirKpb4l9ntem8Ej"
+  NEXT_PUBLIC_GITHUB_INTEGRATION_APP_NAME: "indobase-studio"
+  # Set after registering the Vercel Integration (see VERCEL_INTEGRATION_SETUP_GUIDE.md)
+  NEXT_PUBLIC_VERCEL_INTEGRATION_URL: "https://vercel.com/integrations/indobase"
 
 jobs:
   build:
@@ -57,6 +61,9 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_SUPABASE_URL=${{ env.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_GITHUB_INTEGRATION_CLIENT_ID=${{ env.NEXT_PUBLIC_GITHUB_INTEGRATION_CLIENT_ID }}
+            NEXT_PUBLIC_GITHUB_INTEGRATION_APP_NAME=${{ env.NEXT_PUBLIC_GITHUB_INTEGRATION_APP_NAME }}
+            NEXT_PUBLIC_VERCEL_INTEGRATION_URL=${{ env.NEXT_PUBLIC_VERCEL_INTEGRATION_URL }}
           push: true
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest

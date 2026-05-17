@@ -34,8 +34,6 @@ import { ReportSettings } from 'components/ui/Charts/ReportSettings'
 import { BASE_PATH } from 'lib/constants'
 import { parseAsJson, useQueryState } from 'nuqs'
 import type { NextPageWithLayout } from 'types'
-import { ObservabilityLink } from 'components/ui/ObservabilityLink'
-
 const EdgeFunctionsReportV2: NextPageWithLayout = () => {
   return (
     <ReportPadding>
@@ -261,9 +259,6 @@ const EdgeFunctionsUsage = () => {
               ))}
         </div>
       </ReportStickyNav>
-      <div className="pb-8">
-        <ObservabilityLink />
-      </div>
     </>
   )
 }

@@ -18,7 +18,7 @@ import AddNewSecretForm from './AddNewSecretForm'
 import EdgeFunctionSecret from './EdgeFunctionSecret'
 import { EditSecretSheet } from './EditSecretSheet'
 import { InlineLink } from '@/components/ui/InlineLink'
-import { DOCS_URL } from '@/lib/constants'
+import { docsUrl } from '@/lib/constants'
 
 export const EdgeFunctionSecrets = () => {
   const { ref: projectRef } = useParams()
@@ -166,7 +166,7 @@ export const EdgeFunctionSecrets = () => {
                                   SUPABASE_*
                                 </code>{' '}
                                 <InlineLink
-                                  href={`${DOCS_URL}/guides/functions/secrets#default-secrets`}
+                                  href={docsUrl('guides/functions/secrets')}
                                 >
                                   default secrets
                                 </InlineLink>{' '}

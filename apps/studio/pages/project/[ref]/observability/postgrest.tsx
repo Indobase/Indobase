@@ -22,8 +22,6 @@ import ReportFilterBar from 'components/interfaces/Reports/ReportFilterBar'
 import { SharedAPIReport } from 'components/interfaces/Reports/SharedAPIReport/SharedAPIReport'
 import { useSharedAPIReport } from 'components/interfaces/Reports/SharedAPIReport/SharedAPIReport.constants'
 import type { NextPageWithLayout } from 'types'
-import { ObservabilityLink } from 'components/ui/ObservabilityLink'
-
 const PostgRESTReport: NextPageWithLayout = () => {
   return (
     <ReportPadding>
@@ -105,7 +103,7 @@ const PostgrestReport = () => {
 
   return (
     <>
-      <ReportHeader showDatabaseSelector={false} title="Data API" />
+      <ReportHeader showDatabaseSelector={false} title="Indobase Data API" />
       <ReportStickyNav
         content={
           <div className="flex flex-col gap-2">
@@ -167,9 +165,6 @@ const PostgrestReport = () => {
           />
         </div>
       </ReportStickyNav>
-      <div className="py-8">
-        <ObservabilityLink />
-      </div>
     </>
   )
 }

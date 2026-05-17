@@ -46,7 +46,7 @@ const PRODUCT_FILTERS = [
     key: 'rest',
     filterKey: 'request.path',
     filterValue: '/rest',
-    label: 'Data API (PostgREST)',
+    label: 'Indobase Data API (PostgREST)',
     icon: Database,
   },
   {

@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { paths } from 'api-types'
 import apiWrapper from 'lib/api/apiWrapper'
 import { mapOrgIntegrationProjectConnections } from 'lib/api/saas/github-integration'
+import { mapVercelOrgIntegrationProjectConnections } from 'lib/api/saas/vercel-integration'
 import { getOrCreateProfile, listIntegrationRowsForOrganization } from 'lib/api/saas/platform'
 
 /**
@@ -53,20 +54,19 @@ const handleGet = async (
   const payload = rows.map((r) => {
     const slug = r.integration_slug.toLowerCase()
     const name = slug === 'vercel' ? 'Vercel' : 'GitHub'
+    const integrationRow = {
+      id: r.id,
+      integration_slug: r.integration_slug,
+      connection: (r.connection ?? {}) as any,
+      inserted_at: r.inserted_at,
+      updated_at: r.updated_at,
+    }
     const connections =
       slug === 'github'
-        ? mapOrgIntegrationProjectConnections(
-            {
-              id: r.id,
-              integration_slug: r.integration_slug,
-              connection: (r.connection ?? {}) as any,
-              inserted_at: r.inserted_at,
-              updated_at: r.updated_at,
-            },
-            orgSlug,
-            addedBy
-          )
-        : []
+        ? mapOrgIntegrationProjectConnections(integrationRow, orgSlug, addedBy)
+        : slug === 'vercel'
+          ? mapVercelOrgIntegrationProjectConnections(integrationRow, orgSlug, addedBy)
+          : []
 
     return {
       id: String(r.id),

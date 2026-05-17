@@ -92,13 +92,22 @@ KONG_INTERNAL_GOTRUE_URL=http://kong:8000/auth/v1
 NEXT_PUBLIC_INDOBASE_SAAS=true
 SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=true
 
-# Logs (optional)
+# Logs (optional; run docker/scripts/sync-logflare-env-to-studio.sh on VPS after compose .env has tokens)
 # Base URL only — do NOT use cloud ingestion URLs like api.logflare.app/api/logs?source=...
 LOGFLARE_URL=http://indobase-analytics:4000
 LOGFLARE_PUBLIC_ACCESS_TOKEN=your-token
 LOGFLARE_PRIVATE_ACCESS_TOKEN=your-token
 NEXT_PUBLIC_ENABLE_LOGS=true
 NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
+
+# Vercel integration (server-side secrets; register app at vercel.com/integrations)
+VERCEL_CLIENT_ID=your_vercel_client_id
+VERCEL_CLIENT_SECRET=your_vercel_client_secret
+NEXT_PUBLIC_VERCEL_INTEGRATION_URL=https://vercel.com/integrations/your-indobase-slug
+
+# GitHub integration (server-side; OAuth app callback https://studio.indobase.in/integrations/github/authorize)
+GITHUB_INTEGRATION_CLIENT_ID=your_github_client_id
+GITHUB_INTEGRATION_CLIENT_SECRET=your_github_client_secret
 
 DATA_PLANE_PROVISIONER_URL=http://data-plane-provisioner:8787
 DATA_PLANE_PROVISIONER_TOKEN=your-token

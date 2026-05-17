@@ -102,7 +102,7 @@ export const generateSettingsMenu = (
       title: 'Configuration',
       items: [
         {
-          name: 'Data API',
+          name: 'Indobase Data API',
           key: 'api',
           url: `/project/${ref}/integrations/data_api/overview`,
           items: [],

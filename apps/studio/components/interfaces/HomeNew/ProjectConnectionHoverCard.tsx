@@ -98,7 +98,7 @@ export const ProjectConnectionHoverCard = ({ projectRef }: ProjectConnectionHove
       </HoverCardTrigger>
       <HoverCardContent side="bottom" align="start" className="w-[420px] p-0">
         <div className="p-4 border-b space-y-4">
-          <h3 className="heading-meta text-foreground-light">Data API</h3>
+          <h3 className="heading-meta text-foreground-light">Indobase Data API</h3>
           <DetailRow label="Project URL">
             <Input
               copy

@@ -159,6 +159,17 @@ TS
     echo "  seeded functions main"
   fi
 
+  if grep -q '127.0.0.1:' "$dir/docker-compose.yml" 2>/dev/null; then
+    sed -i 's/127.0.0.1:/0.0.0.0:/g' "$dir/docker-compose.yml"
+    echo "  patched port bindings (0.0.0.0 for Traefik bridge access)"
+  fi
+
+  traefik_dynamic="${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}/tenant-${ref}.yml"
+  if [[ -f "$traefik_dynamic" ]] && grep -q 'http://127.0.0.1:' "$traefik_dynamic" 2>/dev/null; then
+    sed -i 's|http://127.0.0.1:|http://172.17.0.1:|g' "$traefik_dynamic"
+    echo "  patched Traefik upstream -> 172.17.0.1"
+  fi
+
   (cd "$dir" && docker compose up -d) >/dev/null
 
   local ready="f" i=0

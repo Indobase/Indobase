@@ -62,10 +62,15 @@ function restOriginFromUrl(restUrl: string): string {
   }
 }
 
+function traefikUpstreamHost(): string {
+  return process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
+}
+
 async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: string }) {
   const gotrueId = getGotrueUserId(claims)
   return executeQuery<{
     data_plane_last_provisioned_at: string | null
+    data_plane_port_base: number | null
     connection_string: string | null
     connection_string_enc: string | null
     status: string
@@ -73,6 +78,7 @@ async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: stri
     query: `
       select
         p.data_plane_last_provisioned_at,
+        p.data_plane_port_base,
         p.connection_string,
         p.connection_string_enc,
         p.status
@@ -84,6 +90,30 @@ async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: stri
     parameters: [ref, gotrueId],
     actorId: gotrueId,
   })
+}
+
+/** Direct container ports (bypasses Traefik + wildcard DNS). */
+async function probeCoreServicesViaPortBase(
+  portBase: number
+): Promise<Record<CoreService, { ok: boolean; error?: string }>> {
+  const host = traefikUpstreamHost()
+  const restPort = portBase + 1
+  const authPort = portBase + 2
+  const storagePort = portBase + 3
+  const realtimePort = portBase + 4
+
+  const [rest, auth, storage, realtime] = await Promise.all([
+    pingUrl(`http://${host}:${restPort}/`),
+    pingUrl(`http://${host}:${authPort}/health`),
+    pingUrl(`http://${host}:${storagePort}/status`),
+    pingUrl(`http://${host}:${realtimePort}/`),
+  ])
+
+  const db = rest.ok
+    ? { ok: true as const }
+    : { ok: false as const, error: rest.error ?? 'database unreachable via REST' }
+
+  return { rest, auth, storage, realtime, db }
 }
 
 async function probeCoreServices(restUrl: string): Promise<Record<CoreService, { ok: boolean; error?: string }>> {
@@ -99,6 +129,26 @@ async function probeCoreServices(restUrl: string): Promise<Record<CoreService, {
   const db = rest.ok ? { ok: true as const } : { ok: false as const, error: rest.error ?? 'database unreachable via REST' }
 
   return { rest, auth, storage, realtime, db }
+}
+
+async function resolveCoreServiceProbes(opts: {
+  restUrl: string
+  portBase: number | null | undefined
+  hasDedicated: boolean
+  hasProvisionedDataPlane: boolean
+}): Promise<Record<CoreService, { ok: boolean; error?: string }>> {
+  const useInternal =
+    process.env.SAAS_HEALTH_PROBE_INTERNAL !== 'false' &&
+    opts.hasDedicated &&
+    opts.hasProvisionedDataPlane &&
+    typeof opts.portBase === 'number' &&
+    Number.isFinite(opts.portBase) &&
+    opts.portBase >= 1024
+
+  if (useInternal) {
+    return probeCoreServicesViaPortBase(opts.portBase!)
+  }
+  return probeCoreServices(opts.restUrl)
 }
 
 export async function getSaaSProjectServiceHealth({
@@ -135,8 +185,15 @@ export async function getSaaSProjectServiceHealth({
       .restUrl ||
     PROJECT_REST_URL
 
+  const portBase = meta?.data_plane_port_base ?? null
+
   if (awaitingDedicatedDataPlane || meta?.status === 'COMING_UP') {
-    const probes = await probeCoreServices(restUrl)
+    const probes = await resolveCoreServiceProbes({
+      restUrl,
+      portBase,
+      hasDedicated,
+      hasProvisionedDataPlane,
+    })
     return requested.map((name) => {
       const probe = probes[name]
       if (probe.ok) return serviceResponse(name, 'ACTIVE_HEALTHY')
@@ -144,7 +201,12 @@ export async function getSaaSProjectServiceHealth({
     })
   }
 
-  const probes = await probeCoreServices(restUrl)
+  const probes = await resolveCoreServiceProbes({
+    restUrl,
+    portBase,
+    hasDedicated,
+    hasProvisionedDataPlane,
+  })
 
   return requested.map((name) => {
     const probe = probes[name]
@@ -180,6 +242,32 @@ export async function getSaaSEdgeFunctionsHealth({
     resolveSaaSTenantRestUrls(ref, hasDedicated && (hasProvisionedDataPlane || awaitingDedicatedDataPlane))
       .restUrl ||
     PROJECT_REST_URL
+
+  const portBase = meta?.data_plane_port_base ?? null
+  const useInternal =
+    process.env.SAAS_HEALTH_PROBE_INTERNAL !== 'false' &&
+    hasDedicated &&
+    hasProvisionedDataPlane &&
+    typeof portBase === 'number' &&
+    Number.isFinite(portBase) &&
+    portBase >= 1024
+
+  if (useInternal) {
+    const functionsUrl = `http://${traefikUpstreamHost()}:${portBase! + 5}/`
+    const probe = await pingUrl(functionsUrl)
+    if (probe.ok) return { healthy: true }
+    // Edge runtime responds 400 on root when no function name is provided; process is still up.
+    try {
+      const signal =
+        typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+          ? AbortSignal.timeout(4000)
+          : undefined
+      const response = await fetch(functionsUrl, { method: 'HEAD', cache: 'no-store', signal })
+      return { healthy: response.status === 400 }
+    } catch {
+      return { healthy: false }
+    }
+  }
 
   if (awaitingDedicatedDataPlane) {
     const probe = await pingUrl(`${restOriginFromUrl(restUrl)}/functions/v1/`)

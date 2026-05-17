@@ -1,7 +1,6 @@
-import { IS_SAAS, LOCAL_STORAGE_KEYS, useParams } from 'common'
+import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { useIndexAdvisorStatus } from 'components/interfaces/QueryPerformance/hooks/useIsIndexAdvisorStatus'
 import { BannerIndexAdvisor } from 'components/ui/BannerStack/Banners/BannerIndexAdvisor'
-import { BannerMetricsAPI } from 'components/ui/BannerStack/Banners/BannerMetricsAPI'
 import { useBannerStack } from 'components/ui/BannerStack/BannerStackProvider'
 import { UnknownInterface } from 'components/ui/UnknownInterface'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
@@ -26,28 +25,14 @@ const ObservabilityLayoutContent = ({
   const { addBanner, dismissBanner } = useBannerStack()
   const { isIndexAdvisorAvailable, isIndexAdvisorEnabled } = useIndexAdvisorStatus()
 
-  const [isMetricsBannerDismissed] = useLocalStorageQuery(
-    LOCAL_STORAGE_KEYS.OBSERVABILITY_BANNER_DISMISSED(ref ?? ''),
-    false
-  )
-
   const [isIndexAdvisorBannerDismissed] = useLocalStorageQuery(
     LOCAL_STORAGE_KEYS.INDEX_ADVISOR_NOTICE_DISMISSED(ref ?? ''),
     false
   )
 
   useEffect(() => {
-    if (!isMetricsBannerDismissed && IS_SAAS) {
-      addBanner({
-        id: 'metrics-api-banner',
-        isDismissed: false,
-        content: <BannerMetricsAPI />,
-        priority: 1,
-      })
-    } else {
-      dismissBanner('metrics-api-banner')
-    }
-  }, [isMetricsBannerDismissed, addBanner, dismissBanner])
+    dismissBanner('metrics-api-banner')
+  }, [dismissBanner])
 
   const prevPathnameRef = useRef(pathname)
 

@@ -178,7 +178,7 @@ const CustomDomainSidePanel = () => {
                   </div>
                   <div className="px-4 py-2">
                     <p className="text-foreground-light">
-                      Use the default supabase domain for your API
+                      Use the default Indobase domain for your API
                     </p>
                     <div className="flex items-center space-x-1 mt-2">
                       <p className="text-foreground text-sm" translate="no">
