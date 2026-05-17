@@ -84,6 +84,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
       return res.status(409).json({ message })
     }
     console.error('[branches]', message, e)
+    if (req.method === 'GET') {
+      return res.status(200).json([])
+    }
     return res.status(500).json({ message: message || 'Branch operation failed' })
   }
 }

@@ -43,11 +43,19 @@ import { useTableEditorTabsCleanUp } from '../Tabs/Tabs.utils'
 import { EntityListItem } from './EntityListItem'
 import { TableMenuEmptyState } from './TableMenuEmptyState'
 
+const TABLE_EDITOR_HIDDEN_SCHEMAS = ['graphql_public', 'graphql'] as const
+
 export const TableEditorMenu = () => {
   const { id: _id, ref: projectRef } = useParams()
   const id = _id ? Number(_id) : undefined
   const snap = useTableEditorStateSnapshot()
   const { selectedSchema, setSelectedSchema } = useQuerySchemaState()
+
+  useEffect(() => {
+    if ((TABLE_EDITOR_HIDDEN_SCHEMAS as readonly string[]).includes(selectedSchema)) {
+      setSelectedSchema('public')
+    }
+  }, [selectedSchema, setSelectedSchema])
   const isMobile = useBreakpoint()
 
   const [searchText, setSearchText] = useState<string>('')
@@ -163,6 +171,7 @@ export const TableEditorMenu = () => {
           <SchemaSelector
             className="mx-4"
             selectedSchemaName={selectedSchema}
+            excludedSchemas={[...TABLE_EDITOR_HIDDEN_SCHEMAS]}
             onSelectSchema={(name: string) => {
               setSearchText('')
               setSelectedSchema(name)
