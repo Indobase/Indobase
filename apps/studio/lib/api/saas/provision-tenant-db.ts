@@ -189,15 +189,20 @@ export async function bootstrapTenantDatabaseExtensions({
   const client = new Client({ connectionString: adminConn })
   await client.connect()
   try {
-    try {
-      await client.query('create extension if not exists "uuid-ossp"')
-    } catch (e) {
-      console.warn('[provision-tenant-db] optional extension "uuid-ossp" skipped: %O', e)
-    }
-    try {
-      await client.query('create extension if not exists pgcrypto')
-    } catch (e) {
-      console.warn('[provision-tenant-db] optional extension pgcrypto skipped: %O', e)
+    const optionalExtensions = [
+      'create extension if not exists "uuid-ossp"',
+      'create extension if not exists pgcrypto',
+      'create schema if not exists extensions',
+      'create extension if not exists pg_stat_statements with schema extensions',
+      'create extension if not exists hypopg with schema extensions',
+      'create extension if not exists index_advisor with schema extensions',
+    ]
+    for (const sql of optionalExtensions) {
+      try {
+        await client.query(sql)
+      } catch (e) {
+        console.warn('[provision-tenant-db] optional extension skipped (%s): %O', sql, e)
+      }
     }
   } finally {
     await client.end()
@@ -616,6 +621,13 @@ export async function runTenantDataPlaneBootstrapFromConnectionString(
     adminPassword,
     dbName,
     tenantRoleName: tenantRole,
+  })
+  await bootstrapTenantDatabaseExtensions({
+    host,
+    port,
+    adminUser,
+    adminPassword,
+    dbName,
   })
   await bootstrapTenantDataPlaneSchemas({
     host,

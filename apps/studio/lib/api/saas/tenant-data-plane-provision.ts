@@ -88,3 +88,77 @@ export async function provisionTenantDataPlaneStack({
 
   return { ok: true, applied: apply, provisioner_status: resp.status }
 }
+
+function claimsFromActorId(actorId: string): Claims {
+  return { sub: actorId } as Claims
+}
+
+/**
+ * When a project has a dedicated tenant DB but no data_plane_last_provisioned_at, apply the
+ * tenant stack (idempotent) so health checks stop reporting COMING_UP.
+ */
+export async function ensureDataPlaneProvisionedIfMissing({
+  claims,
+  ref,
+  reason = 'auto_repair',
+}: {
+  claims: Claims
+  ref: string
+  reason?: string
+}): Promise<{ repaired: boolean }> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { repaired: false }
+  }
+
+  const normalized: any =
+    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
+  const actorId: string | undefined = normalized?.sub
+  if (!actorId) return { repaired: false }
+
+  const { executeQuery } = await import('./query')
+  const { decryptString } = await import('./util')
+
+  const row = await executeQuery<{
+    connection_string: string | null
+    connection_string_enc: string | null
+    data_plane_last_provisioned_at: string | null
+  }>({
+    query: `
+      select p.connection_string, p.connection_string_enc, p.data_plane_last_provisioned_at
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = $1 and m.gotrue_id = $2
+      limit 1
+    `,
+    parameters: [ref, actorId],
+    actorId,
+  })
+  if (row.error) throw row.error
+  const p = row.data?.[0]
+  if (!p) return { repaired: false }
+
+  const enc = (p.connection_string_enc ?? '').trim()
+  const tenantUrl = enc.length > 0 ? decryptString(enc) : p.connection_string
+  if (!tenantUrl?.trim() || p.data_plane_last_provisioned_at) {
+    return { repaired: false }
+  }
+
+  await provisionTenantDataPlaneStack({ claims, ref, apply: true, reason })
+  return { repaired: true }
+}
+
+export async function ensureDataPlaneProvisionedIfMissingForActor({
+  ref,
+  actorId,
+  reason,
+}: {
+  ref: string
+  actorId: string
+  reason?: string
+}) {
+  return ensureDataPlaneProvisionedIfMissing({
+    claims: claimsFromActorId(actorId),
+    ref,
+    reason,
+  })
+}

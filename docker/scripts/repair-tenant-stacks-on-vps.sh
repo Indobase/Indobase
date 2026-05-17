@@ -179,7 +179,16 @@ TS
   psql_admin "$dbname" "grant usage on schema auth to \"$tenant_role\""
   psql_admin "$dbname" "grant select on all tables in schema auth to \"$tenant_role\""
   psql_admin "$dbname" "alter default privileges in schema auth grant select on tables to \"$tenant_role\""
-  echo "  ok: auth.users + grants for $tenant_role"
+
+  for ext_sql in \
+    'create schema if not exists extensions' \
+    'create extension if not exists pg_stat_statements with schema extensions' \
+    'create extension if not exists hypopg with schema extensions' \
+    'create extension if not exists index_advisor with schema extensions'; do
+    psql_admin "$dbname" "$ext_sql" || true
+  done
+
+  echo "  ok: auth.users + grants + index-advisor extensions for $tenant_role"
 }
 
 for entry in "$TENANTS_ROOT"/*; do

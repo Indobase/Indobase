@@ -9,6 +9,7 @@ import {
 } from './provision-tenant-db'
 import { decryptString } from './util'
 import {
+  ensureDataPlaneProvisionedIfMissing,
   isDataPlaneProvisionerConfigured,
   provisionTenantDataPlaneStack,
 } from './tenant-data-plane-provision'
@@ -102,7 +103,12 @@ export async function ensureTenantGoTrueAuthSchema({
   }
 
   if (await tenantAuthUsersTableExists(tenantDbUrl)) {
-    return { ok: true, alreadyReady: true, provisioned: false }
+    const { repaired } = await ensureDataPlaneProvisionedIfMissing({
+      claims,
+      ref,
+      reason: 'ensure_auth_schema_record',
+    })
+    return { ok: true, alreadyReady: true, provisioned: repaired }
   }
 
   if (!isDataPlaneProvisionerConfigured()) {

@@ -1671,8 +1671,18 @@ export async function finalizeDedicatedProjectProvisioning({
 
     if (process.env.SAAS_AUTO_PROVISION_DATA_PLANE_ON_CREATE !== 'false') {
       try {
-        const { isDataPlaneProvisionerConfigured } = await import('./tenant-data-plane-provision')
+        const {
+          isDataPlaneProvisionerConfigured,
+          provisionTenantDataPlaneStack,
+        } = await import('./tenant-data-plane-provision')
         if (isDataPlaneProvisionerConfigured()) {
+          const claims = { sub: gotrueId } as Claims
+          await provisionTenantDataPlaneStack({
+            claims,
+            ref: projectRef,
+            apply: true,
+            reason: 'project_create',
+          })
           const { ensureTenantGoTrueAuthSchemaForActor } = await import('./tenant-gotrue-schema')
           await ensureTenantGoTrueAuthSchemaForActor({ ref: projectRef, actorId: gotrueId })
         }
@@ -1940,6 +1950,18 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
   await tryCompleteStuckProvisioningProject({ ref, gotrueId })
+  try {
+    const { ensureDataPlaneProvisionedIfMissingForActor } = await import(
+      './tenant-data-plane-provision'
+    )
+    await ensureDataPlaneProvisionedIfMissingForActor({
+      ref,
+      actorId: gotrueId,
+      reason: 'get_project',
+    })
+  } catch (e) {
+    console.warn('[saas] data-plane auto-repair skipped for %s: %O', ref, e)
+  }
 
   const rows = await executeQuery<{
     id: number

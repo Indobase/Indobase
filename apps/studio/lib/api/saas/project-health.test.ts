@@ -27,7 +27,36 @@ describe('project-health', () => {
     )
   })
 
+  it('probes tenant stack when data plane timestamp is missing but services respond', async () => {
+    vi.mocked(getProject).mockResolvedValue({
+      restUrl: 'https://abc.indobase.in/rest/v1/',
+    } as any)
+    vi.mocked(executeQuery).mockResolvedValue({
+      data: [
+        {
+          data_plane_last_provisioned_at: null,
+          connection_string: 'postgres://tenant',
+          connection_string_enc: null,
+          status: 'ACTIVE_HEALTHY',
+        },
+      ],
+      error: null,
+    } as any)
+
+    const health = await getSaaSProjectServiceHealth({
+      claims: { sub: 'user-1' } as any,
+      ref: 'abc',
+    })
+
+    expect(health?.every((s) => s.status === 'ACTIVE_HEALTHY')).toBe(true)
+    expect(fetch).toHaveBeenCalled()
+  })
+
   it('returns COMING_UP when dedicated tenant data plane is not provisioned', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 503 }) as Response)
+    )
     vi.mocked(getProject).mockResolvedValue({
       restUrl: 'https://abc.indobase.in/rest/v1/',
     } as any)
@@ -76,7 +105,7 @@ describe('project-health', () => {
     expect(fetch).toHaveBeenCalled()
   })
 
-  it('edge functions health is false while data plane is provisioning', async () => {
+  it('edge functions health probes tenant URL when data plane timestamp is missing', async () => {
     vi.mocked(getProject).mockResolvedValue({
       restUrl: 'https://abc.indobase.in/rest/v1/',
     } as any)
@@ -97,6 +126,6 @@ describe('project-health', () => {
       ref: 'abc',
     })
 
-    expect(result).toEqual({ healthy: false })
+    expect(result).toEqual({ healthy: true })
   })
 })

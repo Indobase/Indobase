@@ -129,14 +129,20 @@ export async function getSaaSProjectServiceHealth({
     (CORE_SERVICES as readonly string[]).includes(s)
   )
 
-  if (awaitingDedicatedDataPlane || meta?.status === 'COMING_UP') {
-    return requested.map((name) => serviceResponse(name, 'COMING_UP'))
-  }
-
   const restUrl =
     project.restUrl?.trim() ||
-    resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisionedDataPlane).restUrl ||
+    resolveSaaSTenantRestUrls(ref, hasDedicated && (hasProvisionedDataPlane || awaitingDedicatedDataPlane))
+      .restUrl ||
     PROJECT_REST_URL
+
+  if (awaitingDedicatedDataPlane || meta?.status === 'COMING_UP') {
+    const probes = await probeCoreServices(restUrl)
+    return requested.map((name) => {
+      const probe = probes[name]
+      if (probe.ok) return serviceResponse(name, 'ACTIVE_HEALTHY')
+      return serviceResponse(name, 'COMING_UP', probe.error)
+    })
+  }
 
   const probes = await probeCoreServices(restUrl)
 
@@ -167,15 +173,18 @@ export async function getSaaSEdgeFunctionsHealth({
       : meta?.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
   const hasProvisionedDataPlane = Boolean(meta?.data_plane_last_provisioned_at)
-
-  if (hasDedicated && !hasProvisionedDataPlane) {
-    return { healthy: false }
-  }
+  const awaitingDedicatedDataPlane = hasDedicated && !hasProvisionedDataPlane
 
   const restUrl =
     project.restUrl?.trim() ||
-    resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisionedDataPlane).restUrl ||
+    resolveSaaSTenantRestUrls(ref, hasDedicated && (hasProvisionedDataPlane || awaitingDedicatedDataPlane))
+      .restUrl ||
     PROJECT_REST_URL
+
+  if (awaitingDedicatedDataPlane) {
+    const probe = await pingUrl(`${restOriginFromUrl(restUrl)}/functions/v1/`)
+    return { healthy: probe.ok }
+  }
   const origin = restOriginFromUrl(restUrl)
   const probe = await pingUrl(`${origin}/functions/v1/`)
   return { healthy: probe.ok }

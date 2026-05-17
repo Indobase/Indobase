@@ -103,6 +103,9 @@ NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 DATA_PLANE_PROVISIONER_URL=http://data-plane-provisioner:8787
 DATA_PLANE_PROVISIONER_TOKEN=your-token
 
+# SQL Editor / AI assistant (optional; without this, AI features return a clear configuration error)
+OPENAI_API_KEY=sk-...
+
 STUDIO_DEFAULT_ORGANIZATION=Default Organization
 STUDIO_DEFAULT_PROJECT=Default Project
 ```
