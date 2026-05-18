@@ -47,7 +47,10 @@ export const ConnectSheet = () => {
     PermissionAction.READ,
     'service_api_keys'
   )
-  const { data: apiKeys } = useAPIKeysQuery({ projectRef }, { enabled: canReadAPIKeys })
+  const { data: apiKeys } = useAPIKeysQuery(
+    { projectRef, reveal: true },
+    { enabled: canReadAPIKeys }
+  )
   const { anonKey, publishableKey } = canReadAPIKeys
     ? getKeys(apiKeys)
     : { anonKey: null, publishableKey: null }
