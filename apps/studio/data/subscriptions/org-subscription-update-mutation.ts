@@ -6,6 +6,7 @@ import type { CustomerAddress, CustomerTaxId } from 'data/organizations/types'
 import { usageKeys } from 'data/usage/keys'
 import { toast } from 'sonner'
 import type { ResponseError } from 'types/base'
+import { redirectToBillingCheckout } from 'lib/billing/checkout'
 import { subscriptionKeys } from './keys'
 import type { SubscriptionTier } from './types'
 import { UseCustomMutationOptions } from 'types'
@@ -68,6 +69,11 @@ export const useOrgSubscriptionUpdateMutation = ({
     mutationFn: (vars) => updateOrgSubscription(vars),
     async onSuccess(data, variables, context) {
       const { slug } = variables
+
+      if (data && redirectToBillingCheckout(data as { pending_checkout_url?: string })) {
+        await onSuccess?.(data, variables, context)
+        return
+      }
 
       if (!data.pending_payment_intent_secret) {
         // [Kevin] Backend can return stale data as it's waiting for the Stripe-sync to complete. Until that's solved in the backend

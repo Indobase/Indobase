@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { handleError, post } from 'data/fetchers'
 import { permissionKeys } from 'data/permissions/keys'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
+import { redirectToBillingCheckout } from 'lib/billing/checkout'
 import { organizationKeys } from './keys'
 import { castOrganizationResponseToOrganization } from './organizations-query'
 import type { CustomerAddress, CustomerTaxId } from './types'
@@ -61,6 +62,11 @@ export const useOrganizationCreateMutation = ({
   return useMutation<OrganizationCreateData, ResponseError, OrganizationCreateVariables>({
     mutationFn: (vars) => createOrganization(vars),
     async onSuccess(data, variables, context) {
+      if (data && redirectToBillingCheckout(data as { pending_checkout_url?: string })) {
+        await onSuccess?.(data, variables, context)
+        return
+      }
+
       if (data && !('pending_payment_intent_secret' in data)) {
         // [Joshen] We're manually updating the query client here as the org's subscription is
         // created async, and the invalidation will happen too quick where the GET organizations

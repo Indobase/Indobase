@@ -92,7 +92,8 @@ KONG_INTERNAL_GOTRUE_URL=http://kong:8000/auth/v1
 NEXT_PUBLIC_INDOBASE_SAAS=true
 SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=true
 
-# Logs (optional; run docker/scripts/sync-logflare-env-to-studio.sh on VPS after compose .env has tokens)
+# Logs (self-hosted Logflare in compose — do NOT use logflare.app cloud)
+# Run on VPS after tokens exist: bash docker/scripts/sync-logflare-env-to-studio.sh
 # Base URL only — do NOT use cloud ingestion URLs like api.logflare.app/api/logs?source=...
 LOGFLARE_URL=http://indobase-analytics:4000
 LOGFLARE_PUBLIC_ACCESS_TOKEN=your-token
@@ -108,6 +109,16 @@ NEXT_PUBLIC_VERCEL_INTEGRATION_URL=https://vercel.com/integrations/your-indobase
 # GitHub integration (server-side; OAuth app callback https://studio.indobase.in/integrations/github/authorize)
 GITHUB_INTEGRATION_CLIENT_ID=your_github_client_id
 GITHUB_INTEGRATION_CLIENT_SECRET=your_github_client_secret
+
+# Razorpay billing (INR; see RAZORPAY_BILLING_SETUP.md)
+RAZORPAY_KEY_ID=rzp_test_xxxx
+RAZORPAY_KEY_SECRET=xxxx
+RAZORPAY_WEBHOOK_SECRET=xxxx
+NEXT_PUBLIC_RAZORPAY_BILLING=true
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
+# Optional pre-created plan IDs:
+# RAZORPAY_PLAN_ID_PRO=plan_xxxx
+# RAZORPAY_PLAN_ID_TEAM=plan_xxxx
 
 DATA_PLANE_PROVISIONER_URL=http://data-plane-provisioner:8787
 DATA_PLANE_PROVISIONER_TOKEN=your-token

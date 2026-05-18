@@ -25,9 +25,24 @@ export function resolvePublicDomainForTenantStack(): string {
   return 'localhost'
 }
 
+/**
+ * When true, client SDKs should call `https://{ref}.<public-domain>` (per-project Traefik host),
+ * matching Supabase's `{ref}.supabase.co`. Requires a dedicated tenant DB; shared Kong uses
+ * `api.<domain>` plus project-scoped anon/service keys.
+ */
+export function usesTenantPublicApiHost(hasDedicatedTenantDb: boolean): boolean {
+  return hasDedicatedTenantDb
+}
+
+/** Base API URL for Connect / env snippets (`https://ref.indobase.in`, no path suffix). */
+export function resolveSaaSTenantApiBaseUrl(ref: string, hasDedicatedTenantDb: boolean): string {
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicatedTenantDb)
+  return `${protocol}://${endpointHost}`
+}
+
 /** REST + API host for Studio clients: dedicated DB → `ref.<public domain>`; else shared Kong (`PROJECT_*`). */
 export function resolveSaaSTenantRestUrls(ref: string, hasDedicatedTenantDb: boolean) {
-  if (!hasDedicatedTenantDb) {
+  if (!usesTenantPublicApiHost(hasDedicatedTenantDb)) {
     return {
       endpointHost: PROJECT_ENDPOINT,
       restUrl: PROJECT_REST_URL,

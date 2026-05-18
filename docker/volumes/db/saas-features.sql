@@ -135,30 +135,53 @@ $saas_features_projects_legacy_keys$;
 -- RLS: only the project's owning organization members can read/write
 -- ---------------------------------------------------------------------------
 -- Helper that checks org membership for the given (project_ref, gotrue_id).
-create or replace function saas.is_member_of_project(_project_ref text, _gotrue_id uuid)
-returns boolean
-language sql
-stable
-as $$
-  select exists (
-    select 1
-    from saas.projects p
-    join saas.organization_members m on m.organization_id = p.organization_id
-    where p.ref = _project_ref
-      and m.gotrue_id = _gotrue_id
-  );
-$$;
-
 create or replace function saas.is_member_of_org(_organization_id integer, _gotrue_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = saas, pg_catalog
 as $$
-  select exists (
-    select 1 from saas.organization_members m
-    where m.organization_id = _organization_id
-      and m.gotrue_id = _gotrue_id
-  );
+  select _gotrue_id is not null
+    and exists (
+      select 1 from saas.organization_members m
+      where m.organization_id = _organization_id
+        and m.gotrue_id = _gotrue_id
+    );
+$$;
+
+create or replace function saas.has_org_role(_organization_id integer, _gotrue_id uuid, _roles text[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = saas, pg_catalog
+as $$
+  select _gotrue_id is not null
+    and exists (
+      select 1 from saas.organization_members m
+      where m.organization_id = _organization_id
+        and m.gotrue_id = _gotrue_id
+        and m.role = any (_roles)
+    );
+$$;
+
+create or replace function saas.is_member_of_project(_project_ref text, _gotrue_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = saas, pg_catalog
+as $$
+  select _gotrue_id is not null
+    and _project_ref is not null
+    and exists (
+      select 1
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where p.ref = _project_ref
+        and m.gotrue_id = _gotrue_id
+    );
 $$;
 
 -- saas.audit_logs RLS: members can read their org / project events.

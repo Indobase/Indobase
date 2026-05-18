@@ -127,23 +127,43 @@ services:
     ports:
       - "127.0.0.1:${ports.auth}:9999"
 
+  tenant-imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    restart: unless-stopped
+    hostname: tenant-imgproxy-${projectRef}
+    volumes:
+      - tenant-storage-${projectRef}:/var/lib/storage:Z
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+      IMGPROXY_MAX_SRC_RESOLUTION: "16.8"
+    expose:
+      - "5001"
+
   tenant-storage:
-    image: supabase/storage-api:v1.23.0
+    image: supabase/storage-api:v1.37.8
     restart: unless-stopped
     depends_on:
       - tenant-db
       - tenant-rest
+      - tenant-imgproxy
     environment:
       ANON_KEY: ${anonKey}
       SERVICE_KEY: ${serviceKey}
       POSTGREST_URL: http://host.docker.internal:${ports.rest}
       PGRST_JWT_SECRET: ${jwtSecret}
       DATABASE_URL: ${tenantDbUrl}
-      FILE_SIZE_LIMIT: 52428800
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: "5368709120"
       STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: tenant-${projectRef}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       REGION: local
       TENANT_ID: ${projectRef}
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://tenant-imgproxy-${projectRef}:5001
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

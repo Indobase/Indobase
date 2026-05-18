@@ -43,6 +43,12 @@ export const GOTRUE_ERRORS = {
 export const STRIPE_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || 'pk_test_XVwg5IZH3I9Gti98hZw6KRzd00v5858heG'
 
+export {
+  isRazorpayBillingClient,
+  isRazorpayBillingConfigured,
+  RAZORPAY_PUBLIC_KEY_ID,
+} from 'lib/billing/config'
+
 export const POSTHOG_URL =
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' ||
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'local'

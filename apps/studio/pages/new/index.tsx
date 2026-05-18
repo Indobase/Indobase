@@ -6,6 +6,7 @@ import AppLayout from 'components/layouts/AppLayout/AppLayout'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import WizardLayout from 'components/layouts/WizardLayout'
 import { SetupIntentResponse, useSetupIntent } from 'data/stripe/setup-intent-mutation'
+import { isRazorpayBillingClient } from 'lib/constants'
 import type { NextPageWithLayout } from 'types'
 
 /**
@@ -20,7 +21,7 @@ const Wizard: NextPageWithLayout = () => {
   const [captchaRef, setCaptchaRef] = useState<HCaptcha | null>(null)
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const captchaEnabled = hcaptchaSiteKey.length > 0
+  const captchaEnabled = hcaptchaSiteKey.length > 0 && !isRazorpayBillingClient
 
   const { mutate: setupIntent } = useSetupIntent({ onSuccess: (res) => setIntent(res) })
 
@@ -78,7 +79,8 @@ const Wizard: NextPageWithLayout = () => {
   }
 
   const captchaNotice = useMemo(() => {
-    if (captchaEnabled || selectedPlan == null || selectedPlan === 'FREE') return null
+    if (isRazorpayBillingClient || captchaEnabled || selectedPlan == null || selectedPlan === 'FREE')
+      return null
     return (
       <p className="mb-4 text-sm text-warning">
         Paid plans require hCaptcha, but NEXT_PUBLIC_HCAPTCHA_SITE_KEY is not configured on this

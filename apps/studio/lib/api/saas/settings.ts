@@ -4,7 +4,7 @@ import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL } from 'lib/constants/api'
 import { decryptString } from './util'
 import { executeQuery } from './query'
 import { ensureSaasTables, getGotrueUserId } from './platform'
-import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
+import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from './tenant-public-urls'
 import { assertSaaSBackend } from './util'
 
 type ProjectAppConfig = components['schemas']['ProjectSettingsResponse']['app_config'] & {
@@ -133,8 +133,7 @@ export async function getProjectSettingsForRef({
       ? decryptString(p.connection_string_enc)
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
-  const hasProvisioned = Boolean(p.data_plane_last_provisioned_at)
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisioned)
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, usesTenantPublicApiHost(hasDedicated))
 
   const base = getProjectSettings()
 

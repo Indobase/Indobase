@@ -164,6 +164,106 @@ TS
     echo "  patched port bindings (0.0.0.0 for Traefik bridge access)"
   fi
 
+  if grep -q 'FILE_SIZE_LIMIT: "52428800"' "$dir/docker-compose.yml" 2>/dev/null; then
+    sed -i 's/FILE_SIZE_LIMIT: "52428800"/FILE_SIZE_LIMIT: "5368709120"/g' "$dir/docker-compose.yml"
+    sed -i 's/FILE_SIZE_LIMIT: 52428800/FILE_SIZE_LIMIT: "5368709120"/g' "$dir/docker-compose.yml"
+    echo "  patched FILE_SIZE_LIMIT -> 5 GiB"
+  fi
+
+  if ! grep -q 'tenant-imgproxy:' "$dir/docker-compose.yml" 2>/dev/null; then
+    python3 - "$dir/docker-compose.yml" "$ref" <<'PY'
+import sys
+path, ref = sys.argv[1], sys.argv[2]
+text = open(path).read()
+if "tenant-imgproxy:" in text:
+    sys.exit(0)
+block = f"""
+  tenant-imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    restart: unless-stopped
+    volumes:
+      - tenant-storage-{ref}:/var/lib/storage:Z
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+      IMGPROXY_MAX_SRC_RESOLUTION: "16.8"
+    expose:
+      - "5001"
+
+"""
+idx = text.find("  tenant-storage:")
+if idx == -1:
+    sys.exit(0)
+open(path, "w").write(text[:idx] + block + text[idx:])
+PY
+    echo "  added tenant-imgproxy service"
+  fi
+
+  if grep -q 'tenant-storage:' "$dir/docker-compose.yml" 2>/dev/null; then
+    python3 - "$dir/docker-compose.yml" "$ref" <<'PY'
+import re, sys
+path, ref = sys.argv[1], sys.argv[2]
+text = open(path).read()
+changed = False
+if "supabase/storage-api:v1.23" in text:
+    text = text.replace("supabase/storage-api:v1.23.0", "supabase/storage-api:v1.37.8")
+    changed = True
+if "ENABLE_IMAGE_TRANSFORMATION" not in text and "tenant-storage:" in text:
+    insert = (
+        f'      GLOBAL_S3_BUCKET: tenant-{ref}\n'
+        '      ENABLE_IMAGE_TRANSFORMATION: "true"\n'
+        '      IMGPROXY_URL: http://tenant-imgproxy:5001\n'
+    )
+    text, n = re.subn(
+        r'(FILE_STORAGE_BACKEND_PATH: /var/lib/storage\n)',
+        r'\1' + insert,
+        text,
+        count=1,
+    )
+    if n:
+        changed = True
+if "tenant-imgproxy" not in text.split("tenant-storage:")[1].split("tenant-realtime:")[0]:
+    text, n = re.subn(
+        r'(  tenant-storage:\n(?:.*\n)*?    depends_on:\n(?:      - .+\n)+)',
+        r'\1      - tenant-imgproxy\n',
+        text,
+        count=1,
+    )
+    if n:
+        changed = True
+if changed:
+    open(path, "w").write(text)
+PY
+    echo "  patched tenant-storage (imgproxy / v1.37.8 / GLOBAL_S3_BUCKET)"
+  fi
+
+  # Shared tenant_data_plane network: generic tenant-imgproxy DNS hits another project's container.
+  local imgproxy_host="tenant-imgproxy-${ref}"
+  if grep -q 'IMGPROXY_URL: http://tenant-imgproxy:5001' "$dir/docker-compose.yml" 2>/dev/null; then
+    sed -i "s|IMGPROXY_URL: http://tenant-imgproxy:5001|IMGPROXY_URL: http://${imgproxy_host}:5001|g" "$dir/docker-compose.yml"
+    echo "  patched IMGPROXY_URL -> http://${imgproxy_host}:5001"
+  fi
+  if grep -q 'tenant-imgproxy:' "$dir/docker-compose.yml" 2>/dev/null; then
+    python3 - "$dir/docker-compose.yml" "$imgproxy_host" <<'PY'
+import re, sys
+path, alias = sys.argv[1], sys.argv[2]
+text = open(path).read()
+if f"- {alias}" in text:
+    sys.exit(0)
+text, n = re.subn(
+    r"(  tenant-imgproxy:\n(?:.*\n)*?    networks:\n)      - tenant_data_plane\n",
+    rf"\1      tenant_data_plane:\n        aliases:\n          - {alias}\n",
+    text,
+    count=1,
+)
+if n:
+    open(path, "w").write(text)
+PY
+    echo "  patched tenant-imgproxy network alias -> ${imgproxy_host}"
+  fi
+
   traefik_dynamic="${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}/tenant-${ref}.yml"
   if [[ -f "$traefik_dynamic" ]] && grep -q 'http://127.0.0.1:' "$traefik_dynamic" 2>/dev/null; then
     sed -i 's|http://127.0.0.1:|http://172.17.0.1:|g' "$traefik_dynamic"

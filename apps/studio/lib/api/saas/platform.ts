@@ -20,6 +20,11 @@ import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
 import { ensureSaasStudioDbPrivileges } from './ensureSaasStudioDbPrivileges'
 import { ensureSaasPreventLastOwnerAllowsOrgCascade } from './preventLastOwnerTeardown'
 import { makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
+import {
+  createRazorpaySubscriptionCheckout,
+  ensureRazorpayCustomer,
+  isRazorpayConfigured,
+} from './razorpay-billing'
 
 type Claims = JwtPayload & Record<string, any>
 
@@ -197,7 +202,7 @@ export function getGotrueUserId(claims: Claims): string {
   return id
 }
 
-function getPrimaryEmail(claims: Claims): string {
+export function getPrimaryEmail(claims: Claims): string {
   const normalized: any =
     claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
   // JWT claims typically include `email`.
@@ -358,6 +363,10 @@ export async function ensureSaasTables() {
       alter table saas.projects add column if not exists branch_with_data boolean not null default false;
       alter table saas.projects add column if not exists preview_branching_enabled boolean not null default false;
       alter table saas.projects add column if not exists postgrest_config jsonb null;
+
+      alter table saas.organizations add column if not exists razorpay_customer_id text null;
+      alter table saas.organizations add column if not exists billing_pending_tier text null;
+      alter table saas.organizations add column if not exists billing_provider text null;
 
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
@@ -713,9 +722,12 @@ export async function getOrganizationBillingView({
     stripe_customer_id: string | null
     subscription_id: string | null
     billing_partner: string | null
+    billing_provider: string | null
+    razorpay_customer_id: string | null
   }>({
     query: `
-      select o.plan, o.usage_billing_enabled, o.stripe_customer_id, o.subscription_id, o.billing_partner
+      select o.plan, o.usage_billing_enabled, o.stripe_customer_id, o.subscription_id,
+        o.billing_partner, o.billing_provider, o.razorpay_customer_id
       from saas.organizations o
       join saas.organization_members m on m.organization_id = o.id
       where o.slug = $1 and m.gotrue_id = $2
@@ -734,6 +746,8 @@ export async function getOrganizationBillingView({
     stripe_customer_id: row.stripe_customer_id,
     subscription_id: row.subscription_id,
     billing_partner: row.billing_partner ?? null,
+    billing_provider: row.billing_provider ?? null,
+    razorpay_customer_id: row.razorpay_customer_id,
   }
 }
 
@@ -1160,8 +1174,10 @@ export async function createOrganization({
   const name = (body.name ?? '').toString().trim()
   if (!name) throw new Error('Organization name is required')
 
-  const planId = normalizePlanId(body.tier)
+  const requestedPlanId = normalizePlanId(body.tier)
   const slug = uniqueSlug(name)
+  const useRazorpayCheckout = isRazorpayConfigured() && requestedPlanId !== 'free'
+  const initialPlanId = useRazorpayCheckout ? 'free' : requestedPlanId
 
   const inserted = await executeQuery<{
     id: number
@@ -1215,7 +1231,16 @@ export async function createOrganization({
         organization_missing_address, organization_requires_mfa, restriction_data,
         restriction_status, usage_billing_enabled, stripe_customer_id, subscription_id
     `,
-    parameters: [gotrueId, slug, name, body.kind ?? null, body.size ?? null, planId, body.billing_name ?? null, email],
+    parameters: [
+      gotrueId,
+      slug,
+      name,
+      body.kind ?? null,
+      body.size ?? null,
+      initialPlanId,
+      body.billing_name ?? null,
+      email,
+    ],
     actorId: gotrueId,
   })
 
@@ -1249,8 +1274,27 @@ export async function createOrganization({
     action: 'org.create',
     targetType: 'organization',
     targetDescription: `Organization "${o.name}" (${o.slug})`,
-    metadata: { plan: planId },
+    metadata: { plan: requestedPlanId, billing_pending: useRazorpayCheckout },
   })
+
+  let pendingCheckoutUrl: string | undefined
+  if (useRazorpayCheckout) {
+    const customerId = await ensureRazorpayCustomer({
+      organizationId: o.id,
+      orgSlug: o.slug,
+      orgName: o.name,
+      email: o.billing_email ?? email,
+    })
+    const checkout = await createRazorpaySubscriptionCheckout({
+      organizationId: o.id,
+      orgSlug: o.slug,
+      planId: requestedPlanId,
+      customerId,
+    })
+    pendingCheckoutUrl = checkout.checkoutUrl
+  }
+
+  const responsePlanId = useRazorpayCheckout ? 'free' : requestedPlanId
 
   return {
     billing_email: o.billing_email,
@@ -1261,13 +1305,19 @@ export async function createOrganization({
     opt_in_tags: o.opt_in_tags ?? [],
     organization_missing_address: o.organization_missing_address,
     organization_requires_mfa: o.organization_requires_mfa,
-    plan: { id: planId, name: PLAN_NAME[planId] },
+    plan: { id: responsePlanId, name: PLAN_NAME[responsePlanId] },
     restriction_data: o.restriction_data ?? null,
     restriction_status: (o.restriction_status as any) ?? null,
     slug: o.slug,
     stripe_customer_id: o.stripe_customer_id,
     subscription_id: o.subscription_id,
     usage_billing_enabled: o.usage_billing_enabled,
+    ...(pendingCheckoutUrl
+      ? {
+          provider: 'razorpay' as const,
+          pending_checkout_url: pendingCheckoutUrl,
+        }
+      : {}),
   }
 }
 
@@ -2058,8 +2108,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
 
   const effectiveDbUrl = tenantDatabaseUrl?.trim() ? tenantDatabaseUrl : sharedDbUrl
   const hasDedicated = Boolean(tenantDatabaseUrl?.trim())
-  const hasProvisionedDataPlane = Boolean(p.data_plane_last_provisioned_at)
-  const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated && hasProvisionedDataPlane)
+  const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated)
   return {
     cloud_provider: p.cloud_provider,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
@@ -2588,6 +2637,7 @@ function buildSlimTenantDockerCompose(opts: {
   const rtSkb = composeYamlSingleQuoted(opts.realtime.secretKeyBase)
   const rtEnc = composeYamlSingleQuoted(opts.realtime.dbEncKey)
   const bucket = composeYamlSingleQuoted(`tenant-${opts.ref}`)
+  const imgproxyHost = `tenant-imgproxy-${opts.ref}`
   const tenantId = composeYamlSingleQuoted(opts.ref)
   const supabaseUrl = composeYamlSingleQuoted(opts.apiExternalUrl)
 
@@ -2736,14 +2786,14 @@ services:
       PGRST_JWT_SECRET: ${jwt}
       DATABASE_URL: ${storageUri}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
-      FILE_SIZE_LIMIT: "52428800"
+      FILE_SIZE_LIMIT: "5368709120"
       STORAGE_BACKEND: file
       GLOBAL_S3_BUCKET: ${bucket}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: ${tenantId}
       REGION: local
       ENABLE_IMAGE_TRANSFORMATION: "true"
-      IMGPROXY_URL: http://tenant-imgproxy:5001
+      IMGPROXY_URL: http://${imgproxyHost}:5001
     volumes:
       - tenant-storage-${opts.ref}:/var/lib/storage:Z
     ports:
@@ -3383,4 +3433,9 @@ export async function listOrganizationProjects({
   }
 }
 
-export { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
+export {
+  resolvePublicDomainForTenantStack,
+  resolveSaaSTenantApiBaseUrl,
+  resolveSaaSTenantRestUrls,
+  usesTenantPublicApiHost,
+} from './tenant-public-urls'

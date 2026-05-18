@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL, PROJECT_REST_URL } from 'lib/constants/api'
 
-import { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
+import {
+  resolvePublicDomainForTenantStack,
+  resolveSaaSTenantApiBaseUrl,
+  resolveSaaSTenantRestUrls,
+  usesTenantPublicApiHost,
+} from './tenant-public-urls'
 
 describe('tenant-public-urls', () => {
   afterEach(() => {
@@ -47,5 +52,15 @@ describe('tenant-public-urls', () => {
       restUrl: PROJECT_REST_URL,
       protocol: PROJECT_ENDPOINT_PROTOCOL,
     })
+  })
+
+  it('usesTenantPublicApiHost mirrors dedicated tenant DB flag', () => {
+    expect(usesTenantPublicApiHost(true)).toBe(true)
+    expect(usesTenantPublicApiHost(false)).toBe(false)
+  })
+
+  it('resolveSaaSTenantApiBaseUrl returns origin without /rest/v1 path', () => {
+    vi.stubEnv('SAAS_PUBLIC_DOMAIN', 'indobase.in')
+    expect(resolveSaaSTenantApiBaseUrl('my-project', true)).toBe('https://my-project.indobase.in')
   })
 })

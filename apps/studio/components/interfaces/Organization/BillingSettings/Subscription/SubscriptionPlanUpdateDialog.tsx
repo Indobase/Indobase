@@ -14,8 +14,10 @@ import { useConfirmPendingSubscriptionChangeMutation } from 'data/subscriptions/
 import { useOrgSubscriptionUpdateMutation } from 'data/subscriptions/org-subscription-update-mutation'
 import { SubscriptionTier } from 'data/subscriptions/types'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
+import { redirectToBillingCheckout } from 'lib/billing/checkout'
 import {
   DOCS_URL,
+  isRazorpayBillingClient,
   PRICING_TIER_PRODUCT_IDS,
   PROJECT_STATUS,
   STRIPE_PUBLIC_KEY,
@@ -116,9 +118,14 @@ export const SubscriptionPlanUpdateDialog = ({
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
   }
 
+  const useRazorpayBilling = isRazorpayBillingClient
+
   const { mutate: updateOrgSubscription, isPending: isUpdating } = useOrgSubscriptionUpdateMutation(
     {
       onSuccess: (data) => {
+        if (redirectToBillingCheckout(data as { pending_checkout_url?: string })) {
+          return
+        }
         if (data.pending_payment_intent_secret) {
           setPaymentIntentSecret(data.pending_payment_intent_secret)
           return
@@ -165,6 +172,19 @@ export const SubscriptionPlanUpdateDialog = ({
 
     setPaymentConfirmationLoading(true)
 
+    const tier =
+      subscription?.plan?.id === 'team' && selectedTier === PRICING_TIER_PRODUCT_IDS.PRO
+        ? (PRICING_TIER_PRODUCT_IDS.PAYG as SubscriptionTier)
+        : selectedTier
+
+    if (useRazorpayBilling) {
+      updateOrgSubscription({
+        slug: selectedOrganization.slug,
+        tier,
+      })
+      return
+    }
+
     const result = await paymentMethodSelectionRef.current?.createPaymentMethod()
     if (result) {
       setSelectedPaymentMethod(result.paymentMethod.id)
@@ -175,12 +195,6 @@ export const SubscriptionPlanUpdateDialog = ({
     if (!result && subscription?.payment_method_type !== 'invoice' && changeType === 'upgrade') {
       return
     }
-
-    // If the user is downgrading from team, should have spend cap disabled by default
-    const tier =
-      subscription?.plan?.id === 'team' && selectedTier === PRICING_TIER_PRODUCT_IDS.PRO
-        ? (PRICING_TIER_PRODUCT_IDS.PAYG as SubscriptionTier)
-        : selectedTier
 
     updateOrgSubscription({
       slug: selectedOrganization?.slug,
@@ -250,7 +264,17 @@ export const SubscriptionPlanUpdateDialog = ({
           <div className="p-8 pb-8 flex flex-col xl:col-span-3">
             <div className="flex-1">
               <div>
-                {!billingViaPartner && subscriptionPreview != null && changeType === 'upgrade' && (
+                {useRazorpayBilling && changeType === 'upgrade' && (
+                  <p className="text-sm text-foreground-light mb-4">
+                    Continue to pay with Razorpay (UPI, cards, net banking). Your plan updates after
+                    payment succeeds.
+                  </p>
+                )}
+
+                {!billingViaPartner &&
+                  !useRazorpayBilling &&
+                  subscriptionPreview != null &&
+                  changeType === 'upgrade' && (
                   <div className="space-y-2 mb-4">
                     <PaymentMethodSelection
                       ref={paymentMethodSelectionRef}

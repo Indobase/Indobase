@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import { getGotrueUserId } from 'lib/api/saas/platform'
-import { resolveSaaSTenantRestUrls } from 'lib/api/saas/tenant-public-urls'
+import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from 'lib/api/saas/tenant-public-urls'
 import { decryptString } from 'lib/api/saas/util'
 import { executeQuery } from 'lib/api/saas/query'
 import { IS_SAAS } from 'lib/constants'
@@ -43,10 +43,9 @@ async function resolveGraphqlUpstream(ref: string, claims: JwtPayload) {
     if (row.error) throw row.error
     const meta = row.data?.[0]
     const hasDedicated = Boolean(meta?.connection_string_enc?.trim())
-    const hasProvisioned = Boolean(meta?.data_plane_last_provisioned_at)
     const { endpointHost, protocol } = resolveSaaSTenantRestUrls(
       ref,
-      hasDedicated && hasProvisioned
+      usesTenantPublicApiHost(hasDedicated)
     )
     return `${protocol}://${endpointHost}/graphql/v1`
   }

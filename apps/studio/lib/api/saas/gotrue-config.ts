@@ -8,7 +8,7 @@ import {
   type GoTrueConfigResponse,
 } from './gotrue-config.defaults'
 import { ensureSaasTables, getGotrueUserId } from './platform'
-import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
+import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from './tenant-public-urls'
 
 type GoTruePublicSettings = {
   disable_signup?: boolean
@@ -92,8 +92,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
       ? decryptString(p.connection_string_enc)
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
-  const hasProvisioned = Boolean(p.data_plane_last_provisioned_at)
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicated && hasProvisioned)
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, usesTenantPublicApiHost(hasDedicated))
   const apiOrigin = `${protocol}://${endpointHost}`
 
   return {

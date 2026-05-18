@@ -30,7 +30,8 @@ import { SetupIntentResponse } from 'data/stripe/setup-intent-mutation'
 import { useConfirmPendingSubscriptionCreateMutation } from 'data/subscriptions/org-subscription-confirm-pending-create'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
-import { PRICING_TIER_LABELS_ORG, STRIPE_PUBLIC_KEY } from 'lib/constants'
+import { isRazorpayBillingClient, PRICING_TIER_LABELS_ORG, STRIPE_PUBLIC_KEY } from 'lib/constants'
+import { redirectToBillingCheckout } from 'lib/billing/checkout'
 import { useProfile } from 'lib/profile'
 import {
   Button,
@@ -196,8 +197,13 @@ export const NewOrgForm = ({
     [freeOrgs, projectsByOrg]
   )
 
+  const useRazorpayBilling = isRazorpayBillingClient
+
   const { mutate: createOrganization } = useOrganizationCreateMutation({
     onSuccess: async (org) => {
+      if (redirectToBillingCheckout(org as { pending_checkout_url?: string })) {
+        return
+      }
       if ('pending_payment_intent_secret' in org && org.pending_payment_intent_secret) {
         setPaymentIntentSecret(org.pending_payment_intent_secret)
       } else {
@@ -300,6 +306,8 @@ export const NewOrgForm = ({
     setNewOrgLoading(true)
 
     if (formValues.plan === 'FREE') {
+      await createOrg(formValues)
+    } else if (useRazorpayBilling) {
       await createOrg(formValues)
     } else if (!paymentMethod) {
       const result = await paymentRef.current?.createPaymentMethod()
@@ -541,7 +549,16 @@ export const NewOrgForm = ({
               </>
             )}
 
-            {setupIntent && form.watch('plan') !== 'FREE' && (
+            {useRazorpayBilling && form.watch('plan') !== 'FREE' && (
+              <Panel.Content className="pt-5">
+                <p className="text-sm text-foreground-light m-0">
+                  You will complete payment on Razorpay (UPI, cards, net banking) after creating the
+                  organization. GST applies as per Indian regulations.
+                </p>
+              </Panel.Content>
+            )}
+
+            {setupIntent && form.watch('plan') !== 'FREE' && !useRazorpayBilling && (
               <Panel.Content className="pt-5">
                 <Elements stripe={stripePromise} options={stripeOptionsPaymentMethod}>
                   <NewPaymentMethodElement

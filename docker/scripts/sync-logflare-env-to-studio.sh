@@ -25,8 +25,16 @@ get_env() {
 
 LOGFLARE_PUBLIC="$(get_env LOGFLARE_PUBLIC_ACCESS_TOKEN)"
 LOGFLARE_PRIVATE="$(get_env LOGFLARE_PRIVATE_ACCESS_TOKEN)"
-LOGFLARE_URL="${LOGFLARE_URL:-$(get_env LOGFLARE_URL)}"
-LOGFLARE_URL="${LOGFLARE_URL:-http://indobase-analytics:4000}"
+RAW_LOGFLARE_URL="${LOGFLARE_URL:-$(get_env LOGFLARE_URL)}"
+# Self-hosted Indobase: always use the analytics container, never Logflare Cloud ingestion URLs.
+if [[ -z "$RAW_LOGFLARE_URL" || "$RAW_LOGFLARE_URL" == *logflare.app* || "$RAW_LOGFLARE_URL" == *source=* ]]; then
+  LOGFLARE_URL="http://indobase-analytics:4000"
+  if [[ -n "$RAW_LOGFLARE_URL" && "$RAW_LOGFLARE_URL" != "$LOGFLARE_URL" ]]; then
+    echo "Note: ignoring cloud LOGFLARE_URL in .env; using $LOGFLARE_URL for self-hosted analytics."
+  fi
+else
+  LOGFLARE_URL="$RAW_LOGFLARE_URL"
+fi
 
 if [[ -z "$LOGFLARE_PUBLIC" || -z "$LOGFLARE_PRIVATE" ]]; then
   echo "LOGFLARE_PUBLIC_ACCESS_TOKEN and LOGFLARE_PRIVATE_ACCESS_TOKEN must be set in $ENV_FILE" >&2
