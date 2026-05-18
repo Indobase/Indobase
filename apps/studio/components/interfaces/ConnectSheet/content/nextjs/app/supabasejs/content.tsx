@@ -100,13 +100,13 @@ const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_IND
 
 export const createClient = (request: NextRequest) => {
   // Create an unmodified response
-  let supabaseResponse = NextResponse.next({
+  let indobaseResponse = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  const supabase = createServerClient(
+  const indobase = createServerClient(
     indobaseUrl!,
     indobaseKey!,
     {
@@ -116,18 +116,18 @@ export const createClient = (request: NextRequest) => {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
+          indobaseResponse = NextResponse.next({
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            indobaseResponse.cookies.set(name, value, options)
           )
         },
       },
     },
   );
 
-  return supabaseResponse
+  return indobaseResponse
 };
 `,
     },

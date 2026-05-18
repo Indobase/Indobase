@@ -134,11 +134,13 @@ describe('connect.schema:INSTALL_COMMANDS', () => {
   })
 
   test('should have install command for supabase-py', () => {
-    expect(INSTALL_COMMANDS.supabasepy).toBe('pip install supabase')
+    expect(INSTALL_COMMANDS.supabasepy).toBe('pip install supabase  # Indobase Python SDK')
   })
 
   test('should have install command for supabase-flutter', () => {
-    expect(INSTALL_COMMANDS.supabaseflutter).toBe('flutter pub add supabase_flutter')
+    expect(INSTALL_COMMANDS.supabaseflutter).toBe(
+      'flutter pub add supabase_flutter  # Indobase Flutter SDK'
+    )
   })
 
   test('should have install command for supabase-swift', () => {

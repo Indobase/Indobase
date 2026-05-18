@@ -5,11 +5,12 @@ import type { ConnectSchema, StepDefinition } from './Connect.types'
  */
 export const INSTALL_COMMANDS: Record<string, string> = {
   supabasejs: 'npm install indobase-js',
-  supabasepy: 'pip install supabase',
-  supabaseflutter: 'flutter pub add supabase_flutter',
+  supabasepy: 'pip install supabase  # Indobase Python SDK',
+  supabaseflutter: 'flutter pub add supabase_flutter  # Indobase Flutter SDK',
   supabaseswift:
-    'swift package add-dependency https://github.com/supabase/supabase-swift',
-  supabasekt: 'implementation("io.github.jan-tennert.supabase:supabase-kt:VERSION")',
+    'swift package add-dependency https://github.com/supabase/supabase-swift  # Indobase Swift SDK',
+  supabasekt:
+    'implementation("io.github.jan-tennert.supabase:supabase-kt:VERSION")  # Indobase Kotlin SDK',
 }
 
 // ============================================================================

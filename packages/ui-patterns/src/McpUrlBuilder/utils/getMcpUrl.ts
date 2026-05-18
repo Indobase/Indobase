@@ -38,7 +38,7 @@ export function getMcpUrl({
 
   let clientConfig: McpClientConfig = {
     mcpServers: {
-      supabase: {
+      indobase: {
         url: mcpUrl,
       },
     },

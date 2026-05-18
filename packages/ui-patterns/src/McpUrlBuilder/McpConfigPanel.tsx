@@ -113,7 +113,7 @@ export function McpConfigPanel({
           theme={theme}
         />
         <p className="text-xs text-foreground-lighter">
-          Configure your MCP client to connect with your Supabase project
+          Configure your MCP client to connect with your Indobase project
         </p>
       </div>
       <div className={cn('border rounded-lg')}>

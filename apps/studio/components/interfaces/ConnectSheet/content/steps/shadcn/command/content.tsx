@@ -6,11 +6,11 @@ import type { StepContentProps } from '@/components/interfaces/ConnectSheet/Conn
 
 function getShadcnCommand(state: StepContentProps['state']): string | null {
   if (state.framework === 'nextjs') {
-    return 'npx shadcn@latest add @supabase/supabase-client-nextjs'
+    return 'npm install indobase-js indobase-ssr'
   }
 
   if (state.framework === 'react') {
-    return 'npx shadcn@latest add @supabase/supabase-client-react-router'
+    return 'npm install indobase-js indobase-ssr'
   }
 
   return null

@@ -18,7 +18,7 @@ export const FEATURE_GROUPS_PLATFORM: McpFeatureGroup[] = [
   {
     id: 'docs',
     name: 'Documentation',
-    description: 'Access Supabase documentation and guides',
+    description: 'Access Indobase documentation and guides',
   },
   {
     id: 'account',
@@ -69,7 +69,7 @@ export const MCP_CLIENTS: McpClient[] = [
     configFile: '.cursor/mcp.json',
     externalDocsUrl: 'https://docs.cursor.com/context/mcp',
     generateDeepLink: (config) => {
-      const name = 'supabase'
+      const name = 'indobase'
       const mcpUrl = getMcpUrl(config)
       const serverConfig = {
         url: mcpUrl,
@@ -87,16 +87,16 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): ClaudeCodeMcpConfig => {
       return {
         mcpServers: {
-          supabase: {
+          indobase: {
             type: 'http',
-            url: config.mcpServers.supabase.url,
+            url: config.mcpServers.indobase.url,
           },
         },
       }
     },
     primaryInstructions: (_config, onCopy) => {
       const config = _config as ClaudeCodeMcpConfig
-      const command = `claude mcp add --scope project --transport http supabase "${config.mcpServers.supabase.url}"`
+      const command = `claude mcp add --scope project --transport http indobase "${config.mcpServers.indobase.url}"`
       return (
         <div className="space-y-2">
           <p className="text-xs text-foreground-light">
@@ -128,7 +128,7 @@ export const MCP_CLIENTS: McpClient[] = [
           onCopyCallback={() => onCopy('command')}
         />
         <p className="text-xs text-foreground-light">
-          Select the "supabase" server, then "Authenticate" to begin the authentication flow.
+          Select the "indobase" server, then "Authenticate" to begin the authentication flow.
         </p>
       </div>
     ),
@@ -142,16 +142,16 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): VSCodeMcpConfig => {
       return {
         servers: {
-          supabase: {
+          indobase: {
             type: 'http',
-            url: config.mcpServers.supabase.url,
+            url: config.mcpServers.indobase.url,
           },
         },
       }
     },
     generateDeepLink: (_config) => {
       const config = _config as VSCodeMcpConfig
-      const mcpConfig = { name: 'supabase', ...config.servers.supabase }
+      const mcpConfig = { name: 'indobase', ...config.servers.indobase }
 
       return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(mcpConfig))}`
     },
@@ -165,18 +165,18 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): CodexMcpConfig => {
       return {
         mcp_servers: {
-          supabase: {
-            url: config.mcpServers.supabase.url,
+          indobase: {
+            url: config.mcpServers.indobase.url,
           },
         },
       }
     },
     primaryInstructions: (config, onCopy) => {
       const mcpUrl = getMcpUrl(config)
-      const command = `codex mcp add supabase --url ${mcpUrl}`
+      const command = `codex mcp add indobase --url ${mcpUrl}`
       return (
         <div className="space-y-2">
-          <p className="text-xs text-foreground-light">Add the Supabase MCP server to Codex:</p>
+          <p className="text-xs text-foreground-light">Add the Indobase MCP server to Codex:</p>
           <CodeBlock
             value={command}
             language="bash"
@@ -201,7 +201,7 @@ export const MCP_CLIENTS: McpClient[] = [
         />
         <p className="text-xs text-foreground-light">Then authenticate:</p>
         <CodeBlock
-          value="codex mcp login supabase"
+          value="codex mcp login indobase"
           language="bash"
           focusable={false}
           className="block"
@@ -222,15 +222,15 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): GeminiMcpConfig => {
       return {
         mcpServers: {
-          supabase: {
-            httpUrl: config.mcpServers.supabase.url,
+          indobase: {
+            httpUrl: config.mcpServers.indobase.url,
           },
         },
       }
     },
     primaryInstructions: (config, onCopy, options) => {
       const mcpUrl = getMcpUrl(config)
-      const mcpCommand = `gemini mcp add -t http supabase ${mcpUrl}`
+      const mcpCommand = `gemini mcp add -t http indobase ${mcpUrl}`
       return (
         <div className="space-y-2">
           <p className="text-xs text-warning">
@@ -239,7 +239,7 @@ export const MCP_CLIENTS: McpClient[] = [
           {options?.isPlatform && (
             <>
               <p className="text-xs text-foreground-light">
-                Install the Supabase{' '}
+                Install the Indobase{' '}
                 <a
                   href="https://github.com/supabase-community/gemini-extension"
                   target="_blank"
@@ -248,9 +248,9 @@ export const MCP_CLIENTS: McpClient[] = [
                 >
                   extension
                 </a>{' '}
-                for Gemini CLI. This bundles the Supabase MCP server connection,{' '}
+                for Gemini CLI. This bundles the Indobase MCP server connection,{' '}
                 <a
-                  href="https://github.com/supabase/agent-skills"
+                  href="https://github.com/Indobase/agent-skills"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand-link hover:underline"
@@ -273,7 +273,7 @@ export const MCP_CLIENTS: McpClient[] = [
           )}
           {!options?.isPlatform && (
             <p className="text-xs text-foreground-light">
-              Add the Supabase MCP server to Gemini CLI:
+              Add the Indobase MCP server to Gemini CLI:
             </p>
           )}
           <CodeBlock
@@ -294,7 +294,7 @@ export const MCP_CLIENTS: McpClient[] = [
             the server:
           </p>
           <CodeBlock
-            value="/mcp auth supabase"
+            value="/mcp auth indobase"
             language="bash"
             focusable={false}
             className="block"
@@ -313,9 +313,9 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): WindsurfMcpConfig => {
       return {
         mcpServers: {
-          supabase: {
+          indobase: {
             command: 'npx',
-            args: ['-y', 'mcp-remote', config.mcpServers.supabase.url],
+            args: ['-y', 'mcp-remote', config.mcpServers.indobase.url],
           },
         },
       }
@@ -341,27 +341,27 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): GooseMcpConfig => {
       return {
         extensions: {
-          supabase: {
+          indobase: {
             available_tools: [],
             bundled: null,
             description:
-              'Connect your Supabase projects to AI assistants. Manage tables, query data, deploy Edge Functions, and interact with your Supabase backend directly from your MCP client.',
+              'Connect your Indobase projects to AI assistants. Manage tables, query data, deploy Edge Functions, and interact with your Indobase backend directly from your MCP client.',
             enabled: true,
             env_keys: [],
             envs: {},
             headers: {},
-            name: 'Supabase',
+            name: 'Indobase',
             timeout: 300,
             type: 'streamable_http',
-            uri: config.mcpServers.supabase.url,
+            uri: config.mcpServers.indobase.url,
           },
         },
       }
     },
     generateDeepLink: (config) => {
-      const name = 'supabase'
+      const name = 'indobase'
       const mcpUrl = getMcpUrl(config)
-      return `goose://extension?type=streamable_http&url=${encodeURIComponent(mcpUrl)}&id=supabase&name=${name}&description=${encodeURIComponent('Connect your Supabase projects to AI assistants. Manage tables, query data, deploy Edge Functions, and interact with your Supabase backend directly from your MCP client.')}`
+      return `goose://extension?type=streamable_http&url=${encodeURIComponent(mcpUrl)}&id=indobase&name=${name}&description=${encodeURIComponent('Connect your Indobase projects to AI assistants. Manage tables, query data, deploy Edge Functions, and interact with your Indobase backend directly from your MCP client.')}`
     },
     primaryInstructions: (config, onCopy) => {
       const mcpUrl = getMcpUrl(config)
@@ -369,7 +369,7 @@ export const MCP_CLIENTS: McpClient[] = [
       return (
         <div className="space-y-2">
           <p className="text-xs text-foreground-light">
-            Start a Goose session with the Supabase extension:
+            Start a Goose session with the Indobase extension:
           </p>
           <CodeBlock
             value={command}
@@ -407,19 +407,19 @@ export const MCP_CLIENTS: McpClient[] = [
     transformConfig: (config): FactoryMcpConfig => {
       return {
         mcpServers: {
-          supabase: {
+          indobase: {
             type: 'http',
-            url: config.mcpServers.supabase.url,
+            url: config.mcpServers.indobase.url,
           },
         },
       }
     },
     primaryInstructions: (config, onCopy) => {
       const mcpUrl = getMcpUrl(config)
-      const command = `droid mcp add supabase ${mcpUrl} --type http`
+      const command = `droid mcp add indobase ${mcpUrl} --type http`
       return (
         <div className="space-y-2">
-          <p className="text-xs text-foreground-light">Add Supabase MCP server to Factory:</p>
+          <p className="text-xs text-foreground-light">Add Indobase MCP server to Factory:</p>
           <CodeBlock
             value={command}
             language="bash"
@@ -450,7 +450,7 @@ export const MCP_CLIENTS: McpClient[] = [
       return {
         $schema: 'https://opencode.ai/config.json',
         mcp: {
-          supabase: {
+          indobase: {
             type: 'remote',
             url: mcpUrl,
             enabled: true,
@@ -464,7 +464,7 @@ export const MCP_CLIENTS: McpClient[] = [
           After adding the configuration, run the following command to authenticate:
         </p>
         <CodeBlock
-          value="opencode mcp auth supabase"
+          value="opencode mcp auth indobase"
           language="bash"
           focusable={false}
           className="block"
@@ -488,7 +488,7 @@ export const MCP_CLIENTS: McpClient[] = [
     },
     deepLinkDescription: (
       <>
-        Install the Supabase{' '}
+        Install the Indobase{' '}
         <a
           href="https://kiro.dev/docs/powers/"
           target="_blank"
@@ -497,7 +497,7 @@ export const MCP_CLIENTS: McpClient[] = [
         >
           power
         </a>{' '}
-        for Kiro. This bundles the Supabase MCP server and steering files for best practices.
+        for Kiro. This bundles the Indobase MCP server and steering files for best practices.
       </>
     ),
   },

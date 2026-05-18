@@ -4,7 +4,7 @@ import { Button, copyToClipboard } from 'ui'
 
 import type { StepContentProps } from '@/components/interfaces/ConnectSheet/Connect.types'
 
-const SKILLS_COMMAND = 'npx skills add supabase/agent-skills'
+const SKILLS_COMMAND = 'npx skills add Indobase/agent-skills'
 
 function SkillsInstallContent(_props: StepContentProps) {
   const [copyLabel, setCopyLabel] = useState('Copy')

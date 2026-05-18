@@ -37,7 +37,7 @@ import {
   createServerClient,
   parseCookieHeader,
   serializeCookieHeader,
-} from "@supabase/ssr";
+} from "indobase-ssr";
 
 export function createClient(request: Request) {
   const headers = new Headers();

@@ -18,8 +18,8 @@ export const INVOCATION_TABS: InvocationTab[] = [
     language: 'bash',
     code: ({ showKey, functionUrl, apiKey }) => {
       const obfuscatedName = apiKey.includes('publishable')
-        ? 'SUPABASE_PUBLISHABLE_DEFAULT_KEY'
-        : 'SUPABASE_ANON_KEY'
+        ? 'INDOBASE_PUBLISHABLE_DEFAULT_KEY'
+        : 'INDOBASE_ANON_KEY'
       const keyValue = showKey ? apiKey : obfuscatedName
 
       return `curl -L -X POST '${functionUrl}' \\
@@ -34,8 +34,8 @@ export const INVOCATION_TABS: InvocationTab[] = [
     language: 'js',
     hideLineNumbers: true,
     code: ({ functionName }) => `import { createClient } from 'indobase-js'
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
-const { data, error } = await supabase.functions.invoke('${functionName}', {
+const indobase = createClient(process.env.NEXT_PUBLIC_INDOBASE_URL!, process.env.NEXT_PUBLIC_INDOBASE_ANON_KEY!)
+const { data, error } = await indobase.functions.invoke('${functionName}', {
   body: { name: 'Functions' },
 })`,
   },

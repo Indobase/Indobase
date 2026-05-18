@@ -59,7 +59,7 @@ export default async function Page() {
       <ConnectTabContent value="utils/indobase/server.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "indobase-ssr";
 import { cookies } from "next/headers";
 
 const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
@@ -93,7 +93,7 @@ export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
       <ConnectTabContent value="utils/indobase/client.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "indobase-ssr";
 
 const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;
 const indobaseKey = process.env.${projectKeys?.publishableKey ? 'NEXT_PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'NEXT_PUBLIC_INDOBASE_ANON_KEY'};
@@ -110,7 +110,7 @@ export const createClient = () =>
       <ConnectTabContent value="utils/indobase/middleware.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "indobase-ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 const indobaseUrl = process.env.NEXT_PUBLIC_INDOBASE_URL;

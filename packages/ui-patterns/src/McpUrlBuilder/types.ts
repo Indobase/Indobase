@@ -45,7 +45,7 @@ export interface McpUrlBuilderConfig {
 
 export interface McpClientBaseConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       url: string
     }
   }
@@ -55,7 +55,7 @@ export interface CursorMcpConfig extends McpClientBaseConfig {}
 
 export interface VSCodeMcpConfig {
   servers: {
-    supabase: {
+    indobase: {
       type: 'http'
       url: string
     }
@@ -64,7 +64,7 @@ export interface VSCodeMcpConfig {
 
 export interface WindsurfMcpConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       command: 'npx'
       args: ['-y', 'mcp-remote', string]
     }
@@ -73,7 +73,7 @@ export interface WindsurfMcpConfig {
 
 export interface ClaudeCodeMcpConfig extends McpClientBaseConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       type: 'http'
       url: string
     }
@@ -82,7 +82,7 @@ export interface ClaudeCodeMcpConfig extends McpClientBaseConfig {
 
 export interface ClaudeDesktopMcpConfig extends McpClientBaseConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       type: 'http'
       url: string
     }
@@ -91,7 +91,7 @@ export interface ClaudeDesktopMcpConfig extends McpClientBaseConfig {
 
 export interface OtherMcpConfig extends McpClientBaseConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       type: 'http'
       url: string
     }
@@ -100,7 +100,7 @@ export interface OtherMcpConfig extends McpClientBaseConfig {
 
 export interface GooseMcpConfig {
   extensions: {
-    supabase: {
+    indobase: {
       available_tools: string[]
       bundled: null
       description: string
@@ -118,7 +118,7 @@ export interface GooseMcpConfig {
 
 export interface FactoryMcpConfig extends McpClientBaseConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       type: 'http'
       url: string
     }
@@ -127,7 +127,7 @@ export interface FactoryMcpConfig extends McpClientBaseConfig {
 
 export interface CodexMcpConfig {
   mcp_servers: {
-    supabase: {
+    indobase: {
       url: string
     }
   }
@@ -139,7 +139,7 @@ export interface CodexMcpConfig {
  */
 export interface GeminiMcpConfig {
   mcpServers: {
-    supabase: {
+    indobase: {
       httpUrl: string
     }
   }
@@ -148,7 +148,7 @@ export interface GeminiMcpConfig {
 export interface OpenCodeMcpConfig {
   $schema: string
   mcp: {
-    supabase: {
+    indobase: {
       type: 'remote'
       url: string
       enabled?: boolean
@@ -173,54 +173,54 @@ export type McpClientConfig =
 
 // Type guards
 export function isVSCodeMcpConfig(config: McpClientConfig): config is VSCodeMcpConfig {
-  return 'servers' in config && 'supabase' in config.servers
+  return 'servers' in config && 'indobase' in config.servers
 }
 
 export function isGooseMcpConfig(config: McpClientConfig): config is GooseMcpConfig {
-  return 'extensions' in config && 'supabase' in config.extensions
+  return 'extensions' in config && 'indobase' in config.extensions
 }
 
 export function isCodexMcpConfig(config: McpClientConfig): config is CodexMcpConfig {
-  return 'mcp_servers' in config && 'supabase' in config.mcp_servers
+  return 'mcp_servers' in config && 'indobase' in config.mcp_servers
 }
 
 export function isGeminiMcpConfig(config: McpClientConfig): config is GeminiMcpConfig {
   return (
     'mcpServers' in config &&
-    'supabase' in config.mcpServers &&
-    'httpUrl' in config.mcpServers.supabase
+    'indobase' in config.mcpServers &&
+    'httpUrl' in config.mcpServers.indobase
   )
 }
 
 export function isOpenCodeMcpConfig(config: McpClientConfig): config is OpenCodeMcpConfig {
-  return '$schema' in config && 'mcp' in config && 'supabase' in config.mcp
+  return '$schema' in config && 'mcp' in config && 'indobase' in config.mcp
 }
 
 export function isMcpServersConfig(
   config: McpClientConfig
 ): config is McpClientBaseConfig | ClaudeCodeMcpConfig | FactoryMcpConfig {
-  return 'mcpServers' in config && 'supabase' in config.mcpServers
+  return 'mcpServers' in config && 'indobase' in config.mcpServers
 }
 
 // Helper to extract MCP URL from any config type
 export function getMcpUrl(config: McpClientConfig): string {
   if (isVSCodeMcpConfig(config)) {
-    return config.servers.supabase.url
+    return config.servers.indobase.url
   }
   if (isGooseMcpConfig(config)) {
-    return config.extensions.supabase.uri
+    return config.extensions.indobase.uri
   }
   if (isCodexMcpConfig(config)) {
-    return config.mcp_servers.supabase.url
+    return config.mcp_servers.indobase.url
   }
   if (isGeminiMcpConfig(config)) {
-    return config.mcpServers.supabase.httpUrl
+    return config.mcpServers.indobase.httpUrl
   }
   if (isOpenCodeMcpConfig(config)) {
-    return config.mcp.supabase.url
+    return config.mcp.indobase.url
   }
   if (isMcpServersConfig(config)) {
-    return config.mcpServers.supabase.url
+    return config.mcpServers.indobase.url
   }
   throw new Error('Invalid MCP config type')
 }

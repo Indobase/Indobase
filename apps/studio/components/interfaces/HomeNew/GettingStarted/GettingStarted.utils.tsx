@@ -48,7 +48,7 @@ export const getCodeWorkflowSteps = ({
           label: 'Install via npm',
           component: (
             <CodeBlock className="w-full text-xs p-3 !bg" language="bash">
-              npm install supabase --save-dev
+              npm install indobase --save-dev
             </CodeBlock>
           ),
         },
