@@ -24,14 +24,10 @@ const Error404: NextPage = ({}) => {
             <div className="flex w-full items-center justify-between md:w-auto">
               <Link href="/organizations">
                 <Image
-                  src={
-                    resolvedTheme?.includes('dark')
-                      ? `${BASE_PATH}/img/indobase-dark.svg`
-                      : `${BASE_PATH}/img/indobase-light.svg`
-                  }
+                  src={`${BASE_PATH}/img/indobase-brand.png`}
                   alt="Indobase Logo"
-                  height={24}
-                  width={120}
+                  height={32}
+                  width={32}
                 />
               </Link>
             </div>

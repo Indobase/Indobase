@@ -36,12 +36,8 @@ const MobileNavigationBar = ({ hideMobileMenu }: { hideMobileMenu?: boolean }) =
         >
           <img
             alt="Indobase Logo"
-            src={
-              resolvedTheme?.includes('dark')
-                ? `${router.basePath}/img/indobase-dark.svg`
-                : `${router.basePath}/img/indobase-light.svg`
-            }
-            className="absolute h-[26px] w-[26px] cursor-pointer rounded"
+            src={`${router.basePath}/img/indobase-mark.png`}
+            className="absolute h-[26px] w-[26px] cursor-pointer rounded object-contain"
           />
         </Link>
         <div className="flex gap-2">

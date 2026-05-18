@@ -24,14 +24,10 @@ const APIAuthorizationLayout = ({ children }: PropsWithChildren<APIAuthorization
               <div className="flex justify-start lg:w-0 lg:flex-1 items-center">
                 <span className="sr-only">Indobase</span>
                 <Image
-                  src={
-                    resolvedTheme?.includes('dark')
-                      ? `${BASE_PATH}/img/indobase-dark.svg`
-                      : `${BASE_PATH}/img/indobase-light.svg`
-                  }
+                  src={`${BASE_PATH}/img/indobase-brand.png`}
                   alt="Indobase Logo"
-                  height={20}
-                  width={105}
+                  height={28}
+                  width={28}
                 />
               </div>
             </div>

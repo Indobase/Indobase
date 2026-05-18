@@ -2,22 +2,14 @@ import Link from 'next/link'
 
 import { OrganizationInvite } from 'components/interfaces/OrganizationInvite/OrganizationInvite'
 import { BASE_PATH } from 'lib/constants'
-import { useTheme } from 'next-themes'
 import { useEffect, useMemo, useState } from 'react'
 import type { NextPageWithLayout } from 'types'
 import { cn } from 'ui'
 
 const JoinOrganizationPage: NextPageWithLayout = () => {
-  const { resolvedTheme } = useTheme()
-  const isDarkMode = resolvedTheme?.includes('dark')
-
   const [mounted, setMounted] = useState(false)
 
-  const imgUrl = useMemo(
-    () =>
-      isDarkMode ? `${BASE_PATH}/img/indobase-dark.svg` : `${BASE_PATH}/img/indobase-light.svg`,
-    [isDarkMode]
-  )
+  const imgUrl = useMemo(() => `${BASE_PATH}/img/indobase-brand.png`, [])
 
   useEffect(() => setMounted(true), [])
 
@@ -25,7 +17,7 @@ const JoinOrganizationPage: NextPageWithLayout = () => {
     <>
       <Link href="/organizations" className="flex items-center justify-center gap-4">
         {mounted && (
-          <img src={imgUrl} alt="Indobase Logo" className="block h-[24px] cursor-pointer rounded" />
+          <img src={imgUrl} alt="Indobase Logo" className="block h-[32px] w-auto cursor-pointer rounded" />
         )}
       </Link>
       <OrganizationInvite />

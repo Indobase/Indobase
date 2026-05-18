@@ -149,13 +149,9 @@ const SignInLayout = ({
               <div className="flex items-center justify-between w-full md:w-auto">
                 <Link href={logoLinkToMarketingSite ? 'https://indobase.in' : '/organizations'}>
                   <img
-                    src={
-                      resolvedTheme?.includes('dark')
-                        ? `${BASE_PATH}/img/indobase-dark.svg`
-                        : `${BASE_PATH}/img/indobase-light.svg`
-                    }
+                    src={`${BASE_PATH}/img/indobase-brand.png`}
                     alt="Indobase Logo"
-                    className={largeLogo ? 'h-[48px]' : 'h-[24px]'}
+                    className={largeLogo ? 'h-[48px] w-auto' : 'h-[32px] w-auto'}
                   />
                 </Link>
               </div>

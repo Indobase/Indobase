@@ -1,5 +1,4 @@
 import { RefreshCw } from 'lucide-react'
-import { useTheme } from 'next-themes'
 import Head from 'next/head'
 
 import { BASE_PATH } from 'lib/constants'
@@ -8,14 +7,7 @@ import { Button, cn } from 'ui'
 import { useMemo } from 'react'
 
 const MaintenancePage: NextPageWithLayout = () => {
-  const { resolvedTheme } = useTheme()
-  const isDarkMode = resolvedTheme?.includes('dark')
-
-  const imgUrl = useMemo(
-    () =>
-      isDarkMode ? `${BASE_PATH}/img/indobase-dark.svg` : `${BASE_PATH}/img/indobase-light.svg`,
-    [isDarkMode]
-  )
+  const imgUrl = useMemo(() => `${BASE_PATH}/img/indobase-brand.png`, [])
 
   return (
     <>
@@ -24,7 +16,7 @@ const MaintenancePage: NextPageWithLayout = () => {
       </Head>
       <div className="flex flex-col items-center gap-6 text-center">
         <div className="flex items-center justify-center mb-4">
-          <img src={imgUrl} alt="Indobase Logo" className="h-8" />
+          <img src={imgUrl} alt="Indobase Logo" className="h-10 w-auto" />
         </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-medium text-foreground">Under Maintenance</h1>

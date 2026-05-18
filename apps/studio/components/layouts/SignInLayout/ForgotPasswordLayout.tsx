@@ -36,14 +36,10 @@ const ForgotPasswordLayout = ({
             <div className="flex w-full items-center justify-between md:w-auto">
               <Link href={logoLinkToMarketingSite ? 'https://indobase.in' : '/organizations'}>
                 <Image
-                  src={
-                    resolvedTheme?.includes('dark')
-                      ? `${BASE_PATH}/img/indobase-dark.svg`
-                      : `${BASE_PATH}/img/indobase-light.svg`
-                  }
-                  alt=""
-                  height={24}
-                  width={120}
+                  src={`${BASE_PATH}/img/indobase-brand.png`}
+                  alt="Indobase Logo"
+                  height={32}
+                  width={32}
                 />
               </Link>
             </div>

@@ -76,14 +76,10 @@ const SignInFlyTos = () => {
               <Link href="/organizations">
                 <div>
                   <Image
-                    src={
-                      resolvedTheme?.includes('dark')
-                        ? `${BASE_PATH}/img/indobase-dark.svg`
-                        : `${BASE_PATH}/img/indobase-light.svg`
-                    }
-                    alt=""
-                    height={24}
-                    width={120}
+                    src={`${BASE_PATH}/img/indobase-brand.png`}
+                    alt="Indobase Logo"
+                    height={32}
+                    width={32}
                   />
                 </div>
               </Link>

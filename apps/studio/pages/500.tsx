@@ -34,14 +34,10 @@ const Error500: NextPage = () => {
             <div className="flex w-full items-center justify-between md:w-auto">
               <Link href="/organizations">
                 <Image
-                  src={
-                    resolvedTheme?.includes('dark')
-                      ? `${router.basePath}/img/indobase-dark.svg`
-                      : `${router.basePath}/img/indobase-light.svg`
-                  }
-                  alt=""
-                  height={24}
-                  width={120}
+                  src={`${router.basePath}/img/indobase-brand.png`}
+                  alt="Indobase Logo"
+                  height={32}
+                  width={32}
                 />
               </Link>
             </div>
