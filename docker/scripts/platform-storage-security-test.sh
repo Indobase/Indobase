@@ -228,6 +228,41 @@ else
   fi
 fi
 
+upload_with_retry() {
+  local bucket="$1" path="$2" file="$3"
+  local attempt code
+  for attempt in 1 2 3 4 5; do
+    code=$(st_code -X POST "$STORAGE_BASE/object/$bucket/$path" -F "file=@$file")
+    if [[ "$code" = "200" ]]; then
+      return 0
+    fi
+    if [[ "$code" = "429" ]]; then
+      sleep $((attempt))
+      continue
+    fi
+    return 1
+  done
+  return 1
+}
+
+download_with_retry() {
+  local bucket="$1" path="$2" out="$3"
+  local attempt code
+  for attempt in 1 2 3 4 5; do
+    code=$(curl -sS -o "$out" -w "%{http_code}" "$STORAGE_BASE/object/$bucket/$path" \
+      -H "apikey: $SK" -H "Authorization: Bearer $SK")
+    if [[ "$code" = "200" ]]; then
+      return 0
+    fi
+    if [[ "$code" = "429" ]]; then
+      sleep $((attempt))
+      continue
+    fi
+    return 1
+  done
+  return 1
+}
+
 section "Concurrent multipart uploads (${CONCURRENT_UPLOADS} parallel)"
 FAIL_CONC=0
 PIDS=()
@@ -237,8 +272,8 @@ for i in $(seq 1 "$CONCURRENT_UPLOADS"); do
     echo "conc-$i-$RUN_ID" >"$F"
     MD5=$(md5sum "$F" | awk '{print $1}')
     PATH_O="conc-$i-${RUN_ID}.txt"
-    upload_file "$PUBLIC_BUCKET" "$PATH_O" "$F" >/dev/null || exit 1
-    download_file "$PUBLIC_BUCKET" "$PATH_O" "$TMPDIR/conc-dl-$i.bin" || exit 1
+    upload_with_retry "$PUBLIC_BUCKET" "$PATH_O" "$F" || exit 1
+    download_with_retry "$PUBLIC_BUCKET" "$PATH_O" "$TMPDIR/conc-dl-$i.bin" || exit 1
     MD5_DL=$(md5sum "$TMPDIR/conc-dl-$i.bin" | awk '{print $1}')
     [[ "$MD5" = "$MD5_DL" ]] || exit 1
   ) &
