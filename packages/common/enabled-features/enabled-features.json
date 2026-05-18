@@ -74,7 +74,7 @@
   "integrations:vercel": true,
   "integrations:aws_private_link": true,
 
-  "infrastructure:read_replicas": true,
+  "infrastructure:read_replicas": false,
 
   "logs:templates": true,
   "logs:collections": true,
