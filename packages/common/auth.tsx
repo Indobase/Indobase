@@ -18,17 +18,11 @@ export type { User }
 
 /* Auth Context */
 
-type AuthState =
-  | {
-      session: Session | null
-      error: AuthError | null
-      isLoading: false
-    }
-  | {
-      session: null
-      error: AuthError | null
-      isLoading: true
-    }
+type AuthState = {
+  session: Session | null
+  error: AuthError | null
+  isLoading: boolean
+}
 
 export type AuthContext = { refreshSession: () => Promise<Session | null> } & AuthState
 
@@ -44,31 +38,42 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     let mounted = true
-    gotrueClient.initialize().then(({ error }) => {
-      if (mounted && error !== null) {
-        setState((prev) => ({ ...prev, error }))
-      }
-    })
 
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  // Keep the session in sync
-  useEffect(() => {
     const {
       data: { subscription },
     } = gotrueClient.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      setState((prev) => {
+        if (prev.isLoading) {
+          // Session may arrive via onAuthStateChange before initialize() finishes; keep
+          // isLoading true until initialize() completes so route guards do not redirect.
+          return {
+            session,
+            error: session !== null ? null : prev.error,
+            isLoading: true,
+          }
+        }
+        return {
+          session,
+          error: session !== null ? null : prev.error,
+          isLoading: false,
+        }
+      })
+    })
+
+    gotrueClient.initialize().then(({ data: { session }, error }) => {
+      if (!mounted) return
       setState((prev) => ({
-        session,
-        // If there is a session, we clear the error
-        error: session !== null ? null : prev.error,
+        session: session ?? prev.session,
+        error: error ?? (session !== null ? null : prev.error),
         isLoading: false,
       }))
     })
 
-    return subscription.unsubscribe
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Helper method to refresh the session.

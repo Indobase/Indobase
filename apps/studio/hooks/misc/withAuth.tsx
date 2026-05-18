@@ -2,7 +2,6 @@ import { useAuth } from 'common'
 import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeoutModal'
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
-import { useSignOut } from 'lib/auth'
 import { BASE_PATH } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
@@ -27,7 +26,6 @@ export function withAuth<T>(
 ) {
   const WithAuthHOC: ComponentType<T> = (props) => {
     const router = useRouter()
-    const signOut = useSignOut()
     const { isLoading, session } = useAuth()
 
     const timeoutIdRef = useRef<NodeJS.Timeout | null>(null)
@@ -76,11 +74,8 @@ export function withAuth<T>(
       const returnTo = `${pathname}${location.search}${location.hash}`
       searchParams.set('returnTo', returnTo)
 
-      // Sign out before redirecting to sign in page incase the user is stuck in a loading state
-      signOut().finally(() => {
-        router.push(`/sign-in?${searchParams.toString()}`)
-      })
-    }, [router, signOut])
+      router.push(`/sign-in?${searchParams.toString()}`)
+    }, [router])
 
     useEffect(() => {
       if (!isFinishedLoading) {

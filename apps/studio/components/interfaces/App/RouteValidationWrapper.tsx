@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_KEYS, useIsLoggedIn, useIsMFAEnabled, useParams, useUser } from 'common'
+import { LOCAL_STORAGE_KEYS, useAuth, useIsLoggedIn, useIsMFAEnabled, useParams, useUser } from 'common'
 import { useOrganizationsQuery } from 'data/organizations/organizations-query'
 import { useProjectDetailQuery } from 'data/projects/project-detail-query'
 import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
@@ -16,6 +16,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   const { ref, slug, id } = useParams()
   const { data: organization } = useSelectedOrganizationQuery()
 
+  const { isLoading: isAuthLoading } = useAuth()
   const isLoggedIn = useIsLoggedIn()
   const isUserMFAEnabled = useIsMFAEnabled()
 
@@ -70,6 +71,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   }, [orgsInitialized])
 
   useEffect(() => {
+    if (isAuthLoading) return
     if (isLoggedIn) return
     if (isExceptUrl()) return
 
@@ -90,7 +92,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     const returnTo = `${pathname}${location.search}${location.hash}`
     searchParams.set('returnTo', returnTo)
     router.push(`${dashboardPrefix}/sign-in?${searchParams.toString()}`)
-  }, [isLoggedIn, router, router.asPath])
+  }, [isAuthLoading, isLoggedIn, router, router.asPath])
 
   useEffect(() => {
     if (!router.isReady) return

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 
-import { useIsLoggedIn, useUser } from 'common'
+import { useAuth, useIsLoggedIn, useUser } from 'common'
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useProfileCreateMutation } from 'data/profile/profile-create-mutation'
 import { useProfileIdentitiesQuery } from 'data/profile/profile-identities-query'
@@ -33,6 +33,7 @@ export const ProfileContext = createContext<ProfileContextType>({
 export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
   const user = useUser()
   const isLoggedIn = useIsLoggedIn()
+  const { refreshSession } = useAuth()
   const router = useRouter()
   const signOut = useSignOut()
 
@@ -84,16 +85,22 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     // if the user does not yet exist, create a profile for them
     if (error?.message === "User's profile not found") {
       createProfile()
+      return
     }
 
     // [Alaister] If the user has a bad auth token, auth-js won't know about it
     // and will think the user is authenticated. Since fetching the profile happens
     // on every page load, we can check for a 401 here and sign the user out if
     // they have a bad token.
-    if (error?.code === 401) {
-      signOut().then(() => router.push('/sign-in'))
+    if (error?.code === 401 && !isCreatingProfile) {
+      void (async () => {
+        const session = await refreshSession()
+        if (session) return
+        await signOut()
+        await router.push('/sign-in')
+      })()
     }
-  }, [error, signOut, router, createProfile, isError])
+  }, [error, signOut, router, createProfile, isError, isCreatingProfile, refreshSession])
 
   const { isInitialLoading: isLoadingPermissions } = usePermissionsQuery({ enabled: isLoggedIn })
 
