@@ -126,6 +126,8 @@ services:
   # - access to Docker (via /var/run/docker.sock)
   data-plane-provisioner:
     container_name: indobase-data-plane-provisioner
+    image: ${DATA_PLANE_PROVISIONER_IMAGE:-roshanraghavander/ind-repo-provisioner:latest}
+    pull_policy: always
     build:
       context: .
       dockerfile: ./provisioner/Dockerfile

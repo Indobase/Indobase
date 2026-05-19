@@ -57,4 +57,15 @@ export const RESTRICTION_MESSAGES = {
       </>
     ),
   },
+  PLATFORM_SUSPENDED: {
+    title: 'Organization suspended',
+    description: (slug: string): ReactNode => (
+      <>
+        This workspace has been suspended by the platform team. Creating projects, changing
+        organization settings, and some other actions are blocked until the suspension is lifted. If
+        this looks wrong, contact support and include your organization slug:{' '}
+        <span className="font-mono text-code-inline">{slug}</span>.
+      </>
+    ),
+  },
 }

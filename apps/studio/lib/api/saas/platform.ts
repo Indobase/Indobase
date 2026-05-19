@@ -84,6 +84,33 @@ function uniqueProjectRef(base: string) {
   return `${clean || 'project'}-${suffix}`.replace(/[^a-z0-9-]/g, '').slice(0, 40)
 }
 
+const PLATFORM_SUSPENDED_ERR =
+  'This organization has been suspended by the platform team. Contact support if you need access.'
+
+async function assertOrganizationNotPlatformSuspendedById(organizationId: number, actorId: string) {
+  const r = await executeQuery<{ restriction_status: string | null }>({
+    query: `select restriction_status from saas.organizations where id = $1 limit 1`,
+    parameters: [organizationId],
+    actorId,
+  })
+  if (r.error) throw r.error
+  if (r.data?.[0]?.restriction_status === 'platform_suspended') {
+    throw new Error(PLATFORM_SUSPENDED_ERR)
+  }
+}
+
+async function assertOrganizationNotPlatformSuspendedBySlug(slug: string, actorId: string) {
+  const r = await executeQuery<{ restriction_status: string | null }>({
+    query: `select restriction_status from saas.organizations where slug = $1 limit 1`,
+    parameters: [slug],
+    actorId,
+  })
+  if (r.error) throw r.error
+  if (r.data?.[0]?.restriction_status === 'platform_suspended') {
+    throw new Error(PLATFORM_SUSPENDED_ERR)
+  }
+}
+
 /** Deterministic localhost bind range for per-project PostgREST/GoTrue (base+1, base+2, …). */
 export function computeDataPlanePortBase(projectRef: string): number {
   let h = 2166136261 >>> 0
@@ -410,6 +437,28 @@ export async function ensureSaasTables() {
   if (bootstrap.error) {
     throw bootstrap.error
   }
+
+  const usageMetering = await executeQuery({
+    query: `
+      create table if not exists saas.usage_events (
+        event_id uuid primary key,
+        occurred_at timestamptz not null,
+        project_ref text not null,
+        host text null,
+        method text null,
+        path text null,
+        status_code integer null,
+        bytes_sent bigint null,
+        request_time_s double precision null,
+        upstream_response_time_s double precision null,
+        service text null
+      );
+
+      create index if not exists usage_events_project_ref_occurred_at_idx
+        on saas.usage_events (project_ref, occurred_at desc);
+    `,
+  })
+  if (usageMetering.error) throw usageMetering.error
 
   await ensureSaasControlPlaneRlsApplied()
   await ensureSaasStudioDbPrivileges()
@@ -977,6 +1026,7 @@ export async function createOrganizationInvite({
 }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
+  await assertOrganizationNotPlatformSuspendedBySlug(slug, gotrueId)
 
   const org = await executeQuery<{ id: number }>({
     query: `
@@ -1058,6 +1108,8 @@ export async function acceptOrganizationInvite({ claims, token }: { claims: Clai
   if (row.email.trim().toLowerCase() !== email) {
     throw new Error('Invite email does not match the signed-in account')
   }
+
+  await assertOrganizationNotPlatformSuspendedById(row.organization_id, gotrueId)
 
   const tx = await executeQuery({
     query: `
@@ -1332,6 +1384,7 @@ export async function updateOrganization({
 }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
+  await assertOrganizationNotPlatformSuspendedBySlug(slug, gotrueId)
 
   const updated = await executeQuery<{
     id: number
@@ -1887,6 +1940,7 @@ export async function createProject({
   if (orgRows.data[0].role === 'viewer') throw new Error('Insufficient permissions to create projects')
 
   const org = orgRows.data[0]
+  await assertOrganizationNotPlatformSuspendedById(org.id, gotrueId)
   const ref = uniqueProjectRef(body.name)
   const region = body.db_region || body.region_selection?.code || 'local'
   const anonKey = makeProjectJwt(jwtSecret, 'anon', ref)
@@ -3226,6 +3280,21 @@ export async function updateProject({
     const p = current.data[0]
     return { id: p.id, ref: p.ref, name: p.name }
   }
+
+  const access = await executeQuery<{ organization_id: number }>({
+    query: `
+      select p.organization_id
+      from saas.projects p
+      join saas.organization_members m on m.organization_id = p.organization_id
+      where m.gotrue_id = $1 and p.ref = $2
+      limit 1
+    `,
+    parameters: [gotrueId, ref],
+    actorId: gotrueId,
+  })
+  if (access.error) throw access.error
+  if (!access.data?.length) return null
+  await assertOrganizationNotPlatformSuspendedById(access.data[0].organization_id, gotrueId)
 
   const ownerIdx = i++
   const refIdx = i++

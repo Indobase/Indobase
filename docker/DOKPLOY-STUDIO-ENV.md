@@ -122,6 +122,13 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
 
 DATA_PLANE_PROVISIONER_URL=http://data-plane-provisioner:8787
 DATA_PLANE_PROVISIONER_TOKEN=your-token
+# Compose stack: pin provisioner image (CI publishes roshanraghavander/ind-repo-provisioner:<sha>)
+# DATA_PLANE_PROVISIONER_IMAGE=roshanraghavander/ind-repo-provisioner:latest
+
+# Platform admin delete: when unset or any value other than "false", deleting a project/org as a
+# platform operator runs infrastructure teardown (provisioner POST /teardown + dedicated tenant DB drop).
+# Set to "false" to only remove control-plane rows (legacy behavior).
+# PLATFORM_ADMIN_PROJECT_DELETE_TEARDOWN=false
 
 # SQL Editor / AI assistant (optional; without this, AI features return a clear configuration error)
 OPENAI_API_KEY=sk-...

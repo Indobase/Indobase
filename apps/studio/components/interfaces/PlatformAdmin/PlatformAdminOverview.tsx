@@ -1,7 +1,7 @@
 import { usePlatformAdminOverviewQuery } from 'data/platform-admin/platform-admin-query'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from 'ui'
-import AlertError from 'components/ui/AlertError'
+import { Card, CardContent, CardHeader, CardTitle, Button } from 'ui'
 import { PageContainer } from 'ui-patterns/PageContainer'
 import {
   PageHeader,
@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from 'components/ui/DataTable/Table'
+import AlertError from 'components/ui/AlertError'
 import { formatBytes, formatCount } from './formatUsage'
 
 type HealthPayload = {
@@ -107,6 +108,67 @@ export const PlatformAdminOverview = () => {
           </div>
         </>
       )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h3 className="text-sm font-medium text-foreground-light">Metering & tenant health</h3>
+        <Button type="default" size="tiny" asChild>
+          <Link href="/platform-admin/health">Open health dashboard</Link>
+        </Button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-normal text-foreground-light">
+              Usage events (24h)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-medium tabular-nums">
+              {data?.metering?.events_last_24h?.toLocaleString() ?? '—'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-normal text-foreground-light">
+              Last usage event
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-mono text-foreground truncate">
+              {data?.metering?.last_event_occurred_at
+                ? new Date(data.metering.last_event_occurred_at).toLocaleString()
+                : data?.metering?.metering_enabled
+                  ? 'None yet'
+                  : 'N/A'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-normal text-foreground-light">
+              Unhealthy projects
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-medium tabular-nums">
+              {data?.problems?.unhealthy_projects?.toLocaleString() ?? '—'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-normal text-foreground-light">
+              Provision failures
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-medium tabular-nums">
+              {data?.problems?.provision_failed_projects?.toLocaleString() ?? '—'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

@@ -99,3 +99,7 @@ For **Application** (not Compose) deploys, you can add a Docker Hub webhook (rep
 | `DOKPLOY_APPLICATION_ID` | `applicationId` from `GET /api/project.all` |
 
 See `.github/workflows/docker-publish.yml` deploy job.
+
+## Platform admin, metering, and sign-off
+
+Operator allowlisting, `saas.usage_events` / Vector, and a short production checklist are documented in **[PLATFORM-ADMIN-OPS.md](./PLATFORM-ADMIN-OPS.md)**.

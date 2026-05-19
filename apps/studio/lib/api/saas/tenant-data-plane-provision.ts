@@ -89,6 +89,57 @@ export async function provisionTenantDataPlaneStack({
   return { ok: true, applied: apply, provisioner_status: resp.status }
 }
 
+/**
+ * Stops the per-project Docker Compose stack, removes Traefik routing, and best-effort removes
+ * the Edge Functions seed volume. Requires the same provisioner env as {@link provisionTenantDataPlaneStack}.
+ * When the provisioner is not configured, returns without doing I/O.
+ */
+export async function teardownTenantDataPlaneStack({
+  ref,
+  apply = true,
+}: {
+  ref: string
+  apply?: boolean
+}): Promise<{ ok: true; applied: boolean; provisioner_status: number }> {
+  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
+  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
+  if (!provisionerUrl || !provisionerToken) {
+    return { ok: true, applied: false, provisioner_status: 0 }
+  }
+
+  const resp = await fetch(`${provisionerUrl}/teardown`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      project_ref: ref,
+      apply,
+    }),
+  })
+
+  const text = await resp.text()
+  let parsed: unknown
+  try {
+    parsed = text ? JSON.parse(text) : {}
+  } catch {
+    parsed = { raw: text }
+  }
+
+  if (!resp.ok) {
+    throw new Error(
+      `Data-plane provisioner teardown failed (${resp.status}): ${
+        typeof parsed === 'object' && parsed && 'message' in parsed
+          ? String((parsed as { message?: unknown }).message)
+          : text.slice(0, 200)
+      }`
+    )
+  }
+
+  return { ok: true, applied: apply, provisioner_status: resp.status }
+}
+
 function claimsFromActorId(actorId: string): Claims {
   return { sub: actorId } as Claims
 }

@@ -331,6 +331,36 @@ export async function fetchPost<T = any>(
 }
 
 /**
+ * To be used only for dashboard API endpoints.
+ */
+export async function fetchPatch<T = any>(
+  url: string,
+  data: { [prop: string]: any },
+  options?: { [prop: string]: any }
+): Promise<T | ResponseError> {
+  try {
+    const { headers: otherHeaders, abortSignal, ...otherOptions } = options ?? {}
+    const headers = await constructHeaders({
+      'Content-Type': 'application/json',
+      ...DEFAULT_HEADERS,
+      ...otherHeaders,
+    })
+    const response = await fetch(url, {
+      headers,
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      referrerPolicy: 'no-referrer-when-downgrade',
+      ...otherOptions,
+      signal: abortSignal,
+    })
+    if (!response.ok) return handleFetchError(response)
+    return handleFetchResponse(response)
+  } catch (error) {
+    return handleFetchError(error)
+  }
+}
+
+/**
  * To be used only for dashboard API endpoints. Use `fetch` directly if calling a non dashboard API endpoint
  */
 export async function fetchHeadWithTimeout<T = any>(

@@ -24,6 +24,14 @@ export type AuditAction =
   | 'project.third_party_auth.added'
   | 'project.third_party_auth.removed'
   | 'project.third_party_auth.updated'
+  | 'user.delete'
+  | 'platform.org.suspended'
+  | 'platform.org.unsuspended'
+  | 'platform.org.owner_transferred'
+  | 'platform.org.billing_updated'
+  | 'platform.org.support_note'
+  | 'platform.user.suspended'
+  | 'platform.user.unsuspended'
 
 export type AuditTargetType =
   | 'organization'

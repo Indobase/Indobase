@@ -130,6 +130,81 @@ export async function provisionTenantDatabase({
   return { dbName, roleName, rolePassword, connectionString }
 }
 
+/**
+ * Drops the per-project tenant database and login role created by {@link provisionTenantDatabase}.
+ * Best-effort idempotent: no-ops missing objects. Requires the same admin connection as provisioning.
+ */
+export async function destroyTenantDatabase({
+  projectRef,
+  host,
+  port,
+  adminUser,
+  adminPassword,
+}: {
+  projectRef: string
+  host: string
+  port: number
+  adminUser: string
+  adminPassword: string
+}): Promise<{ dbName: string; roleName: string }> {
+  const roleName = safeIdentifier('tenant', projectRef)
+  const dbName = safeIdentifier('tenantdb', projectRef)
+  const roleIdent = quotePgIdent(roleName)
+  const dbIdent = quotePgIdent(dbName)
+  const adminIdent = quotePgIdent(adminUser)
+
+  const adminConn = `postgresql://${encodeURIComponent(adminUser)}:${encodeURIComponent(
+    adminPassword
+  )}@${host}:${port}/postgres`
+
+  const client = new Client({ connectionString: adminConn })
+  await client.connect()
+
+  try {
+    const dbExists = await client.query<{ exists: boolean }>(
+      'select exists(select 1 from pg_database where datname = $1)',
+      [dbName]
+    )
+    if (dbExists.rows[0]?.exists) {
+      await client.query(
+        `select pg_terminate_backend(pid) from pg_stat_activity where datname = $1::text and pid <> pg_backend_pid()`,
+        [dbName]
+      )
+      await client.query(`drop database if exists ${dbIdent}`)
+    }
+
+    const roleExists = await client.query<{ exists: boolean }>(
+      'select exists(select 1 from pg_roles where rolname = $1)',
+      [roleName]
+    )
+    if (!roleExists.rows[0]?.exists) {
+      return { dbName, roleName }
+    }
+
+    try {
+      await client.query(`revoke ${roleIdent} from ${adminIdent}`)
+    } catch (e) {
+      console.warn('[provision-tenant-db] revoke tenant role from admin skipped: %O', e)
+    }
+    try {
+      const supabaseAdminExists = await client.query<{ exists: boolean }>(
+        `select exists(select 1 from pg_roles where rolname = 'supabase_admin')`
+      )
+      if (supabaseAdminExists.rows[0]?.exists) {
+        await client.query(`revoke ${roleIdent} from "supabase_admin"`)
+      }
+    } catch (e) {
+      console.warn('[provision-tenant-db] revoke tenant role from supabase_admin skipped: %O', e)
+    }
+
+    await client.query(`drop role if exists ${roleIdent}`)
+  } finally {
+    await client.end()
+  }
+
+  return { dbName, roleName }
+}
+
 /** Set tenant login role password (e.g. user-chosen DB password from project creation UI). */
 export async function setTenantRolePassword({
   host,

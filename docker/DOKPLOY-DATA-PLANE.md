@@ -44,6 +44,14 @@ Body:
 { "public_domain": "indobase.in", "apply": true }
 ```
 
+## Teardown (platform admin delete)
+
+The **data-plane provisioner** also exposes **`POST /teardown`** (same `Authorization: Bearer` token as `/provision`). Studio calls this when a **platform operator** deletes a project or organization from Platform admin (unless `PLATFORM_ADMIN_PROJECT_DELETE_TEARDOWN=false` on Studio).
+
+It runs `docker compose down -v` for the tenant’s `docker-compose.yml` when that file exists, deletes `tenant-<ref>.yml` from the Traefik dynamic directory, and best-effort removes the functions seed volume.
+
+Dedicated tenant databases are dropped separately by Studio using `POSTGRES_*` (see `docker/PLATFORM-ADMIN-OPS.md`).
+
 ## Verify
 - Confirm Traefik picked up:
   - `/etc/dokploy/traefik/dynamic/tenant-<ref>.yml`

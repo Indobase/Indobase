@@ -2,8 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 
 import type {
   PlatformAdminAuditLog,
+  PlatformAdminAuditLogFilters,
   PlatformAdminOrganization,
+  PlatformAdminOrganizationDetail,
   PlatformAdminOverview,
+  PlatformAdminProblemProject,
   PlatformAdminProject,
   PlatformAdminUsageReport,
   PlatformAdminUser,
@@ -29,6 +32,15 @@ async function adminFetch<T>(url: string, signal?: AbortSignal): Promise<T> {
   const data = await fetchGet<T>(url, { abortSignal: signal })
   if (data instanceof ResponseError) throw data
   return data as T
+}
+
+export type PlatformAdminAuditLogsResult = {
+  items: PlatformAdminAuditLog[]
+  total: number
+}
+
+function auditFilterKey(filters: PlatformAdminAuditLogFilters): string {
+  return JSON.stringify(filters)
 }
 
 export async function getPlatformOperatorStatus(signal?: AbortSignal) {
@@ -79,10 +91,22 @@ export async function getPlatformAdminUsers(
 }
 
 export async function getPlatformAdminAuditLogs(
-  { limit = 100, offset = 0 }: { limit?: number; offset?: number },
+  {
+    limit = 100,
+    offset = 0,
+    filters = {},
+  }: { limit?: number; offset?: number; filters?: PlatformAdminAuditLogFilters } = {},
   signal?: AbortSignal
 ) {
-  return adminFetch<PlatformAdminAuditLog[]>(adminUrl('/audit-logs', { limit, offset }), signal)
+  const q: Record<string, string | number | undefined> = { limit, offset }
+  if (filters.search) q.search = filters.search
+  if (filters.action) q.action = filters.action
+  if (filters.actor_gotrue_id) q.actor_gotrue_id = filters.actor_gotrue_id
+  if (filters.organization_id != null) q.organization_id = filters.organization_id
+  if (filters.project_ref) q.project_ref = filters.project_ref
+  if (filters.from) q.from = filters.from
+  if (filters.to) q.to = filters.to
+  return adminFetch<PlatformAdminAuditLogsResult>(adminUrl('/audit-logs', q), signal)
 }
 
 export async function getPlatformAdminUsageReportData(
@@ -90,6 +114,21 @@ export async function getPlatformAdminUsageReportData(
   signal?: AbortSignal
 ) {
   return adminFetch<PlatformAdminUsageReport>(adminUrl('/usage', { days }), signal)
+}
+
+export async function getPlatformAdminOrganizationDetailData(
+  slug: string,
+  signal?: AbortSignal
+) {
+  const path = `/organizations/${encodeURIComponent(slug)}`
+  return adminFetch<PlatformAdminOrganizationDetail>(adminUrl(path), signal)
+}
+
+export async function getPlatformAdminProblemsData(
+  { limit = 100 }: { limit?: number } = {},
+  signal?: AbortSignal
+) {
+  return adminFetch<PlatformAdminProblemProject[]>(adminUrl('/problems', { limit }), signal)
 }
 
 export const usePlatformOperatorQuery = (
@@ -154,12 +193,16 @@ export const usePlatformAdminUsersQuery = (
   })
 
 export const usePlatformAdminAuditLogsQuery = (
-  { limit = 100, offset = 0 }: { limit?: number; offset?: number },
-  options: UseCustomQueryOptions<PlatformAdminAuditLog[]> = {}
+  {
+    limit = 100,
+    offset = 0,
+    filters = {},
+  }: { limit?: number; offset?: number; filters?: PlatformAdminAuditLogFilters } = {},
+  options: UseCustomQueryOptions<PlatformAdminAuditLogsResult> = {}
 ) =>
   useQuery({
-    queryKey: platformAdminKeys.auditLogs(limit, offset),
-    queryFn: ({ signal }) => getPlatformAdminAuditLogs({ limit, offset }, signal),
+    queryKey: platformAdminKeys.auditLogs(limit, offset, auditFilterKey(filters)),
+    queryFn: ({ signal }) => getPlatformAdminAuditLogs({ limit, offset, filters }, signal),
     ...options,
   })
 
@@ -170,5 +213,26 @@ export const usePlatformAdminUsageQuery = (
   useQuery({
     queryKey: platformAdminKeys.usage(days ?? 30),
     queryFn: ({ signal }) => getPlatformAdminUsageReportData({ days }, signal),
+    ...options,
+  })
+
+export const usePlatformAdminOrganizationDetailQuery = (
+  slug: string,
+  options: UseCustomQueryOptions<PlatformAdminOrganizationDetail> = {}
+) =>
+  useQuery({
+    queryKey: platformAdminKeys.organization(slug),
+    queryFn: ({ signal }) => getPlatformAdminOrganizationDetailData(slug, signal),
+    enabled: Boolean(slug),
+    ...options,
+  })
+
+export const usePlatformAdminProblemsQuery = (
+  { limit = 100 }: { limit?: number } = {},
+  options: UseCustomQueryOptions<PlatformAdminProblemProject[]> = {}
+) =>
+  useQuery({
+    queryKey: platformAdminKeys.problems(limit),
+    queryFn: ({ signal }) => getPlatformAdminProblemsData({ limit }, signal),
     ...options,
   })

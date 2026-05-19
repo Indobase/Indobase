@@ -42,7 +42,8 @@ export const PlatformAdminUsage = () => {
           <PageHeaderTitle>API usage</PageHeaderTitle>
           <PageHeaderDescription>
             Request and egress metering from nginx via Vector into{' '}
-            <code className="text-code-inline">saas.usage_events</code>. Sorted by volume.
+            <code className="text-code-inline">saas.usage_events</code>. User usage is aggregated
+            across projects in organizations they belong to.
           </PageHeaderDescription>
         </PageHeaderSummary>
       </PageHeader>
@@ -63,6 +64,49 @@ export const PlatformAdminUsage = () => {
           </button>
         ))}
       </div>
+
+      {data.metering_health && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Metering pipeline</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+            <div>
+              <p className="text-foreground-light">Table</p>
+              <p className="font-medium">
+                {data.metering_health.metering_enabled ? 'Present' : 'Missing'}
+              </p>
+            </div>
+            <div>
+              <p className="text-foreground-light">Events (24h)</p>
+              <p className="font-mono tabular-nums">
+                {data.metering_health.events_last_24h.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-foreground-light">Events (7d)</p>
+              <p className="font-mono tabular-nums">
+                {data.metering_health.events_last_7d.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-foreground-light">Last event</p>
+              <p className="font-mono text-xs truncate">
+                {data.metering_health.last_event_occurred_at
+                  ? new Date(data.metering_health.last_event_occurred_at).toLocaleString()
+                  : data.metering_health.metering_enabled
+                    ? 'No rows yet'
+                    : '—'}
+              </p>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Link href="/platform-admin/health" className="text-brand text-sm hover:underline">
+                Full health & problem projects →
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!data?.metering_enabled ? (
         <Admonition
@@ -101,6 +145,15 @@ export const PlatformAdminUsage = () => {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Top users</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <UsageUserTable rows={data.top_users} />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -184,7 +237,10 @@ function UsageOrgTable({
           {rows.map((row) => (
             <TableRow key={row.slug}>
               <TableCell>
-                <Link href={`/org/${row.slug}`} className="text-brand hover:underline">
+                <Link
+                  href={`/platform-admin/organizations/${row.slug}`}
+                  className="text-brand hover:underline"
+                >
                   {row.name}
                 </Link>
                 <p className="text-xs text-foreground-light">{row.plan}</p>
@@ -239,6 +295,65 @@ function UsageProjectTable({
               <TableCell className="text-right tabular-nums">
                 {formatBytes(row.bytes_sent)}
               </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function UsageUserTable({
+  rows,
+}: {
+  rows: Array<{
+    gotrue_id: string
+    primary_email: string
+    username: string
+    org_count: number
+    project_count: number
+    requests: number
+    bytes_sent: number
+    errors: number
+  }>
+}) {
+  if (!rows.length) {
+    return (
+      <p className="p-4 text-sm text-foreground-light">
+        No user-associated usage in this period.
+      </p>
+    )
+  }
+
+  return (
+    <div className="overflow-auto max-h-[420px]">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead className="text-right">Orgs</TableHead>
+            <TableHead className="text-right">Projects</TableHead>
+            <TableHead className="text-right">Requests</TableHead>
+            <TableHead className="text-right">Egress</TableHead>
+            <TableHead className="text-right">Errors</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.gotrue_id}>
+              <TableCell>
+                <p>{row.primary_email}</p>
+                <p className="text-xs font-mono text-foreground-light">{row.username}</p>
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatCount(row.org_count)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatCount(row.project_count)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatCount(row.requests)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatBytes(row.bytes_sent)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatCount(row.errors)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

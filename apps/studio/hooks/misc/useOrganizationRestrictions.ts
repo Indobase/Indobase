@@ -31,6 +31,14 @@ export function useOrganizationRestrictions() {
 
   const warnings: WarningBannerProps[] = []
 
+  if (org?.restriction_status === 'platform_suspended') {
+    warnings.push({
+      variant: 'danger',
+      title: RESTRICTION_MESSAGES.PLATFORM_SUSPENDED.title,
+      description: RESTRICTION_MESSAGES.PLATFORM_SUSPENDED.description(org.slug),
+    })
+  }
+
   const billingEnabled = useIsFeatureEnabled('billing:all')
   if (!billingEnabled) {
     return { warnings, org }

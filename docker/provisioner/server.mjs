@@ -4,7 +4,8 @@
  * Responsibilities:
  * - Authenticate requests from Studio using a shared token.
  * - Write per-project `docker-compose.yml` and `traefik.yml` to mounted host paths.
- * - Optionally run `docker compose up -d` for that tenant stack.
+ * - Optionally run `docker compose up -d` for that tenant stack (`POST /provision`).
+ * - Optionally tear down tenant stacks (`POST /teardown`): compose down -v, remove Traefik file, rm seed volume.
  *
  * Required env:
  *   PROVISIONER_TOKEN
@@ -131,11 +132,35 @@ function runCompose(composePath) {
   })
 }
 
+/** Stops the tenant stack and removes named volumes declared in compose (`-v`). */
+function runComposeDown(composePath) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(
+      'docker',
+      ['compose', '-f', composePath, 'down', '--remove-orphans', '-v'],
+      { stdio: 'inherit' }
+    )
+    p.on('error', reject)
+    p.on('exit', (code) => {
+      if (code === 0) resolve(undefined)
+      else reject(new Error(`docker compose down exited with code ${code}`))
+    })
+  })
+}
+
+function dockerVolumeRm(volumeName) {
+  return new Promise((resolve) => {
+    const p = spawn('docker', ['volume', 'rm', '-f', volumeName], { stdio: 'inherit' })
+    p.on('exit', () => resolve(undefined))
+    p.on('error', () => resolve(undefined))
+  })
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.url === '/health') return json(res, 200, { ok: true })
 
-    if (req.method !== 'POST' || req.url !== '/provision') {
+    if (req.method !== 'POST' || (req.url !== '/provision' && req.url !== '/teardown')) {
       res.statusCode = 404
       return res.end('not found')
     }
@@ -154,13 +179,44 @@ const server = http.createServer(async (req, res) => {
     const ref = safeRef(body?.project_ref)
     if (!ref) return json(res, 400, { message: 'Invalid project_ref' })
 
+    const apply = body?.apply !== false
+
+    if (req.url === '/teardown') {
+      const tenantOutDir = path.join(tenantsDir, ref)
+      const composePath = path.join(tenantOutDir, 'docker-compose.yml')
+      const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
+
+      let composeDown = false
+      if (apply && fs.existsSync(composePath)) {
+        await runComposeDown(composePath)
+        composeDown = true
+      }
+
+      if (fs.existsSync(traefikPath)) {
+        try {
+          fs.unlinkSync(traefikPath)
+        } catch (e) {
+          return json(res, 500, { message: e?.message || 'Failed to remove traefik config' })
+        }
+      }
+
+      const fnVol = `indobase-tenant-${ref}_tenant-functions-${ref}`
+      await dockerVolumeRm(fnVol)
+
+      return json(res, 200, {
+        ok: true,
+        project_ref: ref,
+        compose_down: composeDown,
+        traefik_removed: true,
+        applied: apply,
+      })
+    }
+
     const dockerComposeYml = String(body?.docker_compose_yml || '')
     const traefikYml = String(body?.traefik_yml || '')
     if (!dockerComposeYml.trim() || !traefikYml.trim()) {
       return json(res, 400, { message: 'docker_compose_yml and traefik_yml are required' })
     }
-
-    const apply = body?.apply !== false
 
     const tenantOutDir = path.join(tenantsDir, ref)
     fs.mkdirSync(tenantOutDir, { recursive: true })
