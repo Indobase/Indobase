@@ -1,30 +1,27 @@
-#!/usr/bin/env node
 /**
- * Rewrite tenant-*.yml using live host ports from `docker ps` (authoritative after bad patches).
- * Usage: node docker/scripts/fix-tenant-traefik-from-docker.mjs [/path/to/traefik/dynamic]
+ * Canonical per-tenant Traefik dynamic config (stripPrefix + correct host ports).
+ * Used by the data-plane provisioner after compose up and by VPS repair scripts.
  */
-const fs = require('node:fs')
-const path = require('node:path')
-const { execSync } = require('node:child_process')
+import fs from 'node:fs'
+import path from 'node:path'
+import { execSync } from 'node:child_process'
 
-const dir = process.argv[2] || '/etc/dokploy/traefik/dynamic'
-const upstream = process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
-const domain = process.env.PUBLIC_DOMAIN?.trim() || 'indobase.in'
+export function getDockerPsLines() {
+  return execSync('docker ps --format "{{.Names}}\t{{.Ports}}"', { encoding: 'utf8' })
+}
 
-const dockerPs = execSync('docker ps --format "{{.Names}}\t{{.Ports}}"', { encoding: 'utf8' })
-
-function hostPortFor(ref, svc) {
+export function hostPortFor(dockerPs, ref, svc) {
   const needles =
     svc === 'realtime'
-      ? [`${ref}.indobase-realtime`, `${ref}-tenant-realtime`]
-      : [`${ref}-tenant-${svc}`]
+      ? [`${ref}.indobase-realtime`, `${ref}-tenant-realtime`, `indobase-tenant-${ref}-tenant-realtime`]
+      : [`${ref}-tenant-${svc}`, `indobase-tenant-${ref}-tenant-${svc}`]
   const line = dockerPs.split('\n').find((l) => needles.some((n) => l.includes(n)))
   if (!line) return null
   const m = line.match(/0\.0\.0\.0:(\d+)->/)
   return m ? Number(m[1]) : null
 }
 
-function buildYaml(ref, hostRule, ports) {
+export function buildTenantTraefikYaml(ref, hostRule, upstream, ports) {
   const strip = (name, prefix) => `    tenant-${ref}-${name}-strip:
       stripPrefix:
         prefixes:
@@ -90,22 +87,42 @@ ${strip('rest', '/rest/v1')}${strip('auth', '/auth/v1')}${strip('storage', '/sto
 `
 }
 
-let fixed = 0
-for (const file of fs.readdirSync(dir).filter((f) => f.startsWith('tenant-') && f.endsWith('.yml'))) {
-  const ref = file.slice('tenant-'.length, -'.yml'.length)
+/**
+ * Rewrite tenant-<ref>.yml from live docker published ports. Returns false if stack not running.
+ */
+export function fixTenantTraefikForRef(ref, traefikDir, opts = {}) {
+  const upstream = opts.upstream || process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
+  const domain = opts.domain || process.env.PUBLIC_DOMAIN?.trim() || 'indobase.in'
+  const dockerPs = opts.dockerPs || getDockerPsLines()
   const ports = {
-    rest: hostPortFor(ref, 'rest'),
-    auth: hostPortFor(ref, 'auth'),
-    storage: hostPortFor(ref, 'storage'),
-    realtime: hostPortFor(ref, 'realtime'),
-    functions: hostPortFor(ref, 'functions'),
+    rest: hostPortFor(dockerPs, ref, 'rest'),
+    auth: hostPortFor(dockerPs, ref, 'auth'),
+    storage: hostPortFor(dockerPs, ref, 'storage'),
+    realtime: hostPortFor(dockerPs, ref, 'realtime'),
+    functions: hostPortFor(dockerPs, ref, 'functions'),
   }
   if (Object.values(ports).some((p) => !p)) {
-    console.warn('skip', file, ports)
-    continue
+    return { ok: false, ref, ports, reason: 'stack_not_running' }
   }
-  fs.writeFileSync(path.join(dir, file), buildYaml(ref, `${ref}.${domain}`, ports), 'utf8')
-  console.log('fixed', file, ports)
-  fixed++
+  const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
+  fs.writeFileSync(
+    traefikPath,
+    buildTenantTraefikYaml(ref, `${ref}.${domain}`, upstream, ports),
+    'utf8'
+  )
+  return { ok: true, ref, ports, traefikPath }
 }
-console.log(`done: ${fixed} file(s) in ${dir}`)
+
+export function fixAllTenantTraefikFromDocker(traefikDir, opts = {}) {
+  const dockerPs = getDockerPsLines()
+  const refs = new Set()
+  for (const line of dockerPs.split('\n')) {
+    const m = line.match(/indobase-tenant-([a-z0-9-]+)-tenant-rest/)
+    if (m) refs.add(m[1])
+  }
+  const results = []
+  for (const ref of refs) {
+    results.push(fixTenantTraefikForRef(ref, traefikDir, { ...opts, dockerPs }))
+  }
+  return results
+}

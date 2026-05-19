@@ -16,6 +16,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
+import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef } from './tenant-traefik.mjs'
 
 const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
@@ -160,7 +161,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.url === '/health') return json(res, 200, { ok: true })
 
-    if (req.method !== 'POST' || (req.url !== '/provision' && req.url !== '/teardown')) {
+    if (req.method !== 'POST' || (req.url !== '/provision' && req.url !== '/teardown' && req.url !== '/repair-traefik')) {
       res.statusCode = 404
       return res.end('not found')
     }
@@ -180,6 +181,18 @@ const server = http.createServer(async (req, res) => {
     if (!ref) return json(res, 400, { message: 'Invalid project_ref' })
 
     const apply = body?.apply !== false
+
+    if (req.url === '/repair-traefik') {
+      const singleRef = safeRef(body?.project_ref)
+      if (singleRef) {
+        const one = fixTenantTraefikForRef(singleRef, traefikDir)
+        return json(res, one.ok ? 200 : 404, one)
+      }
+      const all = fixAllTenantTraefikFromDocker(traefikDir)
+      const fixed = all.filter((r) => r.ok)
+      const skipped = all.filter((r) => !r.ok)
+      return json(res, 200, { ok: true, fixed: fixed.length, skipped: skipped.length, results: all })
+    }
 
     if (req.url === '/teardown') {
       const tenantOutDir = path.join(tenantsDir, ref)
@@ -231,6 +244,11 @@ const server = http.createServer(async (req, res) => {
 
     if (apply) {
       await runCompose(composePath)
+      // Always normalize Traefik (stripPrefix + ports from docker ps) so old Studio builds cannot regress routing.
+      const normalized = fixTenantTraefikForRef(ref, traefikDir)
+      if (!normalized.ok) {
+        console.warn('[provisioner] traefik normalize skipped for %s: %s', ref, normalized.reason)
+      }
     }
 
     return json(res, 200, {
@@ -238,6 +256,7 @@ const server = http.createServer(async (req, res) => {
       project_ref: ref,
       written: { composePath, traefikPath },
       applied: apply,
+      traefik_normalized: apply,
     })
   } catch (e) {
     return json(res, 500, { message: e?.message || 'Internal error' })

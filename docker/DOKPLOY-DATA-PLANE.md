@@ -52,6 +52,27 @@ It runs `docker compose down -v` for the tenant’s `docker-compose.yml` when th
 
 Dedicated tenant databases are dropped separately by Studio using `POSTGRES_*` (see `docker/PLATFORM-ADMIN-OPS.md`).
 
+## Tenant routing repair (all customers)
+
+Per-project URLs must strip `/rest/v1`, `/auth/v1`, etc. before hitting PostgREST/GoTrue (same as Kong `strip_path`). After upgrading Studio or the provisioner, repair every **running** tenant stack on the VPS:
+
+```bash
+# On the VPS (paths may vary)
+node /path/to/repo/docker/scripts/fix-tenant-traefik-from-docker.cjs /etc/dokploy/traefik/dynamic
+node /path/to/repo/docker/scripts/verify-tenant-routing.cjs indobase.in
+```
+
+Or call the provisioner (same token as `/provision`):
+
+```bash
+curl -sS -X POST "http://127.0.0.1:8787/repair-traefik" \
+  -H "Authorization: Bearer $DATA_PLANE_PROVISIONER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+New provisions via `/provision` normalize Traefik automatically after `docker compose up`.
+
 ## Verify
 - Confirm Traefik picked up:
   - `/etc/dokploy/traefik/dynamic/tenant-<ref>.yml`
