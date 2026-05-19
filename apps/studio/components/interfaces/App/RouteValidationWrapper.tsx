@@ -17,6 +17,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   const { data: organization } = useSelectedOrganizationQuery()
 
   const { isLoading: isAuthLoading } = useAuth()
+  const isAuthReady = !isAuthLoading
   const isLoggedIn = useIsLoggedIn()
   const isUserMFAEnabled = useIsMFAEnabled()
 
@@ -56,7 +57,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   const organizationsRef = useLatest(organizations)
 
   useEffect(() => {
-    if (isExceptUrl() || !isLoggedIn) return
+    if (!isAuthReady || isExceptUrl() || !isLoggedIn) return
 
     if (orgsInitialized && slug) {
       const organizations = organizationsRef.current ?? []
@@ -68,7 +69,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
         return
       }
     }
-  }, [orgsInitialized])
+  }, [isAuthReady, isLoggedIn, orgsInitialized, slug, router, DEFAULT_HOME, organizationsRef])
 
   useEffect(() => {
     if (isAuthLoading) return
@@ -95,16 +96,16 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
   }, [isAuthLoading, isLoggedIn, router, router.asPath])
 
   useEffect(() => {
-    if (!router.isReady) return
+    if (!router.isReady || !isAuthReady) return
     if (!isLoggedIn) return
     if (ref !== 'default') return
     if (router.asPath !== DEFAULT_HOME) {
       router.replace(DEFAULT_HOME)
     }
-  }, [DEFAULT_HOME, isLoggedIn, ref, router, router.asPath, router.isReady])
+  }, [DEFAULT_HOME, isAuthReady, isLoggedIn, ref, router, router.asPath, router.isReady])
 
   useEffect(() => {
-    if (isExceptUrl() || !isLoggedIn) return
+    if (!isAuthReady || isExceptUrl() || !isLoggedIn) return
     if (ref === 'default') return
     if (!ref || !isErrorProject) return
 
@@ -115,6 +116,7 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     router.push(DEFAULT_HOME)
   }, [
     DEFAULT_HOME,
+    isAuthReady,
     isErrorProject,
     isLoggedIn,
     projectDetailError,

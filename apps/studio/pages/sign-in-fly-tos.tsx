@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
-import { useIsLoggedIn } from 'common'
+import { useAuth, useIsLoggedIn } from 'common'
 import { useOrganizationByFlyOrgIdMutation } from 'data/organizations/organization-by-fly-organization-id-mutation'
 import { useProjectByFlyExtensionIdMutation } from 'data/projects/project-by-fly-extension-id-mutation'
 import { API_URL, BASE_PATH } from 'lib/constants'
@@ -12,6 +12,7 @@ import { Button } from 'ui'
 
 const SignInFlyTos = () => {
   const [loading, setLoading] = useState(true)
+  const { isLoading: isAuthLoading } = useAuth()
   const isLoggedIn = useIsLoggedIn()
   const router = useRouter()
   const {
@@ -37,7 +38,7 @@ const SignInFlyTos = () => {
   })
 
   useEffect(() => {
-    if (!isReady) {
+    if (!isReady || isAuthLoading) {
       return
     }
     if (!isLoggedIn) {
@@ -50,7 +51,7 @@ const SignInFlyTos = () => {
       : fly_organization_id
         ? getOrgByFlyOrgId({ flyOrganizationId: fly_organization_id as string })
         : setLoading(false)
-  }, [isReady])
+  }, [isAuthLoading, isLoggedIn, isReady, fly_extension_id, fly_organization_id, getOrgByFlyOrgId, getProjectByFlyExtensionId])
 
   const [isRedirecting, setIsRedirecting] = useState(false)
 

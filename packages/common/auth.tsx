@@ -103,6 +103,9 @@ export const useUser = () => useSession()?.user ?? null
 
 export const useIsUserLoading = () => useAuth().isLoading
 
+/** True after GoTrue `initialize()` has finished (session restored or confirmed absent). */
+export const useIsAuthReady = () => !useAuth().isLoading
+
 export const useIsLoggedIn = () => {
   const user = useUser()
 

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { toast } from 'sonner'
 
-import { useIsLoggedIn, useParams } from 'common'
+import { useAuth, useIsLoggedIn, useParams } from 'common'
 import { useOrganizationAcceptInvitationMutation } from 'data/organization-members/organization-invitation-accept-mutation'
 import { useOrganizationInvitationTokenQuery } from 'data/organization-members/organization-invitation-token-query'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
@@ -14,6 +14,7 @@ import { OrganizationInviteError } from './OrganizationInviteError'
 
 export const OrganizationInvite = () => {
   const router = useRouter()
+  const { isLoading: isAuthLoading } = useAuth()
   const isLoggedIn = useIsLoggedIn()
   const { profile, isLoading: isLoadingProfile } = useProfile()
   const { slug, token } = useParams()
@@ -68,7 +69,11 @@ export const OrganizationInvite = () => {
         'md:w-[400px]'
       )}
     >
-      {!isLoggedIn || (!profile && !isLoadingProfile) ? (
+      {isAuthLoading || isLoadingProfile || isLoadingInvitation ? (
+        <div className="p-5">
+          <GenericSkeletonLoader />
+        </div>
+      ) : !isLoggedIn || !profile ? (
         <>
           <Admonition
             showIcon={false}
@@ -87,10 +92,6 @@ export const OrganizationInvite = () => {
             )}
           </div>
         </>
-      ) : isLoadingProfile || isLoadingInvitation ? (
-        <div className="p-5">
-          <GenericSkeletonLoader />
-        </div>
       ) : inviteIsNoLongerValid ? (
         <>
           <Admonition

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
-import { useParams } from 'common'
+import { useAuth, useParams } from 'common'
 import { NoOrganizationsState } from 'components/interfaces/Home/ProjectList/EmptyStates'
 import { OrganizationCard } from 'components/interfaces/Organization/OrganizationCard'
 import AppLayout from 'components/layouts/AppLayout/AppLayout'
@@ -22,6 +22,7 @@ import { Input } from 'ui-patterns/DataInputs/Input'
 
 const OrganizationsPage: NextPageWithLayout = () => {
   const router = useRouter()
+  const { isLoading: isAuthLoading } = useAuth()
   const [search, setSearch] = useState('')
   const { error: orgNotFoundError, org: orgSlug } = useParams()
   const orgNotFound = orgNotFoundError === 'org_not_found'
@@ -45,10 +46,11 @@ const OrganizationsPage: NextPageWithLayout = () => {
   useEffect(() => {
     // Multi-org dashboard: if there are no organizations, force the user to create one
     // unless the user is on the not found page
+    if (isAuthLoading) return
     if (isSuccess && organizations.length <= 0 && !orgNotFound) {
       router.push('/new')
     }
-  }, [isSuccess, organizations, orgNotFound, router])
+  }, [isAuthLoading, isSuccess, organizations, orgNotFound, router])
 
   return (
     <ScaffoldContainer>

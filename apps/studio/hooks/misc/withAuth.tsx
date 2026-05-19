@@ -3,6 +3,7 @@ import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeout
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
 import { BASE_PATH } from 'lib/constants'
+import { buildPathWithParams } from 'lib/gotrue'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -109,9 +110,13 @@ export function withAuth<T>(
           clearTimeout(timeoutIdRef.current)
           timeoutIdRef.current = null
         }
+        if (isLoggedIn && !isCorrectLevel) {
+          router.push(buildPathWithParams('/sign-in-mfa'))
+          return
+        }
         redirectToSignIn()
       }
-    }, [redirectToSignIn, shouldRedirect])
+    }, [redirectToSignIn, shouldRedirect, isLoggedIn, isCorrectLevel, router])
 
     const InnerComponent = WrappedComponent as any
 

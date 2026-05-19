@@ -1,7 +1,7 @@
 import jsonLogic from 'json-logic-js'
 import { useMemo } from 'react'
 
-import { useIsLoggedIn, useParams } from 'common'
+import { useAuth, useIsLoggedIn, useParams } from 'common'
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { IS_SAAS } from 'lib/constants'
 import type { Permission } from 'types'
@@ -148,6 +148,7 @@ export function useAsyncCheckPermissions(
   }
 ) {
   const isLoggedIn = useIsLoggedIn()
+  const { isLoading: isAuthLoading } = useAuth()
   const { organizationSlug, projectRef, permissions } = overrides ?? {}
 
   const {
@@ -160,7 +161,7 @@ export function useAsyncCheckPermissions(
 
   const can = useMemo(() => {
     if (!IS_SAAS) return true
-    if (!isLoggedIn) return false
+    if (isAuthLoading || !isLoggedIn) return false
     if (!isPermissionsSuccess || !allPermissions) return false
 
     return doPermissionsCheck(
@@ -172,6 +173,7 @@ export function useAsyncCheckPermissions(
       _projectRef
     )
   }, [
+    isAuthLoading,
     isLoggedIn,
     isPermissionsSuccess,
     allPermissions,
@@ -183,9 +185,9 @@ export function useAsyncCheckPermissions(
   ])
 
   // Derive loading/success consistently from the same branches
-  const isLoading = !IS_SAAS ? false : !isLoggedIn ? true : isPermissionsLoading
+  const isLoading = !IS_SAAS ? false : isAuthLoading || !isLoggedIn ? true : isPermissionsLoading
 
-  const isSuccess = !IS_SAAS ? true : !isLoggedIn ? false : isPermissionsSuccess
+  const isSuccess = !IS_SAAS ? true : isAuthLoading || !isLoggedIn ? false : isPermissionsSuccess
 
   return { isLoading, isSuccess, can }
 }

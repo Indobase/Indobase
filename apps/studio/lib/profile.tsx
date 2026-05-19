@@ -33,7 +33,7 @@ export const ProfileContext = createContext<ProfileContextType>({
 export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
   const user = useUser()
   const isLoggedIn = useIsLoggedIn()
-  const { refreshSession } = useAuth()
+  const { refreshSession, isLoading: isAuthLoading } = useAuth()
   const router = useRouter()
   const signOut = useSignOut()
 
@@ -81,10 +81,12 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
   })
 
   useEffect(() => {
-    if (!isError) return
+    if (isAuthLoading || !isError) return
     // if the user does not yet exist, create a profile for them
     if (error?.message === "User's profile not found") {
-      createProfile()
+      if (!isCreatingProfile) {
+        createProfile()
+      }
       return
     }
 
@@ -100,7 +102,16 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
         await router.push('/sign-in')
       })()
     }
-  }, [error, signOut, router, createProfile, isError, isCreatingProfile, refreshSession])
+  }, [
+    error,
+    signOut,
+    router,
+    createProfile,
+    isError,
+    isCreatingProfile,
+    refreshSession,
+    isAuthLoading,
+  ])
 
   const { isInitialLoading: isLoadingPermissions } = usePermissionsQuery({ enabled: isLoggedIn })
 
