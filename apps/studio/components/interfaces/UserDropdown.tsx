@@ -2,7 +2,8 @@ import { ProfileImage } from 'components/ui/ProfileImage'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { IS_SAAS } from 'lib/constants'
 import { useProfileNameAndPicture } from 'lib/profile'
-import { FlaskConical, Loader2, ScrollText, Settings } from 'lucide-react'
+import { useIsPlatformOperator } from 'hooks/misc/useIsPlatformOperator'
+import { FlaskConical, Loader2, ScrollText, Settings, Shield } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -32,6 +33,7 @@ export function UserDropdown() {
   const { username, avatarUrl, primaryEmail, isLoading } = useProfileNameAndPicture()
 
   const { toggleFeaturePreviewModal } = useFeaturePreviewModal()
+  const { isPlatformOperator } = useIsPlatformOperator()
 
   return (
     <DropdownMenu>
@@ -89,6 +91,14 @@ export function UserDropdown() {
                 Account preferences
               </Link>
             </DropdownMenuItem>
+            {IS_SAAS && isPlatformOperator && (
+              <DropdownMenuItem className="flex gap-2" asChild>
+                <Link href="/platform-admin">
+                  <Shield size={14} strokeWidth={1.5} className="text-foreground-lighter" />
+                  Platform admin
+                </Link>
+              </DropdownMenuItem>
+            )}
             {IS_SAAS && (
               <>
                 <DropdownMenuItem

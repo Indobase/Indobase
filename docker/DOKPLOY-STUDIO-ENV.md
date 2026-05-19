@@ -165,3 +165,15 @@ postgres-meta runs Studio’s SaaS SQL using **`POSTGRES_USER_READ_WRITE`** toge
 ## JWT / anon key
 
 `ANON_KEY` and `SERVICE_ROLE_KEY` must be signed with the same `JWT_SECRET` as GoTrue. If you changed `JWT_SECRET` but kept demo anon/service JWTs, regenerate keys with `docker/utils/generate-keys.sh` and update Kong + Studio env.
+
+## Platform admin (`/platform-admin`)
+
+Cross-tenant operator dashboard (organizations, projects, users, audit logs). Access is **not** org RBAC — allowlist server env only:
+
+```env
+# Comma-separated GoTrue user UUIDs and/or sign-in emails
+PLATFORM_OPERATOR_GOTRUE_IDS=
+PLATFORM_OPERATOR_EMAILS=you@example.com
+```
+
+After setting on the Studio service, redeploy. Operators see **Platform admin** in the user menu (avatar) and can open `https://studio.indobase.in/platform-admin`.
