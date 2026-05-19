@@ -22,6 +22,7 @@ const UNAUTH_ROUTES = [
   '/sign-up',
   '/forgot-password',
   '/reset-password',
+  '/auth/confirm',
 ]
 
 const isUnactionableFetchError = (message: string | undefined) => {

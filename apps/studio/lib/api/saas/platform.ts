@@ -2799,6 +2799,8 @@ services:
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_MAILER_OTP_LENGTH: "6"
+      GOTRUE_MAILER_OTP_EXP: "3600"
       GOTRUE_SMTP_HOST: ${mailer.smtpHost}
       GOTRUE_SMTP_PORT: ${mailer.smtpPort}
       GOTRUE_SMTP_USER: ${mailer.smtpUser}
