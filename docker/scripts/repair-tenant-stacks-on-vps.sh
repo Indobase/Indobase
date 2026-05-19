@@ -295,6 +295,12 @@ PY
   psql_admin "$dbname" "grant references on all tables in schema auth to postgres" || true
   psql_admin "$dbname" "alter default privileges in schema auth grant references on tables to postgres" || true
 
+  psql_admin "$dbname" "grant usage on schema public to anon, authenticated, service_role" || true
+  psql_admin "$dbname" "grant select, insert, update, delete on all tables in schema public to anon, authenticated" || true
+  psql_admin "$dbname" "grant all on all tables in schema public to service_role" || true
+  psql_admin "$dbname" "alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated" || true
+  psql_admin "$dbname" "notify pgrst, 'reload schema'" || true
+
   for ext_sql in \
     'create schema if not exists extensions' \
     'create extension if not exists pg_stat_statements with schema extensions' \

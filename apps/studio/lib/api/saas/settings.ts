@@ -1,6 +1,7 @@
 import { components } from 'api-types'
 import type { JwtPayload } from 'indobase-js'
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL } from 'lib/constants/api'
+import { normalizeProjectApiKey, resolveProjectJwtSecret } from './project-jwt'
 import { decryptString } from './util'
 import { executeQuery } from './query'
 import { ensureSaasTables, getGotrueUserId } from './platform'
@@ -124,9 +125,11 @@ export async function getProjectSettingsForRef({
   if (!row.data?.length) return null
 
   const p = row.data[0]!
-  const serviceKey = p.service_key_enc?.trim() ? decryptString(p.service_key_enc) : p.service_key
-  const anonKey = p.anon_key_enc?.trim() ? decryptString(p.anon_key_enc) : p.anon_key
-  const jwtSecret = p.jwt_secret_enc?.trim() ? decryptString(p.jwt_secret_enc) : process.env.AUTH_JWT_SECRET || ''
+  const jwtSecret = resolveProjectJwtSecret(p.jwt_secret_enc)
+  const serviceKeyRaw = p.service_key_enc?.trim() ? decryptString(p.service_key_enc) : p.service_key
+  const anonKeyRaw = p.anon_key_enc?.trim() ? decryptString(p.anon_key_enc) : p.anon_key
+  const serviceKey = normalizeProjectApiKey(serviceKeyRaw, jwtSecret, 'service_role', p.ref)
+  const anonKey = normalizeProjectApiKey(anonKeyRaw, jwtSecret, 'anon', p.ref)
 
   const tenantDbUrl =
     p.connection_string_enc?.trim()

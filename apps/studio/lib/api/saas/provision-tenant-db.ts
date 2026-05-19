@@ -696,6 +696,13 @@ export async function bootstrapTenantDataPlaneSchemas({
       // Optional: requires read on pg_authid; skip if bootstrap role cannot install Supavisor auth_query support.
     }
 
+    await client.query(`
+      grant usage on schema public to anon, authenticated, service_role;
+      alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
+      alter default privileges in schema public grant all on tables to service_role;
+      alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
+    `)
+
     if (!isSuperuser) {
       await syncTenantAuxRolePasswords({
         host,

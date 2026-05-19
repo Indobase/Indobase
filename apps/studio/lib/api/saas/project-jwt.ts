@@ -40,6 +40,30 @@ export function makeProjectJwt(
   return `${data}.${base64Url(sig)}`
 }
 
+const JWT_HEADER_B64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+
+/**
+ * Repairs legacy/malformed keys (2-part payload.sig without header) and regenerates garbage tokens.
+ */
+export function normalizeProjectApiKey(
+  token: string,
+  jwtSecret: string,
+  role: 'anon' | 'service_role',
+  projectRef: string
+): string {
+  const trimmed = token.trim()
+  const parts = trimmed.split('.')
+  if (parts.length === 3) return trimmed
+  if (parts.length === 2) {
+    return `${JWT_HEADER_B64}.${parts[0]}.${parts[1]}`
+  }
+  return makeProjectJwt(jwtSecret, role, projectRef)
+}
+
+export function isValidProjectApiKey(token: string): boolean {
+  return token.trim().split('.').length === 3
+}
+
 export function resolveProjectJwtSecret(jwtSecretEnc: string | null | undefined): string {
   const enc = jwtSecretEnc?.trim()
   if (enc) {

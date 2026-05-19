@@ -4,6 +4,10 @@ import { constructSaasPgMetaHeaders } from 'lib/api/saas/pg-meta-headers'
 import { provisionDedicatedTenantDatabaseForProject } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'
 import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
+import {
+  refreshTenantPublicApiExposure,
+  sqlLooksLikePublicDdl,
+} from 'lib/api/saas/tenant-postgrest'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
 import { IS_SAAS } from 'lib/constants'
 import { JwtPayload } from 'indobase-js'
@@ -143,8 +147,25 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
     ) {
       resultData = []
     }
+    if (IS_SAAS && ref && sqlLooksLikePublicDdl(query)) {
+      void maybeRefreshTenantPostgrestAfterDdl(ref).catch((e) => {
+        console.warn('[pg-meta/query] post-DDL PostgREST refresh failed for %s: %O', ref, e)
+      })
+    }
     return res.status(200).json(resultData)
   }
+}
+
+async function maybeRefreshTenantPostgrestAfterDdl(ref: string) {
+  const adminPassword = process.env.POSTGRES_PASSWORD?.trim()
+  if (!adminPassword) return
+  const dbName = `tenantdb_${ref.replace(/-/g, '_')}`
+  await refreshTenantPublicApiExposure({
+    host: process.env.POSTGRES_HOST || '127.0.0.1',
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    dbName,
+    adminPassword,
+  })
 }
 
 async function buildPgMetaHeaders(req: NextApiRequest, claims?: JwtPayload) {

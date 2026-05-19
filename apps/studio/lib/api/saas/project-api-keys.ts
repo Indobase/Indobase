@@ -2,7 +2,13 @@ import { createHash } from 'crypto'
 import type { JwtPayload } from 'indobase-js'
 
 import { recordAuditLog } from './audit'
-import { loadProjectJwtSecretEncForMember, makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
+import {
+  isValidProjectApiKey,
+  loadProjectJwtSecretEncForMember,
+  makeProjectJwt,
+  normalizeProjectApiKey,
+  resolveProjectJwtSecret,
+} from './project-jwt'
 import { executeQuery } from './query'
 import { decryptString, encryptString } from './util'
 
@@ -109,6 +115,60 @@ function decryptProjectKey(plain: string, enc: string | null) {
   return plain
 }
 
+function resolveProjectKey(
+  plain: string,
+  enc: string | null,
+  role: 'anon' | 'service_role',
+  projectRef: string,
+  jwtSecret: string
+) {
+  const raw = decryptProjectKey(plain, enc)
+  return normalizeProjectApiKey(raw, jwtSecret, role, projectRef)
+}
+
+async function repairLegacyProjectKeysIfNeeded(opts: {
+  projectRef: string
+  gotrueId: string
+  jwtSecret: string
+  anonPlain: string
+  anonEnc: string | null
+  servicePlain: string
+  serviceEnc: string | null
+}) {
+  const anonRaw = decryptProjectKey(opts.anonPlain, opts.anonEnc)
+  const serviceRaw = decryptProjectKey(opts.servicePlain, opts.serviceEnc)
+  const anon = normalizeProjectApiKey(anonRaw, opts.jwtSecret, 'anon', opts.projectRef)
+  const service = normalizeProjectApiKey(
+    serviceRaw,
+    opts.jwtSecret,
+    'service_role',
+    opts.projectRef
+  )
+
+  if (
+    isValidProjectApiKey(anonRaw) &&
+    isValidProjectApiKey(serviceRaw) &&
+    anon === anonRaw &&
+    service === serviceRaw
+  ) {
+    return
+  }
+
+  await executeQuery({
+    query: `
+      update saas.projects
+      set
+        anon_key = '',
+        service_key = '',
+        anon_key_enc = $2,
+        service_key_enc = $3
+      where ref = $1
+    `,
+    parameters: [opts.projectRef, encryptString(anon), encryptString(service)],
+    actorId: opts.gotrueId,
+  })
+}
+
 /** Issue a JWT that works with PostgREST / GoTrue on the tenant data plane. */
 async function generateProjectApiKey(opts: {
   type: 'publishable' | 'secret'
@@ -175,8 +235,32 @@ export async function listProjectApiKeys({
   await assertProjectMembership(ref, gotrueId)
 
   const project = await loadProjectKeys(ref, gotrueId)
-  const anon = decryptProjectKey(project.anon_key, project.anon_key_enc)
-  const service = decryptProjectKey(project.service_key, project.service_key_enc)
+  const encRow = await loadProjectJwtSecretEncForMember({ projectRef: ref, gotrueId })
+  const jwtSecret = resolveProjectJwtSecret(encRow?.jwtSecretEnc)
+  await repairLegacyProjectKeysIfNeeded({
+    projectRef: ref,
+    gotrueId,
+    jwtSecret,
+    anonPlain: project.anon_key,
+    anonEnc: project.anon_key_enc,
+    servicePlain: project.service_key,
+    serviceEnc: project.service_key_enc,
+  })
+  const refreshed = await loadProjectKeys(ref, gotrueId)
+  const anon = resolveProjectKey(
+    refreshed.anon_key,
+    refreshed.anon_key_enc,
+    'anon',
+    ref,
+    jwtSecret
+  )
+  const service = resolveProjectKey(
+    refreshed.service_key,
+    refreshed.service_key_enc,
+    'service_role',
+    ref,
+    jwtSecret
+  )
 
   const legacy: ApiKeyResponse[] = []
   if (project.legacy_api_keys_enabled) {
