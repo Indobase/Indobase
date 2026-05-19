@@ -9,4 +9,5 @@ export const platformAdminKeys = {
     ['platform-admin', 'users', { search, limit, offset }] as const,
   auditLogs: (limit: number, offset: number) =>
     ['platform-admin', 'audit-logs', { limit, offset }] as const,
+  usage: (days: number) => ['platform-admin', 'usage', { days }] as const,
 }

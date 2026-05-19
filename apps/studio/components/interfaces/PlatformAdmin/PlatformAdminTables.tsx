@@ -26,6 +26,7 @@ import {
 import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
 import { Input } from 'ui-patterns/DataInputs/Input'
 import { Badge } from 'ui'
+import { formatBytes, formatCount } from './formatUsage'
 
 const PAGE_SIZE = 50
 
@@ -66,12 +67,17 @@ export const PlatformAdminOrganizations = () => {
     offset: 0,
   })
 
+  const showUsage = (data ?? []).some((org) => org.requests_30d !== undefined)
+
   return (
     <PageContainer className="py-6 space-y-4">
       <PageHeader>
         <PageHeaderSummary>
           <PageHeaderTitle>Organizations</PageHeaderTitle>
-          <PageHeaderDescription>All organizations on the platform (up to {PAGE_SIZE}).</PageHeaderDescription>
+          <PageHeaderDescription>
+            All organizations on the platform (up to {PAGE_SIZE}
+            {showUsage ? ', sorted by 30d API usage' : ''}).
+          </PageHeaderDescription>
         </PageHeaderSummary>
       </PageHeader>
       <AdminSearchBar placeholder="Search name or slug…" value={search} onChange={setSearch} />
@@ -89,6 +95,12 @@ export const PlatformAdminOrganizations = () => {
                 <TableHead>Plan</TableHead>
                 <TableHead className="text-right">Members</TableHead>
                 <TableHead className="text-right">Projects</TableHead>
+                {showUsage && (
+                  <>
+                    <TableHead className="text-right">Requests (30d)</TableHead>
+                    <TableHead className="text-right">Egress (30d)</TableHead>
+                  </>
+                )}
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -104,6 +116,16 @@ export const PlatformAdminOrganizations = () => {
                   <TableCell>{org.plan}</TableCell>
                   <TableCell className="text-right tabular-nums">{org.member_count}</TableCell>
                   <TableCell className="text-right tabular-nums">{org.project_count}</TableCell>
+                  {showUsage && (
+                    <>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(org.requests_30d ?? 0)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatBytes(org.bytes_sent_30d ?? 0)}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell className="text-foreground-light text-xs whitespace-nowrap">
                     {formatDate(org.created_at)}
                   </TableCell>
@@ -125,12 +147,17 @@ export const PlatformAdminProjects = () => {
     offset: 0,
   })
 
+  const showUsage = (data ?? []).some((p) => p.requests_30d !== undefined)
+
   return (
     <PageContainer className="py-6 space-y-4">
       <PageHeader>
         <PageHeaderSummary>
           <PageHeaderTitle>Projects</PageHeaderTitle>
-          <PageHeaderDescription>All projects (up to {PAGE_SIZE}).</PageHeaderDescription>
+          <PageHeaderDescription>
+            All projects (up to {PAGE_SIZE}
+            {showUsage ? ', sorted by 30d API usage' : ''}).
+          </PageHeaderDescription>
         </PageHeaderSummary>
       </PageHeader>
       <AdminSearchBar placeholder="Search ref, name, or org…" value={search} onChange={setSearch} />
@@ -149,6 +176,12 @@ export const PlatformAdminProjects = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>DB</TableHead>
                 <TableHead>Region</TableHead>
+                {showUsage && (
+                  <>
+                    <TableHead className="text-right">Requests (30d)</TableHead>
+                    <TableHead className="text-right">Egress (30d)</TableHead>
+                  </>
+                )}
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -175,6 +208,16 @@ export const PlatformAdminProjects = () => {
                     {p.has_dedicated_db ? 'Dedicated' : 'Shared'}
                   </TableCell>
                   <TableCell className="text-xs text-foreground-light">{p.region}</TableCell>
+                  {showUsage && (
+                    <>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(p.requests_30d ?? 0)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatBytes(p.bytes_sent_30d ?? 0)}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell className="text-foreground-light text-xs whitespace-nowrap">
                     {formatDate(p.inserted_at)}
                   </TableCell>

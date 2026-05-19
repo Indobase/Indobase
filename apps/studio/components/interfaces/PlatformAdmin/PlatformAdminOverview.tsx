@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from 'components/ui/DataTable/Table'
+import { formatBytes, formatCount } from './formatUsage'
 
 type HealthPayload = {
   status: string
@@ -49,6 +50,20 @@ export const PlatformAdminOverview = () => {
     { label: 'New users (7d)', value: data?.recent_profiles_7d ?? 0 },
   ]
 
+  const usage = data?.usage
+  const usageStats =
+    usage?.metering_enabled && usage
+      ? [
+          { label: 'API requests (30d)', value: formatCount(usage.requests_30d) },
+          { label: 'Egress (30d)', value: formatBytes(usage.bytes_sent_30d) },
+          { label: 'Errors (30d)', value: formatCount(usage.errors_30d) },
+          {
+            label: 'Active projects (30d)',
+            value: formatCount(usage.active_projects_30d),
+          },
+        ]
+      : []
+
   return (
     <PageContainer className="py-6 space-y-6">
       <PageHeader>
@@ -72,6 +87,26 @@ export const PlatformAdminOverview = () => {
           </Card>
         ))}
       </div>
+
+      {usageStats.length > 0 && (
+        <>
+          <h3 className="text-sm font-medium text-foreground-light">Usage (last 30 days)</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {usageStats.map((s) => (
+              <Card key={s.label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-normal text-foreground-light">
+                    {s.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-medium tabular-nums">{s.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

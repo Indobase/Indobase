@@ -31,6 +31,7 @@ const PlatformAdminLayout = ({ children, title }: PropsWithChildren<PlatformAdmi
     { key: 'overview', label: 'Overview', href: '/platform-admin' },
     { key: 'organizations', label: 'Organizations', href: '/platform-admin/organizations' },
     { key: 'projects', label: 'Projects', href: '/platform-admin/projects' },
+    { key: 'usage', label: 'Usage', href: '/platform-admin/usage' },
     { key: 'users', label: 'Users', href: '/platform-admin/users' },
     { key: 'audit', label: 'Audit logs', href: '/platform-admin/audit' },
   ]

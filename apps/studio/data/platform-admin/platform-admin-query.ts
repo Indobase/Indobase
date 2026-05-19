@@ -5,6 +5,7 @@ import type {
   PlatformAdminOrganization,
   PlatformAdminOverview,
   PlatformAdminProject,
+  PlatformAdminUsageReport,
   PlatformAdminUser,
 } from 'lib/api/saas/platform-admin'
 import { fetchGet } from 'data/fetchers'
@@ -84,6 +85,13 @@ export async function getPlatformAdminAuditLogs(
   return adminFetch<PlatformAdminAuditLog[]>(adminUrl('/audit-logs', { limit, offset }), signal)
 }
 
+export async function getPlatformAdminUsageReportData(
+  { days = 30 }: { days?: number },
+  signal?: AbortSignal
+) {
+  return adminFetch<PlatformAdminUsageReport>(adminUrl('/usage', { days }), signal)
+}
+
 export const usePlatformOperatorQuery = (
   options: UseCustomQueryOptions<{ is_platform_operator: boolean }> = {}
 ) =>
@@ -152,5 +160,15 @@ export const usePlatformAdminAuditLogsQuery = (
   useQuery({
     queryKey: platformAdminKeys.auditLogs(limit, offset),
     queryFn: ({ signal }) => getPlatformAdminAuditLogs({ limit, offset }, signal),
+    ...options,
+  })
+
+export const usePlatformAdminUsageQuery = (
+  { days = 30 }: { days?: number } = {},
+  options: UseCustomQueryOptions<PlatformAdminUsageReport> = {}
+) =>
+  useQuery({
+    queryKey: platformAdminKeys.usage(days ?? 30),
+    queryFn: ({ signal }) => getPlatformAdminUsageReportData({ days }, signal),
     ...options,
   })

@@ -32,3 +32,9 @@ export function parsePagination(req: NextApiRequest) {
   const search = typeof req.query.search === 'string' ? req.query.search : undefined
   return { limit, offset, search }
 }
+
+export function parseUsageDays(req: NextApiRequest, defaultDays = 30) {
+  const raw = typeof req.query.days === 'string' ? req.query.days : String(defaultDays)
+  const days = parseInt(raw, 10)
+  return Math.min(Math.max(Number.isFinite(days) ? days : defaultDays, 1), 90)
+}
