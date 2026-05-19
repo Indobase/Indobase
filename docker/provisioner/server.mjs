@@ -238,17 +238,23 @@ const server = http.createServer(async (req, res) => {
     const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
 
     fs.writeFileSync(composePath, dockerComposeYml, 'utf8')
-    fs.writeFileSync(traefikPath, traefikYml, 'utf8')
 
     await seedTenantFunctionsMain(ref)
 
     if (apply) {
       await runCompose(composePath)
-      // Always normalize Traefik (stripPrefix + ports from docker ps) so old Studio builds cannot regress routing.
+      // Always write canonical Traefik (stripPrefix + live ports). Never leave Studio YAML on disk without normalize.
       const normalized = fixTenantTraefikForRef(ref, traefikDir)
       if (!normalized.ok) {
-        console.warn('[provisioner] traefik normalize skipped for %s: %s', ref, normalized.reason)
+        console.warn(
+          '[provisioner] traefik normalize failed for %s (%s); writing Studio fallback',
+          ref,
+          normalized.reason
+        )
+        fs.writeFileSync(traefikPath, traefikYml, 'utf8')
       }
+    } else {
+      fs.writeFileSync(traefikPath, traefikYml, 'utf8')
     }
 
     return json(res, 200, {

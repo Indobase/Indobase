@@ -447,6 +447,62 @@ export async function grantTenantAuxDatabasePrivileges({
   }
 }
 
+/**
+ * Lets the dashboard `postgres` role create FKs to `auth.users` in the SQL Editor.
+ */
+export async function grantTenantPostgresAuthReferences({
+  host,
+  port,
+  dbName,
+  auxiliaryRolePassword,
+  tenantRolePassword,
+}: {
+  host: string
+  port: number
+  dbName: string
+  auxiliaryRolePassword: string
+  tenantRolePassword?: string
+}): Promise<void> {
+  const auxPass = auxiliaryRolePassword.trim()
+  const candidates = [
+    auxPass,
+    process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim(),
+    tenantRolePassword?.trim(),
+    process.env.POSTGRES_PASSWORD?.trim(),
+  ].filter((p): p is string => Boolean(p?.length))
+
+  for (const adminPassword of [...new Set(candidates)]) {
+    const client = new Client({
+      connectionString: `postgresql://${encodeURIComponent('supabase_admin')}:${encodeURIComponent(
+        adminPassword
+      )}@${host}:${port}/${dbName}`,
+    })
+    try {
+      await client.connect()
+      const postgresExists = await client.query<{ exists: boolean }>(
+        `select exists(select 1 from pg_roles where rolname = 'postgres')`
+      )
+      if (!postgresExists.rows[0]?.exists) return
+
+      const authUsersExists = await client.query<{ exists: boolean }>(
+        `select to_regclass('auth.users') is not null as exists`
+      )
+      if (!authUsersExists.rows[0]?.exists) return
+
+      await client.query('grant usage on schema auth to postgres')
+      await client.query('grant references on all tables in schema auth to postgres')
+      await client.query(
+        'alter default privileges in schema auth grant references on tables to postgres'
+      )
+      return
+    } catch {
+      // try next candidate
+    } finally {
+      await client.end().catch(() => undefined)
+    }
+  }
+}
+
 export async function grantTenantRoleAuthRead({
   host,
   port,

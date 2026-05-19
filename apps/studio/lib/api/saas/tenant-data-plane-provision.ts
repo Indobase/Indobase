@@ -137,7 +137,44 @@ export async function teardownTenantDataPlaneStack({
     )
   }
 
+  if (apply) {
+    await repairTenantTraefikRouting(ref).catch((e) => {
+      console.warn('[tenant-data-plane-provision] traefik repair after provision failed for %s: %O', ref, e)
+    })
+  }
+
   return { ok: true, applied: apply, provisioner_status: resp.status }
+}
+
+/**
+ * Re-write tenant Traefik dynamic config from live docker ports (stripPrefix + correct upstream).
+ * Idempotent; safe to call after every provision or on a schedule.
+ */
+export async function repairTenantTraefikRouting(
+  ref: string
+): Promise<{ ok: boolean; provisioner_status: number }> {
+  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
+  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
+  if (!provisionerUrl || !provisionerToken) {
+    return { ok: false, provisioner_status: 0 }
+  }
+
+  const resp = await fetch(`${provisionerUrl}/repair-traefik`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ project_ref: ref }),
+  })
+
+  if (!resp.ok) {
+    const text = await resp.text()
+    throw new Error(`Traefik repair failed (${resp.status}): ${text.slice(0, 200)}`)
+  }
+
+  const parsed = (await resp.json().catch(() => ({}))) as { ok?: boolean }
+  return { ok: Boolean(parsed.ok), provisioner_status: resp.status }
 }
 
 function claimsFromActorId(actorId: string): Claims {

@@ -8,7 +8,7 @@ const path = require('node:path')
 const traefikDir = process.argv[2] || '/etc/dokploy/traefik/dynamic'
 
 ;(async () => {
-  const mod = await import(path.join(__dirname, 'provisioner/tenant-traefik.mjs'))
+  const mod = await import(path.join(__dirname, '../provisioner/tenant-traefik.mjs'))
   const results = mod.fixAllTenantTraefikFromDocker(traefikDir)
   for (const r of results) {
     if (r.ok) console.log('fixed', r.ref, r.ports)

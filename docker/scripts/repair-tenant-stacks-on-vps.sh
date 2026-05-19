@@ -291,6 +291,10 @@ PY
   psql_admin "$dbname" "grant select on all tables in schema auth to \"$tenant_role\""
   psql_admin "$dbname" "alter default privileges in schema auth grant select on tables to \"$tenant_role\""
 
+  psql_admin "$dbname" "grant usage on schema auth to postgres" || true
+  psql_admin "$dbname" "grant references on all tables in schema auth to postgres" || true
+  psql_admin "$dbname" "alter default privileges in schema auth grant references on tables to postgres" || true
+
   for ext_sql in \
     'create schema if not exists extensions' \
     'create extension if not exists pg_stat_statements with schema extensions' \
@@ -308,6 +312,14 @@ for entry in "$TENANTS_ROOT"/*; do
   [[ "$ref" == *.* ]] && continue
   repair_ref "$ref" || true
 done
+
+TRAEFIK_DYNAMIC_DIR="${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}"
+REPO_ROOT="${REPO_ROOT:-/etc/dokploy/compose/indobase-backend-bmqhan/code}"
+if [[ -f "$REPO_ROOT/docker/scripts/fix-tenant-traefik-from-docker.cjs" ]] && command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "=== Normalize Traefik (stripPrefix + ports) ==="
+  node "$REPO_ROOT/docker/scripts/fix-tenant-traefik-from-docker.cjs" "$TRAEFIK_DYNAMIC_DIR" || true
+fi
 
 echo ""
 echo "=== Summary ==="
