@@ -61,14 +61,26 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       })
     })
 
-    gotrueClient.initialize().then(({ error }) => {
-      if (!mounted) return
-      setState((prev) => ({
-        ...prev,
-        error: error ?? prev.error,
-        isLoading: false,
-      }))
-    })
+    gotrueClient
+      .initialize()
+      .then(async ({ error }) => {
+        if (!mounted) return
+        const { data: { session } } = await gotrueClient.getSession()
+        if (!mounted) return
+        setState((prev) => ({
+          session: session ?? prev.session,
+          error: error ?? prev.error,
+          isLoading: false,
+        }))
+      })
+      .catch((error) => {
+        if (!mounted) return
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error : prev.error,
+          isLoading: false,
+        }))
+      })
 
     return () => {
       mounted = false
