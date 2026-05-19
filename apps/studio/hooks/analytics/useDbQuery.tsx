@@ -46,6 +46,7 @@ const useDbQuery = ({
   const identifier = state.selectedDatabaseId
 
   const resolvedSql = typeof sql === 'function' ? sql([]) : sql
+  const connectionStringForQuery = connectionString || project?.connectionString
 
   const {
     data,
@@ -66,13 +67,13 @@ const useDbQuery = ({
       return executeSql(
         {
           projectRef: project?.ref,
-          connectionString: connectionString || project?.connectionString,
+          connectionString: connectionStringForQuery,
           sql: resolvedSql,
         },
         signal
       ).then((res) => res.result) as Promise<MetaQueryResponse>
     },
-    enabled: Boolean(resolvedSql),
+    enabled: Boolean(resolvedSql && project?.ref && connectionStringForQuery),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })

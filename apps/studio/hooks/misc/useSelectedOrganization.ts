@@ -13,7 +13,12 @@ export function useSelectedOrganizationQuery({ enabled = true } = {}) {
     select: (data) => {
       return data.find((org) => {
         if (slug !== undefined) return org.slug === slug
-        if (selectedProject !== undefined) return org.id === selectedProject.organization_id
+        if (selectedProject !== undefined) {
+          const projectOrgSlug = (selectedProject as { organization_slug?: string })
+            .organization_slug
+          if (projectOrgSlug) return org.slug === projectOrgSlug
+          return org.id === selectedProject.organization_id
+        }
         return undefined
       })
     },

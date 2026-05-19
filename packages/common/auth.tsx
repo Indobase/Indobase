@@ -61,11 +61,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       })
     })
 
-    gotrueClient.initialize().then(({ data: { session }, error }) => {
+    gotrueClient.initialize().then(({ error }) => {
       if (!mounted) return
       setState((prev) => ({
-        session: session ?? prev.session,
-        error: error ?? (session !== null ? null : prev.error),
+        ...prev,
+        error: error ?? prev.error,
         isLoading: false,
       }))
     })

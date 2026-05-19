@@ -119,7 +119,12 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
     }, [dismissBanner])
 
     const projectName = selectedProject?.name
-    const organizationName = selectedOrganization?.name
+    const organizationName =
+      selectedOrganization?.name ??
+      (selectedProject as { organization_slug?: string } | undefined)?.organization_slug
+
+    const formatTitle = (...parts: (string | undefined)[]) =>
+      parts.filter((part): part is string => Boolean(part)).join(' | ')
 
     const isPaused = selectedProject?.status === PROJECT_STATUS.INACTIVE
 
@@ -135,13 +140,13 @@ export const ProjectLayout = forwardRef<HTMLDivElement, PropsWithChildren<Projec
         <Head>
           <title>
             {title
-              ? `${title} | ${titleSuffix}`
+              ? formatTitle(title, titleSuffix)
               : selectedTable
-                ? `${selectedTable} | ${projectName} | ${organizationName} | ${titleSuffix}`
+                ? formatTitle(selectedTable, projectName, organizationName, titleSuffix)
                 : projectName
-                  ? `${projectName} | ${organizationName} | ${titleSuffix}`
+                  ? formatTitle(projectName, organizationName, titleSuffix)
                   : organizationName
-                    ? `${organizationName} | ${titleSuffix}`
+                    ? formatTitle(organizationName, titleSuffix)
                     : titleSuffix}
           </title>
           <meta name="description" content="Indobase Studio" />

@@ -2126,6 +2126,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     is_physical_backups_enabled: false,
     name: p.name,
     organization_id: p.organization_id,
+    organization_slug: p.organization_slug,
     parent_project_ref: p.parent_project_ref ?? undefined,
     ref: p.ref,
     region: p.region,

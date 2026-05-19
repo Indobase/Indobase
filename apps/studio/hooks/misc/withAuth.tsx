@@ -32,12 +32,17 @@ export function withAuth<T>(
     const timeoutIdRef = useRef<NodeJS.Timeout | null>(null)
     const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] = useState(false)
 
+    const isLoggedIn = Boolean(session)
+    const isAuthReady = !isLoading
+
     const {
       isPending: isAALLoading,
       data: aalData,
       isError: isErrorAAL,
       error: errorAAL,
-    } = useAuthenticatorAssuranceLevelQuery()
+    } = useAuthenticatorAssuranceLevelQuery({
+      enabled: isAuthReady && isLoggedIn && options.useHighestAAL,
+    })
 
     useEffect(() => {
       if (isErrorAAL) {
@@ -57,8 +62,8 @@ export function withAuth<T>(
       }
     }, [isErrorPermissions, errorPermissions])
 
-    const isLoggedIn = Boolean(session)
-    const isFinishedLoading = !isLoading && !isAALLoading
+    const isFinishedLoading =
+      isAuthReady && (!options.useHighestAAL || !isLoggedIn || !isAALLoading)
 
     const redirectToSignIn = useCallback(() => {
       let pathname = location.pathname
@@ -79,7 +84,8 @@ export function withAuth<T>(
     }, [router])
 
     useEffect(() => {
-      if (!isFinishedLoading) {
+      // Only warn when GoTrue session restore stalls — not when MFA/AAL is slow.
+      if (!isAuthReady) {
         timeoutIdRef.current = setTimeout(() => {
           setIsSessionTimeoutModalOpen(true)
         }, MAX_TIMEOUT)
@@ -88,6 +94,7 @@ export function withAuth<T>(
           clearTimeout(timeoutIdRef.current)
           timeoutIdRef.current = null
         }
+        setIsSessionTimeoutModalOpen(false)
       }
 
       return () => {
@@ -95,7 +102,7 @@ export function withAuth<T>(
           clearTimeout(timeoutIdRef.current)
         }
       }
-    }, [isFinishedLoading, router, redirectToSignIn])
+    }, [isAuthReady, router, redirectToSignIn])
 
     const isCorrectLevel = options.useHighestAAL
       ? aalData?.currentLevel === aalData?.nextLevel
