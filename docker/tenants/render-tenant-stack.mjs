@@ -60,10 +60,24 @@ function parseEnvInt(name, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
+/** Non-negative int; empty env → fallback (used for PGRST_DB_MAX_ROWS where 0 is valid). */
+function parseEnvNonNegInt(name, fallback) {
+  const raw = process.env[name]
+  if (raw === undefined || String(raw).trim() === '') return fallback
+  const n = parseInt(String(raw).trim(), 10)
+  return Number.isFinite(n) && n >= 0 ? n : fallback
+}
+
 const storageFileLimit = parseEnvInt('SAAS_TENANT_STORAGE_FILE_SIZE_LIMIT_BYTES', 5368709120)
 const rtNofile = parseEnvInt('SAAS_TENANT_REALTIME_RLIMIT_NOFILE', 50000)
 const rtDbPool = parseEnvInt('SAAS_TENANT_REALTIME_DB_POOL_SIZE', 24)
 const edgeMem = (process.env.SAAS_TENANT_EDGE_RUNTIME_MEM_LIMIT || '512m').trim()
+const pgrstMemRaw = (process.env.SAAS_TENANT_POSTGREST_MEM_LIMIT || '512m').trim()
+const pgrstMem = /^\d+([mMgG])$/.test(pgrstMemRaw) ? pgrstMemRaw : '512m'
+const pgrstPool = parseEnvInt('SAAS_TENANT_POSTGREST_DB_POOL', 40)
+const pgrstPoolAcquire = parseEnvInt('SAAS_TENANT_POSTGREST_POOL_ACQUISITION_TIMEOUT', 15)
+const pgrstPoolIdle = parseEnvInt('SAAS_TENANT_POSTGREST_POOL_MAX_IDLETIME', 120)
+const pgrstMaxRows = parseEnvNonNegInt('SAAS_TENANT_POSTGREST_DB_MAX_ROWS', 0)
 
 function safeRef(ref) {
   if (!/^[a-z0-9-]+$/i.test(ref)) {
@@ -102,6 +116,7 @@ services:
   tenant-rest:
     image: postgrest/postgrest:v14.5
     restart: unless-stopped
+    mem_limit: ${pgrstMem}
     depends_on:
       - tenant-db
     environment:
@@ -109,6 +124,10 @@ services:
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${jwtSecret}
+      PGRST_DB_POOL: "${pgrstPool}"
+      PGRST_DB_POOL_ACQUISITION_TIMEOUT: "${pgrstPoolAcquire}"
+      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"
+      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"
     ports:
       - "127.0.0.1:${ports.rest}:3000"
 

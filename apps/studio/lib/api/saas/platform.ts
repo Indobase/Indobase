@@ -10,6 +10,11 @@ import {
   tenantEdgeRuntimeMemLimit,
   tenantImgproxyDownloadBufferBytes,
   tenantImgproxyDownloadTimeoutSeconds,
+  tenantPostgrestDbMaxRows,
+  tenantPostgrestDbPool,
+  tenantPostgrestMemLimit,
+  tenantPostgrestPoolAcquisitionTimeout,
+  tenantPostgrestPoolMaxIdletime,
   tenantRealtimeDbPoolSize,
   tenantRealtimeRlimitNofile,
   tenantStorageFileSizeLimitBytes,
@@ -2675,6 +2680,11 @@ function buildSlimTenantDockerCompose(opts: {
     siteUrl: opts.siteUrl,
   })
   const edgeMem = tenantEdgeRuntimeMemLimit()
+  const pgrstMem = tenantPostgrestMemLimit()
+  const pgrstPool = tenantPostgrestDbPool()
+  const pgrstPoolAcquire = tenantPostgrestPoolAcquisitionTimeout()
+  const pgrstPoolIdle = tenantPostgrestPoolMaxIdletime()
+  const pgrstMaxRows = tenantPostgrestDbMaxRows()
   const rtNofile = tenantRealtimeRlimitNofile()
   const rtDbPool = tenantRealtimeDbPoolSize()
   const storageFileLimit = tenantStorageFileSizeLimitBytes()
@@ -2779,6 +2789,7 @@ services:
   tenant-rest:
     image: postgrest/postgrest:v14.5
     restart: unless-stopped
+    mem_limit: ${pgrstMem}
     networks:
       - tenant_data_plane
     environment:
@@ -2786,6 +2797,10 @@ services:
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${jwt}
+      PGRST_DB_POOL: "${pgrstPool}"
+      PGRST_DB_POOL_ACQUISITION_TIMEOUT: "${pgrstPoolAcquire}"
+      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"
+      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"
     ports:
       - "${opts.ports.rest}:3000"
 
