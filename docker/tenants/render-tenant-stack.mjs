@@ -53,6 +53,18 @@ const ports = {
   functions: base + 5,
 }
 
+function parseEnvInt(name, fallback) {
+  const raw = process.env[name]
+  if (!raw || String(raw).trim() === '') return fallback
+  const n = parseInt(String(raw).trim(), 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+const storageFileLimit = parseEnvInt('SAAS_TENANT_STORAGE_FILE_SIZE_LIMIT_BYTES', 5368709120)
+const rtNofile = parseEnvInt('SAAS_TENANT_REALTIME_RLIMIT_NOFILE', 50000)
+const rtDbPool = parseEnvInt('SAAS_TENANT_REALTIME_DB_POOL_SIZE', 24)
+const edgeMem = (process.env.SAAS_TENANT_EDGE_RUNTIME_MEM_LIMIT || '512m').trim()
+
 function safeRef(ref) {
   if (!/^[a-z0-9-]+$/i.test(ref)) {
     console.error('PROJECT_REF must match /^[a-z0-9-]+$/i')
@@ -156,7 +168,7 @@ services:
       PGRST_JWT_SECRET: ${jwtSecret}
       DATABASE_URL: ${tenantDbUrl}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
-      FILE_SIZE_LIMIT: "5368709120"
+      FILE_SIZE_LIMIT: "${storageFileLimit}"
       STORAGE_BACKEND: file
       GLOBAL_S3_BUCKET: tenant-${projectRef}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -186,6 +198,8 @@ services:
       DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
       JWT_SECRET: ${jwtSecret}
       SECURE_CHANNELS: "true"
+      RLIMIT_NOFILE: "${rtNofile}"
+      DB_POOL_SIZE: "${rtDbPool}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -194,6 +208,7 @@ services:
   tenant-functions:
     image: supabase/edge-runtime:v1.67.1
     restart: unless-stopped
+    mem_limit: ${edgeMem}
     environment:
       SUPABASE_URL: https://${projectRef}.${publicDomain}
       SUPABASE_ANON_KEY: ${anonKey}

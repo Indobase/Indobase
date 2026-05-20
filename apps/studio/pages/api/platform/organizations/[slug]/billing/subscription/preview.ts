@@ -2,7 +2,7 @@ import type { JwtPayload } from 'indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { INDOBASE_PLAN_DISPLAY_NAMES, INDOBASE_PLAN_PRICES_INR } from 'lib/api/saas/indobase-billing-plans'
+import { INDOBASE_PLAN_DISPLAY_NAMES, resolveIndobasePlanPriceInr } from 'lib/api/saas/indobase-billing-plans'
 import { getOrganizationBillingView } from 'lib/api/saas/platform'
 import { tierToPlanId } from 'lib/api/saas/razorpay-billing'
 import type { PlanId } from 'data/subscriptions/types'
@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
   }
 
   const targetPlan = tierToPlanId(tier) as PlanId
-  const amount = INDOBASE_PLAN_PRICES_INR[targetPlan]
+  const amount = resolveIndobasePlanPriceInr(targetPlan)
 
   return res.status(200).json({
     plan: {

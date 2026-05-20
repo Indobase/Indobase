@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 import type { PlanId } from 'data/subscriptions/types'
 
-import { INDOBASE_BILLING_CURRENCY, INDOBASE_PLAN_PRICES_INR } from './indobase-billing-plans'
+import { INDOBASE_BILLING_CURRENCY, resolveIndobasePlanPriceInr } from './indobase-billing-plans'
 import { executeQuery } from './query'
 
 const RAZORPAY_API = 'https://api.razorpay.com/v1'
@@ -75,7 +75,7 @@ async function ensureRazorpayPlanId(planId: PlanId): Promise<string> {
   const cached = planIdCache.get(planId)
   if (cached) return cached
 
-  const amountInr = INDOBASE_PLAN_PRICES_INR[planId]
+  const amountInr = resolveIndobasePlanPriceInr(planId)
   if (amountInr == null || amountInr <= 0) {
     throw new Error(`No INR price configured for plan ${planId}`)
   }

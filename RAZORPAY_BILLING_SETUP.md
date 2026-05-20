@@ -28,7 +28,9 @@ RAZORPAY_PLAN_ID_PRO=plan_xxxx
 RAZORPAY_PLAN_ID_TEAM=plan_xxxx
 ```
 
-If omitted, Studio creates plans automatically from `INDOBASE_PLAN_PRICES_INR` (₹2499 Pro, ₹49999 Business).
+If omitted, Studio creates plans automatically from **effective** INR prices (`resolveIndobasePlanPriceInr`: defaults ₹2499 Pro, ₹49999 Business, overridable via `INDOBASE_PRO_PLAN_PRICE_INR` / `INDOBASE_TEAM_PLAN_PRICE_INR` on Studio).
+
+See `docker/docs/INDOBASE_PRICING_MODEL.md`.
 
 ## 2. Studio environment
 

@@ -7,6 +7,14 @@ import { makeRandomString } from 'lib/helpers'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
 import { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
 import {
+  tenantEdgeRuntimeMemLimit,
+  tenantImgproxyDownloadBufferBytes,
+  tenantImgproxyDownloadTimeoutSeconds,
+  tenantRealtimeDbPoolSize,
+  tenantRealtimeRlimitNofile,
+  tenantStorageFileSizeLimitBytes,
+} from './tenant-data-plane-tuning'
+import {
   bootstrapMinimalSupabaseRoles,
   bootstrapTenantDatabaseExtensions,
   bootstrapTenantDataPlaneSchemas,
@@ -2666,6 +2674,15 @@ function buildSlimTenantDockerCompose(opts: {
     apiExternalUrl: opts.apiExternalUrl,
     siteUrl: opts.siteUrl,
   })
+  const edgeMem = tenantEdgeRuntimeMemLimit()
+  const rtNofile = tenantRealtimeRlimitNofile()
+  const rtDbPool = tenantRealtimeDbPoolSize()
+  const storageFileLimit = tenantStorageFileSizeLimitBytes()
+  const imgproxyBuf = tenantImgproxyDownloadBufferBytes()
+  const imgproxyDlTimeout = tenantImgproxyDownloadTimeoutSeconds()
+  const poolerMaxClientConn = String(
+    Math.max(50, parseInt(process.env.SAAS_TENANT_POOLER_MAX_CLIENT_CONN?.trim() || '400', 10) || 400)
+  )
   const net = (process.env.SAAS_DOCKER_NETWORK_NAME || 'indobase_default').trim()
   const functionsHostPath = (
     process.env.SAAS_TENANT_FUNCTIONS_HOST_PATH || process.env.INDOBASE_FUNCTIONS_DIR || ''
@@ -2724,7 +2741,7 @@ function buildSlimTenantDockerCompose(opts: {
       DB_POOL_SIZE: "5"
       POOLER_TENANT_ID: ${composeYamlSingleQuoted(opts.ref)}
       POOLER_DEFAULT_POOL_SIZE: "15"
-      POOLER_MAX_CLIENT_CONN: "200"
+      POOLER_MAX_CLIENT_CONN: "${poolerMaxClientConn}"
       POOLER_POOL_MODE: transaction
       TENANT_POOLER_AUX_DB_PASSWORD: ${composeYamlSingleQuoted(pool.auxDbPassword)}
     configs:
@@ -2823,6 +2840,8 @@ services:
       IMGPROXY_USE_ETAG: "true"
       IMGPROXY_ENABLE_WEBP_DETECTION: "true"
       IMGPROXY_MAX_SRC_RESOLUTION: "16.8"
+      IMGPROXY_DOWNLOAD_BUFFER_SIZE: "${imgproxyBuf}"
+      IMGPROXY_READ_REQUEST_TIMEOUT: "${imgproxyDlTimeout}"
     expose:
       - "5001"
 
@@ -2843,7 +2862,7 @@ services:
       PGRST_JWT_SECRET: ${jwt}
       DATABASE_URL: ${storageUri}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
-      FILE_SIZE_LIMIT: "5368709120"
+      FILE_SIZE_LIMIT: "${storageFileLimit}"
       STORAGE_BACKEND: file
       GLOBAL_S3_BUCKET: ${bucket}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -2881,11 +2900,12 @@ services:
       SECRET_KEY_BASE: ${rtSkb}
       ERL_AFLAGS: -proto_dist inet_tcp
       DNS_NODES: "''"
-      RLIMIT_NOFILE: "10000"
+      RLIMIT_NOFILE: "${rtNofile}"
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
+      DB_POOL_SIZE: "${rtDbPool}"
     ports:
       - "${opts.ports.realtime}:4000"
     healthcheck:
@@ -2898,6 +2918,7 @@ services:
   tenant-functions:
     image: supabase/edge-runtime:v1.67.1
     restart: unless-stopped
+    mem_limit: ${edgeMem}
     depends_on:
       tenant-rest:
         condition: service_started

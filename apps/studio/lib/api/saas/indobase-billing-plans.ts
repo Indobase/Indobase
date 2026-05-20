@@ -36,13 +36,27 @@ export const INDOBASE_PLAN_DISPLAY_NAMES: Record<PlanId, string> = {
   platform: 'Platform',
 }
 
-/** Monthly prices in INR (paise not used — whole rupees). */
+/** Monthly prices in INR (paise not used — whole rupees) — defaults before env overrides. */
 export const INDOBASE_PLAN_PRICES_INR: Record<PlanId, number | null> = {
   free: 0,
   pro: 2499,
   team: 49999,
   enterprise: null,
   platform: null,
+}
+
+/**
+ * Effective monthly INR for a plan. Operators can set `INDOBASE_<PLAN>_PLAN_PRICE_INR`
+ * (e.g. `INDOBASE_TEAM_PLAN_PRICE_INR=17999`) to close mid-market gaps without redeploying code.
+ */
+export function resolveIndobasePlanPriceInr(planId: PlanId): number | null {
+  const base = INDOBASE_PLAN_PRICES_INR[planId]
+  const envKey = `INDOBASE_${planId.toUpperCase()}_PLAN_PRICE_INR`
+  const raw = process.env[envKey]?.trim()
+  if (raw === undefined || raw === '') return base
+  const n = parseInt(raw, 10)
+  if (!Number.isFinite(n) || n < 0) return base
+  return n
 }
 
 export type IndobasePublicPlan = {
@@ -83,6 +97,7 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
         '5 GB egress',
         '5 GB cached egress',
         '1 GB file storage',
+        'Multiple projects per organization (fair-use)',
         'Community support',
       ],
       limits: {
@@ -106,8 +121,8 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       id: 'pro',
       name: 'Pro',
       display_name: 'Pro',
-      monthly_price: isInr ? 2499 : 25,
-      annual_price: isInr ? 24990 : 240,
+      monthly_price: isInr ? resolveIndobasePlanPriceInr('pro') ?? 2499 : 25,
+      annual_price: isInr ? (resolveIndobasePlanPriceInr('pro') ?? 2499) * 10 : 240,
       currency,
       description: 'For growing applications and startups',
       features: [
@@ -116,6 +131,7 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
         '250 GB egress',
         '250 GB cached egress',
         '100 GB file storage',
+        'Multiple projects per organization (no per-project platform fee)',
         'Email support',
         'Daily backups stored for 7 days',
         '7-day log retention',
@@ -125,7 +141,7 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
         auth_maus: 100000,
         storage_size: 107374182400,
         functions_invocations: 2000000,
-        realtime_connections: 500,
+        realtime_connections: 2000,
         realtime_messages: 5000000,
       },
       overage_rates: {
@@ -136,14 +152,19 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       },
       popular: false,
       available: true,
-      savings: isInr ? 'Save ₹4,998 with annual billing' : 'Save $60 with annual billing',
+      savings: (() => {
+        if (!isInr) return 'Save $60 with annual billing'
+        const m = resolveIndobasePlanPriceInr('pro') ?? 2499
+        const save = m * 12 - m * 10
+        return `Save ₹${save.toLocaleString('en-IN')} with annual billing`
+      })(),
     },
     {
       id: 'team',
       name: 'Business',
       display_name: 'Business',
-      monthly_price: isInr ? 49999 : 599,
-      annual_price: isInr ? 479990 : 5750,
+      monthly_price: isInr ? resolveIndobasePlanPriceInr('team') ?? 49999 : 599,
+      annual_price: isInr ? Math.round((resolveIndobasePlanPriceInr('team') ?? 49999) * 9.6) : 5750,
       currency,
       description: 'For scaling businesses with advanced needs',
       features: [
@@ -161,8 +182,8 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
         auth_maus: 100000,
         storage_size: 107374182400,
         functions_invocations: 2000000,
-        realtime_connections: 500,
-        realtime_messages: 5000000,
+        realtime_connections: 10000,
+        realtime_messages: 20000000,
       },
       overage_rates: {
         database_size: isInr ? 0.000010417 : 0.000000125,
@@ -172,7 +193,13 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       },
       popular: true,
       available: true,
-      savings: isInr ? 'Save ₹119,998 with annual billing' : 'Save $1,438 with annual billing',
+      savings: (() => {
+        if (!isInr) return 'Save $1,438 with annual billing'
+        const m = resolveIndobasePlanPriceInr('team') ?? 49999
+        const annual = Math.round(m * 9.6)
+        const save = m * 12 - annual
+        return `Save ₹${save.toLocaleString('en-IN')} with annual billing`
+      })(),
     },
     {
       id: 'enterprise',
@@ -222,7 +249,7 @@ export function getIndobaseOrgPlansResponse(currentPlanId: PlanId) {
     plans: selectable.map((id) => ({
       id,
       name: INDOBASE_PLAN_DISPLAY_NAMES[id],
-      price: INDOBASE_PLAN_PRICES_INR[id] ?? 0,
+      price: resolveIndobasePlanPriceInr(id) ?? 0,
       is_current: id === currentPlanId,
       change_type: getPlanChangeType(currentPlanId, id),
     })),
