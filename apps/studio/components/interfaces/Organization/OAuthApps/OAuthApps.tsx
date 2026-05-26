@@ -1,5 +1,6 @@
 import { PermissionAction } from '@supabase/shared-types/out/constants'
 import { Check, X } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 import { useParams } from 'common'
@@ -12,9 +13,12 @@ import NoPermission from 'components/ui/NoPermission'
 import { AuthorizedApp, useAuthorizedAppsQuery } from 'data/oauth/authorized-apps-query'
 import { OAuthAppCreateResponse } from 'data/oauth/oauth-app-create-mutation'
 import { OAuthApp, useOAuthAppsQuery } from 'data/oauth/oauth-apps-query'
+import { useOrganizationPluginsQuery } from 'data/plugin-marketplace/hooks'
+import type { PluginListing } from 'data/plugin-marketplace/types'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { Button, cn } from 'ui'
 import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
+import { PluginPublishSidePanel } from 'components/interfaces/PluginMarketplace/PluginPublishSidePanel'
 import { AuthorizedAppRow } from './AuthorizedAppRow'
 import { DeleteAppModal } from './DeleteAppModal'
 import { OAuthAppRow } from './OAuthAppRow'
@@ -33,6 +37,8 @@ export const OAuthApps = () => {
   const [selectedAppToUpdate, setSelectedAppToUpdate] = useState<OAuthApp>()
   const [selectedAppToDelete, setSelectedAppToDelete] = useState<OAuthApp>()
   const [selectedAppToRevoke, setSelectedAppToRevoke] = useState<AuthorizedApp>()
+  const [showPluginPublishModal, setShowPluginPublishModal] = useState(false)
+  const [selectedPluginToUpdate, setSelectedPluginToUpdate] = useState<PluginListing>()
 
   const { can: canReadOAuthApps, isLoading: isLoadingPermissions } = useAsyncCheckPermissions(
     PermissionAction.READ,
@@ -65,6 +71,13 @@ export const OAuthApps = () => {
   const sortedAuthorizedApps = authorizedApps?.sort((a, b) => {
     return Number(new Date(a.authorized_at)) - Number(new Date(b.authorized_at))
   })
+
+  const {
+    data: orgPlugins,
+    isPending: isLoadingOrgPlugins,
+    isError: isErrorOrgPlugins,
+    error: orgPluginsError,
+  } = useOrganizationPluginsQuery(slug)
 
   return (
     <>
@@ -243,6 +256,101 @@ export const OAuthApps = () => {
               )}
             </div>
           </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+              <div>
+                <p>Marketplace Plugins</p>
+                <p className="text-foreground-light text-sm">
+                  Turn your OAuth app into a reviewable plugin or MCP integration.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="default" asChild>
+                  <Link href={`/org/${slug}/plugins`}>Open management page</Link>
+                </Button>
+                <ButtonTooltip
+                  disabled={!canCreateOAuthApps}
+                  onClick={() => setShowPluginPublishModal(true)}
+                  tooltip={{
+                    content: {
+                      side: 'bottom',
+                      text: !canCreateOAuthApps
+                        ? 'You need additional permissions to publish plugins'
+                        : undefined,
+                    },
+                  }}
+                >
+                  Publish plugin
+                </ButtonTooltip>
+              </div>
+            </div>
+
+            {isLoadingOrgPlugins ? (
+              <div className="space-y-2">
+                <ShimmeringLoader />
+                <ShimmeringLoader className="w-3/4" />
+              </div>
+            ) : null}
+
+            {isErrorOrgPlugins && (
+              <AlertError error={orgPluginsError} subject="Failed to retrieve marketplace plugins" />
+            )}
+
+            {!isLoadingOrgPlugins && !isErrorOrgPlugins && (orgPlugins?.length ?? 0) === 0 && (
+              <div className="bg-surface-100 border rounded p-4 flex items-center justify-between">
+                <p className="prose text-sm">
+                  No marketplace plugins yet. Link one of your OAuth apps to a repo-backed package.
+                </p>
+              </div>
+            )}
+
+            {!isLoadingOrgPlugins && !isErrorOrgPlugins && (orgPlugins?.length ?? 0) > 0 && (
+              <Table
+                head={[
+                  <Table.th key="plugin-name">Plugin</Table.th>,
+                  <Table.th key="plugin-review">Review</Table.th>,
+                  <Table.th key="plugin-validation">Validation</Table.th>,
+                  <Table.th key="plugin-version">Version</Table.th>,
+                  <Table.th key="plugin-actions"></Table.th>,
+                ]}
+                body={
+                  orgPlugins?.map((plugin) => (
+                    <Table.tr key={plugin.id}>
+                      <Table.td>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p>{plugin.name}</p>
+                            <p className="text-xs text-foreground-light">{plugin.packageType}</p>
+                          </div>
+                          <p className="text-sm text-foreground-light">{plugin.summary}</p>
+                        </div>
+                      </Table.td>
+                      <Table.td>{plugin.reviewStatus}</Table.td>
+                      <Table.td>{plugin.latestValidationStatus}</Table.td>
+                      <Table.td>{plugin.latestVersion ?? 'n/a'}</Table.td>
+                      <Table.td>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/plugins/${plugin.slug}`} className="text-sm text-brand">
+                            View
+                          </Link>
+                          <Button
+                            type="default"
+                            onClick={() => {
+                              setSelectedPluginToUpdate(plugin)
+                              setShowPluginPublishModal(true)
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      </Table.td>
+                    </Table.tr>
+                  )) ?? []
+                }
+              />
+            )}
+          </div>
         </ScaffoldSection>
       </ScaffoldContainer>
 
@@ -263,6 +371,17 @@ export const OAuthApps = () => {
         selectedApp={selectedAppToRevoke}
         onClose={() => setSelectedAppToRevoke(undefined)}
       />
+      {slug && (
+        <PluginPublishSidePanel
+          visible={showPluginPublishModal}
+          organizationSlug={slug}
+          selectedListing={selectedPluginToUpdate}
+          onClose={() => {
+            setShowPluginPublishModal(false)
+            setSelectedPluginToUpdate(undefined)
+          }}
+        />
+      )}
     </>
   )
 }
