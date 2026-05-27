@@ -179,6 +179,9 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+      SITE_URL: ${SITE_URL}
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      CORS_TENANT_ORIGIN_REGEX: ${CORS_TENANT_ORIGIN_REGEX:-~^https://[a-z0-9][a-z0-9-]+\.localhost$}
     # https://unix.stackexchange.com/a/294837
     entrypoint: bash -c 'set -f; eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml; set +f; /docker-entrypoint.sh kong docker-start'
 

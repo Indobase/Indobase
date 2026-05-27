@@ -78,7 +78,7 @@ services:
           - /auth/v1/verify
     plugins:
       - name: cors
-        config:
+        config: &indobase_cors
           methods:
             - GET
             - POST
@@ -86,11 +86,15 @@ services:
             - PATCH
             - DELETE
             - OPTIONS
+          origins:
+            - $SITE_URL
+            - $API_EXTERNAL_URL
+            - $CORS_TENANT_ORIGIN_REGEX
           headers:
             - '*'
           exposed_headers:
             - '*'
-          credentials: false
+          credentials: true
           max_age: 3600
   - name: auth-v1-open-callback
     url: http://indobase-auth:9999/callback
@@ -102,19 +106,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
   - name: auth-v1-open-authorize
     url: http://indobase-auth:9999/authorize
     routes:
@@ -125,19 +117,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
 
   ## Secure Auth routes
   - name: auth-v1
@@ -151,19 +131,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: key-auth
         config:
           hide_credentials: false
@@ -193,19 +161,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: key-auth
         config:
           hide_credentials: true
@@ -235,19 +191,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: key-auth
         config:
           hide_credentials: true
@@ -282,19 +226,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: key-auth
         config:
           hide_credentials: false
@@ -322,19 +254,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: key-auth
         config:
           hide_credentials: false
@@ -362,19 +282,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: rate-limiting
         config:
           policy: local
@@ -403,19 +311,7 @@ services:
     plugins:
       - name: cors
         config:
-          methods:
-            - GET
-            - POST
-            - PUT
-            - PATCH
-            - DELETE
-            - OPTIONS
-          headers:
-            - '*'
-          exposed_headers:
-            - '*'
-          credentials: false
-          max_age: 3600
+          <<: *indobase_cors
       - name: rate-limiting
         config:
           policy: local
@@ -529,6 +425,8 @@ services:
           - /
     plugins:
       - name: cors
+        config:
+          <<: *indobase_cors
       - name: basic-auth
         config:
           hide_credentials: true

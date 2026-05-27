@@ -1,20 +1,21 @@
+import type { JwtPayload } from 'indobase-js'
 import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
-import { getStorageAdminClient } from 'lib/api/storage-admin'
+import { getStorageAdminClientFromRequest } from 'lib/api/storage-admin'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   setNoStore(res)
   const { method } = req
 
   switch (method) {
     case 'GET':
-      return handleGet(req, res)
+      return handleGet(req, res, claims)
     case 'POST':
-      return handlePost(req, res)
+      return handlePost(req, res, claims)
 
     default:
       res.setHeader('Allow', ['GET', 'POST'])
@@ -22,9 +23,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
+const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const { limit, offset, search, sortColumn, sortOrder } = parseStoragePaginationParams(req)
-  const supabase = getStorageAdminClient()
+  const supabase = await getStorageAdminClientFromRequest(req, claims)
 
   const { data, error } = await supabase.storage.listBuckets({
     ...(limit ? { limit } : {}),
@@ -41,14 +42,14 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(200).json(data ?? [])
 }
 
-const handlePost = async (req: NextApiRequest, res: NextApiResponse) => {
+const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) => {
   const {
     id,
     public: isPublicBucket,
     allowed_mime_types: allowedMimeTypes,
     file_size_limit: fileSizeLimit,
   } = req.body
-  const supabase = getStorageAdminClient()
+  const supabase = await getStorageAdminClientFromRequest(req, claims)
 
   const { data, error } = await supabase.storage.createBucket(id, {
     public: isPublicBucket,

@@ -131,6 +131,18 @@ export const SignInForm = () => {
         )
       }
 
+      const invalidCredentials =
+        error.message.toLowerCase().includes('invalid login credentials') ||
+        error.code === 'invalid_credentials'
+
+      if (invalidCredentials) {
+        form.setError('password', {
+          type: 'manual',
+          message: 'Email or password is incorrect. Check your details and try again.',
+        })
+        return toast.error('Email or password is incorrect', { id: toastId })
+      }
+
       toast.error(error.message, { id: toastId })
     }
   }

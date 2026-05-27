@@ -1,4 +1,8 @@
+import type { JwtPayload } from 'indobase-js'
 import { createClient, type SupabaseClient } from 'indobase-js'
+import type { NextApiRequest } from 'next'
+
+import { getProjectSettingsForRef } from 'lib/api/saas/settings'
 
 /**
  * Creates a service-role Supabase client for the SaaS Studio backend.
@@ -9,11 +13,31 @@ import { createClient, type SupabaseClient } from 'indobase-js'
  * is imported). Calling this lazily inside the request handler gives a clear
  * 503 instead, and lets us reuse the client across handlers in the same
  * process.
+ *
+ * Dedicated-tenant projects must use `{ref}.<public-domain>` (per-tenant storage),
+ * not the shared Kong `SUPABASE_URL` stub — the central storage container uses a
+ * different Postgres role/password and returns 500 for bucket APIs.
  */
-let cachedClient: SupabaseClient | null = null
+let cachedDefaultClient: SupabaseClient | null = null
+const cachedByRef = new Map<string, SupabaseClient>()
+
+function normalizeApiOrigin(protocol: string | undefined, endpoint: string | undefined) {
+  const proto = (protocol || 'https').replace(/:$/, '')
+  const host = (endpoint || '').trim()
+  if (!host) return ''
+  return `${proto}://${host}`
+}
+
+function getServiceKeyFromSettings(settings: NonNullable<Awaited<ReturnType<typeof getProjectSettingsForRef>>>) {
+  const key = settings.service_api_keys?.find((entry) => entry.tags === 'service_role')?.api_key?.trim()
+  if (!key) {
+    throw new Error('Project service_role key is missing')
+  }
+  return key
+}
 
 export function getStorageAdminClient(): SupabaseClient {
-  if (cachedClient) return cachedClient
+  if (cachedDefaultClient) return cachedDefaultClient
 
   const url = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_KEY
@@ -29,6 +53,66 @@ export function getStorageAdminClient(): SupabaseClient {
     )
   }
 
-  cachedClient = createClient(url, serviceKey)
-  return cachedClient
+  cachedDefaultClient = createClient(url, serviceKey)
+  return cachedDefaultClient
+}
+
+export async function getStorageAdminClientForRef(
+  ref: string,
+  claims: JwtPayload
+): Promise<SupabaseClient> {
+  const cached = cachedByRef.get(ref)
+  if (cached) return cached
+
+  const settings = await getProjectSettingsForRef({ claims, ref })
+  if (!settings) {
+    throw new Error(`Project not found: ${ref}`)
+  }
+
+  const url = normalizeApiOrigin(settings.app_config?.protocol, settings.app_config?.endpoint)
+  if (!url) {
+    throw new Error(`Project API URL is missing for ${ref}`)
+  }
+
+  const serviceKey = getServiceKeyFromSettings(settings)
+  const client = createClient(url, serviceKey)
+  cachedByRef.set(ref, client)
+  return client
+}
+
+export function parseProjectRefFromRequest(req: Pick<NextApiRequest, 'query'>): string | undefined {
+  const refRaw = req.query.ref
+  return Array.isArray(refRaw) ? refRaw[0] : refRaw
+}
+
+/**
+ * Resolves the storage/admin Supabase client for a platform API route.
+ * When `[ref]` is present and the user is authenticated, uses the project's
+ * tenant API host and service_role key.
+ */
+export async function getStorageAdminClientFromRequest(
+  req: Pick<NextApiRequest, 'query'>,
+  claims?: JwtPayload
+): Promise<SupabaseClient> {
+  const ref = parseProjectRefFromRequest(req)
+  if (ref && claims) {
+    return getStorageAdminClientForRef(ref, claims)
+  }
+  return getStorageAdminClient()
+}
+
+/** Public API origin for signed/public storage URLs (tenant host when `[ref]` is set). */
+export async function getProjectPublicApiOrigin(
+  req: Pick<NextApiRequest, 'query'>,
+  claims?: JwtPayload
+): Promise<string | undefined> {
+  const ref = parseProjectRefFromRequest(req)
+  if (ref && claims) {
+    const settings = await getProjectSettingsForRef({ claims, ref })
+    if (settings) {
+      const origin = normalizeApiOrigin(settings.app_config?.protocol, settings.app_config?.endpoint)
+      if (origin) return origin
+    }
+  }
+  return process.env.SUPABASE_PUBLIC_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 }
