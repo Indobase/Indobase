@@ -4,9 +4,12 @@ import type { components } from 'api-types'
 import apiWrapper, { isResponseOk } from 'lib/api/apiWrapper'
 import { apiAuthenticate } from 'lib/api/apiAuthenticate'
 import { setNoStore } from 'lib/api/no-store'
-import { capturePostHogEvent, getPostHogServer } from 'lib/posthog-server'
+import { identifyPostHogGroups, getPostHogServer } from 'lib/posthog-server'
 
-type TrackFeatureFlagBody = components['schemas']['TelemetryFeatureFlagBody']
+type IdentifyBody = components['schemas']['TelemetryIdentifyBodyV2'] & {
+  organization_slug?: string
+  project_ref?: string
+}
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: false })
@@ -22,20 +25,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({})
   }
 
-  const body = req.body as TrackFeatureFlagBody
-  if (!body?.feature_flag_name) {
-    return res.status(400).json({ message: 'feature_flag_name is required' })
-  }
-
-  let distinctId = 'anonymous'
+  const body = req.body as IdentifyBody
   const auth = await apiAuthenticate(req, res)
-  if (isResponseOk(auth)) {
-    distinctId = auth.sub
+  const distinctId = isResponseOk(auth) ? auth.sub : body.user_id
+
+  if (!distinctId) {
+    return res.status(400).json({ message: 'user_id or auth required' })
   }
 
-  await capturePostHogEvent(distinctId, '$feature_flag_called', {
-    $feature_flag: body.feature_flag_name,
-    $feature_flag_response: body.feature_flag_value,
+  await identifyPostHogGroups(distinctId, {
+    organizationSlug: body.organization_slug,
+    projectRef: body.project_ref,
   })
 
   return res.status(200).json({})

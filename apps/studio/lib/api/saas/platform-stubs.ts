@@ -1,7 +1,8 @@
 import type { components } from 'api-types'
 
 /**
- * PostHog feature flags for Indobase SaaS (no cloud telemetry backend).
+ * Default PostHog feature flags for Indobase SaaS when PostHog is not configured,
+ * or as fallbacks merged with live flags from your PostHog project.
  * Keys mirror Studio `usePHFlag` / critical UI gates; values are enabled unless noted.
  */
 const SAAS_POSTHOG_FEATURE_FLAGS: Record<string, boolean | string> = {

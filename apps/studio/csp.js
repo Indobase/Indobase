@@ -69,7 +69,28 @@ const SUPABASE_ASSETS_URL =
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? 'https://frontend-assets.supabase.green'
     : 'https://frontend-assets.supabase.com'
-const POSTHOG_URL = isDevOrStaging ? 'https://ph.supabase.green' : 'https://ph.supabase.com'
+const POSTHOG_URL = (() => {
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
+  if (host) {
+    try {
+      return new URL(host).origin
+    } catch {
+      return host
+    }
+  }
+  return 'https://us.i.posthog.com'
+})()
+const POSTHOG_UI_URL = (() => {
+  const host = process.env.NEXT_PUBLIC_POSTHOG_UI_HOST
+  if (host) {
+    try {
+      return new URL(host).origin
+    } catch {
+      return host
+    }
+  }
+  return 'https://us.posthog.com'
+})()
 
 const USERCENTRICS_URLS = 'https://*.usercentrics.eu'
 const USERCENTRICS_APP_URL = 'https://app.usercentrics.eu'
@@ -102,6 +123,7 @@ module.exports.getCSP = function getCSP() {
     STAPE_URL,
     GOOGLE_MAPS_API_URL,
     POSTHOG_URL,
+    POSTHOG_UI_URL,
     ...(!!NIMBUS_PROD_PROJECTS_URL ? [NIMBUS_PROD_PROJECTS_URL, NIMBUS_PROD_PROJECTS_URL_WS] : []),
     CLOUDFLARE_CDN_URL,
   ]
@@ -112,12 +134,13 @@ module.exports.getCSP = function getCSP() {
     SUPABASE_ASSETS_URL,
     STAPE_URL,
     POSTHOG_URL,
+    POSTHOG_UI_URL,
   ]
   const FRAME_SRC_URLS = [
     HCAPTCHA_ASSET_URL,
     STRIPE_JS_URL,
     STAPE_URL,
-    ...(isDevOrStaging ? [POSTHOG_URL] : []),
+    ...(isDevOrStaging ? [POSTHOG_URL, POSTHOG_UI_URL] : [POSTHOG_UI_URL]),
   ]
   const IMG_SRC_URLS = [
     SUPABASE_URL,

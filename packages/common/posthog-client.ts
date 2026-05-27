@@ -1,5 +1,7 @@
 import posthog, { PostHogConfig } from 'posthog-js'
 
+import { getPostHogApiHost, getPostHogUiHost } from './posthog-config'
+
 // Limit the max number of queued events
 // (e.g. if a user navigates around a lot before accepting consent)
 const MAX_PENDING_EVENTS = 20
@@ -35,15 +37,10 @@ class PostHogClient {
   private devListeners: Set<ClientTelemetryListener> = new Set()
 
   constructor(config: PostHogClientConfig = {}) {
-    const apiHost =
-      config.apiHost || process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://ph.supabase.green'
-    const uiHost =
-      config.uiHost || process.env.NEXT_PUBLIC_POSTHOG_UI_HOST || 'https://eu.posthog.com'
-
     this.config = {
       apiKey: config.apiKey || process.env.NEXT_PUBLIC_POSTHOG_KEY,
-      apiHost,
-      uiHost,
+      apiHost: config.apiHost || getPostHogApiHost(),
+      uiHost: config.uiHost || getPostHogUiHost(),
     }
   }
 
@@ -266,6 +263,27 @@ class PostHogClient {
    * Captures an experiment exposure event with session-based deduplication.
    * Events are queued if PostHog is not yet initialized, then deduped on flush.
    */
+  captureFeatureFlagCall(
+    flagName: string,
+    flagValue: unknown,
+    hasConsent: boolean = true
+  ) {
+    if (!hasConsent) return
+
+    const properties = {
+      $feature_flag: flagName,
+      $feature_flag_response: flagValue,
+    }
+
+    if (!this.initialized) return
+
+    try {
+      posthog.capture('$feature_flag_called', properties)
+    } catch (error) {
+      console.error('PostHog feature flag capture failed:', error)
+    }
+  }
+
   captureExperimentExposure(
     experimentId: string,
     properties: Record<string, any>,

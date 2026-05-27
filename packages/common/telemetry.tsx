@@ -10,6 +10,7 @@ import { useLatest } from 'react-use'
 import { useUser } from './auth'
 import { hasConsented } from './consent-state'
 import { IS_PLATFORM, IS_PROD, LOCAL_STORAGE_KEYS } from './constants'
+import { isPostHogConfigured } from './posthog-config'
 import { useFeatureFlags } from './feature-flags'
 import { post } from './fetchWrappers'
 import type { FirstReferrerData } from './first-referrer-cookie'
@@ -317,12 +318,12 @@ export const PageTelemetry = ({
   // Track previous pathname for App Router to detect actual changes
   const previousAppPathnameRef = useRef<string | null>(null)
 
-  // Initialize PostHog client when consent is accepted
+  // Initialize PostHog when consent is accepted and a project key is configured
   useEffect(() => {
-    if (hasAcceptedConsent && IS_PLATFORM) {
+    if (hasAcceptedConsent && (IS_PLATFORM || isPostHogConfigured())) {
       posthogClient.init(true)
     }
-  }, [hasAcceptedConsent, IS_PLATFORM])
+  }, [hasAcceptedConsent])
 
   useEffect(() => {
     // Send page telemetry on first page load

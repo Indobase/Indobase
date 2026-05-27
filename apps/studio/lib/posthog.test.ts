@@ -2,10 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as common from 'common'
 import { trackFeatureFlag } from './posthog'
 
-vi.mock('common', () => ({
-  hasConsented: vi.fn(),
-  LOCAL_STORAGE_KEYS: {},
-}))
+vi.mock('common', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('common')>()
+  return {
+    ...actual,
+    hasConsented: vi.fn(),
+    isPostHogConfigured: vi.fn(),
+    posthogClient: {
+      captureFeatureFlagCall: vi.fn(),
+    },
+    trackFeatureFlag: vi.fn(),
+  }
+})
 
 describe('trackFeatureFlag', () => {
   beforeEach(() => {
@@ -14,13 +22,28 @@ describe('trackFeatureFlag', () => {
 
   it('returns undefined if user has not consented', async () => {
     vi.spyOn(common, 'hasConsented').mockReturnValue(false)
-    const result = await trackFeatureFlag({ some: 'value' } as any)
+    const result = await trackFeatureFlag({
+      feature_flag_name: 'test',
+      feature_flag_value: true,
+    })
     expect(result).toBeUndefined()
+    expect(common.posthogClient.captureFeatureFlagCall).not.toHaveBeenCalled()
   })
 
-  it('returns undefined when consented (hosted telemetry removed)', async () => {
+  it('captures via PostHog client when configured and consented', async () => {
     vi.spyOn(common, 'hasConsented').mockReturnValue(true)
-    const result = await trackFeatureFlag({ foo: 'bar' } as any)
+    vi.spyOn(common, 'isPostHogConfigured').mockReturnValue(true)
+
+    const result = await trackFeatureFlag({
+      feature_flag_name: 'homeNew',
+      feature_flag_value: 'new-home',
+    })
+
     expect(result).toBeUndefined()
+    expect(common.posthogClient.captureFeatureFlagCall).toHaveBeenCalledWith(
+      'homeNew',
+      'new-home',
+      true
+    )
   })
 })

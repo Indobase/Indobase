@@ -94,6 +94,12 @@ services:
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
       NEXT_PUBLIC_DOCS_URL: ${NEXT_PUBLIC_DOCS_URL:-https://indobase.in/docs}
 
+      # PostHog (optional). When set, Studio sends pageviews/events and merges live
+      # feature flags with SaaS defaults. Rebuild the image after changing NEXT_PUBLIC_* keys.
+      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+      NEXT_PUBLIC_POSTHOG_UI_HOST: ${NEXT_PUBLIC_POSTHOG_UI_HOST:-}
+
       # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}

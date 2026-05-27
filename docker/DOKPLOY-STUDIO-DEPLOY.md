@@ -10,6 +10,7 @@ To actually roll out new containers on each push, configure **one** of these in 
 
 | Goal | Secrets |
 |------|---------|
+| **PostHog analytics (baked into Studio image at build)** | `POSTHOG_PROJECT_KEY` — project token from PostHog → Settings → Project (`phc_…`) |
 | **Studio as Dokploy Application** (recommended for split deploy) | `DOKPLOY_API_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_ID` |
 | **Full stack as Dokploy Compose** | Same plus `DOKPLOY_COMPOSE_ID` (optional **instead of** relying on Git webhook for Compose) |
 | **Git / generic deploy webhook** | `DOKPLOY_DEPLOY_WEBHOOK` |

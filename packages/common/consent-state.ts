@@ -2,7 +2,8 @@ import type Usercentrics from '@usercentrics/cmp-browser-sdk'
 import type { BaseCategory, UserDecision } from '@usercentrics/cmp-browser-sdk'
 import { proxy, snapshot, useSnapshot } from 'valtio'
 
-import { IS_PLATFORM, LOCAL_STORAGE_KEYS } from './constants'
+import { IS_INDOBASE_SAAS, IS_PLATFORM, LOCAL_STORAGE_KEYS } from './constants'
+import { isPostHogConfigured } from './posthog-config'
 
 export const consentState = proxy({
   // Usercentrics state
@@ -13,7 +14,14 @@ export const consentState = proxy({
   showConsentToast: false,
   hasConsented: false,
   acceptAll: () => {
-    if (!consentState.UC) return
+    if (!consentState.UC) {
+      if (IS_INDOBASE_SAAS && !IS_PLATFORM) {
+        consentState.hasConsented = true
+        consentState.showConsentToast = false
+        persistIndobaseTelemetryConsent(true)
+      }
+      return
+    }
     const previousConsentValue = consentState.hasConsented
 
     consentState.hasConsented = true
@@ -29,7 +37,14 @@ export const consentState = proxy({
       })
   },
   denyAll: () => {
-    if (!consentState.UC) return
+    if (!consentState.UC) {
+      if (IS_INDOBASE_SAAS && !IS_PLATFORM) {
+        consentState.hasConsented = false
+        consentState.showConsentToast = false
+        persistIndobaseTelemetryConsent(false)
+      }
+      return
+    }
     const previousConsentValue = consentState.hasConsented
 
     consentState.hasConsented = false
@@ -97,8 +112,36 @@ async function initUserCentrics() {
   }
 }
 
+function persistIndobaseTelemetryConsent(accepted: boolean) {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(LOCAL_STORAGE_KEYS.TELEMETRY_CONSENT, accepted ? 'true' : 'false')
+}
+
+function initIndobaseTelemetryConsent() {
+  if (!IS_INDOBASE_SAAS || IS_PLATFORM || typeof window === 'undefined') return
+
+  if (!isPostHogConfigured()) {
+    consentState.hasConsented = true
+    return
+  }
+
+  const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.TELEMETRY_CONSENT)
+  if (stored === 'true') {
+    consentState.hasConsented = true
+    return
+  }
+  if (stored === 'false') {
+    consentState.hasConsented = false
+    return
+  }
+
+  consentState.showConsentToast = true
+  consentState.hasConsented = false
+}
+
 // Usercentrics is not available on the server
 if (typeof window !== 'undefined') {
+  initIndobaseTelemetryConsent()
   initUserCentrics()
 }
 
