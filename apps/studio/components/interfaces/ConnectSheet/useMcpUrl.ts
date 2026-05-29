@@ -1,6 +1,7 @@
+import { useParams } from 'common'
 import { IS_SAAS } from 'lib/constants'
 import { useMemo } from 'react'
-import { FEATURE_GROUPS_NON_PLATFORM, FEATURE_GROUPS_PLATFORM } from 'ui-patterns/McpUrlBuilder'
+import { FEATURE_GROUPS_NON_PLATFORM, FEATURE_GROUPS_PLATFORM, getMcpUrl } from 'ui-patterns/McpUrlBuilder'
 
 import { StepContentProps } from './Connect.types'
 
@@ -8,23 +9,22 @@ export function useMcpUrl(
   state: StepContentProps['state'],
   projectKeys: StepContentProps['projectKeys']
 ): string {
+  const { ref: projectRef } = useParams()
   const readonly = Boolean(state.mcpReadonly)
-  const baseUrl = IS_SAAS ? 'https://mcp.indobase.in' : projectKeys.apiUrl ?? ''
 
   return useMemo(() => {
-    const params = new URLSearchParams()
-    if (readonly) params.set('readonly', 'true')
-
     const selectedFeatures = Array.isArray(state.mcpFeatures) ? state.mcpFeatures : []
     const supportedFeatures = IS_SAAS ? FEATURE_GROUPS_PLATFORM : FEATURE_GROUPS_NON_PLATFORM
     const validFeatures = selectedFeatures.filter((f) =>
       supportedFeatures.some((group) => group.id === f)
     )
-    if (validFeatures.length > 0) {
-      params.set('features', validFeatures.join(','))
-    }
 
-    const queryString = params.toString()
-    return queryString ? `${baseUrl}?${queryString}` : baseUrl
-  }, [baseUrl, readonly, state.mcpFeatures])
+    return getMcpUrl({
+      projectRef: typeof projectRef === 'string' ? projectRef : undefined,
+      isPlatform: IS_SAAS,
+      apiUrl: projectKeys.apiUrl ?? undefined,
+      readonly,
+      features: validFeatures,
+    }).mcpUrl
+  }, [projectRef, projectKeys.apiUrl, readonly, state.mcpFeatures])
 }

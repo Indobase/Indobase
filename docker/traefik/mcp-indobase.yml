@@ -1,0 +1,30 @@
+# Traefik dynamic config: mcp.indobase.in → Studio /api/mcp
+# Copy to VPS: /etc/dokploy/traefik/dynamic/mcp-indobase.yml
+#
+# MCP clients POST to the host root (e.g. https://mcp.indobase.in?features=...).
+# replacePath forwards every request path to Studio's Next.js MCP handler.
+
+http:
+  middlewares:
+    indobase-mcp-replace-path:
+      replacePath:
+        path: /api/mcp
+
+  routers:
+    indobase-mcp-router:
+      rule: Host(`mcp.indobase.in`)
+      service: indobase-mcp-service
+      middlewares:
+        - indobase-mcp-replace-path
+      entryPoints:
+        - web
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    indobase-mcp-service:
+      loadBalancer:
+        servers:
+          - url: http://indobase-studio-erpgp1:8080
+        passHostHeader: true
