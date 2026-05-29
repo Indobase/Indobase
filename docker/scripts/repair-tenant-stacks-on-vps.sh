@@ -48,6 +48,24 @@ repair_ref() {
     echo "  patched external network -> $NET_NAME"
   fi
 
+  # Tenant compose files often keep stale aux-role passwords after DB role sync.
+  if python3 - "$dir/docker-compose.yml" "$AUX_PASS" <<'PY' | grep -q changed; then
+import re, sys
+path, aux = sys.argv[1], sys.argv[2]
+text = open(path).read()
+orig = text
+for role in ("authenticator", "supabase_auth_admin", "supabase_storage_admin"):
+    text = re.sub(rf"(postgresql://{role}:)[^@]+(@db:[0-9]+/[^'\n]+)", rf"\1{aux}\2", text)
+text = re.sub(r"(DB_PASSWORD: ')[^']+(')", rf"\1{aux}\2", text)
+if text != orig:
+    open(path, "w").write(text)
+    print("changed")
+else:
+    print("same")
+PY
+    echo "  patched compose DB passwords -> AUX_PASS"
+  fi
+
   # Tenant GoTrue must reach shared mail (Inbucket or production SMTP) on the compose network.
   if grep -q 'GOTRUE_SMTP_HOST:' "$dir/docker-compose.yml" 2>/dev/null; then
   python3 - "$dir/docker-compose.yml" "$ref" <<'PY'
