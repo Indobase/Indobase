@@ -15,9 +15,15 @@ http:
       rule: Host(`mcp.indobase.in`)
       service: indobase-mcp-service
       middlewares:
-        - indobase-mcp-replace-path
+        - redirect-to-https
       entryPoints:
         - web
+    indobase-mcp-router-websecure:
+      rule: Host(`mcp.indobase.in`)
+      service: indobase-mcp-service
+      middlewares:
+        - indobase-mcp-replace-path
+      entryPoints:
         - websecure
       tls:
         certResolver: letsencrypt
