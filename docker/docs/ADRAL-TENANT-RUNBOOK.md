@@ -109,7 +109,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable anon key from Studio → Project Sett
 
 Use the project’s **Indobase-issued** anon JWT (`iss: indobase`, `project_ref: adralproject-uspulzkzew`), not legacy Supabase demo keys.
 
-Smoke test:
+Smoke test (OAuth optional — email/password works without Google):
 
-1. Sign in with Google (after Google vars are set).
-2. Exercise chat (requires deployed chat edge function + secrets).
+1. Open `https://adral-staging.indobase.in` — `config.js` must show the tenant URL (not empty).
+2. Sign up / sign in with **email** (Google OAuth is optional; see Auth section above).
+3. Send a chat message (`chat-completion` edge function + secrets must be deployed).
+4. Optional: `curl` scheduled dispatch with `X-Schedule-Cron-Secret` → HTTP `200`.
