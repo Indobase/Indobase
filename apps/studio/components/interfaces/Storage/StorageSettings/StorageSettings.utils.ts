@@ -1,3 +1,5 @@
+import { resolveSaaSTenantApiBaseUrl } from 'lib/api/saas/tenant-public-urls'
+import { IS_SAAS } from 'lib/constants'
 import { StorageSizeUnits } from './StorageSettings.constants'
 
 const k = 1024
@@ -34,9 +36,10 @@ function getStorageURL(projectRef: string, protocol: string, endpoint?: string) 
     return new URL(`${protocol}://${endpoint}`)
   }
 
-  // Self-hosted (incl. Indobase SaaS): no per-project subdomain, so anchor on
-  // the platform's public Supabase URL. Falls back to a synthetic indobase URN
-  // until the project-settings query lands and supplies a real endpoint.
+  if (IS_SAAS && projectRef) {
+    return new URL(resolveSaaSTenantApiBaseUrl(projectRef, true))
+  }
+
   const publicBase = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_API_URL
   if (publicBase) {
     return new URL(publicBase)

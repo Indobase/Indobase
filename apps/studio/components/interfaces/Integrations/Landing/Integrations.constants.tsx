@@ -46,12 +46,12 @@ export type IntegrationDefinition = {
   ) => ComponentType<{}> | null
 } & ({ type: 'wrapper'; meta: WrapperMeta } | { type: 'postgres_extension' } | { type: 'custom' })
 
-const authorSupabase = {
+const authorIndobase = {
   name: 'Indobase',
   websiteUrl: 'https://indobase.in',
 }
 
-const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
+const INDOBASE_INTEGRATIONS: Array<IntegrationDefinition> = [
   {
     id: 'queues',
     type: 'postgres_extension' as const,
@@ -178,7 +178,7 @@ const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
     ),
     description: 'Application level encryption for your project',
     docsUrl: DOCS_URL,
-    author: authorSupabase,
+    author: authorIndobase,
     navigation: [
       {
         route: 'overview',
@@ -222,7 +222,7 @@ const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
     description:
       'Send real-time data from your database to another system when a table event occurs',
     docsUrl: DOCS_URL,
-    author: authorSupabase,
+    author: authorIndobase,
     requiredExtensions: [],
     navigation: [
       {
@@ -270,7 +270,7 @@ const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
     ),
     description: 'Auto-generate an API directly from your database schema',
     docsUrl: `${DOCS_URL}/guides/api`,
-    author: authorSupabase,
+    author: authorIndobase,
     navigation: [
       {
         route: 'overview',
@@ -337,7 +337,7 @@ const SUPABASE_INTEGRATIONS: Array<IntegrationDefinition> = [
     ),
     description: 'Run GraphQL queries through our interactive in-browser IDE',
     docsUrl: DOCS_URL,
-    author: authorSupabase,
+    author: authorIndobase,
     navigation: [
       {
         route: 'overview',
@@ -388,7 +388,7 @@ const WRAPPER_INTEGRATIONS: Array<IntegrationDefinition> = WRAPPERS.map((w) => {
     description: w.description,
     docsUrl: w.docsUrl,
     meta: w,
-    author: authorSupabase,
+    author: authorIndobase,
     navigation: [
       {
         route: 'overview',
@@ -487,6 +487,6 @@ const TEMPLATE_INTEGRATIONS: Array<IntegrationDefinition> = [
 
 export const INTEGRATIONS: Array<IntegrationDefinition> = [
   ...WRAPPER_INTEGRATIONS,
-  ...SUPABASE_INTEGRATIONS,
+  ...INDOBASE_INTEGRATIONS,
   ...TEMPLATE_INTEGRATIONS,
 ]

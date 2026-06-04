@@ -9,6 +9,7 @@ import {
   getDebuggingOperations,
   getDevelopmentOperations,
 } from 'lib/api/saas/mcp'
+import { withIndobaseMcpBranding } from 'lib/api/mcp-branding'
 import { DEFAULT_PROJECT } from 'lib/constants/api'
 import { getUserClaims } from 'lib/gotrue'
 import { NextApiRequest, NextApiResponse } from 'next'
@@ -234,7 +235,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     })
 
     await server.connect(transport)
-    await transport.handleRequest(req, res, req.body)
+    await transport.handleRequest(req, withIndobaseMcpBranding(res), req.body)
   } catch (error) {
     if (error instanceof Error) {
       return res.status(400).json({ error: error.message })
