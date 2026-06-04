@@ -82,6 +82,22 @@ Copy keys from your app repo `supabase/functions/.env` (e.g. `OPENAI_API_KEY`, w
 cd "$DIR" && docker compose up -d tenant-functions
 ```
 
+## Adral staging web app
+
+**Deployed:** `https://adral-staging.indobase.in` (Swarm service `adral-staging` on `dokploy-network`).
+
+Redeploy from the Adral repo:
+
+```bash
+INDO_REPO=/path/to/ind-repo npm run indobase:staging:deploy
+```
+
+Or: `ADRAL_REPO=/path/to/adral INDO_REPO=/path/to/ind-repo ./docker/scripts/deploy-adral-staging-vps.sh`
+
+`config.js` is generated at container start from tenant anon key + `https://adralproject-uspulzkzew.indobase.in`.
+
+Optional DNS: CNAME `staging.adral.ai` → VPS once you want the marketing hostname (Auth allow list already includes `staging.adral.ai`).
+
 ## Adral staging app env
 
 Point the staging frontend at the **tenant host** (not `api.indobase.in`):
