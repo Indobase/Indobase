@@ -59,7 +59,6 @@ docker service create \
   --name ${SERVICE_NAME} \
   --network dokploy-network \
   --env-file /opt/adral-staging.runtime.env \
-  --publish published=18080,target=80,mode=host \
   --limit-memory 512m \
   ${IMAGE}
 REMOTE
