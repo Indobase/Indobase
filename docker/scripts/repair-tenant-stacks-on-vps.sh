@@ -54,8 +54,11 @@ import re, sys
 path, aux = sys.argv[1], sys.argv[2]
 text = open(path).read()
 orig = text
-for role in ("authenticator", "supabase_auth_admin", "supabase_storage_admin"):
+# Legacy bootstrap password still present on many VPS stacks.
+text = text.replace("kVfP0FQo2cGGlqAX", aux)
+for role in ("authenticator", "supabase_auth_admin", "supabase_storage_admin", "supabase_admin"):
     text = re.sub(rf"(postgresql://{role}:)[^@]+(@db:[0-9]+/[^'\n]+)", rf"\1{aux}\2", text)
+    text = re.sub(rf"(postgresql://{role}:)[^@]+(@[^:/]+:[0-9]+/[^'\n]+)", rf"\1{aux}\2", text)
 text = re.sub(r"(DB_PASSWORD: ')[^']+(')", rf"\1{aux}\2", text)
 if text != orig:
     open(path, "w").write(text)
@@ -148,7 +151,11 @@ PY
   fi
 
   vol="indobase-tenant-${ref}_tenant-functions-${ref}"
+  fn_mp=""
   if docker volume inspect "$vol" >/dev/null 2>&1; then
+    fn_mp="$(docker volume inspect "$vol" --format '{{.Mountpoint}}')"
+  fi
+  if [[ -n "$fn_mp" && ! -f "${fn_mp}/main/index.ts" ]]; then
     stub="$(mktemp)"
     cat >"$stub" <<'TS'
 Deno.serve(async (req) => {
@@ -172,7 +179,7 @@ Deno.serve(async (req) => {
   }
 })
 TS
-    docker run --rm -v "$vol:/f" -v "$stub:/seed/index.ts:ro" alpine sh -c 'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts' >/dev/null
+    docker run --rm -v "$vol:/f" -v "$stub:/seed/index.ts:ro" alpine sh -c 'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts && chmod -R a+rX /f' >/dev/null
     rm -f "$stub"
     echo "  seeded functions main"
   fi
@@ -371,3 +378,23 @@ for entry in "$TENANTS_ROOT"/*; do
   (cd "$TENANTS_ROOT/$ref" && docker compose ps --format '{{.Service}}:{{.Status}}' 2>/dev/null) | tr '\n' ' '
   echo " ($ref)"
 done
+
+echo ""
+echo "=== Public API probe (REST + Auth must not be 502/503) ==="
+DOMAIN="${SAAS_PUBLIC_DOMAIN:-indobase.in}"
+fail=0
+for entry in "$TENANTS_ROOT"/*; do
+  [[ -d "$entry" ]] || continue
+  ref="$(basename "$entry")"
+  [[ "$ref" == *.* ]] && continue
+  host="${ref}.${DOMAIN}"
+  rest=$(curl -sS -m 8 -o /dev/null -w '%{http_code}' "https://${host}/rest/v1/" 2>/dev/null || echo err)
+  auth=$(curl -sS -m 8 -o /dev/null -w '%{http_code}' "https://${host}/auth/v1/health" 2>/dev/null || echo err)
+  if [[ "$rest" =~ ^(502|503|000|err)$ || "$auth" =~ ^(502|503|000|err)$ ]]; then
+    echo "FAIL $ref rest=$rest auth=$auth"
+    fail=$((fail + 1))
+  else
+    echo "OK   $ref rest=$rest auth=$auth"
+  fi
+done
+echo "probe_failures=$fail"

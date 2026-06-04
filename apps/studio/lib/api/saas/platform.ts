@@ -2711,6 +2711,13 @@ function buildSlimTenantDockerCompose(opts: {
   const allow = composeYamlSingleQuoted(opts.uriAllowList)
   const anon = composeYamlSingleQuoted(opts.anonKey)
   const svc = composeYamlSingleQuoted(opts.serviceKey)
+  const googleClientId = composeYamlSingleQuoted(process.env.GOOGLE_CLIENT_ID?.trim() || '')
+  const googleSecret = composeYamlSingleQuoted(process.env.GOOGLE_SECRET?.trim() || '')
+  const googleEnabled = composeYamlSingleQuoted(
+    process.env.GOOGLE_ENABLED === 'true' && (process.env.GOOGLE_CLIENT_ID?.trim() || '')
+      ? 'true'
+      : 'false'
+  )
   const rtHost = composeYamlSingleQuoted(opts.realtime.dbHost)
   const rtPort = composeYamlSingleQuoted(opts.realtime.dbPort)
   const rtName = composeYamlSingleQuoted(opts.realtime.dbName)
@@ -2838,6 +2845,10 @@ services:
       GOTRUE_SECURITY_REFRESH_TOKEN_ALLOW_REUSE: "false"
       GOTRUE_SECURITY_REFRESH_TOKEN_ALGORITHM_VERSION: "2"
       GOTRUE_SECURITY_REFRESH_TOKEN_UPGRADE_PERCENTAGE: "100"
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${googleEnabled}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${googleClientId}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${googleSecret}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${apiEx}/auth/v1/callback
       GOTRUE_SMTP_HOST: ${mailer.smtpHost}
       GOTRUE_SMTP_PORT: ${mailer.smtpPort}
       GOTRUE_SMTP_USER: ${mailer.smtpUser}

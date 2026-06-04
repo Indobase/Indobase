@@ -52,6 +52,29 @@ It runs `docker compose down -v` for the tenant’s `docker-compose.yml` when th
 
 Dedicated tenant databases are dropped separately by Studio using `POSTGRES_*` (see `docker/PLATFORM-ADMIN-OPS.md`).
 
+## Per-tenant health check
+
+```bash
+TENANT_HOST=<project-ref>.indobase.in ./docker/scripts/tenant-api-health-check.sh
+```
+
+REST and Auth must return HTTP 200 (or REST 401 without API key). See `docker/docs/ADRAL-TENANT-RUNBOOK.md` for the Adral project example.
+
+## Fleet repair (all customers)
+
+When many tenants show **REST 502** but **Auth 200**, compose files usually still have the legacy aux password (`kVfP0FQo2cGGlqAX`) while Postgres roles use `SAAS_DATA_PLANE_AUX_ROLE_PASSWORD` (`Indobase100` on production).
+
+On the VPS (run inside `tmux` — takes several minutes):
+
+```bash
+export POSTGRES_PASSWORD=Indobase100
+export PG_ADMIN_PASSWORD=Indobase100
+export SAAS_DATA_PLANE_AUX_ROLE_PASSWORD=Indobase100
+bash docker/scripts/repair-tenant-stacks-on-vps.sh
+```
+
+The script syncs compose passwords, DB roles, imgproxy aliases, edge `main` router, Traefik upstreams, and prints a per-tenant REST/Auth probe summary (`probe_failures=0` when healthy).
+
 ## Tenant routing repair (all customers)
 
 Per-project URLs must strip `/rest/v1`, `/auth/v1`, etc. before hitting PostgREST/GoTrue (same as Kong `strip_path`). After upgrading Studio or the provisioner, repair every **running** tenant stack on the VPS:
