@@ -1,5 +1,5 @@
 import { Client } from 'pg'
-import type { JwtPayload } from '@indobaseinc/indobase-js'
+import type { JwtPayload } from 'indobase-js'
 
 import { executeQuery } from './query'
 import {
