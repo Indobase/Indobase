@@ -174,7 +174,7 @@ export async function updateProjectGoTrueConfig({
     throw new Error('Project not found or insufficient permissions to update auth configuration')
   }
 
-  return normalizeAuthConfigNumbers(merged)
+  return normalizeAuthConfigNumbers(merged as GoTrueConfigResponse)
 }
 
 export async function updateProjectGoTrueConfigHooks({
