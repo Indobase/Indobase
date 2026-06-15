@@ -1,4 +1,4 @@
-import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
+import { PermissionAction } from '@supabase/shared-types/out/constants'
 import { IS_SAAS, useParams } from 'common'
 import { DatabaseConnectionString } from 'components/interfaces/Connect/DatabaseConnectionString'
 import { McpTabContent } from 'components/interfaces/Connect/McpTabContent'
