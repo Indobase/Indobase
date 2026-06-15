@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Label } from '@ui/components/shadcn/ui/label'
 import { getConnectionStrings } from 'components/interfaces/Connect/DatabaseSettings.utils'
 import { getKeys, useAPIKeysQuery } from 'data/api-keys/api-keys-query'
@@ -52,11 +52,13 @@ export const ProjectConnectionHoverCard = ({ projectRef }: ProjectConnectionHove
   )
 
   const { data: apiKeys, isLoading: isLoadingKeys } = useAPIKeysQuery(
-    { projectRef },
+    { projectRef, reveal: true },
     { enabled: open && canReadAPIKeys }
   )
 
-  const { publishableKey } = canReadAPIKeys ? getKeys(apiKeys) : { publishableKey: null }
+  const { clientPublishableKey } = canReadAPIKeys
+    ? getKeys(apiKeys)
+    : { clientPublishableKey: null }
 
   const { data: databases, isLoading: isLoadingDatabases } = useReadReplicasQuery(
     { projectRef },
@@ -116,7 +118,7 @@ export const ProjectConnectionHoverCard = ({ projectRef }: ProjectConnectionHove
                 copy
                 readOnly
                 className="font-mono text-xs"
-                value={publishableKey?.api_key ?? ''}
+                value={clientPublishableKey?.api_key ?? ''}
                 placeholder="Publishable key unavailable"
               />
             ) : (

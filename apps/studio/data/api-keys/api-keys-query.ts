@@ -88,5 +88,17 @@ export const getKeys = (apiKeys: APIKey[] = []) => {
 
   const allSecretKeys = apiKeys.filter((x) => x.type === 'secret')
 
-  return { anonKey, serviceKey, publishableKey, secretKey, allSecretKeys }
+  // Indobase projects still use legacy anon JWTs until publishable keys are created in Studio.
+  const clientPublishableKey = publishableKey ?? anonKey ?? null
+  const clientSecretKey = secretKey ?? serviceKey ?? null
+
+  return {
+    anonKey,
+    serviceKey,
+    publishableKey,
+    secretKey,
+    allSecretKeys,
+    clientPublishableKey,
+    clientSecretKey,
+  }
 }

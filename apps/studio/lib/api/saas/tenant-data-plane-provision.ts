@@ -1,17 +1,42 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import {
   getTenantStackArtifacts,
+  recordDataPlaneProvisionFailure,
   recordDataPlaneProvisionSuccess,
   resolvePublicDomainForTenantStack,
 } from './platform'
+import { isTenantDataPlaneReachable } from './tenant-data-plane-health'
+import { repairKnownTenantComposeYaml } from './tenant-compose-validation'
 
 type Claims = JwtPayload & Record<string, unknown>
+
+const REPAIR_COOLDOWN_MS = 2 * 60 * 1000
 
 export function isDataPlaneProvisionerConfigured(): boolean {
   const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim()
   const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
   return Boolean(provisionerUrl && provisionerToken)
+}
+
+function provisionerConfig() {
+  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
+  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
+  if (!provisionerUrl || !provisionerToken) {
+    throw new Error(
+      'Data-plane provisioner is not configured. Set DATA_PLANE_PROVISIONER_URL and DATA_PLANE_PROVISIONER_TOKEN on the Studio service.'
+    )
+  }
+  return { provisionerUrl, provisionerToken }
+}
+
+function shouldThrottleRepair(result: unknown): boolean {
+  if (!result || typeof result !== 'object') return false
+  const at = (result as { at?: string }).at
+  if (!at) return false
+  const ts = Date.parse(at)
+  if (!Number.isFinite(ts)) return false
+  return Date.now() - ts < REPAIR_COOLDOWN_MS
 }
 
 export async function provisionTenantDataPlaneStack({
@@ -25,13 +50,7 @@ export async function provisionTenantDataPlaneStack({
   apply?: boolean
   reason?: string
 }): Promise<{ ok: true; applied: boolean; provisioner_status: number }> {
-  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
-  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
-  if (!provisionerUrl || !provisionerToken) {
-    throw new Error(
-      'Data-plane provisioner is not configured. Set DATA_PLANE_PROVISIONER_URL and DATA_PLANE_PROVISIONER_TOKEN on the Studio service.'
-    )
-  }
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
 
   const publicDomain = resolvePublicDomainForTenantStack()
   const artifacts = await getTenantStackArtifacts({ claims, ref, publicDomain })
@@ -40,6 +59,8 @@ export async function provisionTenantDataPlaneStack({
       'No dedicated tenant database for this project. Per-project stacks require a provisioned tenant Postgres database.'
     )
   }
+
+  const portBase = artifacts.data_plane_port_base
 
   const resp = await fetch(`${provisionerUrl}/provision`, {
     method: 'POST',
@@ -64,16 +85,28 @@ export async function provisionTenantDataPlaneStack({
   }
 
   if (!resp.ok) {
-    throw new Error(
+    const err = new Error(
       `Data-plane provisioner failed (${resp.status}): ${
         typeof parsed === 'object' && parsed && 'message' in parsed
           ? String((parsed as { message?: unknown }).message)
           : text.slice(0, 200)
       }`
     )
+    await recordDataPlaneProvisionFailure({ claims, ref, error: err, reason }).catch(() => undefined)
+    throw err
   }
 
   const extra = typeof parsed === 'object' && parsed !== null ? parsed : {}
+
+  if (apply) {
+    const healthy = await isTenantDataPlaneReachable(ref, portBase)
+    if (!healthy) {
+      const err = new Error('Tenant data plane not reachable after provision')
+      await recordDataPlaneProvisionFailure({ claims, ref, error: err, reason }).catch(() => undefined)
+      throw err
+    }
+  }
+
   await recordDataPlaneProvisionSuccess({
     claims,
     ref,
@@ -87,6 +120,80 @@ export async function provisionTenantDataPlaneStack({
   })
 
   return { ok: true, applied: apply, provisioner_status: resp.status }
+}
+
+/**
+ * Re-apply an existing on-disk tenant stack: patch known compose bugs, `docker compose up`, Traefik normalize, health verify.
+ */
+export async function repairTenantDataPlaneStack({
+  ref,
+  reason = 'repair_stack',
+}: {
+  ref: string
+  reason?: string
+}): Promise<{ ok: boolean; provisioner_status: number }> {
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/repair-stack`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ project_ref: ref, reason }),
+  })
+
+  const text = await resp.text()
+  if (!resp.ok) {
+    throw new Error(`Tenant stack repair failed (${resp.status}): ${text.slice(0, 200)}`)
+  }
+
+  let parsed: { ok?: boolean; reason?: string } = {}
+  try {
+    parsed = JSON.parse(text) as { ok?: boolean; reason?: string }
+  } catch {
+    parsed = {}
+  }
+  return { ok: Boolean(parsed.ok), provisioner_status: resp.status }
+}
+
+/**
+ * Fleet repair for all tenant directories (cron / ops). Returns counts from provisioner.
+ */
+export async function repairAllTenantDataPlaneStacks(): Promise<{
+  ok: boolean
+  provisioner_status: number
+  repaired?: number
+  failed?: number
+}> {
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/repair-fleet`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+
+  const text = await resp.text()
+  if (!resp.ok) {
+    throw new Error(`Fleet tenant repair failed (${resp.status}): ${text.slice(0, 200)}`)
+  }
+
+  let parsed: { ok?: boolean; repaired?: number; failed?: number } = {}
+  try {
+    parsed = JSON.parse(text) as { ok?: boolean; repaired?: number; failed?: number }
+  } catch {
+    parsed = {}
+  }
+  return {
+    ok: Boolean(parsed.ok),
+    provisioner_status: resp.status,
+    repaired: parsed.repaired,
+    failed: parsed.failed,
+  }
 }
 
 /**
@@ -181,38 +288,26 @@ function claimsFromActorId(actorId: string): Claims {
   return { sub: actorId } as Claims
 }
 
-/**
- * When a project has a dedicated tenant DB but no data_plane_last_provisioned_at, apply the
- * tenant stack (idempotent) so health checks stop reporting COMING_UP.
- */
-export async function ensureDataPlaneProvisionedIfMissing({
-  claims,
-  ref,
-  reason = 'auto_repair',
-}: {
-  claims: Claims
-  ref: string
-  reason?: string
-}): Promise<{ repaired: boolean }> {
-  if (!isDataPlaneProvisionerConfigured()) {
-    return { repaired: false }
-  }
+type TenantRepairRow = {
+  connection_string: string | null
+  connection_string_enc: string | null
+  data_plane_last_provisioned_at: string | null
+  data_plane_last_provision_result: unknown | null
+  data_plane_port_base: number | null
+}
 
-  const normalized: any =
-    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
-  const actorId: string | undefined = normalized?.sub
-  if (!actorId) return { repaired: false }
-
+async function loadTenantRepairRow(ref: string, actorId: string): Promise<TenantRepairRow | null> {
   const { executeQuery } = await import('./query')
   const { decryptString } = await import('./util')
 
-  const row = await executeQuery<{
-    connection_string: string | null
-    connection_string_enc: string | null
-    data_plane_last_provisioned_at: string | null
-  }>({
+  const row = await executeQuery<TenantRepairRow>({
     query: `
-      select p.connection_string, p.connection_string_enc, p.data_plane_last_provisioned_at
+      select
+        p.connection_string,
+        p.connection_string_enc,
+        p.data_plane_last_provisioned_at,
+        p.data_plane_last_provision_result,
+        p.data_plane_port_base
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -223,16 +318,137 @@ export async function ensureDataPlaneProvisionedIfMissing({
   })
   if (row.error) throw row.error
   const p = row.data?.[0]
-  if (!p) return { repaired: false }
+  if (!p) return null
 
   const enc = (p.connection_string_enc ?? '').trim()
   const tenantUrl = enc.length > 0 ? decryptString(enc) : p.connection_string
-  if (!tenantUrl?.trim() || p.data_plane_last_provisioned_at) {
+  if (!tenantUrl?.trim()) return null
+
+  return p
+}
+
+/** Promote PROVISIONING → ACTIVE_HEALTHY when the data plane is already reachable. */
+async function promoteProvisioningProjectIfHealthy({
+  ref,
+  actorId,
+  portBase,
+}: {
+  ref: string
+  actorId: string
+  portBase?: number | null
+}): Promise<void> {
+  if (!(await isTenantDataPlaneReachable(ref, portBase))) return
+
+  const { executeQuery } = await import('./query')
+  await executeQuery({
+    query: `
+      update saas.projects p
+      set status = 'ACTIVE_HEALTHY'
+      where p.ref = $1
+        and p.status = 'PROVISIONING'
+        and exists (
+          select 1
+          from saas.organization_members m
+          where m.organization_id = p.organization_id
+            and m.gotrue_id = $2
+            and m.role in ('owner', 'admin', 'developer')
+        )
+    `,
+    parameters: [ref, actorId],
+    actorId,
+  })
+}
+
+/**
+ * Idempotent heal: provision missing stacks, or restart/repair stacks that are down (502).
+ * Called from getProject and can be scheduled fleet-wide.
+ */
+export async function ensureTenantDataPlaneHealthy({
+  claims,
+  ref,
+  reason = 'auto_repair',
+  force = false,
+}: {
+  claims: Claims
+  ref: string
+  reason?: string
+  force?: boolean
+}): Promise<{ repaired: boolean; action?: string }> {
+  if (!isDataPlaneProvisionerConfigured()) {
     return { repaired: false }
   }
 
-  await provisionTenantDataPlaneStack({ claims, ref, apply: true, reason })
-  return { repaired: true }
+  const normalized: any =
+    claims && typeof (claims as any).claims === 'object' ? (claims as any).claims : claims
+  const actorId: string | undefined = normalized?.sub
+  if (!actorId) return { repaired: false }
+
+  const p = await loadTenantRepairRow(ref, actorId)
+  if (!p) return { repaired: false }
+
+  if (!force && shouldThrottleRepair(p.data_plane_last_provision_result)) {
+    return { repaired: false }
+  }
+
+  const reachable = await isTenantDataPlaneReachable(ref, p.data_plane_port_base)
+  if (reachable) {
+    await promoteProvisioningProjectIfHealthy({
+      ref,
+      actorId,
+      portBase: p.data_plane_port_base,
+    })
+    return { repaired: false }
+  }
+
+  try {
+    if (p.data_plane_last_provisioned_at) {
+      await repairTenantDataPlaneStack({ ref, reason })
+    } else {
+      await provisionTenantDataPlaneStack({ claims, ref, apply: true, reason })
+      const { ensureTenantGoTrueAuthSchemaForActor } = await import('./tenant-gotrue-schema')
+      await ensureTenantGoTrueAuthSchemaForActor({ ref, actorId })
+    }
+
+    const ok = await isTenantDataPlaneReachable(ref, p.data_plane_port_base)
+    if (ok) {
+      await recordDataPlaneProvisionSuccess({
+        claims,
+        ref,
+        provisionResult: { ok: true, reason, action: 'auto_repair' },
+      })
+      await promoteProvisioningProjectIfHealthy({
+        ref,
+        actorId,
+        portBase: p.data_plane_port_base,
+      })
+      return { repaired: true, action: p.data_plane_last_provisioned_at ? 'repair_stack' : 'provision' }
+    }
+
+    await recordDataPlaneProvisionFailure({
+      claims,
+      ref,
+      error: new Error('Tenant data plane still unreachable after repair'),
+      reason,
+    })
+    return { repaired: false }
+  } catch (e) {
+    await recordDataPlaneProvisionFailure({ claims, ref, error: e, reason }).catch(() => undefined)
+    throw e
+  }
+}
+
+/** @deprecated Use {@link ensureTenantDataPlaneHealthy} */
+export async function ensureDataPlaneProvisionedIfMissing({
+  claims,
+  ref,
+  reason = 'auto_repair',
+}: {
+  claims: Claims
+  ref: string
+  reason?: string
+}): Promise<{ repaired: boolean }> {
+  const result = await ensureTenantDataPlaneHealthy({ claims, ref, reason })
+  return { repaired: result.repaired }
 }
 
 export async function ensureDataPlaneProvisionedIfMissingForActor({
@@ -244,9 +460,12 @@ export async function ensureDataPlaneProvisionedIfMissingForActor({
   actorId: string
   reason?: string
 }) {
-  return ensureDataPlaneProvisionedIfMissing({
+  return ensureTenantDataPlaneHealthy({
     claims: claimsFromActorId(actorId),
     ref,
     reason,
   })
 }
+
+// Re-export for provisioner-side compose patching parity
+export { repairKnownTenantComposeYaml }

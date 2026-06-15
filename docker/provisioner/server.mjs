@@ -5,7 +5,8 @@
  * - Authenticate requests from Studio using a shared token.
  * - Write per-project `docker-compose.yml` and `traefik.yml` to mounted host paths.
  * - Optionally run `docker compose up -d` for that tenant stack (`POST /provision`).
- * - Optionally tear down tenant stacks (`POST /teardown`): compose down -v, remove Traefik file, rm seed volume.
+ * - Repair existing stacks (`POST /repair-stack`, `POST /repair-fleet`).
+ * - Optionally tear down tenant stacks (`POST /teardown`).
  *
  * Required env:
  *   PROVISIONER_TOKEN
@@ -22,6 +23,9 @@ const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
 const traefikDir = process.env.PROVISIONER_TRAEFIK_DYNAMIC_DIR || '/mnt/traefik'
 const port = Number(process.env.PORT || '8787')
+const auxRolePassword = (process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD || '').trim()
+const legacyBootstrapPassword = 'kVfP0FQo2cGGlqAX'
+const traefikUpstreamHost = (process.env.TRAEFIK_UPSTREAM_HOST || '172.17.0.1').trim()
 
 if (!token) {
   console.error('PROVISIONER_TOKEN is required')
@@ -52,6 +56,35 @@ function readBody(req) {
 function safeRef(ref) {
   if (typeof ref !== 'string' || !/^[a-z0-9-]+$/i.test(ref)) return null
   return ref
+}
+
+function assertValidComposeYaml(yml) {
+  const text = String(yml || '').trim()
+  if (!text) throw new Error('docker-compose.yml is empty')
+  if (/GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:\s*'[^']+'\/auth\/v1\/callback/.test(text)) {
+    throw new Error('Invalid compose: broken GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI quoting')
+  }
+  if (!text.includes('tenant-rest:') || !text.includes('tenant-auth:')) {
+    throw new Error('Invalid compose: missing tenant-rest or tenant-auth')
+  }
+}
+
+function repairKnownComposeYaml(yml) {
+  let text = String(yml || '')
+  text = text.replace(
+    /GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:\s*'([^']+)'\/auth\/v1\/callback/g,
+    "GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: '$1/auth/v1/callback'"
+  )
+  if (auxRolePassword) {
+    text = text.split(legacyBootstrapPassword).join(auxRolePassword)
+    text = text.replace(
+      /(postgresql:\/\/(?:authenticator|supabase_auth_admin|supabase_storage_admin|supabase_admin):)[^@]+(@)/g,
+      `$1${auxRolePassword}$2`
+    )
+    text = text.replace(/(DB_PASSWORD: ')[^']+(')/g, `$1${auxRolePassword}$2`)
+  }
+  text = text.replace(/127\.0\.0\.1:/g, '0.0.0.0:')
+  return text
 }
 
 const TENANT_FUNCTIONS_MAIN_STUB = `// Minimal Edge Functions router for per-tenant stacks.
@@ -123,7 +156,7 @@ function runCompose(composePath) {
     const p = spawn(
       'docker',
       ['compose', '-f', composePath, 'up', '-d', '--remove-orphans'],
-      { stdio: 'inherit' }
+      { stdio: 'inherit', cwd: path.dirname(composePath) }
     )
     p.on('error', reject)
     p.on('exit', (code) => {
@@ -133,13 +166,12 @@ function runCompose(composePath) {
   })
 }
 
-/** Stops the tenant stack and removes named volumes declared in compose (`-v`). */
 function runComposeDown(composePath) {
   return new Promise((resolve, reject) => {
     const p = spawn(
       'docker',
       ['compose', '-f', composePath, 'down', '--remove-orphans', '-v'],
-      { stdio: 'inherit' }
+      { stdio: 'inherit', cwd: path.dirname(composePath) }
     )
     p.on('error', reject)
     p.on('exit', (code) => {
@@ -157,11 +189,116 @@ function dockerVolumeRm(volumeName) {
   })
 }
 
+async function readPublishedPort(ref, serviceSuffix) {
+  try {
+    const out = await spawnSyncText('docker', [
+      'ps',
+      '--filter',
+      `name=${ref}-tenant-${serviceSuffix}`,
+      '--format',
+      '{{.Ports}}',
+    ])
+    const m = out.match(/0\.0\.0\.0:(\d+)->/)
+    return m ? Number(m[1]) : null
+  } catch {
+    return null
+  }
+}
+
+function spawnSyncText(cmd, args) {
+  return new Promise((resolve, reject) => {
+    let out = ''
+    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    p.stdout.on('data', (c) => {
+      out += c
+    })
+    p.on('error', reject)
+    p.on('exit', (code) => {
+      if (code === 0) resolve(out.trim())
+      else reject(new Error(`${cmd} exited ${code}`))
+    })
+  })
+}
+
+async function pingHttp(url, timeoutMs = 8000) {
+  try {
+    const signal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(timeoutMs)
+        : undefined
+    const res = await fetch(url, { method: 'HEAD', signal })
+    return res.ok || res.status === 401 || res.status === 404
+  } catch {
+    try {
+      const signal =
+        typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+          ? AbortSignal.timeout(timeoutMs)
+          : undefined
+      const res = await fetch(url, { method: 'GET', signal })
+      return res.ok || res.status === 401 || res.status === 404
+    } catch {
+      return false
+    }
+  }
+}
+
+async function verifyTenantStackHealth(ref) {
+  const restPort = await readPublishedPort(ref, 'rest')
+  const authPort = await readPublishedPort(ref, 'auth')
+  if (restPort && authPort) {
+    const [rest, auth] = await Promise.all([
+      pingHttp(`http://${traefikUpstreamHost}:${restPort}/`),
+      pingHttp(`http://${traefikUpstreamHost}:${authPort}/health`),
+    ])
+    if (rest && auth) return { ok: true, mode: 'ports', restPort, authPort }
+  }
+  return { ok: false, mode: 'ports', restPort, authPort }
+}
+
+async function repairTenantStackRef(ref, reason) {
+  const tenantOutDir = path.join(tenantsDir, ref)
+  const composePath = path.join(tenantOutDir, 'docker-compose.yml')
+  if (!fs.existsSync(composePath)) {
+    return { ref, ok: false, reason: 'compose_missing' }
+  }
+
+  const original = fs.readFileSync(composePath, 'utf8')
+  const repaired = repairKnownComposeYaml(original)
+  assertValidComposeYaml(repaired)
+  if (repaired !== original) {
+    fs.writeFileSync(composePath, repaired, 'utf8')
+  }
+
+  await seedTenantFunctionsMain(ref)
+  await runCompose(composePath)
+  const normalized = fixTenantTraefikForRef(ref, traefikDir)
+  if (!normalized.ok) {
+    return { ref, ok: false, reason: normalized.reason || 'traefik_normalize_failed', repair_reason: reason }
+  }
+
+  await new Promise((r) => setTimeout(r, 3000))
+  const health = await verifyTenantStackHealth(ref)
+  return {
+    ref,
+    ok: health.ok,
+    reason: health.ok ? 'repaired' : 'health_check_failed',
+    health,
+    repair_reason: reason,
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.url === '/health') return json(res, 200, { ok: true })
 
-    if (req.method !== 'POST' || (req.url !== '/provision' && req.url !== '/teardown' && req.url !== '/repair-traefik')) {
+    const allowed = new Set([
+      '/provision',
+      '/teardown',
+      '/repair-traefik',
+      '/repair-stack',
+      '/repair-fleet',
+    ])
+    if (req.method !== 'POST' || !allowed.has(req.url || '')) {
       res.statusCode = 404
       return res.end('not found')
     }
@@ -175,6 +312,23 @@ const server = http.createServer(async (req, res) => {
       body = JSON.parse(raw || '{}')
     } catch {
       return json(res, 400, { message: 'Invalid JSON' })
+    }
+
+    if (req.url === '/repair-fleet') {
+      const results = []
+      for (const entry of fs.readdirSync(tenantsDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const ref = safeRef(entry.name)
+        if (!ref || ref.includes('.')) continue
+        try {
+          results.push(await repairTenantStackRef(ref, body?.reason || 'repair_fleet'))
+        } catch (e) {
+          results.push({ ref, ok: false, reason: e?.message || 'repair_failed' })
+        }
+      }
+      const repaired = results.filter((r) => r.ok).length
+      const failed = results.filter((r) => !r.ok).length
+      return json(res, 200, { ok: true, repaired, failed, results })
     }
 
     const ref = safeRef(body?.project_ref)
@@ -192,6 +346,11 @@ const server = http.createServer(async (req, res) => {
       const fixed = all.filter((r) => r.ok)
       const skipped = all.filter((r) => !r.ok)
       return json(res, 200, { ok: true, fixed: fixed.length, skipped: skipped.length, results: all })
+    }
+
+    if (req.url === '/repair-stack') {
+      const result = await repairTenantStackRef(ref, body?.reason || 'repair_stack')
+      return json(res, result.ok ? 200 : 500, result)
     }
 
     if (req.url === '/teardown') {
@@ -231,6 +390,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 400, { message: 'docker_compose_yml and traefik_yml are required' })
     }
 
+    assertValidComposeYaml(dockerComposeYml)
+
     const tenantOutDir = path.join(tenantsDir, ref)
     fs.mkdirSync(tenantOutDir, { recursive: true })
 
@@ -243,7 +404,6 @@ const server = http.createServer(async (req, res) => {
 
     if (apply) {
       await runCompose(composePath)
-      // Always write canonical Traefik (stripPrefix + live ports). Never leave Studio YAML on disk without normalize.
       const normalized = fixTenantTraefikForRef(ref, traefikDir)
       if (!normalized.ok) {
         console.warn(
@@ -253,16 +413,35 @@ const server = http.createServer(async (req, res) => {
         )
         fs.writeFileSync(traefikPath, traefikYml, 'utf8')
       }
-    } else {
-      fs.writeFileSync(traefikPath, traefikYml, 'utf8')
+
+      await new Promise((r) => setTimeout(r, 3000))
+      const health = await verifyTenantStackHealth(ref)
+      if (!health.ok) {
+        return json(res, 500, {
+          message: 'Tenant stack started but health check failed',
+          project_ref: ref,
+          health,
+        })
+      }
+
+      return json(res, 200, {
+        ok: true,
+        project_ref: ref,
+        written: { composePath, traefikPath },
+        applied: apply,
+        traefik_normalized: true,
+        health,
+      })
     }
+
+    fs.writeFileSync(traefikPath, traefikYml, 'utf8')
 
     return json(res, 200, {
       ok: true,
       project_ref: ref,
       written: { composePath, traefikPath },
       applied: apply,
-      traefik_normalized: apply,
+      traefik_normalized: false,
     })
   } catch (e) {
     return json(res, 500, { message: e?.message || 'Internal error' })
@@ -272,4 +451,3 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, '0.0.0.0', () => {
   console.log(`data-plane-provisioner listening on :${port}`)
 })
-

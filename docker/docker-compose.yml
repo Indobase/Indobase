@@ -12,8 +12,8 @@ services:
   studio:
     container_name: indobase-studio
     # Must be set explicitly (e.g. roshanraghavander/ind-repo:latest). No silent fallback
-    # to upstream supabase/studio — that image lacks SaaS features and the platform API
-    # fallbacks, so a missing env var would silently degrade the deploy.
+    # to a stock Studio image — third-party images lack SaaS features and the platform API,
+    # so a missing env var would silently degrade the deploy.
     # Override in Dokploy env to pin a SHA: roshanraghavander/ind-repo:<commit>
     image: ${STUDIO_DOCKER_IMAGE:-roshanraghavander/ind-repo:latest}
     pull_policy: always
@@ -84,7 +84,7 @@ services:
       # they need to reach GoTrue from inside the Studio container.
       KONG_INTERNAL_GOTRUE_URL: ${KONG_INTERNAL_GOTRUE_URL:-http://indobase-kong:8000/auth/v1}
 
-      # --- SaaS / custom Studio (Indobase fork). Ignored by upstream Studio image; required for ind-repo Studio. ---
+      # --- SaaS / Indobase Studio (this image). Required for org/billing and /api/platform/*. ---
       # Multi-org dashboard + /organizations, /org/* routes (default on).
       NEXT_PUBLIC_INDOBASE_SAAS: ${NEXT_PUBLIC_INDOBASE_SAAS:-true}
       # Browser-visible Studio origin (match public URL; with default Kong routing this is usually SUPABASE_PUBLIC_URL).
@@ -143,6 +143,8 @@ services:
       PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
       PROVISIONER_TENANTS_DIR: /mnt/tenants
       PROVISIONER_TRAEFIK_DYNAMIC_DIR: /mnt/traefik
+      SAAS_DATA_PLANE_AUX_ROLE_PASSWORD: ${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}
+      TRAEFIK_UPSTREAM_HOST: ${TRAEFIK_UPSTREAM_HOST:-172.17.0.1}
     volumes:
       - tenants-data:/mnt/tenants
       - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/mnt/traefik:Z
@@ -248,6 +250,7 @@ services:
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_MAILER_EXTERNAL_HOSTS: ${MAILER_EXTERNAL_HOSTS:-api.indobase.in,studio.indobase.in}
 
       # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
       # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true

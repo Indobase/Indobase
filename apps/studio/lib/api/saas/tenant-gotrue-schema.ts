@@ -1,5 +1,5 @@
 import { Client } from 'pg'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { executeQuery } from './query'
 import {
@@ -10,7 +10,7 @@ import {
 } from './provision-tenant-db'
 import { decryptString } from './util'
 import {
-  ensureDataPlaneProvisionedIfMissing,
+  ensureTenantDataPlaneHealthy,
   isDataPlaneProvisionerConfigured,
   provisionTenantDataPlaneStack,
 } from './tenant-data-plane-provision'
@@ -104,7 +104,7 @@ export async function ensureTenantGoTrueAuthSchema({
   }
 
   if (await tenantAuthUsersTableExists(tenantDbUrl)) {
-    const { repaired } = await ensureDataPlaneProvisionedIfMissing({
+    const { repaired } = await ensureTenantDataPlaneHealthy({
       claims,
       ref,
       reason: 'ensure_auth_schema_record',

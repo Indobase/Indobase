@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useParams } from 'common'
 import { DatabaseConnectionString } from 'components/interfaces/Connect/DatabaseConnectionString'
 import { McpTabContent } from 'components/interfaces/Connect/McpTabContent'
@@ -205,9 +205,9 @@ export const Connect = () => {
     { projectRef, reveal: true },
     { enabled: canReadAPIKeys }
   )
-  const { anonKey, publishableKey } = canReadAPIKeys
+  const { anonKey, clientPublishableKey } = canReadAPIKeys
     ? getKeys(apiKeys)
-    : { anonKey: null, publishableKey: null }
+    : { anonKey: null, clientPublishableKey: null }
 
   const projectKeys = useMemo(() => {
     const protocol = settings?.app_config?.protocol ?? 'https'
@@ -217,14 +217,14 @@ export const Connect = () => {
     return {
       apiUrl: apiHost ?? null,
       anonKey: anonKey?.api_key ?? null,
-      publishableKey: publishableKey?.api_key ?? null,
+      publishableKey: clientPublishableKey?.api_key ?? null,
     }
   }, [
     settings?.app_config?.protocol,
     settings?.app_config?.endpoint,
     canReadAPIKeys,
     anonKey?.api_key,
-    publishableKey?.api_key,
+    clientPublishableKey?.api_key,
   ])
 
   const filePath = getContentFilePath({

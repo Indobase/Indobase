@@ -1,5 +1,5 @@
 import type { components } from 'api-types'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { decryptString } from './util'
 import { executeQuery } from './query'
@@ -92,6 +92,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
       ? decryptString(p.connection_string_enc)
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
+  const hasProvisionedDataPlane = Boolean(p.data_plane_last_provisioned_at)
   const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, usesTenantPublicApiHost(hasDedicated))
   const apiOrigin = `${protocol}://${endpointHost}`
 
@@ -100,7 +101,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
     apiOrigin,
     siteUrl: apiOrigin,
     storedConfig: (p.auth_config ?? {}) as Partial<GoTrueConfigResponse>,
-    hasProvisionedDataPlane: hasProvisioned,
+    hasProvisionedDataPlane,
   }
 }
 
