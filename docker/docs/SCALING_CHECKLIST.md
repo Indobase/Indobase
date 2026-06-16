@@ -37,3 +37,22 @@ Use this when traffic, connection counts, or latency grow. Tuning lives in Studi
 
 - Multiple `tenant-rest` replicas require a shared Postgres and consistent routing (same schema); session/transaction stickiness is usually unnecessary for stateless PostgREST reads.
 - Read replicas need application-level routing (not covered by default generated compose).
+
+## 7. Host sizing and colocation
+
+- **Minimum for ~15 active tenants:** 4 vCPU, 16 GB RAM (2 vCPU / 8 GB cannot sustain 40+ full stacks).
+- **Split nodes:** run Studio + control-plane compose on one host; tenant stacks on a second data-plane node (`SAAS_TENANTS_HOST_PATH`, provisioner URL).
+- **Cap idle stacks:** `MAX_RUNNING_TENANT_STACKS=12 bash docker/scripts/cap-idle-tenant-stacks.sh` on the VPS (prefers `ACTIVE_HEALTHY` projects when `STUDIO_PG_URL` is set).
+
+## 8. Edge routing and Traefik
+
+- Attach `dokploy-traefik` to the compose network after reboots: install `indobase-traefik-network.timer` (see `docker/scripts/indobase-traefik-attach-compose-network.sh`). Misattached Traefik causes **502** on `api.indobase.in` while Kong is healthy.
+
+## 9. Studio static assets (CDN)
+
+- Set `NEXT_PUBLIC_BASE_PATH` / asset prefix env on the Studio image build and front `/_next/static` via CDN (Cloudflare, etc.) to cut TTFB on repeat visits.
+
+## 10. Observability
+
+- Enable `pg_stat_statements` on control-plane and tenant DBs (repair scripts already `CREATE EXTENSION` on tenants).
+- Review slow queries under `reports/perf-security/`; add indexes before raising PostgREST pool sizes.

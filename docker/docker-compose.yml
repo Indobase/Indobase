@@ -315,7 +315,7 @@ services:
       analytics:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
+      PGRST_DB_URI: postgres://authenticator:${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-${POSTGRES_PASSWORD}}@${POSTGRES_HOST:-indobase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}

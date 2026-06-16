@@ -25,12 +25,21 @@ if [[ -z "$AUX_PASS" ]]; then
   exit 1
 fi
 
+if [[ "$AUX_PASS" != "$PG_ADMIN_PASSWORD" ]]; then
+  echo "WARN: SAAS_DATA_PLANE_AUX_ROLE_PASSWORD differs from POSTGRES_PASSWORD on a single Postgres host." >&2
+  echo "      Cluster roles (authenticator, supabase_storage_admin, …) can only have one password." >&2
+  echo "      Align both env vars before fleet repair (see docker/DOKPLOY-DATA-PLANE.md)." >&2
+fi
+
 PW_LIT="'${AUX_PASS//\'/\'\'}'"
 
 psql_admin() {
   docker exec -e PGPASSWORD="$PG_ADMIN_PASSWORD" "$DB_CONTAINER" \
     psql -h 127.0.0.1 -U "$PG_ADMIN_USER" -d "$1" -v ON_ERROR_STOP=1 -c "$2"
 }
+
+echo "Syncing cluster authenticator password (once)..."
+psql_admin postgres "alter role authenticator password $PW_LIT" || true
 
 repair_ref() {
   local ref="$1"
@@ -70,6 +79,22 @@ PY
   fi
 
   # Tenant GoTrue must reach shared mail (Inbucket or production SMTP) on the compose network.
+  if grep -q 'GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:' "$dir/docker-compose.yml" 2>/dev/null; then
+    python3 - "$dir/docker-compose.yml" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+fixed, n = re.subn(
+    r"GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: '([^']+)'/auth/v1/callback",
+    r"GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: '\\1/auth/v1/callback'",
+    text,
+)
+if n:
+    open(path, "w").write(fixed)
+    print(f"  patched broken GOOGLE_REDIRECT_URI ({n})")
+PY
+  fi
+
   if grep -q 'GOTRUE_SMTP_HOST:' "$dir/docker-compose.yml" 2>/dev/null; then
   python3 - "$dir/docker-compose.yml" "$ref" <<'PY'
 import re, sys
@@ -108,7 +133,7 @@ PY
     echo "  patched tenant-auth SMTP -> ${SMTP_HOST}:${SMTP_PORT}"
   fi
 
-  for role in authenticator supabase_admin supabase_auth_admin supabase_storage_admin; do
+  for role in "$tenant_role"; do
     psql_admin "$dbname" "alter role \"$role\" password $PW_LIT" || true
   done
   psql_admin "$dbname" "alter schema auth owner to supabase_auth_admin" 2>/dev/null || true

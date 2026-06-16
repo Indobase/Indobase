@@ -23,6 +23,8 @@ if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
   exit 1
 fi
 
+# Shared PostgREST uses authenticator:${POSTGRES_PASSWORD} in docker-compose.yml.
+# Tenant stacks use SAAS_DATA_PLANE_AUX_ROLE_PASSWORD — see repair-tenant-stacks-on-vps.sh.
 escape_sql() {
   printf "%s" "$1" | sed "s/'/''/g"
 }

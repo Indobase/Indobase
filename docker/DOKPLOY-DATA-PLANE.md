@@ -64,6 +64,8 @@ REST and Auth must return HTTP 200 (or REST 401 without API key). See `docker/do
 
 When many tenants show **REST 502** but **Auth 200**, compose files usually still have the legacy aux password (`kVfP0FQo2cGGlqAX`) while Postgres roles use `SAAS_DATA_PLANE_AUX_ROLE_PASSWORD` (`Indobase100` on production).
 
+**Single Postgres host:** `POSTGRES_PASSWORD` and `SAAS_DATA_PLANE_AUX_ROLE_PASSWORD` must be **identical** — cluster roles (`authenticator`, `supabase_storage_admin`, …) only support one password. Fleet repair must not `ALTER ROLE authenticator` inside the per-tenant loop (see `repair-tenant-stacks-on-vps.sh`).
+
 On the VPS (run inside `tmux` — takes several minutes):
 
 ```bash
