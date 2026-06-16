@@ -123,7 +123,7 @@ export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
               'group',
             )}
             onClick={() =>
-              window.open('https://github.com/stackblitz-labs/bolt.diy/issues/new?template=bug_report.yml', '_blank')
+              window.open('https://github.com/Indobase/Indobase/issues/new?template=bug_report.yml', '_blank')
             }
           >
             <div className="i-ph:bug w-4 h-4 text-gray-400 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors" />
@@ -163,7 +163,7 @@ export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
               'outline-none',
               'group',
             )}
-            onClick={() => window.open('https://stackblitz-labs.github.io/bolt.diy/', '_blank')}
+            onClick={() => window.open('https://github.com/Indobase/Indobase/tree/indobase-builder', '_blank')}
           >
             <div className="i-ph:question w-4 h-4 text-gray-400 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors" />
             Help & Documentation

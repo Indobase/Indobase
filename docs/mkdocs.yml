@@ -32,14 +32,14 @@ theme:
   # logo: assets/logo.png
   # favicon: assets/logo.png
 repo_name: bolt.diy
-repo_url: https://github.com/stackblitz-labs/bolt.diy
+repo_url: https://github.com/Indobase/Indobase/tree/indobase-builder
 edit_uri: ''
 
 extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/stackblitz-labs/bolt.diy
+      link: https://github.com/Indobase/Indobase/tree/indobase-builder
       name: bolt.diy
     - icon: fontawesome/brands/discourse
       link: https://thinktank.ottomator.ai/
