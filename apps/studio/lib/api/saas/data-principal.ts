@@ -2,9 +2,8 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import type { DataPrincipalConsentType, DataPrincipalRequestType } from 'common'
 
+import { ensureSaasTables, getGotrueUserId, type Claims } from './platform'
 import { executeQuery } from './query'
-import { ensureSaasTables } from './platform-schema'
-import { getGotrueUserId, type Claims } from './platform-shared'
 
 export async function ensureDataPrincipalTables() {
   await ensureSaasTables()

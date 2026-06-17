@@ -133,7 +133,7 @@ async function assertOrganizationNotPlatformSuspendedBySlug(slug: string, actorI
   }
 }
 
-type Claims = JwtPayload & Record<string, any>
+export type Claims = JwtPayload & Record<string, any>
 
 function composeYamlSingleQuoted(value: string): string {
   return `'${String(value).replace(/'/g, "''")}'`

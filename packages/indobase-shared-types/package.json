@@ -23,6 +23,31 @@
       "import": "./out/index.js",
       "require": "./out/index.js",
       "default": "./out/index.js"
+    },
+    "./out/constants": {
+      "types": "./out/constants.d.ts",
+      "import": "./out/constants.js",
+      "default": "./out/constants.js"
+    },
+    "./out/events": {
+      "types": "./out/events.d.ts",
+      "import": "./out/events.js",
+      "default": "./out/events.js"
+    },
+    "./out/notifications": {
+      "types": "./out/notifications.d.ts",
+      "import": "./out/notifications.js",
+      "default": "./out/notifications.js"
+    },
+    "./out/permissions": {
+      "types": "./out/permissions.d.ts",
+      "import": "./out/permissions.js",
+      "default": "./out/permissions.js"
+    },
+    "./out/projects": {
+      "types": "./out/projects.d.ts",
+      "import": "./out/projects.js",
+      "default": "./out/projects.js"
     }
   },
   "scripts": {

@@ -18,9 +18,6 @@ catalogs:
     '@indobaseinc/mcp-utils':
       specifier: 0.3.2
       version: 0.3.2
-    '@indobaseinc/pg-meta':
-      specifier: 0.93.1
-      version: 0.93.1
     '@indobaseinc/postgres-meta':
       specifier: 0.64.6
       version: 0.64.6
@@ -30,9 +27,6 @@ catalogs:
     '@indobaseinc/realtime-js':
       specifier: 1.0.8
       version: 1.0.8
-    '@indobaseinc/shared-types':
-      specifier: 0.1.84
-      version: 0.1.84
     '@indobaseinc/sql-to-rest':
       specifier: 0.1.6
       version: 0.1.6
@@ -832,14 +826,14 @@ importers:
         specifier: 'catalog:'
         version: 0.3.2(@modelcontextprotocol/sdk@1.25.3(hono@4.11.7)(supports-color@8.1.1)(zod@3.25.76))(zod@3.25.76)
       '@indobaseinc/pg-meta':
-        specifier: 'catalog:'
-        version: 0.93.1
+        specifier: workspace:*
+        version: link:../../packages/pg-meta
       '@indobaseinc/realtime-js':
         specifier: 'catalog:'
         version: 1.0.8
       '@indobaseinc/shared-types':
-        specifier: 'catalog:'
-        version: 0.1.84
+        specifier: workspace:*
+        version: link:../../packages/indobase-shared-types
       '@indobaseinc/sql-to-rest':
         specifier: 'catalog:'
         version: 0.1.6(encoding@0.1.13)(supports-color@8.1.1)
@@ -1272,7 +1266,7 @@ importers:
         version: 2.11.3(@types/node@22.13.14)(typescript@5.9.2)
       next-router-mock:
         specifier: ^0.9.13
-        version: 0.9.13(next@16.0.11(@babel/core@7.29.0(supports-color@8.1.1))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1)
+        version: 0.9.13(next@16.0.11(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1)
       node-mocks-http:
         specifier: ^1.17.2
         version: 1.17.2(@types/express@5.0.6)(@types/node@22.13.14)
@@ -2183,7 +2177,7 @@ importers:
         version: 18.3.0
       next-router-mock:
         specifier: ^0.9.13
-        version: 0.9.13(next@16.0.11(@babel/core@7.29.0(supports-color@8.1.1))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1)
+        version: 0.9.13(next@16.0.11(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1)
       tsconfig:
         specifier: workspace:*
         version: link:../tsconfig
@@ -4463,9 +4457,6 @@ packages:
       '@modelcontextprotocol/sdk': ^1.25.2
       zod: ^3.25.0 || ^4.0.0
 
-  '@indobaseinc/pg-meta@0.93.1':
-    resolution: {integrity: sha512-VDxalK7wBmDkoBqquMc54CAwlNjMA6+MOeR9MXOmFpcwB5JF/tOAeG7FnVIZ4DO3ovVEET0xfiafmKMXUVxb/w==}
-
   '@indobaseinc/postgres-meta@0.64.6':
     resolution: {integrity: sha512-S+/MLGzSWcU++S28Yv32w+8LHQQ0WYondEaxS50MkBONthDl6YlELs8gxAk90XR6Lj0hhG4yWo0J/hbuqaolNQ==}
 
@@ -4476,9 +4467,6 @@ packages:
   '@indobaseinc/realtime-js@1.0.8':
     resolution: {integrity: sha512-9CyzlUfK400pfhqR4sip1qIJmABvPFlFARjQ5/dNCfud9lwvoqFxu9GrK3/NQFl9PdeJRMc1eLXmg1pJVuJHdQ==}
     engines: {node: '>=20.0.0'}
-
-  '@indobaseinc/shared-types@0.1.84':
-    resolution: {integrity: sha512-Yq+s3WXcHf4r8CeMSt3IkWw8LKEXpcfeL/hc0snNISwCeQP5wOoMhTu59EToRWcwb/AvwFMFgd5XFyZxIiWz4A==}
 
   '@indobaseinc/sql-to-rest@0.1.6':
     resolution: {integrity: sha512-FjzSecd3PMFVE+p0ADDiMvfnT6K9rjnxtZ6xEWC+vZtrVHVPij2jFfuhK/IbeuLgW4Kt0ryUUigpaFuZGcMSRQ==}
@@ -23374,10 +23362,6 @@ snapshots:
       '@modelcontextprotocol/sdk': 1.25.3(hono@4.11.7)(supports-color@8.1.1)(zod@3.25.76)
       zod: 3.25.76
 
-  '@indobaseinc/pg-meta@0.93.1':
-    dependencies:
-      zod: 3.25.76
-
   '@indobaseinc/postgres-meta@0.64.6(encoding@0.1.13)(supports-color@8.1.1)':
     dependencies:
       '@sinclair/typebox': 0.25.24
@@ -23406,8 +23390,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@indobaseinc/shared-types@0.1.84': {}
 
   '@indobaseinc/sql-to-rest@0.1.6(encoding@0.1.13)(supports-color@8.1.1)':
     dependencies:
@@ -37329,7 +37311,7 @@ snapshots:
       next: 15.5.10(@babel/core@7.29.0(supports-color@8.1.1))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3)
       react: 18.3.1
 
-  next-router-mock@0.9.13(next@16.0.11(@babel/core@7.29.0(supports-color@8.1.1))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1):
+  next-router-mock@0.9.13(next@16.0.11(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3))(react@18.3.1):
     dependencies:
       next: 16.0.11(@babel/core@7.29.0(supports-color@8.1.1))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.97.3)
       react: 18.3.1
