@@ -1,0 +1,27 @@
+# Traefik dynamic config for https://builder.indobase.in
+# Copy to /etc/dokploy/traefik/dynamic/builder-indobase.yml on the VPS.
+# Requires DNS: builder.indobase.in -> VPS IP (187.77.30.165).
+# Backend Swarm service: indobase-builder (port 5173).
+
+http:
+  routers:
+    indobase-builder-http:
+      rule: Host(`builder.indobase.in`)
+      service: indobase-builder-svc
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+    indobase-builder-https:
+      rule: Host(`builder.indobase.in`)
+      service: indobase-builder-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+  services:
+    indobase-builder-svc:
+      loadBalancer:
+        servers:
+          - url: http://indobase-builder:5173
+        passHostHeader: true

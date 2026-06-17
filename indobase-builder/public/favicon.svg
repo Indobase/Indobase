@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Indobase">
+  <rect width="24" height="24" rx="5" fill="#161616"/>
+  <path
+    fill="none"
+    stroke="#FFC107"
+    stroke-width="1.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 19.25 L18.75 14.75 L12 10.25 L5.25 14.75 Z"
+  />
+  <path
+    fill="#FFFFFF"
+    stroke="#FFC107"
+    stroke-width="1.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 16.85 L17.35 13.55 L12 10.25 L6.65 13.55 Z"
+  />
+  <path
+    fill="#FFC107"
+    stroke="#FFC107"
+    stroke-width="0.35"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M12 14.35 L15.85 12 L12 9.65 L8.15 12 Z"
+  />
+</svg>
