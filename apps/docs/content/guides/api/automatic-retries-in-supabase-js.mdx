@@ -31,9 +31,9 @@ import fetchRetry from 'fetch-retry'
 // Wrap the global fetch with fetch-retry
 const fetchWithRetry = fetchRetry(fetch)
 
-// Create a Supabase client instance with the custom fetch
+// Create a Indobase client instance with the custom fetch
 const supabase = createClient(
-  'https://your-supabase-url.supabase.co',
+  'https://[PROJECT-REF].indobase.in',
   'sb_publishable_... or anon key',
   {
     global: {
@@ -59,9 +59,9 @@ const fetchWithRetry = fetchRetry(fetch, {
 
 In this example, the `retryDelay` function implements an exponential backoff strategy, and retries are triggered only for specific HTTP status codes.
 
-## 4. Using the Supabase client
+## 4. Using the Indobase client
 
-With `fetch-retry` integrated, you can use the Supabase client as usual. The retry logic will automatically apply to all network requests made by `supabase-js`.
+With `fetch-retry` integrated, you can use the Indobase client as usual. The retry logic will automatically apply to all network requests made by `supabase-js`.
 
 ```javascript
 async function fetchData() {

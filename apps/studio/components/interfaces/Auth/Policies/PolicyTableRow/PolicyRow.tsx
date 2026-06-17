@@ -1,5 +1,5 @@
-import type { PostgresPolicy } from '@supabase/postgres-meta'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import type { PostgresPolicy } from '@indobaseinc/postgres-meta'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { noop } from 'lodash'
 import { Edit, MoreVertical, Trash } from 'lucide-react'
 

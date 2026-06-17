@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { indexOf } from 'lodash'
 import { Lock } from 'lucide-react'

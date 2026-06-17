@@ -93,7 +93,7 @@ export const SidePanelVercelProjectLinker = () => {
           ...vars.connection,
           metadata: {
             ...vars.connection.metadata,
-            supabaseConfig: {
+            indobaseConfig: {
               projectEnvVars: {
                 write: true,
               },

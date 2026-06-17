@@ -1,4 +1,4 @@
-import { type PostgrestError } from 'indobase-js'
+import { type PostgrestError } from '@indobaseinc/indobase-js'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import util, { styleText } from 'node:util'

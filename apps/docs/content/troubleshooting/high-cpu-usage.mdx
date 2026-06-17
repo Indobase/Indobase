@@ -9,7 +9,7 @@ Learn what high CPU usage could mean for your Supabase instance and what could h
 
 ## The danger of high CPU usage
 
-Every Supabase project runs in its dedicated virtual machine. Your instance will have a different set of hardware provisioned depending on your [compute add-on](/docs/guides/platform/compute-add-ons). Your hardware may not be suitable for the intended workload and may experience high CPU usage.
+Every Indobase project runs in its dedicated virtual machine. Your instance will have a different set of hardware provisioned depending on your [compute add-on](/docs/guides/platform/compute-add-ons). Your hardware may not be suitable for the intended workload and may experience high CPU usage.
 
 High CPU usage could come with a range of issues:
 
@@ -21,7 +21,7 @@ Moreover, your instance might not be able to handle future traffic spikes if it 
 
 ## Monitor your CPU
 
-You can check your CPU usage directly on the Supabase Platform. For this go to database health in the [Observability section](/dashboard/project/_/observability/database) and select your project.
+You can check your CPU usage directly on the Indobase Platform. For this go to database health in the [Observability section](/dashboard/project/_/observability/database) and select your project.
 
 ![CPU usage reported on Supabase dashboard](/docs/img/guides/platform/exhaust-cpu-report.png)
 
@@ -29,11 +29,11 @@ It is also possible to monitor your resources and set up alerts using Prometheus
 
 ## Common reasons for high CPU usage
 
-Everything you do with your Supabase project requires compute. Hence, there can be many reasons for high CPU usage. Here are some common ones:
+Everything you do with your Indobase project requires compute. Hence, there can be many reasons for high CPU usage. Here are some common ones:
 
 - **Query performance:** Queries that take a long time to complete (>1 second) as well as excessive amounts of querying can put a strain on the CPU. Check our guide on [examining query performance](/docs/guides/platform/performance#examining-query-performance).
 - **Missing indexes:** Your database might have to scan through a large amount of data to find the information it needs. Creating indexes helps your database find data faster. Learn more about indexes [here](/docs/guides/database/postgres/indexes).
-- **Unsuitable compute:** The compute size of your Supabase project might not be suitable for your application as you might have more traffic or run resource-intensive operations.
+- **Unsuitable compute:** The compute size of your Indobase project might not be suitable for your application as you might have more traffic or run resource-intensive operations.
 
 ## Solving high CPU usage
 

@@ -28,7 +28,7 @@ Set the session timeout by running:
 set statement_timeout = '10min';
 ```
 
-Because it applies to sessions only, it can only be used with connections through Supavisor in session mode (port 5432) or a direct connection. It cannot be used in the Dashboard, with the Supabase Client API, nor with Supavisor in Transaction mode (port 6543).
+Because it applies to sessions only, it can only be used with connections through Supavisor in session mode (port 5432) or a direct connection. It cannot be used in the Dashboard, with the Indobase Client API, nor with Supavisor in Transaction mode (port 6543).
 
 This is most often used for single, long running, administrative tasks, such as creating an HSNW index. Once the setting is implemented, you can view it by executing:
 
@@ -40,7 +40,7 @@ See the full guide on [changing session timeouts](https://github.com/orgs/supaba
 
 ### Function level
 
-This works with the Database REST API when called from the Supabase client libraries:
+This works with the Database REST API when called from the Indobase client libraries:
 
 ```sql
 create or replace function myfunc()
@@ -72,7 +72,7 @@ alter role example_role set statement_timeout = '10min'; -- could also use secon
 
 <Admonition type="tip">
 
-If you are changing the timeout for the Supabase Client API calls, you will need to reload PostgREST to reflect the timeout changes by running the following script:
+If you are changing the timeout for the Indobase Client API calls, you will need to reload PostgREST to reflect the timeout changes by running the following script:
 
 ```sql
 NOTIFY pgrst, 'reload config';
@@ -124,7 +124,7 @@ language sql;
 
 ## Identifying timeouts
 
-The Supabase Dashboard contains tools to help you identify timed-out and long-running queries.
+The Indobase Dashboard contains tools to help you identify timed-out and long-running queries.
 
 ### Using the Logs Explorer
 
@@ -168,7 +168,7 @@ Each API server uses a designated user for connecting to the database:
 | `supabase_auth_admin`        | Auth                                                                      |
 | `supabase_storage_admin`     | Storage                                                                   |
 | `supabase_replication_admin` | Synchronizes Read Replicas                                                |
-| `postgres`                   | Supabase Dashboard and External Tools (e.g., Prisma, SQLAlchemy, PSQL...) |
+| `postgres`                   | Indobase Dashboard and External Tools (e.g., Prisma, SQLAlchemy, PSQL...) |
 | Custom roles                 | External Tools (e.g., Prisma, SQLAlchemy, PSQL...)                        |
 
 Filter by the `parsed.user_name` field to only retrieve logs made by specific users:

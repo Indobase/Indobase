@@ -1,4 +1,4 @@
-# Supabase Angular User Management
+# Indobase Angular User Management
 
 This example demonstrates how to build a user management app with Angular and Supabase.
 
@@ -12,7 +12,7 @@ This example demonstrates how to build a user management app with Angular and Su
 
 ### 1. Create a Supabase project
 
-Create a new project in the [Supabase Dashboard](https://supabase.com/dashboard).
+Create a new project in the [Supabase Dashboard](https://indobase.in/dashboard).
 
 ### 2. Set up the database
 
@@ -84,6 +84,6 @@ Navigate to `http://localhost:4200/`. The application will automatically reload 
 
 ## Learn More
 
-- [Supabase Documentation](https://supabase.com/docs)
+- [Indobase Documentation](https://indobase.in/docs)
 - [Angular Documentation](https://angular.io/docs)
-- [Supabase Angular Tutorial](https://supabase.com/docs/guides/getting-started/tutorials/with-angular)
+- [Supabase Angular Tutorial](https://indobase.in/docs/guides/getting-started/tutorials/with-angular)

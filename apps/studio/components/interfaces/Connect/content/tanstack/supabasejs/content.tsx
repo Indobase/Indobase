@@ -29,7 +29,7 @@ VITE_INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-a
       <ConnectTabContent value="src/utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 export const indobase = createClient(
   import.meta.env.VITE_INDOBASE_URL,

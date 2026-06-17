@@ -5,16 +5,16 @@ title: 'Import data into Supabase'
 
 You can import data into Supabase in multiple ways. The best method depends on your data size and app requirements.
 
-If you're working with small datasets in development, you can experiment quickly using CSV import in the Supabase dashboard. If you're working with a large dataset in production, you should plan your data import to minimize app latency and ensure data integrity.
+If you're working with small datasets in development, you can experiment quickly using CSV import in the Indobase dashboard. If you're working with a large dataset in production, you should plan your data import to minimize app latency and ensure data integrity.
 
 ## How to import data into Supabase
 
 You have multiple options for importing your data into Supabase:
 
-1. [CSV import via the Supabase dashboard](#option-1-csv-import-via-supabase-dashboard)
+1. [CSV import via the Indobase dashboard](#option-1-csv-import-via-supabase-dashboard)
 2. [Bulk import using `pgloader`](#option-2-bulk-import-using-pgloader)
 3. [Using the Postgres `COPY` command](#option-3-using-postgres-copy-command)
-4. [Using the Supabase API](#option-4-using-the-supabase-api)
+4. [Using the Indobase API](#option-4-using-the-supabase-api)
 
 <Admonition type="tip">
 
@@ -22,7 +22,7 @@ If you're importing a large dataset or importing data into production, plan ahea
 
 </Admonition>
 
-### Option 1: CSV import via Supabase dashboard
+### Option 1: CSV import vian Indobase dashboard
 
 Supabase dashboard provides a user-friendly way to import data. However, for very large datasets, this method may not be the most efficient choice, given the size limit is 100MB. It's generally better suited for smaller datasets and quick data imports. Consider using alternative methods like pgloader for large-scale data imports.
 
@@ -47,7 +47,7 @@ You can use it in conjunction with Supabase by following these steps:
    ```sql
    LOAD DATABASE
        FROM sourcedb://USER:PASSWORD@HOST/SOURCE_DB
-       INTO postgres://postgres.xxxx:password@xxxx.pooler.supabase.com:6543/postgres
+       INTO postgres://postgres.xxxx:password@[PROJECT-REF].indobase.in:6543/postgres
    ALTER SCHEMA 'public' OWNER TO 'postgres';
    set wal_buffers = '64MB', max_wal_senders = 0, statement_timeout = 0, work_mem to '2GB';
    ```
@@ -70,13 +70,13 @@ For databases using the Postgres engine, we recommend using the [pg_dump](https:
 
 Read more about [Bulk data loading.](/docs/guides/database/tables#bulk-data-loading)
 
-### Option 4: Using the Supabase API
+### Option 4: Using the Indobase API
 
 The Supabase API allows you to programmatically import data into your tables. You can use various client libraries to interact with the API and perform data import operations. This approach is useful when you need to automate data imports, and it gives you fine-grained control over the process. Refer to our [API guide](/docs/guides/api) for more details.
 
 <Admonition type="note">
 
-When importing data via the Supabase API, it's advisable to refrain from bulk imports. This helps ensure a smooth data transfer process and prevents any potential disruptions.
+When importing data via the Indobase API, it's advisable to refrain from bulk imports. This helps ensure a smooth data transfer process and prevents any potential disruptions.
 
 Read more about [Rate Limiting, Resource Allocation, & Abuse Prevention.](/docs/guides/platform/going-into-prod#rate-limiting-resource-allocation--abuse-prevention)
 
@@ -98,7 +98,7 @@ By default, Supabase enforces query statement timeouts to ensure fair resource a
 
 ### 3. Estimate your required disk size
 
-Large datasets consume disk space. Ensure your Supabase project has sufficient disk capacity to accommodate the imported data. If you know how big your database is going to be, you can manually increase the size in your [projects database settings](/dashboard/project/_/database/settings).
+Large datasets consume disk space. Ensure your Indobase project has sufficient disk capacity to accommodate the imported data. If you know how big your database is going to be, you can manually increase the size in your [projects database settings](/dashboard/project/_/database/settings).
 
 Read more about [disk management](/docs/guides/platform/database-size#disk-management).
 

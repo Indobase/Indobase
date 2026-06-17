@@ -1,4 +1,4 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import { useForeignKeyConstraintsQuery } from 'data/database/foreign-key-constraints-query'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { isEmpty, noop, partition } from 'lodash'

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
-import type { JwtPayload } from 'indobase-js'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import { listOrganizationsWithRoles } from 'lib/api/saas/platform'

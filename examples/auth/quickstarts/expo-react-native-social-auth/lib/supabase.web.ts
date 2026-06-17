@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@indobaseinc/indobase-js';
 import 'react-native-url-polyfill/auto';
 
 const isSSR = typeof window === 'undefined';

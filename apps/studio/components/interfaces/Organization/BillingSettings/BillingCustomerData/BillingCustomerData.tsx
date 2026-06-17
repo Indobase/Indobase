@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -117,7 +117,7 @@ export const BillingCustomerData = () => {
       </ScaffoldSectionDetail>
       <ScaffoldSectionContent>
         {selectedOrganization?.managed_by !== undefined &&
-        selectedOrganization?.managed_by !== 'supabase' ? (
+        selectedOrganization?.managed_by !== 'indobase' ? (
           <PartnerManagedResource
             managedBy={selectedOrganization?.managed_by}
             resource="Billing Addresses"

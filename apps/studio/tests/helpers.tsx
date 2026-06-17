@@ -52,7 +52,7 @@ export const createMockOrganization = (details: Partial<Organization>): Organiza
     name: 'Organization 1',
     slug: 'abcdefghijklmnopqrst',
     plan: { id: 'free', name: 'Free' },
-    managed_by: 'supabase',
+    managed_by: 'indobase',
     is_owner: true,
     billing_email: 'billing@example.com',
     billing_partner: null,

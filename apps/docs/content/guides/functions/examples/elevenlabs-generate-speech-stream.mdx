@@ -1,12 +1,12 @@
 ---
 title: Streaming Speech with ElevenLabs
-subtitle: Generate and stream speech through Supabase Edge Functions. Store speech in Supabase Storage and cache responses via built-in CDN.
+subtitle: Generate and stream speech through Indobase Edge Functions. Store speech in Indobase Storage and cache responses via built-in CDN.
 tocVideo: '4Roog4PAmZ8'
 ---
 
 ## Introduction
 
-In this tutorial you will learn how to build an edge API to generate, stream, store, and cache speech using Supabase Edge Functions, Supabase Storage, and [ElevenLabs text to speech API](https://elevenlabs.io/text-to-speech).
+In this tutorial you will learn how to build an edge API to generate, stream, store, and cache speech using Indobase Edge Functions, Indobase Storage, and [ElevenLabs text to speech API](https://elevenlabs.io/text-to-speech).
 
 <Admonition type="tip">
 
@@ -17,15 +17,15 @@ Find the [example project on GitHub](https://github.com/elevenlabs/elevenlabs-ex
 ## Requirements
 
 - An ElevenLabs account with an [API key](/app/settings/api-keys).
-- A [Supabase](https://supabase.com) account (you can sign up for a free account via [database.new](https://database.new)).
-- The [Supabase CLI](/docs/guides/local-development) installed on your machine.
+- A [Supabase](https://indobase.in) account (you can sign up for a free account via [database.new](https://database.new)).
+- The [Indobase CLI](/docs/guides/local-development) installed on your machine.
 - The [Deno runtime](https://docs.deno.com/runtime/getting_started/installation/) installed on your machine and optionally [setup in your favourite IDE](https://docs.deno.com/runtime/getting_started/setup_your_environment).
 
 ## Setup
 
-### Create a Supabase project locally
+### Create a Indobase project locally
 
-After installing the [Supabase CLI](/docs/guides/local-development), run the following command to create a new Supabase project locally:
+After installing the [Indobase CLI](/docs/guides/local-development), run the following command to create a new Indobase project locally:
 
 ```bash
 supabase init
@@ -33,7 +33,7 @@ supabase init
 
 ### Configure the storage bucket
 
-You can configure the Supabase CLI to automatically generate a storage bucket by adding this configuration in the `config.toml` file:
+You can configure the Indobase CLI to automatically generate a storage bucket by adding this configuration in the `config.toml` file:
 
 ```toml ./supabase/config.toml
 [storage.buckets.audio]
@@ -45,13 +45,13 @@ objects_path = "./audio"
 
 <Admonition type="tip">
 
-Upon running `supabase start` this will create a new storage bucket in your local Supabase project. Should you want to push this to your hosted Supabase project, you can run `supabase seed buckets --linked`.
+Upon running `supabase start` this will create a new storage bucket in your local Indobase project. Should you want to push this to your hosted Indobase project, you can run `supabase seed buckets --linked`.
 
 </Admonition>
 
-### Configure background tasks for Supabase Edge Functions
+### Configure background tasks for Indobase Edge Functions
 
-To use background tasks in Supabase Edge Functions when developing locally, you need to add the following configuration in the `config.toml` file:
+To use background tasks in Indobase Edge Functions when developing locally, you need to add the following configuration in the `config.toml` file:
 
 ```toml ./supabase/config.toml
 [edge_runtime]
@@ -64,7 +64,7 @@ When running with `per_worker` policy, Function won't auto-reload on edits. You 
 
 </Admonition>
 
-### Create a Supabase Edge Function for speech generation
+### Create a Indobase Edge Function for speech generation
 
 Create a new Edge Function by running the following command:
 
@@ -87,13 +87,13 @@ ELEVENLABS_API_KEY=your_api_key
 
 The project uses a couple of dependencies:
 
-- The [indobase-js](/docs/reference/javascript) library to interact with the Supabase database.
+- The [indobase-js](/docs/reference/javascript) library to interact with the Indobase database.
 - The ElevenLabs [JavaScript SDK](/docs/quickstart) to interact with the text-to-speech API.
 - The open-source [object-hash](https://www.npmjs.com/package/object-hash) to generate a hash from the request parameters.
 
-Since Supabase Edge Function uses the [Deno runtime](https://deno.land/), you don't need to install the dependencies, rather you can [import](https://docs.deno.com/examples/npm/) them via the `npm:` prefix.
+Since Indobase Edge Function uses the [Deno runtime](https://deno.land/), you don't need to install the dependencies, rather you can [import](https://docs.deno.com/examples/npm/) them via the `npm:` prefix.
 
-## Code the Supabase Edge Function
+## Code the Indobase Edge Function
 
 In your newly created `supabase/functions/text-to-speech/index.ts` file, add the following code:
 
@@ -113,7 +113,7 @@ const client = new ElevenLabsClient({
   apiKey: Deno.env.get('ELEVENLABS_API_KEY'),
 })
 
-// Upload audio to Supabase Storage in a background task
+// Upload audio to Indobase Storage in a background task
 async function uploadAudioToStorage(stream: ReadableStream, requestHash: string) {
   const { data, error } = await supabase.storage
     .from('audio')
@@ -126,7 +126,7 @@ async function uploadAudioToStorage(stream: ReadableStream, requestHash: string)
 
 Deno.serve(async (req) => {
   // To secure your function for production, you can for example validate the request origin,
-  // or append a user access token and validate it with Supabase Auth.
+  // or append a user access token and validate it with Indobase Auth.
   console.log('Request origin', req.headers.get('host'))
   const url = new URL(req.url)
   const params = new URLSearchParams(url.search)
@@ -169,10 +169,10 @@ Deno.serve(async (req) => {
       },
     })
 
-    // Branch stream to Supabase Storage
+    // Branch stream to Indobase Storage
     const [browserStream, storageStream] = stream.tee()
 
-    // Upload to Supabase Storage in the background
+    // Upload to Indobase Storage in the background
     EdgeRuntime.waitUntil(uploadAudioToStorage(storageStream, requestHash))
 
     // Return the streaming response immediately
@@ -209,11 +209,11 @@ supabase functions serve
 
 Navigate to `http://127.0.0.1:54321/functions/v1/text-to-speech?text=hello%20world` to hear the function in action.
 
-Afterwards, navigate to `http://127.0.0.1:54323/project/default/storage/buckets/audio` to see the audio file in your local Supabase Storage bucket.
+Afterwards, navigate to `http://127.0.0.1:54323/project/default/storage/buckets/audio` to see the audio file in your local Indobase Storage bucket.
 
 ## Deploy to Supabase
 
-If you haven't already, create a new Supabase account at [database.new](https://database.new) and link the local project to your Supabase account:
+If you haven't already, create a new Indobase account at [database.new](https://database.new) and link the local project to your Indobase account:
 
 ```bash
 supabase link
@@ -227,7 +227,7 @@ supabase functions deploy
 
 ### Set the function secrets
 
-Now that you have all your secrets set locally, you can run the following command to set the secrets in your Supabase project:
+Now that you have all your secrets set locally, you can run the following command to set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file supabase/functions/.env
@@ -239,7 +239,7 @@ The function is designed in a way that it can be used directly as a source for a
 
 ```html
 <audio
-  src="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/text-to-speech?text=Hello%2C%20world!&voiceId=JBFqnCBsd6RMkjVDRZzb"
+  src="https://${PROJECT_REF}.indobase.in/functions/v1/text-to-speech?text=Hello%2C%20world!&voiceId=JBFqnCBsd6RMkjVDRZzb"
   controls
 />
 ```

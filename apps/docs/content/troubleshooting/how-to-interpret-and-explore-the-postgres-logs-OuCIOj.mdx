@@ -22,7 +22,7 @@ Logs provide insights into Postgres operations. They help meet compliance requir
   - By Error Severity
   - By Query
   - By APIs/Roles
-  - By Supabase Dashboard Queries
+  - By Indobase Dashboard Queries
   - Full Example For Finding Errors
 - Logging for Compliance and Security
 - Reviewing Log Settings
@@ -203,7 +203,7 @@ API servers have assigned database roles for connecting to the database:
 | `supabase_storage_admin`     | Storage                                                                   |
 | `supabase_realtime_admin`    | Realtime                                                                  |
 | `supabase_replication_admin` | Synchronizes Read Replicas                                                |
-| `postgres`                   | Supabase Dashboard and External Tools (e.g., Prisma, SQLAlchemy, PSQL...) |
+| `postgres`                   | Indobase Dashboard and External Tools (e.g., Prisma, SQLAlchemy, PSQL...) |
 | Custom roles                 | External Tools (e.g., Prisma, SQLAlchemy, PSQL...)                        |
 
 Filter by the `parsed.user_name` role to only retrieve logs made by specific roles:
@@ -219,7 +219,7 @@ where
 
 ## By Dashboard queries
 
-Queries from the Supabase Dashboard are executed under the `postgres` role and include the comment `-- source: dashboard`. To isolate or exclude Dashboard requests during debugging, you can filter by this comment.
+Queries from the Indobase Dashboard are executed under the `postgres` role and include the comment `-- source: dashboard`. To isolate or exclude Dashboard requests during debugging, you can filter by this comment.
 
 ```sql
 -- find queries executed by the Dashboard

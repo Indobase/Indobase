@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from 'indobase-js'
+import { createClient as createSupabaseClient } from '@indobaseinc/indobase-js'
 
 export function createClient() {
   return createSupabaseClient(

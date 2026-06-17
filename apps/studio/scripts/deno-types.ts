@@ -9,24 +9,24 @@ import fs from 'fs/promises'
 import path from 'path'
 
 const DENO_VERSION = 'v1.45.0'
-const SUPABASE_FUNCTIONS_JS_VERSION = '2.4.4'
+const INDOBASE_FUNCTIONS_JS_VERSION = '1.0.8'
+const INDOBASE_FUNCTIONS_JS_TYPES_URL = `https://unpkg.com/@indobaseinc/functions-js@${INDOBASE_FUNCTIONS_JS_VERSION}/src/edge-runtime.d.ts`
 
 const DENO_TYPES_URL = `https://github.com/denoland/deno/releases/download/${DENO_VERSION}/lib.deno.d.ts`
-const SUPABASE_FUNCTIONS_JS_TYPES_URL = `https://jsr.io/@supabase/functions-js/${SUPABASE_FUNCTIONS_JS_VERSION}/src/edge-runtime.d.ts`
 
 const OUTPUT_FILE = path.join(path.dirname(__dirname), 'public', 'deno', 'lib.deno.d.ts')
-const SUPABASE_FUNCTIONS_JS_OUTPUT_FILE = path.join(
+const INDOBASE_FUNCTIONS_JS_OUTPUT_FILE = path.join(
   path.dirname(__dirname),
   'public',
   'deno',
   'edge-runtime.d.ts'
 )
 const OUTPUT_VERSION_FILE = path.join(path.dirname(__dirname), 'public', 'deno', 'deno-version.txt')
-const SUPABASE_FUNCTIONS_JS_OUTPUT_VERSION_FILE = path.join(
+const INDOBASE_FUNCTIONS_JS_OUTPUT_VERSION_FILE = path.join(
   path.dirname(__dirname),
   'public',
   'deno',
-  'supabase-functions-js-version.txt'
+  'indobase-functions-js-version.txt'
 )
 
 async function downloadTypes() {
@@ -46,22 +46,21 @@ async function downloadTypes() {
   }
 }
 
-async function downloadSupabaseFunctionsJsTypes() {
+async function downloadIndobaseFunctionsJsTypes() {
   console.log('Downloading Indobase Functions JS types')
 
   try {
-    const response = await fetch(SUPABASE_FUNCTIONS_JS_TYPES_URL)
+    const response = await fetch(INDOBASE_FUNCTIONS_JS_TYPES_URL)
     const data = await response.text()
 
-    await fs.writeFile(SUPABASE_FUNCTIONS_JS_OUTPUT_FILE, data)
-    await fs.writeFile(SUPABASE_FUNCTIONS_JS_OUTPUT_VERSION_FILE, SUPABASE_FUNCTIONS_JS_VERSION)
+    await fs.writeFile(INDOBASE_FUNCTIONS_JS_OUTPUT_FILE, data)
+    await fs.writeFile(INDOBASE_FUNCTIONS_JS_OUTPUT_VERSION_FILE, INDOBASE_FUNCTIONS_JS_VERSION)
 
     console.log('Indobase Functions JS types downloaded successfully')
   } catch (error) {
     console.error('Error downloading Indobase Functions JS types', error)
     process.exit(1)
   }
-  
 }
 
-Promise.all([downloadTypes(), downloadSupabaseFunctionsJsTypes()])
+Promise.all([downloadTypes(), downloadIndobaseFunctionsJsTypes()])

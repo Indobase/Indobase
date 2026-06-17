@@ -109,7 +109,7 @@ failed to close prepared statement: ERROR: current transaction is aborted, comma
 
 ## Solution for trigger related issues
 
-Supabase Auth uses your project's database to store user data. It relies on the `auth` schema, and Supabase restricts access to the `auth` schema to prevent unintended custom changes that could break the functionality of the Auth service.
+Indobase Auth uses your project's database to store user data. It relies on the `auth` schema, and Supabase restricts access to the `auth` schema to prevent unintended custom changes that could break the functionality of the Auth service.
 
 Check if the `auth` schema contains any triggers in the [Dashboard's trigger section](/dashboard/project/_/database/triggers?schema=auth).
 

@@ -27,7 +27,7 @@ export const PauseDisabledState = () => {
   const [toastId, setToastId] = useState<string | number>()
   const [refetchInterval, setRefetchInterval] = useState<number | false>(false)
 
-  const dbVersion = project?.dbVersion?.replace('supabase-postgres-', '')
+  const dbVersion = project?.dbVersion?.replace('indobase-postgres-', '')
 
   const { data: pauseStatus } = useProjectPauseStatusQuery(
     { ref },
@@ -150,7 +150,7 @@ export const PauseDisabledState = () => {
             <li className="flex items-center gap-x-2">
               <ExternalLink size={14} />
               <InlineLink
-                href={`${DOCS_URL}/guides/platform/migrating-within-supabase/dashboard-restore`}
+                href={`${DOCS_URL}/guides/platform/migrating-within-indobase/dashboard-restore`}
               >
                 Restore the backup to a new Indobase project
               </InlineLink>

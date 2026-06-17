@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { mkdir, writeFile, unlink } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -66,7 +66,30 @@ export type CustomDomainRow = {
   updated_at: string
 }
 
-function mapRowToApiResponse(row: CustomDomainRow) {
+export type CustomDomainApiResponse = {
+  custom_hostname: string
+  data: {
+    errors: unknown[]
+    messages: unknown[]
+    success: true
+    result: {
+      custom_origin_server: string
+      hostname: string
+      id: string
+      ownership_verification: { name: string; type: string; value: string }
+      ssl: {
+        status: string
+        validation_errors: { message: string }[]
+        validation_records: { name: string; type: string; value: string }[]
+      }
+      status: string
+      verification_errors: string[]
+    }
+  }
+  status: string
+}
+
+function mapRowToApiResponse(row: CustomDomainRow): CustomDomainApiResponse {
   const ownership = Array.isArray(row.ownership_verification)
     ? (row.ownership_verification as Array<{ name: string; type: string; value: string }>)
     : []

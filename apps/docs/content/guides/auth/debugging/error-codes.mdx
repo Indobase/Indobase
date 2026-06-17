@@ -1,19 +1,19 @@
 ---
 id: 'auth-error-codes'
 title: 'Error Codes'
-description: 'Supabase Auth Error Codes'
+description: 'Indobase Auth Error Codes'
 subtitle: 'Learn about the Auth error codes and how to resolve them'
 ---
 
 ## Auth error codes
 
-Supabase Auth can return various errors when using its API. This guide explains how to handle these errors effectively across different programming languages.
+Indobase Auth can return various errors when using its API. This guide explains how to handle these errors effectively across different programming languages.
 
 ## Error types
 
-Supabase Auth errors are generally categorized into two main types:
+Indobase Auth errors are generally categorized into two main types:
 
-- API Errors: Originate from the Supabase Auth API.
+- API Errors: Originate from the Indobase Auth API.
 - Client Errors: Originate from the client library's state.
 
 Client errors differ by language so do refer to the appropriate section below:
@@ -28,7 +28,7 @@ All errors originating from the `supabase.auth` namespace of the client library 
 
 Error objects are split in a few classes:
 
-- `AuthApiError` -- errors which originate from the Supabase Auth API.
+- `AuthApiError` -- errors which originate from the Indobase Auth API.
   - Use `isAuthApiError` instead of `instanceof` checks to see if an error you caught is of this type.
 - `CustomAuthError` -- errors which generally originate from state in the client library.
   - Use the `name` property on the error to identify the class of error received.
@@ -40,7 +40,7 @@ Errors originating from the server API classed as `AuthApiError` always have a `
 <TabPanel id="dart" label="Dart">
 All errors originating from the `supabase.auth` namespace of the client library will be wrapped by the `AuthException` class.
 
-Error objects are split in a few classes. `AuthApiException` is an exception which originates from the Supabase Auth API.
+Error objects are split in a few classes. `AuthApiException` is an exception which originates from the Indobase Auth API.
 
 Errors originating from the server API classed as `AuthApiException` always have a `code` property that can be used to identify the error returned by the server. The `statusCode` property is also present, encoding the HTTP status code received in the response.
 
@@ -50,7 +50,7 @@ Errors originating from the server API classed as `AuthApiException` always have
 <TabPanel id="swift" label="Swift">
 All errors originating from the `supabase.auth` namespace of the client library will be a case of the `AuthError` enum.
 
-The `api(message:errorCode:underlyingData:underlyingResponse:)` case is a special case for errors which originates from the Supabase Auth API, this error always have an `errorCode` property that can be used to identify the error returned by the server.
+The `api(message:errorCode:underlyingData:underlyingResponse:)` case is a special case for errors which originates from the Indobase Auth API, this error always have an `errorCode` property that can be used to identify the error returned by the server.
 
 </TabPanel>
 </$Show>
@@ -58,7 +58,7 @@ The `api(message:errorCode:underlyingData:underlyingResponse:)` case is a specia
 <TabPanel id="python" label="Python">
 All errors originating from the `supabase.auth` namespace of the client library will be wrapped by the `AuthError` class.
 
-Error objects are split in a few classes. `AuthApiError` is an error which originate from the Supabase Auth API.
+Error objects are split in a few classes. `AuthApiError` is an error which originate from the Indobase Auth API.
 
 Errors originating from the server API classed as `AuthApiError` always have a `code` property that can be used to identify the error returned by the server. The `status` property is also present, encoding the HTTP status code received in the response.
 
@@ -70,7 +70,7 @@ All exceptions originating from the `supabase.auth` namespace of the Kotlin clie
 
 Rest exceptions are split into a few classes:
 
-- `AuthRestException` -- exceptions which originate from the Supabase Auth API and have a `errorCode` property that can be used to identify the error returned by the server.
+- `AuthRestException` -- exceptions which originate from the Indobase Auth API and have a `errorCode` property that can be used to identify the error returned by the server.
 - `AuthWeakPasswordException` -- an `AuthRestException` which indicates that the password is too weak.
 - `AuthSessionMissingException` -- an `AuthRestException` which indicates that the session is missing, if the user was logged out or deleted.
 
@@ -83,7 +83,7 @@ All instances and subclasses of a `AuthRestException` have a `errorCode` propert
 
 ## HTTP status codes
 
-Below are the most common HTTP status codes you might encounter, along with their meanings in the context of Supabase Auth:
+Below are the most common HTTP status codes you might encounter, along with their meanings in the context of Indobase Auth:
 
 {/* supa-mdx-lint-disable Rule001HeadingCase */}
 
@@ -111,7 +111,7 @@ Sent out when a feature is not enabled on the Auth server, and you are trying to
 
 ## Auth error codes table
 
-The following table provides a comprehensive list of error codes you may encounter when working with Supabase Auth. Each error code is associated with a specific issue and includes a description to help you understand and resolve the problem efficiently.
+The following table provides a comprehensive list of error codes you may encounter when working with Indobase Auth. Each error code is associated with a specific issue and includes a description to help you understand and resolve the problem efficiently.
 
 <ErrorCodes service="auth" />
 

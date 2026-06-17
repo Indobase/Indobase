@@ -117,7 +117,7 @@ cross join unnest(headers) AS headers;
 | Column                | Description                                               | Sample value                                                                                                              |
 | --------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | request.method        | Request Method (PATCH, GET, PUT...)                       | GET                                                                                                                       |
-| request.url           | Request URL, which contains the PostgREST formatted query | https://yuhplfrsdxxxtldakizi.supabase.co/rest/v1/users?select=username&id=eq.63b6190e-214f-4b8a-b72d-3af6e1921411&limit=1 |
+| request.url           | Request URL, which contains the PostgREST formatted query | https://yuhplfrsdxxxtldakizi.indobase.in/rest/v1/users?select=username&id=eq.63b6190e-214f-4b8a-b72d-3af6e1921411&limit=1 |
 | request.sb.auth_users | authenticated user's ID                                   | 63b6190e-214f-4b8a-b72d-3af6e1921411                                                                                      |
 
 **Unnesting example:**
@@ -177,7 +177,7 @@ let { data: countries, error } = await supabase.from('countries').select('name')
 translates to calling the following endpoint:
 
 ```bash
-https://<project ref>.supabase.co/rest/v1/countries?select=name
+https://<project ref>.indobase.in/rest/v1/countries?select=name
 ```
 
 You can use regex ([Advanced Regex Guide](https://github.com/orgs/supabase/discussions/22640)) to find the objects related to your query. Try isolating by:

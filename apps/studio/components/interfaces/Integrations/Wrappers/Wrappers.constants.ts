@@ -2199,7 +2199,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_paddle_fdw_v0.1.1/paddle_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_paddle_fdw_v0.1.1/paddle_fdw.wasm',
           hidden: true,
         },
         {
@@ -2208,7 +2208,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:paddle-fdw',
+          defaultValue: 'indobase:paddle-fdw',
           hidden: true,
         },
         {
@@ -2300,7 +2300,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_snowflake_fdw_v0.1.1/snowflake_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_snowflake_fdw_v0.1.1/snowflake_fdw.wasm',
           hidden: true,
         },
         {
@@ -2309,7 +2309,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:snowflake-fdw',
+          defaultValue: 'indobase:snowflake-fdw',
           hidden: true,
         },
         {
@@ -2489,7 +2489,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_cal_fdw_v0.1.0/cal_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_cal_fdw_v0.1.0/cal_fdw.wasm',
           hidden: true,
         },
         {
@@ -2498,7 +2498,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:cal-fdw',
+          defaultValue: 'indobase:cal-fdw',
           hidden: true,
         },
         {
@@ -2696,7 +2696,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_calendly_fdw_v0.1.0/calendly_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_calendly_fdw_v0.1.0/calendly_fdw.wasm',
           hidden: true,
         },
         {
@@ -2705,7 +2705,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:calendly-fdw',
+          defaultValue: 'indobase:calendly-fdw',
           hidden: true,
         },
         {
@@ -2933,7 +2933,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_clerk_fdw_v0.1.0/clerk_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_clerk_fdw_v0.1.0/clerk_fdw.wasm',
           hidden: true,
         },
         {
@@ -2942,7 +2942,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:clerk-fdw',
+          defaultValue: 'indobase:clerk-fdw',
           hidden: true,
         },
         {
@@ -3273,7 +3273,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_notion_fdw_v0.1.1/notion_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_notion_fdw_v0.1.1/notion_fdw.wasm',
           hidden: true,
         },
         {
@@ -3282,7 +3282,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:notion-fdw',
+          defaultValue: 'indobase:notion-fdw',
           hidden: true,
         },
         {
@@ -3427,7 +3427,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_slack_fdw_v0.1.0/slack_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_slack_fdw_v0.1.0/slack_fdw.wasm',
           hidden: true,
         },
         {
@@ -3436,7 +3436,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:slack-fdw',
+          defaultValue: 'indobase:slack-fdw',
           hidden: true,
         },
         {
@@ -3677,7 +3677,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_cfd1_fdw_v0.1.0/cfd1_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_cfd1_fdw_v0.1.0/cfd1_fdw.wasm',
           hidden: true,
         },
         {
@@ -3686,7 +3686,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:cfd1-fdw',
+          defaultValue: 'indobase:cfd1-fdw',
           hidden: true,
         },
         {
@@ -3813,7 +3813,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_hubspot_fdw_v0.1.0/hubspot_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_hubspot_fdw_v0.1.0/hubspot_fdw.wasm',
           hidden: true,
         },
         {
@@ -3822,7 +3822,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:hubspot-fdw',
+          defaultValue: 'indobase:hubspot-fdw',
           hidden: true,
         },
         {
@@ -4102,7 +4102,7 @@ export const WRAPPERS: WrapperMeta[] = [
           encrypted: false,
           secureEntry: false,
           defaultValue:
-            'https://github.com/supabase/wrappers/releases/download/wasm_orb_fdw_v0.1.0/orb_fdw.wasm',
+            'https://github.com/Indobase/wrappers/releases/download/wasm_orb_fdw_v0.1.0/orb_fdw.wasm',
           hidden: true,
         },
         {
@@ -4111,7 +4111,7 @@ export const WRAPPERS: WrapperMeta[] = [
           required: true,
           encrypted: false,
           secureEntry: false,
-          defaultValue: 'supabase:orb-fdw',
+          defaultValue: 'indobase:orb-fdw',
           hidden: true,
         },
         {

@@ -9,9 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/supabase-js": "^2.47.3",
+    "@indobaseinc/auth-ui-react": "^1.0.1",
+    "@indobaseinc/auth-ui-shared": "^1.0.1",
+    "@indobaseinc/indobase-js": "^1.0.8",
     "jwt-decode": "^4.0.0",
     "next": "latest",
     "react": "^18.2.0",

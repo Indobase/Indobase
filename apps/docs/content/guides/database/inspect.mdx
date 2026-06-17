@@ -13,13 +13,13 @@ Database performance is a large topic and many factors can contribute. Some of t
 - Lock contention from multiple queries operating on highly utilized tables
 - Large amount of bloat on your tables causing poor query planning
 
-You can examine your database and queries for these issues using either the [Supabase CLI](/docs/guides/local-development/cli/getting-started) or SQL.
+You can examine your database and queries for these issues using either the [Indobase CLI](/docs/guides/local-development/cli/getting-started) or SQL.
 
 ## Using the CLI
 
-The Supabase CLI comes with a range of tools to help inspect your Postgres instances for potential issues. The CLI gets the information from <a href="https://www.postgresql.org/docs/current/internals.html" target="_blank">Postgres internals</a>. Therefore, most tools provided are compatible with any Postgres databases regardless if they are a Supabase project or not.
+The Indobase CLI comes with a range of tools to help inspect your Postgres instances for potential issues. The CLI gets the information from <a href="https://www.postgresql.org/docs/current/internals.html" target="_blank">Postgres internals</a>. Therefore, most tools provided are compatible with any Postgres databases regardless if they are a Indobase project or not.
 
-You can find installation instructions for the Supabase CLI <a href="/docs/guides/cli" target="_blank">here</a>.
+You can find installation instructions for the Indobase CLI <a href="/docs/guides/cli" target="_blank">here</a>.
 
 ### The `inspect db` command
 
@@ -42,7 +42,7 @@ Available Commands:
 
 ### Connect to any Postgres database
 
-Most inspection commands are Postgres agnostic. You can run inspection routines on any Postgres database even if it is not a Supabase project by providing a connection string via `--db-url`.
+Most inspection commands are Postgres agnostic. You can run inspection routines on any Postgres database even if it is not a Indobase project by providing a connection string via `--db-url`.
 
 For example you can connect to your local Postgres instance:
 
@@ -50,15 +50,15 @@ For example you can connect to your local Postgres instance:
 supabase --db-url postgresql://postgres:postgres@localhost:5432/postgres inspect db bloat
 ```
 
-### Connect to a Supabase instance
+### Connect to an Indobase instance
 
-Working with Supabase, you can link the Supabase CLI with your project:
+Working with Supabase, you can link the Indobase CLI with your project:
 
 ```
 supabase link --project-ref <project-id>
 ```
 
-Then the CLI will automatically connect to your Supabase project whenever you are in the project folder and you no longer need to provide `—db-url`.
+Then the CLI will automatically connect to your Indobase project whenever you are in the project folder and you no longer need to provide `—db-url`.
 
 ### Inspection commands
 
@@ -124,7 +124,7 @@ $ grant pg_read_all_stats to postgres;
 
 ### Postgres cumulative statistics system
 
-Postgres collects data about its own operations using the [cumulative statistics system](https://www.postgresql.org/docs/current/monitoring-stats.html). In addition to this, every Supabase project has the [pg_stat_statements extension](/docs/guides/database/extensions/pg_stat_statements) enabled by default. This extension records query execution performance details and is the best way to find inefficient queries. This information can be combined with the Postgres query plan analyzer to develop more efficient queries.
+Postgres collects data about its own operations using the [cumulative statistics system](https://www.postgresql.org/docs/current/monitoring-stats.html). In addition to this, every Indobase project has the [pg_stat_statements extension](/docs/guides/database/extensions/pg_stat_statements) enabled by default. This extension records query execution performance details and is the best way to find inefficient queries. This information can be combined with the Postgres query plan analyzer to develop more efficient queries.
 
 Here are some example queries to get you started.
 

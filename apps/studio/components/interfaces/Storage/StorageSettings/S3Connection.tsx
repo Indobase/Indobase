@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { AlertTitle } from '@ui/components/shadcn/ui/alert'
 import { useParams } from 'common'
 import AlertError from 'components/ui/AlertError'

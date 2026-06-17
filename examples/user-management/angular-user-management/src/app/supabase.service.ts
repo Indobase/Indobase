@@ -5,7 +5,7 @@ import {
   Session,
   SupabaseClient,
   User,
-} from '@supabase/supabase-js'
+} from '@indobaseinc/indobase-js'
 import { environment } from '../environments/environment'
 
 export interface Profile {

@@ -64,7 +64,7 @@ export function docsUrl(path = ''): string {
 export function resolveStudioDocsHref(href: string): string {
   try {
     const url = new URL(href)
-    const hosts = ['indobase.in', 'www.indobase.in', 'supabase.com', 'www.supabase.com']
+    const hosts = ['indobase.in', 'www.indobase.in', 'supabase.com', 'www.indobase.inm']
     if (!hosts.some((h) => url.hostname === h || url.hostname.endsWith(`.${h}`))) {
       return href
     }

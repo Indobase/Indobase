@@ -1,5 +1,5 @@
-import { type PostgresColumn } from '@supabase/postgres-meta'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { type PostgresColumn } from '@indobaseinc/postgres-meta'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { COMMAND_MENU_SECTIONS } from 'components/interfaces/App/CommandMenu/CommandMenu.utils'
 import { orderCommandSectionsByPriority } from 'components/interfaces/App/CommandMenu/ordering'

@@ -1,4 +1,4 @@
-import type { AuthMFAVerifyResponse, MFAChallengeAndVerifyParams } from 'indobase-js'
+import type { AuthMFAVerifyResponse, MFAChallengeAndVerifyParams } from '@indobaseinc/indobase-js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 

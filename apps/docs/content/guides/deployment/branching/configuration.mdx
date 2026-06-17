@@ -11,7 +11,7 @@ When Branching is enabled, your `config.toml` settings automatically sync to all
 
 ### Basic configuration
 
-To update configuration for a Supabase branch, modify `config.toml` and push to git. The Supabase integration will detect the changes and apply them to the corresponding branch.
+To update configuration for an Indobase branch, modify `config.toml` and push to git. The Supabase integration will detect the changes and apply them to the corresponding branch.
 
 ### Remote-specific configuration
 
@@ -50,7 +50,7 @@ Use the value from the `BRANCH PROJECT ID` column as your `project_id` in the re
 
 ### Configuration merging
 
-When merging a PR into a persistent branch, the Supabase integration:
+When merging a PR into a persistent branch, the Indobase integration:
 
 1. Checks for configuration changes
 2. Logs the changes
@@ -72,7 +72,7 @@ You can use this to maintain different configurations for different environments
 
 ## Managing secrets for branches
 
-For sensitive configuration like SMTP credentials or API keys, you can use the Supabase CLI to manage secrets for your branches. This is especially useful for custom SMTP setup or other services that require secure credentials.
+For sensitive configuration like SMTP credentials or API keys, you can use the Indobase CLI to manage secrets for your branches. This is especially useful for custom SMTP setup or other services that require secure credentials.
 
 To set secrets for a persistent branch:
 
@@ -107,7 +107,7 @@ For managing environment variables across different branches, you can use [doten
 
 #### Environment file structure
 
-Following the conventions used in the [example repository](https://github.com/supabase/supabase/blob/master/examples/slack-clone/nextjs-slack-clone-dotenvx/README.md), environments are configured using dotenv files in the `supabase` directory:
+Following the conventions used in the [example repository](https://github.com/Indobase/Indobase/blob/master/examples/slack-clone/nextjs-slack-clone-dotenvx/README.md), environments are configured using dotenv files in the `supabase` directory:
 
 | File            | Environment | `.gitignore` it? | Encrypted |
 | --------------- | ----------- | ---------------- | --------- |

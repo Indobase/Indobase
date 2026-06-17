@@ -28,7 +28,7 @@ const menu = [
       ? {
           label: 'Supabase.com',
           icon: 'home',
-          href: 'https://supabase.com',
+          href: 'https://indobase.in',
           otherProps: {
             target: '_blank',
             rel: 'noreferrer noopener',
@@ -51,7 +51,7 @@ const menu = [
     {
       label: 'Support',
       icon: 'support',
-      href: 'https://supabase.com/support',
+      href: 'https://indobase.in/support',
       otherProps: {
         target: '_blank',
         rel: 'noreferrer noopener',

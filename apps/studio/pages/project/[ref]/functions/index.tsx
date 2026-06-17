@@ -194,7 +194,7 @@ EdgeFunctionsPage.getLayout = (page: React.ReactElement) => {
                   <a
                     target="_blank"
                     rel="noreferrer"
-                    href="https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions"
+                    href="https://github.com/Indobase/supabase/tree/master/examples/edge-functions/supabase/functions"
                   >
                     Examples
                   </a>

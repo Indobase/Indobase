@@ -51,8 +51,8 @@ describe('useChartHoverState', () => {
     })
 
     it('should load sync settings from localStorage on initialization', async () => {
-      localStorageMock.setItem('supabase-chart-hover-sync-enabled', 'true')
-      localStorageMock.setItem('supabase-chart-tooltip-sync-enabled', 'true')
+      localStorageMock.setItem('indobase-chart-hover-sync-enabled', 'true')
+      localStorageMock.setItem('indobase-chart-tooltip-sync-enabled', 'true')
 
       vi.resetModules()
       const { useChartHoverState: useChartHoverStateWithStorage } = await import(
@@ -66,8 +66,8 @@ describe('useChartHoverState', () => {
     })
 
     it('should handle corrupted localStorage data gracefully', async () => {
-      localStorageMock.setItem('supabase-chart-hover-sync-enabled', 'invalid-json')
-      localStorageMock.setItem('supabase-chart-tooltip-sync-enabled', 'invalid-json')
+      localStorageMock.setItem('indobase-chart-hover-sync-enabled', 'invalid-json')
+      localStorageMock.setItem('indobase-chart-tooltip-sync-enabled', 'invalid-json')
 
       vi.resetModules()
       const { useChartHoverState: useChartHoverStateWithCorrupted } = await import(
@@ -162,7 +162,7 @@ describe('useChartHoverState', () => {
 
       expect(result.current.syncHover).toBe(true)
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'supabase-chart-hover-sync-enabled',
+        'indobase-chart-hover-sync-enabled',
         'true'
       )
     })
@@ -194,11 +194,11 @@ describe('useChartHoverState', () => {
       expect(result.current.syncHover).toBe(true)
       expect(result.current.syncTooltip).toBe(true)
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'supabase-chart-hover-sync-enabled',
+        'indobase-chart-hover-sync-enabled',
         'true'
       )
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'supabase-chart-tooltip-sync-enabled',
+        'indobase-chart-tooltip-sync-enabled',
         'true'
       )
     })

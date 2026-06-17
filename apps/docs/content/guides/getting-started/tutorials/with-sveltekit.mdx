@@ -9,7 +9,7 @@ description: 'Learn how to use Supabase in your SvelteKit App.'
 
 <Admonition type="note">
 
-If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/supabase/supabase/tree/master/examples/user-management/sveltekit-user-management).
+If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/user-management/sveltekit-user-management).
 
 </Admonition>
 
@@ -29,7 +29,7 @@ cd supabase-sveltekit
 npm install
 ```
 
-Then install the Supabase client library: [supabase-js](https://github.com/supabase/supabase-js)
+Then install the Indobase client library: [supabase-js](https://github.com/Indobase/Indobase-js)
 
 ```bash
 npm install indobase-js
@@ -52,17 +52,17 @@ PUBLIC_SUPABASE_PUBLISHABLE_KEY="YOUR_SUPABASE_PUBLISHABLE_KEY"
 An optional step is to update the CSS file `src/styles.css` to make the app look nice.
 You can find the full contents of this file [in the example repository](https://raw.githubusercontent.com/supabase/supabase/master/examples/user-management/sveltekit-user-management/src/styles.css).
 
-### Creating a Supabase client for SSR
+### Creating a Indobase client for SSR
 
 The `ssr` package configures Supabase to use Cookies, which are required for server-side languages and frameworks.
 
 Install the SSR package:
 
 ```bash
-npm install @supabase/ssr
+npm install @indobaseinc/ssr
 ```
 
-Creating a Supabase client with the `ssr` package automatically configures it to use Cookies. This means the user's session is available throughout the entire SvelteKit stack - page, layout, server, and hooks.
+Creating a Indobase client with the `ssr` package automatically configures it to use Cookies. This means the user's session is available throughout the entire SvelteKit stack - page, layout, server, and hooks.
 
 Add the code below to a `src/hooks.server.ts` file to initialize the client on the server:
 
@@ -181,7 +181,7 @@ As this is a server-side rendering (SSR) environment, you need to create a serve
 
 The following code snippet performs the following steps:
 
-- Retrieves the `token_hash` sent back from the Supabase Auth server using the `token_hash` query parameter.
+- Retrieves the `token_hash` sent back from the Indobase Auth server using the `token_hash` query parameter.
 - Exchanges this `token_hash` for a session, which you store in storage (in this case, cookies).
 - Finally, redirect the user to the `account` page or the `error` page.
 
@@ -246,7 +246,7 @@ And then open the browser to [localhost:5173](http://localhost:5173) and you sho
 
 ## Bonus: Profile photos
 
-Every Supabase project is configured with [Storage](/docs/guides/storage) for managing large files like photos and videos.
+Every Indobase project is configured with [Storage](/docs/guides/storage) for managing large files like photos and videos.
 
 ### Create an upload widget
 

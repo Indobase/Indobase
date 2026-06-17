@@ -22,7 +22,7 @@ let { data: countries, error } = await supabase.from('countries').select('name')
 translates to a URL like:
 
 ```bash
-https://<project ref>.supabase.co/rest/v1/countries?select=name
+https://<project ref>.indobase.in/rest/v1/countries?select=name
 ```
 
 However, appending too much data to the URL can exceed the 16KB limitation, triggering a 520 failure. This typically occurs with lengthy `in` clauses, as demonstrated here:

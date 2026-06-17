@@ -16,7 +16,7 @@ VITE_INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-a
       name: 'src/utils/indobase.ts',
       language: 'ts',
       code: `
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 export const indobase = createClient(
   import.meta.env.VITE_INDOBASE_URL,

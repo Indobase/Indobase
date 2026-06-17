@@ -21,9 +21,9 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@supabase/auth-ui-shared": "^0.1.8",
-		"@supabase/auth-ui-svelte": "^0.2.9",
-		"@supabase/ssr": "^0.6.1",
-		"@supabase/supabase-js": "^2.44.2"
+		"@indobaseinc/auth-ui-shared": "^1.0.1",
+		"@indobaseinc/auth-ui-svelte": "^1.0.1",
+		"@indobaseinc/ssr": "^0.6.1",
+		"@indobaseinc/indobase-js": "^1.0.8"
 	}
 }

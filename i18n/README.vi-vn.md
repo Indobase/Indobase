@@ -5,41 +5,41 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) là một giải pháp mã nguồn mở thay thế cho Firebase. Chúng tôi đang sử dụng các công cụ mã nguồn mở đạt chuẩn doanh nghiệp để xây dựng các chức năng mà Firebase cung cấp.
+[Indobase](https://indobase.in) là một giải pháp mã nguồn mở thay thế cho Firebase. Chúng tôi đang sử dụng các công cụ mã nguồn mở đạt chuẩn doanh nghiệp để xây dựng các chức năng mà Firebase cung cấp.
 
-- [x] Cơ sở dữ liệu Postgres tự quản lý. [Tài liệu](https://supabase.com/docs/guides/database)
-- [x] Xác thực và uỷ quyền. [Tài liệu](https://supabase.com/docs/guides/auth)
+- [x] Cơ sở dữ liệu Postgres tự quản lý. [Tài liệu](https://indobase.in/docs/guides/database)
+- [x] Xác thực và uỷ quyền. [Tài liệu](https://indobase.in/docs/guides/auth)
 - [x] APIs tự động khởi tạo.
-  - [x] REST. [Tài liệu](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] Lắng nghe thay đổi thời gian thực. [Tài liệu](https://supabase.com/docs/guides/api#realtime-api-overview)
-  - [x] GraphQL (Thử nghiệm). [Tài liệu](https://supabase.com/docs/guides/api#graphql-api-overview)
+  - [x] REST. [Tài liệu](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] Lắng nghe thay đổi thời gian thực. [Tài liệu](https://indobase.in/docs/guides/api#realtime-api-overview)
+  - [x] GraphQL (Thử nghiệm). [Tài liệu](https://indobase.in/docs/guides/api#graphql-api-overview)
 - [x] Chức năng hàm.
-  - [x] Hàm dành cho cơ sở dữ liệu (Database functions). [Tài liệu](https://supabase.com/docs/guides/database/functions)
-  - [x] Hàm được phân phối trên toàn cầu (Edge Functions). [Tài liệu](https://supabase.com/docs/guides/functions)
-- [x] Kho lưu trữ. [Tài liệu](https://supabase.com/docs/guides/storage)
+  - [x] Hàm dành cho cơ sở dữ liệu (Database functions). [Tài liệu](https://indobase.in/docs/guides/database/functions)
+  - [x] Hàm được phân phối trên toàn cầu (Edge Functions). [Tài liệu](https://indobase.in/docs/guides/functions)
+- [x] Kho lưu trữ. [Tài liệu](https://indobase.in/docs/guides/storage)
 - [x] Bảng điều khiển
 
-![Bảng điều khiển của Supabase](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Bảng điều khiển của Indobase](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Tài liệu tham khảo
 
-Để có tài liệu đầy đủ, hãy truy cập [supabase.com/docs](https://supabase.com/docs)
+Để có tài liệu đầy đủ, hãy truy cập [indobase.in/docs](https://indobase.in/docs)
 
 Để biết cách Đóng góp, hãy truy cập [Bắt đầu](../DEVELOPERS.md)
 
 ## Hỗ trợ & Cộng đồng
 
-- [Diễn đàn cộng đồng](https://github.com/supabase/supabase/discussions). Tốt nhất cho: hỗ trợ xây dựng và thảo luận về các phương pháp tối ưu nhất dành cho cơ sở dữ liệu.
-- [Các vấn đề trên GitHub](https://github.com/supabase/supabase/issues). Tốt nhất cho: các lỗi và "bugs" mà bạn gặp phải khi sử dụng Supabase.
-- [Hỗ trợ qua email](https://supabase.com/docs/support#business-support). Tốt nhất cho: các vấn đề với cơ sở dữ liệu hoặc cơ sở hạ tầng của bạn.
-- [Discord](https://discord.supabase.com). Tốt nhất cho: chia sẻ ứng dụng của bạn và dành thời gian với cộng đồng.
+- [Diễn đàn cộng đồng](https://github.com/Indobase/Indobase/discussions). Tốt nhất cho: hỗ trợ xây dựng và thảo luận về các phương pháp tối ưu nhất dành cho cơ sở dữ liệu.
+- [Các vấn đề trên GitHub](https://github.com/Indobase/Indobase/issues). Tốt nhất cho: các lỗi và "bugs" mà bạn gặp phải khi sử dụng Indobase.
+- [Hỗ trợ qua email](https://indobase.in/docs/support#business-support). Tốt nhất cho: các vấn đề với cơ sở dữ liệu hoặc cơ sở hạ tầng của bạn.
+- [Discord](https://discord.indobase.in). Tốt nhất cho: chia sẻ ứng dụng của bạn và dành thời gian với cộng đồng.
 
 ## Trạng thái
 
-- [x] Alpha: Chúng tôi đang thử nghiệm Supabase với một nhóm người dùng kín
-- [x] Public Alpha: Bất kỳ ai cũng có thể đăng ký tại [supabase.com/dashboard](https://supabase.com/dashboard). Nhưng hãy bình tĩnh với chúng tôi, sẽ có một vài lỗi nhỏ.
+- [x] Alpha: Chúng tôi đang thử nghiệm Indobase với một nhóm người dùng kín
+- [x] Public Alpha: Bất kỳ ai cũng có thể đăng ký tại [supabase.com/dashboard](https://indobase.in/dashboard). Nhưng hãy bình tĩnh với chúng tôi, sẽ có một vài lỗi nhỏ.
 - [x] Public Beta: Đủ ổn định cho hầu hết các trường hợp sử dụng không dành cho môi trường doanh nghiệp (production)
 - [ ] Public: Sẵn sàng cho môi trường doanh nghiệp (production)
 
@@ -49,19 +49,19 @@ Chúng tôi hiện đang ở giai đoạn Public Beta. Hãy đón xem mục "rel
 
 ---
 
-## Cách Supabase hoạt động
+## Cách Indobase hoạt động
 
-Supabase là sự kết hợp của các công cụ mã nguồn mở. Các tính năng của Supabase được xây dựng dựa trên các sản phẩm đạt chuẩn doanh nghiệp và mã nguồn mở. Nếu các công cụ và cộng đồng hỗ trợ công cụ đó tồn tại, cùng với giấy phép MIT, Apache 2 hoặc giấy phép mở tương đương, chúng tôi sẽ sử dụng và hỗ trợ công cụ đó. Nếu công cụ không tồn tại, chúng tôi sẽ tự xây dựng và mở mã nguồn của nó. Supabase không phải là phiên bản 1 : 1 của Firebase. Mục đích của chúng tôi là cung cấp cho các nhà phát triển trải nghiệm tuyệt vời giống như sử dụng Firebase bằng cách sử dụng các công cụ nguồn mở.
+Indobase là sự kết hợp của các công cụ mã nguồn mở. Các tính năng của Indobase được xây dựng dựa trên các sản phẩm đạt chuẩn doanh nghiệp và mã nguồn mở. Nếu các công cụ và cộng đồng hỗ trợ công cụ đó tồn tại, cùng với giấy phép MIT, Apache 2 hoặc giấy phép mở tương đương, chúng tôi sẽ sử dụng và hỗ trợ công cụ đó. Nếu công cụ không tồn tại, chúng tôi sẽ tự xây dựng và mở mã nguồn của nó. Indobase không phải là phiên bản 1 : 1 của Firebase. Mục đích của chúng tôi là cung cấp cho các nhà phát triển trải nghiệm tuyệt vời giống như sử dụng Firebase bằng cách sử dụng các công cụ nguồn mở.
 
 **Kiến trúc**
 
-Supabase là một [nền tảng lưu trữ cơ sở dữ liệu](https://supabase.com/dashboard). Bạn có thể đăng ký và bắt đầu sử dụng Supabase mà không cần cài đặt bất kỳ thứ gì.
-Bạn cũng có thể [tự quản lý](https://supabase.com/docs/guides/hosting/overview) và [phát triển cục bộ](https://supabase.com/docs/guides/local-development).
+Indobase là một [nền tảng lưu trữ cơ sở dữ liệu](https://indobase.in/dashboard). Bạn có thể đăng ký và bắt đầu sử dụng Indobase mà không cần cài đặt bất kỳ thứ gì.
+Bạn cũng có thể [tự quản lý](https://indobase.in/docs/guides/hosting/overview) và [phát triển cục bộ](https://indobase.in/docs/guides/local-development).
 
-![Kiến trúc](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Kiến trúc](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) là một hệ thống cơ sở dữ liệu quan hệ đối tượng với hơn 30 năm phát triển tích cực, do đó có danh tiếng mạnh mẽ về độ tin cậy, tính năng mạnh mẽ và hiệu suất.
-- [Realtime](https://github.com/supabase/realtime) là một máy chủ Elixir cho phép bạn lắng nghe các lệnh chèn, cập nhật và xóa của PostgreSQL bằng cách sử dụng websockets. Supabase lắng nghe chức năng sao chép có sẵn của Postgres, chuyển đổi luồng byte sao chép thành JSON, sau đó phát JSON qua các cổng websockets được uỷ quyền.
+- [Realtime](https://github.com/supabase/realtime) là một máy chủ Elixir cho phép bạn lắng nghe các lệnh chèn, cập nhật và xóa của PostgreSQL bằng cách sử dụng websockets. Indobase lắng nghe chức năng sao chép có sẵn của Postgres, chuyển đổi luồng byte sao chép thành JSON, sau đó phát JSON qua các cổng websockets được uỷ quyền.
 - [PostgREST](http://postgrest.org/) là một máy chủ web có khả năng biến cơ sở dữ liệu PostgreSQL của bạn thành một hệ thống REST API một cách trực tiếp.
 - [Storage](https://github.com/supabase/storage-api) cung cấp giao diện RESTful để quản lý các tệp được lưu trữ trong S3, sử dụng Postgres để quản lý quyền.
 - [postgres-meta](https://github.com/supabase/postgres-meta) là một API RESTful để quản lý Postgres của bạn, cho phép bạn tìm nạp bảng, thêm vai trò và chạy truy vấn, v.v.
@@ -76,11 +76,11 @@ Phương pháp tiếp cận của chúng tôi cho các thư viện hỗ trợ l�
   <tr>
     <th>Ngôn ngữ</th>
     <th>Thư viện</th>
-    <th colspan="5">Thư viện tính năng (được tích hợp vào thư viện của Supabase)</th>
+    <th colspan="5">Thư viện tính năng (được tích hợp vào thư viện của Indobase)</th>
   </tr>
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -101,12 +101,12 @@ Phương pháp tiếp cận của chúng tôi cho các thư viện hỗ trợ l�
   <th colspan="7">⚡️ Chính thức ⚡️</th>
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
   <th colspan="7">💚 Cộng đồng 💚</th>
   <tr>
@@ -120,7 +120,7 @@ Phương pháp tiếp cận của chúng tôi cho các thư viện hỗ trợ l�
   </tr>
   <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-dart</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-dart</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>

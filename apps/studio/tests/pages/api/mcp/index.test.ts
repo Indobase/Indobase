@@ -5,7 +5,7 @@ import handler from '../../../../pages/api/mcp/index'
 
 // Mock the MCP SDK and Indobase MCP server to avoid Hono/node-mocks-http compatibility issues.
 //
-// Starting with MCP SDK v1.25.x (required by @supabase/mcp-server-supabase@0.6.2), the SDK
+// Starting with MCP SDK v1.25.x (required by @indobaseinc/mcp-server@0.6.2), the SDK
 // uses @hono/node-server for converting between Node.js HTTP and Web Standard APIs. This is
 // incompatible with the node-mocks-http library used in these tests.
 //
@@ -18,8 +18,8 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => ({
   })),
 }))
 
-vi.mock('@supabase/mcp-server-supabase', () => ({
-  createSupabaseMcpServer: vi.fn().mockReturnValue({
+vi.mock('@indobaseinc/mcp-server', () => ({
+  createIndobaseMcpServer: vi.fn().mockReturnValue({
     connect: vi.fn().mockResolvedValue(undefined),
   }),
 }))

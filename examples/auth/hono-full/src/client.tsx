@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient } from '@indobaseinc/ssr';
 import { hc } from 'hono/client';
 import { useEffect, useState } from 'hono/jsx';
 import { render } from 'hono/jsx/dom';

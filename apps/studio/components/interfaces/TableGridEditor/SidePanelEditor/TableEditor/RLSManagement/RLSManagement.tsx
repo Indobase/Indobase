@@ -1,4 +1,4 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo } from 'react'

@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { useMemo, useState } from 'react'
 
 import { Policies } from 'components/interfaces/Auth/Policies/Policies'

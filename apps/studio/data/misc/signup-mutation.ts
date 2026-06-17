@@ -10,12 +10,19 @@ export type SignUpVariables = {
   password: string
   hcaptchaToken: string | null
   redirectTo: string
+  dpdpConsent: boolean
 }
 
-export async function signup({ email, password, hcaptchaToken, redirectTo }: SignUpVariables) {
+export async function signup({
+  email,
+  password,
+  hcaptchaToken,
+  redirectTo,
+  dpdpConsent,
+}: SignUpVariables) {
   const { data, error } = await post('/platform/signup', {
     // @ts-ignore
-    body: { email, password, hcaptchaToken, redirectTo },
+    body: { email, password, hcaptchaToken, redirectTo, dpdpConsent },
   })
 
   if (error) handleError(error)

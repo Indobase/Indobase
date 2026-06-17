@@ -8,10 +8,9 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
+import { withSecurity } from '~/lib/security';
 
-export async function action(args: ActionFunctionArgs) {
-  return llmCallAction(args);
-}
+const logger = createScopedLogger('api.llmcall');
 
 async function getModelList(options: {
   apiKeys?: Record<string, string>;
@@ -21,8 +20,6 @@ async function getModelList(options: {
   const llmManager = LLMManager.getInstance(import.meta.env);
   return llmManager.updateModelList(options);
 }
-
-const logger = createScopedLogger('api.llmcall');
 
 function getCompletionTokenLimit(modelDetails: ModelInfo): number {
   // 1. If model specifies completion tokens, use that
@@ -296,3 +293,5 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     }
   }
 }
+
+export const action = withSecurity(llmCallAction, { requireAuth: true });

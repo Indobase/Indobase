@@ -1,13 +1,39 @@
 {
-  "name": "@supabase/pg-meta",
-  "version": "0.0.0",
+  "name": "@indobaseinc/pg-meta",
+  "version": "0.93.1",
+  "description": "Postgres metadata queries for Indobase Studio",
   "license": "MIT",
-  "author": "Supabase",
-  "main": "./src/index.ts",
-  "repository": "supabase/supabase",
+  "author": "Indobase",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/pg-meta"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js",
+      "default": "./dist/constants.js"
+    }
+  },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "clean": "rimraf node_modules",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm build",
+    "clean": "rimraf dist node_modules",
     "test": "run-s db:clean db:run test:run db:clean",
     "db:clean": "cd test/db && docker compose down",
     "db:run": "cd test/db && docker compose up --detach --wait",
@@ -16,7 +42,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "catalog:"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/pg": "^8.11.11",
@@ -24,8 +50,9 @@
     "npm-run-all": "^4.1.5",
     "pg": "^8.13.1",
     "postgres-array": "^3.0.2",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
+    "rimraf": "^5.0.5",
+    "typescript": "~5.9.0",
+    "vite": "^7.1.11",
+    "vitest": "^3.2.0"
   }
 }

@@ -1,15 +1,15 @@
 ---
-title = "'Supabase Storage: Inefficient folder operations and hierarchical RLS challenges'"
+title = "'Indobase Storage: Inefficient folder operations and hierarchical RLS challenges'"
 topics = [ "functions", "storage" ]
 keywords = []
 database_id = "3b52daf2-d78d-4630-8e9f-8bf5d90208bf"
 ---
 
-Supabase Storage lacks native folder concepts or APIs for batch folder operations, which can lead to inefficient folder operations (move, rename, delete) and difficulties in implementing hierarchical access controls for objects.
+Indobase Storage lacks native folder concepts or APIs for batch folder operations, which can lead to inefficient folder operations (move, rename, delete) and difficulties in implementing hierarchical access controls for objects.
 
 ## Why does this happen?
 
-Storage buckets treat "folders" purely as key prefixes. This means file system-like folder behavior and inherited permissions are not built-in features of Supabase Storage.
+Storage buckets treat "folders" purely as key prefixes. This means file system-like folder behavior and inherited permissions are not built-in features of Indobase Storage.
 
 ## How to address these challenges
 

@@ -1,6 +1,6 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { zodResolver } from '@hookform/resolvers/zod'
-import type { AuthError } from 'indobase-js'
+import type { AuthError } from '@indobaseinc/indobase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/router'

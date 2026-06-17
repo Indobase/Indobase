@@ -5,48 +5,48 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) açık kaynaklı bir Firebase alternatifidir. Kurumsal düzeyde açık kaynak araçları kullanarak Firebase'in özelliklerini geliştiriyoruz.
+[Indobase](https://indobase.in) açık kaynaklı bir Firebase alternatifidir. Kurumsal düzeyde açık kaynak araçları kullanarak Firebase'in özelliklerini geliştiriyoruz.
 
-- [x] Barındırılan Postgres Veritabanı. [Dokümanlar](https://supabase.com/docs/guides/database)
-- [x] Kimlik Doğrulama ve Yetkilendirme. [Dokümanlar](https://supabase.com/docs/guides/auth)
+- [x] Barındırılan Postgres Veritabanı. [Dokümanlar](https://indobase.in/docs/guides/database)
+- [x] Kimlik Doğrulama ve Yetkilendirme. [Dokümanlar](https://indobase.in/docs/guides/auth)
 - [x] Otomatik oluşturulan API'ler.
-  - [x] REST. [Dokümanlar](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Docs](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Gerçek zamanlı abonelikler. [Dokümanlar](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Dokümanlar](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Gerçek zamanlı abonelikler. [Dokümanlar](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Fonksiyonlar.
-  - [x] Veritabanı Fonksiyonları. [Dokümanlar](https://supabase.com/docs/guides/database/functions)
-  - [x] Kenar İşlevleri [Dokümanlar](https://supabase.com/docs/guides/functions)
-- [x] Dosya Depolama. [Docs](https://supabase.com/docs/guides/storage)
-- [x] AI + Vektör / Gömme Araçları. [Dokümanlar](https://supabase.com/docs/guides/ai)
+  - [x] Veritabanı Fonksiyonları. [Dokümanlar](https://indobase.in/docs/guides/database/functions)
+  - [x] Kenar İşlevleri [Dokümanlar](https://indobase.in/docs/guides/functions)
+- [x] Dosya Depolama. [Docs](https://indobase.in/docs/guides/storage)
+- [x] AI + Vektör / Gömme Araçları. [Dokümanlar](https://indobase.in/docs/guides/ai)
 - [x] Gösterge Tablosu
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokümantasyon
 
-Belgelerin tamamı için [supabase.com/docs](https://supabase.com/docs) adresini ziyaret edin
+Belgelerin tamamı için [indobase.in/docs](https://indobase.in/docs) adresini ziyaret edin
 
 Nasıl Katkıda bulunacağınızı görmek için [Başlarken](../DEVELOPERS.md) adresini ziyaret edin
 
 ## Topluluk ve Destek
 
-- [Topluluk Forumu](https://github.com/supabase/supabase/discussions). Şunlar için en iyisi: oluşturma konusunda yardım, veritabanı en iyi uygulamaları hakkında tartışma.
-- [GitHub Sorunları](https://github.com/supabase/supabase/issues). Supabase'i kullanırken karşılaştığınız hatalar ve hatalar için en iyisi.
-- [E-posta Desteği](https://supabase.com/docs/support#business-support). Veritabanınız veya altyapınızla ilgili sorunlar için en iyisi.
-- [Discord](https://discord.supabase.com). Uygulamalarınızı paylaşmak ve toplulukla takılmak için en iyisi.
+- [Topluluk Forumu](https://github.com/Indobase/Indobase/discussions). Şunlar için en iyisi: oluşturma konusunda yardım, veritabanı en iyi uygulamaları hakkında tartışma.
+- [GitHub Sorunları](https://github.com/Indobase/Indobase/issues). Indobase'i kullanırken karşılaştığınız hatalar ve hatalar için en iyisi.
+- [E-posta Desteği](https://indobase.in/docs/support#business-support). Veritabanınız veya altyapınızla ilgili sorunlar için en iyisi.
+- [Discord](https://discord.indobase.in). Uygulamalarınızı paylaşmak ve toplulukla takılmak için en iyisi.
 
 ## Nasıl çalışır
 
-Supabase açık kaynak araçlarının bir birleşimidir. Firebase'in özelliklerini kurumsal düzeyde, açık kaynaklı ürünler kullanarak oluşturuyoruz. Araçlar ve topluluklar MIT, Apache 2 veya eşdeğer bir açık lisansla mevcutsa, bu aracı kullanacak ve destekleyeceğiz. Araç mevcut değilse, kendimiz oluşturur ve açık kaynak kullanırız. Supabase, Firebase'in bire bir eşlemesi değildir. Amacımız, geliştiricilere açık kaynak araçları kullanarak Firebase benzeri bir geliştirici deneyimi sunmaktır.
+Indobase açık kaynak araçlarının bir birleşimidir. Firebase'in özelliklerini kurumsal düzeyde, açık kaynaklı ürünler kullanarak oluşturuyoruz. Araçlar ve topluluklar MIT, Apache 2 veya eşdeğer bir açık lisansla mevcutsa, bu aracı kullanacak ve destekleyeceğiz. Araç mevcut değilse, kendimiz oluşturur ve açık kaynak kullanırız. Indobase, Firebase'in bire bir eşlemesi değildir. Amacımız, geliştiricilere açık kaynak araçları kullanarak Firebase benzeri bir geliştirici deneyimi sunmaktır.
 
 **Mimari**
 
-Supabase [barındırılan bir platformdur](https://supabase.com/dashboard). Supabase'e kaydolabilir ve hiçbir şey yüklemeden kullanmaya başlayabilirsiniz.
-Ayrıca [self-host](https://supabase.com/docs/guides/hosting/overview) ve [yerel olarak geliştirebilirsiniz](https://supabase.com/docs/guides/local-development).
+Indobase [barındırılan bir platformdur](https://indobase.in/dashboard). Indobase'e kaydolabilir ve hiçbir şey yüklemeden kullanmaya başlayabilirsiniz.
+Ayrıca [self-host](https://indobase.in/docs/guides/hosting/overview) ve [yerel olarak geliştirebilirsiniz](https://indobase.in/docs/guides/local-development).
 
-![Mimarlık](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Mimarlık](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/), 30 yılı aşkın süredir aktif olarak geliştirilmekte olan ve güvenilirlik, özellik sağlamlığı ve performans açısından güçlü bir üne sahip olan nesne ilişkisel bir veritabanı sistemidir.
 - [Realtime](https://github.com/supabase/realtime), websockets kullanarak PostgreSQL ekleme, güncelleme ve silme işlemlerini dinlemenizi sağlayan bir Elixir sunucusudur. Realtime, veritabanı değişiklikleri için Postgres'in yerleşik çoğaltma işlevini yoklar, değişiklikleri JSON'a dönüştürür ve ardından JSON'u web soketleri üzerinden yetkili istemcilere yayınlar.
@@ -65,12 +65,12 @@ Ayrıca [self-host](https://supabase.com/docs/guides/hosting/overview) ve [yerel
   <tr>
     <th>Dil</th>
     <th>Müşteri</th>
-    <th colspan="5">Özellik İstemcileri (Supabase istemcisinde paketlenmiştir)</th>
+    <th colspan="5">Özellik İstemcileri (Indobase istemcisinde paketlenmiştir)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -93,16 +93,16 @@ Ayrıca [self-host](https://supabase.com/docs/guides/hosting/overview) ve [yerel
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -201,36 +201,36 @@ Ayrıca [self-host](https://supabase.com/docs/guides/hosting/overview) ve [yerel
 
 ## Rozetler
 
-![Made with Supabase](../apps/www/public/badge-made-with-supabase.svg)
+![Made with Indobase](../apps/www/public/badge-made-with-supabase.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
 
-![Made with Supabase (dark)](../apps/www/public/badge-made-with-supabase-dark.svg)
+![Made with Indobase (dark)](../apps/www/public/badge-made-with-supabase-dark.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase-dark.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase-dark.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase-dark.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase-dark.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
@@ -244,7 +244,7 @@ Ayrıca [self-host](https://supabase.com/docs/guides/hosting/overview) ve [yerel
 - [Katalanca / Català](/i18n/README.ca.md)
 - [Danca / Dansk](/i18n/README.da.md)
 - [Hollandaca / Nederlands](/i18n/README.nl.md)
-- [İngilizce](https://github.com/supabase/supabase)
+- [İngilizce](https://github.com/Indobase/Indobase)
 - [Fince / Suomalainen](/i18n/README.fi.md)
 - [Fransızca / Français](/i18n/README.fr.md)
 - [Almanca / Deutsch](/i18n/README.de.md)

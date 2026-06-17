@@ -27,11 +27,11 @@ export const DOCS_CONTENT = {
     title: `Connect to your project`,
     description: `Projects have a RESTful endpoint that you can use with your project's API key to query and manage your database. Put these keys in your .env file.`,
     js: (apikey?: string, endpoint?: string) => `
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
-const supabaseUrl = '${endpoint}'
-const supabaseKey = process.env.SUPABASE_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)`,
+const projectUrl = '${endpoint}'
+const apiKey = process.env.SUPABASE_KEY
+const supabase = createClient(projectUrl, apiKey)`,
     bash: () => `# No client library required for Bash.`,
   },
   clientApiKeys: {

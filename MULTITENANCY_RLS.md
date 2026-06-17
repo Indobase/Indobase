@@ -52,7 +52,7 @@ So that RLS sees the right tenant for each request:
    Ensure the access token seen by PostgREST includes a **`tenant_id`** claim (UUID string). Common approaches:
 
    - **Admin API (no hook):** After you know the user’s tenant, call GoTrue Admin **`updateUserById`** (or equivalent) with `app_metadata: { ..., tenant_id: "<uuid>" }`, then have the client **`refreshSession()`** so the next JWT carries the update. `current_tenant_id()` reads **`app_metadata.tenant_id`** (and top-level `tenant_id` if you add it via a hook) from `request.jwt.claims`.
-   - **Custom Access Token hook:** Point Auth at an Edge Function (or HTTP endpoint) that adds `tenant_id` to the JWT claims from your org-membership table. Configure this in the Supabase / Indobase Auth dashboard or your hosted GoTrue settings; see upstream Supabase docs for *Custom Access Token Hook*.
+   - **Custom Access Token hook:** Point Auth at an Edge Function (or HTTP endpoint) that adds `tenant_id` to the JWT claims from your org-membership table. Configure this in the Indobase Auth dashboard or your hosted GoTrue settings; see [Auth hooks](https://indobase.in/docs/guides/auth/auth-hooks) for *Custom Access Token Hook*.
    - **Different claim name:** Change `public.current_tenant_id()` in your migration to read your claim, or copy the value into `tenant_id` inside the hook.
 
 3. **Per-request override (optional)**  

@@ -57,7 +57,14 @@
                 <li>
                     <a
                         class="web-link"
-                        href="/privacy"
+                        href="/dpdp"
+                        onclick={() => trackEvent(`footer-dpdp-click`)}>DPDP</a
+                    >
+                </li>
+                <li>
+                    <a
+                        class="web-link"
+                        href="/privacy#cookies"
                         onclick={() => trackEvent(`footer-cookies-click`)}>Cookies</a
                     >
                 </li>

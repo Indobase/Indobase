@@ -3,18 +3,18 @@ title: 'Advanced guide'
 subtitle: 'Details about SSR Auth flows and implementation for advanced users.'
 ---
 
-When a user authenticates with Supabase Auth, two pieces of information are issued by the server:
+When a user authenticates with Indobase Auth, two pieces of information are issued by the server:
 
 1. **Access token** in the form of a JWT.
 2. **Refresh token** which is a randomly generated string.
 
 The default behavior if you're not using SSR is to store this information in local storage. Local storage isn't accessible by the server, so for SSR, the tokens instead need to be stored in a secure cookie. The cookie can then be passed back and forth between your app code in the client and your app code in the server.
 
-If you're not using SSR, you might also be using the [implicit flow](/docs/guides/auth/sessions/implicit-flow) to get the access and refresh tokens. The server can't access the tokens in this flow, so for SSR, you should change to the [PKCE flow](/docs/guides/auth/sessions/pkce-flow). You can change the flow type when initiating your Supabase client if your client library provides this option.
+If you're not using SSR, you might also be using the [implicit flow](/docs/guides/auth/sessions/implicit-flow) to get the access and refresh tokens. The server can't access the tokens in this flow, so for SSR, you should change to the [PKCE flow](/docs/guides/auth/sessions/pkce-flow). You can change the flow type when initiating your Indobase client if your client library provides this option.
 
 <Admonition type="tip">
 
-In the `@supabase/ssr` package, Supabase clients are initiated to use the PKCE flow by default. They are also automatically configured to handle the saving and retrieval of session information in cookies.
+In the `@indobaseinc/ssr` package, Indobase clients are initiated to use the PKCE flow by default. They are also automatically configured to handle the saving and retrieval of session information in cookies.
 
 </Admonition>
 
@@ -22,7 +22,7 @@ In the `@supabase/ssr` package, Supabase clients are initiated to use the PKCE f
 
 In the PKCE flow, a redirect is made to your app, with an Auth Code contained in the URL. When you exchange this code using `exchangeCodeForSession`, you receive the session information, which contains the access and refresh tokens.
 
-To maintain the session, these tokens must be stored in a storage medium securely shared between client and server, which is traditionally cookies. Whenever the session is refreshed, the auth and refresh tokens in the shared storage medium must be updated. Supabase client libraries provide a customizable `storage` option when a client is initiated, allowing you to change where tokens are stored.
+To maintain the session, these tokens must be stored in a storage medium securely shared between client and server, which is traditionally cookies. Whenever the session is refreshed, the auth and refresh tokens in the shared storage medium must be updated. Indobase client libraries provide a customizable `storage` option when a client is initiated, allowing you to change where tokens are stored.
 
 ## Frequently asked questions
 
@@ -32,7 +32,7 @@ To maintain the session, these tokens must be stored in a storage medium securel
 
 When you use route prefetching in Next.js using `<Link href="/...">` components or the `Router.push()` APIs can send server-side requests before the browser processes the access and refresh tokens. This means that those requests may not have any cookies set and your server code will render unauthenticated content.
 
-To improve experience for your users, we recommend redirecting users to one specific page after sign-in that does not include any route prefetching from Next.js. Once the Supabase client library running in the browser has obtained the access and refresh tokens from the URL fragment, you can send users to any pages that use prefetching.
+To improve experience for your users, we recommend redirecting users to one specific page after sign-in that does not include any route prefetching from Next.js. Once the Indobase client library running in the browser has obtained the access and refresh tokens from the URL fragment, you can send users to any pages that use prefetching.
 
 ### How do I make the cookies `HttpOnly`?
 
@@ -66,4 +66,4 @@ Also be sure you set proper cache control headers. We recommend invalidating cac
 
 ### Which authentication flows have PKCE support?
 
-At present, PKCE is supported on the Magic Link, OAuth, Sign Up, and Password Recovery routes. These correspond to the `signInWithOtp`, `signInWithOAuth`, `signUp`, and `resetPasswordForEmail` methods on the Supabase client library. When using PKCE with Phone and Email OTPs, there is no behavior change with respect to the implicit flow - an access token will be returned in the body when a request is successful.
+At present, PKCE is supported on the Magic Link, OAuth, Sign Up, and Password Recovery routes. These correspond to the `signInWithOtp`, `signInWithOAuth`, `signUp`, and `resetPasswordForEmail` methods on the Indobase client library. When using PKCE with Phone and Email OTPs, there is no behavior change with respect to the implicit flow - an access token will be returned in the body when a request is successful.

@@ -13,9 +13,9 @@ import {
 describe('first-referrer-cookie', () => {
   describe('isExternalReferrer', () => {
     it('returns false for supabase domains', () => {
-      expect(isExternalReferrer('https://supabase.com')).toBe(false)
-      expect(isExternalReferrer('https://www.supabase.com')).toBe(false)
-      expect(isExternalReferrer('https://docs.supabase.com')).toBe(false)
+      expect(isExternalReferrer('https://indobase.in')).toBe(false)
+      expect(isExternalReferrer('https://www.indobase.inm')).toBe(false)
+      expect(isExternalReferrer('https://docs.indobase.inm')).toBe(false)
     })
 
     it('returns true for external domains', () => {
@@ -51,12 +51,12 @@ describe('first-referrer-cookie', () => {
       const data = buildFirstReferrerData({
         referrer: 'https://www.google.com/',
         landingUrl:
-          'https://supabase.com/pricing?utm_source=google&utm_medium=cpc&utm_campaign=test&gclid=abc123&msclkid=xyz456',
+          'https://indobase.in/pricing?utm_source=google&utm_medium=cpc&utm_campaign=test&gclid=abc123&msclkid=xyz456',
       })
 
       expect(data.referrer).toBe('https://www.google.com/')
       expect(data.landing_url).toBe(
-        'https://supabase.com/pricing?utm_source=google&utm_medium=cpc&utm_campaign=test&gclid=abc123&msclkid=xyz456'
+        'https://indobase.in/pricing?utm_source=google&utm_medium=cpc&utm_campaign=test&gclid=abc123&msclkid=xyz456'
       )
 
       expect(data.utms).toEqual({
@@ -76,7 +76,7 @@ describe('first-referrer-cookie', () => {
     it('round-trips valid cookie payloads', () => {
       const input = buildFirstReferrerData({
         referrer: 'https://www.google.com/',
-        landingUrl: 'https://supabase.com/pricing?utm_source=google',
+        landingUrl: 'https://indobase.in/pricing?utm_source=google',
       })
 
       const encoded = serializeFirstReferrerCookie(input)
@@ -92,7 +92,7 @@ describe('first-referrer-cookie', () => {
     it('parses cookie from header with multiple cookies', () => {
       const input = buildFirstReferrerData({
         referrer: 'https://google.com/',
-        landingUrl: 'https://supabase.com/',
+        landingUrl: 'https://indobase.in/',
       })
       const encoded = serializeFirstReferrerCookie(input)
       const header = `session=abc123; ${FIRST_REFERRER_COOKIE_NAME}=${encoded}; theme=dark`
@@ -113,7 +113,7 @@ describe('first-referrer-cookie', () => {
       const encoded = encodeURIComponent(
         JSON.stringify({
           referrer: 'https://www.google.com/',
-          landing_url: 'https://supabase.com/pricing',
+          landing_url: 'https://indobase.in/pricing',
           utms: { utm_source: 'google', utm_medium: 123 },
           click_ids: { gclid: 'abc', msclkid: null },
           ts: 123,
@@ -124,7 +124,7 @@ describe('first-referrer-cookie', () => {
 
       expect(parsed).toEqual({
         referrer: 'https://www.google.com/',
-        landing_url: 'https://supabase.com/pricing',
+        landing_url: 'https://indobase.in/pricing',
         utms: { utm_source: 'google' },
         click_ids: { gclid: 'abc' },
         ts: 123,
@@ -134,36 +134,36 @@ describe('first-referrer-cookie', () => {
 
   describe('hasPaidSignals', () => {
     it('detects click IDs', () => {
-      expect(hasPaidSignals(new URL('https://supabase.com/?gclid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?fbclid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?msclkid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?gbraid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?wbraid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?rdt_cid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?ttclid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?twclid=abc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?li_fat_id=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?gclid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?fbclid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?msclkid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?gbraid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?wbraid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?rdt_cid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?ttclid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?twclid=abc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?li_fat_id=abc'))).toBe(true)
     })
 
     it('detects paid utm_medium values', () => {
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=cpc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=ppc'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=paid_search'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=paidsocial'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=paid_social'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=display'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=cpc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=ppc'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=paid_search'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=paidsocial'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=paid_social'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=display'))).toBe(true)
     })
 
     it('is case-insensitive for utm_medium', () => {
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=CPC'))).toBe(true)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=Paid_Search'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=CPC'))).toBe(true)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=Paid_Search'))).toBe(true)
     })
 
     it('returns false for organic traffic', () => {
-      expect(hasPaidSignals(new URL('https://supabase.com/'))).toBe(false)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_source=google'))).toBe(false)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=email'))).toBe(false)
-      expect(hasPaidSignals(new URL('https://supabase.com/?utm_medium=organic'))).toBe(false)
+      expect(hasPaidSignals(new URL('https://indobase.in/'))).toBe(false)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_source=google'))).toBe(false)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=email'))).toBe(false)
+      expect(hasPaidSignals(new URL('https://indobase.in/?utm_medium=organic'))).toBe(false)
     })
   })
 
@@ -172,7 +172,7 @@ describe('first-referrer-cookie', () => {
       expect(
         shouldRefreshCookie(false, {
           referrer: 'https://google.com',
-          url: 'https://supabase.com/',
+          url: 'https://indobase.in/',
         })
       ).toEqual({ stamp: true })
     })
@@ -180,8 +180,8 @@ describe('first-referrer-cookie', () => {
     it('skips when no cookie and internal referrer', () => {
       expect(
         shouldRefreshCookie(false, {
-          referrer: 'https://supabase.com/docs',
-          url: 'https://supabase.com/dashboard',
+          referrer: 'https://indobase.in/docs',
+          url: 'https://indobase.in/dashboard',
         })
       ).toEqual({ stamp: false })
     })
@@ -190,7 +190,7 @@ describe('first-referrer-cookie', () => {
       expect(
         shouldRefreshCookie(true, {
           referrer: 'https://google.com',
-          url: 'https://supabase.com/',
+          url: 'https://indobase.in/',
         })
       ).toEqual({ stamp: false })
     })
@@ -199,20 +199,20 @@ describe('first-referrer-cookie', () => {
       expect(
         shouldRefreshCookie(true, {
           referrer: 'https://google.com',
-          url: 'https://supabase.com/?gclid=abc123',
+          url: 'https://indobase.in/?gclid=abc123',
         })
       ).toEqual({ stamp: true })
 
       expect(
         shouldRefreshCookie(true, {
           referrer: 'https://google.com',
-          url: 'https://supabase.com/?utm_medium=cpc&utm_source=google',
+          url: 'https://indobase.in/?utm_medium=cpc&utm_source=google',
         })
       ).toEqual({ stamp: true })
     })
 
     it('skips when no cookie and no referrer (direct navigation)', () => {
-      expect(shouldRefreshCookie(false, { referrer: '', url: 'https://supabase.com/' })).toEqual({
+      expect(shouldRefreshCookie(false, { referrer: '', url: 'https://indobase.in/' })).toEqual({
         stamp: false,
       })
     })

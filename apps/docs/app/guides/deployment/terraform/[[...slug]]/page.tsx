@@ -33,7 +33,7 @@ const pageMap = [
     slug: 'tutorial',
     remoteFile: 'tutorial.md',
     meta: {
-      title: 'Using the Supabase Terraform Provider',
+      title: 'Using the Indobase Terraform Provider',
     },
   },
 ]

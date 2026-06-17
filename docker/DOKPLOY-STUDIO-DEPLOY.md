@@ -104,3 +104,157 @@ See `.github/workflows/docker-publish.yml` deploy job.
 ## Platform admin, metering, and sign-off
 
 Operator allowlisting, `saas.usage_events` / Vector, and a short production checklist are documented in **[PLATFORM-ADMIN-OPS.md](./PLATFORM-ADMIN-OPS.md)**.
+
+## Project deployment executor
+
+Indobase Hosting deployment requests are drained by a VPS-side worker, not by in-process Next.js timers. The production path is:
+
+1. Studio queues a deployment in `saas.project_deployments`.
+2. The VPS worker calls `POST /api/platform/deployments/process` with `x-indobase-deployment-token`.
+3. Studio claims work, probes the target URL, updates logs/status, and recovers stale `building` leases.
+
+Install on the VPS:
+
+```bash
+sudo bash /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/install-project-deployment-executor.sh
+```
+
+Set `/etc/indobase/project-deployment-executor.env` with:
+
+```env
+PROJECT_DEPLOYMENT_EXECUTOR_URL=https://studio.indobase.in
+PROJECT_DEPLOYMENT_RUNTIME_SECRET=your-32-character-or-longer-runtime-secret
+PROJECT_DEPLOYMENT_EXECUTOR_WORKER_ID=vps-project-deployment-executor
+PROJECT_DEPLOYMENT_EXECUTOR_LIMIT=5
+```
+
+Verify:
+
+```bash
+sudo systemctl status indobase-project-deployment-executor.service
+sudo journalctl -u indobase-project-deployment-executor.service -n 100 --no-pager
+curl -sS https://studio.indobase.in/api/health/live | jq .
+```
+
+For a one-shot cron-style run instead of a daemon:
+
+```bash
+PROJECT_DEPLOYMENT_EXECUTOR_ENV_FILE=/etc/indobase/project-deployment-executor.env \
+  /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/project-deployment-executor.sh --once
+```
+
+## Project mobile build executor
+
+Android bundle build requests are drained by a VPS-side worker, not by in-process Next.js timers. The production path is:
+
+1. Studio queues a build in `saas.project_mobile_builds`.
+2. The VPS worker calls `POST /api/platform/mobile-builds/process` with `x-indobase-mobile-build-token`.
+3. Studio claims work and marks the build `building`.
+4. The worker runs `PROJECT_MOBILE_BUILD_EXECUTOR_COMMAND`, sends heartbeats, and PATCHes final status/artifacts back to Studio.
+
+Install on the VPS:
+
+```bash
+sudo bash /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/install-project-mobile-build-executor.sh
+```
+
+Set `/etc/indobase/project-mobile-build-executor.env` with:
+
+```env
+PROJECT_MOBILE_BUILD_EXECUTOR_URL=https://studio.indobase.in
+PROJECT_MOBILE_BUILD_RUNTIME_SECRET=your-32-character-or-longer-runtime-secret
+PROJECT_MOBILE_BUILD_EXECUTOR_WORKER_ID=vps-project-mobile-build-executor
+PROJECT_MOBILE_BUILD_EXECUTOR_COMMAND=/opt/indobase/build-android-aab.sh
+```
+
+The configured command receives these environment variables:
+
+```env
+INDOBASE_MOBILE_BUILD_JSON_FILE=/tmp/claimed-build.json
+INDOBASE_MOBILE_BUILD_RESULT_FILE=/tmp/build-result.json
+INDOBASE_MOBILE_BUILD_LOG_FILE=/tmp/build-command.log
+INDOBASE_MOBILE_BUILD_ID=<build-id>
+INDOBASE_MOBILE_BUILD_PROJECT_REF=<project-ref>
+INDOBASE_MOBILE_BUILD_WORKER_ID=<worker-id>
+INDOBASE_MOBILE_BUILD_API_BASE=https://studio.indobase.in
+INDOBASE_MOBILE_BUILD_RUNTIME_TOKEN=<runtime-secret>
+```
+
+The command should write `INDOBASE_MOBILE_BUILD_RESULT_FILE` as JSON:
+
+```json
+{
+  "status": "ready",
+  "log_message": "Android bundle built successfully",
+  "metadata_patch": {
+    "executor_result": {
+      "builder": "eas"
+    }
+  },
+  "artifacts": [
+    {
+      "kind": "android_aab",
+      "file_name": "app-release.aab",
+      "download_url": "https://artifacts.indobase.in/builds/app-release.aab",
+      "size_bytes": 12345678,
+      "checksum_sha256": "..."
+    }
+  ]
+}
+```
+
+Queue fairness and concurrency are enforced in Studio before workers claim jobs:
+
+- Only one active build per project may exist at a time.
+- Organization-level concurrency is tier aware by default:
+  - `free`: `1` building, `3` outstanding
+  - `pro`: `3` building, `10` outstanding
+  - `team`: `10` building, `25` outstanding
+  - `enterprise`: `25` building, `100` outstanding
+  - `platform`: `50` building, `200` outstanding
+- `team`, `enterprise`, and `platform` default to the priority queue lane.
+
+Override defaults without redeploying Studio:
+
+```env
+PROJECT_MOBILE_BUILD_FREE_MAX_CONCURRENT_PER_ORG=1
+PROJECT_MOBILE_BUILD_PRO_MAX_CONCURRENT_PER_ORG=4
+PROJECT_MOBILE_BUILD_TEAM_MAX_CONCURRENT_PER_ORG=12
+PROJECT_MOBILE_BUILD_ENTERPRISE_MAX_CONCURRENT_PER_ORG=30
+PROJECT_MOBILE_BUILD_PLATFORM_MAX_CONCURRENT_PER_ORG=60
+
+PROJECT_MOBILE_BUILD_FREE_MAX_OUTSTANDING_PER_ORG=3
+PROJECT_MOBILE_BUILD_PRO_MAX_OUTSTANDING_PER_ORG=12
+PROJECT_MOBILE_BUILD_TEAM_MAX_OUTSTANDING_PER_ORG=40
+PROJECT_MOBILE_BUILD_ENTERPRISE_MAX_OUTSTANDING_PER_ORG=120
+PROJECT_MOBILE_BUILD_PLATFORM_MAX_OUTSTANDING_PER_ORG=250
+
+PROJECT_MOBILE_BUILD_FREE_PRIORITY=standard
+PROJECT_MOBILE_BUILD_PRO_PRIORITY=standard
+PROJECT_MOBILE_BUILD_TEAM_PRIORITY=priority
+PROJECT_MOBILE_BUILD_ENTERPRISE_PRIORITY=priority
+PROJECT_MOBILE_BUILD_PLATFORM_PRIORITY=priority
+```
+
+For 100+ concurrent users, run a worker fleet instead of one VPS daemon:
+
+1. Keep Studio as the queue/control plane only.
+2. Run multiple `indobase-project-mobile-build-executor.service` instances across a pool of build hosts.
+3. Give each worker one build slot and let Studio distribute work through the queue.
+4. Autoscale the fleet from queue depth, for example add workers when `requested` builds exceed available slots.
+5. Split pools by plan if needed, such as standard workers for `free/pro` and priority workers for `team+`.
+
+Verify:
+
+```bash
+sudo systemctl status indobase-project-mobile-build-executor.service
+sudo journalctl -u indobase-project-mobile-build-executor.service -n 100 --no-pager
+curl -sS https://studio.indobase.in/api/health/live | jq .
+```
+
+For a one-shot run instead of a daemon:
+
+```bash
+PROJECT_MOBILE_BUILD_EXECUTOR_ENV_FILE=/etc/indobase/project-mobile-build-executor.env \
+  /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/project-mobile-build-executor.sh --once
+```

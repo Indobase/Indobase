@@ -25,7 +25,7 @@ Once you've created a bucket and index, you can start storing vectors. Vectors c
 ```typescript
 import { createClient } from 'indobase-js'
 
-const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 // Get bucket and index
 const bucket = supabase.storage.vectors.from('embeddings')
@@ -71,7 +71,7 @@ if (error) {
 ```python
 from supabase import create_client
 
-supabase = create_client('https://your-project.supabase.co', 'your-service-key')
+supabase = create_client('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 # Get bucket and index
 bucket = supabase.storage.vectors().from_('embeddings')
@@ -107,7 +107,7 @@ print('✓ Vectors stored successfully')
 
 ```sql
 -- Setup S3 Vector Wrapper (one-time setup)
--- https://supabase.com/docs/guides/database/extensions/wrappers/s3_vectors
+-- https://indobase.in/docs/guides/database/extensions/wrappers/s3_vectors
 
 -- Insert vectors into the index
 INSERT INTO s3_vectors.documents_openai (key, data, metadata)
@@ -144,7 +144,7 @@ Generate embeddings using an LLM API and store them directly:
 import { createClient } from 'indobase-js'
 import OpenAI from 'openai'
 
-const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -205,7 +205,7 @@ from supabase import create_client
 from openai import OpenAI
 from datetime import datetime
 
-supabase = create_client('https://your-project.supabase.co', 'your-service-key')
+supabase = create_client('https://[PROJECT-REF].indobase.in', 'your-service-key')
 openai = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 # Documents to embed and store

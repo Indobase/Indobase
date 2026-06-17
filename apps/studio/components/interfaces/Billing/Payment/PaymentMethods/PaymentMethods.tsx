@@ -1,4 +1,4 @@
-import { PermissionAction, SupportCategories } from '@supabase/shared-types/out/constants'
+import { PermissionAction, SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { CreditCardIcon, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -67,7 +67,7 @@ const PaymentMethods = () => {
         </ScaffoldSectionDetail>
         <ScaffoldSectionContent>
           {selectedOrganization?.managed_by !== undefined &&
-          selectedOrganization?.managed_by !== MANAGED_BY.SUPABASE ? (
+          selectedOrganization?.managed_by !== MANAGED_BY.INDOBASE ? (
             <PartnerManagedResource
               managedBy={selectedOrganization?.managed_by}
               resource="Payment Methods"

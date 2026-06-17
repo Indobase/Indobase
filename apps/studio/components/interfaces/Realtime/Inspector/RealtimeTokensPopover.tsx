@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Dispatch, SetStateAction, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 

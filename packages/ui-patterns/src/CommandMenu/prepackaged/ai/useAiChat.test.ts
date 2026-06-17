@@ -27,9 +27,9 @@ This provides more information.
 
 This provides more information.`)
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
-      { path: '/reference/api', url: 'https://supabase.com/docs/reference/api' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
+      { path: '/reference/api', url: 'https://indobase.in/docs/reference/api' },
     ])
   })
 
@@ -51,9 +51,9 @@ This provides more information.
 
 This provides more information.`)
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
-      { path: '/reference/api', url: 'https://supabase.com/docs/reference/api' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
+      { path: '/reference/api', url: 'https://indobase.in/docs/reference/api' },
     ])
   })
 
@@ -68,8 +68,8 @@ This provides more information.`)
 
     expect(result.cleanedContent).toBe('Content here.')
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
     ])
   })
 
@@ -86,8 +86,8 @@ This provides more information.`)
 
     expect(result.cleanedContent).toBe('Answer here.')
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/valid/path', url: 'https://supabase.com/docs/valid/path' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/valid/path', url: 'https://indobase.in/docs/valid/path' },
     ])
   })
 
@@ -162,8 +162,8 @@ More content.
 
 More content.`)
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
     ])
   })
 
@@ -180,8 +180,8 @@ More content.`)
 
     expect(result.cleanedContent).toBe('Answer here.')
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
     ])
   })
 
@@ -194,8 +194,8 @@ More content.`)
 
     expect(result.cleanedContent).toBe('')
     expect(result.sources).toEqual([
-      { path: '/guides/auth', url: 'https://supabase.com/docs/guides/auth' },
-      { path: '/guides/database', url: 'https://supabase.com/docs/guides/database' },
+      { path: '/guides/auth', url: 'https://indobase.in/docs/guides/auth' },
+      { path: '/guides/database', url: 'https://indobase.in/docs/guides/database' },
     ])
   })
 })

@@ -16,7 +16,7 @@ REACT_APP_INDOBASE_KEY=${projectKeys.publishableKey ?? '<prefer publishable key 
       name: 'src/indobaseClient.tsx',
       language: 'ts',
       code: `
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
 const indobaseUrl = process.env.REACT_APP_INDOBASE_URL
 const indobaseAnonKey = process.env.REACT_APP_INDOBASE_KEY

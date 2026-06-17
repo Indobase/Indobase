@@ -1,6 +1,6 @@
 // End of third-party imports
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import type { UseFormReturn } from 'react-hook-form'

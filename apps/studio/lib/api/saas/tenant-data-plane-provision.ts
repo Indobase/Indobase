@@ -284,6 +284,117 @@ export async function repairTenantTraefikRouting(
   return { ok: Boolean(parsed.ok), provisioner_status: resp.status }
 }
 
+export async function publishTenantSiteHosting({
+  files,
+  ref,
+}: {
+  files: Record<string, string>
+  ref: string
+}): Promise<{ ok: boolean; provisioner_status: number; site_synced: boolean }> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { ok: false, provisioner_status: 0, site_synced: false }
+  }
+
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/publish-site`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      files,
+      project_ref: ref,
+    }),
+  })
+
+  const text = await resp.text()
+  if (!resp.ok) {
+    throw new Error(`Site publish failed (${resp.status}): ${text.slice(0, 300)}`)
+  }
+
+  return { ok: true, provisioner_status: resp.status, site_synced: true }
+}
+
+export async function ensureTenantSiteHosting(
+  ref: string
+): Promise<{ ok: boolean; patched?: boolean; provisioner_status: number }> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { ok: false, provisioner_status: 0 }
+  }
+
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/ensure-site-hosting`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ project_ref: ref }),
+  })
+
+  const text = await resp.text()
+  let parsed: { ok?: boolean; patched?: boolean } = {}
+  try {
+    parsed = text ? JSON.parse(text) : {}
+  } catch {
+    parsed = {}
+  }
+
+  if (!resp.ok) {
+    throw new Error(`Ensure site hosting failed (${resp.status}): ${text.slice(0, 300)}`)
+  }
+
+  return {
+    ok: Boolean(parsed.ok),
+    patched: parsed.patched,
+    provisioner_status: resp.status,
+  }
+}
+
+export async function ensureTenantSiteHostingFleet(): Promise<{
+  failed: number
+  ok: boolean
+  provisioner_status: number
+  ready: number
+}> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { ok: false, provisioner_status: 0, ready: 0, failed: 0 }
+  }
+
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/ensure-site-fleet`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+
+  const text = await resp.text()
+  let parsed: { ok?: boolean; ready?: number; failed?: number } = {}
+  try {
+    parsed = text ? JSON.parse(text) : {}
+  } catch {
+    parsed = {}
+  }
+
+  if (!resp.ok) {
+    throw new Error(`Ensure site hosting fleet failed (${resp.status}): ${text.slice(0, 300)}`)
+  }
+
+  return {
+    ok: Boolean(parsed.ok),
+    ready: parsed.ready ?? 0,
+    failed: parsed.failed ?? 0,
+    provisioner_status: resp.status,
+  }
+}
+
 function claimsFromActorId(actorId: string): Claims {
   return { sub: actorId } as Claims
 }

@@ -1,4 +1,4 @@
-import { ident, literal } from '@supabase/pg-meta/src/pg-format'
+import { ident, literal } from '@indobaseinc/pg-meta/src/pg-format'
 import type { User } from 'data/auth/users-infinite-query'
 import { RoleImpersonationState as ValtioRoleImpersonationState } from 'state/role-impersonation-state'
 
@@ -6,7 +6,7 @@ import { uuidv4 } from './helpers'
 
 /**
  * Build the `iss` claim for impersonation JWTs. On hosted Supabase Platform the
- * canonical issuer is `https://<ref>.supabase.co/auth/v1`. For Indobase SaaS /
+ * canonical issuer is `https://<ref>.indobase.in/auth/v1`. For Indobase SaaS /
  * local Studio we use `NEXT_PUBLIC_GOTRUE_URL` if set, otherwise
  * `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1`, falling back to a stable
  * `indobase://<ref>/auth/v1` URN if neither is available.
@@ -15,8 +15,8 @@ function getImpersonationIssuer(projectRef: string) {
   const explicit = process.env.NEXT_PUBLIC_GOTRUE_URL
   if (explicit) return explicit
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (supabaseUrl) return `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (projectUrl) return `${projectUrl.replace(/\/+$/, '')}/auth/v1`
 
   return `indobase://${projectRef}/auth/v1`
 }

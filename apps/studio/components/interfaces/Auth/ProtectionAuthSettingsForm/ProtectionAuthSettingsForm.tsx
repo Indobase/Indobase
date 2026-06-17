@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'

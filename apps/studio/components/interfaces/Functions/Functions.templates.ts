@@ -4,7 +4,7 @@ export const EDGE_FUNCTION_TEMPLATES = [
     name: 'Simple Hello World',
     description: 'Basic function that returns a JSON response',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 interface reqPayload {
   name: string;
 }
@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
     name: 'Indobase Database Access',
     description: 'Example using Indobase client to query your database',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:indobase-js@2'
 
 Deno.serve(async (req) => {
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     name: 'Indobase Storage Upload',
     description: 'Upload files to Indobase Storage',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:indobase-js@2'
 import { randomUUID } from 'node:crypto'
 
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     name: 'Node Built-in API Example',
     description: 'Example using Node.js built-in crypto and http modules',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import process from "node:process";
@@ -122,7 +122,7 @@ server.listen(9999);`,
     name: 'Express Server',
     description: 'Example using Express.js for routing',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import express from "npm:express@4.18.2";
 
 const app = express();
@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
     name: 'Stripe Webhook Example',
     description: 'Handle Stripe webhook events securely',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import Stripe from 'npm:stripe@12.0.0'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_API_KEY') as string, {
@@ -352,7 +352,7 @@ Deno.serve(async (request) => {
     name: 'Send Emails',
     description: 'Send emails using the Resend API',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 
@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
     name: 'Image Transformation',
     description: 'Transform images using ImageMagick WASM',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 import {
   ImageMagick,
   initializeImageMagick,
@@ -410,7 +410,7 @@ Deno.serve(async (req) => {
     name: 'WebSocket Server Example',
     description: 'Create a real-time WebSocket server',
     content: `// Setup type definitions for built-in Indobase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 
 Deno.serve((req) => {
   const upgrade = req.headers.get("upgrade") || ""

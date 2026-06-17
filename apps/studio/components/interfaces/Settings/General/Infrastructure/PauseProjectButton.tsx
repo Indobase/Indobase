@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useSetProjectStatus } from 'data/projects/project-detail-query'
 import { useProjectPauseMutation } from 'data/projects/project-pause-mutation'

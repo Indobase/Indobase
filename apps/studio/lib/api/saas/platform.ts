@@ -42,8 +42,13 @@ import {
   ensureRazorpayCustomer,
   isRazorpayConfigured,
 } from './razorpay-billing'
+import {
+  computeDataPlanePortBase,
+  isDataPlanePortBaseAvailable,
+  resolveDataPlanePortBase,
+} from './data-plane-ports'
 
-type Claims = JwtPayload & Record<string, any>
+export { computeDataPlanePortBase } from './data-plane-ports'
 
 type PlanId = 'free' | 'pro' | 'team' | 'enterprise' | 'platform'
 
@@ -128,15 +133,7 @@ async function assertOrganizationNotPlatformSuspendedBySlug(slug: string, actorI
   }
 }
 
-/** Deterministic localhost bind range for per-project PostgREST/GoTrue (base+1, base+2, …). */
-export function computeDataPlanePortBase(projectRef: string): number {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < projectRef.length; i++) {
-    h ^= projectRef.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  return 12000 + (h % 38000)
-}
+type Claims = JwtPayload & Record<string, any>
 
 function composeYamlSingleQuoted(value: string): string {
   return `'${String(value).replace(/'/g, "''")}'`
@@ -412,6 +409,12 @@ export async function ensureSaasTables() {
       alter table saas.organizations add column if not exists billing_pending_tier text null;
       alter table saas.organizations add column if not exists billing_provider text null;
 
+      create table if not exists saas.razorpay_webhook_events (
+        event_id text primary key,
+        event_name text not null,
+        processed_at timestamptz not null default now()
+      );
+
       create index if not exists projects_org_slug_idx
         on saas.projects (organization_slug);
       create index if not exists projects_parent_project_ref_idx
@@ -449,6 +452,102 @@ export async function ensureSaasTables() {
       );
       create index if not exists integration_connections_org_idx
         on saas.integration_connections (organization_id);
+
+      create table if not exists saas.project_deployments (
+        id uuid primary key default gen_random_uuid(),
+        project_ref text not null references saas.projects(ref) on delete cascade,
+        requested_by_gotrue_id uuid not null,
+        requested_via text not null default 'studio',
+        status text not null default 'requested',
+        target_url text not null,
+        custom_domain_hostname text null,
+        logs jsonb not null default '[]'::jsonb,
+        metadata jsonb not null default '{}'::jsonb,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        completed_at timestamptz null,
+        last_error text null,
+        constraint project_deployments_requested_via_check
+          check (requested_via in ('studio', 'builder', 'api')),
+        constraint project_deployments_status_check
+          check (status in ('requested', 'building', 'ready', 'failed', 'archived'))
+      );
+      alter table saas.project_deployments add column if not exists logs jsonb not null default '[]'::jsonb;
+      create index if not exists project_deployments_project_ref_inserted_idx
+        on saas.project_deployments (project_ref, inserted_at desc);
+
+      create table if not exists saas.project_mobile_builds (
+        id uuid primary key default gen_random_uuid(),
+        project_ref text not null references saas.projects(ref) on delete cascade,
+        requested_by_gotrue_id uuid not null,
+        requested_via text not null default 'studio',
+        status text not null default 'requested',
+        priority text not null default 'standard',
+        target text not null default 'android_aab',
+        framework text not null default 'expo',
+        profile text not null default 'production',
+        logs jsonb not null default '[]'::jsonb,
+        metadata jsonb not null default '{}'::jsonb,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        completed_at timestamptz null,
+        last_error text null,
+        constraint project_mobile_builds_requested_via_check
+          check (requested_via in ('studio', 'builder', 'api')),
+        constraint project_mobile_builds_status_check
+          check (status in ('requested', 'building', 'ready', 'failed', 'archived')),
+        constraint project_mobile_builds_priority_check
+          check (priority in ('standard', 'priority')),
+        constraint project_mobile_builds_target_check
+          check (target in ('android_aab')),
+        constraint project_mobile_builds_framework_check
+          check (framework in ('expo', 'react_native', 'flutter', 'other')),
+        constraint project_mobile_builds_profile_check
+          check (profile in ('production', 'preview'))
+      );
+      alter table saas.project_mobile_builds add column if not exists logs jsonb not null default '[]'::jsonb;
+      alter table saas.project_mobile_builds add column if not exists priority text not null default 'standard';
+      do $$
+      begin
+        if not exists (
+          select 1
+          from pg_constraint
+          where conname = 'project_mobile_builds_priority_check'
+            and conrelid = 'saas.project_mobile_builds'::regclass
+        ) then
+          alter table saas.project_mobile_builds
+            add constraint project_mobile_builds_priority_check
+            check (priority in ('standard', 'priority'));
+        end if;
+      end
+      $$;
+      create index if not exists project_mobile_builds_project_ref_inserted_idx
+        on saas.project_mobile_builds (project_ref, inserted_at desc);
+      create index if not exists project_mobile_builds_project_ref_status_idx
+        on saas.project_mobile_builds (project_ref, status);
+      create index if not exists project_mobile_builds_claim_idx
+        on saas.project_mobile_builds (status, priority, inserted_at asc);
+      create unique index if not exists project_mobile_builds_one_active_per_project_idx
+        on saas.project_mobile_builds (project_ref)
+        where status in ('requested', 'building');
+
+      create table if not exists saas.project_mobile_build_artifacts (
+        id uuid primary key default gen_random_uuid(),
+        build_id uuid not null references saas.project_mobile_builds(id) on delete cascade,
+        kind text not null default 'android_aab',
+        file_name text not null,
+        mime_type text null,
+        size_bytes bigint null,
+        checksum_sha256 text null,
+        download_url text not null,
+        metadata jsonb not null default '{}'::jsonb,
+        inserted_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        constraint project_mobile_build_artifacts_kind_check
+          check (kind in ('android_aab', 'mapping', 'manifest', 'other'))
+      );
+      create index if not exists project_mobile_build_artifacts_build_id_idx
+        on saas.project_mobile_build_artifacts (build_id, inserted_at desc);
     `,
   })
   if (bootstrap.error) {
@@ -1805,7 +1904,7 @@ export async function finalizeDedicatedProjectProvisioning({
     }
 
     const enc = encryptString(connectionString)
-    const portBase = computeDataPlanePortBase(projectRef)
+    const portBase = await allocateDataPlanePortBase(projectRef)
     const claims = { sub: gotrueId } as Claims
     const saved = await executeQuery({
       query: `
@@ -2742,6 +2841,7 @@ function buildSlimTenantDockerCompose(opts: {
     storage: number
     realtime: number
     functions: number
+    site: number
     pooler?: number
   }
   restDbUri: string
@@ -2844,7 +2944,7 @@ function buildSlimTenantDockerCompose(opts: {
       tenant-realtime:
         condition: service_started
     ports:
-      - "127.0.0.1:${opts.ports.pooler}:6543"
+      - ${composePortBinding(opts.ports.pooler!, 6543)}
     environment:
       PORT: "4000"
       REGION: local
@@ -2908,7 +3008,7 @@ services:
       PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"
       PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"
     ports:
-      - "${opts.ports.rest}:3000"
+      - ${composePortBinding(opts.ports.rest, 3000)}
 
   tenant-auth:
     image: supabase/gotrue:v2.186.0
@@ -2955,7 +3055,7 @@ services:
       GOTRUE_SMTP_ADMIN_EMAIL: ${mailer.smtpAdminEmail}
       GOTRUE_SMTP_SENDER_NAME: ${mailer.smtpSenderName}
     ports:
-      - "${opts.ports.auth}:9999"
+      - ${composePortBinding(opts.ports.auth, 9999)}
 
   tenant-imgproxy:
     image: darthsim/imgproxy:v3.30.1
@@ -3003,7 +3103,7 @@ services:
     volumes:
       - tenant-storage-${opts.ref}:/var/lib/storage:Z
     ports:
-      - "${opts.ports.storage}:5000"
+      - ${composePortBinding(opts.ports.storage, 5000)}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
       interval: 15s
@@ -3037,7 +3137,7 @@ services:
       DISABLE_HEALTHCHECK_LOGGING: "true"
       DB_POOL_SIZE: "${rtDbPool}"
     ports:
-      - "${opts.ports.realtime}:4000"
+      - ${composePortBinding(opts.ports.realtime, 4000)}
     healthcheck:
       test: ["CMD", "curl", "-sSf", "http://127.0.0.1:4000/"]
       interval: 20s
@@ -3067,7 +3167,18 @@ ${functionsVolumeYaml}
       - --main-service
       - /home/deno/functions/main
     ports:
-      - "${opts.ports.functions}:9000"${poolerServiceBlock}${poolerConfigsBlock}
+      - ${composePortBinding(opts.ports.functions, 9000)}
+
+  tenant-site:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    networks:
+      - tenant_data_plane
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./site-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - ${composePortBinding(opts.ports.site, 8080)}${poolerServiceBlock}${poolerConfigsBlock}
 networks:
   tenant_data_plane:
     external: true
@@ -3086,54 +3197,66 @@ function traefikUpstreamHost(): string {
   return '172.17.0.1'
 }
 
+async function loadOccupiedDataPlanePortBases(excludeProjectId?: number): Promise<number[]> {
+  const result = await executeQuery<{ data_plane_port_base: number }>({
+    query: excludeProjectId
+      ? `
+        select data_plane_port_base
+        from saas.projects
+        where data_plane_port_base is not null and id <> $1
+      `
+      : `
+        select data_plane_port_base
+        from saas.projects
+        where data_plane_port_base is not null
+      `,
+    parameters: excludeProjectId ? [excludeProjectId] : undefined,
+  })
+  if (result.error) throw result.error
+  return (result.data ?? [])
+    .map((row) => row.data_plane_port_base)
+    .filter((base): base is number => Number.isFinite(base) && base > 0)
+}
+
+async function allocateDataPlanePortBase(projectRef: string, excludeProjectId?: number): Promise<number> {
+  const occupied = await loadOccupiedDataPlanePortBases(excludeProjectId)
+  return resolveDataPlanePortBase(projectRef, occupied)
+}
+
+function composePortBinding(hostPort: number, containerPort: number): string {
+  return `"${traefikUpstreamHost()}:${hostPort}:${containerPort}"`
+}
+
 function buildSlimTenantTraefikYml(opts: {
   ref: string
   publicDomain: string
-  ports: { rest: number; auth: number; storage: number; realtime: number; functions: number }
+  ports: { rest: number; auth: number; storage: number; realtime: number; functions: number; site: number }
 }): string {
   const upstream = traefikUpstreamHost()
   const hostRule = `${opts.ref}.${opts.publicDomain}`
   const ref = opts.ref
-  // Match Kong strip_path: clients call /rest/v1/*, /auth/v1/*, etc.; backends listen at /.
   const strip = (name: string, prefix: string) => `    tenant-${ref}-${name}-strip:
       stripPrefix:
         prefixes:
           - "${prefix}"
 `
-  return `# Generated by Studio — per-project routing (REST, Auth, Storage, Realtime, Functions)
+  const apiRouter = (name: string, prefix: string) => `    tenant-${ref}-${name}:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`${prefix}\`)
+      priority: 100
+      middlewares:
+        - tenant-${ref}-${name}-strip
+      service: tenant-${ref}-${name}
+      entryPoints: [web, websecure]
+`
+  return `# Generated by Studio — per-project routing (REST, Auth, Storage, Realtime, Functions, Site)
 http:
   middlewares:
 ${strip('rest', '/rest/v1')}${strip('auth', '/auth/v1')}${strip('storage', '/storage/v1')}${strip('realtime', '/realtime/v1')}${strip('functions', '/functions/v1')}
   routers:
-    tenant-${ref}-rest:
-      rule: Host(\`${hostRule}\`) && PathPrefix(\`/rest/v1\`)
-      middlewares:
-        - tenant-${ref}-rest-strip
-      service: tenant-${ref}-rest
-      entryPoints: [web, websecure]
-    tenant-${ref}-auth:
-      rule: Host(\`${hostRule}\`) && PathPrefix(\`/auth/v1\`)
-      middlewares:
-        - tenant-${ref}-auth-strip
-      service: tenant-${ref}-auth
-      entryPoints: [web, websecure]
-    tenant-${ref}-storage:
-      rule: Host(\`${hostRule}\`) && PathPrefix(\`/storage/v1\`)
-      middlewares:
-        - tenant-${ref}-storage-strip
-      service: tenant-${ref}-storage
-      entryPoints: [web, websecure]
-    tenant-${ref}-realtime:
-      rule: Host(\`${hostRule}\`) && PathPrefix(\`/realtime/v1\`)
-      middlewares:
-        - tenant-${ref}-realtime-strip
-      service: tenant-${ref}-realtime
-      entryPoints: [web, websecure]
-    tenant-${ref}-functions:
-      rule: Host(\`${hostRule}\`) && PathPrefix(\`/functions/v1\`)
-      middlewares:
-        - tenant-${ref}-functions-strip
-      service: tenant-${ref}-functions
+${apiRouter('rest', '/rest/v1')}${apiRouter('auth', '/auth/v1')}${apiRouter('storage', '/storage/v1')}${apiRouter('realtime', '/realtime/v1')}${apiRouter('functions', '/functions/v1')}    tenant-${ref}-site:
+      rule: Host(\`${hostRule}\`)
+      priority: 1
+      service: tenant-${ref}-site
       entryPoints: [web, websecure]
 
   services:
@@ -3156,6 +3279,10 @@ ${strip('rest', '/rest/v1')}${strip('auth', '/auth/v1')}${strip('storage', '/sto
     tenant-${opts.ref}-functions:
       loadBalancer:
         servers: [{ url: "http://${upstream}:${opts.ports.functions}" }]
+        passHostHeader: true
+    tenant-${ref}-site:
+      loadBalancer:
+        servers: [{ url: "http://${upstream}:${opts.ports.site}" }]
         passHostHeader: true
 `
 }
@@ -3202,7 +3329,9 @@ export async function getTenantStackArtifacts({
         p.data_plane_last_provision_result
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
-      where p.ref = $1 and m.gotrue_id = $2
+      where p.ref = $1
+        and m.gotrue_id = $2
+        and m.role in ('owner', 'admin', 'developer')
       limit 1
     `,
     parameters: [ref, gotrueId],
@@ -3228,8 +3357,9 @@ export async function getTenantStackArtifacts({
   const serviceKey = serviceKeyEnc.length > 0 ? decryptString(serviceKeyEnc) : p.service_key
 
   let base = p.data_plane_port_base ?? 0
-  if (!Number.isFinite(base) || base < 1024) {
-    base = computeDataPlanePortBase(p.ref)
+  const occupiedBases = await loadOccupiedDataPlanePortBases(p.id)
+  if (!Number.isFinite(base) || base < 1024 || !isDataPlanePortBaseAvailable(base, occupiedBases)) {
+    base = resolveDataPlanePortBase(p.ref, occupiedBases)
     const persist = await executeQuery({
       query: `
         update saas.projects p
@@ -3255,6 +3385,7 @@ export async function getTenantStackArtifacts({
     storage: number
     realtime: number
     functions: number
+    site: number
     pooler?: number
   } = {
     rest: base + 1,
@@ -3262,6 +3393,7 @@ export async function getTenantStackArtifacts({
     storage: base + 3,
     realtime: base + 4,
     functions: base + 5,
+    site: base + 7,
   }
   if (embedPooler) {
     ports.pooler = base + 6
@@ -3320,6 +3452,7 @@ export async function getTenantStackArtifacts({
       storage: ports.storage,
       realtime: ports.realtime,
       functions: ports.functions,
+      site: ports.site,
       ...(ports.pooler != null ? { pooler: ports.pooler } : {}),
     },
     restDbUri,
@@ -3354,6 +3487,7 @@ export async function getTenantStackArtifacts({
       storage: ports.storage,
       realtime: ports.realtime,
       functions: ports.functions,
+      site: ports.site,
     },
   })
 

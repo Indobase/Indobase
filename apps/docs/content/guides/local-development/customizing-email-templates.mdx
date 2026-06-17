@@ -163,7 +163,7 @@ The templating system provides the following variables for use:
 Contains the confirmation URL. For example, a signup confirmation URL would look like:
 
 ```
-https://project-ref.supabase.co/auth/v1/verify?token={{ .TokenHash }}&type=email&redirect_to=https://example.com/path
+https://[PROJECT-REF].indobase.in/auth/v1/verify?token={{ .TokenHash }}&type=email&redirect_to=https://example.com/path
 ```
 
 **Usage**
@@ -279,7 +279,7 @@ Contains the type of the newly enrolled/unenrolled MFA factor. This is only avai
 
 ## Deploying email templates
 
-These settings are for local development. To apply the changes locally, stop and restart the Supabase containers:
+These settings are for local development. To apply the changes locally, stop and restart the Indobase containers:
 
 ```sh
 supabase stop && supabase start

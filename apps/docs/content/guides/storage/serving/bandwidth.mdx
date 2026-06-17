@@ -8,7 +8,7 @@ sidebar_label: 'Bandwidth & Storage Egress'
 
 ## Bandwidth & Storage egress
 
-Free Plan Organizations in Supabase have a limit of 10 GB of bandwidth (5 GB cached + 5 GB uncached). This limit is calculated by the sum of all the data transferred from the Supabase servers to the client. This includes all the data transferred from the database, storage, and functions.
+Free Plan Organizations in Supabase have a limit of 10 GB of bandwidth (5 GB cached + 5 GB uncached). This limit is calculated by the sum of all the data transferred from the Indobase servers to the client. This includes all the data transferred from the database, storage, and functions.
 
 ### Checking Storage egress requests in Logs Explorer
 
@@ -59,7 +59,7 @@ If you already know the size of those files, you can calculate the egress by mul
 You can also get the size of the file with the following cURL:
 
 ```bash
-curl -s -w "%{size_download}\n" -o /dev/null "https://my_project.supabase.co/storage/v1/object/large%20bucket/20230902_200037.gif"
+curl -s -w "%{size_download}\n" -o /dev/null "https://my_project.indobase.in/storage/v1/object/large%20bucket/20230902_200037.gif"
 ```
 
 This will return the size of the file in bytes.

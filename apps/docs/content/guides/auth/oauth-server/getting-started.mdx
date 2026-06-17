@@ -1,22 +1,22 @@
 ---
 id: 'oauth-server-getting-started'
 title: 'Getting Started with OAuth 2.1 Server'
-description: 'Learn how to enable OAuth 2.1 and register client applications in your Supabase project'
+description: 'Learn how to enable OAuth 2.1 and register client applications in your Indobase project'
 ---
 
-This guide will walk you through setting up your Supabase project as an OAuth 2.1 identity provider, from enabling the feature to registering your first client application.
+This guide will walk you through setting up your Indobase project as an OAuth 2.1 identity provider, from enabling the feature to registering your first client application.
 
 ## Prerequisites
 
 Before you begin, make sure you have:
 
-- A Supabase project (create one at [supabase.com](https://supabase.com))
+- A Indobase project (create one at [indobase.in](https://indobase.in))
 - Admin access to your project
-- (Optional) [Supabase CLI](/docs/guides/cli) v2.54.11 or higher for local development
+- (Optional) [Indobase CLI](/docs/guides/cli) v2.54.11 or higher for local development
 
 ## Overview
 
-Setting up OAuth 2.1 in your Supabase project involves these steps:
+Setting up OAuth 2.1 in your Indobase project involves these steps:
 
 1. Enable OAuth 2.1 server capabilities in your project
 2. Configure your authorization path
@@ -25,7 +25,7 @@ Setting up OAuth 2.1 in your Supabase project involves these steps:
 
 <Admonition type="note">
 
-Testing OAuth flows is often easier on a Supabase project since it's already accessible on the web, no tunnel or additional configuration needed.
+Testing OAuth flows is often easier on a Indobase project since it's already accessible on the web, no tunnel or additional configuration needed.
 
 </Admonition>
 
@@ -82,11 +82,11 @@ Once enabled, your project will expose the necessary OAuth endpoints:
 
 | Endpoint                   | URL                                                                                |
 | -------------------------- | ---------------------------------------------------------------------------------- |
-| **Authorization endpoint** | `https://<project-ref>.supabase.co/auth/v1/oauth/authorize`                        |
-| **Token endpoint**         | `https://<project-ref>.supabase.co/auth/v1/oauth/token`                            |
-| **JWKS endpoint**          | `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`                  |
-| **Discovery endpoint**     | `https://<project-ref>.supabase.co/.well-known/oauth-authorization-server/auth/v1` |
-| **OIDC discovery**         | `https://<project-ref>.supabase.co/auth/v1/.well-known/openid-configuration`       |
+| **Authorization endpoint** | `https://<project-ref>.indobase.in/auth/v1/oauth/authorize`                        |
+| **Token endpoint**         | `https://<project-ref>.indobase.in/auth/v1/oauth/token`                            |
+| **JWKS endpoint**          | `https://<project-ref>.indobase.in/auth/v1/.well-known/jwks.json`                  |
+| **Discovery endpoint**     | `https://<project-ref>.indobase.in/.well-known/oauth-authorization-server/auth/v1` |
+| **OIDC discovery**         | `https://<project-ref>.indobase.in/auth/v1/.well-known/openid-configuration`       |
 
 </TabPanel>
 <TabPanel id="cli" label="CLI">
@@ -150,7 +150,7 @@ Your authorization UI will be at the combined Site URL + Authorization Path. For
 - Authorization Path: `/oauth/consent` (from **OAuth Server** settings)
 - Your authorization UI: `https://example.com/oauth/consent`
 
-When OAuth clients initiate the authorization flow, Supabase Auth will redirect users to this URL with an `authorization_id` query parameter. You'll use [Supabase JavaScript library OAuth methods](https://github.com/supabase/supabase-js/blob/master/packages/core/auth-js/src/GoTrueClient.ts#L2159-L2163) to handle the authorization:
+When OAuth clients initiate the authorization flow, Indobase Auth will redirect users to this URL with an `authorization_id` query parameter. You'll use [Supabase JavaScript library OAuth methods](https://github.com/Indobase/Indobase-js/blob/master/packages/core/auth-js/src/GoTrueClient.ts#L2159-L2163) to handle the authorization:
 
 - `supabase.auth.oauth.getAuthorizationDetails(authorization_id)` - Retrieve client and authorization details
 - `supabase.auth.oauth.approveAuthorization(authorization_id)` - Approve the authorization request
@@ -172,7 +172,7 @@ The authorization details include a `scope` field (singular) containing a space-
 
 <Admonition type="note">
 
-This is a **frontend implementation**. You're building the UI that displays the consent screen and handles user interactions. The actual OAuth token generation is handled by Supabase Auth after you call the approve/deny methods.
+This is a **frontend implementation**. You're building the UI that displays the consent screen and handles user interactions. The actual OAuth token generation is handled by Indobase Auth after you call the approve/deny methods.
 
 </Admonition>
 
@@ -191,7 +191,7 @@ Here's how to build a minimal authorization page at your configured path (e.g., 
 
 ```tsx
 // app/oauth/consent/page.tsx
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -278,7 +278,7 @@ export default async function ConsentPage({
 
 ```typescript
 // app/api/oauth/decision/route.ts
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -446,7 +446,7 @@ export function OAuthConsent() {
 
 ### How it works
 
-1. **User navigates to your authorization path** - When a third-party app initiates OAuth, Supabase Auth redirects the user to your configured authorization path (e.g., `https://example.com/oauth/consent?authorization_id=<id>`)
+1. **User navigates to your authorization path** - When a third-party app initiates OAuth, Indobase Auth redirects the user to your configured authorization path (e.g., `https://example.com/oauth/consent?authorization_id=<id>`)
 2. **Extract authorization_id** - Your page extracts the `authorization_id` from the URL query parameters
 3. **Check authentication** - Your page checks if the user is logged in, redirecting to login if not (preserving the authorization_id)
 4. **Retrieve details** - Call `supabase.auth.oauth.getAuthorizationDetails(authorization_id)` to get information about the requesting client
@@ -525,7 +525,7 @@ You can register clients programmatically using the SDK admin endpoints or by ca
 import { createClient } from 'indobase-js'
 
 const supabase = createClient(
-  'https://your-project.supabase.co',
+  'https://[PROJECT-REF].indobase.in',
   'your-service-role-key' // Use service_role key for admin operations
 )
 
@@ -555,7 +555,7 @@ if (error) {
 from supabase import create_client
 
 supabase = create_client(
-    'https://your-project.supabase.co',
+    'https://[PROJECT-REF].indobase.in',
     'your-service-role-key'  # Use service_role key for admin operations
 )
 
@@ -583,7 +583,7 @@ print('Client Secret:', response.client_secret)  # Store this securely!
 **Production:**
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/admin/oauth/clients' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/admin/oauth/clients' \
   -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -674,7 +674,7 @@ print('OAuth clients:', clients)
 **Production:**
 
 ```bash
-curl 'https://<project-ref>.supabase.co/auth/v1/admin/oauth/clients' \
+curl 'https://<project-ref>.indobase.in/auth/v1/admin/oauth/clients' \
   -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}"
 ```
 
@@ -707,13 +707,13 @@ For more examples, see [Token Security & RLS](/docs/guides/auth/oauth-server/tok
 
 ## Redirect URI configuration
 
-Redirect URIs are critical for OAuth security. Supabase Auth will only redirect to URIs that are explicitly registered with the client.
+Redirect URIs are critical for OAuth security. Indobase Auth will only redirect to URIs that are explicitly registered with the client.
 
 <Admonition type="note">
 
 **Not to be confused with general redirect URLs**
 
-This section is about **OAuth client redirect URIs** - where to send users after they authorize third-party apps to access your Supabase project. This is different from the general [Redirect URLs](/docs/guides/auth/redirect-urls) setting, which controls where to send users after they sign in TO your app using social providers.
+This section is about **OAuth client redirect URIs** - where to send users after they authorize third-party apps to access your Indobase project. This is different from the general [Redirect URLs](/docs/guides/auth/redirect-urls) setting, which controls where to send users after they sign in TO your app using social providers.
 
 </Admonition>
 

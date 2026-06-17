@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { type User } from 'common/auth'
 import { gotrueClient } from 'common/gotrue'
 
@@ -39,13 +39,13 @@ export const getUserClaims = async (
     // (we still have SUPABASE_URL + SUPABASE_ANON_KEY in the backend stack).
     try {
       const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_ANON_KEY
-      const supabaseUrl = process.env.SUPABASE_URL
+      const projectUrl = process.env.SUPABASE_URL
 
       const gotrueBaseUrl =
         // Prefer runtime server env to avoid build-time inlining issues.
         process.env.GOTRUE_URL ||
         process.env.NEXT_PUBLIC_GOTRUE_URL ||
-        (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/auth/v1` : undefined)
+        (projectUrl ? `${projectUrl.replace(/\/$/, '')}/auth/v1` : undefined)
 
       if (!anonKey || !gotrueBaseUrl) {
         console.error(err)

@@ -94,6 +94,7 @@ export function buildBuilderLaunchUrl(opts: {
   baseUrl?: string
   handoffToken: string
   projectRef: string
+  next?: string
 }) {
   const baseUrl = (opts.baseUrl || resolveBuilderBaseUrl()).replace(/\/+$/, '')
   const url = new URL(`${baseUrl}/launch`)
@@ -101,6 +102,9 @@ export function buildBuilderLaunchUrl(opts: {
   // Preserve the previous query name during rollout so existing Builder consumers keep working.
   url.searchParams.set('handoff', opts.handoffToken)
   url.searchParams.set('project_ref', opts.projectRef)
+  if (opts.next && opts.next.trim()) {
+    url.searchParams.set('next', opts.next.trim())
+  }
   return url.toString()
 }
 
@@ -193,9 +197,11 @@ export function buildBuilderBackendConfig(opts: {
 export async function getBuilderLaunchRedirect({
   claims,
   ref,
+  next,
 }: {
   claims: Claims
   ref: string
+  next?: string
 }) {
   const project = await getProject({ claims, ref })
   if (!project) {
@@ -245,6 +251,7 @@ export async function getBuilderLaunchRedirect({
     url: buildBuilderLaunchUrl({
       handoffToken: token,
       projectRef: project.ref,
+      next,
     }),
   }
 }

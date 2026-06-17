@@ -1,4 +1,4 @@
-import { JwtSecretUpdateStatus } from '@supabase/shared-types/out/events'
+import { JwtSecretUpdateStatus } from '@indobaseinc/shared-types/out/events'
 import { AlertCircle, Loader } from 'lucide-react'
 import { PropsWithChildren } from 'react'
 

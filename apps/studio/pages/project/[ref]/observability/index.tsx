@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useFeatureFlags, useFlag, useParams } from 'common'
 import { ObservabilityOverview } from 'components/interfaces/Observability/ObservabilityOverview'
 import { CreateReportModal } from 'components/interfaces/Reports/CreateReportModal'

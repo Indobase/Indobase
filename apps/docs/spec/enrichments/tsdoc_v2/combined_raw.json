@@ -487,7 +487,7 @@
                   "type": {
                     "type": "reference",
                     "qualifiedName": "RealtimeClient",
-                    "package": "@supabase/realtime-js",
+                    "package": "@indobaseinc/realtime-js",
                     "name": "default"
                   }
                 },
@@ -557,7 +557,7 @@
                         "extendsType": {
                           "type": "reference",
                           "qualifiedName": "GenericSchema",
-                          "package": "@supabase/postgrest-js",
+                          "package": "@indobaseinc/postgrest-js",
                           "name": "GenericSchema"
                         },
                         "trueType": {
@@ -578,7 +578,7 @@
                       }
                     ],
                     "qualifiedName": "PostgrestClient",
-                    "package": "@supabase/postgrest-js",
+                    "package": "@indobaseinc/postgrest-js",
                     "name": "default"
                   }
                 },
@@ -874,7 +874,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeClientOptions",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "RealtimeClientOptions"
                           }
                         }
@@ -882,7 +882,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "RealtimeClient",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "default"
                       }
                     }
@@ -1113,7 +1113,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeChannelOptions",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "RealtimeChannelOptions"
                           },
                           "defaultValue": "..."
@@ -1122,7 +1122,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "RealtimeChannel",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "default"
                       }
                     }
@@ -1205,7 +1205,7 @@
                           }
                         ],
                         "qualifiedName": "PostgrestQueryBuilder",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     },
@@ -1269,7 +1269,7 @@
                           }
                         ],
                         "qualifiedName": "PostgrestQueryBuilder",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     },
@@ -1306,7 +1306,7 @@
                           }
                         ],
                         "qualifiedName": "PostgrestQueryBuilder",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     }
@@ -1340,7 +1340,7 @@
                         "elementType": {
                           "type": "reference",
                           "qualifiedName": "RealtimeChannel",
-                          "package": "@supabase/realtime-js",
+                          "package": "@indobaseinc/realtime-js",
                           "name": "default"
                         }
                       }
@@ -1437,7 +1437,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeChannel",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "default"
                           }
                         }
@@ -1745,7 +1745,7 @@
                           }
                         ],
                         "qualifiedName": "PostgrestFilterBuilder",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     }
@@ -3917,7 +3917,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "RealtimeClientOptions",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "RealtimeClientOptions"
                       }
                     }
@@ -17575,7 +17575,7 @@
     },
     {
       "id": 0,
-      "name": "@supabase/postgrest-js",
+      "name": "@indobaseinc/postgrest-js",
       "kind": 1,
       "kindString": "Project",
       "flags": {},
@@ -18252,8 +18252,8 @@
                       {
                         "kind": "inline-tag",
                         "tag": "@link",
-                        "text": "https://github.com/supabase/supabase-js/issues/92",
-                        "target": "https://github.com/supabase/supabase-js/issues/92"
+                        "text": "https://github.com/Indobase/indobase-js/issues/92",
+                        "target": "https://github.com/Indobase/indobase-js/issues/92"
                       }
                     ]
                   },
@@ -27373,8 +27373,8 @@
                       {
                         "kind": "inline-tag",
                         "tag": "@link",
-                        "text": "https://github.com/supabase/supabase-js/issues/92",
-                        "target": "https://github.com/supabase/supabase-js/issues/92"
+                        "text": "https://github.com/Indobase/indobase-js/issues/92",
+                        "target": "https://github.com/Indobase/indobase-js/issues/92"
                       }
                     ]
                   },
@@ -31924,8 +31924,8 @@
                       {
                         "kind": "inline-tag",
                         "tag": "@link",
-                        "text": "https://github.com/supabase/supabase-js/issues/92",
-                        "target": "https://github.com/supabase/supabase-js/issues/92"
+                        "text": "https://github.com/Indobase/indobase-js/issues/92",
+                        "target": "https://github.com/Indobase/indobase-js/issues/92"
                       }
                     ]
                   },
@@ -32338,7 +32338,7 @@
     },
     {
       "id": 0,
-      "name": "@supabase/realtime-js",
+      "name": "@indobaseinc/realtime-js",
       "kind": 1,
       "kindString": "Project",
       "flags": {},

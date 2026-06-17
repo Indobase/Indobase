@@ -5,24 +5,24 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) යනු විවෘත පරිශීලක Firebase වෙනුවට ආදේශකයකි.අපි Firebase වල ඇති පහසුකම් enterprise-grade විවෘත පරිශීලක මෘදුකාංග භාවිතා කරමින් නිපදවනු ලබයි.
+[Indobase](https://indobase.in) යනු විවෘත පරිශීලක Firebase වෙනුවට ආදේශකයකි.අපි Firebase වල ඇති පහසුකම් enterprise-grade විවෘත පරිශීලක මෘදුකාංග භාවිතා කරමින් නිපදවනු ලබයි.
 
-- [x] Hosted Postgres Database. [Docs](https://supabase.com/docs/guides/database)
-- [x] Authentication and Authorization. [Docs](https://supabase.com/docs/guides/auth)
+- [x] Hosted Postgres Database. [Docs](https://indobase.in/docs/guides/database)
+- [x] Authentication and Authorization. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Auto-generated APIs.
-  - [x] REST. [Docs](https://supabase.com/docs/guides/api)
-  - [x] GraphQL. [Docs](https://supabase.com/docs/guides/graphql)
-  - [x] Realtime subscriptions. [Docs](https://supabase.com/docs/guides/realtime)
+  - [x] REST. [Docs](https://indobase.in/docs/guides/api)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/graphql)
+  - [x] Realtime subscriptions. [Docs](https://indobase.in/docs/guides/realtime)
 - [x] Functions.
-  - [x] Database Functions. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Edge Functions [Docs](https://supabase.com/docs/guides/functions)
-- [x] File Storage. [Docs](https://supabase.com/docs/guides/storage)
-- [x] AI + Vector/Embeddings Toolkit. [Docs](https://supabase.com/docs/guides/ai)
+  - [x] Database Functions. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge Functions [Docs](https://indobase.in/docs/guides/functions)
+- [x] File Storage. [Docs](https://indobase.in/docs/guides/storage)
+- [x] AI + Vector/Embeddings Toolkit. [Docs](https://indobase.in/docs/guides/ai)
 - [x] Dashboard
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ප්‍රධාන යාවත්කාල කිරීම් පිළිබඳ දැනුම් දීම සඳහා "releases" පිළිබඳව අවධානයෙන් සිටින්න.
 
@@ -30,27 +30,27 @@
 
 ## ප්‍රලේඛනය
 
-සම්පූර්ණ විස්තරය කියවන්න ,මෙතනින් [supabase.com/docs](https://supabase.com/docs)
+සම්පූර්ණ විස්තරය කියවන්න ,මෙතනින් [indobase.in/docs](https://indobase.in/docs)
 
 දායක වන ආකාරය බැලීමට, ආරම්භ කිරීම වෙත [පිවිසෙන්න](./DEVELOPERS.md)
 
 ## Community එක හා සහයෝගය ගැනීමට
 
-- [Community Forum](https://github.com/supabase/supabase/discussions). වඩාත්ම සුදුසු: දේවල් සෑදීමට උදව් ගැනීම.database best practices පිළිබඳ සාකච්ඡා කිරීමට.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). වඩාත්ම සුදුසු: Supabase භාවිතා කිරීමේදී ඔබට හමුවන වැරදී හා ප්‍රශ්න.
-- [Email Support](https://supabase.com/docs/support#business-support). වඩාත්ම සුදුසු: database හා infrastructure පිළිබඳ ඔබේ ඇති ප්‍රශ්න.
-- [Discord](https://discord.supabase.com). වඩාත්ම සුදුසු: ඔබගේ applications බෙදාගැනීම සහ community සමඟ රැඳී සිටීම.
+- [Community Forum](https://github.com/Indobase/Indobase/discussions). වඩාත්ම සුදුසු: දේවල් සෑදීමට උදව් ගැනීම.database best practices පිළිබඳ සාකච්ඡා කිරීමට.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). වඩාත්ම සුදුසු: Indobase භාවිතා කිරීමේදී ඔබට හමුවන වැරදී හා ප්‍රශ්න.
+- [Email Support](https://indobase.in/docs/support#business-support). වඩාත්ම සුදුසු: database හා infrastructure පිළිබඳ ඔබේ ඇති ප්‍රශ්න.
+- [Discord](https://discord.indobase.in). වඩාත්ම සුදුසු: ඔබගේ applications බෙදාගැනීම සහ community සමඟ රැඳී සිටීම.
 
 ## කොහොමද මෙය වැඩකරන්නෙ
 
-Supabase යනු විවෘත පරිශීලක උපාංග කිහිපයක එකතුවකි.අප Firebase වල ඇති පහසුකම් enterprise-grade, විවෘත පරිශීලක උපාංග භාවිතා කරමින් නිපදවයි.උපාංග හා communities ඇත්නම්,ඒවා MIT,Apache 2, හෝ ඒ ආකාරයේ open license නම් අප ඒවා භාවිතා කර සහයෝගය දක්වනවා.එවැනි උපාංග නොමැතිනම්,අප ඒවා විවෘත පරිශීලක විදියට නිපදවනවා.Supabase යනු 1-ට-1 Firebase වලට සමාන දෙයක් නොවේ.අපේ අරමුණ developers ලට Firebase වැනි අත්දැකීමක් විවෘත පරිශීලක උපාංග මඟින් ලබාදීමයි.
+Indobase යනු විවෘත පරිශීලක උපාංග කිහිපයක එකතුවකි.අප Firebase වල ඇති පහසුකම් enterprise-grade, විවෘත පරිශීලක උපාංග භාවිතා කරමින් නිපදවයි.උපාංග හා communities ඇත්නම්,ඒවා MIT,Apache 2, හෝ ඒ ආකාරයේ open license නම් අප ඒවා භාවිතා කර සහයෝගය දක්වනවා.එවැනි උපාංග නොමැතිනම්,අප ඒවා විවෘත පරිශීලක විදියට නිපදවනවා.Indobase යනු 1-ට-1 Firebase වලට සමාන දෙයක් නොවේ.අපේ අරමුණ developers ලට Firebase වැනි අත්දැකීමක් විවෘත පරිශීලක උපාංග මඟින් ලබාදීමයි.
 
 **Architecture**
 
-Supabase යනු [hosted platform](https://supabase.com/dashboard). ඔබට කිසිවක් ස්ථාපනය නොකර ලියාපදිංචි වී Supabase භාවිතා කිරීම ආරම්භ කළ හැකිය.
-ඔබට [self-host](https://supabase.com/docs/guides/hosting/overview) සහ [develop locally](https://supabase.com/docs/guides/local-development) කළ හැකිය.
+Indobase යනු [hosted platform](https://indobase.in/dashboard). ඔබට කිසිවක් ස්ථාපනය නොකර ලියාපදිංචි වී Indobase භාවිතා කිරීම ආරම්භ කළ හැකිය.
+ඔබට [self-host](https://indobase.in/docs/guides/hosting/overview) සහ [develop locally](https://indobase.in/docs/guides/local-development) කළ හැකිය.
 
-![Architecture](apps/docs/public/img/supabase-architecture.svg)
+![Architecture](apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) යනු අවුරුදු 30 වඩා කාලයක් ක්‍රියාත්මක වෙමින් පවතින object-relational database system එකක් වන අතර එය විශ්වාසනීයත්වයට,ක්‍රියාකාරීත්වයට හා feature robustness බවට කීර්තියක් අත්පත්කරගෙන සිටියි
 - [Realtime](https://github.com/supabase/realtime) is an Elixir server that allows you to listen to PostgreSQL inserts, updates, and deletes using websockets. Realtime polls Postgres' built-in replication functionality for database changes, converts changes to JSON, then broadcasts the JSON over websockets to authorized clients.
@@ -69,12 +69,12 @@ Client libraries සඳහා අපගේ ප්‍රවේශය modular ව�
   <tr>
     <th>Language</th>
     <th>Client</th>
-    <th colspan="5">Feature-Clients (bundled in Supabase client)</th>
+    <th colspan="5">Feature-Clients (bundled in Indobase client)</th>
   </tr>
   <!-- notranslate -->
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -97,16 +97,16 @@ Client libraries සඳහා අපගේ ප්‍රවේශය modular ව�
   <!-- notranslate -->
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -115,16 +115,16 @@ Client libraries සඳහා අපගේ ප්‍රවේශය modular ව�
   </tr>
   <tr>
     <td>Swift</td>
-    <td><a href="https://github.com/supabase/supabase-swift" target="_blank" rel="noopener noreferrer">supabase-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/PostgREST" target="_blank" rel="noopener noreferrer">postgrest-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Auth" target="_blank" rel="noopener noreferrer">auth-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Realtime" target="_blank" rel="noopener noreferrer">realtime-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Storage" target="_blank" rel="noopener noreferrer">storage-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Functions" target="_blank" rel="noopener noreferrer">functions-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift" target="_blank" rel="noopener noreferrer">supabase-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/PostgREST" target="_blank" rel="noopener noreferrer">postgrest-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Auth" target="_blank" rel="noopener noreferrer">auth-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Realtime" target="_blank" rel="noopener noreferrer">realtime-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Storage" target="_blank" rel="noopener noreferrer">storage-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Functions" target="_blank" rel="noopener noreferrer">functions-swift</a></td>
   </tr>
   <tr>
     <td>Python</td>
-    <td><a href="https://github.com/supabase/supabase-py" target="_blank" rel="noopener noreferrer">supabase-py</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-py" target="_blank" rel="noopener noreferrer">supabase-py</a></td>
     <td><a href="https://github.com/supabase/postgrest-py" target="_blank" rel="noopener noreferrer">postgrest-py</a></td>
     <td><a href="https://github.com/supabase/gotrue-py" target="_blank" rel="noopener noreferrer">gotrue-py</a></td>
     <td><a href="https://github.com/supabase/realtime-py" target="_blank" rel="noopener noreferrer">realtime-py</a></td>
@@ -205,36 +205,36 @@ Client libraries සඳහා අපගේ ප්‍රවේශය modular ව�
 
 ## Badges
 
-![Made with Supabase](./apps/www/public/badge-made-with-supabase.svg)
+![Made with Indobase](./apps/www/public/badge-made-with-supabase.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
 
-![Made with Supabase (dark)](./apps/www/public/badge-made-with-supabase-dark.svg)
+![Made with Indobase (dark)](./apps/www/public/badge-made-with-supabase-dark.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase-dark.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase-dark.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase-dark.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase-dark.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
@@ -249,7 +249,7 @@ Client libraries සඳහා අපගේ ප්‍රවේශය modular ව�
 - [Czech / čeština](/i18n/README.cs.md)
 - [Danish / Dansk](/i18n/README.da.md)
 - [Dutch / Nederlands](/i18n/README.nl.md)
-- [English](https://github.com/supabase/supabase)
+- [English](https://github.com/Indobase/Indobase)
 - [Estonian / eesti keel](/i18n/README.et.md)
 - [Finnish / Suomalainen](/i18n/README.fi.md)
 - [French / Français](/i18n/README.fr.md)

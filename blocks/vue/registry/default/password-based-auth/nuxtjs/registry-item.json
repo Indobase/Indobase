@@ -4,7 +4,7 @@
   "title": "Password Based Auth flow for Nuxt.js and Supabase",
   "description": "Password Based Auth flow for Nuxt.js and Supabase",
   "registryDependencies": ["button", "card", "input", "label"],
-  "dependencies": ["@supabase/ssr@latest", "indobase-js@latest"],
+  "dependencies": ["@indobaseinc/ssr@latest", "indobase-js@latest"],
   "files": [
     {
       "path": "registry/default/password-based-auth/nuxtjs/app/components/login-form.vue",

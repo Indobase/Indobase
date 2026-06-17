@@ -4,7 +4,7 @@
   "title": "Social Auth flow for TanStack and Supabase",
   "description": "Social Auth flow for TanStack and Supabase",
   "registryDependencies": ["button", "card"],
-  "dependencies": ["@supabase/ssr@latest"],
+  "dependencies": ["@indobaseinc/ssr@latest"],
   "files": [
     {
       "path": "registry/default/blocks/social-auth-tanstack/components/login-form.tsx",

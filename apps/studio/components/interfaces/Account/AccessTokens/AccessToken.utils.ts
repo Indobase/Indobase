@@ -74,7 +74,7 @@ export const mapPermissionToFGA = (
   return match ? [match.id as ScopedAccessTokenPermission] : []
 }
 
-// [kemal]: Not sure how efficient this will be, but it should get permissions from shared types and transform them whenever @supabase/shared-types updates.
+// [kemal]: Not sure how efficient this will be, but it should get permissions from shared types and transform them whenever @indobaseinc/shared-types updates.
 export const getResourcePermissions = (
   resourceKey: string
 ): Record<string, ScopedAccessTokenPermission[]> => {

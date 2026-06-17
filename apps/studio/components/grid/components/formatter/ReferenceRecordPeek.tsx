@@ -1,4 +1,4 @@
-import { PostgresTable } from '@supabase/postgres-meta'
+import { PostgresTable } from '@indobaseinc/postgres-meta'
 import { keepPreviousData } from '@tanstack/react-query'
 import { useParams } from 'common'
 import { COLUMN_MIN_WIDTH } from 'components/grid/constants'

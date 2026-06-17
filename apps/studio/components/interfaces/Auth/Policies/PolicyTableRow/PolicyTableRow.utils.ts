@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 
 export const generatePolicyUpdateSQL = (policy: PostgresPolicy) => {
   let expression = ''

@@ -1,5 +1,5 @@
 import { useSession } from '@clerk/nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
 export function useSupabaseClient() {
   const { session } = useSession()

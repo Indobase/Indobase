@@ -1,4 +1,4 @@
-# Supabase Realtime Presence API Sample Program
+# Indobase Realtime Presence API Sample Program
 
 This is an example program for Supabase Realtime Presence APIs.
 User get authenticated using Supabase Auth API. Once Logged-in you can see which users are 'present' and viewing the page.

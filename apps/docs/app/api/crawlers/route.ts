@@ -15,6 +15,7 @@ import {
 import { getRefMarkdown } from '~/features/docs/Reference.mdx'
 import type { MethodTypes, VariableTypes } from '~/features/docs/Reference.typeSpec'
 import type { AbbrevApiReferenceSection } from '~/features/docs/Reference.utils'
+import { DOCS_OG_IMAGE, DOCS_PROD_ORIGIN, DOCS_SITE_NAME } from '~/lib/branding'
 import { BASE_PATH } from '~/lib/constants'
 
 export async function GET(request: Request) {
@@ -80,11 +81,11 @@ function htmlShell(
   return (
     '<!doctype html><html>' +
     '<head>' +
-    `<title>${title} | Supabase Docs</title>` +
-    `<meta name="description" content="Supabase API reference for ${libraryName}${section.title ? ': ' + section.title : ''}">` +
-    `<meta name="og:image" content="https://supabase.com/docs/img/supabase-og-image.png">` +
-    `<meta name="twitter:image" content="https://supabase.com/docs/img/supabase-og-image.png">` +
-    `<link rel="canonical" href="https://supabase.com/docs/reference/${lib}` +
+    `<title>${title} | ${DOCS_SITE_NAME}</title>` +
+    `<meta name="description" content="Indobase API reference for ${libraryName}${section.title ? ': ' + section.title : ''}">` +
+    `<meta name="og:image" content="${DOCS_OG_IMAGE}">` +
+    `<meta name="twitter:image" content="${DOCS_OG_IMAGE}">` +
+    `<link rel="canonical" href="${DOCS_PROD_ORIGIN}/docs/reference/${lib}` +
     (slug ? '/' + slug : '') +
     `">` +
     '</head>' +

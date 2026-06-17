@@ -1,7 +1,7 @@
 ---
 title: 'Copy Storage Objects from Platform'
-description: 'Copy storage objects from a managed Supabase project to a self-hosted instance using rclone.'
-subtitle: 'Copy storage objects from a managed Supabase project to a self-hosted instance using rclone.'
+description: 'Copy storage objects from a managed Indobase project to a self-hosted instance using rclone.'
+subtitle: 'Copy storage objects from a managed Indobase project to a self-hosted instance using rclone.'
 ---
 
 {/* supa-mdx-lint-disable-next-line Rule003Spelling */}
@@ -17,7 +17,7 @@ Direct file copy (e.g., downloading files and placing them into `volumes/storage
 
 You need:
 
-- A working self-hosted Supabase instance with the S3 protocol endpoint enabled - see [Configure S3 Storage](/docs/guides/self-hosting/self-hosted-s3#enable-the-s3-protocol-endpoint)
+- A working self-hosted Indobase instance with the S3 protocol endpoint enabled - see [Configure S3 Storage](/docs/guides/self-hosting/self-hosted-s3#enable-the-s3-protocol-endpoint)
 - Your platform project's S3 credentials - generated from the [S3 Configuration](/dashboard/project/_/storage/s3) page
 - Matching buckets created on your self-hosted instance
   {/* supa-mdx-lint-disable-next-line Rule003Spelling */}
@@ -25,15 +25,15 @@ You need:
 
 ## Step 1: Get platform S3 credentials
 
-In your managed Supabase project dashboard, go to **Storage** > **S3 Configuration** > **Access keys**. Generate a new access key pair and copy:
+In your managed Indobase project dashboard, go to **Storage** > **S3 Configuration** > **Access keys**. Generate a new access key pair and copy:
 
-- **Endpoint**: `https://<project-ref>.supabase.co/storage/v1/s3`
+- **Endpoint**: `https://<project-ref>.indobase.in/storage/v1/s3`
 - **Region**: your project's region (e.g., `us-east-1`)
 - **Access Key ID** and **Secret access key**
 
 <Admonition type="note">
 
-For better performance with large files, use the direct storage hostname: `https://<project-ref>.storage.supabase.co/storage/v1/s3`
+For better performance with large files, use the direct storage hostname: `https://<project-ref>.storage.indobase.in/storage/v1/s3`
 
 </Admonition>
 
@@ -77,7 +77,7 @@ type = s3
 provider = Other
 access_key_id = your-platform-access-key-id
 secret_access_key = your-platform-secret-access-key
-endpoint = https://your-project-ref.supabase.co/storage/v1/s3
+endpoint = https://your-[PROJECT-REF].indobase.in/storage/v1/s3
 region = your-project-region
 
 [self-hosted]

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Auth, ThemeSupa } from '@supabase/auth-ui-react'
+import { Auth, ThemeSupa } from '@indobaseinc/auth-ui-react'
 import JSONInput from 'react-json-editor-ajrm'
 import locale from 'react-json-editor-ajrm/locale/en'
 import { supabase } from './utils/supabaseClient'

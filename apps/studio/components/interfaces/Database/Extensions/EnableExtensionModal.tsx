@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import type { PostgresExtension } from '@supabase/postgres-meta'
+import type { PostgresExtension } from '@indobaseinc/postgres-meta'
 import { DocsButton } from 'components/ui/DocsButton'
 import { useDatabaseExtensionEnableMutation } from 'data/database-extensions/database-extension-enable-mutation'
 import { useSchemasQuery } from 'data/database/schemas-query'

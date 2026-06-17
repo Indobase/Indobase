@@ -24,7 +24,7 @@ enable row level security;
 
 </Admonition>
 
-RLS is incredibly powerful and flexible, allowing you to write complex SQL rules that fit your unique business needs. RLS can be combined with [Supabase Auth](/docs/guides/auth) for end-to-end user security from the browser to the database.
+RLS is incredibly powerful and flexible, allowing you to write complex SQL rules that fit your unique business needs. RLS can be combined with [Indobase Auth](/docs/guides/auth) for end-to-end user security from the browser to the database.
 
 RLS is a Postgres primitive and can provide "[defense in depth](<https://en.wikipedia.org/wiki/Defense_in_depth_(computing)>)" to protect your data from malicious actors even when accessed through third-party tooling.
 
@@ -154,7 +154,7 @@ using ( true );
 
 <Admonition type="note" label="Anonymous user vs the anon key">
 
-Using the `anon` Postgres role is different from an [anonymous user](/docs/guides/auth/auth-anonymous) in Supabase Auth. An anonymous user assumes the `authenticated` role to access the database and can be differentiated from a permanent user by checking the `is_anonymous` claim in the JWT.
+Using the `anon` Postgres role is different from an [anonymous user](/docs/guides/auth/auth-anonymous) in Indobase Auth. An anonymous user assumes the `authenticated` role to access the database and can be differentiated from a permanent user by checking the `is_anonymous` claim in the JWT.
 
 </Admonition>
 
@@ -162,7 +162,7 @@ Using the `anon` Postgres role is different from an [anonymous user](/docs/guide
 
 Policies are SQL logic that you attach to a Postgres table. You can attach as many policies as you want to each table.
 
-Supabase provides some [helpers](#helper-functions) that simplify RLS if you're using Supabase Auth. We'll use these helpers to illustrate some basic policies:
+Supabase provides some [helpers](#helper-functions) that simplify RLS if you're using Indobase Auth. We'll use these helpers to illustrate some basic policies:
 
 ### SELECT policies
 

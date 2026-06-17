@@ -69,7 +69,7 @@ export const searchRoot = {
     },
     type: createCollectionType(GraphQLInterfaceTypeSearchResult, {
       skipPageInfo: true,
-      description: 'A collection of search results containing content from Supabase docs',
+      description: 'A collection of search results containing content from Indobase docs',
     }),
     resolve: resolveSearch,
   },

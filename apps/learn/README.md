@@ -1,11 +1,11 @@
 Plan:
-Course 1: Supabase Foundations Learn the basics of Supabase: database, auth, and RLS. 5 chapters.
+Course 1: Indobase Foundations Learn the basics of Indobase: database, auth, and RLS. 5 chapters.
 
 -
 
-Course 2: Project: Smart Office 15 Build a realtime room-booking dashboard using Supabase. 15 chapters.
-Course 3: Supabase Internals: Performance & Scaling. Learn how to profile queries, tune indexes, and scale Postgres with Supabase. 20 chapters.
-Course 4: Supabase Internals: Debugging & Operations. Understand how to diagnose slow queries, use read replicas, and manage production workloads. 20 chapters.
+Course 2: Project: Smart Office 15 Build a realtime room-booking dashboard using Indobase. 15 chapters.
+Course 3: Indobase Internals: Performance & Scaling. Learn how to profile queries, tune indexes, and scale Postgres with Indobase. 20 chapters.
+Course 4: Indobase Internals: Debugging & Operations. Understand how to diagnose slow queries, use read replicas, and manage production workloads. 20 chapters.
 
 ———
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
@@ -45,9 +45,9 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
 
-## Supabase types
+## Indobase types
 
-To regenerate the Supabase database types, run
+To regenerate the Indobase database types, run
 
 ```
 supabase gen types --local > registry/default/fixtures/database.types.ts

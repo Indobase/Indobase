@@ -1,4 +1,4 @@
-import { type PostgrestError } from 'indobase-js'
+import { type PostgrestError } from '@indobaseinc/indobase-js'
 import {
   ApiErrorGeneric,
   CollectionQueryError,

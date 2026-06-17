@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { executeQuery } from './query'
 
 type Claims = JwtPayload & Record<string, any>
@@ -20,6 +20,10 @@ export type AuditAction =
   | 'project.custom_domain.added'
   | 'project.custom_domain.removed'
   | 'project.custom_domain.activated'
+  | 'project.deployment.requested'
+  | 'project.deployment.updated'
+  | 'project.mobile_build.requested'
+  | 'project.mobile_build.updated'
   | 'project.ssl_enforcement.updated'
   | 'project.third_party_auth.added'
   | 'project.third_party_auth.removed'
@@ -39,6 +43,8 @@ export type AuditTargetType =
   | 'user'
   | 'api_key'
   | 'custom_domain'
+  | 'deployment'
+  | 'build'
   | 'third_party_auth'
   | 'invite'
 

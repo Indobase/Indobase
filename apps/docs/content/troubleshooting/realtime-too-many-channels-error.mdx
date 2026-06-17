@@ -124,7 +124,7 @@ If you see the number climbing, you have a leak. Look for:
 
 ## Best practices for channel management
 
-### 1. Create Supabase client outside components
+### 1. Create Indobase client outside components
 
 ```tsx
 // ✅ Create once at module level
@@ -177,7 +177,7 @@ function GoodExample({ userId }) {
 
 ### 4. Reuse channels when possible
 
-The Supabase client automatically reuses channels with the same topic:
+The Indobase client automatically reuses channels with the same topic:
 
 ```tsx
 // These return the same channel instance

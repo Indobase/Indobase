@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { NextApiRequest } from 'next'
 
 import { constructHeaders } from 'lib/api/apiHelpers'

@@ -4,7 +4,7 @@ title: 'Send emails with custom SMTP'
 description: 'Moving towards production: Configuring a custom SMTP provider'
 ---
 
-If you're using Supabase Auth with the following configuration:
+If you're using Indobase Auth with the following configuration:
 
 - Email and password accounts
 - Passwordless accounts using one-time passwords or links sent over email (OTP, magic link, invites)
@@ -17,9 +17,9 @@ To get you started and let you explore and set up email message templates for yo
 
 **Send messages only to pre-authorized addresses.**
 
-Unless you configure a custom SMTP server for your project, Supabase Auth will refuse to deliver messages to addresses that are not part of the project's team. You can manage this in the [Team tab](/dashboard/org/_/team) of the organization's settings.
+Unless you configure a custom SMTP server for your project, Indobase Auth will refuse to deliver messages to addresses that are not part of the project's team. You can manage this in the [Team tab](/dashboard/org/_/team) of the organization's settings.
 
-For example, if your project's organization has these member accounts `person-a@example.com`, `person-b@example.com` and `person-c@example.com` then Supabase Auth will only send messages to these addresses. All other addresses will fail with the error message _Email address not authorized._
+For example, if your project's organization has these member accounts `person-a@example.com`, `person-b@example.com` and `person-c@example.com` then Indobase Auth will only send messages to these addresses. All other addresses will fail with the error message _Email address not authorized._
 
 **Significant rate-limits that can change over time.**
 
@@ -29,7 +29,7 @@ To maintain the health and reputation of the default SMTP sending service, the n
 
 The default SMTP service is provided as best-effort only and intended for the following non-production use cases:
 
-- Exploring and getting started with Supabase Auth
+- Exploring and getting started with Indobase Auth
 - Setting up and testing email templates with the members of the project's team
 - Building toy projects, demos or any non-mission-critical application
 
@@ -37,9 +37,9 @@ We urge all customers to set up custom SMTP server for all other use cases.
 
 ## How to set up a custom SMTP server?
 
-Supabase Auth works with any email sending service that supports the SMTP protocol. First you will need to choose a service, create an account (if you already do not have one) and obtain the SMTP server settings and credentials for your account. These include: the SMTP server host, port, user and password. You will also need to choose a default From address, usually something like `no-reply@example.com`.
+Indobase Auth works with any email sending service that supports the SMTP protocol. First you will need to choose a service, create an account (if you already do not have one) and obtain the SMTP server settings and credentials for your account. These include: the SMTP server host, port, user and password. You will also need to choose a default From address, usually something like `no-reply@example.com`.
 
-A non-exhaustive list of services that work with Supabase Auth is:
+A non-exhaustive list of services that work with Indobase Auth is:
 
 - [Resend](https://resend.com/docs/send-with-supabase-smtp)
 - [AWS SES](https://docs.aws.amazon.com/ses/latest/dg/send-email-smtp.html)
@@ -53,12 +53,12 @@ Once you've set up your account with an email sending service, head to the [Auth
 You can also configure custom SMTP using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Configure custom SMTP
-curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X PATCH "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -105,7 +105,7 @@ Work with your email sending service to configure [DKIM, DMARC and SPF](https://
 
 **Set up a custom domain.**
 
-Authentication messages often contain links to your project's Auth server. [Setting up a custom domain](/docs/guides/platform/custom-domains) will reduce the likelihood of your messages being picked up as spam due to another Supabase project's bad reputation.
+Authentication messages often contain links to your project's Auth server. [Setting up a custom domain](/docs/guides/platform/custom-domains) will reduce the likelihood of your messages being picked up as spam due to another Indobase project's bad reputation.
 
 **Don't mix Auth emails with marketing emails.**
 
@@ -163,4 +163,4 @@ If you need more control over the sending process, instead of using a SMTP serve
 
 Having short lived [user sessions](/docs/guides/auth/sessions) can be problematic for email sending, as it forces active users to sign-in frequently, increasing the number of messages needed to be sent. Consider increasing the maximum duration of user sessions. If you do see an unnecessary increase in logins without a clear cause, check your frontend application for bugs.
 
-If you are using a [SSR](/docs/guides/auth/server-side) framework on the frontend and are seeing an increased number of user logins without a clear cause, check your set up. Make sure to keep the `@supabase/ssr` package up to date and closely follow the guides we publish. Make sure that the middleware components of your SSR frontend works as intended and matches the guides we've published. Sometimes a misplaced `return` or conditional can cause early session termination.
+If you are using a [SSR](/docs/guides/auth/server-side) framework on the frontend and are seeing an increased number of user logins without a clear cause, check your set up. Make sure to keep the `@indobaseinc/ssr` package up to date and closely follow the guides we publish. Make sure that the middleware components of your SSR frontend works as intended and matches the guides we've published. Sometimes a misplaced `return` or conditional can cause early session termination.

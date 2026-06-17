@@ -63,7 +63,7 @@ export const LinterPageFooter = ({
         <div className="prose text-xs">
           <p>
             <span>These suggestions use </span>
-            <a href="https://github.com/supabase/splinter" target="" rel="">
+            <a href="https://github.com/Indobase/splinter" target="" rel="">
               splinter (Indobase Postgres LINTER)
             </a>
             .

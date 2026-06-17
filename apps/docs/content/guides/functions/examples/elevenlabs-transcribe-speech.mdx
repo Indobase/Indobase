@@ -1,6 +1,6 @@
 ---
 title: Transcription Telegram Bot
-subtitle: Build a Telegram bot that transcribes audio and video messages in 99 languages using TypeScript with Deno in Supabase Edge Functions.
+subtitle: Build a Telegram bot that transcribes audio and video messages in 99 languages using TypeScript with Deno in Indobase Edge Functions.
 tocVideo: 'CE4iPp7kd7Q'
 ---
 
@@ -19,8 +19,8 @@ Find the [example project on GitHub](https://github.com/elevenlabs/elevenlabs-ex
 ## Requirements
 
 - An ElevenLabs account with an [API key](/app/settings/api-keys).
-- A [Supabase](https://supabase.com) account (you can sign up for a free account via [database.new](https://database.new)).
-- The [Supabase CLI](/docs/guides/local-development) installed on your machine.
+- A [Supabase](https://indobase.in) account (you can sign up for a free account via [database.new](https://database.new)).
+- The [Indobase CLI](/docs/guides/local-development) installed on your machine.
 - The [Deno runtime](https://docs.deno.com/runtime/getting_started/installation/) installed on your machine and optionally [setup in your favourite IDE](https://docs.deno.com/runtime/getting_started/setup_your_environment).
 - A [Telegram](https://telegram.org) account.
 
@@ -32,9 +32,9 @@ Use the [BotFather](https://t.me/BotFather) to create a new Telegram bot. Run th
 
 ![BotFather](/docs/img/guides/functions/elevenlabs/bot-father.png)
 
-### Create a Supabase project locally
+### Create a Indobase project locally
 
-After installing the [Supabase CLI](/docs/guides/local-development), run the following command to create a new Supabase project locally:
+After installing the [Indobase CLI](/docs/guides/local-development), run the following command to create a new Indobase project locally:
 
 ```bash
 supabase init
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS transcription_logs (
 ALTER TABLE transcription_logs ENABLE ROW LEVEL SECURITY;
 ```
 
-### Create a Supabase Edge Function to handle Telegram webhook requests
+### Create a Indobase Edge Function to handle Telegram webhook requests
 
 Next, create a new Edge Function to handle Telegram webhook requests:
 
@@ -97,10 +97,10 @@ FUNCTION_SECRET=random_secret
 The project uses a couple of dependencies:
 
 - The open-source [grammY Framework](https://grammy.dev/) to handle the Telegram webhook requests.
-- The [indobase-js](/docs/reference/javascript) library to interact with the Supabase database.
+- The [indobase-js](/docs/reference/javascript) library to interact with the Indobase database.
 - The ElevenLabs [JavaScript SDK](/docs/quickstart) to interact with the speech-to-text API.
 
-Since Supabase Edge Function uses the [Deno runtime](https://deno.land/), you don't need to install the dependencies, rather you can [import](https://docs.deno.com/examples/npm/) them via the `npm:` prefix.
+Since Indobase Edge Function uses the [Deno runtime](https://deno.land/), you don't need to install the dependencies, rather you can [import](https://docs.deno.com/examples/npm/) them via the `npm:` prefix.
 
 ## Code the Telegram bot
 
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
 
 ## Deploy to Supabase
 
-If you haven't already, create a new Supabase account at [database.new](https://database.new) and link the local project to your Supabase account:
+If you haven't already, create a new Indobase account at [database.new](https://database.new) and link the local project to your Indobase account:
 
 ```bash
 supabase link
@@ -253,7 +253,7 @@ Run the following command to apply the database migrations from the `supabase/mi
 supabase db push
 ```
 
-Navigate to the [table editor](/dashboard/project/_/editor) in your Supabase dashboard and you should see and empty `transcription_logs` table.
+Navigate to the [table editor](/dashboard/project/_/editor) in your Indobase dashboard and you should see and empty `transcription_logs` table.
 
 ![Empty table](/docs/img/guides/functions/elevenlabs/supa-empty-table.png)
 
@@ -263,16 +263,16 @@ Lastly, run the following command to deploy the Edge Function:
 supabase functions deploy --no-verify-jwt scribe-bot
 ```
 
-Navigate to the [Edge Functions view](/dashboard/project/_/functions) in your Supabase dashboard and you should see the `scribe-bot` function deployed. Make a note of the function URL as you'll need it later, it should look something like `https://<project-ref>.functions.supabase.co/scribe-bot`.
+Navigate to the [Edge Functions view](/dashboard/project/_/functions) in your Indobase dashboard and you should see the `scribe-bot` function deployed. Make a note of the function URL as you'll need it later, it should look something like `https://<project-ref>.indobase.in/functions/v1/scribe-bot`.
 
 ![Edge Function deployed](/docs/img/guides/functions/elevenlabs/supa-edge-function-deployed.png)
 
 ### Set up the webhook
 
-Set your bot's webhook URL to `https://<PROJECT_REFERENCE>.functions.supabase.co/telegram-bot` (Replacing `<...>` with respective values). In order to do that, run a GET request to the following URL (in your browser, for example):
+Set your bot's webhook URL to `https://<PROJECT_REFERENCE>.indobase.in/functions/v1/telegram-bot` (Replacing `<...>` with respective values). In order to do that, run a GET request to the following URL (in your browser, for example):
 
 ```
-https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<PROJECT_REFERENCE>.supabase.co/functions/v1/scribe-bot?secret=<FUNCTION_SECRET>
+https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://[PROJECT-REF].indobase.in/functions/v1/scribe-bot?secret=<FUNCTION_SECRET>
 ```
 
 Note that the `FUNCTION_SECRET` is the secret you set in your `.env` file.
@@ -281,7 +281,7 @@ Note that the `FUNCTION_SECRET` is the secret you set in your `.env` file.
 
 ### Set the function secrets
 
-Now that you have all your secrets set locally, you can run the following command to set the secrets in your Supabase project:
+Now that you have all your secrets set locally, you can run the following command to set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file supabase/functions/.env
@@ -293,6 +293,6 @@ Finally you can test the bot by sending it a voice message, audio or video file.
 
 ![Test the bot](/docs/img/guides/functions/elevenlabs/test-bot.png)
 
-After you see the transcript as a reply, navigate back to your table editor in the Supabase dashboard and you should see a new row in your `transcription_logs` table.
+After you see the transcript as a reply, navigate back to your table editor in the Indobase dashboard and you should see a new row in your `transcription_logs` table.
 
 ![New row in table](/docs/img/guides/functions/elevenlabs/supa-new-row.png)

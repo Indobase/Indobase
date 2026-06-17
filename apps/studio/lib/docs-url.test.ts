@@ -22,7 +22,7 @@ describe('docsUrl', () => {
 
   it('rewrites supabase.com guide URLs to indobase', () => {
     expect(
-      resolveStudioDocsHref('https://supabase.com/docs/guides/realtime/authorization')
+      resolveStudioDocsHref('https://indobase.in/docs/guides/realtime/authorization')
     ).toBe('https://indobase.in/docs/products/databases/permissions')
   })
 

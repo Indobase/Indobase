@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useFlag, useParams } from 'common'
 import { CreateAnalyticsBucketSheet } from 'components/interfaces/Storage/AnalyticsBuckets/CreateAnalyticsBucketSheet'
 import { getKeys, useAPIKeysQuery } from 'data/api-keys/api-keys-query'

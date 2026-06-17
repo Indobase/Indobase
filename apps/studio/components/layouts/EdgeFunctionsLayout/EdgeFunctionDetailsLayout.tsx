@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Download, FileArchive, Send } from 'lucide-react'
 import { useRouter } from 'next/router'
 import React, { useEffect, useState, type PropsWithChildren } from 'react'
@@ -281,7 +281,7 @@ const EdgeFunctionDetailsLayout = ({
                             readOnly
                             containerClassName=""
                             className="text-xs font-mono tracking-tighter"
-                            value={`supabase functions download ${functionSlug}`}
+                            value={`indobase functions download ${functionSlug}`}
                           />
                         </div>
                         <Separator className="!bg-border-overlay" />

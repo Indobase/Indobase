@@ -1,9 +1,9 @@
-import { DatabaseUpgradeStatus } from '@supabase/shared-types/out/events'
+import { DatabaseUpgradeStatus } from '@indobaseinc/shared-types/out/events'
 import dayjs from 'dayjs'
 import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { useProjectUpgradingStatusQuery } from 'data/config/project-upgrade-status-query'
@@ -18,7 +18,7 @@ export const ProjectUpgradeFailedBanner = () => {
   const { data } = useProjectUpgradingStatusQuery({ projectRef: ref }, { enabled: IS_SAAS })
   const { status, initiated_at, latest_status_at, error } = data?.databaseUpgradeStatus ?? {}
 
-  const key = `supabase-upgrade-${ref}-${initiated_at}`
+  const key = `indobase-upgrade-${ref}-${initiated_at}`
 
   const [hasDismissed, setHasDismissed] = useState(false)
   useEffect(() => {

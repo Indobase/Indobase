@@ -54,7 +54,7 @@ async function generate() {
             const finalPriority = priority ?? 0.8
             return `
               <url>
-                  <loc>${`https://supabase.com/docs/${link}`}</loc>
+                  <loc>${`https://indobase.in/docs/${link}`}</loc>
                   <changefreq>weekly</changefreq>
                   <priority>${finalPriority}</priority>
               </url>

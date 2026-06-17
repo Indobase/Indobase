@@ -1,4 +1,4 @@
-import { Query } from '@supabase/pg-meta/src/query'
+import { Query } from '@indobaseinc/pg-meta/src/query'
 import { useQuery } from '@tanstack/react-query'
 
 import type { UseCustomQueryOptions, VaultSecret } from 'types'

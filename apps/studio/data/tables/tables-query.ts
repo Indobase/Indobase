@@ -1,9 +1,9 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { sortBy } from 'lodash'
 import { useCallback } from 'react'
 
-import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@supabase/pg-meta/src/constants'
+import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@indobaseinc/pg-meta/src/constants'
 import { get, handleError } from 'data/fetchers'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { tableKeys } from './keys'

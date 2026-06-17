@@ -7,16 +7,31 @@
 # Traefik watches the dynamic/ directory and picks up changes within seconds.
 
 http:
+  middlewares:
+    indobase-api-redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
   routers:
-    indobase-backend-kong-router:
+    indobase-backend-kong-router-http:
       # Control-plane/shared gateway only.
       # IMPORTANT (Option A isolation): do NOT route `<project-ref>.<domain>` to Kong,
       # or it will bypass per-project stacks and break isolation.
       rule: Host(`api.indobase.in`)
       service: indobase-backend-kong-service
+      middlewares:
+        - indobase-api-redirect-https
       entryPoints:
         - web
+
+    indobase-backend-kong-router-https:
+      rule: Host(`api.indobase.in`)
+      service: indobase-backend-kong-service
+      entryPoints:
         - websecure
+      tls:
+        certResolver: letsencrypt
 
   services:
     indobase-backend-kong-service:

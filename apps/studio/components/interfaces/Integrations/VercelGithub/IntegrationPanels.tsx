@@ -149,7 +149,7 @@ export const IntegrationConnection = forwardRef<HTMLLIElement, IntegrationConnec
     { connection, type, actions, showNode = true, orientation = 'horizontal', className, ...props },
     ref
   ) => {
-    const { data: project } = useProjectDetailQuery({ ref: connection.supabase_project_ref })
+    const { data: project } = useProjectDetailQuery({ ref: connection.indobase_project_ref })
 
     return (
       <li
@@ -235,7 +235,7 @@ export const IntegrationConnection = forwardRef<HTMLLIElement, IntegrationConnec
 
 export const IntegrationConnectionOption = forwardRef<HTMLLIElement, IntegrationConnectionProps>(
   ({ connection, type, ...props }, ref) => {
-    const { data: project } = useProjectDetailQuery({ ref: connection.supabase_project_ref })
+    const { data: project } = useProjectDetailQuery({ ref: connection.indobase_project_ref })
 
     return (
       <li

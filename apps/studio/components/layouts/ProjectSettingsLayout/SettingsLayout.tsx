@@ -8,6 +8,8 @@ import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { withAuth } from 'hooks/misc/withAuth'
 import { ProjectLayout } from '../ProjectLayout'
+import { useOrgUsageMeteringAvailable } from 'hooks/misc/useOrgUsageMeteringAvailable'
+
 import { generateSettingsMenu } from './SettingsMenu.utils'
 
 interface SettingsLayoutProps {
@@ -46,6 +48,10 @@ const SettingsLayout = ({ title, children }: PropsWithChildren<SettingsLayoutPro
     'billing:all',
   ])
 
+  const { isMeteringAvailable, isReady: isMeteringReady } = useOrgUsageMeteringAvailable(
+    organization?.slug
+  )
+
   const menuRoutes = generateSettingsMenu(ref, project, organization, {
     auth: authEnabled,
     authProviders: authProvidersEnabled,
@@ -55,6 +61,8 @@ const SettingsLayout = ({ title, children }: PropsWithChildren<SettingsLayoutPro
     legacyJwtKeys: legacyJWTKeysEnabled,
     logDrains: projectSettingsLogDrains,
     billing: billingAll,
+    // Hide Usage nav only once we know metering has no data (page still reachable via URL).
+    usageMetering: !isMeteringReady || isMeteringAvailable,
   })
 
   return (

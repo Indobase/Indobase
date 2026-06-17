@@ -1,5 +1,5 @@
 import { Transition } from '@headlessui/react'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { get, noop, sum } from 'lodash'
 import { Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

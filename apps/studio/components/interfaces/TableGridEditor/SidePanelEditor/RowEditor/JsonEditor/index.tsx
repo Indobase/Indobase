@@ -1,4 +1,4 @@
-import { MAX_CHARACTERS } from '@supabase/pg-meta/src/query/table-row-query'
+import { MAX_CHARACTERS } from '@indobaseinc/pg-meta/src/query/table-row-query'
 import { AlignLeft } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'

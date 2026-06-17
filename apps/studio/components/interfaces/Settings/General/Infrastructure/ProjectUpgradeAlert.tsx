@@ -64,8 +64,8 @@ export const ProjectUpgradeAlert = () => {
   const isDiskSizeUpdated = diskAttributes?.attributes.size_gb !== includedDiskGB
 
   const { data } = useProjectUpgradeEligibilityQuery({ projectRef: ref })
-  const currentPgVersion = (data?.current_app_version ?? '').split('supabase-postgres-')[1]
-  const latestPgVersion = (data?.latest_app_version ?? '').split('supabase-postgres-')[1]
+  const currentPgVersion = (data?.current_app_version ?? '').split('indobase-postgres-')[1]
+  const latestPgVersion = (data?.latest_app_version ?? '').split('indobase-postgres-')[1]
 
   const durationEstimateHours = data?.duration_estimate_hours || 1
   const legacyAuthCustomRoles = data?.legacy_auth_custom_roles || []
@@ -252,7 +252,7 @@ export const ProjectUpgradeAlert = () => {
                             <SelectGroup_Shadcn_>
                               {(data?.target_upgrade_versions || [])?.map((value) => {
                                 const postgresVersion =
-                                  value.app_version.split('supabase-postgres-')[1]
+                                  value.app_version.split('indobase-postgres-')[1]
                                 return (
                                   <SelectItem_Shadcn_
                                     key={formatValue(value)}

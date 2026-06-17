@@ -15,7 +15,7 @@ Supported Web3 wallets:
 
 Sign in with Web3 utilizes the [EIP 4361](https://eips.ethereum.org/EIPS/eip-4361) standard to authenticate wallet addresses off-chain. This standard is widely supported by the Ethereum and Solana ecosystems, making it the best choice for verifying wallet ownership.
 
-Authentication works by asking the Web3 wallet application to sign a predefined message with the user's wallet. This message is parsed both by the Web3 wallet application and Supabase Auth to verify its validity and purpose, before creating a user account or session.
+Authentication works by asking the Web3 wallet application to sign a predefined message with the user's wallet. This message is parsed both by the Web3 wallet application and Indobase Auth to verify its validity and purpose, before creating a user account or session.
 
 An example of such a message is:
 
@@ -38,7 +38,7 @@ It defines the wallet address, timestamp, browser location where the sign-in occ
 
 Most Web3 wallets are able to recognize these messages and show a dedicated "Confirm Sign In" dialog validating and presenting the information in the message in a secure and responsible way to the user. Even if the wallet does not directly support these messages, it will use the message signature dialog instead.
 
-Finally the Supabase Auth server validates both the message's contents and signature before issuing a valid [User session](/docs/guides/auth/sessions) to your application. Validation rules include:
+Finally the Indobase Auth server validates both the message's contents and signature before issuing a valid [User session](/docs/guides/auth/sessions) to your application. Validation rules include:
 
 - Message structure validation
 - Cryptographic signature verification
@@ -83,7 +83,7 @@ provider = "hcaptcha" # or other supported providers
 secret = "0x0000000000000000000000000000000000000000"
 ```
 
-Many wallet applications will warn the user if the message sent for signing is not coming from the page they are currently visiting. To further prevent your Supabase project from receiving signed messages destined for other applications, you must register your application's URL using the [Redirect URL settings](/docs/guides/auth/redirect-urls).
+Many wallet applications will warn the user if the message sent for signing is not coming from the page they are currently visiting. To further prevent your Indobase project from receiving signed messages destined for other applications, you must register your application's URL using the [Redirect URL settings](/docs/guides/auth/redirect-urls).
 
 For example if the user is signing in to the page `https://example.com/sign-in` you should add the following configurations in the Redirect URL settings:
 
@@ -122,7 +122,7 @@ const { data, error } = await supabase.auth.signInWithWeb3({
 
 <TabPanel id="wallet" label="Ethereum Wallet API (EIP-6963)">
 
-Once you've obtained a wallet using the wallet detection (EIP-6963) mechanism, you can pass the selected wallet to the Supabase JavaScript SDK to continue the sign-in process.
+Once you've obtained a wallet using the wallet detection (EIP-6963) mechanism, you can pass the selected wallet to the Indobase JavaScript SDK to continue the sign-in process.
 
 ```typescript
 const { data, error } = await supabase.auth.signInWithWeb3({

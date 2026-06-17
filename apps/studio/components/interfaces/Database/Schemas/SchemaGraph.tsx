@@ -1,5 +1,5 @@
-import type { PostgresSchema } from '@supabase/postgres-meta'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import type { PostgresSchema } from '@indobaseinc/postgres-meta'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { toPng, toSvg } from 'html-to-image'
 import { Check, Copy, Download, Loader2, Plus } from 'lucide-react'
 import { useTheme } from 'next-themes'

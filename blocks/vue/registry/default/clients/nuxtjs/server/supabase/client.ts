@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { deleteCookie, EventHandlerRequest, getCookie, H3Event, setCookie } from 'h3'
 
 export const createSupabaseServerClient = (event: H3Event<EventHandlerRequest> | undefined) => {

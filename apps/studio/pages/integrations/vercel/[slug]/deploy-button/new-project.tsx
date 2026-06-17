@@ -179,11 +179,11 @@ const CreateProject = () => {
           organizationIntegrationId: organizationIntegration?.id,
           connection: {
             foreign_project_id: foreignProjectId,
-            supabase_project_ref: newProjectRef,
+            indobase_project_ref: newProjectRef,
             integration_id: '0',
             metadata: {
               ...projectDetails,
-              supabaseConfig: {
+              indobaseConfig: {
                 projectEnvVars: {
                   write: true,
                 },

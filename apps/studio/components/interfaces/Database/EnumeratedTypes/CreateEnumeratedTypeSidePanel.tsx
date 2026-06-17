@@ -2,7 +2,15 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircle, ExternalLink, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
-import { DragDropContext, Droppable, DroppableProvided } from 'react-beautiful-dnd'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
@@ -78,10 +86,15 @@ const CreateEnumeratedTypeSidePanel = ({
     control: form.control,
   })
 
-  const updateOrder = (result: any) => {
-    // Dropped outside of the list
-    if (!result.destination) return
-    move(result.source.index, result.destination.index)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  const updateOrder = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = fields.findIndex((field) => field.id === active.id)
+    const newIndex = fields.findIndex((field) => field.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    move(oldIndex, newIndex)
   }
 
   const onSubmit = (data: z.infer<typeof FormSchema>) => {
@@ -145,10 +158,11 @@ const CreateEnumeratedTypeSidePanel = ({
               )}
             />
 
-            <DragDropContext onDragEnd={(result: any) => updateOrder(result)}>
-              <Droppable droppableId="enum_type_values_droppable">
-                {(droppableProvided: DroppableProvided) => (
-                  <div ref={droppableProvided.innerRef}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={updateOrder}>
+              <SortableContext
+                items={fields.map((field) => field.id)}
+                strategy={verticalListSortingStrategy}
+              >
                     {fields.map((field, index) => (
                       <FormField_Shadcn_
                         control={form.control}
@@ -201,11 +215,8 @@ const CreateEnumeratedTypeSidePanel = ({
                         )}
                       />
                     ))}
-                    {droppableProvided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+              </SortableContext>
+            </DndContext>
 
             <Button
               type="default"

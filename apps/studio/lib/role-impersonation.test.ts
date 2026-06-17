@@ -21,7 +21,7 @@ const createTestClaims = (overrides = {}) => ({
   ref: 'test-project',
   exp: getExp1HourFromNow(),
   iat: Math.floor(Date.now() / 1000),
-  iss: 'https://test-project.supabase.co/auth/v1',
+  iss: 'https://test-project.indobase.in/auth/v1',
   role: 'authenticated' as const,
   ...overrides,
 })
@@ -156,7 +156,7 @@ describe('wrapWithRoleImpersonation', () => {
   describe('authenticated user', () => {
     it('wraps SQL with native user configuration', () => {
       const claims = createTestClaims({
-        iss: `https://${ref}.supabase.co/auth/v1`,
+        iss: `https://${ref}.indobase.in/auth/v1`,
         role: 'authenticated' as const,
       })
 

@@ -1,10 +1,10 @@
 ---
 id: 'auth-linkedin'
 title: 'Login with LinkedIn'
-description: 'Add LinkedIn OAuth to your Supabase project'
+description: 'Add LinkedIn OAuth to your Indobase project'
 ---
 
-To enable LinkedIn Auth for your project, you need to set up a LinkedIn OAuth application and add the application credentials to your Supabase Dashboard.
+To enable LinkedIn Auth for your project, you need to set up a LinkedIn OAuth application and add the application credentials to your Indobase Dashboard.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Setting up LinkedIn logins for your application consists of 3 parts:
 
 - Create and configure a LinkedIn Project and App on the [LinkedIn Developer Dashboard](https://www.linkedin.com/developers/apps).
 - Add your _LinkedIn (OIDC)_ `client_id` and `client_secret` to your [Supabase Project](/dashboard).
-- Add the login code to your [Supabase JS Client App](https://github.com/supabase/supabase-js).
+- Add the login code to your [Supabase JS Client App](https://github.com/Indobase/Indobase-js).
 
 ## Access your LinkedIn Developer account
 
@@ -42,19 +42,19 @@ Ensure that the appropriate scopes have been added under OAuth 2.0 Scopes at the
 
 ![Required OAuth 2.0 Scopes](/docs/img/guides/auth-linkedin/oauth-scopes.png)
 
-## Enter your LinkedIn (OIDC) credentials into your Supabase project
+## Enter your LinkedIn (OIDC) credentials into your Indobase project
 
 <$Partial path="social_provider_settings_supabase.mdx" variables={{ "provider": "LinkedIn (OIDC)" }} />
 
 You can also configure the LinkedIn (OIDC) auth provider using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Configure LinkedIn (OIDC) auth provider
-curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X PATCH "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -177,7 +177,7 @@ suspend fun signOut() {
 
 We will be replacing the _LinkedIn_ provider with a new _LinkedIn (OIDC)_ provider to support recent changes to the LinkedIn [OAuth APIs](https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow?context=linkedin%2Fcontext&tabs=HTTPS1). The new provider utilizes the [Open ID Connect standard](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2#validating-id-tokens). In view of this change, we have disabled edits on the _LinkedIn_ provider and will be removing it effective 4th January 2024. Developers with LinkedIn OAuth Applications created prior to 1st August 2023 should create a new OAuth application [via the steps outlined above](/docs/guides/auth/social-login/auth-linkedin#create-a-linkedin-oauth-app) and migrate their credentials from the _LinkedIn_ provider to the _LinkedIn (OIDC)_ provider. Alternatively, you can also head to the `Products` section and add the newly release`Sign In with LinkedIn using OpenID Connect` to your existing OAuth application.
 
-Developers using the Supabase CLI to test their LinkedIn OAuth application should also update their `config.toml` to make use of the new provider:
+Developers using the Indobase CLI to test their LinkedIn OAuth application should also update their `config.toml` to make use of the new provider:
 
 ```
 [auth.external.linkedin_oidc]
@@ -190,6 +190,6 @@ Do reach out to support if you have any concerns around this change.
 
 ## Resources
 
-- [Supabase - Get started for free](https://supabase.com)
-- [Supabase JS Client](https://github.com/supabase/supabase-js)
+- [Supabase - Get started for free](https://indobase.in)
+- [Supabase JS Client](https://github.com/Indobase/Indobase-js)
 - [LinkedIn Developer Dashboard](https://www.linkedin.com/developers/apps)

@@ -9,6 +9,7 @@ import { OrganizationDropdown } from 'components/layouts/AppLayout/OrganizationD
 import { ProjectDropdown } from 'components/layouts/AppLayout/ProjectDropdown'
 import { getResourcesExceededLimitsOrg } from 'components/ui/OveragesBanner/OveragesBanner.utils'
 import { useOrgUsageQuery } from 'data/usage/org-usage-query'
+import { isOrgUsageMeteringAvailable } from 'lib/usage/metering'
 import { DevToolbarTrigger } from 'dev-tools'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
@@ -87,11 +88,10 @@ export const LayoutHeader = ({
   )
 
   const exceedingLimits = useMemo(() => {
-    if (orgUsage) {
-      return getResourcesExceededLimitsOrg(orgUsage?.usages || []).length > 0
-    } else {
-      return false
+    if (orgUsage && isOrgUsageMeteringAvailable(orgUsage)) {
+      return getResourcesExceededLimitsOrg(orgUsage.usages).length > 0
     }
+    return false
   }, [orgUsage])
 
   const showOrgSelection = slug || (selectedOrganization && projectRef)

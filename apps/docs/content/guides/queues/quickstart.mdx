@@ -1,14 +1,14 @@
 ---
 title: Quickstart
-subtitle: 'Learn how to use Supabase Queues to add and read messages'
+subtitle: 'Learn how to use Indobase Queues to add and read messages'
 ---
 
 {/* <!-- vale off --> */}
-This guide is an introduction to interacting with Supabase Queues via the Dashboard and official client library. Check out [Queues API Reference](/docs/guides/queues/api) for more details on our API.
+This guide is an introduction to interacting with Indobase Queues via the Dashboard and official client library. Check out [Queues API Reference](/docs/guides/queues/api) for more details on our API.
 
 ## Concepts
 
-Supabase Queues is a pull-based Message Queue consisting of three main components: Queues, Messages, and Queue Types.
+Indobase Queues is a pull-based Message Queue consisting of three main components: Queues, Messages, and Queue Types.
 
 ### Pull-Based Queue
 
@@ -20,7 +20,7 @@ A Message in a Queue is a JSON object that is stored until a consumer explicitly
 
 ### Queue types
 
-Supabase Queues offers three types of Queues:
+Indobase Queues offers three types of Queues:
 
 - **Basic Queue**: A durable Queue that stores Messages in a logged table.
 - **Unlogged Queue**: A transient Queue that stores Messages in an unlogged table for better performance but may result in loss of Queue Messages.
@@ -29,7 +29,7 @@ Supabase Queues offers three types of Queues:
 
 ## Create Queues
 
-To get started, navigate to the [Supabase Queues](/dashboard/project/_/integrations/queues/overview) Postgres Module under Integrations in the Dashboard and enable the `pgmq` extension.
+To get started, navigate to the [Indobase Queues](/dashboard/project/_/integrations/queues/overview) Postgres Module under Integrations in the Dashboard and enable the `pgmq` extension.
 
 <Admonition type="note">
 
@@ -38,7 +38,7 @@ To get started, navigate to the [Supabase Queues](/dashboard/project/_/integrati
 </Admonition>
 
 <Image
-  alt="Supabase Dashboard Integrations page, showing the Queues Postgres Module"
+  alt="Indobase Dashboard Integrations page, showing the Queues Postgres Module"
   src={{
     dark: '/docs/img/queues-quickstart-install.png',
     light: '/docs/img/queues-quickstart-install.png',
@@ -69,7 +69,7 @@ Queue names can only be lowercase and hyphens and underscores are permitted.
 - Select your [Queue Type](#queue-types)
 
 <Image
-  alt="Create a Queue from the Supabase Dashboard"
+  alt="Create a Queue from the Indobase Dashboard"
   src={{
     dark: '/docs/img/queues-quickstart-create.png',
     light: '/docs/img/queues-quickstart-create.png',
@@ -93,7 +93,7 @@ However, an "Unlogged Queue" will create `pgmq.q_<queue_name>` as an unlogged ta
 
 Queues, by default, are not exposed over Supabase Data API and are only accessible via Postgres clients.
 
-However, you may grant client-side consumers access to your Queues by enabling the Supabase Data API and granting permissions to the Queues API, which is a collection of database functions in the `pgmq_public` schema that wraps the database functions in the `pgmq` schema.
+However, you may grant client-side consumers access to your Queues by enabling the Indobase Data API and granting permissions to the Queues API, which is a collection of database functions in the `pgmq_public` schema that wraps the database functions in the `pgmq` schema.
 
 This is to prevent direct access to the `pgmq` schema and its tables (RLS is not enabled by default on any tables) and database functions.
 

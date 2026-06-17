@@ -6,8 +6,8 @@ description: 'Learn how to use Supabase in your Android Kotlin App.'
 This tutorial demonstrates how to build a basic product management app. The app demonstrates management operations, photo upload, account creation and authentication using:
 
 - [Supabase Database](/docs/guides/database) - a Postgres database for storing your user data and [Row Level Security](/docs/guides/auth#row-level-security) so data is protected and users can only access their own information.
-- [Supabase Auth](/docs/guides/auth) - users log in through magic links sent to their email (without having to set up a password).
-- [Supabase Storage](/docs/guides/storage) - users can upload a profile photo.
+- [Indobase Auth](/docs/guides/auth) - users log in through magic links sent to their email (without having to set up a password).
+- [Indobase Storage](/docs/guides/storage) - users can upload a profile photo.
 
 ![manage-product-cover](/docs/img/guides/kotlin/manage-product-cover.png)
 
@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
 
 {/* supa-mdx-lint-disable-next-line Rule001HeadingCase */}
 
-### Provide Supabase instances with Hilt
+### Provide Indobase instances with Hilt
 
 To make the app easier to test, create a `SupabaseModule.kt` file as follows:
 
@@ -158,7 +158,7 @@ object SupabaseModule {
             install(Auth) {
                 flowType = FlowType.PKCE
                 scheme = "app"
-                host = "supabase.com"
+                host = "indobase.in"
             }
             install(Storage)
         }
@@ -1313,7 +1313,7 @@ To handle OAuth and OTP signins, create a new activity to handle the deep link y
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="supabase.com"
+                    android:host="indobase.in"
                     android:scheme="app" />
             </intent-filter>
         </activity>

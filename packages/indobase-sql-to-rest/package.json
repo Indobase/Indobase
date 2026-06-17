@@ -1,0 +1,36 @@
+{
+  "name": "@indobaseinc/sql-to-rest",
+  "version": "0.1.6",
+  "description": "Translate SQL queries into PostgREST HTTP requests and Indobase JS client code",
+  "license": "MIT",
+  "author": "Indobase",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-sql-to-rest"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "prepublishOnly": "node -e \"require('fs').accessSync('dist/index.js')\""
+  },
+  "dependencies": {
+    "@babel/parser": "^7.24.5",
+    "libpg-query": "^15.1.0",
+    "prettier": "^3.2.5"
+  }
+}

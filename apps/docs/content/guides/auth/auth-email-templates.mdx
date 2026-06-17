@@ -33,7 +33,7 @@ The templating system provides the following variables for use:
 
 | Name                     | Description                                                                                                                                                                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{{ .ConfirmationURL }}` | Contains the confirmation URL. For example, a signup confirmation URL would look like: `https://project-ref.supabase.co/auth/v1/verify?token={{ .TokenHash }}&type=email&redirect_to=https://example.com/path`.                                                                       |
+| `{{ .ConfirmationURL }}` | Contains the confirmation URL. For example, a signup confirmation URL would look like: `https://[PROJECT-REF].indobase.in/auth/v1/verify?token={{ .TokenHash }}&type=email&redirect_to=https://example.com/path`.                                                                       |
 | `{{ .Token }}`           | Contains a 6-digit One-Time-Password (OTP) that can be used instead of the `{{. ConfirmationURL }}`.                                                                                                                                                                                  |
 | `{{ .TokenHash }}`       | Contains a hashed version of the `{{ .Token }}`. This is useful for constructing your own email link in the email template.                                                                                                                                                           |
 | `{{ .SiteURL }}`         | Contains your application's Site URL. This can be configured in your project's [authentication settings](/dashboard/project/_/auth/url-configuration).                                                                                                                                |
@@ -49,22 +49,22 @@ The templating system provides the following variables for use:
 
 ## Editing email templates
 
-On hosted Supabase projects, edit your email templates on the [Email Templates](/dashboard/project/_/auth/templates) page. On self-hosted projects or in local development, edit your [configuration files](/docs/guides/local-development/customizing-email-templates).
+On hosted Indobase projects, edit your email templates on the [Email Templates](/dashboard/project/_/auth/templates) page. On self-hosted projects or in local development, edit your [configuration files](/docs/guides/local-development/customizing-email-templates).
 
 You can also manage email templates using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Get current email templates
-curl -X GET "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X GET "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   | jq 'to_entries | map(select(.key | startswith("mailer_templates"))) | from_entries'
 
 # Update email templates
-curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X PATCH "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -145,7 +145,7 @@ const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'ema
 
 ### Email tracking
 
-If you are using an external email provider that enables "email tracking", the links inside the Supabase email templates will be overwritten and won't perform as expected. We recommend disabling email tracking to ensure email links are not overwritten.
+If you are using an external email provider that enables "email tracking", the links inside the Indobase email templates will be overwritten and won't perform as expected. We recommend disabling email tracking to ensure email links are not overwritten.
 
 ### Redirecting the user to a server-side endpoint
 
@@ -161,12 +161,12 @@ You can customize the email link in the email template to redirect the user to a
 </a>
 ```
 
-When the user clicks on the link, the request will hit `https://api.example.com/v1/authenticate` and you can grab the `token_hash`, `type` and `redirect_to` query parameters from the URL. Then, you can call the [`verifyOtp`](/docs/reference/javascript/auth-verifyotp) method to get back an authenticated session before redirecting the user back to the client. Since the `verifyOtp` method makes a `POST` request to Supabase Auth to verify the user, the session will be returned in the response body, which can be read by the server. For example:
+When the user clicks on the link, the request will hit `https://api.example.com/v1/authenticate` and you can grab the `token_hash`, `type` and `redirect_to` query parameters from the URL. Then, you can call the [`verifyOtp`](/docs/reference/javascript/auth-verifyotp) method to get back an authenticated session before redirecting the user back to the client. Since the `verifyOtp` method makes a `POST` request to Indobase Auth to verify the user, the session will be returned in the response body, which can be read by the server. For example:
 
 ```ts
 import { createClient, type EmailOtpType } from 'indobase-js'
 const supabase = createClient(
-  'https://your-project-id.supabase.co',
+  'https://your-project-id.indobase.in',
   'sb_publishable_... or anon key'
 )
 
@@ -183,7 +183,7 @@ const {
 
 ## Customization
 
-Supabase Auth makes use of [Go Templates](https://pkg.go.dev/text/template). This means it is possible to conditionally render information based on template properties.
+Indobase Auth makes use of [Go Templates](https://pkg.go.dev/text/template). This means it is possible to conditionally render information based on template properties.
 
 ### Send different email to early access users
 

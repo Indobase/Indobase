@@ -1,4 +1,4 @@
-import { PostgresTable } from '@supabase/postgres-meta'
+import { PostgresTable } from '@indobaseinc/postgres-meta'
 import { useTableUpdateMutation } from 'data/tables/table-update-mutation'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { useState } from 'react'

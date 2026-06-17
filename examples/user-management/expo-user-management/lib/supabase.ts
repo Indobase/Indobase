@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const supabaseUrl = 'https://project.supabase.co'

@@ -1,6 +1,6 @@
 # Wiring: marketing, Studio, and BaaS API (Indobase SaaS)
 
-This repo ships **Indobase as a SaaS-style product**: the dashboard (Studio) talks to a **control plane** (`/api/platform/*` inside Studio) backed by Postgres + **postgres-meta**, and to your **data plane** (Kong → PostgREST, GoTrue, Realtime, Storage, etc.). There is **no** separate “hosted Supabase Platform” dashboard mode in this fork.
+This repo ships **Indobase as a SaaS-style product**: the dashboard (Studio) talks to a **control plane** (`/api/platform/*` inside Studio) backed by Postgres + **postgres-meta**, and to your **data plane** (Kong → PostgREST, GoTrue, Realtime, Storage, etc.). Indobase runs as SaaS only—there is no separate hosted platform dashboard mode.
 
 ## URL layout (typical)
 
@@ -26,7 +26,7 @@ Set at **build** time for Next.js (Docker `ARG`/`ENV`, or CI build args):
 | `NEXT_PUBLIC_BASE_PATH` | e.g. `/dashboard` when Studio is mounted under a path. |
 | `NEXT_PUBLIC_DOCS_URL` | Docs link in the UI. |
 
-Studio code gates **managed-product** behavior with **`IS_SAAS`** (from `NEXT_PUBLIC_INDOBASE_SAAS`, default on). Set `NEXT_PUBLIC_INDOBASE_SAAS=false` only for a minimal local dashboard without org/billing routes. `NEXT_PUBLIC_IS_PLATFORM` is legacy-only and ignored by Studio runtime in this fork.
+Studio code gates **managed-product** behavior with **`IS_SAAS`** (from `NEXT_PUBLIC_INDOBASE_SAAS`, default on). Set `NEXT_PUBLIC_INDOBASE_SAAS=false` only for a minimal local dashboard without org/billing routes. `NEXT_PUBLIC_IS_PLATFORM` is legacy-only and ignored by Studio at runtime.
 
 ### SaaS env contract (must stay aligned)
 

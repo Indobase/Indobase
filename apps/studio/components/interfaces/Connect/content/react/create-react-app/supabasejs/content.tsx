@@ -33,7 +33,7 @@ const ContentFile = ({ projectKeys }: ContentFileProps) => {
       <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 const indobaseUrl = process.env.REACT_APP_INDOBASE_URL;
 const indobaseKey = process.env.${projectKeys.publishableKey ? 'REACT_APP_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'REACT_APP_INDOBASE_ANON_KEY'};

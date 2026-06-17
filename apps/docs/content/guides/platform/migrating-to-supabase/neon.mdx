@@ -44,7 +44,7 @@ Set the **NEW_DB_URL** environment variable at the command line using your Supab
 Example:
 
 ```bash
-export NEW_DB_URL="postgresql://postgres.xxxxxxxxxxxxxxxxxxxx:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
+export NEW_DB_URL="postgresql://postgres.xxxxxxxxxxxxxxxxxxxx:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres"
 ```
 
 ## Migrate the database
@@ -65,9 +65,9 @@ pg_dump "$OLD_DB_URL" \
   > dump.sql
 ```
 
-2. Import the database to your Supabase project
+2. Import the database to your Indobase project
 
-   Use `psql` to import the Postgres database file to your Supabase project.
+   Use `psql` to import the Postgres database file to your Indobase project.
 
    ```bash
    psql -d "$NEW_DB_URL" -f dump.sql
@@ -86,4 +86,4 @@ Run `pg_dump --help` for a full list of options.
 
 ## Enterprise
 
-[Contact us](https://forms.supabase.com/enterprise) if you need more help migrating your project.
+[Contact us](https://forms.indobase.inm/enterprise) if you need more help migrating your project.

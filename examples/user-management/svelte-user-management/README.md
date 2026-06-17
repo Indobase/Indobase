@@ -1,4 +1,4 @@
-# Supabase Svelte User Management
+# Indobase Svelte User Management
 
 ## Usage
 
@@ -29,7 +29,7 @@ Your app is ready to be deployed!
 
 ### 1. Create new project
 
-Sign up to Supabase - [https://supabase.com/dashboard](https://supabase.com/dashboard) and create a new project. Wait for your database to start.
+Sign up to Supabase - [https://indobase.in/dashboard](https://indobase.in/dashboard) and create a new project. Wait for your database to start.
 
 ### 2. Run "User Management" Quickstart
 
@@ -53,7 +53,7 @@ Create `.env.local` from the `.env.example` file and populate this file with you
 
 Run the application: `npm run dev`. Open your browser to `https://localhost:5173/` and you are ready to go 🚀.
 
-## Supabase details
+## Indobase details
 
 ### Postgres Row level security
 
@@ -125,6 +125,6 @@ with
 
 ## Authors
 
-- [Supabase](https://supabase.com)
+- [Supabase](https://indobase.in)
 
 Supabase is open source. We'd love for you to follow along and get involved at https://github.com/supabase/supabase

@@ -1,6 +1,6 @@
 # SupaSecureSlack
 
-Example application on how you can use Realtime Authorization to limit access to Realtime [Channels](https://supabase.com/docs/guides/realtime/concepts#channels) and [Broadcast](https://supabase.com/docs/guides/realtime/broadcast) and [Presence](https://supabase.com/docs/guides/realtime/presence) extensions.
+Example application on how you can use Realtime Authorization to limit access to Realtime [Channels](https://indobase.in/docs/guides/realtime/concepts#channels) and [Broadcast](https://indobase.in/docs/guides/realtime/broadcast) and [Presence](https://indobase.in/docs/guides/realtime/presence) extensions.
 
 You can provide feedback on our [GitHub Discussion](https://github.com/orgs/supabase/discussions/22484).
 
@@ -13,9 +13,9 @@ Each room restricts the number of users authorized by applying RLS Policies appl
 ## Run It
 
 1. Create a `.env.local` file with the required variables by running `cp .env.example .env.local`.
-2. [Create a new Supabase project](https://supabase.com/dashboard/new/_).
+2. [Create a new Supabase project](https://indobase.in/dashboard/new/_).
 3. Refer to the [Database Setup](#database-setup) section to create the necessary tables and policies.
-4. Copy the project's `URL` and `anon` API key from your project's [API Settings](https://supabase.com/dashboard/project/_/settings/api), and paste them into your `.env.local`.
+4. Copy the project's `URL` and `anon` API key from your project's [API Settings](https://indobase.in/dashboard/project/_/settings/api), and paste them into your `.env.local`.
 5. `npm install`
 6. `npm run dev`
 

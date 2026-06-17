@@ -37,8 +37,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@supabase/auth-js": "catalog:",
-    "indobase-js": "workspace:*",
+    "@indobaseinc/auth-js": "catalog:",
+    "@indobaseinc/indobase-js": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

@@ -5,14 +5,14 @@
   "title": "Supabase Client for Nuxt.js",
   "description": "",
   "dependencies": [
-    "@supabase/ssr@latest",
-    "indobase-js@latest"
+    "@indobaseinc/ssr@latest",
+    "@indobaseinc/indobase-js@1.0.8"
   ],
   "registryDependencies": [],
   "files": [
     {
       "path": "registry/default/clients/nuxtjs/lib/supabase/client.ts",
-      "content": "import { createBrowserClient } from '@supabase/ssr'\n\nexport function createClient() {\n  return createBrowserClient(\n    process.env.NUXT_PUBLIC_SUPABASE_URL!,\n    process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
+      "content": "import { createBrowserClient } from '@indobaseinc/ssr'\n\nexport function createClient() {\n  return createBrowserClient(\n    process.env.NUXT_PUBLIC_SUPABASE_URL!,\n    process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
       "type": "registry:lib"
     },
     {
@@ -29,7 +29,7 @@
     },
     {
       "path": "registry/default/clients/nuxtjs/server/supabase/client.ts",
-      "content": "import { createServerClient } from '@supabase/ssr'\nimport { deleteCookie, EventHandlerRequest, getCookie, H3Event, setCookie } from 'h3'\n\nexport const createSupabaseServerClient = (event: H3Event<EventHandlerRequest> | undefined) => {\n  return createServerClient(\n    process.env.NUXT_PUBLIC_SUPABASE_URL!,\n    process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,\n    {\n      cookies: {\n        get: (key) => getCookie(event!, key),\n        set: (key, value, options) => setCookie(event!, key, value, options),\n        remove: (key, options) => deleteCookie(event!, key, options),\n      },\n    }\n  )\n}\n",
+      "content": "import { createServerClient } from '@indobaseinc/ssr'\nimport { deleteCookie, EventHandlerRequest, getCookie, H3Event, setCookie } from 'h3'\n\nexport const createSupabaseServerClient = (event: H3Event<EventHandlerRequest> | undefined) => {\n  return createServerClient(\n    process.env.NUXT_PUBLIC_SUPABASE_URL!,\n    process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,\n    {\n      cookies: {\n        get: (key) => getCookie(event!, key),\n        set: (key, value, options) => setCookie(event!, key, value, options),\n        remove: (key, options) => deleteCookie(event!, key, options),\n      },\n    }\n  )\n}\n",
       "type": "registry:file",
       "target": "server/supabase/client.ts"
     }

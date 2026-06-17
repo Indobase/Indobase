@@ -3,24 +3,24 @@
 <img src="https://user-images.githubusercontent.com/8291514/213727225-56186826-bee8-43b5-9b15-86e839d89393.png#gh-dark-mode-only">
 </p>
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) är ett alternativ till Firebase med öppen källkod. Vi bygger upp funktionerna från Firebase med hjälp av öppen källkod-verktyg i företagsklass.
+[Indobase](https://indobase.in) är ett alternativ till Firebase med öppen källkod. Vi bygger upp funktionerna från Firebase med hjälp av öppen källkod-verktyg i företagsklass.
 
-- [x] Hosted Postgres-databas. [Docs](https://supabase.com/docs/guides/database)
-- [x] Autentisering och auktorisering. [Docs](https://supabase.com/docs/guides/auth)
+- [x] Hosted Postgres-databas. [Docs](https://indobase.in/docs/guides/database)
+- [x] Autentisering och auktorisering. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Automatiskt genererade API:er.
-  - [x] REST. [Docs](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Docs](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Prenumerationer i realtid. [Dokument](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Docs](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Prenumerationer i realtid. [Dokument](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funktioner.
-  - [x] Databasfunktioner. [Dokument](https://supabase.com/docs/guides/database/functions)
-  - [x] Edge-funktioner [Docs](https://supabase.com/docs/guides/functions)
-- [x] Lagring av filer. [Docs](https://supabase.com/docs/guides/storage)
-- [x] AI + Vektor/Inbäddningsverktyg. [Docs](https://supabase.com/docs/guides/ai)
+  - [x] Databasfunktioner. [Dokument](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge-funktioner [Docs](https://indobase.in/docs/guides/functions)
+- [x] Lagring av filer. [Docs](https://indobase.in/docs/guides/storage)
+- [x] AI + Vektor/Inbäddningsverktyg. [Docs](https://indobase.in/docs/guides/ai)
 - [x] Kontrollpanel
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 Bevaka "releases" i denna repo för att få information om större uppdateringar.
 
@@ -28,27 +28,27 @@ Bevaka "releases" i denna repo för att få information om större uppdateringar
 
 ## Dokumentation
 
-Fullständig dokumentation finns på [supabase.com/docs](https://supabase.com/docs)
+Fullständig dokumentation finns på [indobase.in/docs](https://indobase.in/docs)
 
 För att se hur man bidrar, besök [Getting Started](../DEVELOPERS.md)
 
 ## Gemenskap och stöd
 
-- [Community Forum](https://github.com/supabase/supabase/discussions). Bäst för: hjälp med att bygga, diskussion om bästa praxis för databaser.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Bäst för: buggar och fel som du stöter på när du använder Supabase.
-- [E-postsupport](https://supabase.com/docs/support#business-support). Bäst för: problem med din databas eller infrastruktur.
-- [Discord](https://discord.supabase.com). Bäst för: att dela med dig av dina applikationer och umgås med gemenskapen.
+- [Community Forum](https://github.com/Indobase/Indobase/discussions). Bäst för: hjälp med att bygga, diskussion om bästa praxis för databaser.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Bäst för: buggar och fel som du stöter på när du använder Indobase.
+- [E-postsupport](https://indobase.in/docs/support#business-support). Bäst för: problem med din databas eller infrastruktur.
+- [Discord](https://discord.indobase.in). Bäst för: att dela med dig av dina applikationer och umgås med gemenskapen.
 
 ## Hur det fungerar
 
-Supabase är en kombination av verktyg med öppen källkod. Vi bygger funktionerna i Firebase med hjälp av öppna källkodsprodukter i företagsklass. Om verktygen och gemenskaperna finns med en MIT-, Apache 2- eller motsvarande öppen licens kommer vi att använda och stödja det verktyget. Om verktyget inte finns, bygger vi det själv och använder öppen källkod. Supabase är inte en 1-till-1-mappning av Firebase. Vårt mål är att ge utvecklare en Firebase-liknande utvecklarupplevelse med hjälp av verktyg med öppen källkod.
+Indobase är en kombination av verktyg med öppen källkod. Vi bygger funktionerna i Firebase med hjälp av öppna källkodsprodukter i företagsklass. Om verktygen och gemenskaperna finns med en MIT-, Apache 2- eller motsvarande öppen licens kommer vi att använda och stödja det verktyget. Om verktyget inte finns, bygger vi det själv och använder öppen källkod. Indobase är inte en 1-till-1-mappning av Firebase. Vårt mål är att ge utvecklare en Firebase-liknande utvecklarupplevelse med hjälp av verktyg med öppen källkod.
 
 **Arkitektur**
 
-Supabase är en [värdplattform](https://supabase.com/dashboard). Du kan registrera dig och börja använda Supabase utan att installera något.
-Du kan också [självhosta](https://supabase.com/docs/guides/hosting/overview) och [utveckla lokalt](https://supabase.com/docs/guides/local-development).
+Indobase är en [värdplattform](https://indobase.in/dashboard). Du kan registrera dig och börja använda Indobase utan att installera något.
+Du kan också [självhosta](https://indobase.in/docs/guides/hosting/overview) och [utveckla lokalt](https://indobase.in/docs/guides/local-development).
 
-![Arkitektur](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Arkitektur](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) är ett objektrelationellt databassystem med över 30 års aktiv utveckling som har gett det ett gott rykte när det gäller tillförlitlighet, robusthet och prestanda.
 - [Realtime](https://github.com/supabase/realtime) är en Elixir-server som låter dig lyssna på PostgreSQL-insättningar, uppdateringar och borttagningar med hjälp av websockets. Realtime söker Postgres inbyggda replikeringsfunktionalitet efter databasändringar, omvandlar ändringarna till JSON och sänder sedan JSON via websockets till auktoriserade klienter.
@@ -67,12 +67,12 @@ Vårt tillvägagångssätt för klientbibliotek är modulärt. Varje delbibliote
   <tr>
     <th>Språk</th>
     <th>Klient</th>
-    <th colspan="5">Feature-Clients (ingår i Supabase-klienten)</th>
+    <th colspan="5">Feature-Clients (ingår i Indobase-klienten)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -95,16 +95,16 @@ Vårt tillvägagångssätt för klientbibliotek är modulärt. Varje delbibliote
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -200,36 +200,36 @@ Vårt tillvägagångssätt för klientbibliotek är modulärt. Varje delbibliote
 
 ## Märken
 
-![Made with Supabase](../apps/www/public/badge-made-with-supabase.svg)
+![Made with Indobase](../apps/www/public/badge-made-with-supabase.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
 
-![Made with Supabase (dark)](../apps/www/public/badge-made-with-supabase-dark.svg)
+![Made with Indobase (dark)](../apps/www/public/badge-made-with-supabase-dark.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase-dark.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase-dark.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase-dark.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase-dark.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```

@@ -84,9 +84,9 @@ describe('parseCronJobCommand', () => {
   })
 
   it('should return a edge function config when the command posts to its own supabase.co project', () => {
-    const command = `select net.http_post( url:='https://random_project_ref.supabase.co/functions/v1/_', headers:=jsonb_build_object('Authorization', 'Bearer something'), body:='', timeout_milliseconds:=5000 );`
+    const command = `select net.http_post( url:='https://random_project_ref.indobase.in/functions/v1/_', headers:=jsonb_build_object('Authorization', 'Bearer something'), body:='', timeout_milliseconds:=5000 );`
     expect(parseCronJobCommand(command, 'random_project_ref')).toStrictEqual({
-      edgeFunctionName: 'https://random_project_ref.supabase.co/functions/v1/_',
+      edgeFunctionName: 'https://random_project_ref.indobase.in/functions/v1/_',
       method: 'POST',
       httpHeaders: [
         {
@@ -102,9 +102,9 @@ describe('parseCronJobCommand', () => {
   })
 
   it('should return a edge function config when the body is missing', () => {
-    const command = `select net.http_post( url:='https://random_project_ref.supabase.co/functions/v1/_', headers:=jsonb_build_object('Authorization', 'Bearer something'), timeout_milliseconds:=5000 );`
+    const command = `select net.http_post( url:='https://random_project_ref.indobase.in/functions/v1/_', headers:=jsonb_build_object('Authorization', 'Bearer something'), timeout_milliseconds:=5000 );`
     expect(parseCronJobCommand(command, 'random_project_ref')).toStrictEqual({
-      edgeFunctionName: 'https://random_project_ref.supabase.co/functions/v1/_',
+      edgeFunctionName: 'https://random_project_ref.indobase.in/functions/v1/_',
       method: 'POST',
       httpHeaders: [
         {
@@ -120,9 +120,9 @@ describe('parseCronJobCommand', () => {
   })
 
   it("should return an HTTP request config when there's a query parameter or hash in the URL (also handles edge function)", () => {
-    const command = `select net.http_post( url:='https://random_project_ref.supabase.co/functions/v1/_?first=1#second=2', headers:=jsonb_build_object('Authorization', 'Bearer something'), timeout_milliseconds:=5000 )`
+    const command = `select net.http_post( url:='https://random_project_ref.indobase.in/functions/v1/_?first=1#second=2', headers:=jsonb_build_object('Authorization', 'Bearer something'), timeout_milliseconds:=5000 )`
     expect(parseCronJobCommand(command, 'random_project_ref')).toStrictEqual({
-      endpoint: 'https://random_project_ref.supabase.co/functions/v1/_?first=1#second=2',
+      endpoint: 'https://random_project_ref.indobase.in/functions/v1/_?first=1#second=2',
       method: 'POST',
       httpHeaders: [
         {
@@ -138,9 +138,9 @@ describe('parseCronJobCommand', () => {
   })
 
   it('should return an HTTP request config when the command posts to another supabase.co project', () => {
-    const command = `select net.http_post( url:='https://another_project_ref.supabase.co/functions/v1/_', headers:=jsonb_build_object(), body:='', timeout_milliseconds:=5000 );`
+    const command = `select net.http_post( url:='https://another_project_ref.indobase.in/functions/v1/_', headers:=jsonb_build_object(), body:='', timeout_milliseconds:=5000 );`
     expect(parseCronJobCommand(command, 'random_project_ref')).toStrictEqual({
-      endpoint: 'https://another_project_ref.supabase.co/functions/v1/_',
+      endpoint: 'https://another_project_ref.indobase.in/functions/v1/_',
       method: 'POST',
       httpHeaders: [],
       httpBody: '',

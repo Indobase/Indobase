@@ -1,4 +1,4 @@
-import type { PostgresPolicy } from '@supabase/postgres-meta'
+import type { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { useParams } from 'common'
 import { noop } from 'lodash'
 import { memo, useMemo } from 'react'

@@ -31,16 +31,16 @@ You can enable the IPv4 add-on in your project's [add-ons settings](/dashboard/p
 You can also manage the IPv4 add-on using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Get current IPv4 add-on status
-curl -X GET "https://api.supabase.com/v1/projects/$PROJECT_REF/billing/addons" \
+curl -X GET "https://api.indobase.in/v1/projects/$PROJECT_REF/billing/addons" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
 
 # Enable IPv4 add-on
-curl -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/addons" \
+curl -X POST "https://api.indobase.in/v1/projects/$PROJECT_REF/addons" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -48,7 +48,7 @@ curl -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/addons" \
   }'
 
 # Disable IPv4 add-on
-curl -X DELETE "https://api.supabase.com/v1/projects/$PROJECT_REF/billing/addons/ipv4" \
+curl -X DELETE "https://api.indobase.in/v1/projects/$PROJECT_REF/billing/addons/ipv4" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
 ```
 
@@ -66,7 +66,7 @@ When using the add-on, each database (including read replicas) receives an IPv4 
 
 - While the IPv4 address generally remains the same, actions like pausing/unpausing the project or enabling/disabling the add-on can lead to a new IPv4 address.
 
-## Supabase and IPv6 compatibility
+## Indobase and IPv6 compatibility
 
 By default, Supabase Postgres use IPv6 addresses. If your system doesn't support IPv6, you have the following options:
 
@@ -92,7 +92,7 @@ The majority of services are IPv6 compatible. However, there are a few prominent
 Use an IP lookup website or this command (replace `<PROJECT_REF>`):
 
 ```sh
-nslookup db.<PROJECT_REF>.supabase.co
+nslookup db.[PROJECT-REF].indobase.in
 ```
 
 ## Identifying your connections
@@ -105,7 +105,7 @@ IPv6 unless IPv4 Add-On is enabled
 
 ```sh
 # Example direct connection string
-postgresql://postgres:[YOUR-PASSWORD]@db.ajrbwkcuthywfihaarmflo.supabase.co:5432/postgres
+postgresql://postgres:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 #### Supavisor in transaction mode (port 6543)
@@ -114,7 +114,7 @@ Always uses an IPv4 address
 
 ```sh
 # Example transaction string
-postgresql://postgres.ajrbwkcuthywddfihrmflo:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.ajrbwkcuthywddfihrmflo:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:6543/postgres
 ```
 
 #### Supavisor in session mode (port 5432)
@@ -123,7 +123,7 @@ Always uses an IPv4 address
 
 ```sh
 # Example session string
-postgresql://postgres.ajrbwkcuthywfddihrmflo:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+postgresql://postgres.ajrbwkcuthywfddihrmflo:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 <$Show if="billing:all">

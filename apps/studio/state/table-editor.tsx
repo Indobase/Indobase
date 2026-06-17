@@ -1,4 +1,4 @@
-import type { PostgresColumn } from '@supabase/postgres-meta'
+import type { PostgresColumn } from '@indobaseinc/postgres-meta'
 import { useConstant } from 'common'
 import type { SupaRow } from 'components/grid/types'
 import {

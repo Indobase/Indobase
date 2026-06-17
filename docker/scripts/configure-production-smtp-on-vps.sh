@@ -80,7 +80,11 @@ echo "Updated $ENV_FILE for production SMTP ($SMTP_HOST:$SMTP_PORT)"
 cd "$DOCKER_DIR"
 docker compose -p "$COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.dokploy.yml up -d --force-recreate auth
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [[ ! -d "$REPO_ROOT/docker" ]]; then
+  REPO_ROOT="$(cd "$DOCKER_DIR/.." && pwd)"
+fi
 if [[ -f "$REPO_ROOT/docker/scripts/repair-tenant-stacks-on-vps.sh" ]]; then
   get_env() { grep -m1 "^$1=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '\r' || true; }
   export POSTGRES_PASSWORD="$(get_env POSTGRES_PASSWORD)"

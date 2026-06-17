@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useFlag, useParams } from 'common'
 import { EdgeFunctionRecentInvocations } from 'components/interfaces/Functions/EdgeFunctionRecentInvocations'
 import ReportWidget from 'components/interfaces/Reports/ReportWidget'

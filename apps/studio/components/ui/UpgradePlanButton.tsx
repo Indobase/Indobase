@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useFlag, useParams } from 'common'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'

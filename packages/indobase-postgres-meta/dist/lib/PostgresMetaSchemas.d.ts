@@ -1,0 +1,22 @@
+import { PostgresMetaResult, PostgresSchema, PostgresSchemaCreate, PostgresSchemaUpdate } from './types.js';
+export default class PostgresMetaSchemas {
+    query: (sql: string) => Promise<PostgresMetaResult<any>>;
+    constructor(query: (sql: string) => Promise<PostgresMetaResult<any>>);
+    list({ includeSystemSchemas, limit, offset, }?: {
+        includeSystemSchemas?: boolean;
+        limit?: number;
+        offset?: number;
+    }): Promise<PostgresMetaResult<PostgresSchema[]>>;
+    retrieve({ id }: {
+        id: number;
+    }): Promise<PostgresMetaResult<PostgresSchema>>;
+    retrieve({ name }: {
+        name: string;
+    }): Promise<PostgresMetaResult<PostgresSchema>>;
+    create({ name, owner, }: PostgresSchemaCreate): Promise<PostgresMetaResult<PostgresSchema>>;
+    update(id: number, { name, owner }: PostgresSchemaUpdate): Promise<PostgresMetaResult<PostgresSchema>>;
+    remove(id: number, { cascade }?: {
+        cascade?: boolean | undefined;
+    }): Promise<PostgresMetaResult<PostgresSchema>>;
+}
+//# sourceMappingURL=PostgresMetaSchemas.d.ts.map

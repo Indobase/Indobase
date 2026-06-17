@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { paths } from 'api-types'
@@ -7,6 +7,7 @@ import { setNoStore } from 'lib/api/no-store'
 import { getGotrueUserId } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'
 import { decryptString, encryptedConnectionForPgMeta } from 'lib/api/saas/util'
+import { parsePostgresConnectionUrl } from 'lib/api/saas/branch-tenant-db'
 import { resolveSaaSTenantRestUrls } from 'lib/api/saas/tenant-public-urls'
 import { PROJECT_REST_URL } from 'lib/constants/api'
 import { IS_SAAS } from 'lib/constants'
@@ -64,16 +65,24 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: Jwt
           }:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`
         : null
     const effectiveDbUrl = tenantDbUrl?.trim() ? tenantDbUrl : sharedDbUrl
-    const pgPort = parseInt(process.env.POSTGRES_PORT || '5432', 10)
+    let parsed: ReturnType<typeof parsePostgresConnectionUrl> | null = null
+    if (effectiveDbUrl?.trim()) {
+      try {
+        parsed = parsePostgresConnectionUrl(effectiveDbUrl)
+      } catch {
+        parsed = null
+      }
+    }
+    const pgPort = parsed ? parseInt(parsed.port, 10) : parseInt(process.env.POSTGRES_PORT || '5432', 10)
     const body: ResponseData = [
       {
         cloud_provider: p.cloud_provider as any,
         connectionString: encryptedConnectionForPgMeta(effectiveDbUrl ?? ''),
         connection_string_read_only: '',
-        db_host: process.env.POSTGRES_HOST || '127.0.0.1',
-        db_name: process.env.POSTGRES_DB || 'postgres',
+        db_host: parsed?.host ?? process.env.POSTGRES_HOST || '127.0.0.1',
+        db_name: parsed?.database ?? process.env.POSTGRES_DB || 'postgres',
         db_port: pgPort,
-        db_user: process.env.POSTGRES_USER || 'postgres',
+        db_user: parsed?.user ?? process.env.POSTGRES_USER || 'postgres',
         identifier: ref,
         inserted_at: p.inserted_at ? new Date(p.inserted_at).toISOString() : new Date(0).toISOString(),
         region: p.region,

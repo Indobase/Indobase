@@ -175,7 +175,7 @@
     "comment": "optimize query performance with automatic index recommendation",
     "tags": ["Utility"],
     "link": "/guides/database/extensions/index_advisor",
-    "github_url": "https://github.com/supabase/index_advisor",
+    "github_url": "https://github.com/Indobase/index_advisor",
     "product": "Index Advisor Report",
     "product_url": "/project/{ref}/observability/query-performance"
   },
@@ -247,7 +247,7 @@
     "comment": "pg_graphql: GraphQL support",
     "tags": ["Utility"],
     "link": "/guides/database/extensions/pg_graphql",
-    "github_url": "https://github.com/supabase/pg_graphql",
+    "github_url": "https://github.com/Indobase/pg_graphql",
     "product": "GraphiQL",
     "product_url": "/project/{ref}/api/graphiql"
   },
@@ -274,7 +274,7 @@
     "comment": "Async HTTP",
     "tags": ["Utility", "Notifications"],
     "link": "/guides/database/extensions/pg_net",
-    "github_url": "https://github.com/supabase/pg_net",
+    "github_url": "https://github.com/Indobase/pg_net",
     "product": "Database Webhooks",
     "product_url": "/project/{ref}/integrations/webhooks"
   },
@@ -606,7 +606,7 @@
     "comment": "Foreign data wrappers developed by Supabase",
     "tags": ["Admin", "Utility"],
     "link": "/guides/database/extensions/wrappers/overview",
-    "github_url": "https://github.com/supabase/wrappers",
+    "github_url": "https://github.com/Indobase/wrappers",
     "product": "Supabase Wrappers",
     "product_url": "/project/{ref}/database/wrappers"
   }

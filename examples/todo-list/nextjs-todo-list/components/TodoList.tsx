@@ -1,11 +1,12 @@
 import { Database } from '@/lib/schema'
-import { Session, useSupabaseClient } from '@supabase/auth-helpers-react'
+import { useSupabaseClient } from '@/lib/supabase/context'
+import type { Session } from '@indobaseinc/indobase-js'
 import { useEffect, useState } from 'react'
 
 type Todos = Database['public']['Tables']['todos']['Row']
 
 export default function TodoList({ session }: { session: Session }) {
-  const supabase = useSupabaseClient<Database>()
+  const supabase = useSupabaseClient()
   const [todos, setTodos] = useState<Todos[]>([])
   const [newTaskText, setNewTaskText] = useState('')
   const [errorText, setErrorText] = useState('')
@@ -90,7 +91,7 @@ export default function TodoList({ session }: { session: Session }) {
 }
 
 const Todo = ({ todo, onDelete }: { todo: Todos; onDelete: () => void }) => {
-  const supabase = useSupabaseClient<Database>()
+  const supabase = useSupabaseClient()
   const [isCompleted, setIsCompleted] = useState(todo.is_complete)
 
   const toggle = async () => {
@@ -118,7 +119,7 @@ const Todo = ({ todo, onDelete }: { todo: Todos; onDelete: () => void }) => {
         <div>
           <input
             className="cursor-pointer"
-            onChange={(e) => toggle()}
+            onChange={() => toggle()}
             type="checkbox"
             checked={isCompleted ? true : false}
           />

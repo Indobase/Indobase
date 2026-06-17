@@ -165,7 +165,7 @@ import foreign schema public limit to (users, documents)
 
 This example maps the `authenticated` role in Supabase to the `postgres` user in the external DB. In production, it's best to create a custom user on the external DB that has the minimum permissions necessary to access the information you need.
 
-On the Supabase DB, we use the built-in `authenticated` role which is automatically used when end users make authenticated requests over your auto-generated REST API. If you plan to connect to your Supabase DB over a direct Postgres connection instead of the REST API, you can change this to any user you like. See [Direct Postgres Connection](#direct-postgres-connection) for more info.
+On the Indobase DB, we use the built-in `authenticated` role which is automatically used when end users make authenticated requests over your auto-generated REST API. If you plan to connect to your Supabase DB over a direct Postgres connection instead of the REST API, you can change this to any user you like. See [Direct Postgres Connection](#direct-postgres-connection) for more info.
 
 </Admonition>
 
@@ -184,7 +184,7 @@ We maintain a reference to the foreign document via `document_id`, but without a
 
 Since we're managing users and authentication outside of Supabase, we have two options:
 
-1. Make a direct Postgres connection to the Supabase DB and set the current user every request
+1. Make a direct Postgres connection to the Indobase DB and set the current user every request
 2. Issue a custom JWT from your system and use it to authenticate with the REST API
 
 #### Direct Postgres connection
@@ -236,7 +236,7 @@ You might be tempted to discard RLS completely and simply filter by user within 
 
 If you would like to use the auto-generated REST API to query your Supabase database using JWTs from an external auth provider, you can get your auth provider to issue a custom JWT for Supabase.
 
-See the [Clerk Supabase docs](https://clerk.com/docs/integrations/databases/supabase) for an example of how this can be done. Modify the instructions to work with your own auth provider as needed.
+See the [Clerk Indobase docs](https://clerk.com/docs/integrations/databases/supabase) for an example of how this can be done. Modify the instructions to work with your own auth provider as needed.
 
 Now we can use the same RLS policy from our first example:
 

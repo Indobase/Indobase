@@ -13,7 +13,7 @@ export const UpgradeExistingOrganizationCallout = () => {
           <div>
             <p className="text-sm text-foreground-light">
               Indobase{' '}
-              <InlineLink href={`${DOCS_URL}/guides/platform/billing-on-supabase`}>
+              <InlineLink href={`${DOCS_URL}/guides/platform/billing-on-indobase`}>
                 bills per organization
               </InlineLink>
               . If you want to upgrade your existing projects,{' '}

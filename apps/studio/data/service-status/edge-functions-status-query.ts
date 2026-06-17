@@ -29,7 +29,7 @@ export async function getEdgeFunctionServiceStatus(
   }
 
   try {
-    const res = await fetch('https://obuldanrptloktxcffvn.supabase.co/functions/v1/health-check', {
+    const res = await fetch('https://obuldanrptloktxcffvn.indobase.in/functions/v1/health-check', {
       method: 'GET',
       signal,
     })

@@ -4,7 +4,7 @@ Based on the Hono/JSX + Vite example by [@MathurAditya724](https://github.com/Ma
 
 This example shows how to use Supabase Auth both on the client and server side with Hono.
 
-## Supabase setup
+## Indobase setup
 
 - Create a new Supabase project at [database.new](https://database.new/)
 - Go to the `SQL Editor` and run the following query to create the `countries` table.
@@ -34,7 +34,7 @@ for select to authenticated
 using (true);
 ```
 
-- [Enable anonymous sign-ins](https://supabase.com/dashboard/project/_/auth/providers) in the Auth settings.
+- [Enable anonymous sign-ins](https://indobase.in/dashboard/project/_/auth/providers) in the Auth settings.
 
 ## Setup
 

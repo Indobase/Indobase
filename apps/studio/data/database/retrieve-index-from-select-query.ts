@@ -17,7 +17,7 @@ export type GetInvolvedIndexesFromSelectQueryResponse = {
 }
 
 // [Joshen] This is experimental - hence why i'm chucking a create or replace query like this here
-// [Alaister] Based on: https://github.com/supabase/index_advisor/blob/ddb9b4ed17692ef8dbf049fad806426a851a3079/index_advisor--0.2.0.sql
+// [Alaister] Based on: https://github.com/Indobase/index_advisor/blob/ddb9b4ed17692ef8dbf049fad806426a851a3079/index_advisor--0.2.0.sql
 
 export async function getInvolvedIndexesInSelectQuery({
   projectRef,

@@ -2,7 +2,7 @@ import { tool } from 'ai'
 import { stripIndent } from 'common-tags'
 import { z } from 'zod'
 
-// import { processSql, renderSupabaseJs } from '@supabase/sql-to-rest'
+// import { processSql, renderSupabaseJs } from '@indobaseinc/sql-to-rest'
 import { IS_SAAS } from 'common'
 import { getDatabaseFunctions } from 'data/database-functions/database-functions-query'
 import { getDatabasePolicies } from 'data/database-policies/database-policies-query'
@@ -428,7 +428,7 @@ export const getFallbackTools = ({
 
         \`\`\`edge
         // Setup type definitions for built-in Indobase Runtime APIs
-        import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+        import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
         interface reqPayload {
           name: string;
         }
@@ -452,7 +452,7 @@ export const getFallbackTools = ({
 
         \`\`\`edge
         // Setup type definitions for built-in Indobase Runtime APIs
-        import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+        import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
         import { randomBytes } from "node:crypto";
         import { createServer } from "node:http";
         import process from "node:process";
@@ -477,7 +477,7 @@ export const getFallbackTools = ({
 
         \`\`\`edge
         // Setup type definitions for built-in Indobase Runtime APIs
-        import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+        import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
         import express from "npm:express@4.18.2";
 
         const app = express();
@@ -493,7 +493,7 @@ export const getFallbackTools = ({
 
         \`\`\`edge
         // Setup type definitions for built-in Indobase Runtime APIs
-        import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+        import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
         const model = new Supabase.ai.Session('gte-small');
 
         Deno.serve(async (req: Request) => {
@@ -516,7 +516,7 @@ export const getFallbackTools = ({
 
         \`\`\`edge
           // Setup type definitions for built-in Indobase Runtime APIs
-          import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+          import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
           import { createClient } from \\'jsr:indobase-js@2\\'
           import { corsHeaders } from \\'../_shared/cors.ts\\'
 
@@ -530,7 +530,7 @@ export const getFallbackTools = ({
 
             try {
               // Create an Indobase client with the Auth context of the logged in user.
-              const supabaseClient = createClient(
+              const indobaseClient = createClient(
                 // Indobase API URL - env var exported by default.
                 Deno.env.get('SUPABASE_URL')!,
                 // Indobase API ANON KEY - env var exported by default.
@@ -550,10 +550,10 @@ export const getFallbackTools = ({
               // Now we can get the session or user object
               const {
                 data: { user },
-              } = await supabaseClient.auth.getUser(token)
+              } = await indobaseClient.auth.getUser(token)
 
               // And we can run queries in the context of our authenticated user
-              const { data, error } = await supabaseClient.from(\\'users\\').select(\\'*\\')
+              const { data, error } = await indobaseClient.from(\\'users\\').select(\\'*\\')
               if (error) throw error
 
               return new Response(JSON.stringify({ user, data }), {

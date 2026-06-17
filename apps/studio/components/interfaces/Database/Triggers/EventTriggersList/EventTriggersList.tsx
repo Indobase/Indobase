@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { EMPTY_ARR } from '@/lib/void'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { DeleteEventTrigger } from 'components/interfaces/Database/Triggers/DeleteEventTrigger'
 import {
   ReportsSelectFilter,

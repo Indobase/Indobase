@@ -1,4 +1,4 @@
-import { ReadReplicaSetupError, ReadReplicaSetupProgress } from '@supabase/shared-types/out/events'
+import { ReadReplicaSetupError, ReadReplicaSetupProgress } from '@indobaseinc/shared-types/out/events'
 
 import { components } from 'data/api'
 import { PROJECT_STATUS } from 'lib/constants'

@@ -34,7 +34,7 @@ export const IntegrationConnectionItem = forwardRef<HTMLLIElement, IntegrationCo
     const { data: org } = useSelectedOrganizationQuery()
 
     const { type, connection } = props
-    const { data: project } = useProjectDetailQuery({ ref: connection.supabase_project_ref })
+    const { data: project } = useProjectDetailQuery({ ref: connection.indobase_project_ref })
     const isBranchingEnabled = project?.is_branch_enabled === true
 
     const [isOpen, setIsOpen] = useState(false)
@@ -107,7 +107,7 @@ export const IntegrationConnectionItem = forwardRef<HTMLLIElement, IntegrationCo
                       <Link
                         href={projectIntegrationUrl.replace(
                           '[ref]',
-                          connection.supabase_project_ref
+                          connection.indobase_project_ref
                         )}
                       >
                         Configure connection

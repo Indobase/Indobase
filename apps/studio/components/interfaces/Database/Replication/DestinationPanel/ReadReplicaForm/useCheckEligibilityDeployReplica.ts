@@ -53,7 +53,7 @@ export const useCheckEligibilityDeployReplica = () => {
     (databases ?? []).filter((db) => db.identifier !== projectRef).length >= maxNumberOfReplicas
 
   const currentPgVersion = Number(
-    (project?.dbVersion ?? '').split('supabase-postgres-')[1]?.split('.')[0]
+    (project?.dbVersion ?? '').split('indobase-postgres-')[1]?.split('.')[0]
   )
 
   const canDeployReplica =

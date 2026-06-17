@@ -1,7 +1,7 @@
 /**
  * Lightweight SQL parser for telemetry event detection.
  *
- * [Sean] Replace this with a proper SQL parser like `@supabase/pg-parser` once a
+ * [Sean] Replace this with a proper SQL parser like `@indobaseinc/pg-parser` once a
  * browser-compatible version is available.
  */
 import { TABLE_EVENT_ACTIONS, TableEventAction } from 'common/telemetry-constants'

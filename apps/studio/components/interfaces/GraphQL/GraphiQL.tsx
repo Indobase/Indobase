@@ -31,7 +31,7 @@ import {
   useTheme,
 } from '@graphiql/react'
 import { Fetcher } from '@graphiql/toolkit'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { AlertTriangle, XIcon } from 'lucide-react'
 import { MouseEventHandler, useCallback, useEffect, useState } from 'react'
 

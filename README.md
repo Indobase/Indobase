@@ -1,8 +1,8 @@
 # Indobase
 
-[Indobase](https://indobase.in) is a **managed Postgres BaaS** (database, Auth, REST, Realtime, Storage, Edge Functions, and a multi-tenant dashboard) you can run as your own product—similar surface area to **Supabase**, with orgs, teams, usage views, and a control plane in this repo.
+[Indobase](https://indobase.in) is a **managed Postgres BaaS** (database, Auth, REST, Realtime, Storage, Edge Functions, and a multi-tenant dashboard) you can run as your own product—with orgs, teams, usage views, and a control plane in this repo.
 
-We ship the **Firebase-shaped developer experience** on enterprise-grade open source (Postgres, Kong, GoTrue, PostgREST, etc.), tuned for **SaaS**: sign-up → org → plan → projects, not a single-tenant-only fork.
+We ship the **Firebase-shaped developer experience** on enterprise-grade open source (Postgres, Kong, GoTrue, PostgREST, etc.), tuned for **SaaS**: sign-up → org → plan → projects.
 
 - [x] Hosted Postgres Database. [Docs](https://indobase.in/docs/guides/database)
 - [x] Authentication and Authorization. [Docs](https://indobase.in/docs/guides/auth)

@@ -1,11 +1,11 @@
 ---
 id: 'storage-caching'
-title: 'Integrating with Supabase Storage'
-description: 'Integrate Edge Functions with Supabase Storage.'
+title: 'Integrating with Indobase Storage'
+description: 'Integrate Edge Functions with Indobase Storage.'
 tocVideo: 'wW6L52v9Ldo'
 ---
 
-Edge Functions work seamlessly with [Supabase Storage](/docs/guides/storage). This allows you to:
+Edge Functions work seamlessly with [Indobase Storage](/docs/guides/storage). This allows you to:
 
 - Upload generated content directly from your functions
 - Implement cache-first patterns for better performance
@@ -15,7 +15,7 @@ Edge Functions work seamlessly with [Supabase Storage](/docs/guides/storage). Th
 
 ## Basic file operations
 
-Use the Supabase client to upload files directly from your Edge Functions. You'll need the service role key for server-side storage operations:
+Use the Indobase client to upload files directly from your Edge Functions. You'll need the service role key for server-side storage operations:
 
 ```typescript
 import { createClient } from 'npm:indobase-js@2'
@@ -59,7 +59,7 @@ Always use the `SUPABASE_SERVICE_ROLE_KEY` for server-side operations. Never exp
 Check storage before generating new content to improve performance:
 
 ```typescript
-const STORAGE_URL = 'https://your-project.supabase.co/storage/v1/object/public/images'
+const STORAGE_URL = 'https://[PROJECT-REF].indobase.in/storage/v1/object/public/images'
 
 Deno.serve(async (req) => {
   const url = new URL(req.url)

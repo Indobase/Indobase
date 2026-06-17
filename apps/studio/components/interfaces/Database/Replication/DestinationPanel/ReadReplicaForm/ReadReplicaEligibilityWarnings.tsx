@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'

@@ -1,4 +1,4 @@
-import { type EmailOtpType } from 'indobase-js'
+import { type EmailOtpType } from '@indobaseinc/indobase-js'
 import { redirect } from 'next/navigation'
 import { type NextRequest } from 'next/server'
 

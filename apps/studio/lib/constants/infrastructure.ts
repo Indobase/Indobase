@@ -18,7 +18,7 @@ export const FLY_REGIONS_DEFAULT = FLY_REGIONS.SOUTHEAST_ASIA
 export const MANAGED_BY = {
   VERCEL_MARKETPLACE: 'vercel-marketplace',
   AWS_MARKETPLACE: 'aws-marketplace',
-  SUPABASE: 'supabase',
+  INDOBASE: 'indobase',
 }
 
 export type ManagedBy = (typeof MANAGED_BY)[keyof typeof MANAGED_BY]
@@ -63,14 +63,14 @@ export const PROVIDERS = {
   AWS: {
     id: 'AWS',
     name: 'AWS',
-    DEFAULT_SSH_KEY: 'supabase-app-instance',
+    DEFAULT_SSH_KEY: 'indobase-app-instance',
     default_region: AWS_REGIONS_DEFAULT,
     regions: { ...AWS_REGIONS },
   },
   AWS_K8S: {
     id: 'AWS_K8S',
     name: 'AWS (Revamped)',
-    DEFAULT_SSH_KEY: 'supabase-app-instance',
+    DEFAULT_SSH_KEY: 'indobase-app-instance',
     default_region: AWS_REGIONS_DEFAULT,
     regions: { ...AWS_REGIONS },
   },

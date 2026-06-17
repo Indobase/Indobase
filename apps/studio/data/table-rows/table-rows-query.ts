@@ -1,5 +1,5 @@
-import { Query, type QueryFilter } from '@supabase/pg-meta/src/query'
-import { getTableRowsSql } from '@supabase/pg-meta/src/query/table-row-query'
+import { Query, type QueryFilter } from '@indobaseinc/pg-meta/src/query'
+import { getTableRowsSql } from '@indobaseinc/pg-meta/src/query/table-row-query'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { IS_SAAS } from 'common'
 import { parseSupaTable } from 'components/grid/SupabaseGrid.utils'

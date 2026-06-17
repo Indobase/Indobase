@@ -1,5 +1,5 @@
 import type { components } from 'api-types'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { NextApiRequest } from 'next'
 import crypto from 'node:crypto'
 

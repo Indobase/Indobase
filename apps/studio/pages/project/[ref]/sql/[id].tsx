@@ -58,7 +58,7 @@ const SqlEditor: NextPageWithLayout = () => {
   // shows the "Unable to find snippet" error which blocks the whole UI
   // Am opting to silently swallow this error, since the saves are still going through and we're scoping this behaviour
   // behaviour down to a very specific use case too with all these conditionals
-  // More details: https://github.com/supabase/supabase/pull/39389
+  // More details: https://github.com/Indobase/supabase/pull/39389
   const snippetMissingImmediatelyAfterCreating =
     !!snippet && snippetMissing && previousRoute === 'new' && 'isNotSavedInDatabaseYet' in snippet
 

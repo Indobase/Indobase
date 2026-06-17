@@ -8,7 +8,7 @@ const HomeLayout = ({ children }: PropsWithChildren) => {
   return (
     <SidebarSkeleton hideSideNav>
       <article>
-        <HomePageCover title="Supabase Documentation" />
+        <HomePageCover title="Indobase Documentation" />
         <LayoutMainContent>
           <div className={['relative transition-all ease-out', 'duration-150 '].join(' ')}>
             <div className="prose max-w-none">{children}</div>

@@ -1,5 +1,5 @@
-import { createServerClient, parseCookieHeader } from '@supabase/ssr'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { createServerClient, parseCookieHeader } from '@indobaseinc/ssr'
+import { SupabaseClient } from '@indobaseinc/indobase-js'
 import type { Context, MiddlewareHandler } from 'hono'
 import { env } from 'hono/adapter'
 import { setCookie } from 'hono/cookie'

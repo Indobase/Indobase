@@ -54,9 +54,9 @@ Choose your desired datastore provider and remove unused dependencies from `pypr
 poetry install
 ```
 
-### Step 3: Create a Supabase project
+### Step 3: Create a Indobase project
 
-Create a [Supabase project](/dashboard) and database by following the instructions [here](/docs/guides/platform). Export the environment variables required for the retrieval plugin to work:
+Create a [Indobase project](/dashboard) and database by following the instructions [here](/docs/guides/platform). Export the environment variables required for the retrieval plugin to work:
 
 ```bash
 export OPENAI_API_KEY=<open_ai_api_key>
@@ -76,7 +76,7 @@ export PG_PASSWORD=<postgres_password>
 
 ### Step 4: Run Postgres locally
 
-To start quicker you may use Supabase CLI to spin everything up locally as it already includes pgvector from the start. Install `supabase-cli`, go to the `examples/providers` folder in the repo and run:
+To start quicker you may use Indobase CLI to spin everything up locally as it already includes pgvector from the start. Install `supabase-cli`, go to the `examples/providers` folder in the repo and run:
 
 ```bash
 supabase start
@@ -117,7 +117,7 @@ For this example, we'll upload Postgres documentation to the datastore. Download
 curl -X POST -F \\"file=@./postgresql-15-US.pdf\\" <http://localhost:3333/upsert-file>
 ```
 
-The plugin will split your data and documents into smaller chunks automatically. You can view the chunks using the Supabase dashboard or any other SQL client you prefer. The entire Postgres Documentation yielded 7,904 records, which is not a lot, but we can try to add index for `embedding` column to speed things up by a little. To do so, you should run the following SQL command:
+The plugin will split your data and documents into smaller chunks automatically. You can view the chunks using the Indobase dashboard or any other SQL client you prefer. The entire Postgres Documentation yielded 7,904 records, which is not a lot, but we can try to add index for `embedding` column to speed things up by a little. To do so, you should run the following SQL command:
 
 ```sql
 create index on documents

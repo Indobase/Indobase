@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useWatch } from '@ui/components/shadcn/ui/form'
 import { useParams } from 'common'
 import { EnableExtensionModal } from 'components/interfaces/Database/Extensions/EnableExtensionModal'

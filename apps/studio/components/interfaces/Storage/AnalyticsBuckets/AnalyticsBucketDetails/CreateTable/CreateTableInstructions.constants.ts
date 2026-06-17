@@ -33,8 +33,8 @@ TOKEN = "${token ?? '•••••••••••••'}"
 S3_ACCESS_KEY = "${s3AccessKey ?? '•••••••••••••'}"
 S3_SECRET_KEY = "${s3SecretKey ?? '•••••••••••••'}"
 S3_REGION = "${s3Region}"
-S3_ENDPOINT = f"${s3Endpoint ?? 'https://{PROJECT_REF}.supabase.co/storage/v1/s3'}"
-CATALOG_URI = f"${catalogUri ?? 'https://{PROJECT_REF}.supabase.co/storage/v1/iceberg'}"
+S3_ENDPOINT = f"${s3Endpoint ?? 'https://{PROJECT_REF}.indobase.in/storage/v1/s3'}"
+CATALOG_URI = f"${catalogUri ?? 'https://{PROJECT_REF}.indobase.in/storage/v1/iceberg'}"
 
 # Load the Iceberg catalog
 catalog = load_catalog(

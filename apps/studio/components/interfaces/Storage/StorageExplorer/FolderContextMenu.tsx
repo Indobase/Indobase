@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Copy, Download, Edit, Trash2 } from 'lucide-react'
 import { Item, Menu, Separator } from 'react-contexify'
 import 'react-contexify/dist/ReactContexify.css'

@@ -1,14 +1,14 @@
 ---
 title: 'Custom Auth Emails with React Email and Resend'
-description: 'Use the send email hook to send custom auth emails with React Email and Resend in Supabase Edge Functions.'
+description: 'Use the send email hook to send custom auth emails with React Email and Resend in Indobase Edge Functions.'
 tocVideo: 'tlA7BomSCgU'
 ---
 
-Use the [send email hook](/docs/guides/auth/auth-hooks/send-email-hook?queryGroups=language&language=http) to send custom auth emails with [React Email](https://react.email/) and [Resend](https://resend.com/) in Supabase Edge Functions.
+Use the [send email hook](/docs/guides/auth/auth-hooks/send-email-hook?queryGroups=language&language=http) to send custom auth emails with [React Email](https://react.email/) and [Resend](https://resend.com/) in Indobase Edge Functions.
 
 <Admonition type="note">
 
-Prefer to jump straight to the code? [Check out the example on GitHub](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/auth-hook-react-email-resend).
+Prefer to jump straight to the code? [Check out the example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/edge-functions/supabase/functions/auth-hook-react-email-resend).
 
 </Admonition>
 
@@ -19,7 +19,7 @@ To get the most out of this guide, you’ll need to:
 - [Create a Resend API key](https://resend.com/api-keys)
 - [Verify your domain](https://resend.com/domains)
 
-Make sure you have the latest version of the [Supabase CLI](/docs/guides/cli#installation) installed.
+Make sure you have the latest version of the [Indobase CLI](/docs/guides/cli#installation) installed.
 
 ### 1. Create Supabase function
 
@@ -269,7 +269,7 @@ Note down the function URL, you will need it in the next step!
 
 ### 5. Configure the Send Email Hook
 
-- Go to the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard and create a new "Send Email hook".
+- Go to the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard and create a new "Send Email hook".
 - Select HTTPS as the hook type.
 - Paste the function URL in the "URL" field.
 - Click "Generate Secret" to generate your webhook secret and note it down.
@@ -284,7 +284,7 @@ SEND_EMAIL_HOOK_SECRET="v1,whsec_<base64_secret>"
 
 <Admonition type="note">
 
-You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard.
+You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard.
 
 </Admonition>
 
@@ -294,7 +294,7 @@ Set the secrets from the `.env` file:
 supabase secrets set --env-file supabase/functions/.env
 ```
 
-Now your Supabase Edge Function will be triggered anytime an Auth Email needs to be sent to the user!
+Now your Indobase Edge Function will be triggered anytime an Auth Email needs to be sent to the user!
 
 ## More resources
 

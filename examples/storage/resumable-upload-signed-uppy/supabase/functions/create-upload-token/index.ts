@@ -1,5 +1,5 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient } from 'jsr:@supabase/supabase-js'
+import 'jsr:@indobaseinc/functions-js/edge-runtime.d.ts'
+import { createClient } from 'jsr:@indobaseinc/indobase-js'
 
 Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''

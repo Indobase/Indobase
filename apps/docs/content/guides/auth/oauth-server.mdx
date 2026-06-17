@@ -1,15 +1,15 @@
 ---
 title: 'OAuth 2.1 Server'
-description: 'Turn your Supabase project into an OAuth 2.1 and OpenID Connect identity provider'
+description: 'Turn your Indobase project into an OAuth 2.1 and OpenID Connect identity provider'
 ---
 
-Supabase Auth can act as an OAuth 2.1 and OpenID Connect (OIDC) identity provider. This allows other applications and services to use your Supabase project as their authentication provider, just like "Sign in with Google" or "Sign in with GitHub".
+Indobase Auth can act as an OAuth 2.1 and OpenID Connect (OIDC) identity provider. This allows other applications and services to use your Indobase project as their authentication provider, just like "Sign in with Google" or "Sign in with GitHub".
 
 You can use this to build "Sign in with [Your App]" experiences, authenticate AI agents through the Model Context Protocol (MCP), power developer platforms with third-party integrations, or implement standards-compliant enterprise SSO.
 
 ## Use cases
 
-There are several reasons why you might want to enable OAuth 2.1 Server in your Supabase project:
+There are several reasons why you might want to enable OAuth 2.1 Server in your Indobase project:
 
 - **Developer platforms and marketplaces**: Allow third-party developers to build integrations and apps for your platform. Partners can offer "Sign in with [Your App]" to their users, with your control over data access through Row Level Security policies.
 
@@ -21,12 +21,12 @@ There are several reasons why you might want to enable OAuth 2.1 Server in your 
 
 ## Overview
 
-Supabase Auth implements the OAuth 2.1 authorization code flow with PKCE (Proof Key for Code Exchange). When a third-party application wants to access user data:
+Indobase Auth implements the OAuth 2.1 authorization code flow with PKCE (Proof Key for Code Exchange). When a third-party application wants to access user data:
 
 1. The application redirects the user to your authorization endpoint
-2. Supabase Auth validates the request and redirects to your custom authorization UI
+2. Indobase Auth validates the request and redirects to your custom authorization UI
 3. The user authenticates (using any of your enabled auth methods) and approves access
-4. Supabase Auth issues an authorization code
+4. Indobase Auth issues an authorization code
 5. The application exchanges the code for access and refresh tokens
 6. The application uses the access token to make authenticated API requests
 
@@ -42,12 +42,12 @@ Access tokens are standard Supabase JWTs that include `user_id`, `role`, and `cl
 
 ### Integration with existing auth
 
-OAuth 2.1 Server works seamlessly with your existing Supabase Auth configuration:
+OAuth 2.1 Server works seamlessly with your existing Indobase Auth configuration:
 
 - Users can authenticate using any enabled method (password, magic link, social providers, MFA, phone)
 - [Custom Access Token Hooks](/guides/auth/auth-hooks/access-token-hook) apply to OAuth tokens, allowing you to customize claims like `audience` or add client-specific permissions
 - Row Level Security policies control data access using the `client_id` claim in tokens
-- All standard Supabase features (email templates, hooks, rate limiting) continue to work
+- All standard Indobase features (email templates, hooks, rate limiting) continue to work
 
 ## Set up OAuth 2.1 server
 
@@ -88,4 +88,4 @@ To enable OAuth 2.1 Server in your project, follow these guides:
 ## Resources
 
 - [GitHub Discussion](https://github.com/orgs/supabase/discussions/38022) - Share your use cases and help shape the roadmap
-- [Discord Community](https://discord.supabase.com/) - Get help and share what you're building
+- [Discord Community](https://discord.indobase.in/) - Get help and share what you're building

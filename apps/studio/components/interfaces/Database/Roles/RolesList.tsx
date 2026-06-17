@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { NoSearchResults } from 'components/ui/NoSearchResults'
 import { SparkBar } from 'components/ui/SparkBar'

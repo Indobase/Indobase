@@ -1,5 +1,5 @@
 import { components } from 'api-types'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL } from 'lib/constants/api'
 import { normalizeProjectApiKey, resolveProjectJwtSecret } from './project-jwt'
 import { decryptString } from './util'

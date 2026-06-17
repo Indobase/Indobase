@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 /**
  * Encrypted pg-meta connection header for a project. Uses the client value when present;

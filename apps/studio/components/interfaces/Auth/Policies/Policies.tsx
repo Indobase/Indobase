@@ -1,4 +1,4 @@
-import type { PostgresPolicy } from '@supabase/postgres-meta'
+import type { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { isEmpty } from 'lodash'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'

@@ -1,6 +1,6 @@
 <!-- src/routes/account/Avatar.svelte -->
 <script lang="ts">
-	import type { SupabaseClient } from '@supabase/supabase-js'
+	import type { SupabaseClient } from '@indobaseinc/indobase-js'
 
 	interface Props {
 		size?: number

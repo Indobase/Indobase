@@ -5,41 +5,41 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[सुपाबेस](https://supabase.com) एक ओपन सोर्स फ़ाायरबेस विकल्प है। हम एंटरप्राइज़-गुणवत्ता ओपन सोर्स सॉफ़्टवेयर उपकरण का उपयोग करके फ़ाायरबेस की सुविधाओं का निर्माण कर रहे हैं।
+[सुपाबेस](https://indobase.in) एक ओपन सोर्स फ़ाायरबेस विकल्प है। हम एंटरप्राइज़-गुणवत्ता ओपन सोर्स सॉफ़्टवेयर उपकरण का उपयोग करके फ़ाायरबेस की सुविधाओं का निर्माण कर रहे हैं।
 
-- [x] होस्टेड पोस्टग्रेज डेटाबेस। [प्रलेखन](https://supabase.com/docs/guides/database)
-- [x] प्रमाणीकरण और प्राधिकरण। [प्रलेखन](https://supabase.com/docs/guides/auth)
+- [x] होस्टेड पोस्टग्रेज डेटाबेस। [प्रलेखन](https://indobase.in/docs/guides/database)
+- [x] प्रमाणीकरण और प्राधिकरण। [प्रलेखन](https://indobase.in/docs/guides/auth)
 - [x] उत्पन्न एपीआईस।
-  - [x] रेस्ट। [प्रलेखन](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] रीयलटाइम सदस्यता। [प्रलेखन](https://supabase.com/docs/guides/api#realtime-api-overview)
-  - [x] ग्राफ़क्यूएल (प्रयोगात्मक)। [प्रलेखन](https://supabase.com/docs/guides/api#graphql-api-overview)
+  - [x] रेस्ट। [प्रलेखन](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] रीयलटाइम सदस्यता। [प्रलेखन](https://indobase.in/docs/guides/api#realtime-api-overview)
+  - [x] ग्राफ़क्यूएल (प्रयोगात्मक)। [प्रलेखन](https://indobase.in/docs/guides/api#graphql-api-overview)
 - [x] फ़ंक्शंस।
-  - [x] डेटाबेस फ़ंक्शंस। [प्रलेखन](https://supabase.com/docs/guides/database/functions)
-  - [x] एज फ़ंक्शंस। [प्रलेखन](https://supabase.com/docs/guides/functions)
-- [x] भंडारण। [प्रलेखन](https://supabase.com/docs/guides/storage)
+  - [x] डेटाबेस फ़ंक्शंस। [प्रलेखन](https://indobase.in/docs/guides/database/functions)
+  - [x] एज फ़ंक्शंस। [प्रलेखन](https://indobase.in/docs/guides/functions)
+- [x] भंडारण। [प्रलेखन](https://indobase.in/docs/guides/storage)
 - [x] डैशबोर्ड।
 
-![सुपाबेस का डैशबोर्ड।](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![सुपाबेस का डैशबोर्ड।](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## प्रलेखन
 
-पूर्ण प्रलेखन के लिए, [supabase.com/docs](https://supabase.com/docs) पर जाएँ
+पूर्ण प्रलेखन के लिए, [indobase.in/docs](https://indobase.in/docs) पर जाएँ
 
 योगदान करने के लिए, [गेट्टिंग स्टार्टेड](../DEVELOPERS.md) पेज पर जाएँ
 
 ## समुदाय तथा समर्थन
 
-- [सामुदायिक मंच](https://github.com/supabase/supabase/discussions)। निर्माण में मदद और डेटाबेस की सर्वोत्तम प्रथाओं के बारे में चर्चा के लिए उचित है।
-- [गिटहब इश्यूस](https://github.com/supabase/supabase/issues)। सुपाबेस का उपयोग करते समय बग्स​ और त्रुटियां के लिए उचित है।
-- [ई-मेल समर्थन](https://supabase.com/docs/support#business-support)। आपके डेटाबेस और इंफ़्रास्ट्रक्चर के साथ समस्याएं के लिए उचित है।
-- [डिस्कॉर्ड](https://discord.supabase.com/)। अपने प्रोजेक्ट्स शेयर करने के लिए और हमारी सुपाबेस समुदाय के साथ बातचीत करने के लिए उचित है।
+- [सामुदायिक मंच](https://github.com/Indobase/Indobase/discussions)। निर्माण में मदद और डेटाबेस की सर्वोत्तम प्रथाओं के बारे में चर्चा के लिए उचित है।
+- [गिटहब इश्यूस](https://github.com/Indobase/Indobase/issues)। सुपाबेस का उपयोग करते समय बग्स​ और त्रुटियां के लिए उचित है।
+- [ई-मेल समर्थन](https://indobase.in/docs/support#business-support)। आपके डेटाबेस और इंफ़्रास्ट्रक्चर के साथ समस्याएं के लिए उचित है।
+- [डिस्कॉर्ड](https://discord.indobase.in/)। अपने प्रोजेक्ट्स शेयर करने के लिए और हमारी सुपाबेस समुदाय के साथ बातचीत करने के लिए उचित है।
 
 ## स्थिति
 
 - [x] अल्फा: हम चुनिंदा ग्राहकों के साथ सुपरबास का परीक्षण कर रहे हैं
-- [x] सार्वजनिक अल्फा: कोई भी [supabase.com/dashboard](https://supabase.com/dashboard) के जरिए शामिल हो सकता है। लेकिन हम पर आसान हो जाओ, कुछ मोड़ हैं।
+- [x] सार्वजनिक अल्फा: कोई भी [supabase.com/dashboard](https://indobase.in/dashboard) के जरिए शामिल हो सकता है। लेकिन हम पर आसान हो जाओ, कुछ मोड़ हैं।
 - [x] सार्वजनिक बीटा: अधिकांश गैर-एंटरप्राइज़ उपयोग-मामलों के लिए पर्याप्त स्थिर
 - [ ] सार्वजनिक: उत्पादन-तैयार
 
@@ -55,9 +55,9 @@
 
 **वर्तमान वास्तुकला**
 
-सुपाबेस [होस्टेड प्लेटफार्म](https://supabase.com/dashboard). आप साइन अप कर सकते हैं और कुछ भी स्थापित किए बिना सुपाबेस का उपयोग करना शुरू कर सकते हैं। हम अभी भी स्थानीय विकास का अनुभव पैदा कर रहे हैं - यह अब मंच स्थिरता के साथ-साथ हमारा मुख्य फोकस है।
+सुपाबेस [होस्टेड प्लेटफार्म](https://indobase.in/dashboard). आप साइन अप कर सकते हैं और कुछ भी स्थापित किए बिना सुपाबेस का उपयोग करना शुरू कर सकते हैं। हम अभी भी स्थानीय विकास का अनुभव पैदा कर रहे हैं - यह अब मंच स्थिरता के साथ-साथ हमारा मुख्य फोकस है।
 
-![आर्किटेक्चर](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![आर्किटेक्चर](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) 30 से अधिक वर्षों के सक्रिय विकास के साथ एक वस्तु-संबंधपरक डेटाबेस प्रणाली है जिसने इसे विश्वसनीयता, सुविधा मजबूती और प्रदर्शन के लिए एक मजबूत प्रतिष्ठा अर्जित की है।
 - [Realtime](https://github.com/supabase/realtime) एक एलिक्जिर सर्वर है जो आपको पोस्टग्रॉसीक्यूएल आवेषण, अपडेट्स को सुनने की अनुमति देता है और वेबसोकेट का उपयोग करके हटाता है। सुपाबेस पोस्टग्रेज की अंतर्निहित प्रतिकृति कार्यक्षमता को सुनता है, प्रतिकृति बाइट स्ट्रीम को JSON में परिवर्तित करता है, फिर JSON को वेबस्कॉक पर प्रसारित करता है।
@@ -99,11 +99,11 @@
   <th colspan="6">⚡️ ऑफ़िशियल ⚡️</th>
   <tr>
     <td>जावास्क्रिप्ट (टाइप्स्क्रिप्ट)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
   </tr>
   <th colspan="6">💚 समुदाय 💚</th>
   <tr>
@@ -116,7 +116,7 @@
   </tr>
   <tr>
     <td>डार्ट (फ़्लटर)</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-dart</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-dart</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>

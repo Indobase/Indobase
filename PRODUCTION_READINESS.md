@@ -48,9 +48,13 @@ Use this checklist before running Indobase as a production **BaaS / SaaS** stack
 
 ## Compliance & legal (if applicable)
 
-- [ ] **Verify** Privacy policy and terms of service
-- [ ] **Verify** Data residency and retention policy
-- [ ] **Verify** SOC2 / HIPAA / GDPR if required
+- [x] Privacy policy with DPDP Act sections (`/privacy`, `/dpdp`)
+- [x] Sign-up consent capture and consent audit table (`saas.data_principal_consents`)
+- [x] Data principal rights UI (Studio → Account → Data & privacy)
+- [x] Grievance Officer contact published (`grievance@indobase.in`, overridable via env)
+- [ ] **Verify** Data residency matches your deployment region and DPA with subprocessors
+- [ ] **Verify** Legal review of policies for your entity (Indobase Code Pvt. Ltd.)
+- [ ] **Verify** SOC2 / HIPAA / GDPR if required for enterprise customers
 
 ---
 

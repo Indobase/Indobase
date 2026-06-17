@@ -6,7 +6,7 @@ import specStorageV0 from '~/spec/storage_v0_config.yaml' with { type: 'yml' }
 
 const meta = {
   title: 'Storage Self-hosting Config',
-  description: 'How to configure and deploy Supabase Storage.',
+  description: 'How to configure and deploy Indobase Storage.',
 }
 
 const generateMetadata = genGuideMeta(() => ({

@@ -1,4 +1,4 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import type { GeneratedPolicy } from 'components/interfaces/Auth/Policies/Policies.utils'
 import { DocsButton } from 'components/ui/DocsButton'
 import { useDatabasePublicationsQuery } from 'data/database-publications/database-publications-query'

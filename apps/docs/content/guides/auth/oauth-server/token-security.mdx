@@ -4,7 +4,7 @@ title: 'Token Security and Row Level Security'
 description: 'Secure your data with Row Level Security policies for OAuth clients'
 ---
 
-When you enable OAuth 2.1 in your Supabase project, third-party applications can access user data on their behalf. Row Level Security (RLS) policies are crucial for controlling exactly what data each OAuth client can access.
+When you enable OAuth 2.1 in your Indobase project, third-party applications can access user data on their behalf. Row Level Security (RLS) policies are crucial for controlling exactly what data each OAuth client can access.
 
 <Admonition type="caution">
 
@@ -18,7 +18,7 @@ Use RLS to define which OAuth clients can access which data, regardless of the s
 
 ## How OAuth tokens work with RLS
 
-OAuth access tokens issued by Supabase Auth are JWTs that include all standard Supabase claims plus OAuth-specific claims. This means your existing RLS policies continue to work, and you can add OAuth-specific logic to create granular access controls.
+OAuth access tokens issued by Indobase Auth are JWTs that include all standard Supabase claims plus OAuth-specific claims. This means your existing RLS policies continue to work, and you can add OAuth-specific logic to create granular access controls.
 
 ### Token structure
 
@@ -35,7 +35,7 @@ Every OAuth access token includes:
   "aal": "aal1",
   "amr": [{ "method": "password", "timestamp": 1735815600 }],
   "session_id": "session-uuid",
-  "iss": "https://<project-ref>.supabase.co/auth/v1",
+  "iss": "https://<project-ref>.indobase.in/auth/v1",
   "iat": 1735815600,
   "exp": 1735819200
 }
@@ -371,7 +371,7 @@ SELECT * FROM user_data WHERE user_id = 'test-user-uuid';
 RESET request.jwt.claims;
 ```
 
-Or use the Supabase Dashboard's [RLS policy tester](/dashboard/project/_/auth/policies).
+Or use the Indobase Dashboard's [RLS policy tester](/dashboard/project/_/auth/policies).
 
 ## Troubleshooting
 

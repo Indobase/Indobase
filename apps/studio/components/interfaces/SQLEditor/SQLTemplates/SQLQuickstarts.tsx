@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { partition } from 'lodash'
 import { useRouter } from 'next/router'
 import { toast } from 'sonner'

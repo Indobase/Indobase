@@ -73,7 +73,7 @@ const GrafanaBannerActions = ({ className }: { className?: string }) => {
       </Button>
       <Button type="default" size="tiny" asChild>
         <Link
-          href="https://github.com/supabase/supabase-grafana"
+          href="https://github.com/Indobase/supabase-grafana"
           target="_blank"
           onClick={() =>
             sendEvent({

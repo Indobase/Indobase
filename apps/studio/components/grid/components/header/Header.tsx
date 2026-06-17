@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'common'
 import { useTableFilter } from 'components/grid/hooks/useTableFilter'

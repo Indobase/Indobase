@@ -1,5 +1,5 @@
 /// <reference types="vite/types/importMeta.d.ts" />
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient } from '@indobaseinc/ssr'
 
 export function createClient() {
   return createBrowserClient(

@@ -1,0 +1,36 @@
+{
+  "name": "@indobaseinc/mcp-utils",
+  "version": "0.3.2",
+  "description": "MCP utilities for Indobase",
+  "license": "Apache-2.0",
+  "author": "Indobase",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-mcp-utils"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "prepublishOnly": "node -e \"require('fs').accessSync('dist/index.js')\""
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "zod": "^3.25.0 || ^4.0.0"
+  }
+}

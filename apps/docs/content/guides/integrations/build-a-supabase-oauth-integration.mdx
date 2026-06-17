@@ -1,8 +1,8 @@
 ---
 id: 'build-a-supabase-oauth-integration'
-title: 'Build a Supabase Integration'
-subtitle: "This guide steps through building a Supabase Integration using OAuth2 and the management API, allowing you to manage users' organizations and projects on their behalf."
-description: 'Build a Supabase Integration using OAuth2 and the Management API.'
+title: 'Build an Indobase Integration'
+subtitle: "This guide steps through building an Indobase Integration using OAuth2 and the management API, allowing you to manage users' organizations and projects on their behalf."
+description: 'Build an Indobase Integration using OAuth2 and the Management API.'
 ---
 
 Using OAuth2.0 you can retrieve an access and refresh token that grant your application full access to the [Management API](/docs/reference/api/introduction) on behalf of the user.
@@ -23,11 +23,11 @@ In your user interface, add a "Connect Supabase" button to kick off the OAuth fl
 
 Once you've published your OAuth App on Supabase, you can use the OAuth 2.0 protocol get authorization from Supabase users to manage their organizations and projects.
 
-You can use your preferred OAuth2 client or follow the steps below. You can see an example implementation in TypeScript using Supabase Edge Functions [on our GitHub](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
+You can use your preferred OAuth2 client or follow the steps below. You can see an example implementation in TypeScript using Indobase Edge Functions [on our GitHub](https://github.com/Indobase/Indobase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
 
 ### Redirecting to the authorize URL
 
-Within your app's UI, redirect the user to [`https://api.supabase.com/v1/oauth/authorize`](https://api.supabase.com/api/v1#tag/oauth/GET/v1/oauth/authorize). Make sure to include all required query parameters such as:
+Within your app's UI, redirect the user to [`https://api.indobase.in/v1/oauth/authorize`](https://api.indobase.in/api/v1#tag/oauth/GET/v1/oauth/authorize). Make sure to include all required query parameters such as:
 
 - `client_id`: Your client id from the app creation above.
 - `redirect_uri`: The URL where Supabase will redirect the user to after providing consent.
@@ -42,7 +42,7 @@ router.get('/connect-supabase/login', async (ctx) => {
   // Construct the URL for the authorization redirect and get a PKCE codeVerifier.
   const { uri, codeVerifier } = await oauth2Client.code.getAuthorizationUri()
   console.log(uri.toString())
-  // console.log: https://api.supabase.com/v1/oauth/authorize?response_type=code&client_id=7673bde9-be72-4d75-bd5e-b0dba2c49b38&redirect_uri=http%3A%2F%2Flocalhost%3A54321%2Ffunctions%2Fv1%2Fconnect-supabase%2Foauth2%2Fcallback&scope=all&code_challenge=jk06R69S1bH9dD4td8mS5kAEFmEbMP5P0YrmGNAUVE0&code_challenge_method=S256
+  // console.log: https://api.indobase.in/v1/oauth/authorize?response_type=code&client_id=7673bde9-be72-4d75-bd5e-b0dba2c49b38&redirect_uri=http%3A%2F%2Flocalhost%3A54321%2Ffunctions%2Fv1%2Fconnect-supabase%2Foauth2%2Fcallback&scope=all&code_challenge=jk06R69S1bH9dD4td8mS5kAEFmEbMP5P0YrmGNAUVE0&code_challenge_method=S256
 
   // Store the codeVerifier in the user session (cookie).
   ctx.state.session.flash('codeVerifier', codeVerifier)
@@ -52,7 +52,7 @@ router.get('/connect-supabase/login', async (ctx) => {
 })
 ```
 
-Find the full example on [GitHub](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
+Find the full example on [GitHub](https://github.com/Indobase/Indobase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
 
 ### Handling the callback
 
@@ -61,7 +61,7 @@ Once the user consents to providing API access to your OAuth App, Supabase will 
 - `code`: An authorization code you should exchange with Supabase to get the access and refresh token.
 - `state`: The value you provided in the previous step, to help you associate the request with the user. The `state` property returned here should be compared to the `state` you sent previously.
 
-Exchange the authorization code for an access and refresh token by calling [`POST https://api.supabase.com/v1/oauth/token`](https://api.supabase.com/api/v1#tag/oauth/POST/v1/oauth/token) with the following query parameters as content-type `application/x-www-form-urlencoded`:
+Exchange the authorization code for an access and refresh token by calling [`POST https://api.indobase.in/v1/oauth/token`](https://api.indobase.in/api/v1#tag/oauth/POST/v1/oauth/token) with the following query parameters as content-type `application/x-www-form-urlencoded`:
 
 - `grant_type`: The value `authorization_code`.
 - `code`: The `code` returned in the previous step.
@@ -108,11 +108,11 @@ router.get('/connect-supabase/oauth2/callback', async (ctx) => {
 })
 ```
 
-Find the full example on [GitHub](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
+Find the full example on [GitHub](https://github.com/Indobase/Indobase/tree/master/examples/edge-functions/supabase/functions/connect-supabase).
 
 ## Refreshing an access token
 
-You can use the [`POST /v1/oauth/token`](https://api.supabase.com/api/v1#tag/oauth/POST/v1/oauth/token) endpoint to refresh an access token using the refresh token returned at the end of the previous section.
+You can use the [`POST /v1/oauth/token`](https://api.indobase.in/api/v1#tag/oauth/POST/v1/oauth/token) endpoint to refresh an access token using the refresh token returned at the end of the previous section.
 
 If the user has revoked access to your application, you will not be able to refresh a token. Furthermore, access tokens will stop working. Make sure you handle HTTP Unauthorized errors when calling any Supabase API.
 
@@ -138,27 +138,27 @@ There are a couple common patterns you can consider adding to your integration t
 
 Some integrations, e.g. like [Cloudflare Workers](/partners/integrations/cloudflare-workers) provide convenient access to the API URL and API keys to allow user to speed up development.
 
-Using the management API, you can retrieve a project's API credentials using the [`/projects/{ref}/api-keys` endpoint](https://api.supabase.com/api/v1#/projects/getProjectApiKeys).
+Using the management API, you can retrieve a project's API credentials using the [`/projects/{ref}/api-keys` endpoint](https://api.indobase.in/api/v1#/projects/getProjectApiKeys).
 
 ### Pre-fill database connection details
 
 If your integration directly connects to the project's database, you can pref-fill the Postgres connection details for the user, it follows this schema:
 
 ```
-postgresql://postgres:[DB-PASSWORD]@db.[REF].supabase.co:5432/postgres
+postgresql://postgres:[DB-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 Note that you cannot retrieve the database password via the management API, so for the user's existing projects you will need to collect their database password in your UI.
 
 ### Create new projects
 
-Use the [`/v1/projects` endpoint](https://api.supabase.com/api/v1#/projects/createProject) to create a new project.
+Use the [`/v1/projects` endpoint](https://api.indobase.in/api/v1#/projects/createProject) to create a new project.
 
 When creating a new project, you can either ask the user to provide a database password, or you can generate a secure password for them. In any case, make sure to securely store the database password on your end which will allow you to construct the Postgres URI.
 
 ### Configure custom Auth SMTP
 
-You can configure the user's [custom SMTP settings](/docs/guides/auth/auth-smtp) using the [`/config/auth` endpoint](https://api.supabase.com/api/v1#/projects%20config/updateV1AuthConfig).
+You can configure the user's [custom SMTP settings](/docs/guides/auth/auth-smtp) using the [`/config/auth` endpoint](https://api.indobase.in/api/v1#/projects%20config/updateV1AuthConfig).
 
 ### Handling dynamic redirect URLs
 

@@ -163,7 +163,7 @@ from
   );
 ```
 
-In practice, you will likely be calling this from the [Supabase client](/docs/reference/javascript/introduction) or through a custom backend layer. Here is a quick example of how you might call this from an [Edge Function](/docs/guides/functions) using JavaScript:
+In practice, you will likely be calling this from the [Indobase client](/docs/reference/javascript/introduction) or through a custom backend layer. Here is a quick example of how you might call this from an [Edge Function](/docs/guides/functions) using JavaScript:
 
 ```tsx
 import { createClient } from 'npm:indobase-js@2'
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
 
   const [{ embedding }] = embeddingResponse.data
 
-  // Instantiate the Supabase client
+  // Instantiate the Indobase client
   // (replace service role key with user's JWT if using Supabase auth and RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 

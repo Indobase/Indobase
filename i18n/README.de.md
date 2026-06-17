@@ -5,43 +5,43 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) ist eine Open-Source-Alternative zu Firebase. Wir bauen die Funktionen von Firebase mit Open-Source-Tools für Unternehmen auf.
+[Indobase](https://indobase.in) ist eine Open-Source-Alternative zu Firebase. Wir bauen die Funktionen von Firebase mit Open-Source-Tools für Unternehmen auf.
 
-- [x] Gehostete Postgres-Datenbank. [Docs](https://supabase.com/docs/guides/database)
-- [x] Authentifizierung und Autorisierung. [Docs](https://supabase.com/docs/guides/auth)
+- [x] Gehostete Postgres-Datenbank. [Docs](https://indobase.in/docs/guides/database)
+- [x] Authentifizierung und Autorisierung. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Auto-generierte APIs.
-  - [x] REST. [Docs](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Docs](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Echtzeit-Abonnements. [Docs](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Docs](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Echtzeit-Abonnements. [Docs](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funktionen.
-  - [x] Datenbank-Funktionen. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Edge-Funktionen [Docs](https://supabase.com/docs/guides/functions)
-- [x] Dateispeicher. [Docs](https://supabase.com/docs/guides/storage)
+  - [x] Datenbank-Funktionen. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge-Funktionen [Docs](https://indobase.in/docs/guides/functions)
+- [x] Dateispeicher. [Docs](https://indobase.in/docs/guides/storage)
 - [x] Dashboard
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokumentation
 
-Die vollständige Dokumentation finden Sie unter [supabase.com/docs](https://supabase.com/docs)
+Die vollständige Dokumentation finden Sie unter [indobase.in/docs](https://indobase.in/docs)
 
 Wie Sie einen Beitrag leisten können, erfahren Sie unter [Erste Schritte](../DEVELOPERS.md)
 
 ## Gemeinschaft &amp; Unterstützung
 
-- [Gemeinschaftsforum](https://github.com/supabase/supabase/discussions). Am besten geeignet für: Hilfe bei der Erstellung, Diskussion über bewährte Datenbankverfahren.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Am besten geeignet für: Bugs und Fehler, auf die Sie bei der Verwendung von Supabase stoßen.
-- [E-Mail-Support](https://supabase.com/docs/support#business-support). Am besten für: Probleme mit Ihrer Datenbank oder Infrastruktur.
-- [Discord](https://discord.supabase.com). Am besten geeignet für: Austausch von Anwendungen und Austausch mit der Community.
+- [Gemeinschaftsforum](https://github.com/Indobase/Indobase/discussions). Am besten geeignet für: Hilfe bei der Erstellung, Diskussion über bewährte Datenbankverfahren.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Am besten geeignet für: Bugs und Fehler, auf die Sie bei der Verwendung von Indobase stoßen.
+- [E-Mail-Support](https://indobase.in/docs/support#business-support). Am besten für: Probleme mit Ihrer Datenbank oder Infrastruktur.
+- [Discord](https://discord.indobase.in). Am besten geeignet für: Austausch von Anwendungen und Austausch mit der Community.
 
 ## Status
 
-- [x] Alpha: Wir testen Supabase mit einer geschlossenen Gruppe von Kunden
-- [x] Öffentliche Alpha: Jeder kann sich unter [supabase.com/dashboard](https://supabase.com/dashboard) anmelden. Aber seien Sie nachsichtig mit uns, es gibt noch ein paar Macken
+- [x] Alpha: Wir testen Indobase mit einer geschlossenen Gruppe von Kunden
+- [x] Öffentliche Alpha: Jeder kann sich unter [supabase.com/dashboard](https://indobase.in/dashboard) anmelden. Aber seien Sie nachsichtig mit uns, es gibt noch ein paar Macken
 - [x] Öffentliche Beta: Stabil genug für die meisten nicht-unternehmerischen Anwendungsfälle
-- [Öffentlich: Allgemeine Verfügbarkeit [[status](https://supabase.com/docs/guides/getting-started/features#feature-status)]
+- [Öffentlich: Allgemeine Verfügbarkeit [[status](https://indobase.in/docs/guides/getting-started/features#feature-status)]
 
 Wir befinden uns derzeit in der Public Beta. Beobachten Sie "releases" dieses Repos, um über größere Updates informiert zu werden.
 
@@ -51,14 +51,14 @@ Wir befinden uns derzeit in der Public Beta. Beobachten Sie "releases" dieses Re
 
 ## Wie es funktioniert
 
-Supabase ist eine Kombination aus Open-Source-Tools. Wir entwickeln die Funktionen von Firebase unter Verwendung von Open-Source-Produkten in Unternehmensqualität. Wenn die Tools und Communities mit einer MIT-, Apache-2- oder einer vergleichbaren offenen Lizenz existieren, verwenden und unterstützen wir dieses Tool. Wenn es das Tool nicht gibt, entwickeln wir es selbst und stellen es als Open Source zur Verfügung. Supabase ist keine 1:1-Abbildung von Firebase. Unser Ziel ist es, Entwicklern eine Firebase-ähnliche Entwicklungserfahrung mit Open-Source-Tools zu bieten.
+Indobase ist eine Kombination aus Open-Source-Tools. Wir entwickeln die Funktionen von Firebase unter Verwendung von Open-Source-Produkten in Unternehmensqualität. Wenn die Tools und Communities mit einer MIT-, Apache-2- oder einer vergleichbaren offenen Lizenz existieren, verwenden und unterstützen wir dieses Tool. Wenn es das Tool nicht gibt, entwickeln wir es selbst und stellen es als Open Source zur Verfügung. Indobase ist keine 1:1-Abbildung von Firebase. Unser Ziel ist es, Entwicklern eine Firebase-ähnliche Entwicklungserfahrung mit Open-Source-Tools zu bieten.
 
 **Architektur**
 
-Supabase ist eine [gehostete Plattform](https://supabase.com/dashboard). Sie können sich anmelden und Supabase verwenden, ohne etwas zu installieren.
-Sie können auch [selbst hosten](https://supabase.com/docs/guides/hosting/overview) und [lokal entwickeln](https://supabase.com/docs/guides/local-development).
+Indobase ist eine [gehostete Plattform](https://indobase.in/dashboard). Sie können sich anmelden und Indobase verwenden, ohne etwas zu installieren.
+Sie können auch [selbst hosten](https://indobase.in/docs/guides/hosting/overview) und [lokal entwickeln](https://indobase.in/docs/guides/local-development).
 
-![Architektur](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Architektur](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) ist ein objektrelationales Datenbanksystem, das seit über 30 Jahren aktiv entwickelt wird und sich einen guten Ruf in Bezug auf Zuverlässigkeit, Robustheit der Funktionen und Leistung erworben hat.
 - [Realtime](https://github.com/supabase/realtime) ist ein Elixir-Server, mit dem Sie PostgreSQL-Einsätze, -Updates und -Löschvorgänge über Websockets abhören können. Realtime fragt die in Postgres eingebaute Replikationsfunktionalität nach Datenbankänderungen ab, konvertiert die Änderungen in JSON und sendet dann das JSON über Websockets an autorisierte Clients.
@@ -77,12 +77,12 @@ Unser Ansatz für Client-Bibliotheken ist modular. Jede Unterbibliothek ist eine
   <tr>
     <th>Sprache</th>
     <th>Client</th>
-    <th colspan="5">Feature-Clients (gebündelt im Supabase-Client)</th>
+    <th colspan="5">Feature-Clients (gebündelt im Indobase-Client)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -105,16 +105,16 @@ Unser Ansatz für Client-Bibliotheken ist modular. Jede Unterbibliothek ist eine
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -220,7 +220,7 @@ Unser Ansatz für Client-Bibliotheken ist modular. Jede Unterbibliothek ist eine
 - [Katalanisch / Català](/i18n/README.ca.md)
 - [Dänisch / Dansk](/i18n/README.da.md)
 - [Niederländisch / Nederlands](/i18n/README.nl.md)
-- [Englisch](https://github.com/supabase/supabase)
+- [Englisch](https://github.com/Indobase/Indobase)
 - [Finnisch / Suomalainen](/i18n/README.fi.md)
 - [Französisch / Français](/i18n/README.fr.md)
 - [Deutsch / Deutsch](/i18n/README.de.md)

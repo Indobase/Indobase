@@ -5,8 +5,8 @@
   "title": "Social Auth flow for TanStack and Supabase",
   "description": "Social Auth flow for TanStack and Supabase",
   "dependencies": [
-    "@supabase/ssr@latest",
-    "indobase-js@latest"
+    "@indobaseinc/ssr@latest",
+    "@indobaseinc/indobase-js@1.0.8"
   ],
   "registryDependencies": [
     "button",
@@ -20,7 +20,7 @@
     },
     {
       "path": "registry/default/blocks/social-auth-tanstack/lib/supabase/fetch-user-server-fn.ts",
-      "content": "import type { Factor, User } from 'indobase-js'\nimport { createServerFn } from '@tanstack/react-start'\n\nimport { createClient } from '@/registry/default/clients/tanstack/lib/supabase/server'\n\ntype SSRSafeUser = User & {\n  factors: (Factor & { factor_type: 'phone' | 'totp' })[]\n}\n\nexport const fetchUser: () => Promise<SSRSafeUser | null> = createServerFn({\n  method: 'GET',\n}).handler(async () => {\n  const supabase = createClient()\n  const { data, error } = await supabase.auth.getUser()\n\n  if (error) {\n    return null\n  }\n\n  return data.user as SSRSafeUser\n})\n",
+      "content": "import type { Factor, User } from '@indobaseinc/indobase-js'\nimport { createServerFn } from '@tanstack/react-start'\n\nimport { createClient } from '@/registry/default/clients/tanstack/lib/supabase/server'\n\ntype SSRSafeUser = User & {\n  factors: (Factor & { factor_type: 'phone' | 'totp' })[]\n}\n\nexport const fetchUser: () => Promise<SSRSafeUser | null> = createServerFn({\n  method: 'GET',\n}).handler(async () => {\n  const supabase = createClient()\n  const { data, error } = await supabase.auth.getUser()\n\n  if (error) {\n    return null\n  }\n\n  return data.user as SSRSafeUser\n})\n",
       "type": "registry:lib"
     },
     {
@@ -55,12 +55,12 @@
     },
     {
       "path": "registry/default/clients/tanstack/lib/supabase/client.ts",
-      "content": "/// <reference types=\"vite/types/importMeta.d.ts\" />\nimport { createBrowserClient } from '@supabase/ssr'\n\nexport function createClient() {\n  return createBrowserClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
+      "content": "/// <reference types=\"vite/types/importMeta.d.ts\" />\nimport { createBrowserClient } from '@indobaseinc/ssr'\n\nexport function createClient() {\n  return createBrowserClient(\n    import.meta.env.VITE_SUPABASE_URL!,\n    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!\n  )\n}\n",
       "type": "registry:lib"
     },
     {
       "path": "registry/default/clients/tanstack/lib/supabase/server.ts",
-      "content": "import { createServerClient } from '@supabase/ssr'\nimport { getCookies, setCookie } from '@tanstack/react-start/server'\n\nexport function createClient() {\n  return createServerClient(\n    process.env.VITE_SUPABASE_URL!,\n    process.env.VITE_SUPABASE_PUBLISHABLE_KEY!,\n    {\n      cookies: {\n        getAll() {\n          return Object.entries(getCookies()).map(\n            ([name, value]) =>\n              ({\n                name,\n                value,\n              }) as { name: string; value: string }\n          )\n        },\n        setAll(cookies) {\n          cookies.forEach((cookie) => {\n            setCookie(cookie.name, cookie.value)\n          })\n        },\n      },\n    }\n  )\n}\n",
+      "content": "import { createServerClient } from '@indobaseinc/ssr'\nimport { getCookies, setCookie } from '@tanstack/react-start/server'\n\nexport function createClient() {\n  return createServerClient(\n    process.env.VITE_SUPABASE_URL!,\n    process.env.VITE_SUPABASE_PUBLISHABLE_KEY!,\n    {\n      cookies: {\n        getAll() {\n          return Object.entries(getCookies()).map(\n            ([name, value]) =>\n              ({\n                name,\n                value,\n              }) as { name: string; value: string }\n          )\n        },\n        setAll(cookies) {\n          cookies.forEach((cookie) => {\n            setCookie(cookie.name, cookie.value)\n          })\n        },\n      },\n    }\n  )\n}\n",
       "type": "registry:lib"
     }
   ],

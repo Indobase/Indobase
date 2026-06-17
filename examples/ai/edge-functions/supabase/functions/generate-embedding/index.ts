@@ -1,6 +1,6 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@indobaseinc/functions-js/edge-runtime.d.ts";
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@indobaseinc/indobase-js@2";
 import { Database, Tables } from "../_shared/database.types.ts";
 
 type EmbeddingsRecord = Tables<"embeddings">;

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useFlag, useParams } from 'common'
 import { LogDrainDestinationSheetForm } from 'components/interfaces/LogDrains/LogDrainDestinationSheetForm'
 import { LogDrains } from 'components/interfaces/LogDrains/LogDrains'

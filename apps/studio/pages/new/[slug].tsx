@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { LOCAL_STORAGE_KEYS, useFlag, useParams } from 'common'
 import { AUTO_ENABLE_RLS_EVENT_TRIGGER_SQL } from 'components/interfaces/Database/Triggers/EventTriggersList/EventTriggers.constants'
 import { AdvancedConfiguration } from 'components/interfaces/ProjectCreation/AdvancedConfiguration'

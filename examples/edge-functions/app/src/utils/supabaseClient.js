@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
 export const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL ?? 'http://localhost:54321',

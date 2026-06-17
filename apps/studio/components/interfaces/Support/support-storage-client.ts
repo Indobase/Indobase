@@ -1,6 +1,6 @@
-import { createClient, type SupabaseClient } from 'indobase-js'
+import { createClient, type IndobaseClient } from '@indobaseinc/indobase-js'
 
-export const createSupportStorageClient = (): SupabaseClient => {
+export const createSupportStorageClient = (): IndobaseClient => {
   const SUPPORT_API_URL = process.env.NEXT_PUBLIC_SUPPORT_API_URL || ''
   const SUPPORT_API_KEY = process.env.NEXT_PUBLIC_SUPPORT_ANON_KEY || ''
 

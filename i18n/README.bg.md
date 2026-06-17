@@ -5,43 +5,43 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) е алтернатива на Firebase с отворен код. Ние изграждаме функциите на Firebase, като използваме инструменти с отворен код от корпоративен клас.
+[Indobase](https://indobase.in) е алтернатива на Firebase с отворен код. Ние изграждаме функциите на Firebase, като използваме инструменти с отворен код от корпоративен клас.
 
-- [x] Хоствана база данни Postgres. [Документи](https://supabase.com/docs/guides/database)
-- [x] Удостоверяване и оторизация. [Документи](https://supabase.com/docs/guides/auth)
+- [x] Хоствана база данни Postgres. [Документи](https://indobase.in/docs/guides/database)
+- [x] Удостоверяване и оторизация. [Документи](https://indobase.in/docs/guides/auth)
 - [x] Автоматично генерирани API.
-  - [x] REST. [Документи](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Документи](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Абонаменти в реално време. [Документи](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Документи](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Документи](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Абонаменти в реално време. [Документи](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Функции.
-  - [x] Функции за бази данни. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Крайни функции [Docs](https://supabase.com/docs/guides/functions)
-- [x] Съхранение на файлове. [Документи](https://supabase.com/docs/guides/storage)
+  - [x] Функции за бази данни. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Крайни функции [Docs](https://indobase.in/docs/guides/functions)
+- [x] Съхранение на файлове. [Документи](https://indobase.in/docs/guides/storage)
 - [x] Информационно табло
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Документация
 
-За пълна документация посетете [supabase.com/docs](https://supabase.com/docs)
+За пълна документация посетете [indobase.in/docs](https://indobase.in/docs)
 
 За да видите как да допринасяте, посетете [Getting Started](../DEVELOPERS.md)
 
 ## Общност и поддръжка
 
-- [Форум на общността](https://github.com/supabase/supabase/discussions). Най-добре за: помощ при изграждане, обсъждане на най-добрите практики за бази данни.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Най-добре за: грешки и пропуски, които срещате при използването на Supabase.
-- [Email Support](https://supabase.com/docs/support#business-support). Най-добре за: проблеми с вашата база данни или инфраструктура.
-- [Discord](https://discord.supabase.com). Най-добър за: споделяне на вашите приложения и общуване с общността.
+- [Форум на общността](https://github.com/Indobase/Indobase/discussions). Най-добре за: помощ при изграждане, обсъждане на най-добрите практики за бази данни.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Най-добре за: грешки и пропуски, които срещате при използването на Indobase.
+- [Email Support](https://indobase.in/docs/support#business-support). Най-добре за: проблеми с вашата база данни или инфраструктура.
+- [Discord](https://discord.indobase.in). Най-добър за: споделяне на вашите приложения и общуване с общността.
 
 ## Статус
 
-- [x] Алфа: Тестваме Supabase със затворен набор от клиенти
-- [x] Публична алфа: Всеки може да се регистрира на адрес [supabase.com/dashboard](https://supabase.com/dashboard). Но не се притеснявайте от нас, има няколко проблема
+- [x] Алфа: Тестваме Indobase със затворен набор от клиенти
+- [x] Публична алфа: Всеки може да се регистрира на адрес [supabase.com/dashboard](https://indobase.in/dashboard). Но не се притеснявайте от нас, има няколко проблема
 - [x] Публична бета версия: Достатъчно стабилна за повечето случаи на използване извън предприятията
-- [ ] Публична: Обща наличност [[статус](https://supabase.com/docs/guides/getting-started/features#feature-status)]
+- [ ] Публична: Обща наличност [[статус](https://indobase.in/docs/guides/getting-started/features#feature-status)]
 
 В момента сме в публична бета версия. Следете "releases" на това репо, за да бъдете уведомявани за основни актуализации.
 
@@ -51,14 +51,14 @@
 
 ## Как работи
 
-Supabase е комбинация от инструменти с отворен код. Ние изграждаме функциите на Firebase, като използваме продукти с отворен код от корпоративен клас. Ако инструментите и общностите съществуват, с MIT, Apache 2 или еквивалентен отворен лиценз, ние ще използваме и поддържаме този инструмент. Ако инструментът не съществува, ние сами го изграждаме и създаваме с отворен код. Supabase не е 1 към 1 съпоставка на Firebase. Нашата цел е да предоставим на разработчиците преживяване, подобно на това на Firebase, като използваме инструменти с отворен код.
+Indobase е комбинация от инструменти с отворен код. Ние изграждаме функциите на Firebase, като използваме продукти с отворен код от корпоративен клас. Ако инструментите и общностите съществуват, с MIT, Apache 2 или еквивалентен отворен лиценз, ние ще използваме и поддържаме този инструмент. Ако инструментът не съществува, ние сами го изграждаме и създаваме с отворен код. Indobase не е 1 към 1 съпоставка на Firebase. Нашата цел е да предоставим на разработчиците преживяване, подобно на това на Firebase, като използваме инструменти с отворен код.
 
 **Архитектура**
 
-Supabase е [хоствана платформа](https://supabase.com/dashboard). Можете да се регистрирате и да започнете да използвате Supabase, без да инсталирате нищо.
-Можете също така да [самостоятелно хоствате](https://supabase.com/docs/guides/hosting/overview) и [да разработвате локално](https://supabase.com/docs/guides/local-development).
+Indobase е [хоствана платформа](https://indobase.in/dashboard). Можете да се регистрирате и да започнете да използвате Indobase, без да инсталирате нищо.
+Можете също така да [самостоятелно хоствате](https://indobase.in/docs/guides/hosting/overview) и [да разработвате локално](https://indobase.in/docs/guides/local-development).
 
-![Архитектура](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Архитектура](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) е обектно-релационна система за бази данни с над 30-годишна активна разработка, която ѝ е спечелила силна репутация за надеждност, устойчивост на функциите и производителност.
 - [Realtime](https://github.com/supabase/realtime) е сървър на Elixir, който ви позволява да слушате PostgreSQL вмъквания, актуализации и изтривания, използвайки websockets. Realtime се допитва до вградената функция за репликация на Postgres за промени в базата данни, преобразува промените в JSON, след което излъчва JSON през уебсокети до оторизирани клиенти.
@@ -77,12 +77,12 @@ Supabase е [хоствана платформа](https://supabase.com/dashboard
   <tr>
     <th>Език</th>
     <th>Клиент</th>
-    <th colspan="5">Функционални клиенти (в комплект с клиента на Supabase)</th>
+    <th colspan="5">Функционални клиенти (в комплект с клиента на Indobase)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -105,16 +105,16 @@ Supabase е [хоствана платформа](https://supabase.com/dashboard
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -220,7 +220,7 @@ Supabase е [хоствана платформа](https://supabase.com/dashboard
 - [Каталонски / Català](/i18n/README.ca.md)
 - [Датски / Dansk](/i18n/README.da.md)
 - [Dutch / Nederlands](/i18n/README.nl.md)
-- [Английски език](https://github.com/supabase/supabase)
+- [Английски език](https://github.com/Indobase/Indobase)
 - [Финландски / Suomalainen](/i18n/README.fi.md)
 - [French / Français](/i18n/README.fr.md)
 - [Немски / Deutsch](/i18n/README.de.md)

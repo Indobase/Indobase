@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { components } from 'api-types'
 
 import { PROJECT_REST_URL } from 'lib/constants/api'

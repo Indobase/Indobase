@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core'
 import { FormBuilder, FormGroup } from '@angular/forms'
-import { User } from '@supabase/supabase-js'
+import { User } from '@indobaseinc/indobase-js'
 import { Profile, SupabaseService } from '../supabase.service'
 
 @Component({

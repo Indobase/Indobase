@@ -495,7 +495,7 @@ insert into public.colors (name, hex, red, green, blue, hue, sat_hsl, light_hsl,
     description: 'Build a basic slack clone with Row Level Security.',
     sql: `
 --
--- For use with https://github.com/supabase/supabase/tree/master/examples/slack-clone/nextjs-slack-clone
+-- For use with https://github.com/Indobase/supabase/tree/master/examples/slack-clone/nextjs-slack-clone
 
 -- Custom types
 create type public.app_permission as enum ('channels.delete', 'messages.delete');
@@ -694,8 +694,8 @@ values
     sql: `
 --
 -- For use with:
--- https://github.com/supabase/supabase/tree/master/examples/todo-list/sveltejs-todo-list or
--- https://github.com/supabase/examples-archive/tree/main/supabase-js-v1/todo-list
+-- https://github.com/Indobase/supabase/tree/master/examples/todo-list/sveltejs-todo-list or
+-- https://github.com/Indobase/examples-archive/tree/mainindobase-js-v1/todo-list
 --
 
 create table todos (

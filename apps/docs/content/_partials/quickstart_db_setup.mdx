@@ -1,6 +1,6 @@
-<StepHikeCompact.Details title="Create a Supabase project">
+<StepHikeCompact.Details title="Create a Indobase project">
 
-Go to [database.new](https://database.new) and create a new Supabase project.
+Go to [database.new](https://database.new) and create a new Indobase project.
 
 Alternatively, you can create a project using the Management API:
 
@@ -9,15 +9,15 @@ Alternatively, you can create a project using the Management API:
 <StepHikeCompact.Code>
 
 ```bash
-# First, get your access token from https://supabase.com/dashboard/account/tokens
+# First, get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 
 # List your organizations to get the organization ID
 curl -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-  https://api.supabase.com/v1/organizations
+  https://api.indobase.in/v1/organizations
 
 # Create a new project (replace <org-id> with your organization ID)
-curl -X POST https://api.supabase.com/v1/projects \
+curl -X POST https://api.indobase.in/v1/projects \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

@@ -71,7 +71,7 @@ export const EdgeFunctionBlock = ({
   onDragStart,
 }: EdgeFunctionBlockProps) => {
   const resolvedFunctionUrl = functionUrl ?? 'Function URL will be available after deployment'
-  const resolvedDownloadCommand = downloadCommand ?? `supabase functions download ${functionName}`
+  const resolvedDownloadCommand = downloadCommand ?? `indobase functions download ${functionName}`
 
   const hasStatusMessage = isDeploying || isDeployed || !!errorText
 

@@ -5,7 +5,7 @@
   "title": "Dropzone (File Upload) for Nuxt and Supabase",
   "description": "Displays a control for easier uploading of files directly to Supabase Storage.",
   "dependencies": [
-    "indobase-js@latest",
+    "@indobaseinc/indobase-js@1.0.8",
     "@vueuse/core",
     "lucide-vue-next"
   ],

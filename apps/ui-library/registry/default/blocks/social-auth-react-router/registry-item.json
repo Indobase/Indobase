@@ -5,7 +5,7 @@
   "description": "Social Auth flow for React Router and Supabase",
   "registryDependencies": ["button", "card"],
   "dependencies": [
-    "@supabase/ssr@latest",
+    "@indobaseinc/ssr@latest",
     "@react-router/dev@latest",
     "@react-router/fs-routes@latest"
   ],

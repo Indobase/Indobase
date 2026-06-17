@@ -19,7 +19,7 @@ Call the sign out method from the client library. It removes the active session 
 ```js
 import { createClient } from 'indobase-js'
 const supabase = createClient(
-  'https://your-project-id.supabase.co',
+  'https://your-project-id.indobase.in',
   'sb_publishable_... or anon key'
 )
 
@@ -74,7 +74,7 @@ supabase.auth.sign_out()
 
 ## Sign out and scopes
 
-Supabase Auth allows you to specify three different scopes for when a user invokes the [sign out API](/docs/reference/javascript/auth-signout) in your application:
+Indobase Auth allows you to specify three different scopes for when a user invokes the [sign out API](/docs/reference/javascript/auth-signout) in your application:
 
 - `global` (default) when all sessions active for the user are terminated.
 - `local` which only terminates the current session for the user but keep sessions on other devices or browsers active.
@@ -94,7 +94,7 @@ You can invoke these by providing the `scope` option:
 ```js
 import { createClient } from 'indobase-js'
 const supabase = createClient(
-  'https://your-project-id.supabase.co',
+  'https://your-project-id.indobase.in',
   'sb_publishable_... or anon key'
 )
 

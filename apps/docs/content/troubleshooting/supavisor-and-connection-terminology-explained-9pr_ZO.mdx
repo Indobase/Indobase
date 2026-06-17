@@ -24,7 +24,7 @@ This represents a direct connection to the database.
 Your application servers can directly connect using the DB connection string:
 
 ```md
-postgresql://postgres:[PASSWORD]@db.[PROJECT REF].supabase.co:5432/postgres
+postgresql://postgres:[PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 When connecting through the pooler, it will establish db/direct connections on behalf of clients. It then forwards/triages requests from client connections to db/direct connections.
@@ -49,7 +49,7 @@ Transaction mode gives the pooler permission to share direct connections among m
 
 ```md
 #example transaction mode string
-postgres://postgres.obfwhevidiamwdwki:[YPASSWORD]@aws-0-ca-central-1.pooler.supabase.com:**6543**/postgres
+postgres://postgres.obfwhevidiamwdwki:[YPASSWORD]@[PROJECT-REF].indobase.in:**6543**/postgres
 ```
 
 Postgres connections use the Postgres Wire Protocol (PWP) rather than HTTP. PWP acts like a WebSocket: once a connection is made, it stays open and active until the client disconnects.
@@ -62,7 +62,7 @@ session mode restricts the pooler, forcing it to grant an underlying direct conn
 
 ```md
 #example session mode string | uses port 5432
-postgres://postgres.obfwhevidiamwdwki:[YPASSWORD]@aws-0-ca-central-1.pooler.supabase.com:**5432**/postgres
+postgres://postgres.obfwhevidiamwdwki:[YPASSWORD]@[PROJECT-REF].indobase.in:**5432**/postgres
 ```
 
 Session mode behaves nearly identically to a standard direct connection, which makes one wonder: what is the point?

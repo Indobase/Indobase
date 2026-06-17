@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { PropsWithChildren, useEffect, useRef } from 'react'
 

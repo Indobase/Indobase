@@ -1,4 +1,4 @@
-import { REALTIME_SUBSCRIBE_STATES, RealtimeChannel } from 'indobase-js'
+import { REALTIME_SUBSCRIBE_STATES, RealtimeChannel } from '@indobaseinc/indobase-js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { createClient } from '@/registry/default/clients/nextjs/lib/supabase/client'

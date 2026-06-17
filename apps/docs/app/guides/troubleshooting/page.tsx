@@ -30,7 +30,7 @@ export default async function GlobalTroubleshootingPage() {
       <div className="py-8 px-5">
         <h1 className="text-4xl tracking-tight mb-7">Troubleshooting</h1>
         <p className="text-lg text-foreground-light">
-          Search or browse our troubleshooting guides for solutions to common Supabase issues.
+          Search or browse our troubleshooting guides for solutions to common Indobase issues.
         </p>
         <hr className="my-7" aria-hidden />
         <TroubleshootingFilter
@@ -60,7 +60,7 @@ export default async function GlobalTroubleshootingPage() {
 }
 
 export const metadata: Metadata = {
-  title: `${metadataTitle || 'Supabase'} | Troubleshooting`,
+  title: `${metadataTitle || 'Indobase'} | Troubleshooting`,
   alternates: {
     canonical: `${PROD_URL}/guides/troubleshooting`,
   },

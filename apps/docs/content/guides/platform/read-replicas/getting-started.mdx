@@ -34,12 +34,12 @@ To add a Read Replica, go to the [Database Replication page](/dashboard/project/
 You can also manage Read Replicas using the Management API (beta functionality):
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Create a new Read Replica
-curl -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/read-replicas/setup" \
+curl -X POST "https://api.indobase.in/v1/projects/$PROJECT_REF/read-replicas/setup" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -47,7 +47,7 @@ curl -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/read-replicas/se
   }'
 
 # Delete a Read Replica
-curl -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/read-replicas/remove" \
+curl -X POST "https://api.indobase.in/v1/projects/$PROJECT_REF/read-replicas/remove" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -165,6 +165,6 @@ The replica status "Init failed" in the dashboard indicates that the Read Replic
 - Platform issues.
 - Very high active workloads combined with large (50+ GB) database sizes
 
-It is safe to drop this failed Read Replica, and in the event of a transient issue, attempt to spin up another one. If spinning up Read Replicas for your project consistently fails, check the[status page](https://status.supabase.com) for any ongoing incidents, or [open a support ticket](/dashboard/support/new). To aid the investigation, do not bring down the recently failed Read Replica.
+It is safe to drop this failed Read Replica, and in the event of a transient issue, attempt to spin up another one. If spinning up Read Replicas for your project consistently fails, check the[status page](https://status.indobase.in) for any ongoing incidents, or [open a support ticket](/dashboard/support/new). To aid the investigation, do not bring down the recently failed Read Replica.
 
 {/* supa-mdx-lint-enable-next-line Rule001HeadingCase */}

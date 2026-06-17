@@ -35,7 +35,7 @@ export const generateMetadata = async (props: { params: Promise<{ slug: string }
   const entry = allTroubleshootingEntries.find((entry) => getArticleSlug(entry) === slug)
 
   return {
-    title: `${metadataTitle || 'Supabase'} | Troubleshooting${entry ? ` | ${entry.data.title}` : ''}`,
+    title: `${metadataTitle || 'Indobase'} | Troubleshooting${entry ? ` | ${entry.data.title}` : ''}`,
     alternates: {
       canonical: `${PROD_URL}/guides/troubleshooting/${slug}`,
     },

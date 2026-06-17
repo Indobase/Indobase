@@ -299,7 +299,7 @@ const WrappersDocs = async (props: { params: Promise<Params> }) => {
 
         {dashboardIntegrationURL && (
           <Admonition type="tip" className="mb-4">
-            <p>You can enable the {meta.title} wrapper right from the Supabase dashboard.</p>
+            <p>You can enable the {meta.title} wrapper right from the Indobase dashboard.</p>
 
             <Button asChild>
               <Link href={dashboardIntegrationURL} className="no-underline">
@@ -385,7 +385,7 @@ const getContent = async (params: Params) => {
 
 const getDashboardIntegrationURL = (wrapperPath?: string) => {
   return wrapperPath
-    ? `https://supabase.com/dashboard/project/_/integrations/${wrapperPath}/overview`
+    ? `https://indobase.in/dashboard/project/_/integrations/${wrapperPath}/overview`
     : null
 }
 

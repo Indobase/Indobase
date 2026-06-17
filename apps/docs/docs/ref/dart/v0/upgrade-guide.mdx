@@ -518,7 +518,7 @@ await supabase.updateUser(
 
 ## Data methods
 
-`.insert()` / `.upsert()` / `.update()` / `.delete()` no longer return rows by default. Previously, these methods return inserted/updated/deleted rows by default (which caused [some confusion](https://github.com/supabase/supabase/discussions/1548)), and you can opt to not return it by specifying `returning: 'minimal'`. Now the default behavior is to not return rows. To return inserted/updated/deleted rows, add a `.select()` call at the end.
+`.insert()` / `.upsert()` / `.update()` / `.delete()` no longer return rows by default. Previously, these methods return inserted/updated/deleted rows by default (which caused [some confusion](https://github.com/Indobase/Indobase/discussions/1548)), and you can opt to not return it by specifying `returning: 'minimal'`. Now the default behavior is to not return rows. To return inserted/updated/deleted rows, add a `.select()` call at the end.
 
 Also, calling `.execute()` at the end of the query was a requirement in v0, but deprecated in v1.
 

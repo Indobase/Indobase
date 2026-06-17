@@ -49,7 +49,7 @@ import { useSelectedProjectQuery } from '@/hooks/misc/useSelectedProject'
 import { PROJECT_STATUS } from '@/lib/constants'
 import { tryParseJson } from '@/lib/helpers'
 import { lookupMime } from '@/lib/mime'
-import { createProjectSupabaseClient } from '@/lib/project-supabase-client'
+import { createProjectIndobaseClient } from '@/lib/project-indobase-client'
 import { ResponseError } from '@/types'
 
 type UploadProgress = {
@@ -323,7 +323,7 @@ function createStorageExplorerState({
       const formattedPathToEmptyPlaceholderFile =
         pathToFolder.length > 0 ? `${pathToFolder}/${emptyPlaceholderFile}` : emptyPlaceholderFile
 
-      const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
+      const client = await createProjectIndobaseClient(state.projectRef, clientEndpoint)
       await client.storage
         .from(state.selectedBucket.name)
         .upload(
@@ -574,7 +574,7 @@ function createStorageExplorerState({
 
         if (data.length === 0) {
           const prefixToPlaceholder = `${parentFolderPrefix}/${EMPTY_FOLDER_PLACEHOLDER_FILE_NAME}`
-          const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
+          const client = await createProjectIndobaseClient(state.projectRef, clientEndpoint)
           await client.storage
             .from(state.selectedBucket.name)
             .upload(prefixToPlaceholder, new File([], EMPTY_FOLDER_PLACEHOLDER_FILE_NAME))
@@ -809,7 +809,7 @@ function createStorageExplorerState({
             >(async (resolve) => {
               try {
                 // Get authenticated Indobase client for Storage API access
-                const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
+                const client = await createProjectIndobaseClient(state.projectRef, clientEndpoint)
 
                 // Use Storage API directly instead of Management API to avoid throttling
                 const { data, error } = await client.storage
@@ -1180,7 +1180,7 @@ function createStorageExplorerState({
               endpoint: state.resumableUploadUrl,
               retryDelays: [0, 200, 500, 1500, 3000, 5000],
               headers: {
-                'x-source': 'supabase-dashboard',
+                'x-source': 'indobase-dashboard',
               },
               uploadDataDuringCreation: uploadDataDuringCreation,
               removeFingerprintOnSuccess: true,
@@ -1531,7 +1531,7 @@ function createStorageExplorerState({
       const toastId = showToast ? toast.loading(`Retrieving ${fileName}...`) : undefined
 
       try {
-        const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
+        const client = await createProjectIndobaseClient(state.projectRef, clientEndpoint)
 
         // Use Storage API directly instead of Management API to avoid throttling
         const { data, error } = await client.storage
@@ -1575,7 +1575,7 @@ function createStorageExplorerState({
       if (!file.path) return false
 
       try {
-        const client = await createProjectSupabaseClient(state.projectRef, clientEndpoint)
+        const client = await createProjectIndobaseClient(state.projectRef, clientEndpoint)
 
         const { data, error } = await client.storage
           .from(state.selectedBucket.id)
@@ -1647,7 +1647,7 @@ function createStorageExplorerState({
       const blobURL = URL.createObjectURL(await zipWriter.close())
       const link = document.createElement('a')
       link.href = blobURL
-      link.setAttribute('download', `supabase-files.zip`)
+      link.setAttribute('download', `indobase-files.zip`)
       document.body.appendChild(link)
       link.click()
       link.parentNode?.removeChild(link)

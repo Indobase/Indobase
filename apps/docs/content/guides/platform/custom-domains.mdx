@@ -10,7 +10,7 @@ Custom domains allow you to present a branded experience to your users. These ar
 There are two types of domains supported by Supabase:
 
 1. Custom domains, where you use a domain such as `api.example.com` instead of the project's default domain.
-2. Vanity subdomains (experimental), where you can set up a different subdomain on `supabase.co` for your project.
+2. Vanity subdomains (experimental), where you can set up a different subdomain on `indobase.in` for your project.
 
 You can choose either a custom domain or vanity subdomain for each project.
 
@@ -18,41 +18,41 @@ You can choose either a custom domain or vanity subdomain for each project.
 
 Custom domains change the way your project's URLs appear to your users. This is useful when:
 
-- You are using [OAuth (Social Login)](/docs/guides/auth/social-login) with Supabase Auth and the project's URL is shown on the OAuth consent screen.
+- You are using [OAuth (Social Login)](/docs/guides/auth/social-login) with Indobase Auth and the project's URL is shown on the OAuth consent screen.
 - You are creating APIs for third-party systems, for example, implementing webhooks or external API calls to your project via [Edge Functions](/docs/guides/functions).
 - You are storing URLs in a database or encoding them in QR codes.
 
-Custom domains help you keep your APIs portable for the long term. By using a custom domain you can migrate from one Supabase project to another, or make it easier to version APIs in the future.
+Custom domains help you keep your APIs portable for the long term. By using a custom domain you can migrate from one Indobase project to another, or make it easier to version APIs in the future.
 
 ### Limitations
 
 - Custom domains are not intended to enable hosting of frontend applications through [Edge Functions](/docs/guides/functions).
-- You can only attach a single custom domain to any given Supabase project. It is not possible to break out your project's resources into multiple custom domains.
+- You can only attach a single custom domain to any given Indobase project. It is not possible to break out your project's resources into multiple custom domains.
 - Custom domains can only be powered by CNAME records.
 
-### Configure a custom domain using the Supabase dashboard
+### Configure a custom domain using the Indobase dashboard
 
 Follow the **Custom Domains** steps in the [General Settings](/dashboard/project/_/settings/general) page in the Dashboard to set up a custom domain for your project.
 
-### Configure a custom domain using the Supabase CLI
+### Configure a custom domain using the Indobase CLI
 
-This example assumes your Supabase project is `abcdefghijklmnopqrst` with a corresponding API URL `abcdefghijklmnopqrst.supabase.co` and configures a custom domain at `api.example.com`.
+This example assumes your Indobase project is `abcdefghijklmnopqrst` with a corresponding API URL `abcdefghijklmnopqrst.indobase.in` and configures a custom domain at `api.example.com`.
 
 To get started:
 
-1. [Install](/docs/guides/resources/supabase-cli) the latest version of the Supabase CLI.
-2. [Log in](/docs/guides/cli/local-development#log-in-to-the-supabase-cli) to your Supabase account using the CLI.
+1. [Install](/docs/guides/resources/supabase-cli) the latest version of the Indobase CLI.
+2. [Log in](/docs/guides/cli/local-development#log-in-to-the-supabase-cli) to your Indobase account using the CLI.
 3. Ensure you have [Owner or Admin permissions](/docs/guides/platform/access-control#manage-team-members) for the project.
 4. Get a custom domain from a DNS provider. Currently, only subdomains are supported.
    - Use `api.example.com` instead of `example.com`.
 
 ### Add a CNAME record
 
-You need to add a CNAME record to your domain's DNS settings to ensure your custom domain points to the Supabase project.
+You need to add a CNAME record to your domain's DNS settings to ensure your custom domain points to the Indobase project.
 
-If your project's default domain is `abcdefghijklmnopqrst.supabase.co` you should:
+If your project's default domain is `abcdefghijklmnopqrst.indobase.in` you should:
 
-- Create a CNAME record for `api.example.com` that resolves to `abcdefghijklmnopqrst.supabase.co.`.
+- Create a CNAME record for `api.example.com` that resolves to `abcdefghijklmnopqrst.indobase.in.`.
 - Use a low TTL value to quickly propagate changes in case you make a mistake.
 
 ### Verify ownership of the domain
@@ -81,7 +81,7 @@ Some DNS registrars automatically append your domain name to the DNS entries bei
 
 Make sure you've configured all required DNS settings:
 
-- CNAME for your custom domain pointing to the Supabase project domain.
+- CNAME for your custom domain pointing to the Indobase project domain.
 - TXT record for `_acme-challenge.<your-custom-domain>`.
 
 Use the [`domains reverify`](/docs/reference/cli/supabase-domains-reverify) command to begin the verification process of your domain. You may need to run this command a few times because DNS records take a while to propagate.
@@ -97,21 +97,21 @@ In the background, Supabase will check your DNS records and issue an SSL certifi
 Before you activate your domain, prepare your applications and integrations for the domain change:
 
 - The project's Supabase domain remains active.
-  - You do not need to change the Supabase URL in your applications immediately.
+  - You do not need to change the Indobase URL in your applications immediately.
   - You can use it interchangeably with the custom domain.
-- Supabase Auth will use the custom domain immediately once activated.
+- Indobase Auth will use the custom domain immediately once activated.
   - OAuth flows will advertise the custom domain as a callback URL.
   - SAML will use the custom domain instead. This means that the `EntityID` of your project has changed, and this may cause SAML with existing identity providers to stop working.
 
 To prevent issues for your users, follow these steps:
 
 1. For each of your Supabase OAuth providers:
-   - In the provider's developer console (not in the Supabase dashboard), find the OAuth application and add the custom domain Supabase Auth callback URL **in addition to the Supabase project URL.** Example:
-     - `https://abcdefghijklmnopqrst.supabase.co/auth/v1/callback` **and**
+   - In the provider's developer console (not in the Indobase dashboard), find the OAuth application and add the custom domain Indobase Auth callback URL **in addition to the Indobase project URL.** Example:
+     - `https://abcdefghijklmnopqrst.indobase.in/auth/v1/callback` **and**
      - `https://api.example.com/auth/v1/callback`
    - [Sign in with Twitter](/docs/guides/auth/social-login/auth-twitter) uses cookies bound to the project's domain. Make sure your frontend code uses the custom domain instead of the default project's domain.
 2. For each of your SAML identity providers:
-   - Contact your provider and ask them to update the metadata for the SAML application. They should use `https://api.example.com/auth/v1/...` instead of `https://abcdefghijklmnopqrst.supabase.co/auth/v1/sso/saml/{metadata,acs,slo}`.
+   - Contact your provider and ask them to update the metadata for the SAML application. They should use `https://api.example.com/auth/v1/...` instead of `https://abcdefghijklmnopqrst.indobase.in/auth/v1/sso/saml/{metadata,acs,slo}`.
    - Once these changes are made, SAML Single Sign-On will likely stop working until the domain is activated. Plan for this ahead of time.
 
 ### Activate your domain
@@ -122,9 +122,9 @@ Once you've done the necessary preparations to activate the new domain for your 
 supabase domains activate --project-ref abcdefghijklmnopqrst
 ```
 
-When this step completes, Supabase will serve the requests from your new domain. The Supabase project domain **continues to work** and serve requests so you do not need to rush to change client code URLs.
+When this step completes, Supabase will serve the requests from your new domain. The Indobase project domain **continues to work** and serve requests so you do not need to rush to change client code URLs.
 
-If you wish to use the new domain in client code, change the URL used in your Supabase client libraries:
+If you wish to use the new domain in client code, change the URL used in your Indobase client libraries:
 
 ```js
 import { createClient } from 'indobase-js'
@@ -137,7 +137,7 @@ Similarly, your Edge Functions will now be available at `https://api.example.com
 
 ### Remove a custom domain
 
-Removing a custom domain may cause some issues when using Supabase Auth with OAuth or SAML. You may have to reverse the changes made in the _[Prepare to activate your domain](#prepare-to-activate-your-domain)_ step above.
+Removing a custom domain may cause some issues when using Indobase Auth with OAuth or SAML. You may have to reverse the changes made in the _[Prepare to activate your domain](#prepare-to-activate-your-domain)_ step above.
 
 To remove an activated custom domain you can use the [`domains delete`](/docs/reference/cli/supabase-domains-delete) CLI command.
 
@@ -147,12 +147,12 @@ supabase domains delete --project-ref abcdefghijklmnopqrst
 
 ## Vanity subdomains
 
-Vanity subdomains allow you to present a basic branded experience, compared to custom domains. They allow you to host your services at a custom subdomain on Supabase (e.g., `my-example-brand.supabase.co`) instead of the default, randomly assigned `abcdefghijklmnopqrst.supabase.co`.
+Vanity subdomains allow you to present a basic branded experience, compared to custom domains. They allow you to host your services at a custom subdomain on Supabase (e.g., `my-example-brand.indobase.in`) instead of the default, randomly assigned `abcdefghijklmnopqrst.indobase.in`.
 
 To get started:
 
-1. [Install](/docs/guides/resources/supabase-cli) the latest version of the Supabase CLI.
-1. [Log in](/docs/guides/cli/local-development#log-in-to-the-supabase-cli) to your Supabase account using the CLI.
+1. [Install](/docs/guides/resources/supabase-cli) the latest version of the Indobase CLI.
+1. [Log in](/docs/guides/cli/local-development#log-in-to-the-supabase-cli) to your Indobase account using the CLI.
 1. Ensure that you have [Owner or Admin permissions](/docs/guides/platform/access-control#manage-team-members) for the project you'd like to set up a vanity subdomain for.
 1. Ensure that your organization is on a paid plan (Pro/Team/Enterprise Plan) in the [Billing page of the Dashboard](/dashboard/org/_/billing).
 
@@ -160,7 +160,7 @@ To get started:
 
 You can configure vanity subdomains via the CLI only.
 
-Let's assume your Supabase project's domain is `abcdefghijklmnopqrst.supabase.co` and you wish to configure a vanity subdomain at `my-example-brand.supabase.co`.
+Let's assume your Indobase project's domain is `abcdefghijklmnopqrst.indobase.in` and you wish to configure a vanity subdomain at `my-example-brand.indobase.in`.
 
 ### Check subdomain availability
 
@@ -175,26 +175,26 @@ supabase vanity-subdomains --project-ref abcdefghijklmnopqrst check-availability
 Before you activate your vanity subdomain, prepare your applications and integrations for the subdomain change:
 
 - The project's Supabase domain remains active and will not go away.
-  - You do not need to change the Supabase URL in your applications immediately or at once.
+  - You do not need to change the Indobase URL in your applications immediately or at once.
   - You can use it interchangeably with the custom domain.
-- Supabase Auth will use the subdomain immediately once activated.
+- Indobase Auth will use the subdomain immediately once activated.
   - OAuth flows will advertise the subdomain as a callback URL.
   - SAML will use the subdomain instead. This means that the `EntityID` of your project has changed, and this may cause SAML with existing identity providers to stop working.
 
 To prevent issues for your users, make sure you have gone through these steps:
 
 1. Go through all of your Supabase OAuth providers:
-   - In the provider's developer console (not in the Supabase dashboard!), find the OAuth application and add the subdomain Supabase Auth callback URL **in addition to the Supabase project URL.** Example:
-     - `https://abcdefghijklmnopqrst.supabase.co/auth/v1/callback` **and**
-     - `https://my-example-brand.supabase.co/auth/v1/callback`
+   - In the provider's developer console (not in the Indobase dashboard!), find the OAuth application and add the subdomain Indobase Auth callback URL **in addition to the Indobase project URL.** Example:
+     - `https://abcdefghijklmnopqrst.indobase.in/auth/v1/callback` **and**
+     - `https://my-example-brand.indobase.in/auth/v1/callback`
    - [Sign in with Twitter](/docs/guides/auth/social-login/auth-twitter) uses cookies bound to the project's domain. In this case make sure your frontend code uses the subdomain instead of the default project's domain.
 2. Go through all of your SAML identity providers:
-   - You will need to reach out via email to all of your existing identity providers and ask them to update the metadata for the SAML application (your project). Use `https://example-brand.supabase.co/auth/v1/...` instead of `https://abcdefghijklmnopqrst.supabase.co/auth/v1/sso/saml/{metadata,acs,slo}`.
+   - You will need to reach out via email to all of your existing identity providers and ask them to update the metadata for the SAML application (your project). Use `https://example-brand.indobase.in/auth/v1/...` instead of `https://abcdefghijklmnopqrst.indobase.in/auth/v1/sso/saml/{metadata,acs,slo}`.
    - Once these changes are made, SAML Single Sign-On will likely stop working until the domain is activated. Plan for this ahead of time.
 
 ### Activate a subdomain
 
-Once you've chosen an available subdomain and have done all the necessary preparations for it, you can reconfigure your Supabase project to start using it.
+Once you've chosen an available subdomain and have done all the necessary preparations for it, you can reconfigure your Indobase project to start using it.
 
 Use the [`vanity-subdomains activate`](/docs/reference/cli/supabase-vanity-subdomains-activate) command to activate and claim your subdomain:
 
@@ -208,16 +208,16 @@ If you wish to use the new domain in client code, you can set it up like so:
 import { createClient } from 'indobase-js'
 
 // Use a custom domain as the supabase URL
-const supabase = createClient('https://my-example-brand.supabase.co', 'publishable-or-anon-key')
+const supabase = createClient('https://my-example-brand.indobase.in', 'publishable-or-anon-key')
 ```
 
 When using [Sign in with Twitter](/docs/guides/auth/social-login/auth-twitter) make sure your frontend code is using the subdomain only.
 
 ### Remove a vanity subdomain
 
-Removing a subdomain may cause some issues when using Supabase Auth with OAuth or SAML. You may have to reverse the changes made in the _[Prepare to activate the subdomain](#prepare-to-activate-the-subdomain)_ step above.
+Removing a subdomain may cause some issues when using Indobase Auth with OAuth or SAML. You may have to reverse the changes made in the _[Prepare to activate the subdomain](#prepare-to-activate-the-subdomain)_ step above.
 
-Use the [`vanity-subdomains delete`](/docs/reference/cli/supabase-vanity-subdomains-delete) command of the CLI to remove the subdomain `my-example-brand.supabase.co` from your project.
+Use the [`vanity-subdomains delete`](/docs/reference/cli/supabase-vanity-subdomains-delete) command of the CLI to remove the subdomain `my-example-brand.indobase.in` from your project.
 
 ```bash
 supabase vanity-subdomains delete --project-ref abcdefghijklmnopqrst --experimental

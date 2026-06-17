@@ -17,7 +17,13 @@ import {
   getStudioProjectMobileBuildsUrl,
   getStudioProjectRootUrl,
 } from '~/lib/indobase/studioLinks';
-import { canQueueIndobaseMobileBuild, queueIndobaseMobileBuild } from '~/lib/indobase/studioApi';
+import {
+  canQueueIndobaseDeployment,
+  canQueueIndobaseMobileBuild,
+  publishIndobaseDeployment,
+  queueIndobaseMobileBuild,
+} from '~/lib/indobase/studioApi';
+import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
 
 interface DeployButtonProps {
   onGitHubDeploy?: () => Promise<void>;
@@ -58,6 +64,52 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   };
 
   const handleIndobaseDeployClick = async () => {
+    if (canQueueIndobaseDeployment(backendConnection)) {
+      setIsDeploying(true);
+      setDeployingTo('indobase');
+
+      try {
+        const buildResult = await collectBuildArtifacts();
+
+        if (!buildResult.success || !buildResult.files) {
+          toast.error(buildResult.error || 'Build failed before publish.');
+          return;
+        }
+
+        const result = await publishIndobaseDeployment(backendConnection, {
+          artifacts: buildResult.files,
+          metadata: {
+            source: 'deploy_menu',
+          },
+        });
+
+        if (result.success && result.deployment?.target_url) {
+          toast.success('Published on your Indobase subdomain.');
+          window.open(result.deployment.target_url, '_blank', 'noopener,noreferrer');
+          return;
+        }
+
+        if (result.status === 409) {
+          toast.info(result.error || 'A deployment is already in progress. Opening Studio status…');
+        } else if (result.status === 408 && result.deployment?.target_url) {
+          toast.info(result.error || 'Deployment is still running. Opening your project URL…');
+          window.open(result.deployment.target_url, '_blank', 'noopener,noreferrer');
+        } else {
+          toast.error(result.error || 'Could not publish to Indobase.');
+        }
+
+        openIndobaseUrl(
+          hostingUrl || studioUrl,
+          'Could not open Indobase hosting settings right now. Please try again.',
+        );
+      } finally {
+        setIsDeploying(false);
+        setDeployingTo(null);
+      }
+
+      return;
+    }
+
     setIsDeploying(true);
     setDeployingTo('indobase');
 
@@ -208,7 +260,11 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
             >
               <div className="i-ph:rocket-launch w-5 h-5 text-[#FFC107]" />
               <span className="mx-auto">
-                {isStudioManagedConnection ? 'Run on your Indobase subdomain' : 'Open Studio to publish'}
+                {canQueueIndobaseDeployment(backendConnection)
+                  ? 'Publish to your Indobase subdomain'
+                  : isStudioManagedConnection
+                    ? 'Run on your Indobase subdomain'
+                    : 'Open Studio to publish'}
               </span>
             </DropdownMenu.Item>
 

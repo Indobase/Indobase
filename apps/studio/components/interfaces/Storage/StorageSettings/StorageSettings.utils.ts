@@ -44,7 +44,7 @@ function getStorageURL(projectRef: string, protocol: string, endpoint?: string) 
   if (publicBase) {
     return new URL(publicBase)
   }
-  return new URL(`https://${projectRef}.storage.supabase.co`)
+  return new URL(`https://${projectRef}.storage.indobase.in`)
 }
 
 export function getConnectionURL(projectRef: string, protocol: string, endpoint?: string) {

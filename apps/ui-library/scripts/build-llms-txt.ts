@@ -77,7 +77,7 @@ function getDocFiles(): DocMeta[] {
 
 // Generate the llms.txt content
 const docs = getDocFiles()
-let content = `# Supabase UI Library
+let content = `# Indobase UI Library
 Last updated: ${new Date().toISOString()}
 
 ## Overview

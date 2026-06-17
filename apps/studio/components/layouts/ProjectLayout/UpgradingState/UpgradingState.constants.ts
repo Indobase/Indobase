@@ -1,4 +1,4 @@
-import { DatabaseUpgradeProgress } from '@supabase/shared-types/out/events'
+import { DatabaseUpgradeProgress } from '@indobaseinc/shared-types/out/events'
 
 export const DATABASE_UPGRADE_MESSAGES = [
   {

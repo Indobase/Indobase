@@ -5,43 +5,43 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) je open source alternativa Firebase. Vytváříme funkce Firebase pomocí open source nástrojů podnikové třídy.
+[Indobase](https://indobase.in) je open source alternativa Firebase. Vytváříme funkce Firebase pomocí open source nástrojů podnikové třídy.
 
-- [x] hostovaná databáze Postgres. [Dokumenty](https://supabase.com/docs/guides/database)
-- [x] Ověřování a autorizace. [Dokumenty](https://supabase.com/docs/guides/auth)
+- [x] hostovaná databáze Postgres. [Dokumenty](https://indobase.in/docs/guides/database)
+- [x] Ověřování a autorizace. [Dokumenty](https://indobase.in/docs/guides/auth)
 - [x] Automaticky generované rozhraní API.
-  - [x] REST. [Dokumenty](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Dokumenty](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Odběry v reálném čase. [Dokumenty](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Dokumenty](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Dokumenty](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Odběry v reálném čase. [Dokumenty](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funkce.
-  - [x] Databázové funkce. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Okrajové funkce [Docs](https://supabase.com/docs/guides/functions)
-- [x] Ukládání souborů. [Dokumenty](https://supabase.com/docs/guides/storage)
+  - [x] Databázové funkce. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Okrajové funkce [Docs](https://indobase.in/docs/guides/functions)
+- [x] Ukládání souborů. [Dokumenty](https://indobase.in/docs/guides/storage)
 - [x] Přístrojový panel
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokumentace
 
-Úplnou dokumentaci naleznete na adrese [supabase.com/docs](https://supabase.com/docs)
+Úplnou dokumentaci naleznete na adrese [indobase.in/docs](https://indobase.in/docs)
 
 Chcete-li zjistit, jak přispívat, navštivte stránku [Začínáme](../DEVELOPERS.md)
 
 ## Komunita a podpora
 
-- [Fórum komunity](https://github.com/supabase/supabase/discussions). Nejlépe pro: pomoc při vytváření, diskuse o osvědčených postupech při práci s databází.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Nejlépe pro: chyby a omyly, na které narazíte při používání databáze Supabase.
-- [E-mailová podpora](https://supabase.com/docs/support#business-support). Nejlepší pro: problémy s vaší databází nebo infrastrukturou.
-- [Discord](https://discord.supabase.com). Nejlepší pro: sdílení vašich aplikací a setkávání s komunitou.
+- [Fórum komunity](https://github.com/Indobase/Indobase/discussions). Nejlépe pro: pomoc při vytváření, diskuse o osvědčených postupech při práci s databází.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Nejlépe pro: chyby a omyly, na které narazíte při používání databáze Indobase.
+- [E-mailová podpora](https://indobase.in/docs/support#business-support). Nejlepší pro: problémy s vaší databází nebo infrastrukturou.
+- [Discord](https://discord.indobase.in). Nejlepší pro: sdílení vašich aplikací a setkávání s komunitou.
 
 ## Stav
 
-- [x] Alfa: Testujeme Supabase s uzavřenou skupinou zákazníků
-- [x] Veřejná alfa: [supabase.com/dashboard](https://supabase.com/dashboard). Ale buďte na nás mírní, je tu několik zádrhelů
+- [x] Alfa: Testujeme Indobase s uzavřenou skupinou zákazníků
+- [x] Veřejná alfa: [supabase.com/dashboard](https://indobase.in/dashboard). Ale buďte na nás mírní, je tu několik zádrhelů
 - [x] Veřejná beta verze: Dostatečně stabilní pro většinu případů použití mimo podniky
-- [ ] Veřejná: Všeobecná dostupnost [[status](https://supabase.com/docs/guides/getting-started/features#feature-status)]
+- [ ] Veřejná: Všeobecná dostupnost [[status](https://indobase.in/docs/guides/getting-started/features#feature-status)]
 
 V současné době jsme ve fázi Public Beta. Sledujte "releases" tohoto repozitáře, abyste byli upozorněni na hlavní aktualizace.
 
@@ -51,14 +51,14 @@ V současné době jsme ve fázi Public Beta. Sledujte "releases" tohoto repozit
 
 ## Jak to funguje
 
-Supabase je kombinací nástrojů s otevřeným zdrojovým kódem. Funkce Firebase vytváříme pomocí open source produktů podnikové třídy. Pokud existují nástroje a komunity s otevřenou licencí MIT, Apache 2 nebo ekvivalentní, budeme tento nástroj používat a podporovat. Pokud nástroj neexistuje, vytvoříme jej a použijeme open source sami. Supabase není mapováním Firebase v poměru 1:1. Naším cílem je poskytnout vývojářům vývojářské prostředí podobné Firebase s využitím nástrojů s otevřeným zdrojovým kódem.
+Indobase je kombinací nástrojů s otevřeným zdrojovým kódem. Funkce Firebase vytváříme pomocí open source produktů podnikové třídy. Pokud existují nástroje a komunity s otevřenou licencí MIT, Apache 2 nebo ekvivalentní, budeme tento nástroj používat a podporovat. Pokud nástroj neexistuje, vytvoříme jej a použijeme open source sami. Indobase není mapováním Firebase v poměru 1:1. Naším cílem je poskytnout vývojářům vývojářské prostředí podobné Firebase s využitím nástrojů s otevřeným zdrojovým kódem.
 
 **Architektura**
 
-Supabase je [hostovaná platforma](https://supabase.com/dashboard). Můžete se zaregistrovat a začít používat Supabase, aniž byste museli cokoli instalovat.
-Můžete také [hostovat sami](https://supabase.com/docs/guides/hosting/overview) a [vyvíjet lokálně](https://supabase.com/docs/guides/local-development).
+Indobase je [hostovaná platforma](https://indobase.in/dashboard). Můžete se zaregistrovat a začít používat Indobase, aniž byste museli cokoli instalovat.
+Můžete také [hostovat sami](https://indobase.in/docs/guides/hosting/overview) a [vyvíjet lokálně](https://indobase.in/docs/guides/local-development).
 
-![Architektura](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Architektura](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) je objektově-relační databázový systém s více než 30 lety aktivního vývoje, který si získal dobrou pověst díky spolehlivosti, robustnosti funkcí a výkonu.
 - [Realtime](https://github.com/supabase/realtime) je server v jazyce Elixir, který umožňuje naslouchat vkládání, aktualizacím a mazání dat do PostgreSQL pomocí webových soketů. Realtime zjišťuje změny v databázi pomocí replikačních funkcí Postgresu, převádí změny do JSON a poté vysílá JSON přes webové sockety autorizovaným klientům.
@@ -77,12 +77,12 @@ Náš přístup ke klientským knihovnám je modulární. Každá dílčí kniho
   <tr>
     <th>Jazyk</th>
     <th>Klient</th>
-    <th colspan="5">Feature-Clients (v rámci klienta Supabase)</th>
+    <th colspan="5">Feature-Clients (v rámci klienta Indobase)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -105,16 +105,16 @@ Náš přístup ke klientským knihovnám je modulární. Každá dílčí kniho
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -220,7 +220,7 @@ Náš přístup ke klientským knihovnám je modulární. Každá dílčí kniho
 - [Katalánština / Català](/i18n/README.ca.md)
 - [Dánština / Dansk](/i18n/README.da.md)
 - [Dutch / Nederlands](/i18n/README.nl.md)
-- [Angličtina](https://github.com/supabase/supabase)
+- [Angličtina](https://github.com/Indobase/Indobase)
 - [Finsky / Suomalainen](/i18n/README.fi.md)
 - [Francouzština / Français](/i18n/README.fr.md)
 - [Němčina / Deutsch](/i18n/README.de.md)

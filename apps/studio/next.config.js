@@ -5,6 +5,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 // Required for nextjs standalone build
 const path = require('path')
 
+/** Marketing site (SvelteKit) — studio.indobase.in is Studio-only; pricing/docs live here. */
+const MARKETING_SITE_URL = process.env.NEXT_PUBLIC_MARKETING_SITE_URL || 'https://indobase.in'
+
 function getAssetPrefix() {
   // If not force enabled, but not production env, disable CDN
   if (process.env.FORCE_ASSET_CDN !== '1' && process.env.VERCEL_ENV !== 'production') {
@@ -31,6 +34,7 @@ const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined,
   assetPrefix: getAssetPrefix(),
   output: 'standalone',
+  poweredByHeader: false,
   async rewrites() {
     return [
       // Make Studio work under /dashboard without requiring basePath at build time
@@ -38,13 +42,6 @@ const nextConfig = {
       { source: '/dashboard/api/:path*', destination: '/api/:path*' },
       { source: '/dashboard/:path*', destination: '/:path*' },
 
-      // Marketing site (www) is in public/; serve index.html for SPA routes
-      { source: '/', destination: '/index.html' },
-      { source: '/pricing', destination: '/index.html' },
-      { source: '/terms', destination: '/index.html' },
-      { source: '/privacy', destination: '/index.html' },
-      { source: '/contact-us', destination: '/index.html' },
-      { source: '/contact-us/enterprise', destination: '/index.html' },
       {
         source: `/.well-known/vercel/flags`,
         destination: `https://indobase.in/.well-known/vercel/flags`,
@@ -53,8 +50,24 @@ const nextConfig = {
     ]
   },
   async redirects() {
+    const marketing = MARKETING_SITE_URL.replace(/\/$/, '')
     return [
-      // Keep marketing at /, but make /dashboard land in Studio
+      // Marketing lives on indobase.in — avoid broken www SPA merges on the Studio host
+      { source: '/pricing', destination: `${marketing}/pricing`, permanent: false },
+      { source: '/terms', destination: `${marketing}/terms`, permanent: false },
+      { source: '/privacy', destination: `${marketing}/privacy`, permanent: false },
+      { source: '/contact-us', destination: `${marketing}/contact-us`, permanent: false },
+      {
+        source: '/contact-us/enterprise',
+        destination: `${marketing}/contact-us/enterprise`,
+        permanent: false,
+      },
+      { source: '/docs', destination: `${marketing}/docs`, permanent: false },
+      { source: '/docs/:path*', destination: `${marketing}/docs/:path*`, permanent: false },
+      { source: '/blog', destination: `${marketing}/blog`, permanent: false },
+      { source: '/blog/:path*', destination: `${marketing}/blog/:path*`, permanent: false },
+
+      // Studio entry points
       {
         source: '/dashboard',
         destination: '/dashboard/sign-in',
@@ -460,7 +473,7 @@ const nextConfig = {
       },
       {
         key: 'X-Content-Type-Options',
-        value: 'no-sniff',
+        value: 'nosniff',
       },
       {
         key: 'Content-Security-Policy',

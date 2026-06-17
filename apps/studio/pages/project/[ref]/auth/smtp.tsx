@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { SmtpForm } from 'components/interfaces/Auth/SmtpForm/SmtpForm'
 import { AuthEmailsLayout } from 'components/layouts/AuthLayout/AuthEmailsLayout'

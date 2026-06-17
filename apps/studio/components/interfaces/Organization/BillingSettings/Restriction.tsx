@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { PricingMetric } from 'data/analytics/org-daily-stats-query'
 import { VIOLATION_TYPE_LABELS } from 'data/usage/constants'
 import { useOrgUsageQuery } from 'data/usage/org-usage-query'
+import { isOrgUsageMeteringAvailable } from 'lib/usage/metering'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { DOCS_URL } from 'lib/constants'
 import { useRouter } from 'next/router'
@@ -36,7 +37,7 @@ export const Restriction = () => {
   )
 
   // don't show any alerts until everything has been fetched
-  if (!isSuccessOrgUsage || !org) {
+  if (!isSuccessOrgUsage || !org || !isOrgUsageMeteringAvailable(usage)) {
     return null
   }
 

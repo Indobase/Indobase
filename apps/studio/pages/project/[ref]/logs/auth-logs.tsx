@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { LogsPreviewer } from 'components/interfaces/Settings/Logs/LogsPreviewer'
 import DefaultLayout from 'components/layouts/DefaultLayout'

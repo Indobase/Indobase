@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from 'indobase-js'
+import { createClient, type SupabaseClient } from '@indobaseinc/indobase-js'
 
 let _supabaseMisc: SupabaseClient
 

@@ -336,12 +336,12 @@ export const removeCommentsFromSql = (sql: string) => {
 }
 
 const formatSemver = (version: string) => {
-  // e.g supabase-postgres-14.1.0.88
+  // e.g indobase-postgres-14.1.0.88
   // There's 4 segments instead so we can't use the semver package
-  const segments = version.split('supabase-postgres-')
+  const segments = version.split('indobase-postgres-')
   const semver = segments[segments.length - 1]
 
-  // e.g supabase-postgres-14.1.0.99-vault-rc1
+  // e.g indobase-postgres-14.1.0.99-vault-rc1
   const formattedSemver = semver.split('-')[0]
 
   return formattedSemver

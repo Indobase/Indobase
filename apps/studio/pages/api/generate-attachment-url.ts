@@ -1,4 +1,4 @@
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import z from 'zod'
 

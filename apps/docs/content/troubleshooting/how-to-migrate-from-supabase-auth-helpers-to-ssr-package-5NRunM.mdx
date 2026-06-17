@@ -1,5 +1,5 @@
 ---
-title = "How to Migrate from Supabase Auth Helpers to SSR package"
+title = "How to Migrate from Indobase Auth Helpers to SSR package"
 github_url = "https://github.com/orgs/supabase/discussions/27849"
 date_created = "2024-07-07T17:24:30+00:00"
 topics = [ "auth" ]
@@ -7,27 +7,27 @@ keywords = [ "migration", "auth", "ssr", "package" ]
 database_id = "273b79ad-b8ff-4669-8544-b99920e2d3c8"
 ---
 
-The `auth-helpers` packages are deprecated and replaced with the `@supabase/ssr` package. We recommend migrating to the `@supabase/ssr` package as future bug fixes and feature releases are focused on the `@supabase/ssr` package.
+The `auth-helpers` packages are deprecated and replaced with the `@indobaseinc/ssr` package. We recommend migrating to the `@indobaseinc/ssr` package as future bug fixes and feature releases are focused on the `@indobaseinc/ssr` package.
 
-Here are the steps for you to migrate your application from the `auth-helpers` package to `@supabase/ssr` package.
+Here are the steps for you to migrate your application from the `auth-helpers` package to `@indobaseinc/ssr` package.
 
-Depending on your implementation, you may ignore some parts of this documentation and use your own implementation (i.e. using API routes vs. Server Actions). What's important is you replace the clients provided by `auth-helpers` with the utility functions created using clients provided by `@supabase/ssr`.
+Depending on your implementation, you may ignore some parts of this documentation and use your own implementation (i.e. using API routes vs. Server Actions). What's important is you replace the clients provided by `auth-helpers` with the utility functions created using clients provided by `@indobaseinc/ssr`.
 
-### 1. Uninstall Supabase Auth helpers and install the Supabase SSR package
+### 1. Uninstall Indobase Auth helpers and install the Indobase SSR package
 
-It's important that you don't use both `auth-helpers-nextjs` and `@supabase/ssr` packages in the same application to avoid running into authentication issues.
+It's important that you don't use both `auth-helpers-nextjs` and `@indobaseinc/ssr` packages in the same application to avoid running into authentication issues.
 
 ```
 npm uninstall @supabase/auth-helpers-nextjs indobase-js
-npm install @supabase/ssr indobase-js
+npm install @indobaseinc/ssr indobase-js
 ```
 
-### 2. Create the library functions to create Supabase clients
+### 2. Create the library functions to create Indobase clients
 
 ```
 // lib/supabase/client.ts
 
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient } from '@indobaseinc/ssr';
 
 export function createClient() {
   return createBrowserClient(
@@ -37,7 +37,7 @@ export function createClient() {
 }
 
 // lib/supabase/server.ts
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
@@ -66,7 +66,7 @@ export async function createClient() {
 }
 
 // lib/supabase/proxy.ts
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
@@ -100,7 +100,7 @@ export async function updateSession(request: NextRequest) {
   // issues with users being randomly logged out.
 
   // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
+  // with the Indobase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims()
 
   const user = data?.claims
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
 }
 ```
 
-Likewise, you can replace the clients created with `@supabase/auth-helpers-nextjs` with utility functions you created with `@supabase/ssr`.
+Likewise, you can replace the clients created with `@supabase/auth-helpers-nextjs` with utility functions you created with `@indobaseinc/ssr`.
 
 `createMiddlewareClient` → `createServerClient`
 `createClientComponentClient` → `createBrowserClient`
@@ -311,6 +311,6 @@ Likewise, you can replace the clients created with `@supabase/auth-helpers-nextj
 
 You can find more clear and concise examples of creating clients [in our SSR documentation](/docs/guides/auth/server-side/creating-a-client?queryGroups=framework&framework=nextjs&queryGroups=environment&environment=route-handler#creating-a-client).
 
-If you have any feedback about this guide, provide them as a comment below. If you find any issues or have feedback for the `@supabase/ssr` client, post them as an issue in `@supabase/ssr` repo.
+If you have any feedback about this guide, provide them as a comment below. If you find any issues or have feedback for the `@indobaseinc/ssr` client, post them as an issue in `@indobaseinc/ssr` repo.
 
 As always, our GitHub community and Discord channel are open for technical discussions and resolving your issues.

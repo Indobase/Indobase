@@ -1,5 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import { base64SVG } from '@supabase/build-icons'
+import { base64SVG } from '@indobaseinc/build-icons'
 
 export default ({ componentName, iconName, children, getSvg, deprecated }) => {
   const svgContents = getSvg()

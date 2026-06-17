@@ -11,11 +11,11 @@ API keys provide the first layer of authentication for data access. Auth then bu
 | Responsibility                     | Question                           | Answer                                             |
 | ---------------------------------- | ---------------------------------- | -------------------------------------------------- |
 | API keys                           | **What** is accessing the project? | Web page, mobile app, server, Edge Function...     |
-| [Supabase Auth](/docs/guides/auth) | **Who** is accessing the project?  | Monica, Jian Yang, Gavin, Dinesh, Laurie, Fiona... |
+| [Indobase Auth](/docs/guides/auth) | **Who** is accessing the project?  | Monica, Jian Yang, Gavin, Dinesh, Laurie, Fiona... |
 
 ## Overview
 
-An API key authenticates an application component to give it access to Supabase services. An application component might be a web page, a mobile app, or a server. The API key _does not_ distinguish between users, only between applications.
+An API key authenticates an application component to give it access to Indobase services. An application component might be a web page, a mobile app, or a server. The API key _does not_ distinguish between users, only between applications.
 
 There are 4 types of API keys that can be used with Supabase:
 
@@ -58,13 +58,13 @@ The `anon` and publishable keys secure the public components of your application
 
 These environments are always considered public because anyone can retrieve the key from the source code or build artifacts. Obfuscation can increase the difficulty, but never eliminate the possibility. (In general, obfuscation, Turing test challenges, and specialized knowledge do not count as authorization for the purpose of securing secrets.)
 
-### Interaction with Supabase Auth
+### Interaction with Indobase Auth
 
 Using the `anon` or publishable key does not mean that your user is anonymous. (Thinking of both these keys as publishable rather than `anon` makes the mental model clearer.)
 
-Your application can be authenticated with the publishable key, while your user is authenticated (via Supabase Auth) with their personal JWT:
+Your application can be authenticated with the publishable key, while your user is authenticated (via Indobase Auth) with their personal JWT:
 
-| Key             | User logged in via Supabase Auth | Postgres role used for RLS, etc. |
+| Key             | User logged in via Indobase Auth | Postgres role used for RLS, etc. |
 | --------------- | -------------------------------- | -------------------------------- |
 | Publishable key | No                               | `anon`                           |
 | `anon`          | No                               | `anon`                           |
@@ -159,7 +159,7 @@ As the publishable and secret keys are no longer JWT-based, there are some known
 
 - You cannot send a publishable or secret key in the `Authorization: Bearer ...` header, except if the value exactly equals the `apikey` header. In this case, your request will be forwarded down to your project's database, but will be rejected as the value is not a JWT.
 - Edge Functions **only support JWT verification** via the `anon` and `service_role` JWT-based API keys. You will need to use the `--no-verify-jwt` option when using publishable and secret keys. The Supabase platform does not verify the `apikey` header when using Edge Functions in this way. Implement your own `apikey`-header authorization logic inside the Edge Function code itself.
-- Public Realtime connections are limited to 24 hours in duration, unless the connection is upgraded and further maintained with user-level authentication via Supabase Auth or a supported Third-Party Auth provider.
+- Public Realtime connections are limited to 24 hours in duration, unless the connection is upgraded and further maintained with user-level authentication via Indobase Auth or a supported Third-Party Auth provider.
 
 ## Frequently asked questions
 
@@ -187,7 +187,7 @@ Since the start of Supabase, the JWT-based `anon` and `service_role` keys were t
 
 The main reasons for preferring the publishable and secret keys (`sb_publishable_...` and `sb_secret_...`) are:
 
-- Tight coupling between the JWT secret (which itself can be compromised, if you mint your own JWTs), the `anon` (low privilege) and `service_role` (high privilege) and `authenticated` (issued by Supabase Auth) Postgres roles.
+- Tight coupling between the JWT secret (which itself can be compromised, if you mint your own JWTs), the `anon` (low privilege) and `service_role` (high privilege) and `authenticated` (issued by Indobase Auth) Postgres roles.
 - Inability to independently rotate each aspect of the keys, without downtime.
 - Inability to roll-back an unnecessary or problematic JWT secret rotation.
 - Publishing new versions of mobile applications can take days and often weeks in the app review phase with Apple's App Store and Google's Play Store. A forced rotation can cause weeks of downtime for mobile app users.
@@ -199,7 +199,7 @@ The main reasons for preferring the publishable and secret keys (`sb_publishable
 
 ### Why is there no publishable or secret keys in the CLI / self-hosting?
 
-Publishable and secret keys are only available on the Supabase hosted platform. They are managed by our API Gateway component, which does not currently have a CLI equivalent.
+Publishable and secret keys are only available on the Indobase hosted platform. They are managed by our API Gateway component, which does not currently have a CLI equivalent.
 
 We are looking into providing similar but limited in scope support for publishable or secret keys in the future. For now you can only use the `anon` and `service_role` JWT-based keys there.
 
@@ -207,7 +207,7 @@ For advanced users, see the following question on how these keys are implemented
 
 ### How are publishable and secret keys implemented on the hosted platform?
 
-When your applications use the Supabase APIs they go through a component called the API Gateway on the Supabase hosted platform. This provides us (and therefore you) with the following features:
+When your applications use the Indobase APIs they go through a component called the API Gateway on the Indobase hosted platform. This provides us (and therefore you) with the following features:
 
 - Observability and logging.
 - Performance and request routing (such as to read-replicas).

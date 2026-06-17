@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
-import { SignInWithIdTokenCredentials } from '@supabase/supabase-js';
+import { SignInWithIdTokenCredentials } from '@indobaseinc/indobase-js';
 import { useEffect, useState } from 'react';
 
 import 'react-native-get-random-values';

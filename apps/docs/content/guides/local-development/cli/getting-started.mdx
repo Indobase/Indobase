@@ -1,15 +1,15 @@
 ---
-title: 'Supabase CLI'
-description: 'The Supabase CLI provides tools to develop your project locally, deploy to the Supabase Platform, and set up CI/CD workflows.'
-subtitle: 'Develop locally, deploy to the Supabase Platform, and set up CI/CD workflows'
+title: 'Indobase CLI'
+description: 'The Indobase CLI provides tools to develop your project locally, deploy to the Indobase Platform, and set up CI/CD workflows.'
+subtitle: 'Develop locally, deploy to the Indobase Platform, and set up CI/CD workflows'
 ---
 
-The Supabase CLI enables you to run the entire Supabase stack locally, on your machine or in a CI environment. With just two commands, you can set up and start a new local project:
+The Indobase CLI enables you to run the entire Supabase stack locally, on your machine or in a CI environment. With just two commands, you can set up and start a new local project:
 
 1. `supabase init` to create a new local project
-2. `supabase start` to launch the Supabase services
+2. `supabase start` to launch the Indobase services
 
-## Installing the Supabase CLI
+## Installing the Indobase CLI
 
 <Tabs
   scrollable
@@ -68,7 +68,7 @@ npx supabase --help
 
 <Admonition type="caution">
 
-The Supabase CLI requires **Node.js 20 or later** when run via `npx` or `npm`. Older Node.js versions, such as 16, are not supported and fail to start the CLI.
+The Indobase CLI requires **Node.js 20 or later** when run via `npx` or `npm`. Older Node.js versions, such as 16, are not supported and fail to start the CLI.
 
 </Admonition>
 
@@ -81,7 +81,7 @@ npm install supabase --save-dev
 </TabPanel>
 </Tabs>
 
-## Updating the Supabase CLI
+## Updating the Indobase CLI
 
 When a new [version](https://github.com/supabase/cli/releases) is released, you can update the CLI using the same methods.
 
@@ -116,7 +116,7 @@ brew upgrade supabase
 
 #### Linux package manager
 
-1. Download the latest package from the [Supabase CLI releases page](https://github.com/supabase/cli/releases/latest)
+1. Download the latest package from the [Indobase CLI releases page](https://github.com/supabase/cli/releases/latest)
 2. Install the package using the same commands as the [initial installation](#linux-packages):
    - `sudo apk add --allow-untrusted <...>.apk`
    - `sudo dpkg -i <...>.deb`
@@ -154,9 +154,9 @@ supabase stop --no-backup
 
 </$Show>
 
-## Running Supabase locally
+## Running Indobase locally
 
-The Supabase CLI uses Docker containers to manage the local development stack. Follow the official guide to install and configure [Docker Desktop](https://docs.docker.com/desktop):
+The Indobase CLI uses Docker containers to manage the local development stack. Follow the official guide to install and configure [Docker Desktop](https://docs.docker.com/desktop):
 
 <Tabs
   scrollable
@@ -214,7 +214,7 @@ supabase init
 
 This will create a new `supabase` folder. It's safe to commit this folder to your version control system.
 
-Now, to start the Supabase stack, run:
+Now, to start the Indobase stack, run:
 
 ```bash
 supabase start
@@ -224,7 +224,7 @@ This takes time on your first run because the CLI needs to download the Docker i
 
 ## Access your project's services
 
-Once all of the Supabase services are running, you'll see output containing your local Supabase credentials. It should look like this, with urls and keys that you'll use in your local project:
+Once all of the Indobase services are running, you'll see output containing your local Supabase credentials. It should look like this, with urls and keys that you'll use in your local project:
 
 ```
 
@@ -307,7 +307,7 @@ http://localhost:54321/auth/v1/           # Auth (GoTrue)
 </TabPanel>
 <TabPanel id="analytics" label="Analytics">
 
-Local logs rely on the Supabase Analytics Server which accesses the docker logging driver by either volume mounting `/var/run/docker.sock` domain socket on Linux and macOS, or exposing `tcp://localhost:2375` daemon socket on Windows. These settings must be configured manually after [installing](/docs/guides/cli/getting-started#installing-the-supabase-cli) the Supabase CLI.
+Local logs rely on the Indobase Analytics Server which accesses the docker logging driver by either volume mounting `/var/run/docker.sock` domain socket on Linux and macOS, or exposing `tcp://localhost:2375` daemon socket on Windows. These settings must be configured manually after [installing](/docs/guides/cli/getting-started#installing-the-supabase-cli) the Indobase CLI.
 
 <Admonition type="note">
 
@@ -322,7 +322,7 @@ All logs will be stored in the local database under the `_analytics` schema.
 
 ## Stopping local services
 
-When you are finished working on your Supabase project, you can stop the stack (without resetting your local database):
+When you are finished working on your Indobase project, you can stop the stack (without resetting your local database):
 
 ```bash
 supabase stop

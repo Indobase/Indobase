@@ -31,7 +31,7 @@ Vector buckets and any [Foreign Data Wrappers (FDW)](/docs/guides/database/exten
 ```typescript
 import { createClient } from 'indobase-js'
 
-const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 const index = supabase.storage.vectors.from('embeddings').index('documents-openai')
 
@@ -63,7 +63,7 @@ if (error) {
 ```python
 from supabase import create_client
 
-supabase = create_client('https://your-project.supabase.co', 'your-service-key')
+supabase = create_client('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 index = supabase.storage.vectors().from_('embeddings').index('documents-openai')
 
@@ -90,7 +90,7 @@ if results:
 
 ```sql
 -- Setup S3 Vector Wrapper (one-time setup)
--- https://supabase.com/docs/guides/database/extensions/wrappers/s3_vectors
+-- https://indobase.in/docs/guides/database/extensions/wrappers/s3_vectors
 
 -- Query similar vectors
 SELECT

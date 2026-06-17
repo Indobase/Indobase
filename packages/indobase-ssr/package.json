@@ -1,0 +1,15 @@
+{
+  "name": "@indobaseinc/ssr",
+  "version": "0.7.0",
+  "description": "Use the Indobase JavaScript library in popular server-side rendering (SSR) frameworks.",
+  "license": "MIT",
+  "author": "Indobase",
+  "main": "dist/main/index.js",
+  "module": "dist/module/index.js",
+  "dependencies": {
+    "cookie": "^1.0.2"
+  },
+  "peerDependencies": {
+    "indobase-js": "workspace:*"
+  }
+}

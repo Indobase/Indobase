@@ -538,7 +538,7 @@ select
 <TabPanel id="http-send-email-with-resend" label="Use Resend as an email provider">
 You can configure [Resend](https://resend.com/) as the custom email provider through the "Send Email" hook. This allows you to take advantage of Resend's developer-friendly APIs to send emails and leverage [React Email](https://react.email/) for managing your email templates. For a more advanced React Email tutorial, refer to [this guide](/docs/guides/functions/examples/auth-send-email-hook-react-email-resend).
 
-If you want to send emails through the Supabase Resend integration, which uses Resend's SMTP server, check out [this integration](/partners/integrations/resend) instead.
+If you want to send emails through the Indobase Resend integration, which uses Resend's SMTP server, check out [this integration](/partners/integrations/resend) instead.
 
 Create a `.env` file with the following environment variables:
 
@@ -549,11 +549,11 @@ SEND_EMAIL_HOOK_SECRET="v1,whsec_<base64_secret>"
 
 <Admonition type="note">
 
-You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard.
+You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard.
 
 </Admonition>
 
-Set the secrets in your Supabase project:
+Set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file .env
@@ -713,7 +713,7 @@ const templates = {
 }
 
 function generateConfirmationURL(email_data) {
-  const baseUrl = `https://${PROJECT_REF}.supabase.co/auth/v1/verify`
+  const baseUrl = `https://${PROJECT_REF}.indobase.in/auth/v1/verify`
   const params = new URLSearchParams({
     token: email_data.token_hash,
     type: email_data.email_action_type,
@@ -832,7 +832,7 @@ const templates = {
 
 function generateConfirmationURL(email_data) {
    // TODO: replace the ref with your project ref
-   return `https://<ref>.supabase.co/auth/v1/verify?token=${email_data.token_hash}&type=${email_data.email_action_type}&redirect_to=${email_data.redirect_to}`
+   return `https://<ref>.indobase.in/auth/v1/verify?token=${email_data.token_hash}&type=${email_data.email_action_type}&redirect_to=${email_data.redirect_to}`
 }
 
 async function sendEmailWithPostmark(user: any, email_data: any, serverToken: string): Promise<Response> {

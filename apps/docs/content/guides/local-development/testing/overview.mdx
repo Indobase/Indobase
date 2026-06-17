@@ -268,7 +268,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
+      - name: Setup Indobase CLI
         uses: supabase/setup-cli@v1
 
       - name: Start Supabase
@@ -316,13 +316,13 @@ Common issues and solutions:
    - Check policy definitions match your test assumptions
 
 2. **CI Pipeline Issues**
-   - Verify Supabase CLI is properly installed
+   - Verify Indobase CLI is properly installed
    - Ensure database migrations are run before tests
    - Check for proper test isolation using transactions
 
 ## Additional resources
 
 - [pgTAP Documentation](https://pgtap.org)
-- [Supabase CLI Reference](/docs/reference/cli/supabase-test)
+- [Indobase CLI Reference](/docs/reference/cli/supabase-test)
 - [pgTAP Supabase reference](/docs/guides/database/extensions/pgtap?queryGroups=database-method&database-method=sql#testing-rls-policies)
 - [Database testing reference](/docs/guides/database/testing)

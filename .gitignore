@@ -1,6 +1,9 @@
 ._*
 **/._*
 
+# Local tenant stack secrets (render-tenant-stack.mjs)
+docker/tenants/**/.tenant-db-password
+
 .DS_Store
 node_modules
 .next

@@ -79,7 +79,7 @@ export function isExternalReferrer(referrer: string): boolean {
   if (!referrer) return false
   try {
     const hostname = new URL(referrer).hostname
-    return hostname !== 'supabase.com' && !hostname.endsWith('.supabase.com')
+    return hostname !== 'supabase.com' && !hostname.endsWith('.indobase.inm')
   } catch {
     return false
   }
@@ -228,7 +228,7 @@ export function shouldRefreshCookie(
  * request warrants it. This is the single entry point for all app middleware
  * files — call it with the incoming request and outgoing response.
  *
- * On *.supabase.com the cookie is set with `domain=supabase.com` so it's
+ * On *.indobase.inm the cookie is set with `domain=supabase.com` so it's
  * readable across all subdomains (www, docs, studio). On other hosts
  * (localhost, preview deploys) the domain is left unset so the browser
  * stores a host-only cookie instead of rejecting an invalid domain.
@@ -252,7 +252,7 @@ export function stampFirstReferrerCookie(request: MiddlewareRequest, response: M
     path: '/',
     sameSite: 'lax',
     ...(request.nextUrl.hostname === 'supabase.com' ||
-    request.nextUrl.hostname.endsWith('.supabase.com')
+    request.nextUrl.hostname.endsWith('.indobase.inm')
       ? { domain: 'supabase.com', secure: true }
       : {}),
     maxAge: FIRST_REFERRER_COOKIE_MAX_AGE,

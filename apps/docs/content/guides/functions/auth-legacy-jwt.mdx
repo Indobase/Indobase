@@ -1,11 +1,11 @@
 ---
 id: 'auth-legacy-jwt'
-title: 'Integrating With Supabase Auth'
-description: 'Supabase Edge Functions and Auth.'
-subtitle: 'Integrate Supabase Auth with Edge Functions'
+title: 'Integrating With Indobase Auth'
+description: 'Indobase Edge Functions and Auth.'
+subtitle: 'Integrate Indobase Auth with Edge Functions'
 ---
 
-Edge Functions work with [Supabase Auth](/docs/guides/auth).
+Edge Functions work with [Indobase Auth](/docs/guides/auth).
 
 This allows you to:
 
@@ -15,7 +15,7 @@ This allows you to:
 
 ## Setting up auth context
 
-When a user makes a request to an Edge Function, you can use the `Authorization` header to set the Auth context in the Supabase client and enforce Row Level Security policies.
+When a user makes a request to an Edge Function, you can use the `Authorization` header to set the Auth context in the Indobase client and enforce Row Level Security policies.
 
 ```js
 import { createClient } from 'npm:indobase-js@2'
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
 
 ## Row Level Security
 
-After initializing a Supabase client with the Auth context, all queries will be executed with the context of the user. For database queries, this means [Row Level Security](/docs/guides/database/postgres/row-level-security) will be enforced.
+After initializing a Indobase client with the Auth context, all queries will be executed with the context of the user. For database queries, this means [Row Level Security](/docs/guides/database/postgres/row-level-security) will be enforced.
 
 ```js
 import { createClient } from 'npm:indobase-js@2'
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
 
 ## Example
 
-See the full [example on GitHub](https://github.com/supabase/supabase/blob/master/examples/edge-functions/supabase/functions/select-from-table-with-auth-rls/index.ts).
+See the full [example on GitHub](https://github.com/Indobase/Indobase/blob/master/examples/edge-functions/supabase/functions/select-from-table-with-auth-rls/index.ts).
 
 <$CodeSample
 path="/edge-functions/supabase/functions/select-from-table-with-auth-rls/index.ts"

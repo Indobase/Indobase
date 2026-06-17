@@ -1,10 +1,10 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { components } from 'api-types'
 import {
   JwtSecretUpdateError,
   JwtSecretUpdateProgress,
   JwtSecretUpdateStatus,
-} from '@supabase/shared-types/out/events'
+} from '@indobaseinc/shared-types/out/events'
 
 import { ensureSaasTables, getGotrueUserId } from './platform'
 import {
@@ -231,7 +231,7 @@ export async function updateProjectJwtSecret({
       await writeMeta(
         JwtSecretUpdateStatus.Failed,
         JwtSecretUpdateProgress.Started,
-        JwtSecretUpdateError.SupabaseAPIKeyUpdateFailed
+        JwtSecretUpdateError.IndobaseAPIKeyUpdateFailed
       ).catch(() => undefined)
     }
     throw e

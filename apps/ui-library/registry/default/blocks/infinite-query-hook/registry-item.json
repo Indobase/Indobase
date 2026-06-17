@@ -4,7 +4,7 @@
   "type": "registry:block",
   "title": "Infinite Query Hook",
   "description": "React hook for infinite lists, fetching data from Supabase.",
-  "dependencies": ["indobase-js", "@supabase/postgrest-js@*"],
+  "dependencies": ["indobase-js", "@indobaseinc/postgrest-js@*"],
   "registryDependencies": [],
   "files": [
     {

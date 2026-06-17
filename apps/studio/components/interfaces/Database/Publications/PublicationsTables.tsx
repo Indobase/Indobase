@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { ChevronLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -105,7 +105,7 @@ export const PublicationsTables = () => {
                   <TableHead className="hidden lg:table-cell">Description</TableHead>
                   {/* 
                       We've disabled All tables toggle for publications. 
-                      See https://github.com/supabase/supabase/pull/7233. 
+                      See https://github.com/Indobase/supabase/pull/7233. 
                     */}
                   <TableHead />
                 </TableRow>

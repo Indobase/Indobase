@@ -1,0 +1,2 @@
+export declare const VIEWS_SQL = "\nSELECT\n  c.oid :: int8 AS id,\n  n.nspname AS schema,\n  c.relname AS name,\n  (pg_relation_is_updatable(c.oid, false) & 20) = 20 AS is_updatable,\n  obj_description(c.oid) AS comment\nFROM\n  pg_class c\n  JOIN pg_namespace n ON n.oid = c.relnamespace\nWHERE\n  c.relkind = 'v'\n";
+//# sourceMappingURL=views.d.ts.map

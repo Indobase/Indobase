@@ -1,4 +1,4 @@
-import { PermissionAction, SupportCategories } from '@supabase/shared-types/out/constants'
+import { PermissionAction, SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { CreditCardIcon } from 'lucide-react'
 import Link from 'next/link'
 

@@ -1,16 +1,16 @@
 ---
 id: 'auth-signing-keys'
 title: 'JWT Signing Keys'
-subtitle: 'Best practices on managing keys used by Supabase Auth to create and verify JSON Web Tokens'
+subtitle: 'Best practices on managing keys used by Indobase Auth to create and verify JSON Web Tokens'
 ---
 
-Supabase Auth continuously issues a new JWT for each user session, for as long as the user remains signed in. JWT signing keys provide fine grained control over this important process for the security of your application.
+Indobase Auth continuously issues a new JWT for each user session, for as long as the user remains signed in. JWT signing keys provide fine grained control over this important process for the security of your application.
 
 Before continuing check the comprehensive guide on [Sessions](/docs/guides/auth/sessions) for all the details about how Auth creates tokens for a user's session. Read up on [JWTs](/docs/guides/auth/jwts) if you are not familiar with the basics.
 
 ## Overview
 
-When a JWT is issued by Supabase Auth, the key used to create its [signature](https://en.wikipedia.org/wiki/Digital_signature) is known as the signing key. Supabase provides two systems for dealing with signing keys: the Legacy system based on the JWT secret, and the new Signing keys system.
+When a JWT is issued by Indobase Auth, the key used to create its [signature](https://en.wikipedia.org/wiki/Digital_signature) is known as the signing key. Supabase provides two systems for dealing with signing keys: the Legacy system based on the JWT secret, and the new Signing keys system.
 
 | System            | Type                                       | Description                                                                                                                                                                                                                                                                                                                                                                  |
 | ----------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,10 +34,10 @@ We've designed the Signing keys system to address many problems the legacy syste
 
 ## Getting started
 
-You can start migrating away from the legacy JWT secret through the Supabase dashboard. This process does not cause downtime for your application.
+You can start migrating away from the legacy JWT secret through the Indobase dashboard. This process does not cause downtime for your application.
 
 1. Start off by clicking the _Migrate JWT secret_ button on the [JWT signing keys](/dashboard/project/_/settings/jwt) page. This step will import the existing legacy JWT secret into the new JWT signing keys system. Once this process completes, you will no longer be able to rotate the legacy JWT secret using the old system.
-2. Simultaneously, we're creating a new asymmetric JWT signing key for you to rotate to. This key starts off as standby key -- meaning it's being advertised as a key that Supabase Auth will use in the future to create JWTs.
+2. Simultaneously, we're creating a new asymmetric JWT signing key for you to rotate to. This key starts off as standby key -- meaning it's being advertised as a key that Indobase Auth will use in the future to create JWTs.
 3. If you're not ready to switch away from the legacy JWT secret right now, you can stop here without any issue. If you wish to use a different signing key -- either to use a different signing algorithm (RSA, Elliptic Curve or shared secret) or to import a private key or shared secret you already have -- feel free to move the standby key to _Previously used_ before finally moving it to _Revoked._
 4. If you do wish to start using the standby key for all new JWT use the _Rotate keys_ button. A few important notes:
    - Make sure your app does not directly rely on the legacy JWT secret. If it's verifying every JWT against the legacy JWT secret (using a library like `jose`, `jsonwebtoken` or similar), continuing with the rotation might break those components.
@@ -56,7 +56,7 @@ Key rotation and revocation are one of the most important processes for maintain
 **Malicious actors abusing the legacy JWT secret, or imported private key**
 
 - The legacy JWT secret has been leaked in logs, committed to source control, or accidentally exposed in the frontend build of your application, a library, desktop or mobile app package, etc.
-- You suspect that a [member of your organization](/docs/guides/platform/access-control) has lost control of their devices, and a malicious actor may have accessed the JWT secret via the Supabase dashboard or by accessing your application's backend configuration.
+- You suspect that a [member of your organization](/docs/guides/platform/access-control) has lost control of their devices, and a malicious actor may have accessed the JWT secret via the Indobase dashboard or by accessing your application's backend configuration.
 - You suspect that an ex-team-member of your organization may be a malicious actor, by abusing the power the legacy JWT secret provides.
 - Make sure you also switch to [publishable and secret API keys](/docs/guides/api/api-keys) and disable the `anon` and `service_role` keys.
 - If you've imported a private key, and you're suspecting that this private key has been compromised on your end similarly.
@@ -101,8 +101,8 @@ Each action on a key is reversible (except permanent deletion).
 
 | Action                                                                           | Accepted JWT signatures                                                | Description                                                                                                                                                                                                                                                                                                                 |
 | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <span className="!whitespace-nowrap">Create a new key</span>                     | Current key only, new key has not created any JWTs yet.                | When you initially create a key, after choosing the signing algorithm or importing a private key you already have, it starts out in the standby state. If using an asymmetric key (RSA, Elliptic Curve) its public key will be available in the discovery endpoint. Supabase Auth does not use this key to create new JWTs. |
-| <span className="!whitespace-nowrap">Rotate keys</span>                          | Both keys in the rotation.                                             | Rotation only changes the key used by Supabase Auth to create new JWTs, but the trust relationship with both keys remains.                                                                                                                                                                                                  |
+| <span className="!whitespace-nowrap">Create a new key</span>                     | Current key only, new key has not created any JWTs yet.                | When you initially create a key, after choosing the signing algorithm or importing a private key you already have, it starts out in the standby state. If using an asymmetric key (RSA, Elliptic Curve) its public key will be available in the discovery endpoint. Indobase Auth does not use this key to create new JWTs. |
+| <span className="!whitespace-nowrap">Rotate keys</span>                          | Both keys in the rotation.                                             | Rotation only changes the key used by Indobase Auth to create new JWTs, but the trust relationship with both keys remains.                                                                                                                                                                                                  |
 | <span className="!whitespace-nowrap">Revoke key</span>                           | <span className="!whitespace-nowrap">Only from the current key.</span> | Once all regularly valid JWTs have expired (or sooner) revoke the previously used key to revoke trust in it.                                                                                                                                                                                                                |
 | <span className="!whitespace-nowrap">Move to standby</span> from revoked         | Current and previously revoked key.                                    | If you've made a mistake or need more time to adjust your application, you can move a revoked key to standby. Follow up with a rotation to ensure Auth starts using the originally revoked key again to make new JWTs.                                                                                                      |
 | <span className="!whitespace-nowrap">Move to standby</span> from previously used | Both keys.                                                             | This only prepares the key from the last rotation to be used by Auth to make new JWTs with it.                                                                                                                                                                                                                              |
@@ -110,17 +110,17 @@ Each action on a key is reversible (except permanent deletion).
 
 ### Public key discovery and caching
 
-When your signing keys use an asymmetric algorithm based on [public-key cryptography](https://en.wikipedia.org/wiki/Public-key_cryptography) Supabase Auth exposes the public key in the JSON Web Key Set discovery endpoint, for anyone to see. This is an important security feature allowing you to rotate and revoke keys without needing to deploy new versions of your app's backend infrastructure.
+When your signing keys use an asymmetric algorithm based on [public-key cryptography](https://en.wikipedia.org/wiki/Public-key_cryptography) Indobase Auth exposes the public key in the JSON Web Key Set discovery endpoint, for anyone to see. This is an important security feature allowing you to rotate and revoke keys without needing to deploy new versions of your app's backend infrastructure.
 
 Access the currently trusted signing keys at the following endpoint:
 
 ```http
-GET https://project-id.supabase.co/auth/v1/.well-known/jwks.json
+GET https://project-id.indobase.in/auth/v1/.well-known/jwks.json
 ```
 
 Note that this is secure as public keys are irreversible and can only be used to verify the signature of JSON Web Tokens, but not create new ones.
 
-This discovery endpoint is cached by Supabase's edge servers for 10 minutes. Furthermore the Supabase client libraries may cache the keys in memory for an additional 10 minutes. Your application may be using different caching behavior if you're not relying only on the Supabase client library.
+This discovery endpoint is cached by Supabase's edge servers for 10 minutes. Furthermore the Indobase client libraries may cache the keys in memory for an additional 10 minutes. Your application may be using different caching behavior if you're not relying only on the Indobase client library.
 
 This multi-level cache is a trade-off allowing fast JWT verification without placing the Auth server in the hot path of your application, increasing its reliability and performance.
 
@@ -129,7 +129,7 @@ Importantly Supabase products **do not rely on this cache**, so stronger securit
 Finally this multi-level cache is cleared every 20 minutes, or longer if you have a custom setup. Consider the following problems that may arise due to it:
 
 - **Urgent key revocation.** If you are in a security incident where a signing key must be urgently revoked, due to the multi-level cache your application components may still trust and authenticate JWTs signed with the revoked key. Supabase products (Auth, Data API, Storage, Realtime) **do not rely on this cache and revocation is instantaneous.** Should this be an issue for you, ensure you've built a cache busting mechanism as part of your app's backend infrastructure.
-- **Quick key creation and rotation.** If you're migrating away from the legacy JWT secret or when only using the `supabase.auth.getClaims()` method this case is handled for you automatically. If you're verifying JWTs on your own, without the help of the Supabase client library, ensure that **all caches in your app** have picked up the newly created standby key before proceeding to rotation.
+- **Quick key creation and rotation.** If you're migrating away from the legacy JWT secret or when only using the `supabase.auth.getClaims()` method this case is handled for you automatically. If you're verifying JWTs on your own, without the help of the Indobase client library, ensure that **all caches in your app** have picked up the newly created standby key before proceeding to rotation.
 
 ## Choosing the right signing algorithm
 
@@ -170,7 +170,7 @@ This guarantee provides your application with close alignment with security comp
 
 If you wish to make your own JWTs or have access to the private key or shared secret used by Supabase, you can create a new JWT signing key by importing a private key or setting a shared secret yourself.
 
-Use the [Supabase CLI](/docs/reference/cli/introduction) to quickly and securely generate a private key ready for import:
+Use the [Indobase CLI](/docs/reference/cli/introduction) to quickly and securely generate a private key ready for import:
 
 ```sh
 supabase gen signing-key --algorithm ES256
@@ -239,7 +239,7 @@ A separate `apikey` header is required to access your project's APIs. This can b
 
 ### Why is a 5 minute wait imposed when changing signing key states?
 
-Changing a JWT signing key's state sets off many changes inside the Supabase platform. To ensure a consistent setup, most actions that change the state of a JWT signing key are throttled for approximately 5 minutes.
+Changing a JWT signing key's state sets off many changes inside the Indobase platform. To ensure a consistent setup, most actions that change the state of a JWT signing key are throttled for approximately 5 minutes.
 
 ### Why is deleting the legacy JWT secret disallowed?
 

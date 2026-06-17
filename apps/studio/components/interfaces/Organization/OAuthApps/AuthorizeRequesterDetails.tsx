@@ -1,4 +1,4 @@
-import { OAuthScope } from '@supabase/shared-types/out/constants'
+import { OAuthScope } from '@indobaseinc/shared-types/out/constants'
 import { Check } from 'lucide-react'
 
 import { PERMISSIONS_DESCRIPTIONS } from './OAuthApps.constants'

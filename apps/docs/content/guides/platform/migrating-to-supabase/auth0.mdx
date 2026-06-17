@@ -1,10 +1,10 @@
 ---
-title: 'Migrate from Auth0 to Supabase Auth'
+title: 'Migrate from Auth0 to Indobase Auth'
 subtitle: 'Learn how to migrate your users from Auth0'
 breadcrumb: 'Migrations'
 ---
 
-You can migrate your users from Auth0 to Supabase Auth.
+You can migrate your users from Auth0 to Indobase Auth.
 
 Changing authentication providers for a production app is an important operation. It can affect most aspects of your application. Prepare in advance by reading this guide, and develop a plan for handling the key migration steps and possible problems.
 
@@ -36,7 +36,7 @@ Depending on your evaluation, you may choose to go with one of the following str
 Auth provider migrations require 2 main steps:
 
 1.  Export your user data from the old provider (Auth0)
-1.  Import the data into your new provider (Supabase Auth)
+1.  Import the data into your new provider (Indobase Auth)
 
 ### Step 1: Export your user data
 
@@ -47,7 +47,7 @@ Auth0 provides two methods for exporting user data:
 
 To export password hashes and MFA factors, contact Auth0 support.
 
-### Step 2: Import your users into Supabase Auth
+### Step 2: Import your users into Indobase Auth
 
 The steps for importing your users depends on the login methods that you support.
 
@@ -61,22 +61,22 @@ See the following sections for how to import users with:
 
 For users who sign in with passwords, we recommend a hybrid approach to reduce downtime:
 
-1.  For new users, use Supabase Auth for sign up.
+1.  For new users, use Indobase Auth for sign up.
 1.  Migrate existing users in a one-off migration.
 
 ##### Sign up new users
 
-Sign up new users using Supabase Auth's [signin methods](/docs/guides/auth/passwords#signing-up-with-an-email-and-password).
+Sign up new users using Indobase Auth's [signin methods](/docs/guides/auth/passwords#signing-up-with-an-email-and-password).
 
-##### Migrate existing users to Supabase Auth
+##### Migrate existing users to Indobase Auth
 
-Migrate existing users to Supabase Auth. This requires two main steps: first, check which users need to be migrated, then create their accounts using the Supabase admin endpoints.
+Migrate existing users to Indobase Auth. This requires two main steps: first, check which users need to be migrated, then create their accounts using the Indobase admin endpoints.
 
 1.  Get your Auth 0 user export and password hash export lists.
 1.  Filter for users who use password login.
     - Under the `identities` field in the user object, these users will have `auth0` as a provider. In the same identity object, you can find their Auth0 `user_id`.
     - Check that the user has a corresponding password hash by comparing their Auth0 `user_id` to the `oid` field in the password hash export.
-1.  Use Supabase Auth's [admin create user](/docs/reference/javascript/auth-admin-createuser) method to recreate the user in Supabase Auth. If the user has a confirmed email address or phone number, set `email_confirm` or `phone_confirm` to `true`.
+1.  Use Indobase Auth's [admin create user](/docs/reference/javascript/auth-admin-createuser) method to recreate the user in Indobase Auth. If the user has a confirmed email address or phone number, set `email_confirm` or `phone_confirm` to `true`.
 
     ```ts
     import { createClient } from 'indobase-js'
@@ -96,7 +96,7 @@ Migrate existing users to Supabase Auth. This requires two main steps: first, ch
 
     </Admonition>
 
-    If you have a plaintext password instead of a hash, you can provide that instead. Supabase Auth will handle hashing the password for you. (Passwords are **always** stored hashed.)
+    If you have a plaintext password instead of a hash, you can provide that instead. Indobase Auth will handle hashing the password for you. (Passwords are **always** stored hashed.)
 
     ```ts
     import { createClient } from 'indobase-js'
@@ -109,17 +109,17 @@ Migrate existing users to Supabase Auth. This requires two main steps: first, ch
     })
     ```
 
-1.  To sign in your migrated users, use the Supabase Auth [sign in methods](/docs/reference/javascript/auth-signinwithpassword).
+1.  To sign in your migrated users, use the Indobase Auth [sign in methods](/docs/reference/javascript/auth-signinwithpassword).
 
     To check for edge cases where users aren't successfully migrated, use a fallback strategy. This ensures that users can continue to sign in seamlessly:
 
-    1.  Try to sign in the user with Supabase Auth.
+    1.  Try to sign in the user with Indobase Auth.
     1.  If the signin fails, try to sign in with Auth0.
-    1.  If Auth0 signin succeeds, call the admin create user method again to create the user in Supabase Auth.
+    1.  If Auth0 signin succeeds, call the admin create user method again to create the user in Indobase Auth.
 
 #### Passwordless methods
 
-For passwordless signin via email or phone, check for users with verified email addresses or phone numbers. Create these users in Supabase Auth with `email_confirm` or `phone_confirm` set to `true`:
+For passwordless signin via email or phone, check for users with verified email addresses or phone numbers. Create these users in Indobase Auth with `email_confirm` or `phone_confirm` set to `true`:
 
 ```ts
 import { createClient } from 'indobase-js'
@@ -132,7 +132,7 @@ const { data, error } = await supabase.auth.admin.createUser({
 })
 ```
 
-Check your Supabase Auth [email configuration](/docs/guides/auth/auth-smtp) and configure your [email template](/dashboard/project/_/auth/templates) for use with magic links. See the [Email templates guide](/docs/guides/auth/auth-email-templates) to learn more.
+Check your Indobase Auth [email configuration](/docs/guides/auth/auth-smtp) and configure your [email template](/dashboard/project/_/auth/templates) for use with magic links. See the [Email templates guide](/docs/guides/auth/auth-email-templates) to learn more.
 
 Once you have imported your users, you can sign them in using the [`signInWithOtp`](/docs/reference/javascript/auth-signinwithotp) method.
 
@@ -144,17 +144,17 @@ For both new and existing users, sign in the user using the [`signInWithOAuth`](
 
 After the user has completed the OAuth flow successfully, you can check if the user is a new or existing user in Auth0 by mapping their social provider id to Auth0. Auth0 stores the social provider ID in the user ID, which has the format `provider_name|provider_id` (for example, `github|123456`). See the [Auth0 identity docs](https://auth0.com/docs/manage-users/user-accounts/identify-users) to learn more.
 
-## Mapping between Auth0 and Supabase Auth
+## Mapping between Auth0 and Indobase Auth
 
 Each Auth provider has its own schema for tracking users and user information.
 
-In Supabase Auth, your users are stored in your project's database under the `auth` schema. Every user has an identity (unless the user is an anonymous user), which represents the signin method they can use with Supabase. This is represented by the `auth.users` and `auth.identities` table.
+In Indobase Auth, your users are stored in your project's database under the `auth` schema. Every user has an identity (unless the user is an anonymous user), which represents the signin method they can use with Supabase. This is represented by the `auth.users` and `auth.identities` table.
 
 See the [Users](/docs/guides/auth/users) and [Identities](/docs/guides/auth/identities) sections to learn more.
 
 ### Mapping user metadata and custom claims
 
-Supabase Auth provides 2 fields which you can use to map user-specific metadata from Auth0:
+Indobase Auth provides 2 fields which you can use to map user-specific metadata from Auth0:
 
 - `auth.users.raw_user_meta_data` : For storing non-sensitive user metadata that the user can update (e.g full name, age, favorite color).
 - `auth.users.raw_app_meta_data` : For storing non-sensitive user metadata that the user should not be able to update (e.g pricing plan, access control roles).
@@ -211,11 +211,11 @@ header={<span className="text-foreground">I have IDs assigned to existing users 
 id="custom-user-id"
 >
 
-All users stored in Supabase Auth use the UUID V4 format as the ID. If your UUID format is identical, you can specify it in the admin create user method like this:
+All users stored in Indobase Auth use the UUID V4 format as the ID. If your UUID format is identical, you can specify it in the admin create user method like this:
 
 <Admonition type="note">
 
-New users in Supabase Auth will always be created with a UUID V4 ID by default.
+New users in Indobase Auth will always be created with a UUID V4 ID by default.
 
 </Admonition>
 
@@ -234,7 +234,7 @@ header={<span className="text-foreground">How can I allow my users to retain the
 id="existing-password"
 >
 
-Supabase Auth never stores passwords as plaintext. Since Supabase Auth supports reading bcrypt and argon2 password hashes, you can import your users passwords if they use the same hashing algorithm. New users in Supabase Auth who use password-based sign-in methods will always use a bcrypt hash. Passwords are stored in the `auth.users.encrypted_password` column.
+Indobase Auth never stores passwords as plaintext. Since Indobase Auth supports reading bcrypt and argon2 password hashes, you can import your users passwords if they use the same hashing algorithm. New users in Indobase Auth who use password-based sign-in methods will always use a bcrypt hash. Passwords are stored in the `auth.users.encrypted_password` column.
 
 </AccordionItem>
 
@@ -243,7 +243,7 @@ header={<span className="text-foreground">My users have multi-factor authenticat
 id="mfa"
 >
 
-You can obtain an export of your users' MFA secrets by opening a support ticket with Auth0, similar to obtaining the export for password hashes. Supabase Auth only supports time-based one-time passwords (TOTP). Users who have TOTP-based factors may need to re-enroll using their choice of TOTP-based authenticator instead (e.g. 1Password / Google authenticator).
+You can obtain an export of your users' MFA secrets by opening a support ticket with Auth0, similar to obtaining the export for password hashes. Indobase Auth only supports time-based one-time passwords (TOTP). Users who have TOTP-based factors may need to re-enroll using their choice of TOTP-based authenticator instead (e.g. 1Password / Google authenticator).
 
 </AccordionItem>
 
@@ -252,7 +252,7 @@ header={<span className="text-foreground">How do I migrate existing SAML Single 
 id="saml"
 >
 
-Customers may need to link their identity provider with Supabase Auth separately, but their users should still be able to sign-in as per-normal after authenticating with their identity provider. For more information about SSO with SAML 2.0, you can check out [this guide](/docs/guides/auth/enterprise-sso/auth-sso-saml). If you want to migrate your existing SAML SSO connections from Auth0 to Supabase Auth, reach out to us via support.
+Customers may need to link their identity provider with Indobase Auth separately, but their users should still be able to sign-in as per-normal after authenticating with their identity provider. For more information about SSO with SAML 2.0, you can check out [this guide](/docs/guides/auth/enterprise-sso/auth-sso-saml). If you want to migrate your existing SAML SSO connections from Auth0 to Indobase Auth, reach out to us via support.
 
 </AccordionItem>
 
@@ -261,7 +261,7 @@ header={<span className="text-foreground">How do I migrate my Auth0 organization
 id="migrate-org"
 >
 
-This isn't supported by Supabase Auth yet.
+This isn't supported by Indobase Auth yet.
 
 </AccordionItem>
 

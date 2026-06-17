@@ -35,7 +35,7 @@ const useSupportCommands = ({ enabled = true }: { enabled?: boolean } = {}) => {
         ...command,
         route:
           BASE_PATH && command.href.startsWith('/')
-            ? `https://supabase.com/${command.href}`
+            ? `https://indobase.in/${command.href}`
             : command.href,
       })) as ICommand[],
     [setOpen]

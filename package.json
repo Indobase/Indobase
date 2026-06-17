@@ -76,6 +76,6 @@
   ],
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
-    "indobase-js": "workspace:*"
+    "@indobaseinc/indobase-js": "catalog:"
   }
 }

@@ -125,6 +125,15 @@ DATA_PLANE_PROVISIONER_TOKEN=your-token
 # Compose stack: pin provisioner image (CI publishes roshanraghavander/ind-repo-provisioner:<sha>)
 # DATA_PLANE_PROVISIONER_IMAGE=roshanraghavander/ind-repo-provisioner:latest
 
+# Project deployment executor auth and health probes.
+# Prefer a dedicated secret for VPS workers that call /api/platform/deployments/process and
+# /api/platform/projects/:ref/deployments/:deploymentId. Falls back to BUILDER_HANDOFF_SECRET or
+# AUTH_JWT_SECRET/JWT_SECRET only when this is unset.
+PROJECT_DEPLOYMENT_RUNTIME_SECRET=your-32-character-or-longer-runtime-secret
+# Optional executor tuning.
+# PROJECT_DEPLOYMENT_PROBE_TIMEOUT_MS=12000
+# PROJECT_DEPLOYMENT_STALE_AFTER_MS=900000
+
 # Platform admin delete: when unset or any value other than "false", deleting a project/org as a
 # platform operator runs infrastructure teardown (provisioner POST /teardown + dedicated tenant DB drop).
 # Set to "false" to only remove control-plane rows (legacy behavior).
@@ -184,3 +193,114 @@ PLATFORM_OPERATOR_EMAILS=you@example.com
 ```
 
 After setting on the Studio service, redeploy. Operators see **Platform admin** in the user menu (avatar) and can open `https://studio.indobase.in/platform-admin`.
+
+## Project deployment executor on the VPS
+
+Queued Indobase Hosting deployments are processed by a small VPS-side worker that calls the Studio runtime endpoints. Install it after Studio env is set:
+
+```bash
+sudo bash /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/install-project-deployment-executor.sh
+```
+
+The installer creates `/etc/indobase/project-deployment-executor.env`. Set at minimum:
+
+```env
+PROJECT_DEPLOYMENT_EXECUTOR_URL=https://studio.indobase.in
+PROJECT_DEPLOYMENT_RUNTIME_SECRET=your-32-character-or-longer-runtime-secret
+PROJECT_DEPLOYMENT_EXECUTOR_WORKER_ID=vps-project-deployment-executor
+```
+
+Useful commands:
+
+```bash
+sudo systemctl status indobase-project-deployment-executor.service
+sudo journalctl -u indobase-project-deployment-executor.service -f
+sudo /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/project-deployment-executor.sh --once
+```
+
+The worker runs continuously, claims batches from `/api/platform/deployments/process`, and preserves lease ownership with the `worker_id` stored on each deployment.
+
+## Android mobile build executor
+
+Install the companion worker:
+
+```bash
+sudo bash /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/install-project-mobile-build-executor.sh
+```
+
+The installer creates `/etc/indobase/project-mobile-build-executor.env`. Set at minimum:
+
+```env
+PROJECT_MOBILE_BUILD_EXECUTOR_URL=https://studio.indobase.in
+PROJECT_MOBILE_BUILD_RUNTIME_SECRET=your-32-character-or-longer-runtime-secret
+PROJECT_MOBILE_BUILD_EXECUTOR_WORKER_ID=vps-project-mobile-build-executor
+PROJECT_MOBILE_BUILD_EXECUTOR_COMMAND=/opt/indobase/build-android-aab.sh
+```
+
+Useful commands:
+
+```bash
+sudo systemctl status indobase-project-mobile-build-executor.service
+sudo journalctl -u indobase-project-mobile-build-executor.service -f
+sudo /etc/dokploy/compose/indobase-backend-bmqhan/code/docker/scripts/project-mobile-build-executor.sh --once
+```
+
+The worker claims jobs from `/api/platform/mobile-builds/process`, keeps the lease alive with `worker_id`, runs `PROJECT_MOBILE_BUILD_EXECUTOR_COMMAND`, and PATCHes the final status plus artifact metadata back to Studio.
+
+Studio also enforces tier-aware queue limits before workers claim builds:
+
+```env
+PROJECT_MOBILE_BUILD_FREE_MAX_CONCURRENT_PER_ORG=1
+PROJECT_MOBILE_BUILD_PRO_MAX_CONCURRENT_PER_ORG=3
+PROJECT_MOBILE_BUILD_TEAM_MAX_CONCURRENT_PER_ORG=10
+PROJECT_MOBILE_BUILD_ENTERPRISE_MAX_CONCURRENT_PER_ORG=25
+PROJECT_MOBILE_BUILD_PLATFORM_MAX_CONCURRENT_PER_ORG=50
+
+PROJECT_MOBILE_BUILD_FREE_MAX_OUTSTANDING_PER_ORG=3
+PROJECT_MOBILE_BUILD_PRO_MAX_OUTSTANDING_PER_ORG=10
+PROJECT_MOBILE_BUILD_TEAM_MAX_OUTSTANDING_PER_ORG=25
+PROJECT_MOBILE_BUILD_ENTERPRISE_MAX_OUTSTANDING_PER_ORG=100
+PROJECT_MOBILE_BUILD_PLATFORM_MAX_OUTSTANDING_PER_ORG=200
+
+PROJECT_MOBILE_BUILD_FREE_PRIORITY=standard
+PROJECT_MOBILE_BUILD_PRO_PRIORITY=standard
+PROJECT_MOBILE_BUILD_TEAM_PRIORITY=priority
+PROJECT_MOBILE_BUILD_ENTERPRISE_PRIORITY=priority
+PROJECT_MOBILE_BUILD_PLATFORM_PRIORITY=priority
+```
+
+Recommended high-concurrency rollout:
+
+1. Keep one build slot per worker.
+2. Scale worker count horizontally based on queue depth.
+3. Reserve a priority worker pool for `team`, `enterprise`, and `platform` traffic if needed.
+4. Use separate artifact storage/CDN from Studio so build downloads do not compete with control-plane traffic.
+
+Your build command receives:
+
+```env
+INDOBASE_MOBILE_BUILD_JSON_FILE=/tmp/claimed-build.json
+INDOBASE_MOBILE_BUILD_RESULT_FILE=/tmp/build-result.json
+INDOBASE_MOBILE_BUILD_LOG_FILE=/tmp/build-command.log
+INDOBASE_MOBILE_BUILD_ID=<build-id>
+INDOBASE_MOBILE_BUILD_PROJECT_REF=<project-ref>
+INDOBASE_MOBILE_BUILD_WORKER_ID=<worker-id>
+INDOBASE_MOBILE_BUILD_API_BASE=https://studio.indobase.in
+INDOBASE_MOBILE_BUILD_RUNTIME_TOKEN=<runtime-secret>
+```
+
+Write `INDOBASE_MOBILE_BUILD_RESULT_FILE` as JSON to publish artifacts back into Studio:
+
+```json
+{
+  "status": "ready",
+  "log_message": "Android bundle built successfully",
+  "artifacts": [
+    {
+      "kind": "android_aab",
+      "file_name": "app-release.aab",
+      "download_url": "https://artifacts.indobase.in/builds/app-release.aab"
+    }
+  ]
+}
+```

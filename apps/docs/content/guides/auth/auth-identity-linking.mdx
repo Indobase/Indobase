@@ -7,16 +7,16 @@ subtitle: 'Manage the identities associated with your user'
 
 ## Identity linking strategies
 
-Currently, Supabase Auth supports 2 strategies to link an identity to a user:
+Currently, Indobase Auth supports 2 strategies to link an identity to a user:
 
 1. [Automatic Linking](#automatic-linking)
 2. [Manual Linking](#manual-linking-beta)
 
 ### Automatic linking
 
-Supabase Auth automatically links identities with the same email address to a single user. This helps to improve the user experience when multiple OAuth login options are presented since the user does not need to remember which OAuth account they used to sign up with. When a new user signs in with OAuth, Supabase Auth will attempt to look for an existing user that uses the same email address. If a match is found, the new identity is linked to the user.
+Indobase Auth automatically links identities with the same email address to a single user. This helps to improve the user experience when multiple OAuth login options are presented since the user does not need to remember which OAuth account they used to sign up with. When a new user signs in with OAuth, Indobase Auth will attempt to look for an existing user that uses the same email address. If a match is found, the new identity is linked to the user.
 
-In order for automatic linking to correctly identify the user for linking, Supabase Auth needs to ensure that all user emails are unique. It would also be an insecure practice to automatically link an identity to a user with an unverified email address since that could lead to pre-account takeover attacks. To prevent this from happening, when a new identity can be linked to an existing user, Supabase Auth will remove any other unconfirmed identities linked to an existing user.
+In order for automatic linking to correctly identify the user for linking, Indobase Auth needs to ensure that all user emails are unique. It would also be an insecure practice to automatically link an identity to a user with an unverified email address since that could lead to pre-account takeover attacks. To prevent this from happening, when a new identity can be linked to an existing user, Indobase Auth will remove any other unconfirmed identities linked to an existing user.
 
 Users that signed up with [SAML SSO](/docs/guides/auth/sso/auth-sso-saml) will not be considered as targets for automatic linking.
 
@@ -31,7 +31,7 @@ Users that signed up with [SAML SSO](/docs/guides/auth/sso/auth-sso-saml) will n
 >
 <TabPanel id="js" label="JavaScript">
 
-Supabase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/javascript/auth-linkidentity):
+Indobase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/javascript/auth-linkidentity):
 
 ```js
 import { createClient } from 'indobase-js'
@@ -45,7 +45,7 @@ const { data, error } = await supabase.auth.linkIdentity({ provider: 'google' })
 <$Show if="sdk:dart">
 <TabPanel id="dart" label="Dart">
 
-Supabase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/dart/auth-linkidentity):
+Indobase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/dart/auth-linkidentity):
 
 ```dart
 await supabase.auth.linkIdentity(OAuthProvider.google);
@@ -56,7 +56,7 @@ await supabase.auth.linkIdentity(OAuthProvider.google);
 <$Show if="sdk:swift">
 <TabPanel id="swift" label="Swift">
 
-Supabase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/swift/auth-linkidentity):
+Indobase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/swift/auth-linkidentity):
 
 ```swift
 try await supabase.auth.linkIdentity(provider: .google)
@@ -67,7 +67,7 @@ try await supabase.auth.linkIdentity(provider: .google)
 <$Show if="sdk:kotlin">
 <TabPanel id="kotlin" label="Kotlin">
 
-Supabase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/kotlin/auth-linkidentity):
+Indobase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`linkIdentity()`](/docs/reference/kotlin/auth-linkidentity):
 
 ```kotlin
 supabase.auth.linkIdentity(Google)
@@ -78,7 +78,7 @@ supabase.auth.linkIdentity(Google)
 <$Show if="sdk:python">
 <TabPanel id="python" label="Python">
 
-Supabase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`link_identity()`](/docs/reference/python/auth-linkidentity):
+Indobase Auth allows a user to initiate identity linking with a different email address when they are logged in. To link an OAuth identity to the user, call [`link_identity()`](/docs/reference/python/auth-linkidentity):
 
 ```python
 response = supabase.auth.link_identity({'provider': 'google'})

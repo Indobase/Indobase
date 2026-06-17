@@ -1,9 +1,9 @@
-import { UpdateOAuthClientParams } from 'indobase-js'
+import { UpdateOAuthClientParams } from '@indobaseinc/indobase-js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { handleError } from 'data/fetchers'
-import { createProjectSupabaseClient } from 'lib/project-supabase-client'
+import { createProjectIndobaseClient } from 'lib/project-indobase-client'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
 import { oauthServerAppKeys } from './keys'
 
@@ -23,8 +23,8 @@ export async function updateOAuthServerApp({
   if (!clientEndpoint) throw new Error('Client endpoint is required')
   if (!clientId) throw new Error('Client ID is required')
 
-  const supabaseClient = await createProjectSupabaseClient(projectRef, clientEndpoint)
-  const { data, error } = await supabaseClient.auth.admin.oauth.updateClient(clientId, params)
+  const indobaseClient = await createProjectIndobaseClient(projectRef, clientEndpoint)
+  const { data, error } = await indobaseClient.auth.admin.oauth.updateClient(clientId, params)
 
   if (error) return handleError(error)
   return data

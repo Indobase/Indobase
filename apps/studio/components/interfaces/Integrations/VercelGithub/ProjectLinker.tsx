@@ -135,7 +135,7 @@ const ProjectLinker = ({
       organizationIntegrationId: organizationIntegrationId!,
       connection: {
         foreign_project_id: selectedForeignProject?.id,
-        supabase_project_ref: selectedSupabaseProject?.ref,
+        indobase_project_ref: selectedSupabaseProject?.ref,
         integration_id: '0',
         metadata: {
           ...projectDetails,

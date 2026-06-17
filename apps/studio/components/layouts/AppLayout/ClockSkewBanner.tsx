@@ -21,7 +21,7 @@ export const ClockSkewBanner = () => {
         <>
           This can cause issues with certain features.{' '}
           <InlineLink
-            href={`${DOCS_URL}/guides/troubleshooting/jwt-expired-error-in-supabase-dashboard-F06k3x`}
+            href={`${DOCS_URL}/guides/troubleshooting/jwt-expired-error-in-indobase-dashboard-F06k3x`}
           >
             Learn more
           </InlineLink>

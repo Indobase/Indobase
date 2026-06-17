@@ -1,14 +1,14 @@
 ---
 id: 'firebase-storage'
 title: 'Migrated from Firebase Storage to Supabase'
-description: 'Migrate Firebase Storage files to Supabase Storage.'
-subtitle: 'Migrate Firebase Storage files to Supabase Storage.'
+description: 'Migrate Firebase Storage files to Indobase Storage.'
+subtitle: 'Migrate Firebase Storage files to Indobase Storage.'
 ---
 
-Supabase provides several [tools](https://github.com/supabase-community/firebase-to-supabase/tree/main/storage) to convert storage files from Firebase Storage to Supabase Storage. Conversion is a two-step process:
+Supabase provides several [tools](https://github.com/supabase-community/firebase-to-supabase/tree/main/storage) to convert storage files from Firebase Storage to Indobase Storage. Conversion is a two-step process:
 
 1. Files are downloaded from a Firebase storage bucket to a local filesystem.
-2. Files are uploaded from the local filesystem to a Supabase storage bucket.
+2. Files are uploaded from the local filesystem to an Indobase storage bucket.
 
 ## Set up the migration tool [#set-up-migration-tool]
 
@@ -19,7 +19,7 @@ Supabase provides several [tools](https://github.com/supabase-community/firebase
    ```
 
 1. In the `/storage` directory, rename [supabase-keys-sample.js](https://github.com/supabase-community/firebase-to-supabase/blob/main/storage/supabase-keys-sample.js) to `supabase-keys.js`.
-1. Go to your Supabase project's [API settings](/dashboard/project/_/settings/api) in the Dashboard.
+1. Go to your Indobase project's [API settings](/dashboard/project/_/settings/api) in the Dashboard.
 1. Copy the **Project URL** and update the `SUPABASE_URL` value in `supabase-keys.js`.
 1. Under **Project API keys**, copy the **service_role** key and update the `SUPABASE_KEY` value in `supabase-keys.js`.
 
@@ -45,7 +45,7 @@ Supabase provides several [tools](https://github.com/supabase-community/firebase
 
 To process in batches using multiple command-line executions, you must use the same parameters with a new `<token>` on subsequent calls. Use the token displayed on the last call to continue the process at a given point.
 
-### Upload files to Supabase Storage bucket [#upload-to-supabase-storage-bucket]
+### Upload files to Indobase Storage bucket [#upload-to-supabase-storage-bucket]
 
 `node upload.js <prefix> <folder> <bucket>`
 
@@ -55,7 +55,7 @@ To process in batches using multiple command-line executions, you must use the s
 
 <Admonition type="note">
 
-If the bucket doesn't exist, it's created as a `non-public` bucket. You must set permissions on this new bucket in the [Supabase Dashboard](/dashboard/project/_/storage/buckets) before users can download any files.
+If the bucket doesn't exist, it's created as a `non-public` bucket. You must set permissions on this new bucket in the [Indobase Dashboard](/dashboard/project/_/storage/buckets) before users can download any files.
 
 </Admonition>
 
@@ -65,6 +65,6 @@ If the bucket doesn't exist, it's created as a `non-public` bucket. You must set
 - [Firestore Data Migration](/docs/guides/migrations/firestore-data)
 - [Firebase Auth Migration](/docs/guides/migrations/firebase-auth)
 
-## Migrate to Supabase
+## Migrate to Indobase
 
-[Contact us](https://forms.supabase.com/firebase-migration) if you need more help migrating your project.
+[Contact us](https://forms.indobase.inm/firebase-migration) if you need more help migrating your project.

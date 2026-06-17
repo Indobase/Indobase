@@ -4,17 +4,17 @@ title: 'OAuth 2.1 Flows'
 description: 'Understanding the authorization code and refresh token flows with OpenID Connect'
 ---
 
-Supabase Auth implements OAuth 2.1 with OpenID Connect (OIDC), supporting the authorization code flow with PKCE and refresh token flow. This guide explains how these flows work in detail.
+Indobase Auth implements OAuth 2.1 with OpenID Connect (OIDC), supporting the authorization code flow with PKCE and refresh token flow. This guide explains how these flows work in detail.
 
 <Admonition type="note">
 
-This guide explains the OAuth 2.1 flows for **third-party client applications** that authenticate with your Supabase project. These flows require custom implementation and are not available in the `indobase-js` library. The `supabase-js` library is for authenticating **with** Supabase Auth as an identity provider, not for building your own OAuth server.
+This guide explains the OAuth 2.1 flows for **third-party client applications** that authenticate with your Indobase project. These flows require custom implementation and are not available in the `indobase-js` library. The `supabase-js` library is for authenticating **with** Indobase Auth as an identity provider, not for building your own OAuth server.
 
 </Admonition>
 
 ## Supported grant types
 
-Supabase Auth supports two OAuth 2.1 grant types:
+Indobase Auth supports two OAuth 2.1 grant types:
 
 1. **Authorization Code with PKCE** (`authorization_code`) - For obtaining initial access tokens
 2. **Refresh Token** (`refresh_token`) - For obtaining new access tokens without re-authentication
@@ -33,10 +33,10 @@ The authorization code flow with PKCE (Proof Key for Code Exchange) is the recom
 
 The flow consists of several steps:
 
-1. **Client initiates authorization** - Third-party app redirects user to Supabase Auth's authorize endpoint
-2. **Supabase validates and redirects** - Supabase Auth validates OAuth parameters and redirects user to your configured authorization URL
+1. **Client initiates authorization** - Third-party app redirects user to Indobase Auth's authorize endpoint
+2. **Supabase validates and redirects** - Indobase Auth validates OAuth parameters and redirects user to your configured authorization URL
 3. **User authenticates and authorizes** - Your frontend checks if user is logged in, shows consent screen, and handles approval/denial
-4. **Authorization code issued** - Supabase Auth generates a short-lived authorization code and redirects back to client
+4. **Authorization code issued** - Indobase Auth generates a short-lived authorization code and redirects back to client
 5. **Code exchange** - Client exchanges the code for tokens
 6. **Access granted** - Client receives access token, refresh token, and ID token
 
@@ -47,7 +47,7 @@ Here's a visual representation of the complete authorization code flow:
 ```
 ┌─────────────┐              ┌──────────────────┐              ┌──────────────────┐
 │             │              │                  │              │                  │
-│   Client    │              │   Your Auth UI   │              │  Supabase Auth   │
+│   Client    │              │   Your Auth UI   │              │  Indobase Auth   │
 │     App     │              │   (Frontend)     │              │                  │
 │             │              │                  │              │                  │
 └──────┬──────┘              └────────┬─────────┘              └────────┬─────────┘
@@ -96,10 +96,10 @@ Here's a visual representation of the complete authorization code flow:
 
 **Key points:**
 
-- Third-party client redirects user to **Supabase Auth's authorize endpoint** (not directly to your UI)
-- Supabase Auth validates OAuth parameters and redirects to **your authorization path**
+- Third-party client redirects user to **Indobase Auth's authorize endpoint** (not directly to your UI)
+- Indobase Auth validates OAuth parameters and redirects to **your authorization path**
 - Your frontend UI handles authentication and consent using `supabase-js` OAuth methods
-- Supabase Auth handles all backend OAuth logic (code generation, token issuance)
+- Indobase Auth handles all backend OAuth logic (code generation, token issuance)
 
 ### Step 1: Generate PKCE parameters
 
@@ -141,7 +141,7 @@ const codeChallenge = await generateCodeChallenge(codeVerifier)
 The client redirects the user to your authorization endpoint with the following parameters:
 
 ```
-https://<project-ref>.supabase.co/auth/v1/oauth/authorize?
+https://<project-ref>.indobase.in/auth/v1/oauth/authorize?
   response_type=code
   &client_id=<client-id>
   &redirect_uri=<configured-redirect-uri>
@@ -176,7 +176,7 @@ Always include a `state` parameter to protect against CSRF attacks. Generate a r
 
 ### Step 3: User authentication and consent
 
-After receiving the authorization request, Supabase Auth validates the OAuth parameters (client_id, redirect_uri, PKCE, etc.) and then redirects the user to your configured **authorization path** (e.g., `https://example.com/oauth/consent?authorization_id=<id>`).
+After receiving the authorization request, Indobase Auth validates the OAuth parameters (client_id, redirect_uri, PKCE, etc.) and then redirects the user to your configured **authorization path** (e.g., `https://example.com/oauth/consent?authorization_id=<id>`).
 
 The URL will contain an `authorization_id` query parameter that identifies this authorization request.
 
@@ -191,13 +191,13 @@ Your frontend application at the authorization path should:
    - Call `supabase.auth.oauth.denyAuthorization(authorization_id)` to deny
    - Redirect user to the returned `redirect_to` URL
 
-This is a **frontend implementation** using `supabase-js`. Supabase Auth handles all the backend OAuth logic (generating authorization codes, validating requests, etc.) after you call the approve/deny methods.
+This is a **frontend implementation** using `supabase-js`. Indobase Auth handles all the backend OAuth logic (generating authorization codes, validating requests, etc.) after you call the approve/deny methods.
 
 See the [Getting Started guide](/docs/guides/auth/oauth-server/getting-started#example-authorization-ui) for complete implementation examples.
 
 ### Step 4: Authorization code issued
 
-If the user approves access, Supabase Auth redirects back to the client's redirect URI with an authorization code:
+If the user approves access, Indobase Auth redirects back to the client's redirect URI with an authorization code:
 
 ```
 https://client-app.com/callback?
@@ -211,7 +211,7 @@ The authorization code is:
 - **Single-use** - Can only be exchanged once
 - **Bound to PKCE** - Can only be exchanged with the correct code verifier
 
-If the user denies access, Supabase Auth redirects with error information in query parameters:
+If the user denies access, Indobase Auth redirects with error information in query parameters:
 
 ```
 https://client-app.com/callback?
@@ -237,7 +237,7 @@ The client exchanges the authorization code for tokens by making a POST request 
 Public clients send only the `client_id` in the request body with no secret:
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=authorization_code' \
   -d 'code=<authorization-code>' \
@@ -251,7 +251,7 @@ curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
 This is the **default** for confidential clients. Credentials are sent via the `Authorization` header using HTTP Basic authentication (base64-encoded `client_id:client_secret`):
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -u '<client-id>:<client-secret>' \
   -d 'grant_type=authorization_code' \
@@ -271,7 +271,7 @@ The `-u` flag in cURL automatically encodes the credentials and sets the `Author
 Credentials are sent as form parameters in the request body:
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=authorization_code' \
   -d 'code=<authorization-code>' \
@@ -288,7 +288,7 @@ curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
 const codeVerifier = sessionStorage.getItem('code_verifier')
 
 // --- Public clients (token_endpoint_auth_method: none) ---
-const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/token`, {
+const response = await fetch(`https://<project-ref>.indobase.in/auth/v1/oauth/token`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -303,7 +303,7 @@ const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/to
 })
 
 // --- Confidential clients (token_endpoint_auth_method: client_secret_basic) ---
-const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/token`, {
+const response = await fetch(`https://<project-ref>.indobase.in/auth/v1/oauth/token`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -318,7 +318,7 @@ const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/to
 })
 
 // --- Confidential clients (token_endpoint_auth_method: client_secret_post) ---
-const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/token`, {
+const response = await fetch(`https://<project-ref>.indobase.in/auth/v1/oauth/token`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -338,7 +338,7 @@ const tokens = await response.json()
 
 ### Step 6: Token response
 
-On success, Supabase Auth returns a JSON response with tokens:
+On success, Indobase Auth returns a JSON response with tokens:
 
 ```json
 {
@@ -369,7 +369,7 @@ Access tokens are JWTs containing standard Supabase claims plus OAuth-specific c
   "aud": "authenticated",
   "exp": 1735819200,
   "iat": 1735815600,
-  "iss": "https://<project-ref>.supabase.co/auth/v1",
+  "iss": "https://<project-ref>.indobase.in/auth/v1",
   "sub": "user-uuid",
   "email": "user@example.com",
   "phone": "",
@@ -439,7 +439,7 @@ Make a POST request to the token endpoint with the refresh token. The client aut
 #### Public clients (`token_endpoint_auth_method: none`)
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=refresh_token' \
   -d 'refresh_token=<refresh-token>' \
@@ -449,7 +449,7 @@ curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
 #### Confidential clients (`token_endpoint_auth_method: client_secret_basic`)
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -u '<client-id>:<client-secret>' \
   -d 'grant_type=refresh_token' \
@@ -459,7 +459,7 @@ curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
 #### Confidential clients (`token_endpoint_auth_method: client_secret_post`)
 
 ```bash
-curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
+curl -X POST 'https://<project-ref>.indobase.in/auth/v1/oauth/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=refresh_token' \
   -d 'refresh_token=<refresh-token>' \
@@ -472,7 +472,7 @@ curl -X POST 'https://<project-ref>.supabase.co/auth/v1/oauth/token' \
 ```javascript
 // Public clients (token_endpoint_auth_method: none)
 async function refreshAccessToken(refreshToken) {
-  const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/token`, {
+  const response = await fetch(`https://<project-ref>.indobase.in/auth/v1/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -493,7 +493,7 @@ async function refreshAccessToken(refreshToken) {
 
 // Confidential clients (token_endpoint_auth_method: client_secret_basic)
 async function refreshAccessTokenConfidential(refreshToken) {
-  const response = await fetch(`https://<project-ref>.supabase.co/auth/v1/oauth/token`, {
+  const response = await fetch(`https://<project-ref>.indobase.in/auth/v1/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -535,7 +535,7 @@ Refresh tokens may be rotated (a new refresh token is issued). Always update you
 
 ## OpenID Connect (OIDC)
 
-Supabase Auth supports OpenID Connect, an identity layer on top of OAuth 2.1.
+Indobase Auth supports OpenID Connect, an identity layer on top of OAuth 2.1.
 
 <Admonition type="note">
 
@@ -545,7 +545,7 @@ Supabase Auth supports OpenID Connect, an identity layer on top of OAuth 2.1.
 
 ### ID tokens
 
-ID tokens are JWTs that contain user identity information. They are signed by Supabase Auth and can be verified by clients.
+ID tokens are JWTs that contain user identity information. They are signed by Indobase Auth and can be verified by clients.
 
 The claims included in the ID token depend on the scopes requested during authorization. For example, requesting `openid email profile` will include email and profile-related claims, while requesting only `openid email` will include only email-related claims.
 
@@ -553,7 +553,7 @@ The claims included in the ID token depend on the scopes requested during author
 
 ```json
 {
-  "iss": "https://<project-ref>.supabase.co/auth/v1",
+  "iss": "https://<project-ref>.indobase.in/auth/v1",
   "sub": "user-uuid",
   "aud": "client-id",
   "exp": 1735819200,
@@ -587,7 +587,7 @@ The claims included in the ID token depend on the scopes requested during author
 Clients can retrieve user information by calling the UserInfo endpoint with an access token:
 
 ```bash
-curl 'https://<project-ref>.supabase.co/auth/v1/oauth/userinfo' \
+curl 'https://<project-ref>.indobase.in/auth/v1/oauth/userinfo' \
   -H 'Authorization: Bearer <access-token>'
 ```
 
@@ -619,11 +619,11 @@ The information returned depends on the scopes granted in the access token. For 
 
 ### OIDC discovery
 
-Supabase Auth exposes OpenID Connect and OAuth 2.1 discovery endpoints that describe its capabilities:
+Indobase Auth exposes OpenID Connect and OAuth 2.1 discovery endpoints that describe its capabilities:
 
 ```
-https://<project-ref>.supabase.co/auth/v1/.well-known/openid-configuration
-https://<project-ref>.supabase.co/auth/v1/.well-known/oauth-authorization-server
+https://<project-ref>.indobase.in/auth/v1/.well-known/openid-configuration
+https://<project-ref>.indobase.in/auth/v1/.well-known/oauth-authorization-server
 ```
 
 <Admonition type="note">
@@ -665,10 +665,10 @@ If you request the `openid` scope to receive ID tokens, your project must be con
 
 ### JWKS endpoint
 
-Supabase Auth exposes a JSON Web Key Set (JWKS) endpoint containing public keys for token verification:
+Indobase Auth exposes a JSON Web Key Set (JWKS) endpoint containing public keys for token verification:
 
 ```
-https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+https://<project-ref>.indobase.in/auth/v1/.well-known/jwks.json
 ```
 
 Example response:
@@ -705,13 +705,13 @@ Use a JWT library to verify tokens:
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 const JWKS = createRemoteJWKSet(
-  new URL('https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json')
+  new URL('https://<project-ref>.indobase.in/auth/v1/.well-known/jwks.json')
 )
 
 async function verifyAccessToken(token) {
   try {
     const { payload } = await jwtVerify(token, JWKS, {
-      issuer: 'https://<project-ref>.supabase.co/auth/v1',
+      issuer: 'https://<project-ref>.indobase.in/auth/v1',
       audience: 'authenticated',
     })
     return payload
@@ -731,7 +731,7 @@ from jose.backends import RSAKey
 import requests
 
 # Fetch JWKS
-jwks = requests.get('https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json').json()
+jwks = requests.get('https://<project-ref>.indobase.in/auth/v1/.well-known/jwks.json').json()
 
 def verify_access_token(token):
     try:
@@ -739,7 +739,7 @@ def verify_access_token(token):
             token,
             jwks,
             algorithms=['RS256'],
-            issuer='https://<project-ref>.supabase.co/auth/v1',
+            issuer='https://<project-ref>.indobase.in/auth/v1',
             audience='authenticated'
         )
         return payload
@@ -762,7 +762,7 @@ import (
 func verifyAccessToken(ctx context.Context, token string) (*oidc.IDToken, error) {
     provider, err := oidc.NewProvider(
         ctx,
-        "https://<project-ref>.supabase.co/auth/v1",
+        "https://<project-ref>.indobase.in/auth/v1",
     )
     if err != nil {
         return nil, err
@@ -783,7 +783,7 @@ func verifyAccessToken(ctx context.Context, token string) (*oidc.IDToken, error)
 
 Always verify:
 
-1. **Signature** - Token is signed by Supabase Auth
+1. **Signature** - Token is signed by Indobase Auth
 2. **Issuer** (`iss`) - Matches your project URL
 3. **Audience** (`aud`) - Is `authenticated`
 4. **Expiration** (`exp`) - Token is not expired

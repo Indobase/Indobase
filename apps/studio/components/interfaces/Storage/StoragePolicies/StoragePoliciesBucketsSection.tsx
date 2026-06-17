@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronUp, Search, X } from 'lucide-react'
 import { forwardRef, useEffect, useState, type HTMLAttributes, type ReactNode } from 'react'

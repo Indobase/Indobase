@@ -7,7 +7,7 @@
 
 # સુપાબેઝ
 
-[સુપાબેઝ](https://supabase.com) ફાયરબેઝ માટે એક ઓપન-સોર્સ વિકલ્પ છે. અમે એન્ટરપ્રાઇઝ-ગ્રેડ ઓપન સોર્સ ટૂલ્સનો ઉપયોગ કરીને ફાયરબેઝની સુવિધાઓ બનાવી રહ્યા છીએ.
+[સુપાબેઝ](https://indobase.in) ફાયરબેઝ માટે એક ઓપન-સોર્સ વિકલ્પ છે. અમે એન્ટરપ્રાઇઝ-ગ્રેડ ઓપન સોર્સ ટૂલ્સનો ઉપયોગ કરીને ફાયરબેઝની સુવિધાઓ બનાવી રહ્યા છીએ.
 
 - [x] હોસ્ટેડ પોસ્ટગ્રેસ ડેટાબેઝ
 - [x] રીઅલટાઇમ સબ્સ્ક્રિપ્શન્સ
@@ -17,23 +17,23 @@
 - [x] સ્ટોરેજ
 - [x] ફંક્શન્સ
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## દસ્તાવેજીકરણ
 
-સંપૂર્ણ દસ્તાવેજીકરણ માટે, મુલાકાત લો [supabase.com/docs](https://supabase.com/docs)
+સંપૂર્ણ દસ્તાવેજીકરણ માટે, મુલાકાત લો [indobase.in/docs](https://indobase.in/docs)
 
 ## સમુદાય અને મદદ
 
-- [સમુદાય મંચ](https://github.com/supabase/supabase/discussions). આ માટે શ્રેષ્ઠ: બિલ્ડિંગમાં સહાય, ડેટાબેઝની શ્રેષ્ઠ પદ્ધતિઓ વિશેની ચર્ચા.
-- [ગિટહબ ઇસ્યુઝ](https://github.com/supabase/supabase/issues). આ માટે શ્રેષ્ઠ: સુપાબેઝ વાપરતી વખતે તમને જે બગ્ઝ અને એરર્સ મળે.
-- [ઇમેઇલ સહાય](https://supabase.com/docs/support#business-support). આ માટે શ્રેષ્ઠ: તમારા ડેટાબેઝ અથવા ઇન્ફ્રાસ્ટ્રક્ચર સાથેની સમસ્યાઓ.
-- [ડીસ્કોર્ડ](http://discord.supabase.com). આ માટે શ્રેષ્ઠ: તમારી એપ્લિકેશનો શેર કરવા માટે અને સમુદાયને મળવા માટે.
+- [સમુદાય મંચ](https://github.com/Indobase/Indobase/discussions). આ માટે શ્રેષ્ઠ: બિલ્ડિંગમાં સહાય, ડેટાબેઝની શ્રેષ્ઠ પદ્ધતિઓ વિશેની ચર્ચા.
+- [ગિટહબ ઇસ્યુઝ](https://github.com/Indobase/Indobase/issues). આ માટે શ્રેષ્ઠ: સુપાબેઝ વાપરતી વખતે તમને જે બગ્ઝ અને એરર્સ મળે.
+- [ઇમેઇલ સહાય](https://indobase.in/docs/support#business-support). આ માટે શ્રેષ્ઠ: તમારા ડેટાબેઝ અથવા ઇન્ફ્રાસ્ટ્રક્ચર સાથેની સમસ્યાઓ.
+- [ડીસ્કોર્ડ](http://discord.indobase.in). આ માટે શ્રેષ્ઠ: તમારી એપ્લિકેશનો શેર કરવા માટે અને સમુદાયને મળવા માટે.
 
 ## સ્થિતિ
 
 - [x] આલ્ફા: અમે ગ્રાહકોના બંધ સમૂહ સાથે સુપાબેઝનું પરીક્ષણ કરી રહ્યા છીએ
-- [x] જાહેર આલ્ફા: કોઈ પણ [supabase.com/dashboard](https://supabase.com/dashboard) પર જઈને સાઈન-અપ કરી શકે છે. પણ થોડો સંયમ રાખશો, હજુ અમુક સમસ્યાઓ છે
+- [x] જાહેર આલ્ફા: કોઈ પણ [supabase.com/dashboard](https://indobase.in/dashboard) પર જઈને સાઈન-અપ કરી શકે છે. પણ થોડો સંયમ રાખશો, હજુ અમુક સમસ્યાઓ છે
 - [x] જાહેર બીટા: મોટાભાગના નોન-એન્ટરપ્રાઇઝ યુઝ-કેસેટ્સ માટે અનુરૂપ
 - [ ] જાહેર: પ્રોડક્શન માટે તૈયાર
 
@@ -49,9 +49,9 @@
 
 **વર્તમાન સ્થાપત્ય**
 
-સુપાબેઝ એક [હોસ્ટેડ પ્લેટફોર્મ](https://supabase.com/dashboard) છે. તમે સાઇન અપ કરી શકો છો અને કંઈપણ ઇન્સ્ટોલ કર્યા વગર સુપાબેઝનો ઉપયોગ શરૂ કરી શકો છો. અમે હજી પણ સ્થાનિક ડેવલપમેન્ટ અનુભવ બનાવી રહ્યા છીએ - પ્લેટફોર્મ સ્થિરતાની સાથે હવે આ અમારું મુખ્ય લક્ષ્ય છે.
+સુપાબેઝ એક [હોસ્ટેડ પ્લેટફોર્મ](https://indobase.in/dashboard) છે. તમે સાઇન અપ કરી શકો છો અને કંઈપણ ઇન્સ્ટોલ કર્યા વગર સુપાબેઝનો ઉપયોગ શરૂ કરી શકો છો. અમે હજી પણ સ્થાનિક ડેવલપમેન્ટ અનુભવ બનાવી રહ્યા છીએ - પ્લેટફોર્મ સ્થિરતાની સાથે હવે આ અમારું મુખ્ય લક્ષ્ય છે.
 
-![સ્થાપત્ય](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![સ્થાપત્ય](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) એક ઓબ્જેક્ટ-રિલેશનલ ડેટાબેઝ સિસ્ટમ છે જેમાં 30 વર્ષથી વધુ સક્રિય વિકાસ છે જેણે તેને વિશ્વસનીયતા, લક્ષણ મજબુતાઇ અને પ્રદર્શન માટે મજબૂત પ્રતિષ્ઠા પ્રાપ્ત કરી છે
 - [Realtime](https://github.com/supabase/realtime) એલિક્સિર સર્વર છે જે તમને વેબસોકેટનો ઉપયોગ કરીને PostgreSQL દાખલ, અપડેટ્સ અને ડીલીટ માટે પરવાનગી આપે છે. સુપાબેઝ Postgresની બિલ્ટ-ઇન પ્રતિકૃતિ વિધેયને સાંભળે છે, પ્રતિકૃતિ બાઇટ પ્રવાહને JSON માં ફેરવે છે, પછી વેબસોકેટ્સ પર JSON પ્રસારિત કરે છે.
@@ -72,10 +72,10 @@
 
 | રીપો                  | ઓફિશ્યિલ                                                                               | સમુદાય                                                                                                                                                                                                                                                                                                                               |
 | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`supabase-{lang}`** | [`JS`](https://github.com/supabase/supabase-js)                                        | [`C#`](https://github.com/supabase/supabase-csharp) \| [`Flutter`](https://github.com/supabase/supabase-flutter) \| [`Python`](https://github.com/supabase/supabase-py) \| `Rust` \| [`Ruby`](https://github.com/supabase/supabase-rb) \| `Go`                                                                                       |
-| `postgrest-{lang}`    | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) \| [`Ruby`](https://github.com/supabase/postgrest-rb) \| [`Go`](https://github.com/supabase/postgrest-go) |
-| `realtime-{lang}`     | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                        |
-| `gotrue-{lang}`       | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                              |
+| **`supabase-{lang}`** | [`JS`](https://github.com/Indobase/Indobase-js)                                        | [`C#`](https://github.com/Indobase/Indobase-csharp) \| [`Flutter`](https://github.com/Indobase/Indobase-flutter) \| [`Python`](https://github.com/Indobase/Indobase-py) \| `Rust` \| [`Ruby`](https://github.com/Indobase/Indobase-rb) \| `Go`                                                                                       |
+| `postgrest-{lang}`    | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) \| [`Ruby`](https://github.com/supabase/postgrest-rb) \| [`Go`](https://github.com/supabase/postgrest-go) |
+| `realtime-{lang}`     | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                        |
+| `gotrue-{lang}`       | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                              |
 
 <!--- Remove this list if you're traslating to another language, it's hard to keep updated across multiple files-->
 <!--- Keep only the link to the list of translation files-->

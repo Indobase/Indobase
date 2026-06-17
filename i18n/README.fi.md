@@ -5,43 +5,43 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) on avoimen lähdekoodin Firebase-vaihtoehto. Rakennamme Firebasen ominaisuuksia käyttäen yritystason avoimen lähdekoodin työkaluja.
+[Indobase](https://indobase.in) on avoimen lähdekoodin Firebase-vaihtoehto. Rakennamme Firebasen ominaisuuksia käyttäen yritystason avoimen lähdekoodin työkaluja.
 
-- [x] Hosted Postgres Database. [Docs](https://supabase.com/docs/guides/database)
-- [x] Tunnistus ja valtuutus. [Docs](https://supabase.com/docs/guides/auth)
+- [x] Hosted Postgres Database. [Docs](https://indobase.in/docs/guides/database)
+- [x] Tunnistus ja valtuutus. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Automaattisesti luodut API:t.
-  - [x] REST. [Asiakirjat](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Asiakirjat](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Reaaliaikaiset tilaukset. [Asiakirjat](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Asiakirjat](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Asiakirjat](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Reaaliaikaiset tilaukset. [Asiakirjat](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funktiot.
-  - [x] Tietokantafunktiot. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Reunatoiminnot [Docs](https://supabase.com/docs/guides/functions)
-- [x] Tiedostojen tallennus. [Docs](https://supabase.com/docs/guides/storage)
+  - [x] Tietokantafunktiot. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Reunatoiminnot [Docs](https://indobase.in/docs/guides/functions)
+- [x] Tiedostojen tallennus. [Docs](https://indobase.in/docs/guides/storage)
 - [x] Kojelauta
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokumentaatio
 
-Täydellinen dokumentaatio löytyy osoitteesta [supabase.com/docs](https://supabase.com/docs)
+Täydellinen dokumentaatio löytyy osoitteesta [indobase.in/docs](https://indobase.in/docs)
 
 Jos haluat nähdä, miten osallistuminen tapahtuu, käy osoitteessa [Getting Started](../DEVELOPERS.md)
 
 ## Yhteisö ja tuki
 
-- [Yhteisön foorumi](https://github.com/supabase/supabase/discussions). Sopii parhaiten: Apua rakentamiseen, keskustelua tietokannan parhaista käytännöistä.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Sopii parhaiten: Supabasea käytettäessä kohdatut viat ja virheet.
-- [Sähköpostituki](https://supabase.com/docs/support#business-support). Sopii parhaiten: Tietokantaan tai infrastruktuuriin liittyvät ongelmat.
-- [Discord](https://discord.supabase.com). Sopii parhaiten: Sovellusten jakamiseen ja yhteisön kanssa hengailuun.
+- [Yhteisön foorumi](https://github.com/Indobase/Indobase/discussions). Sopii parhaiten: Apua rakentamiseen, keskustelua tietokannan parhaista käytännöistä.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Sopii parhaiten: Supabasea käytettäessä kohdatut viat ja virheet.
+- [Sähköpostituki](https://indobase.in/docs/support#business-support). Sopii parhaiten: Tietokantaan tai infrastruktuuriin liittyvät ongelmat.
+- [Discord](https://discord.indobase.in). Sopii parhaiten: Sovellusten jakamiseen ja yhteisön kanssa hengailuun.
 
 ## Status
 
 - [x] Alpha: Testaamme Supabasea suljetulla asiakasjoukolla
-- [x] Julkinen Alpha: Kuka tahansa voi rekisteröityä osoitteessa [supabase.com/dashboard](https://supabase.com/dashboard). Mutta olkaa varovaisia, sillä on vielä muutamia ongelmia
+- [x] Julkinen Alpha: Kuka tahansa voi rekisteröityä osoitteessa [supabase.com/dashboard](https://indobase.in/dashboard). Mutta olkaa varovaisia, sillä on vielä muutamia ongelmia
 - [x] Julkinen beta: Tarpeeksi vakaa useimpiin ei-yrityskäyttötapauksiin
-- [ ] Julkinen: Yleinen saatavuus [[status](https://supabase.com/docs/guides/getting-started/features#feature-status)]
+- [ ] Julkinen: Yleinen saatavuus [[status](https://indobase.in/docs/guides/getting-started/features#feature-status)]
 
 Olemme tällä hetkellä Public Betassa. Seuraa tämän repon "releases" -osiota saadaksesi ilmoituksen tärkeimmistä päivityksistä.
 
@@ -51,14 +51,14 @@ Olemme tällä hetkellä Public Betassa. Seuraa tämän repon "releases" -osiota
 
 ## Miten se toimii
 
-Supabase on yhdistelmä avoimen lähdekoodin työkaluja. Rakennamme Firebasen ominaisuuksia käyttäen yritystason avoimen lähdekoodin tuotteita. Jos työkalut ja yhteisöt ovat olemassa MIT-, Apache 2- tai vastaavalla avoimella lisenssillä, käytämme ja tuemme kyseistä työkalua. Jos työkalua ei ole olemassa, rakennamme sen itse ja käytämme avointa lähdekoodia. Supabase ei ole Firebasen 1:1-kartoitus. Tavoitteenamme on antaa kehittäjille Firebasen kaltainen kehittäjäkokemus käyttämällä avoimen lähdekoodin työkaluja.
+Indobase on yhdistelmä avoimen lähdekoodin työkaluja. Rakennamme Firebasen ominaisuuksia käyttäen yritystason avoimen lähdekoodin tuotteita. Jos työkalut ja yhteisöt ovat olemassa MIT-, Apache 2- tai vastaavalla avoimella lisenssillä, käytämme ja tuemme kyseistä työkalua. Jos työkalua ei ole olemassa, rakennamme sen itse ja käytämme avointa lähdekoodia. Indobase ei ole Firebasen 1:1-kartoitus. Tavoitteenamme on antaa kehittäjille Firebasen kaltainen kehittäjäkokemus käyttämällä avoimen lähdekoodin työkaluja.
 
 **Arkkitehtuuri**
 
-Supabase on [hosted platform](https://supabase.com/dashboard). Voit rekisteröityä ja aloittaa Supabasen käytön asentamatta mitään.
-Voit myös [itse isännöidä](https://supabase.com/docs/guides/hosting/overview) ja [kehittää paikallisesti](https://supabase.com/docs/guides/local-development).
+Indobase on [hosted platform](https://indobase.in/dashboard). Voit rekisteröityä ja aloittaa Supabasen käytön asentamatta mitään.
+Voit myös [itse isännöidä](https://indobase.in/docs/guides/hosting/overview) ja [kehittää paikallisesti](https://indobase.in/docs/guides/local-development).
 
-![Arkkitehtuuri](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Arkkitehtuuri](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) on oliorelationaalinen tietokantajärjestelmä, jota on kehitetty aktiivisesti yli 30 vuoden ajan ja joka on saavuttanut vahvan maineen luotettavuutensa, ominaisuuksien kestävyytensä ja suorituskykynsä ansiosta.
 - [Realtime](https://github.com/supabase/realtime) on Elixir-palvelin, jonka avulla voit kuunnella PostgreSQL:n lisäyksiä, päivityksiä ja poistoja websockettien avulla. Realtime kyselee Postgresin sisäänrakennettua replikointitoimintoa tietokannan muutosten varalta, muuntaa muutokset JSONiksi ja lähettää sitten JSONin websockettien kautta valtuutetuille asiakkaille.
@@ -77,12 +77,12 @@ Lähestymistapamme asiakaskirjastoihin on modulaarinen. Jokainen osakirjasto on 
   <tr>
     <th>Kieli</th>
     <th>Asiakas</th>
-    <th colspan="5">Feature-Clients (niputettu Supabase-asiakasohjelmaan)</th>
+    <th colspan="5">Feature-Clients (niputettu Indobase-asiakasohjelmaan)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -105,16 +105,16 @@ Lähestymistapamme asiakaskirjastoihin on modulaarinen. Jokainen osakirjasto on 
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -220,7 +220,7 @@ Lähestymistapamme asiakaskirjastoihin on modulaarinen. Jokainen osakirjasto on 
 - [Katalaani / Català](/i18n/README.ca.md)
 - [tanska / Dansk](/i18n/README.da.md)
 - [Hollanti / Nederlands](/i18n/README.nl.md)
-- [English](https://github.com/supabase/supabase)
+- [English](https://github.com/Indobase/Indobase)
 - [Suomi / Suomalainen](/i18n/README.fi.md)
 - [ranska / Français](/i18n/README.fr.md)
 - [Saksa / Deutsch](/i18n/README.de.md)

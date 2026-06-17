@@ -1,6 +1,6 @@
 {
   "id": 0,
-  "name": "@supabase/postgrest-js",
+  "name": "@indobaseinc/postgrest-js",
   "kind": 0,
   "flags": {},
   "originalName": "",
@@ -1579,7 +1579,7 @@
                                   },
                                   "comment": {
                                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                                   },
                                   "parameters": [
                                     {
@@ -6518,7 +6518,7 @@
                   },
                   "comment": {
                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                   },
                   "parameters": [
                     {
@@ -8698,7 +8698,7 @@
                   },
                   "comment": {
                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                   },
                   "parameters": [
                     {
@@ -10354,7 +10354,7 @@
                   },
                   "comment": {
                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                   },
                   "parameters": [
                     {
@@ -11230,7 +11230,7 @@
                                   },
                                   "comment": {
                                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                                   },
                                   "parameters": [
                                     {
@@ -12977,7 +12977,7 @@
                   },
                   "comment": {
                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                   },
                   "parameters": [
                     {
@@ -13959,7 +13959,7 @@
                   },
                   "comment": {
                     "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                    "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                    "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                   },
                   "parameters": [
                     {
@@ -14074,7 +14074,7 @@
           "flags": {},
           "comment": {
             "shortText": "Response format",
-            "text": "{@link https://github.com/supabase/supabase-js/issues/32}\n"
+            "text": "{@link https://github.com/Indobase/indobase-js/issues/32}\n"
           },
           "children": [
             {

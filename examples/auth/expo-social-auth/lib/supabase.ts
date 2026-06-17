@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@indobaseinc/indobase-js';
 import { deleteItemAsync, getItemAsync, setItemAsync } from 'expo-secure-store';
 
 const ExpoSecureStoreAdapter = {

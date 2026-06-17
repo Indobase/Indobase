@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { recordAuditLog } from './audit'
 import {

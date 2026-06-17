@@ -7,7 +7,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import dayjs from 'dayjs'
 import { Plus, RefreshCw } from 'lucide-react'
 import type { CSSProperties, DragEvent, ReactNode } from 'react'

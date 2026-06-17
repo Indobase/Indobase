@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Download } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'

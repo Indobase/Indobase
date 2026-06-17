@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useDatabaseExtensionDisableMutation } from 'data/database-extensions/database-extension-disable-mutation'
 import { DatabaseExtension } from 'data/database-extensions/database-extensions-query'

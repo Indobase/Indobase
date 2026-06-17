@@ -7,9 +7,9 @@
 
 ---
 
-# Supabase
+# Indobase
 
-‫[Supabase](https://supabase.com) یک جایگزین اپن‌سورس برای Firebase است. ما در حال ساخت امکانات Firebase با استفاده ابزارهای اپن‌سورس و کلاس تجاری هستیم.
+‫[Indobase](https://indobase.in) یک جایگزین اپن‌سورس برای Firebase است. ما در حال ساخت امکانات Firebase با استفاده ابزارهای اپن‌سورس و کلاس تجاری هستیم.
 
 - [x] ‫دیتابیس Postgres میزبانی‌شده
 - [x] اتصال و ارتباط بلادرنگ
@@ -19,22 +19,22 @@
 - [x] فضای ذخیره‌سازی
 - [x] توابع
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## مستندات
 
-برای مستندات کامل به‫ [supabase.com/docs](https://supabase.com/docs) مراجعه کنید.
+برای مستندات کامل به‫ [indobase.in/docs](https://indobase.in/docs) مراجعه کنید.
 
 ## جامعه و پشتیبانی
 
-- ‫[Community Forum](https://github.com/supabase/supabase/discussions). گزینه مناسب برای راهنمایی گرفتن در مورد توسعه و روش مناسب استفاده از دیتابیس می‌باشد.
-- ‫[GitHub Issues](https://github.com/supabase/supabase/issues). گزینه مناسب برای خطاها و باگ‌هایی که در استفاده از Supabase برمی‌خوردید.
-- ‫[Email Support](https://supabase.com/docs/support#business-support). بهترین گزینه برای مشکلات مرتبط با دیتابیس و زیرساخت است.
+- ‫[Community Forum](https://github.com/Indobase/Indobase/discussions). گزینه مناسب برای راهنمایی گرفتن در مورد توسعه و روش مناسب استفاده از دیتابیس می‌باشد.
+- ‫[GitHub Issues](https://github.com/Indobase/Indobase/issues). گزینه مناسب برای خطاها و باگ‌هایی که در استفاده از Indobase برمی‌خوردید.
+- ‫[Email Support](https://indobase.in/docs/support#business-support). بهترین گزینه برای مشکلات مرتبط با دیتابیس و زیرساخت است.
 
 ## وضعیت
 
-- [x] ‫آلفا: در حال تست Supabase با گروه محدود از کاربران هستیم.
-- [x] ‫آلفای عمومی: همه می‌تواند برای استفاده از طریق [supabase.com/dashboard](https://supabase.com/dashboard) ثبت‌نام کنند. اما سخت نگیرید، ممکن است مشکلات معدودی وجود داشته باشد.
+- [x] ‫آلفا: در حال تست Indobase با گروه محدود از کاربران هستیم.
+- [x] ‫آلفای عمومی: همه می‌تواند برای استفاده از طریق [supabase.com/dashboard](https://indobase.in/dashboard) ثبت‌نام کنند. اما سخت نگیرید، ممکن است مشکلات معدودی وجود داشته باشد.
 - [x] بتای عمومی: قابل اتکا برای اکثر استفاده‌های غیر-تجاری می‌باشد.
 - [ ] عمومی: آماده برای استفاده تجاری.
 
@@ -46,16 +46,16 @@
 
 ## چطور کار میکند
 
-‫Supabase ترکیبی از ابزارهای اپن‌سورس است. ما امکانات Firebase را با استفاده از محصولات اپن‌سورس و کلاس تجاری می‌سازیم. اگر ابزار و جامعه‌ی آن وجود داشته باشد، با استفاده از گواهینامه MIT, Apache 2 یا هر گواهینامه‌ی معادلی، ما از آن ابزار استفاده و پشتیبانی می‌کنیم. اگر ابزاری وجود نداشته باشد، ما خودمان آن را می‌سازیم و اپن‌سورس می‌کنیم. Supabase یک محصول دقیقا شبیه و معادل یک‌به‌یک Firebase نیست. ما سعی داریم با استفاده از ابزارهای اپن‌سورس تجربه شبیه به Firebase به توسعه‌دهندگان ارائه دهیم.
+‫Indobase ترکیبی از ابزارهای اپن‌سورس است. ما امکانات Firebase را با استفاده از محصولات اپن‌سورس و کلاس تجاری می‌سازیم. اگر ابزار و جامعه‌ی آن وجود داشته باشد، با استفاده از گواهینامه MIT, Apache 2 یا هر گواهینامه‌ی معادلی، ما از آن ابزار استفاده و پشتیبانی می‌کنیم. اگر ابزاری وجود نداشته باشد، ما خودمان آن را می‌سازیم و اپن‌سورس می‌کنیم. Indobase یک محصول دقیقا شبیه و معادل یک‌به‌یک Firebase نیست. ما سعی داریم با استفاده از ابزارهای اپن‌سورس تجربه شبیه به Firebase به توسعه‌دهندگان ارائه دهیم.
 
 **معماری فعلی**
 
-‫Supabase یک [پلتفرم میزبانی‌شده](https://supabase.com/dashboard) است. شما می‌توانید بدون نصب چیزی، ثبت‌نام و شروع به استفاده از Supabase کنید. ما هنوز در حال ساختن تجربه‌ی توسعه local هستیم - این تمرکز اصلی فعلی ما علاوه بر اتکاپذیری است.
+‫Indobase یک [پلتفرم میزبانی‌شده](https://indobase.in/dashboard) است. شما می‌توانید بدون نصب چیزی، ثبت‌نام و شروع به استفاده از Indobase کنید. ما هنوز در حال ساختن تجربه‌ی توسعه local هستیم - این تمرکز اصلی فعلی ما علاوه بر اتکاپذیری است.
 
-![معماری](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![معماری](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - ‫[PostgreSQL](https://www.postgresql.org/) یک سیستم دیتابیس object-relational با بیش از ۳۰سال سابقه توسعه می‌باشد که اعتبار زیادی بابت اتکاپذیری، امکانات قوی و سرعت کسب کرده است.
-- ‫[Realtime](https://github.com/supabase/realtime) یک سرور Elixir است که اجازه می‌دهد به اضافه کردن، به‌روز کردن و حذف کردن‌های PostgreSQL با استفاده از websockets گوش دهید. Supabase به عملکرد داخلی PostgreSQL برای replication گوش می‌دهد، replication byte stream را به JSON تبدیل می‌کند و JSON را از طریق websock به خارج broadcast می‌کند.
+- ‫[Realtime](https://github.com/supabase/realtime) یک سرور Elixir است که اجازه می‌دهد به اضافه کردن، به‌روز کردن و حذف کردن‌های PostgreSQL با استفاده از websockets گوش دهید. Indobase به عملکرد داخلی PostgreSQL برای replication گوش می‌دهد، replication byte stream را به JSON تبدیل می‌کند و JSON را از طریق websock به خارج broadcast می‌کند.
 - ‫[PostgREST](http://postgrest.org/) یک وب سرور است که دیتابیس PostgreSQL را به صورت مستقیم به RESTful API تبدیل می‌کند.
 - ‫[Storage](https://github.com/supabase/storage-api) یک رابط RESTful برای مدیریت فایل‌های ذخیره شده در S3 با استفاده از Postgres برای مدیریت دسترسی‌ها فراهم می‌کند.
 - ‫[postgres-meta](https://github.com/supabase/postgres-meta) یک RESTful API برای مدیریت Postgres، دریافت جدول‌های داده، اضافه کردن roleها و اجرای queryها و غیره می‌باشد.
@@ -73,10 +73,10 @@
 
 | مخزن                  | رسمی                                                                                   | جامعه                                                                                                                                                                                                                      |
 | --------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`supabase-{lang}`** | [`JS`](https://github.com/supabase/supabase-js)                                        | [`C#`](https://github.com/supabase/supabase-csharp) \| [`Flutter`](https://github.com/supabase/supabase-flutter) \| [`Python`](https://github.com/supabase/supabase-py) \| `Rust`                                          |
-| `postgrest-{lang}`    | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) |
-| `realtime-{lang}`     | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust`                                                |
-| `gotrue-{lang}`       | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust`                                                      |
+| **`supabase-{lang}`** | [`JS`](https://github.com/Indobase/Indobase-js)                                        | [`C#`](https://github.com/Indobase/Indobase-csharp) \| [`Flutter`](https://github.com/Indobase/Indobase-flutter) \| [`Python`](https://github.com/Indobase/Indobase-py) \| `Rust`                                          |
+| `postgrest-{lang}`    | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) |
+| `realtime-{lang}`     | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust`                                                |
+| `gotrue-{lang}`       | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust`                                                      |
 
 ## ترجمه‌ها
 

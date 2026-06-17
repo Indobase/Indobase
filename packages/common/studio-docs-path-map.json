@@ -51,7 +51,7 @@
     ["guides/platform/going-into-prod", "products/auth/security"],
     ["guides/platform/cost-control", "pricing"],
     ["guides/platform/billing-faq", "pricing"],
-    ["guides/platform/billing-on-supabase", "advanced/migrations/supabase"],
+    ["guides/platform/billing-on-indobase", "advanced/migrations/supabase"],
     ["guides/platform/backups", "advanced/self-hosting"],
     ["guides/platform/branching", "products/databases"],
     ["guides/platform/performance", "products/databases/queries"],

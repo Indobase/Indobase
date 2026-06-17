@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { components } from 'api-types'
 import apiWrapper from 'lib/api/apiWrapper'
 import { getProjectSettings, getProjectSettingsForRef } from 'lib/api/saas/settings'

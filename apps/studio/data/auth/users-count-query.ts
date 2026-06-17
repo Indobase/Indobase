@@ -1,5 +1,5 @@
-import type { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
-import { getUsersCountSQL } from '@supabase/pg-meta/src/sql/studio/get-users-count'
+import type { OptimizedSearchColumns } from '@indobaseinc/pg-meta/src/sql/studio/get-users-types'
+import { getUsersCountSQL } from '@indobaseinc/pg-meta/src/sql/studio/get-users-count'
 import { useQuery } from '@tanstack/react-query'
 import { useUser } from 'common'
 

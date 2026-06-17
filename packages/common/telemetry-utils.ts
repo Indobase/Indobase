@@ -6,7 +6,7 @@ export function getTelemetryCookieOptions() {
   if (!IS_PROD) return 'path=/; SameSite=Lax'
 
   const hostname = window.location.hostname
-  const isSupabaseCom = hostname === 'supabase.com' || hostname.endsWith('.supabase.com')
+  const isSupabaseCom = hostname === 'supabase.com' || hostname.endsWith('.indobase.inm')
   return isSupabaseCom ? 'path=/; domain=supabase.com; SameSite=Lax' : 'path=/; SameSite=Lax'
 }
 

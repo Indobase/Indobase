@@ -1,11 +1,11 @@
 const { defineConfig } = require('eslint/config')
 const barrelFiles = require('eslint-plugin-barrel-files')
 const jsxA11y = require('eslint-plugin-jsx-a11y')
-const supabaseConfig = require('eslint-config-supabase/next')
+const indobaseConfig = require('eslint-config-indobase/next')
 
 module.exports = defineConfig([
   { files: ['**/*.ts', '**/*.tsx'] },
-  supabaseConfig,
+  indobaseConfig,
   {
     plugins: {
       'barrel-files': barrelFiles,

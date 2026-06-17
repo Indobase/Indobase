@@ -38,15 +38,15 @@ const ExperienceTile = ({
             <div className="rounded-xl border bg-background p-3 text-foreground-light">{icon}</div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl">{title}</h2>
+            <h2 className="text-2xl font-medium tracking-tight">{title}</h2>
             <p className="max-w-xl text-sm text-foreground-light">{description}</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
           {children}
           {href ? (
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href={href} className="inline-flex items-center gap-2">
                 {ctaLabel}
                 <ArrowRight size={16} />
@@ -73,10 +73,13 @@ export const ProjectExperienceChooser = () => {
               {organization?.name || 'Organization'} / {project?.name || ref}
             </Badge>
             <div className="space-y-3">
-              <h1 className="max-w-3xl text-4xl leading-tight">Choose how you want to work</h1>
+              <h1 className="max-w-3xl text-4xl font-medium leading-tight tracking-tight">
+                Build web and mobile from one project
+              </h1>
               <p className="max-w-2xl text-base text-foreground-light">
-                Use Indobase Builder to create the product experience with AI, or open Backend to
-                manage your database, auth, storage, functions, and infrastructure inside Studio.
+                Start in Indobase Builder to ship your web app with AI, publish to Indobase hosting, and
+                queue Android bundles in one flow. Open Backend when you need database, auth, storage, or
+                infrastructure controls inside Studio.
               </p>
             </div>
           </div>
@@ -84,12 +87,17 @@ export const ProjectExperienceChooser = () => {
           <div className={cn('grid gap-6 lg:grid-cols-2')}>
             <ExperienceTile
               eyebrow="Indobase Builder"
-              title="Indobase Builder"
-              description="Build and deploy your frontend and full-stack applications using AI."
+              title="Web + mobile in Builder"
+              description="Use AI to build your web app, publish on Indobase hosting, and queue Android bundle builds without switching tools."
               icon={<Blocks size={28} strokeWidth={1.5} />}
               ctaLabel="Open Indobase Builder"
             >
-              <BuilderLaunchButton>
+              <BuilderLaunchButton
+                className="w-full sm:w-auto"
+                nextPath={`/?source=studio&prompt=${encodeURIComponent(
+                  'We just linked this project from Indobase Studio. Create a plan and start building the web app. After that, show me how to publish to Indobase hosting and queue an Android bundle build.',
+                )}`}
+              >
                 <span className="inline-flex items-center gap-2">
                   Open Indobase Builder
                   <ArrowRight size={16} />

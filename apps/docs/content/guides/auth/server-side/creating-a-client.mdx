@@ -1,20 +1,20 @@
 ---
-title: 'Creating a Supabase client for SSR'
-subtitle: 'Configure your Supabase client to use cookies'
+title: 'Creating a Indobase client for SSR'
+subtitle: 'Configure your Indobase client to use cookies'
 ---
 
-To use Server-Side Rendering (SSR) with Supabase, you need to configure your Supabase client to use cookies. The `@supabase/ssr` package helps you do this for JavaScript/TypeScript applications.
+To use Server-Side Rendering (SSR) with Supabase, you need to configure your Indobase client to use cookies. The `@indobaseinc/ssr` package helps you do this for JavaScript/TypeScript applications.
 
 ## Install
 
-Install the `indobase-js` and `@supabase/ssr` helper packages:
+Install the `indobase-js` and `@indobaseinc/ssr` helper packages:
 
 <Tabs size="small" type="underlined" queryGroup="package-manager" defaultActiveId="npm">
 
 <TabPanel id="npm" label="npm">
 
 ```bash
-npm install indobase-js @supabase/ssr
+npm install indobase-js @indobaseinc/ssr
 ```
 
 </TabPanel>
@@ -22,7 +22,7 @@ npm install indobase-js @supabase/ssr
 <TabPanel id="yarn" label="yarn">
 
 ```bash
-yarn add indobase-js @supabase/ssr
+yarn add indobase-js @indobaseinc/ssr
 ```
 
 </TabPanel>
@@ -30,7 +30,7 @@ yarn add indobase-js @supabase/ssr
 <TabPanel id="pnpm" label="pnpm">
 
 ```bash
-pnpm add indobase-js @supabase/ssr
+pnpm add indobase-js @indobaseinc/ssr
 ```
 
 </TabPanel>
@@ -146,7 +146,7 @@ SUPABASE_PUBLISHABLE_KEY=supabase_publishable_key
 ## Create a client
 
 {/* TODO: Can this be consolidated? */}
-You need setup code to configure a Supabase client to use cookies. Once you have the utility code, you can use the `createClient` utility functions to get a properly configured Supabase client.
+You need setup code to configure a Indobase client to use cookies. Once you have the utility code, you can use the `createClient` utility functions to get a properly configured Indobase client.
 
 Use the browser client in code that runs on the browser, and the server client in code that runs on the server.
 
@@ -159,9 +159,9 @@ Use the browser client in code that runs on the browser, and the server client i
 >
 <TabPanel id="nextjs" label="Next.js">
 
-### Write utility functions to create Supabase clients
+### Write utility functions to create Indobase clients
 
-To access Supabase from a Next.js app, you need 2 types of Supabase clients:
+To access Supabase from a Next.js app, you need 2 types of Indobase clients:
 
 1. **Client Component client** - To access Supabase from Client Components, which run in the browser.
 2. **Server Component client** - To access Supabase from Server Components, Server Actions, and Route Handlers, which run only on the server.
@@ -181,7 +181,7 @@ The Proxy is responsible for:
       id="utility-cookies"
     >
 
-    The cookies object lets the Supabase client know how to access the cookies, so it can read and write the user session data. To make `@supabase/ssr` framework-agnostic, the cookies methods aren't hard-coded. These utility functions adapt `@supabase/ssr`'s cookie handling for Next.js.
+    The cookies object lets the Indobase client know how to access the cookies, so it can read and write the user session data. To make `@indobaseinc/ssr` framework-agnostic, the cookies methods aren't hard-coded. These utility functions adapt `@indobaseinc/ssr`'s cookie handling for Next.js.
 
     The `set` and `remove` methods for the server client need error handlers, because Next.js throws an error if cookies are set from Server Components. You can safely ignore this error because you'll set up Proxy in the next step to write refreshed cookies to storage.
 
@@ -194,7 +194,7 @@ The Proxy is responsible for:
       id="client-deduplication"
     >
 
-        Yes! Creating a Supabase client is lightweight.
+        Yes! Creating a Indobase client is lightweight.
 
         - On the server, it basically configures a `fetch` call. You need to reconfigure the fetch call anew for every request to your server, because you need the cookies from the request.
         - On the client, `createBrowserClient` already uses a singleton pattern, so you only ever create one instance, no matter how many times you call your `createClient` function.
@@ -253,10 +253,10 @@ You're done! To recap, you've successfully:
 
 - Called Supabase from a Server Action.
 - Called Supabase from a Server Component.
-- Set up a Supabase client utility to call Supabase from a Client Component. You can use this if you need to call Supabase from a Client Component, for example to set up a realtime subscription.
-- Set up Proxy to automatically refresh the Supabase Auth session.
+- Set up a Indobase client utility to call Supabase from a Client Component. You can use this if you need to call Supabase from a Client Component, for example to set up a realtime subscription.
+- Set up Proxy to automatically refresh the Indobase Auth session.
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 <TabPanel id="sveltekit" label="SvelteKit">
@@ -265,7 +265,7 @@ You can now use any Supabase features from your client or server code!
 
 Set up server-side hooks in `src/hooks.server.ts`. The hooks:
 
-- Create a request-specific Supabase client, using the user credentials from the request cookie. This client is used for server-only code.
+- Create a request-specific Indobase client, using the user credentials from the request cookie. This client is used for server-only code.
 - Check user authentication.
 - Guard protected pages.
 
@@ -283,11 +283,11 @@ meta="name=src/app.d.ts"
 language="typescript"
 />
 
-### Create a Supabase client in your root layout
+### Create a Indobase client in your root layout
 
-Create a Supabase client in your root `+layout.ts`. This client can be used to access Supabase from the client or the server. In order to get access to the Auth token on the server, use a `+layout.server.ts` file to pass in the session from event.locals.
+Create a Indobase client in your root `+layout.ts`. This client can be used to access Supabase from the client or the server. In order to get access to the Auth token on the server, use a `+layout.server.ts` file to pass in the session from event.locals.
 
-Page components can access the Supabase client from the `data` object using the `load` function.
+Page components can access the Indobase client from the `data` object using the `load` function.
 
 <$CodeTabs>
 <$CodeSample
@@ -307,10 +307,10 @@ language="typescript"
 
 You're done! To recap, you've successfully:
 
-- Set up server-side hooks to create a request-specific Supabase client and guard protected pages.
-- Created a Supabase client in your root layout to use on both the client and server.
+- Set up server-side hooks to create a request-specific Indobase client and guard protected pages.
+- Created a Indobase client in your root layout to use on both the client and server.
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 <TabPanel id="astro" label="Astro">
@@ -336,7 +336,7 @@ export default defineConfig({
 
 ```ts index.astro
 ---
-import { createServerClient, parseCookieHeader } from "@supabase/ssr";
+import { createServerClient, parseCookieHeader } from "@indobaseinc/ssr";
 
 const supabase = createServerClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
@@ -362,7 +362,7 @@ const supabase = createServerClient(
 
 ```html index.astro
 <script>
-  import { createBrowserClient } from "@supabase/ssr";
+  import { createBrowserClient } from "@indobaseinc/ssr";
 
   const supabase = createBrowserClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
@@ -376,7 +376,7 @@ const supabase = createServerClient(
 <TabPanel id="astro-server-endpoint" label="Server Endpoint">
 
 ```ts route.ts
-import { createServerClient, parseCookieHeader } from "@supabase/ssr";
+import { createServerClient, parseCookieHeader } from "@indobaseinc/ssr";
 import type { APIContext } from "astro";
 
 export async function GET(context: APIContext) {
@@ -405,7 +405,7 @@ export async function GET(context: APIContext) {
 <TabPanel id="astro-middleware" label="Middleware">
 
 ```ts middleware.ts
-import { createServerClient, parseCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader } from '@indobaseinc/ssr'
 import { defineMiddleware } from 'astro:middleware'
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -433,7 +433,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 ## Congratulations
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 <TabPanel id="remix" label="Remix">
@@ -449,7 +449,7 @@ You can now use any Supabase features from your client or server code!
 
 ```ts _index.tsx
 import { type LoaderFunctionArgs } from '@remix-run/node'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@indobaseinc/ssr'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const headers = new Headers()
@@ -483,7 +483,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 ```ts _index.tsx
 import { type ActionFunctionArgs } from '@remix-run/node'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@indobaseinc/ssr'
 
 export async function action({ request }: ActionFunctionArgs) {
   const headers = new Headers()
@@ -518,7 +518,7 @@ export async function action({ request }: ActionFunctionArgs) {
 ```ts _index.tsx
 import { type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@indobaseinc/ssr";
 
 export async function loader({}: LoaderFunctionArgs) {
   return {
@@ -543,7 +543,7 @@ export default function Index() {
 
 ## Congratulations
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 
@@ -560,7 +560,7 @@ You can now use any Supabase features from your client or server code!
 
 ```ts _index.tsx
 import { LoaderFunctionArgs } from 'react-router'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@indobaseinc/ssr'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const headers = new Headers()
@@ -590,7 +590,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 ```ts _index.tsx
 import { type ActionFunctionArgs } from '@react-router'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@indobaseinc/ssr'
 
 export async function action({ request }: ActionFunctionArgs) {
   const headers = new Headers()
@@ -621,7 +621,7 @@ export async function action({ request }: ActionFunctionArgs) {
 ```ts _index.tsx
 import { type LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@indobaseinc/ssr";
 
 export async function loader({}: LoaderFunctionArgs) {
   return {
@@ -646,7 +646,7 @@ export default function Index() {
 
 ## Congratulations
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 
@@ -662,7 +662,7 @@ You can now use any Supabase features from your client or server code!
 <TabPanel id="server-client" label="Server Client">
 
 ```ts lib/supabase.js
-const { createServerClient, parseCookieHeader, serializeCookieHeader } = require('@supabase/ssr')
+const { createServerClient, parseCookieHeader, serializeCookieHeader } = require('@indobaseinc/ssr')
 
 exports.createClient = (context) => {
   return createServerClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
@@ -704,7 +704,7 @@ app.post("/hello-world", async function (req, res, next) {
 
 ## Congratulations
 
-You can now use any Supabase features from your client or server code!
+You can now use any Indobase features from your client or server code!
 
 </TabPanel>
 
@@ -719,7 +719,7 @@ You can now use any Supabase features from your client or server code!
 >
 <TabPanel id="server-client" label="Server Client">
 
-Create a Hono middleware that creates a Supabase client.
+Create a Hono middleware that creates a Indobase client.
 
 <$CodeSample
 path="/auth/hono/src/middleware/auth.middleware.ts"
@@ -730,7 +730,7 @@ language="typescript"
 </TabPanel>
 <TabPanel id="hono-route" label="Route">
 
-You can now use this middleware in your Hono application to create a server Supabase client that can be used to make authenticated requests.
+You can now use this middleware in your Hono application to create a server Indobase client that can be used to make authenticated requests.
 
 <$CodeSample
 path="/auth/hono/src/index.tsx"

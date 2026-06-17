@@ -17,7 +17,7 @@ export const JsonCodeEditor = ({
   return (
     <Editor
       className="monaco-editor"
-      theme="supabase"
+      theme="indobase"
       defaultLanguage="json"
       value={value}
       loading={<h4>Loading</h4>}

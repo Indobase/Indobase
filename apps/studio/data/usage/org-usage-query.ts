@@ -13,7 +13,10 @@ export type OrgUsageVariables = {
   end?: Date
 }
 
-export type OrgUsageResponse = components['schemas']['OrgUsageResponse']
+export type OrgUsageResponse = components['schemas']['OrgUsageResponse'] & {
+  /** Indobase SaaS: false until Vector writes saas.usage_events for the org. */
+  metering_available?: boolean
+}
 export type OrgMetricsUsage = components['schemas']['OrgUsageResponse']['usages'][0]
 
 export async function getOrgUsage(

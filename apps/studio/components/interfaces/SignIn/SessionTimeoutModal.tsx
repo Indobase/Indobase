@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
@@ -111,7 +111,7 @@ export const SessionTimeoutModal = ({
                       Contact support
                     </SupportLink>{' '}
                     and include a{' '}
-                    <InlineLink href="https://github.com/orgs/supabase/discussions/36540">
+                    <InlineLink href="https://github.com/orgs/Indobase/discussions/36540">
                       HAR file
                     </InlineLink>{' '}
                     from your session to help us investigate.

@@ -1,6 +1,6 @@
-# Supabase Specs
+# Indobase Specs
 
-These spec files are used to generate the [reference documentation](https://supabase.com/docs/reference/cli/introduction).
+These spec files are used to generate the [reference documentation](https://indobase.in/docs/reference/cli/introduction).
 
 ## Preparation
 

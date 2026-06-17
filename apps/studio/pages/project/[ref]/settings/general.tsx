@@ -4,6 +4,8 @@ import { ComplianceConfig } from 'components/interfaces/Settings/General/Complia
 import { CustomDomainConfig } from 'components/interfaces/Settings/General/CustomDomainConfig/CustomDomainConfig'
 import { DeleteProjectPanel } from 'components/interfaces/Settings/General/DeleteProjectPanel/DeleteProjectPanel'
 import { General } from 'components/interfaces/Settings/General/General'
+import { ProjectHostingConfig } from 'components/interfaces/Settings/General/HostingConfig/ProjectHostingConfig'
+import { ProjectMobileBuildConfig } from 'components/interfaces/Settings/General/MobileBuildConfig/ProjectMobileBuildConfig'
 import { TransferProjectPanel } from 'components/interfaces/Settings/General/TransferProjectPanel/TransferProjectPanel'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import SettingsLayout from 'components/layouts/ProjectSettingsLayout/SettingsLayout'
@@ -11,8 +13,6 @@ import { useOrgSubscriptionQuery } from 'data/subscriptions/org-subscription-que
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { useRouter } from 'next/router'
-import { useEffect } from 'react'
 import type { NextPageWithLayout } from 'types'
 import { PageContainer } from 'ui-patterns/PageContainer'
 import {
@@ -30,7 +30,6 @@ const ProjectSettings: NextPageWithLayout = () => {
   const isBranch = !!project?.parent_project_ref
   const { projectsTransfer: projectTransferEnabled, projectSettingsCustomDomains } =
     useIsFeatureEnabled(['projects:transfer', 'project_settings:custom_domains'])
-  const router = useRouter()
 
   const { data: subscription } = useOrgSubscriptionQuery({ orgSlug: selectedOrganization?.slug })
   const hasHipaaAddon = subscriptionHasHipaaAddon(subscription)
@@ -49,6 +48,8 @@ const ProjectSettings: NextPageWithLayout = () => {
       </PageHeader>
       <PageContainer size="small">
         <General />
+        {IS_SAAS && <ProjectHostingConfig />}
+        {IS_SAAS && <ProjectMobileBuildConfig />}
 
         {/* this is only settable on compliance orgs, currently that means HIPAA orgs */}
         {!isBranch && hasHipaaAddon && <ComplianceConfig />}

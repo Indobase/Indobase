@@ -32,7 +32,7 @@
         },
         {
             label: 'Compliance',
-            description: 'We adhere to all needed compliance: GDPR, HIPAA, CCPA, SOC-2.',
+            description: 'DPDP Act (India), GDPR, HIPAA, CCPA, and SOC-2 aligned controls.',
             icon: '/images/icons/gradients/eu.svg'
         },
         {

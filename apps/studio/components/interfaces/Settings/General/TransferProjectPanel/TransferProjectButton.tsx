@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Loader, Shield, Users, Wrench } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'

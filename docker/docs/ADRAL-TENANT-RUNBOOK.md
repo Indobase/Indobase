@@ -98,6 +98,33 @@ Or: `ADRAL_REPO=/path/to/adral INDO_REPO=/path/to/ind-repo ./docker/scripts/depl
 
 Optional DNS: CNAME `staging.adral.ai` → VPS once you want the marketing hostname (Auth allow list already includes `staging.adral.ai`).
 
+## Adral production web (`adral.ai`)
+
+**Deployed on VPS** (Swarm `adral-production`, same tenant + same-origin API proxy as staging).
+
+```bash
+ADRAL_REPO=/path/to/adral INDO_REPO=/path/to/ind-repo \
+  ./docker/scripts/deploy-adral-production-vps.sh
+```
+
+**DNS cutover** (currently `adral.ai` may still point at Hostinger — update at your registrar):
+
+| Record | Value |
+|--------|--------|
+| `adral.ai` A | `187.77.30.165` |
+| `www.adral.ai` A or CNAME | `187.77.30.165` or `adral.ai` |
+
+Pre-cutover test from your machine:
+
+```bash
+curl -sk --resolve adral.ai:443:187.77.30.165 https://adral.ai/config.js | head -3
+```
+
+Auth **Site URL** is `https://adral.ai` after `adral-apply-production-auth-vps.sh`. **Email** uses Resend (`/etc/indobase/smtp.env` on VPS) via `adral-apply-resend-smtp-vps.sh` — `MAILER_AUTOCONFIRM=false` (confirmation email required). From address: `hello@adral.ai`.
+
+Update **Razorpay webhook** to  
+`https://adralproject-uspulzkzew.indobase.in/functions/v1/razorpay-webhook` when you switch billing traffic.
+
 ## Adral staging app env
 
 Point the staging frontend at the **tenant host** (not `api.indobase.in`):

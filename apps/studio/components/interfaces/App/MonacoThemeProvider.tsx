@@ -36,7 +36,7 @@ export const MonacoThemeProvider = () => {
   useMemo(() => {
     if (monaco && resolvedTheme) {
       const mode = getTheme(resolvedTheme)
-      monaco.editor.defineTheme('supabase', mode)
+      monaco.editor.defineTheme('indobase', mode)
     }
   }, [resolvedTheme, monaco])
 

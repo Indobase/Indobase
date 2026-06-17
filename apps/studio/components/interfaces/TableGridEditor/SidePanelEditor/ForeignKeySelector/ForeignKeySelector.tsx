@@ -1,4 +1,4 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import { sortBy } from 'lodash'
 import { ArrowRight, Database, HelpCircle, Loader2, Table, X } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'

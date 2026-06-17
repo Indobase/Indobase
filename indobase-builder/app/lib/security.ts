@@ -1,5 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 
+import { verifyBuilderRequestAuth } from '~/lib/indobase/builder-auth.server';
+
 // Rate limiting store (in-memory for serverless environments)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -202,6 +204,20 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
             ...createSecurityHeaders(),
             'Retry-After': Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000).toString(),
             'X-RateLimit-Reset': rateLimitResult.resetTime!.toString(),
+          },
+        });
+      }
+    }
+
+    // Require Studio handoff MCP token unless explicitly bypassed for local dev.
+    if (options.requireAuth) {
+      const authorized = await verifyBuilderRequestAuth(request);
+      if (!authorized) {
+        return new Response(JSON.stringify({ error: true, message: 'Unauthorized' }), {
+          status: 401,
+          headers: {
+            ...createSecurityHeaders(),
+            'Content-Type': 'application/json',
           },
         });
       }

@@ -124,7 +124,7 @@ export const dataset: AssistantEvalCase[] = [
     metadata: {
       category: ['general_help'],
       description:
-        'Verifies template URLs like https://<project-ref>.supabase.co/auth/v1/callback are excluded from URL validity scoring',
+        'Verifies template URLs like https://<project-ref>.indobase.in/auth/v1/callback are excluded from URL validity scoring',
     },
   },
 ]

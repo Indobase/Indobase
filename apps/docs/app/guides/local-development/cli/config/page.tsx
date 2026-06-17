@@ -8,7 +8,7 @@ import type { Parameter } from '~/lib/refGenerator/refTypes'
 import specFile from '~/spec/cli_v1_config.yaml' with { type: 'yml' }
 
 const meta = {
-  title: 'Supabase CLI config',
+  title: 'Indobase CLI config',
 }
 
 const generateMetadata = genGuideMeta(() => ({

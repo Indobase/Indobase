@@ -1,4 +1,4 @@
-import { EmbeddedTarget, flattenTargets } from '@supabase/sql-to-rest'
+import { EmbeddedTarget, flattenTargets } from '@indobaseinc/sql-to-rest'
 
 import type { ResultBundle } from './util'
 

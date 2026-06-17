@@ -8,7 +8,7 @@ Let's explore how to implement Realtime Presence to track state between multiple
 
 ## Usage
 
-You can use the Supabase client libraries to track Presence state between users.
+You can use the Indobase client libraries to track Presence state between users.
 
 ### How Presence works
 
@@ -64,7 +64,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
 ```js
 import { createClient } from 'indobase-js'
 
-const SUPABASE_URL = 'https://<project>.supabase.co'
+const SUPABASE_URL = 'https://[PROJECT-REF].indobase.in'
 const SUPABASE_KEY = '<sb_publishable_... or anon key>'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -77,7 +77,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 ```dart
 void main() {
   Supabase.initialize(
-    url: 'https://<project>.supabase.co',
+    url: 'https://[PROJECT-REF].indobase.in',
     anonKey: '<sb_publishable_... or anon key>',
   );
 
@@ -93,7 +93,7 @@ final supabase = Supabase.instance.client;
 <TabPanel id="swift" label="Swift">
 
 ```swift
-let supabaseURL = "https://<project>.supabase.co"
+let supabaseURL = "https://[PROJECT-REF].indobase.in"
 let supabaseKey = "<sb_publishable_... or anon key>"
 let supabase = SupabaseClient(supabaseURL: URL(string: supabaseURL)!, supabaseKey: supabaseKey)
 
@@ -106,7 +106,7 @@ let realtime = supabase.realtime
 <TabPanel id="kotlin" label="Kotlin">
 
 ```kotlin
-val supabaseUrl = "https://<project>.supabase.co"
+val supabaseUrl = "https://[PROJECT-REF].indobase.in"
 val supabaseKey = "<sb_publishable_... or anon key>"
 val supabase = createSupabaseClient(supabaseUrl, supabaseKey) {
     install(Realtime)
@@ -121,7 +121,7 @@ val supabase = createSupabaseClient(supabaseUrl, supabaseKey) {
 ```python
 from supabase import create_client
 
-SUPABASE_URL = 'https://<project>.supabase.co'
+SUPABASE_URL = 'https://[PROJECT-REF].indobase.in'
 SUPABASE_KEY = '<sb_publishable_... or anon key>'
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -450,7 +450,7 @@ room_one.untrack()
 
 ## Presence options
 
-You can pass configuration options while initializing the Supabase Client.
+You can pass configuration options while initializing the Indobase Client.
 
 ### Presence key
 

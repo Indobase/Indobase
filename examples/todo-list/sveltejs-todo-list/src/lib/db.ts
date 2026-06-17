@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 import type { Database } from "./schema";
 
 export const supabase = createClient<Database>(

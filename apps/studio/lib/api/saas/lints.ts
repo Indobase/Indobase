@@ -30,7 +30,7 @@ ${query}
 }
 
 /**
- * Pulled from https://github.com/supabase/splinter/blob/main/splinter.sql
+ * Pulled from https://github.com/Indobase/splinter/blob/main/splinter.sql
  * Things to do after copy pasting from splinter.sql
  * - Replace all "\`%s\`" with backquotes to escape the tick character ("\`%s\`")
  * - Replace docs url with DOCS_URL (${DOCS_URL})

@@ -1,23 +1,18 @@
-import { createBrowserSupabaseClient, Session } from '@supabase/auth-helpers-nextjs'
-import { SessionContextProvider } from '@supabase/auth-helpers-react'
+import { SupabaseProvider, useSupabaseClient } from '../lib/supabase/context'
+import type { Session } from '@indobaseinc/indobase-js'
 import type { AppProps } from 'next/app'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import '../styles/globals.css'
 
-function MyApp({
-  Component,
-  pageProps,
-}: AppProps<{
-  initialSession: Session
-}>) {
+function AuthRedirectListener() {
   const router = useRouter()
-  const [supabaseClient] = useState(() => createBrowserSupabaseClient())
+  const supabaseClient = useSupabaseClient()
 
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((event, session) => {
+    } = supabaseClient.auth.onAuthStateChange((event) => {
       switch (event) {
         case 'SIGNED_IN':
           router.push('/')
@@ -27,16 +22,23 @@ function MyApp({
           return
       }
     })
-    return subscription.unsubscribe
-  }, [])
+    return () => subscription.unsubscribe()
+  }, [router, supabaseClient])
 
+  return null
+}
+
+function MyApp({
+  Component,
+  pageProps,
+}: AppProps<{
+  initialSession: Session
+}>) {
   return (
-    <SessionContextProvider
-      supabaseClient={supabaseClient}
-      initialSession={pageProps.initialSession}
-    >
+    <SupabaseProvider initialSession={pageProps.initialSession}>
+      <AuthRedirectListener />
       <Component {...pageProps} />
-    </SessionContextProvider>
+    </SupabaseProvider>
   )
 }
 

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
 export default createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

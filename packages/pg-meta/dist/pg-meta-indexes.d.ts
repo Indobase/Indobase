@@ -1,0 +1,311 @@
+import { z } from 'zod';
+declare const pgIndexArrayZod: z.ZodArray<z.ZodObject<{
+    id: z.ZodNumber;
+    table_id: z.ZodNumber;
+    schema: z.ZodString;
+    number_of_attributes: z.ZodNumber;
+    number_of_key_attributes: z.ZodNumber;
+    is_unique: z.ZodBoolean;
+    is_primary: z.ZodBoolean;
+    is_exclusion: z.ZodBoolean;
+    is_immediate: z.ZodBoolean;
+    is_clustered: z.ZodBoolean;
+    is_valid: z.ZodBoolean;
+    check_xmin: z.ZodBoolean;
+    is_ready: z.ZodBoolean;
+    is_live: z.ZodBoolean;
+    is_replica_identity: z.ZodBoolean;
+    key_attributes: z.ZodArray<z.ZodNumber, "many">;
+    collation: z.ZodArray<z.ZodNumber, "many">;
+    class: z.ZodArray<z.ZodNumber, "many">;
+    options: z.ZodArray<z.ZodNumber, "many">;
+    index_predicate: z.ZodNullable<z.ZodString>;
+    comment: z.ZodNullable<z.ZodString>;
+    index_definition: z.ZodString;
+    access_method: z.ZodString;
+    index_attributes: z.ZodArray<z.ZodObject<{
+        attribute_number: z.ZodNumber;
+        attribute_name: z.ZodString;
+        data_type: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }, {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    options: number[];
+    id: number;
+    table_id: number;
+    schema: string;
+    is_unique: boolean;
+    comment: string | null;
+    number_of_attributes: number;
+    number_of_key_attributes: number;
+    is_primary: boolean;
+    is_exclusion: boolean;
+    is_immediate: boolean;
+    is_clustered: boolean;
+    is_valid: boolean;
+    check_xmin: boolean;
+    is_ready: boolean;
+    is_live: boolean;
+    is_replica_identity: boolean;
+    key_attributes: number[];
+    collation: number[];
+    class: number[];
+    index_predicate: string | null;
+    index_definition: string;
+    access_method: string;
+    index_attributes: {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }[];
+}, {
+    options: number[];
+    id: number;
+    table_id: number;
+    schema: string;
+    is_unique: boolean;
+    comment: string | null;
+    number_of_attributes: number;
+    number_of_key_attributes: number;
+    is_primary: boolean;
+    is_exclusion: boolean;
+    is_immediate: boolean;
+    is_clustered: boolean;
+    is_valid: boolean;
+    check_xmin: boolean;
+    is_ready: boolean;
+    is_live: boolean;
+    is_replica_identity: boolean;
+    key_attributes: number[];
+    collation: number[];
+    class: number[];
+    index_predicate: string | null;
+    index_definition: string;
+    access_method: string;
+    index_attributes: {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }[];
+}>, "many">;
+declare const pgIndexOptionalZod: z.ZodOptional<z.ZodObject<{
+    id: z.ZodNumber;
+    table_id: z.ZodNumber;
+    schema: z.ZodString;
+    number_of_attributes: z.ZodNumber;
+    number_of_key_attributes: z.ZodNumber;
+    is_unique: z.ZodBoolean;
+    is_primary: z.ZodBoolean;
+    is_exclusion: z.ZodBoolean;
+    is_immediate: z.ZodBoolean;
+    is_clustered: z.ZodBoolean;
+    is_valid: z.ZodBoolean;
+    check_xmin: z.ZodBoolean;
+    is_ready: z.ZodBoolean;
+    is_live: z.ZodBoolean;
+    is_replica_identity: z.ZodBoolean;
+    key_attributes: z.ZodArray<z.ZodNumber, "many">;
+    collation: z.ZodArray<z.ZodNumber, "many">;
+    class: z.ZodArray<z.ZodNumber, "many">;
+    options: z.ZodArray<z.ZodNumber, "many">;
+    index_predicate: z.ZodNullable<z.ZodString>;
+    comment: z.ZodNullable<z.ZodString>;
+    index_definition: z.ZodString;
+    access_method: z.ZodString;
+    index_attributes: z.ZodArray<z.ZodObject<{
+        attribute_number: z.ZodNumber;
+        attribute_name: z.ZodString;
+        data_type: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }, {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    options: number[];
+    id: number;
+    table_id: number;
+    schema: string;
+    is_unique: boolean;
+    comment: string | null;
+    number_of_attributes: number;
+    number_of_key_attributes: number;
+    is_primary: boolean;
+    is_exclusion: boolean;
+    is_immediate: boolean;
+    is_clustered: boolean;
+    is_valid: boolean;
+    check_xmin: boolean;
+    is_ready: boolean;
+    is_live: boolean;
+    is_replica_identity: boolean;
+    key_attributes: number[];
+    collation: number[];
+    class: number[];
+    index_predicate: string | null;
+    index_definition: string;
+    access_method: string;
+    index_attributes: {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }[];
+}, {
+    options: number[];
+    id: number;
+    table_id: number;
+    schema: string;
+    is_unique: boolean;
+    comment: string | null;
+    number_of_attributes: number;
+    number_of_key_attributes: number;
+    is_primary: boolean;
+    is_exclusion: boolean;
+    is_immediate: boolean;
+    is_clustered: boolean;
+    is_valid: boolean;
+    check_xmin: boolean;
+    is_ready: boolean;
+    is_live: boolean;
+    is_replica_identity: boolean;
+    key_attributes: number[];
+    collation: number[];
+    class: number[];
+    index_predicate: string | null;
+    index_definition: string;
+    access_method: string;
+    index_attributes: {
+        data_type: string;
+        attribute_number: number;
+        attribute_name: string;
+    }[];
+}>>;
+declare function list({ includeSystemSchemas, includedSchemas, excludedSchemas, limit, offset, }?: {
+    includeSystemSchemas?: boolean;
+    includedSchemas?: string[];
+    excludedSchemas?: string[];
+    limit?: number;
+    offset?: number;
+}): {
+    sql: string;
+    zod: typeof pgIndexArrayZod;
+};
+declare function retrieve({ id }: {
+    id: number;
+}): {
+    sql: string;
+    zod: typeof pgIndexOptionalZod;
+};
+declare const _default: {
+    list: typeof list;
+    retrieve: typeof retrieve;
+    zod: z.ZodObject<{
+        id: z.ZodNumber;
+        table_id: z.ZodNumber;
+        schema: z.ZodString;
+        number_of_attributes: z.ZodNumber;
+        number_of_key_attributes: z.ZodNumber;
+        is_unique: z.ZodBoolean;
+        is_primary: z.ZodBoolean;
+        is_exclusion: z.ZodBoolean;
+        is_immediate: z.ZodBoolean;
+        is_clustered: z.ZodBoolean;
+        is_valid: z.ZodBoolean;
+        check_xmin: z.ZodBoolean;
+        is_ready: z.ZodBoolean;
+        is_live: z.ZodBoolean;
+        is_replica_identity: z.ZodBoolean;
+        key_attributes: z.ZodArray<z.ZodNumber, "many">;
+        collation: z.ZodArray<z.ZodNumber, "many">;
+        class: z.ZodArray<z.ZodNumber, "many">;
+        options: z.ZodArray<z.ZodNumber, "many">;
+        index_predicate: z.ZodNullable<z.ZodString>;
+        comment: z.ZodNullable<z.ZodString>;
+        index_definition: z.ZodString;
+        access_method: z.ZodString;
+        index_attributes: z.ZodArray<z.ZodObject<{
+            attribute_number: z.ZodNumber;
+            attribute_name: z.ZodString;
+            data_type: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            data_type: string;
+            attribute_number: number;
+            attribute_name: string;
+        }, {
+            data_type: string;
+            attribute_number: number;
+            attribute_name: string;
+        }>, "many">;
+    }, "strip", z.ZodTypeAny, {
+        options: number[];
+        id: number;
+        table_id: number;
+        schema: string;
+        is_unique: boolean;
+        comment: string | null;
+        number_of_attributes: number;
+        number_of_key_attributes: number;
+        is_primary: boolean;
+        is_exclusion: boolean;
+        is_immediate: boolean;
+        is_clustered: boolean;
+        is_valid: boolean;
+        check_xmin: boolean;
+        is_ready: boolean;
+        is_live: boolean;
+        is_replica_identity: boolean;
+        key_attributes: number[];
+        collation: number[];
+        class: number[];
+        index_predicate: string | null;
+        index_definition: string;
+        access_method: string;
+        index_attributes: {
+            data_type: string;
+            attribute_number: number;
+            attribute_name: string;
+        }[];
+    }, {
+        options: number[];
+        id: number;
+        table_id: number;
+        schema: string;
+        is_unique: boolean;
+        comment: string | null;
+        number_of_attributes: number;
+        number_of_key_attributes: number;
+        is_primary: boolean;
+        is_exclusion: boolean;
+        is_immediate: boolean;
+        is_clustered: boolean;
+        is_valid: boolean;
+        check_xmin: boolean;
+        is_ready: boolean;
+        is_live: boolean;
+        is_replica_identity: boolean;
+        key_attributes: number[];
+        collation: number[];
+        class: number[];
+        index_predicate: string | null;
+        index_definition: string;
+        access_method: string;
+        index_attributes: {
+            data_type: string;
+            attribute_number: number;
+            attribute_name: string;
+        }[];
+    }>;
+};
+export default _default;
+//# sourceMappingURL=pg-meta-indexes.d.ts.map

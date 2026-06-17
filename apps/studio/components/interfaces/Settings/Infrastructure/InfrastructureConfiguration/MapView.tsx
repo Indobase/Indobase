@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import dayjs from 'dayjs'
 import { partition, uniqBy } from 'lodash'
 import { MoreVertical } from 'lucide-react'

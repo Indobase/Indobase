@@ -13,13 +13,13 @@ cli = [ "supabase-network-bans-get", "supabase-network-bans-remove" ]
 message = "connect ECONNREFUSED 1.2.3.4:5432"
 
 [[errors]]
-message = "psql: error: connection to server at \"db.xxxxxxxxxxxxxxxxxxxx.supabase.co\" (1.2.3.4), port 5432 failed: Connection refused Is the server running on that host and accepting TCP/IP connections?"
+message = "psql: error: connection to server at \"db.xxxxxxxxxxxxxxxxxxxx.indobase.in\" (1.2.3.4), port 5432 failed: Connection refused Is the server running on that host and accepting TCP/IP connections?"
 ---
 
-If you're not able to connect to the Supabase database and see the error `connect ECONNREFUSED 1.2.3.4:5432` or `psql: error: connection to server at "db.xxxxxxxxxxxxxxxxxxxx.supabase.co" (1.2.3.4), port 5432 failed: Connection refused
+If you're not able to connect to the Indobase database and see the error `connect ECONNREFUSED 1.2.3.4:5432` or `psql: error: connection to server at "db.xxxxxxxxxxxxxxxxxxxx.indobase.in" (1.2.3.4), port 5432 failed: Connection refused
 Is the server running on that host and accepting TCP/IP connections?`, this could be because there are banned IPs on your project caused by Fail2ban as it kicks in when attempting 2 wrong passwords in a row.
 
-These bans will clear after 30mins but you can unban the IPs using the Supabase CLI https://supabase.com/docs/guides/cli following the commands below.
+These bans will clear after 30mins but you can unban the IPs using the Indobase CLI https://indobase.in/docs/guides/cli following the commands below.
 
 ## Unban IPs using the Dashboard
 

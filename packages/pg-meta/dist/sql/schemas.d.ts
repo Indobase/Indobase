@@ -1,0 +1,2 @@
+export declare const SCHEMAS_SQL = "\n-- Adapted from information_schema.schemata\n\nselect\n  n.oid as id,\n  n.nspname as name,\n  u.rolname as owner,\n   obj_description(n.oid, 'pg_namespace') AS comment\nfrom\n  pg_namespace n,\n  pg_roles u\nwhere\n  n.nspowner = u.oid\n  and (\n    pg_has_role(n.nspowner, 'USAGE')\n    or has_schema_privilege(n.oid, 'CREATE, USAGE')\n  )\n  and not pg_catalog.starts_with(n.nspname, 'pg_temp_')\n  and not pg_catalog.starts_with(n.nspname, 'pg_toast_temp_')\n";
+//# sourceMappingURL=schemas.d.ts.map

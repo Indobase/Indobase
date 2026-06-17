@@ -16,14 +16,14 @@ Push notifications are an important part of any mobile app. They allow you to se
   <TabPanel id="expo" label="Expo Push Notifications">
     [Expo](https://docs.expo.dev/push-notifications/overview/) makes implementing push notifications easy. All the hassle with device information and communicating with Firebase Cloud Messaging (FCM) or Apple Push Notification Service (APNs) is done behind the scenes. This allows you to treat Android and iOS notifications in the same way and save time both on the frontend and backend.
 
-    Find the example code on [GitHub](https://github.com/supabase/supabase/blob/master/examples/user-management/expo-push-notifications/).
+    Find the example code on [GitHub](https://github.com/Indobase/Indobase/blob/master/examples/user-management/expo-push-notifications/).
 
-    ## Supabase setup
+    ## Indobase setup
 
-    - [Create a new Supabase project](https://database.new).
+    - [Create a new Indobase project](https://database.new).
     - Link your project: `supabase link --project-ref your-supabase-project-ref`
-    - Start Supabase locally: `supabase start`
-    - Push up the schema: `supabase db push` (schema is defined in [supabase/migrations](https://github.com/supabase/supabase/blob/master/examples/user-management/expo-push-notifications/supabase/migrations/))
+    - Start Indobase locally: `supabase start`
+    - Push up the schema: `supabase db push` (schema is defined in [supabase/migrations](https://github.com/Indobase/Indobase/blob/master/examples/user-management/expo-push-notifications/supabase/migrations/))
 
     ## Expo setup
 
@@ -35,19 +35,19 @@ Push notifications are an important part of any mobile app. They allow you to se
     1. [Create a build for your physical device](https://docs.expo.dev/develop/development-builds/create-a-build/#create-a-build-for-the-device)
     1. Start the development server for your project: `npx expo start --dev-client`
     1. Scan the QR code shown in the terminal with your physical device.
-    1. Sign up/in to create a user in Supabase Auth.
+    1. Sign up/in to create a user in Indobase Auth.
 
     ## Enhanced security for push notifications
 
     1. Navigate to your [Expo Access Token Settings](https://expo.dev/accounts/_/settings/access-tokens).
-    1. Create a new token for usage in Supabase Edge Functions.
+    1. Create a new token for usage in Indobase Edge Functions.
     1. Toggle on "Enhanced Security for Push Notifications".
     1. Create the local `.env` file: `cp .env.local.example .env.local`
     1. In the newly created `.env.local` file, set your `EXPO_ACCESS_TOKEN` value.
 
-    ## Deploy the Supabase Edge Function
+    ## Deploy the Indobase Edge Function
 
-    The database webhook handler to send push notifications is located in [supabase/functions/push/index.ts](https://github.com/supabase/supabase/blob/master/examples/user-management/expo-push-notifications/supabase/functions/push/index.ts). Deploy the function to your linked project and set the `EXPO_ACCESS_TOKEN` secret.
+    The database webhook handler to send push notifications is located in [supabase/functions/push/index.ts](https://github.com/Indobase/Indobase/blob/master/examples/user-management/expo-push-notifications/supabase/functions/push/index.ts). Deploy the function to your linked project and set the `EXPO_ACCESS_TOKEN` secret.
 
     1. `supabase functions deploy push`
     1. `supabase secrets set --env-file .env.local`
@@ -105,18 +105,18 @@ Push notifications are an important part of any mobile app. They allow you to se
 
     ## Create the database webhook
 
-    Navigate to the [Database Webhooks settings](/dashboard/project/_/integrations/webhooks/overview) in your Supabase Dashboard.
+    Navigate to the [Database Webhooks settings](/dashboard/project/_/integrations/webhooks/overview) in your Indobase Dashboard.
 
     1. Enable and create a new hook.
     1. Conditions to fire webhook: Select the `notifications` table and tick the `Insert` event.
-    1. Webhook configuration: Supabase Edge Functions.
+    1. Webhook configuration: Indobase Edge Functions.
     1. Edge Function: Select the `push` edge function and leave the method as `POST` and timeout as `1000`.
     1. HTTP Headers: Click "Add new header" > "Add auth header with service key" and leave Content-type: `application/json`.
     1. Click "Create webhook".
 
     ## Send push notification
 
-    1. Navigate to the [table editor](/dashboard/project/_/editor) in your Supabase Dashboard.
+    1. Navigate to the [table editor](/dashboard/project/_/editor) in your Indobase Dashboard.
     1. In your `notifications` table, insert a new row.
     1. Watch the magic happen 🪄
 
@@ -124,9 +124,9 @@ Push notifications are an important part of any mobile app. They allow you to se
   <TabPanel id="fcm" label="Firebase Cloud Messaging">
     Firebase Cloud Messaging (FCM) is a push notification service offered by Google that allows you to send push notifications to your users' devices on iOS, Android, and Web.
 
-    This guide will show you how to send push notifications to your app when a new row is inserted into a table using FCM, Supabase Edge Functions, and database web hooks.
+    This guide will show you how to send push notifications to your app when a new row is inserted into a table using FCM, Indobase Edge Functions, and database web hooks.
 
-    ## Supabase setup
+    ## Indobase setup
 
     We will create two tables. One to store the user's FCM token and a `notifications` table. The edge function will be triggered when a new row is inserted into the `notifications` table and sends a push notification to the user.
 
@@ -269,7 +269,7 @@ Push notifications are an important part of any mobile app. They allow you to se
     Deploy the function with the following command:
 
     ```bash
-    # Link your local Supabase project to the remote Supabase project
+    # Link your local Indobase project to the remote Indobase project
     supabase link
     # Deploy the function
     supabase functions deploy push --no-verify-jwt
@@ -277,18 +277,18 @@ Push notifications are an important part of any mobile app. They allow you to se
 
     ## Create the database webhook
 
-    Navigate to the [Database Webhooks settings](/dashboard/project/_/database/hooks) in your Supabase Dashboard.
+    Navigate to the [Database Webhooks settings](/dashboard/project/_/database/hooks) in your Indobase Dashboard.
 
     1. Enable and create a new hook.
     1. Conditions to fire webhook: Select the `public.notifications` table and tick the `Insert` event.
-    1. Webhook configuration: Supabase Edge Functions.
+    1. Webhook configuration: Indobase Edge Functions.
     1. Edge Function: Select the `push` edge function and leave the method as `POST` and timeout as `1000`.
     1. Click "Create webhook".
 
     ## Send push notification
 
     1. Make sure you have a user with an FCM token in the `profiles` table.
-    1. Navigate to the [table editor](/dashboard/project/_/editor) in your Supabase Dashboard.
+    1. Navigate to the [table editor](/dashboard/project/_/editor) in your Indobase Dashboard.
     1. In your `notifications` table, insert a new row.
     1. Watch the magic happen 🪄
 

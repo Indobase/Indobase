@@ -1,4 +1,4 @@
-import type { PostgresColumn, PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresColumn, PostgresTable } from '@indobaseinc/postgres-meta'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'common'
 import {

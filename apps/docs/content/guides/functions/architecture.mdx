@@ -1,12 +1,12 @@
 ---
 id: 'architecture'
 title: 'Edge Functions Architecture'
-description: 'Guide to Supabase Edge Functions: Architecture and How They Work'
-subtitle: 'Understanding the Architecture of Supabase Edge Functions'
+description: 'Guide to Indobase Edge Functions: Architecture and How They Work'
+subtitle: 'Understanding the Architecture of Indobase Edge Functions'
 tocVideo: 'za_loEtS4gs'
 ---
 
-This guide explains the architecture and inner workings of Supabase Edge Functions, based on the concepts demonstrated in the video "Supabase Edge Functions Explained". Edge functions are serverless compute resources that run at the edge of the network, close to users, enabling low-latency execution for tasks like API endpoints, webhooks, and real-time data processing. This guide breaks down Edge Functions into key sections: an example use case, deployment process, global distribution, and execution mechanics.
+This guide explains the architecture and inner workings of Indobase Edge Functions, based on the concepts demonstrated in the video "Indobase Edge Functions Explained". Edge functions are serverless compute resources that run at the edge of the network, close to users, enabling low-latency execution for tasks like API endpoints, webhooks, and real-time data processing. This guide breaks down Edge Functions into key sections: an example use case, deployment process, global distribution, and execution mechanics.
 
 ## 1. Understanding Edge Functions through an example: Image filtering
 
@@ -14,10 +14,10 @@ To illustrate how edge functions operate, consider a photo-sharing app where use
 
 - **Workflow Overview**:
 
-  - A user uploads an original image to Supabase Storage.
-  - When the user selects a filter, the client-side app (using the Supabase JavaScript SDK) invokes an edge function named something like "apply-filter."
+  - A user uploads an original image to Indobase Storage.
+  - When the user selects a filter, the client-side app (using the Indobase JavaScript SDK) invokes an edge function named something like "apply-filter."
   - The edge function:
-    1. Downloads the original image from Supabase Storage.
+    1. Downloads the original image from Indobase Storage.
     2. Applies the filter using a library like ImageMagick.
     3. Uploads the processed image back to Storage.
     4. Returns the path to the filtered image to the client.
@@ -25,9 +25,9 @@ To illustrate how edge functions operate, consider a photo-sharing app where use
 - **Why Edge Functions?**:
   - They handle compute-intensive tasks without burdening the client device or the database.
   - Execution happens server-side but at the edge, ensuring speed and scalability.
-  - Developers define the function in a simple JavaScript file within the Supabase functions directory.
+  - Developers define the function in a simple JavaScript file within the Indobase functions directory.
 
-This example highlights edge functions as lightweight, on-demand code snippets that integrate seamlessly with Supabase services like Storage and Auth.
+This example highlights edge functions as lightweight, on-demand code snippets that integrate seamlessly with Indobase services like Storage and Auth.
 
 ## 2. Deployment process
 
@@ -35,8 +35,8 @@ Deploying an edge function is straightforward and automated, requiring no manual
 
 - **Steps to Deploy**:
 
-  1. Write the function code in your local Supabase project (e.g., in `supabase/functions/apply-filter/index.ts`).
-  2. Run the command `supabase functions deploy apply-filter` via the Supabase CLI.
+  1. Write the function code in your local Indobase project (e.g., in `supabase/functions/apply-filter/index.ts`).
+  2. Run the command `supabase functions deploy apply-filter` via the Indobase CLI.
   3. The CLI bundles the function and its dependencies into an **ESZip file**—a compact format created by Deno that includes a complete module graph for quick loading and execution.
   4. The bundled file is uploaded to Supabase's backend.
   5. Supabase generates a unique URL for the function, making it accessible globally.

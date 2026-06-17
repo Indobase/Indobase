@@ -48,8 +48,8 @@ const MAX_DEPTH = 5
 
 function isAllowedCorsOrigin(origin: string): boolean {
   const exactMatches = IS_DEV
-    ? ['http://localhost:8082', 'https://supabase.com']
-    : ['https://supabase.com']
+    ? ['http://localhost:8082', 'https://indobase.in']
+    : ['https://indobase.in']
   if (exactMatches.includes(origin)) {
     return true
   }

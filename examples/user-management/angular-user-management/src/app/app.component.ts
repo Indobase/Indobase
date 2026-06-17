@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core'
-import { User } from '@supabase/supabase-js'
+import { User } from '@indobaseinc/indobase-js'
 import { SupabaseService } from './supabase.service'
 
 @Component({

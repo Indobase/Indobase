@@ -13,7 +13,7 @@ export function GuideHeader({ className }: GuideHeaderProps) {
   return (
     <div className={className}>
       <h1 className="mb-0 [&>p]:m-0">
-        <ReactMarkdown>{meta?.title || 'Supabase Docs'}</ReactMarkdown>
+        <ReactMarkdown>{meta?.title || 'Indobase Docs'}</ReactMarkdown>
       </h1>
       {meta?.subtitle && (
         <h2 className="mt-3 text-xl text-foreground-light">

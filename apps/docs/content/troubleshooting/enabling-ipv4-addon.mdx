@@ -4,7 +4,7 @@ topics = [ "database", "platform", "supavisor" ]
 database_id = "02f5f200-3c1c-425e-945f-b80b3fce3ec0"
 ---
 
-Enabling the IPv4 add-on will attach an IPv4 address to your project's compute instance, while preserving the existing IPv6 address. Both DNS records `ref.supabase.co` and `db.ref.supabase.co` will be updated to point to the IPv4 address.
+Enabling the IPv4 add-on will attach an IPv4 address to your project's compute instance, while preserving the existing IPv6 address. Both DNS records `ref.indobase.in` and `db.ref.indobase.in` will be updated to point to the IPv4 address.
 
 ## How much downtime can be expected when enabling the IPv4 add-on?
 
@@ -20,7 +20,7 @@ The IPv6 address will be preserved. New inbound connections (both direct connect
 
 ## Will existing connections be dropped?
 
-DNS changes do not affect already-established connections, and only new connections will resolve the updated record. For `db.ref.supabase.co` (i.e database connections through ports 5432 and 6543), the existing AAAA record will be updated to an A record pointing to the IPv4 address. This is essentially an in-place update for `db.ref.supabase.co`'s value and record type which would externally translate to an AAAA removal and an A record creation, which mitigates against split moments in time where no record would be available.
+DNS changes do not affect already-established connections, and only new connections will resolve the updated record. For `db.ref.indobase.in` (i.e database connections through ports 5432 and 6543), the existing AAAA record will be updated to an A record pointing to the IPv4 address. This is essentially an in-place update for `db.ref.indobase.in`'s value and record type which would externally translate to an AAAA removal and an A record creation, which mitigates against split moments in time where no record would be available.
 
 ## Is it the case that the new IPv4 address cannot be connected until DNS is updated?
 

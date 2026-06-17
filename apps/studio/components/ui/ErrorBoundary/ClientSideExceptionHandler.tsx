@@ -1,6 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { useRouter } from 'next/router'
 import { Button, cn } from 'ui'

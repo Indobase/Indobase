@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import AlertError from 'components/ui/AlertError'
 import NoPermission from 'components/ui/NoPermission'

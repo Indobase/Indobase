@@ -15,21 +15,21 @@ Data sent to the client when retrieving data stored in your database.
 
 <Admonition type="note">
 
-There are various ways to interact with your database, such as through the PostgREST API using one of the client SDKs or via the Supavisor connection pooler. On the Supabase Dashboard, Egress from the PostgREST API is labeled as **Database Egress**, while Egress through Supavisor is labeled as **Shared Pooler Egress**.
+There are various ways to interact with your database, such as through the PostgREST API using one of the client SDKs or via the Supavisor connection pooler. On the Indobase Dashboard, Egress from the PostgREST API is labeled as **Database Egress**, while Egress through Supavisor is labeled as **Shared Pooler Egress**.
 
 </Admonition>
 
 ### Auth Egress
 
-Data sent from Supabase Auth to the client while managing your application's users. This includes actions like signing in, signing out, or creating new users, e.g. via the JavaScript Client SDK.
+Data sent from Indobase Auth to the client while managing your application's users. This includes actions like signing in, signing out, or creating new users, e.g. via the JavaScript Client SDK.
 
-**Example:** A user signs in to an online shop. The client application requests the Supabase Auth service to authenticate and authorize the user. The session data, including authentication tokens and user profile details, is sent back to the client, contributing to Auth Egress.
+**Example:** A user signs in to an online shop. The client application requests the Indobase Auth service to authenticate and authorize the user. The session data, including authentication tokens and user profile details, is sent back to the client, contributing to Auth Egress.
 
 ### Storage Egress
 
-Data sent from Supabase Storage to the client when retrieving assets. This includes actions like downloading files, images, or other stored content, e.g. via the JavaScript Client SDK.
+Data sent from Indobase Storage to the client when retrieving assets. This includes actions like downloading files, images, or other stored content, e.g. via the JavaScript Client SDK.
 
-**Example:** A user downloads an invoice from an online shop. The client application requests Supabase Storage to retrieve the PDF file from the storage bucket. The file is sent back to the client, contributing to Storage Egress.
+**Example:** A user downloads an invoice from an online shop. The client application requests Indobase Storage to retrieve the PDF file from the storage bucket. The file is sent back to the client, contributing to Storage Egress.
 
 ### Edge Functions Egress
 
@@ -39,9 +39,9 @@ Data sent to the client when executing Edge Functions.
 
 ### Realtime Egress
 
-Data pushed to clients via Supabase Realtime for subscribed events.
+Data pushed to clients via Indobase Realtime for subscribed events.
 
-**Example:** When a user views a product page in an online shop, their client subscribes to real-time inventory updates. As stock levels change, Supabase Realtime pushes updates to all subscribed clients, contributing to Realtime Egress.
+**Example:** When a user views a product page in an online shop, their client subscribes to real-time inventory updates. As stock levels change, Indobase Realtime pushes updates to all subscribed clients, contributing to Realtime Egress.
 
 ### Shared pooler Egress
 
@@ -155,7 +155,7 @@ height={586}
 ### Custom report
 
 1. On the [Observability page](/dashboard/project/_/observability), click **New custom report** in the left navigation menu
-2. After creating a new report, add charts for one or more Supabase services by clicking **Add block**
+2. After creating a new report, add charts for one or more Indobase services by clicking **Add block**
 
 <Image
   alt="Egress report"

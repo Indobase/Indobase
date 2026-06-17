@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { handleError } from 'data/fetchers'
-import { createProjectSupabaseClient } from 'lib/project-supabase-client'
+import { createProjectIndobaseClient } from 'lib/project-indobase-client'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
 import { oauthServerAppKeys } from './keys'
 
@@ -21,8 +21,8 @@ export async function deleteOAuthServerApp({
   if (!clientEndpoint) throw new Error('Client endpoint is required')
   if (!clientId) throw new Error('Client ID is required')
 
-  const supabaseClient = await createProjectSupabaseClient(projectRef, clientEndpoint)
-  const { data, error } = await supabaseClient.auth.admin.oauth.deleteClient(clientId)
+  const indobaseClient = await createProjectIndobaseClient(projectRef, clientEndpoint)
+  const { data, error } = await indobaseClient.auth.admin.oauth.deleteClient(clientId)
 
   if (error) return handleError(error)
   return null

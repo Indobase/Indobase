@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { HooksListing } from 'components/interfaces/Auth/Hooks/HooksListing'
 import AuthLayout from 'components/layouts/AuthLayout/AuthLayout'

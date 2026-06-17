@@ -7,7 +7,7 @@ import {
   type IncidentCache,
   type IncidentInfo,
 } from '@/lib/api/incident-status'
-import { createAdminClient } from '@/lib/api/supabase-admin'
+import { createAdminClient } from '@/lib/api/indobase-admin'
 
 /**
  * Cache on browser for 5 minutes

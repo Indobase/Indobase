@@ -4,10 +4,10 @@ import { isValidEdgeFunctionURL } from './edgeFunctions'
 
 describe('isValidEdgeFunctionURL', () => {
   const validEdgeFunctionUrls = [
-    'https://projectref.supabase.co/functions/v1/hello-world',
-    'https://projectref.supabase.red/functions/v1/hello-world',
-    'https://projectref.supabase.red/functions/v3/hello-world',
-    'https://projectref.supabase.red/functions/v3/hello-world',
+    'https://projectref.indobase.in/functions/v1/hello-world',
+    'https://projectref.indobase.red/functions/v1/hello-world',
+    'https://projectref.indobase.red/functions/v3/hello-world',
+    'https://projectref.indobase.red/functions/v3/hello-world',
   ]
 
   const validLocalEdgeFunctionsUrls = [
@@ -22,15 +22,15 @@ describe('isValidEdgeFunctionURL', () => {
   const invalidPlatformEdgeFunctionUrls = [
     'https://notsupabase.com/functions/v1/test',
     'https://projectref.notsupabase.com/functions/v1/test',
-    'https://localhost?https://aaaa.supabase.co/functions/v1/xxx',
-    'https://localhost:3000/?https://aaaa.supabase.co/functions/v1/xxx',
-    'http://localhost:3000/?https://aaaa.supabase.co/functions/v1/xxx',
+    'https://localhost?https://aaaa.indobase.in/functions/v1/xxx',
+    'https://localhost:3000/?https://aaaa.indobase.in/functions/v1/xxx',
+    'http://localhost:3000/?https://aaaa.indobase.in/functions/v1/xxx',
   ]
 
   const invalidEdgeFunctionUrls = [
-    'https://localhost?https://aaaa.supabase.co/functions/v1/xxx',
-    'https://localhost:3000/?https://aaaa.supabase.co/functions/v1/xxx',
-    'http://localhost:3000/?https://aaaa.supabase.co/functions/v1/xxx',
+    'https://localhost?https://aaaa.indobase.in/functions/v1/xxx',
+    'https://localhost:3000/?https://aaaa.indobase.in/functions/v1/xxx',
+    'http://localhost:3000/?https://aaaa.indobase.in/functions/v1/xxx',
   ]
 
   it('should match valid edge function URLs on platform', () => {

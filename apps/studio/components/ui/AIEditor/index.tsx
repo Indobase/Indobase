@@ -414,7 +414,7 @@ export const AIEditor = ({
         <div className="w-full h-full relative">
           {/* [Joshen] Refactor: Use CodeEditor.tsx instead, reduce duplicate declaration of Editor */}
           <Editor
-            theme="supabase"
+            theme="indobase"
             language={language}
             value={currentValue}
             options={defaultOptions}

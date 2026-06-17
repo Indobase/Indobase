@@ -21,7 +21,7 @@ export type CheckCNAMERecordResponse = {
   Authority: { name: string; type: number; TTL: number; data: string }[]
 }
 
-// [Joshen] Should tally with https://github.com/supabase/cli/blob/63790a1bd43bee06f82c4f510e709925526a4daa/internal/utils/api.go#L98
+// [Joshen] Should tally with https://github.com/Indobase/cli/blob/63790a1bd43bee06f82c4f510e709925526a4daa/internal/utils/api.go#L98
 export async function checkCNAMERecord({ domain }: CheckCNAMERecordVariables) {
   try {
     const res: CheckCNAMERecordResponse = await fetchHandler(

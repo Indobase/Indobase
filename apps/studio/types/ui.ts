@@ -1,4 +1,4 @@
-import type { PostgresColumn } from '@supabase/postgres-meta'
+import type { PostgresColumn } from '@indobaseinc/postgres-meta'
 import { ProjectLogStatsVariables } from 'data/analytics/project-log-stats-query'
 import { PlanId } from 'data/subscriptions/types'
 

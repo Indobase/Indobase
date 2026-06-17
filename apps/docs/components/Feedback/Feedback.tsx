@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import { Check, MessageSquareQuote, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import {

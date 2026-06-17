@@ -1,4 +1,4 @@
-import { RealtimeChannel, RealtimeClient } from '@supabase/realtime-js'
+import { RealtimeChannel, RealtimeClient } from '@indobaseinc/realtime-js'
 import { sortBy, take } from 'lodash'
 import { Dispatch, SetStateAction, useCallback, useEffect, useReducer, useState } from 'react'
 import { toast } from 'sonner'
@@ -79,7 +79,7 @@ export const useRealtimeMessages = (
   const protocol = settings?.app_config?.protocol ?? 'https'
   const endpoint = settings?.app_config?.endpoint
   // Default host comes from the public Supabase URL (set via env at build/run
-  // time). On cloud this resolves to `<ref>.supabase.co`; on SaaS
+  // time). On cloud this resolves to `<ref>.indobase.in`; on SaaS
   // (incl. Indobase SaaS) it points to the platform's public Kong URL. Once
   // the project-settings request lands, we switch to its `app_config.endpoint`.
   const fallbackPublicUrl =

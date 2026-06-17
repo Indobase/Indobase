@@ -1,5 +1,5 @@
-import pgMeta from '@supabase/pg-meta'
-import type { JwtPayload } from 'indobase-js'
+import pgMeta from '@indobaseinc/pg-meta'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { safeValidateUIMessages } from 'ai'
 import { IS_SAAS } from 'common'
 import { executeSql } from 'data/sql/execute-sql-query'

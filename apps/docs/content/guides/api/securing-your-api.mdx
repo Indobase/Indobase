@@ -4,13 +4,13 @@ title: 'Securing your API'
 description: 'Securing your Data API with Postgres Row Level Security.'
 ---
 
-The data APIs are designed to work with Postgres Row Level Security (RLS). If you use [Supabase Auth](/docs/guides/auth), you can restrict data based on the logged-in user.
+The data APIs are designed to work with Postgres Row Level Security (RLS). If you use [Indobase Auth](/docs/guides/auth), you can restrict data based on the logged-in user.
 
 To control access to your data, you can use [Policies](/docs/guides/auth#policies).
 
 ## Enabling row level security
 
-Any table you create in the `public` schema will be accessible via the Supabase Data API.
+Any table you create in the `public` schema will be accessible via the Indobase Data API.
 
 To restrict access, enable Row Level Security (RLS) on all tables, views, and functions in the `public` schema. You can then write RLS policies to grant users access to specific database rows or functions based on their authentication token.
 
@@ -20,7 +20,7 @@ Always enable Row Level Security on tables, views, and functions in the `public`
 
 </Admonition>
 
-Any table created through the Supabase Dashboard will have RLS enabled by default. If you created the tables via the SQL editor or via another way, enable RLS like so:
+Any table created through the Indobase Dashboard will have RLS enabled by default. If you created the tables via the SQL editor or via another way, enable RLS like so:
 
 <Tabs
   scrollable
@@ -262,7 +262,7 @@ To clear old entries in the `private.rate_limits` table, set up a [pg_cron](/doc
 Some applications can benefit from using additional API keys managed by the application **in addition to the [Supabase API keys](/docs/guides/api/api-keys)**. This is commonly necessary in cases like:
 
 - Applications that use the Data API without RLS policies.
-- Applications that do not use [Supabase Auth](/auth) or any other authentication system and rely on the `anon` role.
+- Applications that do not use [Indobase Auth](/auth) or any other authentication system and rely on the `anon` role.
 
 <Admonition type="tip">
 

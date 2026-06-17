@@ -5,15 +5,15 @@ Generate and stream speech through Supabase Edge Functions. Store speech in Supa
 ## Requirements
 
 - An ElevenLabs account with an [API key](/app/settings/api-keys).
-- A [Supabase](https://supabase.com) account (you can sign up for a free account via [database.new](https://database.new)).
-- The [Supabase CLI](https://supabase.com/docs/guides/local-development) installed on your machine.
+- A [Supabase](https://indobase.in) account (you can sign up for a free account via [database.new](https://database.new)).
+- The [Supabase CLI](https://indobase.in/docs/guides/local-development) installed on your machine.
 - The [Deno runtime](https://docs.deno.com/runtime/getting_started/installation/) installed on your machine and optionally [setup in your favourite IDE](https://docs.deno.com/runtime/getting_started/setup_your_environment).
 
 ## Setup
 
 ### Create a Supabase project locally
 
-After installing the [Supabase CLI](https://supabase.com/docs/guides/local-development), run the following command to create a new Supabase project locally:
+After installing the [Supabase CLI](https://indobase.in/docs/guides/local-development), run the following command to create a new Supabase project locally:
 
 ```bash
 supabase init

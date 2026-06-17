@@ -1,5 +1,5 @@
 import type { ColumnDef, ColumnRef, Node, RangeVar, ResTarget } from 'libpg-query'
-import { POSTGRESQL_RESERVED_WORDS } from '@supabase/pg-meta/src/pg-format/reserved'
+import { POSTGRESQL_RESERVED_WORDS } from '@indobaseinc/pg-meta/src/pg-format/reserved'
 
 /**
  * Recursively traverse a libpg-query AST to extract all identifiers.

@@ -1,4 +1,4 @@
-import { JwtSecretUpdateStatus } from '@supabase/shared-types/out/events'
+import { JwtSecretUpdateStatus } from '@indobaseinc/shared-types/out/events'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 

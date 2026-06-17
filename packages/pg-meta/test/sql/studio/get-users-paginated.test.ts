@@ -33,7 +33,7 @@ withTestDatabase('returns paginated users with default settings', async ({ execu
       INSERT INTO auth.users (id, email, instance_id, created_at)
       VALUES (
         '${randomUUID()}',
-        'user${i}@supabase.io',
+        'user${i}@indobase.io',
         '00000000-0000-0000-0000-000000000000',
         NOW() + INTERVAL '${i} minutes'
       )
@@ -46,8 +46,8 @@ withTestDatabase('returns paginated users with default settings', async ({ execu
 
   expect(result.length).toBe(10)
   // Should be ordered by created_at desc, so user9 should be first
-  expect(result[0].email).toBe('user9@supabase.io')
-  expect(result[9].email).toBe('user0@supabase.io')
+  expect(result[0].email).toBe('user9@indobase.io')
+  expect(result[9].email).toBe('user0@indobase.io')
 })
 
 withTestDatabase('respects custom limit and pagination', async ({ executeQuery }) => {
@@ -57,7 +57,7 @@ withTestDatabase('respects custom limit and pagination', async ({ executeQuery }
       INSERT INTO auth.users (id, email, instance_id, created_at)
       VALUES (
         '${randomUUID()}',
-        'user${String(i).padStart(2, '0')}@supabase.io',
+        'user${String(i).padStart(2, '0')}@indobase.io',
         '00000000-0000-0000-0000-000000000000',
         NOW() + INTERVAL '${i} minutes'
       )
@@ -70,26 +70,26 @@ withTestDatabase('respects custom limit and pagination', async ({ executeQuery }
 
   expect(result.length).toBe(10)
   // Page 1 should start at user19 (0-indexed, skipping first 10)
-  expect(result[0].email).toBe('user19@supabase.io')
-  expect(result[9].email).toBe('user10@supabase.io')
+  expect(result[0].email).toBe('user19@indobase.io')
+  expect(result[9].email).toBe('user10@indobase.io')
 })
 
 withTestDatabase('sorts by email in ascending order', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${randomUUID()}', 'charlie@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'alice@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'bob@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${randomUUID()}', 'charlie@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'alice@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'bob@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   const sql = getPaginatedUsersSQL({ sort: 'email', order: 'asc', limit: 10 })
   const result = await executeQuery<Array<{ email: string }>>(sql)
 
   expect(result.length).toBe(3)
-  expect(result[0].email).toBe('alice@supabase.io')
-  expect(result[1].email).toBe('bob@supabase.io')
-  expect(result[2].email).toBe('charlie@supabase.io')
+  expect(result[0].email).toBe('alice@indobase.io')
+  expect(result[1].email).toBe('bob@indobase.io')
+  expect(result[2].email).toBe('charlie@indobase.io')
 })
 
 withTestDatabase('filters by keywords across multiple fields', async ({ executeQuery }) => {
@@ -98,16 +98,16 @@ withTestDatabase('filters by keywords across multiple fields', async ({ executeQ
   await executeQuery(`
     INSERT INTO auth.users (id, email, phone, instance_id, raw_user_meta_data, created_at)
     VALUES 
-      ('${searchUserId}', 'john.doe@supabase.io', NULL, '00000000-0000-0000-0000-000000000000', '{"full_name": "John Doe"}', NOW()),
-      ('${randomUUID()}', 'jane.smith@supabase.io', '+1234567890', '00000000-0000-0000-0000-000000000000', '{"full_name": "Jane Smith"}', NOW()),
-      ('${randomUUID()}', 'bob.jones@supabase.io', '+9876543210', '00000000-0000-0000-0000-000000000000', '{"full_name": "Bob Jones"}', NOW())
+      ('${searchUserId}', 'john.doe@indobase.io', NULL, '00000000-0000-0000-0000-000000000000', '{"full_name": "John Doe"}', NOW()),
+      ('${randomUUID()}', 'jane.smith@indobase.io', '+1234567890', '00000000-0000-0000-0000-000000000000', '{"full_name": "Jane Smith"}', NOW()),
+      ('${randomUUID()}', 'bob.jones@indobase.io', '+9876543210', '00000000-0000-0000-0000-000000000000', '{"full_name": "Bob Jones"}', NOW())
   `)
 
   // Search by keyword "john" - should find john.doe by email
   const emailSql = getPaginatedUsersSQL({ sort: 'created_at', order: 'desc', keywords: 'john' })
   const emailResult = await executeQuery<Array<{ email: string }>>(emailSql)
   expect(emailResult.length).toBe(1)
-  expect(emailResult[0].email).toBe('john.doe@supabase.io')
+  expect(emailResult[0].email).toBe('john.doe@indobase.io')
 
   // Search by phone
   const phoneSql = getPaginatedUsersSQL({ sort: 'created_at', order: 'desc', keywords: '1234' })
@@ -120,7 +120,7 @@ withTestDatabase('filters by keywords across multiple fields', async ({ executeQ
   const idSql = getPaginatedUsersSQL({ sort: 'created_at', order: 'desc', keywords: idPrefix })
   const idResult = await executeQuery<Array<{ email: string }>>(idSql)
   expect(idResult.length).toBe(1)
-  expect(idResult[0].email).toBe('john.doe@supabase.io')
+  expect(idResult[0].email).toBe('john.doe@indobase.io')
 })
 
 withTestDatabase('filters verified and unverified users', async ({ executeQuery }) => {
@@ -129,9 +129,9 @@ withTestDatabase('filters verified and unverified users', async ({ executeQuery 
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, email_confirmed_at, created_at)
     VALUES 
-      ('${randomUUID()}', 'verified1@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
-      ('${randomUUID()}', 'verified2@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
-      ('${randomUUID()}', 'unverified@supabase.io', '00000000-0000-0000-0000-000000000000', NULL, NOW())
+      ('${randomUUID()}', 'verified1@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
+      ('${randomUUID()}', 'verified2@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
+      ('${randomUUID()}', 'unverified@indobase.io', '00000000-0000-0000-0000-000000000000', NULL, NOW())
   `)
 
   // Filter verified users
@@ -151,16 +151,16 @@ withTestDatabase('filters verified and unverified users', async ({ executeQuery 
   })
   const unverifiedResult = await executeQuery<Array<{ email: string }>>(unverifiedSql)
   expect(unverifiedResult.length).toBe(1)
-  expect(unverifiedResult[0].email).toBe('unverified@supabase.io')
+  expect(unverifiedResult[0].email).toBe('unverified@indobase.io')
 })
 
 withTestDatabase('filters anonymous users', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, is_anonymous, created_at)
     VALUES 
-      ('${randomUUID()}', 'anon1@supabase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
-      ('${randomUUID()}', 'anon2@supabase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
-      ('${randomUUID()}', 'regular@supabase.io', '00000000-0000-0000-0000-000000000000', false, NOW())
+      ('${randomUUID()}', 'anon1@indobase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
+      ('${randomUUID()}', 'anon2@indobase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
+      ('${randomUUID()}', 'regular@indobase.io', '00000000-0000-0000-0000-000000000000', false, NOW())
   `)
 
   const sql = getPaginatedUsersSQL({ sort: 'created_at', order: 'desc', verified: 'anonymous' })
@@ -176,9 +176,9 @@ withTestDatabase('filters by providers', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, raw_app_meta_data, created_at)
     VALUES 
-      ('${user1}', 'google1@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
-      ('${user2}', 'google2@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
-      ('${user3}', 'github@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["github"]}', NOW())
+      ('${user1}', 'google1@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
+      ('${user2}', 'google2@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
+      ('${user3}', 'github@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["github"]}', NOW())
   `)
 
   // Also insert identities for the users
@@ -215,9 +215,9 @@ withTestDatabase('combines multiple filters', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, email_confirmed_at, raw_app_meta_data, created_at)
     VALUES 
-      ('${randomUUID()}', 'verified.google@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["google"]}', NOW()),
-      ('${randomUUID()}', 'verified.github@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["github"]}', NOW()),
-      ('${randomUUID()}', 'unverified.google@supabase.io', '00000000-0000-0000-0000-000000000000', NULL, '{"providers": ["google"]}', NOW())
+      ('${randomUUID()}', 'verified.google@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["google"]}', NOW()),
+      ('${randomUUID()}', 'verified.github@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["github"]}', NOW()),
+      ('${randomUUID()}', 'unverified.google@indobase.io', '00000000-0000-0000-0000-000000000000', NULL, '{"providers": ["google"]}', NOW())
   `)
 
   // Combine verified filter with provider and keyword
@@ -230,16 +230,16 @@ withTestDatabase('combines multiple filters', async ({ executeQuery }) => {
   })
   const result = await executeQuery<Array<{ email: string }>>(sql)
   expect(result.length).toBe(1)
-  expect(result[0].email).toBe('verified.google@supabase.io')
+  expect(result[0].email).toBe('verified.google@indobase.io')
 })
 
 withTestDatabase('optimized email search works correctly', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${randomUUID()}', 'alice@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'alicia@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'bob@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${randomUUID()}', 'alice@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'alicia@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'bob@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Optimized search by email prefix
@@ -252,8 +252,8 @@ withTestDatabase('optimized email search works correctly', async ({ executeQuery
   })
   const result = await executeQuery<Array<{ email: string }>>(sql)
   expect(result.length).toBe(2)
-  expect(result[0].email).toBe('alice@supabase.io')
-  expect(result[1].email).toBe('alicia@supabase.io')
+  expect(result[0].email).toBe('alice@indobase.io')
+  expect(result[1].email).toBe('alicia@indobase.io')
 })
 
 withTestDatabase('optimized phone search works correctly', async ({ executeQuery }) => {
@@ -285,9 +285,9 @@ withTestDatabase('optimized id search works correctly', async ({ executeQuery })
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${userId1}', 'user1@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${userId2}', 'user2@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${userId3}', 'user3@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${userId1}', 'user1@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${userId2}', 'user2@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${userId3}', 'user3@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Optimized search by id prefix
@@ -321,7 +321,7 @@ withTestDatabase('includes provider information from identities', async ({ execu
 
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
-    VALUES ('${userId}', 'user@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+    VALUES ('${userId}', 'user@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Insert multiple identities for the user
@@ -336,7 +336,7 @@ withTestDatabase('includes provider information from identities', async ({ execu
   const result = await executeQuery<Array<{ email: string; providers: string[] }>>(sql)
 
   expect(result.length).toBe(1)
-  expect(result[0].email).toBe('user@supabase.io')
+  expect(result[0].email).toBe('user@indobase.io')
   expect(result[0].providers).toHaveLength(2)
   expect(result[0].providers).toContain('google')
   expect(result[0].providers).toContain('github')

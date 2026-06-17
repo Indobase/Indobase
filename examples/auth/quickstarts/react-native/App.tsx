@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import { View, Text } from 'react-native'
-import { JwtPayload } from '@supabase/supabase-js'
+import { JwtPayload } from '@indobaseinc/indobase-js'
 
 export default function App() {
   const [claims, setClaims] = useState<JwtPayload | null>(null)

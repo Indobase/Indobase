@@ -4,13 +4,13 @@ title: 'Before User Created Hook'
 subtitle: 'Prevent unwanted signups by inspecting and rejecting user creation requests'
 ---
 
-This hook runs before a new user is created. It allows developers to inspect the incoming user object and optionally reject the request. Use this to enforce custom signup policies that Supabase Auth does not handle natively - such as blocking disposable email domains, restricting access by region or IP, or requiring that users belong to a specific email domain.
+This hook runs before a new user is created. It allows developers to inspect the incoming user object and optionally reject the request. Use this to enforce custom signup policies that Indobase Auth does not handle natively - such as blocking disposable email domains, restricting access by region or IP, or requiring that users belong to a specific email domain.
 
 You can implement this hook using an HTTP endpoint or a Postgres function. If the hook returns an error object, the signup is denied and the user is not created. If the hook responds successfully (HTTP 200 or 204 with no error), the request proceeds as usual. This gives you full control over which users are allowed to register — and the flexibility to apply that logic server-side.
 
 ## Inputs
 
-Supabase Auth will send a payload containing these fields to your hook:
+Indobase Auth will send a payload containing these fields to your hook:
 
 | Field      | Type     | Description                                                                               |
 | ---------- | -------- | ----------------------------------------------------------------------------------------- |
@@ -193,7 +193,7 @@ Each of the following examples shows how to use the `before-user-created` hook t
 
 <TabPanel id="sql-allow-by-domain" label="Allow by Domain">
 
-Allow signups only from specific domains like supabase.com or example.test. Reject all others. This is useful for private/internal apps, enterprise gating, or invite-only beta access.
+Allow signups only from specific domains like indobase.in or example.test. Reject all others. This is useful for private/internal apps, enterprise gating, or invite-only beta access.
 
 The `before-user-created` hook solves this by:
 
@@ -238,7 +238,7 @@ execute procedure update_signup_email_domains_updated_at();
 
 -- Seed example data
 insert into public.signup_email_domains (domain, type, reason) values
-  ('supabase.com', 'allow', 'Internal signups'),
+  ('indobase.in', 'allow', 'Internal signups'),
   ('gmail.com', 'deny', 'Public email provider'),
   ('yahoo.com', 'deny', 'Public email provider');
 
@@ -454,7 +454,7 @@ revoke execute
 >
 
 <TabPanel id="http-allow-by-domain" label="Allow by Domain">
-Allow signups only from specific domains like supabase.com or example.test. Reject all others. This is useful for private/internal apps, enterprise gating, or invite-only beta access.
+Allow signups only from specific domains like indobase.in or example.test. Reject all others. This is useful for private/internal apps, enterprise gating, or invite-only beta access.
 
 The `before-user-created` hook solves this by:
 
@@ -469,11 +469,11 @@ BEFORE_USER_CREATED_HOOK_SECRET="v1,whsec_<base64_secret>"
 
 <Admonition type="note">
 
-You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard.
+You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard.
 
 </Admonition>
 
-Set the secrets in your Supabase project:
+Set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file .env
@@ -490,7 +490,7 @@ Add the following code to your edge function:
 ```ts
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 
-const allowedDomains = ['supabase.com', 'example.test']
+const allowedDomains = ['indobase.in', 'example.test']
 
 Deno.serve(async (req) => {
   const payload = await req.text()
@@ -544,11 +544,11 @@ BEFORE_USER_CREATED_HOOK_SECRET="v1,whsec_<base64_secret>"
 
 <Admonition type="note">
 
-You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard.
+You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard.
 
 </Admonition>
 
-Set the secrets in your Supabase project:
+Set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file .env
@@ -703,11 +703,11 @@ BEFORE_USER_CREATED_HOOK_SECRET="v1,whsec_<base64_secret>"
 
 <Admonition type="note">
 
-You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Supabase dashboard.
+You can generate the secret in the [Auth Hooks](/dashboard/project/_/auth/hooks) section of the Indobase dashboard.
 
 </Admonition>
 
-Set the secrets in your Supabase project:
+Set the secrets in your Indobase project:
 
 ```bash
 supabase secrets set --env-file .env

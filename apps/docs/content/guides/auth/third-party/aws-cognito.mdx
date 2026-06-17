@@ -1,19 +1,19 @@
 ---
 id: 'auth-third-party-aws-cognito'
 title: 'Amazon Cognito (Amplify)'
-subtitle: 'Use Amazon Cognito via Amplify or standalone with your Supabase project'
+subtitle: 'Use Amazon Cognito via Amplify or standalone with your Indobase project'
 ---
 
-Amazon Cognito User Pools (via AWS Amplify or on its own) can be used as a third-party authentication provider alongside Supabase Auth, or standalone, with your Supabase project.
+Amazon Cognito User Pools (via AWS Amplify or on its own) can be used as a third-party authentication provider alongside Indobase Auth, or standalone, with your Indobase project.
 
 ## Getting started
 
-1. First you need to add an integration to connect your Supabase project with your Amazon Cognito User Pool. You will need the pool's ID and region.
+1. First you need to add an integration to connect your Indobase project with your Amazon Cognito User Pool. You will need the pool's ID and region.
 2. Add a new Third-party Auth integration in your project's [Authentication settings](/dashboard/project/_/auth/third-party) or configure it in the CLI.
 3. Assign the `role: 'authenticated'` custom claim to all JWTs by using a Pre-Token Generation Trigger.
-4. Finally setup the Supabase client in your application.
+4. Finally setup the Indobase client in your application.
 
-## Setup the Supabase client library
+## Setup the Indobase client library
 
 <Tabs type="underlined" queryGroup="cognito-create-client">
 
@@ -23,7 +23,7 @@ Amazon Cognito User Pools (via AWS Amplify or on its own) can be used as a third
 import { fetchAuthSession, Hub } from 'aws-amplify/auth'
 
 const supabase = createClient(
-  'https://<supabase-project>.supabase.co',
+  'https://<supabase-project>.indobase.in',
   'SUPABASE_PUBLISHABLE_KEY',
   {
     accessToken: async () => {
@@ -54,7 +54,7 @@ import AWSPluginsCore
 struct UnexpectedAuthSessionError: Error {}
 
 let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://<supabase-project>.supabase.co")!,
+  supabaseURL: URL(string: "https://<supabase-project>.indobase.in")!,
   supabaseKey: "SUPABASE_PUBLISHABLE_KEY",
   options: SupabaseClientOptions(
     auth: SupabaseClientOptions.AuthOptions(
@@ -88,7 +88,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   await Supabase.initialize(
-    url: 'https://<supabase-project>.supabase.co',
+    url: 'https://<supabase-project>.indobase.in',
     anonKey: 'SUPABASE_PUBLISHABLE_KEY',
     accessToken: () async {
       final session = await Amplify.Auth.fetchAuthSession();
@@ -113,7 +113,7 @@ import com.amplifyframework.auth.cognito.AWSCognitoAuthSession
 import com.amplifyframework.core.Amplify
 
 val supabase = createSupabaseClient(
-    "https://<supabase-project>.supabase.co",
+    "https://<supabase-project>.indobase.in",
     "SUPABASE_PUBLISHABLE_KEY"
 ) {
     accessToken = {
@@ -155,9 +155,9 @@ user_pool_region = "<region>"
 
 ## Use a pre-token generation trigger to assign the authenticated role
 
-Your Supabase project inspects the `role` claim present in all JWTs sent to it, to assign the correct Postgres role when using the Data API, Storage or Realtime authorization.
+Your Indobase project inspects the `role` claim present in all JWTs sent to it, to assign the correct Postgres role when using the Data API, Storage or Realtime authorization.
 
-By default, Amazon Cognito JWTs (both ID token and access tokens) do not contain a `role` claim in them. If you were to send such a JWT to your Supabase project, the `anon` role would be assigned when executing the Postgres query. Most of your app's logic will be accessible by the `authenticated` role.
+By default, Amazon Cognito JWTs (both ID token and access tokens) do not contain a `role` claim in them. If you were to send such a JWT to your Indobase project, the `anon` role would be assigned when executing the Postgres query. Most of your app's logic will be accessible by the `authenticated` role.
 
 A recommended approach to do this is to configure a [Pre-Token Generation Trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html) either `V1_0` (ID token only) or `V2_0` (both access and ID token). To do this you will need to create a new Lambda function (in any language and runtime) and assign it to the [Amazon Cognito User Pool's Lambda Triggers configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools-working-with-aws-lambda-triggers.html). For example, the Lambda function should look similar to this:
 

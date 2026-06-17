@@ -33,19 +33,23 @@ url = 'https://${REF}.indobase.in'
 anon = re.search(r\"SUPABASE_ANON_KEY:\\s*'([^']+)'\", text)
 if not anon:
     raise SystemExit('SUPABASE_ANON_KEY not in tenant compose')
+staging = 'https://${STAGING_HOST}'
 open('/opt/adral-staging.runtime.env', 'w').write(
-    f'VITE_BACKEND_URL={url}\\n'
+    f'VITE_BACKEND_URL={staging}\\n'
     f'VITE_BACKEND_ANON_KEY={anon.group(1)}\\n'
     f'VITE_BACKEND_PROJECT_REF=${REF}\\n'
-    f'VITE_SUPABASE_URL={url}\\n'
+    f'VITE_SUPABASE_URL={staging}\\n'
     f'VITE_SUPABASE_ANON_KEY={anon.group(1)}\\n'
+    f'INDOBASE_TENANT_UPSTREAM_HOST=${REF}.indobase.in\\n'
 )
 print('wrote /opt/adral-staging.runtime.env')
 PY"
 
 echo "==> Docker build (may take several minutes)…"
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd '$REMOTE_DIR' && docker build -t '$IMAGE' \
-  --build-arg VITE_SUPABASE_URL=https://${REF}.indobase.in \
+  --build-arg VITE_BACKEND_URL=https://${STAGING_HOST} \
+  --build-arg VITE_BACKEND_ANON_KEY=\$(grep SUPABASE_ANON_KEY '$TENANT_COMPOSE' | head -1 | sed \"s/.*'\\([^']*\\)'.*/\\1/\") \
+  --build-arg VITE_SUPABASE_URL=https://${STAGING_HOST} \
   . 2>&1 | tail -20"
 
 echo "==> Deploy Swarm service ${SERVICE_NAME}…"

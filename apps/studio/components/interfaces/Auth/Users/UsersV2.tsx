@@ -1,5 +1,5 @@
-import pgMeta from '@supabase/pg-meta'
-import type { OptimizedSearchColumns } from '@supabase/pg-meta/src/sql/studio/get-users-types'
+import pgMeta from '@indobaseinc/pg-meta'
+import type { OptimizedSearchColumns } from '@indobaseinc/pg-meta/src/sql/studio/get-users-types'
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import AwesomeDebouncePromise from 'awesome-debounce-promise'
 import { LOCAL_STORAGE_KEYS, useFlag, useParams } from 'common'

@@ -105,7 +105,7 @@ function ProjectSelector({
 
         {!isUserLoading && !isLoggedIn ? (
           <Button size="small" type="default" className="gap-0 rounded-l-none" asChild>
-            <Link href="https://supabase.com/dashboard" rel="noreferrer noopener" target="_blank">
+            <Link href="https://indobase.in/dashboard" rel="noreferrer noopener" target="_blank">
               <div className="flex items-center gap-2">Log in to choose a project</div>
             </Link>
           </Button>

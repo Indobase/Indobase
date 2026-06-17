@@ -47,7 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    await handleRazorpayWebhookEvent(event)
+    await handleRazorpayWebhookEvent(event, {
+      eventId: typeof req.headers['x-razorpay-event-id'] === 'string'
+        ? req.headers['x-razorpay-event-id']
+        : Array.isArray(req.headers['x-razorpay-event-id'])
+          ? req.headers['x-razorpay-event-id'][0]
+          : undefined,
+    })
     return res.status(200).json({ received: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Webhook handler failed'

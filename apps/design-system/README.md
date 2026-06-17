@@ -1,4 +1,4 @@
-# Supabase Design System
+# Indobase Design System
 
 Design resources for building consistent user experiences at Supabase.
 

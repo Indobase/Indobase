@@ -459,8 +459,8 @@ const supabase = createClient(
 
 The cookie-related methods like `setAuthCookie` and `getUserByCookie` have been removed.
 
-For Next.js you can use the [Auth Helpers](https://supabase.com/docs/guides/auth/auth-helpers/nextjs) to help you manage cookies.
-If you can't use the Auth Helpers, you can use [server-side rendering](https://supabase.com/docs/guides/auth/server-side-rendering).
+For Next.js you can use the [Auth Helpers](https://indobase.in/docs/guides/auth/auth-helpers/nextjs) to help you manage cookies.
+If you can't use the Auth Helpers, you can use [server-side rendering](https://indobase.in/docs/guides/auth/server-side-rendering).
 
 See the [PR](https://github.com/supabase/gotrue-js/pull/340) for additional background information.
 
@@ -468,7 +468,7 @@ See the [PR](https://github.com/supabase/gotrue-js/pull/340) for additional back
 
 `.insert()` / `.upsert()` / `.update()` / `.delete()` don't return rows by default: [PR](https://github.com/supabase/postgrest-js/pull/276).
 
-Previously, these methods return inserted/updated/deleted rows by default (which caused [some confusion](https://github.com/supabase/supabase/discussions/1548)), and you can opt to not return it by specifying `returning: 'minimal'`. Now the default behavior is to not return rows. To return inserted/updated/deleted rows, add a `.select()` call at the end.
+Previously, these methods return inserted/updated/deleted rows by default (which caused [some confusion](https://github.com/Indobase/Indobase/discussions/1548)), and you can opt to not return it by specifying `returning: 'minimal'`. Now the default behavior is to not return rows. To return inserted/updated/deleted rows, add a `.select()` call at the end.
 
 <RefSubLayout.EducationRow>
   <RefSubLayout.Details>

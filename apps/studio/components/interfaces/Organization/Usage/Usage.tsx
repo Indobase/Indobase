@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import {
   ScaffoldContainer,
@@ -24,6 +24,8 @@ import { Button, cn, CommandGroup_Shadcn_, CommandItem_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns'
 import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
 
+import { useOrgUsageMeteringAvailable } from 'hooks/misc/useOrgUsageMeteringAvailable'
+
 import { Restriction } from '../BillingSettings/Restriction'
 import ActiveCompute from './ActiveCompute'
 import Activity from './Activity'
@@ -32,9 +34,12 @@ import Egress from './Egress'
 import OrgLogUsage from './OrgLogUsage'
 import SizeAndCounts from './SizeAndCounts'
 import { TotalUsage } from './TotalUsage'
+import { UsageMeteringUnavailable } from './UsageMeteringUnavailable'
 
 export const Usage = () => {
   const { slug } = useParams()
+  const { isMeteringAvailable, isLoading: isLoadingMetering, isReady: isMeteringReady } =
+    useOrgUsageMeteringAvailable(slug)
 
   const [dateRange, setDateRange] = useState<any>()
 
@@ -112,6 +117,10 @@ export const Usage = () => {
     startDate,
     endDate,
   })
+
+  if (isMeteringReady && !isLoadingMetering && !isMeteringAvailable) {
+    return <UsageMeteringUnavailable />
+  }
 
   return (
     <>
@@ -268,7 +277,7 @@ export const Usage = () => {
                 </span>{' '}
                 project. Indobase uses{' '}
                 <Link
-                  href="/docs/guides/platform/billing-on-supabase#organization-based-billing"
+                  href="/docs/guides/platform/billing-on-indobase#organization-based-billing"
                   target="_blank"
                 >
                   organization-level billing

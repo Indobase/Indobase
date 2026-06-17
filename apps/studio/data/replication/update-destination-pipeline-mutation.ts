@@ -61,7 +61,7 @@ async function updateDestinationPipeline(
     } = destinationConfig.iceberg
     destination_config = {
       iceberg: {
-        supabase: {
+        indobase: {
           project_ref: icebergProjectRef,
           warehouse_name: warehouseName,
           namespace: namespace,

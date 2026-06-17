@@ -173,7 +173,7 @@ const genGuideMeta =
     const ogType = pathname.split('/')[2]
 
     return {
-      title: `${meta.title} | ${metadataTitle || 'Supabase'}`,
+      title: `${meta.title} | ${metadataTitle || 'Indobase'}`,
       description: meta.description || meta.subtitle,
       // @ts-ignore
       alternates: {

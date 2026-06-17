@@ -39,7 +39,8 @@ const SAAS_POSTHOG_FEATURE_FLAGS: Record<string, boolean | string> = {
   storagereport: true,
   tableEditorNewFilterBar: true,
   unifiedLogs: true,
-  unifiedReplication: true,
+  // Replication APIs are stubs (replication-stubs.ts) until tenant CDC is implemented.
+  unifiedReplication: false,
   connectSheet: true,
   homeNew: 'new-home',
   // Billing / cloud-only — keep off for self-hosted SaaS
@@ -118,7 +119,8 @@ const SAAS_CONFIGCAT_FEATURE_FLAGS: Record<string, boolean> = {
   tableEditorNewFilterBar: true,
   textConfirmationModalClickToCopy: true,
   unifiedLogs: true,
-  unifiedReplication: true,
+  // Replication APIs are stubs (replication-stubs.ts) until tenant CDC is implemented.
+  unifiedReplication: false,
   connectSheet: true,
   homeNew: true,
 }
@@ -185,10 +187,13 @@ export function defaultEntitlementsResponse(): components['schemas']['ListEntitl
   } as components['schemas']['ListEntitlementsResponse']
 }
 
-export function defaultOrgUsageResponse(): components['schemas']['OrgUsageResponse'] {
+export function defaultOrgUsageResponse(): components['schemas']['OrgUsageResponse'] & {
+  metering_available: boolean
+} {
   return {
     usage_billing_enabled: false,
     usages: [],
+    metering_available: false,
   }
 }
 

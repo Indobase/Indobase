@@ -75,7 +75,7 @@ export const PrivacySettings = ({
                   <>
                     We couldn't load the privacy settings due to an ad blocker or network error.
                     Please disable any ad blockers and try again. If the problem persists, please{' '}
-                    <Link href="https://supabase.com/dashboard/support/new" className="underline">
+                    <Link href="https://indobase.in/dashboard/support/new" className="underline">
                       contact support
                     </Link>
                     .
@@ -146,7 +146,7 @@ function Category({
             {category.description}
             <br />
             <Link
-              href="https://supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services"
+              href="https://indobase.in/privacy#8-cookies-and-similar-technologies-used-on-our-european-services"
               className="underline"
             >
               Learn more

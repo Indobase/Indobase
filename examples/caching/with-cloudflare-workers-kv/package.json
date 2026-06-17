@@ -10,7 +10,7 @@
     "deploy": "wrangler publish"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^1.35.4",
+    "@indobaseinc/indobase-js": "^1.0.8",
     "itty-router": "^2.6.1",
     "itty-router-extras": "^0.4.2"
   }

@@ -1,5 +1,5 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { JwtSecretUpdateStatus } from '@supabase/shared-types/out/events'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
+import { JwtSecretUpdateStatus } from '@indobaseinc/shared-types/out/events'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo } from 'react'
@@ -268,7 +268,7 @@ export const DisplayApiSettings = ({
           description={`
   \`anon\` and \`service_role\` API keys can now be replaced with \`publishable\` and \`secret\` API keys.
   `}
-          href="https://github.com/orgs/supabase/discussions/29260"
+          href="https://github.com/orgs/Indobase/discussions/29260"
           buttonText="Read the announcement"
         />
       ) : null}

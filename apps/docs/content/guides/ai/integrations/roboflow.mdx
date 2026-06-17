@@ -109,7 +109,7 @@ data=[{'predictions': {'time': 0.08492901099998562, 'image': {'width': 640, 'hei
 
 ## Calculate and save CLIP embeddings
 
-You can use the Supabase vector database functionality to store and query CLIP embeddings.
+You can use the Indobase vector database functionality to store and query CLIP embeddings.
 
 Roboflow Inference provides an HTTP interface through which you can calculate image and text embeddings using CLIP.
 
@@ -167,7 +167,7 @@ You can also calculate CLIP embeddings in the cloud by setting `SERVER_URL` to `
 
 ### Step 3: Save embeddings in Supabase
 
-You can store your image embeddings in Supabase using the Supabase `vecs` Python package:
+You can store your image embeddings in Supabase using the Indobase `vecs` Python package:
 
 First, install `vecs`:
 
@@ -206,7 +206,7 @@ for result in results:
 images.create_index()
 ```
 
-Replace `DB_CONNECTION` with the authentication information for your database. You can retrieve this from the Supabase dashboard in `Project Settings > Database Settings`.
+Replace `DB_CONNECTION` with the authentication information for your database. You can retrieve this from the Indobase dashboard in `Project Settings > Database Settings`.
 
 You can then query your embeddings using the following code:
 

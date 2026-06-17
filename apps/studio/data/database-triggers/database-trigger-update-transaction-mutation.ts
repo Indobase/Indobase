@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { PGTrigger, PGTriggerCreate } from '@supabase/pg-meta/src/pg-meta-triggers'
-import { PostgresTrigger } from '@supabase/postgres-meta'
+import { PGTrigger, PGTriggerCreate } from '@indobaseinc/pg-meta/src/pg-meta-triggers'
+import { PostgresTrigger } from '@indobaseinc/postgres-meta'
 import { executeSql } from 'data/sql/execute-sql-query'
 import { quoteLiteral } from 'lib/pg-format'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
@@ -10,7 +10,7 @@ import { databaseTriggerKeys } from './keys'
 
 // [Joshen] Writing this query within FE as the PATCH endpoint from pg-meta only supports updating
 // trigger name and enabled mode. So we'll delete and create the trigger, within a single transaction
-// Copying the SQL from https://github.com/supabase/postgres-meta/blob/master/src/lib/PostgresMetaTriggers.ts
+// Copying the SQL from https://github.com/Indobase/postgres-meta/blob/master/src/lib/PostgresMetaTriggers.ts
 
 export type DatabaseTriggerUpdateVariables = {
   projectRef: string

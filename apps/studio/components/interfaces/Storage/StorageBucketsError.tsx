@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import type { ResponseError } from 'types'
 import { Alert, Button } from 'ui'

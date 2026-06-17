@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PGTriggerCreate } from '@supabase/pg-meta/src/pg-meta-triggers'
-import type { PostgresTrigger } from '@supabase/postgres-meta'
+import { PGTriggerCreate } from '@indobaseinc/pg-meta/src/pg-meta-triggers'
+import type { PostgresTrigger } from '@indobaseinc/postgres-meta'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'common'
 import { parseAsBoolean, parseAsString, useQueryState } from 'nuqs'

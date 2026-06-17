@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { useParams } from 'common'
 import { isEmpty } from 'lodash'
 import { parseAsString, useQueryState } from 'nuqs'

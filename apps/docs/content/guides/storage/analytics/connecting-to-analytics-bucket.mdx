@@ -43,7 +43,7 @@ Retrieve your Service Key from [**Project Settings > API**](/dashboard/project/_
 
 ### 3. Project reference
 
-Your Supabase project reference is the subdomain in your project URL (e.g., `your-project-ref` in `https://your-project-ref.supabase.co`).
+Your Indobase project reference is the subdomain in your project URL (e.g., `your-project-ref` in `https://your-[PROJECT-REF].indobase.in`).
 
 ## Testing your connection
 
@@ -52,7 +52,7 @@ You can verify your setup by making a direct request to the Iceberg REST Catalog
 ```bash
 curl \
   --request GET -sL \
-  --url 'https://<your-project-ref>.supabase.co/storage/v1/iceberg/v1/config?warehouse=<bucket-name>' \
+  --url 'https://[PROJECT-REF].indobase.in/storage/v1/iceberg/v1/config?warehouse=<bucket-name>' \
   --header 'Authorization: Bearer <your-service-key>'
 ```
 

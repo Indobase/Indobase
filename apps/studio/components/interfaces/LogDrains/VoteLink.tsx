@@ -6,7 +6,7 @@ export const VoteLink = () => {
       <p className="text-foreground-light">
         Don't see your preferred drain?{' '}
         <Link
-          href="https://github.com/orgs/supabase/discussions/28324?sort=top"
+          href="https://github.com/orgs/Indobase/discussions/28324?sort=top"
           className="text-foreground underline underline-offset-2 decoration-foreground-muted hover:decoration-foreground transition-all"
           target="_blank"
         >

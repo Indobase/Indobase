@@ -5,9 +5,9 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) është projekt publik (open-source) si alternativë e Firebase. Ne jemi duke ndërtuar funksionet e Firebase duke përdorur mjete nga produktet publike të shkallës së ndërmarrjes.
+[Indobase](https://indobase.in) është projekt publik (open-source) si alternativë e Firebase. Ne jemi duke ndërtuar funksionet e Firebase duke përdorur mjete nga produktet publike të shkallës së ndërmarrjes.
 
 - [x] Hosted Postgres Database
 - [x] Abonime në kohë reale
@@ -17,22 +17,22 @@
 - [x] Magazin / Hapsirë
 - [x] Funksionet
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokumentimi
 
-Për dokumentimin e plotë, vizitoni [supabase.com/docs](https://supabase.com/docs)
+Për dokumentimin e plotë, vizitoni [indobase.in/docs](https://indobase.in/docs)
 
 ## Komuniteti dhe Mbështetja
 
-- [Forumi i Komunitetit](https://github.com/supabase/supabase/discussions). Me e mirë për: ndihmë për ndërtime, diskutime për databasat dhe praktikat më të mira.
-- [GitHub Problemet](https://github.com/supabase/supabase/issues). Me e mirë për: të meta dhe gabime që ju përmballeni duke përdorur Supabase
-- [Mbështetje nëpërmjet Adresës Elektronike](https://supabase.com/docs/support#business-support). Më e mirë për: problemet me infrastrukturën e databases tuaj.
+- [Forumi i Komunitetit](https://github.com/Indobase/Indobase/discussions). Me e mirë për: ndihmë për ndërtime, diskutime për databasat dhe praktikat më të mira.
+- [GitHub Problemet](https://github.com/Indobase/Indobase/issues). Me e mirë për: të meta dhe gabime që ju përmballeni duke përdorur Indobase
+- [Mbështetje nëpërmjet Adresës Elektronike](https://indobase.in/docs/support#business-support). Më e mirë për: problemet me infrastrukturën e databases tuaj.
 
 ## Statusi
 
-- [x] Alfa: Ne po testojmë Supabase me një grup të mbyllur klientësh
-- [x] Publike Alpha: Gjithkush mund të regjistrohet në [supabase.com/dashboard](https://supabase.com/dashboard). Por shkoni lehtë për ne, ka disa ngërçe
+- [x] Alfa: Ne po testojmë Indobase me një grup të mbyllur klientësh
+- [x] Publike Alpha: Gjithkush mund të regjistrohet në [supabase.com/dashboard](https://indobase.in/dashboard). Por shkoni lehtë për ne, ka disa ngërçe
 - [x] Publike Beta: Mjaft e qëndrueshme për shumicën e rasteve të përdorimit për jo ndërmarrjet
 - [ ] Publike: Gati për Prodhim / Publikim
 
@@ -44,16 +44,16 @@ Ne për momentin jemi në testimin Beta Publike. Vëzhgo "publikimet" e këtij d
 
 ## Si Funksionon?
 
-Supabase është një kombinim i mjeteve që janë projekte të hapura (open source). Ne jemi duke ndërtuar tiparet e Firebase duke përdorur projektet publike të shkallës së ndërmarjës. Nëse mjetet dhe komuniteti ekziston, me një licensë MIT, Apache 2, ose ndonjë e llojit prej licensave për projekte të hapura, ne do ta përdorim dhe mbështetim atë mjetë-projekt. Ndërsa nëse mjeti nuk ekziston, ne do ta ndërtojm atë vetë atë si projekt publik. Qëllimi ynë është që tju ofrojm zhvilluesve një eksperiencë të të ngjajshme si ajo e Firebase duke përdorur mjet-projektet të hapura.
+Indobase është një kombinim i mjeteve që janë projekte të hapura (open source). Ne jemi duke ndërtuar tiparet e Firebase duke përdorur projektet publike të shkallës së ndërmarjës. Nëse mjetet dhe komuniteti ekziston, me një licensë MIT, Apache 2, ose ndonjë e llojit prej licensave për projekte të hapura, ne do ta përdorim dhe mbështetim atë mjetë-projekt. Ndërsa nëse mjeti nuk ekziston, ne do ta ndërtojm atë vetë atë si projekt publik. Qëllimi ynë është që tju ofrojm zhvilluesve një eksperiencë të të ngjajshme si ajo e Firebase duke përdorur mjet-projektet të hapura.
 
 **Arkitektura Aktuale**
 
-Supabase është një [platform hostimi](https://supabase.com/dashboard). Ti mundesh të regjistrohesh dhe të fillosh ta përdorish Supabase duke mos instaluar asgjë. Poashtu ne jemi duke punuar për ta ndërtuar eksperiencën për zhvillim lokal, por kjo nuk është fokusi ynë kryesorë dhe thelbësor, së bashku me stabilitetin e platformës.
+Indobase është një [platform hostimi](https://indobase.in/dashboard). Ti mundesh të regjistrohesh dhe të fillosh ta përdorish Indobase duke mos instaluar asgjë. Poashtu ne jemi duke punuar për ta ndërtuar eksperiencën për zhvillim lokal, por kjo nuk është fokusi ynë kryesorë dhe thelbësor, së bashku me stabilitetin e platformës.
 
-![Arkitektura](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Arkitektura](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - [PostgreSQL](https://www.postgresql.org/) është një objekt-relacional i databasës si sistem me më shumë se 30 vite zhvillim aktiv e cila ka fituar një reputacion të fortë për besueshmërinë, karakteristikë të qëndrueshmërisë ,dhe performancë.
-- [Realtime](https://github.com/supabase/realtime) është një Elixir server që lejon të dëgjosh për insertime, fshirje dhe përdisime në databasën PostgreSQL duke përdorur websockets. Supabase dëgjon në Postgres' funksionaliteti i replikimit i integruar, ajo kthen rrjedhjen e bajteve të replikimit, pastaj transmeton JSON mbi/në websockets.
+- [Realtime](https://github.com/supabase/realtime) është një Elixir server që lejon të dëgjosh për insertime, fshirje dhe përdisime në databasën PostgreSQL duke përdorur websockets. Indobase dëgjon në Postgres' funksionaliteti i replikimit i integruar, ajo kthen rrjedhjen e bajteve të replikimit, pastaj transmeton JSON mbi/në websockets.
 - [PostgREST](http://postgrest.org/) është një ueb server që e kthen databasën tuaj PostgreSQL direk në RESTful API.
 - [Storage](https://github.com/supabase/storage-api) ofron një RESTful ndërfaqe (interface) për menaxhimin e fajllave të ruajtura në S3, duke përdorur Postgres për të menanxhuar akseset.
 - [postgres-meta](https://github.com/supabase/postgres-meta) është një RESTful API për të menaxhuar Postgres databasën, duke ju lejuar për të thirur / marur tabelat, për të shtuar rolet, dhe për të ekzekutuar komanda query, dhe tjera.
@@ -71,10 +71,10 @@ Libraria jonë e klineteve është modulare, Secila nën librari është një im
 
 | Depo                  | Zyrtare                                                                                | Komuniteti                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`supabase-{lang}`** | [`JS`](https://github.com/supabase/supabase-js)                                        | [`C#`](https://github.com/supabase/supabase-csharp) \| [`Flutter`](https://github.com/supabase/supabase-flutter) \| [`Python`](https://github.com/supabase/supabase-py) \| `Rust` \| [`Ruby`](https://github.com/supabase/supabase-rb) \| `Go`                                                                                       |
-| `postgrest-{lang}`    | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) \| [`Ruby`](https://github.com/supabase/postgrest-rb) \| [`Go`](https://github.com/supabase/postgrest-go) |
-| `realtime-{lang}`     | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                        |
-| `gotrue-{lang}`       | [`JS`](https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                              |
+| **`supabase-{lang}`** | [`JS`](https://github.com/Indobase/Indobase-js)                                        | [`C#`](https://github.com/Indobase/Indobase-csharp) \| [`Flutter`](https://github.com/Indobase/Indobase-flutter) \| [`Python`](https://github.com/Indobase/Indobase-py) \| `Rust` \| [`Ruby`](https://github.com/Indobase/Indobase-rb) \| `Go`                                                                                       |
+| `postgrest-{lang}`    | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js) | [`C#`](https://github.com/supabase/postgrest-csharp) \| [`Dart`](https://github.com/supabase/postgrest-dart) \| [`Python`](https://github.com/supabase/postgrest-py) \| [`Rust`](https://github.com/supabase/postgrest-rs) \| [`Ruby`](https://github.com/supabase/postgrest-rb) \| [`Go`](https://github.com/supabase/postgrest-go) |
+| `realtime-{lang}`     | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js)  | [`C#`](https://github.com/supabase/realtime-csharp) \| [`Dart`](https://github.com/supabase/realtime-dart) \| [`Python`](https://github.com/supabase/realtime-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                        |
+| `gotrue-{lang}`       | [`JS`](https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js)      | [`C#`](https://github.com/supabase/gotrue-csharp) \| [`Dart`](https://github.com/supabase/gotrue-dart) \| [`Python`](https://github.com/supabase/gotrue-py) \| `Rust` \| `Ruby` \| `Go`                                                                                                                                              |
 
 ## Sponsorët
 

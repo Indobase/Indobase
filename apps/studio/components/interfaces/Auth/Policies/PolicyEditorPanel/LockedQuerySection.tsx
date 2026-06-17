@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { Lock } from 'lucide-react'
 
 interface LockedCreateQuerySection {

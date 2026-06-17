@@ -1,4 +1,4 @@
-import { SupabaseClient } from 'indobase-js'
+import { SupabaseClient } from '@indobaseinc/indobase-js'
 import { ApplicationError, UserError, clippy } from 'ai-commands/edge'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'

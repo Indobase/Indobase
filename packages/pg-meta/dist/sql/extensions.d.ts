@@ -1,0 +1,2 @@
+export declare const EXTENSIONS_SQL = "\nSELECT\n  e.name,\n  n.nspname AS schema,\n  e.default_version,\n  x.extversion AS installed_version,\n  e.comment\nFROM\n  pg_available_extensions() e(name, default_version, comment)\n  LEFT JOIN pg_extension x ON e.name = x.extname\n  LEFT JOIN pg_namespace n ON x.extnamespace = n.oid\n";
+//# sourceMappingURL=extensions.d.ts.map

@@ -567,7 +567,7 @@ describe('column with default value', async () => {
   })
 })
 
-// https://github.com/supabase/supabase/issues/3553
+// https://github.com/Indobase/Indobase/issues/3553
 withTestDatabase('alter column to type with uppercase', async ({ executeQuery }) => {
   // Setup: Create table and type
   await executeQuery('CREATE TABLE t ()')

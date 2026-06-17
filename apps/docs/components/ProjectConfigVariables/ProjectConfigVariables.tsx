@@ -420,7 +420,7 @@ function VariableView({ variable, className }: { variable: Variable; className?:
           You can also copy your {prettyFormatVariable[variable]} from the{' '}
           <Link
             className="text-foreground-muted"
-            href="https://supabase.com/dashboard/project/_/settings/api"
+            href="https://indobase.in/dashboard/project/_/settings/api"
             rel="noreferrer noopener"
             target="_blank"
           >
@@ -444,7 +444,7 @@ function LoginHint({ variable }: { variable: Variable }) {
       To get your {prettyFormatVariable[variable]},{' '}
       <Link
         className="text-foreground-muted"
-        href="https://supabase.com/dashboard"
+        href="https://indobase.in/dashboard"
         rel="noreferrer noopener"
         target="_blank"
       >
@@ -477,7 +477,7 @@ export const ProjectConfigVariables = withErrorBoundary(ProjectConfigVariablesIn
     <p>
       Couldn&apos;t display your API settings. You can get them from the{' '}
       <Link
-        href="https://supabase.com/dashboard/project/_/settings/api"
+        href="https://indobase.in/dashboard/project/_/settings/api"
         rel="noreferrer noopener"
         target="_blank"
       >

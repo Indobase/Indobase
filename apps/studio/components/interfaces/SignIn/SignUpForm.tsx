@@ -2,6 +2,7 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
 import { CheckCircle, Eye, EyeOff } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { parseAsString, useQueryStates } from 'nuqs'
 import { useRef, useState } from 'react'
@@ -10,13 +11,15 @@ import { toast } from 'sonner'
 import z from 'zod'
 
 import { useSignUpMutation } from 'data/misc/signup-mutation'
-import { BASE_PATH, IS_SAAS } from 'lib/constants'
+import { BASE_PATH } from 'lib/constants'
+import { INDOBASE_DPDP_POLICY_URL, INDOBASE_TERMS_URL } from 'common'
 import { auth, buildPathWithParams } from 'lib/gotrue'
 import {
   AlertDescription_Shadcn_,
   AlertTitle_Shadcn_,
   Alert_Shadcn_,
   Button,
+  Checkbox_Shadcn_,
   FormControl_Shadcn_,
   FormField_Shadcn_,
   Form_Shadcn_,
@@ -46,6 +49,9 @@ const schema = z.object({
       (password) => /[!@#$%^&*()_+\-=\[\]{};`':"\\|,.<>\/?]/.test(password),
       'Password must contain at least 1 symbol'
     ),
+  dpdpConsent: z.boolean().refine((value) => value === true, {
+    message: 'You must accept the Privacy Policy and Terms to sign up (DPDP consent).',
+  }),
 })
 
 const formId = 'sign-up-form'
@@ -62,7 +68,7 @@ export const SignUpForm = () => {
   const router = useRouter()
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', password: '', dpdpConsent: false },
   })
 
   const [searchParams] = useQueryStates({
@@ -82,7 +88,11 @@ export const SignUpForm = () => {
     },
   })
 
-  const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email, password }) => {
+  const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({
+    email,
+    password,
+    dpdpConsent,
+  }) => {
     // [Joshen] Separate submitting state as there's 2 async processes here
     let token = captchaToken
     if (hcaptchaSiteKey && !token) {
@@ -112,6 +122,7 @@ export const SignUpForm = () => {
       password,
       hcaptchaToken: token ?? null,
       redirectTo,
+      dpdpConsent,
     })
   }
 
@@ -215,6 +226,48 @@ export const SignUpForm = () => {
                 />
               </div>
             ) : null}
+
+            <FormField_Shadcn_
+              name="dpdpConsent"
+              control={form.control}
+              render={({ field }) => (
+                <FormItemLayout
+                  name="dpdpConsent"
+                  label={
+                    <span className="text-xs text-foreground-light font-normal leading-relaxed">
+                      I agree to Indobase&apos;s{' '}
+                      <Link
+                        href={INDOBASE_TERMS_URL}
+                        className="underline text-foreground"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link
+                        href={INDOBASE_DPDP_POLICY_URL}
+                        className="underline text-foreground"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Privacy Policy
+                      </Link>
+                      , and consent to processing of my personal data under India&apos;s DPDP Act,
+                      2023.
+                    </span>
+                  }
+                >
+                  <FormControl_Shadcn_>
+                    <Checkbox_Shadcn_
+                      checked={field.value === true}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl_Shadcn_>
+                </FormItemLayout>
+              )}
+            />
 
             <Button
               block

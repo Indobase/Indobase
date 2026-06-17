@@ -2,7 +2,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { EmailOtpType } from 'indobase-js'
+import type { EmailOtpType } from '@indobaseinc/indobase-js'
 import { BASE_PATH } from 'lib/constants'
 import { auth } from 'lib/gotrue'
 import type { NextPageWithLayout } from 'types'

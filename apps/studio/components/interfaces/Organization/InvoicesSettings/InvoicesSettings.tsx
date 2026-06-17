@@ -58,7 +58,7 @@ export const InvoicesSettings = () => {
     {
       slug,
     },
-    { enabled: selectedOrganization?.managed_by === 'supabase' }
+    { enabled: selectedOrganization?.managed_by === 'indobase' }
   )
   const {
     data,
@@ -71,7 +71,7 @@ export const InvoicesSettings = () => {
       offset,
       limit: PAGE_LIMIT,
     },
-    { enabled: selectedOrganization?.managed_by === 'supabase' }
+    { enabled: selectedOrganization?.managed_by === 'indobase' }
   )
   const invoices = data || []
 
@@ -101,7 +101,7 @@ export const InvoicesSettings = () => {
 
   if (
     selectedOrganization?.managed_by !== undefined &&
-    selectedOrganization?.managed_by !== 'supabase'
+    selectedOrganization?.managed_by !== 'indobase'
   ) {
     return (
       <PartnerManagedResource

@@ -1,6 +1,6 @@
 ---
-title: 'Use Supabase with RedwoodJS'
-subtitle: 'Learn how to create a Supabase project, add some sample data to your database using Prisma migration and seeds, and query the data from a RedwoodJS app.'
+title: 'Use Indobase with RedwoodJS'
+subtitle: 'Learn how to create a Indobase project, add some sample data to your database using Prisma migration and seeds, and query the data from a RedwoodJS app.'
 breadcrumb: 'Framework Quickstarts'
 hideToc: true
 ---
@@ -9,7 +9,7 @@ hideToc: true
 
   <StepHikeCompact.Step step={1}>
     <StepHikeCompact.Details title="Setup your new Supabase Project">
-      [Create a new project](/dashboard) in the Supabase Dashboard.
+      [Create a new project](/dashboard) in the Indobase Dashboard.
 
       <Admonition type="tip">
 
@@ -37,7 +37,7 @@ hideToc: true
 
     <Admonition type="tip">
 
-    You can copy and paste these connection strings from the Supabase Dashboard when needed in later steps.
+    You can copy and paste these connection strings from the Indobase Dashboard when needed in later steps.
 
     </Admonition>
     </StepHikeCompact.Details>
@@ -97,10 +97,10 @@ hideToc: true
     <StepHikeCompact.Code>
       ```bash name=.env
       # Transaction mode connection string used for migrations
-      DATABASE_URL="postgres://postgres.[project-ref]:[db-password]@xxx.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+      DATABASE_URL="postgres://postgres.[project-ref]:[db-password]@[PROJECT-REF].indobase.in:6543/postgres?pgbouncer=true&connection_limit=1"
 
       # Session mode connection string — used by Prisma Client
-      DIRECT_URL="postgres://postgres.[project-ref]:[db-password]@xxx.pooler.supabase.com:5432/postgres"
+      DIRECT_URL="postgres://postgres.[project-ref]:[db-password]@[PROJECT-REF].indobase.in:5432/postgres"
       ```
     </StepHikeCompact.Code>
 

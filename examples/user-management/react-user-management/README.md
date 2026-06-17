@@ -2,37 +2,37 @@
 
 This example demonstrates how to build a user management app with React and Supabase. Users can sign up with a magic link and then update their account with public profile information, including a profile image.
 
-![Supabase User Management example](https://supabase.com/docs/img/user-management-demo.png)
+![Supabase User Management example](https://indobase.in/docs/img/user-management-demo.png)
 
 ## Features
 
 This app demonstrates how to use:
 
-- User signups using Supabase [Auth](https://supabase.com/auth) with Magic Links
-- User avatar images using Supabase [Storage](https://supabase.com/storage)
-- Public profiles restricted with [Row Level Security](https://supabase.com/docs/guides/auth#row-level-security)
+- User signups using Supabase [Auth](https://indobase.in/auth) with Magic Links
+- User avatar images using Supabase [Storage](https://indobase.in/storage)
+- Public profiles restricted with [Row Level Security](https://indobase.in/docs/guides/auth#row-level-security)
 - Frontend using [Vite](https://vitejs.dev/) and React
-- The [`getUser()`](https://supabase.com/docs/reference/javascript/auth-getuser) method to fetch current user details
+- The [`getUser()`](https://indobase.in/docs/reference/javascript/auth-getuser) method to fetch current user details
 
 ## Technologies Used
 
 - **Frontend:**
   - [Vite](https://vitejs.dev/) - Fast React development toolchain
-  - [Supabase.js](https://supabase.com/docs/library/getting-started) - For user management and data syncing
+  - [Supabase.js](https://indobase.in/docs/library/getting-started) - For user management and data syncing
 - **Backend:**
-  - [Supabase](https://supabase.com/dashboard) - Hosted Postgres database with RESTful API
+  - [Supabase](https://indobase.in/dashboard) - Hosted Postgres database with RESTful API
 
 ## Getting Started
 
 ### Prerequisites
 
 Before you begin, make sure you have:
-- A Supabase account ([sign up here](https://supabase.com/dashboard))
+- A Supabase account ([sign up here](https://indobase.in/dashboard))
 - Node.js installed on your machine
 
 ### 1. Create a Supabase Project
 
-1. Sign in to [Supabase Dashboard](https://supabase.com/dashboard)
+1. Sign in to [Supabase Dashboard](https://indobase.in/dashboard)
 2. Create a new project
 3. Wait for your database to start
 
@@ -275,7 +275,7 @@ function App() {
 export default App
 ```
 
-**Important:** This component uses the [`getUser()`](https://supabase.com/docs/reference/javascript/auth-getuser) method instead of `getSession()`. The `getUser()` method:
+**Important:** This component uses the [`getUser()`](https://indobase.in/docs/reference/javascript/auth-getuser) method instead of `getSession()`. The `getUser()` method:
 - Performs a network request to the Supabase Auth server
 - Validates the current session on the server side
 - Returns the most up-to-date user information
@@ -315,10 +315,10 @@ react-user-management/
 
 ## Learn More
 
-- [Supabase Documentation](https://supabase.com/docs)
-- [Supabase Auth](https://supabase.com/docs/guides/auth)
-- [Supabase Storage](https://supabase.com/docs/guides/storage)
-- [Row Level Security](https://supabase.com/docs/guides/auth#row-level-security)
+- [Indobase Documentation](https://indobase.in/docs)
+- [Supabase Auth](https://indobase.in/docs/guides/auth)
+- [Supabase Storage](https://indobase.in/docs/guides/storage)
+- [Row Level Security](https://indobase.in/docs/guides/auth#row-level-security)
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
 
@@ -338,6 +338,6 @@ react-user-management/
 
 ## Authors
 
-- [Supabase](https://supabase.com)
+- [Supabase](https://indobase.in)
 
 Supabase is open source. We'd love for you to follow along and get involved at [github.com/supabase/supabase](https://github.com/supabase/supabase)

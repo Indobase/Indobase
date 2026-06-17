@@ -3,7 +3,7 @@ import type {
   CreateOAuthClientParams,
   OAuthClient,
   UpdateOAuthClientParams,
-} from 'indobase-js'
+} from '@indobaseinc/indobase-js'
 import { useParams } from 'common'
 import { InlineLink } from 'components/ui/InlineLink'
 import Panel from 'components/ui/Panel'

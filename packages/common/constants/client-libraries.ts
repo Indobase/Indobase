@@ -6,27 +6,27 @@ export const CLIENT_LIBRARIES = [
     libraries: [
       {
         name: 'supabase-js',
-        url: 'https://github.com/supabase/supabase-js',
+        url: 'https://github.com/Indobase/indobase-js',
       },
       {
         name: 'postgrest-js',
-        url: 'https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js',
+        url: 'https://github.com/Indobase/indobase-js/tree/master/packages/core/postgrest-js',
       },
       {
         name: 'auth-js',
-        url: 'https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js',
+        url: 'https://github.com/Indobase/indobase-js/tree/master/packages/core/auth-js',
       },
       {
         name: 'realtime-js',
-        url: 'https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js',
+        url: 'https://github.com/Indobase/indobase-js/tree/master/packages/core/realtime-js',
       },
       {
         name: 'storage-js',
-        url: 'https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js',
+        url: 'https://github.com/Indobase/indobase-js/tree/master/packages/core/storage-js',
       },
       {
         name: 'functions-js',
-        url: 'https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js',
+        url: 'https://github.com/Indobase/indobase-js/tree/master/packages/core/functions-js',
       },
     ],
   },
@@ -160,27 +160,27 @@ export const CLIENT_LIBRARIES = [
     libraries: [
       {
         name: 'supabase-py',
-        url: 'https://github.com/supabase/supabase-py',
+        url: 'https://github.com/Indobase/supabase-py',
       },
       {
         name: 'postgrest-py',
-        url: 'https://github.com/supabase/postgrest-py',
+        url: 'https://github.com/Indobase/postgrest-py',
       },
       {
         name: 'gotrue-py',
-        url: 'https://github.com/supabase/gotrue-py',
+        url: 'https://github.com/Indobase/gotrue-py',
       },
       {
         name: 'realtime-py',
-        url: 'https://github.com/supabase/realtime-py',
+        url: 'https://github.com/Indobase/realtime-py',
       },
       {
         name: 'storage-py',
-        url: 'https://github.com/supabase/storage-py',
+        url: 'https://github.com/Indobase/storage-py',
       },
       {
         name: 'functions-py',
-        url: 'https://github.com/supabase/functions-py',
+        url: 'https://github.com/Indobase/functions-py',
       },
     ],
   },
@@ -217,7 +217,7 @@ export const CLIENT_LIBRARIES = [
     libraries: [
       {
         name: 'supabase-swift',
-        url: 'https://github.com/supabase/supabase-swift',
+        url: 'https://github.com/Indobase/supabase-swift',
       },
       {
         name: 'postgrest-swift',

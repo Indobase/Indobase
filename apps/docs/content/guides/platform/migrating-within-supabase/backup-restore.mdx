@@ -1,6 +1,6 @@
 ---
 title: 'Backup and Restore using the CLI'
-subtitle: 'Learn how to backup and restore projects using the Supabase CLI'
+subtitle: 'Learn how to backup and restore projects using the Indobase CLI'
 breadcrumb: 'Migrations'
 ---
 
@@ -8,8 +8,8 @@ breadcrumb: 'Migrations'
 
 <StepHikeCompact>
   <StepHikeCompact.Step step={1}>
-    <StepHikeCompact.Details title="Install the Supabase CLI" fullWidth>
-    Install the [Supabase CLI](/docs/guides/local-development/cli/getting-started).
+    <StepHikeCompact.Details title="Install the Indobase CLI" fullWidth>
+    Install the [Indobase CLI](/docs/guides/local-development/cli/getting-started).
     </StepHikeCompact.Details>
   </StepHikeCompact.Step>
 
@@ -31,12 +31,12 @@ breadcrumb: 'Migrations'
 
       Session pooler connection string:
       ```bash
-        postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+        postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
       ```
 
       Direct connection string:
       ```bash
-        postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.com:5432/postgres
+        postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
       ```
     </StepHikeCompact.Details>
 
@@ -121,12 +121,12 @@ breadcrumb: 'Migrations'
 
         Session pooler connection string:
         ```bash
-          postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+          postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
         ```
 
         Direct connection string:
         ```bash
-          postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.com:5432/postgres
+          postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
         ```
       </StepHikeCompact.Details>
 
@@ -169,16 +169,16 @@ breadcrumb: 'Migrations'
           <TabPanel id="column-encryption" label="Column encryption enabled">
           If you use [column encryption](/docs/guides/database/column-encryption), copy the root encryption key to your new project using your [Personal Access Token](/dashboard/account/tokens).
 
-          You can restore the project using both the old and new project ref (the project ref is the value between "https://" and ".supabase.co" in the URL) instead of the URL.
+          You can restore the project using both the old and new project ref (the project ref is the value between "https://" and ".indobase.in" in the URL) instead of the URL.
 
           ```bash
           export OLD_PROJECT_REF="<old_project_ref>"
           export NEW_PROJECT_REF="<new_project_ref>"
           export SUPABASE_ACCESS_TOKEN="<personal_access_token>"
 
-          curl "https://api.supabase.com/v1/projects/$OLD_PROJECT_REF/pgsodium" \
+          curl "https://api.indobase.in/v1/projects/$OLD_PROJECT_REF/pgsodium" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" |
-          curl "https://api.supabase.com/v1/projects/$NEW_PROJECT_REF/pgsodium" \
+          curl "https://api.indobase.in/v1/projects/$NEW_PROJECT_REF/pgsodium" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             -X PUT --json @-
           ```
@@ -200,7 +200,7 @@ breadcrumb: 'Migrations'
 
 ### Preserving migration history
 
-If you were using Supabase CLI for managing migrations on your old database and would like to preserve the migration history in your newly restored project, you need to insert the migration records separately using the following commands.
+If you were using Indobase CLI for managing migrations on your old database and would like to preserve the migration history in your newly restored project, you need to insert the migration records separately using the following commands.
 
 ```bash
 supabase db dump --db-url "$OLD_DB_URL" -f history_schema.sql --schema supabase_migrations
@@ -215,7 +215,7 @@ psql \
 
 ### Schema changes to `auth` and `storage`
 
-If you have modified the `auth` and `storage` schemas in your old project, such as adding triggers or Row Level Security(RLS) policies, you have to restore them separately. The Supabase CLI can help you diff the changes to these schemas using the following commands.
+If you have modified the `auth` and `storage` schemas in your old project, such as adding triggers or Row Level Security(RLS) policies, you have to restore them separately. The Indobase CLI can help you diff the changes to these schemas using the following commands.
 
 ```bash
 supabase link --project-ref "$OLD_PROJECT_REF"
@@ -230,10 +230,10 @@ The new project has the old project's Storage buckets, but the Storage objects n
 // npm install indobase-js@2
 const { createClient } = require('indobase-js')
 
-const OLD_PROJECT_URL = 'https://xxx.supabase.co'
+const OLD_PROJECT_URL = 'https://xxx.indobase.in'
 const OLD_PROJECT_SERVICE_KEY = 'old-project-service-key-xxx'
 
-const NEW_PROJECT_URL = 'https://yyy.supabase.co'
+const NEW_PROJECT_URL = 'https://yyy.indobase.in'
 const NEW_PROJECT_SERVICE_KEY = 'new-project-service-key-yyy'
 
 ;(async () => {

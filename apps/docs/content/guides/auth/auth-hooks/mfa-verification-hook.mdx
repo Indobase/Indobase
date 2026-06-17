@@ -11,7 +11,7 @@ You can add additional checks to the [Supabase MFA implementation](/docs/guides/
 
 **Inputs**
 
-Supabase Auth will send a payload containing these fields to your hook:
+Indobase Auth will send a payload containing these fields to your hook:
 
 | Field         | Type      | Description                                                                                                                       |
 | ------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -66,7 +66,7 @@ Return this if your hook processed the input without errors.
 
 | Field      | Type     | Description                                                                                                                                                                                                           |
 | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `decision` | `string` | The decision on whether to allow authentication to move forward. Use `reject` to deny the verification attempt and log the user out of all active sessions. Use `continue` to use the default Supabase Auth behavior. |
+| `decision` | `string` | The decision on whether to allow authentication to move forward. Use `reject` to deny the verification attempt and log the user out of all active sessions. Use `continue` to use the default Indobase Auth behavior. |
 | `message`  | `string` | The message to show the user if the decision was `reject`.                                                                                                                                                            |
 
 ```json
@@ -153,7 +153,7 @@ as $$
       on conflict do update
         set last_refreshed_at = now();
 
-    -- finally let Supabase Auth do the default behavior for a failed attempt
+    -- finally let Indobase Auth do the default behavior for a failed attempt
     return jsonb_build_object('decision', 'continue');
   end;
 $$;

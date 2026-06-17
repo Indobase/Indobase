@@ -30,11 +30,11 @@ To access the auth token securely for your Edge Function call, we recommend stor
 Store `project_url` and `anon_key` in Supabase Vault:
 
 ```sql
-select vault.create_secret('https://project-ref.supabase.co', 'project_url');
+select vault.create_secret('https://[PROJECT-REF].indobase.in', 'project_url');
 select vault.create_secret('YOUR_SUPABASE_PUBLISHABLE_KEY', 'publishable_key');
 ```
 
-Make a POST request to a Supabase Edge Function every minute:
+Make a POST request to a Indobase Edge Function every minute:
 
 ```sql
 select

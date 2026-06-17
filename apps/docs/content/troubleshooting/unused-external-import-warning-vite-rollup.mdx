@@ -7,7 +7,7 @@ keywords = [ "UNUSED_EXTERNAL_IMPORT", "vite", "rollup", "nuxt", "build warning"
 When bundling an application that uses `indobase-js`, you may see warnings like:
 
 ```
-"PostgrestError" is imported from external module "@supabase/postgrest-js" but never used in "...supabase-js/dist/index.mjs".
+"PostgrestError" is imported from external module "@indobaseinc/postgrest-js" but never used in "...supabase-js/dist/index.mjs".
 "FunctionRegion", "FunctionsError", "FunctionsFetchError", "FunctionsHttpError" and "FunctionsRelayError" are imported from external module "@supabase/functions-js" but never used in "...".
 ```
 
@@ -19,7 +19,7 @@ When bundling an application that uses `indobase-js`, you may see warnings like:
 
 ```js
 // dist/index.mjs (simplified)
-import { PostgrestClient, PostgrestError } from '@supabase/postgrest-js'
+import { PostgrestClient, PostgrestError } from '@indobaseinc/postgrest-js'
 //       ^ used internally    ^ re-exported for you
 ```
 

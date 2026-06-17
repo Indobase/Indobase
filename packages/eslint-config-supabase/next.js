@@ -17,7 +17,7 @@ const compat = new FlatCompat({
 })
 
 // Custom Supabase ESLint plugin
-const supabasePlugin = {
+const indobasePlugin = {
   rules: {
     'no-await-before-copy-to-clipboard': noAwaitBeforeCopyToClipboard,
   },
@@ -36,11 +36,11 @@ const typescriptConfig = {
   },
   plugins: {
     '@typescript-eslint': tseslint,
-    supabase: supabasePlugin,
+    indobase: indobasePlugin,
   },
   rules: {
     '@typescript-eslint/no-explicit-any': 'warn',
-    'supabase/no-await-before-copy-to-clipboard': 'error',
+    'indobase/no-await-before-copy-to-clipboard': 'error',
   },
 }
 

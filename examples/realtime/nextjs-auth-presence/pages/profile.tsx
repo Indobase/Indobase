@@ -1,5 +1,6 @@
-import { createServerSupabaseClient, User } from '@supabase/auth-helpers-nextjs'
-import { GetServerSidePropsContext } from 'next'
+import { createClient } from '../lib/supabase/server'
+import type { User } from '@indobaseinc/indobase-js'
+import type { GetServerSidePropsContext } from 'next'
 import Link from 'next/link'
 
 export default function Profile({ user }: { user: User }) {
@@ -15,9 +16,7 @@ export default function Profile({ user }: { user: User }) {
 }
 
 export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
-  // Create authenticated Supabase Client
-  const supabase = createServerSupabaseClient(ctx)
-  // Check if we have a session
+  const supabase = createClient(ctx)
   const {
     data: { session },
   } = await supabase.auth.getSession()

@@ -33,7 +33,7 @@ export default defineNuxtConfig({
       code: `
 <script setup>
 import { ref, onMounted } from 'vue'
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 
 const config = useRuntimeConfig()
 const indobase = createClient(config.public.indobaseUrl, config.public.indobaseKey)

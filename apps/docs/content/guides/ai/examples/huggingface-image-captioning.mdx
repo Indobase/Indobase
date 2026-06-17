@@ -1,22 +1,22 @@
 ---
 title: 'Generate image captions using Hugging Face'
-description: 'Use the Hugging Face Inference API to make calls to 100,000+ Machine Learning models from Supabase Edge Functions.'
-subtitle: 'Use the Hugging Face Inference API to make calls to 100,000+ Machine Learning models from Supabase Edge Functions.'
+description: 'Use the Hugging Face Inference API to make calls to 100,000+ Machine Learning models from Indobase Edge Functions.'
+subtitle: 'Use the Hugging Face Inference API to make calls to 100,000+ Machine Learning models from Indobase Edge Functions.'
 video: 'https://www.youtube.com/v/OgnYxRkxEUw'
 tocVideo: 'OgnYxRkxEUw'
 ---
 
-We can combine Hugging Face with [Supabase Storage](/storage) and [Database Webhooks](/docs/guides/database/webhooks) to automatically caption for any image we upload to a storage bucket.
+We can combine Hugging Face with [Indobase Storage](/storage) and [Database Webhooks](/docs/guides/database/webhooks) to automatically caption for any image we upload to a storage bucket.
 
 ## About Hugging Face
 
 [Hugging Face](https://huggingface.co/) is the collaboration platform for the machine learning community.
 
-[Huggingface.js](https://huggingface.co/docs/huggingface.js/index) provides a convenient way to make calls to 100,000+ Machine Learning models, making it easy to incorporate AI functionality into your [Supabase Edge Functions](/edge-functions).
+[Huggingface.js](https://huggingface.co/docs/huggingface.js/index) provides a convenient way to make calls to 100,000+ Machine Learning models, making it easy to incorporate AI functionality into your [Indobase Edge Functions](/edge-functions).
 
 ## Setup
 
-- Open your Supabase project dashboard or [create a new project](/dashboard/projects).
+- Open your Indobase project dashboard or [create a new project](/dashboard/projects).
 - [Create a new bucket](/dashboard/project/_/storage/buckets) called `images`.
 - Generate TypeScript types from remote Database.
 - Create a new Database table called `image_caption`.
@@ -24,7 +24,7 @@ We can combine Hugging Face with [Supabase Storage](/storage) and [Database Webh
   - Create a `caption` column of type `text`.
 - Regenerate TypeScript types to include new `image_caption` table.
 - Deploy the function to Supabase: `supabase functions deploy huggingface-image-captioning`.
-- Create the Database Webhook in the [Supabase Dashboard](/dashboard/project/_/database/hooks) to trigger the `huggingface-image-captioning` function anytime a record is added to the `storage.objects` table.
+- Create the Database Webhook in the [Indobase Dashboard](/dashboard/project/_/database/hooks) to trigger the `huggingface-image-captioning` function anytime a record is added to the `storage.objects` table.
 
 ## Generate TypeScript types
 
@@ -36,7 +36,7 @@ supabase gen types typescript --project-id=your-project-ref --schema=storage,pub
 
 ## Code
 
-Find the complete code on [GitHub](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/huggingface-image-captioning).
+Find the complete code on [GitHub](https://github.com/Indobase/Indobase/tree/master/examples/edge-functions/supabase/functions/huggingface-image-captioning).
 
 ```ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Check } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'

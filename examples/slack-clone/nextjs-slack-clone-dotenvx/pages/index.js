@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from 'lib/Store'
-import { Auth } from '@supabase/auth-ui-react'
-import { ThemeSupa } from '@supabase/auth-ui-shared'
+import { Auth } from '@indobaseinc/auth-ui-react'
+import { ThemeSupa } from '@indobaseinc/auth-ui-shared'
 
 const Home = () => {
   const [session, setSession] = useState(null)

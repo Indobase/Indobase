@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { SignInWithIdTokenCredentials } from '@supabase/supabase-js';
+import type { SignInWithIdTokenCredentials } from '@indobaseinc/indobase-js';
 import { useEffect, useState } from 'react';
 import AppleSignin, { type AppleAuthResponse } from 'react-apple-signin-auth';
 import { Platform } from 'react-native';

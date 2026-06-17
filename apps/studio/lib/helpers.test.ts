@@ -330,7 +330,7 @@ describe('pluralize', () => {
 
 describe('isValidHttpUrl', () => {
   it('should return true if the URL is valid', () => {
-    const result = isValidHttpUrl('https://supabase.com')
+    const result = isValidHttpUrl('https://indobase.in')
 
     expect(result).toBe(true)
   })
@@ -349,8 +349,8 @@ describe('extractUrls', () => {
   })
 
   it('should extract basic https URLs', () => {
-    const result = extractUrls('Check out https://supabase.com')
-    expect(result).toEqual(['https://supabase.com'])
+    const result = extractUrls('Check out https://indobase.in')
+    expect(result).toEqual(['https://indobase.in'])
   })
 
   it('should extract URLs with ports', () => {
@@ -379,8 +379,8 @@ describe('extractUrls', () => {
   })
 
   it('should extract multiple URLs from text', () => {
-    const result = extractUrls('Visit http://example.com and https://supabase.com for more info')
-    expect(result).toEqual(['http://example.com', 'https://supabase.com'])
+    const result = extractUrls('Visit http://example.com and https://indobase.in for more info')
+    expect(result).toEqual(['http://example.com', 'https://indobase.in'])
   })
 
   it('should remove trailing punctuation from URLs', () => {
@@ -399,8 +399,8 @@ describe('extractUrls', () => {
   })
 
   it('should handle URLs with trailing commas and periods', () => {
-    const result = extractUrls('Visit https://example.com, and https://supabase.com.')
-    expect(result).toEqual(['https://example.com', 'https://supabase.com'])
+    const result = extractUrls('Visit https://example.com, and https://indobase.in.')
+    expect(result).toEqual(['https://example.com', 'https://indobase.in'])
   })
 
   it('should handle URLs with subpath and markdown bolding', () => {
@@ -477,7 +477,7 @@ describe('extractUrls', () => {
   describe('with excludeTemplates option', () => {
     it('should not extract URLs with angle brackets in subdomain', () => {
       // Angle brackets in subdomain prevent the URL from being extracted at all
-      const text = 'Visit https://real.com or https://<project-ref>.supabase.co'
+      const text = 'Visit https://real.com or https://<project-ref>.indobase.in'
       expect(extractUrls(text, { excludeTemplates: true })).toEqual(['https://real.com'])
     })
 
@@ -498,7 +498,7 @@ describe('extractUrls', () => {
   describe('with both options', () => {
     it('should exclude both code blocks and template URLs', () => {
       const text =
-        'Visit https://real.com\n```\nhttps://code.com\n```\nOr https://<project-ref>.supabase.co'
+        'Visit https://real.com\n```\nhttps://code.com\n```\nOr https://<project-ref>.indobase.in'
       expect(extractUrls(text, { excludeCodeBlocks: true, excludeTemplates: true })).toEqual([
         'https://real.com',
       ])
@@ -547,7 +547,7 @@ SELECT * FROM users
 
 describe('getSemanticVersion', () => {
   it('should return the semantic version', () => {
-    const result = getSemanticVersion('supabase-postgres-14.1.0.88')
+    const result = getSemanticVersion('indobase-postgres-14.1.0.88')
 
     expect(result).toEqual(141088)
   })
@@ -555,7 +555,7 @@ describe('getSemanticVersion', () => {
 
 describe('getDatabaseMajorVersion', () => {
   it('should return the database major version', () => {
-    const result = getDatabaseMajorVersion('supabase-postgres-14.1.0.88')
+    const result = getDatabaseMajorVersion('indobase-postgres-14.1.0.88')
 
     expect(result).toEqual(14)
   })

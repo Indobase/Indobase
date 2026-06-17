@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { MoreVertical, Redo2, Trash } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'

@@ -10,7 +10,7 @@ import {
 } from 'lib/api/saas/tenant-postgrest'
 import { PgMetaDatabaseError } from 'lib/api/saas/types'
 import { IS_SAAS } from 'lib/constants'
-import { JwtPayload } from 'indobase-js'
+import { JwtPayload } from '@indobaseinc/indobase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getPostgrestClaims, wrapWithRoleImpersonation } from 'lib/role-impersonation'
 

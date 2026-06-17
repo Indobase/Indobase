@@ -1,4 +1,4 @@
-import type { AuthMFAUnenrollResponse, MFAUnenrollParams } from 'indobase-js'
+import type { AuthMFAUnenrollResponse, MFAUnenrollParams } from '@indobaseinc/indobase-js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { auth } from 'lib/gotrue'
 import { toast } from 'sonner'

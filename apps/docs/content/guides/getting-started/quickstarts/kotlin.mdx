@@ -1,6 +1,6 @@
 ---
-title: 'Use Supabase with Android Kotlin'
-subtitle: 'Learn how to create a Supabase project, add some sample data to your database, and query the data from an Android Kotlin app.'
+title: 'Use Indobase with Android Kotlin'
+subtitle: 'Learn how to create a Indobase project, add some sample data to your database, and query the data from an Android Kotlin app.'
 breadcrumb: 'Framework Quickstarts'
 hideToc: true
 ---
@@ -25,7 +25,7 @@ hideToc: true
   <StepHikeCompact.Step step={3}>
 
     <StepHikeCompact.Details title="Install the Dependencies">
-    Open `build.gradle.kts` (app) file and add the serialization plug, Ktor client, and Supabase client.
+    Open `build.gradle.kts` (app) file and add the serialization plug, Ktor client, and Indobase client.
 
     Replace the version placeholders `$kotlin_version` with the Kotlin version of the project, and  `$supabase_version` and `$ktor_version` with the respective latest versions.
 
@@ -71,8 +71,8 @@ hideToc: true
 
   <StepHikeCompact.Step step={5}>
 
-    <StepHikeCompact.Details title="Initialize the Supabase client">
-      You can create a Supabase client whenever you need to perform an API call.
+    <StepHikeCompact.Details title="Initialize the Indobase client">
+      You can create a Indobase client whenever you need to perform an API call.
 
       For the sake of simplicity, we will create a client in the `MainActivity.kt` file at the top just below the imports.
 
@@ -90,7 +90,7 @@ hideToc: true
       import ...
 
       val supabase = createSupabaseClient(
-          supabaseUrl = "https://xyzcompany.supabase.co",
+          supabaseUrl = "https://[PROJECT-REF].indobase.in",
           supabaseKey = "your_public_anon_key"
         ) {
           install(Postgrest)

@@ -1,26 +1,26 @@
 ---
 id: 'function-ai-models'
 title: 'Semantic Search'
-description: 'Semantic Search with pgvector and Supabase Edge Functions'
-subtitle: 'Semantic Search with pgvector and Supabase Edge Functions'
+description: 'Semantic Search with pgvector and Indobase Edge Functions'
+subtitle: 'Semantic Search with pgvector and Indobase Edge Functions'
 tocVideo: 'w4Rr_1whU-U'
 ---
 
 [Semantic search](/docs/guides/ai/semantic-search) interprets the meaning behind user queries rather than exact [keywords](/docs/guides/ai/keyword-search). It uses machine learning to capture the intent and context behind the query, handling language nuances like synonyms, phrasing variations, and word relationships.
 
-Since Supabase Edge Runtime [v1.36.0](https://github.com/supabase/edge-runtime/releases/tag/v1.36.0) you can run the [`gte-small` model](https://huggingface.co/Supabase/gte-small) natively within Supabase Edge Functions without any external dependencies! This allows you to generate text embeddings without calling any external APIs!
+Since Indobase Edge Runtime [v1.36.0](https://github.com/supabase/edge-runtime/releases/tag/v1.36.0) you can run the [`gte-small` model](https://huggingface.co/Supabase/gte-small) natively within Indobase Edge Functions without any external dependencies! This allows you to generate text embeddings without calling any external APIs!
 
 In this tutorial you're implementing three parts:
 
-1. A [`generate-embedding`](https://github.com/supabase/supabase/tree/master/examples/ai/edge-functions/supabase/functions/generate-embedding/index.ts) database webhook edge function which generates embeddings when a content row is added (or updated) in the [`public.embeddings`](https://github.com/supabase/supabase/tree/master/examples/ai/edge-functions/supabase/migrations/20240408072601_embeddings.sql) table.
-2. A [`query_embeddings` Postgres function](https://github.com/supabase/supabase/tree/master/examples/ai/edge-functions/supabase/migrations/20240410031515_vector-search.sql) which allows us to perform similarity search from an Edge Function via [Remote Procedure Call (RPC)](/docs/guides/database/functions?language=js).
-3. A [`search` edge function](https://github.com/supabase/supabase/tree/master/examples/ai/edge-functions/supabase/functions/search/index.ts) which generates the embedding for the search term, performs the similarity search via RPC function call, and returns the result.
+1. A [`generate-embedding`](https://github.com/Indobase/Indobase/tree/master/examples/ai/edge-functions/supabase/functions/generate-embedding/index.ts) database webhook edge function which generates embeddings when a content row is added (or updated) in the [`public.embeddings`](https://github.com/Indobase/Indobase/tree/master/examples/ai/edge-functions/supabase/migrations/20240408072601_embeddings.sql) table.
+2. A [`query_embeddings` Postgres function](https://github.com/Indobase/Indobase/tree/master/examples/ai/edge-functions/supabase/migrations/20240410031515_vector-search.sql) which allows us to perform similarity search from an Edge Function via [Remote Procedure Call (RPC)](/docs/guides/database/functions?language=js).
+3. A [`search` edge function](https://github.com/Indobase/Indobase/tree/master/examples/ai/edge-functions/supabase/functions/search/index.ts) which generates the embedding for the search term, performs the similarity search via RPC function call, and returns the result.
 
-You can find the complete example code on [GitHub](https://github.com/supabase/supabase/tree/master/examples/ai/edge-functions)
+You can find the complete example code on [GitHub](https://github.com/Indobase/Indobase/tree/master/examples/ai/edge-functions)
 
 ### Create the database table and webhook
 
-Given the [following table definition](https://github.com/supabase/supabase/blob/master/examples/ai/edge-functions/supabase/migrations/20240408072601_embeddings.sql):
+Given the [following table definition](https://github.com/Indobase/Indobase/blob/master/examples/ai/edge-functions/supabase/migrations/20240408072601_embeddings.sql):
 
 ```sql
 create extension if not exists vector with schema extensions;
@@ -35,7 +35,7 @@ alter table embeddings enable row level security;
 create index on embeddings using hnsw (embedding vector_ip_ops);
 ```
 
-You can deploy the [following edge function](https://github.com/supabase/supabase/blob/master/examples/ai/edge-functions/supabase/functions/generate-embedding/index.ts) as a [database webhook](/docs/guides/database/webhooks) to generate the embeddings for any text content inserted into the table:
+You can deploy the [following edge function](https://github.com/Indobase/Indobase/blob/master/examples/ai/edge-functions/supabase/functions/generate-embedding/index.ts) as a [database webhook](/docs/guides/database/webhooks) to generate the embeddings for any text content inserted into the table:
 
 ```tsx
 const model = new Supabase.ai.Session('gte-small')
@@ -63,9 +63,9 @@ Deno.serve(async (req) => {
 
 ## Create a Database Function and RPC
 
-With the embeddings now stored in your Postgres database table, you can query them from Supabase Edge Functions by utilizing [Remote Procedure Calls (RPC)](/docs/guides/database/functions?language=js).
+With the embeddings now stored in your Postgres database table, you can query them from Indobase Edge Functions by utilizing [Remote Procedure Calls (RPC)](/docs/guides/database/functions?language=js).
 
-Given the [following Postgres Function](https://github.com/supabase/supabase/blob/master/examples/ai/edge-functions/supabase/migrations/20240410031515_vector-search.sql):
+Given the [following Postgres Function](https://github.com/Indobase/Indobase/blob/master/examples/ai/edge-functions/supabase/migrations/20240410031515_vector-search.sql):
 
 ```sql
 -- Matches document sections using vector similarity search on embeddings
@@ -94,9 +94,9 @@ end;
 $$;
 ```
 
-## Query vectors in Supabase Edge Functions
+## Query vectors in Indobase Edge Functions
 
-You can use `supabase-js` to first generate the embedding for the search term and then invoke the Postgres function to find the relevant results from your stored embeddings, right from your [Supabase Edge Function](https://github.com/supabase/supabase/blob/master/examples/ai/edge-functions/supabase/functions/search/index.ts):
+You can use `supabase-js` to first generate the embedding for the search term and then invoke the Postgres function to find the relevant results from your stored embeddings, right from your [Indobase Edge Function](https://github.com/Indobase/Indobase/blob/master/examples/ai/edge-functions/supabase/functions/search/index.ts):
 
 ```tsx
 const model = new Supabase.ai.Session('gte-small')
@@ -126,4 +126,4 @@ Deno.serve(async (req) => {
 })
 ```
 
-You now have AI powered semantic search set up without any external dependencies! Just you, pgvector, and Supabase Edge Functions!
+You now have AI powered semantic search set up without any external dependencies! Just you, pgvector, and Indobase Edge Functions!

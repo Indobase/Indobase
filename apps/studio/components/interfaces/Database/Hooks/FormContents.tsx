@@ -1,5 +1,5 @@
-import type { PostgresTrigger } from '@supabase/postgres-meta'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import type { PostgresTrigger } from '@indobaseinc/postgres-meta'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import Image from 'next/legacy/image'
 import { useEffect, useMemo } from 'react'

@@ -1,4 +1,4 @@
-import type { AuthMFAEnrollResponse, MFAEnrollParams } from 'indobase-js'
+import type { AuthMFAEnrollResponse, MFAEnrollParams } from '@indobaseinc/indobase-js'
 import { useMutation } from '@tanstack/react-query'
 import { auth } from 'lib/gotrue'
 import { toast } from 'sonner'

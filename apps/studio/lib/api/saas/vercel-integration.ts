@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { components } from 'api-types'
 
 import { ENV_VAR_RAW_KEYS } from 'components/interfaces/Integrations/Vercel/Integrations-Vercel.constants'
@@ -13,13 +13,13 @@ type Claims = JwtPayload & Record<string, unknown>
 type StoredVercelProjectConnection = {
   id: number
   foreign_project_id: string
-  supabase_project_ref: string
+  indobase_project_ref: string
   env_sync_targets: ('production' | 'preview' | 'development')[]
   public_env_var_prefix?: string
   metadata: {
     name: string
     framework?: string | null
-    supabaseConfig?: {
+    indobaseConfig?: {
       projectEnvVars: { write: boolean }
     }
   }
@@ -562,12 +562,12 @@ export async function createVercelConnection({
   const created: StoredVercelProjectConnection = {
     id: nextId,
     foreign_project_id: body.connection.foreign_project_id,
-    supabase_project_ref: body.connection.supabase_project_ref,
+    indobase_project_ref: body.connection.indobase_project_ref,
     env_sync_targets: ['production', 'preview'],
     metadata: {
       name: String((body.connection.metadata as { name?: string })?.name ?? body.connection.foreign_project_id),
       framework: (body.connection.metadata as { framework?: string | null })?.framework ?? null,
-      supabaseConfig: { projectEnvVars: { write: true } },
+      indobaseConfig: { projectEnvVars: { write: true } },
     },
     inserted_at: now,
     updated_at: now,
@@ -590,7 +590,7 @@ export async function createVercelConnection({
   try {
     const token = await getAccessTokenForIntegration(connection)
     if (token) {
-      const envMap = await buildProjectEnvMap(body.connection.supabase_project_ref, claims)
+      const envMap = await buildProjectEnvMap(body.connection.indobase_project_ref, claims)
       await syncEnvVarsToVercelProject({
         accessToken: token,
         teamId: connection.team_id,
@@ -645,7 +645,7 @@ export async function updateVercelConnection({
   if (patch.env_sync_targets?.length) {
     const token = await getAccessTokenForIntegration(connection)
     if (token) {
-      const envMap = await buildProjectEnvMap(updated.supabase_project_ref, claims)
+      const envMap = await buildProjectEnvMap(updated.indobase_project_ref, claims)
       await syncEnvVarsToVercelProject({
         accessToken: token,
         teamId: connection.team_id,
@@ -699,7 +699,7 @@ export async function syncVercelConnectionEnvironments({
   const token = await getAccessTokenForIntegration(connection)
   if (!token) throw new Error('Vercel integration is missing an access token')
 
-  const envMap = await buildProjectEnvMap(stored.supabase_project_ref, claims)
+  const envMap = await buildProjectEnvMap(stored.indobase_project_ref, claims)
   await syncEnvVarsToVercelProject({
     accessToken: token,
     teamId: connection.team_id,
@@ -729,14 +729,14 @@ export function mapVercelOrgIntegrationProjectConnections(
     inserted_at: conn.inserted_at,
     updated_at: conn.updated_at,
     organization_integration_id: String(integrationRow.id),
-    supabase_project_ref: conn.supabase_project_ref,
+    indobase_project_ref: conn.indobase_project_ref,
     foreign_project_id: conn.foreign_project_id,
     env_sync_targets: conn.env_sync_targets ?? [],
     public_env_var_prefix: conn.public_env_var_prefix ?? '',
     metadata: {
       name: conn.metadata?.name ?? conn.foreign_project_id,
       framework: conn.metadata?.framework ?? null,
-      supabaseConfig: conn.metadata?.supabaseConfig ?? {
+      indobaseConfig: conn.metadata?.indobaseConfig ?? {
         projectEnvVars: { write: true },
       },
     },

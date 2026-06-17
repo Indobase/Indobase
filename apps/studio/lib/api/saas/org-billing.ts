@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import type { PlanId } from 'data/subscriptions/types'
 
@@ -33,7 +33,7 @@ async function getOrgBillingRow(claims: Claims, slug: string) {
         o.subscription_id, o.billing_partner
       from saas.organizations o
       join saas.organization_members m on m.organization_id = o.id
-      where o.slug = $1 and m.gotrue_id = $2
+      where o.slug = $1 and m.gotrue_id = $2 and m.role in ('owner', 'admin')
       limit 1
     `,
     parameters: [slug, gotrueId],

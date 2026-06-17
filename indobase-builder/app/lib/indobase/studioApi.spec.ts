@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canQueueIndobaseMobileBuild } from './studioApi';
+import { canQueueIndobaseDeployment, canQueueIndobaseMobileBuild } from './studioApi';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 describe('studioApi', () => {
@@ -22,11 +22,18 @@ describe('studioApi', () => {
     } satisfies Partial<SupabaseConnectionState>;
 
     expect(canQueueIndobaseMobileBuild(connection as SupabaseConnectionState)).toBe(true);
+    expect(canQueueIndobaseDeployment(connection as SupabaseConnectionState)).toBe(true);
   });
 
   it('blocks mobile build queue for manual connections', () => {
     expect(
       canQueueIndobaseMobileBuild({
+        connectionSource: 'manual',
+        selectedProjectId: 'proj_123',
+      } as SupabaseConnectionState),
+    ).toBe(false);
+    expect(
+      canQueueIndobaseDeployment({
         connectionSource: 'manual',
         selectedProjectId: 'proj_123',
       } as SupabaseConnectionState),

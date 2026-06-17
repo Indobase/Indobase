@@ -3,22 +3,22 @@ title: 'Rate limits'
 subtitle: 'Rate limits protect your services from abuse'
 ---
 
-Supabase Auth enforces rate limits on endpoints to prevent abuse. Some rate limits are [customizable](/dashboard/project/_/auth/rate-limits).
+Indobase Auth enforces rate limits on endpoints to prevent abuse. Some rate limits are [customizable](/dashboard/project/_/auth/rate-limits).
 
 You can also manage rate limits using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Get current rate limits
-curl -X GET "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X GET "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   | jq 'to_entries | map(select(.key | startswith("rate_limit_"))) | from_entries'
 
 # Update rate limits
-curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X PATCH "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

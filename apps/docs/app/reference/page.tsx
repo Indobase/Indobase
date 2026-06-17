@@ -12,12 +12,12 @@ export default function ReferenceIndexPage() {
         <article className="prose">
           <h1>API References</h1>
           <p>
-            The Supabase client libraries help you interact with Supabase products, such as the
+            The Indobase client libraries help you interact with Indobase products, such as the
             Postgres Database, Auth, and Realtime. They are available in several popular programming
             languages.
           </p>
           <p>
-            Supabase also has a Management API to help with managing your Supabase Platform, and a
+            Indobase also has a Management API to help with managing your projects and organizations, and a
             CLI for local development and CI workflows.
           </p>
           <h2 className="mb-8">Client Libraries</h2>

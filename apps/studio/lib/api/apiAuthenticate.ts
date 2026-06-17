@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { getUserClaims } from 'lib/gotrue'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import type { ResponseError } from 'types'

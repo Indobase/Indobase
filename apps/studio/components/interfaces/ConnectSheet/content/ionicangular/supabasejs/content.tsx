@@ -19,7 +19,7 @@ export const environment = {
       language: 'ts',
       code: `
 import { Injectable } from '@angular/core';
-import { createClient, type SupabaseClient as IndobaseClient } from 'indobase-js';
+import { createClient, type IndobaseClient as IndobaseClient } from '@indobaseinc/indobase-js';
 import { environment } from '../environments/environment';
 
 @Injectable({

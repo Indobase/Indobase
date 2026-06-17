@@ -68,18 +68,13 @@ export async function executeQuery<T = unknown>({
   let finalParameters = parameters
 
   if (trimmedActor) {
-    if (parameters !== undefined) {
-      const actorParamNum = parameters.length + 1
-      const setActorCte = `_set_actor AS MATERIALIZED (SELECT set_config('app.uid', $${actorParamNum}, true))`
-      const leadingQuery = query.replace(/^\s+/, '')
-      finalQuery = /^with\s/i.test(leadingQuery)
-        ? leadingQuery.replace(/^with\s+/i, `WITH ${setActorCte}, `)
-        : `WITH ${setActorCte} ${leadingQuery}`
-      finalParameters = [...parameters, trimmedActor]
-    } else {
-      // Simple-query protocol allows multi-statement; keep the simpler form.
-      finalQuery = `select set_config('app.uid', '${trimmedActor}', true);\n${query}`
-    }
+    const actorParamNum = (parameters?.length ?? 0) + 1
+    const setActorCte = `_set_actor AS MATERIALIZED (SELECT set_config('app.uid', $${actorParamNum}, true))`
+    const leadingQuery = query.replace(/^\s+/, '')
+    finalQuery = /^with\s/i.test(leadingQuery)
+      ? leadingQuery.replace(/^with\s+/i, `WITH ${setActorCte}, `)
+      : `WITH ${setActorCte} ${leadingQuery}`
+    finalParameters = [...(parameters ?? []), trimmedActor]
   }
 
   const requestBody: { query: string; parameters?: unknown[] } = { query: finalQuery }

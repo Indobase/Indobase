@@ -1,8 +1,8 @@
-import { Query } from '@supabase/pg-meta/src/query'
+import { Query } from '@indobaseinc/pg-meta/src/query'
 import {
   COUNT_ESTIMATE_SQL,
   THRESHOLD_COUNT,
-} from '@supabase/pg-meta/src/sql/studio/get-count-estimate'
+} from '@indobaseinc/pg-meta/src/sql/studio/get-count-estimate'
 import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { parseSupaTable } from 'components/grid/SupabaseGrid.utils'

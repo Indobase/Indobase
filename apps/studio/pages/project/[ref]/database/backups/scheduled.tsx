@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { BackupsList } from 'components/interfaces/Database/Backups/BackupsList'
 import DatabaseBackupsNav from 'components/interfaces/Database/Backups/DatabaseBackupsNav'

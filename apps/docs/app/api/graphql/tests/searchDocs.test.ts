@@ -38,7 +38,7 @@ const rpcSpy = vi.fn().mockImplementation((funcName, params) => {
       {
         type: 'reference',
         page_title: 'Create a SSO provider',
-        href: 'https://supabase.com/docs/reference/api/v1-create-a-sso-provider',
+        href: 'https://indobase.in/docs/reference/api/v1-create-a-sso-provider',
         content: params?.include_full_content ? 'Creates a new SSO provider for a project' : null,
         metadata: {
           title: 'Create a SSO provider',
@@ -234,7 +234,7 @@ describe('/api/graphql searchDocs', () => {
     const managementApiNode = json.data.searchDocs.nodes[2]
     expect(managementApiNode).toMatchObject({
       title: 'Create a SSO provider',
-      href: 'https://supabase.com/docs/reference/api/v1-create-a-sso-provider',
+      href: 'https://indobase.in/docs/reference/api/v1-create-a-sso-provider',
       content: 'Creates a new SSO provider for a project',
     })
   })

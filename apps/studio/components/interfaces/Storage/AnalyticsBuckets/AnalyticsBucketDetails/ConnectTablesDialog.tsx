@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2, Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'

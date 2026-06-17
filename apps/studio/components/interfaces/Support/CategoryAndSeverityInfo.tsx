@@ -1,5 +1,5 @@
 // End of third-party imports
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { InlineLink } from 'components/ui/InlineLink'
 import type { UseFormReturn } from 'react-hook-form'
 import {

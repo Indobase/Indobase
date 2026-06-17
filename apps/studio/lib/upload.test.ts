@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import { uploadAttachment } from './upload'
 
 vi.mock('indobase-js', () => ({
@@ -18,7 +18,7 @@ describe('uploadAttachment', () => {
     })),
   }
 
-  const mockSupabaseClient = {
+  const mockIndobaseClient = {
     storage: mockStorage,
   }
 
@@ -26,7 +26,7 @@ describe('uploadAttachment', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(createClient as any).mockReturnValue(mockSupabaseClient)
+    ;(createClient as any).mockReturnValue(mockIndobaseClient)
   })
 
   it('uploads file and returns public URL when getUrl is true', async () => {

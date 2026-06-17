@@ -1,8 +1,11 @@
-import crypto from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { createSupabaseMcpServer, SupabasePlatform } from '@supabase/mcp-server-supabase'
+import { createIndobaseMcpServer, IndobasePlatform } from '@indobaseinc/mcp-server'
 import { stripIndent } from 'common-tags'
 import { commaSeparatedStringIntoArray, fromNodeHeaders, zBooleanString } from 'lib/api/apiHelpers'
+import {
+  readBearerToken,
+  verifyBuilderMcpToken,
+} from 'lib/api/saas/builder-mcp-auth'
 import {
   getAccountOperations,
   getDatabaseOperations,
@@ -48,86 +51,10 @@ const mcpQuerySchema = z.object({
   readonly: zBooleanString().optional(),
 })
 
-const builderMcpTokenSchema = z.object({
-  aud: z.literal('indobase-builder-mcp'),
-  email: z.string().email(),
-  exp: z.number(),
-  iat: z.number(),
-  iss: z.string().url(),
-  organization_slug: z.string().min(1),
-  project_ref: z.string().min(1),
-  studio_url: z.string().url(),
-  sub: z.string().min(1),
-})
-
-function resolveBuilderMcpSecret(): string | null {
-  const secret =
-    process.env.BUILDER_HANDOFF_SECRET?.trim() ||
-    process.env.AUTH_JWT_SECRET?.trim() ||
-    process.env.JWT_SECRET?.trim() ||
-    ''
-
-  return secret.length >= 32 ? secret : null
-}
-
-function decodeBase64Url(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
-  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4))
-  return Buffer.from(`${normalized}${padding}`, 'base64').toString('utf8')
-}
-
-function encodeBase64Url(value: Buffer | string) {
-  const input = typeof value === 'string' ? Buffer.from(value) : value
-  return input.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-}
-
-async function verifyBuilderMcpToken(token: string) {
-  const secret = resolveBuilderMcpSecret()
-
-  if (!secret) {
-    throw new Error('Builder MCP secret is not configured')
-  }
-
-  const parts = token.split('.')
-
-  if (parts.length !== 3) {
-    throw new Error('Invalid Builder MCP token format')
-  }
-
-  const [headerB64, payloadB64, signatureB64] = parts
-  const expectedSignature = encodeBase64Url(
-    crypto.createHmac('sha256', secret).update(`${headerB64}.${payloadB64}`).digest()
-  )
-
-  const providedSignatureBuffer = Buffer.from(signatureB64)
-  const expectedSignatureBuffer = Buffer.from(expectedSignature)
-
-  if (
-    providedSignatureBuffer.length !== expectedSignatureBuffer.length ||
-    !crypto.timingSafeEqual(providedSignatureBuffer, expectedSignatureBuffer)
-  ) {
-    throw new Error('Invalid Builder MCP token signature')
-  }
-
-  const header = JSON.parse(decodeBase64Url(headerB64))
-
-  if (header.alg !== 'HS256') {
-    throw new Error('Unsupported Builder MCP token algorithm')
-  }
-
-  const payload = builderMcpTokenSchema.parse(JSON.parse(decodeBase64Url(payloadB64)))
-
-  if (payload.exp <= Math.floor(Date.now() / 1000)) {
-    throw new Error('Builder MCP token has expired')
-  }
-
-  return payload
-}
-
 async function resolveMcpRequestAuth(req: NextApiRequest, requestedProjectRef?: string) {
-  const authorization = req.headers.authorization?.trim()
+  const token = readBearerToken(req.headers.authorization)
 
-  if (!authorization?.toLowerCase().startsWith('bearer ')) {
+  if (!token) {
     return {
       authType: 'none' as const,
       claims: undefined,
@@ -135,10 +62,8 @@ async function resolveMcpRequestAuth(req: NextApiRequest, requestedProjectRef?: 
     }
   }
 
-  const token = authorization.replace(/^Bearer\s+/i, '')
-
   try {
-    const builderClaims = await verifyBuilderMcpToken(token)
+    const builderClaims = verifyBuilderMcpToken(token)
     const tokenProjectRef = builderClaims.project_ref
 
     if (requestedProjectRef && requestedProjectRef !== tokenProjectRef) {
@@ -202,7 +127,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const resolvedProjectRef = auth.projectRef ?? DEFAULT_PROJECT.ref
   const userClaims = auth.authType === 'user' ? auth.claims : undefined
 
-  const platform: SupabasePlatform = {
+  const platform: IndobasePlatform = {
     account: userClaims ? getAccountOperations({ claims: userClaims }) : undefined,
     database: getDatabaseOperations({
       headers,
@@ -222,7 +147,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const server = createSupabaseMcpServer({
+    const server = createIndobaseMcpServer({
       platform,
       projectId: resolvedProjectRef,
       features,

@@ -1,6 +1,6 @@
 'use client'
 
-import { REALTIME_SUBSCRIBE_STATES } from 'indobase-js'
+import { REALTIME_SUBSCRIBE_STATES } from '@indobaseinc/indobase-js'
 import { useEffect, useState } from 'react'
 
 import { useCurrentUserImage } from '@/registry/default/blocks/current-user-avatar/hooks/use-current-user-image'

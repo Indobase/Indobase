@@ -1,6 +1,6 @@
 import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 const supabaseUrl = "https://bqeuunydbomjvynieund.supabase.co";
 const supabasePublishableKey =

@@ -56,7 +56,7 @@ export const InfrastructureInfo = () => {
 
   const isOnLatestVersion = current_app_version === latest_app_version
   const currentPgVersion = (current_app_version ?? '')
-    .split('supabase-postgres-')[1]
+    .split('indobase-postgres-')[1]
     ?.replace('-orioledb', '')
   const isVisibleReleaseChannel =
     current_app_version_release_channel &&
@@ -64,7 +64,7 @@ export const InfrastructureInfo = () => {
       ? current_app_version_release_channel
       : undefined
   const isOrioleDb = useIsOrioleDb()
-  const latestPgVersion = (latest_app_version ?? '').split('supabase-postgres-')[1]
+  const latestPgVersion = (latest_app_version ?? '').split('indobase-postgres-')[1]
 
   const isInactive = project?.status === 'INACTIVE'
   const hasReadReplicas = (databases ?? []).length > 1

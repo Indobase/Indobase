@@ -1,6 +1,8 @@
-# @indobase/ssr
+# Supabase clients for use in SSR frameworks
 
-Supabase-compatible SSR API for Indobase. This workspace package re-exports [@supabase/ssr](https://www.npmjs.com/package/@supabase/ssr) so existing code using `createBrowserClient`, `createServerClient`, `parseCookieHeader`, and `serializeCookieHeader` works unchanged.
+This package is useful for using the [Supabase JavaScript library](https://indobase.in/docs/reference/javascript/introduction) in
+server-side rendering frameworks.
 
-- **Consumers:** Use `"@indobase/ssr": "workspace:*"` in this repo; they get this package, which in turn uses `@supabase/ssr`. The rest of the app uses [indobase-js](https://www.npmjs.com/package/indobase-js) for `createClient()`.
-- **When upstream has the API:** If the npm package [@indobase/ssr](https://www.npmjs.com/package/@indobase/ssr) adds the same API (e.g. aliases + cookie adapter), you can switch back to `"@indobase/ssr": "^0.9.0"` and remove this package if desired.
+It provides a framework-agnostic way of creating a Supabase client.
+
+Please refer to the [official server-side rendering guides](https://indobase.in/docs/guides/auth/server-side) for the latest best practices on using this package in your SSR framework of choice.

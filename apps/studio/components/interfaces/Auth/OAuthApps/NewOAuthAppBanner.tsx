@@ -1,4 +1,4 @@
-import type { OAuthClient } from 'indobase-js'
+import type { OAuthClient } from '@indobaseinc/indobase-js'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 

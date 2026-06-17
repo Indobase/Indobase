@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import CodeEditor from 'components/ui/CodeEditor/CodeEditor'
 import { InlineLink } from 'components/ui/InlineLink'

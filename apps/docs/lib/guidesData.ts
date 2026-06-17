@@ -12,12 +12,12 @@ export const guidesData = {
   selfHostingCommunity: [
     {
       name: 'Kubernetes',
-      description: 'Helm charts to deploy a Supabase on Kubernetes.',
+      description: 'Helm charts to deploy Indobase on Kubernetes.',
       href: 'https://github.com/supabase-community/supabase-kubernetes',
     },
     {
       name: 'Traefik',
-      description: 'A self-hosted Supabase setup with Traefik as a reverse proxy.',
+      description: 'A self-hosted Indobase setup with Traefik as a reverse proxy.',
       href: 'https://github.com/supabase-community/supabase-traefik',
     },
   ],
@@ -32,7 +32,7 @@ export const guidesData = {
     },
     {
       name: 'Image Search with OpenAI CLIP',
-      description: 'Implement image search with the OpenAI CLIP Model and Supabase Vector.',
+      description: 'Implement image search with the OpenAI CLIP Model and Indobase Vector.',
       href: '/guides/ai/examples/image-search-openai-clip',
     },
     {
@@ -47,13 +47,13 @@ export const guidesData = {
     },
     {
       name: 'Building ChatGPT Plugins',
-      description: 'Use Supabase as a Retrieval Store for your ChatGPT plugin.',
+      description: 'Use Indobase as a Retrieval Store for your ChatGPT plugin.',
       href: '/guides/ai/examples/building-chatgpt-plugins',
     },
     {
       name: 'Vector search with Next.js and OpenAI',
       description:
-        'Learn how to build a ChatGPT-style doc search powered by Next.js, OpenAI, and Supabase.',
+        'Learn how to build a ChatGPT-style doc search powered by Next.js, OpenAI, and Indobase.',
       href: '/guides/ai/examples/nextjs-vector-search',
     },
   ],
@@ -62,7 +62,7 @@ export const guidesData = {
     {
       name: 'OpenAI',
       description:
-        'OpenAI is an AI research and deployment company. Supabase provides a simple way to use OpenAI in your applications.',
+        'OpenAI is an AI research and deployment company. Indobase provides a simple way to use OpenAI in your applications.',
       href: '/guides/ai/examples/building-chatgpt-plugins',
     },
     {
@@ -74,7 +74,7 @@ export const guidesData = {
     {
       name: 'Hugging Face',
       description:
-        "Hugging Face is an open-source provider of NLP technologies. Supabase provides a simple way to use Hugging Face's models in your applications.",
+        "Hugging Face is an open-source provider of NLP technologies. Indobase provides a simple way to use Hugging Face's models in your applications.",
       href: '/guides/ai/hugging-face',
     },
     {
@@ -95,7 +95,7 @@ export const guidesData = {
     {
       name: 'Resumable Uploads with Uppy',
       description:
-        'Use Uppy to upload files to Supabase Storage using the TUS protocol (resumable uploads).',
+        'Use Uppy to upload files to Indobase Storage using the TUS protocol (resumable uploads).',
       href: 'https://github.com/supabase/supabase/tree/master/examples/storage/resumable-upload-uppy',
     },
   ],

@@ -355,7 +355,7 @@ as $$
   select role from public.org_members
   where org_id = $1 and user_id = $2;
 -- Note the use of security definer to avoid RLS checking recursion issue
--- see: https://supabase.com/docs/guides/database/postgres/row-level-security#use-security-definer-functions
+-- see: https://indobase.in/docs/guides/database/postgres/row-level-security#use-security-definer-functions
 $$ language sql security definer;
 -- Helper utils to check if an org is below the max post limit
 create or replace function private.can_add_post(org_id bigint)

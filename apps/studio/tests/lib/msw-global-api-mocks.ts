@@ -17,7 +17,7 @@ export const GlobalAPIMocks = [
         identifier: 'postgres',
         inserted_at: '2025-02-16T22:24:42.115195',
         region: 'us-east-1',
-        restUrl: 'https://abcdefghijklmnopqrst.supabase.co',
+        restUrl: 'https://abcdefghijklmnopqrst.indobase.in',
         size: 't4g.nano',
         status: 'ACTIVE_HEALTHY',
       },

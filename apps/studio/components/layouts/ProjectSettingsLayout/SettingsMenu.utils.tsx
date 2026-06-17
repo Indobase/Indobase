@@ -17,6 +17,7 @@ export const generateSettingsMenu = (
     legacyJwtKeys?: boolean
     logDrains?: boolean
     billing?: boolean
+    usageMetering?: boolean
   }
 ): ProductMenuGroup[] => {
   const isProjectActive = project?.status === PROJECT_STATUS.ACTIVE_HEALTHY
@@ -134,13 +135,17 @@ export const generateSettingsMenu = (
               },
             ]
           : []),
-        {
-          name: 'Usage',
-          key: 'usage',
-          url: `/org/${organization?.slug}/usage?projectRef=${ref}`,
-          items: [],
-          rightIcon: <ArrowUpRight strokeWidth={1} className="h-4 w-4" />,
-        },
+        ...(features?.usageMetering !== false
+          ? [
+              {
+                name: 'Usage',
+                key: 'usage',
+                url: `/org/${organization?.slug}/usage?projectRef=${ref}`,
+                items: [],
+                rightIcon: <ArrowUpRight strokeWidth={1} className="h-4 w-4" />,
+              },
+            ]
+          : []),
       ],
     },
   ]

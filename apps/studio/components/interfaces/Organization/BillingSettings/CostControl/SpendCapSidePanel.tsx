@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useTheme } from 'next-themes'
 import Image from 'next/image'
 import Link from 'next/link'

@@ -132,7 +132,7 @@ export const TotalUsage = ({
             ? [
                 {
                   name: 'How billing works',
-                  url: `${DOCS_URL}/guides/platform/billing-on-supabase`,
+                  url: `${DOCS_URL}/guides/platform/billing-on-indobase`,
                 },
                 {
                   name: 'Indobase Plans',

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 
@@ -141,7 +141,7 @@ The GitHub app will watch for changes in your repository such as file changes, b
                         username: connection.user?.username ?? '',
                       },
                       foreign_project_id: String(connection.repository.id),
-                      supabase_project_ref: connection.project.ref,
+                      indobase_project_ref: connection.project.ref,
                       organization_integration_id: 'unused',
                       inserted_at: connection.inserted_at,
                       updated_at: connection.updated_at,

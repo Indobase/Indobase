@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { fetchGet } from 'data/fetchers'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { constructSaasPgMetaHeaders } from 'lib/api/saas/pg-meta-headers'
 import apiWrapper from 'lib/api/apiWrapper'
 import { getPgMetaRedirectUrl } from './tables'

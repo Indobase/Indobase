@@ -6,7 +6,7 @@ subtitle: 'Use HTTP or Postgres Functions to customize your authentication flow'
 
 ## What is a hook
 
-A hook is an endpoint that allows you to alter the default Supabase Auth flow at specific execution points. Developers can use hooks to add custom behavior that's not supported natively.
+A hook is an endpoint that allows you to alter the default Indobase Auth flow at specific execution points. Developers can use hooks to add custom behavior that's not supported natively.
 
 Hooks help you:
 
@@ -42,7 +42,7 @@ A [Postgres function](/docs/guides/database/functions) can be configured as a ho
 </TabPanel>
 <TabPanel id="http" label="HTTP Endpoint">
 
-An HTTP Hook is an endpoint which takes in a JSON event payload and returns a JSON response. You can use any HTTP endpoint as a Hook, including an endpoint in your application. The easiest way to create an HTTP hook is to create a [Supabase Edge Function](/docs/guides/functions/quickstart).
+An HTTP Hook is an endpoint which takes in a JSON event payload and returns a JSON response. You can use any HTTP endpoint as a Hook, including an endpoint in your application. The easiest way to create an HTTP hook is to create a [Indobase Edge Function](/docs/guides/functions/quickstart).
 
 </TabPanel>
 </Tabs>
@@ -62,7 +62,7 @@ Sign the payload and grant permissions selectively in order to guard the integri
 
 When you configure a Postgres function as a hook, Supabase will automatically apply the following grants to the function for these reasons:
 
-- Allow the `supabase_auth_admin` role to execute the function. The `supabase_auth_admin` role is the Postgres role that is used by Supabase Auth to make requests to your database.
+- Allow the `supabase_auth_admin` role to execute the function. The `supabase_auth_admin` role is the Postgres role that is used by Indobase Auth to make requests to your database.
 - Revoke permissions from other roles (e.g. `anon`, `authenticated`, `public`) to ensure the function is not accessible by Supabase Data APIs.
 
 ```sql
@@ -165,7 +165,7 @@ uri = "pg-functions://...."
 
 ```
 
-You need to assign additional permissions so that Supabase Auth can access the hook as well as the tables it interacts with.
+You need to assign additional permissions so that Indobase Auth can access the hook as well as the tables it interacts with.
 
 The `supabase_auth_admin` role does not have permissions to the `public` schema. You need to grant the role permission to execute your hook:
 
@@ -192,7 +192,7 @@ revoke execute
 
 ```
 
-For security, we recommend against the use the `security definer` tag. The `security definer` tag specifies that the function is to be executed with the privileges of the user that owns it. When a function is created via the Supabase dashboard with the tag, it will have the extensive permissions of the `postgres` role which make it easier for undesirable actions to occur.
+For security, we recommend against the use the `security definer` tag. The `security definer` tag specifies that the function is to be executed with the privileges of the user that owns it. When a function is created via the Indobase dashboard with the tag, it will have the extensive permissions of the `postgres` role which make it easier for undesirable actions to occur.
 
 We recommend that you do not use any tag and explicitly grant permissions to `supabase_auth_admin` as described above.
 
@@ -202,7 +202,7 @@ Once done, save your Auth Hook as a migration in order to version the Auth Hook 
 
 <Admonition type="caution">
 
-If you're using the Supabase SQL Editor, there's an issue when using the `?` (_Does the string exist as a top-level key within the JSON value?_) operator. Use a direct connection to the database if you need to use it when defining a function.
+If you're using the Indobase SQL Editor, there's an issue when using the `?` (_Does the string exist as a top-level key within the JSON value?_) operator. Use a direct connection to the database if you need to use it when defining a function.
 
 </Admonition>
 
@@ -239,7 +239,7 @@ secrets = "env(SEND_SMS_HOOK_SECRETS)"
 
 <Admonition type="note">
 
-`host.docker.internal` is a special DNS name used in Docker to allow a container to access the host machine's network. This allows the Auth container to reach your HTTP function, no matter if it's a Supabase Edge Function or a custom endpoint.
+`host.docker.internal` is a special DNS name used in Docker to allow a container to access the host machine's network. This allows the Auth container to reach your HTTP function, no matter if it's a Indobase Edge Function or a custom endpoint.
 
 </Admonition>
 
@@ -303,7 +303,7 @@ Here's an example:
 }
 ```
 
-Errors returned from a Postgres Hook are not retry-able. When an error is returned, the error is propagated from the hook to Supabase Auth and translated into an HTTP error which is returned to your application. Supabase Auth will only take into account the error and disregard the rest of the payload.
+Errors returned from a Postgres Hook are not retry-able. When an error is returned, the error is propagated from the hook to Indobase Auth and translated into an HTTP error which is returned to your application. Indobase Auth will only take into account the error and disregard the rest of the payload.
 
 </TabPanel>
 
@@ -341,7 +341,7 @@ Return a retry-able error by attaching a appropriate status code (`429`, `503`) 
 
 <Admonition type="note">
 
-`Retry-After` Supabase Auth does not fully support the `Retry-After` header as described in RFC7231, we only check if it is a non-empty value such as `true` or `10`. Setting this to your preferred value is fine as a future update may address this.
+`Retry-After` Indobase Auth does not fully support the `Retry-After` header as described in RFC7231, we only check if it is a non-empty value such as `true` or `10`. Setting this to your preferred value is fine as a future update may address this.
 
 </Admonition>
 
@@ -354,7 +354,7 @@ return new Response(
 )
 ```
 
-Note that all responses, including error responses, need a `Content-Type` of `application/json` - not specifying the appropriate `Content-Type` will result in the function returning an error response. Supabase Auth will in turn return an Internal Server Error.
+Note that all responses, including error responses, need a `Content-Type` of `application/json` - not specifying the appropriate `Content-Type` will result in the function returning an error response. Indobase Auth will in turn return an Internal Server Error.
 
 </TabPanel>
 </Tabs>
@@ -369,7 +369,7 @@ Each Hook description contains an example JSON Schema which you can use in conju
   {[
     {
       name: 'Custom Access Token',
-      description: 'Customize the access token issued by Supabase Auth',
+      description: 'Customize the access token issued by Indobase Auth',
       href: '/guides/auth/auth-hooks/custom-access-token-hook',
     },
     {

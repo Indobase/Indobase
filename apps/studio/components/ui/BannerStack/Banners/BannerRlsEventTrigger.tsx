@@ -1,7 +1,7 @@
 import { ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { LOCAL_STORAGE_KEYS } from 'common'
 import { useParams } from 'common/hooks'
 import { AUTO_ENABLE_RLS_EVENT_TRIGGER_SQL } from 'components/interfaces/Database/Triggers/EventTriggersList/EventTriggers.constants'

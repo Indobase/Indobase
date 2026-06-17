@@ -6,7 +6,7 @@ subtitle: 'Information on how best to use JSON Web Tokens with Supabase'
 
 A [JSON Web Token](https://jwt.io/introduction) is a type of data structure, represented as a string, that usually contains identity and authorization information about a user. It encodes information about its lifetime and is signed with a cryptographic key to make it tamper-resistant.
 
-Supabase Auth continuously issues a new JWT for each user session, for as long as the user remains signed in. Check the comprehensive guide on [Sessions](/docs/guides/auth/sessions) to find out how you can tailor this process for your needs.
+Indobase Auth continuously issues a new JWT for each user session, for as long as the user remains signed in. Check the comprehensive guide on [Sessions](/docs/guides/auth/sessions) to find out how you can tailor this process for your needs.
 
 JWTs provide the foundation for [Row Level Security](/docs/guides/database/postgres/row-level-security). Each Supabase product is able to securely decode and verify the validity of a JWT it receives before using Postgres policies and roles to authorize access to the project's data.
 
@@ -38,7 +38,7 @@ Gives some basic identifying information about the string, indicating its type `
 
 ```json
 {
-  "iss": "https://project_id.supabase.co/auth/v1",
+  "iss": "https://project_id.indobase.in/auth/v1",
   "exp": 12345678,
   "sub": "<user ID>",
   "role": "authenticated",
@@ -62,11 +62,11 @@ Provides identifying information (called "claims") about the user (or other enti
 
 A [digital signature](https://en.wikipedia.org/wiki/Digital_signature) using a [shared secret](https://en.wikipedia.org/wiki/HMAC) or [public-key cryptography](https://en.wikipedia.org/wiki/Public-key_cryptography). The purpose of the signature is to verify the authenticity of the `<header>.<payload>` string without relying on database access, liveness or performance of the Auth server. To verify the signature avoid implementing the algorithms yourself and instead rely on `supabase.auth.getClaims()`, or other high-quality JWT verification libraries for your language.
 
-## Supabase and JWTs
+## Indobase and JWTs
 
 Supabase creates JWTs in these cases for you:
 
-1. When using Supabase Auth, an access token (JWT) is created for each user while they remain signed in. These are short lived, so they are continuously issued as your user interacts with Supabase APIs.
+1. When using Indobase Auth, an access token (JWT) is created for each user while they remain signed in. These are short lived, so they are continuously issued as your user interacts with Supabase APIs.
 2. As the legacy JWT-based [API keys](/docs/guides/api/api-keys) `anon` and `service_role`. These have a 10 year expiry and are signed with a shared secret, making them hard to rotate or expire. These JWTs express public access via the `anon` key, or elevated access via the `service_role` key. We strongly recommend switching to publishable and secret API keys.
 3. On-the-fly when using publishable or secret API keys. Each API key is transformed into a short-lived JWT that is then used to authorize access to your data. Accessing these short-lived tokens is generally not possible.
 
@@ -76,13 +76,13 @@ In addition to creating JWTs, Supabase can also accept JWTs from other Auth serv
 
 <Admonition type="note">
 
-The `supabase.auth.getClaims()` method is meant to be used only with JWTs issued by Supabase Auth. If you make your own JWTs using the legacy JWT secret or a key you've imported, the verification may fail. We strongly recommend using a JWT verification library for your language to verify this type of JWT based on the claims you're adding in them.
+The `supabase.auth.getClaims()` method is meant to be used only with JWTs issued by Indobase Auth. If you make your own JWTs using the legacy JWT secret or a key you've imported, the verification may fail. We strongly recommend using a JWT verification library for your language to verify this type of JWT based on the claims you're adding in them.
 
 </Admonition>
 
-Your Supabase project accepts a JWT in the `Authorization: Bearer <jwt>` header. If you're using the Supabase client library, it does this for you.
+Your Indobase project accepts a JWT in the `Authorization: Bearer <jwt>` header. If you're using the Indobase client library, it does this for you.
 
-If you are already using Supabase Auth, when a user is signed in, their access token JWT is automatically managed and sent for you with every API call.
+If you are already using Indobase Auth, when a user is signed in, their access token JWT is automatically managed and sent for you with every API call.
 
 If you wish to send a JWT from a Third-Party Auth provider, or one you made yourself by using the legacy JWT secret or a JWT signing key you imported, you can pass it to the client library using the `accessToken` option.
 
@@ -94,7 +94,7 @@ If you wish to send a JWT from a Third-Party Auth provider, or one you made your
 import { createClient } from 'indobase-js'
 
 const supabase = createClient(
-  'https://<supabase-project>.supabase.co',
+  'https://<supabase-project>.indobase.in',
   'SUPABASE_PUBLISHABLE_KEY',
   {
     accessToken: async () => {
@@ -132,7 +132,7 @@ await Supabase.initialize(
 import Supabase
 
 let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://<supabase-project>.supabase.co")!,
+  supabaseURL: URL(string: "https://<supabase-project>.indobase.in")!,
   supabaseKey: "SUPABASE_PUBLISHABLE_KEY",
   options: SupabaseClientOptions(
     auth: SupabaseClientOptions.AuthOptions(
@@ -153,7 +153,7 @@ let supabase = SupabaseClient(
 
 ```kotlin
 val supabase = createSupabaseClient(
-    "https://<supabase-project>.supabase.co",
+    "https://<supabase-project>.indobase.in",
     "SUPABASE_PUBLISHABLE_KEY"
 ) {
     accessToken = {
@@ -168,7 +168,7 @@ val supabase = createSupabaseClient(
 <TabPanel id="bash" label="cURL">
 
 ```bash
-curl 'https://<supabase-project>.supabase.co/rest/v1/my_table?select=id' \
+curl 'https://<supabase-project>.indobase.in/rest/v1/my_table?select=id' \
   -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
   -H "Authorization: Bearer <your JWT here>"
 ```
@@ -177,16 +177,16 @@ curl 'https://<supabase-project>.supabase.co/rest/v1/my_table?select=id' \
 
 </Tabs>
 
-In the past there was a recommendation to set custom headers on the Supabase client with the `Authorization` header including your custom JWT. This is no longer recommended as it's less flexible and causes confusion when combined with a user session from Supabase Auth.
+In the past there was a recommendation to set custom headers on the Indobase client with the `Authorization` header including your custom JWT. This is no longer recommended as it's less flexible and causes confusion when combined with a user session from Indobase Auth.
 
 ## Verifying a JWT from Supabase
 
-If you're not able to use the Supabase client libraries, the following can be used to help you securely verify JWTs issued by Supabase.
+If you're not able to use the Indobase client libraries, the following can be used to help you securely verify JWTs issued by Supabase.
 
-Supabase Auth exposes a [JSON Web Key](https://datatracker.ietf.org/doc/html/rfc7517) Set URL for each Supabase project:
+Indobase Auth exposes a [JSON Web Key](https://datatracker.ietf.org/doc/html/rfc7517) Set URL for each Indobase project:
 
 ```http
-GET https://project-id.supabase.co/auth/v1/.well-known/jwks.json
+GET https://project-id.indobase.in/auth/v1/.well-known/jwks.json
 ```
 
 Which responds with JWKS object containing one or more asymmetric [JWT signing keys](/docs/guides/auth/signing-keys) (only their public keys). Be aware that this endpoint does not return any keys if you are not using asymmetric JWT signing keys.
@@ -205,7 +205,7 @@ Which responds with JWKS object containing one or more asymmetric [JWT signing k
 }
 ```
 
-This endpoint is served directly from the Auth server, but is also additionally cached by the Supabase Edge for 10 minutes, significantly speeding up access to this data regardless of where you're performing the verification. It's important to be aware of the cache expiry time to prevent unintentionally rejecting valid user access tokens. We recommend waiting at least 20 minutes when creating a standby signing key, or revoking a previously used key.
+This endpoint is served directly from the Auth server, but is also additionally cached by the Indobase Edge for 10 minutes, significantly speeding up access to this data regardless of where you're performing the verification. It's important to be aware of the cache expiry time to prevent unintentionally rejecting valid user access tokens. We recommend waiting at least 20 minutes when creating a standby signing key, or revoking a previously used key.
 
 Make sure that you do not cache this data for longer in your application, as it might make revocation difficult. If you do, make sure to provide a way to purge this cache when rotating signing keys to avoid unintentionally rejecting valid user access tokens.
 
@@ -215,7 +215,7 @@ Below is an example of how to use the [jose TypeScript JWT verification library]
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 
 const PROJECT_JWKS = createRemoteJWKSet(
-  new URL('https://project-id.supabase.co/auth/v1/.well-known/jwks.json')
+  new URL('https://project-id.indobase.in/auth/v1/.well-known/jwks.json')
 )
 
 /**
@@ -231,7 +231,7 @@ async function verifyProjectJWT(jwt: string) {
 If your project is still using the legacy JWT secret, or you're using a shared secret (HS256) signing key, we recommend always verifying a user access token directly with the Auth server by sending a request like so:
 
 ```http
-GET https://project-id.supabase.co/auth/v1/user
+GET https://project-id.indobase.in/auth/v1/user
 apikey: publishable or anon legacy API key
 Authorization: Bearer <JWT>
 ```
@@ -264,5 +264,5 @@ Check the JWT verification libraries for your language on how to securely verify
 
 - JWT debugger: https://jwt.io/
 - [JWT Signing Keys](/docs/guides/auth/signing-keys)
-- [JWT Claims Reference](/docs/guides/auth/jwt-fields) - Complete reference for all JWT claims used by Supabase Auth
+- [JWT Claims Reference](/docs/guides/auth/jwt-fields) - Complete reference for all JWT claims used by Indobase Auth
 - [API keys](/docs/guides/api/api-keys)

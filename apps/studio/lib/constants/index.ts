@@ -40,8 +40,8 @@ export const GOTRUE_ERRORS = {
   UNVERIFIED_GITHUB_USER: 'Error sending confirmation mail',
 }
 
-export const STRIPE_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || 'pk_test_XVwg5IZH3I9Gti98hZw6KRzd00v5858heG'
+/** Empty when unset — Indobase SaaS uses Razorpay; Stripe UI is gated behind `isRazorpayBillingClient`. */
+export const STRIPE_PUBLIC_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY?.trim() || ''
 
 export {
   isRazorpayBillingClient,
@@ -53,7 +53,7 @@ export const POSTHOG_URL =
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' ||
   process.env.NEXT_PUBLIC_ENVIRONMENT === 'local'
     ? 'https://ph.supabase.green'
-    : 'https://ph.supabase.com'
+    : 'https://ph.indobase.inm'
 
 export const USAGE_APPROACHING_THRESHOLD = 0.75
 

@@ -29,7 +29,7 @@ For Authorization we insert a message and try to read it, and rollback the trans
 
 ## Subscribe to messages
 
-You can use the Supabase client libraries to receive Broadcast messages.
+You can use the Indobase client libraries to receive Broadcast messages.
 
 ### Initialize the client
 
@@ -60,7 +60,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
     ```js
     import { createClient } from 'indobase-js'
 
-    const SUPABASE_URL = 'https://<project>.supabase.co'
+    const SUPABASE_URL = 'https://[PROJECT-REF].indobase.in'
     const SUPABASE_KEY = '<sb_publishable_... or anon key>'
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -75,7 +75,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
 
     void main() async {
       Supabase.initialize(
-        url: 'https://<project>.supabase.co',
+        url: 'https://[PROJECT-REF].indobase.in',
         anonKey: '<sb_publishable_... or anon key>',
       );
       runApp(MyApp());
@@ -92,7 +92,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
     ```swift
     import Supabase
 
-    let SUPABASE_URL = "https://<project>.supabase.co"
+    let SUPABASE_URL = "https://[PROJECT-REF].indobase.in"
     let SUPABASE_KEY = "<sb_publishable_... or anon key>"
 
     let supabase = SupabaseClient(supabaseURL: URL(string: SUPABASE_URL)!, supabaseKey: SUPABASE_KEY)
@@ -104,7 +104,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
   <TabPanel id="kotlin" label="Kotlin">
 
     ```kotlin
-    val supabaseUrl = "https://<project>.supabase.co"
+    val supabaseUrl = "https://[PROJECT-REF].indobase.in"
     val supabaseKey = "<sb_publishable_... or anon key>"
     val supabase = createSupabaseClient(supabaseUrl, supabaseKey) {
         install(Realtime)
@@ -120,7 +120,7 @@ In most cases, you can get the correct key from [the Project's **Connect** dialo
     import asyncio
     from supabase import acreate_client
 
-    URL = "https://<project>.supabase.co"
+    URL = "https://[PROJECT-REF].indobase.in"
     KEY = "<sb_publishable_... or anon key>"
 
     async def create_supabase():
@@ -149,7 +149,7 @@ You can provide a callback for the `broadcast` channel to receive messages. This
     ```js
     // @noImplicitAny: false
     import { createClient } from 'indobase-js'
-    const supabase = createClient('https://<project>.supabase.co', '<sb_publishable_... or anon key>')
+    const supabase = createClient('https://[PROJECT-REF].indobase.in', '<sb_publishable_... or anon key>')
 
     // ---cut---
     // Join a room/topic. Can be anything except for 'realtime'.
@@ -261,7 +261,7 @@ You can provide a callback for the `broadcast` channel to receive messages. This
 
 ### Broadcast using the client libraries
 
-You can use the Supabase client libraries to send Broadcast messages.
+You can use the Indobase client libraries to send Broadcast messages.
 
 <Tabs
   scrollable
@@ -483,7 +483,7 @@ You can send a Broadcast message by making an HTTP request to Realtime servers.
         }
       ]
     }' \
-    'https://<PROJECT_REF>.supabase.co/realtime/v1/api/broadcast'
+    'https://[PROJECT-REF].indobase.in/realtime/v1/api/broadcast'
     ```
 
   </TabPanel>
@@ -492,7 +492,7 @@ You can send a Broadcast message by making an HTTP request to Realtime servers.
     {/* prettier-ignore */}
     ```bash
     POST /realtime/v1/api/broadcast HTTP/1.1
-    Host: {PROJECT_REF}.supabase.co
+    Host: {PROJECT_REF}.indobase.in
     Content-Type: application/json
     apikey: {SUPABASE_TOKEN}
     {
@@ -513,7 +513,7 @@ You can send a Broadcast message by making an HTTP request to Realtime servers.
 
 ## Broadcast options
 
-You can pass configuration options while initializing the Supabase Client.
+You can pass configuration options while initializing the Indobase Client.
 
 ### Self-send messages
 
@@ -797,7 +797,7 @@ You can also send a Broadcast message by making an HTTP request to Realtime serv
   <TabPanel id="js" label="JavaScript">
     <Admonition type="note">
 
-    This is currently available only in the Supabase JavaScript client version 2.37.0 and later.
+    This is currently available only in the Indobase JavaScript client version 2.37.0 and later.
 
     </Admonition>
 
@@ -1013,7 +1013,7 @@ You can configure replay with the following options:
   <TabPanel id="js" label="JavaScript">
     <Admonition type="note">
 
-      This is currently available only in the Supabase JavaScript client version 2.74.0 and later.
+      This is currently available only in the Indobase JavaScript client version 2.74.0 and later.
 
     </Admonition>
 
@@ -1048,7 +1048,7 @@ You can configure replay with the following options:
   <TabPanel id="dart" label="Dart">
     <Admonition type="note">
 
-      This is currently available only in the Supabase Dart client version 2.10.0 and later.
+      This is currently available only in the Indobase Dart client version 2.10.0 and later.
 
     </Admonition>
     ```dart
@@ -1086,7 +1086,7 @@ You can configure replay with the following options:
   <TabPanel id="swift" label="Swift">
     <Admonition type="note">
 
-      This is currently available only in the Supabase Swift client version 2.34.0 and later.
+      This is currently available only in the Indobase Swift client version 2.34.0 and later.
 
     </Admonition>
     ```swift
@@ -1136,7 +1136,7 @@ You can configure replay with the following options:
   <TabPanel id="python" label="Python">
     <Admonition type="note">
 
-      This is currently available only in the Supabase Python client version 2.22.0 and later.
+      This is currently available only in the Indobase Python client version 2.22.0 and later.
 
     </Admonition>
     ```python

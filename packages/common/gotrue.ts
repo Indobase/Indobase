@@ -1,4 +1,4 @@
-import { AuthClient, navigatorLock, User } from '@supabase/auth-js'
+import { AuthClient, navigatorLock, User } from '@indobaseinc/auth-js'
 
 export const STORAGE_KEY = process.env.NEXT_PUBLIC_STORAGE_KEY || 'indobase.dashboard.auth.token'
 export const AUTH_DEBUG_KEY =

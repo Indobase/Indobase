@@ -46,7 +46,7 @@ import { createClient, SupabaseClient } from 'npm:indobase-js@2'
 // Will load the .env file to Deno.env
 import 'jsr:@std/dotenv/load'
 
-// Set up the configuration for the Supabase client
+// Set up the configuration for the Indobase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const supabaseKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? ''
 const options = {
@@ -57,11 +57,11 @@ const options = {
   },
 }
 
-// Test the creation and functionality of the Supabase client
+// Test the creation and functionality of the Indobase client
 const testClientCreation = async () => {
   var client: SupabaseClient = createClient(supabaseUrl, supabaseKey, options)
 
-  // Verify if the Supabase URL and key are provided
+  // Verify if the Indobase URL and key are provided
   if (!supabaseUrl) throw new Error('supabaseUrl is required.')
   if (!supabaseKey) throw new Error('supabaseKey is required.')
 
@@ -71,7 +71,7 @@ const testClientCreation = async () => {
     .select('*')
     .limit(1)
   if (table_error) {
-    throw new Error('Invalid Supabase client: ' + table_error.message)
+    throw new Error('Invalid Indobase client: ' + table_error.message)
   }
   assert(table_data, 'Data should be returned from the query.')
 }
@@ -107,10 +107,10 @@ This test case consists of two parts.
 1. The first part tests the client library and verifies that the database can be connected to and returns values from a table (`my_table`).
 2. The second part tests the edge function and checks if the received value matches the expected value. Here's a brief overview of the code:
    - We import various testing functions from the Deno standard library, including `assert`, `assertExists`, and `assertEquals`.
-   - We import the `createClient` and `SupabaseClient` classes from the `indobase-js` library to interact with the Supabase client.
-   - We define the necessary configuration for the Supabase client, including the Supabase URL, API key, and authentication options.
-   - The `testClientCreation` function tests the creation of a Supabase client instance and queries the database for data from a table. It verifies that data is returned from the query.
-   - The `testHelloWorld` function tests the "Hello-world" Edge Function by invoking it using the Supabase client's `functions.invoke` method. It checks if the response message matches the expected greeting.
+   - We import the `createClient` and `SupabaseClient` classes from the `indobase-js` library to interact with the Indobase client.
+   - We define the necessary configuration for the Indobase client, including the Indobase URL, API key, and authentication options.
+   - The `testClientCreation` function tests the creation of a Indobase client instance and queries the database for data from a table. It verifies that data is returned from the query.
+   - The `testHelloWorld` function tests the "Hello-world" Edge Function by invoking it using the Indobase client's `functions.invoke` method. It checks if the response message matches the expected greeting.
    - We run the tests using the `Deno.test` function, providing a descriptive name for each test case and the corresponding test function.
 
 <Admonition type="note">
@@ -123,9 +123,9 @@ Make sure to replace the placeholders (`supabaseUrl`, `supabaseKey`, `my_table`)
 
 ## Running Edge Functions locally
 
-To locally test and debug Edge Functions, you can utilize the Supabase CLI. Let's explore how to run Edge Functions locally using the Supabase CLI:
+To locally test and debug Edge Functions, you can utilize the Indobase CLI. Let's explore how to run Edge Functions locally using the Indobase CLI:
 
-1. Ensure that the Supabase server is running by executing the following command:
+1. Ensure that the Indobase server is running by executing the following command:
 
    ```bash
    supabase start
@@ -162,4 +162,4 @@ To locally test and debug Edge Functions, you can utilize the Supabase CLI. Let'
 
 ## Resources
 
-- Full guide on Testing Supabase Edge Functions on [Mansueli's tips](https://blog.mansueli.com/testing-supabase-edge-functions-with-deno-test)
+- Full guide on Testing Indobase Edge Functions on [Mansueli's tips](https://blog.mansueli.com/testing-supabase-edge-functions-with-deno-test)

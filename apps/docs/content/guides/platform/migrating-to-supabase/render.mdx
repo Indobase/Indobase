@@ -40,7 +40,7 @@ Example:
 
 ## Migrate the database
 
-The fastest way to migrate your database is with the Supabase migration tool on [Google Colab](https://colab.research.google.com/github/mansueli/Supa-Migrate/blob/main/Migrate_Postgres_Supabase.ipynb). Alternatively, you can use the [pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html) and [psql](https://www.postgresql.org/docs/current/app-psql.html) command line tools, which are included in a full Postgres installation.
+The fastest way to migrate your database is with the Indobase migration tool on [Google Colab](https://colab.research.google.com/github/mansueli/Supa-Migrate/blob/main/Migrate_Postgres_Supabase.ipynb). Alternatively, you can use the [pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html) and [psql](https://www.postgresql.org/docs/current/app-psql.html) command line tools, which are included in a full Postgres installation.
 
 <Tabs
   scrollable
@@ -68,9 +68,9 @@ The fastest way to migrate your database is with the Supabase migration tool on 
    --no-owner --no-privileges > render_dump.sql
    ```
 
-2. Import the database to your Supabase project
+2. Import the database to your Indobase project
 
-   Use `psql` to import the Render database file to your Supabase project.
+   Use `psql` to import the Render database file to your Indobase project.
 
    ```bash
    psql -d "$YOUR_CONNECTION_STRING" -f render_dump.sql
@@ -92,4 +92,4 @@ Run `pg_dump --help` for a full list of options.
 
 ## Enterprise
 
-[Contact us](https://forms.supabase.com/enterprise) if you need more help migrating your project.
+[Contact us](https://forms.indobase.inm/enterprise) if you need more help migrating your project.

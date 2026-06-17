@@ -147,14 +147,14 @@ const navCommands = [
   {
     id: 'nav-integrations',
     name: 'Go to Integrations',
-    route: 'https://supabase.com/partners/integrations',
+    route: 'https://indobase.in/partners/integrations',
     icon: () => <ArrowRight />,
     enabled: isFeatureEnabled('integrations:partners'),
   },
   {
     id: 'nav-ui',
     name: 'Go to Supabase UI Library',
-    route: 'https://supabase.com/ui',
+    route: 'https://indobase.in/ui',
     icon: () => <ArrowRight />,
   },
 ] satisfies Array<ICommand & { enabled?: boolean }>

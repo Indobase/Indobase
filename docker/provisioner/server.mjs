@@ -18,6 +18,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef } from './tenant-traefik.mjs'
+import { TENANT_SITE_NGINX_CONF, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
 
 const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
@@ -43,7 +44,7 @@ function readBody(req) {
     let data = ''
     req.on('data', (chunk) => {
       data += chunk
-      if (data.length > 5_000_000) {
+      if (data.length > 9_000_000) {
         reject(new Error('body too large'))
         req.destroy()
       }
@@ -83,8 +84,17 @@ function repairKnownComposeYaml(yml) {
     )
     text = text.replace(/(DB_PASSWORD: ')[^']+(')/g, `$1${auxRolePassword}$2`)
   }
-  text = text.replace(/127\.0\.0\.1:/g, '0.0.0.0:')
+  const publishHost = (process.env.PROVISIONER_PUBLISH_HOST || traefikUpstreamHost).trim()
+  // Expose tenant API ports on the docker bridge for Traefik — never publish Postgres (5432).
+  text = text.replace(
+    /127\.0\.0\.1:(\d+):(3000|9999|5000|4000|9000|6543|8080)\b/g,
+    `${publishHost}:$1:$2`
+  )
   return text
+}
+
+function traefikUpstreamHost() {
+  return (process.env.TRAEFIK_UPSTREAM_HOST || '172.17.0.1').trim()
 }
 
 const TENANT_FUNCTIONS_MAIN_STUB = `// Minimal Edge Functions router for per-tenant stacks.
@@ -276,6 +286,17 @@ async function repairTenantStackRef(ref, reason) {
     return { ref, ok: false, reason: normalized.reason || 'traefik_normalize_failed', repair_reason: reason }
   }
 
+  let siteHosting = null
+  try {
+    siteHosting = await ensureTenantSiteService({ ref, tenantsDir, traefikDir })
+  } catch (error) {
+    siteHosting = {
+      ok: false,
+      ref,
+      reason: error instanceof Error ? error.message : 'ensure_site_failed',
+    }
+  }
+
   await new Promise((r) => setTimeout(r, 3000))
   const health = await verifyTenantStackHealth(ref)
   return {
@@ -284,6 +305,7 @@ async function repairTenantStackRef(ref, reason) {
     reason: health.ok ? 'repaired' : 'health_check_failed',
     health,
     repair_reason: reason,
+    site_hosting: siteHosting,
   }
 }
 
@@ -297,6 +319,9 @@ const server = http.createServer(async (req, res) => {
       '/repair-traefik',
       '/repair-stack',
       '/repair-fleet',
+      '/publish-site',
+      '/ensure-site-hosting',
+      '/ensure-site-fleet',
     ])
     if (req.method !== 'POST' || !allowed.has(req.url || '')) {
       res.statusCode = 404
@@ -326,15 +351,35 @@ const server = http.createServer(async (req, res) => {
           results.push({ ref, ok: false, reason: e?.message || 'repair_failed' })
         }
       }
+      const siteResults = await ensureTenantSiteFleet({ tenantsDir, traefikDir })
       const repaired = results.filter((r) => r.ok).length
       const failed = results.filter((r) => !r.ok).length
-      return json(res, 200, { ok: true, repaired, failed, results })
+      const siteReady = siteResults.filter((r) => r.ok).length
+      return json(res, 200, {
+        ok: true,
+        repaired,
+        failed,
+        results,
+        site_hosting: { ready: siteReady, results: siteResults },
+      })
+    }
+
+    if (req.url === '/ensure-site-fleet') {
+      const siteResults = await ensureTenantSiteFleet({ tenantsDir, traefikDir })
+      const ready = siteResults.filter((r) => r.ok).length
+      const failed = siteResults.filter((r) => !r.ok).length
+      return json(res, 200, { ok: true, ready, failed, results: siteResults })
     }
 
     const ref = safeRef(body?.project_ref)
     if (!ref) return json(res, 400, { message: 'Invalid project_ref' })
 
     const apply = body?.apply !== false
+
+    if (req.url === '/ensure-site-hosting') {
+      const result = await ensureTenantSiteService({ ref, tenantsDir, traefikDir })
+      return json(res, result.ok ? 200 : 404, result)
+    }
 
     if (req.url === '/repair-traefik') {
       const singleRef = safeRef(body?.project_ref)
@@ -351,6 +396,26 @@ const server = http.createServer(async (req, res) => {
     if (req.url === '/repair-stack') {
       const result = await repairTenantStackRef(ref, body?.reason || 'repair_stack')
       return json(res, result.ok ? 200 : 500, result)
+    }
+
+    if (req.url === '/publish-site') {
+      const files = body?.files
+      if (!files || typeof files !== 'object' || Array.isArray(files)) {
+        return json(res, 400, { message: 'files object is required' })
+      }
+
+      const result = await publishTenantSiteFiles({
+        files,
+        ref,
+        tenantsDir,
+        traefikDir,
+      })
+
+      return json(res, 200, {
+        ok: true,
+        project_ref: ref,
+        ...result,
+      })
     }
 
     if (req.url === '/teardown') {
@@ -394,6 +459,8 @@ const server = http.createServer(async (req, res) => {
 
     const tenantOutDir = path.join(tenantsDir, ref)
     fs.mkdirSync(tenantOutDir, { recursive: true })
+    fs.mkdirSync(path.join(tenantOutDir, 'site'), { recursive: true })
+    fs.writeFileSync(path.join(tenantOutDir, 'site-nginx.conf'), TENANT_SITE_NGINX_CONF, 'utf8')
 
     const composePath = path.join(tenantOutDir, 'docker-compose.yml')
     const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)

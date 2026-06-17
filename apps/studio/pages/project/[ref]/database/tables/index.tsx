@@ -1,4 +1,4 @@
-import { PostgresTable } from '@supabase/postgres-meta'
+import { PostgresTable } from '@indobaseinc/postgres-meta'
 import { useState } from 'react'
 
 import { useParams } from 'common'

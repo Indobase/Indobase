@@ -1,0 +1,27 @@
+import { PostgresMetaResult, PostgresForeignTable } from './types.js';
+export default class PostgresMetaForeignTables {
+    query: (sql: string) => Promise<PostgresMetaResult<any>>;
+    constructor(query: (sql: string) => Promise<PostgresMetaResult<any>>);
+    list(options: {
+        limit?: number;
+        offset?: number;
+        includeColumns: false;
+    }): Promise<PostgresMetaResult<(PostgresForeignTable & {
+        columns: never;
+    })[]>>;
+    list(options?: {
+        limit?: number;
+        offset?: number;
+        includeColumns?: boolean;
+    }): Promise<PostgresMetaResult<(PostgresForeignTable & {
+        columns: unknown[];
+    })[]>>;
+    retrieve({ id }: {
+        id: number;
+    }): Promise<PostgresMetaResult<PostgresForeignTable>>;
+    retrieve({ name, schema, }: {
+        name: string;
+        schema: string;
+    }): Promise<PostgresMetaResult<PostgresForeignTable>>;
+}
+//# sourceMappingURL=PostgresMetaForeignTables.d.ts.map

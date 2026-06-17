@@ -1,6 +1,7 @@
 export * from './auth'
 export * from './configcat'
 export * from './consent-state'
+export * from './dpdp'
 export * from './constants'
 export * from './database-types'
 export * from './enabled-features'

@@ -215,7 +215,7 @@ Note that `LOG` is a higher level than `WARNING` and `ERROR`, so if your level i
 
 ## Logging realtime connections
 
-Realtime doesn't log new WebSocket connections or Channel joins by default. Enable connection logging per client by including an `info` `log_level` parameter when instantiating the Supabase client.
+Realtime doesn't log new WebSocket connections or Channel joins by default. Enable connection logging per client by including an `info` `log_level` parameter when instantiating the Indobase client.
 
 ```javascript
 import { createClient } from 'indobase-js'
@@ -227,12 +227,12 @@ const options = {
     },
   },
 }
-const supabase = createClient('https://xyzcompany.supabase.co', 'publishable-or-anon-key', options)
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'publishable-or-anon-key', options)
 ```
 
 ## Logs Explorer
 
-The [Logs Explorer](/dashboard/project/_/logs-explorer) exposes logs from each part of the Supabase stack as a separate table that can be queried and joined using SQL.
+The [Logs Explorer](/dashboard/project/_/logs-explorer) exposes logs from each part of the Indobase stack as a separate table that can be queried and joined using SQL.
 
 ![Logs Explorer](/docs/img/guides/platform/logs/logs-explorer.png)
 

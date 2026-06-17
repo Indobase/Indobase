@@ -1,4 +1,4 @@
-import type { PostgresTable } from '@supabase/postgres-meta'
+import type { PostgresTable } from '@indobaseinc/postgres-meta'
 import { convertByteaToHex } from 'components/interfaces/TableGridEditor/SidePanelEditor/RowEditor/RowEditor.utils'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useTableEditorQuery } from 'data/table-editor/table-editor-query'

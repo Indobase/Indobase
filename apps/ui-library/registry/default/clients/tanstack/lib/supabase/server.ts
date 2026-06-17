@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@indobaseinc/ssr'
 import { getCookies, setCookie } from '@tanstack/react-start/server'
 
 export function createClient() {

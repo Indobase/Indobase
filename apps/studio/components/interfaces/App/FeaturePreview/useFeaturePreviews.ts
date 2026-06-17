@@ -23,7 +23,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_UNIFIED_LOGS,
       name: 'New Logs interface',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/37234',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/37234',
       enabled: isUnifiedLogsPreviewAvailable,
       isNew: false,
       isPlatformOnly: true,
@@ -32,7 +32,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_BRANCHING_2_0,
       name: 'Branching via dashboard',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/branching-2-0',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/branching-2-0',
       enabled: gitlessBranchingEnabled,
       isNew: false,
       isPlatformOnly: true,
@@ -50,7 +50,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_API_SIDE_PANEL,
       name: 'Project API documentation',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/18038',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/18038',
       enabled: true,
       isNew: false,
       isPlatformOnly: false,
@@ -59,7 +59,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_CLS,
       name: 'Column-level privileges',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/20295',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/20295',
       enabled: true,
       isNew: false,
       isPlatformOnly: false,
@@ -68,7 +68,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_QUEUE_OPERATIONS,
       name: 'Queue table operations',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/42460',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/42460',
       enabled: true,
       isNew: true,
       isPlatformOnly: false,
@@ -77,7 +77,7 @@ export const useFeaturePreviews = (): FeaturePreview[] => {
     {
       key: LOCAL_STORAGE_KEYS.UI_PREVIEW_TABLE_FILTER_BAR,
       name: 'New Table Filter Bar',
-      discussionsUrl: 'https://github.com/orgs/supabase/discussions/42461',
+      discussionsUrl: 'https://github.com/orgs/Indobase/discussions/42461',
       enabled: true,
       isNew: true,
       isPlatformOnly: false,

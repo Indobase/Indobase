@@ -16,7 +16,7 @@ There are several reasons why you might want to add social login to your applica
 
 - **Increased security**: Social login can improve the security of your application by leveraging the security measures and authentication protocols of the social media platforms that your users are logging in with. This can help protect against unauthorized access and account takeovers.
 
-## Set up a social provider with Supabase Auth
+## Set up a social provider with Indobase Auth
 
 Supabase supports a suite of social providers. Follow these guides to configure a social provider for your platform.
 
@@ -49,7 +49,7 @@ Supabase supports a suite of social providers. Follow these guides to configure 
 
 You can use the provider token and provider refresh token returned to make API calls to the OAuth provider. For example, you can use the Google provider token to access Google APIs on behalf of your user.
 
-Supabase Auth does not manage refreshing the provider token for the user. Your application will need to use the provider refresh token to obtain a new provider token. If no provider refresh token is returned, then it could mean one of the following:
+Indobase Auth does not manage refreshing the provider token for the user. Your application will need to use the provider refresh token to obtain a new provider token. If no provider refresh token is returned, then it could mean one of the following:
 
 - The OAuth provider does not return a refresh token
 - Additional scopes need to be specified in order for the OAuth provider to return a refresh token.

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 import { Router } from "itty-router";
 import { json, status, withContent } from "itty-router-extras";
 import { readFrom, writeTo } from "./utils/cache";

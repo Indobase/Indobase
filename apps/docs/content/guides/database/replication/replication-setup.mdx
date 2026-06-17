@@ -90,16 +90,16 @@ for table orders where (created_at > '2024-01-01');
 
 #### Viewing publications in the Dashboard
 
-After creating a publication via SQL, you can view it in the Supabase Dashboard:
+After creating a publication via SQL, you can view it in the Indobase Dashboard:
 
-1. Navigate to **Database** → [Publications](/dashboard/project/_/database/publications) in your Supabase Dashboard
+1. Navigate to **Database** → [Publications](/dashboard/project/_/database/publications) in your Indobase Dashboard
 2. You'll see all your publications listed with their tables
 
 ### Step 2: Enable replication
 
 Before adding destinations, you need to enable replication for your project:
 
-1. Navigate to the [Database](/dashboard/project/_/database/replication) section in your Supabase Dashboard
+1. Navigate to the [Database](/dashboard/project/_/database/replication) section in your Indobase Dashboard
 2. Select the **replication** tab
 3. Click **Enable replication** to activate replication for your project
 
@@ -128,7 +128,7 @@ Follow these steps to configure your destination. The specific configuration dep
 >
 <TabPanel id="analytics-buckets" label="Analytics Buckets">
 
-[Analytics Buckets](/docs/guides/storage/analytics/introduction) are specialized storage buckets in Supabase Storage designed for analytical workloads. They provide S3-compatible storage and use the [Apache Iceberg](https://iceberg.apache.org/) open table format, making your data accessible via standard tools like DuckDB, Spark, and other analytics platforms.
+[Analytics Buckets](/docs/guides/storage/analytics/introduction) are specialized storage buckets in Indobase Storage designed for analytical workloads. They provide S3-compatible storage and use the [Apache Iceberg](https://iceberg.apache.org/) open table format, making your data accessible via standard tools like DuckDB, Spark, and other analytics platforms.
 
 When you replicate to Analytics Buckets, your database changes are automatically written in Iceberg format, creating tables in object storage that you can query for analytics.
 
@@ -136,7 +136,7 @@ When you replicate to Analytics Buckets, your database changes are automatically
 
 First, create an analytics bucket to store your replicated data:
 
-1. Navigate to [Storage](/dashboard/project/_/storage/buckets) → **Analytics** in your Supabase Dashboard
+1. Navigate to [Storage](/dashboard/project/_/storage/buckets) → **Analytics** in your Indobase Dashboard
 2. Click **New bucket**
 
    <Image
@@ -168,7 +168,7 @@ First, create an analytics bucket to store your replicated data:
 
 ##### Step 2: Configure analytics buckets as a destination
 
-1. Navigate to [Database](/dashboard/project/_/database/replication) → **replication** in your Supabase Dashboard
+1. Navigate to [Database](/dashboard/project/_/database/replication) → **replication** in your Indobase Dashboard
 2. Click **Add destination**
 
    <Image
@@ -263,7 +263,7 @@ Before configuring BigQuery as a destination, set up the following in Google Clo
 
 ##### Step 2: Configure BigQuery as a destination
 
-1. Navigate to [Database](/dashboard/project/_/database/replication) → **replication** in your Supabase Dashboard
+1. Navigate to [Database](/dashboard/project/_/database/replication) → **replication** in your Indobase Dashboard
 2. Click **Add destination**
 
    <Image

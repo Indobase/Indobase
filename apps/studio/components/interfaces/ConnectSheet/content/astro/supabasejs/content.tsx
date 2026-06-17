@@ -16,7 +16,7 @@ INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-k
       name: 'src/db/indobase.js',
       language: 'js',
       code: `
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 const indobaseUrl = import.meta.env.INDOBASE_URL;
 const indobaseKey = import.meta.env.INDOBASE_KEY;

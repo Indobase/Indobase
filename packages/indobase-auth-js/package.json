@@ -1,0 +1,17 @@
+{
+  "name": "@indobaseinc/auth-js",
+  "version": "2.97.1-canary.3",
+  "description": "Official SDK for Indobase Auth",
+  "license": "MIT",
+  "author": "Indobase",
+  "main": "dist/main/index.js",
+  "module": "dist/module/index.js",
+  "types": "dist/module/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "tslib": "2.8.1"
+  }
+}

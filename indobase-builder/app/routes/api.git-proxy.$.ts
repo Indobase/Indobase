@@ -1,13 +1,23 @@
 import { json } from '@remix-run/cloudflare';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 
-// Allowed headers to forward to the target server
+import { withSecurity } from '~/lib/security';
+
+const ALLOWED_GIT_PROXY_HOSTS = new Set([
+  'github.com',
+  'www.github.com',
+  'gitlab.com',
+  'www.gitlab.com',
+  'bitbucket.org',
+  'www.bitbucket.org',
+  'codeberg.org',
+  'www.codeberg.org',
+]);
+
 const ALLOW_HEADERS = [
   'accept-encoding',
   'accept-language',
   'accept',
-  'access-control-allow-origin',
-  'authorization',
   'cache-control',
   'connection',
   'content-length',
@@ -17,12 +27,10 @@ const ALLOW_HEADERS = [
   'range',
   'referer',
   'user-agent',
-  'x-authorization',
   'x-http-method-override',
   'x-requested-with',
 ];
 
-// Headers to expose from the target server's response
 const EXPOSE_HEADERS = [
   'accept-ranges',
   'age',
@@ -42,13 +50,12 @@ const EXPOSE_HEADERS = [
   'x-redirected-url',
 ];
 
-// Handle all HTTP methods
-export async function action({ request, params }: ActionFunctionArgs) {
-  return handleProxyRequest(request, params['*']);
-}
-
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  return handleProxyRequest(request, params['*']);
+function normalizeProxyHost(domain: string): string | null {
+  const trimmed = domain.trim().toLowerCase();
+  if (!trimmed || trimmed.includes('/') || trimmed.includes(':')) {
+    return null;
+  }
+  return ALLOWED_GIT_PROXY_HOSTS.has(trimmed) ? trimmed : null;
 }
 
 async function handleProxyRequest(request: Request, path: string | undefined) {
@@ -57,7 +64,6 @@ async function handleProxyRequest(request: Request, path: string | undefined) {
       return json({ error: 'Invalid proxy URL format' }, { status: 400 });
     }
 
-    // Handle CORS preflight request
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 200,
@@ -71,94 +77,85 @@ async function handleProxyRequest(request: Request, path: string | undefined) {
       });
     }
 
-    // Extract domain and remaining path
     const parts = path.match(/([^\/]+)\/?(.*)/);
-
     if (!parts) {
       return json({ error: 'Invalid path format' }, { status: 400 });
     }
 
-    const domain = parts[1];
-    const remainingPath = parts[2] || '';
+    const domain = normalizeProxyHost(parts[1]);
+    if (!domain) {
+      return json({ error: 'Git host is not allowed' }, { status: 403 });
+    }
 
-    // Reconstruct the target URL with query parameters
+    const remainingPath = parts[2] || '';
     const url = new URL(request.url);
     const targetURL = `https://${domain}/${remainingPath}${url.search}`;
 
-    console.log('Target URL:', targetURL);
-
-    // Filter and prepare headers
     const headers = new Headers();
-
-    // Only forward allowed headers
     for (const header of ALLOW_HEADERS) {
       if (request.headers.has(header)) {
         headers.set(header, request.headers.get(header)!);
       }
     }
 
-    // Set the host header
+    const authorization = request.headers.get('authorization') ?? request.headers.get('x-authorization');
+    if (authorization) {
+      headers.set('Authorization', authorization);
+    }
+
     headers.set('Host', domain);
 
-    // Set Git user agent if not already present
     if (!headers.has('user-agent') || !headers.get('user-agent')?.startsWith('git/')) {
       headers.set('User-Agent', 'git/@isomorphic-git/cors-proxy');
     }
 
-    console.log('Request headers:', Object.fromEntries(headers.entries()));
-
-    // Prepare fetch options
     const fetchOptions: RequestInit = {
       method: request.method,
       headers,
-      redirect: 'follow',
+      redirect: 'manual',
     };
 
-    // Add body for non-GET/HEAD requests
     if (!['GET', 'HEAD'].includes(request.method)) {
       fetchOptions.body = request.body;
       fetchOptions.duplex = 'half';
-
-      /*
-       * Note: duplex property is removed to ensure TypeScript compatibility
-       * across different environments and versions
-       */
     }
 
-    // Forward the request to the target URL
     const response = await fetch(targetURL, fetchOptions);
 
-    console.log('Response status:', response.status);
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (location) {
+        try {
+          const redirectHost = new URL(location, targetURL).hostname.toLowerCase();
+          if (!ALLOWED_GIT_PROXY_HOSTS.has(redirectHost)) {
+            return json({ error: 'Redirect target is not allowed' }, { status: 403 });
+          }
+        } catch {
+          return json({ error: 'Invalid redirect target' }, { status: 403 });
+        }
+      }
+    }
 
-    // Create response headers
     const responseHeaders = new Headers();
-
-    // Add CORS headers
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', ALLOW_HEADERS.join(', '));
     responseHeaders.set('Access-Control-Expose-Headers', EXPOSE_HEADERS.join(', '));
 
-    // Copy exposed headers from the target response
     for (const header of EXPOSE_HEADERS) {
-      // Skip content-length as we'll use the original response's content-length
-      if (header === 'content-length') {
-        continue;
-      }
-
+      if (header === 'content-length') continue;
       if (response.headers.has(header)) {
         responseHeaders.set(header, response.headers.get(header)!);
       }
     }
 
-    // If the response was redirected, add the x-redirected-url header
-    if (response.redirected) {
-      responseHeaders.set('x-redirected-url', response.url);
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (location) {
+        responseHeaders.set('x-redirected-url', location);
+      }
     }
 
-    console.log('Response headers:', Object.fromEntries(responseHeaders.entries()));
-
-    // Return the response with the target's body stream piped directly
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -170,9 +167,15 @@ async function handleProxyRequest(request: Request, path: string | undefined) {
       {
         error: 'Proxy error',
         message: error instanceof Error ? error.message : 'Unknown error',
-        url: path ? `https://${path}` : 'Invalid URL',
       },
       { status: 500 },
     );
   }
 }
+
+async function gitProxyHandler({ request, params }: ActionFunctionArgs | LoaderFunctionArgs) {
+  return handleProxyRequest(request, params['*']);
+}
+
+export const action = withSecurity(gitProxyHandler, { requireAuth: true });
+export const loader = withSecurity(gitProxyHandler, { requireAuth: true });

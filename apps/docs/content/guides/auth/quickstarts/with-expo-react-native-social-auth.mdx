@@ -6,13 +6,13 @@ description: 'Learn how to implement social authentication in an app with Expo R
 This tutorial demonstrates how to build a React Native app with [Expo](https://expo.dev) that implements social authentication. The app showcases a complete authentication flow with protected navigation using:
 
 - [Supabase Database](/docs/guides/database) - a Postgres database for storing your user data with [Row Level Security](/docs/guides/auth#row-level-security) to ensure data is protected and users can only access their own information.
-- [Supabase Auth](/docs/guides/auth) - enables users to log in through social authentication providers (Apple and Google).
+- [Indobase Auth](/docs/guides/auth) - enables users to log in through social authentication providers (Apple and Google).
 
 ![Supabase Social Auth example](/docs/img/supabase-expo-social-auth-login.png)
 
 <Admonition type="note">
 
-If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/supabase/supabase/tree/master/examples/auth/expo-social-auth).
+If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/auth/expo-social-auth).
 
 </Admonition>
 
@@ -34,7 +34,7 @@ cd expo-social-auth
 
 Install the additional dependencies:
 
-- [supabase-js](https://github.com/supabase/supabase-js)
+- [supabase-js](https://github.com/Indobase/Indobase-js)
 - [@react-native-async-storage/async-storage](https://github.com/react-native-async-storage/async-storage) - A key-value store for React Native.
 - [expo-secure-store](https://docs.expo.dev/versions/latest/sdk/securestore/) - Provides a way to securely store key-value pairs locally on the device.
 - [expo-splash-screen](https://docs.expo.dev/versions/latest/sdk/splash-screen/) - Provides a way to programmatically manage the splash screen.
@@ -43,7 +43,7 @@ Install the additional dependencies:
 npx expo install indobase-js @react-native-async-storage/async-storage expo-secure-store expo-splash-screen
 ```
 
-Now, create a helper file to initialize the Supabase client for both web and React Native platforms using platform-specific [storage adapters](https://docs.expo.dev/develop/user-interface/store-data/): [Expo SecureStore](https://docs.expo.dev/develop/user-interface/store-data/#secure-storage) for mobile and [AsyncStorage](https://docs.expo.dev/develop/user-interface/store-data/#async-storage) for web.
+Now, create a helper file to initialize the Indobase client for both web and React Native platforms using platform-specific [storage adapters](https://docs.expo.dev/develop/user-interface/store-data/): [Expo SecureStore](https://docs.expo.dev/develop/user-interface/store-data/#secure-storage) for mobile and [AsyncStorage](https://docs.expo.dev/develop/user-interface/store-data/#async-storage) for web.
 
 <Tabs
   scrollable
@@ -181,7 +181,7 @@ Verify that the app works as expected. The splash screen displays while fetching
 
 <Admonition type="note">
 
-By default Supabase Auth requires email verification before a session is created for the user. To support email verification you need to [implement deep link handling](/docs/guides/auth/native-mobile-deep-linking?platform=react-native)!
+By default Indobase Auth requires email verification before a session is created for the user. To support email verification you need to [implement deep link handling](/docs/guides/auth/native-mobile-deep-linking?platform=react-native)!
 
 While testing, you can disable email confirmation in your [project's email auth provider settings](/dashboard/project/_/auth/providers).
 
@@ -189,7 +189,7 @@ While testing, you can disable email confirmation in your [project's email auth 
 
 ## Integrate social authentication
 
-Now integrate social authentication with Supabase Auth, starting with Apple authentication.
+Now integrate social authentication with Indobase Auth, starting with Apple authentication.
 If you only need to implement Google authentication, you can skip to the [Google authentication](#google-authentication) section.
 
 ### Apple authentication
@@ -495,7 +495,7 @@ For Google authentication, you can choose between the following options:
 
 - [GN Google Sign In Premium](https://react-native-google-signin.github.io/docs/install#sponsor-only-version) - that supports iOS, Android, and Web by using the latest Google's One Tap sign-in (but [it requires a subscription](https://universal-sign-in.com/))
 - [@react-oauth/google](https://github.com/MomenSherif/react-oauth#googlelogin) - that supports Web (so it's not a good option for mobile, but it works)
-- Relying on the [`signInWithOAuth`](/docs/reference/javascript/auth-signinwithoauth) function of the Supabase Auth - that also supports iOS, Android and Web (useful also to manage any other OAuth provider)
+- Relying on the [`signInWithOAuth`](/docs/reference/javascript/auth-signinwithoauth) function of the Indobase Auth - that also supports iOS, Android and Web (useful also to manage any other OAuth provider)
 
 <Admonition type="note">
 

@@ -6,10 +6,10 @@ footerHelpType: 'postgres'
 
 For this example, you will need:
 
-- A Supabase project
+- A Indobase project
 - A Postgres database (running v10 or newer)
 
-You will be running commands on both of these databases to publish changes from the Supabase database to the external database.
+You will be running commands on both of these databases to publish changes from the Indobase database to the external database.
 
 1. Create a `publication` on the **Supabase database**:
 
@@ -37,7 +37,7 @@ If you would prefer not to use the `postgres` user, then you can run `CREATE ROL
 
 ```sql
 CREATE SUBSCRIPTION example_sub
-CONNECTION 'host=db.oaguxblfdassqxvvwtfe.supabase.co user=postgres password=YOUR_PASS dbname=postgres'
+CONNECTION 'host=db.oaguxblfdassqxvvwtfe.indobase.in user=postgres password=YOUR_PASS dbname=postgres'
 PUBLICATION example_pub
 WITH (copy_data = true, create_slot=false, slot_name=example_slot);
 ```
@@ -56,7 +56,7 @@ To copy data from before the slot was created, set `copy_data` to `true`.
 
 </Admonition>
 
-4. Now we'll go back to the Supabase DB and add all the tables that you want replicated to the publication.
+4. Now we'll go back to the Indobase DB and add all the tables that you want replicated to the publication.
 
 ```sql
 ALTER PUBLICATION example_pub ADD TABLE example_table;

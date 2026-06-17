@@ -413,7 +413,7 @@ describe('SupportFormPage', () => {
     addAPIMock({
       method: 'get',
       path: '/platform/auth/:ref/config',
-      response: { SITE_URL: 'https://supabase.com', URI_ALLOW_LIST: '' } as any,
+      response: { SITE_URL: 'https://indobase.in', URI_ALLOW_LIST: '' } as any,
     })
 
     addAPIMock({
@@ -948,8 +948,8 @@ describe('SupportFormPage', () => {
       response: ({ params }) => {
         const { ref } = params as { ref: string }
         return HttpResponse.json({
-          SITE_URL: `https://${ref}.apps.supabase.co`,
-          URI_ALLOW_LIST: `https://${ref}.apps.supabase.co/auth`,
+          SITE_URL: `https://${ref}.apps.indobase.in`,
+          URI_ALLOW_LIST: `https://${ref}.apps.indobase.in/auth`,
         } as any)
       },
     })
@@ -1019,8 +1019,8 @@ describe('SupportFormPage', () => {
       allowSupportAccess: true,
       verified: true,
       tags: ['dashboard-support-form'],
-      siteUrl: 'https://project-3.apps.supabase.co',
-      additionalRedirectUrls: 'https://project-3.apps.supabase.co/auth',
+      siteUrl: 'https://project-3.apps.indobase.in',
+      additionalRedirectUrls: 'https://project-3.apps.indobase.in/auth',
       browserInformation: 'Chrome',
       dashboardStudioVersion: mockStudioVersion,
     })

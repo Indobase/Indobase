@@ -38,7 +38,7 @@ You can use the Database Performance and Security Advisors to check your databas
 
 ## Using the Advisors
 
-In the dashboard, navigate to [Security Advisor](https://supabase.com/dashboard/project/_/database/security-advisor) and [Performance Advisor](https://supabase.com/dashboard/project/_/database/performance-advisor) under Database. The advisors run automatically. You can also manually rerun them after you've resolved issues.
+In the dashboard, navigate to [Security Advisor](https://indobase.in/dashboard/project/_/database/security-advisor) and [Performance Advisor](https://indobase.in/dashboard/project/_/database/performance-advisor) under Database. The advisors run automatically. You can also manually rerun them after you've resolved issues.
 `.trim()
 
 const getBasename = (path: string) => path.split('/').at(-1)!.replace(/\.md$/, '')

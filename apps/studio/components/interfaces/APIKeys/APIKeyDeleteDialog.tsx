@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Trash2 } from 'lucide-react'
 
 import { DropdownMenuItemTooltip } from 'components/ui/DropdownMenuItemTooltip'

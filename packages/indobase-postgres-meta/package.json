@@ -1,0 +1,45 @@
+{
+  "name": "@indobaseinc/postgres-meta",
+  "version": "0.64.6",
+  "description": "A RESTful API for managing your Postgres.",
+  "license": "MIT",
+  "author": "Indobase",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-postgres-meta"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js",
+      "default": "./dist/lib/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/server.d.ts",
+      "import": "./dist/server/server.js",
+      "default": "./dist/server/server.js"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "node -e \"require('fs').accessSync('dist/lib/index.js')\""
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.25.1",
+    "pg": "^8.7.1",
+    "pg-format": "^1.0.4",
+    "pgsql-parser": "^13.3.0",
+    "postgres-array": "^3.0.1",
+    "prettier": "^2.6.0",
+    "prettier-plugin-sql": "^0.13.0"
+  }
+}

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { isEqual } from 'lodash'
 import { AlertCircle, CornerDownLeft, Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'

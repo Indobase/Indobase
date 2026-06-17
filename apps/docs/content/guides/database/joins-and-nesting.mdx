@@ -205,7 +205,7 @@ const Query = `
 <TabPanel id="url" label="URL">
 
 ```bash
-GET https://[REF].supabase.co/rest/v1/orchestral_sections?select=id,name,instruments(id,name)
+GET https://[REF].indobase.in/rest/v1/orchestral_sections?select=id,name,instruments(id,name)
 ```
 
 </TabPanel>
@@ -390,7 +390,7 @@ data = (
 <TabPanel id="url" label="URL">
 
 ```bash
-GET https://[REF].supabase.co/rest/v1/orchestral_sections?select=id,name,instruments(id,name)&instruments.name=eq.flute
+GET https://[REF].indobase.in/rest/v1/orchestral_sections?select=id,name,instruments(id,name)&instruments.name=eq.flute
 ```
 
 </TabPanel>
@@ -518,7 +518,7 @@ data = (
 <TabPanel id="url" label="URL">
 
 ```bash
-GET https://[REF].supabase.co/rest/v1/orchestral_sections?select=id,name,instruments!inner(id,name)&instruments.name=eq.flute
+GET https://[REF].indobase.in/rest/v1/orchestral_sections?select=id,name,instruments!inner(id,name)&instruments.name=eq.flute
 ```
 
 </TabPanel>
@@ -636,7 +636,7 @@ data = (
 <TabPanel id="url" label="URL">
 
 ```bash
-GET https://[REF].supabase.co/rest/v1/instruments?select=id,name,orchestral_sections!inner(id,name)&orchestral_sections.name=eq.woodwinds
+GET https://[REF].indobase.in/rest/v1/instruments?select=id,name,orchestral_sections!inner(id,name)&orchestral_sections.name=eq.woodwinds
 ```
 
 </TabPanel>
@@ -800,7 +800,7 @@ const Query = `
 <TabPanel id="url" label="URL">
 
 ```bash
-GET https://[REF].supabase.co/rest/v1/teams?select=id,team_name,users(id,name)
+GET https://[REF].indobase.in/rest/v1/teams?select=id,team_name,users(id,name)
 ```
 
 </TabPanel>

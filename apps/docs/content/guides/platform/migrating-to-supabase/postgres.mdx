@@ -4,7 +4,7 @@ description: 'Migrate your existing Postgres database to Supabase.'
 subtitle: 'Migrate your existing Postgres database to Supabase.'
 ---
 
-This is a guide for migrating your Postgres database to [Supabase](https://supabase.com).
+This is a guide for migrating your Postgres database to [Supabase](https://indobase.in).
 Supabase is a robust and open-source platform. Supabase provides all the backend features developers need to build a product: a Postgres database, authentication, instant APIs, edge functions, real-time subscriptions, and storage. Postgres is the core of Supabase—for example, you can use row-level security, and there are more than 40 Postgres extensions available.
 
 This guide demonstrates how to migrate your Postgres database to Supabase to get the most out of Postgres while gaining access to all the features you need to build a project.
@@ -103,15 +103,15 @@ sudo apt install Postgres-client-17 tmux htop iotop moreutils
 tmux a -t migration || tmux new -s migration
 ```
 
-### Step 2: Prepare Supabase project
+### Step 2: Prepare Indobase project
 
-1. Create a Supabase project at [supabase.com/dashboard](/dashboard)
+1. Create a Indobase project at [indobase.in/dashboard](/dashboard)
 2. Note your database password
 3. Install required extensions via SQL or Dashboard
 4. Get your connection string:
    - Go to **Project → Settings → Database → Connection Pooling**
    - Select **Session pooler** (port 5432) and copy the connection string
-   - Connection format: `Postgres://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`
+   - Connection format: `Postgres://postgres.[ref]:[password]@[PROJECT-REF].indobase.in:5432/postgres`
 
 **Important Notes**:
 
@@ -200,7 +200,7 @@ Run `pg_dump --help` for a full list of options.
 
 ```bash
 # Set Supabase connection (Session Pooler on port 5432 or direct connection)
-export SUPABASE_DB_URL="Postgres://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+export INDOBASE_DB_URL="Postgres://postgres.[ref]:[password]@[PROJECT-REF].indobase.in:5432/postgres"
 
 # Determine restore parallelization based on your Supabase compute size:
 # Free tier: 2 cores → use -j 2
@@ -327,7 +327,7 @@ Edit Postgres configuration files:
 
 ```bash
 # Set Supabase connection (Session Pooler on port 5432 or direct connection)
-export SUPABASE_DB_URL="Postgres://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+export INDOBASE_DB_URL="Postgres://postgres.[ref]:[password]@[PROJECT-REF].indobase.in:5432/postgres"
 
 # Set WAL level to logical
 wal_level = logical
@@ -583,7 +583,7 @@ For detailed restrictions, see [Postgres Logical Replication Restrictions](https
 ## Getting help
 
 - For databases > 150 GB: [Contact Supabase support](/dashboard/support/new) before starting
-- [Supabase Dashboard Support](/dashboard/support/new)
-- [Supabase Discord](https://discord.supabase.com)
+- [Indobase Dashboard Support](/dashboard/support/new)
+- [Supabase Discord](https://discord.indobase.in)
 - [Postgres Roles and Privileges Guide](/blog/postgres-roles-and-privileges)
 - [Row Level Security Guide](/docs/guides/database/postgres/row-level-security)

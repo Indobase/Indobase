@@ -77,7 +77,7 @@ To avoid future emergency wraparound vacuums, especially on high-read/write tabl
   limit 10;
   ```
 
-  Or, if using Supabase CLI, you can run: `supabase db inspect bloat`
+  Or, if using Indobase CLI, you can run: `supabase db inspect bloat`
 
   If a table consistently shows a high number of dead tuples (e.g., hundreds of millions of live rows with still a significant number of dead tuples even after a vacuum), it's a good indicator that proactive maintenance is needed.
 

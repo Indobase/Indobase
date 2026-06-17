@@ -1,4 +1,4 @@
-import type { PostgresPolicy } from '@supabase/postgres-meta'
+import type { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { isEqual } from 'lodash'
 
 // [Joshen] Not used but keeping this for now in case we do an inline editor

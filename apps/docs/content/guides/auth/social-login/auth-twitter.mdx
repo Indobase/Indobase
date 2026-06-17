@@ -1,10 +1,10 @@
 ---
 id: 'auth-twitter'
 title: 'Login with X / Twitter'
-description: 'Add X / Twitter OAuth to your Supabase project'
+description: 'Add X / Twitter OAuth to your Indobase project'
 ---
 
-To enable X / Twitter Auth for your project, you need to set up an X OAuth 2.0 application and add the application credentials in the Supabase Dashboard.
+To enable X / Twitter Auth for your project, you need to set up an X OAuth 2.0 application and add the application credentials in the Indobase Dashboard.
 
 ## Overview
 
@@ -19,7 +19,7 @@ Setting up X / Twitter logins for your application consists of 3 parts:
 
 - Create and configure an X Project and App on the [X Developer Dashboard](https://developer.x.com/en/portal/dashboard).
 - Add your X OAuth 2.0 `Client ID` and `Client Secret` to your [Supabase Project](/dashboard).
-- Add the login code to your [Supabase JS Client App](https://github.com/supabase/supabase-js).
+- Add the login code to your [Supabase JS Client App](https://github.com/Indobase/Indobase-js).
 
 ## Access your X developer account
 
@@ -55,19 +55,19 @@ Setting up X / Twitter logins for your application consists of 3 parts:
   - In the confirmation modal, click `Yes, regenerate`.
   - Copy and save your **Client Secret**.
 
-## Enter your X credentials into your Supabase project
+## Enter your X credentials into your Indobase project
 
 <$Partial path="social_provider_settings_supabase.mdx" variables={{ "provider": "X / Twitter (OAuth 2.0)" }} />
 
 You can also configure the X / Twitter (OAuth 2.0) auth provider using the Management API:
 
 ```bash
-# Get your access token from https://supabase.com/dashboard/account/tokens
+# Get your access token from https://indobase.in/dashboard/account/tokens
 export SUPABASE_ACCESS_TOKEN="your-access-token"
 export PROJECT_REF="your-project-ref"
 
 # Configure X / Twitter (OAuth 2.0) auth provider
-curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+curl -X PATCH "https://api.indobase.in/v1/projects/$PROJECT_REF/config/auth" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -95,7 +95,7 @@ When your user signs in, call [`signInWithOAuth()`](/docs/reference/javascript/a
 ```js
 import { createClient } from 'indobase-js'
 const supabase = createClient(
-  'https://your-project-id.supabase.co',
+  'https://your-project-id.indobase.in',
   'sb_publishable_... or anon key'
 )
 
@@ -168,7 +168,7 @@ When your user signs out, call [signOut()](/docs/reference/javascript/auth-signo
 ```js
 import { createClient } from 'indobase-js'
 const supabase = createClient(
-  'https://your-project-id.supabase.co',
+  'https://your-project-id.indobase.in',
   'sb_publishable_... or anon key'
 )
 
@@ -220,6 +220,6 @@ suspend fun signOut() {
 
 ## Resources
 
-- [Supabase - Get started for free](https://supabase.com)
-- [Supabase JS Client](https://github.com/supabase/supabase-js)
+- [Supabase - Get started for free](https://indobase.in)
+- [Supabase JS Client](https://github.com/Indobase/Indobase-js)
 - [X Developer Dashboard](https://developer.x.com/en/portal/dashboard)

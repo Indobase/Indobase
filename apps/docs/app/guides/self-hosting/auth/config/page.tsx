@@ -6,7 +6,7 @@ import specAuthV1 from '~/spec/gotrue_v1_config.yaml' with { type: 'yml' }
 
 const meta = {
   title: 'Auth Self-hosting Config',
-  description: 'How to configure and deploy Supabase Auth.',
+  description: 'How to configure and deploy Indobase Auth.',
 }
 
 const generateMetadata = genGuideMeta(() => ({

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { DocsButton } from 'components/ui/DocsButton'
 import { getKeys, useAPIKeysQuery } from 'data/api-keys/api-keys-query'
@@ -175,7 +175,7 @@ values
     '{${metadataKeys.map((key) => `"${key}": "${key} value"`).join(', ')}}'::jsonb
   );`
 
-  const jsCode = `import { createClient } from 'indobase-js'
+  const jsCode = `import { createClient } from '@indobaseinc/indobase-js'
 
 // Adding vector data requires a secret or service role key 
 // This code SHOULD NOT be run on the client side as you will be vulnerable to a data leak

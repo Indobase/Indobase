@@ -8,7 +8,7 @@ description: 'Add an additional layer of security to your apps with TOTP multi-f
 
 App Authenticator (TOTP) multi-factor authentication involves a timed one-time password generated from an authenticator app in the control of users. It uses a QR Code which to transmit a shared secret used to generate a One Time Password. A user can scan a QR code with their phone to capture a shared secret required for subsequent authentication.
 
-The use of a QR code was [initially introduced by Google Authenticator](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) but is now universally accepted by all authenticator apps. The QR code has an alternate representation in URI form following the `otpauth` scheme such as: `otpauth://totp/supabase:alice@supabase.com?secret=<secret>&issuer=supabase` which a user can manually input in cases where there is difficulty rendering a QR Code.
+The use of a QR code was [initially introduced by Google Authenticator](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) but is now universally accepted by all authenticator apps. The QR code has an alternate representation in URI form following the `otpauth` scheme such as: `otpauth://totp/indobase:alice@supabase.com?secret=<secret>&issuer=indobase` which a user can manually input in cases where there is difficulty rendering a QR Code.
 
 Below is a flow chart illustrating how the Enrollment, Challenge, and Verify APIs work in the context of MFA (TOTP).
 
@@ -23,7 +23,7 @@ Below is a flow chart illustrating how the Enrollment, Challenge, and Verify API
   height={150}
 />
 
-[TOTP MFA API](/docs/reference/javascript/auth-mfa-api) is free to use and is enabled on all Supabase projects by default.
+[TOTP MFA API](/docs/reference/javascript/auth-mfa-api) is free to use and is enabled on all Indobase projects by default.
 
 ### Add enrollment flow
 
@@ -45,7 +45,7 @@ Enrolling a factor for use with MFA takes three steps:
    If they are unable to scan the QR code, show the secret in plain text which
    they can type or paste into their authenticator app.
 2. Calling the `supabase.auth.mfa.challenge()` API.
-   This prepares Supabase Auth to accept a verification code from the user
+   This prepares Indobase Auth to accept a verification code from the user
    and returns a challenge ID. In the case of Phone MFA this step also sends the verification code to the user.
 3. Calling the `supabase.auth.mfa.verify()` API.
    This verifies that the user has indeed added the secret from step (1) into
@@ -130,7 +130,7 @@ export function EnrollMFA({
 
       setFactorId(data.id)
 
-      // Supabase Auth returns an SVG QR code which you can convert into a data
+      // Indobase Auth returns an SVG QR code which you can convert into a data
       // URL that you can place in an <img> tag.
       setQR(data.totp.qr_code)
     })()

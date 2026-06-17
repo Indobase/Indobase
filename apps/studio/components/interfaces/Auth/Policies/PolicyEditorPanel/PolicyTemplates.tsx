@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, Input, cn } from 'ui'

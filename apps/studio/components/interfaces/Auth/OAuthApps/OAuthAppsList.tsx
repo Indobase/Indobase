@@ -1,4 +1,4 @@
-import type { OAuthClient } from 'indobase-js'
+import type { OAuthClient } from '@indobaseinc/indobase-js'
 import { useParams } from 'common'
 import AlertError from 'components/ui/AlertError'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'

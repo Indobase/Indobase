@@ -1,6 +1,6 @@
-# Supabase Auth Send Email Hook with React Email and Resend
+# Indobase Auth Send Email Hook with React Email and Resend
 
-- [Supabase docs](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook?queryGroups=language&language=http)
+- [Supabase docs](https://indobase.in/docs/guides/auth/auth-hooks/send-email-hook?queryGroups=language&language=http)
 - [React Email Docs](https://react.email/docs/introduction)
 - [Create a Resend account](https://resend.com/)
 

@@ -102,7 +102,7 @@ const VercelIntegration: NextPageWithLayout = () => {
           ...vars.connection,
           metadata: {
             ...vars.connection.metadata,
-            supabaseConfig: {
+            indobaseConfig: {
               projectEnvVars: {
                 write: true,
               },

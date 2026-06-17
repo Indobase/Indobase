@@ -1,5 +1,5 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
-import { JwtSecretUpdateStatus } from '@supabase/shared-types/out/events'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
+import { JwtSecretUpdateStatus } from '@indobaseinc/shared-types/out/events'
 import { useParams } from 'common'
 import { AlertError } from 'components/ui/AlertError'
 import { InlineLink } from 'components/ui/InlineLink'

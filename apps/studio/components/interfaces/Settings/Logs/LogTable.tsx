@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useParams } from 'common'
 import { isEqual } from 'lodash'
 import { Copy, Eye, EyeOff, Play } from 'lucide-react'

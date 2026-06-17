@@ -1,11 +1,11 @@
 export const siteConfig = {
-  name: 'Supabase Design System',
-  url: 'https://supabase.com/design-system',
-  ogImage: 'https://supabase.com/design-system/og.jpg',
-  description: 'Design System of Supabase',
+  name: 'Indobase Design System',
+  url: 'https://indobase.in/design-system',
+  ogImage: 'https://indobase.in/design-system/og.jpg',
+  description: 'Design system for Indobase',
   links: {
-    twitter: 'https://twitter.com/supabase',
-    github: 'https://github.com/supabase/supabase/tree/master/apps/design-system',
+    twitter: 'https://twitter.com/indobase',
+    github: 'https://github.com/Indobase/Indobase/tree/main/apps/design-system',
     credits: {
       radix: 'https://www.radix-ui.com/themes/docs/overview/getting-started',
       shadcn: 'https://ui.shadcn.com/',

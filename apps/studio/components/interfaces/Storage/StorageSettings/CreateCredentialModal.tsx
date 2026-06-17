@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { FormField } from '@ui/components/shadcn/ui/form'
 import { useParams } from 'common'
 import { useProjectStorageConfigQuery } from 'data/config/project-storage-config-query'

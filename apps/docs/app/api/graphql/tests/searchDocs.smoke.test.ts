@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-const GRAPHQL_URL = 'https://supabase.com/docs/api/graphql'
+const GRAPHQL_URL = 'https://indobase.in/docs/api/graphql'
 // For dev testing: comment out above and uncomment below
 // const GRAPHQL_URL = 'http://localhost:3001/docs/api/graphql'
 

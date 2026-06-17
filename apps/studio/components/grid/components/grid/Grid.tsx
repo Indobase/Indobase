@@ -1,4 +1,4 @@
-import type { PostgresColumn } from '@supabase/postgres-meta'
+import type { PostgresColumn } from '@indobaseinc/postgres-meta'
 import { useTableFilterNew } from 'components/grid/hooks/useTableFilterNew'
 import { handleCopyCell } from 'components/grid/SupabaseGrid.utils'
 import { useIsTableFilterBarEnabled } from 'components/interfaces/App/FeaturePreview/FeaturePreviewContext'

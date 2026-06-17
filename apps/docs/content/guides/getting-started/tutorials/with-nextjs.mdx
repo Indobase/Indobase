@@ -10,7 +10,7 @@ description: 'Learn how to use Supabase in your Next.js App.'
 
 <Admonition type="note">
 
-If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/supabase/supabase/tree/master/examples/user-management/nextjs-user-management).
+If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/user-management/nextjs-user-management).
 
 </Admonition>
 
@@ -29,7 +29,7 @@ npx create-next-app@latest --ts --use-npm supabase-nextjs
 cd supabase-nextjs
 ```
 
-Then install the Supabase client library: [supabase-js](https://github.com/supabase/supabase-js)
+Then install the Indobase client library: [supabase-js](https://github.com/Indobase/Indobase-js)
 
 ```bash
 npm install indobase-js
@@ -47,19 +47,19 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 An optional step is to update the CSS file `app/globals.css` to make the app look nice.
 You can find the full contents of this file [in the example repository](https://raw.githubusercontent.com/supabase/supabase/master/examples/user-management/nextjs-user-management/app/globals.css).
 
-### Supabase Server-Side Auth
+### Indobase Server-Side Auth
 
 Next.js is a highly versatile framework offering pre-rendering at build time (SSG), server-side rendering at request time (SSR), API routes, and proxy edge-functions.
 
-To better integrate with the framework, we've created the `@supabase/ssr` package for Server-Side Auth. It has all the functionalities to quickly configure your Supabase project to use cookies for storing user sessions. Read the [Next.js Server-Side Auth guide](/docs/guides/auth/server-side/nextjs) for more information.
+To better integrate with the framework, we've created the `@indobaseinc/ssr` package for Server-Side Auth. It has all the functionalities to quickly configure your Indobase project to use cookies for storing user sessions. Read the [Next.js Server-Side Auth guide](/docs/guides/auth/server-side/nextjs) for more information.
 
 Install the package for Next.js.
 
 ```bash
-npm install @supabase/ssr
+npm install @indobaseinc/ssr
 ```
 
-### Supabase utilities
+### Indobase utilities
 
 There are two different types of clients in Supabase:
 
@@ -104,7 +104,7 @@ Always use `supabase.auth.getUser()` to protect pages and user data.
 
 _Never_ trust `supabase.auth.getSession()` inside server code such as proxy. It isn't guaranteed to revalidate the Auth token.
 
-It's safe to trust `getUser()` because it sends a request to the Supabase Auth server every time to revalidate the Auth token.
+It's safe to trust `getUser()` because it sends a request to the Indobase Auth server every time to revalidate the Auth token.
 
 </Admonition>
 
@@ -196,7 +196,7 @@ As you are working in a server-side rendering (SSR) environment, you need to cre
 
 The code performs the following steps:
 
-- Retrieves the code sent back from the Supabase Auth server using the `token_hash` query parameter.
+- Retrieves the code sent back from the Indobase Auth server using the `token_hash` query parameter.
 - Exchanges this code for a session, which you store in your chosen storage mechanism (in this case, cookies).
 - Finally, redirects the user to the `account` page.
 
@@ -250,7 +250,7 @@ When you enter your email and password, you will receive an email with the title
 
 ## Bonus: Profile photos
 
-Every Supabase project is configured with [Storage](/docs/guides/storage) for managing large files like
+Every Indobase project is configured with [Storage](/docs/guides/storage) for managing large files like
 photos and videos.
 
 ### Create an upload widget
@@ -277,7 +277,7 @@ At this stage you have a fully functional application!
 
 ## See also
 
-- See the complete [example on GitHub](https://github.com/supabase/supabase/tree/master/examples/user-management/nextjs-user-management) and deploy it to Vercel
+- See the complete [example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/user-management/nextjs-user-management) and deploy it to Vercel
 - [Build a Twitter Clone with the Next.js App Router and Supabase - free egghead course](https://egghead.io/courses/build-a-twitter-clone-with-the-next-js-app-router-and-supabase-19bebadb)
 - Explore the [pre-built Auth components](/ui/docs/nextjs/password-based-auth)
 - Explore the [Supabase Cache Helpers](https://github.com/psteinroe/supabase-cache-helpers)

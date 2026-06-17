@@ -1,10 +1,10 @@
-# Supabase Nuxt User Management
+# Indobase Nuxt User Management
 
 This repo is a quick sample of how you can get started building apps using Nuxt 3 and Supabase. You can find a step by step guide of how to build out this app in the [Quickstart: Nuxt guide](https://supabase.io/docs/guides/with-nuxt-3).
 
 This repo will demonstrate how to:
 
-- sign users in with Supabase Auth using [magic link](https://supabase.com/docs/reference/dart/auth-signinwithotp)
+- sign users in with Supabase Auth using [magic link](https://indobase.in/docs/reference/dart/auth-signinwithotp)
 - store and retrieve data with [Supabase database](https://supabase.io/docs/guides/database)
 - store image files in [Supabase storage](https://supabase.io/docs/guides/storage)
 

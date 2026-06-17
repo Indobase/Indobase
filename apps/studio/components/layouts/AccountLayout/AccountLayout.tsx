@@ -61,6 +61,12 @@ const AccountLayout = ({ children, title }: PropsWithChildren<AccountLayoutProps
                   isActive: currentPath === '/account/me',
                 },
                 {
+                  key: 'privacy',
+                  label: 'Data & privacy',
+                  href: '/account/privacy',
+                  isActive: currentPath === '/account/privacy',
+                },
+                {
                   key: 'access-tokens',
                   label: 'Access Tokens',
                   href: '/account/tokens',

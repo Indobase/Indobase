@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { differenceInDays } from 'date-fns'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { MoreVertical, TrashIcon } from 'lucide-react'

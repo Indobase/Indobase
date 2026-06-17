@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Check, Webhook } from 'lucide-react'
 
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'

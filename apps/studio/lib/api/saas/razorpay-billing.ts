@@ -193,6 +193,107 @@ export async function cancelRazorpaySubscription(subscriptionId: string): Promis
   })
 }
 
+type RazorpaySubscription = {
+  id: string
+  status: string
+  plan_id: string
+  notes?: Record<string, string>
+  customer_id?: string
+}
+
+export async function fetchRazorpaySubscription(subscriptionId: string): Promise<RazorpaySubscription> {
+  return razorpayRequest<RazorpaySubscription>(`/subscriptions/${subscriptionId}`)
+}
+
+export function isPaidRazorpaySubscriptionStatus(status: string): boolean {
+  const normalized = status.trim().toLowerCase()
+  return normalized === 'active' || normalized === 'authenticated'
+}
+
+const PAID_PLAN_IDS: PlanId[] = ['pro', 'team']
+
+function isPaidPlanId(planId: PlanId): boolean {
+  return PAID_PLAN_IDS.includes(planId)
+}
+
+async function getOrganizationBillingContext(orgSlug: string) {
+  const rows = await executeQuery<{
+    subscription_id: string | null
+    billing_pending_tier: string | null
+    plan: string
+  }>({
+    query: `
+      select subscription_id, billing_pending_tier, plan
+      from saas.organizations
+      where slug = $1
+      limit 1
+    `,
+    parameters: [orgSlug],
+  })
+  if (rows.error) throw rows.error
+  return rows.data?.[0] ?? null
+}
+
+export async function verifyRazorpaySubscriptionForOrg({
+  orgSlug,
+  subscriptionId,
+  expectedPlanId,
+}: {
+  orgSlug: string
+  subscriptionId: string
+  expectedPlanId: PlanId
+}): Promise<{ ok: true; subscription: RazorpaySubscription } | { ok: false; reason: string }> {
+  if (!isPaidPlanId(expectedPlanId)) {
+    return { ok: false, reason: 'Plan does not require Razorpay payment confirmation' }
+  }
+
+  const org = await getOrganizationBillingContext(orgSlug)
+  if (!org) {
+    return { ok: false, reason: 'Organization not found' }
+  }
+
+  const storedSubId = org.subscription_id?.trim()
+  if (!storedSubId || storedSubId !== subscriptionId.trim()) {
+    return { ok: false, reason: 'Subscription does not match organization billing record' }
+  }
+
+  const subscription = await fetchRazorpaySubscription(subscriptionId)
+  if (!isPaidRazorpaySubscriptionStatus(subscription.status)) {
+    return { ok: false, reason: `Subscription is not paid (status: ${subscription.status})` }
+  }
+
+  const notes = subscription.notes ?? {}
+  if (notes.org_slug && notes.org_slug !== orgSlug) {
+    return { ok: false, reason: 'Subscription organization mismatch' }
+  }
+
+  const notesPlan = notes.indobase_plan_id as PlanId | undefined
+  if (notesPlan && notesPlan !== expectedPlanId) {
+    return { ok: false, reason: 'Subscription plan mismatch' }
+  }
+
+  const pendingTier = org.billing_pending_tier?.trim()
+  if (pendingTier && tierToPlanId(pendingTier) !== expectedPlanId) {
+    return { ok: false, reason: 'Pending plan does not match subscription' }
+  }
+
+  return { ok: true, subscription }
+}
+
+async function recordRazorpayWebhookEvent(eventId: string, eventName: string): Promise<boolean> {
+  const result = await executeQuery<{ event_id: string }>({
+    query: `
+      insert into saas.razorpay_webhook_events (event_id, event_name)
+      values ($1, $2)
+      on conflict (event_id) do nothing
+      returning event_id
+    `,
+    parameters: [eventId, eventName],
+  })
+  if (result.error) throw result.error
+  return (result.data?.length ?? 0) > 0
+}
+
 export async function applyOrganizationPlan({
   orgSlug,
   planId,
@@ -269,14 +370,24 @@ export function verifyRazorpayWebhookSignature(rawBody: string, signature: strin
   }
 }
 
-export async function handleRazorpayWebhookEvent(event: {
-  event?: string
-  payload?: {
-    subscription?: { entity?: Record<string, unknown> }
-    payment?: { entity?: Record<string, unknown> }
-  }
-}): Promise<void> {
+export async function handleRazorpayWebhookEvent(
+  event: {
+    event?: string
+    payload?: {
+      subscription?: { entity?: Record<string, unknown> }
+      payment?: { entity?: Record<string, unknown> }
+    }
+  },
+  options?: { eventId?: string }
+): Promise<void> {
   const eventName = event.event ?? ''
+  const eventId = options?.eventId?.trim()
+
+  if (eventId) {
+    const isNew = await recordRazorpayWebhookEvent(eventId, eventName || 'unknown')
+    if (!isNew) return
+  }
+
   const subscription = event.payload?.subscription?.entity as
     | {
         id?: string
@@ -296,14 +407,26 @@ export async function handleRazorpayWebhookEvent(event: {
     case 'subscription.authenticated':
     case 'subscription.activated':
     case 'subscription.charged': {
-      if (planId) {
-        await applyOrganizationPlan({
-          orgSlug,
-          planId,
-          razorpayCustomerId: subscription?.customer_id,
-          razorpaySubscriptionId: subscription?.id,
-        })
+      if (!planId || !isPaidPlanId(planId)) return
+      if (!subscription?.id || !subscription.status) return
+      if (!isPaidRazorpaySubscriptionStatus(subscription.status)) return
+
+      const verified = await verifyRazorpaySubscriptionForOrg({
+        orgSlug,
+        subscriptionId: subscription.id,
+        expectedPlanId: planId,
+      })
+      if (!verified.ok) {
+        console.warn('[razorpay/webhook] skipped plan apply:', verified.reason, { orgSlug, planId })
+        return
       }
+
+      await applyOrganizationPlan({
+        orgSlug,
+        planId,
+        razorpayCustomerId: subscription?.customer_id,
+        razorpaySubscriptionId: subscription?.id,
+      })
       break
     }
     case 'subscription.cancelled':

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'common'
 import { Loader2 } from 'lucide-react'

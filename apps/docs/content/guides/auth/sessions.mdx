@@ -2,15 +2,15 @@
 title: 'User sessions'
 ---
 
-Supabase Auth provides fine-grained control over your user's sessions.
+Indobase Auth provides fine-grained control over your user's sessions.
 
-Some security sensitive applications, or those that need to be SOC 2, HIPAA, PCI-DSS or ISO27000 compliant will require some sort of additional session controls to enforce timeouts or provide additional security guarantees. Supabase Auth makes it easy to build compliant applications.
+Some security sensitive applications, or those that need to be SOC 2, HIPAA, PCI-DSS or ISO27000 compliant will require some sort of additional session controls to enforce timeouts or provide additional security guarantees. Indobase Auth makes it easy to build compliant applications.
 
 ## What is a session?
 
 A session is created when a user signs in. By default, it lasts indefinitely and a user can have an unlimited number of active sessions on as many devices.
 
-A session is represented by the Supabase Auth access token in the form of a JWT, and a refresh token which is a unique string.
+A session is represented by the Indobase Auth access token in the form of a JWT, and a refresh token which is a unique string.
 
 Access tokens are designed to be short lived, usually between 5 minutes and 1 hour while refresh tokens never expire but can only be used once. You can exchange a refresh token only once to get a new access and refresh token pair.
 
@@ -45,7 +45,7 @@ This feature is only available on Pro Plans and up.
 
 </Admonition>
 
-Supabase Auth can be configured to limit the lifetime of a user's session. By default, all sessions are active until the user signs out or performs some other action that terminates a session.
+Indobase Auth can be configured to limit the lifetime of a user's session. By default, all sessions are active until the user signs out or performs some other action that terminates a session.
 
 In some applications, it's useful or required for security to ensure that users authenticate often, or that sessions are not left active on devices for too long.
 
@@ -107,7 +107,7 @@ This approach has some tradeoffs compared to using a JWT-based approach:
 - A failing authentication server can cause a chain of failures across other systems and APIs, paralyzing the whole application system.
 - All requests that require authentication has to be routed through the authentication, which adds an additional latency overhead to all requests.
 
-Supabase Auth prefers a JWT-based approach using access and refresh tokens because session information is encoded within the short-lived access token, enabling transfer across APIs and systems without dependence on a central server's availability or performance. This approach enhances an application's tolerance to transient failures or performance issues. Furthermore, proactively refreshing the access token allows the application to function reliably even during significant outages.
+Indobase Auth prefers a JWT-based approach using access and refresh tokens because session information is encoded within the short-lived access token, enabling transfer across APIs and systems without dependence on a central server's availability or performance. This approach enhances an application's tolerance to transient failures or performance issues. Furthermore, proactively refreshing the access token allows the application to function reliably even during significant outages.
 
 It's better for cost optimization and scaling as well, as the authentication system's servers and database only handle traffic for this use case.
 
@@ -125,7 +125,7 @@ This is possible, but only for apps that use the traditional server-only web app
 
 If your app uses any client side JavaScript to build a rich user experience, using HTTP-Only cookies is not feasible since only your server will be able to read and refresh the session of the user. The browser will not have access to the access and refresh tokens.
 
-Because of this, the Supabase JavaScript libraries provide only limited support. You can override the `storage` option when creating the Supabase client **on the server** to store the values in cookies or your preferred storage choice, for example:
+Because of this, the Indobase JavaScript libraries provide only limited support. You can override the `storage` option when creating the Indobase client **on the server** to store the values in cookies or your preferred storage choice, for example:
 
 ```typescript
 import { createClient } from 'indobase-js'
@@ -145,4 +145,4 @@ const supabase = createClient('SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', {
 
 The `customStorageObject` should implement the `getItem`, `setItem`, and `removeItem` methods from the [`Storage` interface](https://developer.mozilla.org/en-US/docs/Web/API/Storage). Async versions of these methods are also supported.
 
-When using cookies to store access and refresh tokens, make sure that the [`Expires` or `Max-Age` attributes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#attributes) of the cookies is set to a timestamp very far into the future. Browsers will clear the cookies, but the session will remain active in Supabase Auth. Therefore it's best to let Supabase Auth control the validity of these tokens and instruct the browser to always store the cookies indefinitely.
+When using cookies to store access and refresh tokens, make sure that the [`Expires` or `Max-Age` attributes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#attributes) of the cookies is set to a timestamp very far into the future. Browsers will clear the cookies, but the session will remain active in Indobase Auth. Therefore it's best to let Indobase Auth control the validity of these tokens and instruct the browser to always store the cookies indefinitely.

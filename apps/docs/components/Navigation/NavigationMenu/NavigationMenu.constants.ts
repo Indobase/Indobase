@@ -267,7 +267,7 @@ export const GLOBAL_MENU_ITEMS: GlobalMenuItems = [
           {
             label: 'UI Library',
             icon: 'ui',
-            href: 'https://supabase.com/ui' as `/${string}`,
+            href: 'https://indobase.in/ui' as `/${string}`,
             level: 'ui',
           },
         ],
@@ -304,13 +304,13 @@ export const GLOBAL_MENU_ITEMS: GlobalMenuItems = [
             label: 'Changelog',
             icon: 'changelog',
             hasLightIcon: true,
-            href: 'https://supabase.com/changelog' as `/${string}`,
+            href: 'https://indobase.in/changelog' as `/${string}`,
             level: 'changelog',
           },
           {
             label: 'Status',
             icon: 'status',
-            href: 'https://status.supabase.com/',
+            href: 'https://status.indobase.in/',
           },
           {
             label: 'Contributing',
@@ -326,7 +326,7 @@ export const GLOBAL_MENU_ITEMS: GlobalMenuItems = [
 
 export const gettingstarted: NavMenuConstant = {
   icon: 'getting-started',
-  title: 'Start with Supabase',
+  title: 'Start with Indobase',
   url: '/guides/getting-started',
   items: [
     { name: 'Features', url: '/guides/getting-started/features' },
@@ -502,7 +502,7 @@ export const gettingstarted: NavMenuConstant = {
           url: '/guides/getting-started/ai-prompts' as `/${string}`,
         },
         {
-          name: 'Supabase MCP server',
+          name: 'Indobase MCP server',
           url: '/guides/getting-started/mcp' as `/${string}`,
         },
         {
@@ -1403,7 +1403,7 @@ export const database: NavMenuConstant = {
           url: '/guides/database/postgres/which-version-of-postgres' as `/${string}`,
         },
         {
-          name: 'Replicating from Supabase to External Postgres',
+          name: 'Replicating from Indobase to External Postgres',
           url: '/guides/database/postgres/setup-replication-external' as `/${string}`,
         },
       ],
@@ -1444,7 +1444,7 @@ export const queues: NavMenuConstant = {
           url: '/guides/queues/consuming-messages-with-edge-functions',
         },
         {
-          name: 'Expose Queues for local and self-hosted Supabase',
+          name: 'Expose Queues for local and self-hosted Indobase',
           url: '/guides/queues/expose-self-hosted-queues',
         },
       ],
@@ -1671,15 +1671,15 @@ export const functions: NavMenuConstant = {
       url: undefined,
       items: [
         {
-          name: 'Supabase Auth',
+          name: 'Indobase Auth',
           url: '/guides/functions/auth',
           items: [
             { name: 'Securing your functions', url: '/guides/functions/auth' },
             { name: 'Legacy JWT secret', url: '/guides/functions/auth-legacy-jwt' },
           ],
         },
-        { name: 'Supabase Database (Postgres)', url: '/guides/functions/connect-to-postgres' },
-        { name: 'Supabase Storage', url: '/guides/functions/storage-caching' },
+        { name: 'Indobase Database (Postgres)', url: '/guides/functions/connect-to-postgres' },
+        { name: 'Indobase Storage', url: '/guides/functions/storage-caching' },
       ],
     },
     {
@@ -1768,7 +1768,7 @@ export const functions: NavMenuConstant = {
       name: 'Third-Party Tools',
       url: undefined,
       items: [
-        { name: 'Dart Edge on Supabase', url: '/guides/functions/dart-edge' },
+        { name: 'Dart Edge on Indobase', url: '/guides/functions/dart-edge' },
         {
           name: 'mcp-lite (Model Context Protocol)',
           url: '/guides/functions/examples/mcp-server-mcp-lite' as `/${string}`,
@@ -2500,7 +2500,7 @@ export const platform: NavMenuConstant = {
       items: [
         { name: 'Upgrading', url: '/guides/platform/upgrading' },
         {
-          name: 'Migrating within Supabase',
+          name: 'Migrating within Indobase',
           url: '/guides/platform/migrating-within-supabase',
           items: [
             {
@@ -2518,7 +2518,7 @@ export const platform: NavMenuConstant = {
           ],
         },
         {
-          name: 'Migrating to Supabase',
+          name: 'Migrating to Indobase',
           url: '/guides/platform/migrating-to-supabase',
           items: [
             { name: 'Overview', url: '/guides/platform/migrating-to-supabase' as `/${string}` },
@@ -2610,7 +2610,7 @@ export const platform: NavMenuConstant = {
       enabled: billingEnabled,
       items: [
         {
-          name: 'About billing on Supabase',
+          name: 'About billing on Indobase',
           url: '/guides/platform/billing-on-supabase' as `/${string}`,
         },
         {
@@ -2988,14 +2988,14 @@ export const integrations: NavMenuConstant = {
       url: '/guides/integrations/vercel-marketplace',
     },
     {
-      name: 'Supabase Marketplace',
+      name: 'Indobase Marketplace',
       url: '/guides/integrations/supabase-marketplace',
     },
     {
       name: 'Build Your Own',
       items: [
         {
-          name: 'Supabase OAuth Integration',
+          name: 'Indobase OAuth Integration',
           url: '/guides/integrations/build-a-supabase-oauth-integration',
           items: [
             {
@@ -3009,7 +3009,7 @@ export const integrations: NavMenuConstant = {
           ],
         },
         {
-          name: 'Supabase for Platforms',
+          name: 'Indobase for Platforms',
           url: '/guides/integrations/supabase-for-platforms',
         },
       ],
@@ -3074,7 +3074,7 @@ export const reference = {
       name: 'Other tools',
       items: [
         {
-          name: 'Supabase CLI',
+          name: 'Indobase CLI',
           url: '/reference/cli/start',
           icon: '/img/icons/menu/reference-cli' as `/${string}`,
         },
@@ -3095,7 +3095,7 @@ export const reference_javascript_v1 = {
   parent: '/reference',
   pkg: {
     name: 'indobase-js',
-    repo: 'https://github.com/supabase/supabase-js',
+    repo: 'https://github.com/Indobase/indobase-js',
   },
 }
 
@@ -3106,7 +3106,7 @@ export const reference_javascript_v2 = {
   parent: '/reference',
   pkg: {
     name: 'indobase-js',
-    repo: 'https://github.com/supabase/supabase-js',
+    repo: 'https://github.com/Indobase/indobase-js',
   },
 }
 
@@ -3223,7 +3223,7 @@ export const reference_kotlin_v3 = {
 
 export const reference_cli = {
   icon: 'reference-cli',
-  title: 'Supabase CLI',
+  title: 'Indobase CLI',
   url: '/guides/reference/cli',
   parent: '/',
   pkg: {

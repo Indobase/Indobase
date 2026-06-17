@@ -1,4 +1,4 @@
-import type { OAuthScope } from '@supabase/shared-types/out/constants'
+import type { OAuthScope } from '@indobaseinc/shared-types/out/constants'
 import { Edit, Upload } from 'lucide-react'
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'

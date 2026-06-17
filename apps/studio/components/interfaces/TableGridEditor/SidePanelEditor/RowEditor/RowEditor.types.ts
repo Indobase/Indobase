@@ -1,4 +1,4 @@
-import type { PostgresRelationship } from '@supabase/postgres-meta'
+import type { PostgresRelationship } from '@indobaseinc/postgres-meta'
 
 export interface EditValue {
   row?: any

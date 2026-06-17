@@ -31,9 +31,9 @@ describe('constants/api', () => {
 
   describe('PROJECT_REST_URL', () => {
     it('should construct URL from SUPABASE_PUBLIC_URL', async () => {
-      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.supabase.co')
+      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.indobase.in')
       const { PROJECT_REST_URL } = await import('./api')
-      expect(PROJECT_REST_URL).toBe('https://test.supabase.co/rest/v1/')
+      expect(PROJECT_REST_URL).toBe('https://test.indobase.in/rest/v1/')
     })
 
     it('should use default localhost when SUPABASE_PUBLIC_URL is not set', async () => {
@@ -45,9 +45,9 @@ describe('constants/api', () => {
 
   describe('PROJECT_ENDPOINT', () => {
     it('should extract host from SUPABASE_PUBLIC_URL', async () => {
-      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.supabase.co:3000')
+      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.indobase.in:3000')
       const { PROJECT_ENDPOINT } = await import('./api')
-      expect(PROJECT_ENDPOINT).toBe('test.supabase.co:3000')
+      expect(PROJECT_ENDPOINT).toBe('test.indobase.in:3000')
     })
 
     it('should use default localhost host', async () => {
@@ -59,7 +59,7 @@ describe('constants/api', () => {
 
   describe('PROJECT_ENDPOINT_PROTOCOL', () => {
     it('should extract protocol without colon from SUPABASE_PUBLIC_URL', async () => {
-      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.supabase.co')
+      vi.stubEnv('SUPABASE_PUBLIC_URL', 'https://test.indobase.in')
       const { PROJECT_ENDPOINT_PROTOCOL } = await import('./api')
       expect(PROJECT_ENDPOINT_PROTOCOL).toBe('https')
     })

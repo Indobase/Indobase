@@ -35,7 +35,7 @@ export function SettingsDatabaseEmptyStateLocal() {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/supabase/supabase/blob/master/docker/.env.example"
+              href="https://github.com/Indobase/supabase/blob/master/docker/.env.example"
             >
               .env file
             </a>
@@ -43,7 +43,7 @@ export function SettingsDatabaseEmptyStateLocal() {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml"
+              href="https://github.com/Indobase/supabase/blob/master/docker/docker-compose.yml"
             >
               docker-compose.yml
             </a>

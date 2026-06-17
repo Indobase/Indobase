@@ -36,13 +36,13 @@ export const uploadAttachment = async ({ image, userId }: UploadAttachmentArgs) 
     return undefined
   }
 
-  const supabaseClient = createSupportStorageClient()
+  const indobaseClient = createSupportStorageClient()
 
   const blob = convertB64toBlob(image)
   const filename = `${userId}/${uuidv4()}.png`
   const options = { cacheControl: '3600' }
 
-  const { data: file, error: uploadError } = await supabaseClient.storage
+  const { data: file, error: uploadError } = await indobaseClient.storage
     .from('feedback-attachments')
     .upload(filename, blob, options)
 

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useMemo } from 'react'
 
 import { useGitHubAuthorizationQuery } from '@/data/integrations/github-authorization-query'

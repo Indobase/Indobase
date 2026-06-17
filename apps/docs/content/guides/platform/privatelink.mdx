@@ -17,7 +17,7 @@ By enabling PrivateLink, database connections never traverse the public internet
 
 ## How PrivateLink works
 
-Supabase PrivateLink is an organisation level configuration. It works by sharing a [VPC Lattice Resource Configuration](https://docs.aws.amazon.com/vpc-lattice/latest/ug/resource-configuration.html) to any number of AWS Accounts for each of your Supabase projects. Connectivity can be achieved by either associating the Resource Configuration to a PrivateLink endpoint, or a [VPC Lattice Service Network](https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-networks.html). This means:
+Supabase PrivateLink is an organisation level configuration. It works by sharing a [VPC Lattice Resource Configuration](https://docs.aws.amazon.com/vpc-lattice/latest/ug/resource-configuration.html) to any number of AWS Accounts for each of your Indobase projects. Connectivity can be achieved by either associating the Resource Configuration to a PrivateLink endpoint, or a [VPC Lattice Service Network](https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-networks.html). This means:
 
 - Database traffic flows through private AWS infrastructure only
 - Connection latency is typically reduced compared to public internet routing
@@ -26,14 +26,14 @@ Supabase PrivateLink is an organisation level configuration. It works by sharing
 
 The connection architecture changes from public internet routing to a dedicated private path through AWS's secure network backbone.
 
-Supabase PrivateLink is currently just for direct database and PgBouncer connections only. It does not support other Supabase services like API, Storage, Auth, or Realtime. These services will continue to operate over public internet connections.
+Supabase PrivateLink is currently just for direct database and PgBouncer connections only. It does not support other Indobase services like API, Storage, Auth, or Realtime. These services will continue to operate over public internet connections.
 
 ## Requirements
 
-To use PrivateLink with your Supabase project:
+To use PrivateLink with your Indobase project:
 
 - Team or Enterprise Supabase subscription
-- AWS VPC in the same region as your Supabase project
+- AWS VPC in the same region as your Indobase project
 - Appropriate permissions to accept Resource Shares, and create and manage endpoints
 
 ## Getting started
@@ -42,7 +42,7 @@ To use PrivateLink with your Supabase project:
 
 Navigate to your project's Integrations section to set up PrivateLink:
 
-1. Go to your Supabase project dashboard
+1. Go to your Indobase project dashboard
 2. Navigate to [**Settings** > **Integrations**](/dashboard/project/_/settings/integrations)
 3. Find the **AWS PrivateLink** section
 4. Click **Add Account**
@@ -56,7 +56,7 @@ After submission, Supabase creates a VPC Lattice Resource Configuration for your
 
 Supabase will send you an AWS Resource Share containing the VPC Lattice Resource Configurations for your projects. To accept this share:
 
-1. Login to your AWS Management Console, ensure you are in the AWS region where your Supabase project is located
+1. Login to your AWS Management Console, ensure you are in the AWS region where your Indobase project is located
 2. Navigate to the AWS Resource Access Manager (RAM) console
    {/* supa-mdx-lint-disable-next-line Rule004ExcludeWords */}
 3. Go to [Shared with me > Resource shares](https://console.aws.amazon.com/ram/home#SharedResourceShares)
@@ -145,7 +145,7 @@ Example connection string update:
 
 ```
 # Before (public)
-postgresql://user:pass@db.[project-ref].supabase.co:5432/postgres
+postgresql://user:pass@[PROJECT-REF].indobase.in:5432/postgres
 
 # After (private)
 postgresql://user:pass@your-private-endpoint.vpce.amazonaws.com:5432/postgres

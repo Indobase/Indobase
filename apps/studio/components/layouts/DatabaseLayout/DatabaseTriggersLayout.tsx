@@ -1,6 +1,6 @@
 import { PropsWithChildren } from 'react'
 
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { PageLayout } from 'components/layouts/PageLayout/PageLayout'
 import NoPermission from 'components/ui/NoPermission'

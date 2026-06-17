@@ -30,7 +30,7 @@ withTestDatabase('returns correct count with no filters', async ({ executeQuery 
   // Insert 5 test users
   const users = Array.from({ length: 5 }, (_, i) => ({
     id: randomUUID(),
-    email: `user${i + 1}@supabase.io`,
+    email: `user${i + 1}@indobase.io`,
     instance_id: '00000000-0000-0000-0000-000000000000',
     aud: 'authenticated',
     role: 'authenticated',
@@ -62,8 +62,8 @@ withTestDatabase('filters verified users correctly', async ({ executeQuery }) =>
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, email_confirmed_at, created_at)
     VALUES 
-      ('${randomUUID()}', 'verified1@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
-      ('${randomUUID()}', 'verified2@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW())
+      ('${randomUUID()}', 'verified1@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW()),
+      ('${randomUUID()}', 'verified2@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', NOW())
   `)
 
   // 1 verified user (phone confirmed)
@@ -76,8 +76,8 @@ withTestDatabase('filters verified users correctly', async ({ executeQuery }) =>
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${randomUUID()}', 'unverified1@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'unverified2@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${randomUUID()}', 'unverified1@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'unverified2@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Count verified users
@@ -96,17 +96,17 @@ withTestDatabase('filters anonymous users correctly', async ({ executeQuery }) =
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, is_anonymous, created_at)
     VALUES 
-      ('${randomUUID()}', 'anon1@supabase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
-      ('${randomUUID()}', 'anon2@supabase.io', '00000000-0000-0000-0000-000000000000', true, NOW())
+      ('${randomUUID()}', 'anon1@indobase.io', '00000000-0000-0000-0000-000000000000', true, NOW()),
+      ('${randomUUID()}', 'anon2@indobase.io', '00000000-0000-0000-0000-000000000000', true, NOW())
   `)
 
   // 3 regular users
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, is_anonymous, created_at)
     VALUES 
-      ('${randomUUID()}', 'regular1@supabase.io', '00000000-0000-0000-0000-000000000000', false, NOW()),
-      ('${randomUUID()}', 'regular2@supabase.io', '00000000-0000-0000-0000-000000000000', false, NOW()),
-      ('${randomUUID()}', 'regular3@supabase.io', '00000000-0000-0000-0000-000000000000', false, NOW())
+      ('${randomUUID()}', 'regular1@indobase.io', '00000000-0000-0000-0000-000000000000', false, NOW()),
+      ('${randomUUID()}', 'regular2@indobase.io', '00000000-0000-0000-0000-000000000000', false, NOW()),
+      ('${randomUUID()}', 'regular3@indobase.io', '00000000-0000-0000-0000-000000000000', false, NOW())
   `)
 
   const anonSql = getUsersCountSQL({ filter: 'anonymous', forceExactCount: true })
@@ -120,9 +120,9 @@ withTestDatabase('searches by keywords across multiple fields', async ({ execute
   await executeQuery(`
     INSERT INTO auth.users (id, email, phone, instance_id, created_at)
     VALUES 
-      ('${searchUserId}', 'john.doe@supabase.io', NULL, '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'jane.smith@supabase.io', '+1234567890', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'bob.jones@supabase.io', '+9876543210', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${searchUserId}', 'john.doe@indobase.io', NULL, '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'jane.smith@indobase.io', '+1234567890', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'bob.jones@indobase.io', '+9876543210', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Search by email keyword
@@ -146,10 +146,10 @@ withTestDatabase('filters by provider correctly', async ({ executeQuery }) => {
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, raw_app_meta_data, created_at)
     VALUES 
-      ('${randomUUID()}', 'google1@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
-      ('${randomUUID()}', 'google2@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
-      ('${randomUUID()}', 'github@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["github"]}', NOW()),
-      ('${randomUUID()}', 'email@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["email"]}', NOW())
+      ('${randomUUID()}', 'google1@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
+      ('${randomUUID()}', 'google2@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW()),
+      ('${randomUUID()}', 'github@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["github"]}', NOW()),
+      ('${randomUUID()}', 'email@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["email"]}', NOW())
   `)
 
   // Filter by google provider
@@ -172,9 +172,9 @@ withTestDatabase('combines multiple filters correctly', async ({ executeQuery })
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, email_confirmed_at, raw_app_meta_data, created_at)
     VALUES 
-      ('${randomUUID()}', 'verified.google@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["google"]}', NOW()),
-      ('${randomUUID()}', 'verified.github@supabase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["github"]}', NOW()),
-      ('${randomUUID()}', 'unverified.google@supabase.io', '00000000-0000-0000-0000-000000000000', NULL, '{"providers": ["google"]}', NOW())
+      ('${randomUUID()}', 'verified.google@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["google"]}', NOW()),
+      ('${randomUUID()}', 'verified.github@indobase.io', '00000000-0000-0000-0000-000000000000', '${now}', '{"providers": ["github"]}', NOW()),
+      ('${randomUUID()}', 'unverified.google@indobase.io', '00000000-0000-0000-0000-000000000000', NULL, '{"providers": ["google"]}', NOW())
   `)
 
   // Combine verified filter with provider and keyword
@@ -192,9 +192,9 @@ withTestDatabase('optimized email search works correctly', async ({ executeQuery
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${randomUUID()}', 'alice@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'bob@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${randomUUID()}', 'alicia@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${randomUUID()}', 'alice@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'bob@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${randomUUID()}', 'alicia@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Optimized search by email prefix
@@ -226,9 +226,9 @@ withTestDatabase('optimized id search works correctly', async ({ executeQuery })
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, created_at)
     VALUES 
-      ('${userId1}', 'user1@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${userId2}', 'user2@supabase.io', '00000000-0000-0000-0000-000000000000', NOW()),
-      ('${userId3}', 'user3@supabase.io', '00000000-0000-0000-0000-000000000000', NOW())
+      ('${userId1}', 'user1@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${userId2}', 'user2@indobase.io', '00000000-0000-0000-0000-000000000000', NOW()),
+      ('${userId3}', 'user3@indobase.io', '00000000-0000-0000-0000-000000000000', NOW())
   `)
 
   // Optimized search by id prefix
@@ -246,9 +246,9 @@ withTestDatabase('handles SAML provider filtering', async ({ executeQuery }) => 
   await executeQuery(`
     INSERT INTO auth.users (id, email, instance_id, raw_app_meta_data, created_at)
     VALUES 
-      ('${randomUUID()}', 'sso1@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["sso:provider-id-1"]}', NOW()),
-      ('${randomUUID()}', 'sso2@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["sso:provider-id-2"]}', NOW()),
-      ('${randomUUID()}', 'google@supabase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW())
+      ('${randomUUID()}', 'sso1@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["sso:provider-id-1"]}', NOW()),
+      ('${randomUUID()}', 'sso2@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["sso:provider-id-2"]}', NOW()),
+      ('${randomUUID()}', 'google@indobase.io', '00000000-0000-0000-0000-000000000000', '{"providers": ["google"]}', NOW())
   `)
 
   // Filter by SAML provider (special handling for sso: prefix)

@@ -4,7 +4,7 @@ import { parse as parseArray } from 'postgres-array'
 
 // Those types override are in sync with `postgres-meta` since the queries
 // will get executed via `execQuery` on a pg connection with the same configuration
-// see: https://github.com/supabase/postgres-meta/blob/ca06061b4708971628134f95e49f254c2dfdfa7d/src/lib/db.ts#L6-L23
+// see: https://github.com/Indobase/postgres-meta/blob/ca06061b4708971628134f95e49f254c2dfdfa7d/src/lib/db.ts#L6-L23
 pg.types.setTypeParser(pg.types.builtins.INT8, (x) => {
   const asNumber = Number(x)
   if (Number.isSafeInteger(asNumber)) {

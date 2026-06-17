@@ -1,4 +1,4 @@
-import { blocks as vueBlocks } from '@supabase/vue-blocks'
+import { blocks as vueBlocks } from '@indobaseinc/vue-blocks'
 import { type Registry, type RegistryItem } from 'shadcn/schema'
 
 import { blocks } from './blocks'

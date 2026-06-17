@@ -25,7 +25,7 @@ Attempting to create a second Job with the same name (and case) will overwrite t
 2. Click on `Create job` button or navigate to the new Cron Job form [here](/dashboard/project/_/integrations/cron/jobs?new=true).
 3. Name your Cron Job.
 4. Choose a schedule for your Job by inputting cron syntax (refer to the syntax chart in the form) or natural language.
-5. Input SQL snippet or select a Database function, HTTP request, or Supabase Edge Function.
+5. Input SQL snippet or select a Database function, HTTP request, or Indobase Edge Function.
 
 </TabPanel>
 <TabPanel id="sql-schedule-job" label="SQL">
@@ -266,9 +266,9 @@ To use a stored procedure, you can call it like this:
 select cron.schedule('call-db-procedure', '*/5 * * * *', 'CALL my_procedure()');
 ```
 
-### Invoke Supabase Edge Function every 30 seconds
+### Invoke Indobase Edge Function every 30 seconds
 
-Make a POST request to a Supabase Edge Function every 30 seconds:
+Make a POST request to a Indobase Edge Function every 30 seconds:
 
 ```sql
 select
@@ -278,7 +278,7 @@ select
     $$
     select
       net.http_post(
-          url:='https://project-ref.supabase.co/functions/v1/function-name',
+          url:='https://[PROJECT-REF].indobase.in/functions/v1/function-name',
           headers:=jsonb_build_object('Content-Type','application/json', 'Authorization', 'Bearer ' || 'YOUR_ANON_KEY'),
           body:=jsonb_build_object('time', now() ),
           timeout_milliseconds:=5000

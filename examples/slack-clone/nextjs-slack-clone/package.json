@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.6",
+    "@indobaseinc/indobase-js": "^1.0.8",
     "jwt-decode": "^4.0.0",
     "next": "latest",
     "react": "^18.2.0",

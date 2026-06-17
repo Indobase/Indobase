@@ -1,4 +1,4 @@
-import type { OAuthClient } from 'indobase-js'
+import type { OAuthClient } from '@indobaseinc/indobase-js'
 import { useParams } from 'common'
 import { useProjectEndpointQuery } from 'data/config/project-endpoint-query'
 import type { OAuthServerAppDeleteVariables } from 'data/oauth-server-apps/oauth-server-app-delete-mutation'

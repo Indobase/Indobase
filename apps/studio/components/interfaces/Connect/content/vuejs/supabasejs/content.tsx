@@ -29,7 +29,7 @@ INDOBASE_KEY=${projectKeys.publishableKey ?? projectKeys.anonKey ?? 'your-anon-k
       <ConnectTabContent value="utils/indobase.ts">
         <SimpleCodeBlock className="ts" parentClassName="min-h-72">
           {`
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 const indobaseUrl = process.env.INDOBASE_URL;
 const indobaseKey = process.env.INDOBASE_KEY;

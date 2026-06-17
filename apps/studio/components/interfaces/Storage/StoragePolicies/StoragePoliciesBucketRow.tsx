@@ -1,4 +1,4 @@
-import { PostgresPolicy } from '@supabase/postgres-meta'
+import { PostgresPolicy } from '@indobaseinc/postgres-meta'
 import { noop } from 'lodash'
 
 import { PolicyRow } from 'components/interfaces/Auth/Policies/PolicyTableRow/PolicyRow'

@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { AlertCircle, ExternalLink, Loader2 } from 'lucide-react'
 import Link from 'next/link'

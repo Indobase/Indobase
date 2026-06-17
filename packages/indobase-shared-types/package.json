@@ -1,0 +1,35 @@
+{
+  "name": "@indobaseinc/shared-types",
+  "version": "0.1.84",
+  "description": "Shared Types for Indobase",
+  "license": "Copyright Indobase",
+  "author": "Indobase",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-shared-types"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./out/index.js",
+  "types": "./out/index.d.ts",
+  "files": [
+    "out"
+  ],
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "import": "./out/index.js",
+      "require": "./out/index.js",
+      "default": "./out/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0"
+  }
+}

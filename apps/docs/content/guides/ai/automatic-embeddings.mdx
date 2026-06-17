@@ -16,11 +16,11 @@ When implementing semantic search with pgvector, developers typically need to:
 3. Keep embeddings in sync when content changes
 4. Handle failures and retries in the embedding generation process
 
-While Postgres [full-text search](/docs/guides/database/full-text-search) can handle this internally through synchronous calls to `to_tsvector` and [triggers](https://www.postgresql.org/docs/current/textsearch-features.html#TEXTSEARCH-UPDATE-TRIGGERS), semantic search requires asynchronous API calls to a provider like OpenAI to generate vector embeddings. This guide demonstrates how to use triggers, queues, and Supabase Edge Functions to bridge this gap.
+While Postgres [full-text search](/docs/guides/database/full-text-search) can handle this internally through synchronous calls to `to_tsvector` and [triggers](https://www.postgresql.org/docs/current/textsearch-features.html#TEXTSEARCH-UPDATE-TRIGGERS), semantic search requires asynchronous API calls to a provider like OpenAI to generate vector embeddings. This guide demonstrates how to use triggers, queues, and Indobase Edge Functions to bridge this gap.
 
 ## Understanding the architecture
 
-We'll leverage the following Postgres and Supabase features to create the automated embedding system:
+We'll leverage the following Postgres and Indobase features to create the automated embedding system:
 
 1. [pgvector](/docs/guides/database/extensions/pgvector): Stores and queries vector embeddings
 1. [pgmq](/docs/guides/queues): Queues embedding generation requests for processing and retries
@@ -102,7 +102,7 @@ Before we set up our embedding logic, we need to create some utility functions:
 -- Schema for utility functions
 create schema util;
 
--- Utility function to get the Supabase project URL (required for Edge Functions)
+-- Utility function to get the Indobase project URL (required for Edge Functions)
 create function util.project_url()
 returns text
 language plpgsql
@@ -170,7 +170,7 @@ $$;
 Here we create:
 
 - A schema `util` to store utility functions.
-- A function to retrieve the Supabase project URL from [Vault](/docs/guides/database/vault). We'll add this secret next.
+- A function to retrieve the Indobase project URL from [Vault](/docs/guides/database/vault). We'll add this secret next.
 - A generic function to invoke any Edge Function with a given name and request body.
 - A generic trigger function to clear a column on update. This function accepts the column name as an argument and sets it to `NULL` in the `NEW` record. We'll explain how to use this function later.
 
@@ -333,7 +333,7 @@ This interval is a good starting point, but you may need to adjust it based on y
 
 Finally we'll create the Edge Function to generate embeddings. We'll use OpenAI's API in this example, but you can replace it with any other embedding generation service.
 
-Use the Supabase CLI to create a new Edge Function:
+Use the Indobase CLI to create a new Edge Function:
 
 ```bash
 supabase functions new embed
@@ -554,7 +554,7 @@ _.env_:
 OPENAI_API_KEY=your-api-key
 ```
 
-When you're ready to deploy the Edge Function, set can set the environment variable using the Supabase CLI:
+When you're ready to deploy the Edge Function, set can set the environment variable using the Indobase CLI:
 
 ```shell
 supabase secrets set --env-file .env
@@ -809,7 +809,7 @@ where
 
 Automating embedding generation and updates in Postgres allow you to build powerful semantic search capabilities without the complexity of managing embeddings manually.
 
-By combining Postgres features like triggers, queues, and other extensions with Supabase Edge Functions, we can create a robust system that handles embedding generation asynchronously and retries failed jobs automatically.
+By combining Postgres features like triggers, queues, and other extensions with Indobase Edge Functions, we can create a robust system that handles embedding generation asynchronously and retries failed jobs automatically.
 
 This system can be customized to work with any content and embedding generation service, providing a flexible and scalable solution for semantic search in Postgres.
 
@@ -818,4 +818,4 @@ This system can be customized to work with any content and embedding generation 
 - [What are embeddings?](/docs/guides/ai/concepts)
 - [Semantic search](/docs/guides/ai/semantic-search)
 - [Vector indexes](/docs/guides/ai/vector-indexes)
-- [Supabase Edge Functions](/docs/guides/functions)
+- [Indobase Edge Functions](/docs/guides/functions)

@@ -7,8 +7,8 @@ interface ChartHoverState {
   syncTooltip: boolean
 }
 
-const CHART_HOVER_SYNC_STORAGE_KEY = 'supabase-chart-hover-sync-enabled'
-const CHART_TOOLTIP_SYNC_STORAGE_KEY = 'supabase-chart-tooltip-sync-enabled'
+const CHART_HOVER_SYNC_STORAGE_KEY = 'indobase-chart-hover-sync-enabled'
+const CHART_TOOLTIP_SYNC_STORAGE_KEY = 'indobase-chart-tooltip-sync-enabled'
 
 // Global state shared across all hook instances
 let globalState: ChartHoverState = {

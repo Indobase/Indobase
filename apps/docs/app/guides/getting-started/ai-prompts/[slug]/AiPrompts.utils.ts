@@ -98,12 +98,12 @@ export async function generateAiPromptMetadata(props: { params: Promise<{ slug: 
 
   if (!prompt) {
     return {
-      title: `AI Prompt | ${metadataTitle || 'Supabase'}`,
+      title: `AI Prompt | ${metadataTitle || 'Indobase'}`,
     }
   }
 
   return {
-    title: `AI Prompt: ${prompt.heading} | Supabase Docs`,
+    title: `AI Prompt: ${prompt.heading} | Indobase Docs`,
   }
 }
 

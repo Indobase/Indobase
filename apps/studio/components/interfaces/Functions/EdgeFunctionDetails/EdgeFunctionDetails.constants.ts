@@ -33,7 +33,7 @@ export const INVOCATION_TABS: InvocationTab[] = [
     label: 'JavaScript',
     language: 'js',
     hideLineNumbers: true,
-    code: ({ functionName }) => `import { createClient } from 'indobase-js'
+    code: ({ functionName }) => `import { createClient } from '@indobaseinc/indobase-js'
 const indobase = createClient(process.env.NEXT_PUBLIC_INDOBASE_URL!, process.env.NEXT_PUBLIC_INDOBASE_ANON_KEY!)
 const { data, error } = await indobase.functions.invoke('${functionName}', {
   body: { name: 'Functions' },

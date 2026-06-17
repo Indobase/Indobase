@@ -44,11 +44,11 @@ describe('getProjectApiEndpoint', () => {
     expect(
       getProjectApiEndpoint({
         settings: {
-          app_config: { protocol: 'https', endpoint: 'abc.supabase.co' },
+          app_config: { protocol: 'https', endpoint: 'abc.indobase.in' },
         } as ProjectSettings,
         customDomainData: undefined,
       })
-    ).toBe('https://abc.supabase.co')
+    ).toBe('https://abc.indobase.in')
   })
 
   it('respects protocol from settings', () => {
@@ -80,11 +80,11 @@ describe('getProjectApiEndpoint', () => {
     expect(
       getProjectApiEndpoint({
         settings: {
-          app_config: { protocol: 'https', endpoint: 'abc.supabase.co' },
+          app_config: { protocol: 'https', endpoint: 'abc.indobase.in' },
         } as ProjectSettings,
         customDomainData: inactiveCustomDomain,
       })
-    ).toBe('https://abc.supabase.co')
+    ).toBe('https://abc.indobase.in')
   })
 })
 
@@ -98,7 +98,7 @@ describe('getApiEndpoint', () => {
         loadBalancers: undefined,
         selectedDatabase: makeDatabase(
           'project-ref',
-          'https://project-ref.supabase.co/rest/v1'
+          'https://project-ref.indobase.in/rest/v1'
         ) as Database,
       })
     ).toBe('https://api.example.com')
@@ -113,10 +113,10 @@ describe('getApiEndpoint', () => {
         loadBalancers: undefined,
         selectedDatabase: makeDatabase(
           'replica-1',
-          'https://replica-1.supabase.co/rest/v1'
+          'https://replica-1.indobase.in/rest/v1'
         ) as Database,
       })
-    ).toBe('https://replica-1.supabase.co/rest/v1')
+    ).toBe('https://replica-1.indobase.in/rest/v1')
   })
 
   it('returns load balancer endpoint when load balancer is selected', () => {
@@ -125,10 +125,10 @@ describe('getApiEndpoint', () => {
         selectedDatabaseId: 'load-balancer',
         projectRef: 'project-ref',
         customDomainData: undefined,
-        loadBalancers: [makeLoadBalancer('https://lb.supabase.co') as LoadBalancer],
+        loadBalancers: [makeLoadBalancer('https://lb.indobase.in') as LoadBalancer],
         selectedDatabase: undefined,
       })
-    ).toBe('https://lb.supabase.co')
+    ).toBe('https://lb.indobase.in')
   })
 
   it('returns empty string when load balancer is selected but none exist', () => {
@@ -152,10 +152,10 @@ describe('getApiEndpoint', () => {
         loadBalancers: undefined,
         selectedDatabase: makeDatabase(
           'project-ref',
-          'https://project-ref.supabase.co/rest/v1'
+          'https://project-ref.indobase.in/rest/v1'
         ) as Database,
       })
-    ).toBe('https://project-ref.supabase.co/rest/v1')
+    ).toBe('https://project-ref.indobase.in/rest/v1')
   })
 
   it('ignores custom domain when it is not active', () => {
@@ -172,10 +172,10 @@ describe('getApiEndpoint', () => {
         loadBalancers: undefined,
         selectedDatabase: makeDatabase(
           'project-ref',
-          'https://project-ref.supabase.co/rest/v1'
+          'https://project-ref.indobase.in/rest/v1'
         ) as Database,
       })
-    ).toBe('https://project-ref.supabase.co/rest/v1')
+    ).toBe('https://project-ref.indobase.in/rest/v1')
   })
 })
 

@@ -1,4 +1,4 @@
-import pgMeta from '@supabase/pg-meta'
+import pgMeta from '@indobaseinc/pg-meta'
 import { generateText, ModelMessage, stepCountIs } from 'ai'
 import { IS_SAAS } from 'common'
 import { source } from 'common-tags'

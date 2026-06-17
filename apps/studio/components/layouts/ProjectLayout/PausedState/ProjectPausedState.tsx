@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import dayjs from 'dayjs'
 import { PauseCircle } from 'lucide-react'
 import Link from 'next/link'

@@ -10,6 +10,6 @@
     "deploy": "wrangler publish"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0"
+    "@indobaseinc/indobase-js": "^1.0.8"
   }
 }

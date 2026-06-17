@@ -8,8 +8,8 @@ import {
   DevelopmentOperations,
   ExecuteSqlOptions,
   GetLogsOptions,
-} from '@supabase/mcp-server-supabase/platform'
-import type { JwtPayload } from 'indobase-js'
+} from '@indobaseinc/mcp-server/platform'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { ResponseError } from 'types'
 import { generateTypescriptTypes } from './generate-types'
 import { getLints } from './lints'

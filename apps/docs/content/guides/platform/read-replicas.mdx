@@ -21,7 +21,7 @@ height={830}
 
 ## About Read Replicas
 
-The database you start with when launching a Supabase project is your Primary database. A process called "replication" keeps Read Replicas in sync with the Primary. Replication is asynchronous to ensure that transactions on the Primary aren't blocked. There is a delay between an update on the Primary and the time that a Read Replica receives the change. This delay is called "replication lag."
+The database you start with when launching a Indobase project is your Primary database. A process called "replication" keeps Read Replicas in sync with the Primary. Replication is asynchronous to ensure that transactions on the Primary aren't blocked. There is a delay between an update on the Primary and the time that a Read Replica receives the change. This delay is called "replication lag."
 
 You can only read data from a Read Replica. This is in contrast to a Primary database, where you can both read and write:
 
@@ -90,7 +90,7 @@ The load balancer enables geo-routing for Data API requests to automatically rou
 
 <Admonition type="note">
 
-You can also interact with other Supabase services (Auth, Edge Functions, Realtime, and Storage) through this load balancer so there's no need to worry about which endpoint to use and in which situations. Geo-routing for Auth, Realtime, and Storage aren't yet available but are coming soon.
+You can also interact with other Indobase services (Auth, Edge Functions, Realtime, and Storage) through this load balancer so there's no need to worry about which endpoint to use and in which situations. Geo-routing for Auth, Realtime, and Storage aren't yet available but are coming soon.
 
 </Admonition>
 
@@ -149,9 +149,9 @@ For API logs, logs can originate from the API Load Balancer as well. The upstrea
 
 ### Metrics
 
-Observability and metrics for Read Replicas are available on the Supabase Dashboard. Resource utilization for a specific Read Replica can be viewed on the [Database Reports page](/dashboard/project/_/observability/database) by toggling for `Source`. Likewise, metrics on API requests going through either a Read Replica or Load Balancer API endpoint are also available on the dashboard through the [API Reports page](/dashboard/project/_/observability/api-overview)
+Observability and metrics for Read Replicas are available on the Indobase Dashboard. Resource utilization for a specific Read Replica can be viewed on the [Database Reports page](/dashboard/project/_/observability/database) by toggling for `Source`. Likewise, metrics on API requests going through either a Read Replica or Load Balancer API endpoint are also available on the dashboard through the [API Reports page](/dashboard/project/_/observability/api-overview)
 
-We recommend ingesting your [project's metrics](/docs/guides/platform/metrics#accessing-the-metrics-endpoint) into your own environment. If you have an existing ingestion pipeline set up for your project, you can [update it](https://github.com/supabase/supabase-grafana?tab=readme-ov-file#read-replica-support) to additionally ingest metrics from your Read Replicas.
+We recommend ingesting your [project's metrics](/docs/guides/platform/metrics#accessing-the-metrics-endpoint) into your own environment. If you have an existing ingestion pipeline set up for your project, you can [update it](https://github.com/Indobase/Indobase-grafana?tab=readme-ov-file#read-replica-support) to additionally ingest metrics from your Read Replicas.
 
 ### Centralized configuration management
 

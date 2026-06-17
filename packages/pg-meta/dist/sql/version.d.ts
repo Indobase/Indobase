@@ -1,0 +1,2 @@
+export declare const VERSION_SQL = "\nselect\n  version(),\n  current_setting('server_version_num')::int8 as version_number,\n  (\n    select\n      count(*) as active_connections\n    from\n      pg_stat_activity\n  ) as active_connections,\n  current_setting('max_connections')::int8 as max_connections\n";
+//# sourceMappingURL=version.d.ts.map

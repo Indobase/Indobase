@@ -46,7 +46,7 @@ async function validateDestination(
 
     config = {
       iceberg: {
-        supabase: {
+        indobase: {
           namespace,
           project_ref: icebergProjectRef,
           warehouse_name: warehouseName,

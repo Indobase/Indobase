@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, DatabaseZap, DollarSign, GitMerge, Github, Loader2 } from 'lucide-react'
 import Image from 'next/image'

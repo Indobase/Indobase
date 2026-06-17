@@ -1,9 +1,9 @@
 {
-  "homepage:heading": "Supabase Documentation",
-  "metadata:application_name": "Supabase Docs",
-  "metadata:title": "Supabase Docs",
+  "homepage:heading": "Indobase Documentation",
+  "metadata:application_name": "Indobase Docs",
+  "metadata:title": "Indobase Docs",
   "navigation:logo": {
-    "light": "/docs/supabase-light.svg",
-    "dark": "/docs/supabase-dark.svg"
+    "light": "/docs/indobase-light.svg",
+    "dark": "/docs/indobase-dark.svg"
   }
 }

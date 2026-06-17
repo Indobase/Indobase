@@ -19,7 +19,7 @@ It is recommended that you connect with the pooler in transaction mode (port 654
 
 ```sh
 # Example transaction mode string:
-postgres://[db-user].[project-ref]:[db-password]@aws-0-[aws-region].pooler.supabase.com:6543
+postgres://[db-user].[project-ref]:[db-password]@[PROJECT-REF].indobase.in:6543
 ```
 
 When using transaction mode, you should use the[ `NullPool` setting:](https://docs.sqlalchemy.org/en/20/core/pooling.html#switching-pool-implementations)
@@ -40,7 +40,7 @@ For stationary servers, such as VMs and long-running containers, it is recommend
 
 ```
 # Example DB string:
-postgresql://postgres:[PASSWORD]@db.[PROJECT REF].supabase.co:5432/postgres
+postgresql://postgres:[PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 The connection maps to an IPv6 address, and cannot operate in an IPv4 environment.
@@ -81,10 +81,10 @@ engine = create_engine(
 )
 ```
 
-As a rule of thumb, if you're using the Supabase Database REST Client, try to limit the connections used by your deployment to 40% of available connections. Otherwise, you can cautiously increase usage to around 80%. These percentages are flexible and depend on your application's usage and setup. Monitor connection usage to determine the optimal allocation without depriving other servers of necessary connections.
+As a rule of thumb, if you're using the Indobase Database REST Client, try to limit the connections used by your deployment to 40% of available connections. Otherwise, you can cautiously increase usage to around 80%. These percentages are flexible and depend on your application's usage and setup. Monitor connection usage to determine the optimal allocation without depriving other servers of necessary connections.
 
 ## How to monitor live connections
 
-Connection usage can be monitored with a Supabase Grafana Dashboard. It provides realtime visibility of over 200 database metrics, such as graphs of CPU, EBS, and active direct/pooler connections. It can be extremely useful for monitoring and debugging instances.
+Connection usage can be monitored with an Indobase Grafana Dashboard. It provides realtime visibility of over 200 database metrics, such as graphs of CPU, EBS, and active direct/pooler connections. It can be extremely useful for monitoring and debugging instances.
 
-You can check our [GitHub repo](https://github.com/supabase/supabase-grafana) for setup instructions for local deployments or free cloud deployments on [Fly.io](http://fly.io/). For a complete explainer on connection monitoring, you can check out this [guide](https://github.com/orgs/supabase/discussions/27141)
+You can check our [GitHub repo](https://github.com/Indobase/Indobase-grafana) for setup instructions for local deployments or free cloud deployments on [Fly.io](http://fly.io/). For a complete explainer on connection monitoring, you can check out this [guide](https://github.com/orgs/supabase/discussions/27141)

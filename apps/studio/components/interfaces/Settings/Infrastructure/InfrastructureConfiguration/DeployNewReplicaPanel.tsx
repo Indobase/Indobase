@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import {
   calculateIOPSPrice,
@@ -163,7 +163,7 @@ const DeployNewReplicaPanel = ({
   })
 
   const currentPgVersion = Number(
-    (project?.dbVersion ?? '').split('supabase-postgres-')[1]?.split('.')[0]
+    (project?.dbVersion ?? '').split('indobase-postgres-')[1]?.split('.')[0]
   )
 
   const maxNumberOfReplicas = ['ci_micro', 'ci_small', 'ci_medium', 'ci_large'].includes(

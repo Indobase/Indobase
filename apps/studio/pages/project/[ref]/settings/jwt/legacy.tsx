@@ -4,7 +4,7 @@ import JWTKeysLayout from 'components/layouts/JWTKeys/JWTKeysLayout'
 import SettingsLayout from 'components/layouts/ProjectSettingsLayout/SettingsLayout'
 import type { NextPageWithLayout } from 'types'
 
-import { JwtSecretUpdateError, JwtSecretUpdateStatus } from '@supabase/shared-types/out/events'
+import { JwtSecretUpdateError, JwtSecretUpdateStatus } from '@indobaseinc/shared-types/out/events'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'common'
 import { JWT_SECRET_UPDATE_ERROR_MESSAGES } from 'components/interfaces/JwtSecrets/jwt.constants'

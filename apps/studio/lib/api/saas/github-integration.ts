@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import type { components } from 'api-types'
 
 import { executeQuery } from './query'
@@ -573,7 +573,7 @@ export function mapOrgIntegrationProjectConnections(
     inserted_at: conn.inserted_at,
     updated_at: conn.updated_at,
     organization_integration_id: String(integrationRow.id),
-    supabase_project_ref: conn.project.ref,
+    indobase_project_ref: conn.project.ref,
     added_by: {
       username: conn.user?.username ?? addedBy.username,
       primary_email: conn.user?.primary_email ?? addedBy.primary_email,

@@ -7,31 +7,31 @@ database_id = "f7f2d68b-f336-4578-9541-17ca37aaa327"
 
 ## Problem
 
-Your Lovable project has **Lovable Cloud** enabled, and you’re trying to connect directly to your Supabase project.
+Your Lovable project has **Lovable Cloud** enabled, and you’re trying to connect directly to your Indobase project.
 
-However, you don’t see the project listed on your [Supabase Dashboard](/dashboard), or you’re unable to access it through your Supabase account.
+However, you don’t see the project listed on your [Indobase Dashboard](/dashboard), or you’re unable to access it through your Indobase account.
 
 ## Why this occurs
 
 When you create a project connected to **Lovable Cloud**, the underlying Supabase instance is provisioned and managed entirely by **Lovable**.
 
-These projects are not owned by your Supabase account, so they **don't appear on your Supabase Dashboard** or be accessible using your Supabase credentials.
+These projects are not owned by your Indobase account, so they **don't appear on your Indobase Dashboard** or be accessible using your Supabase credentials.
 
 ## How to diagnose
 
 You might be affected by this if:
 
 - You recently created a project on Lovable and enabled the backend from the chat interface. By default, the Lovable platform uses **Lovable Cloud** for backend hosting.
-- You see Supabase references in your project’s configuration but **can’t access the project** from your [Supabase Dashboard](/dashboard).
-- The project ID or credentials used in your Lovable setup don’t match any project under your Supabase account.
+- You see Supabase references in your project’s configuration but **can’t access the project** from your [Indobase Dashboard](/dashboard).
+- The project ID or credentials used in your Lovable setup don’t match any project under your Indobase account.
 
 ## How to fix
 
-There is **no automated way** to transfer a Supabase project from Lovable Cloud to your own Supabase account.
+There is **no automated way** to transfer a Indobase project from Lovable Cloud to your own Indobase account.
 
 However, you can manually clone your project backend and migrate your data following Lovable’s official guide: [Self-Hosting Guide (Lovable Docs)](https://docs.lovable.dev/tips-tricks/self-hosting)
 
-This process allows you to create a new Supabase project under your own account and connect it independently.
+This process allows you to create a new Indobase project under your own account and connect it independently.
 
 <Admonition type="note">
 
@@ -41,10 +41,10 @@ There are certain limitations described in Lovable’s documentation, so review 
 
 ## How to prevent
 
-If you want direct access to your Supabase project from the start, make sure to:
+If you want direct access to your Indobase project from the start, make sure to:
 
-- Avoid enabling Lovable Cloud if you plan to manage your Supabase project independently.
-- Create your project directly from the [Supabase Dashboard](/dashboard) and then **manually connect your Lovable project to your Supabase project**, or **start your Lovable project already connected** to your own Supabase project from the beginning.
+- Avoid enabling Lovable Cloud if you plan to manage your Indobase project independently.
+- Create your project directly from the [Indobase Dashboard](/dashboard) and then **manually connect your Lovable project to your Indobase project**, or **start your Lovable project already connected** to your own Indobase project from the beginning.
 
 ## Additional resources
 
@@ -62,7 +62,7 @@ For more information, read [the Lovable Cloud FAQ](https://docs.lovable.dev/feat
 >
   <div className="border-b mt-3 pb-3">
     <AccordionItem
-      header="Can I get access to the Supabase SQL editor when using Lovable Cloud?"
+      header="Can I get access to the Indobase SQL editor when using Lovable Cloud?"
       id="sql-editor-access"
     >
 
@@ -74,11 +74,11 @@ For more information, read [the Lovable Cloud FAQ](https://docs.lovable.dev/feat
 
   <div className="border-b mt-3 pb-3">
     <AccordionItem
-      header="Why doesn't my Supabase project appear on my dashboard?"
+      header="Why doesn't my Indobase project appear on my dashboard?"
       id="project-not-showing"
     >
 
-    Lovable Cloud projects are owned and managed by **Lovable**, not by your personal Supabase account. They won't show up on your dashboard.
+    Lovable Cloud projects are owned and managed by **Lovable**, not by your personal Indobase account. They won't show up on your dashboard.
 
     </AccordionItem>
 
@@ -86,13 +86,13 @@ For more information, read [the Lovable Cloud FAQ](https://docs.lovable.dev/feat
 
   <div className="border-b mt-3 pb-3">
     <AccordionItem
-      header="Can I disconnect my project from Lovable Cloud and connect it to my own Supabase account?"
+      header="Can I disconnect my project from Lovable Cloud and connect it to my own Indobase account?"
       id="disconnect-project"
     >
 
     Once Lovable Cloud is enabled for a project, it **cannot be disconnected or switched** to an external Supabase connection.
 
-    However, you can **create a new Supabase project under your own account** and migrate your data by following Lovable's [Project Migration Guide](https://docs.lovable.dev/tips-tricks/self-hosting).
+    However, you can **create a new Indobase project under your own account** and migrate your data by following Lovable's [Project Migration Guide](https://docs.lovable.dev/tips-tricks/self-hosting).
 
     </AccordionItem>
 
@@ -118,7 +118,7 @@ For more information, read [the Lovable Cloud FAQ](https://docs.lovable.dev/feat
 
     Service role and API keys are **not accessible** for Lovable Cloud–managed projects.
 
-    If you need to integrate with external automation or API-based tools, you'll need to **create and manage your own Supabase project**, then connect Lovable to it directly.
+    If you need to integrate with external automation or API-based tools, you'll need to **create and manage your own Indobase project**, then connect Lovable to it directly.
 
     </AccordionItem>
 

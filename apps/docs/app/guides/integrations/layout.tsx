@@ -33,7 +33,7 @@ async function getPartnersImpl() {
     (partner) =>
       ({
         name: partner.title,
-        url: `https://supabase.com/partners/integrations/${partner.slug}` as `https://${string}`,
+        url: `https://indobase.in/partners/integrations/${partner.slug}` as `https://${string}`,
       }) as Partial<NavMenuSection>
   )
 

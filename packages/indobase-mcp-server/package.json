@@ -1,0 +1,57 @@
+{
+  "name": "@indobaseinc/mcp-server",
+  "version": "0.6.3",
+  "description": "MCP server for interacting with Indobase",
+  "license": "Apache-2.0",
+  "author": "Indobase",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-mcp-server"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "import": "./dist/platform/index.js",
+      "default": "./dist/platform/index.cjs"
+    },
+    "./platform/api": {
+      "types": "./dist/platform/api-platform.d.ts",
+      "import": "./dist/platform/api-platform.js",
+      "default": "./dist/platform/api-platform.cjs"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "prepublishOnly": "node -e \"require('fs').accessSync('dist/index.js')\""
+  },
+  "dependencies": {
+    "@mjackson/multipart-parser": "^0.10.1",
+    "common-tags": "^1.8.2",
+    "gqlmin": "^0.3.1",
+    "graphql": "^16.11.0",
+    "openapi-fetch": "^0.13.5",
+    "@indobaseinc/mcp-utils": "^0.3.2"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "bin": {
+    "mcp-server-indobase": "./dist/transports/stdio.js"
+  }
+}

@@ -1,4 +1,4 @@
-import type { HttpRequest, Statement, SupabaseJsQuery } from '@supabase/sql-to-rest'
+import type { HttpRequest, IndobaseJsQuery, Statement } from '@indobaseinc/sql-to-rest'
 
 export type BaseResult = {
   statement: Statement
@@ -10,10 +10,13 @@ export type HttpResult = BaseResult &
     language: 'http' | 'curl'
   }
 
-export type SupabaseJsResult = BaseResult &
-  SupabaseJsQuery & {
-    type: 'supabase-js'
+export type IndobaseJsResult = BaseResult &
+  IndobaseJsQuery & {
+    type: 'indobase-js'
     language: 'js'
   }
 
-export type ResultBundle = HttpResult | SupabaseJsResult
+/** @deprecated Use IndobaseJsResult */
+export type SupabaseJsResult = IndobaseJsResult
+
+export type ResultBundle = HttpResult | IndobaseJsResult

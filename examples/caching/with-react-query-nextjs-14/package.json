@@ -9,9 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase-cache-helpers/postgrest-react-query": "^1.3.0",
-    "@supabase/ssr": "^0.0.10",
-    "@supabase/supabase-js": "^2.39.0",
+    "@indobase-cache-helpers/postgrest-react-query": "^1.3.0",
+    "@indobaseinc/ssr": "^0.0.10",
+    "@indobaseinc/indobase-js": "^1.0.8",
     "@tanstack/react-query": "^5.12.2",
     "next": "14.2.10",
     "react": "^18",

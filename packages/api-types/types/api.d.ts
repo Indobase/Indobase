@@ -4492,7 +4492,7 @@ export interface components {
       /**
        * Format: uri
        * @description Template URL used to create the project from the CLI.
-       * @example https://github.com/supabase/supabase/tree/master/examples/slack-clone/nextjs-slack-clone
+       * @example https://github.com/Indobase/supabase/tree/master/examples/slack-clone/nextjs-slack-clone
        */
       template_url?: string
     }

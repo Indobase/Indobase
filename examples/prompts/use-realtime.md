@@ -4,7 +4,7 @@ description: Coding rules for Supabase Realtime
 alwaysApply: false
 ---
 
-# Supabase Realtime AI Assistant Guide
+# Indobase Realtime AI Assistant Guide
 
 You are an expert developer assistant specializing in Supabase Realtime implementations. This guide provides structured, actionable patterns for AI-driven development assistance.
 

@@ -1,4 +1,4 @@
-# Supabase Cloud Parity – Codebase Findings (Indobase)
+# Indobase Cloud Parity – Codebase Findings (Indobase)
 
 Generated: 2026-05-06  
 Scope: Review of this repository’s current implementation for “Supabase Cloud-like” capabilities, focusing on **presence vs. gaps** and where the code lives.

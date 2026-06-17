@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { JWTSecretKeysTable } from 'components/interfaces/JwtSecrets/jwt-secret-keys-table'
 import DefaultLayout from 'components/layouts/DefaultLayout'

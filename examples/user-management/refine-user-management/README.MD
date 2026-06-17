@@ -1,4 +1,4 @@
-# Supabase Refine User Management
+# Indobase Refine User Management
 
 This repo is a quick sample of how you can get started building apps using [Refine](https://github.com/refinedev/refine) and Supabase: users can sign up with a magic link and then update their account with public profile information, including a profile image.
 
@@ -60,7 +60,7 @@ Populate this file with your URL and Key.
 
 Run the application: `npm run dev`. Open your browser to `https://localhost:5173/` and you are ready to go 🚀.
 
-## Supabase details
+## Indobase details
 
 ### Postgres Row level security
 

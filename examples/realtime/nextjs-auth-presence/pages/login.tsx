@@ -1,5 +1,5 @@
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react'
-import { Auth, ThemeSupa } from '@supabase/auth-ui-react'
+import { useSupabaseClient, useUser } from '../lib/supabase/context'
+import { Auth, ThemeSupa } from '@indobaseinc/auth-ui-react'
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css'
 

@@ -19,7 +19,7 @@ const ContentFile = ({ projectKeys }: StepContentProps) => {
       name: 'src/lib/indobaseClient.js',
       language: 'js',
       code: `
-import { createClient } from "indobase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 import { PUBLIC_INDOBASE_URL, ${projectKeys.publishableKey ? 'PUBLIC_INDOBASE_PUBLISHABLE_DEFAULT_KEY' : 'PUBLIC_INDOBASE_ANON_KEY'} } from "$env/static/public"
 
 const indobaseUrl = PUBLIC_INDOBASE_URL;

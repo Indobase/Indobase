@@ -23,7 +23,7 @@ import { createSupportStorageClient } from './support-storage-client'
 const MAX_ATTACHMENTS = 5
 
 const uploadAttachments = async ({ userId, files }: { userId: string; files: File[] }) => {
-  const supportSupabaseClient = createSupportStorageClient()
+  const supportIndobaseClient = createSupportStorageClient()
 
   const filesToUpload = Array.from(files)
   const uploadedFiles = await Promise.all(
@@ -32,7 +32,7 @@ const uploadAttachments = async ({ userId, files }: { userId: string; files: Fil
       const prefix = `${userId}/${uuidv4()}.${suffix}`
       const options = { cacheControl: '3600' }
 
-      const { data, error } = await supportSupabaseClient.storage
+      const { data, error } = await supportIndobaseClient.storage
         .from('support-attachments')
         .upload(prefix, file, options)
 
@@ -169,7 +169,7 @@ export function AttachmentUploadDisplay({
         <p className="text-sm text-foreground">Attachments</p>
         <p className="text-sm text-foreground-lighter">
           Optionally upload up to {MAX_ATTACHMENTS} relevant images or{' '}
-          <InlineLink href="https://github.com/orgs/supabase/discussions/36540">
+          <InlineLink href="https://github.com/orgs/Indobase/discussions/36540">
             HAR files
           </InlineLink>
         </p>

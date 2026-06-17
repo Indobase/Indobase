@@ -27,8 +27,8 @@ const Footer = ({ className }: { className?: string }) => (
       <hr className="border-default my-6"></hr>
       <div className="flex gap-4 items-center justify-between">
         <div className="flex flex-col lg:flex-row gap-3 ">
-          <Link href="https://supabase.com/" className="text-xs text-foreground-lighter">
-            &copy; Supabase Inc
+          <Link href="https://indobase.in/" className="text-xs text-foreground-lighter">
+            &copy; Indobase
           </Link>
           <span className="text-xs text-foreground-lighter">—</span>
           {secondaryLinks.map(({ component: Component, ...item }) =>
@@ -70,7 +70,7 @@ const Footer = ({ className }: { className?: string }) => (
           </a>
 
           <a
-            href="https://discord.supabase.com/"
+            href="https://discord.indobase.in/"
             className="text-foreground-muted hover:text-foreground transition"
           >
             <span className="sr-only">Discord</span>

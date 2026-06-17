@@ -1,6 +1,6 @@
 'use client'
 
-import type { AuthError, Session } from 'indobase-js'
+import type { AuthError, Session } from '@indobaseinc/indobase-js'
 import {
   createContext,
   PropsWithChildren,

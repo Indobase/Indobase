@@ -2,15 +2,36 @@ packages:
   - apps/*
   - "!apps/www-backup"
   - packages/*
+  - "!packages/indobase-js"
+  - "!packages/indobase-auth-js"
+  - "!packages/indobase-functions-js"
+  - "!packages/indobase-postgrest-js"
+  - "!packages/indobase-realtime-js"
+  - "!packages/indobase-storage-js"
+  - "!packages/indobase-ssr"
+  - "!packages/indobase-auth-ui"
   - blocks/*
   - e2e/*
 
 catalog:
+  '@indobaseinc/auth-js': 1.0.8
+  '@indobaseinc/functions-js': 1.0.8
+  '@indobaseinc/postgrest-js': 1.0.8
+  '@indobaseinc/realtime-js': 1.0.8
+  '@indobaseinc/storage-js': 1.0.8
+  '@indobaseinc/indobase-js': 1.0.8
+  '@indobaseinc/js': 1.0.8
+  '@indobaseinc/ssr': 0.12.0
+  '@indobaseinc/auth-ui-shared': 1.0.1
+  '@indobaseinc/auth-ui-react': 1.0.1
+  '@indobaseinc/auth-ui-svelte': 1.0.1
+  '@indobaseinc/pg-meta': 0.93.1
+  '@indobaseinc/postgres-meta': 0.64.6
+  '@indobaseinc/shared-types': 0.1.84
+  '@indobaseinc/mcp-utils': 0.3.2
+  '@indobaseinc/mcp-server': 0.6.3
+  '@indobaseinc/sql-to-rest': 0.1.6
   '@sentry/nextjs': ^10.26.0
-  '@supabase/auth-js': 2.97.1-canary.3
-  '@supabase/postgrest-js': 2.97.1-canary.3
-  '@supabase/realtime-js': 2.97.1-canary.3
-  '@supabase/supabase-js': 2.97.1-canary.3
   '@types/node': ^22.0.0
   '@types/react': ^18.3.0
   '@types/react-dom': ^18.3.0
@@ -44,7 +65,7 @@ minimumReleaseAge: 10080
 
 minimumReleaseAgeExclude:
   - '@ai-sdk/*'
-  - '@supabase/*'
+  - '@indobaseinc/*'
   - 'next'
   - '@next/*'
   - ai

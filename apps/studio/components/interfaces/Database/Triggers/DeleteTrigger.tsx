@@ -1,4 +1,4 @@
-import type { PostgresTrigger } from '@supabase/postgres-meta'
+import type { PostgresTrigger } from '@indobaseinc/postgres-meta'
 
 import { TextConfirmModal } from 'components/ui/TextConfirmModalWrapper'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'

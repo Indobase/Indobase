@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
+import { enforceRateLimit } from 'lib/api/rate-limit'
 
 /**
  * Self-hosted / non-platform: proxy password recovery to GoTrue (`/auth/v1/recover`),
@@ -23,6 +24,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
+  const allowed = enforceRateLimit(req, res, {
+    keyPrefix: 'platform-reset-password',
+    max: 5,
+    windowMs: 60_000,
+  })
+  if (!allowed) return
+
   let payload: any = req.body ?? {}
   if (typeof payload === 'string') {
     try {
@@ -47,7 +55,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     process.env.ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const supabaseUrlBase =
+  const projectUrlBase =
     process.env.SUPABASE_URL ||
     process.env.SUPABASE_PUBLIC_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -58,7 +66,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const gotrueUrlRaw =
     process.env.GOTRUE_URL ||
     process.env.NEXT_PUBLIC_GOTRUE_URL ||
-    (supabaseUrlBase ? `${supabaseUrlBase.replace(/\/$/, '')}/auth/v1` : '')
+    (projectUrlBase ? `${projectUrlBase.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKeyRaw) {
     return res.status(500).json({

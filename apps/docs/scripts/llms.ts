@@ -21,7 +21,7 @@ import {
 interface Source {
   title: string
   /**
-   * Path relative to https://supabase.com. No leading slash
+   * Path relative to https://indobase.in. No leading slash
    */
   relPath: string
   fetch: () => Promise<SearchSource[]>
@@ -39,7 +39,7 @@ const {
 const { metadataTitle } = getCustomContent(['metadata:title'])
 
 function toLink(source: Source) {
-  return `[${source.title}](https://supabase.com/${source.relPath})`
+  return `[${source.title}](https://indobase.in/${source.relPath})`
 }
 
 const SOURCES: Source[] = [

@@ -40,7 +40,7 @@ const MAX_EXPORT_ROW_COUNT_MESSAGE = (
   <p>
     Sorry! We're unable to support exporting row counts larger than{' '}
     {MAX_EXPORT_ROW_COUNT.toLocaleString('en-US')} at the moment. Alternatively, you may consider
-    using <InlineLink href={`${DOCS_URL}/reference/cli/supabase-db-dump`}>pg_dump</InlineLink> via
+    using <InlineLink href={`${DOCS_URL}/reference/cli/indobase-db-dump`}>pg_dump</InlineLink> via
     our CLI instead.
   </p>
 )

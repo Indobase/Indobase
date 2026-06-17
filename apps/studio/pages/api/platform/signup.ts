@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
 import { enforceRateLimit } from 'lib/api/rate-limit'
+import { recordDataPrincipalConsent } from 'lib/api/saas/data-principal'
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -44,9 +45,16 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  const { email, password, hcaptchaToken, redirectTo } = payload
+  const { email, password, hcaptchaToken, redirectTo, dpdpConsent } = payload
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' })
+  }
+
+  if (dpdpConsent !== true) {
+    return res.status(400).json({
+      message:
+        'You must accept the Privacy Policy and Terms of Service to create an account (DPDP consent required).',
+    })
   }
 
   // Prefer server secrets; fall back to NEXT_PUBLIC_* so Dokploy setups that only
@@ -56,14 +64,14 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     process.env.ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const supabaseUrlBase =
+  const projectUrlBase =
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     ''
 
   const gotrueUrlRaw =
     process.env.GOTRUE_URL ||
-    (supabaseUrlBase ? `${supabaseUrlBase.replace(/\/$/, '')}/auth/v1` : '')
+    (projectUrlBase ? `${projectUrlBase.replace(/\/$/, '')}/auth/v1` : '')
 
   if (!anonKeyRaw) {
     return res.status(500).json({
@@ -209,6 +217,36 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
 
     // OpenAPI spec lists 201 for this route; GoTrue often returns 200 — normalize for the client.
     const successStatus = r.status === 200 ? 201 : r.status
+
+    const clientIp =
+      (typeof req.headers['x-forwarded-for'] === 'string'
+        ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+        : null) ??
+      req.socket.remoteAddress ??
+      null
+    const userAgent = typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null
+
+    try {
+      await recordDataPrincipalConsent({
+        email: String(email),
+        consentType: 'signup_privacy',
+        consented: true,
+        ip: clientIp,
+        userAgent,
+        metadata: { source: 'platform_signup' },
+      })
+      await recordDataPrincipalConsent({
+        email: String(email),
+        consentType: 'signup_terms',
+        consented: true,
+        ip: clientIp,
+        userAgent,
+        metadata: { source: 'platform_signup' },
+      })
+    } catch (consentError) {
+      console.error('[signup] Failed to record DPDP consent:', consentError)
+    }
+
     return res.status(successStatus).json(json)
   } catch {
     if (!r.ok) {

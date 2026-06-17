@@ -1,24 +1,24 @@
 ---
 title: 'Restore a Platform Project to Self-Hosted'
-description: 'Restore your database from the Supabase platform to a self-hosted instance.'
-subtitle: 'Restore your database from the Supabase platform to a self-hosted instance.'
+description: 'Restore your database from the Indobase platform to a self-hosted instance.'
+subtitle: 'Restore your database from the Indobase platform to a self-hosted instance.'
 ---
 
-This guide walks you through restoring your database from a Supabase platform project to a [self-hosted Docker instance](/docs/guides/self-hosting/docker). Storage objects transfer or redeploying edge functions is not covered here.
+This guide walks you through restoring your database from an Indobase platform project to a [self-hosted Docker instance](/docs/guides/self-hosting/docker). Storage objects transfer or redeploying edge functions is not covered here.
 
 ## Before you begin
 
 You need:
 
-- A new self-hosted Supabase instance ([Docker setup guide](/docs/guides/self-hosting/docker))
-- [Supabase CLI](/docs/guides/local-development/cli/getting-started) installed (or use `npx supabase`)
+- A new self-hosted Indobase instance ([Docker setup guide](/docs/guides/self-hosting/docker))
+- [Indobase CLI](/docs/guides/local-development/cli/getting-started) installed (or use `npx supabase`)
 - [Docker Desktop](https://docs.docker.com/get-started/get-docker/) installed (required by the CLI)
 - `psql` installed ([official installation guide](https://www.postgresql.org/download/))
 - Your Supabase database passwords (for platform and self-hosted)
 
 ## Step 1: Get your platform connection string
 
-On your managed Supabase project dashboard, click [**Connect**](/dashboard/project/_?showConnect=true) and copy the connection string (use the session pooler or direct connection).
+On your managed Indobase project dashboard, click [**Connect**](/dashboard/project/_?showConnect=true) and copy the connection string (use the session pooler or direct connection).
 
 ## Step 2: Back up your platform database
 
@@ -40,7 +40,7 @@ This produces SQL files that are compatible across Postgres versions.
 
 <Admonition type="note">
 
-Using `supabase db dump` executes `pg_dump` under the hood but applies Supabase-specific filtering - it excludes internal schemas, strips reserved roles, and adds idempotent `IF NOT EXISTS` clauses. Using raw `pg_dump` directly will include Supabase internals and cause permission errors during restore. CLI requires Docker because it runs `pg_dump` inside a container from the Supabase Postgres image rather than requiring a local Postgres installation.
+Using `supabase db dump` executes `pg_dump` under the hood but applies Supabase-specific filtering - it excludes internal schemas, strips reserved roles, and adds idempotent `IF NOT EXISTS` clauses. Using raw `pg_dump` directly will include Supabase internals and cause permission errors during restore. CLI requires Docker because it runs `pg_dump` inside a container from the Indobase Postgres image rather than requiring a local Postgres installation.
 
 </Admonition>
 
@@ -48,11 +48,11 @@ Using `supabase db dump` executes `pg_dump` under the hood but applies Supabase-
 
 Before restoring, check the following on your self-hosted instance:
 
-- **Extensions**: Enable any non-default extensions your Supabase project uses. You can check which extensions are active by querying `select * from pg_extension;` on your managed database (or check Database Extensions in Dashboard).
+- **Extensions**: Enable any non-default extensions your Indobase project uses. You can check which extensions are active by querying `select * from pg_extension;` on your managed database (or check Database Extensions in Dashboard).
 
 ## Step 4: Restore to your self-hosted database
 
-Connect to your self-hosted Postgres and restore the dump files. The [default](/docs/guides/self-hosting/docker#accessing-postgres) connection string for self-hosted Supabase is:
+Connect to your self-hosted Postgres and restore the dump files. The [default](/docs/guides/self-hosting/docker#accessing-postgres) connection string for self-hosted Indobase is:
 
 ```
 postgres://postgres.your-tenant-id:[POSTGRES_PASSWORD]@[your-domain]:5432/postgres
@@ -60,7 +60,7 @@ postgres://postgres.your-tenant-id:[POSTGRES_PASSWORD]@[your-domain]:5432/postgr
 
 Where `[POSTGRES_PASSWORD]` is the value of `POSTGRES_PASSWORD` in your self-hosted `.env` file.
 
-Use your domain name, your server IP, or localhost for `[your-domain]` depending on whether you are running self-hosted Supabase on a VPS, or locally.
+Use your domain name, your server IP, or localhost for `[your-domain]` depending on whether you are running self-hosted Indobase on a VPS, or locally.
 
 Run `psql` to restore:
 
@@ -115,7 +115,7 @@ Your `auth.users` table and related data are included in the database dump, so u
 
 - **JWT secrets differ** between your platform and self-hosted instances. Existing tokens issued by the platform project will not be valid. Users will need to re-authenticate.
 - **Social auth providers** (Apple, Google, GitHub, etc.) need to be configured in your self-hosted `.env` file. Set the relevant `GOTRUE_EXTERNAL_*` variables. See the Auth repository [README](https://github.com/supabase/auth) for all available options.
-- **Redirect URLs** in your OAuth provider consoles (Apple Developer, Google Cloud Console, etc.) must be updated to point to your self-hosted hostname instead of `*.supabase.co`.
+- **Redirect URLs** in your OAuth provider consoles (Apple Developer, Google Cloud Console, etc.) must be updated to point to your self-hosted hostname instead of `*.indobase.in`.
 
 ## Postgres version compatibility
 
@@ -148,7 +148,7 @@ sed -i 's/^SET transaction_timeout/-- &/' data.sql
 
 For missing tables or column mismatches, comment out the relevant `COPY ... FROM stdin;` line and its corresponding `\.` terminator. Run the restore without `--single-transaction` first to identify all failures, then fix them and run the final restore with `--single-transaction`.
 
-Keeping your self-hosted configuration [up to date](https://github.com/supabase/supabase/blob/master/docker/CHANGELOG.md) will minimize these gaps.
+Keeping your self-hosted configuration [up to date](https://github.com/Indobase/Indobase/blob/master/docker/CHANGELOG.md) will minimize these gaps.
 
 ### Extension not available
 
@@ -160,11 +160,11 @@ select * from pg_available_extensions;
 
 ### Connection refused
 
-Make sure your self-hosted Postgres port is accessible. In the default [self-hosted Supabase](/docs/guides/self-hosting/docker#accessing-postgres) setup, the user is `postgres.your-tenant-id` with Supavisor on port `5432`.
+Make sure your self-hosted Postgres port is accessible. In the default [self-hosted Indobase](/docs/guides/self-hosting/docker#accessing-postgres) setup, the user is `postgres.your-tenant-id` with Supavisor on port `5432`.
 
 ### Legacy Studio configuration
 
-Studio in self-hosted Supabase historically used `supabase_admin` role (superuser) instead of `postgres`. Objects created via Studio UI were owned by `supabase_admin`. Check your `docker-compose.yml` [configuration](https://github.com/supabase/supabase/blob/2cb5befaa377a42b6d6ca152b98105b59054f2f4/docker/docker-compose.yml#L30) to see if `POSTGRES_USER_READ_WRITE` is set to `postgres`.
+Studio in self-hosted Indobase historically used `supabase_admin` role (superuser) instead of `postgres`. Objects created via Studio UI were owned by `supabase_admin`. Check your `docker-compose.yml` [configuration](https://github.com/Indobase/Indobase/blob/2cb5befaa377a42b6d6ca152b98105b59054f2f4/docker/docker-compose.yml#L30) to see if `POSTGRES_USER_READ_WRITE` is set to `postgres`.
 
 ### Custom roles missing passwords
 

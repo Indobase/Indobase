@@ -1,20 +1,20 @@
 ---
 id: 'auth-third-party-firebase-auth'
 title: 'Firebase Auth'
-subtitle: 'Use Firebase Auth with your Supabase project'
+subtitle: 'Use Firebase Auth with your Indobase project'
 ---
 
-Firebase Auth can be used as a third-party authentication provider alongside Supabase Auth, or standalone, with your Supabase project.
+Firebase Auth can be used as a third-party authentication provider alongside Indobase Auth, or standalone, with your Indobase project.
 
 ## Getting started
 
-1. First you need to add an integration to connect your Supabase project with your Firebase project. You will need to get the Project ID in the [Firebase Console](https://console.firebase.google.com/u/0/project/_/settings/general).
+1. First you need to add an integration to connect your Indobase project with your Firebase project. You will need to get the Project ID in the [Firebase Console](https://console.firebase.google.com/u/0/project/_/settings/general).
 2. Add a new Third-party Auth integration in your project's [Authentication settings](/dashboard/project/_/auth/third-party).
 3. If you are using Third Party Auth when self hosting, create and attach restrictive RLS policies to all tables in your public schema, Storage and Realtime to **prevent unauthorized access from unrelated Firebase projects**.
 4. Assign the `role: 'authenticated'` [custom user claim](https://firebase.google.com/docs/auth/admin/custom-claims) to all your users.
-5. Finally set up the Supabase client in your application.
+5. Finally set up the Indobase client in your application.
 
-## Setup the Supabase client library
+## Setup the Indobase client library
 
 <Tabs type="underlined" queryGroup="firebase-create-client">
 
@@ -26,7 +26,7 @@ Creating a client for the Web is as easy as passing the `accessToken` async func
 import { createClient } from 'indobase-js'
 
 const supabase = createClient(
-  'https://<supabase-project>.supabase.co',
+  'https://<supabase-project>.indobase.in',
   'SUPABASE_PUBLISHABLE_KEY',
   {
     accessToken: async () => {
@@ -74,7 +74,7 @@ import FirebaseAuth
 struct MissingFirebaseTokenError: Error {}
 
 let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://<supabase-project>.supabase.co")!,
+  supabaseURL: URL(string: "https://<supabase-project>.indobase.in")!,
   supabaseKey: "SUPABASE_PUBLISHABLE_KEY",
   options: SupabaseClientOptions(
     auth: SupabaseClientOptions.AuthOptions(
@@ -97,14 +97,14 @@ let supabase = SupabaseClient(
 
 <TabPanel id="kotlin" label="Kotlin (Android)">
 
-Create a Supabase client with the `accessToken` function that returns the Firebase Auth JWT of the current user. This code uses the [official Firebase SDK](https://firebase.google.com/docs/auth/android/start) for Android.
+Create a Indobase client with the `accessToken` function that returns the Firebase Auth JWT of the current user. This code uses the [official Firebase SDK](https://firebase.google.com/docs/auth/android/start) for Android.
 
 ```kotlin
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 val supabase = createSupabaseClient(
-    "https://<supabase-project>.supabase.co",
+    "https://<supabase-project>.indobase.in",
     "SUPABASE_PUBLISHABLE_KEY"
 ) {
     accessToken = {
@@ -120,14 +120,14 @@ val supabase = createSupabaseClient(
 
 <TabPanel id="kotlinmp" label="Kotlin (Multiplatform)">
 
-Create a Supabase client with the `accessToken` function that returns the Firebase Auth JWT of the current user. This code uses a [community Firebase SDK](https://github.com/GitLiveApp/firebase-kotlin-sdk) which supports Kotlin Multiplatform.
+Create a Indobase client with the `accessToken` function that returns the Firebase Auth JWT of the current user. This code uses a [community Firebase SDK](https://github.com/GitLiveApp/firebase-kotlin-sdk) which supports Kotlin Multiplatform.
 
 ```kotlin
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 
 val supabase = createSupabaseClient(
-    "https://<supabase-project>.supabase.co",
+    "https://<supabase-project>.indobase.in",
     "SUPABASE_PUBLISHABLE_KEY"
 ) {
     accessToken = {
@@ -159,13 +159,13 @@ project_id = "<id>"
 
 **Follow this section carefully to prevent unauthorized access to your project's data when self-hosting.**
 
-When using the Supabase hosted platform, following this step is optional.
+When using the Indobase hosted platform, following this step is optional.
 
 </Admonition>
 
-Firebase Auth uses a single set of JWT signing keys for all projects. This means that JWTs issued from an unrelated Firebase project to yours could access data in your Supabase project.
+Firebase Auth uses a single set of JWT signing keys for all projects. This means that JWTs issued from an unrelated Firebase project to yours could access data in your Indobase project.
 
-When using the Supabase hosted platform, JWTs coming from Firebase project IDs you have not registered will be rejected before they reach your database. When self-hosting implementing this mechanism is your responsibility. An easy way to guard against this is to create and maintain the following RLS policies for **all of your tables in the `public` schema**. You should also attach this policy to [Storage](/docs/guides/storage/security/access-control) buckets or [Realtime](/docs/guides/realtime/authorization) channels.
+When using the Indobase hosted platform, JWTs coming from Firebase project IDs you have not registered will be rejected before they reach your database. When self-hosting implementing this mechanism is your responsibility. An easy way to guard against this is to create and maintain the following RLS policies for **all of your tables in the `public` schema**. You should also attach this policy to [Storage](/docs/guides/storage/security/access-control) buckets or [Realtime](/docs/guides/realtime/authorization) channels.
 
 It's recommended you use a [restrictive Postgres Row-Level Security policy](https://www.postgresql.org/docs/current/sql-createpolicy.html).
 
@@ -180,12 +180,12 @@ Postgres has two types of policies: permissive and restrictive. This example use
 This is an example of such an RLS policy that will restrict access to only your project's (denoted with `<firebase-project-id>`) users, and not any other Firebase project.
 
 ```sql
-create policy "Restrict access to Supabase Auth and Firebase Auth for project ID <firebase-project-id>"
+create policy "Restrict access to Indobase Auth and Firebase Auth for project ID <firebase-project-id>"
   on table_name
   as restrictive
   to authenticated
   using (
-    (auth.jwt()->>'iss' = 'https://<project-ref>.supabase.co/auth/v1')
+    (auth.jwt()->>'iss' = 'https://<project-ref>.indobase.in/auth/v1')
     or
     (
         auth.jwt()->>'iss' = 'https://securetoken.google.com/<firebase-project-id>'
@@ -204,7 +204,7 @@ create function public.is_supabase_or_firebase_project_jwt()
   stable
   returns null on null input
   return (
-    (auth.jwt()->>'iss' = 'https://<project-ref>.supabase.co/auth/v1')
+    (auth.jwt()->>'iss' = 'https://<project-ref>.indobase.in/auth/v1')
     or
     (
         auth.jwt()->>'iss' = concat('https://securetoken.google.com/<firebase-project-id>')
@@ -214,7 +214,7 @@ create function public.is_supabase_or_firebase_project_jwt()
   );
 ```
 
-Make sure you substitute `<project-ref>` with your Supabase project's ID and the `<firebase-project-id>` to your Firebase Project ID. Then the restrictive policies on all your tables, buckets and channels can be simplified to be:
+Make sure you substitute `<project-ref>` with your Indobase project's ID and the `<firebase-project-id>` to your Firebase Project ID. Then the restrictive policies on all your tables, buckets and channels can be simplified to be:
 
 ```sql
 create policy "Restrict access to correct Supabase and Firebase projects"
@@ -226,9 +226,9 @@ create policy "Restrict access to correct Supabase and Firebase projects"
 
 ## Assign the "role" custom claim
 
-Your Supabase project inspects the `role` claim present in all JWTs sent to it, to assign the correct Postgres role when using the Data API, Storage or Realtime authorization.
+Your Indobase project inspects the `role` claim present in all JWTs sent to it, to assign the correct Postgres role when using the Data API, Storage or Realtime authorization.
 
-By default, Firebase JWTs do not contain a `role` claim in them. If you were to send such a JWT to your Supabase project, the `anon` role would be assigned when executing the Postgres query. Most of your app's logic will be accessible by the `authenticated` role.
+By default, Firebase JWTs do not contain a `role` claim in them. If you were to send such a JWT to your Indobase project, the `anon` role would be assigned when executing the Postgres query. Most of your app's logic will be accessible by the `authenticated` role.
 
 ### Use Firebase Authentication functions to assign the authenticated role
 
@@ -247,7 +247,7 @@ import { beforeUserCreated, beforeUserSignedIn } from 'firebase-functions/v2/ide
 export const beforecreated = beforeUserCreated((event) => {
   return {
     customClaims: {
-      // The Supabase project will use this role to assign the `authenticated`
+      // The Indobase project will use this role to assign the `authenticated`
       // Postgres role.
       role: 'authenticated',
     },
@@ -257,7 +257,7 @@ export const beforecreated = beforeUserCreated((event) => {
 export const beforesignedin = beforeUserSignedIn((event) => {
   return {
     customClaims: {
-      // The Supabase project will use this role to assign the `authenticated`
+      // The Indobase project will use this role to assign the `authenticated`
       // Postgres role.
       role: 'authenticated',
     },
@@ -275,14 +275,14 @@ Note that instead of using `customClaims` you can instead use `sessionClaims`. T
 @identity_fn.before_user_created()
 def set_supabase_role_sign_up(event: identity_fn.AuthBlockingEvent) -> identity_fn.BeforeCreateResponse | None:
   return identity_fn.BeforeCreateResponse(
-    # The Supabase project will use this role to assign the `authenticated`
+    # The Indobase project will use this role to assign the `authenticated`
     # Postgres role.
     custom_claims={'role': 'authenticated'})
 
 @identity_fn.before_user_signed_in()
 def set_supabase_role_sign_in(event: identity_fn.AuthBlockingEvent) -> identity_fn.BeforeSignInResponse | None:
   return identity_fn.BeforeSignInResponse(
-    # The Supabase project will use this role to assign the `authenticated`
+    # The Indobase project will use this role to assign the `authenticated`
     # Postgres role.
     custom_claims={'role': 'authenticated'})
 ```

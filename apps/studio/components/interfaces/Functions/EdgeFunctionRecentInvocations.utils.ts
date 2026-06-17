@@ -6,7 +6,7 @@
  * The event_message typically follows the format:
  *   "{METHOD} | {STATUS_CODE} | {URL_OR_DETAIL}"
  *
- * e.g. "POST | 200 | https://example.supabase.red/functions/v1/hello-world"
+ * e.g. "POST | 200 | https://example.indobase.red/functions/v1/hello-world"
  *
  * When the structured method and status_code fields match what's in the message,
  * we strip them out to avoid duplication. If parsing fails or the message doesn't

@@ -7,7 +7,7 @@ video: 'https://www.youtube-nocookie.com/v/rOLyOsBR1Uc'
 tocVideo: 'rOLyOsBR1Uc'
 ---
 
-This guide shows you how to set up your local Supabase development environment that integrates with GitHub Actions to automatically test and release schema changes to staging and production Supabase projects.
+This guide shows you how to set up your local Supabase development environment that integrates with GitHub Actions to automatically test and release schema changes to staging and production Indobase projects.
 
 <Image
   alt="Diagram showing a possible environment setup for Supabase development. There are 3 branches and 3 corresponding databases: feature branch and local database, develop branch and staging database, and main branch and production database."
@@ -22,13 +22,13 @@ height={933}
 
 ## Set up a local environment
 
-The first step is to set up your local repository with the Supabase CLI:
+The first step is to set up your local repository with the Indobase CLI:
 
 ```bash
 supabase init
 ```
 
-You should see a new `supabase` directory. Then you need to link your local repository with your Supabase project:
+You should see a new `supabase` directory. Then you need to link your local repository with your Indobase project:
 
 ```bash
 supabase login
@@ -38,10 +38,10 @@ supabase link --project-ref $PROJECT_ID
 You can get your `$PROJECT_ID` from your project's dashboard URL:
 
 ```
-https://supabase.com/dashboard/project/<project-id>
+https://indobase.in/dashboard/project/<project-id>
 ```
 
-If you're using an existing Supabase project, you might have made schema changes through the Dashboard.
+If you're using an existing Indobase project, you might have made schema changes through the Dashboard.
 Run the following command to pull these changes before making local schema changes from the CLI:
 
 ```sql
@@ -170,11 +170,11 @@ In a production environment, we recommend using a CI/CD pipeline to deploy new m
   height={933}
 />
 
-This example uses two Supabase projects, one for production and one for staging.
+This example uses two Indobase projects, one for production and one for staging.
 
 Prepare your environments by:
 
-- Creating separate Supabase projects for staging and production
+- Creating separate Indobase projects for staging and production
 - Pushing your git repository to GitHub and enabling GitHub Actions
 
 <Admonition type="caution">
@@ -185,7 +185,7 @@ You need a _new_ project for staging. A project which has already been modified 
 
 ### Configure GitHub Actions
 
-The Supabase CLI requires a few environment variables to run in non-interactive mode.
+The Indobase CLI requires a few environment variables to run in non-interactive mode.
 
 - `SUPABASE_ACCESS_TOKEN` is your personal access token
 - `SUPABASE_DB_PASSWORD` is your project specific database password
@@ -302,9 +302,9 @@ jobs:
 </TabPanel>
 </Tabs>
 
-The full example code is available in the [demo repository](https://github.com/supabase/supabase-action-example).
+The full example code is available in the [demo repository](https://github.com/Indobase/Indobase-action-example).
 
-Commit these files to git and push to your `main` branch on GitHub. Update these environment variables to match your Supabase projects:
+Commit these files to git and push to your `main` branch on GitHub. Update these environment variables to match your Indobase projects:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `PRODUCTION_PROJECT_ID`
@@ -337,7 +337,7 @@ Once the test error is resolved, merge this PR and watch the deployment in actio
 
 After verifying your staging project has successfully migrated, create another PR from `develop` to `main` and merge it to deploy the migration to the production project.
 
-The `release` job applies all new migration scripts merged in `supabase/migrations` directory to a linked Supabase project. You can control which project the job links to via `PROJECT_ID` environment variable.
+The `release` job applies all new migration scripts merged in `supabase/migrations` directory to a linked Indobase project. You can control which project the job links to via `PROJECT_ID` environment variable.
 
 ## Troubleshooting
 

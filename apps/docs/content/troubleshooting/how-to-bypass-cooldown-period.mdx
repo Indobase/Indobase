@@ -7,7 +7,7 @@ keywords = ["cooldown", "disk resize"]
 database_id = "ab90c813-6152-4dad-86f7-937d799ca123"
 ---
 
-This cooldown period isn't a Supabase limitation. It's rooted in how Amazon EBS (the underlying storage instance for our databases) manages volume modifications. After modifying a volume (e.g. increasing size, changing type, or IOPS), AWS enforces a mandatory 6-hour cooldown before allowing another modification on the same volume. This is to ensure data integrity and stability of the volume under load.
+This cooldown period isn't an Indobase limitation. It's rooted in how Amazon EBS (the underlying storage instance for our databases) manages volume modifications. After modifying a volume (e.g. increasing size, changing type, or IOPS), AWS enforces a mandatory 6-hour cooldown before allowing another modification on the same volume. This is to ensure data integrity and stability of the volume under load.
 
 From the [**AWS docs**](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyVolume.html):
 
@@ -21,4 +21,4 @@ There are a few options to work around the cooldown, depending on the state of y
 
 If the database is down or locked in a bad state (e.g corrupted or stuck during resize), the only path forward is to wait until the cooldown expires and the disk resize job completes in the queue.
 
-More on this in our doc here: [**https://supabase.com/docs/guides/platform/database-size#disk-size**](/docs/guides/platform/database-size#disk-size).
+More on this in our doc here: [**https://indobase.in/docs/guides/platform/database-size#disk-size**](/docs/guides/platform/database-size#disk-size).

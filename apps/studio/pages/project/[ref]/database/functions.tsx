@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { FunctionsList } from 'components/interfaces/Database/Functions/FunctionsList/FunctionsList'
 import DatabaseLayout from 'components/layouts/DatabaseLayout/DatabaseLayout'
 import { DefaultLayout } from 'components/layouts/DefaultLayout'

@@ -1,5 +1,5 @@
 import type { components } from 'api-types'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { executeQuery } from './query'
 import { resolveEncryptedPgMetaConnectionForProject } from './project-connection'

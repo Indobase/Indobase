@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'

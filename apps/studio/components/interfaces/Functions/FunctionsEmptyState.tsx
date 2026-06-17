@@ -311,7 +311,7 @@ curl --request POST 'http://localhost:54321/functions/v1/hello-world' \\
               <div className="flex items-center gap-x-2">
                 <DocsButton href={`${DOCS_URL}/reference/self-hosting-functions/introduction`} />
                 <Button asChild type="default" icon={<Github />}>
-                  <a href="https://github.com/supabase/edge-runtime/">GitHub</a>
+                  <a href="https://github.com/Indobase/edge-runtime/">GitHub</a>
                 </Button>
               </div>
             </div>
@@ -401,7 +401,7 @@ export const FunctionsSecretsEmptyStateLocal = () => {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/supabase/supabase/blob/master/docker/.env.example"
+              href="https://github.com/Indobase/supabase/blob/master/docker/.env.example"
             >
               .env file
             </a>
@@ -409,7 +409,7 @@ export const FunctionsSecretsEmptyStateLocal = () => {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml"
+              href="https://github.com/Indobase/supabase/blob/master/docker/docker-compose.yml"
             >
               docker-compose.yml
             </a>
@@ -422,7 +422,7 @@ export const FunctionsSecretsEmptyStateLocal = () => {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/supabase/supabase/blob/8bb82bb3a5aee631e8e6e6e0c8a5f6e97fb8f898/docker/volumes/functions/main/index.ts#L74"
+              href="https://github.com/Indobase/supabase/blob/8bb82bb3a5aee631e8e6e6e0c8a5f6e97fb8f898/docker/volumes/functions/main/index.ts#L74"
             >
               main/index.ts file
             </a>

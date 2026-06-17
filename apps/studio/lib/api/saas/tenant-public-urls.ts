@@ -27,7 +27,7 @@ export function resolvePublicDomainForTenantStack(): string {
 
 /**
  * When true, client SDKs should call `https://{ref}.<public-domain>` (per-project Traefik host),
- * matching Supabase's `{ref}.supabase.co`. Requires a dedicated tenant DB; shared Kong uses
+ * matching Supabase's `{ref}.indobase.in`. Requires a dedicated tenant DB; shared Kong uses
  * `api.<domain>` plus project-scoped anon/service keys.
  */
 export function usesTenantPublicApiHost(hasDedicatedTenantDb: boolean): boolean {

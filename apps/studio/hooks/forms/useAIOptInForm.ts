@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useQueryClient } from '@tanstack/react-query'
 import { LOCAL_STORAGE_KEYS } from 'common'
 import { useOrganizationUpdateMutation } from 'data/organizations/organization-update-mutation'

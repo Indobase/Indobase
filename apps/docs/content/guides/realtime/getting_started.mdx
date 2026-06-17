@@ -1,8 +1,8 @@
 ---
 id: 'getting-started'
 title: 'Getting Started with Realtime'
-description: 'Learn how to build real-time applications with Supabase Realtime'
-subtitle: 'Learn how to build real-time applications with Supabase Realtime'
+description: 'Learn how to build real-time applications with Indobase Realtime'
+subtitle: 'Learn how to build real-time applications with Indobase Realtime'
 sidebar_label: 'Getting Started'
 ---
 
@@ -42,7 +42,7 @@ let package = Package(
     dependencies: [
         // ...
         .package(
-            url: "https://github.com/supabase/supabase-swift.git",
+            url: "https://github.com/Indobase/Indobase-swift.git",
             from: "2.0.0"
         ),
     ],
@@ -97,7 +97,7 @@ Get your project URL and key.
 ```ts
 import { createClient } from 'indobase-js'
 
-const supabase = createClient('https://<project>.supabase.co', '<anon_key or sb_publishable_key>')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', '<anon_key or sb_publishable_key>')
 ```
 
 </TabPanel>
@@ -109,7 +109,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   await Supabase.initialize(
-    url: 'https://<project>.supabase.co',
+    url: 'https://[PROJECT-REF].indobase.in',
     anonKey: '<anon_key or sb_publishable_key>',
   );
   runApp(MyApp());
@@ -127,7 +127,7 @@ final supabase = Supabase.instance.client;
 import Supabase
 
 let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://<project>.supabase.co")!,
+  supabaseURL: URL(string: "https://[PROJECT-REF].indobase.in")!,
   supabaseKey: "<anon_key or sb_publishable_key>"
 )
 ```
@@ -140,7 +140,7 @@ let supabase = SupabaseClient(
 ```python
 from supabase import create_client, Client
 
-url: str = "https://<project>.supabase.co"
+url: str = "https://[PROJECT-REF].indobase.in"
 key: str = "<anon_key or sb_publishable_key>"
 supabase: Client = create_client(url, key)
 ```
@@ -224,7 +224,7 @@ There are three main ways to send messages with Realtime:
 
 #### 5.1 using client libraries
 
-Send and receive messages using the Supabase client:
+Send and receive messages using the Indobase client:
 
 <Tabs
   scrollable
@@ -345,7 +345,7 @@ Send messages via HTTP requests, perfect for server-side applications:
 
 ```ts
 // Send message via REST API
-const response = await fetch(`https://<project>.supabase.co/rest/v1/rpc/broadcast`, {
+const response = await fetch(`https://[PROJECT-REF].indobase.in/rest/v1/rpc/broadcast`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -375,7 +375,7 @@ import 'dart:convert';
 
 // Send message via REST API
 final response = await http.post(
-  Uri.parse('https://<project>.supabase.co/rest/v1/rpc/broadcast'),
+  Uri.parse('https://[PROJECT-REF].indobase.in/rest/v1/rpc/broadcast'),
   headers: {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer <your-service-role-key>',
@@ -403,7 +403,7 @@ final response = await http.post(
 import Foundation
 
 // Send message via REST API
-let url = URL(string: "https://<project>.supabase.co/rest/v1/rpc/broadcast")!
+let url = URL(string: "https://[PROJECT-REF].indobase.in/rest/v1/rpc/broadcast")!
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -437,7 +437,7 @@ from datetime import datetime
 
 # Send message via REST API
 response = requests.post(
-    'https://<project>.supabase.co/rest/v1/rpc/broadcast',
+    'https://[PROJECT-REF].indobase.in/rest/v1/rpc/broadcast',
     headers={
         'Content-Type': 'application/json',
         'Authorization': 'Bearer <your-service-role-key>',

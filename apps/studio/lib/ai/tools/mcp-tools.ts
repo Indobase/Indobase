@@ -2,7 +2,7 @@ import type { ToolSet } from 'ai'
 // End of third-party imports
 
 import type { AiOptInLevel } from 'hooks/misc/useOrgOptedIntoAi'
-import { createSupabaseMCPClient } from '../supabase-mcp'
+import { createIndobaseMCPClient } from '../indobase-mcp'
 import { filterToolsByOptInLevel, toolSetValidationSchema } from '../tool-filter'
 
 const UI_EXECUTED_TOOLS = ['execute_sql', 'deploy_edge_function']
@@ -17,7 +17,7 @@ export const getMcpTools = async ({
   aiOptInLevel: AiOptInLevel
 }) => {
   // If platform, fetch MCP client and tools which replace old local tools
-  const mcpClient = await createSupabaseMCPClient({
+  const mcpClient = await createIndobaseMCPClient({
     accessToken,
     projectId: projectRef,
   })

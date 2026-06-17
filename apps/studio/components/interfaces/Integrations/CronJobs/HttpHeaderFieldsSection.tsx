@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { ChevronDown, Plus, Trash } from 'lucide-react'
 import { useFieldArray } from 'react-hook-form'
 

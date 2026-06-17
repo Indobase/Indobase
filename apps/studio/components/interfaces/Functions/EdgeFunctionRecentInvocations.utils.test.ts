@@ -4,23 +4,23 @@ import { parseEdgeFunctionEventMessage } from './EdgeFunctionRecentInvocations.u
 
 describe('parseEdgeFunctionEventMessage', () => {
   it('should strip method and status code when they match the structured fields', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, 'POST', '200')).toBe(
-      'https://example.supabase.red/functions/v1/hello-world'
+      'https://example.indobase.red/functions/v1/hello-world'
     )
   })
 
   it('should strip method and status code for different HTTP methods', () => {
-    const message = 'GET | 404 | https://example.supabase.red/functions/v1/not-found'
+    const message = 'GET | 404 | https://example.indobase.red/functions/v1/not-found'
     expect(parseEdgeFunctionEventMessage(message, 'GET', '404')).toBe(
-      'https://example.supabase.red/functions/v1/not-found'
+      'https://example.indobase.red/functions/v1/not-found'
     )
   })
 
   it('should strip method and status code for 500 errors', () => {
-    const message = 'POST | 500 | https://example.supabase.red/functions/v1/broken'
+    const message = 'POST | 500 | https://example.indobase.red/functions/v1/broken'
     expect(parseEdgeFunctionEventMessage(message, 'POST', '500')).toBe(
-      'https://example.supabase.red/functions/v1/broken'
+      'https://example.indobase.red/functions/v1/broken'
     )
   })
 
@@ -30,27 +30,27 @@ describe('parseEdgeFunctionEventMessage', () => {
   })
 
   it('should return original message when method does not match', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, 'GET', '200')).toBe(message)
   })
 
   it('should return original message when status code does not match', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, 'POST', '500')).toBe(message)
   })
 
   it('should return original message when method is undefined', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, undefined, '200')).toBe(message)
   })
 
   it('should return original message when status code is undefined', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, 'POST', undefined)).toBe(message)
   })
 
   it('should return original message when both method and status code are undefined', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, undefined, undefined)).toBe(message)
   })
 
@@ -69,9 +69,9 @@ describe('parseEdgeFunctionEventMessage', () => {
   })
 
   it('should handle whitespace around parts correctly', () => {
-    const message = 'POST | 200 | https://example.supabase.red/functions/v1/hello-world'
+    const message = 'POST | 200 | https://example.indobase.red/functions/v1/hello-world'
     expect(parseEdgeFunctionEventMessage(message, 'POST', '200')).toBe(
-      'https://example.supabase.red/functions/v1/hello-world'
+      'https://example.indobase.red/functions/v1/hello-world'
     )
   })
 

@@ -1,18 +1,18 @@
 ---
 id: 'examples-amazon-bedrock-image-generator'
 title: 'Generate Images with Amazon Bedrock'
-description: 'Generate images with Amazon Bedrock and store them in Supabase Storage.'
+description: 'Generate images with Amazon Bedrock and store them in Indobase Storage.'
 tocVideo: 'KIwN2TmkTlg'
 ---
 
 [Amazon Bedrock](https://aws.amazon.com/bedrock) is a fully managed service that offers a choice of high-performing foundation models (FMs) from leading AI companies like AI21 Labs, Anthropic, Cohere, Meta, Mistral AI, Stability AI, and Amazon. Each model is accessible through a common API which implements a broad set of features to help build generative AI applications with security, privacy, and responsible AI in mind.
 
-This guide will walk you through an example using the Amazon Bedrock JavaScript SDK in Supabase Edge Functions to generate images using the [Amazon Titan Image Generator G1](https://aws.amazon.com/blogs/machine-learning/use-amazon-titan-models-for-image-generation-editing-and-searching/) model.
+This guide will walk you through an example using the Amazon Bedrock JavaScript SDK in Indobase Edge Functions to generate images using the [Amazon Titan Image Generator G1](https://aws.amazon.com/blogs/machine-learning/use-amazon-titan-models-for-image-generation-editing-and-searching/) model.
 
 ## Setup
 
 - In your AWS console, navigate to Amazon Bedrock and under "Request model access", select the Amazon Titan Image Generator G1 model.
-- In your Supabase project, create a `.env` file in the `supabase` directory with the following contents:
+- In your Indobase project, create a `.env` file in the `supabase` directory with the following contents:
 
 ```txt
 AWS_DEFAULT_REGION="<your_region>"
@@ -28,7 +28,7 @@ AWS_CONFIG_FILE="./aws/config"
 ### Configure Storage
 
 - [locally] Run `supabase start`
-- Open Studio URL: [locally](http://127.0.0.1:54323/project/default/storage/buckets) | [hosted](https://app.supabase.com/project/_/storage/buckets)
+- Open Studio URL: [locally](http://127.0.0.1:54323/project/default/storage/buckets) | [hosted](https://studio.indobase.in/project/_/storage/buckets)
 - Navigate to Storage
 - Click "New bucket"
 - Create a new public bucket called "images"
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
 ## Run the function locally
 
-1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
+1. Run `supabase start` (see: https://indobase.in/docs/reference/cli/supabase-start)
 2. Start with env: `supabase functions serve --env-file supabase/.env`
 3. Make an HTTP request:
 

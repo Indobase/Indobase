@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { getOrganization } from 'lib/api/saas/platform'
 import { getStorageAdminClient } from 'lib/api/storage-admin'

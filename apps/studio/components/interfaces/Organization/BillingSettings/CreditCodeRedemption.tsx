@@ -1,6 +1,6 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useFlag } from 'common'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'

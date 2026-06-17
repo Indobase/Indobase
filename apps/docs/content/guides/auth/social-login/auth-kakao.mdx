@@ -1,10 +1,10 @@
 ---
 id: 'auth-kakao'
 title: 'Login with Kakao'
-description: 'Add Kakao OAuth to your Supabase project'
+description: 'Add Kakao OAuth to your Indobase project'
 ---
 
-To enable Kakao Auth for your project, you need to set up a Kakao OAuth application and add the application credentials to your Supabase Dashboard.
+To enable Kakao Auth for your project, you need to set up a Kakao OAuth application and add the application credentials to your Indobase Dashboard.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Kakao OAuth consists of six broad steps:
 - Obtain a `Kakao Login Client Secret code` - this serves as the `client_secret`.
 - Configure additional settings in the Kakao Developers Portal.
 - Add your `client id` and `client secret` keys to your [Supabase Project](/dashboard).
-- Add the login code to your [Supabase JS Client App](https://github.com/supabase/supabase-js).
+- Add the login code to your [Supabase JS Client App](https://github.com/Indobase/Indobase-js).
 
 ## Access your Kakao Developer account
 
@@ -58,7 +58,7 @@ This serves as the `client_id` when you make API calls to authenticate the user.
 
 - Go to **App Settings** > **App** > **Platform Key**.
 - Click on the REST API key you want to use.
-- Note the **Kakao Login Client Secret code**. This serves as a `client_secret` for your Supabase project.
+- Note the **Kakao Login Client Secret code**. This serves as a `client_secret` for your Indobase project.
 - Make sure you activate **Kakao Login Client Secret**.
 
 ## Additional configurations on Kakao Developers portal
@@ -71,7 +71,7 @@ This serves as the `client_id` when you make API calls to authenticate the user.
   - profile_image
   - profile_nickname
 
-If you don't need an email address (or `account_email` isn't available for your app), you can omit `account_email` and enable **Allow users without an email** in the Supabase Kakao provider settings.
+If you don't need an email address (or `account_email` isn't available for your app), you can omit `account_email` and enable **Allow users without an email** in the Indobase Kakao provider settings.
 
 ![Kakao consent items configuration](/docs/img/guides/auth-kakao/kakao-developers-consent-items-set.png)
 

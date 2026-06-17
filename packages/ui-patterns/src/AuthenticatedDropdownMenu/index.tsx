@@ -1,6 +1,6 @@
 'use client'
 
-import type { User } from 'indobase-js'
+import type { User } from '@indobaseinc/indobase-js'
 import type { LucideIcon } from 'icons/src/createSupabaseIcon'
 import { UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'

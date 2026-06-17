@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Globe } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -90,7 +90,7 @@ const BannedIPs = () => {
               abusive
             </PageSectionDescription>
           </PageSectionSummary>
-          <DocsButton href={`${DOCS_URL}/reference/cli/supabase-network-bans`} />
+          <DocsButton href={`${DOCS_URL}/reference/cli/indobase-network-bans`} />
         </PageSectionMeta>
         <PageSectionContent></PageSectionContent>
       </PageSection>

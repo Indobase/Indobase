@@ -1,4 +1,4 @@
-import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@supabase/pg-meta/src/constants'
+import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@indobaseinc/pg-meta/src/constants'
 import { QueryKey, useQuery } from '@tanstack/react-query'
 import { handleError as handleErrorFetchers, post } from 'data/fetchers'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'

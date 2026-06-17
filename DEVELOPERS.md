@@ -52,7 +52,7 @@ To contribute code to [Indobase](https://indobase.fun), you must fork the [Indob
 
 ### Clone the repo
 
-1. Clone your GitHub forked repo:
+1. Clone the repository:
 
    ```sh
    git clone https://github.com/<github_username>/indobase.git
@@ -133,7 +133,7 @@ First, make sure you have the Docker installed on your device. You can download 
 
 #### Get Started
 
-1. Navigate to the `docker` directory in your forked repo
+1. Navigate to the `docker` directory in your local clone
 
    ```sh
    cd docker

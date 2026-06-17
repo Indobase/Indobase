@@ -1,4 +1,4 @@
-# Supabase UI Package
+# Indobase UI Package
 
 ## Figma-tokens setup
 

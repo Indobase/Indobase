@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createClient, type SupabaseClient } from 'indobase-js'
+import { createClient, type SupabaseClient } from '@indobaseinc/indobase-js'
 
 import { type Database } from '~/lib/supabase'
 

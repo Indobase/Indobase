@@ -1,6 +1,6 @@
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react'
-import { RealtimePresenceState } from '@supabase/supabase-js'
+import { useSupabaseClient, useUser } from '../lib/supabase/context'
+import { createClient } from '../lib/supabase/server'
+import { RealtimePresenceState } from '@indobaseinc/indobase-js'
 import type { GetServerSidePropsContext, NextPage } from 'next'
 import { useEffect, useState } from 'react'
 
@@ -54,9 +54,7 @@ const HomePage: NextPage = () => {
 }
 
 export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
-  // Create authenticated Supabase Client
-  const supabase = createServerSupabaseClient(ctx)
-  // Check if we have a session
+  const supabase = createClient(ctx)
   const {
     data: { session },
   } = await supabase.auth.getSession()

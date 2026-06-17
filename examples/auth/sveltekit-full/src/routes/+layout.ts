@@ -1,4 +1,4 @@
-import { createBrowserClient, createServerClient, isBrowser } from '@supabase/ssr'
+import { createBrowserClient, createServerClient, isBrowser } from '@indobaseinc/ssr'
 import { PUBLIC_SUPABASE_PUBLISHABLE_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public'
 import type { LayoutLoad } from './$types'
 

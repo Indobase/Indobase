@@ -6,7 +6,7 @@ import specAnalyticsV0 from '~/spec/analytics_v0_config.yaml' with { type: 'yml'
 
 const meta = {
   title: 'Analytics Self-hosting Config',
-  description: 'How to configure and deploy Supabase Analytics.',
+  description: 'How to configure and deploy Indobase Analytics.',
 }
 
 const generateMetadata = genGuideMeta(() => ({

@@ -5,7 +5,7 @@
  *
  * ## Naming conventions
  * Event names and actions should use standardized past-tense verbs for data quality and consistency.
- * Only use verbs already established in this file or in https://github.com/supabase/platform/blob/develop/shared/src/telemetry.ts
+ * Only use verbs already established in this file or in https://github.com/Indobase/platform/blob/develop/shared/src/telemetry.ts
  * Adding new verbs requires @growth-eng review to prevent data pollution.
  *
  * @module telemetry-frontend

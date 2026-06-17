@@ -1,18 +1,18 @@
 ---
 id: 'examples-mcp-server-mcp-lite'
 title: 'Building an MCP Server with mcp-lite'
-description: 'Build and deploy a Model Context Protocol (MCP) server on Supabase Edge Functions using mcp-lite.'
+description: 'Build and deploy a Model Context Protocol (MCP) server on Indobase Edge Functions using mcp-lite.'
 ---
 
-The [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) enables Large Language Models (LLMs) to interact with external tools and data sources. With `mcp-lite`, you can build lightweight MCP servers that run on Supabase Edge Functions, giving your AI assistants the ability to execute custom tools at the edge.
+The [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) enables Large Language Models (LLMs) to interact with external tools and data sources. With `mcp-lite`, you can build lightweight MCP servers that run on Indobase Edge Functions, giving your AI assistants the ability to execute custom tools at the edge.
 
-This guide shows you how to scaffold, develop, and deploy an MCP server using mcp-lite on Supabase Edge Functions.
+This guide shows you how to scaffold, develop, and deploy an MCP server using mcp-lite on Indobase Edge Functions.
 
 ## What is mcp-lite?
 
-[mcp-lite](https://github.com/fiberplane/mcp-lite) is a lightweight, zero-dependency TypeScript framework for building MCP servers. It works everywhere the Fetch API is available, including Node, Bun, Cloudflare Workers, Deno, and Supabase Edge Functions.
+[mcp-lite](https://github.com/fiberplane/mcp-lite) is a lightweight, zero-dependency TypeScript framework for building MCP servers. It works everywhere the Fetch API is available, including Node, Bun, Cloudflare Workers, Deno, and Indobase Edge Functions.
 
-## Why Supabase Edge Functions + mcp-lite?
+## Why Indobase Edge Functions + mcp-lite?
 
 This combination offers several advantages:
 
@@ -27,19 +27,19 @@ This combination offers several advantages:
 
 You need:
 
-- [Docker](https://docs.docker.com/get-docker/) (to run Supabase locally)
-- [Deno](https://deno.land/) (Supabase Edge Functions runtime)
-- [Supabase CLI](/docs/guides/cli/getting-started)
+- [Docker](https://docs.docker.com/get-docker/) (to run Indobase locally)
+- [Deno](https://deno.land/) (Indobase Edge Functions runtime)
+- [Indobase CLI](/docs/guides/cli/getting-started)
 
 ## Create a new MCP server
 
-Starting with `create-mcp-lite@0.3.0`, you can scaffold a complete MCP server that runs on Supabase Edge Functions:
+Starting with `create-mcp-lite@0.3.0`, you can scaffold a complete MCP server that runs on Indobase Edge Functions:
 
 ```bash
 npm create mcp-lite@latest
 ```
 
-When prompted, select **Supabase Edge Functions (MCP server)** from the template options.
+When prompted, select **Indobase Edge Functions (MCP server)** from the template options.
 
 The template creates a focused structure for Edge Functions development:
 
@@ -79,7 +79,7 @@ You can always add more services as needed.
 
 ### Two Hono apps pattern
 
-The template uses a specific pattern required by Supabase Edge Functions:
+The template uses a specific pattern required by Indobase Edge Functions:
 
 ```ts
 // Root handler - matches the function name
@@ -90,7 +90,7 @@ const mcpApp = new Hono()
 
 mcpApp.get('/', (c) => {
   return c.json({
-    message: 'MCP Server on Supabase Edge Functions',
+    message: 'MCP Server on Indobase Edge Functions',
     endpoints: {
       mcp: '/mcp',
       health: '/health',
@@ -133,7 +133,7 @@ This gives you npm package access while staying in the Deno ecosystem.
 
 ### Start Supabase
 
-Navigate to your project directory and start Supabase services:
+Navigate to your project directory and start Indobase services:
 
 ```bash
 supabase start
@@ -221,7 +221,7 @@ mcp.tool('searchDatabase', {
     query: z.string(),
   }),
   handler: async (args) => {
-    // Access Supabase client here
+    // Access Indobase client here
     // const { data } = await supabase.from(args.table).select('*')
     return {
       content: [{ type: 'text', text: `Searching ${args.table}...` }],
@@ -233,10 +233,10 @@ mcp.tool('searchDatabase', {
 You can add tools that:
 
 - Query your Supabase database
-- Access Supabase Storage for file operations
+- Access Indobase Storage for file operations
 - Call external APIs
 - Process data with custom logic
-- Integrate with other Supabase features
+- Integrate with other Indobase features
 
 ## Deploy to production
 
@@ -255,7 +255,7 @@ npm run deploy
 Your MCP server will be live at:
 
 ```
-https://your-project-ref.supabase.co/functions/v1/mcp-server/mcp
+https://your-[PROJECT-REF].indobase.in/functions/v1/mcp-server/mcp
 ```
 
 ## Authentication considerations
@@ -282,11 +282,11 @@ For more security guidance, see the [MCP security guide](/guides/getting-started
 
 ## What's next
 
-With your MCP server running on Supabase Edge Functions, you can:
+With your MCP server running on Indobase Edge Functions, you can:
 
 - Connect it to your Supabase database for data-driven tools
-- Use Supabase Auth to secure your endpoints
-- Access Supabase Storage for file operations
+- Use Indobase Auth to secure your endpoints
+- Access Indobase Storage for file operations
 - Deploy to multiple regions automatically
 - Scale to handle production traffic
 - Integrate with AI assistants like Claude, Cursor, or custom MCP clients
@@ -295,6 +295,6 @@ With your MCP server running on Supabase Edge Functions, you can:
 
 - [mcp-lite on GitHub](https://github.com/fiberplane/mcp-lite)
 - [Model Context Protocol Spec](https://modelcontextprotocol.io/)
-- [Supabase Edge Functions Docs](/guides/functions)
+- [Indobase Edge Functions Docs](/guides/functions)
 - [Deno Runtime Documentation](https://deno.land/)
 - [Fiberplane tutorial](https://blog.fiberplane.com/blog/mcp-lite-supabase-edge-functions/)

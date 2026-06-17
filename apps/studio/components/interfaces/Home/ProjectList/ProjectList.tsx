@@ -120,7 +120,7 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
       username: connection.user?.username ?? '',
     },
     foreign_project_id: String(connection.repository.id),
-    supabase_project_ref: connection.project.ref,
+    indobase_project_ref: connection.project.ref,
     organization_integration_id: 'unused',
     inserted_at: connection.inserted_at,
     updated_at: connection.updated_at,
@@ -241,10 +241,10 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
                       (resourceWarning) => resourceWarning.project === project.ref
                     )}
                     githubIntegration={githubConnections?.find(
-                      (connection) => connection.supabase_project_ref === project.ref
+                      (connection) => connection.indobase_project_ref === project.ref
                     )}
                     vercelIntegration={vercelConnections?.find(
-                      (connection) => connection.supabase_project_ref === project.ref
+                      (connection) => connection.indobase_project_ref === project.ref
                     )}
                   />
                 ))}
@@ -296,10 +296,10 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
                   (resourceWarning) => resourceWarning.project === project.ref
                 )}
                 githubIntegration={githubConnections?.find(
-                  (connection) => connection.supabase_project_ref === project.ref
+                  (connection) => connection.indobase_project_ref === project.ref
                 )}
                 vercelIntegration={vercelConnections?.find(
-                  (connection) => connection.supabase_project_ref === project.ref
+                  (connection) => connection.indobase_project_ref === project.ref
                 )}
               />
             ))}

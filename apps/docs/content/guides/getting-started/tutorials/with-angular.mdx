@@ -9,7 +9,7 @@ description: 'Learn how to use Supabase in your Angular App.'
 
 <Admonition type="note">
 
-If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/supabase/supabase/tree/master/examples/user-management/angular-user-management).
+If you get stuck while working through this guide, refer to the [full example on GitHub](https://github.com/Indobase/Indobase/tree/master/examples/user-management/angular-user-management).
 
 </Admonition>
 
@@ -29,7 +29,7 @@ npx ng new supabase-angular --routing false --style css --standalone false --ssr
 cd supabase-angular
 ```
 
-Then, install the only additional dependency: [supabase-js](https://github.com/supabase/supabase-js)
+Then, install the only additional dependency: [supabase-js](https://github.com/Indobase/Indobase-js)
 
 ```bash
 npm install indobase-js
@@ -46,9 +46,9 @@ lines={[[1, -1]]}
 meta="name=src/environments/environment.ts"
 />
 
-With the API credentials in place, create a `SupabaseService` with `ng g s supabase` and add the following code to initialize the Supabase client and implement functions to communicate with the Supabase API.
+With the API credentials in place, create a `SupabaseService` with `ng g s supabase` and add the following code to initialize the Indobase client and implement functions to communicate with the Indobase API.
 
-This uses the [`getUser`](/docs/reference/javascript/auth-getuser) method to get the current user details if there is an existing session. This method performs a network request to the Supabase Auth server.
+This uses the [`getUser`](/docs/reference/javascript/auth-getuser) method to get the current user details if there is an existing session. This method performs a network request to the Indobase Auth server.
 
 <$CodeSample
 path="/user-management/angular-user-management/src/app/supabase.service.ts"
@@ -56,7 +56,7 @@ lines={[[1, -1]]}
 meta="name=src/app/supabase.service.ts"
 />
 
-Optionally, update `src/styles.css` to style the app. You can find the full contents of this file [in the example repository](https://github.com/supabase/supabase/tree/master/examples/user-management/angular-user-management/src/styles.css).
+Optionally, update `src/styles.css` to style the app. You can find the full contents of this file [in the example repository](https://github.com/Indobase/Indobase/tree/master/examples/user-management/angular-user-management/src/styles.css).
 
 ### Set up a login component
 
@@ -103,7 +103,7 @@ meta="name=src/app/account/account.component.html"
 
 ## Profile photos
 
-Every Supabase project is configured with [Storage](/docs/guides/storage) for managing large files like photos and videos.
+Every Indobase project is configured with [Storage](/docs/guides/storage) for managing large files like photos and videos.
 
 ### Create an upload widget
 
@@ -162,6 +162,6 @@ npm run start
 
 Open the browser to [localhost:4200](http://localhost:4200) and you should see the completed app.
 
-![Screenshot of the Supabase Angular application running in a browser](/docs/img/supabase-angular-demo.png)
+![Screenshot of the Indobase Angular application running in a browser](/docs/img/supabase-angular-demo.png)
 
 At this stage you have a fully functional application!

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IntegrationConnectionItem } from 'components/interfaces/Integrations/VercelGithub/IntegrationConnection'
 import {
   EmptyIntegrationConnection,
@@ -155,7 +155,7 @@ You can change the scope of the access for Indobase by configuring
   let connections =
     (isProjectScoped
       ? vercelIntegration?.connections.filter(
-          (connection) => connection.supabase_project_ref === project?.ref
+          (connection) => connection.indobase_project_ref === project?.ref
         )
       : vercelIntegration?.connections) || []
 

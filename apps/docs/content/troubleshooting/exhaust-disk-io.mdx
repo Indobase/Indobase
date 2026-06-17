@@ -23,15 +23,15 @@ Running out of Disk IO Budget means that your instance is using more disk than i
 
 ## Monitor your disk IO budget
 
-To check your Disk IO Budget on the Supabase Platform, head over to [Database Health in the Observability section](/dashboard/project/_/observability/database).
+To check your Disk IO Budget on the Indobase Platform, head over to [Database Health in the Observability section](/dashboard/project/_/observability/database).
 
 It is also possible to monitor your resources and set up alerts using Prometheus/Grafana. With Grafana you will be able to pinpoint potential causes and see more fine-grained metrics like how much of your RAM is used for caching and your Swap usage. Read the [Metrics Guide](/docs/guides/platform/metrics) to learn more.
 
 ## Common reasons for high disk IO usage
 
-Most operations on your Supabase project require disk IO in some form. Hence, there can be many reasons for high disk IO usage. Here are some common ones:
+Most operations on your Indobase project require disk IO in some form. Hence, there can be many reasons for high disk IO usage. Here are some common ones:
 
-- **High Memory Usage:** Every Supabase project has 1GB of disk allocated for swapping. When your memory usage is high, the operating system might frequently move parts of the memory back and forth of the swap space on the disk.
+- **High Memory Usage:** Every Indobase project has 1GB of disk allocated for swapping. When your memory usage is high, the operating system might frequently move parts of the memory back and forth of the swap space on the disk.
 - **Low Cache Usage:** If your cache hit rate is low, many of your database requests might go straight to the disk. Go to the [Cache Hit Rate Guide](/docs/guides/platform/performance#hit-rate) to learn more.
 - **Query performance:** Queries that take a long time to complete (>1 second) could be using your disk inefficiently. Check our guide on [examining query performance](/docs/guides/platform/performance#examining-query-performance).
 - **High popularity:** Congrats! Your side project turned out to be a real success and is getting more requests than it can handle.

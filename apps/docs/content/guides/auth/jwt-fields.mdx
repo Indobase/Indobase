@@ -1,7 +1,7 @@
 ---
 id: 'jwt-fields'
 title: 'JWT Claims Reference'
-subtitle: 'Complete reference for claims appearing in JWTs created by Supabase Auth'
+subtitle: 'Complete reference for claims appearing in JWTs created by Indobase Auth'
 ---
 
 This page provides a comprehensive reference for all JWT claims used in Supabase authentication tokens. This information is essential for server-side JWT validation and serialization, especially when implementing authentication in languages like Rust where field names like `ref` are reserved keywords.
@@ -22,7 +22,7 @@ These claims are always present in Supabase JWTs and cannot be removed:
 
 | Field          | Type                 | Description                                                 | Example                                       |
 | -------------- | -------------------- | ----------------------------------------------------------- | --------------------------------------------- |
-| `iss`          | `string`             | **Issuer** - The entity that issued the JWT                 | `"https://project-ref.supabase.co/auth/v1"`   |
+| `iss`          | `string`             | **Issuer** - The entity that issued the JWT                 | `"https://[PROJECT-REF].indobase.in/auth/v1"`   |
 | `aud`          | `string \| string[]` | **Audience** - The intended recipient of the JWT            | `"authenticated"` or `"anon"`                 |
 | `exp`          | `number`             | **Expiration Time** - Unix timestamp when the token expires | `1640995200`                                  |
 | `iat`          | `number`             | **Issued At** - Unix timestamp when the token was issued    | `1640991600`                                  |
@@ -50,7 +50,7 @@ These claims may be present depending on the authentication context:
 
 | Field | Type     | Description                                         | Example                  | Context                       |
 | ----- | -------- | --------------------------------------------------- | ------------------------ | ----------------------------- |
-| `ref` | `string` | **Project Reference** - Supabase project identifier | `"abcdefghijklmnopqrst"` | Anon/Service role tokens only |
+| `ref` | `string` | **Project Reference** - Indobase project identifier | `"abcdefghijklmnopqrst"` | Anon/Service role tokens only |
 
 ## Field value constraints
 
@@ -114,7 +114,7 @@ These claims may be present depending on the authentication context:
   "email": "user@example.com",
   "exp": 1640995200,
   "iat": 1640991600,
-  "iss": "https://abcdefghijklmnopqrst.supabase.co/auth/v1",
+  "iss": "https://abcdefghijklmnopqrst.indobase.in/auth/v1",
   "phone": "",
   "role": "authenticated",
   "session_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -266,7 +266,7 @@ When implementing JWT validation on your server:
 1. **Check Required Fields**: Ensure all required claims are present
 2. **Validate Types**: Verify field types match expected types
 3. **Check Expiration**: Validate `exp` timestamp is in the future
-4. **Verify Issuer**: Ensure `iss` matches your Supabase project
+4. **Verify Issuer**: Ensure `iss` matches your Indobase project
 5. **Check Audience**: Validate `aud` matches expected audience
 6. **Handle Reserved Keywords**: Use field renaming for languages like Rust
 

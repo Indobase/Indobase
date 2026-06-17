@@ -6,7 +6,7 @@ import specRealtimeV0 from '~/spec/realtime_v0_config.yaml' with { type: 'yml' }
 
 const meta = {
   title: 'Realtime Self-hosting Config',
-  description: 'How to configure and deploy Supabase Realtime.',
+  description: 'How to configure and deploy Indobase Realtime.',
 }
 
 const generateMetadata = genGuideMeta(() => ({

@@ -4,7 +4,7 @@
   "title": "Password Based Auth flow for tanstack and Supabase",
   "description": "Password Based Auth flow for tanstack and Supabase",
   "registryDependencies": ["button", "card", "input", "label"],
-  "dependencies": ["@supabase/ssr@latest"],
+  "dependencies": ["@indobaseinc/ssr@latest"],
   "files": [
     {
       "path": "registry/default/blocks/password-based-auth-tanstack/routes/login.tsx",

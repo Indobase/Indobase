@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { AppleButton, appleAuth } from '@invertase/react-native-apple-authentication';
-import type { SignInWithIdTokenCredentials } from '@supabase/supabase-js';
+import type { SignInWithIdTokenCredentials } from '@indobaseinc/indobase-js';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 

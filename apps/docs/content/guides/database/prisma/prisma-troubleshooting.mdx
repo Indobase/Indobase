@@ -123,7 +123,7 @@ Postgres or Supavisor rejected a request for more connections
 
 ### Solutions [#solutions-causes-max-client-connections-reached]
 
-- **Transaction Mode for serverless apps**: If you are using serverless functions (Supabase Edge, Vercel, AWS Lambda), switch to transaction mode (port 6543). It handles more connections than session mode or direct connections.
+- **Transaction Mode for serverless apps**: If you are using serverless functions (Indobase Edge, Vercel, AWS Lambda), switch to transaction mode (port 6543). It handles more connections than session mode or direct connections.
 - **Reduce the number of Prisma connections**: A single client-server can establish multiple connections with a pooler. Typically, serverless setups do not need many connections. Starting with fewer, like five or three, or even just one, is often sufficient. In serverless setups, begin with `connection_limit=1`, increasing cautiously if needed to avoid maxing out connections.
 - **Increase pool size**: If you are connecting with Supavisor, try increasing the pool size in the [Database Settings](/dashboard/project/_/database/settings).
 - **Disconnect appropriately**: Close Prisma connections when they are no longer needed.

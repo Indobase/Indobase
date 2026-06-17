@@ -2,7 +2,7 @@ import { CpuIcon, Lock, Microchip } from 'lucide-react'
 import { useMemo } from 'react'
 import { UseFormReturn } from 'react-hook-form'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useParams } from 'common'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { DocsButton } from 'components/ui/DocsButton'

@@ -128,7 +128,7 @@ export class GuideModelLoader {
         const title = metadata.title || sections.find((s) => s.heading)?.heading
 
         // Create href from relative path (remove .mdx extension)
-        const href = `https://supabase.com/docs/guides/${relPath.replace(/\.mdx?$/, '')}`
+        const href = `https://indobase.in/docs/guides/${relPath.replace(/\.mdx?$/, '')}`
 
         return new GuideModel({
           title,

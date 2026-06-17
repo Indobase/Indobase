@@ -132,7 +132,7 @@ const GlobalMobileMenu = ({ open, setOpen }: Props) => {
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   className="cursor-pointer hidden dark:block"
-                  src={navigationLogo?.dark ?? '/docs/supabase-dark.svg'}
+                  src={navigationLogo?.dark ?? '/docs/indobase-dark.svg'}
                   priority
                   width={96}
                   height={24}
@@ -140,7 +140,7 @@ const GlobalMobileMenu = ({ open, setOpen }: Props) => {
                 />
                 <Image
                   className="cursor-pointer block dark:hidden"
-                  src={navigationLogo?.light ?? '/docs/supabase-light.svg'}
+                  src={navigationLogo?.light ?? '/docs/indobase-light.svg'}
                   priority
                   width={96}
                   height={24}
@@ -168,15 +168,15 @@ const GlobalMobileMenu = ({ open, setOpen }: Props) => {
                 <>
                   {isLoggedIn ? (
                     <Button block size="medium" asChild>
-                      <Link href="https://supabase.com/dashboard/projects">Dashboard</Link>
+                      <Link href="https://indobase.in/dashboard/projects">Dashboard</Link>
                     </Button>
                   ) : (
                     <>
                       <Button block size="medium" type="default" asChild>
-                        <Link href="https://supabase.com/dashboard/sign-in">Sign in</Link>
+                        <Link href="https://indobase.in/dashboard/sign-in">Sign in</Link>
                       </Button>
                       <Button block size="medium" asChild>
-                        <Link href="https://supabase.com/dashboard/new">Start your project</Link>
+                        <Link href="https://indobase.in/dashboard/new">Start your project</Link>
                       </Button>
                     </>
                   )}

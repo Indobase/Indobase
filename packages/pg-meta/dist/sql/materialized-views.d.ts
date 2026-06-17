@@ -1,0 +1,2 @@
+export declare const MATERIALIZED_VIEWS_SQL = "\nselect\n  c.oid::int8 as id,\n  n.nspname as schema,\n  c.relname as name,\n  c.relispopulated as is_populated,\n  obj_description(c.oid) as comment\nfrom\n  pg_class c\n  join pg_namespace n on n.oid = c.relnamespace\nwhere\n  c.relkind = 'm'\n";
+//# sourceMappingURL=materialized-views.d.ts.map

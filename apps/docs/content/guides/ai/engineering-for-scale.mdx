@@ -100,7 +100,7 @@ create extension postgres_fdw;
 
 create server docs_server
 foreign data wrapper postgres_fdw
-options (host 'db.xxx.supabase.co', port '5432', dbname 'postgres');
+options (host '[PROJECT-REF].indobase.in', port '5432', dbname 'postgres');
 
 create user mapping for docs_user
 server docs_server

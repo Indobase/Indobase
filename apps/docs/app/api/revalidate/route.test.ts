@@ -1,6 +1,6 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { NextRequest } from 'next/server'

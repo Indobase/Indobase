@@ -11,7 +11,7 @@ import '../../scripts/utils/dotenv.js'
 
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/core'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import { createHash } from 'crypto'
 import matter from 'gray-matter'
 import { fromMarkdown } from 'mdast-util-from-markdown'
@@ -43,7 +43,7 @@ const REPOSITORY_NAME = 'supabase'
  */
 let octokitInstance
 /**
- * @type {import('@supabase/supabase-js').SupabaseClient<import('../../../../packages/common').Database>}
+ * @type {import('@indobaseinc/indobase-js').SupabaseClient<import('../../../../packages/common').Database>}
  */
 let supabaseAdminClient
 

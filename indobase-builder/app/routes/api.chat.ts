@@ -14,10 +14,7 @@ import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import type { DesignScheme } from '~/types/design-scheme';
 import { MCPService } from '~/lib/services/mcpService';
 import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
-
-export async function action(args: ActionFunctionArgs) {
-  return chatAction(args);
-}
+import { withSecurity } from '~/lib/security';
 
 const logger = createScopedLogger('api.chat');
 
@@ -461,3 +458,5 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     });
   }
 }
+
+export const action = withSecurity(chatAction, { requireAuth: true });

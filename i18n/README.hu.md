@@ -5,43 +5,43 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) egy nyílt forráskódú Firebase alternatíva. A Firebase funkcióit vállalati szintű nyílt forráskódú eszközökkel építjük ki.
+[Indobase](https://indobase.in) egy nyílt forráskódú Firebase alternatíva. A Firebase funkcióit vállalati szintű nyílt forráskódú eszközökkel építjük ki.
 
-- [x] Hosted Postgres adatbázis. [Docs](https://supabase.com/docs/guides/database)
-- [x] Hitelesítés és engedélyezés. [Docs](https://supabase.com/docs/guides/auth)
+- [x] Hosted Postgres adatbázis. [Docs](https://indobase.in/docs/guides/database)
+- [x] Hitelesítés és engedélyezés. [Docs](https://indobase.in/docs/guides/auth)
 - [x] Automatikusan generált API-k.
-  - [x] REST. [Docs](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Docs](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Valós idejű előfizetések. [Docs](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Docs](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Docs](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Valós idejű előfizetések. [Docs](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funkciók.
-  - [x] Database Functions. [Docs](https://supabase.com/docs/guides/database/functions)
-  - [x] Edge Functions [Docs](https://supabase.com/docs/guides/functions)
-- [x] Fájlok tárolása. [Docs](https://supabase.com/docs/guides/storage)
+  - [x] Database Functions. [Docs](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge Functions [Docs](https://indobase.in/docs/guides/functions)
+- [x] Fájlok tárolása. [Docs](https://indobase.in/docs/guides/storage)
 - [x] Dashboard
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 ## Dokumentáció
 
-A teljes dokumentációért látogasson el [supabase.com/docs](https://supabase.com/docs)
+A teljes dokumentációért látogasson el [indobase.in/docs](https://indobase.in/docs)
 
 A Contribute-hoz való hozzájáruláshoz látogasson el a [Getting Started](../DEVELOPERS.md) oldalra
 
 ## Közösség és támogatás
 
-- [Közösségi fórum](https://github.com/supabase/supabase/discussions). Legjobb: segítség az építéshez, az adatbázis legjobb gyakorlatainak megvitatása.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Legjobb: hibák és hibák, amelyekkel a Supabase használatával találkozol.
-- [Email Support](https://supabase.com/docs/support#business-support). Legjobb: az adatbázisoddal vagy az infrastruktúrával kapcsolatos problémákra.
-- [Discord](https://discord.supabase.com). A legjobb: az alkalmazások megosztására és a közösséggel való együttlétre.
+- [Közösségi fórum](https://github.com/Indobase/Indobase/discussions). Legjobb: segítség az építéshez, az adatbázis legjobb gyakorlatainak megvitatása.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Legjobb: hibák és hibák, amelyekkel a Indobase használatával találkozol.
+- [Email Support](https://indobase.in/docs/support#business-support). Legjobb: az adatbázisoddal vagy az infrastruktúrával kapcsolatos problémákra.
+- [Discord](https://discord.indobase.in). A legjobb: az alkalmazások megosztására és a közösséggel való együttlétre.
 
 ## Állapot
 
-- [x] Alpha: A Supabase-t egy zárt ügyfélkörrel teszteljük
-- [x] Nyilvános alfa: Bárki regisztrálhat az [supabase.com/dashboard](https://supabase.com/dashboard) oldalon. De legyetek óvatosak velünk, van még néhány hiba
+- [x] Alpha: A Indobase-t egy zárt ügyfélkörrel teszteljük
+- [x] Nyilvános alfa: Bárki regisztrálhat az [supabase.com/dashboard](https://indobase.in/dashboard) oldalon. De legyetek óvatosak velünk, van még néhány hiba
 - [x] Nyilvános béta: Elég stabil a legtöbb nem vállalati felhasználási esethez
-- [ ] Nyilvános: Általános elérhetőség [[status](https://supabase.com/docs/guides/getting-started/features#feature-status)]
+- [ ] Nyilvános: Általános elérhetőség [[status](https://indobase.in/docs/guides/getting-started/features#feature-status)]
 
 Jelenleg nyilvános béta verzióban vagyunk. Figyelje a "releases" ezen repo-t, hogy értesítést kapjon a fontosabb frissítésekről.
 
@@ -51,14 +51,14 @@ Jelenleg nyilvános béta verzióban vagyunk. Figyelje a "releases" ezen repo-t,
 
 ## Hogyan működik
 
-A Supabase nyílt forráskódú eszközök kombinációja. A Firebase funkcióit vállalati szintű, nyílt forráskódú termékek felhasználásával építjük ki. Ha az eszközök és közösségek léteznek MIT, Apache 2 vagy azzal egyenértékű nyílt licenccel, akkor azt az eszközt használjuk és támogatjuk. Ha az eszköz nem létezik, akkor mi magunk készítjük el és nyílt forráskódúvá tesszük. A Supabase nem a Firebase 1:1 leképezése. Célunk, hogy a fejlesztőknek a Firebase-hez hasonló fejlesztői élményt nyújtsunk nyílt forráskódú eszközökkel.
+A Indobase nyílt forráskódú eszközök kombinációja. A Firebase funkcióit vállalati szintű, nyílt forráskódú termékek felhasználásával építjük ki. Ha az eszközök és közösségek léteznek MIT, Apache 2 vagy azzal egyenértékű nyílt licenccel, akkor azt az eszközt használjuk és támogatjuk. Ha az eszköz nem létezik, akkor mi magunk készítjük el és nyílt forráskódúvá tesszük. A Indobase nem a Firebase 1:1 leképezése. Célunk, hogy a fejlesztőknek a Firebase-hez hasonló fejlesztői élményt nyújtsunk nyílt forráskódú eszközökkel.
 
 **Architektúra**
 
-A Supabase egy [hosztolt platform](https://supabase.com/dashboard). Regisztrálhat és elkezdheti használni a Supabase-t anélkül, hogy bármit telepítene.
-Önállóan is [hosztolhat](https://supabase.com/docs/guides/hosting/overview) és [fejleszthet helyben](https://supabase.com/docs/guides/local-development).
+A Indobase egy [hosztolt platform](https://indobase.in/dashboard). Regisztrálhat és elkezdheti használni a Indobase-t anélkül, hogy bármit telepítene.
+Önállóan is [hosztolhat](https://indobase.in/docs/guides/hosting/overview) és [fejleszthet helyben](https://indobase.in/docs/guides/local-development).
 
-![Architektúra](https://github.com/supabase/supabase/blob/master/apps/docs/public/img/supabase-architecture.svg)
+![Architektúra](https://github.com/Indobase/Indobase/blob/master/apps/docs/public/img/indobase-architecture.svg)
 
 - a [PostgreSQL](https://www.postgresql.org/) egy objektum-relációs adatbázis-rendszer, amelynek több mint 30 éves aktív fejlesztése során a megbízhatóság, a funkciók robusztussága és a teljesítménye szerzett jó hírnevet.
 - a [Realtime](https://github.com/supabase/realtime) egy Elixir szerver, amely lehetővé teszi, hogy websocketek segítségével figyelje a PostgreSQL beviteleit, frissítéseit és törléseit. A Realtime lekérdezi a Postgres beépített replikációs funkcióit az adatbázis-változásokért, a változásokat JSON-ba konvertálja, majd a JSON-t websocketeken keresztül továbbítja az engedélyezett ügyfeleknek.
@@ -77,12 +77,12 @@ Az ügyfélkönyvtárakra vonatkozó megközelítésünk moduláris. Minden egye
   <tr>
     <th>Nyelv</th>
     <th>Ügyfél</th>
-    <th colspan="5">Feature-kliensek (a Supabase klienssel együtt)</th>
+    <th colspan="5">Feature-kliensek (a Indobase klienssel együtt)</th>
   </tr>
   
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -105,16 +105,16 @@ Az ügyfélkönyvtárakra vonatkozó megközelítésünk moduláris. Minden egye
   
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -220,7 +220,7 @@ Az ügyfélkönyvtárakra vonatkozó megközelítésünk moduláris. Minden egye
 - [Katalán / Català](/i18n/README.ca.md)
 - [Dán / Dansk](/i18n/README.da.md)
 - [Holland / Nederlands](/i18n/README.nl.md)
-- [angol](https://github.com/supabase/supabase)
+- [angol](https://github.com/Indobase/Indobase)
 - [Finn / Suomalainen](/i18n/README.fi.md)
 - [Francia / Français](/i18n/README.fr.md)
 - [Német / Deutsch](/i18n/README.de.md)

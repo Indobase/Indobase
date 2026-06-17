@@ -1,5 +1,5 @@
 import { Editor } from '@monaco-editor/react'
-import { MAX_CHARACTERS } from '@supabase/pg-meta/src/query/table-row-query'
+import { MAX_CHARACTERS } from '@indobaseinc/pg-meta/src/query/table-row-query'
 import { Loader } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import remarkGfm from 'remark-gfm'
@@ -131,7 +131,7 @@ export const TextEditor = ({
           <div className="w-full h-full flex-grow">
             <Editor
               key={value}
-              theme="supabase"
+              theme="indobase"
               className="monaco-editor"
               defaultLanguage="markdown"
               value={strValue}

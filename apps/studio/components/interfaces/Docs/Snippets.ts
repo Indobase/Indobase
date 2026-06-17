@@ -27,10 +27,10 @@ const snippets = {
     js: {
       language: 'js',
       code: `
-import { createClient } from 'indobase-js'
-const supabaseUrl = '${endpoint}'
-const supabaseKey = process.env.SUPABASE_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)`,
+import { createClient } from '@indobaseinc/indobase-js'
+const projectUrl = '${endpoint}'
+const apiKey = process.env.SUPABASE_KEY
+const supabase = createClient(projectUrl, apiKey)`,
     },
     python: {
       language: 'python',
@@ -39,16 +39,16 @@ import os
 from supabase import create_client, Client
 url: str = '${endpoint}'
 key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+indobase: Client = create_client(url, key)
 `,
     },
     dart: {
       language: 'dart',
       code: `
-const supabaseUrl = '${endpoint}';
-const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
+const projectUrl = '${endpoint}';
+const apiKey = String.fromEnvironment('SUPABASE_KEY');
 Future<void> main() async {
-  await Indobase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  await Indobase.initialize(url: projectUrl, anonKey: apiKey);
   runApp(MyApp());
 }`,
     },

@@ -13,11 +13,11 @@ Vector buckets organize your vector data into logical units. Within each bucket,
 
 ## Creating a Vector bucket
 
-You can create vector buckets using either the Supabase Dashboard or the SDK.
+You can create vector buckets using either the Indobase Dashboard or the SDK.
 
-### Using the Supabase Dashboard
+### Using the Indobase Dashboard
 
-1. Navigate to the **Storage** section in the Supabase Dashboard.
+1. Navigate to the **Storage** section in the Indobase Dashboard.
 2. Click **Create Bucket**.
 3. Enter a name for your bucket (e.g., `embeddings` or `semantic-search`).
 4. Select **Vector Bucket** as the bucket type.
@@ -39,7 +39,7 @@ Your vector bucket is now ready. The next step is to create indexes within it.
 ```typescript
 import { createClient } from 'indobase-js'
 
-const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 // Create a vector bucket
 await supabase.storage.vectors.createBucket('embeddings')
@@ -54,7 +54,7 @@ console.log('✓ Vector bucket created: embeddings')
 ```python
 from supabase import create_client
 
-supabase = create_client('https://your-project.supabase.co', 'your-service-key')
+supabase = create_client('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 # Create a vector bucket
 supabase.storage.vectors().create_bucket('embeddings')

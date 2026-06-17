@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { getOrCreateProfile, getProfile, updateProfile } from 'lib/api/saas/platform'
 
 const proxyTarget = process.env.PLATFORM_API_PROXY

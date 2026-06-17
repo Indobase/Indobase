@@ -1,0 +1,3 @@
+import { FastifyInstance, FastifyServerOptions } from 'fastify';
+export declare const build: (opts?: FastifyServerOptions) => FastifyInstance;
+//# sourceMappingURL=app.d.ts.map

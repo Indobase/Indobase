@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import type {
   GenerateAttachmentURLsData,
   GenerateAttachmentURLsVariables,

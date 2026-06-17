@@ -1,0 +1,15 @@
+import { versionSql } from './sql/index.js';
+export default class PostgresMetaVersion {
+    query;
+    constructor(query) {
+        this.query = query;
+    }
+    async retrieve() {
+        const { data, error } = await this.query(versionSql);
+        if (error) {
+            return { data, error };
+        }
+        return { data: data[0], error };
+    }
+}
+//# sourceMappingURL=PostgresMetaVersion.js.map

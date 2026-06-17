@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { useFlag, useParams } from 'common'
 import { CreateReportModal } from 'components/interfaces/Reports/CreateReportModal'
 import { UpdateCustomReportModal } from 'components/interfaces/Reports/UpdateModal'

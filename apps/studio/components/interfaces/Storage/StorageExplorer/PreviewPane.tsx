@@ -1,5 +1,5 @@
 import { Transition } from '@headlessui/react'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { isEmpty } from 'lodash'
 import { AlertCircle, ChevronDown, Copy, Download, Loader, Trash2, X } from 'lucide-react'
 import SVG from 'react-inlinesvg'

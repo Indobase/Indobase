@@ -1,4 +1,4 @@
-import { OAuthScope } from '@supabase/shared-types/out/constants'
+import { OAuthScope } from '@indobaseinc/shared-types/out/constants'
 import { CheckCircle2, ChevronRight, ChevronsLeftRight } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/router'

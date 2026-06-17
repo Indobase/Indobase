@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@indobaseinc/indobase-js";
 
 export default {
   async fetch(request, { SUPABASE_URL, SUPABASE_ANON_KEY }) {

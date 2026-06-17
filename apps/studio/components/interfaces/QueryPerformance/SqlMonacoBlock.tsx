@@ -38,7 +38,7 @@ export const SqlMonacoBlock = ({
       className={cn('group relative border rounded-md overflow-hidden w-full', wrapperClassName)}
     >
       <Editor
-        theme="supabase"
+        theme="indobase"
         language="pgsql"
         value={content}
         height={height}

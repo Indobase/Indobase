@@ -41,7 +41,7 @@ const products = [
     hasLightIcon: true,
     href: '/guides/database/overview',
     description:
-      'Supabase provides a full Postgres database for every project with Realtime functionality, database backups, extensions, and more.',
+      'Indobase provides a full Postgres database for every project with Realtime functionality, database backups, extensions, and more.',
     span: 'col-span-12 md:col-span-6',
   },
   {
@@ -165,38 +165,38 @@ const clientLibraries = [
 const additionalResources = [
   {
     title: 'Management API',
-    description: 'Manage your Supabase projects and organizations.',
+    description: 'Manage your Indobase projects and organizations.',
     icon: 'reference-api',
     href: '/reference/api/introduction',
   },
   {
-    title: 'Supabase CLI',
+    title: 'Indobase CLI',
     description: 'Use the CLI to develop, manage and deploy your projects.',
     icon: 'reference-cli',
     href: '/reference/cli/introduction',
   },
   {
     title: 'Platform Guides',
-    description: 'Learn more about the tools and services powering Supabase.',
+    description: 'Learn more about the tools and services powering Indobase.',
     icon: 'platform',
     href: '/guides/platform',
   },
   {
     title: 'Integrations',
-    description: 'Explore a variety of integrations from Supabase partners.',
+    description: 'Explore a variety of integrations from Indobase partners.',
     icon: 'integrations',
     href: '/guides/integrations',
   },
   {
-    title: 'Supabase UI',
-    description: 'A collection of pre-built Supabase components to speed up your project.',
+    title: 'Indobase UI',
+    description: 'A collection of pre-built Indobase components to speed up your project.',
     icon: 'ui',
-    href: 'https://supabase.com/ui',
+    href: 'https://indobase.in/ui',
     external: true,
   },
   {
     title: 'Troubleshooting',
-    description: 'Our troubleshooting guide for solutions to common Supabase issues.',
+    description: 'Our troubleshooting guide for solutions to common Indobase issues.',
     icon: 'troubleshooting',
     href: '/guides/troubleshooting',
   },
@@ -272,11 +272,11 @@ const HomePage = () => (
       {isFeatureEnabled('docs:full_getting_started') && (
         <div className="flex flex-col lg:grid grid-cols-12 gap-6 py-12 border-b">
           <div className="col-span-4 flex flex-col gap-1 [&_h2]:m-0">
-            <h2 id="migrate-to-supabase" className="group scroll-mt-24">
-              Migrate to Supabase
+            <h2 id="migrate-to-indobase" className="group scroll-mt-24">
+              Migrate to Indobase
             </h2>
             <p className="text-foreground-light text-sm p-0 m-0">
-              Bring your existing data, auth and storage to Supabase following our migration guides.
+              Bring your existing data, auth and storage to Indobase following our migration guides.
             </p>
             <TextLink
               label="Explore more resources"
@@ -340,7 +340,7 @@ const HomePage = () => (
                 </h3>
               </div>
               <p className="text-foreground-light text-sm">
-                Get started with self-hosting Supabase.
+                Get started with self-hosting Indobase.
               </p>
               <TextLink
                 label="More on Self-Hosting"

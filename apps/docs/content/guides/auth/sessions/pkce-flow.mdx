@@ -5,7 +5,7 @@ subtitle: 'About authenticating with PKCE flow.'
 
 The Proof Key for Code Exchange (PKCE) flow is one of two ways that a user can authenticate and your app can receive the necessary access and refresh tokens.
 
-The flow is an implementation detail handled for you by Supabase Auth, but understanding the difference between PKCE and [implicit flow](/docs/guides/auth/sessions/implicit-flow) is important for understanding the difference between client-only and server-side auth.
+The flow is an implementation detail handled for you by Indobase Auth, but understanding the difference between PKCE and [implicit flow](/docs/guides/auth/sessions/implicit-flow) is important for understanding the difference between client-only and server-side auth.
 
 ## How it works
 
@@ -63,7 +63,7 @@ Putting it all together, your client library initialization may look like this:
 import { createClient } from 'indobase-js'
 
 // ---cut---
-const supabase = createClient('https://xyzcompany.supabase.co', 'publishable-or-anon-key', {
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'publishable-or-anon-key', {
   // ...
   auth: {
     // ...

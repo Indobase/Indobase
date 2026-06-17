@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { Query } from '@supabase/pg-meta/src/query'
+import { Query } from '@indobaseinc/pg-meta/src/query'
 import { executeSql } from 'data/sql/execute-sql-query'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
 import { vaultSecretsKeys } from './keys'

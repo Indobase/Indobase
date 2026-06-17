@@ -15,8 +15,8 @@
         "label"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -137,7 +137,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -157,10 +157,10 @@
         "label"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
+        "@indobaseinc/ssr@latest",
         "@react-router/dev@latest",
         "@react-router/fs-routes@latest",
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -235,8 +235,8 @@
         "label"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -329,8 +329,8 @@
         "card"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -405,7 +405,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -423,10 +423,10 @@
         "card"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
+        "@indobaseinc/ssr@latest",
         "@react-router/dev@latest",
         "@react-router/fs-routes@latest",
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -484,8 +484,8 @@
         "card"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -548,8 +548,8 @@
       "dependencies": [
         "react-dropzone",
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -591,7 +591,7 @@
       "dependencies": [
         "react-dropzone",
         "lucide-react",
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -625,8 +625,8 @@
       "dependencies": [
         "react-dropzone",
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -664,8 +664,8 @@
       "dependencies": [
         "react-dropzone",
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -700,8 +700,8 @@
       "registryDependencies": [],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -744,7 +744,7 @@
       "registryDependencies": [],
       "dependencies": [
         "lucide-react",
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -779,8 +779,8 @@
       "registryDependencies": [],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -819,8 +819,8 @@
       "registryDependencies": [],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -860,8 +860,8 @@
         "avatar"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -905,7 +905,7 @@
         "avatar"
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -941,8 +941,8 @@
         "avatar"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -982,8 +982,8 @@
         "avatar"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1024,8 +1024,8 @@
         "tooltip"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1078,7 +1078,7 @@
         "tooltip"
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1123,8 +1123,8 @@
         "tooltip"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1173,8 +1173,8 @@
         "tooltip"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1224,8 +1224,8 @@
       ],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1275,7 +1275,7 @@
       ],
       "dependencies": [
         "lucide-react",
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1317,8 +1317,8 @@
       ],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1364,8 +1364,8 @@
       ],
       "dependencies": [
         "lucide-react",
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1407,7 +1407,7 @@
       "description": "React hook for infinite lists, fetching data from Supabase.",
       "dependencies": [
         "indobase-js",
-        "@supabase/postgrest-js@*"
+        "@indobaseinc/postgrest-js@*"
       ],
       "registryDependencies": [],
       "files": [
@@ -1425,8 +1425,8 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1456,7 +1456,7 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1478,8 +1478,8 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1505,8 +1505,8 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1709,8 +1709,8 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `NUXT_PUBLIC_SUPABASE_URL` and `NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1747,7 +1747,7 @@
       "description": "",
       "registryDependencies": [],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "docs": "You'll need to set the following environment variables in your project: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.",
       "envVars": {
@@ -1773,8 +1773,8 @@
         "label"
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ],
       "files": [
         {
@@ -1873,7 +1873,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ]
     },
     {
@@ -1893,7 +1893,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest"
+        "@indobaseinc/indobase-js@1.0.8"
       ]
     },
     {
@@ -1945,8 +1945,8 @@
         }
       ],
       "dependencies": [
-        "@supabase/ssr@latest",
-        "indobase-js@latest"
+        "@indobaseinc/ssr@latest",
+        "@indobaseinc/indobase-js@1.0.8"
       ]
     },
     {
@@ -1980,7 +1980,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest",
+        "@indobaseinc/indobase-js@1.0.8",
         "@vueuse/core",
         "lucide-vue-next"
       ]
@@ -2016,7 +2016,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest",
+        "@indobaseinc/indobase-js@1.0.8",
         "@vueuse/core",
         "lucide-vue-next"
       ]
@@ -2044,7 +2044,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest",
+        "@indobaseinc/indobase-js@1.0.8",
         "@vueuse/core",
         "lucide-vue-next"
       ]
@@ -2072,7 +2072,7 @@
         }
       ],
       "dependencies": [
-        "indobase-js@latest",
+        "@indobaseinc/indobase-js@1.0.8",
         "@vueuse/core",
         "lucide-vue-next"
       ]

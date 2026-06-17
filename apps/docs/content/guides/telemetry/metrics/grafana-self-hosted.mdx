@@ -16,7 +16,7 @@ Grafana also documents a [Supabase integration reference](https://grafana.com/do
 
 ## Architecture
 
-1. **Prometheus** scrapes `https://<project-ref>.supabase.co/customer/v1/privileged/metrics` every minute using HTTP Basic Auth.
+1. **Prometheus** scrapes `https://<project-ref>.indobase.in/customer/v1/privileged/metrics` every minute using HTTP Basic Auth.
 2. **Grafana** reads from Prometheus and renders dashboards/alerts.
 3. (Optional) **Alertmanager** or your preferred system sends notifications when Prometheus rules fire.
 
@@ -35,7 +35,7 @@ scrape_configs:
       password: '<secret API key (sb_secret_...)>'
     static_configs:
       - targets:
-          - '<project-ref>.supabase.co:443'
+          - '<project-ref>.indobase.in:443'
         labels:
           project: '<project-ref>'
 ```
@@ -43,7 +43,7 @@ scrape_configs:
 <Admonition type="tip">
 
 - Keep the scrape interval at 60 seconds to match Supabase’s refresh cadence.
-- If you run Prometheus behind a proxy, make sure it can establish outbound HTTPS connections to `*.supabase.co`.
+- If you run Prometheus behind a proxy, make sure it can establish outbound HTTPS connections to `*.indobase.in`.
 - Store secrets (Secret API key) with your secret manager or inject them via environment variables.
 
 </Admonition>
@@ -71,7 +71,7 @@ You now have over 200 production-ready panels covering CPU, IO, WAL, replication
 
 ## 4. Configure alerting
 
-- Import the sample rules from [`docs/example-alerts.md`](https://github.com/supabase/supabase-grafana/blob/main/docs/example-alerts.md) into Prometheus or Grafana Alerting.
+- Import the sample rules from [`docs/example-alerts.md`](https://github.com/Indobase/Indobase-grafana/blob/main/docs/example-alerts.md) into Prometheus or Grafana Alerting.
 - Tailor thresholds (for example, disk utilization, long-running transactions, connection saturation) to your project’s size.
 - Route notifications via Alertmanager, Grafana OnCall, PagerDuty, or any other supported destination.
 

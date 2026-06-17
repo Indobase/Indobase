@@ -1,5 +1,5 @@
 // [Joshen] These are referenced from the storage API directly here
-// https://github.com/supabase/storage/blob/69e4a40799a9d10be0a63a37cbb46d7d9bea0e17/src/storage/limits.ts#L59
+// https://github.com/Indobase/storage/blob/69e4a40799a9d10be0a63a37cbb46d7d9bea0e17/src/storage/limits.ts#L59
 
 // only allow s3 safe characters and characters which require special handling for now
 // the slash restriction come from bucket naming rules

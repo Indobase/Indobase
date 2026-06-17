@@ -1,4 +1,4 @@
-import { type EmailOtpType } from 'indobase-js'
+import { type EmailOtpType } from '@indobaseinc/indobase-js'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'

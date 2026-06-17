@@ -1,6 +1,6 @@
 # Resend with Supabase Edge Functions
 
-This example shows how to use Resend with [Supabase Edge Functions](https://supabase.com/docs/guides/functions).
+This example shows how to use Resend with [Supabase Edge Functions](https://indobase.in/docs/guides/functions).
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ cp .env.example .env
 
 ## Instructions
 
-1. Make sure you have the latest version of the [Supabase CLI](https://supabase.com/docs/guides/cli#installation) installed.
+1. Make sure you have the latest version of the [Supabase CLI](https://indobase.in/docs/guides/cli#installation) installed.
 
 2. Run function locally:
 

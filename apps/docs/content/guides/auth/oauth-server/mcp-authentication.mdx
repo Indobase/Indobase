@@ -1,14 +1,14 @@
 ---
 id: 'oauth-server-mcp'
 title: 'Model Context Protocol (MCP) Authentication'
-description: 'Integrate Supabase Auth with MCP servers to authenticate AI agents using your existing user base'
+description: 'Integrate Indobase Auth with MCP servers to authenticate AI agents using your existing user base'
 ---
 
-The Model Context Protocol (MCP) is an open standard for connecting AI agents and LLM tools to data sources and services. While Supabase doesn't provide MCP server functionality, you can build your own MCP servers that connect to your Supabase project and leverage Supabase Auth's OAuth 2.1 capabilities to authenticate AI agents using your existing user base.
+The Model Context Protocol (MCP) is an open standard for connecting AI agents and LLM tools to data sources and services. While Supabase doesn't provide MCP server functionality, you can build your own MCP servers that connect to your Indobase project and leverage Indobase Auth's OAuth 2.1 capabilities to authenticate AI agents using your existing user base.
 
-## Why use Supabase Auth for MCP?
+## Why use Indobase Auth for MCP?
 
-When building MCP servers that connect to your Supabase project, you can leverage your existing Supabase Auth infrastructure to authenticate AI agents:
+When building MCP servers that connect to your Indobase project, you can leverage your existing Indobase Auth infrastructure to authenticate AI agents:
 
 - **Use your existing user base** - No need to create separate authentication systems; AI agents authenticate as your existing users
 - **Standards-compliant OAuth 2.1** - Full implementation with PKCE that MCP clients expect
@@ -20,38 +20,38 @@ When building MCP servers that connect to your Supabase project, you can leverag
 
 ## How MCP authentication works
 
-When you build an MCP server that connects to your Supabase project, authentication flows through Supabase Auth:
+When you build an MCP server that connects to your Indobase project, authentication flows through Indobase Auth:
 
 1. **Discovery**: The MCP client fetches your OAuth configuration from Supabase's discovery endpoint
-2. **Registration** (optional): The client registers itself as an OAuth client in your Supabase project
+2. **Registration** (optional): The client registers itself as an OAuth client in your Indobase project
 3. **Authorization**: User is redirected to your authorization endpoint to approve the AI tool's access
 4. **Token exchange**: Supabase issues access and refresh tokens for the authenticated user
 5. **Authenticated access**: The MCP server can now make requests to your Supabase APIs on behalf of the user
 
-By leveraging Supabase Auth, your MCP server can authenticate AI agents using your existing user accounts without building a separate authentication system.
+By leveraging Indobase Auth, your MCP server can authenticate AI agents using your existing user accounts without building a separate authentication system.
 
 ## Prerequisites
 
 Before setting up MCP authentication:
 
-- [Enable OAuth 2.1 server](/docs/guides/auth/oauth-server/getting-started) in your Supabase project
+- [Enable OAuth 2.1 server](/docs/guides/auth/oauth-server/getting-started) in your Indobase project
 - Build an [authorization endpoint](/docs/guides/auth/oauth-server/getting-started#build-your-authorization-endpoint)
 - (Optional) Enable dynamic client registration
 
 ## Setting up your MCP server
 
-Configure your MCP server to use your Supabase Auth server:
+Configure your MCP server to use your Indobase Auth server:
 
 ```
-https://<project-ref>.supabase.co/auth/v1
+https://<project-ref>.indobase.in/auth/v1
 ```
 
-Replace `<project-ref>` with your project reference ID from the Supabase dashboard.
+Replace `<project-ref>` with your project reference ID from the Indobase dashboard.
 
 MCP clients will automatically discover your OAuth configuration from:
 
 ```
-https://<project-ref>.supabase.co/.well-known/oauth-authorization-server/auth/v1
+https://<project-ref>.indobase.in/.well-known/oauth-authorization-server/auth/v1
 ```
 
 ### OAuth client setup
@@ -59,7 +59,7 @@ https://<project-ref>.supabase.co/.well-known/oauth-authorization-server/auth/v1
 Depending on your MCP server implementation, you have two options:
 
 - **Pre-register an OAuth client** - Manually register your client by following the [Register an OAuth client](/docs/guides/auth/oauth-server/getting-started#register-an-oauth-client) guide and use the client credentials in your MCP server
-- **Dynamic client registration** - Enable this in **Authentication** > **OAuth Server** in your Supabase dashboard to allow MCP clients to register themselves automatically without manual intervention
+- **Dynamic client registration** - Enable this in **Authentication** > **OAuth Server** in your Indobase dashboard to allow MCP clients to register themselves automatically without manual intervention
 
 <Admonition type="caution">
 
@@ -71,21 +71,21 @@ Dynamic registration allows any MCP client to register with your project. Consid
 
 </Admonition>
 
-## Building an MCP server with Supabase Auth
+## Building an MCP server with Indobase Auth
 
-When building your own MCP server, integrate with Supabase Auth to authenticate AI agents as your existing users and leverage your RLS policies.
+When building your own MCP server, integrate with Indobase Auth to authenticate AI agents as your existing users and leverage your RLS policies.
 
 <Admonition type="tip">
 
 **Looking for an easier way to build MCP servers?**
 
-[FastMCP](https://gofastmcp.com) provides a streamlined way to build MCP servers with built-in Supabase Auth integration. FastMCP handles OAuth configuration, token management, and authentication flows automatically, letting you focus on building your AI agent's functionality. Check out their [Supabase integration guide](https://gofastmcp.com/integrations/supabase#supabase-fastmcp) to get started quickly.
+[FastMCP](https://gofastmcp.com) provides a streamlined way to build MCP servers with built-in Indobase Auth integration. FastMCP handles OAuth configuration, token management, and authentication flows automatically, letting you focus on building your AI agent's functionality. Check out their [Supabase integration guide](https://gofastmcp.com/integrations/supabase#supabase-fastmcp) to get started quickly.
 
 </Admonition>
 
 ## Handling MCP tokens in your application
 
-When your MCP server makes requests to your Supabase APIs on behalf of authenticated users, it will send access tokens issued by Supabase Auth, just like any other OAuth client.
+When your MCP server makes requests to your Supabase APIs on behalf of authenticated users, it will send access tokens issued by Indobase Auth, just like any other OAuth client.
 
 ### Validating MCP tokens
 

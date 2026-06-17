@@ -7,11 +7,11 @@ video: 'https://www.youtube.com/v/em1cpOAXknM'
 
 <Admonition type="tip">
 
-Looking for guides on how to use Single Sign-On with the Supabase dashboard? Head on over to [Enable SSO for Your Organization](/docs/guides/platform/sso).
+Looking for guides on how to use Single Sign-On with the Indobase dashboard? Head on over to [Enable SSO for Your Organization](/docs/guides/platform/sso).
 
 </Admonition>
 
-Supabase Auth supports enterprise-level Single Sign-On (SSO) for any identity providers compatible with the SAML 2.0 protocol. This is a non-exclusive list of supported identity providers:
+Indobase Auth supports enterprise-level Single Sign-On (SSO) for any identity providers compatible with the SAML 2.0 protocol. This is a non-exclusive list of supported identity providers:
 
 - Google Workspaces (formerly known as G Suite)
 - Okta, Auth0
@@ -23,10 +23,10 @@ If you're having issues with identity provider software not on this list, [open 
 
 ## Prerequisites
 
-This guide requires the use of the [Supabase CLI](/docs/guides/cli). Make sure you're using version v1.46.4 or higher. You can use `supabase -v` to see the currently installed version.
+This guide requires the use of the [Indobase CLI](/docs/guides/cli). Make sure you're using version v1.46.4 or higher. You can use `supabase -v` to see the currently installed version.
 You can use the `supabase sso` [subcommands](/docs/reference/cli/supabase-sso) to manage your project's configuration.
 
-SAML 2.0 support is disabled by default on Supabase projects. You can configure this on the [Auth Providers](/dashboard/project/_/auth/providers) page on your project.
+SAML 2.0 support is disabled by default on Indobase projects. You can configure this on the [Auth Providers](/dashboard/project/_/auth/providers) page on your project.
 
 Note that SAML 2.0 support is offered on plans Pro and above. Check the [Pricing](/pricing) page for more information.
 
@@ -35,7 +35,7 @@ Note that SAML 2.0 support is offered on plans Pro and above. Check the [Pricing
 The number of SAML and SSO acronyms can often be overwhelming. Here's a glossary which you can refer back to at any time:
 
 - **Identity Provider**, **IdP**, or **IDP**
-  An identity provider is a service that manages user accounts at a company or organization. It can verify the identity of a user and exchange that information with your Supabase project and other applications. It acts as a single source of truth for user identities and access rights. Commonly used identity providers are: Microsoft Active Directory (Azure AD, Microsoft Entra), Okta, Google Workspaces (G Suite), PingIdentity, OneLogin, and many others. There are also self-hosted and on-prem versions of identity providers, and sometimes they are accessible only by having access to a company VPN or being in a specific building.
+  An identity provider is a service that manages user accounts at a company or organization. It can verify the identity of a user and exchange that information with your Indobase project and other applications. It acts as a single source of truth for user identities and access rights. Commonly used identity providers are: Microsoft Active Directory (Azure AD, Microsoft Entra), Okta, Google Workspaces (G Suite), PingIdentity, OneLogin, and many others. There are also self-hosted and on-prem versions of identity providers, and sometimes they are accessible only by having access to a company VPN or being in a specific building.
 - **Service Provider**, **SP**
   This is the software that is asking for user information from an identity provider. In Supabase, this is your project's Auth server.
 - **Assertion**
@@ -47,13 +47,13 @@ The number of SAML and SSO acronyms can often be overwhelming. Here's a glossary
 - **Metadata**
   An XML document that describes the features and configuration of an Identity Provider or Service Provider. It can be as a standalone document or as a URL. Usually (but not always) the `EntityID` is the URL at which you can access the Metadata.
 - **Certificate**
-  Supabase Auth (the Service Provider) trusts assertions from an Identity Provider based on the signature attached to the assertion. The signature is verified according to the certificate present in the Metadata.
+  Indobase Auth (the Service Provider) trusts assertions from an Identity Provider based on the signature attached to the assertion. The signature is verified according to the certificate present in the Metadata.
 - **Assertion Consumer Service (ACS) URL**
-  This is one of the most important SAML URLs. It is the URL where Supabase Auth will accept assertions from an identity provider. Basically, once the identity provider verifies the user's identity it will redirect to this URL and the redirect request will contain the assertion.
+  This is one of the most important SAML URLs. It is the URL where Indobase Auth will accept assertions from an identity provider. Basically, once the identity provider verifies the user's identity it will redirect to this URL and the redirect request will contain the assertion.
 - **Binding (Redirect, POST, or Artifact)**
-  This is a description of the way an identity provider communicates with Supabase Auth. When using the Redirect binding, the communication occurs using HTTP 301 redirects. When it's `POST`, it's using `POST` requests sent with `<form>` elements on a page. When using Artifact, it's using a more secure exchange over a Redirect or `POST`.
+  This is a description of the way an identity provider communicates with Indobase Auth. When using the Redirect binding, the communication occurs using HTTP 301 redirects. When it's `POST`, it's using `POST` requests sent with `<form>` elements on a page. When using Artifact, it's using a more secure exchange over a Redirect or `POST`.
 - **`RelayState`**
-  State used by Supabase Auth to hold information about a request to verify the identity of a user.
+  State used by Indobase Auth to hold information about a request to verify the identity of a user.
 
 ## Important SAML 2.0 information
 
@@ -61,14 +61,14 @@ Below is information about your project's SAML 2.0 configuration which you can s
 
 | Name                        | Value                                                                   |
 | --------------------------- | ----------------------------------------------------------------------- |
-| `EntityID`                  | `https://<project>.supabase.co/auth/v1/sso/saml/metadata`               |
-| Metadata URL                | `https://<project>.supabase.co/auth/v1/sso/saml/metadata`               |
-| Metadata URL<br/>(download) | `https://<project>.supabase.co/auth/v1/sso/saml/metadata?download=true` |
-| ACS URL                     | `https://<project>.supabase.co/auth/v1/sso/saml/acs`                    |
-| SLO URL                     | `https://<project>.supabase.co/auth/v1/sso/slo`                         |
+| `EntityID`                  | `https://[PROJECT-REF].indobase.in/auth/v1/sso/saml/metadata`               |
+| Metadata URL                | `https://[PROJECT-REF].indobase.in/auth/v1/sso/saml/metadata`               |
+| Metadata URL<br/>(download) | `https://[PROJECT-REF].indobase.in/auth/v1/sso/saml/metadata?download=true` |
+| ACS URL                     | `https://[PROJECT-REF].indobase.in/auth/v1/sso/saml/acs`                    |
+| SLO URL                     | `https://[PROJECT-REF].indobase.in/auth/v1/sso/slo`                         |
 | `NameID`                    | Required `emailAddress` or `persistent`                                 |
 
-Note that SLO (Single Logout) is not supported at this time with Supabase Auth as it is a rarely supported feature by identity providers. However, the URL is registered and advertised for when this does become available. SLO is a best-effort service, so we recommend considering [Session Timebox or Session Inactivity Timeout](/docs/guides/auth/sessions#limiting-session-lifetime-and-number-of-allowed-sessions-per-user) instead to force your end-users to authenticate regularly.
+Note that SLO (Single Logout) is not supported at this time with Indobase Auth as it is a rarely supported feature by identity providers. However, the URL is registered and advertised for when this does become available. SLO is a best-effort service, so we recommend considering [Session Timebox or Session Inactivity Timeout](/docs/guides/auth/sessions#limiting-session-lifetime-and-number-of-allowed-sessions-per-user) instead to force your end-users to authenticate regularly.
 
 Append `?download=true` to the Metadata URL to download the Metadata XML file. This is useful in cases where the identity provider requires a file.
 
@@ -134,7 +134,7 @@ CREATE POLICY "View organization settings."
 
 ## Managing SAML 2.0 connections
 
-Once you've enabled SAML 2.0 support on your project via the [Auth Providers](/dashboard/project/_/auth/providers) page in the dashboard, you can use the [Supabase CLI](/docs/reference/cli/supabase-sso) to add, update, remove and view information about identity providers.
+Once you've enabled SAML 2.0 support on your project via the [Auth Providers](/dashboard/project/_/auth/providers) page in the dashboard, you can use the [Indobase CLI](/docs/reference/cli/supabase-sso) to add, update, remove and view information about identity providers.
 
 ### Add a connection
 
@@ -142,7 +142,7 @@ To establish a connection to a SAML 2.0 Identity Provider (IdP) you will need:
 
 - A SAML 2.0 Metadata XML file, or a SAML 2.0 Metadata URL pointing to an XML file
 - (Optional) Email domains that the organization's IdP uses
-- (Optional) Attribute mappings between the user properties of the IdP and the claims stored by Supabase Auth
+- (Optional) Attribute mappings between the user properties of the IdP and the claims stored by Indobase Auth
 
 You should obtain the SAML 2.0 Metadata XML file or URL from the organization whose IdP you wish to connect. Most SAML 2.0 Identity Providers support the Metadata URL standard, and we recommend using a URL if this is available.
 
@@ -157,7 +157,7 @@ Commonly used SAML 2.0 Identity Providers that only support Metadata XML files:
 - Google Workspaces (G Suite)
 - Any self-hosted or on-prem identity provider behind a VPN
 
-Once you've obtained the SAML 2.0 Metadata XML file or URL you can [establish a connection](/docs/reference/cli/supabase-sso-add) with your project's Supabase Auth server by running:
+Once you've obtained the SAML 2.0 Metadata XML file or URL you can [establish a connection](/docs/reference/cli/supabase-sso-add) with your project's Indobase Auth server by running:
 
 ```bash
 supabase sso add --type saml --project-ref <your-project> \
@@ -249,7 +249,7 @@ Calling [`signInWith(SSO)`](/docs/reference/kotlin/auth-signinwithsso) starts th
 
 ### Understanding attribute mappings
 
-When a user signs in using the SAML 2.0 Single Sign-On protocol, an XML document called the SAML Assertion is exchanged between the identity provider and Supabase Auth.
+When a user signs in using the SAML 2.0 Single Sign-On protocol, an XML document called the SAML Assertion is exchanged between the identity provider and Indobase Auth.
 
 This assertion contains information about the user's identity and other authentication information, such as:
 
@@ -278,7 +278,7 @@ For example, the following JSON structure configures attribute mapping for the `
 }
 ```
 
-When creating or updating an identity provider with the [Supabase CLI](/docs/guides/cli) you can include this JSON as a file with the `--attribute-mapping-file /path/to/attribute/mapping.json` flag.
+When creating or updating an identity provider with the [Indobase CLI](/docs/guides/cli) you can include this JSON as a file with the `--attribute-mapping-file /path/to/attribute/mapping.json` flag.
 
 For example, to change the attribute mappings to an existing provider you can use:
 
@@ -324,11 +324,11 @@ Will result in the following claims in the user's identity in the database and J
 }
 ```
 
-Supabase Auth does not require specifying attribute mappings if you only need access to the user's email. It will attempt to find an email attribute specified in the assertion. All other properties will not be automatically included, and it is those you need to map.
+Indobase Auth does not require specifying attribute mappings if you only need access to the user's email. It will attempt to find an email attribute specified in the assertion. All other properties will not be automatically included, and it is those you need to map.
 
 At this time it is not possible to have users without an email address, so SAML assertions without one will be rejected.
 
-Most SAML 2.0 identity providers use Lightweight Directory Access Protocol (LDAP) attribute names. However, due to their variability and complexity operators of identity providers are able to customize both the `Name` and attribute value that is sent to Supabase Auth in an assertion. Refer to the identity provider's documentation and contact the operator for details on what attributes are mapped for your project.
+Most SAML 2.0 identity providers use Lightweight Directory Access Protocol (LDAP) attribute names. However, due to their variability and complexity operators of identity providers are able to customize both the `Name` and attribute value that is sent to Indobase Auth in an assertion. Refer to the identity provider's documentation and contact the operator for details on what attributes are mapped for your project.
 
 **Accessing the stored attributes**
 
@@ -445,7 +445,7 @@ You can use the `-o json` flag to output the information as JSON, should you nee
 
 ### Publishing your application to an identity provider's marketplace
 
-Many cloud-based identity providers offer a marketplace where you can register your application for easy on-boarding with customers. When you use Supabase Auth's SAML 2.0 support you can register your project in any one of these marketplaces.
+Many cloud-based identity providers offer a marketplace where you can register your application for easy on-boarding with customers. When you use Indobase Auth's SAML 2.0 support you can register your project in any one of these marketplaces.
 
 Refer to the relevant documentation for each cloud-based identity provider on how you can do this. Some common marketplaces are:
 
@@ -455,7 +455,7 @@ Refer to the relevant documentation for each cloud-based identity provider on ho
 
 ### Why do some users get: SAML assertion does not contain email address?
 
-Identity providers do not have to send back and email address for the user, though they often do. Supabase Auth requires that an email address is present.
+Identity providers do not have to send back and email address for the user, though they often do. Indobase Auth requires that an email address is present.
 
 The following list of commonly used SAML attribute names is inspected, in order of appearance, to discover the email address in the assertion:
 
@@ -471,13 +471,13 @@ Should you run into this problem, it is most likely a misconfiguration issue **o
 
 ### Accessing the private key used for SAML in your project
 
-At this time it is not possible to extract the RSA private key used by your project's Supabase Auth server. This is done to keep the private key as secure as possible, given that SAML does not offer an easy way to rotate keys without disrupting service. (Use a SAML 2.0 Metadata URL whenever possible for this reason!)
+At this time it is not possible to extract the RSA private key used by your project's Indobase Auth server. This is done to keep the private key as secure as possible, given that SAML does not offer an easy way to rotate keys without disrupting service. (Use a SAML 2.0 Metadata URL whenever possible for this reason!)
 
 If you really need access to the key, [open a support ticket](/dashboard/support/new) and we'll try to support you as best as possible.
 
 ### Is multi-tenant SSO with SAML supported?
 
-Yes, Supabase supports multi-tenant Single Sign-On (SSO) using SAML 2.0. While the dashboard displays only one SAML field, you can set up multiple SAML connections using the Supabase CLI.
+Yes, Supabase supports multi-tenant Single Sign-On (SSO) using SAML 2.0. While the dashboard displays only one SAML field, you can set up multiple SAML connections using the Indobase CLI.
 Each connection is assigned a unique `sso_provider_id`, which is included in the user's JWT and can be used in Row Level Security (RLS) policies. You can configure custom attribute mappings for each connection to include tenant-specific information, such as roles.
 This setup allows you to implement multi-tenant SSO for multiple clients or organizations within a single application. For example, if you have an app with multiple clients using different Azure Active Directories, you can create separate SAML connections for each and use the `sso_provider_id` to manage access and apply appropriate security policies.
 
@@ -487,7 +487,7 @@ Yes, also referred to as [cross-origin authentication within the same site](http
 
 ```ts
 import { createClient } from 'indobase-js'
-const supabase = createClient('https://your-project.supabase.co', 'sb_publishable_... or anon key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'sb_publishable_... or anon key')
 
 // ---cut---
 const { data, error } = await supabase.auth.signInWithSSO({

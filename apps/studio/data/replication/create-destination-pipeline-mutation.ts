@@ -87,7 +87,7 @@ async function createDestinationPipeline(
 
     destination_config = {
       iceberg: {
-        supabase: {
+        indobase: {
           namespace,
           project_ref: icebergProjectRef,
           warehouse_name: warehouseName,

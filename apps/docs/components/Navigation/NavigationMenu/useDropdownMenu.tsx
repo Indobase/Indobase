@@ -1,6 +1,6 @@
 'use client'
 
-import type { User } from 'indobase-js'
+import type { User } from '@indobaseinc/indobase-js'
 import { isFeatureEnabled, logOut } from 'common'
 import { Database, Globe, Home, LifeBuoy, LogOut, Settings, UserIcon } from 'lucide-react'
 
@@ -18,20 +18,20 @@ const useDropdownMenu = (user: User | null) => {
       {
         label: 'Account Preferences',
         icon: Settings,
-        href: 'https://supabase.com/dashboard/account/me',
+        href: 'https://indobase.in/dashboard/account/me',
       },
       {
         label: 'All Projects',
         icon: Database,
-        href: 'https://supabase.com/dashboard/projects',
+        href: 'https://indobase.in/dashboard/projects',
       },
     ],
     [
       isFeatureEnabled('docs:navigation_dropdown_links_home')
         ? {
-            label: 'Supabase.com',
+            label: 'Indobase.in',
             icon: Globe,
-            href: 'https://supabase.com',
+            href: 'https://indobase.in',
             otherProps: {
               target: '_blank',
               rel: 'noreferrer noopener',
@@ -45,7 +45,7 @@ const useDropdownMenu = (user: User | null) => {
       {
         label: 'GitHub',
         icon: IconGitHub as any,
-        href: 'https://github.com/supabase/supabase',
+        href: 'https://github.com/Indobase/Indobase',
         otherProps: {
           target: '_blank',
           rel: 'noreferrer noopener',
@@ -54,7 +54,7 @@ const useDropdownMenu = (user: User | null) => {
       {
         label: 'Support',
         icon: LifeBuoy,
-        href: 'https://supabase.com/support',
+        href: 'https://indobase.in/support',
         otherProps: {
           target: '_blank',
           rel: 'noreferrer noopener',

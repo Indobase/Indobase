@@ -1,6 +1,6 @@
 import '../utils/dotenv.js'
 
-import { createClient, type SupabaseClient } from 'indobase-js'
+import { createClient, type SupabaseClient } from '@indobaseinc/indobase-js'
 import { parseArgs } from 'node:util'
 import { OpenAI } from 'openai'
 import { v4 as uuidv4 } from 'uuid'

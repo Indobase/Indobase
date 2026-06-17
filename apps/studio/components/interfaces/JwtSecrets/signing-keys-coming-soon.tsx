@@ -14,7 +14,7 @@ export const SigningKeysComingSoonBanner = () => {
         <div className="mt-4">
           <Button type="default" icon={<Github />}>
             <a
-              href="https://github.com/orgs/supabase/discussions/29289"
+              href="https://github.com/orgs/Indobase/discussions/29289"
               target="_blank"
               rel="noreferrer"
             >

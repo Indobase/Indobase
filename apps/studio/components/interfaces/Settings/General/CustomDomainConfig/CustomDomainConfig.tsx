@@ -1,6 +1,6 @@
 import { AlertCircle } from 'lucide-react'
 
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useFlag, useParams } from 'common'
 import { SupportLink } from 'components/interfaces/Support/SupportLink'
 import { InlineLinkClassName } from 'components/ui/InlineLink'

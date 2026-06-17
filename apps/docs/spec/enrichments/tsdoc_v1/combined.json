@@ -365,7 +365,7 @@
                                       "type": {
                                         "type": "reference",
                                         "qualifiedName": "Options",
-                                        "package": "@supabase/realtime-js",
+                                        "package": "@indobaseinc/realtime-js",
                                         "name": "RealtimeClientOptions"
                                       }
                                     },
@@ -712,7 +712,7 @@
                   "type": {
                     "type": "reference",
                     "qualifiedName": "RealtimeClient",
-                    "package": "@supabase/realtime-js",
+                    "package": "@indobaseinc/realtime-js",
                     "name": "default"
                   }
                 },
@@ -938,7 +938,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeSubscription",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "default"
                           }
                         }
@@ -1141,7 +1141,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "PostgrestClient",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     }
@@ -1181,7 +1181,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "Options",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "Options"
                           }
                         }
@@ -1189,7 +1189,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "RealtimeClient",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "default"
                       }
                     }
@@ -1473,7 +1473,7 @@
                                       "type": {
                                         "type": "reference",
                                         "qualifiedName": "Options",
-                                        "package": "@supabase/realtime-js",
+                                        "package": "@indobaseinc/realtime-js",
                                         "name": "RealtimeClientOptions"
                                       }
                                     },
@@ -1661,7 +1661,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeSubscription",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "default"
                           }
                         }
@@ -1820,7 +1820,7 @@
                         "elementType": {
                           "type": "reference",
                           "qualifiedName": "RealtimeSubscription",
-                          "package": "@supabase/realtime-js",
+                          "package": "@indobaseinc/realtime-js",
                           "name": "default"
                         }
                       }
@@ -1902,7 +1902,7 @@
                                             "type": {
                                               "type": "reference",
                                               "qualifiedName": "RealtimeSubscription",
-                                              "package": "@supabase/realtime-js",
+                                              "package": "@indobaseinc/realtime-js",
                                               "name": "default"
                                             }
                                           }
@@ -2001,7 +2001,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeSubscription",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "default"
                           }
                         }
@@ -2278,7 +2278,7 @@
                           }
                         ],
                         "qualifiedName": "PostgrestFilterBuilder",
-                        "package": "@supabase/postgrest-js",
+                        "package": "@indobaseinc/postgrest-js",
                         "name": "default"
                       }
                     }
@@ -2620,7 +2620,7 @@
                                   "type": {
                                     "type": "reference",
                                     "qualifiedName": "Options",
-                                    "package": "@supabase/realtime-js",
+                                    "package": "@indobaseinc/realtime-js",
                                     "name": "RealtimeClientOptions"
                                   }
                                 },
@@ -2922,7 +2922,7 @@
                                   "type": {
                                     "type": "reference",
                                     "qualifiedName": "RealtimeClient",
-                                    "package": "@supabase/realtime-js",
+                                    "package": "@indobaseinc/realtime-js",
                                     "name": "default"
                                   }
                                 },
@@ -3056,7 +3056,7 @@
                   "type": {
                     "type": "reference",
                     "qualifiedName": "RealtimeClient",
-                    "package": "@supabase/realtime-js",
+                    "package": "@indobaseinc/realtime-js",
                     "name": "default"
                   }
                 },
@@ -3313,7 +3313,7 @@
                     }
                   ],
                   "qualifiedName": "PostgrestQueryBuilder",
-                  "package": "@supabase/postgrest-js",
+                  "package": "@indobaseinc/postgrest-js",
                   "name": "default"
                 }
               ]
@@ -3378,7 +3378,7 @@
                           "type": {
                             "type": "reference",
                             "qualifiedName": "RealtimeClient",
-                            "package": "@supabase/realtime-js",
+                            "package": "@indobaseinc/realtime-js",
                             "name": "default"
                           }
                         },
@@ -3495,7 +3495,7 @@
                   "type": {
                     "type": "reference",
                     "qualifiedName": "RealtimeSubscription",
-                    "package": "@supabase/realtime-js",
+                    "package": "@indobaseinc/realtime-js",
                     "name": "default"
                   }
                 },
@@ -3784,7 +3784,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "RealtimeSubscription",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "default"
                       }
                     }
@@ -4398,7 +4398,7 @@
                       "type": {
                         "type": "reference",
                         "qualifiedName": "Options",
-                        "package": "@supabase/realtime-js",
+                        "package": "@indobaseinc/realtime-js",
                         "name": "RealtimeClientOptions"
                       }
                     },
@@ -18274,7 +18274,7 @@
     },
     {
       "id": 0,
-      "name": "@supabase/postgrest-js",
+      "name": "@indobaseinc/postgrest-js",
       "kind": 0,
       "flags": {},
       "originalName": "",
@@ -19853,7 +19853,7 @@
                                       },
                                       "comment": {
                                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                                       },
                                       "parameters": [
                                         {
@@ -24792,7 +24792,7 @@
                       },
                       "comment": {
                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                       },
                       "parameters": [
                         {
@@ -26973,7 +26973,7 @@
                       },
                       "comment": {
                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                       },
                       "parameters": [
                         {
@@ -28629,7 +28629,7 @@
                       },
                       "comment": {
                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                       },
                       "parameters": [
                         {
@@ -29505,7 +29505,7 @@
                                       },
                                       "comment": {
                                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                                       },
                                       "parameters": [
                                         {
@@ -31252,7 +31252,7 @@
                       },
                       "comment": {
                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                       },
                       "parameters": [
                         {
@@ -32234,7 +32234,7 @@
                       },
                       "comment": {
                         "shortText": "If there's an error with the query, throwOnError will reject the promise by\nthrowing the error instead of returning it as part of a successful response.",
-                        "text": "{@link https://github.com/supabase/supabase-js/issues/92}\n"
+                        "text": "{@link https://github.com/Indobase/indobase-js/issues/92}\n"
                       },
                       "parameters": [
                         {
@@ -32349,7 +32349,7 @@
               "flags": {},
               "comment": {
                 "shortText": "Response format",
-                "text": "{@link https://github.com/supabase/supabase-js/issues/32}\n"
+                "text": "{@link https://github.com/Indobase/indobase-js/issues/32}\n"
               },
               "children": [
                 {
@@ -33261,7 +33261,7 @@
     },
     {
       "id": 0,
-      "name": "@supabase/realtime-js",
+      "name": "@indobaseinc/realtime-js",
       "kind": 0,
       "flags": {},
       "originalName": "",

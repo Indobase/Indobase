@@ -139,7 +139,7 @@ export const GET = async (event) => {
 Create a new file at `src/pages/auth/callback.ts` and populate with the following:
 
 ```ts name=src/pages/auth/callback.ts
-import { createServerClient, parseCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader } from '@indobaseinc/ssr'
 import { type APIRoute } from 'astro'
 
 export const GET: APIRoute = async ({ request, cookies, redirect }) => {
@@ -185,7 +185,7 @@ Create a new file at `app/routes/auth.callback.tsx` and populate with the follow
 
 ```ts name=app/routes/auth.callback.tsx
 import { redirect, type LoaderFunctionArgs } from '@remix-run/node'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@indobaseinc/ssr'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const requestUrl = new URL(request.url)

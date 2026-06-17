@@ -26,7 +26,7 @@ Think of an index as a table in a traditional database. It has a schema (dimensi
 
 ### Via Dashboard
 
-1. Open your vector bucket in the Supabase Dashboard.
+1. Open your vector bucket in the Indobase Dashboard.
 2. Click **Create Index**.
 3. Enter an index name (e.g., `documents-openai`).
 4. Set the dimension matching your embeddings (e.g., `1536` for OpenAI's text-embedding-3-small).
@@ -47,7 +47,7 @@ Think of an index as a table in a traditional database. It has a schema (dimensi
 ```typescript
 import { createClient } from 'indobase-js'
 
-const supabase = createClient('https://your-project.supabase.co', 'your-service-key')
+const supabase = createClient('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 const bucket = supabase.storage.vectors.from('embeddings')
 
@@ -73,7 +73,7 @@ if (error) {
 ```python
 from supabase import create_client
 
-supabase = create_client('https://your-project.supabase.co', 'your-service-key')
+supabase = create_client('https://[PROJECT-REF].indobase.in', 'your-service-key')
 
 bucket = supabase.storage.vectors().from_('embeddings')
 

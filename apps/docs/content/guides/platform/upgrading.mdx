@@ -2,7 +2,7 @@
 title: Upgrading
 ---
 
-Supabase ships fast and we endeavor to add all new features to existing projects wherever possible. In some cases, access to new features require upgrading or migrating your Supabase project.
+Supabase ships fast and we endeavor to add all new features to existing projects wherever possible. In some cases, access to new features require upgrading or migrating your Indobase project.
 
 <Admonition type="tip">
 
@@ -15,7 +15,7 @@ You can upgrade your project using in-place upgrades or by pausing and restoring
 <ShowUntil date="2024-12-17">
 <Admonition type="tip">
 
-The Migrating and Upgrading guide has been divided into two sections. To migrate between Supabase projects, see [Migrating within Supabase](/docs/guides/platform/migrating-within-supabase).
+The Migrating and Upgrading guide has been divided into two sections. To migrate between Indobase projects, see [Migrating within Supabase](/docs/guides/platform/migrating-within-supabase).
 
 </Admonition>
 </ShowUntil>
@@ -62,7 +62,7 @@ If you are using logical replication, the replication slots will not be preserve
 
 ### Breaking changes
 
-Newer versions of services can break functionality or change the performance characteristics you rely on. If your project is eligible for an upgrade, you will be able to find your current service versions from within [the Supabase dashboard](/dashboard/project/_/settings/infrastructure).
+Newer versions of services can break functionality or change the performance characteristics you rely on. If your project is eligible for an upgrade, you will be able to find your current service versions from within [the Indobase dashboard](/dashboard/project/_/settings/infrastructure).
 
 Breaking changes are generally only present in major version upgrades of Postgres and PostgREST. You can find their respective release notes at:
 
@@ -89,7 +89,7 @@ src="/docs/img/guides/platform/paused-90-day.png"
 
 After the 90-day restore window, you can download your project's backup file, and Storage objects from the project dashboard. You can restore the data in the following ways:
 
-- [Restore a backup to a new Supabase project](/docs/guides/platform/migrating-within-supabase/dashboard-restore)
+- [Restore a backup to a new Indobase project](/docs/guides/platform/migrating-within-supabase/dashboard-restore)
 - [Restore a backup locally](/docs/guides/local-development/restoring-downloaded-backup)
 
 <Image
@@ -112,7 +112,7 @@ height={385}
 
 ### Disk sizing
 
-When upgrading, the Supabase platform will "right-size" your disk based on the current size of the database. For example, if your database is 100GB in size, and you have a 200GB disk, the upgrade will reduce the disk size to 120GB (1.2x the size of your database).
+When upgrading, the Indobase platform will "right-size" your disk based on the current size of the database. For example, if your database is 100GB in size, and you have a 200GB disk, the upgrade will reduce the disk size to 120GB (1.2x the size of your database).
 
 ### Objects dependent on Postgres extensions
 
@@ -175,8 +175,8 @@ In projects using Postgres 17, the following extensions are deprecated:
 - `timescaledb`
 - `pgjwt`
 
-Projects planning to upgrade from Postgres 15 to Postgres 17 need to first disable these extensions in the [Supabase Dashboard](/dashboard/project/_/database/extensions).
+Projects planning to upgrade from Postgres 15 to Postgres 17 need to first disable these extensions in the [Indobase Dashboard](/dashboard/project/_/database/extensions).
 
-`pgjwt` was enabled by default on every Supabase project up until Postgres 17. If you weren’t explicitly using `pgjwt` in your project, it’s most likely safe to disable.
+`pgjwt` was enabled by default on every Indobase project up until Postgres 17. If you weren’t explicitly using `pgjwt` in your project, it’s most likely safe to disable.
 
-Existing projects on lower versions of Postgres are not impacted, and the extensions will continue to be supported on projects using Postgres 15, until the end of life of Postgres 15 on the Supabase platform.
+Existing projects on lower versions of Postgres are not impacted, and the extensions will continue to be supported on projects using Postgres 15, until the end of life of Postgres 15 on the Indobase platform.

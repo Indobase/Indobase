@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { Lock, Mail } from 'lucide-react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import { toast } from 'sonner'

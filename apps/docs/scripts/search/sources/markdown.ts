@@ -34,7 +34,7 @@ export class MarkdownLoader extends BaseLoader {
   }
 
   static fromGuideModel(source: string, guide: GuideModel): MarkdownSource {
-    const path = guide.href ? guide.href.replace('https://supabase.com/docs', '') : ''
+    const path = guide.href ? guide.href.replace('https://indobase.in/docs', '') : ''
 
     return new MarkdownSource(source, path, guide.content ?? '', {
       checksum: guide.checksum,

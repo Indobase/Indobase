@@ -2,7 +2,7 @@
 
 [Expo](https://docs.expo.dev/push-notifications/overview/) makes implementing push notifications easy. All the hassle with device information and communicating with Firebase Cloud Messaging (FCM) or Apple Push Notification Service (APNs) is done behind the scenes. This allows you to treat Android and iOS notifications in the same way and save time both on the frontend and backend.
 
-## Supabase Setup
+## Indobase Setup
 
 - [Create a new Supabase project](https://database.new)
 - Link your project: `supabase link --project-ref your-supabase-project-ref`
@@ -38,7 +38,7 @@ The database webhook handler to send push notifications is located in [supabase/
 
 ## Create the database webhook
 
-Navigate to the [Database Webhooks settings](https://supabase.com/dashboard/project/_/database/hooks) in your Supabase Dashboard.
+Navigate to the [Database Webhooks settings](https://indobase.in/dashboard/project/_/database/hooks) in your Supabase Dashboard.
 
 1. Enable and create a new hook.
 1. Conditions to fire webhook: Select the `notifications` table and tick the `Insert` event. 
@@ -49,6 +49,6 @@ Navigate to the [Database Webhooks settings](https://supabase.com/dashboard/proj
 
 ## Send push notification
 
-1. Navigate to the [table editor](https://supabase.com/dashboard/project/_/editor) in your Supabase Dashboard.
+1. Navigate to the [table editor](https://indobase.in/dashboard/project/_/editor) in your Supabase Dashboard.
 1. In your `notifications` table, insert a new row.
 1. Watch the magic happen 🪄

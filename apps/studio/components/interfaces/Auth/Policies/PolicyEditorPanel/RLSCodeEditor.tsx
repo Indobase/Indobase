@@ -156,7 +156,7 @@ export const RLSCodeEditor = ({
     <>
       <Editor
         path={id}
-        theme="supabase"
+        theme="indobase"
         wrapperProps={{ className: cn(wrapperClassName) }}
         className={cn(className, 'monaco-editor')}
         value={value ?? undefined}

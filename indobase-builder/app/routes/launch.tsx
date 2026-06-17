@@ -6,9 +6,12 @@ import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/indobase/handoff.server';
 
+const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
-  const handoffToken = url.searchParams.get('handoff');
+  const handoffToken = url.searchParams.get('handoff') || url.searchParams.get('token');
+  const next = url.searchParams.get('next');
 
   if (!handoffToken) {
     return redirect('/');
@@ -17,8 +20,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const handoff = await verifyIndobaseStudioHandoff(handoffToken);
     const mcpToken = signIndobaseBuilderMcpToken(handoff);
+    const maxAge = 60 * 60 * 12;
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
 
-    return json({ handoff, mcpToken });
+    return json(
+      { handoff, mcpToken, next },
+      {
+        headers: {
+          'Set-Cookie': `${BUILDER_MCP_COOKIE}=${mcpToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`,
+        },
+      },
+    );
   } catch (error) {
     return json(
       {
@@ -39,7 +51,10 @@ export default function LaunchRoute() {
     }
 
     updateSupabaseConnection(buildSupabaseConnectionFromHandoff(data.handoff, { mcpToken: data.mcpToken }));
-    navigate('/', { replace: true });
+    const next = typeof data.next === 'string' ? data.next : null;
+    const isSafeRelativePath =
+      Boolean(next) && next!.startsWith('/') && !next!.startsWith('//') && !next!.includes('://');
+    navigate(isSafeRelativePath ? next! : '/', { replace: true });
   }, [data, navigate]);
 
   if ('error' in data) {

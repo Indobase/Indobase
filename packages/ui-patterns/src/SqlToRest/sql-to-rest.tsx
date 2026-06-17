@@ -9,12 +9,12 @@ import {
   processSql,
   RenderError,
   renderHttp,
-  renderSupabaseJs,
+  renderIndobaseJs,
   Statement,
-  SupabaseJsQuery,
+  IndobaseJsQuery,
   UnimplementedError,
   UnsupportedError,
-} from '@supabase/sql-to-rest'
+} from '@indobaseinc/sql-to-rest'
 import { ChevronUp, GitPullRequest } from 'lucide-react'
 import type { editor } from 'monaco-editor'
 import { useTheme } from 'next-themes'
@@ -54,8 +54,8 @@ export default function SqlToRest({
     if (monaco) {
       const lightMode = getTheme(false)
       const darkMode = getTheme(true)
-      monaco.editor.defineTheme('supabase-light', lightMode)
-      monaco.editor.defineTheme('supabase-dark', darkMode)
+      monaco.editor.defineTheme('indobase-light', lightMode)
+      monaco.editor.defineTheme('indobase-dark', darkMode)
     }
   }, [monaco])
 
@@ -64,13 +64,13 @@ export default function SqlToRest({
   const [currentLanguage, setCurrentLanguage] = useState('curl')
 
   const [httpRequest, setHttpRequest] = useState<HttpRequest>()
-  const [jsQuery, setJsQuery] = useState<SupabaseJsQuery>()
+  const [jsQuery, setJsQuery] = useState<IndobaseJsQuery>()
 
   const [parsingError, setParsingError] = useState<ParsingError>()
   const [unimplementedError, setUnimplementedError] = useState<UnimplementedError>()
   const [unsupportedError, setUnsupportedError] = useState<UnsupportedError>()
   const [httpRenderError, setHttpRenderError] = useState<RenderError>()
-  const [supabaseJsRenderError, setSupabaseJsRenderError] = useState<RenderError>()
+  const [indobaseJsRenderError, setIndobaseJsRenderError] = useState<RenderError>()
 
   const [isBaseUrlDialogOpen, setIsBaseUrlDialogOpen] = useState(false)
   const [baseUrl, setBaseUrl] = useState(defaultBaseUrl)
@@ -148,7 +148,7 @@ export default function SqlToRest({
         }
 
         const result: ResultBundle = {
-          type: 'supabase-js',
+          type: 'indobase-js',
           language: currentLanguage,
           statement,
           ...jsQuery,
@@ -188,7 +188,7 @@ export default function SqlToRest({
         }
 
         const result: ResultBundle = {
-          type: 'supabase-js',
+          type: 'indobase-js',
           language: currentLanguage,
           statement,
           ...jsQuery,
@@ -207,13 +207,13 @@ export default function SqlToRest({
     try {
       const statement = await processSql(sql)
       const httpRequest = await renderHttp(statement)
-      const jsQuery = await renderSupabaseJs(statement)
+      const jsQuery = await renderIndobaseJs(statement)
 
       setParsingError(undefined)
       setUnimplementedError(undefined)
       setUnsupportedError(undefined)
       setHttpRenderError(undefined)
-      setSupabaseJsRenderError(undefined)
+      setIndobaseJsRenderError(undefined)
 
       setStatement(statement)
       setHttpRequest(httpRequest)
@@ -223,7 +223,7 @@ export default function SqlToRest({
       setUnimplementedError(undefined)
       setUnsupportedError(undefined)
       setHttpRenderError(undefined)
-      setSupabaseJsRenderError(undefined)
+      setIndobaseJsRenderError(undefined)
 
       if (error instanceof ParsingError) {
         setParsingError(error)
@@ -234,8 +234,8 @@ export default function SqlToRest({
       } else if (error instanceof RenderError) {
         if (error.renderer === 'http') {
           setHttpRenderError(error)
-        } else if (error.renderer === 'supabase-js') {
-          setSupabaseJsRenderError(error)
+        } else if (error.renderer === 'indobase-js') {
+          setIndobaseJsRenderError(error)
         } else {
           console.error(error)
         }
@@ -259,7 +259,7 @@ export default function SqlToRest({
         >
           <Editor
             language="pgsql"
-            theme={isDark ? 'supabase-dark' : 'supabase-light'}
+            theme={isDark ? 'indobase-dark' : 'indobase-light'}
             value={sql}
             options={{
               tabSize: 2,
@@ -385,15 +385,15 @@ export default function SqlToRest({
             </CodeBlock>
           </Tabs.Panel>
           <Tabs.Panel id="js" label="JavaScript" className="flex flex-col gap-4">
-            {supabaseJsRenderError && (
-              <Alert className="text-red-900">{supabaseJsRenderError.message}</Alert>
+            {indobaseJsRenderError && (
+              <Alert className="text-red-900">{indobaseJsRenderError.message}</Alert>
             )}
             <CodeBlock
               language="js"
               hideLineNumbers
               className={cn(
                 'self-stretch overflow-y-hidden',
-                supabaseJsRenderError ? 'opacity-25 pointer-events-none' : ''
+                indobaseJsRenderError ? 'opacity-25 pointer-events-none' : ''
               )}
               renderer={codeBlockRenderer}
             >
@@ -405,7 +405,7 @@ export default function SqlToRest({
           className={cn(
             'flex flex-col gap-4',
             ((currentLanguage === 'http' || currentLanguage === 'curl') && httpRenderError) ||
-              (currentLanguage === 'js' && supabaseJsRenderError)
+              (currentLanguage === 'js' && indobaseJsRenderError)
               ? 'opacity-25 pointer-events-none'
               : ''
           )}

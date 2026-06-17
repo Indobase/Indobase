@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS } from 'common'
 import { useBranchCreateMutation } from 'data/branches/branch-create-mutation'
 import { useBranchUpdateMutation } from 'data/branches/branch-update-mutation'

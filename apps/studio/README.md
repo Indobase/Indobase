@@ -33,25 +33,17 @@ Project settings are managed outside of the Dashboard. If you use docker compose
 
 ### Developer Quickstart
 
-> [!NOTE]  
-> **Indobase internal use:** To develop on Studio locally with the backend services, see the instructions in the [internal `infrastructure` repo](https://github.com/supabase/platform/blob/develop/docs/contributing.md).
-
 ```bash
 # You'll need to be on Node v20
-# in /studio
+# in apps/studio
 
-## For external contributors
-pnpm install # install dependencies
-pnpm run dev # start dev server
-
-## For internal contributors
-## First clone the private supabase/platform repo and follow instructions for setting up mise
-mise studio  # Run from supabase/platform alongside `mise infra`
-
-## For all
-pnpm run test # run tests
-pnpm run test -- --watch # run tests in watch mode
+pnpm install   # install dependencies
+pnpm run dev   # start dev server
+pnpm run test  # run tests
+pnpm run test -- --watch  # run tests in watch mode
 ```
+
+For the full stack (Kong, Postgres, GoTrue, etc.), follow the [Docker deployment guide](https://indobase.in/docs/guides/hosting/docker) and [DEVELOPERS.md](../../DEVELOPERS.md) at the repo root.
 
 ## Running within a SaaS environment
 

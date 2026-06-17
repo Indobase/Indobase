@@ -4,7 +4,7 @@
 
 import { createClient, SupabaseClient } from 'npm:supabase-js@2'
 // New approach (v2.95.0+)
-import { corsHeaders } from 'jsr:@supabase/supabase-js@2/cors'
+import { corsHeaders } from 'jsr:@indobaseinc/indobase-js@2/cors'
 // For older versions, use hardcoded headers:
 // const corsHeaders = {
 //   'Access-Control-Allow-Origin': '*',

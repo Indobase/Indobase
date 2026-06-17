@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { partition } from 'lodash'
 import { Table2 } from 'lucide-react'
 import Link from 'next/link'

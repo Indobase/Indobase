@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from 'indobase-js'
+import { createClient, type SupabaseClient } from '@indobaseinc/indobase-js'
 
 import { type Database as DatabaseGenerated } from 'common'
 

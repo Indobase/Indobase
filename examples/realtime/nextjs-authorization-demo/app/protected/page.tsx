@@ -1,8 +1,9 @@
 'use client'
 import CreateRoomModal from '@/components/create-room-modal'
-import { User, createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { RealtimeChannel } from '@supabase/supabase-js'
-import { useState, useEffect, use } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import type { User } from '@indobaseinc/indobase-js'
+import { RealtimeChannel } from '@indobaseinc/indobase-js'
+import { useState, useEffect } from 'react'
 
 export default function Chat() {
   const [user, setUser] = useState<User | null>(null)
@@ -15,7 +16,7 @@ export default function Chat() {
   const [showModal, setShowModal] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
 
   const getChannels = async () => {
     const channels = await supabase.from('rooms').select('topic')

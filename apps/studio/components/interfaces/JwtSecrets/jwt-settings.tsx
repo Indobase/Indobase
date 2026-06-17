@@ -1,9 +1,9 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import {
   JwtSecretUpdateError,
   JwtSecretUpdateProgress,
   JwtSecretUpdateStatus,
-} from '@supabase/shared-types/out/events'
+} from '@indobaseinc/shared-types/out/events'
 import {
   AlertCircle,
   ChevronDown,

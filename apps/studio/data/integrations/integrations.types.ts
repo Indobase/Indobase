@@ -127,7 +127,7 @@ export type SupabaseConfigVercel = {
 
 export type Imetadata = {
   id: string
-  supabaseConfig?: {
+  indobaseConfig?: {
     environmentVariables?: {
       production: boolean
       preview: boolean
@@ -150,7 +150,7 @@ export type IntegrationProjectConnection = {
   inserted_at: string
   updated_at: string
   added_by: addedBy
-  supabase_project_ref: string
+  indobase_project_ref: string
   foreign_project_id: string
   organization_integration_id: string
   env_sync_targets?: string[]
@@ -243,7 +243,7 @@ export type IntegrationConnectionsCreateVariables = {
   organizationIntegrationId: string
   connection: {
     foreign_project_id: string
-    supabase_project_ref: string
+    indobase_project_ref: string
     integration_id: string
     metadata: any
   }

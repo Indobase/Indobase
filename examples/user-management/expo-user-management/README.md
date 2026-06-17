@@ -8,7 +8,7 @@
 
 ### 1. Create new project
 
-Sign up to Supabase - [https://supabase.com/dashboard](https://supabase.com/dashboard) and create a new project. Wait for your database to start.
+Sign up to Supabase - [https://indobase.in/dashboard](https://indobase.in/dashboard) and create a new project. Wait for your database to start.
 
 ### 2. Run "User Management Starter" Quickstart
 
@@ -46,7 +46,7 @@ npm run prebuild
 
 Run the application: `npm start`.
 
-## Supabase details
+## Indobase details
 
 ### Postgres Row level security
 
@@ -118,6 +118,6 @@ with
 
 ## Authors
 
-- [Supabase](https://supabase.com)
+- [Supabase](https://indobase.in)
 
 Supabase is open source, we'd love for you to follow along and get involved at https://github.com/supabase/supabase

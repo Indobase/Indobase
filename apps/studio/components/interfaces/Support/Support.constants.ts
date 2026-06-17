@@ -1,4 +1,4 @@
-import { SupportCategories } from '@supabase/shared-types/out/constants'
+import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { isFeatureEnabled } from 'common'
 
 const billingEnabled = isFeatureEnabled('billing:all')

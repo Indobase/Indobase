@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { useFDWDeleteMutation } from 'data/fdw/fdw-delete-mutation'
 import { useDeleteDestinationPipelineMutation } from 'data/replication/delete-destination-pipeline-mutation'

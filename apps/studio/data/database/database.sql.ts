@@ -1,4 +1,4 @@
-import { literal } from '@supabase/pg-meta/src/pg-format'
+import { literal } from '@indobaseinc/pg-meta/src/pg-format'
 
 import { sqlKeys } from '../sql/keys'
 

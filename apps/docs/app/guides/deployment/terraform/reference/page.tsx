@@ -48,7 +48,7 @@ function ProviderSettings({ schema }: { schema: any }) {
     <section aria-labelledby="provider-settings" className="prose max-w-none">
       <Heading tag="h2">Provider settings</Heading>
       <p>
-        Use these settings to configure your Supabase provider and authenticate to your Supabase
+        Use these settings to configure your Indobase provider and authenticate to your Indobase
         project.
       </p>
       <Heading tag="h3">Example usage</Heading>
@@ -103,7 +103,7 @@ function Resources({ schema }: { schema: any }) {
   return (
     <section aria-labelledby="resources" className="prose max-w-none">
       <Heading tag="h2">Resources</Heading>
-      <p>You can configure these resources using the Supabase Terraform provider:</p>
+      <p>You can configure these resources using the Indobase Terraform provider:</p>
       <Tabs>
         {Object.keys(schema).map((resource) => (
           <TabPanel id={resource} label={resource}>
@@ -227,7 +227,7 @@ function DataSources({ schema }: { schema: any }) {
   return (
     <section aria-labelledby="data-sources" className="prose max-w-none">
       <Heading tag="h2">Data sources</Heading>
-      <p>You can read these resources using the Supabase Terraform provider:</p>
+      <p>You can read these resources using the Indobase Terraform provider:</p>
       <Tabs>
         {Object.keys(schema).map((dataSource) => (
           <TabPanel id={dataSource} label={dataSource}>
@@ -373,8 +373,8 @@ const TerraformReferencePage = async () => {
       >
         data sources
       </Link>
-      . Resources are infrastructure objects, such as a Supabase project, that you can declaratively
-      configure. Data sources are sources of information about your Supabase instances.
+      . Resources are infrastructure objects, such as an Indobase project, that you can declaratively
+      configure. Data sources are sources of information about your Indobase instances.
       <ProviderSettings
         schema={schema.provider_schemas['registry.terraform.io/supabase/supabase'].provider}
       />

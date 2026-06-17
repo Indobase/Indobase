@@ -1,5 +1,5 @@
-import type { JwtPayload } from 'indobase-js'
-import { createClient, type SupabaseClient } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
+import { createClient, type IndobaseClient } from '@indobaseinc/indobase-js'
 import type { NextApiRequest } from 'next'
 
 import { getProjectSettingsForRef } from 'lib/api/saas/settings'
@@ -18,8 +18,8 @@ import { getProjectSettingsForRef } from 'lib/api/saas/settings'
  * not the shared Kong `SUPABASE_URL` stub — the central storage container uses a
  * different Postgres role/password and returns 500 for bucket APIs.
  */
-let cachedDefaultClient: SupabaseClient | null = null
-const cachedByRef = new Map<string, SupabaseClient>()
+let cachedDefaultClient: IndobaseClient | null = null
+const cachedByRef = new Map<string, IndobaseClient>()
 
 function normalizeApiOrigin(protocol: string | undefined, endpoint: string | undefined) {
   const proto = (protocol || 'https').replace(/:$/, '')
@@ -36,7 +36,7 @@ function getServiceKeyFromSettings(settings: NonNullable<Awaited<ReturnType<type
   return key
 }
 
-export function getStorageAdminClient(): SupabaseClient {
+export function getStorageAdminClient(): IndobaseClient {
   if (cachedDefaultClient) return cachedDefaultClient
 
   const url = process.env.SUPABASE_URL
@@ -60,7 +60,7 @@ export function getStorageAdminClient(): SupabaseClient {
 export async function getStorageAdminClientForRef(
   ref: string,
   claims: JwtPayload
-): Promise<SupabaseClient> {
+): Promise<IndobaseClient> {
   const cached = cachedByRef.get(ref)
   if (cached) return cached
 
@@ -93,7 +93,7 @@ export function parseProjectRefFromRequest(req: Pick<NextApiRequest, 'query'>): 
 export async function getStorageAdminClientFromRequest(
   req: Pick<NextApiRequest, 'query'>,
   claims?: JwtPayload
-): Promise<SupabaseClient> {
+): Promise<IndobaseClient> {
   const ref = parseProjectRefFromRequest(req)
   if (ref && claims) {
     return getStorageAdminClientForRef(ref, claims)

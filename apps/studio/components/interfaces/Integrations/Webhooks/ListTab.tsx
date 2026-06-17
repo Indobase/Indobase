@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 
 import { DeleteHookModal } from '@/components/interfaces/Database/Hooks/DeleteHookModal'
 import { EditHookPanel } from '@/components/interfaces/Database/Hooks/EditHookPanel'

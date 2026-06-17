@@ -14,7 +14,7 @@ The internet uses a system called the Internet Protocol (IP) to route communicat
 - **IPv4**: Introduced in 1980, it's the original version.
 - **IPv6**: Launched in 1999, it offers a much larger address space and is the preferred future-proof option.
 
-### Supabase and IPv6:
+### Indobase and IPv6:
 
 All Supabase databases provide a direct connection string that maps to an IPv6 address.
 
@@ -50,7 +50,7 @@ If the command returns an IPv6 address, the network is IPv6 compatible.
 To determine your current IP address, you can use an IP address [lookup website](https://whatismyipaddress.com/hostname-ip) or the terminal command:
 
 ```sh
-nslookup db.<PROJECT_REF>.supabase.co
+nslookup db.[PROJECT-REF].indobase.in
 ```
 
 This command queries the domain name servers to find the IP address of the given hostname.
@@ -65,19 +65,19 @@ The pooler and direct connection strings can be found on the dashboard by clicki
 
 ```sh
 # Example connection string
-postgresql://postgres:[YOUR-PASSWORD]@db.ajrbwkcuthywfihaarmflo.supabase.co:5432/postgres
+postgresql://postgres:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 #### Supavisor in transaction mode (port 6543)
 
 ```sh
 # Example transaction string
-postgresql://postgres.ajrbwkcuthywddfihrmflo:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.ajrbwkcuthywddfihrmflo:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:6543/postgres
 ```
 
 #### Supavisor in session mode (port 5432)
 
 ```sh
 # Example session string
-postgresql://postgres.ajrbwkcuthywfddihrmflo:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+postgresql://postgres.ajrbwkcuthywfddihrmflo:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```

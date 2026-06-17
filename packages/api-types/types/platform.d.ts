@@ -5322,7 +5322,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret
@@ -5398,7 +5398,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret
@@ -5783,7 +5783,7 @@ export interface components {
         metadata: {
           [key: string]: unknown
         }
-        supabase_project_ref: string
+        indobase_project_ref: string
       }
       organization_integration_id: string
     }
@@ -6207,7 +6207,7 @@ export interface components {
         id: string
         inserted_at: string
         organization_integration_id: string
-        supabase_project_ref: string
+        indobase_project_ref: string
         updated_at: string
       }[]
       id: string
@@ -6338,7 +6338,7 @@ export interface components {
           metadata: {
             framework?: string | null
             name: string
-            supabaseConfig: {
+            indobaseConfig: {
               projectEnvVars: {
                 write: boolean
               }
@@ -6346,7 +6346,7 @@ export interface components {
           }
           organization_integration_id: string
           public_env_var_prefix: string
-          supabase_project_ref: string
+          indobase_project_ref: string
           updated_at: string
         }[]
         id: string
@@ -8497,7 +8497,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret
@@ -8585,7 +8585,7 @@ export interface components {
             }
           | {
               iceberg: {
-                supabase: {
+                indobase: {
                   /**
                    * @description Catalog token
                    * @example A jwt secret
@@ -10234,7 +10234,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret
@@ -10310,7 +10310,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret
@@ -10748,7 +10748,7 @@ export interface components {
           }
         | {
             iceberg: {
-              supabase: {
+              indobase: {
                 /**
                  * @description Catalog token
                  * @example A jwt secret

@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { ensureSaasTables, getGotrueUserId } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'

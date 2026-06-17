@@ -1,0 +1,2 @@
+export declare const CONFIG_SQL = "\nSELECT\n  name,\n  setting,\n  category,\n  TRIM(split_part(category, '/', 1)) AS group,\n  TRIM(split_part(category, '/', 2)) AS subgroup,\n  unit,\n  short_desc,\n  extra_desc,\n  context,\n  vartype,\n  source,\n  min_val,\n  max_val,\n  enumvals,\n  boot_val,\n  reset_val,\n  sourcefile,\n  sourceline,\n  pending_restart\nFROM\n  pg_settings\nORDER BY\n  category,\n  name\n";
+//# sourceMappingURL=config.d.ts.map

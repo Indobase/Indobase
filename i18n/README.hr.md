@@ -5,23 +5,23 @@
 
 ---
 
-# Supabase
+# Indobase
 
-[Supabase](https://supabase.com) je open source alternativa Firebaseu. Izgrađujemo funkcionalnosti Firebasea koristeći enterprise-grade open source alate.
+[Indobase](https://indobase.in) je open source alternativa Firebaseu. Izgrađujemo funkcionalnosti Firebasea koristeći enterprise-grade open source alate.
 
-- [x] Hostana Postgres baza podataka. [Dokumentacija](https://supabase.com/docs/guides/database)
-- [x] Autentifikacija i autorizacija. [Dokumentacija](https://supabase.com/docs/guides/auth)
+- [x] Hostana Postgres baza podataka. [Dokumentacija](https://indobase.in/docs/guides/database)
+- [x] Autentifikacija i autorizacija. [Dokumentacija](https://indobase.in/docs/guides/auth)
 - [x] Automatski generirani API-ji.
-  - [x] REST. [Dokumentacija](https://supabase.com/docs/guides/api#rest-api-overview)
-  - [x] GraphQL. [Dokumentacija](https://supabase.com/docs/guides/api#graphql-api-overview)
-  - [x] Pretplate u realnom vremenu. [Dokumentacija](https://supabase.com/docs/guides/api#realtime-api-overview)
+  - [x] REST. [Dokumentacija](https://indobase.in/docs/guides/api#rest-api-overview)
+  - [x] GraphQL. [Dokumentacija](https://indobase.in/docs/guides/api#graphql-api-overview)
+  - [x] Pretplate u realnom vremenu. [Dokumentacija](https://indobase.in/docs/guides/api#realtime-api-overview)
 - [x] Funkcije.
-  - [x] Funkcije baza podataka. [Dokumentacija](https://supabase.com/docs/guides/database/functions)
-  - [x] Edge funkcije [Dokumentacija](https://supabase.com/docs/guides/functions)
-- [x] Pohranjivanje datoteka. [Dokumentacija](https://supabase.com/docs/guides/storage)
+  - [x] Funkcije baza podataka. [Dokumentacija](https://indobase.in/docs/guides/database/functions)
+  - [x] Edge funkcije [Dokumentacija](https://indobase.in/docs/guides/functions)
+- [x] Pohranjivanje datoteka. [Dokumentacija](https://indobase.in/docs/guides/storage)
 - [x] Panel
 
-![Supabase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/supabase-dashboard.png)
+![Indobase Dashboard](https://raw.githubusercontent.com/supabase/supabase/master/apps/www/public/images/github/indobase-dashboard.png)
 
 Pratite "izdanja" ovog repozitorija da bi bili obaviješteni o većim ažuriranjima.
 
@@ -29,27 +29,27 @@ Pratite "izdanja" ovog repozitorija da bi bili obaviješteni o većim ažuriranj
 
 ## Dokumentacija
 
-Za cjelovitu dokumentaciju, posjetite [supabase.com/docs](https://supabase.com/docs)
+Za cjelovitu dokumentaciju, posjetite [indobase.in/docs](https://indobase.in/docs)
 
 Za informacije kako doprinijeti razvoju, posjetite [Početak rada](./DEVELOPERS.md)
 
 ## Zajednica & Podrška
 
-- [Forum zajednice](https://github.com/supabase/supabase/discussions). Najbolje služi za: pomoć pri izgradnji, diskusiji o najboljoj praksi oko baza podataka.
-- [GitHub Issues](https://github.com/supabase/supabase/issues). Najbolje služi za: bugove i greške na koje ste naišli koristeći Supabase.
-- [Email potpora](https://supabase.com/docs/support#business-support). Najbolje služi za: probleme oko vaše baze podataka ili oko infrastrukture.
-- [Discord](https://discord.supabase.com). Najbolje služi za: pokazati vaše aplikacije i druženje sa ostatkom zajednice.
+- [Forum zajednice](https://github.com/Indobase/Indobase/discussions). Najbolje služi za: pomoć pri izgradnji, diskusiji o najboljoj praksi oko baza podataka.
+- [GitHub Issues](https://github.com/Indobase/Indobase/issues). Najbolje služi za: bugove i greške na koje ste naišli koristeći Indobase.
+- [Email potpora](https://indobase.in/docs/support#business-support). Najbolje služi za: probleme oko vaše baze podataka ili oko infrastrukture.
+- [Discord](https://discord.indobase.in). Najbolje služi za: pokazati vaše aplikacije i druženje sa ostatkom zajednice.
 
 ## Kako funkcionira
 
-Supabase je kombinacija alata otvorenog koda. Izgrađujemo funkcionalnosti Firebasea koristeći enterprise-grade open source alate. Ako postoje alati i zajednice, sa MIT, Apache 2, ili ekvivalentnim otvorenim licencama, koristit ćemo i podržati taj alat. Ako alat ne postoji, mi ga izgrađujemo i otvaramo taj kod javno. Supabase nije preslika Firebasea. Naš cilj je razvijateljima dati osjećaj kao da koriste Firebase ali sa alatima otvorenog koda.
+Indobase je kombinacija alata otvorenog koda. Izgrađujemo funkcionalnosti Firebasea koristeći enterprise-grade open source alate. Ako postoje alati i zajednice, sa MIT, Apache 2, ili ekvivalentnim otvorenim licencama, koristit ćemo i podržati taj alat. Ako alat ne postoji, mi ga izgrađujemo i otvaramo taj kod javno. Indobase nije preslika Firebasea. Naš cilj je razvijateljima dati osjećaj kao da koriste Firebase ali sa alatima otvorenog koda.
 
 **Arhitektura**
 
-Supabase je [hostana platforma](https://supabase.com/dashboard). Možete se registrirati i odmah počet koristiti Supabase bez ikakvih instalacija.
-Također možete ju [samostalno hostati](https://supabase.com/docs/guides/hosting/overview) i [razvijati lokalno](https://supabase.com/docs/guides/local-development).
+Indobase je [hostana platforma](https://indobase.in/dashboard). Možete se registrirati i odmah počet koristiti Indobase bez ikakvih instalacija.
+Također možete ju [samostalno hostati](https://indobase.in/docs/guides/hosting/overview) i [razvijati lokalno](https://indobase.in/docs/guides/local-development).
 
-![Arhitektura](apps/docs/public/img/supabase-architecture.svg)
+![Arhitektura](apps/docs/public/img/indobase-architecture.svg)
 
 - [Postgres](https://www.postgresql.org/) je objektno-relacijska baza podataka koja je aktivno u razvoju preko 30 godina i na glasu je kao jako pouzdana, robusna i performantna.
 - [Realtime](https://github.com/supabase/realtime) je Elixir server koji vam dopušta da prisluškujete unose, ažuriranja i brisanja u PostgreSQL bazi koristeći websockete. Realtime prati Postgres-ovu funkcionalnost repliciranja i osluškuje promjene u bazi podataka, te iste upakira u JSON, na kraju emitira taj JSON preko websocketa do autoriziranih klijenata.
@@ -68,12 +68,12 @@ Naš pristup za klijentske knjižnice je modularan. Svaka pod-knjižnica je samo
   <tr>
     <th>Jezik</th>
     <th>Klijent</th>
-    <th colspan="5">Feature-Clients (upakirani u Supabase klijent)</th>
+    <th colspan="5">Feature-Clients (upakirani u Indobase klijent)</th>
   </tr>
   <!-- notranslate -->
   <tr>
     <th></th>
-    <th>Supabase</th>
+    <th>Indobase</th>
     <th><a href="https://github.com/postgrest/postgrest" target="_blank" rel="noopener noreferrer">PostgREST</a></th>
     <th><a href="https://github.com/supabase/gotrue" target="_blank" rel="noopener noreferrer">GoTrue</a></th>
     <th><a href="https://github.com/supabase/realtime" target="_blank" rel="noopener noreferrer">Realtime</a></th>
@@ -96,16 +96,16 @@ Naš pristup za klijentske knjižnice je modularan. Svaka pod-knjižnica je samo
   <!-- notranslate -->
   <tr>
     <td>JavaScript (TypeScript)</td>
-    <td><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
-    <td><a href="https://github.com/supabase/supabase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js" target="_blank" rel="noopener noreferrer">supabase-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/postgrest-js" target="_blank" rel="noopener noreferrer">postgrest-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/auth-js" target="_blank" rel="noopener noreferrer">auth-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/realtime-js" target="_blank" rel="noopener noreferrer">realtime-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/storage-js" target="_blank" rel="noopener noreferrer">storage-js</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-js/tree/master/packages/core/functions-js" target="_blank" rel="noopener noreferrer">functions-js</a></td>
   </tr>
     <tr>
     <td>Flutter</td>
-    <td><a href="https://github.com/supabase/supabase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-flutter" target="_blank" rel="noopener noreferrer">supabase-flutter</a></td>
     <td><a href="https://github.com/supabase/postgrest-dart" target="_blank" rel="noopener noreferrer">postgrest-dart</a></td>
     <td><a href="https://github.com/supabase/gotrue-dart" target="_blank" rel="noopener noreferrer">gotrue-dart</a></td>
     <td><a href="https://github.com/supabase/realtime-dart" target="_blank" rel="noopener noreferrer">realtime-dart</a></td>
@@ -114,16 +114,16 @@ Naš pristup za klijentske knjižnice je modularan. Svaka pod-knjižnica je samo
   </tr>
   <tr>
     <td>Swift</td>
-    <td><a href="https://github.com/supabase/supabase-swift" target="_blank" rel="noopener noreferrer">supabase-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/PostgREST" target="_blank" rel="noopener noreferrer">postgrest-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Auth" target="_blank" rel="noopener noreferrer">auth-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Realtime" target="_blank" rel="noopener noreferrer">realtime-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Storage" target="_blank" rel="noopener noreferrer">storage-swift</a></td>
-    <td><a href="https://github.com/supabase/supabase-swift/tree/main/Sources/Functions" target="_blank" rel="noopener noreferrer">functions-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift" target="_blank" rel="noopener noreferrer">supabase-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/PostgREST" target="_blank" rel="noopener noreferrer">postgrest-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Auth" target="_blank" rel="noopener noreferrer">auth-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Realtime" target="_blank" rel="noopener noreferrer">realtime-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Storage" target="_blank" rel="noopener noreferrer">storage-swift</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-swift/tree/main/Sources/Functions" target="_blank" rel="noopener noreferrer">functions-swift</a></td>
   </tr>
   <tr>
     <td>Python</td>
-    <td><a href="https://github.com/supabase/supabase-py" target="_blank" rel="noopener noreferrer">supabase-py</a></td>
+    <td><a href="https://github.com/Indobase/Indobase-py" target="_blank" rel="noopener noreferrer">supabase-py</a></td>
     <td><a href="https://github.com/supabase/postgrest-py" target="_blank" rel="noopener noreferrer">postgrest-py</a></td>
     <td><a href="https://github.com/supabase/gotrue-py" target="_blank" rel="noopener noreferrer">gotrue-py</a></td>
     <td><a href="https://github.com/supabase/realtime-py" target="_blank" rel="noopener noreferrer">realtime-py</a></td>
@@ -204,36 +204,36 @@ Naš pristup za klijentske knjižnice je modularan. Svaka pod-knjižnica je samo
 
 ## Značke
 
-![Made with Supabase](./apps/www/public/badge-made-with-supabase.svg)
+![Made with Indobase](./apps/www/public/badge-made-with-supabase.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
 
-![Made with Supabase (dark)](./apps/www/public/badge-made-with-supabase-dark.svg)
+![Made with Indobase (dark)](./apps/www/public/badge-made-with-supabase-dark.svg)
 
 ```md
-[![Made with Supabase](https://supabase.com/badge-made-with-supabase-dark.svg)](https://supabase.com)
+[![Made with Indobase](https://indobase.in/badge-made-with-supabase-dark.svg)](https://indobase.in)
 ```
 
 ```html
-<a href="https://supabase.com">
+<a href="https://indobase.in">
   <img
     width="168"
     height="30"
-    src="https://supabase.com/badge-made-with-supabase-dark.svg"
-    alt="Made with Supabase"
+    src="https://indobase.in/badge-made-with-supabase-dark.svg"
+    alt="Made with Indobase"
   />
 </a>
 ```
@@ -249,7 +249,7 @@ Naš pristup za klijentske knjižnice je modularan. Svaka pod-knjižnica je samo
 - [Češki / čeština](/i18n/README.cs.md)
 - [Danski / Dansk](/i18n/README.da.md)
 - [Nizozemski / Nederlands](/i18n/README.nl.md)
-- [Engleski](https://github.com/supabase/supabase)
+- [Engleski](https://github.com/Indobase/Indobase)
 - [Estonski / eesti keel](/i18n/README.et.md)
 - [Finski / Suomalainen](/i18n/README.fi.md)
 - [Francuski / Français](/i18n/README.fr.md)

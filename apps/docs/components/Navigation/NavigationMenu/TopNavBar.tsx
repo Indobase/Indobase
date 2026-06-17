@@ -104,7 +104,7 @@ const HeaderLogo = memo(() => {
     >
       <Image
         className={cn('hidden dark:block !m-0', largeLogo && 'h-[36px]')}
-        src={navigationLogo?.dark ?? '/docs/supabase-dark.svg'}
+        src={navigationLogo?.dark ?? '/docs/indobase-dark.svg'}
         priority={true}
         loading="eager"
         width={navigationLogo?.width ?? 96}
@@ -113,7 +113,7 @@ const HeaderLogo = memo(() => {
       />
       <Image
         className={cn('block dark:hidden !m-0', largeLogo && 'h-[36px]')}
-        src={navigationLogo?.light ?? '/docs/supabase-light.svg'}
+        src={navigationLogo?.light ?? '/docs/indobase-light.svg'}
         priority={true}
         loading="eager"
         width={navigationLogo?.width ?? 96}

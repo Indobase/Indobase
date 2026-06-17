@@ -3,27 +3,27 @@ title: 'GitHub integration'
 subtitle: 'Connect with GitHub to sync branches with your repository'
 ---
 
-Supabase Branching uses the Supabase GitHub integration to read files from your GitHub repository. With this integration, Supabase watches all commits, branches, and pull requests of your GitHub repository.
+Supabase Branching uses the Indobase GitHub integration to read files from your GitHub repository. With this integration, Supabase watches all commits, branches, and pull requests of your GitHub repository.
 
 ## Installation
 
-In the Supabase Dashboard:
+In the Indobase Dashboard:
 
 1. Go to **Project Settings** > [**Integrations**](/dashboard/project/_/settings/integrations).
 2. Under **GitHub Integration**, click **Authorize GitHub**.
 3. You are redirected to a GitHub authorization page. Click **Authorize Supabase**.
 4. You are redirected back to the Integrations page. Choose a GitHub repository to connect your project to.
-5. Fill in the relative path to the Supabase directory from your repository root.
+5. Fill in the relative path to the Indobase directory from your repository root.
 6. Configure the other options as needed to automate your GitHub connection.
 7. Click **Enable integration**.
 
 ## Preparing your Git repository
 
-You will be using the [Supabase CLI](/docs/guides/cli) to initialise your local `./supabase` directory:
+You will be using the [Indobase CLI](/docs/guides/cli) to initialise your local `./supabase` directory:
 
 <StepHikeCompact>
     <StepHikeCompact.Step step={1}>
-        <StepHikeCompact.Details title="Initialize Supabase locally" fullWidth>
+        <StepHikeCompact.Details title="Initialize Indobase locally" fullWidth>
 
             If you don't have a `./supabase` directory, you can create one:
 
@@ -43,7 +43,7 @@ You will be using the [Supabase CLI](/docs/guides/cli) to initialise your local 
             supabase db pull --db-url <db_connection_string>
 
             # Your Database connection string will look like this:
-            # postgres://postgres.xxxx:password@xxxx.pooler.supabase.com:5432/postgres
+            # postgres://postgres.xxxx:password@[PROJECT-REF].indobase.in:5432/postgres
             ```
         <Admonition type="note">
 
@@ -109,7 +109,7 @@ All other configurations, including API, Auth, and seed files, are ignored by de
 
 ## Preventing migration failures
 
-We highly recommend turning on a 'required check' for the Supabase integration. You can do this from your GitHub repository settings. This prevents PRs from being merged when migration checks fail, and stops invalid migrations from being merged into your production branch.
+We highly recommend turning on a 'required check' for the Indobase integration. You can do this from your GitHub repository settings. This prevents PRs from being merged when migration checks fail, and stops invalid migrations from being merged into your production branch.
 
 <Image
 

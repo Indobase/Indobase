@@ -1,0 +1,15 @@
+[Unit]
+Description=Indobase project deployment executor
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=simple
+Environment=PROJECT_DEPLOYMENT_EXECUTOR_ENV_FILE=/etc/indobase/project-deployment-executor.env
+ExecStart=/usr/local/bin/project-deployment-executor.sh --loop
+Restart=always
+RestartSec=10
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

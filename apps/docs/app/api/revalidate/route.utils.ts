@@ -1,4 +1,4 @@
-import { createClient } from 'indobase-js'
+import { createClient } from '@indobaseinc/indobase-js'
 import { type Database } from 'common'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'

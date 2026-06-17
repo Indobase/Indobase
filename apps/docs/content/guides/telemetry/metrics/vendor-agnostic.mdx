@@ -28,7 +28,7 @@ No matter which collector you use, you need to hit the Metrics API once per minu
     password: '<secret API key (sb_secret_...)>'
   static_configs:
     - targets:
-        - '<project-ref>.supabase.co:443'
+        - '<project-ref>.indobase.in:443'
       labels:
         project: '<project-ref>'
 ```
@@ -47,7 +47,7 @@ No matter which collector you use, you need to hit the Metrics API once per minu
 
 ## 3. Downstream dashboards
 
-- Import the [Supabase Grafana dashboard](https://github.com/supabase/supabase-grafana) regardless of where Grafana is hosted.
+- Import the [Supabase Grafana dashboard](https://github.com/Indobase/Indobase-grafana) regardless of where Grafana is hosted.
 - For other tools, group metrics by categories (CPU, IO, WAL, replication, connections) and recreate the visualizations that matter most to your team.
 - Tag or relabel series with `project`, `env`, or `team` labels to make multi-project views easier.
 
@@ -59,7 +59,7 @@ No matter which collector you use, you need to hit the Metrics API once per minu
 
 ## 4. Alerts and automation
 
-- Start with the [example alert rules](https://github.com/supabase/supabase-grafana/blob/main/docs/example-alerts.md) and adapt thresholds for your workload sizes.
+- Start with the [example alert rules](https://github.com/Indobase/Indobase-grafana/blob/main/docs/example-alerts.md) and adapt thresholds for your workload sizes.
 - Pipe alerts into PagerDuty, Slack, Opsgenie, or any other compatible target.
 - Combine Metrics API data with log drains, Query Performance, and Advisors to build right-sizing playbooks.
 

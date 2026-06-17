@@ -52,7 +52,7 @@ The Data APIs allow you to interact with your database using REST or GraphQL req
 - [REST](/docs/guides/api)
 - [GraphQL](/docs/guides/graphql/api)
 
-For convenience, you can also use the [Supabase client libraries](/docs/reference), which wrap the Data APIs with a developer-friendly interface and automatically handle authentication:
+For convenience, you can also use the [Indobase client libraries](/docs/reference), which wrap the Data APIs with a developer-friendly interface and automatically handle authentication:
 
 - [JavaScript](/docs/reference/javascript)
 - [Flutter](/docs/reference/dart)
@@ -74,14 +74,14 @@ Direct connections use IPv6 by default. If your environment doesn't support IPv6
 The connection string looks like this:
 
 ```
-postgresql://postgres:[YOUR-PASSWORD]@db.abcdefghijklmnopqrst.supabase.co:5432/postgres
+postgresql://postgres:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 Get your project's direct connection string from your project dashboard by clicking [Connect](/dashboard/project/_?showConnect=true).
 
 ## Poolers
 
-Every Supabase project includes a connection pooler. This is ideal for persistent servers when IPv6 is not supported.
+Every Indobase project includes a connection pooler. This is ideal for persistent servers when IPv6 is not supported.
 
 ### Pooler session mode
 
@@ -90,7 +90,7 @@ The session mode connection string connects to your Postgres instance via a prox
 The connection string looks like this:
 
 ```
-postgres://postgres.apbkobhfnmcqqzqeeqss:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:5432/postgres
 ```
 
 Get your project's Session pooler connection string from your project dashboard by clicking [Connect](/dashboard/project/_?showConnect=true&method=session).
@@ -108,7 +108,7 @@ Transaction mode does not support [prepared statements](https://postgresql.org/d
 The connection string looks like this:
 
 ```
-postgres://postgres:[YOUR-PASSWORD]@db.abcdefghijklmnopqrst.supabase.co:6543/postgres
+postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[PROJECT-REF].indobase.in:6543/postgres
 ```
 
 Get your project's Transaction pooler connection string from your project dashboard by clicking [Connect](/dashboard/project/_?showConnect=true&method=transaction).
@@ -178,11 +178,11 @@ Below are answers to common challenges and queries.
 
 ### What is a “connection refused” error?
 
-A “Connection refused” error typically means your database isn’t reachable. Ensure your Supabase project is running, confirm your database’s connection string, check firewall settings, and validate network permissions.
+A “Connection refused” error typically means your database isn’t reachable. Ensure your Indobase project is running, confirm your database’s connection string, check firewall settings, and validate network permissions.
 
 ### What is the “FATAL: Password authentication failed” error?
 
-This error occurs when your credentials are incorrect. Double-check your username and password from the Supabase dashboard. If the problem persists, reset your database password from the project settings.
+This error occurs when your credentials are incorrect. Double-check your username and password from the Indobase dashboard. If the problem persists, reset your database password from the project settings.
 
 ### How do you connect using IPv4?
 
@@ -190,7 +190,7 @@ Supabase’s default direct connection supports IPv6 only. To connect over IPv4,
 
 ### Where is the Postgres connection string in Supabase?
 
-Your connection string is located in the Supabase Dashboard. Click the [Connect](/dashboard/project/_?showConnect=true) button at the top of the page.
+Your connection string is located in the Indobase Dashboard. Click the [Connect](/dashboard/project/_?showConnect=true) button at the top of the page.
 
 ### Can you use Supavisor and PgBouncer together?
 
@@ -259,7 +259,7 @@ JOIN pg_stat_activity
 
 ### Why are there active connections when the app is idle?
 
-Even if your application isn’t making queries, some Supabase services keep persistent connections to your database. For example, Storage, PostgREST, and our health checker all maintain long-lived connections. You usually see a small baseline of active connections from these services.
+Even if your application isn’t making queries, some Indobase services keep persistent connections to your database. For example, Storage, PostgREST, and our health checker all maintain long-lived connections. You usually see a small baseline of active connections from these services.
 
 ### Why do connection strings have different ports?
 

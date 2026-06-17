@@ -1,4 +1,4 @@
-import { PermissionAction } from '@supabase/shared-types/out/constants'
+import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useParams } from 'common'
 import { ButtonTooltip } from 'components/ui/ButtonTooltip'
 import { getTemporaryAPIKey } from 'data/api-keys/temp-api-keys-query'

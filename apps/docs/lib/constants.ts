@@ -1,3 +1,5 @@
+import { DOCS_PROD_URL } from './branding'
+
 export const API_URL = (
   process.env.NODE_ENV === 'development'
     ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -11,4 +13,4 @@ export const IS_PRODUCTION = process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
 export const LOGFLARE_INGESTION_API_KEY = process.env.LOGFLARE_INGESTION_API_KEY
 export const LOGFLARE_SOURCE_TOKEN = process.env.LOGFLARE_SOURCE_TOKEN
 export const MISC_URL = process.env.NEXT_PUBLIC_MISC_URL ?? ''
-export const PROD_URL = `https://supabase.com${BASE_PATH}`
+export const PROD_URL = DOCS_PROD_URL
