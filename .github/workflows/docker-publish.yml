@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Audit rebrand (Phase A gate)
-        run: ./scripts/audit-no-supabase.sh
+        run: bash scripts/audit-no-supabase.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
