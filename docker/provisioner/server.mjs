@@ -86,10 +86,11 @@ function repairKnownComposeYaml(yml) {
     text = text.replace(/(DB_PASSWORD: ')[^']+(')/g, `$1${auxRolePassword}$2`)
   }
   text = text.replace(/VERIFY_JWT:\s*["']?false["']?/gi, 'VERIFY_JWT: "true"')
+  text = text.replace(/\n {6}VERIFY_JWT: "true"(?=\n {4}(?:command:|volumes:))/g, '')
   if (text.includes('tenant-functions:') && !/\bVERIFY_JWT:/i.test(text)) {
     text = text.replace(
-      /( {2}tenant-functions:\n(?: {4}.+\n)+?)( {4}command:)/m,
-      `$1      VERIFY_JWT: "true"\n$2`
+      /( {2}tenant-functions:\n(?: {4}.+\n)*? {4}environment:\n(?: {6}.+\n)+)/m,
+      (match) => `${match}      VERIFY_JWT: "true"\n`
     )
   }
   const publishHost = (process.env.PROVISIONER_PUBLISH_HOST || traefikUpstreamHost).trim()
@@ -250,7 +251,7 @@ async function readPublishedPort(ref, serviceSuffix) {
     const out = await spawnSyncText('docker', [
       'ps',
       '--filter',
-      `name=${ref}-tenant-${serviceSuffix}`,
+      `name=indobase-tenant-${ref}-tenant-${serviceSuffix}`,
       '--format',
       '{{.Ports}}',
     ])
