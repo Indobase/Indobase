@@ -59,6 +59,10 @@ ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 ENV NEXT_PUBLIC_POSTHOG_UI_HOST=${NEXT_PUBLIC_POSTHOG_UI_HOST}
 # Next.js build can be memory-heavy; increase Node heap if Docker has enough RAM
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+# shared-types `out/` is gitignored; compile workspace package before Studio bundles it.
+WORKDIR /workspace
+RUN pnpm --filter @indobaseinc/shared-types build
+WORKDIR /workspace/apps/studio
 RUN pnpm run build
 
 # Final runtime: single Node server (Studio + marketing from public/)
