@@ -56,20 +56,30 @@ function composeHasTenantSite(composeText) {
 }
 
 function findPublishedPortForContainerPort(composeText, containerPort) {
-  const re = new RegExp(`["']?(?:[\\w.]+):(\\d+):${containerPort}["']?`, 'g')
+  const withHost = new RegExp(`["']?(?:[\\w.]+):(\\d+):${containerPort}["']?`, 'g')
   let match
-  while ((match = re.exec(composeText)) !== null) {
+  while ((match = withHost.exec(composeText)) !== null) {
     const port = Number(match[1])
     if (Number.isFinite(port) && port > 0) {
       return port
     }
   }
+
+  const shortForm = new RegExp(`["']?(\\d+):${containerPort}["']?`, 'g')
+  while ((match = shortForm.exec(composeText)) !== null) {
+    const port = Number(match[1])
+    if (Number.isFinite(port) && port > 0) {
+      return port
+    }
+  }
+
   return null
 }
 
 function inferComposePublishHost(composeText) {
-  const match = composeText.match(/["']?([\w.]+):\d+:\d+["']?/)
-  return match?.[1] || process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
+  const withHost = composeText.match(/["']?([\w.]+):\d+:\d+["']?/)
+  if (withHost?.[1]) return withHost[1]
+  return process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
 }
 
 function inferTenantSitePort(composeText) {
