@@ -14,6 +14,7 @@ services:
     networks:
       - dokploy-network
       - default
+      - tenant-data_plane
 
   mail:
     networks:
@@ -23,3 +24,6 @@ services:
 networks:
   dokploy-network:
     external: true
+  tenant-data_plane:
+    external: true
+    name: ${SAAS_DOCKER_NETWORK_NAME:-indobase_default}
