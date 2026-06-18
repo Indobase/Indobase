@@ -816,30 +816,30 @@ async function claimNextRequestedProjectMobileBuild({
     const candidateResult = await executeQuery<ProjectMobileBuildQueueCandidateRow>({
       query: `
         select
-          id::text as id,
-          project_ref,
-          requested_by_gotrue_id::text as requested_by_gotrue_id,
-          requested_via,
-          status,
-          priority,
-          target,
-          framework,
-          profile,
-          logs,
-          metadata,
+          b.id::text as id,
+          b.project_ref,
+          b.requested_by_gotrue_id::text as requested_by_gotrue_id,
+          b.requested_via,
+          b.status,
+          b.priority,
+          b.target,
+          b.framework,
+          b.profile,
+          b.logs,
+          b.metadata,
           p.organization_id,
           o.plan as organization_plan,
-          inserted_at::text as inserted_at,
-          updated_at::text as updated_at,
-          completed_at::text as completed_at,
-          last_error
-        from saas.project_mobile_builds
-        join saas.projects p on p.ref = project_ref
+          b.inserted_at::text as inserted_at,
+          b.updated_at::text as updated_at,
+          b.completed_at::text as completed_at,
+          b.last_error
+        from saas.project_mobile_builds b
+        join saas.projects p on p.ref = b.project_ref
         join saas.organizations o on o.id = p.organization_id
-        where status = 'requested'
+        where b.status = 'requested'
         order by
-          case priority when 'priority' then 0 else 1 end asc,
-          inserted_at asc
+          case b.priority when 'priority' then 0 else 1 end asc,
+          b.inserted_at asc
         limit 25
       `,
     })
