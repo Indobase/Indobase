@@ -93,10 +93,6 @@ function repairKnownComposeYaml(yml) {
   return text
 }
 
-function traefikUpstreamHost() {
-  return (process.env.TRAEFIK_UPSTREAM_HOST || '172.17.0.1').trim()
-}
-
 const TENANT_FUNCTIONS_MAIN_STUB = `// Minimal Edge Functions router for per-tenant stacks.
 Deno.serve(async (req) => {
   const url = new URL(req.url)
