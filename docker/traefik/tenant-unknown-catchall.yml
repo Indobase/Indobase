@@ -2,7 +2,7 @@
 # Copy to /etc/dokploy/traefik/dynamic/tenant-unknown-catchall.yml on the VPS.
 # Requires tenant-unknown-404 nginx service on dokploy-network (see docker-compose.yml).
 #
-# Priority 0 — below per-tenant site (1) and API routers (100).
+# Priority 1 — below per-tenant API routers (300) and site routers (250).
 # Must NOT be merged into indobase-backend-kong.yml (Kong steal risk).
 
 http:
@@ -16,7 +16,7 @@ http:
         && !Host(`mcp.indobase.in`)
         && !Host(`mail.indobase.in`)
         && !Host(`status.indobase.in`)
-      priority: 0
+      priority: 1
       service: tenant-unknown-404-svc
       middlewares:
         - redirect-to-https
@@ -32,7 +32,7 @@ http:
         && !Host(`mcp.indobase.in`)
         && !Host(`mail.indobase.in`)
         && !Host(`status.indobase.in`)
-      priority: 0
+      priority: 1
       service: tenant-unknown-404-svc
       entryPoints:
         - websecure

@@ -31,20 +31,42 @@ export function buildTenantTraefikYaml(ref, hostRule, upstream, ports) {
 `
   const apiRouter = (name, prefix) => `    tenant-${ref}-${name}:
       rule: Host(\`${hostRule}\`) && PathPrefix(\`${prefix}\`)
-      priority: 100
+      priority: 300
+      middlewares:
+        - redirect-to-https
+      service: tenant-${ref}-${name}
+      entryPoints:
+        - web
+    tenant-${ref}-${name}-https:
+      rule: Host(\`${hostRule}\`) && PathPrefix(\`${prefix}\`)
+      priority: 300
       middlewares:
         - tenant-${ref}-${name}-strip
       service: tenant-${ref}-${name}
-      entryPoints: [web, websecure]
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
 `
 
   const siteRouter =
     ports.site != null
       ? `    tenant-${ref}-site:
       rule: Host(\`${hostRule}\`)
-      priority: 1
+      priority: 250
+      middlewares:
+        - redirect-to-https
       service: tenant-${ref}-site
-      entryPoints: [web, websecure]
+      entryPoints:
+        - web
+    tenant-${ref}-site-https:
+      rule: Host(\`${hostRule}\`)
+      priority: 250
+      service: tenant-${ref}-site
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
 `
       : ''
 

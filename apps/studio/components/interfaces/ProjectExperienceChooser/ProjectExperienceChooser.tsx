@@ -43,10 +43,10 @@ const ExperienceTile = ({
           </div>
         </div>
 
-        <div className="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           {children}
           {href ? (
-            <Button asChild className="w-full sm:w-auto">
+            <Button asChild type="primary" size="small" className="w-full sm:w-auto">
               <Link href={href} className="inline-flex items-center gap-2">
                 {ctaLabel}
                 <ArrowRight size={16} />
@@ -93,6 +93,8 @@ export const ProjectExperienceChooser = () => {
               ctaLabel="Open Indobase Builder"
             >
               <BuilderLaunchButton
+                type="primary"
+                size="small"
                 className="w-full sm:w-auto"
                 nextPath={`/?source=studio&prompt=${encodeURIComponent(
                   'We just linked this project from Indobase Studio. Create a plan and start building the web app. After that, show me how to publish to Indobase hosting and queue an Android bundle build.',

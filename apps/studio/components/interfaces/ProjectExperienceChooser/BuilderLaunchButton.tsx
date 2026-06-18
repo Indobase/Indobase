@@ -24,9 +24,13 @@ export const BuilderLaunchButton = ({
       return
     }
 
-    // Open a new tab synchronously to avoid popup blockers.
-    // We'll navigate it once the signed launch URL is fetched.
-    const newTab = window.open('about:blank', '_blank', 'noopener,noreferrer')
+    // Open a new tab synchronously to avoid popup blockers, then navigate once we have the URL.
+    // Do not pass noopener here — it makes window.open return null while still opening a tab,
+    // which leaves about:blank stuck with no way to set location.href.
+    const newTab = window.open('about:blank', '_blank')
+    if (newTab) {
+      newTab.opener = null
+    }
 
     setIsLaunching(true)
     try {
@@ -54,6 +58,7 @@ export const BuilderLaunchButton = ({
         toast.error('Popup blocked. Opening Builder in the current tab instead.')
         window.location.href = payload.url
       }
+      setIsLaunching(false)
     } catch (error) {
       try {
         newTab?.close()
