@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { enforceRateLimit } from 'lib/api/rate-limit'
+import { enforcePublicAuthRateLimits } from 'lib/api/rate-limit'
 
 /**
  * Self-hosted / non-platform: proxy password recovery to GoTrue (`/auth/v1/recover`),
@@ -24,13 +24,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
-  const allowed = enforceRateLimit(req, res, {
-    keyPrefix: 'platform-reset-password',
-    max: 5,
-    windowMs: 60_000,
-  })
-  if (!allowed) return
-
   let payload: any = req.body ?? {}
   if (typeof payload === 'string') {
     try {
@@ -44,6 +37,15 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       }
     }
   }
+
+  const resetEmail = typeof payload?.email === 'string' ? payload.email : null
+  const allowed = enforcePublicAuthRateLimits(req, res, {
+    keyPrefix: 'platform-reset-password',
+    ipMax: 5,
+    ipWindowMs: 60_000,
+    email: resetEmail,
+  })
+  if (!allowed) return
 
   const { email, hcaptchaToken, redirectTo } = payload
   if (!email || typeof email !== 'string') {

@@ -240,6 +240,8 @@ services:
     restart: unless-stopped
     mem_limit: ${edgeMem}
     environment:
+      JWT_SECRET: ${jwtSecret}
+      VERIFY_JWT: "true"
       SUPABASE_URL: https://${projectRef}.${publicDomain}
       SUPABASE_ANON_KEY: ${anonKey}
       SUPABASE_SERVICE_ROLE_KEY: ${serviceKey}

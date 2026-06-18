@@ -3,6 +3,7 @@ import apiWrapper from 'lib/api/apiWrapper'
 import { constructSaasPgMetaHeaders } from 'lib/api/saas/pg-meta-headers'
 import { provisionDedicatedTenantDatabaseForProject } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'
+import { getBlockedSaasCatalogQueryReason } from 'lib/api/saas/pg-meta-sql-guard'
 import { ensureTenantGoTrueAuthSchema } from 'lib/api/saas/tenant-gotrue-schema'
 import {
   refreshTenantPublicApiExposure,
@@ -36,6 +37,13 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   }
 
   const userId = getGotrueUserId(claims)
+
+  if (IS_SAAS) {
+    const blockedReason = getBlockedSaasCatalogQueryReason(query)
+    if (blockedReason) {
+      return res.status(403).json({ message: blockedReason })
+    }
+  }
 
   // Do not expose every GoTrue user on the shared control-plane DB to arbitrary dashboard users.
   if (containsAuthUsersQuery(query) && !queryIncludesScopedUser(query, userId)) {

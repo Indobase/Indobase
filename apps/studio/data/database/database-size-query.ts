@@ -5,7 +5,7 @@ import { UseCustomQueryOptions } from 'types'
 
 export const getDatabaseSizeSql = () => {
   const sql = /* SQL */ `
-select sum(pg_database_size(pg_database.datname))::bigint as db_size from pg_database;
+select pg_database_size(current_database())::bigint as db_size;
 `.trim()
 
   return sql

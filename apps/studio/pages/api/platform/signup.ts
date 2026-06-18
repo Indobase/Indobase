@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
-import { enforceRateLimit } from 'lib/api/rate-limit'
+import { enforcePublicAuthRateLimits } from 'lib/api/rate-limit'
 import { recordDataPrincipalConsent } from 'lib/api/saas/data-principal'
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
@@ -24,13 +24,6 @@ function buildSignupUrl(base: string): URL {
 }
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
-  const allowed = enforceRateLimit(req, res, {
-    keyPrefix: 'platform-signup',
-    max: 10,
-    windowMs: 60_000,
-  })
-  if (!allowed) return
-
   let payload: any = req.body ?? {}
   if (typeof payload === 'string') {
     try {
@@ -44,6 +37,15 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       }
     }
   }
+
+  const signupEmail = typeof payload?.email === 'string' ? payload.email : null
+  const allowed = enforcePublicAuthRateLimits(req, res, {
+    keyPrefix: 'platform-signup',
+    ipMax: 10,
+    ipWindowMs: 60_000,
+    email: signupEmail,
+  })
+  if (!allowed) return
 
   const { email, password, hcaptchaToken, redirectTo, dpdpConsent } = payload
   if (!email || !password) {

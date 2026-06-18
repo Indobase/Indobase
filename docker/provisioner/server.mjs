@@ -11,6 +11,7 @@
  * Required env:
  *   PROVISIONER_TOKEN
  *   PROVISIONER_TENANTS_DIR=/mnt/tenants
+ *   PROVISIONER_TENANTS_HOST_DIR=/var/lib/docker/volumes/<stack>_tenants-data/_data
  *   PROVISIONER_TRAEFIK_DYNAMIC_DIR=/mnt/traefik
  */
 import http from 'node:http'
@@ -83,6 +84,13 @@ function repairKnownComposeYaml(yml) {
       `$1${auxRolePassword}$2`
     )
     text = text.replace(/(DB_PASSWORD: ')[^']+(')/g, `$1${auxRolePassword}$2`)
+  }
+  text = text.replace(/VERIFY_JWT:\s*["']?false["']?/gi, 'VERIFY_JWT: "true"')
+  if (text.includes('tenant-functions:') && !/\bVERIFY_JWT:/i.test(text)) {
+    text = text.replace(
+      /( {2}tenant-functions:\n(?: {4}.+\n)+?)( {4}command:)/m,
+      `$1      VERIFY_JWT: "true"\n$2`
+    )
   }
   const publishHost = (process.env.PROVISIONER_PUBLISH_HOST || traefikUpstreamHost).trim()
   // Expose tenant API ports on the docker bridge for Traefik — never publish Postgres (5432).
@@ -157,12 +165,42 @@ function seedTenantFunctionsMain(ref) {
   })
 }
 
+function resolveComposeHostPaths(composePath) {
+  const containerTenantsDir = process.env.PROVISIONER_TENANTS_DIR?.trim() || '/mnt/tenants'
+  const hostTenantsDir = process.env.PROVISIONER_TENANTS_HOST_DIR?.trim()
+  const tenantDir = path.dirname(composePath)
+
+  if (!hostTenantsDir || !tenantDir.startsWith(containerTenantsDir)) {
+    return { composePath, cwd: tenantDir, projectDirectory: tenantDir }
+  }
+
+  const rel = path.relative(containerTenantsDir, tenantDir)
+  const hostDir = path.join(hostTenantsDir, rel)
+  return {
+    composePath,
+    cwd: tenantDir,
+    projectDirectory: hostDir,
+  }
+}
+
 function runCompose(composePath) {
+  const { composePath: containerComposePath, cwd, projectDirectory } =
+    resolveComposeHostPaths(composePath)
+
   return new Promise((resolve, reject) => {
     const p = spawn(
       'docker',
-      ['compose', '-f', composePath, 'up', '-d', '--remove-orphans'],
-      { stdio: 'inherit', cwd: path.dirname(composePath) }
+      [
+        'compose',
+        '--project-directory',
+        projectDirectory,
+        '-f',
+        containerComposePath,
+        'up',
+        '-d',
+        '--remove-orphans',
+      ],
+      { stdio: 'inherit', cwd }
     )
     p.on('error', reject)
     p.on('exit', (code) => {
@@ -173,11 +211,23 @@ function runCompose(composePath) {
 }
 
 function runComposeDown(composePath) {
+  const { composePath: containerComposePath, cwd, projectDirectory } =
+    resolveComposeHostPaths(composePath)
+
   return new Promise((resolve, reject) => {
     const p = spawn(
       'docker',
-      ['compose', '-f', composePath, 'down', '--remove-orphans', '-v'],
-      { stdio: 'inherit', cwd: path.dirname(composePath) }
+      [
+        'compose',
+        '--project-directory',
+        projectDirectory,
+        '-f',
+        containerComposePath,
+        'down',
+        '--remove-orphans',
+        '-v',
+      ],
+      { stdio: 'inherit', cwd }
     )
     p.on('error', reject)
     p.on('exit', (code) => {
@@ -261,6 +311,41 @@ async function verifyTenantStackHealth(ref) {
   return { ok: false, mode: 'ports', restPort, authPort }
 }
 
+async function syncClusterAuxRolePasswords() {
+  const password = auxRolePassword || process.env.POSTGRES_PASSWORD?.trim()
+  if (!password) {
+    return { ok: false, skipped: true, reason: 'missing_aux_password' }
+  }
+
+  const dbContainer = (process.env.PROVISIONER_DB_CONTAINER || 'indobase-db').trim()
+  const adminUser = (process.env.PROVISIONER_PG_ADMIN_USER || 'supabase_admin').trim()
+  const adminPassword = process.env.POSTGRES_PASSWORD?.trim() || password
+  const pwLit = `'${password.replace(/'/g, "''")}'`
+  const roles = ['authenticator', 'supabase_auth_admin', 'supabase_storage_admin', 'supabase_admin']
+
+  for (const role of roles) {
+    await spawnSyncText('docker', [
+      'exec',
+      '-e',
+      `PGPASSWORD=${adminPassword}`,
+      dbContainer,
+      'psql',
+      '-h',
+      '127.0.0.1',
+      '-U',
+      adminUser,
+      '-d',
+      'postgres',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      `alter role ${role} password ${pwLit}`,
+    ]).catch(() => undefined)
+  }
+
+  return { ok: true, roles: roles.length }
+}
+
 async function repairTenantStackRef(ref, reason) {
   const tenantOutDir = path.join(tenantsDir, ref)
   const composePath = path.join(tenantOutDir, 'docker-compose.yml')
@@ -336,6 +421,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.url === '/repair-fleet') {
+      const clusterSync = await syncClusterAuxRolePasswords()
       const results = []
       for (const entry of fs.readdirSync(tenantsDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue
@@ -353,6 +439,7 @@ const server = http.createServer(async (req, res) => {
       const siteReady = siteResults.filter((r) => r.ok).length
       return json(res, 200, {
         ok: true,
+        cluster_password_sync: clusterSync,
         repaired,
         failed,
         results,

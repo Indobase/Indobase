@@ -27,17 +27,8 @@ export async function getDiskBreakdown(
       connectionString,
       sql: `
     SELECT
-  (
-    SELECT
-      SUM(pg_database_size(pg_database.datname)) AS db_size_bytes
-    FROM
-      pg_database
-  ),
-  (
-    SELECT SUM(size)
-    FROM
-      pg_ls_waldir()
-  ) AS wal_size_bytes`,
+      pg_database_size(current_database()) AS db_size_bytes,
+      (SELECT SUM(size) FROM pg_ls_waldir()) AS wal_size_bytes`,
     },
     signal
   )

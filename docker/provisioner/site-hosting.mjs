@@ -37,12 +37,37 @@ function clearDirectory(dir) {
   }
 }
 
+function resolveComposeHostPaths(composePath) {
+  const containerTenantsDir = process.env.PROVISIONER_TENANTS_DIR?.trim() || '/mnt/tenants'
+  const hostTenantsDir = process.env.PROVISIONER_TENANTS_HOST_DIR?.trim()
+  const tenantDir = path.dirname(composePath)
+
+  if (!hostTenantsDir || !tenantDir.startsWith(containerTenantsDir)) {
+    return { composePath, cwd: tenantDir, projectDirectory: tenantDir }
+  }
+
+  const rel = path.relative(containerTenantsDir, tenantDir)
+  const hostDir = path.join(hostTenantsDir, rel)
+  return {
+    composePath,
+    cwd: tenantDir,
+    projectDirectory: hostDir,
+  }
+}
+
 function runCompose(composePath, args) {
+  const { composePath: containerComposePath, cwd, projectDirectory } =
+    resolveComposeHostPaths(composePath)
+
   return new Promise((resolve, reject) => {
-    const p = spawn('docker', ['compose', '-f', composePath, ...args], {
-      stdio: 'inherit',
-      cwd: path.dirname(composePath),
-    })
+    const p = spawn(
+      'docker',
+      ['compose', '--project-directory', projectDirectory, '-f', containerComposePath, ...args],
+      {
+        stdio: 'inherit',
+        cwd,
+      }
+    )
     p.on('error', reject)
     p.on('exit', (code) => {
       if (code === 0) resolve(undefined)
@@ -115,36 +140,50 @@ function buildTenantSiteServiceBlock({ publishHost, sitePort, useNetwork }) {
 `
 }
 
+function removeMisplacedTenantSite(composeText) {
+  // Repair fleet runs that inserted tenant-site under top-level `networks:`.
+  return composeText.replace(
+    /\n {2}tenant-site:\n(?: {4}.+\n)+?(?=\n\nvolumes:|\nvolumes:)/,
+    '\n'
+  )
+}
+
 function insertTenantSiteService(composeText, siteServiceBlock) {
-  const networksIndex = composeText.search(/^\nnetworks:\s*$/m)
-  if (networksIndex >= 0) {
-    return `${composeText.slice(0, networksIndex)}\n${siteServiceBlock}${composeText.slice(networksIndex)}`
+  const topLevelNetworks = composeText.search(/^networks:\s*$/m)
+  if (topLevelNetworks >= 0) {
+    return `${composeText.slice(0, topLevelNetworks)}${siteServiceBlock}\n${composeText.slice(topLevelNetworks)}`
   }
 
-  const volumesIndex = composeText.search(/^\nvolumes:\s*$/m)
-  if (volumesIndex >= 0) {
-    return `${composeText.slice(0, volumesIndex)}\n${siteServiceBlock}${composeText.slice(volumesIndex)}`
+  const topLevelVolumes = composeText.search(/^volumes:\s*$/m)
+  if (topLevelVolumes >= 0) {
+    return `${composeText.slice(0, topLevelVolumes)}${siteServiceBlock}\n${composeText.slice(topLevelVolumes)}`
   }
 
   return `${composeText.trimEnd()}\n${siteServiceBlock}`
 }
 
 export function patchComposeForTenantSite(composeText) {
-  if (composeHasTenantSite(composeText)) {
-    return { composeText, patched: false, sitePort: findPublishedPortForContainerPort(composeText, 8080) }
+  const cleaned = removeMisplacedTenantSite(composeText)
+
+  if (composeHasTenantSite(cleaned)) {
+    return {
+      composeText: cleaned,
+      patched: cleaned !== composeText,
+      sitePort: findPublishedPortForContainerPort(cleaned, 8080),
+    }
   }
 
-  const sitePort = inferTenantSitePort(composeText)
+  const sitePort = inferTenantSitePort(cleaned)
   if (sitePort == null) {
     throw new Error('Could not infer tenant-site port from existing compose bindings')
   }
 
-  const publishHost = inferComposePublishHost(composeText)
-  const useNetwork = composeText.includes('tenant_data_plane:')
+  const publishHost = inferComposePublishHost(cleaned)
+  const useNetwork = cleaned.includes('tenant_data_plane:')
   const siteServiceBlock = buildTenantSiteServiceBlock({ publishHost, sitePort, useNetwork })
 
   return {
-    composeText: insertTenantSiteService(composeText, siteServiceBlock),
+    composeText: insertTenantSiteService(cleaned, siteServiceBlock),
     patched: true,
     sitePort,
   }

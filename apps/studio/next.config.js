@@ -466,6 +466,30 @@ const nextConfig = {
       ((process.env.NEXT_PUBLIC_SITE_URL || '').startsWith('https://') ||
         (process.env.VERCEL === '1' && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'))
 
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://studio.indobase.in').replace(
+      /\/$/,
+      ''
+    )
+    const apiUrl = (
+      process.env.SUPABASE_PUBLIC_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      'https://api.indobase.in'
+    ).replace(/\/$/, '')
+
+    const contentSecurityPolicy = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: blob:",
+      "font-src 'self' data:",
+      `connect-src 'self' ${siteUrl} ${apiUrl} https://*.indobase.in wss://*.indobase.in https://api.github.com https://github.com`,
+      "frame-ancestors 'none'",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+
     const securityHeaders = [
       {
         key: 'X-Frame-Options',
@@ -477,7 +501,7 @@ const nextConfig = {
       },
       {
         key: 'Content-Security-Policy',
-        value: "frame-ancestors 'none';",
+        value: contentSecurityPolicy,
       },
       {
         key: 'Referrer-Policy',

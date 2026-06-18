@@ -119,6 +119,25 @@ export async function provisionTenantDatabase({
     if (!dbExists.rows[0]?.exists) {
       await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
     }
+
+    const otherDatabases = await client.query<{ datname: string }>(
+      `select datname from pg_database where datistemplate = false and datname <> $1`,
+      [dbName]
+    )
+    for (const row of otherDatabases.rows) {
+      try {
+        await client.query(
+          `revoke connect on database ${quotePgIdent(row.datname)} from ${roleIdent}`
+        )
+      } catch (e) {
+        console.warn(
+          '[provision-tenant-db] revoke connect on %s from %s skipped: %O',
+          row.datname,
+          roleName,
+          e
+        )
+      }
+    }
   } finally {
     await client.end()
   }
