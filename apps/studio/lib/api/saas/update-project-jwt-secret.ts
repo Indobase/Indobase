@@ -7,6 +7,7 @@ import {
 } from '@indobaseinc/shared-types/out/events'
 
 import { ensureSaasTables, getGotrueUserId } from './platform'
+import { recordAuditLog } from './audit'
 import {
   isDataPlaneProvisionerConfigured,
   provisionTenantDataPlaneStack,
@@ -220,6 +221,15 @@ export async function updateProjectJwtSecret({
       JwtSecretUpdateStatus.Updated,
       JwtSecretUpdateProgress.UpdatedAPIGatewayConfiguration
     )
+
+    await recordAuditLog({
+      claims,
+      projectRef: ref,
+      action: 'project.update',
+      targetType: 'project',
+      targetDescription: `JWT secret rotated for project ${ref}`,
+      metadata: { change_tracking_id: changeTrackingId },
+    })
 
     return {
       message: `JWT secret update completed (tracking id ${changeTrackingId}, started ${startedAt})`,

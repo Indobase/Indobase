@@ -40,6 +40,24 @@ begin
 end
 $saas_features_projects$;
 
+-- physical_backups_enabled + paused_at for project lifecycle / backups UI
+do $saas_features_projects_lifecycle$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'saas' and table_name = 'projects' and column_name = 'physical_backups_enabled'
+  ) then
+    alter table saas.projects add column physical_backups_enabled boolean not null default false;
+  end if;
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'saas' and table_name = 'projects' and column_name = 'paused_at'
+  ) then
+    alter table saas.projects add column paused_at timestamptz null;
+  end if;
+end
+$saas_features_projects_lifecycle$;
+
 -- ---------------------------------------------------------------------------
 -- saas.audit_logs
 -- ---------------------------------------------------------------------------

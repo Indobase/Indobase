@@ -799,3 +799,106 @@ export async function runTenantDataPlaneBootstrapFromConnectionString(
   return { dbName, tenantRole }
 }
 
+/** True when minimal Supabase data-plane bootstrap has been applied to a tenant database. */
+export async function isTenantDatabaseBootstrapped({
+  host,
+  port,
+  adminUser,
+  adminPassword,
+  dbName,
+}: {
+  host: string
+  port: number
+  adminUser: string
+  adminPassword: string
+  dbName: string
+}): Promise<boolean> {
+  const client = new Client({
+    connectionString: `postgresql://${encodeURIComponent(adminUser)}:${encodeURIComponent(
+      adminPassword
+    )}@${host}:${port}/${dbName}`,
+  })
+  await client.connect()
+  try {
+    const res = await client.query<{ ok: boolean }>(`
+      select exists(select 1 from pg_roles where rolname = 'anon')
+         and exists(select 1 from pg_namespace where nspname = 'auth')
+         and exists(select 1 from pg_namespace where nspname = 'storage')
+         and exists(select 1 from pg_roles where rolname = 'authenticator')
+      as ok
+    `)
+    return Boolean(res.rows[0]?.ok)
+  } finally {
+    await client.end()
+  }
+}
+
+/**
+ * Idempotent: provision tenant DB if needed, then bootstrap roles/schemas/extensions when missing.
+ */
+export async function ensureTenantDatabaseBootstrapped({
+  projectRef,
+  host,
+  port,
+  adminUser,
+  adminPassword,
+  tenantRolePassword,
+  auxiliaryRolePassword,
+}: {
+  projectRef: string
+  host: string
+  port: number
+  adminUser: string
+  adminPassword: string
+  tenantRolePassword?: string
+  auxiliaryRolePassword?: string
+}): Promise<ProvisionResult> {
+  const provisioned = await provisionTenantDatabase({
+    projectRef,
+    host,
+    port,
+    adminUser,
+    adminPassword,
+  })
+
+  const bootstrapped = await isTenantDatabaseBootstrapped({
+    host,
+    port,
+    adminUser,
+    adminPassword,
+    dbName: provisioned.dbName,
+  })
+
+  if (!bootstrapped) {
+    await bootstrapTenantDatabaseExtensions({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+    })
+    await bootstrapMinimalSupabaseRoles({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+      tenantRoleName: provisioned.roleName,
+    })
+    await bootstrapTenantDataPlaneSchemas({
+      host,
+      port,
+      adminUser,
+      adminPassword,
+      dbName: provisioned.dbName,
+      tenantRolePassword: tenantRolePassword ?? provisioned.rolePassword,
+      auxiliaryRolePassword:
+        auxiliaryRolePassword ??
+        process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() ??
+        provisioned.rolePassword,
+    })
+  }
+
+  return provisioned
+}
+

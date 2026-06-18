@@ -1,0 +1,47 @@
+# Traefik catchall for unknown *.indobase.in project refs.
+# Copy to /etc/dokploy/traefik/dynamic/tenant-unknown-catchall.yml on the VPS.
+# Requires tenant-unknown-404 nginx service on dokploy-network (see docker-compose.yml).
+#
+# Priority 0 — below per-tenant site (1) and API routers (100).
+# Must NOT be merged into indobase-backend-kong.yml (Kong steal risk).
+
+http:
+  routers:
+    tenant-unknown-catchall-http:
+      rule: >-
+        HostRegexp(`^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?\.indobase\.in$`)
+        && !Host(`api.indobase.in`)
+        && !Host(`studio.indobase.in`)
+        && !Host(`builder.indobase.in`)
+        && !Host(`mcp.indobase.in`)
+        && !Host(`mail.indobase.in`)
+        && !Host(`status.indobase.in`)
+      priority: 0
+      service: tenant-unknown-404-svc
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+
+    tenant-unknown-catchall-https:
+      rule: >-
+        HostRegexp(`^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?\.indobase\.in$`)
+        && !Host(`api.indobase.in`)
+        && !Host(`studio.indobase.in`)
+        && !Host(`builder.indobase.in`)
+        && !Host(`mcp.indobase.in`)
+        && !Host(`mail.indobase.in`)
+        && !Host(`status.indobase.in`)
+      priority: 0
+      service: tenant-unknown-404-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    tenant-unknown-404-svc:
+      loadBalancer:
+        servers:
+          - url: http://indobase-tenant-unknown-404:8080
+        passHostHeader: true

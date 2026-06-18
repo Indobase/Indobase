@@ -205,6 +205,15 @@ services:
       timeout: 5s
       retries: 3
 
+  tenant-unknown-404:
+    container_name: indobase-tenant-unknown-404
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/tenant-unknown-404/default.conf:/etc/nginx/conf.d/default.conf:ro
+    expose:
+      - "8080"
+
   auth:
     container_name: indobase-auth
     image: supabase/gotrue:v2.186.0

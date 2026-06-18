@@ -122,9 +122,6 @@ export async function provisionTenantDataPlaneStack({
   return { ok: true, applied: apply, provisioner_status: resp.status }
 }
 
-/**
- * Re-apply an existing on-disk tenant stack: patch known compose bugs, `docker compose up`, Traefik normalize, health verify.
- */
 export async function repairTenantDataPlaneStack({
   ref,
   reason = 'repair_stack',
@@ -151,6 +148,39 @@ export async function repairTenantDataPlaneStack({
   let parsed: { ok?: boolean; reason?: string } = {}
   try {
     parsed = JSON.parse(text) as { ok?: boolean; reason?: string }
+  } catch {
+    parsed = {}
+  }
+  return { ok: Boolean(parsed.ok), provisioner_status: resp.status }
+}
+
+/** Stop a tenant stack without removing volumes (pause semantics). */
+export async function stopTenantDataPlaneStack({
+  ref,
+  reason = 'project_pause',
+}: {
+  ref: string
+  reason?: string
+}): Promise<{ ok: boolean; provisioner_status: number }> {
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/stop`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ project_ref: ref, reason }),
+  })
+
+  const text = await resp.text()
+  if (!resp.ok) {
+    throw new Error(`Tenant stack stop failed (${resp.status}): ${text.slice(0, 200)}`)
+  }
+
+  let parsed: { ok?: boolean } = {}
+  try {
+    parsed = JSON.parse(text) as { ok?: boolean }
   } catch {
     parsed = {}
   }

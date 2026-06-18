@@ -211,6 +211,31 @@ function runCompose(composePath) {
   })
 }
 
+function runComposeStop(composePath) {
+  const { composePath: containerComposePath, cwd, projectDirectory } =
+    resolveComposeHostPaths(composePath)
+
+  return new Promise((resolve, reject) => {
+    const p = spawn(
+      'docker',
+      [
+        'compose',
+        '--project-directory',
+        projectDirectory,
+        '-f',
+        containerComposePath,
+        'stop',
+      ],
+      { stdio: 'inherit', cwd }
+    )
+    p.on('error', reject)
+    p.on('exit', (code) => {
+      if (code === 0) resolve(undefined)
+      else reject(new Error(`docker compose stop exited with code ${code}`))
+    })
+  })
+}
+
 function runComposeDown(composePath) {
   const { composePath: containerComposePath, cwd, projectDirectory } =
     resolveComposeHostPaths(composePath)
@@ -398,6 +423,7 @@ const server = http.createServer(async (req, res) => {
     const allowed = new Set([
       '/provision',
       '/teardown',
+      '/stop',
       '/repair-traefik',
       '/repair-stack',
       '/repair-fleet',
@@ -480,6 +506,21 @@ const server = http.createServer(async (req, res) => {
     if (req.url === '/repair-stack') {
       const result = await repairTenantStackRef(ref, body?.reason || 'repair_stack')
       return json(res, result.ok ? 200 : 500, result)
+    }
+
+    if (req.url === '/stop') {
+      const tenantOutDir = path.join(tenantsDir, ref)
+      const composePath = path.join(tenantOutDir, 'docker-compose.yml')
+      if (!fs.existsSync(composePath)) {
+        return json(res, 404, { ok: false, message: 'compose_missing', project_ref: ref })
+      }
+      await runComposeStop(composePath)
+      return json(res, 200, {
+        ok: true,
+        project_ref: ref,
+        stopped: true,
+        reason: body?.reason || 'project_pause',
+      })
     }
 
     if (req.url === '/publish-site') {

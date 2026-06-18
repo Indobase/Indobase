@@ -24,11 +24,9 @@ import {
   repairKnownTenantComposeYaml,
 } from './tenant-compose-validation'
 import {
-  bootstrapMinimalSupabaseRoles,
-  bootstrapTenantDatabaseExtensions,
-  bootstrapTenantDataPlaneSchemas,
+  ensureTenantDatabaseBootstrapped,
+  isTenantDatabaseBootstrapped,
   resolveTenantProvisionAdminUser,
-  provisionTenantDatabase,
   runTenantDataPlaneBootstrapFromConnectionString,
   setTenantRolePassword,
 } from './provision-tenant-db'
@@ -1689,6 +1687,7 @@ export async function listProjects({
     has_dedicated_database: boolean
     data_plane_last_provisioned_at: string | null
     data_plane_last_provision_ok: string | null
+    physical_backups_enabled: boolean
   }>({
     query: `
       select
@@ -1707,7 +1706,8 @@ export async function listProjects({
         p.subscription_id,
         (coalesce(trim(p.connection_string_enc), '') <> '' or coalesce(trim(p.connection_string), '') <> '') as has_dedicated_database,
         p.data_plane_last_provisioned_at,
-        (p.data_plane_last_provision_result->>'ok') as data_plane_last_provision_ok
+        (p.data_plane_last_provision_result->>'ok') as data_plane_last_provision_ok,
+        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where m.gotrue_id = $1
@@ -1736,7 +1736,7 @@ export async function listProjects({
         (process.env.SAAS_BRANCHING_ENABLED !== 'false' ||
           Boolean(p.preview_branching_enabled) ||
           (p.preview_branch_refs?.length ?? 0) > 0),
-      is_physical_backups_enabled: false,
+      is_physical_backups_enabled: p.physical_backups_enabled,
       name: p.name,
       organization_id: p.organization_id,
       organization_slug: p.organization_slug,
@@ -1850,37 +1850,13 @@ export async function finalizeDedicatedProjectProvisioning({
   }
 
   try {
-    const provisioned = await provisionTenantDatabase({
+    const provisioned = await ensureTenantDatabaseBootstrapped({
       projectRef,
       host,
       port,
       adminUser,
       adminPassword,
-    })
-    await bootstrapTenantDatabaseExtensions({
-      host,
-      port,
-      adminUser,
-      adminPassword,
-      dbName: provisioned.dbName,
-    })
-    await bootstrapMinimalSupabaseRoles({
-      host,
-      port,
-      adminUser,
-      adminPassword,
-      dbName: provisioned.dbName,
-      tenantRoleName: provisioned.roleName,
-    })
-    await bootstrapTenantDataPlaneSchemas({
-      host,
-      port,
-      adminUser,
-      adminPassword,
-      dbName: provisioned.dbName,
-      tenantRolePassword: provisioned.rolePassword,
-      auxiliaryRolePassword:
-        process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || provisioned.rolePassword,
+      auxiliaryRolePassword: process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim(),
     })
 
     const effectiveUserDbPass = (process.env.SAAS_APPLY_USER_DB_PASS_ON_CREATE !== 'false'
@@ -2017,8 +1993,32 @@ export async function provisionDedicatedTenantDatabaseForProject({
     throw new Error('Project not found')
   }
   const p = row.data[0]!
-  if ((p.connection_string_enc ?? '').trim() || (p.connection_string ?? '').trim()) {
-    return { ok: true as const, alreadyProvisioned: true }
+  const enc = (p.connection_string_enc ?? '').trim()
+  const plain = (p.connection_string ?? '').trim()
+  if (enc || plain) {
+    const tenantUrl = enc ? decryptString(enc) : plain
+    const host = process.env.POSTGRES_HOST?.trim()
+    const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
+    const adminUser = resolveTenantProvisionAdminUser()
+    const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
+    if (host && adminPassword && tenantUrl?.trim()) {
+      const u = new URL(tenantUrl.trim().replace(/^postgres:\/\//, 'postgresql://'))
+      const dbName = u.pathname.replace(/^\//, '')
+      if (dbName) {
+        const bootstrapped = await isTenantDatabaseBootstrapped({
+          host,
+          port,
+          adminUser,
+          adminPassword,
+          dbName,
+        })
+        if (bootstrapped) {
+          return { ok: true as const, alreadyProvisioned: true }
+        }
+      }
+    } else {
+      return { ok: true as const, alreadyProvisioned: true }
+    }
   }
 
   await finalizeDedicatedProjectProvisioning({
@@ -2279,6 +2279,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     connection_string: string | null
     connection_string_enc: string | null
     data_plane_last_provisioned_at: string | null
+    physical_backups_enabled: boolean
   }>({
     query: `
       select
@@ -2299,7 +2300,8 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.anon_key,
         p.connection_string,
         p.connection_string_enc,
-        p.data_plane_last_provisioned_at
+        p.data_plane_last_provisioned_at,
+        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -2371,7 +2373,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
       (process.env.SAAS_BRANCHING_ENABLED !== 'false' ||
         Boolean(p.preview_branching_enabled) ||
         (p.preview_branch_refs?.length ?? 0) > 0),
-    is_physical_backups_enabled: false,
+    is_physical_backups_enabled: p.physical_backups_enabled,
     name: p.name,
     organization_id: p.organization_id,
     organization_slug: p.organization_slug,

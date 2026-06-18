@@ -21,6 +21,11 @@ services:
       - dokploy-network
       - default
 
+  tenant-unknown-404:
+    networks:
+      - dokploy-network
+      - default
+
 networks:
   dokploy-network:
     external: true
