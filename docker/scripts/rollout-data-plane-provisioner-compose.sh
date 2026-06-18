@@ -15,6 +15,14 @@ export DATA_PLANE_PROVISIONER_IMAGE="roshanraghavander/ind-repo-provisioner:${IM
 
 echo "Using provisioner image: ${DATA_PLANE_PROVISIONER_IMAGE}"
 
+# Legacy ad-hoc `docker run` containers block compose recreate by fixed container_name.
+if docker ps -a --format '{{.Names}}' | grep -qx indobase-data-plane-provisioner; then
+  if ! docker compose "${COMPOSE_FILES[@]}" ps -q data-plane-provisioner 2>/dev/null | grep -q .; then
+    echo "Removing legacy provisioner container (not managed by compose)..."
+    docker rm -f indobase-data-plane-provisioner
+  fi
+fi
+
 docker compose "${COMPOSE_FILES[@]}" pull data-plane-provisioner
 docker compose "${COMPOSE_FILES[@]}" up -d --no-deps --force-recreate data-plane-provisioner
 
