@@ -46,6 +46,16 @@ serve(async (req: Request) => {
     const collectorType = url.searchParams.get('type'); // database, auth, storage, functions, realtime, all
     const projectRef = url.searchParams.get('project_ref');
 
+    if (projectRef) {
+      const studioPayload = await collectUsageFromStudio(projectRef);
+      if (studioPayload) {
+        return new Response(JSON.stringify(studioPayload), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+    }
+
     let metrics: UsageMetric[] = [];
 
     if (collectorType === 'all' || !collectorType) {
@@ -109,6 +119,39 @@ serve(async (req: Request) => {
     );
   }
 });
+
+async function collectUsageFromStudio(projectRef: string) {
+  const studioUrl = (
+    Deno.env.get('INDOBASE_STUDIO_URL') ??
+    Deno.env.get('STUDIO_URL') ??
+    'https://studio.indobase.in'
+  ).replace(/\/$/, '');
+  const cronSecret =
+    Deno.env.get('INDOBASE_CRON_SECRET') ?? Deno.env.get('DATA_PLANE_PROVISIONER_TOKEN') ?? '';
+  if (!cronSecret) return null;
+
+  const res = await fetch(
+    `${studioUrl}/api/cron/usage-collect?project_ref=${encodeURIComponent(projectRef)}`,
+    {
+      headers: { Authorization: `Bearer ${cronSecret}` },
+    }
+  );
+  if (!res.ok) {
+    console.error('usage-collector: Studio usage-collect failed', res.status, await res.text());
+    return null;
+  }
+
+  const body = await res.json();
+  const metrics = body?.metrics ?? {};
+  return {
+    success: true,
+    source: 'studio',
+    project_ref: projectRef,
+    count: Object.keys(metrics).length,
+    metrics,
+    quotas: body?.quotas ?? null,
+  };
+}
 
 function getCollector(type: string, supabaseClient: any, projectRef: string | null): UsageCollector | null {
   switch (type) {

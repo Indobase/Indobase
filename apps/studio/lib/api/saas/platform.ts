@@ -1,6 +1,7 @@
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import crypto from 'node:crypto'
+import { buildGotrueJwtKeysJson } from './signing-keys-gotrue'
 import { executeQuery } from './query'
 import { decryptString, encryptString, encryptedConnectionForPgMeta } from './util'
 import { makeRandomString } from 'lib/helpers'
@@ -2850,6 +2851,7 @@ function buildSlimTenantDockerCompose(opts: {
   authDbUri: string
   storageDbUri: string
   jwtSecret: string
+  gotrueJwtKeys?: string | null
   anonKey: string
   serviceKey: string
   apiExternalUrl: string
@@ -3026,7 +3028,7 @@ services:
       GOTRUE_SITE_URL: ${site}
       GOTRUE_URI_ALLOW_LIST: ${allow}
       GOTRUE_JWT_SECRET: ${jwt}
-      GOTRUE_JWT_EXP: "3600"
+${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.gotrueJwtKeys)}\n` : ''}      GOTRUE_JWT_EXP: "3600"
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
@@ -3445,6 +3447,13 @@ export async function getTenantStackArtifacts({
         }
       : null
 
+  let gotrueJwtKeys: string | null = null
+  try {
+    gotrueJwtKeys = await buildGotrueJwtKeysJson(p.ref)
+  } catch {
+    gotrueJwtKeys = null
+  }
+
   const dockerComposeYml = repairKnownTenantComposeYaml(
     buildSlimTenantDockerCompose({
     ref: p.ref,
@@ -3461,6 +3470,7 @@ export async function getTenantStackArtifacts({
     authDbUri,
     storageDbUri,
     jwtSecret,
+    gotrueJwtKeys,
     anonKey,
     serviceKey,
     apiExternalUrl: origin,

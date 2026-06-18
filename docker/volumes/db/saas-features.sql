@@ -55,6 +55,12 @@ begin
   ) then
     alter table saas.projects add column paused_at timestamptz null;
   end if;
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'saas' and table_name = 'projects' and column_name = 'pause_reason'
+  ) then
+    alter table saas.projects add column pause_reason text null;
+  end if;
 end
 $saas_features_projects_lifecycle$;
 

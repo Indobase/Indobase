@@ -122,6 +122,8 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
 
 DATA_PLANE_PROVISIONER_URL=http://data-plane-provisioner:8787
 DATA_PLANE_PROVISIONER_TOKEN=your-token
+# Studio cron APIs (/api/cron/quota-enforce, /api/cron/usage-collect). May match provisioner token.
+INDOBASE_CRON_SECRET=your-token
 # Compose stack: pin provisioner image (CI publishes roshanraghavander/ind-repo-provisioner:<sha>)
 # DATA_PLANE_PROVISIONER_IMAGE=roshanraghavander/ind-repo-provisioner:latest
 

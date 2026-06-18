@@ -28,6 +28,15 @@ The repo’s `docker/docker-compose.yml` includes a `data-plane-provisioner` ser
 - bind mount to a tenants output dir (host)
 - mount `/var/run/docker.sock` (host)
 
+**Prefer compose-managed rollout** (replaces ad-hoc `docker run` on the VPS):
+
+```bash
+# On the VPS, from the repo checkout:
+bash docker/scripts/rollout-data-plane-provisioner-compose.sh <git-sha-or-latest>
+```
+
+This pulls `roshanraghavander/ind-repo-provisioner:<tag>` and runs `docker compose up -d data-plane-provisioner` with `docker-compose.dokploy.yml` when present.
+
 ### Environment variables (on the VPS)
 Set these in the Dokploy environment for the stack (or in your compose env):
 - `DATA_PLANE_PROVISIONER_TOKEN`: strong random secret

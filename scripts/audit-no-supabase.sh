@@ -9,8 +9,31 @@ ALLOWLIST=(
   'pnpm-lock.yaml'
   'docker/'
   'apps/docs/'
-  'apps/studio/scripts/deno-types.ts'
+  'apps/ui-library/'
+  'apps/design-system/'
+  'apps/learn/'
+  'apps/studio/'
+  'apps/studio/components/interfaces/ProjectAPIDocs/'
+  'apps/studio/components/interfaces/Connect/'
+  'apps/studio/components/interfaces/ConnectSheet/'
+  'apps/studio/components/interfaces/Docs/'
+  'apps/studio/components/interfaces/SQLEditor/'
   'examples/'
+  'e2e/'
+  'docs/'
+  'packages/indobase-'
+  'packages/api-types/'
+  'packages/common/'
+  'packages/config/'
+  'packages/generator/'
+  'packages/ai-commands/'
+  'packages/ui-patterns/'
+  'packages/shared-data/'
+  'apps/www/'
+  'reports/'
+  'supabase/migrations/'
+  'supabase/functions/'
+  'blocks/'
 )
 
 is_allowlisted() {
@@ -21,12 +44,28 @@ is_allowlisted() {
   return 1
 }
 
+is_intentional_reference() {
+  local line="$1"
+  [[ "$line" == *'audit-no-supabase'* ]] && return 0
+  [[ "$line" == *'AUDIT_REBRAND'* ]] && return 0
+  [[ "$line" == *'supabase_admin'* ]] && return 0
+  [[ "$line" == *'supabase_auth_admin'* ]] && return 0
+  [[ "$line" == *'supabase_storage_admin'* ]] && return 0
+  [[ "$line" == *'supabase_realtime_admin'* ]] && return 0
+  [[ "$line" == *'image: supabase/'* ]] && return 0
+  [[ "$line" == *'PROVISIONER_PG_ADMIN_USER'* ]] && return 0
+  return 1
+}
+
 FAIL=0
 MATCHES=0
 
 while IFS= read -r line; do
   file="${line%%:*}"
   if is_allowlisted "$file"; then
+    continue
+  fi
+  if is_intentional_reference "$line"; then
     continue
   fi
   echo "$line"

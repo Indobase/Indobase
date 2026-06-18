@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 
-import type { JwtPayload } from 'indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { z } from 'zod'
 
 import { resolveBuilderHandoffSecret } from './builder-launch'

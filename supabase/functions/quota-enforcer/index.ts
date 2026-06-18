@@ -258,24 +258,41 @@ async function sendWarningNotification(supabaseClient: any, violation: any) {
   }
 }
 
-async function enforceHardLimit(supabaseClient: any, violation: any) {
-  // Implement service-specific blocking
-  // This is a placeholder - actual implementation depends on your architecture
-  
-  console.log('ENFORCING HARD LIMIT:', {
-    action: 'block_service',
-    project: violation.project_ref,
-    metric: `${violation.metric_type}.${violation.metric_name}`,
-    reason: 'Quota exceeded'
-  });
+async function enforceHardLimit(_supabaseClient: any, violation: any) {
+  const studioUrl = (
+    Deno.env.get('INDOBASE_STUDIO_URL') ??
+    Deno.env.get('STUDIO_URL') ??
+    'https://studio.indobase.in'
+  ).replace(/\/$/, '')
+  const cronSecret =
+    Deno.env.get('INDOBASE_CRON_SECRET') ?? Deno.env.get('DATA_PLANE_PROVISIONER_TOKEN') ?? ''
 
-  // Example actions:
-  // 1. Set a flag in Redis to block API requests
-  // 2. Update Kong configuration to rate limit
-  // 3. Pause database connections
-  // 4. Disable storage uploads
-  
-  // This should integrate with your gateway/service mesh
+  if (!cronSecret) {
+    console.error('enforceHardLimit: missing INDOBASE_CRON_SECRET / DATA_PLANE_PROVISIONER_TOKEN')
+    return
+  }
+
+  const projectRef = violation.project_ref
+  if (!projectRef) {
+    console.error('enforceHardLimit: missing project_ref on violation')
+    return
+  }
+
+  const res = await fetch(`${studioUrl}/api/cron/quota-enforce?project_ref=${encodeURIComponent(projectRef)}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${cronSecret}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('enforceHardLimit: Studio quota-enforce failed', res.status, body)
+    return
+  }
+
+  console.log('enforceHardLimit: delegated to Studio', await res.json())
 }
 
 async function sendEmailAlert(supabaseClient: any, alert: any, violation: any) {

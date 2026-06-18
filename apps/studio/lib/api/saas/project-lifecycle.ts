@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'indobaseinc/indobase-js'
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { recordAuditLog } from './audit'
 import { getGotrueUserId } from './platform'
@@ -244,4 +244,146 @@ export async function getProjectPauseStatus({
     max_days_till_restore_disabled: maxDays,
     remaining_days_till_restore_disabled: remainingDays,
   }
+}
+
+const SYSTEM_ACTOR = '00000000-0000-0000-0000-000000000001'
+
+async function loadProjectForSystem(ref: string): Promise<ProjectLifecycleRow | null> {
+  const row = await executeQuery<ProjectLifecycleRow>({
+    query: `
+      select
+        p.id,
+        p.organization_id,
+        p.name,
+        p.status,
+        p.paused_at,
+        p.connection_string_enc,
+        p.connection_string,
+        p.data_plane_last_provisioned_at
+      from saas.projects p
+      where p.ref = $1
+      limit 1
+    `,
+    parameters: [ref],
+    actorId: SYSTEM_ACTOR,
+  })
+  if (row.error) throw row.error
+  return row.data?.[0] ?? null
+}
+
+async function setProjectStatusForSystem({
+  ref,
+  status,
+  pausedAt,
+  clearPausedAt = false,
+  pauseReason,
+  clearPauseReason = false,
+}: {
+  ref: string
+  status: string
+  pausedAt?: string | null
+  clearPausedAt?: boolean
+  pauseReason?: string | null
+  clearPauseReason?: boolean
+}) {
+  const r = await executeQuery({
+    query: `
+      update saas.projects
+      set status = $1,
+          paused_at = case
+            when $4::boolean then null
+            when $3::text is not null then $3::timestamptz
+            else paused_at
+          end,
+          pause_reason = case
+            when $6::boolean then null
+            when $5::text is not null then $5
+            else pause_reason
+          end
+      where ref = $2
+    `,
+    parameters: [
+      status,
+      ref,
+      pausedAt ?? null,
+      clearPausedAt,
+      pauseReason ?? null,
+      clearPauseReason,
+    ],
+    actorId: SYSTEM_ACTOR,
+  })
+  if (r.error) throw r.error
+}
+
+export async function pauseProjectForSystem({
+  ref,
+  reason,
+  metric,
+}: {
+  ref: string
+  reason: string
+  metric?: string
+}): Promise<void> {
+  const p = await loadProjectForSystem(ref)
+  if (!p) throw new Error('Project not found')
+  if (p.status === 'INACTIVE' || p.status === 'PAUSING') return
+
+  await setProjectStatusForSystem({
+    ref,
+    status: 'PAUSING',
+    pauseReason: 'quota_exceeded',
+  })
+
+  if (hasDedicatedDataPlane(p) && isDataPlaneProvisionerConfigured() && p.data_plane_last_provisioned_at) {
+    await stopTenantDataPlaneStack({ ref, reason: `quota_${reason}` })
+  }
+
+  await setProjectStatusForSystem({
+    ref,
+    status: 'INACTIVE',
+    pausedAt: new Date().toISOString(),
+  })
+
+  await recordAuditLog({
+    organizationId: p.organization_id,
+    projectRef: ref,
+    action: 'project.pause',
+    targetType: 'project',
+    targetDescription: `Quota enforcement paused project "${p.name}" (${ref})`,
+    metadata: { reason, metric, source: 'quota_enforcement' },
+  })
+}
+
+export async function restoreProjectForSystem({
+  ref,
+  reason,
+}: {
+  ref: string
+  reason: string
+}): Promise<void> {
+  const p = await loadProjectForSystem(ref)
+  if (!p) throw new Error('Project not found')
+  if (p.status === 'ACTIVE_HEALTHY') return
+
+  await setProjectStatusForSystem({ ref, status: 'COMING_UP' })
+
+  if (hasDedicatedDataPlane(p) && isDataPlaneProvisionerConfigured()) {
+    await repairTenantDataPlaneStack({ ref, reason: `quota_${reason}` })
+  }
+
+  await setProjectStatusForSystem({
+    ref,
+    status: 'ACTIVE_HEALTHY',
+    clearPausedAt: true,
+    clearPauseReason: true,
+  })
+
+  await recordAuditLog({
+    organizationId: p.organization_id,
+    projectRef: ref,
+    action: 'project.restore',
+    targetType: 'project',
+    targetDescription: `Quota recovery restored project "${p.name}" (${ref})`,
+    metadata: { reason, source: 'quota_enforcement' },
+  })
 }
