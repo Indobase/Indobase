@@ -36,7 +36,7 @@ fi
 
 echo "=== Usage collect fleet $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 mapfile -t refs < <(
-  docker run --rm postgres:15-alpine psql "$STUDIO_PG_URL" -tA -c "
+  docker exec indobase-db psql -U postgres -d postgres -tA -c "
     select ref from saas.projects
     where coalesce(is_branch, false) = false
       and coalesce(trim(connection_string_enc), '') <> ''
