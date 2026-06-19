@@ -356,6 +356,17 @@ export async function downgradeOrganizationToFree(orgSlug: string): Promise<void
     `,
     parameters: [orgSlug],
   })
+
+  try {
+    const { syncOrganizationDataPlaneForPlan } = await import('./data-plane-mode-sync')
+    await syncOrganizationDataPlaneForPlan({
+      orgSlug,
+      planId: 'free',
+      reason: 'razorpay_downgrade',
+    })
+  } catch (error) {
+    console.warn('[razorpay] data plane sync after downgrade failed:', error)
+  }
 }
 
 export function verifyRazorpayWebhookSignature(rawBody: string, signature: string | undefined): boolean {
@@ -427,6 +438,16 @@ export async function handleRazorpayWebhookEvent(
         razorpayCustomerId: subscription?.customer_id,
         razorpaySubscriptionId: subscription?.id,
       })
+      try {
+        const { syncOrganizationDataPlaneForPlan } = await import('./data-plane-mode-sync')
+        await syncOrganizationDataPlaneForPlan({
+          orgSlug,
+          planId,
+          reason: 'razorpay_webhook',
+        })
+      } catch (error) {
+        console.warn('[razorpay/webhook] data plane sync after upgrade failed:', error)
+      }
       break
     }
     case 'subscription.cancelled':

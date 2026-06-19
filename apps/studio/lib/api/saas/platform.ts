@@ -6,7 +6,14 @@ import { executeQuery } from './query'
 import { decryptString, encryptString, encryptedConnectionForPgMeta } from './util'
 import { makeRandomString } from 'lib/helpers'
 import { PROJECT_ENDPOINT, PROJECT_REST_URL } from 'lib/constants/api'
+import type { PlanId } from 'data/subscriptions/types'
+
 import { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
+import {
+  normalizeDataPlaneMode,
+  resolveDataPlaneModeForPlan,
+  resolveSharedGatewayPublicApiUrl,
+} from './data-plane-mode'
 import {
   tenantEdgeRuntimeMemLimit,
   tenantImgproxyDownloadBufferBytes,
@@ -403,6 +410,7 @@ export async function ensureSaasTables() {
       alter table saas.projects add column if not exists branch_with_data boolean not null default false;
       alter table saas.projects add column if not exists preview_branching_enabled boolean not null default false;
       alter table saas.projects add column if not exists postgrest_config jsonb null;
+      alter table saas.projects add column if not exists data_plane_mode text not null default 'isolated_stack';
 
       alter table saas.organizations add column if not exists razorpay_customer_id text null;
       alter table saas.organizations add column if not exists billing_pending_tier text null;
@@ -1823,7 +1831,8 @@ export async function finalizeDedicatedProjectProvisioning({
       set status = 'ACTIVE_HEALTHY',
           data_plane_port_base = null,
           connection_string = null,
-          connection_string_enc = null
+          connection_string_enc = null,
+          data_plane_mode = 'model_a'
       where p.ref = $1
         and exists (
           select 1
@@ -1839,6 +1848,20 @@ export async function finalizeDedicatedProjectProvisioning({
     if (saved.error) throw saved.error
     return
   }
+
+  const planRow = await executeQuery<{ plan: string }>({
+    query: `
+      select o.plan
+      from saas.projects p
+      join saas.organizations o on o.id = p.organization_id
+      where p.ref = $1
+      limit 1
+    `,
+    parameters: [projectRef],
+    actorId: gotrueId,
+  })
+  if (planRow.error) throw planRow.error
+  const dataPlaneMode = resolveDataPlaneModeForPlan(planRow.data?.[0]?.plan as PlanId | undefined)
 
   const host = process.env.POSTGRES_HOST?.trim()
   const adminPassword = process.env.POSTGRES_PASSWORD ?? ''
@@ -1889,17 +1912,18 @@ export async function finalizeDedicatedProjectProvisioning({
           set data_plane_port_base = $1,
               connection_string = null,
               connection_string_enc = $2,
-              db_host = $3
-          where p.ref = $4
+              db_host = $3,
+              data_plane_mode = $4
+          where p.ref = $5
             and exists (
               select 1
               from saas.organization_members m
               where m.organization_id = p.organization_id
-                and m.gotrue_id = $5
+                and m.gotrue_id = $6
                 and m.role in ('owner','admin','developer')
             )
         `,
-      parameters: [portBase, enc, host, projectRef, gotrueId],
+      parameters: [portBase, enc, host, dataPlaneMode, projectRef, gotrueId],
       actorId: gotrueId,
     })
     if (saved.error) throw saved.error
@@ -2281,6 +2305,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     connection_string_enc: string | null
     data_plane_last_provisioned_at: string | null
     physical_backups_enabled: boolean
+    data_plane_mode: string
   }>({
     query: `
       select
@@ -2302,7 +2327,8 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
         p.connection_string,
         p.connection_string_enc,
         p.data_plane_last_provisioned_at,
-        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled
+        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled,
+        p.data_plane_mode
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -2359,7 +2385,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
 
   const effectiveDbUrl = tenantDatabaseUrl?.trim() ? tenantDatabaseUrl : sharedDbUrl
   const hasDedicated = Boolean(tenantDatabaseUrl?.trim())
-  const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated)
+  const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated, p.data_plane_mode)
   return {
     cloud_provider: p.cloud_provider,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
@@ -3316,6 +3342,7 @@ export async function getTenantStackArtifacts({
     anon_key_enc: string | null
     data_plane_last_provisioned_at: string | null
     data_plane_last_provision_result: unknown | null
+    data_plane_mode: string
   }>({
     query: `
       select
@@ -3330,7 +3357,8 @@ export async function getTenantStackArtifacts({
         p.service_key_enc,
         p.anon_key_enc,
         p.data_plane_last_provisioned_at,
-        p.data_plane_last_provision_result
+        p.data_plane_last_provision_result,
+        p.data_plane_mode
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1
@@ -3346,6 +3374,7 @@ export async function getTenantStackArtifacts({
   if (rows.length === 0) return null
 
   const p = rows[0]!
+  const dataPlaneMode = normalizeDataPlaneMode(p.data_plane_mode)
   const jwtSecret = resolveProjectJwtSecret(p.jwt_secret_enc)
 
   const connectionStringEnc = (p.connection_string_enc ?? '').trim()
@@ -3381,7 +3410,11 @@ export async function getTenantStackArtifacts({
 
   const domain = (publicDomain || resolvePublicDomainForTenantStack()).trim() || 'localhost'
   const tls = domain !== 'localhost' && domain !== '127.0.0.1'
-  const origin = `${tls ? 'https' : 'http'}://${p.ref}.${domain}`
+  const sharedGateway = dataPlaneMode === 'shared_gateway'
+  const apiExternalUrl = sharedGateway
+    ? resolveSharedGatewayPublicApiUrl()
+    : `${tls ? 'https' : 'http'}://${p.ref}.${domain}`
+  const origin = apiExternalUrl
   const embedPooler = process.env.SAAS_TENANT_EMBED_SUPAVISOR === 'true'
   const ports: {
     rest: number
@@ -3474,8 +3507,8 @@ export async function getTenantStackArtifacts({
     anonKey,
     serviceKey,
     apiExternalUrl: origin,
-    siteUrl: origin,
-    uriAllowList: origin,
+    siteUrl: sharedGateway ? origin : origin,
+    uriAllowList: sharedGateway ? `${origin},${tls ? 'https' : 'http'}://${p.ref}.${domain}` : origin,
     realtime: {
       dbHost: dbUrl.hostname,
       dbPort: dbUrl.port || '5432',
@@ -3490,30 +3523,33 @@ export async function getTenantStackArtifacts({
   )
   assertValidTenantComposeYaml(dockerComposeYml)
 
-  const traefikYml = buildSlimTenantTraefikYml({
-    ref: p.ref,
-    publicDomain: domain,
-    ports: {
-      rest: ports.rest,
-      auth: ports.auth,
-      storage: ports.storage,
-      realtime: ports.realtime,
-      functions: ports.functions,
-      site: ports.site,
-    },
-  })
+  const traefikYml = sharedGateway
+    ? ''
+    : buildSlimTenantTraefikYml({
+        ref: p.ref,
+        publicDomain: domain,
+        ports: {
+          rest: ports.rest,
+          auth: ports.auth,
+          storage: ports.storage,
+          realtime: ports.realtime,
+          functions: ports.functions,
+          site: ports.site,
+        },
+      })
 
   const poolerHostEnv = process.env.SAAS_TENANT_POOLER_HOST?.trim()
   const tenant_pooler = poolerHostEnv
     ? { host: poolerHostEnv, port: parseInt(process.env.SAAS_TENANT_POOLER_PORT || '6543', 10) }
-    : embedPooler
+    : embedPooler && !sharedGateway
       ? { host: `${p.ref}.${domain}`, port: 6543 }
       : null
 
   return {
     project_ref: p.ref,
     public_domain: domain,
-    tenant_api_url: origin,
+    data_plane_mode: dataPlaneMode,
+    tenant_api_url: sharedGateway ? apiExternalUrl : origin,
     tenant_pooler,
     data_plane_port_base: base,
     data_plane_last_provisioned_at: p.data_plane_last_provisioned_at,

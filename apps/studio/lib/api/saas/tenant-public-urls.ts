@@ -1,5 +1,7 @@
 import { PROJECT_ENDPOINT, PROJECT_ENDPOINT_PROTOCOL, PROJECT_REST_URL } from 'lib/constants/api'
 
+import { normalizeDataPlaneMode, type DataPlaneMode } from './data-plane-mode'
+
 /**
  * Hostname for `ref.<domain>` tenant routing (Traefik / GoTrue).
  * Prefer SAAS_PUBLIC_DOMAIN (e.g. indobase.in) over the Kong hostname (api.indobase.in)
@@ -26,23 +28,41 @@ export function resolvePublicDomainForTenantStack(): string {
 }
 
 /**
- * When true, client SDKs should call `https://{ref}.<public-domain>` (per-project Traefik host),
- * matching Supabase's `{ref}.indobase.in`. Requires a dedicated tenant DB; shared Kong uses
- * `api.<domain>` plus project-scoped anon/service keys.
+ * When true, client SDKs should call `https://{ref}.<public-domain>` (per-project Traefik host).
+ * Shared-gateway Free tier and legacy Model A use `api.<domain>` with project-scoped keys.
  */
-export function usesTenantPublicApiHost(hasDedicatedTenantDb: boolean): boolean {
+export function usesTenantPublicApiHost(
+  hasDedicatedTenantDb: boolean,
+  dataPlaneMode?: DataPlaneMode | string | null
+): boolean {
+  const mode = normalizeDataPlaneMode(
+    dataPlaneMode ?? (hasDedicatedTenantDb ? 'isolated_stack' : 'model_a')
+  )
+  if (mode === 'shared_gateway' || mode === 'model_a') return false
   return hasDedicatedTenantDb
 }
 
 /** Base API URL for Connect / env snippets (`https://ref.indobase.in`, no path suffix). */
-export function resolveSaaSTenantApiBaseUrl(ref: string, hasDedicatedTenantDb: boolean): string {
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicatedTenantDb)
+export function resolveSaaSTenantApiBaseUrl(
+  ref: string,
+  hasDedicatedTenantDb: boolean,
+  dataPlaneMode?: DataPlaneMode | string | null
+): string {
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(
+    ref,
+    hasDedicatedTenantDb,
+    dataPlaneMode
+  )
   return `${protocol}://${endpointHost}`
 }
 
-/** REST + API host for Studio clients: dedicated DB → `ref.<public domain>`; else shared Kong (`PROJECT_*`). */
-export function resolveSaaSTenantRestUrls(ref: string, hasDedicatedTenantDb: boolean) {
-  if (!usesTenantPublicApiHost(hasDedicatedTenantDb)) {
+/** REST + API host for Studio clients: isolated stack → `ref.<domain>`; shared gateway → Kong. */
+export function resolveSaaSTenantRestUrls(
+  ref: string,
+  hasDedicatedTenantDb: boolean,
+  dataPlaneMode?: DataPlaneMode | string | null
+) {
+  if (!usesTenantPublicApiHost(hasDedicatedTenantDb, dataPlaneMode)) {
     return {
       endpointHost: PROJECT_ENDPOINT,
       restUrl: PROJECT_REST_URL,

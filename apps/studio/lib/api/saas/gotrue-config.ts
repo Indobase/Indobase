@@ -8,7 +8,7 @@ import {
   type GoTrueConfigResponse,
 } from './gotrue-config.defaults'
 import { ensureSaasTables, getGotrueUserId } from './platform'
-import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from './tenant-public-urls'
+import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 
 type GoTruePublicSettings = {
   disable_signup?: boolean
@@ -65,6 +65,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
     connection_string_enc: string | null
     data_plane_last_provisioned_at: string | null
     auth_config: Record<string, unknown> | null
+    data_plane_mode: string
   }>({
     query: `
       select
@@ -73,7 +74,8 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
         p.connection_string,
         p.connection_string_enc,
         p.data_plane_last_provisioned_at,
-        p.auth_config
+        p.auth_config,
+        p.data_plane_mode
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -93,7 +95,7 @@ async function loadProjectAuthContext(ref: string, gotrueId: string) {
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
   const hasProvisionedDataPlane = Boolean(p.data_plane_last_provisioned_at)
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, usesTenantPublicApiHost(hasDedicated))
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, hasDedicated, p.data_plane_mode)
   const apiOrigin = `${protocol}://${endpointHost}`
 
   return {

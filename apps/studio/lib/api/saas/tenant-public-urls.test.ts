@@ -54,9 +54,11 @@ describe('tenant-public-urls', () => {
     })
   })
 
-  it('usesTenantPublicApiHost mirrors dedicated tenant DB flag', () => {
+  it('usesTenantPublicApiHost mirrors dedicated tenant DB for isolated stacks', () => {
     expect(usesTenantPublicApiHost(true)).toBe(true)
     expect(usesTenantPublicApiHost(false)).toBe(false)
+    expect(usesTenantPublicApiHost(true, 'shared_gateway')).toBe(false)
+    expect(usesTenantPublicApiHost(true, 'model_a')).toBe(false)
   })
 
   it('resolveSaaSTenantApiBaseUrl returns origin without /rest/v1 path', () => {

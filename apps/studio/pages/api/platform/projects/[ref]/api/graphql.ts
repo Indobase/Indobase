@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import { getGotrueUserId } from 'lib/api/saas/platform'
-import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from 'lib/api/saas/tenant-public-urls'
+import { resolveSaaSTenantRestUrls } from 'lib/api/saas/tenant-public-urls'
 import { decryptString } from 'lib/api/saas/util'
 import { executeQuery } from 'lib/api/saas/query'
 import { IS_SAAS } from 'lib/constants'
@@ -29,9 +29,10 @@ async function resolveGraphqlUpstream(ref: string, claims: JwtPayload) {
     const row = await executeQuery<{
       connection_string_enc: string | null
       data_plane_last_provisioned_at: string | null
+      data_plane_mode: string
     }>({
       query: `
-        select p.connection_string_enc, p.data_plane_last_provisioned_at
+        select p.connection_string_enc, p.data_plane_last_provisioned_at, p.data_plane_mode
         from saas.projects p
         join saas.organization_members m on m.organization_id = p.organization_id
         where p.ref = $1 and m.gotrue_id = $2
@@ -45,7 +46,8 @@ async function resolveGraphqlUpstream(ref: string, claims: JwtPayload) {
     const hasDedicated = Boolean(meta?.connection_string_enc?.trim())
     const { endpointHost, protocol } = resolveSaaSTenantRestUrls(
       ref,
-      usesTenantPublicApiHost(hasDedicated)
+      hasDedicated,
+      meta?.data_plane_mode
     )
     return `${protocol}://${endpointHost}/graphql/v1`
   }

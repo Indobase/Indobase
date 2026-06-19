@@ -5,7 +5,7 @@ import { normalizeProjectApiKey, resolveProjectJwtSecret } from './project-jwt'
 import { decryptString } from './util'
 import { executeQuery } from './query'
 import { ensureSaasTables, getGotrueUserId } from './platform'
-import { resolveSaaSTenantRestUrls, usesTenantPublicApiHost } from './tenant-public-urls'
+import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 import { assertSaaSBackend } from './util'
 
 type ProjectAppConfig = components['schemas']['ProjectSettingsResponse']['app_config'] & {
@@ -96,6 +96,7 @@ export async function getProjectSettingsForRef({
     connection_string_enc: string | null
     data_plane_last_provisioned_at: string | null
     jwt_secret_enc: string | null
+    data_plane_mode: string
   }>({
     query: `
       select
@@ -112,7 +113,8 @@ export async function getProjectSettingsForRef({
         p.connection_string,
         p.connection_string_enc,
         p.data_plane_last_provisioned_at,
-        p.jwt_secret_enc
+        p.jwt_secret_enc,
+        p.data_plane_mode
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -136,7 +138,11 @@ export async function getProjectSettingsForRef({
       ? decryptString(p.connection_string_enc)
       : p.connection_string
   const hasDedicated = Boolean(tenantDbUrl?.trim())
-  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(ref, usesTenantPublicApiHost(hasDedicated))
+  const { endpointHost, protocol } = resolveSaaSTenantRestUrls(
+    ref,
+    hasDedicated,
+    p.data_plane_mode
+  )
 
   const base = getProjectSettings()
 

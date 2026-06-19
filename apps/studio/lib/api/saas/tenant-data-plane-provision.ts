@@ -61,20 +61,33 @@ export async function provisionTenantDataPlaneStack({
   }
 
   const portBase = artifacts.data_plane_port_base
+  const sharedGateway = artifacts.data_plane_mode === 'shared_gateway'
 
-  const resp = await fetch(`${provisionerUrl}/provision`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${provisionerToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      project_ref: ref,
-      docker_compose_yml: artifacts.docker_compose_yml,
-      traefik_yml: artifacts.traefik_yml,
-      apply,
-    }),
-  })
+  const resp = await fetch(
+    `${provisionerUrl}${sharedGateway ? '/provision-shared-gateway' : '/provision'}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${provisionerToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(
+        sharedGateway
+          ? {
+              project_ref: ref,
+              docker_compose_yml: artifacts.docker_compose_yml,
+              data_plane_port_base: portBase,
+              apply,
+            }
+          : {
+              project_ref: ref,
+              docker_compose_yml: artifacts.docker_compose_yml,
+              traefik_yml: artifacts.traefik_yml,
+              apply,
+            }
+      ),
+    }
+  )
 
   const text = await resp.text()
   let parsed: unknown

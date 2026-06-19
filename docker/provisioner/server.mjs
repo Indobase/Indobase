@@ -20,6 +20,12 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef } from './tenant-traefik.mjs'
 import { TENANT_SITE_NGINX_CONF, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
+import {
+  portsFromPortBase,
+  registerSharedGatewayTenant,
+  unregisterSharedGatewayTenant,
+  parsePortBaseFromComposeYaml,
+} from './shared-gateway-routes.mjs'
 
 const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
@@ -388,9 +394,21 @@ async function repairTenantStackRef(ref, reason) {
 
   await seedTenantFunctionsMain(ref)
   await runCompose(composePath)
-  const normalized = fixTenantTraefikForRef(ref, traefikDir)
-  if (!normalized.ok) {
-    return { ref, ok: false, reason: normalized.reason || 'traefik_normalize_failed', repair_reason: reason }
+
+  const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
+  const isSharedGateway = !fs.existsSync(traefikPath)
+
+  if (isSharedGateway) {
+    const portBase = parsePortBaseFromComposeYaml(repaired)
+    if (portBase != null) {
+      const ports = portsFromPortBase(portBase, repaired.includes('tenant-pooler:'))
+      registerSharedGatewayTenant(ref, ports)
+    }
+  } else {
+    const normalized = fixTenantTraefikForRef(ref, traefikDir)
+    if (!normalized.ok) {
+      return { ref, ok: false, reason: normalized.reason || 'traefik_normalize_failed', repair_reason: reason }
+    }
   }
 
   let siteHosting = null
@@ -422,6 +440,7 @@ const server = http.createServer(async (req, res) => {
 
     const allowed = new Set([
       '/provision',
+      '/provision-shared-gateway',
       '/teardown',
       '/stop',
       '/repair-traefik',
@@ -562,6 +581,8 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      unregisterSharedGatewayTenant(ref)
+
       const fnVol = `indobase-tenant-${ref}_tenant-functions-${ref}`
       await dockerVolumeRm(fnVol)
 
@@ -570,6 +591,68 @@ const server = http.createServer(async (req, res) => {
         project_ref: ref,
         compose_down: composeDown,
         traefik_removed: true,
+        applied: apply,
+      })
+    }
+
+    if (req.url === '/provision-shared-gateway') {
+      const dockerComposeYml = String(body?.docker_compose_yml || '')
+      const portBase = Number(body?.data_plane_port_base)
+      if (!dockerComposeYml.trim()) {
+        return json(res, 400, { message: 'docker_compose_yml is required' })
+      }
+      if (!Number.isFinite(portBase) || portBase < 1024) {
+        return json(res, 400, { message: 'data_plane_port_base is required' })
+      }
+
+      assertValidComposeYaml(dockerComposeYml)
+
+      const tenantOutDir = path.join(tenantsDir, ref)
+      fs.mkdirSync(tenantOutDir, { recursive: true })
+      const composePath = path.join(tenantOutDir, 'docker-compose.yml')
+      const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
+      if (fs.existsSync(traefikPath)) {
+        try {
+          fs.unlinkSync(traefikPath)
+        } catch (e) {
+          return json(res, 500, { message: e?.message || 'Failed to remove traefik config' })
+        }
+      }
+      fs.writeFileSync(composePath, dockerComposeYml, 'utf8')
+
+      await seedTenantFunctionsMain(ref)
+
+      if (apply) {
+        await runCompose(composePath)
+        const ports = portsFromPortBase(portBase, dockerComposeYml.includes('tenant-pooler:'))
+        registerSharedGatewayTenant(ref, ports)
+
+        await new Promise((r) => setTimeout(r, 3000))
+        const health = await verifyTenantStackHealth(ref)
+        if (!health.ok) {
+          return json(res, 500, {
+            message: 'Shared-gateway sidecars started but health check failed',
+            project_ref: ref,
+            health,
+          })
+        }
+
+        return json(res, 200, {
+          ok: true,
+          project_ref: ref,
+          mode: 'shared_gateway',
+          written: { composePath },
+          ports,
+          applied: apply,
+          health,
+        })
+      }
+
+      return json(res, 200, {
+        ok: true,
+        project_ref: ref,
+        mode: 'shared_gateway',
+        written: { composePath },
         applied: apply,
       })
     }

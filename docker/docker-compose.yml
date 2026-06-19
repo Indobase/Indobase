@@ -119,6 +119,9 @@ services:
       # Docker network tenant stacks join (must match Compose project network, e.g. indobase-backend-bmqhan_default)
       SAAS_DOCKER_NETWORK_NAME: ${SAAS_DOCKER_NETWORK_NAME:-indobase_default}
       SAAS_DATA_PLANE_AUX_ROLE_PASSWORD: ${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}
+      SAAS_PUBLIC_DOMAIN: ${SAAS_PUBLIC_DOMAIN:-}
+      SAAS_SHARED_GATEWAY_PUBLIC_URL: ${SAAS_SHARED_GATEWAY_PUBLIC_URL:-${SUPABASE_PUBLIC_URL}}
+      SAAS_FREE_TIER_DATA_PLANE_MODE: ${SAAS_FREE_TIER_DATA_PLANE_MODE:-shared_gateway}
     volumes:
       - snippets-data:/app/snippets
       - functions-data:/app/edge-functions
@@ -150,10 +153,27 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       SAAS_DATA_PLANE_AUX_ROLE_PASSWORD: ${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}
       TRAEFIK_UPSTREAM_HOST: ${TRAEFIK_UPSTREAM_HOST:-172.17.0.1}
+      PROVISIONER_SHARED_GATEWAY_ROUTES_FILE: /mnt/traefik/shared-gateway-routes.json
     volumes:
       - tenants-data:/mnt/tenants
       - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/mnt/traefik:Z
       - /var/run/docker.sock:/var/run/docker.sock
+
+  tenant-multiplexer:
+    container_name: indobase-tenant-multiplexer
+    build:
+      context: ./tenant-multiplexer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8090"
+    environment:
+      PORT: 8090
+      SHARED_GATEWAY_ROUTES_FILE: /data/shared-gateway-routes.json
+      TRAEFIK_UPSTREAM_HOST: ${TRAEFIK_UPSTREAM_HOST:-172.17.0.1}
+      SHARED_GATEWAY_ROUTES_POLL_MS: 5000
+    volumes:
+      - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/data:ro
 
   kong:
     container_name: indobase-kong
@@ -168,6 +188,8 @@ services:
     depends_on:
       analytics:
         condition: service_healthy
+      tenant-multiplexer:
+        condition: service_started
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml

@@ -155,6 +155,45 @@ begin
 end
 $saas_features_projects_legacy_keys$;
 
+-- Per-project data plane mode (Free = shared_gateway, Pro+ = isolated_stack).
+do $saas_features_data_plane_mode$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'saas' and table_name = 'projects' and column_name = 'data_plane_mode'
+  ) then
+    alter table saas.projects
+      add column data_plane_mode text not null default 'isolated_stack'
+        check (data_plane_mode in ('isolated_stack', 'shared_gateway', 'model_a'));
+  end if;
+end
+$saas_features_data_plane_mode$;
+
+update saas.projects p
+set data_plane_mode = case
+  when coalesce(trim(p.connection_string_enc), '') <> '' or coalesce(trim(p.connection_string), '') <> ''
+    then 'isolated_stack'
+  else 'model_a'
+end
+where p.data_plane_mode = 'isolated_stack'
+  and not exists (
+    select 1
+    from saas.organizations o
+    where o.id = p.organization_id
+      and lower(o.plan) in ('free', 'platform')
+  );
+
+update saas.projects p
+set data_plane_mode = 'shared_gateway'
+from saas.organizations o
+where o.id = p.organization_id
+  and lower(o.plan) in ('free', 'platform')
+  and (
+    coalesce(trim(p.connection_string_enc), '') <> ''
+    or coalesce(trim(p.connection_string), '') <> ''
+  )
+  and p.data_plane_mode <> 'shared_gateway';
+
 -- ---------------------------------------------------------------------------
 -- RLS: only the project's owning organization members can read/write
 -- ---------------------------------------------------------------------------
