@@ -8,20 +8,23 @@ import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/
 
 const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const handoffToken = url.searchParams.get('handoff') || url.searchParams.get('token');
   const next = url.searchParams.get('next');
+  const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare
+    ?.env;
 
   if (!handoffToken) {
     return redirect('/');
   }
 
   try {
-    const handoff = await verifyIndobaseStudioHandoff(handoffToken);
-    const mcpToken = signIndobaseBuilderMcpToken(handoff);
+    const handoff = await verifyIndobaseStudioHandoff(handoffToken, env);
+    const mcpToken = signIndobaseBuilderMcpToken(handoff, 60 * 60 * 12, env);
     const maxAge = 60 * 60 * 12;
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const nodeEnv = env?.NODE_ENV ?? process.env.NODE_ENV;
+    const secure = nodeEnv === 'production' ? '; Secure' : '';
 
     return json(
       { handoff, mcpToken, next },

@@ -1,4 +1,4 @@
-import { useParams } from 'common'
+import { getAccessToken, useParams } from 'common'
 import { Button, type ButtonProps } from 'ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -37,11 +37,16 @@ export const BuilderLaunchButton = ({
       const qs = new URLSearchParams()
       if (nextPath) qs.set('next', nextPath)
       const suffix = qs.toString() ? `?${qs.toString()}` : ''
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        throw new Error('You must be signed in to open Builder')
+      }
       const response = await fetch(`/api/platform/projects/${ref}/builder/launch${suffix}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
           Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
         },
       })
 

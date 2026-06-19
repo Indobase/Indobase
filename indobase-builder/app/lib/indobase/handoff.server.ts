@@ -50,10 +50,15 @@ function base64Url(input: Buffer | string) {
   return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-function resolveBuilderHandoffSecret() {
+type ServerEnv = Record<string, string | undefined>;
+
+function resolveBuilderHandoffSecret(env?: ServerEnv) {
   const secret =
+    env?.BUILDER_HANDOFF_SECRET?.trim() ||
     process.env.BUILDER_HANDOFF_SECRET?.trim() ||
+    env?.AUTH_JWT_SECRET?.trim() ||
     process.env.AUTH_JWT_SECRET?.trim() ||
+    env?.JWT_SECRET?.trim() ||
     process.env.JWT_SECRET?.trim() ||
     '';
 
@@ -67,6 +72,7 @@ function resolveBuilderHandoffSecret() {
 export function signIndobaseBuilderMcpToken(
   payload: IndobaseBuilderHandoffPayload,
   expiresInSeconds: number = 60 * 60 * 12,
+  env?: ServerEnv,
 ): string {
   const now = Math.floor(Date.now() / 1000);
   const tokenPayload: IndobaseBuilderMcpTokenPayload = {
@@ -84,13 +90,16 @@ export function signIndobaseBuilderMcpToken(
   const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const payloadB64 = base64Url(JSON.stringify(tokenPayload));
   const data = `${headerB64}.${payloadB64}`;
-  const signature = crypto.createHmac('sha256', resolveBuilderHandoffSecret()).update(data).digest();
+  const signature = crypto.createHmac('sha256', resolveBuilderHandoffSecret(env)).update(data).digest();
 
   return `${data}.${base64Url(signature)}`;
 }
 
-export async function verifyIndobaseStudioHandoff(token: string): Promise<IndobaseBuilderHandoffPayload> {
-  const secret = new TextEncoder().encode(resolveBuilderHandoffSecret());
+export async function verifyIndobaseStudioHandoff(
+  token: string,
+  env?: ServerEnv,
+): Promise<IndobaseBuilderHandoffPayload> {
+  const secret = new TextEncoder().encode(resolveBuilderHandoffSecret(env));
   const { payload } = await jwtVerify(token, secret, {
     algorithms: ['HS256'],
     audience: 'indobase-builder',
@@ -99,8 +108,11 @@ export async function verifyIndobaseStudioHandoff(token: string): Promise<Indoba
   return handoffSchema.parse(payload) as IndobaseBuilderHandoffPayload;
 }
 
-export async function verifyIndobaseBuilderMcpToken(token: string): Promise<IndobaseBuilderMcpTokenPayload> {
-  const secret = new TextEncoder().encode(resolveBuilderHandoffSecret());
+export async function verifyIndobaseBuilderMcpToken(
+  token: string,
+  env?: ServerEnv,
+): Promise<IndobaseBuilderMcpTokenPayload> {
+  const secret = new TextEncoder().encode(resolveBuilderHandoffSecret(env));
   const { payload } = await jwtVerify(token, secret, {
     algorithms: ['HS256'],
     audience: 'indobase-builder-mcp',

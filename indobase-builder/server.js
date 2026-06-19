@@ -1,5 +1,6 @@
 import { createRequestHandler } from '@remix-run/node';
 import { Buffer } from 'node:buffer';
+import process from 'node:process';
 import mime from 'mime';
 import { createReadStream, promises as fs } from 'node:fs';
 import http from 'node:http';
@@ -109,6 +110,14 @@ async function sendWebResponse(res, response) {
   });
 }
 
+// Remix Cloudflare builds polyfill `process.env` as an empty object in SSR bundles.
+// Merge the real Node env before each request so server loaders can read secrets.
+function mergeNodeProcessEnv() {
+  if (globalThis.process?.env) {
+    Object.assign(globalThis.process.env, process.env);
+  }
+}
+
 const serverBuild = await loadServerBuild();
 const requestHandler = createRequestHandler(serverBuild, mode);
 
@@ -125,6 +134,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const request = createWebRequest(req);
+    mergeNodeProcessEnv();
     const response = await requestHandler(request, {
       cloudflare: {
         env: process.env,

@@ -80,6 +80,17 @@ describe('indobase handoff', () => {
     });
   });
 
+  it('verifies Studio-signed handoff tokens from Remix load context env', async () => {
+    const secret = 'super-secret-builder-token-with-at-least-32-characters';
+    vi.unstubAllEnvs();
+    delete process.env.BUILDER_HANDOFF_SECRET;
+
+    const token = createStudioStyleToken(payload, secret);
+    const verified = await verifyIndobaseStudioHandoff(token, { BUILDER_HANDOFF_SECRET: secret });
+
+    expect(verified.project_ref).toBe('proj_123');
+  });
+
   it('verifies Studio-signed handoff tokens', async () => {
     const secret = 'super-secret-builder-token-with-at-least-32-characters';
     vi.stubEnv('BUILDER_HANDOFF_SECRET', secret);
