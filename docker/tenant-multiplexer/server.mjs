@@ -17,43 +17,32 @@ const ROUTES_FILE =
 const UPSTREAM_HOST = (process.env.TRAEFIK_UPSTREAM_HOST || '172.17.0.1').trim()
 const RELOAD_POLL_MS = Number(process.env.SHARED_GATEWAY_ROUTES_POLL_MS || '5000')
 
-type TenantRoute = {
-  ref: string
-  rest: number
-  auth: number
-  storage: number
-  realtime: number
-  functions: number
-  site?: number
-}
-
-type RouteMap = Record<string, Omit<TenantRoute, 'ref'>>
-
-let routeMap: RouteMap = {}
+/** @type {Record<string, { rest: number, auth: number, storage: number, realtime: number, functions: number, site?: number }>} */
+let routeMap = {}
 let lastMtime = 0
 
-function loadRoutes(): void {
+function loadRoutes() {
   try {
     const stat = fs.statSync(ROUTES_FILE)
     if (stat.mtimeMs <= lastMtime && Object.keys(routeMap).length > 0) return
     lastMtime = stat.mtimeMs
     const raw = fs.readFileSync(ROUTES_FILE, 'utf8')
-    const parsed = JSON.parse(raw) as RouteMap
+    const parsed = JSON.parse(raw)
     routeMap = parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     if (Object.keys(routeMap).length === 0) routeMap = {}
   }
 }
 
-function resolveRef(req: http.IncomingMessage): string | null {
+function resolveRef(req) {
   const headerRef = req.headers['x-project-ref']
   if (typeof headerRef === 'string' && headerRef.trim()) return headerRef.trim().toLowerCase()
 
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString()
-  const hostname = host.split(',')[0]!.split(':')[0]!.trim().toLowerCase()
+  const hostname = host.split(',')[0].split(':')[0].trim().toLowerCase()
   const match = hostname.match(/^([a-z0-9-]+)\./)
   if (!match) return null
-  const label = match[1]!
+  const label = match[1]
   const reserved = new Set([
     'api',
     'studio',
@@ -71,10 +60,7 @@ function resolveRef(req: http.IncomingMessage): string | null {
   return label
 }
 
-function upstreamForPath(
-  ref: string,
-  path: string
-): { target: string; stripPrefix?: string } | null {
+function upstreamForPath(ref, path) {
   const routes = routeMap[ref]
   if (!routes) return null
 
@@ -105,7 +91,7 @@ const proxy = httpProxy.createProxyServer({
   xfwd: true,
 })
 
-proxy.on('error', (err, req, res) => {
+proxy.on('error', (err, _req, res) => {
   const message = err instanceof Error ? err.message : 'proxy error'
   if (res && 'writeHead' in res && !res.headersSent) {
     res.writeHead(502, { 'content-type': 'application/json; charset=utf-8' })
