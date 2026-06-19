@@ -98,6 +98,12 @@ jobs:
           cache-from: type=gha,scope=ind-repo-provisioner-v1
           cache-to: type=gha,mode=max,scope=ind-repo-provisioner-v1
 
+      - name: Free runner disk before Builder image
+        run: |
+          docker system prune -af || true
+          docker builder prune -af || true
+          df -h /
+
       - name: Build and push Indobase Builder (linux/amd64)
         uses: docker/build-push-action@v5
         with:
