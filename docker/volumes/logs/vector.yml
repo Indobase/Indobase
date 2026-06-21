@@ -88,13 +88,19 @@ transforms:
     inputs:
       - kong_logs
     source: |-
+      # Skip shared-gateway requests with no tenant attribution.
+      ref = .metadata.project_ref
+      if ref == null { abort }
+      ref = string!(ref)
+      if ref == "" || ref == "-" { abort }
+
       # Shape event keys to match `saas.usage_events` columns for Vector's `postgres` sink.
       .event_id = uuid_v4()
       .occurred_at = .timestamp
-      .project_ref = string!(.metadata.project_ref)
-      .host = string!(.metadata.request.host)
-      .method = string!(.metadata.request.method)
-      .path = string!(.metadata.request.path)
+      .project_ref = ref
+      .host = string(.metadata.request.host) ?? ""
+      .method = string(.metadata.request.method) ?? ""
+      .path = string(.metadata.request.path) ?? ""
       .status_code = to_int(.metadata.response.status_code) ?? null
       .bytes_sent = to_int(.metadata.response.bytes_sent) ?? null
       .request_time_s = to_float(.metadata.response.request_time_s) ?? null

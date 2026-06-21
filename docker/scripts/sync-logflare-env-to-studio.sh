@@ -25,6 +25,10 @@ get_env() {
 
 LOGFLARE_PUBLIC="$(get_env LOGFLARE_PUBLIC_ACCESS_TOKEN)"
 LOGFLARE_PRIVATE="$(get_env LOGFLARE_PRIVATE_ACCESS_TOKEN)"
+PG_META_CRYPTO="$(get_env CRYPTO_KEY)"
+if [[ -z "$PG_META_CRYPTO" ]]; then
+  PG_META_CRYPTO="$(get_env PG_META_CRYPTO_KEY)"
+fi
 RAW_LOGFLARE_URL="${LOGFLARE_URL:-$(get_env LOGFLARE_URL)}"
 # Self-hosted Indobase: always use the analytics container, never Logflare Cloud ingestion URLs.
 if [[ -z "$RAW_LOGFLARE_URL" || "$RAW_LOGFLARE_URL" == *logflare.app* || "$RAW_LOGFLARE_URL" == *source=* ]]; then
@@ -49,14 +53,25 @@ if [[ -z "$STUDIO_SVC" ]]; then
 fi
 
 echo "Updating $STUDIO_SVC Logflare env (LOGFLARE_URL=$LOGFLARE_URL)…"
-docker service update \
-  --env-rm LOGFLARE_URL --env-rm LOGFLARE_PUBLIC_ACCESS_TOKEN --env-rm LOGFLARE_PRIVATE_ACCESS_TOKEN \
-  --env-rm NEXT_PUBLIC_ENABLE_LOGS --env-rm NEXT_ANALYTICS_BACKEND_PROVIDER \
-  --env-add "LOGFLARE_URL=${LOGFLARE_URL}" \
-  --env-add "LOGFLARE_PUBLIC_ACCESS_TOKEN=${LOGFLARE_PUBLIC}" \
-  --env-add "LOGFLARE_PRIVATE_ACCESS_TOKEN=${LOGFLARE_PRIVATE}" \
-  --env-add "NEXT_PUBLIC_ENABLE_LOGS=true" \
-  --env-add "NEXT_ANALYTICS_BACKEND_PROVIDER=postgres" \
-  "$STUDIO_SVC" >/dev/null
+UPDATE_ARGS=(
+  --env-rm LOGFLARE_URL --env-rm LOGFLARE_PUBLIC_ACCESS_TOKEN --env-rm LOGFLARE_PRIVATE_ACCESS_TOKEN
+  --env-rm NEXT_PUBLIC_ENABLE_LOGS --env-rm NEXT_ANALYTICS_BACKEND_PROVIDER
+  --env-add "LOGFLARE_URL=${LOGFLARE_URL}"
+  --env-add "LOGFLARE_PUBLIC_ACCESS_TOKEN=${LOGFLARE_PUBLIC}"
+  --env-add "LOGFLARE_PRIVATE_ACCESS_TOKEN=${LOGFLARE_PRIVATE}"
+  --env-add "NEXT_PUBLIC_ENABLE_LOGS=true"
+  --env-add "NEXT_ANALYTICS_BACKEND_PROVIDER=postgres"
+  --env-add "NEXT_PUBLIC_INDOBASE_SAAS=true"
+)
+if [[ -n "$PG_META_CRYPTO" ]]; then
+  UPDATE_ARGS+=(--env-rm PG_META_CRYPTO_KEY --env-add "PG_META_CRYPTO_KEY=${PG_META_CRYPTO}")
+fi
+docker service update "${UPDATE_ARGS[@]}" "$STUDIO_SVC" >/dev/null
+
+ATTACH_SCRIPT="${INDOBASE_STUDIO_ATTACH_SCRIPT:-/usr/local/bin/indobase-studio-attach-compose-network.sh}"
+if [[ -x "$ATTACH_SCRIPT" ]]; then
+  echo "Re-attaching Studio tasks to compose network (required after Swarm env updates)…"
+  "$ATTACH_SCRIPT" || true
+fi
 
 echo "Done. Verify: curl -sS https://studio.indobase.in/api/health | jq '.checks.logflare'"

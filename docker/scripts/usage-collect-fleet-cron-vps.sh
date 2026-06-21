@@ -39,7 +39,7 @@ mapfile -t refs < <(
   docker exec indobase-db psql -U postgres -d postgres -tA -c "
     select ref from saas.projects
     where coalesce(is_branch, false) = false
-      and coalesce(trim(connection_string_enc), '') <> ''
+      and status = 'ACTIVE_HEALTHY'
     order by ref
   " 2>/dev/null
 )

@@ -36,3 +36,16 @@ select
 from saas.usage_events
 group by 1, 2;
 
+-- Point-in-time snapshots (Studio cron / usage-collect) for storage + database size charts.
+create table if not exists saas.usage_daily_metrics (
+  day date not null,
+  project_ref text not null,
+  metric text not null,
+  value_bytes bigint not null default 0,
+  collected_at timestamptz not null default now(),
+  primary key (day, project_ref, metric)
+);
+
+create index if not exists usage_daily_metrics_project_ref_day_idx
+  on saas.usage_daily_metrics (project_ref, day desc);
+

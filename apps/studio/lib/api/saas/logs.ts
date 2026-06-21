@@ -7,6 +7,7 @@ import {
   isUsageAnalyticsEndpoint,
   mapAnalyticsQueryParams,
 } from './analyticsUsage'
+import { resolveLogflareProjectRef } from './project-database-url'
 import { WrappedResult } from './types'
 import { assertSaaSBackend } from './util'
 import assert from 'node:assert'
@@ -42,8 +43,9 @@ export async function retrieveAnalyticsData({
   }
 
   const mappedParams = mapAnalyticsQueryParams(params)
+  const logflareProject = await resolveLogflareProjectRef(projectRef)
   const url = new URL(`${PROJECT_ANALYTICS_URL}endpoints/query/${name}`)
-  url.searchParams.set('project', projectRef)
+  url.searchParams.set('project', logflareProject)
 
   Object.entries(mappedParams).forEach(([key, value]) => {
     if (value !== undefined) {
