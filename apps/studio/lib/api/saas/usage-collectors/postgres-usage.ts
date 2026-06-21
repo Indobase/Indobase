@@ -1,19 +1,31 @@
-import { Client } from 'pg'
-
+import { executeQuery } from '../query'
+import { encryptedConnectionForPgMeta } from '../util'
 import { resolveProjectDatabaseUrl } from '../project-database-url'
 
-export async function collectProjectDatabaseBytes(projectRef: string): Promise<number | null> {
-  const normalized = await resolveProjectDatabaseUrl(projectRef)
-  if (!normalized) return null
+async function queryProjectDatabase<T>(
+  projectRef: string,
+  sql: string,
+  parameters: unknown[] = []
+): Promise<T[] | null> {
+  const dbUrl = await resolveProjectDatabaseUrl(projectRef)
+  if (!dbUrl) return null
 
-  const client = new Client({ connectionString: normalized })
-  await client.connect()
-  try {
-    const res = await client.query<{ size: string }>(
-      `select pg_database_size(current_database())::text as size`
-    )
-    return parseInt(res.rows[0]?.size ?? '0', 10) || 0
-  } finally {
-    await client.end()
-  }
+  const result = await executeQuery<T>({
+    query: sql,
+    parameters,
+    headers: {
+      'x-connection-encrypted': encryptedConnectionForPgMeta(dbUrl),
+    },
+  })
+  if (result.error) throw result.error
+  return result.data ?? null
+}
+
+export async function collectProjectDatabaseBytes(projectRef: string): Promise<number | null> {
+  const rows = await queryProjectDatabase<{ size: string }>(
+    projectRef,
+    `select pg_database_size(current_database())::text as size`
+  )
+  if (!rows?.[0]) return null
+  return parseInt(rows[0].size ?? '0', 10) || 0
 }
