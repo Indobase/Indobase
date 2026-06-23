@@ -13,7 +13,7 @@ import {
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
 import { GOTRUE_ERRORS } from './constants'
 
-const UNAUTH_ROUTES = [
+export const UNAUTH_ROUTES = [
   '/sign-in',
   '/sign-in-mfa',
   '/sign-in-sso',

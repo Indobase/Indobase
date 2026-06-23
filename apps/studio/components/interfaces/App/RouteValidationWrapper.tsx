@@ -5,6 +5,7 @@ import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
 import useLatest from 'hooks/misc/useLatest'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
+import { UNAUTH_ROUTES } from 'lib/auth'
 import { BASE_PATH } from 'lib/constants'
 import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect } from 'react'
@@ -31,19 +32,13 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     ? `/org/${lastVisitedOrganization}`
     : '/organizations'
 
-  const excemptUrls: string[] = [
-    '/new/[slug]',
-    '/join',
-    '/sign-in',
-    '/sign-up',
-    '/sign-in-sso',
-    '/sign-in-mfa',
-    '/sign-in-partner',
-    '/sign-in-fly-tos',
-  ]
+  const excemptUrls: string[] = ['/new/[slug]', '/join']
 
   function isExceptUrl() {
-    return excemptUrls.includes(router?.pathname)
+    const pathname = router?.pathname
+    if (!pathname) return false
+    if (excemptUrls.includes(pathname)) return true
+    return UNAUTH_ROUTES.some((route) => pathname.startsWith(route))
   }
 
   const { isError: isErrorProject, error: projectDetailError } = useProjectDetailQuery(
@@ -78,14 +73,6 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
 
     const asPath = router.asPath ?? ''
     const dashboardPrefix = asPath.startsWith('/dashboard') ? '/dashboard' : ''
-
-    if (
-      router.pathname === '/sign-in' ||
-      router.pathname === '/sign-up' ||
-      router.pathname.startsWith('/sign-in')
-    ) {
-      return
-    }
 
     let pathname = location.pathname
     if (BASE_PATH) pathname = pathname.replace(BASE_PATH, '')
