@@ -2,8 +2,11 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { EmailOtpType } from '@indobaseinc/indobase-js'
-import { BASE_PATH } from 'lib/constants'
+import {
+  readAuthConfirmTokenHash,
+  readAuthConfirmType,
+  resolveAuthConfirmNextPath,
+} from 'lib/auth-confirm-params'
 import { auth } from 'lib/gotrue'
 import type { NextPageWithLayout } from 'types'
 
@@ -18,15 +21,13 @@ const AuthConfirmPage: NextPageWithLayout = () => {
   useEffect(() => {
     if (!router.isReady) return
 
-    const token_hash = typeof router.query.token_hash === 'string' ? router.query.token_hash : ''
-    const type = typeof router.query.type === 'string' ? (router.query.type as EmailOtpType) : null
-    const nextRaw = typeof router.query.next === 'string' ? router.query.next : ''
-    const next =
-      nextRaw && nextRaw.startsWith('/') && !nextRaw.includes('://')
-        ? nextRaw
-        : type === 'recovery'
-          ? `${BASE_PATH}/reset-password`
-          : `${BASE_PATH}/organizations`
+    const token_hash = readAuthConfirmTokenHash(router.query)
+    const type = readAuthConfirmType(router.query)
+    const next = resolveAuthConfirmNextPath(
+      router.query,
+      type,
+      typeof window !== 'undefined' ? window.location.origin : ''
+    )
 
     if (!token_hash || !type) {
       setMessage('Invalid or expired link.')

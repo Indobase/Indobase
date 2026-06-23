@@ -236,6 +236,16 @@ services:
     expose:
       - "8080"
 
+  templates-server:
+    container_name: indobase-templates-server
+    image: caddy:2-alpine
+    restart: unless-stopped
+    command: ['caddy', 'file-server', '-r', '/templates', '--listen', ':80']
+    volumes:
+      - ./volumes/templates:/templates:ro
+    networks:
+      - default
+
   auth:
     container_name: indobase-auth
     image: supabase/gotrue:v2.186.0
@@ -259,6 +269,8 @@ services:
         condition: service_healthy
       mail:
         condition: service_healthy
+      templates-server:
+        condition: service_started
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
@@ -305,7 +317,16 @@ services:
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
       GOTRUE_MAILER_OTP_LENGTH: ${MAILER_OTP_LENGTH:-6}
       GOTRUE_MAILER_OTP_EXP: ${MAILER_OTP_EXP:-3600}
-      GOTRUE_MAILER_TEMPLATES_RECOVERY: ${MAILER_TEMPLATES_RECOVERY:-/auth/recovery-email.html}
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: ${MAILER_TEMPLATES_CONFIRMATION:-http://indobase-templates-server/confirmation.html}
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: ${MAILER_TEMPLATES_RECOVERY:-http://indobase-templates-server/recovery.html}
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${MAILER_TEMPLATES_MAGIC_LINK:-http://indobase-templates-server/magic-link.html}
+      GOTRUE_MAILER_TEMPLATES_INVITE: ${MAILER_TEMPLATES_INVITE:-http://indobase-templates-server/invite.html}
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: ${MAILER_TEMPLATES_EMAIL_CHANGE:-http://indobase-templates-server/email-change.html}
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: ${MAILER_SUBJECTS_CONFIRMATION:-Confirm your Indobase account}
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: ${MAILER_SUBJECTS_RECOVERY:-Reset your Indobase password}
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: ${MAILER_SUBJECTS_MAGIC_LINK:-Your Indobase sign-in link}
+      GOTRUE_MAILER_SUBJECTS_INVITE: ${MAILER_SUBJECTS_INVITE:-You are invited to Indobase}
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: ${MAILER_SUBJECTS_EMAIL_CHANGE:-Confirm your new Indobase email}
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}

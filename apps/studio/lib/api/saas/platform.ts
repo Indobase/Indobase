@@ -3067,6 +3067,16 @@ ${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.go
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html
+      GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Confirm your Indobase account
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset your Indobase password
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Indobase sign-in link
+      GOTRUE_MAILER_SUBJECTS_INVITE: You are invited to Indobase
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Confirm your new Indobase email
       GOTRUE_MAILER_OTP_LENGTH: "6"
       GOTRUE_MAILER_OTP_EXP: "3600"
       GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: "true"

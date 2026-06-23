@@ -119,9 +119,25 @@ replacements = {
     r'GOTRUE_SMTP_ADMIN_EMAIL:.*': f'GOTRUE_SMTP_ADMIN_EMAIL: "{smtp_admin}"',
     r'GOTRUE_SMTP_SENDER_NAME:.*': f'GOTRUE_SMTP_SENDER_NAME: {smtp_sender}',
     r'GOTRUE_MAILER_AUTOCONFIRM:.*': 'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+    r'GOTRUE_MAILER_TEMPLATES_CONFIRMATION:.*': 'GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html',
+    r'GOTRUE_MAILER_TEMPLATES_RECOVERY:.*': 'GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html',
+    r'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK:.*': 'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html',
+    r'GOTRUE_MAILER_TEMPLATES_INVITE:.*': 'GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html',
+    r'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE:.*': 'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html',
 }
 for pat, val in replacements.items():
     text, n = re.subn(pat, val, text, count=1)
+if "GOTRUE_MAILER_TEMPLATES_CONFIRMATION:" not in text and "GOTRUE_MAILER_URLPATHS_CONFIRMATION:" in text:
+    text = text.replace(
+        'GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify',
+        'GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify\n'
+        '      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html\n'
+        '      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html\n'
+        '      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html\n'
+        '      GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html\n'
+        '      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html',
+        1,
+    )
 if "GOTRUE_MAILER_EXTERNAL_HOSTS:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" in text:
     text = text.replace(
         'GOTRUE_MAILER_AUTOCONFIRM: "false"',

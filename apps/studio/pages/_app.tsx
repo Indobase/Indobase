@@ -86,15 +86,9 @@ const FeatureFlagProviderWithOrgContext = ({
 }
 
 loader.config({
-  // [Joshen] Attempt for offline support/bypass ISP issues is to store the assets required for monaco
-  // locally. We're however, only storing the assets which we need (based on what the network tab loads
-  // while using monaco). If we end up facing more effort trying to maintain this, probably to either
-  // use cloudflare or find some way to pull all the files from a CDN via a CLI, rather than tracking individual files
-  // The alternative was to import * as monaco from 'monaco-editor' but i couldn't get it working
+  // Self-hosted Monaco avoids CSP blocks on cdnjs in production (see public/monaco-editor).
   paths: {
-    vs: IS_SAAS
-      ? 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs'
-      : `${BASE_PATH}/monaco-editor`,
+    vs: `${BASE_PATH}/monaco-editor`,
   },
 })
 
