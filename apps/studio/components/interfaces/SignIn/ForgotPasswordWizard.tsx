@@ -106,7 +106,14 @@ const ConfirmResetCodeForm = ({ email }: { email: string }) => {
 
         <div className="border-t border-overlay-border" />
 
-        <Button block form="code-input-form" htmlType="submit" size="medium" loading={isLoading}>
+        <Button
+          block
+          form="code-input-form"
+          htmlType="submit"
+          size="large"
+          type="warning"
+          loading={isLoading}
+        >
           Confirm reset code
         </Button>
       </form>
@@ -207,7 +214,8 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
           block
           form="forgot-password-form"
           htmlType="submit"
-          size="medium"
+          size="large"
+          type="warning"
           disabled={isPending}
           loading={isPending}
         >
