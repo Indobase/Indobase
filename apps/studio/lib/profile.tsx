@@ -37,6 +37,9 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
   const router = useRouter()
   const signOut = useSignOut()
 
+  const isPasswordRecoveryRoute =
+    router.pathname === '/reset-password' || router.pathname === '/forgot-password-mfa'
+
   const { mutate: sendEvent } = useSendEventMutation()
   const { mutate: createProfile, isPending: isCreatingProfile } = useProfileCreateMutation({
     onSuccess: () => {
@@ -77,7 +80,7 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     isError,
     isSuccess,
   } = useProfileQuery({
-    enabled: isLoggedIn,
+    enabled: isLoggedIn && !isPasswordRecoveryRoute,
   })
 
   useEffect(() => {
@@ -113,7 +116,9 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     isAuthLoading,
   ])
 
-  const { isInitialLoading: isLoadingPermissions } = usePermissionsQuery({ enabled: isLoggedIn })
+  const { isInitialLoading: isLoadingPermissions } = usePermissionsQuery({
+    enabled: isLoggedIn && !isPasswordRecoveryRoute,
+  })
 
   const value = useMemo(() => {
     const isLoading = isLoadingProfile || isCreatingProfile || isLoadingPermissions
