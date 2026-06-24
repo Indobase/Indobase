@@ -64,7 +64,6 @@ export function SidebarCollapsible({
 export function LogsSidebarMenuV2() {
   const router = useRouter()
   const { ref } = useParams() as { ref?: string }
-  if (!ref) return <GenericSkeletonLoader className="px-4 py-3" />
 
   const unifiedLogsFlagEnabled = useFlag('unifiedLogs')
   const { selectFeaturePreview } = useFeaturePreviewModal()
@@ -92,7 +91,7 @@ export function LogsSidebarMenuV2() {
       projectRef: ref,
     },
     {
-      enabled: enablePgReplicate,
+      enabled: enablePgReplicate && Boolean(ref),
       retry: false,
       refetchOnMount: false,
       refetchOnWindowFocus: false,
@@ -109,6 +108,9 @@ export function LogsSidebarMenuV2() {
     projectRef: ref,
     type: 'log_sql',
   })
+
+  // All hooks above run unconditionally; safe to bail out now (rules-of-hooks).
+  if (!ref) return <GenericSkeletonLoader className="px-4 py-3" />
 
   const savedQueries = [...(savedQueriesRes?.content ?? [])]
     .filter((c) => c.type === 'log_sql')

@@ -19,10 +19,7 @@ const OrgBillingSettings: NextPageWithLayout = () => {
 
   const showBilling = useIsFeatureEnabled('billing:all')
 
-  if (!IS_SAAS) {
-    return <UnknownInterface urlBack={`/org/${slug}`} />
-  }
-
+  // All hooks must run unconditionally before any early return (rules-of-hooks).
   useEffect(() => {
     const allowedValues = ['subscriptionPlan', 'costControl']
     if (panel && typeof panel === 'string' && allowedValues.includes(panel)) {
@@ -31,6 +28,10 @@ const OrgBillingSettings: NextPageWithLayout = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel])
+
+  if (!IS_SAAS) {
+    return <UnknownInterface urlBack={`/org/${slug}`} />
+  }
 
   if (!showBilling) {
     return <UnknownInterface urlBack={`/org/${slug}`} />
