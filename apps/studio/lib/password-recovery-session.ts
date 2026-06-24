@@ -33,7 +33,7 @@ async function validateAccessTokenViaPlatform(accessToken: string): Promise<{
   ok: boolean
   message?: string
 }> {
-  const response = await fetch('/api/platform/auth/session-user', {
+  const response = await fetch('/api/platform/recovery/session-user', {
     method: 'GET',
     headers: { Authorization: `Bearer ${accessToken}` },
   })

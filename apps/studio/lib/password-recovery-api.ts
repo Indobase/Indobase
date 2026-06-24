@@ -12,7 +12,7 @@ type VerifyOtpResult = {
 }
 
 export async function verifyOtpViaPlatform(payload: VerifyOtpPayload): Promise<VerifyOtpResult> {
-  const response = await fetch('/api/platform/auth/verify-otp', {
+  const response = await fetch('/api/platform/recovery/verify-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -51,7 +51,7 @@ export async function completePasswordResetViaPlatform(
   password: string,
   accessToken: string
 ): Promise<{ error: Error | null }> {
-  const response = await fetch('/api/platform/auth/complete-password-reset', {
+  const response = await fetch('/api/platform/recovery/complete-password-reset', {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${accessToken}`,
