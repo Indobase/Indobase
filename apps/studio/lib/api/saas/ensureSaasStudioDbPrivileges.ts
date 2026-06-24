@@ -64,6 +64,8 @@ export const SAAS_STUDIO_DB_PRIVILEGES_SQL = buildSaasStudioDbPrivilegesSql()
 const TRANSIENT_PG_META =
   /tuple concurrently updated|deadlock detected|could not serialize access due to concurrent update/i
 
+let privilegesEnsured = false
+
 async function selectGrantStudioAccessWithRetry(): Promise<void> {
   const maxAttempts = 6
   let lastError: Error | undefined
@@ -102,6 +104,8 @@ async function grantStudioPrivilegesViaSecurityDefinerFn(): Promise<boolean> {
 }
 
 export async function ensureSaasStudioDbPrivileges(): Promise<void> {
+  if (privilegesEnsured) return
+
   const hasFn = await grantStudioPrivilegesViaSecurityDefinerFn()
 
   if (hasFn) {
@@ -112,9 +116,11 @@ export async function ensureSaasStudioDbPrivileges(): Promise<void> {
       const extra = await executeQuery({ query: buildSaasStudioDbPrivilegesSql([rw]) })
       if (extra.error) throw extra.error
     }
+    privilegesEnsured = true
     return
   }
 
   const applied = await executeQuery({ query: buildSaasStudioDbPrivilegesSql() })
   if (applied.error) throw applied.error
+  privilegesEnsured = true
 }

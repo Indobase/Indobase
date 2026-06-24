@@ -46,7 +46,7 @@ Firewall: block public access to port **8081** on the VPS (`ufw deny 8081` or cl
 | Your setup | Use |
 |------------|-----|
 | Studio + meta in same Compose stack | `http://meta:8080` or `http://indobase-meta:8080` |
-| Studio separate Application (split) | `http://172.17.0.1:8081` after compose publishes meta (see above) |
+| Studio separate Application (split) | `http://indobase-meta:8080` after `indobase-studio-attach-compose-network.sh` (preferred). Host gateway `http://172.17.0.1:8081` often **times out** from Swarm overlay networks — avoid unless meta is unreachable by hostname. |
 | Studio cannot resolve `meta` | Join Compose network, or use split host port |
 
 Do **not** use:

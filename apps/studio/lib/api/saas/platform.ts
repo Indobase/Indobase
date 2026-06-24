@@ -273,7 +273,19 @@ function getUsernameFromEmail(email: string) {
   return slugify(base) || `user-${makeRandomString(6).toLowerCase()}`
 }
 
+let ensureSaasTablesPromise: Promise<void> | null = null
+
 export async function ensureSaasTables() {
+  if (!ensureSaasTablesPromise) {
+    ensureSaasTablesPromise = ensureSaasTablesOnce().catch((error) => {
+      ensureSaasTablesPromise = null
+      throw error
+    })
+  }
+  return ensureSaasTablesPromise
+}
+
+async function ensureSaasTablesOnce() {
   // Ensure schema exists before grants: grant_studio_access targets schema saas.
   const ensureSchema = await executeQuery({ query: 'create schema if not exists saas' })
   if (ensureSchema.error) throw ensureSchema.error

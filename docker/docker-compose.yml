@@ -185,6 +185,7 @@ services:
     volumes:
       # https://github.com/Indobase/Indobase/issues/12661
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./volumes/api/kong-render-config.sh:/home/kong/render-config.sh:ro,z
     depends_on:
       analytics:
         condition: service_healthy
@@ -211,8 +212,8 @@ services:
       SITE_URL: ${SITE_URL}
       API_EXTERNAL_URL: ${API_EXTERNAL_URL}
       CORS_TENANT_ORIGIN_REGEX: ${CORS_TENANT_ORIGIN_REGEX:-~^https://[a-z0-9][a-z0-9-]+\.localhost$}
-    # https://unix.stackexchange.com/a/294837
-    entrypoint: bash -c 'set -f; eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml; set +f; /docker-entrypoint.sh kong docker-start'
+    # Substitute $SUPABASE_* / $SITE_URL placeholders without shell eval (eval breaks Lua patterns).
+    entrypoint: bash /home/kong/render-config.sh
 
   mail:
     container_name: indobase-mail

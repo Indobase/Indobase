@@ -51,7 +51,8 @@ plugins:
               end
               local decoded = ngx.decode_base64(payload_b64)
               if decoded then
-                local ref = decoded:match('"project_ref"%s*:%s*"([a-z0-9%-]+)"')
+                -- Single-quoted Lua pattern only: docker-compose envsubst must not see shell `"` here.
+                local ref = decoded:match('project_ref%s*:%s*"?([a-z0-9%-]+)"?')
                 if ref then
                   kong.service.request.set_header('x-project-ref', ref)
                 end

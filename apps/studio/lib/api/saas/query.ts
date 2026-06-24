@@ -92,7 +92,7 @@ export async function executeQuery<T = unknown>({
         'x-connection-encrypted': connectionStringEncrypted,
       }),
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(30_000),
     })
   } catch (error) {
     const cause =
