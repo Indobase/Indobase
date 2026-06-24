@@ -63,6 +63,8 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 WORKDIR /workspace
 RUN pnpm --filter @indobaseinc/shared-types build
 WORKDIR /workspace/apps/studio
+# Bust build-studio GHA cache when the commit changes (ARG does not carry across stages).
+ARG BUILD_SHA=unknown
 RUN pnpm run build
 
 # Final runtime: single Node server (Studio + marketing from public/)
