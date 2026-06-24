@@ -82,8 +82,8 @@ jobs:
             ${{ env.DOCKERHUB_REPO }}:latest
             ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
           # v3 scope: avoid reusing a poisoned build-studio layer from older cache entries
-          cache-from: type=gha,scope=ind-repo-v3
-          cache-to: type=gha,mode=max,scope=ind-repo-v3
+          cache-from: type=gha,scope=ind-repo-v4
+          cache-to: type=gha,mode=max,scope=ind-repo-v4
 
       - name: Build and push data-plane provisioner (linux/amd64)
         uses: docker/build-push-action@v5

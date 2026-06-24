@@ -72,6 +72,8 @@ ENV NODE_ENV=production
 ENV PORT=8080
 # Surfaced at /api/health as `version` so smoke tests can verify the running build matches the commit.
 ARG BUILD_SHA=unknown
+# Write to disk so GHA layer cache cannot serve a stale ENV from an older build.
+RUN printf '%s' "$BUILD_SHA" > /app/BUILD_SHA
 ENV BUILD_SHA=${BUILD_SHA}
 
 # SaaS Studio: default folders so APIs start (override in Dokploy if using volumes)

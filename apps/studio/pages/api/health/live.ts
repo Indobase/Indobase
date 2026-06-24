@@ -1,4 +1,17 @@
+import fs from 'node:fs'
 import type { NextApiRequest, NextApiResponse } from 'next'
+
+function resolveBuildSha(): string {
+  for (const path of ['/app/BUILD_SHA', '/srv/studio/BUILD_SHA']) {
+    try {
+      const value = fs.readFileSync(path, 'utf8').trim()
+      if (value) return value
+    } catch {
+      // ignore missing file
+    }
+  }
+  return process.env.BUILD_SHA || 'unknown'
+}
 
 /**
  * Liveness probe for deploy smoke tests and load balancers.
@@ -20,6 +33,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     status: 'ok',
     service: 'studio',
     timestamp: new Date().toISOString(),
-    version: process.env.BUILD_SHA || 'unknown',
+    version: resolveBuildSha(),
   })
 }
