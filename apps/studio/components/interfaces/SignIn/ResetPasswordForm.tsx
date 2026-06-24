@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useAuth } from 'common'
 import { Eye, EyeOff } from 'lucide-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -7,7 +8,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { captureCriticalError } from 'lib/error-reporting'
-import { auth, getReturnToPath } from 'lib/gotrue'
+import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
 import {
   Button,
   Form_Shadcn_,
@@ -42,6 +43,7 @@ type FormData = z.infer<typeof passwordSchema>
 
 const ResetPasswordForm = () => {
   const router = useRouter()
+  const { refreshSession } = useAuth()
   const [showConditions, setShowConditions] = useState(false)
   const [passwordHidden, setPasswordHidden] = useState(true)
 
@@ -55,6 +57,9 @@ const ResetPasswordForm = () => {
 
   const onResetPassword = async (data: FormData) => {
     const toastId = toast.loading('Saving password...')
+
+    await refreshSession()
+
     const { error } = await auth.updateUser({ password: data.password })
 
     if (!error) {
@@ -64,7 +69,18 @@ const ResetPasswordForm = () => {
       await auth.signOut({ scope: 'others' })
       await router.push(getReturnToPath('/organizations'))
     } else {
-      toast.error(`Failed to save password: ${error.message}`, { id: toastId })
+      const message = error.message ?? 'Failed to save password'
+      const expiredSession = /invalid authentication credentials/i.test(message)
+
+      if (expiredSession) {
+        await auth.signOut({ scope: 'local' })
+        toast.error('Your reset link expired. Please request a new password reset email.', {
+          id: toastId,
+        })
+        await router.push(buildPathWithParams('/forgot-password'))
+      } else {
+        toast.error(`Failed to save password: ${message}`, { id: toastId })
+      }
       captureCriticalError(error, 'reset password')
     }
   }

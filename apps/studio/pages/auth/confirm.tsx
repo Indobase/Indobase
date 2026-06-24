@@ -46,6 +46,13 @@ const AuthConfirmPage: NextPageWithLayout = () => {
         return
       }
 
+      const {
+        data: { session },
+      } = await auth.getSession()
+      if (!session) {
+        await auth.refreshSession()
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 500))
       if (cancelled) return
 
