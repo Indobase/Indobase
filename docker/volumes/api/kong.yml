@@ -323,6 +323,28 @@ services:
             - anon
             - admin
 
+  - name: storage-s3-admin
+    _comment: 'Indobase Storage S3 admin: /s3/* -> http://storage:5000/s3/*'
+    url: http://indobase-storage:5000/s3
+    routes:
+      - name: storage-s3-all
+        strip_path: true
+        paths:
+          - /s3/
+    plugins:
+      - name: cors
+        config:
+          <<: *indobase_cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
+            - admin
+
   ## Edge Functions routes
   - name: functions-v1
     _comment: 'Indobase Edge Functions: /functions/v1/* -> http://functions:9000/*'

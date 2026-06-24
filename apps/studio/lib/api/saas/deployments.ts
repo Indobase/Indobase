@@ -800,6 +800,20 @@ export async function createProjectDeployment({
     targetType: 'deployment',
   })
 
+  if (deployment.status === 'requested') {
+    try {
+      await processProjectDeploymentBatch({ limit: 1, workerId: 'studio_inline' })
+      const refreshed = await getProjectDeployment({
+        claims,
+        deploymentId: deployment.id,
+        ref,
+      })
+      if (refreshed) return refreshed
+    } catch (error) {
+      console.warn('[deployments] inline process failed:', error)
+    }
+  }
+
   return deployment
 }
 

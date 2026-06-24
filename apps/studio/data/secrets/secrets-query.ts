@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import type { components } from 'data/api'
+import { get, handleError } from 'data/fetchers'
 import type { ResponseError, UseCustomQueryOptions } from 'types'
 import { secretsKeys } from './keys'
 
@@ -10,12 +11,16 @@ export type SecretsVariables = {
 
 export type ProjectSecret = components['schemas']['SecretResponse']
 
-export async function getSecrets({ projectRef }: SecretsVariables, _signal?: AbortSignal) {
+export async function getSecrets({ projectRef }: SecretsVariables, signal?: AbortSignal) {
   if (!projectRef) throw new Error('Project ref is required')
 
-  // Indobase does not use Supabase hosted `/v1/projects/.../secrets`; Edge Function
-  // secrets come from the deploy environment. Return an empty list for the UI.
-  return [] as ProjectSecret[]
+  const { data, error } = await get('/v1/projects/{ref}/secrets', {
+    params: { path: { ref: projectRef } },
+    signal,
+  })
+
+  if (error) handleError(error)
+  return (data ?? []) as ProjectSecret[]
 }
 
 export type SecretsData = Awaited<ReturnType<typeof getSecrets>>

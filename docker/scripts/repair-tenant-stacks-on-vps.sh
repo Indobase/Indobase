@@ -305,6 +305,29 @@ PY
     echo "  patched tenant-storage (imgproxy / v1.37.8 / GLOBAL_S3_BUCKET)"
   fi
 
+  if grep -q 'tenant-storage:' "$dir/docker-compose.yml" 2>/dev/null && ! grep -q 'VECTOR_ENABLED:' "$dir/docker-compose.yml" 2>/dev/null; then
+    python3 - "$dir/docker-compose.yml" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+insert = (
+    '      VECTOR_ENABLED: "true"\n'
+    '      VECTOR_BUCKET_PROVIDER: pgvector\n'
+    '      VECTOR_STORE_MIGRATIONS_ENABLED: "true"\n'
+)
+text, n = re.subn(
+    r'(IMGPROXY_URL: http://[^\n]+\n)',
+    r'\1' + insert,
+    text,
+    count=1,
+)
+if n:
+    open(path, "w").write(text)
+    print("changed")
+PY
+    echo "  patched tenant-storage VECTOR env"
+  fi
+
   # Shared tenant_data_plane network: generic tenant-imgproxy DNS hits another project's container.
   local imgproxy_host="tenant-imgproxy-${ref}"
   if grep -q 'IMGPROXY_URL: http://tenant-imgproxy:5001' "$dir/docker-compose.yml" 2>/dev/null; then

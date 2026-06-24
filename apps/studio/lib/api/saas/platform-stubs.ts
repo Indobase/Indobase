@@ -141,7 +141,7 @@ export function getSaasStudioConfigCatFlagValues() {
 export function defaultStorageConfigResponse(): components['schemas']['StorageConfigResponse'] {
   return {
     capabilities: {
-      iceberg_catalog: false,
+      iceberg_catalog: true,
       list_v2: true,
     },
     databasePoolMode: 'transaction',

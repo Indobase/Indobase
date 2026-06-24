@@ -206,6 +206,9 @@ services:
       TENANT_ID: ${projectRef}
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://tenant-imgproxy-${projectRef}:5001
+      VECTOR_ENABLED: "true"
+      VECTOR_BUCKET_PROVIDER: pgvector
+      VECTOR_STORE_MIGRATIONS_ENABLED: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -280,6 +283,10 @@ http:
       stripPrefix:
         prefixes:
           - "/storage/v1"
+    tenant-${projectRef}-s3-strip:
+      stripPrefix:
+        prefixes:
+          - "/s3"
     tenant-${projectRef}-realtime-strip:
       stripPrefix:
         prefixes:
@@ -309,6 +316,13 @@ http:
       priority: 100
       middlewares:
         - tenant-${projectRef}-storage-strip
+      service: tenant-${projectRef}-storage
+      entryPoints: [web, websecure]
+    tenant-${projectRef}-s3:
+      rule: Host(\`${projectRef}.${publicDomain}\`) && PathPrefix(\`/s3\`)
+      priority: 100
+      middlewares:
+        - tenant-${projectRef}-s3-strip
       service: tenant-${projectRef}-storage
       entryPoints: [web, websecure]
     tenant-${projectRef}-realtime:

@@ -473,6 +473,9 @@ services:
       REGION: ${REGION}
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://indobase-imgproxy:5001
+      VECTOR_ENABLED: "true"
+      VECTOR_BUCKET_PROVIDER: pgvector
+      VECTOR_STORE_MIGRATIONS_ENABLED: "true"
       # S3 protocol endpoint configuration
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
