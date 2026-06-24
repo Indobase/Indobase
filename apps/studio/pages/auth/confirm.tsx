@@ -8,6 +8,8 @@ import {
   resolveAuthConfirmNextPath,
 } from 'lib/auth-confirm-params'
 import { auth } from 'lib/gotrue'
+import { verifyOtpViaPlatform } from 'lib/password-recovery-api'
+import { markPasswordRecoverySession } from 'lib/password-recovery-session'
 import type { NextPageWithLayout } from 'types'
 
 /**
@@ -37,13 +39,17 @@ const AuthConfirmPage: NextPageWithLayout = () => {
     let cancelled = false
 
     ;(async () => {
-      const { error } = await auth.verifyOtp({ type, token_hash })
+      const { error } = await verifyOtpViaPlatform({ type, token_hash })
       if (cancelled) return
 
       if (error) {
         setMessage(error.message)
         toast.error(error.message)
         return
+      }
+
+      if (type === 'recovery') {
+        markPasswordRecoverySession()
       }
 
       const {

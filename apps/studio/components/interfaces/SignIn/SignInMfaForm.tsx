@@ -15,6 +15,7 @@ import { useMfaChallengeAndVerifyMutation } from 'data/profile/mfa-challenge-and
 import { useMfaListFactorsQuery } from 'data/profile/mfa-list-factors-query'
 import { useSignOut } from 'lib/auth'
 import { getReturnToPath } from 'lib/gotrue'
+import { markPasswordRecoverySession } from 'lib/password-recovery-session'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
@@ -56,6 +57,7 @@ export const SignInMfaForm = ({ context = 'sign-in' }: SignInMfaFormProps) => {
       await queryClient.resetQueries()
 
       if (context === 'forgot-password') {
+        markPasswordRecoverySession()
         router.push({
           pathname: '/reset-password',
           query: router.query,

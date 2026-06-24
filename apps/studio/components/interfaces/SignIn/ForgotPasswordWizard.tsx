@@ -9,6 +9,8 @@ import * as z from 'zod'
 import { useResetPasswordMutation } from 'data/misc/reset-password-mutation'
 import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { auth } from 'lib/gotrue'
+import { verifyOtpViaPlatform } from 'lib/password-recovery-api'
+import { markPasswordRecoverySession } from 'lib/password-recovery-session'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
@@ -48,10 +50,11 @@ const ConfirmResetCodeForm = ({ email }: { email: string }) => {
 
   const onCodeEntered: SubmitHandler<CodeFormData> = async (data) => {
     setIsLoading(true)
-    const {
-      data: { user },
-      error,
-    } = await auth.verifyOtp({ email, token: data.code, type: 'recovery' })
+    const { user, error } = await verifyOtpViaPlatform({
+      email,
+      token: data.code,
+      type: 'recovery',
+    })
 
     // This fixes a race condition where the user is redirected to the reset password page without the session being set
     // which causes the user to be redirected to /sign-in page even though he's signed in
@@ -61,6 +64,8 @@ const ConfirmResetCodeForm = ({ email }: { email: string }) => {
       setIsLoading(false)
       toast.error(`Failed to verify code: ${error.message}`)
     } else {
+      markPasswordRecoverySession()
+
       if (user?.factors?.length) {
         await router.push({
           pathname: '/forgot-password-mfa',

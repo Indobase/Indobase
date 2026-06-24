@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useAuth } from 'common'
 import { Eye, EyeOff } from 'lucide-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -9,6 +8,11 @@ import { z } from 'zod'
 
 import { captureCriticalError } from 'lib/error-reporting'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
+import { completePasswordResetViaPlatform } from 'lib/password-recovery-api'
+import {
+  clearPasswordRecoverySession,
+  ensureActiveRecoverySession,
+} from 'lib/password-recovery-session'
 import {
   Button,
   Form_Shadcn_,
@@ -21,14 +25,12 @@ import {
 
 import PasswordConditionsHelper from './PasswordConditionsHelper'
 
-// Convert the existing yup passwordSchema to Zod
 const passwordSchema = z.object({
   password: z
     .string()
     .min(1, 'Password is required')
     .max(72, 'Password cannot exceed 72 characters')
     .refine((password) => {
-      // Basic password validation - you can enhance this based on your requirements
       const hasUppercase = /[A-Z]/.test(password)
       const hasLowercase = /[a-z]/.test(password)
       const hasNumber = /[0-9]/.test(password)
@@ -43,7 +45,6 @@ type FormData = z.infer<typeof passwordSchema>
 
 const ResetPasswordForm = () => {
   const router = useRouter()
-  const { refreshSession } = useAuth()
   const [showConditions, setShowConditions] = useState(false)
   const [passwordHidden, setPasswordHidden] = useState(true)
 
@@ -58,22 +59,47 @@ const ResetPasswordForm = () => {
   const onResetPassword = async (data: FormData) => {
     const toastId = toast.loading('Saving password...')
 
-    await refreshSession()
+    const sessionResult = await ensureActiveRecoverySession({ allowInlineRecovery: true })
+    if (!sessionResult.ok) {
+      await auth.signOut({ scope: 'local' })
+      toast.error(
+        sessionResult.message ??
+          'Your reset link expired. Please request a new password reset email.',
+        { id: toastId }
+      )
+      await router.push(buildPathWithParams('/forgot-password'))
+      return
+    }
 
-    const { error } = await auth.updateUser({ password: data.password })
+    const {
+      data: { session },
+    } = await auth.getSession()
+
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      await auth.signOut({ scope: 'local' })
+      toast.error('Your reset link expired. Please request a new password reset email.', {
+        id: toastId,
+      })
+      await router.push(buildPathWithParams('/forgot-password'))
+      return
+    }
+
+    const { error } = await completePasswordResetViaPlatform(data.password, accessToken)
 
     if (!error) {
+      clearPasswordRecoverySession()
       toast.success('Password saved successfully!', { id: toastId })
 
-      // logout all other sessions after changing password
       await auth.signOut({ scope: 'others' })
       await router.push(getReturnToPath('/organizations'))
     } else {
       const message = error.message ?? 'Failed to save password'
-      const expiredSession = /invalid authentication credentials/i.test(message)
+      const expiredSession = /invalid authentication credentials|jwt|session/i.test(message)
 
       if (expiredSession) {
         await auth.signOut({ scope: 'local' })
+        clearPasswordRecoverySession()
         toast.error('Your reset link expired. Please request a new password reset email.', {
           id: toastId,
         })

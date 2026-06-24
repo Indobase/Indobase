@@ -6,12 +6,30 @@ export const auth = gotrueClient
 
 export const DEFAULT_FALLBACK_PATH = '/organizations'
 
+const AUTH_FLOW_PATHS = new Set([
+  '/sign-in',
+  '/sign-in-mfa',
+  '/sign-in-sso',
+  '/sign-in-partner',
+  '/sign-in-fly-tos',
+  '/sign-up',
+  '/forgot-password',
+  '/forgot-password-mfa',
+  '/reset-password',
+  '/auth/confirm',
+])
+
 export const validateReturnTo = (
   returnTo: string,
   fallback: string = DEFAULT_FALLBACK_PATH
 ): string => {
   // Block protocol-relative URLs and external URLs
   if (returnTo.startsWith('//') || returnTo.includes('://')) {
+    return fallback
+  }
+
+  const pathOnly = returnTo.split(/[?#]/, 1)[0]
+  if (AUTH_FLOW_PATHS.has(pathOnly)) {
     return fallback
   }
 
