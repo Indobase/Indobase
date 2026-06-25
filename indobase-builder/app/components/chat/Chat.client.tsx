@@ -112,6 +112,13 @@ export const ChatImpl = memo(
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
+    useEffect(() => {
+      if (!chatStarted) {
+        return;
+      }
+
+      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer());
+    }, [chatStarted]);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [imageDataList, setImageDataList] = useState<string[]>([]);
     const [searchParams, setSearchParams] = useSearchParams();

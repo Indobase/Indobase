@@ -74,12 +74,28 @@ export async function loader({
       });
     }
   } else {
-    // Update all models
-    modelList = await llmManager.updateModelList({
-      apiKeys,
-      providerSettings,
-      serverEnv: context.cloudflare?.env,
-    });
+    const fastBoot = context.cloudflare?.env?.BUILDER_FAST_MODEL_BOOT === 'true';
+
+    if (fastBoot) {
+      const openRouter = llmManager.getProvider('OpenRouter');
+
+      if (openRouter) {
+        modelList = await llmManager.getModelListFromProvider(openRouter, {
+          apiKeys,
+          providerSettings,
+          serverEnv: context.cloudflare?.env,
+        });
+      } else {
+        modelList = llmManager.getStaticModelList();
+      }
+    } else {
+      // Update all models
+      modelList = await llmManager.updateModelList({
+        apiKeys,
+        providerSettings,
+        serverEnv: context.cloudflare?.env,
+      });
+    }
   }
 
   return json<ModelsResponse>({

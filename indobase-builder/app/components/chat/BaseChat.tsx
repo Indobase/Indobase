@@ -192,7 +192,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [isListening, setIsListening] = useState(false);
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
-    const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
+    const [isModelLoading, setIsModelLoading] = useState<string | undefined>(undefined);
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
     const supabaseConn = useStore(supabaseConnection);
@@ -254,9 +254,12 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     }, []);
 
     useEffect(() => {
-      if (typeof window !== 'undefined') {
-        setIsModelLoading('all');
-        fetch('/api/models')
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const loadModels = () => {
+        fetch('/api/models/OpenRouter')
           .then((response) => response.json())
           .then((data) => {
             const typedData = data as { modelList: ModelInfo[] };
@@ -268,6 +271,12 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           .finally(() => {
             setIsModelLoading(undefined);
           });
+      };
+
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(loadModels, { timeout: 8000 });
+      } else {
+        window.setTimeout(loadModels, 500);
       }
     }, []);
 
@@ -619,9 +628,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             )}
           </div>
           <ClientOnly>
-            {() => (
-              <Workbench chatStarted={chatStarted} isStreaming={isStreaming} setSelectedElement={setSelectedElement} />
-            )}
+            {() =>
+              chatStarted ? (
+                <Workbench chatStarted={chatStarted} isStreaming={isStreaming} setSelectedElement={setSelectedElement} />
+              ) : null
+            }
           </ClientOnly>
         </div>
       </div>

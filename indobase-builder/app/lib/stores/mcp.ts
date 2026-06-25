@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { MCPConfig, MCPServerTools } from '~/lib/services/mcpService';
 import { mergeMcpConfigWithIndobase } from '~/lib/indobase/mcp';
+import { scheduleIdleWork } from '~/utils/scheduleIdleWork';
 
 const MCP_SETTINGS_KEY = 'mcp_settings';
 const isBrowser = typeof window !== 'undefined';
@@ -40,6 +41,14 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
   error: null,
   isUpdatingConfig: false,
   initialize: async () => {
+    if (get().isInitialized) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      scheduleIdleWork(() => resolve(), 5000);
+    });
+
     if (get().isInitialized) {
       return;
     }

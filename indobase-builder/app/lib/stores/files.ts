@@ -21,6 +21,7 @@ import {
   clearCache,
 } from '~/lib/persistence/lockedFiles';
 import { getCurrentChatId } from '~/utils/fileLocks';
+import { scheduleIdleWork } from '~/utils/scheduleIdleWork';
 
 const logger = createScopedLogger('FilesStore');
 
@@ -121,7 +122,11 @@ export class FilesStore {
       observer.observe(document, { subtree: true, childList: true });
     }
 
-    this.#init();
+    scheduleIdleWork(() => {
+      this.#init().catch((error) => {
+        logger.error('Failed to initialize FilesStore', error);
+      });
+    });
   }
 
   /**
