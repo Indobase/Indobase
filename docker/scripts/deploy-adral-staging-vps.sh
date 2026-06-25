@@ -17,6 +17,7 @@ REMOTE_DIR="/opt/adral-staging-build"
 SERVICE_NAME="adral-staging"
 IMAGE="adral-staging:latest"
 TENANT_COMPOSE="/var/lib/docker/volumes/indobase-backend-bmqhan_tenants-data/_data/${REF}/docker-compose.yml"
+VPS_IP="${VPS_IP:-187.77.30.165}"
 
 [[ -d "$ADRAL_REPO" ]] || { echo "ADRAL_REPO not found: $ADRAL_REPO"; exit 1; }
 
@@ -41,6 +42,7 @@ open('/opt/adral-staging.runtime.env', 'w').write(
     f'VITE_SUPABASE_URL={staging}\\n'
     f'VITE_SUPABASE_ANON_KEY={anon.group(1)}\\n'
     f'INDOBASE_TENANT_UPSTREAM_HOST=${REF}.indobase.in\\n'
+    f'INDOBASE_TENANT_UPSTREAM_IP=${VPS_IP}\\n'
 )
 print('wrote /opt/adral-staging.runtime.env')
 PY"
