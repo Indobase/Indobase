@@ -49,6 +49,7 @@ PY"
 
 echo "==> Docker build (may take several minutes)…"
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd '$REMOTE_DIR' && docker build -t '$IMAGE' \
+  --build-arg CACHEBUST=\$(date +%s) \
   --build-arg VITE_BACKEND_URL=https://${STAGING_HOST} \
   --build-arg VITE_BACKEND_ANON_KEY=\$(grep SUPABASE_ANON_KEY '$TENANT_COMPOSE' | head -1 | sed \"s/.*'\\([^']*\\)'.*/\\1/\") \
   --build-arg VITE_SUPABASE_URL=https://${STAGING_HOST} \
