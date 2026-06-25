@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { IS_SAAS, useFlag } from 'common'
 import { useDeploymentCommitQuery } from 'data/utils/deployment-commit-query'
+import { scheduleIdleWork } from 'lib/scheduleIdleWork'
 import { Button, StatusIcon } from 'ui'
 
 const DeployCheckToast = ({ id }: { id: string | number }) => {
@@ -38,9 +39,14 @@ export function useCheckLatestDeploy() {
 
   const [currentCommitTime, setCurrentCommitTime] = useState('')
   const [isToastShown, setIsToastShown] = useState(false)
+  const [checkEnabled, setCheckEnabled] = useState(false)
+
+  useEffect(() => {
+    scheduleIdleWork(() => setCheckEnabled(true))
+  }, [])
 
   const { data: commit } = useDeploymentCommitQuery({
-    enabled: IS_SAAS,
+    enabled: IS_SAAS && checkEnabled,
     staleTime: 1000 * 60 * 10, // 10 minutes
   })
 

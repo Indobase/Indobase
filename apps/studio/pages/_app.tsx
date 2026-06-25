@@ -62,7 +62,7 @@ import { ErrorInfo, useCallback, useEffect, useState, type ComponentProps } from
 import { ErrorBoundary } from 'react-error-boundary'
 import { AiAssistantStateContextProvider } from 'state/ai-assistant-state'
 import type { AppPropsWithLayout } from 'types'
-import { SonnerToaster, TooltipProvider } from 'ui'
+import { LogoLoader, SonnerToaster, TooltipProvider } from 'ui'
 
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
@@ -152,8 +152,6 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
     }
   })()
 
-  if (!isMounted) return null
-
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorBoundaryState} onError={errorBoundaryHandler}>
       <QueryClientProvider client={queryClient}>
@@ -201,7 +199,13 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
                             <CommandProvider>
                               <FeaturePreviewContextProvider>
                                 <MainScrollContainerProvider>
-                                  {getLayout(<Component {...pageProps} />)}
+                                  {isMounted ? (
+                                    getLayout(<Component {...pageProps} />)
+                                  ) : (
+                                    <div className="flex h-screen w-screen items-center justify-center">
+                                      <LogoLoader />
+                                    </div>
+                                  )}
                                 </MainScrollContainerProvider>
                                 <StudioCommandMenu />
                                 <FeaturePreviewModal />

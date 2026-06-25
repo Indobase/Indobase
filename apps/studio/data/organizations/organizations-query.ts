@@ -4,7 +4,6 @@ import { components } from 'api-types'
 import { useIsLoggedIn } from 'common'
 import { get, handleError } from 'data/fetchers'
 import { MANAGED_BY, ManagedBy } from 'lib/constants/infrastructure'
-import { useProfile } from 'lib/profile'
 import type { Organization, ResponseError, UseCustomQueryOptions } from 'types'
 import { organizationKeys } from './keys'
 
@@ -54,14 +53,12 @@ export const useOrganizationsQuery = <TData = OrganizationsData>({
   enabled = true,
   ...options
 }: UseCustomQueryOptions<OrganizationsData, OrganizationsError, TData> = {}) => {
-  const { profile } = useProfile()
   const isLoggedIn = useIsLoggedIn()
-  const readyToFetchOrgs = profile !== undefined
 
   return useQuery<OrganizationsData, OrganizationsError, TData>({
     queryKey: organizationKeys.list(),
     queryFn: ({ signal }) => getOrganizations({ signal }),
-    enabled: enabled && readyToFetchOrgs,
+    enabled: enabled && isLoggedIn,
     ...options,
     staleTime: 30 * 60 * 1000,
   })

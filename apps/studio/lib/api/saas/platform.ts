@@ -2317,7 +2317,9 @@ export async function createProject({
 export async function getProject({ claims, ref }: { claims: Claims; ref: string }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
-  await tryCompleteStuckProvisioningProject({ ref, gotrueId })
+  void tryCompleteStuckProvisioningProject({ ref, gotrueId }).catch((e) => {
+    console.warn('[saas] tryCompleteStuckProvisioningProject background failed for %s: %O', ref, e)
+  })
   void import('./tenant-data-plane-provision')
     .then(({ ensureDataPlaneProvisionedIfMissingForActor }) =>
       ensureDataPlaneProvisionedIfMissingForActor({

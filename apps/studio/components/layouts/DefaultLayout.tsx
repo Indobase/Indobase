@@ -64,10 +64,36 @@ export const DefaultLayout = ({
     setIsMounted(true)
   }, [])
 
-  // This is required to prevent layout shift when rendering resizable panels (they initially render at 50%, then shift
-  // to whatever is specified).
+  // Resizable panels render at 50% before settling; show a stable shell on first paint.
   if (!isMounted) {
-    return null
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <LayoutSidebarProvider>
+          <ProjectContextProvider projectRef={ref}>
+            <BannerStackProvider>
+              <div className="flex flex-col h-screen w-screen">
+                <AppBannerWrapper />
+                <div className="flex-shrink-0">
+                  <MobileNavigationBar hideMobileMenu={hideMobileMenu} />
+                  <LayoutHeader
+                    showProductMenu={showProductMenu}
+                    headerTitle={headerTitle}
+                    backToDashboardURL={
+                      router.pathname.startsWith('/account') ? backToDashboardURL : undefined
+                    }
+                  />
+                </div>
+                <div className="flex flex-1 w-full overflow-y-hidden">
+                  {!router.pathname.startsWith('/account') && <Sidebar />}
+                  <div className="h-full flex-1 overflow-y-auto">{children}</div>
+                </div>
+              </div>
+              <BannerStack />
+            </BannerStackProvider>
+          </ProjectContextProvider>
+        </LayoutSidebarProvider>
+      </SidebarProvider>
+    )
   }
 
   return (

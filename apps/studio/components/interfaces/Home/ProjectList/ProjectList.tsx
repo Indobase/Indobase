@@ -9,7 +9,6 @@ import { useOrgProjectsInfiniteQuery } from 'data/projects/org-projects-infinite
 import { useResourceWarningsQuery } from 'data/usage/resource-warnings-query'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
-import { IS_SAAS } from 'lib/constants'
 import { parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo } from 'react'
 import type { Organization } from 'types'
@@ -87,18 +86,23 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
     useMemo(() => data?.pages.flatMap((page) => page.projects), [data?.pages]) || []
 
   const {
-    isPending: _isLoadingPermissions,
     isError: isErrorPermissions,
     error: permissionsError,
   } = usePermissionsQuery()
-  const { data: resourceWarnings } = useResourceWarningsQuery({ slug })
+  const { data: resourceWarnings } = useResourceWarningsQuery(
+    { slug },
+    { enabled: isSuccessProjects }
+  )
 
-  // Move all hooks to the top to comply with Rules of Hooks
-  const { data: integrations } = useOrgIntegrationsQuery({ orgSlug: organization?.slug })
-  const { data: connections } = useGitHubConnectionsQuery({ organizationId: organization?.id })
-
-  const isLoadingPermissions = IS_SAAS ? _isLoadingPermissions : false
-
+  // Defer non-critical org dashboard enrichment until projects are on screen.
+  const { data: integrations } = useOrgIntegrationsQuery(
+    { orgSlug: organization?.slug },
+    { enabled: isSuccessProjects }
+  )
+  const { data: connections } = useGitHubConnectionsQuery(
+    { organizationId: organization?.id },
+    { enabled: isSuccessProjects }
+  )
   const isEmpty =
     debouncedSearch.length === 0 &&
     filterStatus.length === 0 &&
@@ -150,7 +154,7 @@ export const ProjectList = ({ organization: organization_, rewriteHref }: Projec
     )
   }
 
-  if (isLoadingPermissions || isLoadingProjects || !organization) {
+  if (isLoadingProjects || !organization) {
     return viewMode === 'table' ? <LoadingTableView /> : <LoadingCardView />
   }
 

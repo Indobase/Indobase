@@ -1,8 +1,8 @@
 import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
 
 import { components } from 'api-types'
+import { useIsLoggedIn } from 'common'
 import { get, handleError } from 'data/fetchers'
-import { useProfile } from 'lib/profile'
 import type { ResponseError, UseCustomInfiniteQueryOptions } from 'types'
 import { projectKeys } from './keys'
 
@@ -58,12 +58,12 @@ export const useProjectsInfiniteQuery = <TData = ProjectsInfiniteData>(
     number
   > = {}
 ) => {
-  const { profile } = useProfile()
+  const isLoggedIn = useIsLoggedIn()
   return useInfiniteQuery({
     queryKey: projectKeys.infiniteList({ limit, sort, search }),
     queryFn: ({ signal, pageParam }) =>
       getProjects({ limit, page: pageParam, sort, search }, signal),
-    enabled: enabled && profile !== undefined,
+    enabled: enabled && isLoggedIn,
     staleTime: 30 * 60 * 1000, // 30 minutes
     initialPageParam: 0,
     getNextPageParam(lastPage, pages) {

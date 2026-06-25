@@ -116,12 +116,12 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     isAuthLoading,
   ])
 
-  const { isInitialLoading: isLoadingPermissions } = usePermissionsQuery({
+  usePermissionsQuery({
     enabled: isLoggedIn && !isPasswordRecoveryRoute,
   })
 
   const value = useMemo(() => {
-    const isLoading = isLoadingProfile || isCreatingProfile || isLoadingPermissions
+    const isLoading = isLoadingProfile || isCreatingProfile
 
     return {
       error,
@@ -130,15 +130,7 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
       isError,
       isSuccess,
     }
-  }, [
-    isLoadingProfile,
-    isCreatingProfile,
-    isLoadingPermissions,
-    profile,
-    error,
-    isError,
-    isSuccess,
-  ])
+  }, [isLoadingProfile, isCreatingProfile, profile, error, isError, isSuccess])
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
 }

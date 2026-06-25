@@ -2,8 +2,8 @@ import { InfiniteData, useInfiniteQuery, useQueryClient } from '@tanstack/react-
 import { useCallback } from 'react'
 
 import { components } from 'api-types'
+import { useIsLoggedIn } from 'common'
 import { get, handleError } from 'data/fetchers'
-import { useProfile } from 'lib/profile'
 import type { ResponseError, UseCustomInfiniteQueryOptions } from 'types'
 import { INFINITE_PROJECTS_KEY_PREFIX, projectKeys } from './keys'
 
@@ -74,12 +74,12 @@ export const useOrgProjectsInfiniteQuery = <TData = OrgProjectsInfiniteData>(
     number | undefined
   > = {}
 ) => {
-  const { profile } = useProfile()
+  const isLoggedIn = useIsLoggedIn()
   return useInfiniteQuery({
     queryKey: projectKeys.infiniteListByOrg(slug, { limit, sort, search, statuses }),
     queryFn: ({ signal, pageParam }) =>
       getOrganizationProjects({ slug, limit, page: pageParam, sort, search, statuses }, signal),
-    enabled: enabled && profile !== undefined && typeof slug !== 'undefined',
+    enabled: enabled && isLoggedIn && typeof slug !== 'undefined',
     staleTime: 30 * 60 * 1000, // 30 minutes
     initialPageParam: 0,
     getNextPageParam(lastPage, pages) {
