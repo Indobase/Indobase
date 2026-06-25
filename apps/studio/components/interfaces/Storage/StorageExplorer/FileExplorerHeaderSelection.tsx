@@ -19,14 +19,15 @@ export const FileExplorerHeaderSelection = () => {
   } = useStorageExplorerStateSnapshot()
 
   return (
-    <div className="z-10 flex h-[40px] items-center rounded-t-md bg-brand-400 px-2 py-1 shadow [[data-theme*=dark]_&]:bg-brand-500">
+    <div className="z-10 flex h-[40px] items-center rounded-t-md bg-brand-400 px-2 py-1 text-foreground-contrast shadow [[data-theme*=dark]_&]:bg-brand-500 [[data-theme*=dark]_&]:text-foreground">
       <Button
         icon={<X size={16} strokeWidth={2} />}
         type="text"
+        className="text-foreground-contrast hover:bg-brand-500/30 [[data-theme*=dark]_&]:text-foreground [[data-theme*=dark]_&]:hover:bg-brand-400/30"
         onClick={() => clearSelectedItems()}
       />
       <div className="ml-1 flex items-center space-x-3">
-        <p className="mb-0 text-sm text-foreground">
+        <p className="mb-0 text-sm">
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{selectedItems.length}</span> items
           selected
         </p>

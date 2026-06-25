@@ -133,7 +133,7 @@ export const PrimaryNode = ({ data }: NodeProps<PrimaryNodeData>) => {
           style={{ width: NODE_WIDTH / 2 - 10 }}
         >
           <div className="flex gap-x-3">
-            <div className="w-8 h-8 bg-brand-500 border border-brand-600 rounded-md flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-500 border border-brand-600 rounded-md flex items-center justify-center text-foreground-contrast dark:text-foreground">
               <Database size={16} />
             </div>
             <div className="flex flex-col gap-y-0.5">
@@ -247,7 +247,7 @@ export const ReplicaNode = ({ data }: NodeProps<ReplicaNodeData>) => {
               'w-8 h-8 border rounded-md flex items-center justify-center',
               status === REPLICA_STATUS.ACTIVE_HEALTHY &&
                 initStatus === ReplicaInitializationStatus.Completed
-                ? 'bg-brand-400 border-brand-500'
+                ? 'bg-brand-400 border-brand-500 text-foreground-contrast dark:text-foreground'
                 : 'bg-surface-100 border-foreground/20'
             )}
           >

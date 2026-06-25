@@ -212,7 +212,7 @@ export const PlanUpdateSidePanel = () => {
                           Current plan
                         </div>
                       ) : plan.nameBadge ? (
-                        <div className="text-xs bg-brand-300 dark:bg-brand-400 text-brand-600 rounded px-2 py-0.5">
+                        <div className="text-xs bg-brand-300 dark:bg-brand-400 text-brand-600 dark:text-foreground-contrast rounded px-2 py-0.5">
                           {plan.nameBadge}
                         </div>
                       ) : null}

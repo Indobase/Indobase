@@ -83,7 +83,7 @@ export const BannerRlsEventTrigger = () => {
           <div
             className={cn(
               'p-2 rounded-lg bg-muted text-foreground-light',
-              hasCreated && 'bg-brand-200 dark:bg-brand-400 text-brand'
+              hasCreated && 'bg-brand-200 dark:bg-brand-400 text-brand dark:text-foreground-contrast'
             )}
           >
             <ShieldCheck size={16} />

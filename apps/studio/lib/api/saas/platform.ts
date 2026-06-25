@@ -275,6 +275,21 @@ function getUsernameFromEmail(email: string) {
 
 let ensureSaasTablesPromise: Promise<void> | null = null
 
+async function isSaasControlPlaneBootstrapped(): Promise<boolean> {
+  const probe = await executeQuery<{ bootstrapped: boolean }>({
+    query: `
+      select exists (
+        select 1
+        from information_schema.tables
+        where table_schema = 'saas'
+          and table_name = 'profiles'
+      ) as bootstrapped
+    `,
+  })
+  if (probe.error) throw probe.error
+  return Boolean(probe.data?.[0]?.bootstrapped)
+}
+
 export async function ensureSaasTables() {
   if (!ensureSaasTablesPromise) {
     ensureSaasTablesPromise = ensureSaasTablesOnce().catch((error) => {
@@ -289,6 +304,11 @@ async function ensureSaasTablesOnce() {
   // Ensure schema exists before grants: grant_studio_access targets schema saas.
   const ensureSchema = await executeQuery({ query: 'create schema if not exists saas' })
   if (ensureSchema.error) throw ensureSchema.error
+
+  if (await isSaasControlPlaneBootstrapped()) {
+    await ensureSaasStudioDbPrivileges()
+    return
+  }
 
   // Apply grants before bootstrap DDL: bootstrap issues CREATE TABLE in saas; postgres needs
   // CREATE on the schema (USAGE alone is insufficient when schema is owned by supabase_admin).

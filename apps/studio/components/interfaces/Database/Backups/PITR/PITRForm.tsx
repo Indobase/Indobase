@@ -143,7 +143,7 @@ export function PITRForm({
                   '[&:not(:has(:disabled))]:border [&:not(:has(:disabled))]:border-stronger [&:not(:last-child)]:border-r-0 [&:not(:has(:disabled))]:bg-overlay-hover',
                   'rounded-none'
                 ),
-                selected: '!bg-brand-500',
+                selected: '!bg-brand-500 !text-foreground-contrast dark:!text-foreground',
               }}
             />
             {availableDates.length > 1 && (

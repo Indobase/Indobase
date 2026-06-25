@@ -34,7 +34,7 @@ const buttonVariants = cva(
         primary: `
           bg-brand-400 dark:bg-brand-500
           hover:bg-brand/80 dark:hover:bg-brand/50
-          text-foreground
+          text-foreground-contrast dark:text-foreground
           border-brand-500/75 dark:border-brand/30
           hover:border-brand-600 dark:hover:border-brand
           focus-visible:outline-brand-600
@@ -61,7 +61,7 @@ const buttonVariants = cva(
         `,
         /** @deprecated use 'primary' instead */
         alternative: `
-          text-foreground
+          text-foreground-contrast dark:text-foreground
           bg-brand-400 hover:bg-brand-500
           border-brand-500
           focus-visible:border-brand-500
@@ -92,12 +92,12 @@ const buttonVariants = cva(
           text-brand-600
           border
           border-transparent
-          hover:bg-brand-400
+          hover:bg-brand-400 hover:text-foreground-contrast
           border-opacity-0
           bg-opacity-0
           shadow-none
           focus-visible:outline-border-strong
-          data-[state=open]:bg-brand-400
+          data-[state=open]:bg-brand-400 data-[state=open]:text-foreground-contrast
           data-[state=open]:outline-border-strong
         `,
         text: `
@@ -169,10 +169,10 @@ const IconContainerVariants = cva('', {
       xxxlarge: '[&_svg]:h-[42px] [&_svg]:w-[42px]',
     },
     type: {
-      primary: 'text-brand-600',
+      primary: 'text-inherit',
       default: 'text-foreground-lighter',
       secondary: 'text-border-muted',
-      alternative: 'text-foreground-lighter',
+      alternative: 'text-inherit',
       outline: 'text-foreground-lighter',
       dashed: 'text-foreground-lighter',
       link: 'text-brand-600',
@@ -187,10 +187,10 @@ export type LoadingVariantProps = VariantProps<typeof loadingVariants>
 const loadingVariants = cva('', {
   variants: {
     type: {
-      primary: 'text-brand-600',
+      primary: 'text-inherit',
       default: 'text-foreground-lighter',
       secondary: 'text-border-muted',
-      alternative: 'text-foreground-lighter',
+      alternative: 'text-inherit',
       outline: 'text-foreground-lighter',
       dashed: 'text-foreground-lighter',
       link: 'text-brand-600',

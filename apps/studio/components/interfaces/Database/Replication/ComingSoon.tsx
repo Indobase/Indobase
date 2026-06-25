@@ -127,7 +127,7 @@ const PrimaryNode = ({
     <div className="flex flex-col rounded bg-surface-100 border border-default">
       <div className="flex items-start justify-between p-3" style={{ width: NODE_WIDTH / 2 + 55 }}>
         <div className="flex gap-x-3">
-          <div className="w-8 h-8 bg-brand-500 border border-brand-600 rounded-md flex items-center justify-center">
+          <div className="w-8 h-8 bg-brand-500 border border-brand-600 rounded-md flex items-center justify-center text-foreground-contrast dark:text-foreground">
             <Database size={16} />
           </div>
           <div className="flex flex-col gap-y-0.5">
