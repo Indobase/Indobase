@@ -43,6 +43,7 @@ open('/opt/adral-production.runtime.env', 'w').write(
     f'VITE_SUPABASE_ANON_KEY={anon.group(1)}\\n'
     f'INDOBASE_TENANT_UPSTREAM_HOST=${REF}.indobase.in\\n'
     f'INDOBASE_TENANT_UPSTREAM_IP=${VPS_IP}\\n'
+    f'INDOBASE_PUBLIC_HOST=${PROD_HOST}\\n'
 )
 print('wrote /opt/adral-production.runtime.env')
 PY"
