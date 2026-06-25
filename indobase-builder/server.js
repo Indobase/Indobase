@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 
 // Vite SSR bundles can ship stream polyfills without Node's Buffer global.
 globalThis.Buffer = Buffer;
+globalThis.process = process;
 
 const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 const host = process.env.HOST || '0.0.0.0';
@@ -113,6 +114,7 @@ async function sendWebResponse(res, response) {
 // Remix Cloudflare builds polyfill `process.env` as an empty object in SSR bundles.
 // Merge the real Node env before each request so server loaders can read secrets.
 function mergeNodeProcessEnv() {
+  globalThis.process = process;
   if (globalThis.process?.env) {
     Object.assign(globalThis.process.env, process.env);
   }

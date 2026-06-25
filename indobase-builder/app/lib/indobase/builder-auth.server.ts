@@ -10,12 +10,19 @@ export function readBearerToken(request: Request): string | null {
   return token || null;
 }
 
-export function isBuilderAuthBypassEnabled(): boolean {
-  return process.env.BUILDER_ALLOW_UNAUTHENTICATED === 'true';
+type ServerEnv = Record<string, string | undefined>;
+
+export function isBuilderAuthBypassEnabled(env?: ServerEnv): boolean {
+  return (
+    env?.BUILDER_ALLOW_UNAUTHENTICATED === 'true' || process.env.BUILDER_ALLOW_UNAUTHENTICATED === 'true'
+  );
 }
 
-export async function verifyBuilderRequestAuth(request: Request): Promise<boolean> {
-  if (isBuilderAuthBypassEnabled()) {
+export async function verifyBuilderRequestAuth(
+  request: Request,
+  env?: ServerEnv,
+): Promise<boolean> {
+  if (isBuilderAuthBypassEnabled(env)) {
     return true;
   }
 
@@ -26,7 +33,7 @@ export async function verifyBuilderRequestAuth(request: Request): Promise<boolea
   }
 
   try {
-    await verifyIndobaseBuilderMcpToken(token);
+    await verifyIndobaseBuilderMcpToken(token, env);
     return true;
   } catch {
     return false;

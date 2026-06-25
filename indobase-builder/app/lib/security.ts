@@ -2,6 +2,12 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudfla
 
 import { verifyBuilderRequestAuth } from '~/lib/indobase/builder-auth.server';
 
+type ServerEnv = Record<string, string | undefined>;
+
+function getServerEnv(args: ActionFunctionArgs | LoaderFunctionArgs): ServerEnv | undefined {
+  return (args.context as { cloudflare?: { env?: ServerEnv } } | undefined)?.cloudflare?.env;
+}
+
 // Rate limiting store (in-memory for serverless environments)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -211,7 +217,7 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
 
     // Require Studio handoff MCP token unless explicitly bypassed for local dev.
     if (options.requireAuth) {
-      const authorized = await verifyBuilderRequestAuth(request);
+      const authorized = await verifyBuilderRequestAuth(request, getServerEnv(args));
       if (!authorized) {
         return new Response(JSON.stringify({ error: true, message: 'Unauthorized' }), {
           status: 401,
