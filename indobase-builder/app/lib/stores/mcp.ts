@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { MCPConfig, MCPServerTools } from '~/lib/services/mcpService';
 import { getAutoIndobaseMcpConfig, mergeMcpConfigWithIndobase } from '~/lib/indobase/mcp';
 import { scheduleIdleWork } from '~/utils/scheduleIdleWork';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 const MCP_SETTINGS_KEY = 'mcp_settings';
 const isBrowser = typeof window !== 'undefined';
@@ -115,7 +116,7 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
     }
   },
   checkServersAvailabilities: async () => {
-    const response = await fetch('/api/mcp-check', {
+    const response = await builderFetch('/api/mcp-check', {
       method: 'GET',
     });
 
@@ -135,7 +136,7 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
 }));
 
 async function updateServerConfig(config: MCPConfig) {
-  const response = await fetch('/api/mcp-update-config', {
+  const response = await builderFetch('/api/mcp-update-config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),

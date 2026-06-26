@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import type { GitHubStats, GitHubConnection } from '~/types/GitHub';
 import { gitHubApiService } from '~/lib/services/githubApiService';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 export interface UseGitHubStatsState {
   stats: GitHubStats | null;
@@ -170,7 +171,7 @@ export function useGitHubStats(
 
       if (isServerSide || !connection.token) {
         // Use server-side API for stats
-        const response = await fetch('/api/github-stats');
+        const response = await builderFetch('/api/github-stats');
 
         if (!response.ok) {
           if (response.status === 401) {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ProviderInfo } from '~/types/model';
 import { createScopedLogger } from '~/utils/logger';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 const logger = createScopedLogger('usePromptEnhancement');
 
@@ -33,8 +34,11 @@ export function usePromptEnhancer() {
       requestBody.apiKeys = apiKeys;
     }
 
-    const response = await fetch('/api/enhancer', {
+    const response = await builderFetch('/api/enhancer', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(requestBody),
     });
 

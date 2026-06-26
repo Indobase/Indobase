@@ -407,11 +407,19 @@ export const ChatImpl = memo(
           }
         }
 
+        if (errorInfo.message.toLowerCase().includes('unauthorized')) {
+          errorInfo.statusCode = 401;
+        }
+
         let errorType: LlmErrorAlertType['errorType'] = 'unknown';
         let title = 'Request Failed';
 
         if (errorInfo.statusCode === 401 || errorInfo.message.toLowerCase().includes('api key')) {
-          if (errorInfo.statusCode === 401 && isIndobaseStudioManagedConnection(supabaseConn)) {
+          if (
+            errorInfo.statusCode === 401 &&
+            (isIndobaseStudioManagedConnection(supabaseConn) ||
+              errorInfo.message.toLowerCase().includes('unauthorized'))
+          ) {
             void ensureBuilderSession().then((restored) => {
               if (!restored) {
                 toast.error('Builder session expired. Reconnecting through Studio…');

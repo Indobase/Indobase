@@ -1,6 +1,7 @@
 import { atom } from 'nanostores';
 import type { GitHubConnection } from '~/types/GitHub';
 import { logStore } from './logs';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 // Initialize with stored connection or defaults
 const storedConnection = typeof window !== 'undefined' ? localStorage.getItem('github_connection') : null;
@@ -28,7 +29,7 @@ export async function initializeGitHubConnection() {
   try {
     isConnecting.set(true);
 
-    const response = await fetch('/api/github-user');
+    const response = await builderFetch('/api/github-user');
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -73,7 +74,7 @@ export async function fetchGitHubStatsViaAPI() {
   try {
     isFetchingStats.set(true);
 
-    const response = await fetch('/api/github-user', {
+    const response = await builderFetch('/api/github-user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

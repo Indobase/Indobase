@@ -219,7 +219,7 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
     if (options.requireAuth) {
       const authorized = await verifyBuilderRequestAuth(request, getServerEnv(args));
       if (!authorized) {
-        return new Response(JSON.stringify({ error: true, message: 'Unauthorized' }), {
+        return new Response(JSON.stringify({ error: true, message: 'Unauthorized', statusCode: 401 }), {
           status: 401,
           headers: {
             ...createSecurityHeaders(),

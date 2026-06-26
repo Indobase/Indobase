@@ -26,6 +26,10 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
   const getErrorMessage = () => {
     switch (errorType) {
       case 'authentication':
+        if (description?.toLowerCase().includes('unauthorized')) {
+          return 'Your Builder session expired or is missing. Reconnect from Studio to continue.';
+        }
+
         if (description?.toLowerCase().includes('missing api key')) {
           return `Missing API key for ${provider}. Add your API key in Settings → Providers, or set it as an environment variable.`;
         }

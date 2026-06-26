@@ -7,6 +7,7 @@ import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { getStudioBuilderConnectUrl } from '~/lib/indobase/builder-auth.client';
 import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/indobase/handoff.server';
 import { isProductionEnv } from '~/lib/production.server';
+import { initializeProviders } from '~/lib/stores/settings';
 import { useMCPStore } from '~/lib/stores/mcp';
 
 const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
@@ -60,6 +61,7 @@ export default function LaunchRoute() {
     }
 
     updateSupabaseConnection(buildSupabaseConnectionFromHandoff(data.handoff, { mcpToken: data.mcpToken }));
+    void initializeProviders();
     void useMCPStore.getState().initialize();
     void useMCPStore.getState().syncWithIndobaseConnection();
     const next = typeof data.next === 'string' ? data.next : null;

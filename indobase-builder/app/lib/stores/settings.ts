@@ -5,6 +5,7 @@ import type { TabVisibilityConfig, TabWindowConfig, UserTabConfig } from '~/comp
 import { DEFAULT_TAB_CONFIG } from '~/components/@settings/core/constants';
 import { toggleTheme } from './theme';
 import { create } from 'zustand';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 export interface Shortcut {
   key: string;
@@ -67,7 +68,7 @@ interface ConfiguredProvider {
 // Fetch configured providers from server
 const fetchConfiguredProviders = async (): Promise<ConfiguredProvider[]> => {
   try {
-    const response = await fetch('/api/configured-providers');
+    const response = await builderFetch('/api/configured-providers');
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -190,10 +191,15 @@ export const initializeProviders = autoEnableConfiguredProviders;
 
 // Initialize providers when the module loads (in browser only)
 if (isBrowser) {
-  // Use a small delay to ensure DOM and other resources are ready
-  setTimeout(() => {
-    autoEnableConfiguredProviders();
-  }, 100);
+  const scheduleProviderInit = () => {
+    setTimeout(() => {
+      void autoEnableConfiguredProviders();
+    }, 100);
+  };
+
+  scheduleProviderInit();
+
+  window.addEventListener('indobase:supabase-connection-changed', scheduleProviderInit);
 }
 
 // Create a function to update provider settings that handles both store and persistence

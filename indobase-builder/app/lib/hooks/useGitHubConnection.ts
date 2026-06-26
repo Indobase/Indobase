@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import type { GitHubUserResponse, GitHubConnection } from '~/types/GitHub';
 import { useGitHubAPI } from './useGitHubAPI';
 import { githubConnection, isConnecting, updateGitHubConnection } from '~/lib/stores/github';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
 export interface ConnectionState {
   isConnected: boolean;
@@ -215,7 +216,7 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
       const isServerSide = !connection.token;
 
       if (isServerSide) {
-        const response = await fetch('/api/github-user');
+        const response = await builderFetch('/api/github-user');
         return response.ok;
       }
 
