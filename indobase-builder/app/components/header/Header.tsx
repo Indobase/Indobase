@@ -5,11 +5,12 @@ import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
 import { supabaseConnection } from '~/lib/stores/supabase';
+import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 
 export function Header() {
   const chat = useStore(chatStore);
   const backend = useStore(supabaseConnection);
-  const isStudioManagedConnection = backend.connectionSource === 'studio_handoff';
+  const isStudioManagedConnection = isIndobaseStudioManagedConnection(backend);
 
   return (
     <header

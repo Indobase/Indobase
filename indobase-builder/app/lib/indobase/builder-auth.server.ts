@@ -27,15 +27,36 @@ export async function verifyBuilderRequestAuth(
   }
 
   const cookies = parseCookies(request.headers.get('Cookie'));
-  const token = readBearerToken(request) ?? cookies[BUILDER_MCP_COOKIE]?.trim() ?? null;
-  if (!token) {
-    return false;
+  const bearer = readBearerToken(request);
+  const cookieToken = cookies[BUILDER_MCP_COOKIE]?.trim() ?? null;
+  const candidates = [...new Set([bearer, cookieToken].filter(Boolean))] as string[];
+
+  for (const token of candidates) {
+    try {
+      await verifyIndobaseBuilderMcpToken(token, env);
+      return true;
+    } catch {
+      continue;
+    }
   }
 
-  try {
-    await verifyIndobaseBuilderMcpToken(token, env);
-    return true;
-  } catch {
-    return false;
+  return false;
+}
+
+export async function resolveValidBuilderMcpToken(
+  tokens: Array<string | null | undefined>,
+  env?: ServerEnv,
+): Promise<string | null> {
+  const candidates = [...new Set(tokens.map((token) => token?.trim()).filter(Boolean))] as string[];
+
+  for (const token of candidates) {
+    try {
+      await verifyIndobaseBuilderMcpToken(token, env);
+      return token;
+    } catch {
+      continue;
+    }
   }
+
+  return null;
 }

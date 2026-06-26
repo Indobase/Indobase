@@ -61,4 +61,24 @@ describe('verifyBuilderRequestAuth', () => {
 
     await expect(verifyBuilderRequestAuth(request, {})).resolves.toBe(false);
   });
+
+  it('falls back to a valid MCP cookie when the bearer token is expired', async () => {
+    const env = { BUILDER_HANDOFF_SECRET: TEST_SECRET };
+    const expiredHandoff: IndobaseBuilderHandoffPayload = {
+      ...handoffPayload,
+      exp: Math.floor(Date.now() / 1000) - 60,
+      iat: Math.floor(Date.now() / 1000) - 3600,
+    };
+    const validToken = signIndobaseBuilderMcpToken(handoffPayload, 3600, env);
+    const expiredToken = signIndobaseBuilderMcpToken(expiredHandoff, 3600, env);
+    const request = new Request('https://builder.indobase.in/api/chat', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${expiredToken}`,
+        Cookie: `indobase_builder_mcp=${validToken}`,
+      },
+    });
+
+    await expect(verifyBuilderRequestAuth(request, env)).resolves.toBe(true);
+  });
 });

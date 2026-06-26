@@ -1,20 +1,12 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
-import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
+import { parseCookies } from '~/lib/api/cookies';
+import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 
 const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
 
 type SessionBody = {
   mcpToken?: string;
 };
-
-function readBearerToken(authorization: string | null): string | null {
-  if (!authorization?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authorization.slice('Bearer '.length).trim();
-  return token || null;
-}
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
   if (request.method !== 'POST') {
@@ -30,18 +22,17 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   }
 
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
-  const token = body.mcpToken?.trim() || readBearerToken(request.headers.get('Authorization'));
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const validToken = await resolveValidBuilderMcpToken(
+    [body.mcpToken, readBearerToken(request.headers.get('Authorization')), cookies[BUILDER_MCP_COOKIE]],
+    env,
+  );
 
-  if (!token) {
-    return json({ error: 'Builder session token is required' }, { status: 400 });
-  }
-
-  try {
-    await verifyIndobaseBuilderMcpToken(token, env);
-  } catch (error) {
+  if (!validToken) {
     return json(
       {
-        error: error instanceof Error ? error.message : 'Invalid Builder session token',
+        error: 'Invalid or expired Builder session token',
+        statusCode: 401,
       },
       { status: 401 },
     );
@@ -55,7 +46,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
     { success: true },
     {
       headers: {
-        'Set-Cookie': `${BUILDER_MCP_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`,
+        'Set-Cookie': `${BUILDER_MCP_COOKIE}=${validToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`,
       },
     },
   );

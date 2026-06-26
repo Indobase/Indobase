@@ -1,4 +1,5 @@
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { isIndobaseStudioManagedConnection } from './connection';
 
 const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
@@ -94,14 +95,48 @@ export function getStudioBuilderConnectUrl(options?: {
   return `${studioUrl}/project/${encodeURIComponent(projectRef)}/builder/connect${suffix}`;
 }
 
-export async function ensureBuilderSession(): Promise<boolean> {
-  const token = getStoredBuilderMcpToken();
+export function clearStaleBuilderSession() {
+  const connection = getStoredSupabaseConnection();
 
-  if (!token) {
-    return false;
+  if (!connection?.indobase) {
+    return;
   }
 
+  updateSupabaseConnection({
+    isConnected: false,
+    connectionSource: undefined,
+    indobase: {
+      ...connection.indobase,
+      mcpToken: undefined,
+    },
+  });
+}
+
+export async function ensureBuilderSession(): Promise<boolean> {
   try {
+    const cookieResponse = await fetch('/api/indobase/session', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (cookieResponse.ok) {
+      return true;
+    }
+
+    const token = getStoredBuilderMcpToken();
+
+    if (!token) {
+      if (cookieResponse.status === 401) {
+        clearStaleBuilderSession();
+      }
+
+      return false;
+    }
+
     const response = await fetch('/api/indobase/session', {
       method: 'POST',
       credentials: 'include',
@@ -112,7 +147,15 @@ export async function ensureBuilderSession(): Promise<boolean> {
       body: JSON.stringify({ mcpToken: token }),
     });
 
-    return response.ok;
+    if (response.ok) {
+      return true;
+    }
+
+    if (response.status === 401) {
+      clearStaleBuilderSession();
+    }
+
+    return false;
   } catch {
     return false;
   }
