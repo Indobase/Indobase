@@ -177,5 +177,5 @@ async function gitProxyHandler({ request, params }: ActionFunctionArgs | LoaderF
   return handleProxyRequest(request, params['*']);
 }
 
-export const action = withSecurity(gitProxyHandler, { requireAuth: true });
-export const loader = withSecurity(gitProxyHandler, { requireAuth: true });
+export const action = withSecurity(gitProxyHandler, { requireAuth: false, rateLimit: true });
+export const loader = withSecurity(gitProxyHandler, { requireAuth: false, rateLimit: true });

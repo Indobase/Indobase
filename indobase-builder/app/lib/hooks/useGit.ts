@@ -2,7 +2,7 @@ import type { WebContainer } from '@webcontainer/api';
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { webcontainer as webcontainerPromise } from '~/lib/webcontainer';
 import git, { type GitAuth, type PromiseFsClient } from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
+import http from '~/lib/git/gitHttp.client';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
 
@@ -30,155 +30,179 @@ const saveGitAuth = (url: string, auth: GitAuth) => {
 
 export function useGit() {
   const [ready, setReady] = useState(false);
+  const [bootError, setBootError] = useState<Error | null>(null);
   const [webcontainer, setWebcontainer] = useState<WebContainer>();
   const [fs, setFs] = useState<PromiseFsClient>();
   const fileData = useRef<Record<string, { data: any; encoding?: string }>>({});
   useEffect(() => {
-    webcontainerPromise.then((container) => {
-      fileData.current = {};
-      setWebcontainer(container);
-      setFs(getFs(container, fileData));
-      setReady(true);
-    });
+    webcontainerPromise
+      .then((container) => {
+        fileData.current = {};
+        setWebcontainer(container);
+        setFs(getFs(container, fileData));
+        setReady(true);
+      })
+      .catch((error) => {
+        const normalized = error instanceof Error ? error : new Error(String(error));
+        setBootError(normalized);
+        console.error('WebContainer boot failed:', normalized);
+      });
   }, []);
 
   const gitClone = useCallback(
     async (url: string, retryCount = 0) => {
       if (!webcontainer || !fs || !ready) {
-        throw new Error('Webcontainer not initialized. Please try again later.');
+        throw new Error('WebContainer is not ready yet. Please refresh and try again.');
       }
 
-      fileData.current = {};
+      const runClone = async () => {
+        fileData.current = {};
 
-      let branch: string | undefined;
-      let baseUrl = url;
+        let branch: string | undefined;
+        let baseUrl = url;
 
-      if (url.includes('#')) {
-        [baseUrl, branch] = url.split('#');
-      }
-
-      /*
-       * Skip Git initialization for now - let isomorphic-git handle it
-       * This avoids potential issues with our manual initialization
-       */
-
-      const headers: {
-        [x: string]: string;
-      } = {
-        'User-Agent': 'bolt.diy',
-      };
-
-      const auth = lookupSavedPassword(url);
-
-      if (auth) {
-        headers.Authorization = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString('base64')}`;
-      }
-
-      try {
-        // Add a small delay before retrying to allow for network recovery
-        if (retryCount > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount));
-          console.log(`Retrying git clone (attempt ${retryCount + 1})...`);
+        if (url.includes('#')) {
+          [baseUrl, branch] = url.split('#');
         }
 
-        await git.clone({
-          fs,
-          http,
-          dir: webcontainer.workdir,
-          url: baseUrl,
-          depth: 1,
-          singleBranch: true,
-          ref: branch,
-          corsProxy: '/api/git-proxy',
-          headers,
-          onProgress: (event) => {
-            console.log('Git clone progress:', event);
-          },
-          onAuth: (baseUrl) => {
-            let auth = lookupSavedPassword(baseUrl);
+        const headers: {
+          [x: string]: string;
+        } = {
+          'User-Agent': 'bolt.diy',
+        };
 
-            if (auth) {
-              console.log('Using saved authentication for', baseUrl);
-              return auth;
-            }
+        const auth = lookupSavedPassword(url);
 
-            console.log('Repository requires authentication:', baseUrl);
-
-            if (confirm('This repository requires authentication. Would you like to enter your GitHub credentials?')) {
-              auth = {
-                username: prompt('Enter username') || '',
-                password: prompt('Enter password or personal access token') || '',
-              };
-              return auth;
-            } else {
-              return { cancel: true };
-            }
-          },
-          onAuthFailure: (baseUrl, _auth) => {
-            console.error(`Authentication failed for ${baseUrl}`);
-            toast.error(
-              `Authentication failed for ${baseUrl.split('/')[2]}. Please check your credentials and try again.`,
-            );
-            throw new Error(
-              `Authentication failed for ${baseUrl.split('/')[2]}. Please check your credentials and try again.`,
-            );
-          },
-          onAuthSuccess: (baseUrl, auth) => {
-            console.log(`Authentication successful for ${baseUrl}`);
-            saveGitAuth(baseUrl, auth);
-          },
-        });
-
-        const data: Record<string, { data: any; encoding?: string }> = {};
-
-        for (const [key, value] of Object.entries(fileData.current)) {
-          data[key] = value;
+        if (auth) {
+          headers.Authorization = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString('base64')}`;
         }
 
-        return { workdir: webcontainer.workdir, data };
-      } catch (error) {
-        console.error('Git clone error:', error);
-
-        // Handle specific error types
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // Check for common error patterns
-        if (errorMessage.includes('Authentication failed')) {
-          toast.error(`Authentication failed. Please check your GitHub credentials and try again.`);
-          throw error;
-        } else if (
-          errorMessage.includes('ENOTFOUND') ||
-          errorMessage.includes('ETIMEDOUT') ||
-          errorMessage.includes('ECONNREFUSED')
-        ) {
-          toast.error(`Network error while connecting to repository. Please check your internet connection.`);
-
-          // Retry for network errors, up to 3 times
-          if (retryCount < 3) {
-            return gitClone(url, retryCount + 1);
+        try {
+          if (retryCount > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount));
+            console.log(`Retrying git clone (attempt ${retryCount + 1})...`);
           }
 
-          throw new Error(
-            `Failed to connect to repository after multiple attempts. Please check your internet connection.`,
-          );
-        } else if (errorMessage.includes('404')) {
-          toast.error(`Repository not found. Please check the URL and make sure the repository exists.`);
-          throw new Error(`Repository not found. Please check the URL and make sure the repository exists.`);
-        } else if (errorMessage.includes('401')) {
-          toast.error(`Unauthorized access to repository. Please connect your GitHub account with proper permissions.`);
-          throw new Error(
-            `Unauthorized access to repository. Please connect your GitHub account with proper permissions.`,
-          );
-        } else {
+          await git.clone({
+            fs,
+            http,
+            dir: webcontainer.workdir,
+            url: baseUrl,
+            depth: 1,
+            singleBranch: true,
+            ref: branch,
+            corsProxy: '/api/git-proxy',
+            headers,
+            onProgress: (event) => {
+              console.log('Git clone progress:', event);
+            },
+            onAuth: (baseUrl) => {
+              let auth = lookupSavedPassword(baseUrl);
+
+              if (auth) {
+                console.log('Using saved authentication for', baseUrl);
+                return auth;
+              }
+
+              console.log('Repository requires authentication:', baseUrl);
+
+              if (confirm('This repository requires authentication. Would you like to enter your GitHub credentials?')) {
+                auth = {
+                  username: prompt('Enter username') || '',
+                  password: prompt('Enter password or personal access token') || '',
+                };
+                return auth;
+              }
+
+              return { cancel: true };
+            },
+            onAuthFailure: (baseUrl, _auth) => {
+              console.error(`Authentication failed for ${baseUrl}`);
+              toast.error(
+                `Authentication failed for ${baseUrl.split('/')[2]}. Please check your credentials and try again.`,
+              );
+              throw new Error(
+                `Authentication failed for ${baseUrl.split('/')[2]}. Please check your credentials and try again.`,
+              );
+            },
+            onAuthSuccess: (baseUrl, auth) => {
+              console.log(`Authentication successful for ${baseUrl}`);
+              saveGitAuth(baseUrl, auth);
+            },
+          });
+
+          const data: Record<string, { data: any; encoding?: string }> = {};
+
+          for (const [key, value] of Object.entries(fileData.current)) {
+            data[key] = value;
+          }
+
+          return { workdir: webcontainer.workdir, data };
+        } catch (error) {
+          console.error('Git clone error:', error);
+
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          if (errorMessage.includes('Authentication failed')) {
+            toast.error(`Authentication failed. Please check your GitHub credentials and try again.`);
+            throw error;
+          }
+
+          if (
+            errorMessage.includes('ENOTFOUND') ||
+            errorMessage.includes('ETIMEDOUT') ||
+            errorMessage.includes('ECONNREFUSED')
+          ) {
+            toast.error(`Network error while connecting to repository. Please check your internet connection.`);
+
+            if (retryCount < 3) {
+              return gitClone(url, retryCount + 1);
+            }
+
+            throw new Error(
+              `Failed to connect to repository after multiple attempts. Please check your internet connection.`,
+            );
+          }
+
+          if (errorMessage.includes('404')) {
+            toast.error(`Repository not found. Please check the URL and make sure the repository exists.`);
+            throw new Error(`Repository not found. Please check the URL and make sure the repository exists.`);
+          }
+
+          if (errorMessage.includes('401')) {
+            toast.error(`Unauthorized access to repository. Please connect your GitHub account with proper permissions.`);
+            throw new Error(
+              `Unauthorized access to repository. Please connect your GitHub account with proper permissions.`,
+            );
+          }
+
           toast.error(`Failed to clone repository: ${errorMessage}`);
           throw error;
+        }
+      };
+
+      const cloneTimeoutMs = 3 * 60 * 1000;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+      try {
+        return await Promise.race([
+          runClone(),
+          new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+              reject(new Error('Repository clone timed out after 3 minutes. Please try again.'));
+            }, cloneTimeoutMs);
+          }),
+        ]);
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
         }
       }
     },
     [webcontainer, fs, ready],
   );
 
-  return { ready, gitClone };
+  return { bootError, ready, gitClone };
 }
 
 const getFs = (

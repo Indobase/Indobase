@@ -1,7 +1,7 @@
 import { useSearchParams } from '@remix-run/react';
 import { generateId, type Message } from 'ai';
 import ignore from 'ignore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
@@ -31,50 +31,61 @@ const IGNORE_PATTERNS = [
   '**/npm-debug.log*',
   '**/yarn-debug.log*',
   '**/yarn-error.log*',
-
-  // Include this so npm install runs much faster '**/*lock.json',
   '**/*lock.yaml',
 ];
+
+const BOOT_TIMEOUT_MS = 90_000;
 
 export function GitUrlImport() {
   const [searchParams] = useSearchParams();
   const { ready: historyReady, importChat } = useChatHistory();
-  const { ready: gitReady, gitClone } = useGit();
-  const [imported, setImported] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { bootError, ready: gitReady, gitClone } = useGit();
+  const [loading, setLoading] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('Preparing your workspace...');
+  const startedRef = useRef(false);
 
-  const importRepo = async (repoUrl?: string) => {
-    if (!gitReady && !historyReady) {
-      return;
+  const failImport = (message: string) => {
+    toast.error(message);
+    setLoading(false);
+    window.location.href = '/';
+  };
+
+  const importRepo = async (repoUrl: string) => {
+    if (!gitReady || !historyReady) {
+      throw new Error('Workspace is not ready yet.');
     }
 
-    if (repoUrl) {
-      const ig = ignore().add(IGNORE_PATTERNS);
+    if (!importChat) {
+      throw new Error('Chat import is unavailable in this browser.');
+    }
 
-      try {
-        const { workdir, data } = await gitClone(repoUrl);
+    const ig = ignore().add(IGNORE_PATTERNS);
+    setOverlayMessage('Please wait while we clone the repository...');
 
-        if (importChat) {
-          const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
-          const textDecoder = new TextDecoder('utf-8');
+    const { workdir, data } = await gitClone(repoUrl);
+    const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
+    const textDecoder = new TextDecoder('utf-8');
 
-          const fileContents = filePaths
-            .map((filePath) => {
-              const { data: content, encoding } = data[filePath];
-              return {
-                path: filePath,
-                content:
-                  encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
-              };
-            })
-            .filter((f) => f.content);
+    const fileContents = filePaths
+      .map((filePath) => {
+        const { data: content, encoding } = data[filePath];
+        return {
+          path: filePath,
+          content: encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
+        };
+      })
+      .filter((f) => f.content);
 
-          const commands = await detectProjectCommands(fileContents);
-          const commandsMessage = createCommandsMessage(commands);
+    if (fileContents.length === 0) {
+      throw new Error('Repository cloned but no readable project files were found.');
+    }
 
-          const filesMessage: Message = {
-            role: 'assistant',
-            content: `Cloning the repo ${repoUrl} into ${workdir}
+    const commands = await detectProjectCommands(fileContents);
+    const commandsMessage = createCommandsMessage(commands);
+
+    const filesMessage: Message = {
+      role: 'assistant',
+      content: `Cloning the repo ${repoUrl} into ${workdir}
 <boltArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
 ${fileContents
   .map(
@@ -85,61 +96,78 @@ ${escapeBoltTags(file.content)}
   )
   .join('\n')}
 </boltArtifact>`,
-            id: generateId(),
-            createdAt: new Date(),
-          };
+      id: generateId(),
+      createdAt: new Date(),
+    };
 
-          const messages = [filesMessage];
+    const messages = [filesMessage];
 
-          if (commandsMessage) {
-            messages.push({
-              role: 'user',
-              id: generateId(),
-              content: 'Setup the codebase and Start the application',
-            });
-            messages.push(commandsMessage);
-          }
-
-          await importChat(`Git Project:${repoUrl.split('/').slice(-1)[0]}`, messages, { gitUrl: repoUrl });
-        }
-      } catch (error) {
-        console.error('Error during import:', error);
-        toast.error('Failed to import repository');
-        setLoading(false);
-        window.location.href = '/';
-
-        return;
-      }
+    if (commandsMessage) {
+      messages.push({
+        role: 'user',
+        id: generateId(),
+        content: 'Setup the codebase and Start the application',
+      });
+      messages.push(commandsMessage);
     }
+
+    setOverlayMessage('Starting your imported project...');
+    await importChat(`Git Project:${repoUrl.split('/').slice(-1)[0]}`, messages, { gitUrl: repoUrl });
   };
 
   useEffect(() => {
-    if (!historyReady || !gitReady || imported) {
+    if (bootError) {
+      failImport(bootError.message);
+    }
+  }, [bootError]);
+
+  useEffect(() => {
+    if (!loading || gitReady) {
       return;
     }
 
-    const url = searchParams.get('url');
+    const timer = window.setTimeout(() => {
+      failImport(
+        'Workspace failed to start. Use Chrome or Edge, disable extensions that block SharedArrayBuffer, then hard-refresh.',
+      );
+    }, BOOT_TIMEOUT_MS);
 
-    if (!url) {
+    return () => window.clearTimeout(timer);
+  }, [gitReady, loading]);
+
+  useEffect(() => {
+    const repoUrl = searchParams.get('url');
+
+    if (!repoUrl) {
       window.location.href = '/';
       return;
     }
 
-    importRepo(url).catch((error) => {
+    if (startedRef.current || bootError) {
+      return;
+    }
+
+    if (!historyReady || !gitReady) {
+      setLoading(true);
+      setOverlayMessage('Preparing your workspace...');
+      return;
+    }
+
+    startedRef.current = true;
+    setLoading(true);
+
+    importRepo(repoUrl).catch((error) => {
       console.error('Error importing repo:', error);
-      toast.error('Failed to import repository');
-      setLoading(false);
-      window.location.href = '/';
+      failImport(error instanceof Error ? error.message : 'Failed to import repository');
     });
-    setImported(true);
-  }, [searchParams, historyReady, gitReady, imported]);
+  }, [bootError, gitReady, historyReady, searchParams]);
 
   return (
     <ClientOnly fallback={<BaseChat />}>
       {() => (
         <>
           <Chat />
-          {loading && <LoadingOverlay message="Please wait while we clone the repository..." />}
+          {loading && <LoadingOverlay message={overlayMessage} />}
         </>
       )}
     </ClientOnly>
