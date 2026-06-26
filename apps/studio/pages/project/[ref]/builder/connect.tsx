@@ -1,38 +1,48 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from '@remix-run/react';
-import { getAccessToken, useParams } from 'common';
-import { toast } from 'sonner';
+import { getAccessToken, useParams } from 'common'
+import { useRouter } from 'next/router'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
-import { withAuth } from 'hooks/misc/withAuth';
+import { withAuth } from 'hooks/misc/withAuth'
+import type { NextPageWithLayout } from 'types'
 
-function BuilderConnectPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { ref: routeRef } = useParams() as { ref?: string };
-  const [status, setStatus] = useState('Connecting Builder to your Indobase project…');
+const BuilderConnectPage: NextPageWithLayout = () => {
+  const router = useRouter()
+  const { ref: routeRef } = useParams() as { ref?: string }
+  const [status, setStatus] = useState('Connecting Builder to your Indobase project…')
 
   useEffect(() => {
-    const projectRef = routeRef || searchParams.get('project_ref') || searchParams.get('ref');
-    const returnTo = searchParams.get('return_to') || '/';
+    if (!router.isReady) {
+      return
+    }
+
+    const queryRef =
+      typeof router.query.project_ref === 'string'
+        ? router.query.project_ref
+        : typeof router.query.ref === 'string'
+          ? router.query.ref
+          : undefined
+    const projectRef = routeRef || queryRef
+    const returnTo = typeof router.query.return_to === 'string' ? router.query.return_to : '/'
 
     if (!projectRef) {
-      setStatus('Missing project ref. Open Builder from a Studio project.');
-      toast.error('Project ref is required to open Builder');
-      return;
+      setStatus('Missing project ref. Open Builder from a Studio project.')
+      toast.error('Project ref is required to open Builder')
+      return
     }
 
     const connect = async () => {
       try {
-        const accessToken = await getAccessToken();
+        const accessToken = await getAccessToken()
 
         if (!accessToken) {
-          const signInReturn = `/project/${encodeURIComponent(projectRef)}/builder/connect?return_to=${encodeURIComponent(returnTo)}`;
-          navigate(`/sign-in?returnTo=${encodeURIComponent(signInReturn)}`);
-          return;
+          const signInReturn = `/project/${encodeURIComponent(projectRef)}/builder/connect?return_to=${encodeURIComponent(returnTo)}`
+          await router.push(`/sign-in?returnTo=${encodeURIComponent(signInReturn)}`)
+          return
         }
 
-        const launchParams = new URLSearchParams();
-        launchParams.set('next', returnTo);
+        const launchParams = new URLSearchParams()
+        launchParams.set('next', returnTo)
 
         const response = await fetch(
           `/api/platform/projects/${encodeURIComponent(projectRef)}/builder/launch?${launchParams.toString()}`,
@@ -44,24 +54,24 @@ function BuilderConnectPage() {
               Authorization: `Bearer ${accessToken}`,
             },
           },
-        );
+        )
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = await response.json().catch(() => ({}))
 
         if (!response.ok || !payload?.url) {
-          throw new Error(payload?.message || `Failed to open Builder (${response.status})`);
+          throw new Error(payload?.message || `Failed to open Builder (${response.status})`)
         }
 
-        window.location.href = payload.url;
+        window.location.href = payload.url
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to open Builder';
-        setStatus(message);
-        toast.error(message);
+        const message = error instanceof Error ? error.message : 'Failed to open Builder'
+        setStatus(message)
+        toast.error(message)
       }
-    };
+    }
 
-    void connect();
-  }, [navigate, routeRef, searchParams]);
+    void connect()
+  }, [router.isReady, router.query, routeRef, router])
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center p-8">
@@ -70,7 +80,7 @@ function BuilderConnectPage() {
         <p className="mt-3 text-sm text-foreground-light">{status}</p>
       </div>
     </div>
-  );
+  )
 }
 
-export default withAuth(BuilderConnectPage);
+export default withAuth(BuilderConnectPage)
