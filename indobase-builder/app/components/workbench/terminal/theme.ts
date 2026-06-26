@@ -1,35 +1,58 @@
 import type { ITheme } from '@xterm/xterm';
 
-const style = getComputedStyle(document.documentElement);
-const cssVar = (token: string) => style.getPropertyValue(token) || undefined;
+function resolveCssVariable(variable: string, property: 'color' | 'background-color'): string | undefined {
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+
+  const probe = document.createElement('span');
+  probe.style.setProperty(property, `var(${variable})`);
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  document.documentElement.appendChild(probe);
+
+  const computed = getComputedStyle(probe);
+  const value = property === 'color' ? computed.color : computed.backgroundColor;
+
+  probe.remove();
+
+  if (!value || value === 'rgba(0, 0, 0, 0)') {
+    return undefined;
+  }
+
+  return value;
+}
+
+const cssColor = (token: string) => resolveCssVariable(token, 'color');
+const cssBackground = (token: string) => resolveCssVariable(token, 'background-color');
 
 export function getTerminalTheme(overrides?: ITheme): ITheme {
   return {
-    cursor: cssVar('--bolt-elements-terminal-cursorColor'),
-    cursorAccent: cssVar('--bolt-elements-terminal-cursorColorAccent'),
-    foreground: cssVar('--bolt-elements-terminal-textColor'),
-    background: cssVar('--bolt-elements-terminal-backgroundColor'),
-    selectionBackground: cssVar('--bolt-elements-terminal-selection-backgroundColor'),
-    selectionForeground: cssVar('--bolt-elements-terminal-selection-textColor'),
-    selectionInactiveBackground: cssVar('--bolt-elements-terminal-selection-backgroundColorInactive'),
+    cursor: cssColor('--bolt-elements-terminal-cursorColor'),
+    cursorAccent: cssColor('--bolt-elements-terminal-cursorColorAccent'),
+    foreground: cssColor('--bolt-elements-terminal-textColor'),
+    background: cssBackground('--bolt-elements-terminal-backgroundColor'),
+    selectionBackground: cssBackground('--bolt-elements-terminal-selection-backgroundColor'),
+    selectionForeground: cssColor('--bolt-elements-terminal-selection-textColor'),
+    selectionInactiveBackground: cssBackground('--bolt-elements-terminal-selection-backgroundColorInactive'),
 
-    // ansi escape code colors
-    black: cssVar('--bolt-elements-terminal-color-black'),
-    red: cssVar('--bolt-elements-terminal-color-red'),
-    green: cssVar('--bolt-elements-terminal-color-green'),
-    yellow: cssVar('--bolt-elements-terminal-color-yellow'),
-    blue: cssVar('--bolt-elements-terminal-color-blue'),
-    magenta: cssVar('--bolt-elements-terminal-color-magenta'),
-    cyan: cssVar('--bolt-elements-terminal-color-cyan'),
-    white: cssVar('--bolt-elements-terminal-color-white'),
-    brightBlack: cssVar('--bolt-elements-terminal-color-brightBlack'),
-    brightRed: cssVar('--bolt-elements-terminal-color-brightRed'),
-    brightGreen: cssVar('--bolt-elements-terminal-color-brightGreen'),
-    brightYellow: cssVar('--bolt-elements-terminal-color-brightYellow'),
-    brightBlue: cssVar('--bolt-elements-terminal-color-brightBlue'),
-    brightMagenta: cssVar('--bolt-elements-terminal-color-brightMagenta'),
-    brightCyan: cssVar('--bolt-elements-terminal-color-brightCyan'),
-    brightWhite: cssVar('--bolt-elements-terminal-color-brightWhite'),
+    black: cssColor('--bolt-elements-terminal-color-black'),
+    red: cssColor('--bolt-elements-terminal-color-red'),
+    green: cssColor('--bolt-elements-terminal-color-green'),
+    yellow: cssColor('--bolt-elements-terminal-color-yellow'),
+    blue: cssColor('--bolt-elements-terminal-color-blue'),
+    magenta: cssColor('--bolt-elements-terminal-color-magenta'),
+    cyan: cssColor('--bolt-elements-terminal-color-cyan'),
+    white: cssColor('--bolt-elements-terminal-color-white'),
+    brightBlack: cssColor('--bolt-elements-terminal-color-brightBlack'),
+    brightRed: cssColor('--bolt-elements-terminal-color-brightRed'),
+    brightGreen: cssColor('--bolt-elements-terminal-color-brightGreen'),
+    brightYellow: cssColor('--bolt-elements-terminal-color-brightYellow'),
+    brightBlue: cssColor('--bolt-elements-terminal-color-brightBlue'),
+    brightMagenta: cssColor('--bolt-elements-terminal-color-brightMagenta'),
+    brightCyan: cssColor('--bolt-elements-terminal-color-brightCyan'),
+    brightWhite: cssColor('--bolt-elements-terminal-color-brightWhite'),
 
     ...overrides,
   };

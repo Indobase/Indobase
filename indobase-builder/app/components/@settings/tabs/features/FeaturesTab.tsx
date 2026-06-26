@@ -110,10 +110,12 @@ export default function FeaturesTab() {
     autoSelectTemplate,
     isLatestBranch,
     contextOptimizationEnabled,
+    autonomousAgentsEnabled,
     eventLogs,
     setAutoSelectTemplate,
     enableLatestBranch,
     enableContextOptimization,
+    enableAutonomousAgents,
     setEventLogs,
     setPromptId,
     promptId,
@@ -164,6 +166,12 @@ export default function FeaturesTab() {
           break;
         }
 
+        case 'autonomousAgents': {
+          enableAutonomousAgents(enabled);
+          toast.success(`Autonomous agents ${enabled ? 'enabled' : 'disabled'}`);
+          break;
+        }
+
         case 'eventLogs': {
           setEventLogs(enabled);
           toast.success(`Event logging ${enabled ? 'enabled' : 'disabled'}`);
@@ -174,7 +182,7 @@ export default function FeaturesTab() {
           break;
       }
     },
-    [enableLatestBranch, setAutoSelectTemplate, enableContextOptimization, setEventLogs],
+    [enableLatestBranch, setAutoSelectTemplate, enableContextOptimization, enableAutonomousAgents, setEventLogs],
   );
 
   const features = {
@@ -202,6 +210,15 @@ export default function FeaturesTab() {
         icon: 'i-ph:brain',
         enabled: contextOptimizationEnabled,
         tooltip: 'Enabled by default for improved AI responses',
+      },
+      {
+        id: 'autonomousAgents',
+        title: 'Autonomous Agents',
+        description: 'Planner, Coder, Tester, and Deployer agents run automatically',
+        icon: 'i-ph:robot',
+        enabled: autonomousAgentsEnabled,
+        tooltip:
+          'Runs a multi-agent pipeline: plan → code → verify (build/tests) → deploy to Indobase when connected',
       },
       {
         id: 'eventLogs',

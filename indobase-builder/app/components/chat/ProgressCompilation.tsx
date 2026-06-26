@@ -85,6 +85,13 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
   );
 }
 
+const AGENT_PROGRESS_LABELS: Record<string, string> = {
+  planner: 'Planner Agent',
+  coder: 'Coder Agent',
+  tester: 'Tester Agent',
+  deployer: 'Deployer Agent',
+};
+
 const ProgressItem = ({ progress }: { progress: ProgressAnnotation }) => {
   return (
     <motion.div
@@ -102,7 +109,9 @@ const ProgressItem = ({ progress }: { progress: ProgressAnnotation }) => {
             <div className="i-ph:check"></div>
           ) : null}
         </div>
-        {/* {x.label} */}
+        {AGENT_PROGRESS_LABELS[progress.label] ? (
+          <span className="font-medium">{AGENT_PROGRESS_LABELS[progress.label]}:</span>
+        ) : null}
       </div>
       {progress.message}
     </motion.div>

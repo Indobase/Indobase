@@ -61,6 +61,7 @@ const inlineThemeCode = stripIndents`
 `;
 
 import { logStore } from './lib/stores/logs';
+import { ensureBuilderSession, getStoredBuilderMcpToken } from './lib/indobase/builder-auth.client';
 
 export default function App() {
   const theme = useStore(themeStore);
@@ -90,6 +91,10 @@ export default function App() {
       .catch((error) => {
         logStore.logError('Failed to initialize debug logging', error);
       });
+
+    if (getStoredBuilderMcpToken()) {
+      void ensureBuilderSession();
+    }
   }, []);
 
   return <Outlet />;

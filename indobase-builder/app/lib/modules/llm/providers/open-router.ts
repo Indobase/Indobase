@@ -51,6 +51,12 @@ export default class OpenRouterProvider extends BaseProvider {
       provider: 'OpenRouter',
       maxTokenAllowed: 1000000,
     },
+    {
+      name: 'nvidia/nemotron-nano-12b-v2-vl:free',
+      label: 'Indobase Vision (Free)',
+      provider: 'OpenRouter',
+      maxTokenAllowed: 128000,
+    },
   ];
 
   async getDynamicModels(

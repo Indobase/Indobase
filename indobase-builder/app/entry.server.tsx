@@ -31,7 +31,8 @@ export default function handleRequest(
 
           const body = new PassThrough();
           responseHeaders.set('Content-Type', 'text/html');
-          responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+          // Must match WebContainer.boot({ coep: 'credentialless' }) in lib/webcontainer/index.ts
+          responseHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
           responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
 
           resolve(

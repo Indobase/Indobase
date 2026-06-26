@@ -7,6 +7,8 @@ export const MODIFICATIONS_TAG_NAME = 'bolt_file_modifications';
 export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
 export const DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+/** OpenRouter free model used when the user attaches screenshots/images. */
+export const VISION_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
 export const FIXED_MODEL_PROVIDER_NAME = 'OpenRouter';
 export const FIXED_MODEL_CHOICES = [
   {

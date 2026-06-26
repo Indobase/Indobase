@@ -7,12 +7,14 @@ import {
   latestBranchStore,
   autoSelectStarterTemplate,
   enableContextOptimizationStore,
+  autonomousAgentsStore,
   tabConfigurationStore,
   resetTabConfiguration as resetTabConfig,
   updateProviderSettings as updateProviderSettingsStore,
   updateLatestBranch,
   updateAutoSelectTemplate,
   updateContextOptimization,
+  updateAutonomousAgents,
   updateEventLogs,
   updatePromptId,
 } from '~/lib/stores/settings';
@@ -58,6 +60,8 @@ export interface UseSettingsReturn {
   setAutoSelectTemplate: (enabled: boolean) => void;
   contextOptimizationEnabled: boolean;
   enableContextOptimization: (enabled: boolean) => void;
+  autonomousAgentsEnabled: boolean;
+  enableAutonomousAgents: (enabled: boolean) => void;
 
   // Tab configuration
   tabConfiguration: TabWindowConfig;
@@ -78,6 +82,7 @@ export function useSettings(): UseSettingsReturn {
   const autoSelectTemplate = useStore(autoSelectStarterTemplate);
   const [activeProviders, setActiveProviders] = useState<ProviderInfo[]>([]);
   const contextOptimizationEnabled = useStore(enableContextOptimizationStore);
+  const autonomousAgentsEnabled = useStore(autonomousAgentsStore);
   const tabConfiguration = useStore(tabConfigurationStore);
   const [settings, setSettings] = useState<Settings>(() => {
     const storedSettings = getLocalStorage('settings');
@@ -197,6 +202,8 @@ export function useSettings(): UseSettingsReturn {
     setAutoSelectTemplate,
     contextOptimizationEnabled,
     enableContextOptimization,
+    autonomousAgentsEnabled,
+    enableAutonomousAgents: updateAutonomousAgents,
     setTheme,
     setLanguage,
     setNotifications,

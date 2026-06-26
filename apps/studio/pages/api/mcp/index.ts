@@ -5,6 +5,7 @@ import { commaSeparatedStringIntoArray, fromNodeHeaders, zBooleanString } from '
 import {
   readBearerToken,
   verifyBuilderMcpToken,
+  builderMcpClaimsToJwtPayload,
 } from 'lib/api/saas/builder-mcp-auth'
 import {
   getAccountOperations,
@@ -125,7 +126,12 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const resolvedProjectRef = auth.projectRef ?? DEFAULT_PROJECT.ref
-  const userClaims = auth.authType === 'user' ? auth.claims : undefined
+  const userClaims =
+    auth.authType === 'user'
+      ? auth.claims
+      : auth.authType === 'builder'
+        ? builderMcpClaimsToJwtPayload(auth.claims)
+        : undefined
 
   const platform: IndobasePlatform = {
     account: userClaims ? getAccountOperations({ claims: userClaims }) : undefined,

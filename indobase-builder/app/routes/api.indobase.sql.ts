@@ -1,15 +1,12 @@
-import type { ActionFunctionArgs } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import { json, type ActionFunctionArgs } from '@remix-run/node';
 
-type QueueMobileBuildBody = {
-  framework?: 'expo' | 'react_native' | 'flutter' | 'other';
+type SqlBody = {
   mcpToken?: string;
-  metadata?: Record<string, unknown>;
-  profile?: 'production' | 'preview';
+  name?: string;
+  operation?: 'query' | 'migration';
   projectRef?: string;
-  sourceFiles?: Record<string, string>;
+  query?: string;
   studioUrl?: string;
-  target?: 'android_aab';
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -17,10 +14,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
 
-  let body: QueueMobileBuildBody;
+  let body: SqlBody;
 
   try {
-    body = (await request.json()) as QueueMobileBuildBody;
+    body = (await request.json()) as SqlBody;
   } catch {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -28,13 +25,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const projectRef = body.projectRef?.trim();
   const studioUrl = body.studioUrl?.trim();
   const mcpToken = body.mcpToken?.trim();
+  const query = body.query?.trim();
 
-  if (!projectRef || !studioUrl || !mcpToken) {
-    return json({ error: 'projectRef, studioUrl, and mcpToken are required' }, { status: 400 });
+  if (!projectRef || !studioUrl || !mcpToken || !query) {
+    return json({ error: 'projectRef, studioUrl, mcpToken, and query are required' }, { status: 400 });
   }
 
   const studioEndpoint = new URL(
-    `/api/platform/projects/${encodeURIComponent(projectRef)}/mobile-builds/builder`,
+    `/api/platform/projects/${encodeURIComponent(projectRef)}/sql/builder`,
     studioUrl,
   );
 
@@ -45,11 +43,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      framework: body.framework,
-      metadata: body.metadata,
-      profile: body.profile,
-      sourceFiles: body.sourceFiles,
-      target: body.target ?? 'android_aab',
+      query,
+      operation: body.operation ?? 'query',
+      name: body.name,
     }),
   });
 

@@ -1,5 +1,6 @@
 import ignore from 'ignore';
 import type { ProviderInfo } from '~/types/model';
+import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import type { Template } from '~/types/template';
 import { STARTER_TEMPLATES } from './constants';
 
@@ -125,10 +126,16 @@ export const selectStarterTemplate = async (options: { message: string; model: s
     provider,
     system: starterTemplateSelectionPrompt(templates),
   };
-  const response = await fetch('/api/llmcall', {
-    method: 'POST',
-    body: JSON.stringify(requestBody),
-  });
+  const response = await fetch(
+    '/api/llmcall',
+    getBuilderRequestInit({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    }),
+  );
   const respJson: { text: string } = await response.json();
   console.log(respJson);
 

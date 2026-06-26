@@ -1,3 +1,9 @@
 .xterm {
   padding: 1rem;
+  background-color: var(--bolt-elements-terminals-background);
+
+  .xterm-viewport,
+  .xterm-screen {
+    background-color: var(--bolt-elements-terminals-background) !important;
+  }
 }

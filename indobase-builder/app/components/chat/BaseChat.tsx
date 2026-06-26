@@ -127,6 +127,7 @@ interface BaseChatProps {
   llmErrorAlert?: LlmErrorAlertType;
   clearLlmErrorAlert?: () => void;
   data?: JSONValue[] | undefined;
+  extraProgress?: ProgressAnnotation[];
   chatMode?: 'discuss' | 'build';
   setChatMode?: (mode: 'discuss' | 'build') => void;
   append?: (message: Message) => void;
@@ -175,6 +176,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       llmErrorAlert,
       clearLlmErrorAlert,
       data,
+      extraProgress = [],
       chatMode,
       setChatMode,
       append,
@@ -206,13 +208,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     }, [expoUrl]);
 
     useEffect(() => {
-      if (data) {
-        const progressList = data.filter(
-          (x) => typeof x === 'object' && (x as any).type === 'progress',
-        ) as ProgressAnnotation[];
-        setProgressAnnotations(progressList);
-      }
-    }, [data]);
+      const progressList = (data || []).filter(
+        (x) => typeof x === 'object' && (x as any).type === 'progress',
+      ) as ProgressAnnotation[];
+      setProgressAnnotations([...progressList, ...extraProgress]);
+    }, [data, extraProgress]);
     useEffect(() => {
       console.log(transcript);
     }, [transcript]);
@@ -462,8 +462,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               Build with Indobase
             </h1>
             <p className="mt-5 max-w-2xl text-[15.5px] leading-7 text-[#6A6158] dark:text-[#B6ADA3]">
-              Design products with AI, wire them to your backend, and move into Studio when you need database, auth,
-              storage, functions, and logs.
+              {isStudioManagedConnection
+                ? 'Your Indobase project is connected. Auth, database, storage, and edge functions run on your tenant backend automatically while you build.'
+                : 'Design products with AI, wire them to your backend, and move into Studio when you need database, auth, storage, functions, and logs.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {isStudioManagedConnection && (

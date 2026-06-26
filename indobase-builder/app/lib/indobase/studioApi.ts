@@ -1,3 +1,4 @@
+import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 export type IndobaseDeploymentStatus = 'requested' | 'building' | 'ready' | 'failed' | 'archived';
@@ -45,6 +46,7 @@ export type QueueMobileBuildParams = {
   framework?: 'expo' | 'react_native' | 'flutter' | 'other';
   metadata?: Record<string, unknown>;
   profile?: 'production' | 'preview';
+  sourceFiles?: Record<string, string>;
   target?: 'android_aab';
 };
 
@@ -126,13 +128,16 @@ export async function queueIndobaseMobileBuild(
     ...params,
   };
 
-  const response = await fetch('/api/indobase/mobile-build', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const response = await fetch(
+    '/api/indobase/mobile-build',
+    getBuilderRequestInit({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }),
+  );
 
   const data = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
 
@@ -164,16 +169,19 @@ export async function queueIndobaseDeployment(
     };
   }
 
-  const response = await fetch('/api/indobase/deploy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...studioRequest,
-      ...params,
+  const response = await fetch(
+    '/api/indobase/deploy',
+    getBuilderRequestInit({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...studioRequest,
+        ...params,
+      }),
     }),
-  });
+  );
 
   const data = (await response.json().catch(() => ({}))) as IndobaseDeployment & {
     error?: string;
@@ -208,16 +216,19 @@ export async function getIndobaseDeployment(
     };
   }
 
-  const response = await fetch('/api/indobase/deploy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...studioRequest,
-      deploymentId,
+  const response = await fetch(
+    '/api/indobase/deploy',
+    getBuilderRequestInit({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...studioRequest,
+        deploymentId,
+      }),
     }),
-  });
+  );
 
   const data = (await response.json().catch(() => ({}))) as IndobaseDeployment & {
     error?: string;

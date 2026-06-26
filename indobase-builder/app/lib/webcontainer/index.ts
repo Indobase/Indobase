@@ -14,12 +14,26 @@ if (import.meta.hot) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
+const WEBCONTAINER_BOOT_TIMEOUT_MS = 60_000;
+
 function bootWebContainer(): Promise<WebContainer> {
-  return WebContainer.boot({
+  const boot = WebContainer.boot({
     coep: 'credentialless',
     workdirName: WORK_DIR_NAME,
     forwardPreviewErrors: true,
-  }).then(async (container) => {
+  });
+
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(
+        new Error(
+          'WebContainer failed to start (timed out). Use Chrome or Edge, disable extensions that block SharedArrayBuffer, and hard-refresh the page.',
+        ),
+      );
+    }, WEBCONTAINER_BOOT_TIMEOUT_MS);
+  });
+
+  return Promise.race([boot, timeout]).then(async (container) => {
     webcontainerContext.loaded = true;
 
     const { workbenchStore } = await import('~/lib/stores/workbench');
@@ -45,6 +59,11 @@ function bootWebContainer(): Promise<WebContainer> {
     });
 
     return container;
+  }).catch((error) => {
+    webcontainerContext.loaded = false;
+    bootPromise = undefined;
+    console.error('WebContainer boot failed:', error);
+    throw error;
   });
 }
 

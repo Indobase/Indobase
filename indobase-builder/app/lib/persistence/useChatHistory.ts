@@ -170,7 +170,7 @@ ${value.content}
                  */
                 ...filteredMessages,
               ];
-              restoreSnapshot(mixedId);
+              await restoreSnapshot(mixedId, validSnapshot);
             }
 
             setInitialMessages(filteredMessages);
@@ -223,36 +223,44 @@ ${value.content}
   );
 
   const restoreSnapshot = useCallback(async (id: string, snapshot?: Snapshot) => {
-    // const snapshotStr = localStorage.getItem(`snapshot:${id}`); // Remove localStorage usage
     const container = await webcontainer;
-
     const validSnapshot = snapshot || { chatIndex: '', files: {} };
+    const files = validSnapshot.files ?? {};
 
-    if (!validSnapshot?.files) {
+    if (Object.keys(files).length === 0) {
       return;
     }
 
-    Object.entries(validSnapshot.files).forEach(async ([key, value]) => {
-      if (key.startsWith(container.workdir)) {
-        key = key.replace(container.workdir, '');
+    const normalizePath = (filePath: string) =>
+      filePath.startsWith(container.workdir) ? filePath.slice(container.workdir.length) : filePath;
+
+    for (const [key, value] of Object.entries(files)) {
+      if (value?.type !== 'folder') {
+        continue;
       }
 
-      if (value?.type === 'folder') {
-        await container.fs.mkdir(key, { recursive: true });
-      }
-    });
-    Object.entries(validSnapshot.files).forEach(async ([key, value]) => {
-      if (value?.type === 'file') {
-        if (key.startsWith(container.workdir)) {
-          key = key.replace(container.workdir, '');
-        }
+      const relativePath = normalizePath(key);
 
-        await container.fs.writeFile(key, value.content, { encoding: value.isBinary ? undefined : 'utf8' });
-      } else {
+      if (relativePath) {
+        await container.fs.mkdir(relativePath, { recursive: true });
       }
-    });
+    }
 
-    // workbenchStore.files.setKey(snapshot?.files)
+    for (const [key, value] of Object.entries(files)) {
+      if (value?.type !== 'file') {
+        continue;
+      }
+
+      const relativePath = normalizePath(key);
+
+      if (!relativePath) {
+        continue;
+      }
+
+      await container.fs.writeFile(relativePath, value.content, {
+        encoding: value.isBinary ? undefined : 'utf8',
+      });
+    }
   }, []);
 
   return {

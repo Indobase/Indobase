@@ -15,6 +15,7 @@ import type { DesignScheme } from '~/types/design-scheme';
 import { MCPService } from '~/lib/services/mcpService';
 import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
+import { completeCoderPhase, runPlannerPhase } from '~/lib/.server/orchestration/orchestrate-chat';
 
 const logger = createScopedLogger('api.chat');
 
@@ -45,7 +46,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     },
   });
 
-  const { messages, files, promptId, contextOptimization, supabase, chatMode, designScheme, maxLLMSteps } =
+  const { messages, files, promptId, contextOptimization, supabase, chatMode, designScheme, maxLLMSteps, multiAgentMode } =
     await request.json<{
       messages: Messages;
       files: any;
@@ -53,12 +54,22 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       contextOptimization: boolean;
       chatMode: 'discuss' | 'build';
       designScheme?: DesignScheme;
+      multiAgentMode?: boolean;
       supabase?: {
         isConnected: boolean;
         hasSelectedProject: boolean;
+        connectionSource?: 'manual' | 'studio_handoff';
         credentials?: {
           anonKey?: string;
           supabaseUrl?: string;
+        };
+        indobase?: {
+          apiUrl?: string;
+          authUrl?: string;
+          projectRef?: string;
+          restUrl?: string;
+          storageUrl?: string;
+          studioUrl?: string;
         };
       };
       maxLLMSteps: number;
@@ -97,6 +108,30 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         let messageSliceId = 0;
 
         const processedMessages = await mcpService.processToolInvocations(messages, dataStream);
+        const isRepairRound = processedMessages.some(
+          (message) => message.role === 'user' && String(message.content).includes('[Autonomous Tester Agent]'),
+        );
+        const useMultiAgent = Boolean(multiAgentMode) && chatMode === 'build' && !isRepairRound;
+        let orchestratedMessages = processedMessages;
+        const progressOrder = { value: progressCounter };
+
+        if (useMultiAgent) {
+          const plannerResult = await runPlannerPhase({
+            messages: processedMessages,
+            dataStream,
+            progressOrder,
+            env: context.cloudflare?.env,
+            apiKeys,
+            providerSettings,
+            onUsage(usage) {
+              cumulativeUsage.completionTokens += usage.completionTokens || 0;
+              cumulativeUsage.promptTokens += usage.promptTokens || 0;
+              cumulativeUsage.totalTokens += usage.totalTokens || 0;
+            },
+          });
+          orchestratedMessages = plannerResult.messages;
+          progressCounter = progressOrder.value;
+        }
 
         if (processedMessages.length > 3) {
           messageSliceId = processedMessages.length - 3;
@@ -205,7 +240,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         }
 
         const options: StreamingOptions = {
-          supabaseConnection: supabase,
+          supabaseConnection: supabase
+            ? {
+                ...supabase,
+                connectionSource: supabase.connectionSource,
+                indobase: supabase.indobase,
+              }
+            : undefined,
           toolChoice: 'auto',
           tools: mcpService.toolsWithoutExecute,
           maxSteps: maxLLMSteps,
@@ -225,6 +266,11 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             if (finishReason !== 'length') {
+              if (useMultiAgent) {
+                completeCoderPhase(dataStream, progressOrder);
+                progressCounter = progressOrder.value;
+              }
+
               dataStream.writeMessageAnnotation({
                 type: 'usage',
                 value: {
@@ -254,17 +300,17 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
             logger.info(`Reached max token limit (${MAX_TOKENS}): Continuing message (${switchesLeft} switches left)`);
 
-            const lastUserMessage = processedMessages.filter((x) => x.role == 'user').slice(-1)[0];
+            const lastUserMessage = orchestratedMessages.filter((x) => x.role == 'user').slice(-1)[0];
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);
-            processedMessages.push({ id: generateId(), role: 'assistant', content });
-            processedMessages.push({
+            orchestratedMessages.push({ id: generateId(), role: 'assistant', content });
+            orchestratedMessages.push({
               id: generateId(),
               role: 'user',
               content: `[Model: ${model}]\n\n[Provider: ${provider}]\n\n${CONTINUE_PROMPT}`,
             });
 
             const result = await streamText({
-              messages: [...processedMessages],
+              messages: [...orchestratedMessages],
               env: context.cloudflare?.env,
               options,
               apiKeys,
@@ -277,6 +323,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               designScheme,
               summary,
               messageSliceId,
+              multiAgentMode: useMultiAgent,
             });
 
             result.mergeIntoDataStream(dataStream);
@@ -305,7 +352,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         } satisfies ProgressAnnotation);
 
         const result = await streamText({
-          messages: [...processedMessages],
+          messages: [...orchestratedMessages],
           env: context.cloudflare?.env,
           options,
           apiKeys,
@@ -318,6 +365,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           designScheme,
           summary,
           messageSliceId,
+          multiAgentMode: useMultiAgent,
         });
 
         (async () => {
@@ -447,6 +495,23 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           status: 401,
           headers: { 'Content-Type': 'application/json' },
           statusText: 'Unauthorized',
+        },
+      );
+    }
+
+    if (/image input|image_url|multimodal|vision/i.test(error.message || '')) {
+      return new Response(
+        JSON.stringify({
+          ...errorResponse,
+          message:
+            'The selected model cannot read screenshots. Remove the image and try again, or wait for the vision model update to deploy.',
+          statusCode: 400,
+          isRetryable: false,
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+          statusText: 'Bad Request',
         },
       );
     }

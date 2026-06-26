@@ -83,6 +83,10 @@ export class WorkbenchStore {
     this.#globalExecutionQueue = this.#globalExecutionQueue.then(() => callback());
   }
 
+  async waitForExecutionQueue() {
+    await this.#globalExecutionQueue;
+  }
+
   get previews() {
     return this.#previewsStore.previews;
   }

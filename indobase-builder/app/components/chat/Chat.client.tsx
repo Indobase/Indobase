@@ -31,10 +31,21 @@ import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
 import { supabaseConnection } from '~/lib/stores/supabase';
+import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
+import { runAutonomousPipeline } from '~/lib/orchestration/autonomous-runner';
+import type { ProgressAnnotation } from '~/types/context';
+import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
+import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import {
+  ensureBuilderSession,
+  getBuilderRequestInit,
+  redirectToStudioBuilderConnect,
+} from '~/lib/indobase/builder-auth.client';
+import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
+import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
-import { useMCPStore } from '~/lib/stores/mcp';
 import type { LlmErrorAlertType } from '~/types/actions';
 
 const logger = createScopedLogger('Chat');
@@ -132,7 +143,7 @@ export const ChatImpl = memo(
       (project) => project.id === supabaseConn.selectedProjectId,
     );
     const supabaseAlert = useStore(workbenchStore.supabaseAlert);
-    const { promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
+    const { promptId, autoSelectTemplate, contextOptimizationEnabled, autonomousAgentsEnabled } = useSettings();
     const [llmErrorAlert, setLlmErrorAlert] = useState<LlmErrorAlertType | undefined>(undefined);
     const [model, setModel] = useState(() => {
       const savedModel = Cookies.get('selectedModel');
@@ -143,6 +154,9 @@ export const ChatImpl = memo(
     const [animationScope, animate] = useAnimate();
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
+    const [autonomousProgress, setAutonomousProgress] = useState<ProgressAnnotation[]>([]);
+    const autonomousRepairCountRef = useRef(0);
+    const MAX_AUTONOMOUS_REPAIRS = 2;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const mcpSettings = useMCPStore((state) => state.settings);
 
@@ -162,6 +176,7 @@ export const ChatImpl = memo(
       addToolResult,
     } = useChat({
       api: '/api/chat',
+      fetch: (input, init) => fetch(input, getBuilderRequestInit(init)),
       body: {
         apiKeys,
         files,
@@ -170,14 +185,26 @@ export const ChatImpl = memo(
         chatMode,
         designScheme,
         supabase: {
-          isConnected: supabaseConn.isConnected,
+          isConnected: supabaseConn.isConnected ?? false,
           hasSelectedProject: !!selectedProject,
+          connectionSource: supabaseConn.connectionSource,
           credentials: {
             supabaseUrl: supabaseConn?.credentials?.supabaseUrl,
             anonKey: supabaseConn?.credentials?.anonKey,
           },
+          indobase: supabaseConn.indobase
+            ? {
+                apiUrl: supabaseConn.indobase.apiUrl,
+                authUrl: supabaseConn.indobase.authUrl,
+                projectRef: supabaseConn.indobase.projectRef,
+                restUrl: supabaseConn.indobase.restUrl,
+                storageUrl: supabaseConn.indobase.storageUrl,
+                studioUrl: supabaseConn.indobase.studioUrl,
+              }
+            : undefined,
         },
         maxLLMSteps: mcpSettings.maxLLMSteps,
+        multiAgentMode: autonomousAgentsEnabled && chatMode === 'build',
       },
       sendExtraMessageFields: true,
       onError: (e) => {
@@ -201,6 +228,45 @@ export const ChatImpl = memo(
         }
 
         logger.debug('Finished streaming');
+
+        if (!autonomousAgentsEnabled || chatMode !== 'build' || chatStore.get().aborted) {
+          return;
+        }
+
+        void (async () => {
+          try {
+            const result = await runAutonomousPipeline({
+              connection: supabaseConn,
+              onProgress: (progress) => {
+                setAutonomousProgress((current) => [...current, progress]);
+              },
+            });
+
+            if (result.needsRepair && result.repairPrompt) {
+              if (autonomousRepairCountRef.current >= MAX_AUTONOMOUS_REPAIRS) {
+                toast.error('Autonomous verification failed after multiple repair attempts.');
+                autonomousRepairCountRef.current = 0;
+                return;
+              }
+
+              autonomousRepairCountRef.current += 1;
+              append({
+                role: 'user',
+                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${result.repairPrompt}`,
+              });
+              return;
+            }
+
+            autonomousRepairCountRef.current = 0;
+
+            if (result.deployUrl) {
+              toast.success('Autonomous deploy published your app.');
+            }
+          } catch (error) {
+            logger.error('Autonomous pipeline failed', error);
+            toast.error('Autonomous test/deploy pipeline failed.');
+          }
+        })();
       },
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
@@ -244,6 +310,49 @@ export const ChatImpl = memo(
         storeMessageHistory,
       });
     }, [messages, isLoading, parseMessages]);
+
+    useEffect(() => {
+      if (!isIndobaseStudioManagedConnection(supabaseConn)) {
+        return;
+      }
+
+      void ensureBuilderSession();
+      void useMCPStore.getState().initialize();
+      void useMCPStore.getState().syncWithIndobaseConnection();
+    }, [supabaseConn.connectionSource, supabaseConn.indobase?.mcpToken]);
+
+    useEffect(() => {
+      if (!isIndobaseStudioManagedConnection(supabaseConn) || isLoading) {
+        return;
+      }
+
+      const toolAnnotations = (chatData || []).filter(
+        (entry) => typeof entry === 'object' && (entry as ToolCallAnnotation).type === 'toolCall',
+      ) as ToolCallAnnotation[];
+
+      for (const message of messages) {
+        if (message.role !== 'assistant' || !message.parts) {
+          continue;
+        }
+
+        for (const part of message.parts) {
+          if (part.type !== 'tool-invocation' || part.toolInvocation.state !== 'call') {
+            continue;
+          }
+
+          const annotation = toolAnnotations.find(
+            (entry) => entry.toolCallId === part.toolInvocation.toolCallId,
+          );
+
+          if (annotation?.serverName === INDOBASE_MCP_SERVER_NAME) {
+            addToolResult({
+              toolCallId: part.toolInvocation.toolCallId,
+              result: TOOL_EXECUTION_APPROVAL.APPROVE,
+            });
+          }
+        }
+      }
+    }, [messages, chatData, isLoading, supabaseConn, addToolResult]);
 
     const scrollTextArea = () => {
       const textarea = textareaRef.current;
@@ -300,6 +409,16 @@ export const ChatImpl = memo(
         let title = 'Request Failed';
 
         if (errorInfo.statusCode === 401 || errorInfo.message.toLowerCase().includes('api key')) {
+          if (errorInfo.statusCode === 401 && isIndobaseStudioManagedConnection(supabaseConn)) {
+            void ensureBuilderSession().then((restored) => {
+              if (!restored) {
+                toast.error('Builder session expired. Reconnecting through Studio…');
+                redirectToStudioBuilderConnect();
+              }
+            });
+            return;
+          }
+
           errorType = 'authentication';
           title = 'Authentication Error';
         } else if (errorInfo.statusCode === 429 || errorInfo.message.toLowerCase().includes('rate limit')) {
@@ -333,7 +452,7 @@ export const ChatImpl = memo(
         });
         setData([]);
       },
-      [provider.name, stop],
+      [provider.name, stop, supabaseConn],
     );
 
     const clearApiErrorAlert = useCallback(() => {
@@ -432,6 +551,9 @@ export const ChatImpl = memo(
         abort();
         return;
       }
+
+      setAutonomousProgress([]);
+      autonomousRepairCountRef.current = 0;
 
       let finalMessageContent = messageContent;
 
@@ -704,6 +826,7 @@ export const ChatImpl = memo(
         llmErrorAlert={llmErrorAlert}
         clearLlmErrorAlert={clearApiErrorAlert}
         data={chatData}
+        extraProgress={autonomousProgress}
         chatMode={chatMode}
         setChatMode={setChatMode}
         append={append}

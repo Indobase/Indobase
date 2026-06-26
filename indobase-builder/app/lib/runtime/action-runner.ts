@@ -74,6 +74,7 @@ export class ActionRunner {
   onSupabaseAlert?: (alert: SupabaseAlert) => void;
   onDeployAlert?: (alert: DeployAlert) => void;
   buildOutput?: { path: string; exitCode: number; output: string };
+  lastShellOutput?: { exitCode: number; output: string };
 
   constructor(
     webcontainerPromise: Promise<WebContainer>,
@@ -265,7 +266,14 @@ export class ActionRunner {
     }
 
     const shell = this.#shellTerminal();
-    await shell.ready();
+    await Promise.race([
+      shell.ready(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Terminal is not ready yet. Open the terminal panel and try again.'));
+        }, 30_000);
+      }),
+    ]);
 
     if (!shell || !shell.terminal || !shell.process) {
       unreachable('Shell terminal not found');
@@ -284,6 +292,11 @@ export class ActionRunner {
       action.abort();
     });
     logger.debug(`${action.type} Shell Response: [exit code:${resp?.exitCode}]`);
+
+    this.lastShellOutput = {
+      exitCode: resp?.exitCode ?? 1,
+      output: resp?.output ?? '',
+    };
 
     if (resp?.exitCode != 0) {
       const enhancedError = this.#createEnhancedShellError(action.content, resp?.exitCode, resp?.output);

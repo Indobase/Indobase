@@ -43,7 +43,8 @@ fi
 find "$REPO_ROOT/docker/scripts" -name '*.sh' -exec sed -i 's/\r$//' {} +
 chmod +x "$REPO_ROOT/docker/scripts/"*.sh
 
-mkdir -p /opt/indobase /etc/indobase
+mkdir -p /opt/indobase /etc/indobase /var/lib/indobase/mobile-builds
+chmod 755 /var/lib/indobase/mobile-builds
 install -m 0755 "$BUILD_SCRIPT_SRC" "$BUILD_SCRIPT_DST"
 
 if [[ ! -f "$MOBILE_BUILD_ENV" ]]; then
@@ -120,3 +121,4 @@ systemctl --no-pager --full status indobase-project-deployment-executor.service 
 systemctl --no-pager --full status indobase-project-mobile-build-executor.service | head -5
 
 echo "Done. Set EAS_TOKEN in $MOBILE_BUILD_ENV when Expo source is available on the VPS."
+echo "Ensure Studio can write PROJECT_MOBILE_BUILD_SOURCE_ROOT (default /var/lib/indobase/mobile-builds), e.g. bind-mount it into the Studio container."

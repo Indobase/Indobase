@@ -66,8 +66,17 @@ PY
 )"
 
 if [[ -z "$source_path" || ! -d "$source_path" ]]; then
+  for candidate in "$work_dir/app" "$work_dir/source" "$work_dir"; do
+    if [[ -d "$candidate" && -f "$candidate/package.json" ]]; then
+      source_path="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$source_path" || ! -d "$source_path" ]]; then
   write_result "$result_file" failed \
-    "No mobile app source path in build metadata (metadata.source_path). Export the Expo project to the VPS or set INDOBASE_MOBILE_BUILD_WORK_DIR with a checked-out app before queueing builds."
+    "No mobile app source path in build metadata (metadata.source_path). Queue the build from Indobase Builder so the Expo project is uploaded, or place the app on the VPS and set metadata.source_path."
   exit 0
 fi
 

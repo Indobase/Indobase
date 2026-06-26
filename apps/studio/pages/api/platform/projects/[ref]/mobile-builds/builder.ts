@@ -12,12 +12,22 @@ import {
   type ProjectMobileBuildProfile,
   type ProjectMobileBuildTarget,
 } from 'lib/api/saas/mobile-builds'
+import { stageMobileBuildSource } from 'lib/api/saas/mobile-build-source'
 
 type CreateMobileBuildBody = {
   framework?: ProjectMobileBuildFramework
   metadata?: Record<string, unknown>
   profile?: ProjectMobileBuildProfile
+  sourceFiles?: Record<string, string>
   target?: ProjectMobileBuildTarget
+}
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '12mb',
+    },
+  },
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -52,15 +62,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const body = (req.body || {}) as CreateMobileBuildBody
+  const claims = builderMcpClaimsToJwtPayload(builderClaims)
 
   try {
+    let stagedSource:
+      | {
+          buildId: string
+          fileCount: number
+          sourcePath: string
+          totalBytes: number
+        }
+      | undefined
+
+    if (body.sourceFiles && Object.keys(body.sourceFiles).length > 0) {
+      stagedSource = await stageMobileBuildSource({
+        files: body.sourceFiles,
+        projectRef: ref,
+      })
+    }
+
     const build = await createProjectMobileBuild({
-      claims: builderMcpClaimsToJwtPayload(builderClaims),
+      buildId: stagedSource?.buildId,
+      claims,
       framework: body.framework,
       metadata: {
         ...body.metadata,
         builder_session: true,
         requested_from: 'indobase-builder',
+        ...(stagedSource
+          ? {
+              source_path: stagedSource.sourcePath,
+              staged_file_count: stagedSource.fileCount,
+              staged_source_bytes: stagedSource.totalBytes,
+            }
+          : {}),
       },
       profile: body.profile,
       ref,

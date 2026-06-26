@@ -3,7 +3,9 @@ import type { SupabaseAlert } from '~/types/actions';
 import { classNames } from '~/utils/classNames';
 import { supabaseConnection } from '~/lib/stores/supabase';
 import { useStore } from '@nanostores/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { executeIndobaseSql } from '~/lib/indobase/studioSql';
 
 interface Props {
   alert: SupabaseAlert;
@@ -12,84 +14,105 @@ interface Props {
 }
 
 export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
-  const { content } = alert;
+  const { content, title } = alert;
   const connection = useStore(supabaseConnection);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const autoAppliedRef = useRef(false);
 
-  // Determine connection state
-  const isConnected = !!(connection.token && connection.selectedProjectId);
+  const isStudioManaged = isIndobaseStudioManagedConnection(connection);
+  const isLegacyConnected = !!(connection.token && connection.selectedProjectId);
+  const isConnected = isStudioManaged || isLegacyConnected;
 
-  // Set title and description based on connection state
-  const title = isConnected ? 'Supabase Query' : 'Supabase Connection Required';
-  const description = isConnected ? 'Execute database query' : 'Supabase connection required';
-  const message = isConnected
-    ? 'Please review the proposed changes and apply them to your database.'
-    : 'Please connect to Supabase to continue with this operation.';
+  const description = isStudioManaged
+    ? 'Apply to your Indobase project database'
+    : isConnected
+      ? 'Execute database query'
+      : 'Backend connection required';
+  const message = isStudioManaged
+    ? 'This session is linked to Indobase Studio. Database changes run on your tenant data plane automatically.'
+    : isConnected
+      ? 'Please review the proposed changes and apply them to your database.'
+      : 'Open Builder from Studio to connect your Indobase project automatically.';
 
   const handleConnectClick = () => {
-    // Dispatch an event to open the Supabase connection dialog
-    document.dispatchEvent(new CustomEvent('open-supabase-connection'));
-  };
-
-  // Determine if we should show the Connect button or Apply Changes button
-  const showConnectButton = !isConnected;
-
-  const executeSupabaseAction = async (sql: string) => {
-    if (!connection.token || !connection.selectedProjectId) {
-      console.error('No Supabase token or project selected');
+    if (isStudioManaged) {
       return;
     }
 
+    document.dispatchEvent(new CustomEvent('open-supabase-connection'));
+  };
+
+  const executeBackendAction = async (sql: string) => {
     setIsExecuting(true);
 
     try {
-      const response = await fetch('/api/supabase/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${connection.token}`,
-        },
-        body: JSON.stringify({
-          projectId: connection.selectedProjectId,
-          query: sql,
-        }),
-      });
+      if (isStudioManaged) {
+        const isMigration = /migration/i.test(title);
+        const migrationName = alert.description?.match(/:\s*(.+)$/)?.[1]?.trim();
 
-      if (!response.ok) {
-        const errorData = (await response.json()) as any;
-        throw new Error(`Supabase query failed: ${errorData.error?.message || response.statusText}`);
+        await executeIndobaseSql({
+          connection,
+          query: sql,
+          operation: isMigration ? 'migration' : 'query',
+          name: migrationName,
+        });
+      } else {
+        if (!connection.token || !connection.selectedProjectId) {
+          throw new Error('No legacy backend token or project selected');
+        }
+
+        const response = await fetch('/api/supabase/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${connection.token}`,
+          },
+          body: JSON.stringify({
+            projectId: connection.selectedProjectId,
+            query: sql,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = (await response.json()) as { error?: { message?: string } };
+          throw new Error(`Backend query failed: ${errorData.error?.message || response.statusText}`);
+        }
       }
 
-      const result = await response.json();
-      console.log('Supabase query executed successfully:', result);
       clearAlert();
     } catch (error) {
-      console.error('Failed to execute Supabase action:', error);
+      console.error('Failed to execute backend action:', error);
       postMessage(
-        `*Error executing Supabase query please fix and return the query again*\n\`\`\`\n${error instanceof Error ? error.message : String(error)}\n\`\`\`\n`,
+        `*Error executing database change. Fix the SQL and try again.*\n\`\`\`\n${error instanceof Error ? error.message : String(error)}\n\`\`\`\n`,
       );
     } finally {
       setIsExecuting(false);
     }
   };
 
-  const cleanSqlContent = (content: string) => {
-    if (!content) {
+  useEffect(() => {
+    if (!isStudioManaged || !content?.trim() || isExecuting || autoAppliedRef.current) {
+      return;
+    }
+
+    autoAppliedRef.current = true;
+    void executeBackendAction(cleanSqlContent(content));
+  }, [isStudioManaged, content, title, isExecuting]);
+
+  const cleanSqlContent = (value: string) => {
+    if (!value) {
       return '';
     }
 
-    let cleaned = content.replace(/\/\*[\s\S]*?\*\//g, '');
-
+    let cleaned = value.replace(/\/\*[\s\S]*?\*\//g, '');
     cleaned = cleaned.replace(/(--).*$/gm, '').replace(/(#).*$/gm, '');
 
-    const statements = cleaned
+    return cleaned
       .split(';')
       .map((stmt) => stmt.trim())
       .filter((stmt) => stmt.length > 0)
       .join(';\n\n');
-
-    return statements;
   };
 
   return (
@@ -101,21 +124,19 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
         transition={{ duration: 0.3 }}
         className="max-w-chat rounded-lg border-l-2 border-l-[#098F5F] border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2"
       >
-        {/* Header */}
         <div className="p-4 pb-2">
           <div className="flex items-center gap-2">
-            <img height="10" width="18" crossOrigin="anonymous" src="https://cdn.simpleicons.org/supabase" />
-            <h3 className="text-sm font-medium text-[#3DCB8F]">{title}</h3>
+            <div className="i-ph:database text-[#3DCB8F] text-lg" />
+            <h3 className="text-sm font-medium text-[#3DCB8F]">
+              {isStudioManaged ? 'Indobase Database' : title}
+            </h3>
           </div>
         </div>
 
-        {/* SQL Content */}
         <div className="px-4">
           {!isConnected ? (
             <div className="p-3 rounded-md bg-bolt-elements-background-depth-3">
-              <span className="text-sm text-bolt-elements-textPrimary">
-                You must first connect to Supabase and select a project.
-              </span>
+              <span className="text-sm text-bolt-elements-textPrimary">{message}</span>
             </div>
           ) : (
             <>
@@ -124,9 +145,7 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
                 onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <div className="i-ph:database text-bolt-elements-textPrimary mr-2"></div>
-                <span className="text-sm text-bolt-elements-textPrimary flex-grow">
-                  {description || 'Create table and setup auth'}
-                </span>
+                <span className="text-sm text-bolt-elements-textPrimary flex-grow">{description}</span>
                 <div
                   className={`i-ph:caret-up text-bolt-elements-textPrimary transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
                 ></div>
@@ -141,12 +160,11 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
           )}
         </div>
 
-        {/* Message and Actions */}
         <div className="p-4">
           <p className="text-sm text-bolt-elements-textSecondary mb-4">{message}</p>
 
           <div className="flex gap-2">
-            {showConnectButton ? (
+            {!isConnected ? (
               <button
                 onClick={handleConnectClick}
                 className={classNames(
@@ -160,9 +178,21 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
               >
                 Connect to Backend
               </button>
+            ) : isStudioManaged ? (
+              <button
+                disabled
+                className={classNames(
+                  `px-3 py-2 rounded-md text-sm font-medium`,
+                  'bg-[#098F5F]/70',
+                  'text-white',
+                  'opacity-80 cursor-default',
+                )}
+              >
+                {isExecuting ? 'Applying to Indobase…' : 'Applied via Indobase'}
+              </button>
             ) : (
               <button
-                onClick={() => executeSupabaseAction(content)}
+                onClick={() => executeBackendAction(content)}
                 disabled={isExecuting}
                 className={classNames(
                   `px-3 py-2 rounded-md text-sm font-medium`,

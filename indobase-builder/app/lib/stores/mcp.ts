@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { MCPConfig, MCPServerTools } from '~/lib/services/mcpService';
-import { mergeMcpConfigWithIndobase } from '~/lib/indobase/mcp';
+import { getAutoIndobaseMcpConfig, mergeMcpConfigWithIndobase } from '~/lib/indobase/mcp';
 import { scheduleIdleWork } from '~/utils/scheduleIdleWork';
 
 const MCP_SETTINGS_KEY = 'mcp_settings';
@@ -45,9 +45,13 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
       return;
     }
 
-    await new Promise<void>((resolve) => {
-      scheduleIdleWork(() => resolve(), 5000);
-    });
+    const hasIndobaseHandoff = Boolean(getAutoIndobaseMcpConfig());
+
+    if (!hasIndobaseHandoff) {
+      await new Promise<void>((resolve) => {
+        scheduleIdleWork(() => resolve(), 5000);
+      });
+    }
 
     if (get().isInitialized) {
       return;

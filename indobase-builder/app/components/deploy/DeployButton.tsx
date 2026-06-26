@@ -24,6 +24,7 @@ import {
   queueIndobaseMobileBuild,
 } from '~/lib/indobase/studioApi';
 import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
+import { collectMobileBuildSourceFromWorkbench } from '~/lib/indobase/collectMobileBuildSource';
 
 interface DeployButtonProps {
   onGitHubDeploy?: () => Promise<void>;
@@ -142,12 +143,21 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
       setDeployingTo('indobase');
 
       try {
+        const sourceResult = collectMobileBuildSourceFromWorkbench();
+
+        if (!sourceResult.success) {
+          toast.error(sourceResult.error);
+          return;
+        }
+
         const result = await queueIndobaseMobileBuild(backendConnection, {
           framework: 'expo',
           profile: 'production',
           target: 'android_aab',
+          sourceFiles: sourceResult.files,
           metadata: {
             source: 'deploy_menu',
+            staged_from: 'builder_workbench',
           },
         });
 

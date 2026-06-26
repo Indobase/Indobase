@@ -1207,6 +1207,7 @@ export async function getProjectMobileBuild({
 }
 
 export async function createProjectMobileBuild({
+  buildId,
   claims,
   framework = 'expo',
   metadata,
@@ -1215,6 +1216,7 @@ export async function createProjectMobileBuild({
   requestedVia = 'studio',
   target = 'android_aab',
 }: {
+  buildId?: string
   claims: Claims
   framework?: ProjectMobileBuildFramework
   metadata?: Record<string, unknown>
@@ -1284,7 +1286,39 @@ export async function createProjectMobileBuild({
   })
 
   const result = await executeQuery<ProjectMobileBuildRow>({
-    query: `
+    query: buildId
+      ? `
+      insert into saas.project_mobile_builds (
+        id,
+        project_ref,
+        requested_by_gotrue_id,
+        requested_via,
+        status,
+        priority,
+        target,
+        framework,
+        profile,
+        logs,
+        metadata
+      ) values ($1::uuid, $2, $3::uuid, $4, 'requested', $5, $6, $7, $8, $9::jsonb, $10::jsonb)
+      returning
+        id::text as id,
+        project_ref,
+        requested_by_gotrue_id::text as requested_by_gotrue_id,
+        requested_via,
+        status,
+        priority,
+        target,
+        framework,
+        profile,
+        logs,
+        metadata,
+        inserted_at::text as inserted_at,
+        updated_at::text as updated_at,
+        completed_at::text as completed_at,
+        last_error
+    `
+      : `
       insert into saas.project_mobile_builds (
         project_ref,
         requested_by_gotrue_id,
@@ -1314,17 +1348,30 @@ export async function createProjectMobileBuild({
         completed_at::text as completed_at,
         last_error
     `,
-    parameters: [
-      ref,
-      gotrueId,
-      requestedVia,
-      queuePriority,
-      normalizedTarget,
-      normalizedFramework,
-      normalizedProfile,
-      JSON.stringify([initialLog]),
-      JSON.stringify(normalizedMetadata),
-    ],
+    parameters: buildId
+      ? [
+          buildId,
+          ref,
+          gotrueId,
+          requestedVia,
+          queuePriority,
+          normalizedTarget,
+          normalizedFramework,
+          normalizedProfile,
+          JSON.stringify([initialLog]),
+          JSON.stringify(normalizedMetadata),
+        ]
+      : [
+          ref,
+          gotrueId,
+          requestedVia,
+          queuePriority,
+          normalizedTarget,
+          normalizedFramework,
+          normalizedProfile,
+          JSON.stringify([initialLog]),
+          JSON.stringify(normalizedMetadata),
+        ],
     actorId: gotrueId,
   })
   if (result.error) {

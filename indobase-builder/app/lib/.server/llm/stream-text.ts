@@ -1,7 +1,7 @@
 import { convertToCoreMessages, streamText as _streamText, type Message } from 'ai';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
-import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, WORK_DIR } from '~/utils/constants';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, VISION_MODEL, WORK_DIR } from '~/utils/constants';
 import type { IProviderSetting } from '~/types/model';
 import { PromptLibrary } from '~/lib/common/prompt-library';
 import { allowedHTMLElements } from '~/utils/markdown';
@@ -9,6 +9,8 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
 import { discussPrompt } from '~/lib/common/prompts/discuss-prompt';
+import { CODER_AGENT_APPENDIX } from '~/lib/.server/orchestration/prompts';
+import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -17,14 +19,50 @@ export interface StreamingOptions extends Omit<Parameters<typeof _streamText>[0]
   supabaseConnection?: {
     isConnected: boolean;
     hasSelectedProject: boolean;
+    connectionSource?: 'manual' | 'studio_handoff';
     credentials?: {
       anonKey?: string;
       supabaseUrl?: string;
+    };
+    indobase?: {
+      apiUrl?: string;
+      authUrl?: string;
+      projectRef?: string;
+      restUrl?: string;
+      storageUrl?: string;
+      studioUrl?: string;
     };
   };
 }
 
 const logger = createScopedLogger('stream-text');
+
+function messageHasImageParts(messages: Array<{ parts?: Message['parts']; content?: Message['content'] }>): boolean {
+  return messages.some((message) => {
+    if (Array.isArray(message.parts)) {
+      return message.parts.some(
+        (part) => part.type === 'file' && 'mimeType' in part && String(part.mimeType).startsWith('image/'),
+      );
+    }
+
+    if (Array.isArray(message.content)) {
+      return message.content.some((part) => {
+        if (!part || typeof part !== 'object') return false;
+        const type = 'type' in part ? String((part as { type?: string }).type) : '';
+        return type === 'image' || type === 'file' || type === 'image_url';
+      });
+    }
+
+    return false;
+  });
+}
+
+function resolveModelForMessages(model: string, messages: Array<{ parts?: Message['parts']; content?: Message['content'] }>) {
+  if (!messageHasImageParts(messages)) return model;
+  if (model.includes('-vl') || model.includes('vision')) return model;
+  logger.info(`Image attachment detected; switching model from ${model} to ${VISION_MODEL}`);
+  return VISION_MODEL;
+}
 
 function getCompletionTokenLimit(modelDetails: any): number {
   // 1. If model specifies completion tokens, use that
@@ -65,6 +103,7 @@ export async function streamText(props: {
   messageSliceId?: number;
   chatMode?: 'discuss' | 'build';
   designScheme?: DesignScheme;
+  multiAgentMode?: boolean;
 }) {
   const {
     messages,
@@ -79,6 +118,7 @@ export async function streamText(props: {
     summary,
     chatMode,
     designScheme,
+    multiAgentMode,
   } = props;
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
@@ -103,6 +143,8 @@ export async function streamText(props: {
 
     return newMessage;
   });
+
+  currentModel = resolveModelForMessages(currentModel, processedMessages);
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
   const staticModels = LLMManager.getInstance().getStaticModelListFromProvider(provider);
@@ -217,6 +259,26 @@ export async function streamText(props: {
     `;
   } else {
     console.log('No locked files found from any source for prompt.');
+  }
+
+  if (multiAgentMode && chatMode === 'build') {
+    systemPrompt = `${systemPrompt}${CODER_AGENT_APPENDIX}`;
+  }
+
+  const isIndobaseManaged =
+    options?.supabaseConnection?.connectionSource === 'studio_handoff' &&
+    options?.supabaseConnection?.isConnected &&
+    options?.supabaseConnection?.hasSelectedProject;
+
+  if (isIndobaseManaged) {
+    systemPrompt = `${systemPrompt}${getIndobaseManagedBackendPrompt({
+      projectRef: options?.supabaseConnection?.indobase?.projectRef,
+      supabaseUrl: options?.supabaseConnection?.credentials?.supabaseUrl,
+      anonKey: options?.supabaseConnection?.credentials?.anonKey,
+      authUrl: options?.supabaseConnection?.indobase?.authUrl,
+      storageUrl: options?.supabaseConnection?.indobase?.storageUrl,
+      restUrl: options?.supabaseConnection?.indobase?.restUrl,
+    })}`;
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
