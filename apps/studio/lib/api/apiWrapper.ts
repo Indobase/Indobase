@@ -41,9 +41,11 @@ export default async function apiWrapper(
     if (withAuth) {
       const response = await apiAuthenticate(req, res)
       if (!isResponseOk(response)) {
+        const unauthorizedMessage = `Unauthorized: ${response.error.message}`
         return res.status(401).json({
+          message: unauthorizedMessage,
           error: {
-            message: `Unauthorized: ${response.error.message}`,
+            message: unauthorizedMessage,
           },
         })
       }

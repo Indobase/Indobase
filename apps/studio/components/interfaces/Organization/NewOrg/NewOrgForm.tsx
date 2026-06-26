@@ -48,6 +48,7 @@ import {
 } from 'ui'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 import { UpgradeExistingOrganizationCallout } from './UpgradeExistingOrganizationCallout'
+import { Admonition } from 'ui-patterns'
 
 const ORG_KIND_TYPES = {
   PERSONAL: 'Personal',
@@ -124,6 +125,20 @@ export const NewOrgForm = ({
 
   const freeOrgs = (organizations || []).filter((it) => it.plan.id === 'free')
 
+  const existingPersonalOrg = useMemo(
+    () =>
+      organizations?.find((org) => org.is_owner && org.kind === 'PERSONAL') ?? null,
+    [organizations]
+  )
+
+  const orgKindOptions = useMemo(
+    () =>
+      Object.entries(ORG_KIND_TYPES).filter(
+        ([kind]) => !(kind === 'PERSONAL' && existingPersonalOrg)
+      ),
+    [existingPersonalOrg]
+  )
+
   // [Joshen] JFYI because we're now using a paginated endpoint, there's a chance that not all projects will be
   // factored in here (page limit is 100 results). This data is mainly used for the `hasFreeOrgWithProjects` check
   // in onSubmit below, which isn't a critical functionality imo so am okay for now. But ideally perhaps this data can
@@ -176,6 +191,13 @@ export const NewOrgForm = ({
       spend_cap: defaultValues.spend_cap,
     })
   }, [defaultValues, form])
+
+  useEffect(() => {
+    if (!existingPersonalOrg) return
+    if (form.getValues('kind') === 'PERSONAL') {
+      form.setValue('kind', 'COMPANY')
+    }
+  }, [existingPersonalOrg, form])
 
   useEffect(() => {
     const currentName = form.getValues('name')
@@ -377,6 +399,23 @@ export const NewOrgForm = ({
           footerClasses="rounded-b-md"
         >
           <div className="divide-y divide-border-muted">
+            {existingPersonalOrg && (
+              <Panel.Content>
+                <Admonition
+                  type="warning"
+                  title="You already have a personal organization"
+                  description={
+                    <p className="text-sm text-foreground-light">
+                      Each account can own one personal organization. Use{' '}
+                      <InlineLink href={`/org/${existingPersonalOrg.slug}`}>
+                        {existingPersonalOrg.name}
+                      </InlineLink>{' '}
+                      or choose a different organization type below.
+                    </p>
+                  }
+                />
+              </Panel.Content>
+            )}
             <Panel.Content>
               <FormField_Shadcn_
                 control={form.control}
@@ -420,7 +459,7 @@ export const NewOrgForm = ({
                         </SelectTrigger_Shadcn_>
 
                         <SelectContent_Shadcn_>
-                          {Object.entries(ORG_KIND_TYPES).map(([k, v]) => (
+                          {orgKindOptions.map(([k, v]) => (
                             <SelectItem_Shadcn_ key={k} value={k}>
                               {v}
                             </SelectItem_Shadcn_>

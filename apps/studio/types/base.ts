@@ -8,6 +8,7 @@ export interface Organization extends OrganizationBase {
   managed_by: ManagedBy
   partner_id?: string
   plan: { id: PlanId; name: string }
+  kind?: string | null
 }
 
 /**

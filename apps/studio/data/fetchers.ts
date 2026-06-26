@@ -147,17 +147,35 @@ type HandleErrorOptions = {
   sentryContext?: Parameters<typeof Sentry.captureException>[1]
 }
 
+/** Normalize platform API error bodies (`message`, `msg`, or nested `error.message`). */
+export function extractApiErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined
+
+  const record = error as Record<string, unknown>
+
+  if (typeof record.msg === 'string' && record.msg.trim()) return record.msg
+  if (typeof record.message === 'string' && record.message.trim()) return record.message
+
+  const nested = record.error
+  if (nested && typeof nested === 'object') {
+    const nestedRecord = nested as Record<string, unknown>
+    if (typeof nestedRecord.msg === 'string' && nestedRecord.msg.trim()) return nestedRecord.msg
+    if (typeof nestedRecord.message === 'string' && nestedRecord.message.trim()) {
+      return nestedRecord.message
+    }
+  }
+
+  if (typeof record.error === 'string' && record.error.trim()) return record.error
+
+  return undefined
+}
+
 export const handleError = (error: unknown, options: HandleErrorOptions = {}): never => {
   if (error && typeof error === 'object') {
     if (options.alwaysCapture) {
       Sentry.captureException(error, options.sentryContext)
     }
-    const errorMessage =
-      'msg' in error && typeof error.msg === 'string'
-        ? error.msg
-        : 'message' in error && typeof error.message === 'string'
-          ? error.message
-          : undefined
+    const errorMessage = extractApiErrorMessage(error)
 
     const errorCode = 'code' in error && typeof error.code === 'number' ? error.code : undefined
     const requestId =
@@ -247,9 +265,7 @@ async function handleFetchError(response: unknown): Promise<ResponseError> {
   const status = response instanceof Response ? response.status : undefined
 
   const message =
-    resJson.message ??
-    resJson.msg ??
-    resJson.error ??
+    extractApiErrorMessage(resJson) ??
     `An error has occurred: ${status ?? 'Unknown error'}`
   const retryAfter =
     response instanceof Response && response.headers.get('Retry-After')

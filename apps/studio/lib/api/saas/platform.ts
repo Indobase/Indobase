@@ -842,6 +842,7 @@ export async function listOrganizations({
     id: number
     slug: string
     name: string
+    kind: string | null
     billing_email: string | null
     billing_partner: string | null
     plan: string
@@ -860,6 +861,7 @@ export async function listOrganizations({
         o.id,
         o.slug,
         o.name,
+        o.kind,
         o.billing_email,
         o.billing_partner,
         o.plan,
@@ -890,6 +892,7 @@ export async function listOrganizations({
       id: o.id,
       slug: o.slug,
       name: o.name,
+      kind: o.kind,
       billing_email: o.billing_email,
       billing_partner: (o.billing_partner as any) ?? null,
       is_owner: o.member_role === 'owner',
@@ -1394,6 +1397,26 @@ export async function createOrganization({
   const name = (body.name ?? '').toString().trim()
   if (!name) throw new Error('Organization name is required')
 
+  const orgKind = (body.kind ?? 'PERSONAL').toString().trim().toUpperCase()
+  if (orgKind === 'PERSONAL') {
+    const existingPersonal = await executeQuery<{ id: number }>({
+      query: `
+        select id
+        from saas.organizations
+        where owner_gotrue_id = $1 and kind = 'PERSONAL'
+        limit 1
+      `,
+      parameters: [gotrueId],
+      actorId: gotrueId,
+    })
+    if (existingPersonal.error) throw existingPersonal.error
+    if (existingPersonal.data?.length) {
+      throw new Error(
+        'You already have a personal organization. Choose another type or use your existing org.'
+      )
+    }
+  }
+
   const requestedPlanId = normalizePlanId(body.tier)
   const slug = uniqueSlug(name)
   const useRazorpayCheckout = isRazorpayConfigured() && requestedPlanId !== 'free'
@@ -1465,9 +1488,11 @@ export async function createOrganization({
   })
 
   if (inserted.error) {
-    const code = (inserted.error as { code?: string }).code
-    if (code === '23505' && body.kind === 'PERSONAL') {
-      throw new Error('You already have a personal organization. Choose another type or use your existing org.')
+    const code = String((inserted.error as { code?: string | number }).code ?? '')
+    if (code === '23505' && orgKind === 'PERSONAL') {
+      throw new Error(
+        'You already have a personal organization. Choose another type or use your existing org.'
+      )
     }
     throw inserted.error
   }
