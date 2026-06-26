@@ -48,6 +48,7 @@ import { useTrackExperimentExposure } from 'hooks/misc/useTrackExperimentExposur
 import { withAuth } from 'hooks/misc/withAuth'
 import { usePHFlag } from 'hooks/ui/useFlag'
 import { DOCS_URL, PROJECT_STATUS, PROVIDERS, useDefaultProvider } from 'lib/constants'
+import { formatDisplayCurrencyAmount } from 'lib/billing/compute-pricing'
 import { useProfile } from 'lib/profile'
 import { useTrack } from 'lib/telemetry/track'
 import Link from 'next/link'
@@ -540,7 +541,8 @@ const Wizard: NextPageWithLayout = () => {
           <div className="text-sm text-foreground-light space-y-1">
             <p>
               Launching a project on compute size "{instanceLabel(instanceSize)}" increases your
-              monthly costs by ${additionalMonthlySpend}, independent of how actively you use it. By
+              monthly costs by {formatDisplayCurrencyAmount(additionalMonthlySpend)}, independent of
+              how actively you use it. By
               clicking "I understand", you agree to the additional costs.{' '}
               <Link
                 href={`${DOCS_URL}/guides/platform/manage-your-usage/compute`}

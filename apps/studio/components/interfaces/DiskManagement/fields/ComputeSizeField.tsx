@@ -13,6 +13,7 @@ import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { getCloudProviderArchitecture } from 'lib/cloudprovider-utils'
+import { formatDisplayCurrencyAmount } from 'lib/billing/compute-pricing'
 import { DOCS_URL, InstanceSpecs } from 'lib/constants'
 import {
   cn,
@@ -236,7 +237,7 @@ export function ComputeSizeField({ form, disabled }: ComputeSizeFieldProps) {
                                               className="text-foreground text-sm font-semibold"
                                               translate="no"
                                             >
-                                              ${price}
+                                              {formatDisplayCurrencyAmount(price)}
                                             </span>
                                             <span className="text-foreground-light translate-y-[1px]">
                                               {' '}

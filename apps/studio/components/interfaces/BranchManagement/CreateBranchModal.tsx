@@ -32,6 +32,7 @@ import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { BASE_PATH, IS_SAAS } from 'lib/constants'
+import { formatDisplayCurrencyAmount } from 'lib/billing/compute-pricing'
 import { useAppStateSnapshot } from 'state/app-state'
 import {
   Badge,
@@ -609,8 +610,10 @@ export const CreateBranchModal = () => {
                 </div>
                 <div className="flex flex-col gap-y-1">
                   <p className="text-sm text-foreground">
-                    Branch compute is billed at $
-                    {withData ? branchComputeSize.priceHourly : instanceSizeSpecs.micro.priceHourly}{' '}
+                    Branch compute is billed at{' '}
+                    {formatDisplayCurrencyAmount(
+                      withData ? branchComputeSize.priceHourly : instanceSizeSpecs.micro.priceHourly
+                    )}{' '}
                     per hour
                   </p>
                   <p className="text-sm text-foreground-light">

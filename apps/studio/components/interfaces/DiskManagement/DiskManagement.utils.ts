@@ -1,5 +1,6 @@
 import { ProjectDetail } from 'data/projects/project-detail-query'
 import { PlanId, ProjectAddonVariantMeta } from 'data/subscriptions/types'
+import { formatInstancePriceDescription } from 'lib/billing/compute-pricing'
 import { INSTANCE_MICRO_SPECS, INSTANCE_NANO_SPECS } from 'lib/constants'
 import {
   COMPUTE_BASELINE_IOPS,
@@ -243,7 +244,7 @@ export function getAvailableComputeOptions(
     computeOptions.unshift({
       identifier: 'ci_micro',
       name: 'Micro',
-      price_description: '$0.01344/hour (~$10/month)',
+      price_description: formatInstancePriceDescription(0.01344, 10),
       price: 0.01344,
       price_interval: 'hourly',
       price_type: 'usage',
@@ -262,7 +263,7 @@ export function getAvailableComputeOptions(
   computeOptions.unshift({
     identifier: 'ci_nano',
     name: 'Nano',
-    price_description: '$0/hour (~$0/month)',
+    price_description: formatInstancePriceDescription(0, 0),
     price: 0,
     price_interval: 'hourly',
     price_type: 'usage',

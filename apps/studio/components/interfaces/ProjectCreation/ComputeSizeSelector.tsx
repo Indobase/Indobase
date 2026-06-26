@@ -4,6 +4,7 @@ import { InlineLink } from 'components/ui/InlineLink'
 import Panel from 'components/ui/Panel'
 import { instanceSizeSpecs } from 'data/projects/new-project.constants'
 import { getCloudProviderArchitecture } from 'lib/cloudprovider-utils'
+import { formatInstancePriceDescription } from 'lib/billing/compute-pricing'
 import { DOCS_URL } from 'lib/constants'
 import { CloudProvider } from 'shared-data'
 import {
@@ -84,8 +85,10 @@ export const ComputeSizeSelector = ({ form }: ComputeSizeSelectorProps) => {
                                 className="text-xs text-foreground-light"
                                 data-field="instance-details"
                               >
-                                ${instanceSizeSpecs[option].priceHourly}/hour (~$
-                                {instanceSizeSpecs[option].priceMonthly}/month)
+                                {formatInstancePriceDescription(
+                                  instanceSizeSpecs[option].priceHourly,
+                                  instanceSizeSpecs[option].priceMonthly
+                                )}
                               </p>
                             </div>
                           </div>

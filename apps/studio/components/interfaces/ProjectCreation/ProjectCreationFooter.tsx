@@ -9,6 +9,10 @@ import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { DOCS_URL } from 'lib/constants'
 import {
+  COMPUTE_CREDIT_USD_MONTHLY,
+  formatDisplayCurrencyAmount,
+} from 'lib/billing/compute-pricing'
+import {
   Badge,
   Button,
   PopoverSeparator_Shadcn_,
@@ -79,7 +83,7 @@ export const ProjectCreationFooter = ({
             <div className="flex justify-between text-sm">
               <span>Additional costs</span>
               <div className="text-brand flex gap-1 items-center font-mono font-medium">
-                <span>${additionalMonthlySpend}/m</span>
+                <span>{formatDisplayCurrencyAmount(additionalMonthlySpend)}/m</span>
                 <InfoTooltip side="top" className="max-w-[450px] p-0">
                   <div className="p-4 text-sm text-foreground-light space-y-1">
                     <p>
@@ -115,7 +119,9 @@ export const ProjectCreationFooter = ({
                               {instanceLabel(primaryDb?.infra_compute_size)}
                             </TableCell>
                             <TableCell className="text-right">
-                              ${monthlyInstancePrice(primaryDb?.infra_compute_size)}
+                              {formatDisplayCurrencyAmount(
+                                monthlyInstancePrice(primaryDb?.infra_compute_size)
+                              )}
                             </TableCell>
                           </TableRow>
                         )
@@ -130,7 +136,7 @@ export const ProjectCreationFooter = ({
                         </TableCell>
                         <TableCell className="text-center">{instanceLabel(instanceSize)}</TableCell>
                         <TableCell className="text-right">
-                          ${monthlyInstancePrice(instanceSize)}
+                          {formatDisplayCurrencyAmount(monthlyInstancePrice(instanceSize))}
                         </TableCell>
                       </TableRow>
                     </TableBody>
@@ -141,7 +147,7 @@ export const ProjectCreationFooter = ({
                       <TableRow>
                         <TableHead colSpan={2}>Compute Credits</TableHead>
                         <TableHead colSpan={1} className="text-right">
-                          -$10
+                          -{formatDisplayCurrencyAmount(COMPUTE_CREDIT_USD_MONTHLY)}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -160,7 +166,7 @@ export const ProjectCreationFooter = ({
                           )}
                         </TableCell>
                         <TableCell colSpan={1} className="text-right">
-                          ${monthlyComputeCosts}
+                          {formatDisplayCurrencyAmount(monthlyComputeCosts)}
                         </TableCell>
                       </TableRow>
                     </TableBody>
