@@ -24,9 +24,11 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
   }
 
   const hasLlmKey = Boolean(
-    process.env.OPENROUTER_API_KEY?.trim() ||
+    process.env.OPEN_ROUTER_API_KEY?.trim() ||
+      process.env.OPENROUTER_API_KEY?.trim() ||
       process.env.OPENAI_API_KEY?.trim() ||
       process.env.ANTHROPIC_API_KEY?.trim() ||
+      env?.OPEN_ROUTER_API_KEY?.trim() ||
       env?.OPENROUTER_API_KEY?.trim() ||
       env?.OPENAI_API_KEY?.trim() ||
       env?.ANTHROPIC_API_KEY?.trim(),
