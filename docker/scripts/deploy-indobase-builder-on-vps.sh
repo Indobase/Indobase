@@ -37,7 +37,17 @@ NODE_ENV=production
 HOST=0.0.0.0
 PORT=5173
 EOF
-  echo "Created \${ENV_FILE} — add BUILDER_HANDOFF_SECRET and LLM keys if missing."
+  echo "Created \${ENV_FILE} — add BUILDER_HANDOFF_SECRET and LLM keys before serving traffic."
+fi
+
+if ! grep -q '^BUILDER_HANDOFF_SECRET=.\{32,\}' "\${ENV_FILE}" 2>/dev/null; then
+  echo "::error::\${ENV_FILE} is missing BUILDER_HANDOFF_SECRET (min 32 chars). Builder will refuse to start in production."
+  exit 1
+fi
+
+if grep -q '^BUILDER_ALLOW_UNAUTHENTICATED=true' "\${ENV_FILE}" 2>/dev/null; then
+  echo "::error::BUILDER_ALLOW_UNAUTHENTICATED must not be enabled in production."
+  exit 1
 fi
 
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
@@ -50,7 +60,6 @@ else
     --network dokploy-network \
     --env-file "\${ENV_FILE}" \
     --limit-memory 2g \
-    --no-healthcheck \
     "\${IMAGE}"
 fi
 
@@ -70,23 +79,27 @@ if [[ -n "\${STUDIO_SVC}" ]]; then
     "\${STUDIO_SVC}" || true
 fi
 
-echo "Health check (local)…"
-sleep 5
-curl -fsS "http://127.0.0.1:5173/api/health" | head -c 200 || echo "warn: local health check failed (service may still be starting)"
+echo "Waiting for service to settle…"
+sleep 8
 REMOTE
 
-echo "==> Public health check…"
-for attempt in $(seq 1 12); do
-  http_code="$(curl -sS -o /tmp/builder-health.json -w '%{http_code}' --max-time 10 "${BUILDER_URL}/api/health" 2>/dev/null || echo 000)"
-  if [[ "$http_code" == "200" ]]; then
-    echo "✅ Builder healthy at ${BUILDER_URL}/api/health (attempt ${attempt})"
-    head -c 200 /tmp/builder-health.json || true
-    echo ""
-    exit 0
+echo "==> Public health checks…"
+for attempt in $(seq 1 18); do
+  live_code="$(curl -sS -o /tmp/builder-health-live.json -w '%{http_code}' --max-time 10 "${BUILDER_URL}/api/health/live" 2>/dev/null || echo 000)"
+  if [[ "$live_code" == "200" ]]; then
+    live_version="$(python3 -c "import json; print(json.load(open('/tmp/builder-health-live.json')).get('version',''))" 2>/dev/null || true)"
+    if [[ -n "$live_version" && "$live_version" != "unknown" && "$live_version" != "${SHA}" ]]; then
+      echo "attempt ${attempt}: live ok but version=${live_version} expected ${SHA}"
+    else
+      echo "✅ Builder live at ${BUILDER_URL}/api/health/live (version=${live_version:-${SHA}}, attempt ${attempt})"
+      head -c 200 /tmp/builder-health-live.json || true
+      echo ""
+      exit 0
+    fi
   fi
-  echo "attempt ${attempt}: http=${http_code}"
+  echo "attempt ${attempt}: live http=${live_code}"
   sleep 10
 done
 
-echo "::warning::Builder not healthy at ${BUILDER_URL} yet — check swarm logs and Traefik route."
+echo "::warning::Builder not healthy at ${BUILDER_URL}/api/health/live yet — check swarm logs and Traefik route."
 exit 1

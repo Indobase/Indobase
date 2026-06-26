@@ -1,10 +1,10 @@
 import Link from 'next/link'
 
-import { useCreateProjectDeploymentMutation } from 'data/hosting/project-deployment-create-mutation'
+import { BuilderLaunchButton } from 'components/interfaces/ProjectExperienceChooser/BuilderLaunchButton'
 import { useProjectDeploymentsQuery } from 'data/hosting/project-deployments-query'
 import { useProjectHostingQuery } from 'data/hosting/project-hosting-query'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { Button, Card, CardContent } from 'ui'
+import { Card, CardContent } from 'ui'
 import { Input } from 'ui-patterns/DataInputs/Input'
 import {
   PageSection,
@@ -72,13 +72,12 @@ export const ProjectHostingConfig = () => {
   const { data: deploymentsData, isPending: isDeploymentsPending } = useProjectDeploymentsQuery({
     projectRef: project?.ref,
   })
-  const { mutate: createDeployment, isPending: isCreatingDeployment } =
-    useCreateProjectDeploymentMutation()
 
   const deployments = deploymentsData?.deployments ?? []
   const hasActiveDeployment = deployments.some(
     (deployment) => deployment.status === 'requested' || deployment.status === 'building'
   )
+  const latestReadyDeployment = deployments.find((deployment) => deployment.status === 'ready')
 
   return (
     <PageSection id="hosting">
@@ -136,27 +135,24 @@ export const ProjectHostingConfig = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-sm">Manage hosting</p>
+                  <p className="text-sm">Publish</p>
                   <div className="flex flex-col gap-2 text-sm text-foreground-light">
-                    <Button
-                      type="default"
-                      disabled={!project?.ref || hasActiveDeployment}
-                      loading={isCreatingDeployment}
-                      onClick={() =>
-                        project?.ref
-                          ? createDeployment({
-                              metadata: {
-                                source: 'studio_hosting_page',
-                                target_url: data?.hosting.active_url,
-                              },
-                              projectRef: project.ref,
-                              requested_via: 'studio',
-                            })
-                          : undefined
-                      }
+                    <BuilderLaunchButton
+                      projectRef={project.ref}
+                      nextPath="/?deploy=indobase"
+                      type="primary"
+                      disabled={hasActiveDeployment}
                     >
-                      {hasActiveDeployment ? 'Deployment in progress' : 'Request deployment'}
-                    </Button>
+                      {hasActiveDeployment ? 'Deployment in progress' : 'Publish in Builder'}
+                    </BuilderLaunchButton>
+                    <p>
+                      One click opens Builder, builds your app, and publishes to your Indobase subdomain.
+                    </p>
+                    {latestReadyDeployment?.target_url && (
+                      <Link href={latestReadyDeployment.target_url} className="text-brand" target="_blank" rel="noreferrer">
+                        Open live site
+                      </Link>
+                    )}
                     <Link href={`/project/${project.ref}/settings/general#custom-domains`} className="text-brand">
                       Configure or verify custom domain
                     </Link>
@@ -184,7 +180,7 @@ export const ProjectHostingConfig = () => {
                   <GenericSkeletonLoader />
                 ) : deployments.length === 0 ? (
                   <p className="text-sm text-foreground-light">
-                    No deployment requests yet. Create one to start the native hosting workflow.
+                    No deployments yet. Use Publish in Builder to ship your first release.
                   </p>
                 ) : (
                   <div className="space-y-3">

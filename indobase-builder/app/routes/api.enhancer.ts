@@ -4,10 +4,7 @@ import { stripIndents } from '~/utils/stripIndent';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
-
-export async function action(args: ActionFunctionArgs) {
-  return enhancerAction(args);
-}
+import { withSecurity } from '~/lib/security';
 
 const logger = createScopedLogger('api.enhancher');
 
@@ -135,3 +132,5 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
     });
   }
 }
+
+export const action = withSecurity(enhancerAction, { requireAuth: true });

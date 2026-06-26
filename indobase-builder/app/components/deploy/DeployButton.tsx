@@ -9,8 +9,7 @@ import { classNames } from '~/utils/classNames';
 import { useState } from 'react';
 import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
 import { useGitLabDeploy } from '~/components/deploy/GitLabDeploy.client';
-import { GitHubDeploymentDialog } from '~/components/deploy/GitHubDeploymentDialog';
-import { GitLabDeploymentDialog } from '~/components/deploy/GitLabDeploymentDialog';
+import { runOneClickDeploy } from '~/lib/deploy/runOneClickDeploy';
 import {
   getStudioProjectCustomDomainsUrl,
   getStudioProjectHostingUrl,
@@ -20,11 +19,10 @@ import {
 import {
   canQueueIndobaseDeployment,
   canQueueIndobaseMobileBuild,
-  publishIndobaseDeployment,
   queueIndobaseMobileBuild,
 } from '~/lib/indobase/studioApi';
-import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
 import { collectMobileBuildSourceFromWorkbench } from '~/lib/indobase/collectMobileBuildSource';
+import { chatId } from '~/lib/persistence/useChatHistory';
 
 interface DeployButtonProps {
   onGitHubDeploy?: () => Promise<void>;
@@ -33,6 +31,7 @@ interface DeployButtonProps {
 
 export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonProps) => {
   const backendConnection = useStore(supabaseConnection);
+  const currentChatId = useStore(chatId);
   const gitlabIsConnected = useStore(isGitLabConnected);
   const [activePreviewIndex] = useState(0);
   const previews = useStore(workbenchStore.previews);
@@ -42,18 +41,14 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   const isStreaming = useStore(streamingState);
   const { handleGitHubDeploy } = useGitHubDeploy();
   const { handleGitLabDeploy } = useGitLabDeploy();
-  const [showGitHubDeploymentDialog, setShowGitHubDeploymentDialog] = useState(false);
-  const [showGitLabDeploymentDialog, setShowGitLabDeploymentDialog] = useState(false);
-  const [githubDeploymentFiles, setGithubDeploymentFiles] = useState<Record<string, string> | null>(null);
-  const [gitlabDeploymentFiles, setGitlabDeploymentFiles] = useState<Record<string, string> | null>(null);
-  const [githubProjectName, setGithubProjectName] = useState('');
-  const [gitlabProjectName, setGitlabProjectName] = useState('');
   const isStudioManagedConnection = backendConnection.connectionSource === 'studio_handoff';
   const studioUrl = backendConnection.indobase?.studioUrl || 'https://studio.indobase.in';
   const projectRootUrl = getStudioProjectRootUrl(backendConnection, backendConnection.selectedProjectId);
   const hostingUrl = getStudioProjectHostingUrl(backendConnection, backendConnection.selectedProjectId);
   const customDomainsUrl = getStudioProjectCustomDomainsUrl(backendConnection, backendConnection.selectedProjectId);
   const mobileBuildsUrl = getStudioProjectMobileBuildsUrl(backendConnection, backendConnection.selectedProjectId);
+  const canPublishIndobase = canQueueIndobaseDeployment(backendConnection);
+  const deployDisabled = isDeploying || !activePreview || isStreaming;
 
   const openIndobaseUrl = (url: string | null, errorMessage: string) => {
     if (!url) {
@@ -65,49 +60,12 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   };
 
   const handleIndobaseDeployClick = async () => {
-    if (canQueueIndobaseDeployment(backendConnection)) {
-      setIsDeploying(true);
-      setDeployingTo('indobase');
-
-      try {
-        const buildResult = await collectBuildArtifacts();
-
-        if (!buildResult.success || !buildResult.files) {
-          toast.error(buildResult.error || 'Build failed before publish.');
-          return;
-        }
-
-        const result = await publishIndobaseDeployment(backendConnection, {
-          artifacts: buildResult.files,
-          metadata: {
-            source: 'deploy_menu',
-          },
-        });
-
-        if (result.success && result.deployment?.target_url) {
-          toast.success('Published on your Indobase subdomain.');
-          window.open(result.deployment.target_url, '_blank', 'noopener,noreferrer');
-          return;
-        }
-
-        if (result.status === 409) {
-          toast.info(result.error || 'A deployment is already in progress. Opening Studio status…');
-        } else if (result.status === 408 && result.deployment?.target_url) {
-          toast.info(result.error || 'Deployment is still running. Opening your project URL…');
-          window.open(result.deployment.target_url, '_blank', 'noopener,noreferrer');
-        } else {
-          toast.error(result.error || 'Could not publish to Indobase.');
-        }
-
-        openIndobaseUrl(
-          hostingUrl || studioUrl,
-          'Could not open Indobase hosting settings right now. Please try again.',
-        );
-      } finally {
-        setIsDeploying(false);
-        setDeployingTo(null);
+    if (!canPublishIndobase) {
+      if (!hostingUrl) {
+        toast.info('Open Studio to choose a project and continue with Indobase hosting.');
       }
 
+      openIndobaseUrl(hostingUrl || studioUrl, 'Could not open Indobase Studio hosting right now. Please try again.');
       return;
     }
 
@@ -115,11 +73,10 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
     setDeployingTo('indobase');
 
     try {
-      if (!hostingUrl) {
-        toast.info('Open Studio to choose a project and continue with Indobase hosting.');
-      }
-
-      openIndobaseUrl(hostingUrl || studioUrl, 'Could not open Indobase Studio hosting right now. Please try again.');
+      await runOneClickDeploy('indobase', {
+        chatId: currentChatId,
+        connection: backendConnection,
+      });
     } finally {
       setIsDeploying(false);
       setDeployingTo(null);
@@ -198,15 +155,21 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
     try {
       if (onGitHubDeploy) {
         await onGitHubDeploy();
-      } else {
-        const result = await handleGitHubDeploy();
-
-        if (result && result.success && result.files) {
-          setGithubDeploymentFiles(result.files);
-          setGithubProjectName(result.projectName);
-          setShowGitHubDeploymentDialog(true);
-        }
+        return;
       }
+
+      const prepared = await handleGitHubDeploy();
+
+      if (!prepared || prepared === false || !prepared.success || !prepared.files) {
+        return;
+      }
+
+      await runOneClickDeploy('github', {
+        chatId: currentChatId,
+        connection: backendConnection,
+        files: prepared.files,
+        projectName: prepared.projectName,
+      });
     } finally {
       setIsDeploying(false);
       setDeployingTo(null);
@@ -220,169 +183,157 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
     try {
       if (onGitLabDeploy) {
         await onGitLabDeploy();
-      } else {
-        const result = await handleGitLabDeploy();
-
-        if (result && result.success && result.files) {
-          setGitlabDeploymentFiles(result.files);
-          setGitlabProjectName(result.projectName);
-          setShowGitLabDeploymentDialog(true);
-        }
+        return;
       }
+
+      const prepared = await handleGitLabDeploy();
+
+      if (!prepared || prepared === false || !prepared.success || !prepared.files) {
+        return;
+      }
+
+      await runOneClickDeploy('gitlab', {
+        chatId: currentChatId,
+        connection: backendConnection,
+        files: prepared.files,
+        projectName: prepared.projectName,
+      });
     } finally {
       setIsDeploying(false);
       setDeployingTo(null);
     }
   };
 
+  const primaryLabel = isDeploying
+    ? `Publishing…`
+    : canPublishIndobase
+      ? 'Publish'
+      : isStudioManagedConnection
+        ? 'Publish'
+        : 'Deploy';
+
   return (
-    <>
-      <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden text-sm">
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger
-            disabled={isDeploying || !activePreview || isStreaming}
-            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
-          >
-            {isDeploying ? `Deploying to ${deployingTo}...` : 'Deploy'}
-            <span className={classNames('i-ph:caret-down transition-transform')} />
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content
+    <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden text-sm">
+      <button
+        type="button"
+        disabled={deployDisabled}
+        onClick={() => void handleIndobaseDeployClick()}
+        className="items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.5 border-r border-bolt-elements-borderColor"
+      >
+        <div className="i-ph:rocket-launch" />
+        <span>{primaryLabel}</span>
+      </button>
+
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          disabled={deployDisabled}
+          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-2 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex"
+          aria-label="More deploy options"
+        >
+          <span className={classNames('i-ph:caret-down transition-transform')} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content
+          className={classNames(
+            'z-[250]',
+            'bg-bolt-elements-background-depth-2',
+            'rounded-lg shadow-lg',
+            'border border-bolt-elements-borderColor',
+            'animate-in fade-in-0 zoom-in-95',
+            'py-1',
+          )}
+          sideOffset={5}
+          align="end"
+        >
+          <DropdownMenu.Item
             className={classNames(
-              'z-[250]',
-              'bg-bolt-elements-background-depth-2',
-              'rounded-lg shadow-lg',
-              'border border-bolt-elements-borderColor',
-              'animate-in fade-in-0 zoom-in-95',
-              'py-1',
+              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
             )}
-            sideOffset={5}
-            align="end"
+            onClick={() => void handleIndobaseDeployClick()}
           >
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview,
-                },
-              )}
-              disabled={isDeploying || !activePreview}
-              onClick={handleIndobaseDeployClick}
-            >
-              <div className="i-ph:rocket-launch w-5 h-5 text-[#FFC107]" />
-              <span className="mx-auto">
-                {canQueueIndobaseDeployment(backendConnection)
-                  ? 'Publish to your Indobase subdomain'
-                  : isStudioManagedConnection
-                    ? 'Run on your Indobase subdomain'
-                    : 'Open Studio to publish'}
-              </span>
-            </DropdownMenu.Item>
+            <div className="i-ph:rocket-launch w-5 h-5 text-[#FFC107]" />
+            <span className="mx-auto">Publish to Indobase subdomain</span>
+          </DropdownMenu.Item>
 
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-              )}
-              onClick={handleConnectDomainClick}
-            >
-              <div className="i-ph:globe-hemisphere-west w-5 h-5 text-[#3ECF8E]" />
-              <span className="mx-auto">
-                {customDomainsUrl ? 'Connect your custom domain' : 'Open Studio for custom domains'}
-              </span>
-            </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={classNames(
+              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+            )}
+            onClick={handleConnectDomainClick}
+          >
+            <div className="i-ph:globe-hemisphere-west w-5 h-5 text-[#3ECF8E]" />
+            <span className="mx-auto">
+              {customDomainsUrl ? 'Connect your custom domain' : 'Open Studio for custom domains'}
+            </span>
+          </DropdownMenu.Item>
 
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-              )}
-              onClick={handleAndroidBundleClick}
-            >
-              <div className="i-ph:android-logo w-5 h-5 text-[#34A853]" />
-              <span className="mx-auto">
-                {canQueueIndobaseMobileBuild(backendConnection)
-                  ? 'Build Android bundle (web + mobile)'
-                  : mobileBuildsUrl
-                    ? 'Build Android bundle'
-                    : 'Open Studio for Android builds'}
-              </span>
-            </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={classNames(
+              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+            )}
+            onClick={() => void handleAndroidBundleClick()}
+          >
+            <div className="i-ph:android-logo w-5 h-5 text-[#34A853]" />
+            <span className="mx-auto">
+              {canQueueIndobaseMobileBuild(backendConnection)
+                ? 'Build Android bundle (web + mobile)'
+                : mobileBuildsUrl
+                  ? 'Build Android bundle'
+                  : 'Open Studio for Android builds'}
+            </span>
+          </DropdownMenu.Item>
 
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview,
-                },
-              )}
-              disabled={isDeploying || !activePreview}
-              onClick={handleGitHubDeployClick}
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/github"
-                alt="github"
-              />
-              <span className="mx-auto">Deploy to GitHub</span>
-            </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={classNames(
+              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+            )}
+            onClick={() => void handleGitHubDeployClick()}
+          >
+            <img
+              className="w-5 h-5"
+              height="24"
+              width="24"
+              crossOrigin="anonymous"
+              src="https://cdn.simpleicons.org/github"
+              alt="github"
+            />
+            <span className="mx-auto">Deploy to GitHub</span>
+          </DropdownMenu.Item>
 
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !gitlabIsConnected,
-                },
-              )}
-              disabled={isDeploying || !activePreview || !gitlabIsConnected}
-              onClick={handleGitLabDeployClick}
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/gitlab"
-                alt="gitlab"
-              />
-              <span className="mx-auto">{!gitlabIsConnected ? 'No GitLab Account Connected' : 'Deploy to GitLab'}</span>
-            </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={classNames(
+              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+              {
+                'opacity-60 cursor-not-allowed': !gitlabIsConnected,
+              },
+            )}
+            disabled={!gitlabIsConnected}
+            onClick={() => void handleGitLabDeployClick()}
+          >
+            <img
+              className="w-5 h-5"
+              height="24"
+              width="24"
+              crossOrigin="anonymous"
+              src="https://cdn.simpleicons.org/gitlab"
+              alt="gitlab"
+            />
+            <span className="mx-auto">{!gitlabIsConnected ? 'No GitLab Account Connected' : 'Deploy to GitLab'}</span>
+          </DropdownMenu.Item>
 
-            <DropdownMenu.Item
-              onClick={() => openIndobaseUrl(projectRootUrl || studioUrl, 'Could not open Indobase Studio right now.')}
-              className={classNames(
-                'flex items-center w-full rounded-md px-4 py-2 text-sm gap-2',
-                'cursor-pointer text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive',
-              )}
-            >
-              <div className="i-ph:arrow-square-out w-5 h-5" />
-              <span className="mx-auto">
-                {projectRootUrl ? 'Open linked Indobase project' : 'Open Indobase Studio'}
-              </span>
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
-      </div>
-
-      {/* GitHub Deployment Dialog */}
-      {showGitHubDeploymentDialog && githubDeploymentFiles && (
-        <GitHubDeploymentDialog
-          isOpen={showGitHubDeploymentDialog}
-          onClose={() => setShowGitHubDeploymentDialog(false)}
-          projectName={githubProjectName}
-          files={githubDeploymentFiles}
-        />
-      )}
-
-      {/* GitLab Deployment Dialog */}
-      {showGitLabDeploymentDialog && gitlabDeploymentFiles && (
-        <GitLabDeploymentDialog
-          isOpen={showGitLabDeploymentDialog}
-          onClose={() => setShowGitLabDeploymentDialog(false)}
-          projectName={gitlabProjectName}
-          files={gitlabDeploymentFiles}
-        />
-      )}
-    </>
+          <DropdownMenu.Item
+            onClick={() => openIndobaseUrl(projectRootUrl || studioUrl, 'Could not open Indobase Studio right now.')}
+            className={classNames(
+              'flex items-center w-full rounded-md px-4 py-2 text-sm gap-2',
+              'cursor-pointer text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive',
+            )}
+          >
+            <div className="i-ph:arrow-square-out w-5 h-5" />
+            <span className="mx-auto">
+              {projectRootUrl ? 'Open linked Indobase project' : 'Open Indobase Studio'}
+            </span>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </div>
   );
 };

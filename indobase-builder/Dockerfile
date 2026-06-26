@@ -89,6 +89,10 @@ ENV NODE_ENV=production \
     PORT=5173 \
     RUNNING_IN_DOCKER=true
 
+ARG VITE_GIT_COMMIT
+ENV BUILD_SHA=${VITE_GIT_COMMIT} \
+    VITE_GIT_COMMIT=${VITE_GIT_COMMIT}
+
 RUN apt-get update && apt-get install -y --no-install-recommends git tini && rm -rf /var/lib/apt/lists/*
 
 COPY --chown=node:node --from=build /app/package.json /app/package.json

@@ -1,5 +1,8 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 
+import { verifyIndobaseProxyRequest } from '~/lib/indobase/indobase-proxy.server';
+import { withSecurity } from '~/lib/security';
+
 type DeployBody = {
   artifacts?: Record<string, string>;
   deploymentId?: string;
@@ -9,7 +12,7 @@ type DeployBody = {
   studioUrl?: string;
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+async function deployAction({ request, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
@@ -22,14 +25,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const projectRef = body.projectRef?.trim();
-  const studioUrl = body.studioUrl?.trim();
-  const mcpToken = body.mcpToken?.trim();
+  const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
+  const { mcpToken, projectRef, studioUrl } = await verifyIndobaseProxyRequest(request, body, env);
   const deploymentId = body.deploymentId?.trim();
-
-  if (!projectRef || !studioUrl || !mcpToken) {
-    return json({ error: 'projectRef, studioUrl, and mcpToken are required' }, { status: 400 });
-  }
 
   const studioPath = deploymentId
     ? `/api/platform/projects/${encodeURIComponent(projectRef)}/deployments/builder/${encodeURIComponent(deploymentId)}`
@@ -56,4 +54,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const studioPayload = await studioResponse.json().catch(() => ({}));
 
   return json(studioPayload, { status: studioResponse.status });
-};
+}
+
+export const action = withSecurity(deployAction, { requireAuth: true });

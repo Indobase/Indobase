@@ -148,9 +148,6 @@ export function useGitLabDeploy() {
         source: 'gitlab',
       });
 
-      // Show success toast notification
-      toast.success(`🚀 GitLab deployment preparation completed successfully!`);
-
       return {
         success: true,
         files: fileContents,

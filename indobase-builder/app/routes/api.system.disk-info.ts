@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 // Only import child_process if we're not in a Cloudflare environment
 let execSync: any;
@@ -264,7 +265,7 @@ const getDiskInfo = (): DiskInfo[] => {
   }
 };
 
-export const loader: LoaderFunction = async ({ request: _request }) => {
+const diskInfoLoader: LoaderFunction = async ({ request: _request }) => {
   try {
     return json(getDiskInfo());
   } catch (error) {
@@ -287,7 +288,7 @@ export const loader: LoaderFunction = async ({ request: _request }) => {
   }
 };
 
-export const action = async ({ request: _request }: ActionFunctionArgs) => {
+const diskInfoAction = async ({ request: _request }: ActionFunctionArgs) => {
   try {
     return json(getDiskInfo());
   } catch (error) {
@@ -309,3 +310,6 @@ export const action = async ({ request: _request }: ActionFunctionArgs) => {
     );
   }
 };
+
+export const loader = withSecurity(diskInfoLoader, { requireAuth: true });
+export const action = withSecurity(diskInfoAction, { requireAuth: true });

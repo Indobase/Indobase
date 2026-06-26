@@ -35,6 +35,7 @@ import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import { runAutonomousPipeline } from '~/lib/orchestration/autonomous-runner';
+import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
@@ -120,6 +121,7 @@ interface ChatProps {
 export const ChatImpl = memo(
   ({ description, initialMessages, storeMessageHistory, importChat, exportChat }: ChatProps) => {
     useShortcuts();
+    usePendingDeploy();
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);

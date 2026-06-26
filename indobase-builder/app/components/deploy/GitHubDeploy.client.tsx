@@ -148,9 +148,6 @@ export function useGitHubDeploy() {
         source: 'github',
       });
 
-      // Show success toast notification
-      toast.success(`🚀 GitHub deployment preparation completed successfully!`);
-
       return {
         success: true,
         files: fileContents,

@@ -6,6 +6,7 @@ import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { getStudioBuilderConnectUrl } from '~/lib/indobase/builder-auth.client';
 import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/indobase/handoff.server';
+import { isProductionEnv } from '~/lib/production.server';
 import { useMCPStore } from '~/lib/stores/mcp';
 
 const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
@@ -37,12 +38,13 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
       },
     );
   } catch (error) {
-    return json(
-      {
-        error: error instanceof Error ? error.message : 'Invalid Builder launch token',
-      },
-      { status: 400 },
-    );
+    const message = isProductionEnv(env)
+      ? 'Invalid or expired Builder launch link. Reconnect from Studio.'
+      : error instanceof Error
+        ? error.message
+        : 'Invalid Builder launch token';
+
+    return json({ error: message }, { status: 400 });
   }
 };
 

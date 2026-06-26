@@ -12,6 +12,24 @@ import { pathToFileURL } from 'node:url';
 globalThis.Buffer = Buffer;
 globalThis.process = process;
 
+function validateProductionEnv() {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
+
+  if (process.env.BUILDER_ALLOW_UNAUTHENTICATED === 'true') {
+    throw new Error('BUILDER_ALLOW_UNAUTHENTICATED must not be enabled in production');
+  }
+
+  const secret = process.env.BUILDER_HANDOFF_SECRET?.trim() || '';
+
+  if (secret.length < 32) {
+    throw new Error('BUILDER_HANDOFF_SECRET must be set to at least 32 characters in production');
+  }
+}
+
+validateProductionEnv();
+
 const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 const host = process.env.HOST || '0.0.0.0';
 const port = Number(process.env.PORT || 5173);
@@ -145,7 +163,12 @@ const server = http.createServer(async (req, res) => {
 
     await sendWebResponse(res, response);
   } catch (error) {
-    const message = error instanceof Error ? error.stack || error.message : 'Unknown server error';
+    const message =
+      mode === 'development'
+        ? error instanceof Error
+          ? error.stack || error.message
+          : 'Unknown server error'
+        : 'Internal server error';
     res.statusCode = 500;
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.end(message);

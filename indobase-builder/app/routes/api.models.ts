@@ -3,6 +3,7 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { withSecurity } from '~/lib/security';
 
 interface ModelsResponse {
   modelList: ModelInfo[];
@@ -38,7 +39,7 @@ function getProviderInfo(llmManager: LLMManager) {
   return { providers: cachedProviders, defaultProvider: cachedDefaultProvider };
 }
 
-export async function loader({
+async function modelsLoader({
   request,
   params,
   context,
@@ -104,3 +105,5 @@ export async function loader({
     defaultProvider,
   });
 }
+
+export const loader = withSecurity(modelsLoader, { requireAuth: true });

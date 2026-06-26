@@ -245,6 +245,10 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
         headers: responseHeaders,
       });
     } catch (error) {
+      if (error instanceof Response) {
+        throw error;
+      }
+
       console.error('Security-wrapped handler error:', error);
 
       const errorMessage = sanitizeErrorMessage(error, process.env.NODE_ENV === 'development');
