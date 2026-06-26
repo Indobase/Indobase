@@ -210,7 +210,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             <SendButton
               show={props.input.length > 0 || props.isStreaming || props.uploadedFiles.length > 0}
               isStreaming={props.isStreaming}
-              disabled={props.modelList.length === 0}
+              disabled={(props.modelList?.length ?? 0) === 0}
               onClick={(event) => {
                 if (props.isStreaming) {
                   props.handleStop?.();
@@ -238,10 +238,10 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             <ClientOnly>
               {() => (
                 <ModelSelector
-                  key={`${props.modelList.length}:${props.model}`}
+                  key={`${props.modelList?.length ?? 0}:${props.model}`}
                   model={props.model}
                   setModel={props.setModel}
-                  modelList={props.modelList}
+                  modelList={props.modelList ?? []}
                   modelLoading={props.isModelLoading}
                 />
               )}

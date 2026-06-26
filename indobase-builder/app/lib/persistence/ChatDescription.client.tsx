@@ -30,7 +30,7 @@ export function ChatDescription() {
             onChange={handleChange}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            style={{ width: `${Math.max(currentDescription.length * 8, 100)}px` }}
+            style={{ width: `${Math.max((currentDescription ?? '').length * 8, 100)}px` }}
           />
           <TooltipProvider>
             <WithTooltip tooltip="Save title">

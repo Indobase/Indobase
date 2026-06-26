@@ -29,6 +29,15 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { supabaseConnection } from '~/lib/stores/supabase';
+import { builderFetch } from '~/lib/indobase/builder-auth.client';
+import { FIXED_MODEL_CHOICES, FIXED_MODEL_PROVIDER_NAME } from '~/utils/constants';
+
+const FALLBACK_CHAT_MODELS: ModelInfo[] = FIXED_MODEL_CHOICES.map((choice) => ({
+  name: choice.name,
+  label: choice.label,
+  provider: FIXED_MODEL_PROVIDER_NAME,
+  maxTokenAllowed: choice.maxTokenAllowed,
+}));
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -190,7 +199,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     ref,
   ) => {
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
-    const [modelList, setModelList] = useState<ModelInfo[]>([]);
+    const [modelList, setModelList] = useState<ModelInfo[]>(FALLBACK_CHAT_MODELS);
     const [isListening, setIsListening] = useState(false);
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
@@ -259,11 +268,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
 
       const loadModels = () => {
-        fetch('/api/models/OpenRouter')
+        builderFetch('/api/models/OpenRouter')
           .then((response) => response.json())
           .then((data) => {
-            const typedData = data as { modelList: ModelInfo[] };
-            setModelList(typedData.modelList);
+            const typedData = data as { modelList?: ModelInfo[] };
+
+            if (Array.isArray(typedData.modelList) && typedData.modelList.length > 0) {
+              setModelList(typedData.modelList);
+            }
           })
           .catch((error) => {
             console.error('Error fetching model list:', error);
