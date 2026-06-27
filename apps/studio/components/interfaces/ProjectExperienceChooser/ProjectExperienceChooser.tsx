@@ -96,9 +96,7 @@ export const ProjectExperienceChooser = () => {
                 type="primary"
                 size="small"
                 className="w-full sm:w-auto"
-                nextPath={`/?source=studio&prompt=${encodeURIComponent(
-                  'We just linked this project from Indobase Studio. Create a plan and start building the web app. After that, show me how to publish to Indobase hosting and queue an Android bundle build.',
-                )}`}
+                nextPath="/?source=studio"
               >
                 <span className="inline-flex items-center gap-2">
                   Open Indobase Builder

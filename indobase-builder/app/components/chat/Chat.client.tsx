@@ -39,6 +39,7 @@ import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
   getBuilderRequestInit,
@@ -279,20 +280,40 @@ export const ChatImpl = memo(
       }
     }, [provider.name]);
 
+    const urlPromptHandledRef = useRef(false);
+
     useEffect(() => {
+      if (urlPromptHandledRef.current || chatStarted) {
+        return;
+      }
+
       const prompt = searchParams.get('prompt');
+      if (!prompt) {
+        return;
+      }
 
-      // console.log(prompt, searchParams, model, provider);
+      const shouldAutostart = searchParams.get('autostart') === '1';
 
-      if (prompt) {
-        setSearchParams({});
+      urlPromptHandledRef.current = true;
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('prompt');
+        next.delete('autostart');
+        return next;
+      }, { replace: true });
+
+      if (shouldAutostart) {
         runAnimation();
         append({
           role: 'user',
           content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${prompt}`,
         });
+        return;
       }
-    }, [model, provider, searchParams]);
+
+      setInput(prompt);
+      textareaRef.current?.focus();
+    }, [append, chatStarted, model, provider, searchParams, setInput, setSearchParams]);
 
     const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } = usePromptEnhancer();
     const { parsedMessages, parseMessages } = useMessageParser();
@@ -322,6 +343,21 @@ export const ChatImpl = memo(
       void useMCPStore.getState().initialize();
       void useMCPStore.getState().syncWithIndobaseConnection();
     }, [supabaseConn.connectionSource, supabaseConn.indobase?.mcpToken]);
+
+    useEffect(() => {
+      if (!isIndobaseStudioManagedConnection(supabaseConn) || !chatStarted) {
+        return;
+      }
+
+      void import('~/lib/webcontainer').then(async ({ getWebcontainer }) => {
+        const container = await getWebcontainer();
+        await seedProjectEnvIfMissing(
+          (filePath, content) => container.fs.writeFile(filePath, content),
+          (filePath) => container.fs.readFile(filePath, 'utf-8'),
+          supabaseConn,
+        );
+      });
+    }, [chatStarted, supabaseConn.connectionSource, supabaseConn.credentials?.anonKey, supabaseConn.credentials?.supabaseUrl]);
 
     useEffect(() => {
       if (!isIndobaseStudioManagedConnection(supabaseConn) || isLoading) {
@@ -579,7 +615,7 @@ export const ChatImpl = memo(
       if (!chatStarted) {
         setFakeLoading(true);
 
-        if (autoSelectTemplate) {
+        if (autoSelectTemplate && !isIndobaseStudioManagedConnection(supabaseConn)) {
           const { template, title } = await selectStarterTemplate({
             message: finalMessageContent,
             model,

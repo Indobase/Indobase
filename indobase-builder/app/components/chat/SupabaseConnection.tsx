@@ -82,13 +82,7 @@ export function SupabaseConnection() {
       <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden mr-2 text-sm">
         {isStudioManagedConnection ? (
           <div className="flex items-center gap-2 px-2 py-1.5 bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent">
-            <img
-              className="w-4 h-4"
-              height="20"
-              width="20"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/supabase"
-            />
+            <div className="i-ph:database w-4 h-4 text-[#3ECF8E]" />
             <span className="text-xs font-medium">Indobase Backend Connected</span>
             {supabaseConn.project && (
               <span className="text-xs max-w-[120px] truncate">· {supabaseConn.project.name}</span>
@@ -101,13 +95,7 @@ export function SupabaseConnection() {
             onClick={() => setIsDialogOpen(!isDialogOpen)}
             className="hover:bg-bolt-elements-item-backgroundActive !text-white flex items-center gap-2"
           >
-            <img
-              className="w-4 h-4"
-              height="20"
-              width="20"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/supabase"
-            />
+            <div className="i-ph:database w-4 h-4 text-[#3ECF8E]" />
             {isConnected && supabaseConn.project && (
               <span className="ml-1 text-xs max-w-[100px] truncate">{supabaseConn.project.name}</span>
             )}
@@ -120,14 +108,8 @@ export function SupabaseConnection() {
           <Dialog className="max-w-[520px] p-6">
             {!isConnected ? (
               <div className="space-y-4">
-                <DialogTitle>
-                  <img
-                    className="w-5 h-5"
-                    height="24"
-                    width="24"
-                    crossOrigin="anonymous"
-                    src="https://cdn.simpleicons.org/supabase"
-                  />
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="i-ph:database w-5 h-5 text-[#3ECF8E]" />
                   Connect to Indobase Backend
                 </DialogTitle>
 
@@ -150,12 +132,12 @@ export function SupabaseConnection() {
                   />
                   <div className="mt-2 text-sm text-bolt-elements-textSecondary">
                     <a
-                      href="https://app.supabase.com/account/tokens"
+                      href="https://studio.indobase.in"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#3ECF8E] hover:underline inline-flex items-center gap-1"
                     >
-                      Get a Supabase token
+                      Connect your Indobase backend token
                       <div className="i-ph:arrow-square-out w-4 h-4" />
                     </a>
                   </div>
@@ -193,14 +175,8 @@ export function SupabaseConnection() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-2">
                   <DialogTitle>
-                    <img
-                      className="w-5 h-5"
-                      height="24"
-                      width="24"
-                      crossOrigin="anonymous"
-                      src="https://cdn.simpleicons.org/supabase"
-                    />
-                    {isStudioManagedConnection ? 'Indobase Backend' : 'Supabase Connection'}
+                    <div className="i-ph:database w-5 h-5 text-[#3ECF8E]" />
+                    {isStudioManagedConnection ? 'Indobase Backend' : 'Indobase Connection'}
                   </DialogTitle>
                 </div>
 

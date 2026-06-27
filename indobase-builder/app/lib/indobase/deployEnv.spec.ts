@@ -21,6 +21,12 @@ describe('deploy environment variables', () => {
     });
 
     expect(env).toEqual({
+      NEXT_PUBLIC_INDOBASE_ANON_KEY: 'anon-key',
+      NEXT_PUBLIC_INDOBASE_URL: 'https://proj_123.indobase.in',
+      INDOBASE_ANON_KEY: 'anon-key',
+      INDOBASE_URL: 'https://proj_123.indobase.in',
+      VITE_INDOBASE_ANON_KEY: 'anon-key',
+      VITE_INDOBASE_URL: 'https://proj_123.indobase.in',
       NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
       NEXT_PUBLIC_SUPABASE_URL: 'https://proj_123.indobase.in',
       SUPABASE_ANON_KEY: 'anon-key',

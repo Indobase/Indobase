@@ -66,6 +66,13 @@ const PRECHAT_STARTER_PROMPTS = [
   },
 ];
 
+const STUDIO_LINKED_STARTER_PROMPT = {
+  description: 'Ship the web app, then use Publish to Indobase and Android bundle in Builder.',
+  prompt:
+    'Create a plan and build a professional web app on my linked Indobase backend with Vite, React, TypeScript, and Tailwind. Use @indobaseinc/indobase-js and src/lib/indobase.ts. After preview works, explain how to publish with the Publish to Indobase button and queue an Android bundle from Builder.',
+  title: 'Linked from Studio',
+};
+
 const PRECHAT_FEATURED_TEMPLATES = [
   {
     icon: 'i-ph:chat-circle-dots',
@@ -513,7 +520,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 Common Indobase product shapes. Builder fills the implementation.
               </p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                {PRECHAT_STARTER_PROMPTS.map((item) => (
+                {(isStudioManagedConnection
+                  ? [STUDIO_LINKED_STARTER_PROMPT, ...PRECHAT_STARTER_PROMPTS]
+                  : PRECHAT_STARTER_PROMPTS
+                ).map((item) => (
                   <button
                     key={item.title}
                     type="button"

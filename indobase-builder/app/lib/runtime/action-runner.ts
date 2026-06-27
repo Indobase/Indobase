@@ -1,6 +1,10 @@
 import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { path as nodePath } from '~/utils/path';
 import { atom, map, type MapStore } from 'nanostores';
+import { sanitizeGeneratedArtifact, sanitizeFileAction } from '~/lib/indobase/sanitizeGeneratedArtifact';
+import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
+import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { supabaseConnection } from '~/lib/stores/supabase';
 import type { ActionAlert, BoltAction, DeployAlert, FileHistory, SupabaseAction, SupabaseAlert } from '~/types/actions';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
@@ -92,11 +96,12 @@ export class ActionRunner {
 
   addAction(data: ActionCallbackData) {
     const { actionId } = data;
+    const action = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
 
     const actions = this.actions.get();
-    const action = actions[actionId];
+    const existingAction = actions[actionId];
 
-    if (action) {
+    if (existingAction) {
       // action already added
       return;
     }
@@ -104,7 +109,7 @@ export class ActionRunner {
     const abortController = new AbortController();
 
     this.actions.setKey(actionId, {
-      ...data.action,
+      ...action,
       status: 'pending',
       executed: false,
       abort: () => {
@@ -127,6 +132,7 @@ export class ActionRunner {
 
   async runAction(data: ActionCallbackData, isStreaming: boolean = false) {
     const { actionId } = data;
+    const incomingAction = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
     const action = this.actions.get()[actionId];
 
     if (!action) {
@@ -141,7 +147,7 @@ export class ActionRunner {
       return; // No return value here
     }
 
-    this.#updateAction(actionId, { ...action, ...data.action, executed: !isStreaming });
+    this.#updateAction(actionId, { ...action, ...incomingAction, executed: !isStreaming });
 
     this.#currentExecutionPromise = this.#currentExecutionPromise
       .then(() => {
@@ -339,7 +345,8 @@ export class ActionRunner {
     }
 
     const webcontainer = await this.#webcontainer;
-    const relativePath = nodePath.relative(webcontainer.workdir, action.filePath);
+    const sanitized = sanitizeGeneratedArtifact(action.filePath, action.content);
+    const relativePath = nodePath.relative(webcontainer.workdir, sanitized.filePath);
 
     let folder = nodePath.dirname(relativePath);
 
@@ -356,10 +363,27 @@ export class ActionRunner {
     }
 
     try {
-      await webcontainer.fs.writeFile(relativePath, action.content);
+      await webcontainer.fs.writeFile(relativePath, sanitized.content);
       logger.debug(`File written ${relativePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);
+    }
+
+    const connection = supabaseConnection.get();
+    if (isIndobaseStudioManagedConnection(connection)) {
+      await this.#ensureProjectEnvFile(webcontainer, connection);
+    }
+  }
+
+  async #ensureProjectEnvFile(webcontainer: WebContainer, connection: NonNullable<ReturnType<typeof supabaseConnection.get>>) {
+    try {
+      await seedProjectEnvIfMissing(
+        (filePath, content) => webcontainer.fs.writeFile(filePath, content),
+        (filePath) => webcontainer.fs.readFile(filePath, 'utf-8'),
+        connection,
+      );
+    } catch (error) {
+      logger.error('Failed to seed project .env\n\n', error);
     }
   }
 
@@ -513,16 +537,18 @@ export class ActionRunner {
     logger.debug('[Supabase Action]:', { operation, filePath, content });
 
     switch (operation) {
-      case 'migration':
+      case 'migration': {
         if (!filePath) {
           throw new Error('Migration requires a filePath');
         }
 
+        const sanitizedPath = sanitizeGeneratedArtifact(filePath, content ?? '').filePath;
+
         // Show alert for migration action
         this.onSupabaseAlert?.({
           type: 'info',
-          title: 'Supabase Migration',
-          description: `Create migration file: ${filePath}`,
+          title: 'Indobase Migration',
+          description: `Create migration file: ${sanitizedPath}`,
           content,
           source: 'supabase',
         });
@@ -530,17 +556,18 @@ export class ActionRunner {
         // Only create the migration file
         await this.#runFileAction({
           type: 'file',
-          filePath,
+          filePath: sanitizedPath,
           content,
           changeSource: 'supabase',
         } as any);
         return { success: true };
+      }
 
       case 'query': {
         // Always show the alert and let the SupabaseAlert component handle connection state
         this.onSupabaseAlert?.({
           type: 'info',
-          title: 'Supabase Query',
+          title: 'Indobase Query',
           description: 'Execute database query',
           content,
           source: 'supabase',

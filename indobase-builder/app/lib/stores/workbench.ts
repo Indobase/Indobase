@@ -1,6 +1,7 @@
 import { atom, map, type MapStore, type ReadableAtom, type WritableAtom } from 'nanostores';
 import type { EditorDocument, ScrollPosition } from '~/components/editor/codemirror/CodeMirrorEditor';
 import { ActionRunner } from '~/lib/runtime/action-runner';
+import { sanitizeFileAction } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import type { ActionCallbackData, ArtifactCallbackData } from '~/lib/runtime/message-parser';
 import { webcontainer } from '~/lib/webcontainer';
 import type { ITerminal } from '~/types/terminal';
@@ -538,7 +539,8 @@ export class WorkbenchStore {
     this.addToExecutionQueue(() => this._addAction(data));
   }
   async _addAction(data: ActionCallbackData) {
-    const { artifactId } = data;
+    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);
 
@@ -546,7 +548,7 @@ export class WorkbenchStore {
       unreachable('Artifact not found');
     }
 
-    return artifact.runner.addAction(data);
+    return artifact.runner.addAction(payload);
   }
 
   runAction(data: ActionCallbackData, isStreaming: boolean = false) {
@@ -557,7 +559,8 @@ export class WorkbenchStore {
     }
   }
   async _runAction(data: ActionCallbackData, isStreaming: boolean = false) {
-    const { artifactId } = data;
+    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);
 
@@ -565,15 +568,15 @@ export class WorkbenchStore {
       unreachable('Artifact not found');
     }
 
-    const action = artifact.runner.actions.get()[data.actionId];
+    const action = artifact.runner.actions.get()[payload.actionId];
 
     if (!action || action.executed) {
       return;
     }
 
-    if (data.action.type === 'file') {
+    if (payload.action.type === 'file') {
       const wc = await webcontainer;
-      const fullPath = path.join(wc.workdir, data.action.filePath);
+      const fullPath = path.join(wc.workdir, payload.action.filePath);
 
       /*
        * For scoped locks, we would need to implement diff checking here
@@ -592,21 +595,21 @@ export class WorkbenchStore {
       const doc = this.#editorStore.documents.get()[fullPath];
 
       if (!doc) {
-        await artifact.runner.runAction(data, isStreaming);
+        await artifact.runner.runAction(payload, isStreaming);
       }
 
-      this.#editorStore.updateFile(fullPath, data.action.content);
+      this.#editorStore.updateFile(fullPath, payload.action.content);
 
-      if (!isStreaming && data.action.content) {
+      if (!isStreaming && payload.action.content) {
         await this.saveFile(fullPath);
       }
 
       if (!isStreaming) {
-        await artifact.runner.runAction(data);
+        await artifact.runner.runAction(payload);
         this.resetAllFileModifications();
       }
     } else {
-      await artifact.runner.runAction(data);
+      await artifact.runner.runAction(payload);
     }
   }
 

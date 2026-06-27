@@ -342,7 +342,7 @@ export default function SupabaseTab() {
       return (
         <div className="flex items-center gap-2 text-sm text-bolt-elements-textSecondary">
           <div className="i-ph:spinner-gap w-4 h-4 animate-spin" />
-          Fetching Supabase projects...
+          Fetching Indobase projects...
         </div>
       );
     }
@@ -764,11 +764,7 @@ export default function SupabaseTab() {
               <div className="text-xs text-bolt-elements-textSecondary bg-bolt-elements-background-depth-1 dark:bg-bolt-elements-background-depth-1 p-3 rounded-lg mb-4">
                 <p className="flex items-center gap-1 mb-1">
                   <span className="i-ph:lightbulb w-3.5 h-3.5 text-bolt-elements-icon-success dark:text-bolt-elements-icon-success" />
-                  <span className="font-medium">Tip:</span> You can also set the{' '}
-                  <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">
-                    VITE_SUPABASE_ACCESS_TOKEN
-                  </code>{' '}
-                  environment variable to connect your backend account automatically.
+                  <span className="font-medium">Tip:</span> You can also set a backend access token environment variable to connect your Indobase account automatically.
                 </p>
               </div>
 
@@ -796,7 +792,7 @@ export default function SupabaseTab() {
                     rel="noopener noreferrer"
                     className="text-bolt-elements-borderColorActive hover:underline inline-flex items-center gap-1"
                   >
-                    Get a Supabase token
+                    Connect via Indobase Studio
                     <div className="i-ph:arrow-square-out w-4 h-4" />
                   </a>
                 </div>

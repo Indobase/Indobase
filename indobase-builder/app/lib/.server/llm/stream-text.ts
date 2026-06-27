@@ -10,7 +10,9 @@ import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
 import { discussPrompt } from '~/lib/common/prompts/discuss-prompt';
 import { CODER_AGENT_APPENDIX } from '~/lib/.server/orchestration/prompts';
+import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-prompt';
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
+import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -265,6 +267,8 @@ export async function streamText(props: {
     systemPrompt = `${systemPrompt}${CODER_AGENT_APPENDIX}`;
   }
 
+  systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;
+
   const isIndobaseManaged =
     options?.supabaseConnection?.connectionSource === 'studio_handoff' &&
     options?.supabaseConnection?.isConnected &&
@@ -278,7 +282,7 @@ export async function streamText(props: {
       authUrl: options?.supabaseConnection?.indobase?.authUrl,
       storageUrl: options?.supabaseConnection?.indobase?.storageUrl,
       restUrl: options?.supabaseConnection?.indobase?.restUrl,
-    })}`;
+    })}${INDOBASE_STUDIO_WORKFLOW_APPENDIX}`;
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
