@@ -1,5 +1,6 @@
 import type { ActionType, BoltAction, BoltActionData, FileAction, ShellAction, SupabaseAction } from '~/types/actions';
 import type { BoltArtifactData } from '~/types/artifact';
+import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 
@@ -349,21 +350,20 @@ export class StreamingMessageParser {
       const operation = this.#extractAttribute(actionTag, 'operation');
 
       if (!operation || !['migration', 'query'].includes(operation)) {
-        logger.warn(`Invalid or missing operation for Supabase action: ${operation}`);
-        throw new Error(`Invalid Supabase operation: ${operation}`);
+        logger.warn(`Invalid or missing operation for Supabase action: ${operation}; defaulting to query`);
+        (actionAttributes as SupabaseAction).operation = 'query';
+      } else {
+        (actionAttributes as SupabaseAction).operation = operation as 'migration' | 'query';
       }
 
-      (actionAttributes as SupabaseAction).operation = operation as 'migration' | 'query';
-
-      if (operation === 'migration') {
+      if ((actionAttributes as SupabaseAction).operation === 'migration') {
         const filePath = this.#extractAttribute(actionTag, 'filePath');
 
         if (!filePath) {
-          logger.warn('Migration requires a filePath');
-          throw new Error('Migration requires a filePath');
+          logger.warn('Migration missing filePath; using default indobase/migrations path');
         }
 
-        (actionAttributes as SupabaseAction).filePath = filePath;
+        (actionAttributes as SupabaseAction).filePath = resolveMigrationFilePath(filePath);
       }
     } else if (actionType === 'file') {
       const filePath = this.#extractAttribute(actionTag, 'filePath') as string;
@@ -381,8 +381,21 @@ export class StreamingMessageParser {
   }
 
   #extractAttribute(tag: string, attributeName: string): string | undefined {
-    const match = tag.match(new RegExp(`${attributeName}="([^"]*)"`, 'i'));
-    return match ? match[1] : undefined;
+    const patterns = [
+      new RegExp(`${attributeName}="([^"]*)"`, 'i'),
+      new RegExp(`${attributeName}='([^']*)'`, 'i'),
+      new RegExp(`${attributeName}=([^\\s>]+)`, 'i'),
+    ];
+
+    for (const pattern of patterns) {
+      const match = tag.match(pattern);
+
+      if (match?.[1]) {
+        return match[1];
+      }
+    }
+
+    return undefined;
   }
 }
 

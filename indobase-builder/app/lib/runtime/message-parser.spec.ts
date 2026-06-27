@@ -157,6 +157,33 @@ describe('StreamingMessageParser', () => {
       runTest(input, expected);
     });
   });
+
+  describe('supabase migration actions', () => {
+    it('should not throw when migration filePath is missing', () => {
+      const callbacks = {
+        onArtifactOpen: vi.fn(),
+        onArtifactClose: vi.fn(),
+        onActionOpen: vi.fn(),
+        onActionClose: vi.fn(),
+      };
+
+      const parser = new StreamingMessageParser({ callbacks });
+      const input =
+        'Before <boltArtifact title="DB" id="artifact_1"><boltAction type="supabase" operation="migration">CREATE TABLE users (id uuid primary key);</boltAction></boltArtifact> After';
+
+      expect(() => parser.parse('test_migration', input)).not.toThrow();
+
+      expect(callbacks.onActionOpen).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: expect.objectContaining({
+            type: 'supabase',
+            operation: 'migration',
+            filePath: expect.stringMatching(/^\/indobase\/migrations\/.+\.sql$/),
+          }),
+        }),
+      );
+    });
+  });
 });
 
 describe('EnhancedStreamingMessageParser', () => {

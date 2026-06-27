@@ -2,6 +2,7 @@ import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { path as nodePath } from '~/utils/path';
 import { atom, map, type MapStore } from 'nanostores';
 import { sanitizeGeneratedArtifact, sanitizeFileAction } from '~/lib/indobase/sanitizeGeneratedArtifact';
+import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { supabaseConnection } from '~/lib/stores/supabase';
@@ -538,11 +539,10 @@ export class ActionRunner {
 
     switch (operation) {
       case 'migration': {
-        if (!filePath) {
-          throw new Error('Migration requires a filePath');
-        }
-
-        const sanitizedPath = sanitizeGeneratedArtifact(filePath, content ?? '').filePath;
+        const sanitizedPath = sanitizeGeneratedArtifact(
+          resolveMigrationFilePath(filePath),
+          content ?? '',
+        ).filePath;
 
         // Show alert for migration action
         this.onSupabaseAlert?.({

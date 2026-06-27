@@ -151,7 +151,7 @@ export function useGitHubDeploy() {
       return {
         success: true,
         files: fileContents,
-        projectName: artifact.title || 'bolt-project',
+        projectName: artifact.title || 'indobase-project',
       };
     } catch (err) {
       console.error('GitHub deploy error:', err);

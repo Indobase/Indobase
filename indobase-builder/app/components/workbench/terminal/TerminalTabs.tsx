@@ -37,7 +37,7 @@ export const TerminalTabs = memo(() => {
     (index: number) => {
       if (index === 0) {
         return;
-      } // Can't close bolt terminal
+      } // Can't close the primary Indobase Builder terminal
 
       const terminalRef = terminalRefs.current.get(index);
 
@@ -218,7 +218,7 @@ export const TerminalTabs = memo(() => {
           {Array.from({ length: terminalCount + 1 }, (_, index) => {
             const isActive = activeTerminal === index;
 
-            logger.debug(`Starting bolt terminal [${index}]`);
+            logger.debug(`Starting Indobase Builder terminal [${index}]`);
 
             if (index == 0) {
               return (

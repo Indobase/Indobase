@@ -1,14 +1,14 @@
 {
-  "name": "bolt",
-  "description": "An AI Agent",
+  "name": "indobase-builder",
+  "description": "Indobase Builder — AI app builder for Indobase backends",
   "private": true,
   "license": "MIT",
   "sideEffects": false,
   "type": "module",
   "version": "1.0.0",
   "author": {
-    "name": "bolt.diy team",
-    "email": "maintainers@bolt.diy"
+    "name": "Indobase",
+    "email": "hello@indobase.in"
   },
   "scripts": {
     "deploy": "npm run build && wrangler pages deploy",
