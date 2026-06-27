@@ -577,8 +577,17 @@ export class ActionRunner {
         return { pending: true };
       }
 
-      default:
-        throw new Error(`Unknown operation: ${operation}`);
+      default: {
+        logger.warn(`Unknown Supabase operation: ${operation}`);
+        this.onSupabaseAlert?.({
+          type: 'error',
+          title: 'Indobase Action Failed',
+          description: `Unsupported database operation: ${operation ?? 'unknown'}`,
+          content,
+          source: 'supabase',
+        });
+        return { success: false };
+      }
     }
   }
 

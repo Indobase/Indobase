@@ -67,11 +67,21 @@ export function useMessageParser() {
 
     for (const [index, message] of messages.entries()) {
       if (message.role === 'assistant' || message.role === 'user') {
-        const newParsedContent = messageParser.parse(message.id, extractTextContent(message));
-        setParsedMessages((prevParsed) => ({
-          ...prevParsed,
-          [index]: !reset ? (prevParsed[index] || '') + newParsedContent : newParsedContent,
-        }));
+        try {
+          const newParsedContent = messageParser.parse(message.id, extractTextContent(message));
+          setParsedMessages((prevParsed) => ({
+            ...prevParsed,
+            [index]: !reset ? (prevParsed[index] || '') + newParsedContent : newParsedContent,
+          }));
+        } catch (error) {
+          logger.error('Failed to parse assistant message', error);
+          setParsedMessages((prevParsed) => ({
+            ...prevParsed,
+            [index]:
+              (prevParsed[index] || '') +
+              '\n\n_Indobase Builder could not render part of this response. Start a new chat or retry your prompt._\n',
+          }));
+        }
       }
     }
   }, []);

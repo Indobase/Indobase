@@ -151,7 +151,7 @@ export class StreamingMessageParser {
 
             if ('type' in currentAction && currentAction.type === 'file') {
               // Remove markdown code block syntax if present and file is not markdown
-              if (!currentAction.filePath.endsWith('.md')) {
+              if (!currentAction.filePath?.endsWith('.md')) {
                 content = cleanoutMarkdownSyntax(content);
                 content = cleanEscapedTags(content);
               }
@@ -183,7 +183,7 @@ export class StreamingMessageParser {
             if ('type' in currentAction && currentAction.type === 'file') {
               let content = input.slice(i);
 
-              if (!currentAction.filePath.endsWith('.md')) {
+              if (!currentAction.filePath?.endsWith('.md')) {
                 content = cleanoutMarkdownSyntax(content);
                 content = cleanEscapedTags(content);
               }
@@ -366,13 +366,14 @@ export class StreamingMessageParser {
         (actionAttributes as SupabaseAction).filePath = resolveMigrationFilePath(filePath);
       }
     } else if (actionType === 'file') {
-      const filePath = this.#extractAttribute(actionTag, 'filePath') as string;
+      let filePath = this.#extractAttribute(actionTag, 'filePath');
 
       if (!filePath) {
-        logger.debug('File path not specified');
+        logger.warn('File action missing filePath; using default path');
+        filePath = `untitled-${Date.now()}.txt`;
       }
 
-      (actionAttributes as FileAction).filePath = filePath;
+      (actionAttributes as FileAction).filePath = filePath.startsWith('/') ? filePath : `/${filePath}`;
     } else if (!['shell', 'start'].includes(actionType)) {
       logger.warn(`Unknown action type '${actionType}'`);
     }

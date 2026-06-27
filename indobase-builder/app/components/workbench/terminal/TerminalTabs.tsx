@@ -200,7 +200,7 @@ export const TerminalTabs = memo(() => {
                   terminal.focus();
 
                   if (activeTerminal === 0) {
-                    workbenchStore.attachBoltTerminal(terminal);
+                    workbenchStore.attachBoltTerminal(terminal, { force: true });
                   } else {
                     workbenchStore.attachTerminal(terminal);
                   }

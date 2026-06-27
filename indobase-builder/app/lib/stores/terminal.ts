@@ -15,6 +15,7 @@ export class TerminalStore {
   #webcontainer: Promise<WebContainer>;
   #terminals: Array<{ terminal: ITerminal; process: WebContainerProcess }> = [];
   #boltTerminal = newBoltShellProcess();
+  #attachInFlight: Promise<void> | null = null;
 
   showTerminal: WritableAtom<boolean> = import.meta.hot?.data.showTerminal ?? atom(true);
 
@@ -33,7 +34,36 @@ export class TerminalStore {
     this.showTerminal.set(value !== undefined ? value : !this.showTerminal.get());
   }
 
-  async attachBoltTerminal(terminal: ITerminal) {
+  async attachBoltTerminal(terminal: ITerminal, options?: { force?: boolean }) {
+    if (options?.force) {
+      this.#boltTerminal = newBoltShellProcess();
+      resetWebContainerBoot();
+    } else if (this.#attachInFlight) {
+      return this.#attachInFlight;
+    } else {
+      try {
+        await Promise.race([
+          this.#boltTerminal.ready(),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('shell not ready')), 150)),
+        ]);
+        return;
+      } catch {
+        // Shell not ready yet — continue with attach.
+      }
+    }
+
+    if (this.#attachInFlight) {
+      return this.#attachInFlight;
+    }
+
+    this.#attachInFlight = this.#attachBoltTerminalInternal(terminal).finally(() => {
+      this.#attachInFlight = null;
+    });
+
+    return this.#attachInFlight;
+  }
+
+  async #attachBoltTerminalInternal(terminal: ITerminal) {
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= SHELL_ATTACH_MAX_ATTEMPTS; attempt++) {
