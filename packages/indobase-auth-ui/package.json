@@ -1,0 +1,24 @@
+{
+  "name": "@indobaseinc/auth-ui",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build --filter=@indobaseinc/auth-ui-shared --filter=@indobaseinc/auth-ui-react --filter=@indobaseinc/auth-ui-svelte",
+    "build:react": "turbo run build --filter=@indobaseinc/auth-ui-react",
+    "build:svelte": "turbo run build --filter=@indobaseinc/auth-ui-svelte",
+    "build:shared": "turbo run build --filter=@indobaseinc/auth-ui-shared",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "clean:all": "turbo run clean:all"
+  },
+  "devDependencies": {
+    "prettier": "^2.5.1",
+    "turbo": "^1.10.13",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "npm": ">=9.0.0",
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@8.7.0"
+}

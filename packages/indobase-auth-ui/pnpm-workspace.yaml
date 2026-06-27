@@ -1,0 +1,5 @@
+packages:
+  - "packages/shared"
+  - "packages/react"
+  - "packages/svelte"
+  - "packages/tsconfig"

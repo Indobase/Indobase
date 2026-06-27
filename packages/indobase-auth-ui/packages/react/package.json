@@ -1,0 +1,69 @@
+{
+  "name": "@indobaseinc/auth-ui-react",
+  "version": "1.0.1",
+  "description": "Pre-built React auth UI components for Indobase",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.es.js",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.cjs.js"
+    }
+  },
+  "homepage": "https://indobase.in",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-auth-ui/packages/react"
+  },
+  "sideEffects": false,
+  "source": "src/index.tsx",
+  "keywords": [
+    "Indobase",
+    "Auth",
+    "React"
+  ],
+  "author": "Indobase",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "build:tsc": "rm -rf dist && tsc --build"
+  },
+  "dependencies": {
+    "@stitches/core": "^1.2.8",
+    "@indobaseinc/auth-ui-shared": "workspace:*",
+    "prop-types": "^15.7.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "peerDependencies": {
+    "@indobaseinc/indobase-js": "^1.0.8",
+    "@indobaseinc/auth-js": "^1.0.8"
+  },
+  "devDependencies": {
+    "@indobaseinc/indobase-js": "^1.0.8",
+    "@indobaseinc/auth-js": "^1.0.8",
+    "@types/is-ci": "^3.0.0",
+    "@types/minimist": "^1.2.2",
+    "@types/node": "^18.14.0",
+    "@types/normalize-package-data": "^2.4.1",
+    "@types/react": "^18.0.27",
+    "@types/react-dom": "^18.0.10",
+    "@types/semver": "^7.3.13",
+    "@vitejs/plugin-react": "^3.1.0",
+    "tsconfig": "workspace:*",
+    "typescript": "^5.3.3",
+    "vite": "^4.5.2",
+    "vite-plugin-dts": "2.0.0-beta.1"
+  }
+}

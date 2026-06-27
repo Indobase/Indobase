@@ -1,0 +1,46 @@
+{
+  "name": "@indobaseinc/auth-ui-shared",
+  "version": "1.0.1",
+  "description": "Shared types and utilities for Indobase Auth UI",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Indobase/Indobase.git",
+    "directory": "packages/indobase-auth-ui/packages/shared"
+  },
+  "keywords": [
+    "Indobase",
+    "Auth",
+    "React",
+    "Svelte"
+  ],
+  "author": "Indobase",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Indobase/Indobase/issues"
+  },
+  "homepage": "https://indobase.in",
+  "devDependencies": {
+    "@stitches/core": "^1.2.8",
+    "@indobaseinc/indobase-js": "^1.0.8",
+    "@indobaseinc/auth-js": "^1.0.8",
+    "tsconfig": "workspace:*",
+    "tsup": "^6.6.3",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@indobaseinc/indobase-js": "^1.0.8",
+    "@indobaseinc/auth-js": "^1.0.8"
+  }
+}

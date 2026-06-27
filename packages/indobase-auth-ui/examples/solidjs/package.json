@@ -1,0 +1,26 @@
+{
+  "name": "@example/solidjs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build:example": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@suid/icons-material": "^0.4.1",
+    "@suid/material": "^0.6.3",
+    "typescript": "^4.9.5",
+    "vite": "^4.5.2",
+    "vite-plugin-solid": "^2.5.0"
+  },
+  "dependencies": {
+    "@supabase/auth-ui-shared": "workspace:*",
+    "@supabase/auth-ui-solid": "workspace:*",
+    "@supabase/indobase-js": "^2.21.0",
+    "solid-js": "^1.6.10"
+  }
+}

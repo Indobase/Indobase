@@ -1,0 +1,44 @@
+{
+  "name": "@supabase/auth-ui-solid",
+  "version": "0.3.8",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.jsx",
+  "module": "./dist/index.jsx",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/supabase/auth-ui/tree/main/packages/solid",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/supabase/auth-ui.git"
+  },
+  "source": "src/index.tsx",
+  "scripts": {
+    "build": "rm -rf dist && tsc --build"
+  },
+  "devDependencies": {
+    "@suid/icons-material": "^0.4.1",
+    "@suid/material": "^0.6.3",
+    "@supabase/indobase-js": "^2.39.3",
+    "@typescript-eslint/eslint-plugin": "^5.51.0",
+    "@typescript-eslint/parser": "^5.51.0",
+    "eslint": "^8.33.0",
+    "eslint-plugin-solid": "^0.9.4",
+    "tsconfig": "workspace:*",
+    "typescript": "^4.9.5",
+    "vite": "^4.5.2",
+    "vite-plugin-solid": "^2.5.0"
+  },
+  "dependencies": {
+    "@stitches/core": "^1.2.8",
+    "@supabase/auth-ui-shared": "workspace:*",
+    "just-merge": "^3.2.0",
+    "solid-js": "^1.5.1 || ^1.6.0 || ^1.6.1"
+  },
+  "sideEffects": false
+}
