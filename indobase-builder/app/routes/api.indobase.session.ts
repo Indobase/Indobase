@@ -24,7 +24,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
   const cookies = parseCookies(request.headers.get('Cookie'));
   const validToken = await resolveValidBuilderMcpToken(
-    [body.mcpToken, readBearerToken(request.headers.get('Authorization')), cookies[BUILDER_MCP_COOKIE]],
+    [body.mcpToken, readBearerToken(request), cookies[BUILDER_MCP_COOKIE]],
     env,
   );
 
