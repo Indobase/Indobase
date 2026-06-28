@@ -42,7 +42,7 @@ Use this when traffic, connection counts, or latency grow. Tuning lives in Studi
 
 - **Minimum for ~15 active tenants:** 4 vCPU, 16 GB RAM (2 vCPU / 8 GB cannot sustain 40+ full stacks).
 - **Split nodes:** run Studio + control-plane compose on one host; tenant stacks on a second data-plane node (`SAAS_TENANTS_HOST_PATH`, provisioner URL).
-- **Cap idle stacks:** `MAX_RUNNING_TENANT_STACKS=12 bash docker/scripts/cap-idle-tenant-stacks.sh` on the VPS (prefers `ACTIVE_HEALTHY` projects when `STUDIO_PG_URL` is set).
+- **Cap idle stacks:** `MAX_RUNNING_TENANT_STACKS=12 bash docker/scripts/cap-idle-tenant-stacks.sh` on the VPS (prefers `ACTIVE_HEALTHY` projects when `STUDIO_PG_URL` is set). Install cron via `bash docker/scripts/install-cap-idle-tenant-stacks-cron.sh` — **one** entry every 5 min with `flock` (never schedule per-minute; overlapping runs melt 2 vCPU hosts).
 
 ## 8. Edge routing and Traefik
 

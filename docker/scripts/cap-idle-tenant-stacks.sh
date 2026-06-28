@@ -12,24 +12,24 @@
 #   DRY_RUN=1 ...  # print actions only
 set -euo pipefail
 
+LOCK_FILE="${LOCK_FILE:-/var/lock/indobase-cap-idle-tenant-stacks.lock}"
+mkdir -p "$(dirname "$LOCK_FILE")"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Another cap-idle run is already in progress; exiting."
+  exit 0
+fi
+
 TENANTS_ROOT="${TENANTS_ROOT:-/var/lib/docker/volumes/indobase-backend-bmqhan_tenants-data/_data}"
 MAX_RUNNING="${MAX_RUNNING_TENANT_STACKS:-12}"
 DRY_RUN="${DRY_RUN:-0}"
 STUDIO_PG_URL="${STUDIO_PG_URL:-}"
 
-tenant_ref_running() {
-  local ref="$1"
-  docker ps --format '{{.Names}}' | grep -q "indobase-tenant-${ref}-tenant-"
-}
-
+# One docker ps per run — avoid N subprocesses when many tenants exist.
 running_refs() {
-  for entry in "$TENANTS_ROOT"/*; do
-    [[ -d "$entry" ]] || continue
-    local ref
-    ref="$(basename "$entry")"
-    [[ "$ref" == *.* ]] && continue
-    tenant_ref_running "$ref" && echo "$ref"
-  done | sort -u
+  docker ps --format '{{.Names}}' 2>/dev/null \
+    | sed -n 's/^indobase-tenant-\([^-]*\)-tenant-.*/\1/p' \
+    | sort -u
 }
 
 priority_refs_from_db() {
