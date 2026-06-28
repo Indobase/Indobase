@@ -10,6 +10,14 @@
 #   REPAIR_FAILED_PROBES=1   # call /repair-stack for each tenant that still fails probe
 set -euo pipefail
 
+LOCK_FILE="${LOCK_FILE:-/var/lock/indobase-tenant-fleet-health-repair.lock}"
+mkdir -p "$(dirname "$LOCK_FILE")"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Another fleet repair is already running; exiting."
+  exit 0
+fi
+
 PROVISIONER_URL="${PROVISIONER_URL:-}"
 PROVISIONER_CONTAINER="${PROVISIONER_CONTAINER:-indobase-data-plane-provisioner}"
 TOKEN="${DATA_PLANE_PROVISIONER_TOKEN:-${PROVISIONER_TOKEN:-}}"
