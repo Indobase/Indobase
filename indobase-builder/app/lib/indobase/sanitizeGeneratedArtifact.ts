@@ -1,5 +1,90 @@
 import type { BoltAction } from '~/types/actions';
 
+const FILE_PATH_METADATA_REGEX = /^\s*<filePath>\s*(\/?[^<]+?)\s*<\/filePath>\s*(?:\r?\n)?/i;
+const CONTENT_TYPE_METADATA_REGEX = /^\s*<contentType>[^<]*<\/contentType>\s*(?:\r?\n)?/i;
+
+export function isPlaceholderGeneratedPath(filePath?: string): boolean {
+  if (!filePath?.trim()) {
+    return true;
+  }
+
+  const normalized = filePath.trim().replace(/^\/+/, '');
+  return /^untitled-\d+\.txt$/i.test(normalized);
+}
+
+export function extractEmbeddedFilePathMetadata(content: string): { filePath?: string; content: string } {
+  let cleaned = content;
+  let filePath: string | undefined;
+
+  const pathMatch = cleaned.match(FILE_PATH_METADATA_REGEX);
+
+  if (pathMatch?.[1]) {
+    filePath = pathMatch[1].trim();
+    cleaned = cleaned.replace(FILE_PATH_METADATA_REGEX, '');
+  }
+
+  cleaned = cleaned.replace(CONTENT_TYPE_METADATA_REGEX, '');
+
+  return {
+    filePath,
+    content: cleaned.replace(/^\s+/, ''),
+  };
+}
+
+export function normalizeGeneratedFilePath(filePath: string): string {
+  const trimmed = filePath.trim().replace(/\\/g, '/');
+  const withoutWorkdir = trimmed.replace(/^\/home\/project(?=\/|$)/, '');
+  const normalized = withoutWorkdir.startsWith('/') ? withoutWorkdir : `/${withoutWorkdir}`;
+
+  return normalized.replace(/\/{2,}/g, '/');
+}
+
+export function resolveGeneratedFileArtifact(filePath: string, content: string) {
+  const embedded = extractEmbeddedFilePathMetadata(content);
+  let resolvedPath = filePath;
+  let resolvedContent = embedded.content;
+
+  if (embedded.filePath && isPlaceholderGeneratedPath(filePath)) {
+    resolvedPath = embedded.filePath;
+  }
+
+  if (isPlaceholderGeneratedPath(resolvedPath)) {
+    const inferredPath = inferGeneratedPathFromContent(resolvedContent);
+
+    if (inferredPath) {
+      resolvedPath = inferredPath;
+    }
+  }
+
+  const finalPath = isPlaceholderGeneratedPath(resolvedPath)
+    ? resolvedPath
+    : normalizeGeneratedFilePath(resolvedPath);
+
+  return sanitizeGeneratedArtifact(finalPath, resolvedContent);
+}
+
+function inferGeneratedPathFromContent(content: string): string | undefined {
+  const trimmed = content.trim();
+
+  if (trimmed.startsWith('{') && trimmed.includes('"name"') && trimmed.includes('"scripts"')) {
+    return '/package.json';
+  }
+
+  if (trimmed.includes('createRoot(') || trimmed.includes('ReactDOM.createRoot')) {
+    return '/src/main.jsx';
+  }
+
+  if (trimmed.match(/^import\s+React/m) && trimmed.includes('export default function App')) {
+    return '/src/App.jsx';
+  }
+
+  if (trimmed.includes('<!DOCTYPE html>') || trimmed.match(/<html[\s>]/i)) {
+    return '/index.html';
+  }
+
+  return undefined;
+}
+
 export function sanitizeGeneratedArtifactPath(filePath: string): string {
   return filePath
     .replace(/\/supabase\/migrations\//g, '/indobase/migrations/')
@@ -51,7 +136,7 @@ export function sanitizeFileAction<T extends BoltAction>(action: T): T {
     return action;
   }
 
-  const sanitized = sanitizeGeneratedArtifact(action.filePath, action.content);
+  const sanitized = resolveGeneratedFileArtifact(action.filePath, action.content);
 
   return {
     ...action,

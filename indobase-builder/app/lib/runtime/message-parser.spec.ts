@@ -184,6 +184,38 @@ describe('StreamingMessageParser', () => {
       );
     });
   });
+
+  describe('file actions with embedded metadata', () => {
+    it('should resolve filePath and strip metadata from file content on close', () => {
+      const callbacks = {
+        onArtifactOpen: vi.fn(),
+        onArtifactClose: vi.fn(),
+        onActionOpen: vi.fn(),
+        onActionClose: vi.fn(),
+      };
+
+      const parser = new StreamingMessageParser({ callbacks });
+      const input =
+        'Before <boltArtifact title="App" id="artifact_1"><boltAction type="file"><filePath>/home/project/src/pages/Register.jsx</filePath><contentType>application/javascript</contentType>export default function Register() { return null; }</boltAction></boltArtifact> After';
+
+      parser.parse('test_embedded_metadata', input);
+
+      expect(callbacks.onActionClose).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: expect.objectContaining({
+            type: 'file',
+            filePath: '/src/pages/Register.jsx',
+            content: expect.stringContaining('export default function Register'),
+          }),
+        }),
+      );
+
+      const closedAction = callbacks.onActionClose.mock.calls.at(-1)?.[0]?.action;
+
+      expect(closedAction.content).not.toContain('<filePath>');
+      expect(closedAction.content).not.toContain('<contentType>');
+    });
+  });
 });
 
 describe('EnhancedStreamingMessageParser', () => {

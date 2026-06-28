@@ -2,7 +2,10 @@
 # Configure and verify production DNS for zone indobase.in (Hostinger hPanel / optional Cloudflare API).
 #
 # Zone: indobase.in
-# VPS:  187.77.30.165
+# Vyom dual-VPS (see docker/docs/VYOM-DUAL-VPS.md):
+#   Control plane (.249): studio, api, builder, status, mail
+#   Data plane (.248):    * (wildcard tenant hosts)
+# Legacy single-host default (deprecated): 187.77.30.165
 # NS:   dns-parking.com (Hostinger) — confirm with: dig +short indobase.in NS
 #
 # Required A records (all point to VPS_IP):

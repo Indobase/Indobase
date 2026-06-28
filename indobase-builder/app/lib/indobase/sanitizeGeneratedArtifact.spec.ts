@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeGeneratedArtifact } from './sanitizeGeneratedArtifact';
+import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact } from './sanitizeGeneratedArtifact';
 
 describe('sanitizeGeneratedArtifact', () => {
   it('rewrites supabase SDK, paths, and env vars in generated files', () => {
@@ -41,5 +41,33 @@ await supabase.from('users').select('*');`,
     );
 
     expect(result.content).toContain("from './lib/indobase'");
+  });
+
+  it('extracts embedded filePath metadata and strips contentType wrappers', () => {
+    const result = resolveGeneratedFileArtifact('/untitled-1782682832716.txt', `<filePath>/home/project/src/pages/Register.jsx</filePath>
+<contentType>application/javascript</contentType>
+import React from 'react';
+
+export default function Register() {
+  return null;
+}
+`);
+
+    expect(result.filePath).toBe('/src/pages/Register.jsx');
+    expect(result.content).not.toContain('<filePath>');
+    expect(result.content).not.toContain('<contentType>');
+    expect(result.content).toContain('export default function Register');
+  });
+
+  it('infers package.json when placeholder path contains manifest content', () => {
+    const result = resolveGeneratedFileArtifact('/untitled-123.txt', `{
+  "name": "demo",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}`);
+
+    expect(result.filePath).toBe('/package.json');
   });
 });

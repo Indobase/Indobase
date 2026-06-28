@@ -1,0 +1,39 @@
+# Vyom platform VPS overlay (103.190.92.249).
+# Platform only: Studio/Builder + control-plane Postgres. All customer stacks on backend VPS (248).
+# Kong here is internal (Studio login); do not route api.indobase.in to this host.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dokploy.yml -f docker-compose.platform-vps.yml up -d
+services:
+  studio:
+    depends_on:
+      analytics:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      kong:
+        condition: service_started
+      meta:
+        condition: service_started
+      functions:
+        condition: service_started
+    environment:
+      DATA_PLANE_PROVISIONER_URL: ${DATA_PLANE_PROVISIONER_URL:-http://103.190.92.248:8787}
+
+  # Customer data plane runs on backend VPS — not on platform.
+  data-plane-provisioner:
+    profiles: ["never-on-platform"]
+
+  tenant-multiplexer:
+    profiles: ["never-on-platform"]
+
+  kong:
+    depends_on:
+      analytics:
+        condition: service_healthy
+    environment:
+      KONG_NGINX_HTTP_LOG_FORMAT: >-
+        indobase_combined '$$remote_addr - $$remote_user [$$time_local] "$$request" $$status $$body_bytes_sent
+        "$$http_referer" "$$http_user_agent" host=$$host x_project_ref=$$http_x_project_ref rt=$$request_time urt=$$upstream_response_time'
+    volumes:
+      - ./scripts/kong-entrypoint-vyom.sh:/kong-entrypoint-vyom.sh:ro
+    entrypoint: ["/bin/bash", "/kong-entrypoint-vyom.sh"]

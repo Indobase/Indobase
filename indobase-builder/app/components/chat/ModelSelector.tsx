@@ -92,7 +92,10 @@ export const ModelSelector = ({ model, setModel, modelList, modelLoading }: Mode
   return (
     <div className="flex">
       <div
-        className="relative flex w-full min-w-[220px] max-w-[320px]"
+        className={classNames(
+          'relative flex w-full min-w-0 max-w-full sm:min-w-[220px] sm:max-w-[280px]',
+          'flex-1 basis-[180px]',
+        )}
         onKeyDown={handleModelKeyDown}
         ref={modelDropdownRef}
       >

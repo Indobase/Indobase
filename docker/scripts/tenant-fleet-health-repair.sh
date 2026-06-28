@@ -63,7 +63,7 @@ provisioner_post '/repair-fleet' '{"reason":"cron_fleet_repair"}' | python3 -m j
 
 echo "=== Public API probe ==="
 DOMAIN="${SAAS_PUBLIC_DOMAIN:-indobase.in}"
-VPS_IP="${VPS_IP:-187.77.30.165}"
+VPS_IP="${VPS_IP:-103.190.92.248}"
 TENANTS_ROOT="${TENANTS_ROOT:-/var/lib/docker/volumes/indobase-backend-bmqhan_tenants-data/_data}"
 FORCE_RESOLVE="${FORCE_TENANT_PROBE_RESOLVE:-1}"
 fail=0

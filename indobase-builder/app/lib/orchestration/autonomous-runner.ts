@@ -9,6 +9,7 @@ import {
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
+import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -116,6 +117,23 @@ export async function runAutonomousPipeline(options: {
     createProgress('tester', 'in-progress', order++, 'Tester agent verifying build and tests'),
   );
 
+  const packageJson = await readPackageJson();
+
+  if (!packageJson) {
+    onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));
+
+    return {
+      success: false,
+      needsRepair: true,
+      verificationCommand: 'npm run build',
+      verificationOutput: 'Missing package.json in the project root.',
+      repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+
+Output:
+Missing package.json in /home/project. Create package.json first (for example with a Vite + React scaffold), write all source files to their real paths using boltAction filePath attributes, then run npm install and npm run build.`,
+    };
+  }
+
   const buildResult = await collectBuildArtifacts();
 
   if (!buildResult.success) {
@@ -129,12 +147,11 @@ export async function runAutonomousPipeline(options: {
       repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
 
 Output:
-${buildResult.error || 'Build failed'}`,
+${formatBuildFailureOutput(buildResult.error) || 'Build failed'}`,
     };
   }
 
-  const packageJson = await readPackageJson();
-  const testCommand = packageJson ? resolveTestCommand(packageJson) : null;
+  const testCommand = resolveTestCommand(packageJson);
 
   if (testCommand) {
     const testResult = await runWorkbenchShell(testCommand);
@@ -150,7 +167,7 @@ ${buildResult.error || 'Build failed'}`,
         repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`${testCommand}\`
 
 Output:
-${testResult.output}`,
+${formatBuildFailureOutput(testResult.output)}`,
       };
     }
   }

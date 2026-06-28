@@ -224,9 +224,9 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             />
           )}
         </ClientOnly>
-        <div className="flex justify-between items-center text-sm p-4 pt-2">
-          <div className="flex gap-1 items-center">
-            <IconButton title="Upload file" className="transition-all" onClick={() => props.handleFileUpload()}>
+        <div className="flex flex-col gap-2 p-4 pt-2">
+          <div className="flex flex-wrap items-center gap-1 min-w-0">
+            <IconButton title="Upload file" className="shrink-0 transition-all" onClick={() => props.handleFileUpload()}>
               <div className="i-ph:paperclip text-xl"></div>
             </IconButton>
             <SpeechRecognitionButton
@@ -257,7 +257,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                 <IconButton
                   title="Enhance prompt"
                   disabled={props.input.length === 0 || props.enhancingPrompt}
-                  className={classNames('transition-all', props.enhancingPrompt ? 'opacity-100' : '')}
+                  className={classNames('shrink-0 transition-all', props.enhancingPrompt ? 'opacity-100' : '')}
                   onClick={() => {
                     props.enhancePrompt?.();
                     toast.success('Prompt enhanced!');
@@ -273,9 +273,10 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             )}
             {props.chatStarted && (
               <IconButton
-                title="Discuss"
+                title={props.chatMode === 'discuss' ? 'Switch to Build mode' : 'Switch to Discuss mode'}
+                aria-label={props.chatMode === 'discuss' ? 'Discuss mode active' : 'Build mode active'}
                 className={classNames(
-                  'transition-all flex items-center gap-1 px-1.5',
+                  'shrink-0 transition-all',
                   props.chatMode === 'discuss'
                     ? '!bg-bolt-elements-item-backgroundAccent !text-bolt-elements-item-contentAccent'
                     : 'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault',
@@ -284,8 +285,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                   props.setChatMode?.(props.chatMode === 'discuss' ? 'build' : 'discuss');
                 }}
               >
-                <div className={`i-ph:chats text-xl`} />
-                {props.chatMode === 'discuss' ? <span>Discuss</span> : <span />}
+                <div className="i-ph:chats text-xl" />
               </IconButton>
             )}
           </div>
@@ -295,9 +295,9 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
             </div>
           ) : null}
-          <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
         </div>
       </div>
+      <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
     </div>
   );
 };

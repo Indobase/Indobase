@@ -1,6 +1,7 @@
 import type { ActionType, BoltAction, BoltActionData, FileAction, ShellAction, SupabaseAction } from '~/types/actions';
 import type { BoltArtifactData } from '~/types/artifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
+import { resolveGeneratedFileArtifact } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 
@@ -157,6 +158,12 @@ export class StreamingMessageParser {
               }
 
               content += '\n';
+            }
+
+            if ('type' in currentAction && currentAction.type === 'file' && currentAction.filePath) {
+              const resolved = resolveGeneratedFileArtifact(currentAction.filePath, content);
+              currentAction.filePath = resolved.filePath;
+              content = resolved.content;
             }
 
             currentAction.content = content;

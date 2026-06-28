@@ -19,7 +19,8 @@
 - Control plane and tenant DBs share one Postgres host: keep `POSTGRES_PASSWORD` and `SAAS_DATA_PLANE_AUX_ROLE_PASSWORD` aligned; fleet `repair-stack` must ALTER ROLE `authenticator` only once cluster-wide, not per tenant.
 - Builder lives in `indobase-builder/` (Remix); Studio handoff via `/launch` + `BUILDER_HANDOFF_SECRET` with optional `next=` redirect; production at `builder.indobase.in` (Swarm `indobase-builder`, Traefik); CI image `roshanraghavander/indobase-builder:<sha>`; Android builds queue through Studio `mobile-builds/builder`; local dev on ports 5173/5174.
 - VPS data-plane ops: Traefik must stay on the compose backend network (`indobase-traefik-attach-compose-network.sh`); cap running tenant stacks with `cap-idle-tenant-stacks.sh`.
-- Production Studio deploy: GitHub `Indobase/Indobase` `main` → `.github/workflows/docker-publish.yml` → Docker Hub `roshanraghavander/ind-repo:<git-sha>` → VPS Docker Swarm; verify via `studio.indobase.in/api/health/live` `version`.
+- Production Studio deploy: GitHub `Indobase/Indobase` `main` → `.github/workflows/docker-publish.yml` → Docker Hub `roshanraghavander/ind-repo:<git-sha>` → Vyom control-plane VPS **`103.190.92.249`** (Docker Swarm); verify via `studio.indobase.in/api/health/live` `version`.
+- Tenant data plane runs on Vyom **`103.190.92.248`** (provisioner `:8787`, wildcard `*.indobase.in`). Do not use Hostinger `187.77.30.165` for new Indobase workloads.
 - Backend data plane runs in Docker Compose; Studio is deployed as a separate application (Swarm/Dokploy), not in the same compose stack.
 - Production hosts include `studio.indobase.in`, `api.indobase.in`, `builder.indobase.in`, and per-project tenant endpoints at `[project-ref].indobase.in`.
 - Org billing uses Razorpay (INR); Stripe UI is disabled unless explicitly configured.

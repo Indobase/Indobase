@@ -350,12 +350,38 @@ async function syncClusterAuxRolePasswords() {
   }
 
   const dbContainer = (process.env.PROVISIONER_DB_CONTAINER || 'indobase-db').trim()
+  const pgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
+  const pgPort = (process.env.PROVISIONER_PG_PORT || '5432').trim()
   const adminUser = (process.env.PROVISIONER_PG_ADMIN_USER || 'supabase_admin').trim()
   const adminPassword = process.env.POSTGRES_PASSWORD?.trim() || password
   const pwLit = `'${password.replace(/'/g, "''")}'`
   const roles = ['authenticator', 'supabase_auth_admin', 'supabase_storage_admin', 'supabase_admin']
 
   for (const role of roles) {
+    if (pgHost) {
+      await spawnSyncText('docker', [
+        'run',
+        '--rm',
+        '-e',
+        `PGPASSWORD=${adminPassword}`,
+        'postgres:16-alpine',
+        'psql',
+        '-h',
+        pgHost,
+        '-p',
+        pgPort,
+        '-U',
+        adminUser,
+        '-d',
+        'postgres',
+        '-v',
+        'ON_ERROR_STOP=1',
+        '-c',
+        `alter role ${role} password ${pwLit}`,
+      ]).catch(() => undefined)
+      continue
+    }
+
     await spawnSyncText('docker', [
       'exec',
       '-e',

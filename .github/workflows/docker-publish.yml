@@ -315,7 +315,7 @@ jobs:
           trap 'rm -f "$KEY_FILE"' EXIT
           printf '%s\n' "$KEY" > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
-          ssh -o StrictHostKeyChecking=accept-new -i "$KEY_FILE" root@187.77.30.165 \
+          ssh -o StrictHostKeyChecking=accept-new -i "$KEY_FILE" root@103.190.92.249 \
             '/usr/local/bin/indobase-studio-attach-compose-network.sh'
 
       - name: Deploy summary
