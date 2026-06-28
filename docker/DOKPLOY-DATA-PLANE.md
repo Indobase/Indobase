@@ -96,13 +96,29 @@ node /path/to/repo/docker/scripts/fix-tenant-traefik-from-docker.cjs /etc/dokplo
 node /path/to/repo/docker/scripts/verify-tenant-routing.cjs indobase.in
 ```
 
-Or call the provisioner (same token as `/provision`):
+Or call the provisioner (same token as `/provision`). The provisioner is usually **not** published on the host — use `docker exec` or Studio cron:
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:8787/repair-traefik" \
-  -H "Authorization: Bearer $DATA_PLANE_PROVISIONER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{}'
+docker exec indobase-data-plane-provisioner wget -qO- \
+  --post-data='{}' \
+  --header="Authorization: Bearer $DATA_PLANE_PROVISIONER_TOKEN" \
+  --header='Content-Type: application/json' \
+  http://127.0.0.1:8787/repair-traefik
+```
+
+**Automated fleet repair (cron):** `docker/scripts/tenant-fleet-health-repair.sh` calls `/repair-fleet`, probes every tenant, then `/repair-stack` for failures. Install on the VPS:
+
+```bash
+cp docker/scripts/tenant-fleet-health-repair.sh /usr/local/bin/indobase-tenant-fleet-health-repair.sh
+chmod +x /usr/local/bin/indobase-tenant-fleet-health-repair.sh
+# */10 * * * * /usr/local/bin/indobase-tenant-fleet-health-repair.sh >> /var/log/indobase-tenant-fleet-repair.log 2>&1
+```
+
+**Studio cron (when provisioner is reachable from Studio on the Docker network):**
+
+```bash
+curl -sS -X POST "https://studio.indobase.in/api/cron/data-plane-repair" \
+  -H "Authorization: Bearer $INDOBASE_CRON_SECRET"
 ```
 
 New provisions via `/provision` normalize Traefik automatically after `docker compose up`.

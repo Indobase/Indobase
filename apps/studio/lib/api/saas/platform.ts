@@ -1800,6 +1800,15 @@ export async function listProjects({
   })
   if (projects.error) throw projects.error
 
+  const failedRefs = (projects.data ?? [])
+    .filter((p) => p.has_dedicated_database && p.data_plane_last_provision_ok === 'false')
+    .map((p) => p.ref)
+  if (failedRefs.length > 0) {
+    void import('./tenant-data-plane-provision').then(({ scheduleDataPlaneRepairForProjectRefs }) =>
+      scheduleDataPlaneRepairForProjectRefs(failedRefs, gotrueId)
+    )
+  }
+
   return {
     pagination: {
       count: parseInt(count.data?.[0]?.count ?? '0', 10),
@@ -2346,13 +2355,20 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     console.warn('[saas] tryCompleteStuckProvisioningProject background failed for %s: %O', ref, e)
   })
   void import('./tenant-data-plane-provision')
-    .then(({ ensureDataPlaneProvisionedIfMissingForActor }) =>
-      ensureDataPlaneProvisionedIfMissingForActor({
-        ref,
+    .then(async ({ ensureTenantDataPlaneHealthy }) => {
+      const row = await executeQuery<{ ok: string | null }>({
+        query: `select (data_plane_last_provision_result->>'ok') as ok from saas.projects where ref = $1`,
+        parameters: [ref],
         actorId: gotrueId,
-        reason: 'get_project',
       })
-    )
+      const force = row.data?.[0]?.ok === 'false'
+      await ensureTenantDataPlaneHealthy({
+        claims: { sub: gotrueId } as Claims,
+        ref,
+        reason: 'get_project',
+        force,
+      })
+    })
     .catch((e) => {
       console.warn('[saas] data-plane auto-repair skipped for %s: %O', ref, e)
     })
@@ -3728,6 +3744,27 @@ export async function recordDataPlaneProvisionFailure({
       gotrueId,
     ],
     actorId: gotrueId,
+  })
+  if (r.error) throw r.error
+}
+
+/** Cron / fleet repair: update provision result without org membership checks. */
+export async function recordDataPlaneProvisionResultForSystem({
+  ref,
+  provisionResult,
+}: {
+  ref: string
+  provisionResult: Record<string, unknown>
+}) {
+  await ensureSaasTables()
+  const setProvisionedAt = provisionResult.ok === true ? ', data_plane_last_provisioned_at = now()' : ''
+  const r = await executeQuery({
+    query: `
+      update saas.projects
+      set data_plane_last_provision_result = $1::jsonb${setProvisionedAt}
+      where ref = $2
+    `,
+    parameters: [JSON.stringify(provisionResult), ref],
   })
   if (r.error) throw r.error
 }

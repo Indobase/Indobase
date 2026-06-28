@@ -1,8 +1,11 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 
+import { executeQuery } from './query'
+
 import {
   getTenantStackArtifacts,
   recordDataPlaneProvisionFailure,
+  recordDataPlaneProvisionResultForSystem,
   recordDataPlaneProvisionSuccess,
   resolvePublicDomainForTenantStack,
 } from './platform'
@@ -588,6 +591,149 @@ export async function ensureTenantDataPlaneHealthy({
   } catch (e) {
     await recordDataPlaneProvisionFailure({ claims, ref, error: e, reason }).catch(() => undefined)
     throw e
+  }
+}
+
+type FleetRepairRow = {
+  ref: string
+  data_plane_last_provision_result: unknown | null
+  data_plane_last_provisioned_at: string | null
+  data_plane_port_base: number | null
+}
+
+/**
+ * Fleet / cron heal: repair dedicated-DB projects that are unreachable or marked failed.
+ * Safe to run on a schedule from `/api/cron/data-plane-repair`.
+ */
+export async function repairUnhealthyTenantDataPlaneStacks({
+  projectRef,
+  limit = 25,
+  fleetPass = true,
+}: {
+  projectRef?: string
+  limit?: number
+  fleetPass?: boolean
+} = {}): Promise<{
+  checked: number
+  repaired: number
+  still_unhealthy: number
+  fleet?: { ok: boolean; repaired?: number; failed?: number }
+  results: Array<{ ref: string; action: string; ok?: boolean }>
+}> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { checked: 0, repaired: 0, still_unhealthy: 0, results: [] }
+  }
+
+  let fleet: { ok: boolean; repaired?: number; failed?: number } | undefined
+  if (fleetPass && !projectRef) {
+    try {
+      fleet = await repairAllTenantDataPlaneStacks()
+    } catch (e) {
+      console.warn('[tenant-data-plane-provision] fleet repair pass failed: %O', e)
+    }
+  }
+
+  const rows = await executeQuery<FleetRepairRow>({
+    query: `
+      select
+        p.ref,
+        p.data_plane_last_provision_result,
+        p.data_plane_last_provisioned_at,
+        p.data_plane_port_base
+      from saas.projects p
+      where p.is_branch = false
+        and coalesce(trim(p.connection_string_enc), '') <> ''
+        ${projectRef ? 'and p.ref = $1' : ''}
+      order by
+        case when (p.data_plane_last_provision_result->>'ok') = 'false' then 0 else 1 end,
+        p.updated_at desc nulls last
+      limit $${projectRef ? 2 : 1}
+    `,
+    parameters: projectRef ? [projectRef, Math.min(Math.max(limit, 1), 100)] : [Math.min(Math.max(limit, 1), 100)],
+  })
+  if (rows.error) throw rows.error
+
+  const results: Array<{ ref: string; action: string; ok?: boolean }> = []
+  let repaired = 0
+  let stillUnhealthy = 0
+
+  for (const row of rows.data ?? []) {
+    const lastResult = row.data_plane_last_provision_result
+    const markedFailed =
+      lastResult &&
+      typeof lastResult === 'object' &&
+      (lastResult as { ok?: boolean }).ok === false
+    const reachable = await isTenantDataPlaneReachable(row.ref, row.data_plane_port_base)
+
+    if (reachable && !markedFailed) {
+      results.push({ ref: row.ref, action: 'healthy', ok: true })
+      continue
+    }
+
+    try {
+      if (row.data_plane_last_provisioned_at) {
+        await repairTenantDataPlaneStack({ ref: row.ref, reason: 'cron_auto_repair' })
+      } else {
+        results.push({ ref: row.ref, action: 'skipped_no_prior_provision' })
+        stillUnhealthy++
+        continue
+      }
+
+      const ok = await isTenantDataPlaneReachable(row.ref, row.data_plane_port_base)
+      await recordDataPlaneProvisionResultForSystem({
+        ref: row.ref,
+        provisionResult: {
+          ok,
+          reason: 'cron_auto_repair',
+          action: 'repair_stack',
+          at: new Date().toISOString(),
+        },
+      })
+
+      if (ok) {
+        repaired++
+        results.push({ ref: row.ref, action: 'repaired', ok: true })
+      } else {
+        stillUnhealthy++
+        results.push({ ref: row.ref, action: 'still_unhealthy', ok: false })
+      }
+    } catch (e) {
+      stillUnhealthy++
+      const message = e instanceof Error ? e.message : String(e)
+      await recordDataPlaneProvisionResultForSystem({
+        ref: row.ref,
+        provisionResult: {
+          ok: false,
+          reason: 'cron_auto_repair',
+          error: message.slice(0, 500),
+          at: new Date().toISOString(),
+        },
+      }).catch(() => undefined)
+      results.push({ ref: row.ref, action: `error:${message.slice(0, 120)}`, ok: false })
+    }
+  }
+
+  return {
+    checked: rows.data?.length ?? 0,
+    repaired,
+    still_unhealthy: stillUnhealthy,
+    fleet,
+    results,
+  }
+}
+
+/** Fire-and-forget repair for projects shown with a data-plane error badge. */
+export function scheduleDataPlaneRepairForProjectRefs(
+  refs: string[],
+  actorId: string,
+  reason = 'list_projects_auto_repair'
+): void {
+  if (!isDataPlaneProvisionerConfigured() || refs.length === 0) return
+  const claims = { sub: actorId } as Claims
+  for (const ref of refs.slice(0, 5)) {
+    void ensureTenantDataPlaneHealthy({ claims, ref, reason, force: true }).catch((e) => {
+      console.warn('[tenant-data-plane-provision] background repair for %s failed: %O', ref, e)
+    })
   }
 }
 
