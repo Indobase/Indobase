@@ -1,5 +1,7 @@
 import { AuthClient, navigatorLock, User } from '@indobaseinc/auth-js'
 
+import { resolvePublicAnonKey, resolvePublicGotrueUrl } from './public-env'
+
 export const STORAGE_KEY = process.env.NEXT_PUBLIC_STORAGE_KEY || 'indobase.dashboard.auth.token'
 export const AUTH_DEBUG_KEY =
   process.env.NEXT_PUBLIC_AUTH_DEBUG_KEY || 'indobase.dashboard.auth.debug'
@@ -179,13 +181,15 @@ async function debuggableNavigatorLock<R>(
 }
 
 export const gotrueClient = new AuthClient({
-  url: process.env.NEXT_PUBLIC_GOTRUE_URL,
+  url: resolvePublicGotrueUrl(),
   storageKey: STORAGE_KEY,
   detectSessionInUrl: shouldDetectSessionInUrl,
   // Kong's `key-auth` plugin for `/auth/v1/*` expects an `apikey` header.
-  // `NEXT_PUBLIC_ANON_KEY` is baked at build-time into this client bundle.
+  // Getter reads runtime-injected env so Studio split-deploy matches Kong without image rebuild.
   headers: {
-    apikey: process.env.NEXT_PUBLIC_ANON_KEY ?? '',
+    get apikey() {
+      return resolvePublicAnonKey()
+    },
   },
   debug: debug ? (persistedDebug ? logIndexedDB : true) : false,
   lock: navigatorLockEnabled ? debuggableNavigatorLock : undefined,

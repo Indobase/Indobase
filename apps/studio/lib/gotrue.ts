@@ -56,7 +56,10 @@ export const getUserClaims = async (
     // Fallback for SaaS setups where NEXT_PUBLIC_GOTRUE_URL might not be set
     // (we still have SUPABASE_URL + SUPABASE_ANON_KEY in the backend stack).
     try {
-      const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_ANON_KEY
+      const anonKey =
+        process.env.SUPABASE_ANON_KEY ??
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+        process.env.NEXT_PUBLIC_ANON_KEY
       const projectUrl = process.env.SUPABASE_URL
 
       const gotrueBaseUrl =
