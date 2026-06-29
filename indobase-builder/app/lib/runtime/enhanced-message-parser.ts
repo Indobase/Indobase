@@ -33,14 +33,25 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
   }
 
   parse(messageId: string, input: string): string {
+    let candidate = input;
+
+    if (!this._hasDetectedArtifacts(candidate)) {
+      const fromJson = this._detectAndWrapJsonActions(messageId, candidate);
+
+      if (fromJson !== candidate) {
+        this.reset();
+        return super.parse(messageId, fromJson);
+      }
+    }
+
     // First try the normal parsing
-    let output = super.parse(messageId, input);
+    let output = super.parse(messageId, candidate);
 
     // If no artifacts were detected, check for code blocks that should be files
-    if (!this._hasDetectedArtifacts(input)) {
-      const enhancedInput = this._detectAndWrapCodeBlocks(messageId, input);
+    if (!this._hasDetectedArtifacts(candidate)) {
+      const enhancedInput = this._detectAndWrapCodeBlocks(messageId, candidate);
 
-      if (enhancedInput !== input) {
+      if (enhancedInput !== candidate) {
         // Reset and reparse with enhanced input
         this.reset();
         output = super.parse(messageId, enhancedInput);
@@ -48,6 +59,51 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     }
 
     return output;
+  }
+
+  private _detectAndWrapJsonActions(messageId: string, input: string): string {
+    const actions = extractJsonPlanActions(input);
+
+    if (!actions.length) {
+      return input;
+    }
+
+    const artifactId = `artifact-${messageId}-${this._artifactCounter++}`;
+    const actionMarkup = actions
+      .map((action) => {
+        if (action.type === 'file' && action.filePath && action.content !== undefined) {
+          const filePath = this._normalizeFilePath(action.filePath);
+          return `<boltAction type="file" filePath="${filePath}">
+${action.content}
+</boltAction>`;
+        }
+
+        if (action.type === 'shell' && action.command) {
+          return `<boltAction type="shell">
+${action.command}
+</boltAction>`;
+        }
+
+        if (action.type === 'start' && action.command) {
+          return `<boltAction type="start">
+${action.command}
+</boltAction>`;
+        }
+
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    if (!actionMarkup) {
+      return input;
+    }
+
+    logger.debug(`Auto-wrapped JSON action plan with ${actions.length} actions`);
+
+    return `<boltArtifact id="${artifactId}" title="Generated Project" type="bundled">
+${actionMarkup}
+</boltArtifact>`;
   }
 
   private _hasDetectedArtifacts(input: string): boolean {
@@ -233,12 +289,8 @@ ${content.trim()}
       filePath = filePath.substring(2);
     }
 
-    // Add leading slash if missing and not a relative path
-    if (!filePath.startsWith('/') && !filePath.startsWith('.')) {
-      filePath = '/' + filePath;
-    }
-
-    return filePath;
+    // Keep paths workdir-relative (no leading slash) for WebContainer writes
+    return filePath.replace(/^\/+/, '');
   }
 
   private _isValidFilePath(filePath: string): boolean {
@@ -524,4 +576,54 @@ ${content.trim()}
     this._processedCodeBlocks.clear();
     this._artifactCounter = 0;
   }
+}
+
+type JsonPlanAction = {
+  type: string;
+  filePath?: string;
+  content?: string;
+  command?: string;
+};
+
+function extractJsonPlanActions(input: string): JsonPlanAction[] {
+  const candidates = [input.trim()];
+
+  for (const match of input.matchAll(/```(?:json)?\s*\n([\s\S]*?)```/gi)) {
+    if (match[1]?.trim()) {
+      candidates.push(match[1].trim());
+    }
+  }
+
+  for (const candidate of candidates) {
+    const parsed = tryParseJsonPlan(candidate);
+
+    if (parsed.length) {
+      return parsed;
+    }
+  }
+
+  return [];
+}
+
+function tryParseJsonPlan(text: string): JsonPlanAction[] {
+  const attempts = [text];
+
+  const objectStart = text.indexOf('{');
+  if (objectStart > 0) {
+    attempts.push(text.slice(objectStart));
+  }
+
+  for (const attempt of attempts) {
+    try {
+      const parsed = JSON.parse(attempt) as { actions?: JsonPlanAction[] };
+
+      if (Array.isArray(parsed.actions) && parsed.actions.length > 0) {
+        return parsed.actions.filter((action) => typeof action?.type === 'string');
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
 }

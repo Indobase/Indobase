@@ -238,6 +238,9 @@ export const ChatImpl = memo(
 
         void (async () => {
           try {
+            await processSampledMessages.flush();
+            await workbenchStore.flushPendingActions();
+
             const result = await runAutonomousPipeline({
               connection: supabaseConn,
               onProgress: (progress) => {

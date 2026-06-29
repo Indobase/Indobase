@@ -111,13 +111,24 @@ export async function runAutonomousPipeline(options: {
   const { connection, onProgress, progressOrderStart = 100 } = options;
   let order = progressOrderStart;
 
-  await workbenchStore.waitForExecutionQueue();
+  await workbenchStore.flushPendingActions();
+
+  let packageJson: Record<string, unknown> | null = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    packageJson = await readPackageJson();
+
+    if (packageJson) {
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await workbenchStore.flushPendingActions();
+  }
 
   onProgress?.(
     createProgress('tester', 'in-progress', order++, 'Tester agent verifying build and tests'),
   );
-
-  const packageJson = await readPackageJson();
 
   if (!packageJson) {
     onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));

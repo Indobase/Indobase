@@ -1,7 +1,7 @@
 import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { path as nodePath } from '~/utils/path';
 import { atom, map, type MapStore } from 'nanostores';
-import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact, sanitizeFileAction } from '~/lib/indobase/sanitizeGeneratedArtifact';
+import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact, sanitizeFileAction, toWorkdirRelativePath } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
@@ -347,7 +347,7 @@ export class ActionRunner {
 
     const webcontainer = await this.#webcontainer;
     const sanitized = resolveGeneratedFileArtifact(action.filePath, action.content);
-    const relativePath = nodePath.relative(webcontainer.workdir, sanitized.filePath);
+    const relativePath = toWorkdirRelativePath(webcontainer.workdir, sanitized.filePath);
 
     let folder = nodePath.dirname(relativePath);
 

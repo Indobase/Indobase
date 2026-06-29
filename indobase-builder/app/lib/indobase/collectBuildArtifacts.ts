@@ -4,6 +4,55 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { path } from '~/utils/path';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 
+async function ensureStaticPreview(outputRoot: string): Promise<void> {
+  const previews = workbenchStore.previews.get();
+
+  if (previews.some((preview) => preview.ready)) {
+    return;
+  }
+
+  const artifact = workbenchStore.firstArtifact;
+
+  if (!artifact) {
+    return;
+  }
+
+  const actionId = `preview-${Date.now()}`;
+  const actionData: ActionCallbackData = {
+    messageId: 'static-preview',
+    artifactId: artifact.id,
+    actionId,
+    action: {
+      type: 'start',
+      content: `npx --yes serve ${outputRoot} -l 5173`,
+    },
+  };
+
+  artifact.runner.addAction(actionData);
+  await artifact.runner.runAction(actionData);
+}
+
+async function ensureIndexHtml(outputRoot: string): Promise<void> {
+  const container = await webcontainer;
+
+  try {
+    await container.fs.readFile(`${outputRoot}/index.html`, 'utf-8');
+    return;
+  } catch {
+    // continue
+  }
+
+  for (const candidate of ['login.html', 'signup.html']) {
+    try {
+      const content = await container.fs.readFile(`${outputRoot}/${candidate}`, 'utf-8');
+      await container.fs.writeFile(`${outputRoot}/index.html`, content);
+      return;
+    } catch {
+      continue;
+    }
+  }
+}
+
 export type CollectBuildArtifactsResult = {
   error?: string;
   files?: Record<string, string>;
@@ -99,14 +148,21 @@ export async function collectBuildArtifacts(): Promise<CollectBuildArtifactsResu
     };
   }
 
+  await ensureIndexHtml(outputRoot);
   const files = await getAllFiles(outputRoot, outputRoot);
+
+  if (!files['index.html'] && files['login.html']) {
+    files['index.html'] = files['login.html'];
+  }
 
   if (!files['index.html']) {
     return {
       success: false,
-      error: 'Build output must include index.html',
+      error: 'Build output must include index.html (or login.html copied to dist).',
     };
   }
+
+  await ensureStaticPreview(outputRoot);
 
   return {
     success: true,

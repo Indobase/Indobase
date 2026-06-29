@@ -1,4 +1,5 @@
 import type { BoltAction } from '~/types/actions';
+import { path as nodePath } from '~/utils/path';
 
 const FILE_PATH_METADATA_REGEX = /^\s*<filePath>\s*(\/?[^<]+?)\s*<\/filePath>\s*(?:\r?\n)?/i;
 const CONTENT_TYPE_METADATA_REGEX = /^\s*<contentType>[^<]*<\/contentType>\s*(?:\r?\n)?/i;
@@ -33,10 +34,27 @@ export function extractEmbeddedFilePathMetadata(content: string): { filePath?: s
 
 export function normalizeGeneratedFilePath(filePath: string): string {
   const trimmed = filePath.trim().replace(/\\/g, '/');
-  const withoutWorkdir = trimmed.replace(/^\/home\/project(?=\/|$)/, '');
-  const normalized = withoutWorkdir.startsWith('/') ? withoutWorkdir : `/${withoutWorkdir}`;
+  const withoutWorkdir = trimmed.replace(/^\/home\/project\/?/, '');
+  const withoutLeadingSlash = withoutWorkdir.replace(/^\/+/, '');
 
-  return normalized.replace(/\/{2,}/g, '/');
+  return withoutLeadingSlash.replace(/\/{2,}/g, '/');
+}
+
+/** Map a generated path to a WebContainer workdir-relative path for fs writes. */
+export function toWorkdirRelativePath(workdir: string, filePath: string): string {
+  const normalized = normalizeGeneratedFilePath(filePath);
+
+  if (filePath.startsWith(workdir)) {
+    return nodePath.relative(workdir, filePath).replace(/\\/g, '/');
+  }
+
+  return normalized;
+}
+
+/** Absolute path under the WebContainer workdir for editor/files-store keys. */
+export function toWorkdirAbsolutePath(workdir: string, filePath: string): string {
+  const relativePath = toWorkdirRelativePath(workdir, filePath);
+  return `${workdir}/${relativePath}`.replace(/\/{2,}/g, '/');
 }
 
 export function resolveGeneratedFileArtifact(filePath: string, content: string) {
@@ -67,19 +85,19 @@ function inferGeneratedPathFromContent(content: string): string | undefined {
   const trimmed = content.trim();
 
   if (trimmed.startsWith('{') && trimmed.includes('"name"') && trimmed.includes('"scripts"')) {
-    return '/package.json';
+    return 'package.json';
   }
 
   if (trimmed.includes('createRoot(') || trimmed.includes('ReactDOM.createRoot')) {
-    return '/src/main.jsx';
+    return 'src/main.jsx';
   }
 
   if (trimmed.match(/^import\s+React/m) && trimmed.includes('export default function App')) {
-    return '/src/App.jsx';
+    return 'src/App.jsx';
   }
 
   if (trimmed.includes('<!DOCTYPE html>') || trimmed.match(/<html[\s>]/i)) {
-    return '/index.html';
+    return 'index.html';
   }
 
   return undefined;

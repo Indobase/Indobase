@@ -53,7 +53,7 @@ export default function Register() {
 }
 `);
 
-    expect(result.filePath).toBe('/src/pages/Register.jsx');
+    expect(result.filePath).toBe('src/pages/Register.jsx');
     expect(result.content).not.toContain('<filePath>');
     expect(result.content).not.toContain('<contentType>');
     expect(result.content).toContain('export default function Register');
@@ -68,6 +68,6 @@ export default function Register() {
   }
 }`);
 
-    expect(result.filePath).toBe('/package.json');
+    expect(result.filePath).toBe('package.json');
   });
 });
