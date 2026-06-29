@@ -1,8 +1,23 @@
 // Constants specific to SaaS environments
 
-// Indobase compose uses `CRYPTO_KEY` for pg-meta, while Studio sometimes uses `PG_META_CRYPTO_KEY`.
-// Support both so encryption/decryption matches.
-export const ENCRYPTION_KEY = process.env.PG_META_CRYPTO_KEY || process.env.CRYPTO_KEY || 'SAMPLE_KEY'
+// Indobase compose uses `CRYPTO_KEY` for project API keys; pg-meta / tenant URIs may use
+// `PG_META_CRYPTO_KEY`. When both are set they can differ — decrypt must try each key.
+function uniqueNonEmptyKeys(...candidates: Array<string | undefined>) {
+  const keys: string[] = []
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim()
+    if (trimmed && !keys.includes(trimmed)) keys.push(trimmed)
+  }
+  return keys
+}
+
+export const ENCRYPTION_KEYS = uniqueNonEmptyKeys(
+  process.env.PG_META_CRYPTO_KEY,
+  process.env.CRYPTO_KEY
+)
+
+/** Primary key for new encrypts (pg-meta / connection strings prefer PG_META when set). */
+export const ENCRYPTION_KEY = ENCRYPTION_KEYS[0] ?? 'SAMPLE_KEY'
 export const POSTGRES_PORT = parseInt(process.env.POSTGRES_PORT || '5432', 10)
 export const POSTGRES_HOST = process.env.POSTGRES_HOST || 'indobase-db'
 export const POSTGRES_DATABASE = process.env.POSTGRES_DB || 'postgres'

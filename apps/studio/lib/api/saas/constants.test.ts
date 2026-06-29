@@ -12,10 +12,18 @@ describe('api/saas/constants', () => {
       expect(ENCRYPTION_KEY).toBe('my-secret-key-123')
     })
 
-    it('should use SAMPLE_KEY as default', async () => {
+    it('should use CRYPTO_KEY when PG_META_CRYPTO_KEY is unset', async () => {
       vi.stubEnv('PG_META_CRYPTO_KEY', '')
+      vi.stubEnv('CRYPTO_KEY', 'project-crypto-key')
       const { ENCRYPTION_KEY } = await import('./constants')
-      expect(ENCRYPTION_KEY).toBe('SAMPLE_KEY')
+      expect(ENCRYPTION_KEY).toBe('project-crypto-key')
+    })
+
+    it('should collect both keys when PG_META and CRYPTO differ', async () => {
+      vi.stubEnv('PG_META_CRYPTO_KEY', 'pg-meta-key')
+      vi.stubEnv('CRYPTO_KEY', 'project-key')
+      const { ENCRYPTION_KEYS } = await import('./constants')
+      expect(ENCRYPTION_KEYS).toEqual(['pg-meta-key', 'project-key'])
     })
   })
 

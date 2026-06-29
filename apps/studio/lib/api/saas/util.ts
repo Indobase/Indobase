@@ -2,6 +2,7 @@ import crypto from 'crypto-js'
 import { IS_SAAS } from 'lib/constants'
 import {
   ENCRYPTION_KEY,
+  ENCRYPTION_KEYS,
   POSTGRES_DATABASE,
   POSTGRES_HOST,
   POSTGRES_PASSWORD,
@@ -18,7 +19,16 @@ export function encryptString(stringToEncrypt: string): string {
 }
 
 export function decryptString(encrypted: string): string {
-  return crypto.AES.decrypt(encrypted, ENCRYPTION_KEY).toString(crypto.enc.Utf8)
+  const keys = ENCRYPTION_KEYS.length > 0 ? ENCRYPTION_KEYS : [ENCRYPTION_KEY]
+  for (const key of keys) {
+    try {
+      const plain = crypto.AES.decrypt(encrypted, key).toString(crypto.enc.Utf8)
+      if (plain.length > 0) return plain
+    } catch {
+      // Wrong key — CryptoJS throws "Malformed UTF-8 data" for some ciphertext.
+    }
+  }
+  throw new Error('Failed to decrypt value (check CRYPTO_KEY / PG_META_CRYPTO_KEY)')
 }
 
 /** Percent-encode user/password for PostgreSQL URIs (@ : / etc. must not break the URI). */
