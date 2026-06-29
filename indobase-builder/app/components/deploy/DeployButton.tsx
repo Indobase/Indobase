@@ -33,11 +33,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   const backendConnection = useStore(supabaseConnection);
   const currentChatId = useStore(chatId);
   const gitlabIsConnected = useStore(isGitLabConnected);
-  const [activePreviewIndex] = useState(0);
-  const previews = useStore(workbenchStore.previews);
-  const activePreview = previews[activePreviewIndex];
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [deployingTo, setDeployingTo] = useState<'indobase' | 'github' | 'gitlab' | null>(null);
   const isStreaming = useStore(streamingState);
   const { handleGitHubDeploy } = useGitHubDeploy();
   const { handleGitLabDeploy } = useGitLabDeploy();
@@ -48,7 +43,7 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   const customDomainsUrl = getStudioProjectCustomDomainsUrl(backendConnection, backendConnection.selectedProjectId);
   const mobileBuildsUrl = getStudioProjectMobileBuildsUrl(backendConnection, backendConnection.selectedProjectId);
   const canPublishIndobase = canQueueIndobaseDeployment(backendConnection);
-  const deployDisabled = isDeploying || !activePreview || isStreaming;
+  const deployDisabled = isDeploying || isStreaming;
 
   const openIndobaseUrl = (url: string | null, errorMessage: string) => {
     if (!url) {

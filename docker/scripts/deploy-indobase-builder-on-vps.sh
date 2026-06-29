@@ -11,7 +11,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SHA="${IMAGE_TAG:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
 IMAGE="${BUILDER_IMAGE:-roshanraghavander/indobase-builder:${SHA}}"
-SSH_HOST="${VPS_SSH:-root@187.77.30.165}"
+SSH_HOST="${VPS_SSH:-root@103.190.92.249}"
 SSH_KEY="${VPS_SSH_KEY:-$HOME/.ssh/id_ed25519_indobase_vps}"
 SSH_OPTS=(-4 -o ConnectTimeout=45 -i "$SSH_KEY")
 SERVICE_NAME="${BUILDER_SERVICE_NAME:-indobase-builder}"

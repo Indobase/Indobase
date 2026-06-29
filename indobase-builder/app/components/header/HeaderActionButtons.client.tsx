@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { DeployButton } from '~/components/deploy/DeployButton';
@@ -7,12 +6,11 @@ interface HeaderActionButtonsProps {
   chatStarted: boolean;
 }
 
-export function HeaderActionButtons({ chatStarted: _chatStarted }: HeaderActionButtonsProps) {
-  const [activePreviewIndex] = useState(0);
+export function HeaderActionButtons({ chatStarted }: HeaderActionButtonsProps) {
+  const filesCount = useStore(workbenchStore.filesCount);
   const previews = useStore(workbenchStore.previews);
-  const activePreview = previews[activePreviewIndex];
 
-  const shouldShowButtons = activePreview;
+  const shouldShowButtons = chatStarted && (filesCount > 0 || previews.length > 0);
 
   return (
     <div className="flex items-center gap-1">

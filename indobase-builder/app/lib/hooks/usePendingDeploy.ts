@@ -16,7 +16,6 @@ export function usePendingDeploy() {
   const [searchParams, setSearchParams] = useSearchParams();
   const connection = useStore(supabaseConnection);
   const currentChatId = useStore(chatId);
-  const previews = useStore(workbenchStore.previews);
   const startedRef = useRef(false);
   const { handleGitHubDeploy } = useGitHubDeploy();
   const { handleGitLabDeploy } = useGitLabDeploy();
@@ -37,12 +36,6 @@ export function usePendingDeploy() {
     const timer = window.setTimeout(async () => {
       if (!workbenchStore.firstArtifact) {
         toast.info('Build your app in Builder, then use Deploy to publish.');
-        clearDeployParam();
-        return;
-      }
-
-      if (previews.length === 0 && deployTarget === 'indobase') {
-        toast.info('Start the preview server, then we can publish your app.');
         clearDeployParam();
         return;
       }
@@ -94,7 +87,6 @@ export function usePendingDeploy() {
     currentChatId,
     handleGitHubDeploy,
     handleGitLabDeploy,
-    previews.length,
     searchParams,
     setSearchParams,
   ]);

@@ -93,6 +93,10 @@ export class WorkbenchStore {
     await this.waitForExecutionQueue();
   }
 
+  refreshAllPreviews() {
+    this.#previewsStore.refreshAllPreviews();
+  }
+
   get previews() {
     return this.#previewsStore.previews;
   }
