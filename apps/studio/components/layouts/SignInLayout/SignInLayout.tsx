@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { PropsWithChildren, useEffect, useState } from 'react'
 
 import { getAccessToken, useFlag } from 'common'
+import { ensureRuntimePublicEnv } from 'common/public-env'
 import { DocsButton } from 'components/ui/DocsButton'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { BASE_PATH, DOCS_URL } from 'lib/constants'
@@ -70,9 +71,15 @@ const SignInLayout = ({
 
   // This useEffect redirects the user to MFA if they're already halfway signed in
   useEffect(() => {
-    auth
-      .initialize()
-      .then(async ({ error }) => {
+    let cancelled = false
+
+    const run = async () => {
+      await ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`)
+      if (cancelled) return
+
+      auth
+        .initialize()
+        .then(async ({ error }) => {
         if (error) {
           // if there was a problem signing in via the url, don't redirect
           return
@@ -102,8 +109,15 @@ const SignInLayout = ({
           await queryClient.resetQueries()
           router.push(getReturnToPath())
         }
-      })
-      .catch(() => {}) // catch all errors thrown by auth methods
+        })
+        .catch(() => {}) // catch all errors thrown by auth methods
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const [quote, setQuote] = useState<Testimonial | null>(null)

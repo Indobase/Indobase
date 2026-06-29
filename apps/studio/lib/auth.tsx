@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { ensureRuntimePublicEnv } from 'common/public-env'
 import { useRouter } from 'next/router'
-import { PropsWithChildren, useCallback, useEffect } from 'react'
+import { PropsWithChildren, useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -11,7 +12,7 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
-import { GOTRUE_ERRORS } from './constants'
+import { BASE_PATH, GOTRUE_ERRORS } from './constants'
 
 export const UNAUTH_ROUTES = [
   '/sign-in',
@@ -66,6 +67,18 @@ const AuthErrorToaster = ({ children }: PropsWithChildren) => {
 }
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
+  const [bootstrapped, setBootstrapped] = useState(false)
+
+  useEffect(() => {
+    ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`).finally(() =>
+      setBootstrapped(true)
+    )
+  }, [])
+
+  if (!bootstrapped) {
+    return null
+  }
+
   return (
     <AuthProviderInternal>
       <AuthErrorToaster>{children}</AuthErrorToaster>

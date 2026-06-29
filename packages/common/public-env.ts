@@ -77,3 +77,36 @@ export function resolvePublicGotrueUrl(): string | undefined {
 
   return resolvePublicGotrueUrlForBrowser()
 }
+
+/**
+ * Hydrate browser auth config from a runtime API when SSG HTML omitted anonKey.
+ * Safe to call multiple times; deduped per page load.
+ */
+let runtimePublicEnvBootstrap: Promise<void> | null = null
+
+export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve()
+  if (isUsableAnonKey(window.__INDOBASE_PUBLIC_ENV__?.anonKey)) {
+    return Promise.resolve()
+  }
+
+  if (!runtimePublicEnvBootstrap) {
+    runtimePublicEnvBootstrap = (async () => {
+      try {
+        const response = await fetch(configUrl, { credentials: 'same-origin' })
+        if (!response.ok) return
+
+        const json = (await response.json()) as { anonKey?: string; gotrueUrl?: string }
+        window.__INDOBASE_PUBLIC_ENV__ = {
+          ...window.__INDOBASE_PUBLIC_ENV__,
+          ...(isUsableAnonKey(json.anonKey) ? { anonKey: json.anonKey!.trim() } : {}),
+          ...(json.gotrueUrl?.trim() ? { gotrueUrl: json.gotrueUrl.trim() } : {}),
+        }
+      } catch {
+        // Best-effort; auth may still work when build-time public env is correct.
+      }
+    })()
+  }
+
+  return runtimePublicEnvBootstrap
+}

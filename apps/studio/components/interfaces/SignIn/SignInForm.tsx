@@ -14,7 +14,8 @@ import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticato
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { captureCriticalError } from 'lib/error-reporting'
-import { IS_SAAS } from 'lib/constants'
+import { IS_SAAS, BASE_PATH } from 'lib/constants'
+import { ensureRuntimePublicEnv } from 'common/public-env'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
@@ -75,6 +76,8 @@ export const SignInForm = () => {
 
   const onSubmit: SubmitHandler<z.infer<typeof schema>> = async ({ email, password }) => {
     const toastId = toast.loading('Signing in...')
+
+    await ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`)
 
     let token = captchaToken
     if (hcaptchaSiteKey && !token) {
