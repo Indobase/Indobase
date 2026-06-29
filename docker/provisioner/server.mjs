@@ -105,6 +105,22 @@ function repairKnownComposeYaml(yml) {
     /127\.0\.0\.1:(\d+):(3000|9999|5000|4000|9000|6543|8080)\b/g,
     `${publishHost}:$1:$2`
   )
+  const remotePgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
+  const remotePgPort = (process.env.PROVISIONER_PG_REMOTE_PORT || process.env.PROVISIONER_PG_PORT || '5432').trim()
+  if (remotePgHost && !text.includes('tenant-db:')) {
+    // Dual-VPS: platform Postgres on control plane; tenant stacks run on backend VPS.
+    text = text.replace(/@db:5432/g, `@${remotePgHost}:${remotePgPort}`)
+    text = text.replace(/@db:\d+/g, `@${remotePgHost}:${remotePgPort}`)
+    text = text.replace(/DB_HOST: 'db'/g, `DB_HOST: '${remotePgHost}'`)
+    text = text.replace(/DB_HOST: db\b/g, `DB_HOST: ${remotePgHost}`)
+    if (remotePgPort !== '5432') {
+      text = text.replace(new RegExp(`@${remotePgHost}:5432`, 'g'), `@${remotePgHost}:${remotePgPort}`)
+      text = text.replace(
+        new RegExp(`DB_PORT: '5432'`),
+        `DB_PORT: '${remotePgPort}'`
+      )
+    }
+  }
   return text
 }
 
@@ -156,19 +172,19 @@ function seedTenantFunctionsMain(ref) {
         'alpine',
         'sh',
         '-c',
-        'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts',
+        'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts && test -s /f/main/index.ts',
       ],
       { stdio: 'inherit' }
     )
-    p.on('exit', () => {
+    p.on('exit', (code) => {
       try {
         fs.unlinkSync(tmp)
       } catch {
         // ignore
       }
-      resolve(undefined)
+      resolve(code === 0)
     })
-    p.on('error', () => resolve(undefined))
+    p.on('error', () => resolve(false))
   })
 }
 
@@ -308,6 +324,11 @@ function spawnSyncText(cmd, args) {
   })
 }
 
+function isHealthyProbeStatus(status) {
+  // GoTrue /health often returns 405 on HEAD while GET is 200.
+  return status === 401 || status === 404 || status === 405 || (status >= 200 && status < 300)
+}
+
 async function pingHttp(url, timeoutMs = 8000) {
   try {
     const signal =
@@ -315,18 +336,19 @@ async function pingHttp(url, timeoutMs = 8000) {
         ? AbortSignal.timeout(timeoutMs)
         : undefined
     const res = await fetch(url, { method: 'HEAD', signal })
-    return res.ok || res.status === 401 || res.status === 404
+    if (isHealthyProbeStatus(res.status)) return true
   } catch {
-    try {
-      const signal =
-        typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-          ? AbortSignal.timeout(timeoutMs)
-          : undefined
-      const res = await fetch(url, { method: 'GET', signal })
-      return res.ok || res.status === 401 || res.status === 404
-    } catch {
-      return false
-    }
+    // fall through to GET
+  }
+  try {
+    const signal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(timeoutMs)
+        : undefined
+    const res = await fetch(url, { method: 'GET', signal })
+    return isHealthyProbeStatus(res.status)
+  } catch {
+    return false
   }
 }
 
