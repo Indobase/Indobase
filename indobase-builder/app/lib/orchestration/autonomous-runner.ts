@@ -10,6 +10,7 @@ import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
+import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -112,10 +113,11 @@ export async function runAutonomousPipeline(options: {
   let order = progressOrderStart;
 
   await workbenchStore.flushPendingActions();
+  await ensureProjectScaffold();
 
   let packageJson: Record<string, unknown> | null = null;
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     packageJson = await readPackageJson();
 
     if (packageJson) {
@@ -141,7 +143,7 @@ export async function runAutonomousPipeline(options: {
       repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
 
 Output:
-Missing package.json in /home/project. Create package.json first (for example with a Vite + React scaffold), write all source files to their real paths using boltAction filePath attributes, then run npm install and npm run build.`,
+Missing package.json in /home/project. Create package.json with a "build" script (Vite + React for SPAs, or a static HTML build that copies *.html into dist/), write all source files using boltAction filePath attributes, then run npm install and npm run build.`,
     };
   }
 

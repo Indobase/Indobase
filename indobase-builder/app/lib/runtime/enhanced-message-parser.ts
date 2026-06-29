@@ -254,7 +254,49 @@ ${actionMarkup}
       return wrapped;
     });
 
+    const htmlBlockPattern = /```html\s*\n([\s\S]*?)```/gi;
+
+    enhanced = enhanced.replace(htmlBlockPattern, (match, content) => {
+      const blockHash = this._hashBlock(match);
+
+      if (processed.has(blockHash)) {
+        return match;
+      }
+
+      const filePath = this._inferHtmlFileName(content);
+
+      if (!filePath || !this._isValidFilePath(filePath)) {
+        return match;
+      }
+
+      processed.add(blockHash);
+
+      const artifactId = `artifact-${messageId}-${this._artifactCounter++}`;
+      logger.debug(`Auto-wrapped HTML code block as file: ${filePath}`);
+
+      return this._wrapInArtifact(artifactId, filePath, content.trim());
+    });
+
     return enhanced;
+  }
+
+  private _inferHtmlFileName(content: string): string | null {
+    if (!/<!DOCTYPE\s+html|<html[\s>]/i.test(content)) {
+      return null;
+    }
+
+    const titleMatch = content.match(/<title>\s*([^<]+)\s*<\/title>/i);
+    const title = titleMatch?.[1]?.toLowerCase() ?? '';
+
+    if (title.includes('login') || title.includes('sign in') || title.includes('sign-in')) {
+      return 'login.html';
+    }
+
+    if (title.includes('signup') || title.includes('sign up') || title.includes('sign-up') || title.includes('register')) {
+      return 'signup.html';
+    }
+
+    return 'index.html';
   }
 
   private _wrapInArtifact(artifactId: string, filePath: string, content: string): string {
@@ -602,7 +644,13 @@ function extractJsonPlanActions(input: string): JsonPlanAction[] {
     }
   }
 
-  return [];
+  const fromFences = extractPackageJsonFenceActions(input);
+
+  if (fromFences.length) {
+    return fromFences;
+  }
+
+  return tryExtractLooseFileActions(input);
 }
 
 function tryParseJsonPlan(text: string): JsonPlanAction[] {
@@ -621,9 +669,68 @@ function tryParseJsonPlan(text: string): JsonPlanAction[] {
         return parsed.actions.filter((action) => typeof action?.type === 'string');
       }
     } catch {
-      continue;
+      const loose = tryExtractLooseFileActions(attempt);
+
+      if (loose.length) {
+        return loose;
+      }
     }
   }
 
   return [];
+}
+
+function extractPackageJsonFenceActions(input: string): JsonPlanAction[] {
+  const actions: JsonPlanAction[] = [];
+
+  for (const match of input.matchAll(/```json\s*\n([\s\S]*?)```/gi)) {
+    const block = match[1]?.trim();
+
+    if (!block) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(block) as { scripts?: Record<string, string>; name?: string };
+
+      if (parsed?.scripts?.build) {
+        actions.push({
+          type: 'file',
+          filePath: 'package.json',
+          content: `${JSON.stringify(parsed, null, 2)}\n`,
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return actions;
+}
+
+function tryExtractLooseFileActions(text: string): JsonPlanAction[] {
+  const actions: JsonPlanAction[] = [];
+  const fileActionPattern =
+    /"type"\s*:\s*"file"\s*,\s*"filePath"\s*:\s*"([^"]+)"\s*,\s*(?:"contentType"\s*:\s*"[^"]*"\s*,\s*)?"content"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+
+  for (const match of text.matchAll(fileActionPattern)) {
+    const filePath = match[1];
+    const rawContent = match[2];
+
+    if (!filePath || rawContent === undefined) {
+      continue;
+    }
+
+    let content = rawContent;
+
+    try {
+      content = JSON.parse(`"${rawContent}"`) as string;
+    } catch {
+      content = rawContent.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+
+    actions.push({ type: 'file', filePath, content });
+  }
+
+  return actions;
 }
