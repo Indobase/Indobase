@@ -19,14 +19,10 @@ export async function constructSaasPgMetaHeaders(
 
   if (base['x-connection-encrypted']?.trim()) return base
 
-  try {
-    const encrypted = await resolveEncryptedPgMetaConnectionForProject({
-      claims,
-      ref,
-      incomingEncrypted: base['x-connection-encrypted'],
-    })
-    return { ...base, 'x-connection-encrypted': encrypted }
-  } catch {
-    return base
-  }
+  const encrypted = await resolveEncryptedPgMetaConnectionForProject({
+    claims,
+    ref,
+    incomingEncrypted: base['x-connection-encrypted'],
+  })
+  return { ...base, 'x-connection-encrypted': encrypted }
 }

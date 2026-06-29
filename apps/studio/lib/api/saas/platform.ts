@@ -3205,7 +3205,9 @@ ${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.go
     image: darthsim/imgproxy:v3.30.1
     restart: unless-stopped
     networks:
-      - tenant_data_plane
+      tenant_data_plane:
+        aliases:
+          - ${imgproxyHost}
     volumes:
       - tenant-storage-${opts.ref}:/var/lib/storage:Z
     environment:

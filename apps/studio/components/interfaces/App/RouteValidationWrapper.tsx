@@ -99,7 +99,11 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     const code =
       projectDetailError instanceof ResponseError ? projectDetailError.code : undefined
 
-    toast.error('You do not have access to this project')
+    if (code === 403 || code === 404) {
+      toast.error('You do not have access to this project')
+    } else {
+      toast.error('Unable to load this project. Please try again in a moment.')
+    }
     router.push(DEFAULT_HOME)
   }, [
     DEFAULT_HOME,

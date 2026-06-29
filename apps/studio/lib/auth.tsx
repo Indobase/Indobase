@@ -12,6 +12,8 @@ import {
   useAuthError,
 } from 'common'
 import { useAiAssistantStateSnapshot } from 'state/ai-assistant-state'
+import { LogoLoader } from 'ui'
+
 import { BASE_PATH, GOTRUE_ERRORS } from './constants'
 
 export const UNAUTH_ROUTES = [
@@ -76,7 +78,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   }, [])
 
   if (!bootstrapped) {
-    return null
+    return <LogoLoader />
   }
 
   return (

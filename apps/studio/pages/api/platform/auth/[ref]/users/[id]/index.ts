@@ -1,39 +1,50 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import type { JwtPayload } from '@indobaseinc/indobase-js'
 import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
-import { getStorageAdminClient } from 'lib/api/storage-admin'
+import { getStorageAdminClientFromRequest } from 'lib/api/storage-admin'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   setNoStore(res)
   const { method } = req
 
   switch (method) {
     case 'PATCH':
-      return handlePatch(req, res)
+      return handlePatch(req, res, claims)
     case 'DELETE':
-      return handleDelete(req, res)
+      return handleDelete(req, res, claims)
     default:
       res.setHeader('Allow', ['PATCH'])
       res.status(405).json({ data: null, error: { message: `Method ${method} Not Allowed` } })
   }
 }
 
-const handlePatch = async (req: NextApiRequest, res: NextApiResponse) => {
+const handlePatch = async (
+  req: NextApiRequest,
+  res: NextApiResponse,
+  claims?: JwtPayload
+) => {
   const { id } = req.query
   const { ban_duration } = req.body
-  const { data, error } = await getStorageAdminClient().auth.admin.updateUserById(id as string, { ban_duration })
+  const client = await getStorageAdminClientFromRequest(req, claims)
+  const { data, error } = await client.auth.admin.updateUserById(id as string, { ban_duration })
 
   if (error) return res.status(400).json({ error: { message: error.message } })
   return res.status(200).json(data.user)
 }
 
-const handleDelete = async (req: NextApiRequest, res: NextApiResponse) => {
+const handleDelete = async (
+  req: NextApiRequest,
+  res: NextApiResponse,
+  claims?: JwtPayload
+) => {
   const { id } = req.query
-  const { data, error } = await getStorageAdminClient().auth.admin.deleteUser(id as string)
+  const client = await getStorageAdminClientFromRequest(req, claims)
+  const { data, error } = await client.auth.admin.deleteUser(id as string)
 
   if (error) return res.status(400).json({ error: { message: error.message } })
   return res.status(200).json(data)

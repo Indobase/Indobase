@@ -181,7 +181,9 @@ async function debuggableNavigatorLock<R>(
 }
 
 export const gotrueClient = new AuthClient({
-  url: resolvePublicGotrueUrl(),
+  get url() {
+    return resolvePublicGotrueUrl()
+  },
   storageKey: STORAGE_KEY,
   detectSessionInUrl: shouldDetectSessionInUrl,
   // Kong's `key-auth` plugin for `/auth/v1/*` expects an `apikey` header.

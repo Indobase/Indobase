@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { getAccessToken, useParams } from 'common'
+import { ensureRuntimePublicEnv } from 'common/public-env'
 import { SignInMfaForm } from 'components/interfaces/SignIn/SignInMfaForm'
 import SignInLayout from 'components/layouts/SignInLayout/SignInLayout'
 import { useAddLoginEvent } from 'data/misc/audit-login-mutation'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import useLatest from 'hooks/misc/useLatest'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
+import { BASE_PATH } from 'lib/constants'
 import type { NextPageWithLayout } from 'types'
 import { LogoLoader } from 'ui'
 
@@ -31,11 +33,11 @@ const SignInMfaPage: NextPageWithLayout = () => {
 
   // This useEffect redirects the user to MFA if they're already halfway signed in
   useEffect(() => {
-    auth
-      .initialize()
-      .then(async ({ error }) => {
+    ;(async () => {
+      try {
+        await ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`)
+        const { error } = await auth.initialize()
         if (error) {
-          // if there was a problem signing in via the url, don't redirect
           setLoading(false)
           return
         }
@@ -43,11 +45,10 @@ const SignInMfaPage: NextPageWithLayout = () => {
         const token = await getAccessToken()
 
         if (token) {
-          const { data, error } = await auth.mfa.getAuthenticatorAssuranceLevel()
-          if (error) {
-            // if there was a problem signing in via the url, don't redirect
+          const { data, error: aalError } = await auth.mfa.getAuthenticatorAssuranceLevel()
+          if (aalError) {
             toast.error(
-              `Failed to retrieve assurance level: ${error.message}. Please try signing in again`
+              `Failed to retrieve assurance level: ${aalError.message}. Please try signing in again`
             )
             setLoading(false)
             return router.push({ pathname: '/sign-in', query: router.query })
@@ -66,25 +67,22 @@ const SignInMfaPage: NextPageWithLayout = () => {
             await queryClient.resetQueries()
             router.push(getReturnToPath())
             return
-          } else {
-            // Show the MFA form
-            setLoading(false)
-            return
           }
-        } else {
-          // if the user doesn't have a token, he needs to go back to the sign-in page
-          const redirectTo = buildPathWithParams('/sign-in')
-          router.replace(redirectTo)
+
+          setLoading(false)
           return
         }
-      })
-      .catch((error) => {
+
+        const redirectTo = buildPathWithParams('/sign-in')
+        router.replace(redirectTo)
+      } catch (error) {
         Sentry.captureException(error)
         console.error('Auth initialization error:', error)
         toast.error('Failed to initialize authentication. Please try again.')
         setLoading(false)
         router.push({ pathname: '/sign-in', query: router.query })
-      })
+      }
+    })()
   }, [])
 
   if (loading) {

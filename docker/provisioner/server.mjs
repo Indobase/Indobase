@@ -18,7 +18,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef } from './tenant-traefik.mjs'
+import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef, getDockerPsLines, hostPortFor } from './tenant-traefik.mjs'
 import { TENANT_SITE_NGINX_CONF, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
 import {
   portsFromPortBase,
@@ -97,6 +97,20 @@ function repairKnownComposeYaml(yml) {
     text = text.replace(
       /( {2}tenant-functions:\n(?: {4}.+\n)*? {4}environment:\n(?: {6}.+\n)+)/m,
       (match) => `${match}      VERIFY_JWT: "true"\n`
+    )
+  }
+  text = text.replace(/DB_ENC_KEY: '([^']+)'/g, (match, key) => {
+    if (key.length > 16) return `DB_ENC_KEY: '${key.slice(0, 16)}'`
+    return match
+  })
+  if (text.includes('tenant-functions:') && !text.includes('main-service')) {
+    text = text.replace(
+      /( {2}tenant-functions:\n(?: {4}.+\n)*?)( {4}ports:\n)/m,
+      `$1    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+$2`
     )
   }
   const publishHost = (process.env.PROVISIONER_PUBLISH_HOST || traefikUpstreamHost).trim()
@@ -295,15 +309,8 @@ function dockerVolumeRm(volumeName) {
 
 async function readPublishedPort(ref, serviceSuffix) {
   try {
-    const out = await spawnSyncText('docker', [
-      'ps',
-      '--filter',
-      `name=indobase-tenant-${ref}-tenant-${serviceSuffix}`,
-      '--format',
-      '{{.Ports}}',
-    ])
-    const m = out.match(/0\.0\.0\.0:(\d+)->/)
-    return m ? Number(m[1]) : null
+    const dockerPs = getDockerPsLines()
+    return hostPortFor(dockerPs, ref, serviceSuffix)
   } catch {
     return null
   }
