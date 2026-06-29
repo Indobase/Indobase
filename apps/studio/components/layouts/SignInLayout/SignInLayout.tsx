@@ -20,17 +20,17 @@ const testimonials: Testimonial[] = [
   {
     text: 'Indobase made our onboarding flow simple and fast. The setup felt effortless.',
     name: 'Sivakumar gingee',
-    role: 'Engineering Lead',
+    role: 'Chief Executive Officer',
   },
   {
     text: 'The dashboard is clean, fast, and easy to understand. Indobase just works.',
     name: 'Roshan Raghavander',
-    role: 'Product Manager',
+    role: 'Chief Technology Officer',
   },
   {
     text: 'We shipped our MVP in days with Indobase. The developer experience is excellent.',
     name: 'Prabhu',
-    role: 'Founder',
+    role: 'Chief Growth Officer',
   },
   {
     text: 'Indobase helped us move from idea to production quickly and confidently.',
