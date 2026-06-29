@@ -17,6 +17,8 @@ export interface Project extends Omit<ProjectDetail, 'status'> {
    */
   postgrestStatus?: 'ONLINE' | 'OFFLINE'
   status: ProjectDetail['status']
+  /** False when the project still uses the shared control-plane database (Model A). */
+  hasDedicatedDatabase?: boolean
 }
 
 export async function getProjectDetail(

@@ -8228,6 +8228,8 @@ export interface components {
       cloud_provider: string
       /** @default null */
       connectionString?: string | null
+      /** False when the project still uses the shared control-plane database (Model A). */
+      hasDedicatedDatabase?: boolean
       db_host: string
       dbVersion?: string
       id: number

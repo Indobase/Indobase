@@ -2476,6 +2476,7 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
   const { restUrl } = resolveSaaSTenantRestUrls(p.ref, hasDedicated, p.data_plane_mode)
   return {
     cloud_provider: p.cloud_provider,
+    hasDedicatedDatabase: hasDedicated,
     // pg-meta expects `x-connection-encrypted` header value to be encrypted.
     // The frontend forwards this `connectionString` into that header.
     // Per-tenant DB: plaintext URI in saas.projects.connection_string; else POSTGRES_* fallback.

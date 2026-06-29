@@ -20,6 +20,7 @@ import { useUsersCountQuery } from 'data/auth/users-count-query'
 import { User, useUsersInfiniteQuery } from 'data/auth/users-infinite-query'
 import { useEnsureAuthSchemaMutation } from 'data/projects/project-ensure-auth-schema-mutation'
 import { useProvisionDedicatedDatabaseMutation } from 'data/projects/project-provision-dedicated-database-mutation'
+import { projectKeys } from 'data/projects/keys'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
@@ -77,7 +78,7 @@ import {
 import { formatUserColumns, formatUsersData } from './Users.utils'
 import { UsersFooter } from './UsersFooter'
 import { UsersSearch } from './UsersSearch'
-import { isProjectDatabaseReady } from 'lib/api/saas/project-runtime'
+import { isProjectDatabaseReady, projectNeedsDedicatedDatabase } from 'lib/api/saas/project-runtime'
 import { IS_SAAS } from 'lib/constants'
 
 const SORT_BY_VALUE_COUNT_THRESHOLD = 10_000
@@ -99,6 +100,13 @@ export const UsersV2 = () => {
     isPending: isPendingProject,
     isError: isProjectError,
   } = useSelectedProjectQuery()
+  const needsDedicatedDatabase = projectNeedsDedicatedDatabase(project)
+  const provisionDedicatedDb = useProvisionDedicatedDatabaseMutation()
+  const dedicatedDbProvisionAttempted = useRef(false)
+  const dedicatedDatabaseReady =
+    !needsDedicatedDatabase ||
+    project?.hasDedicatedDatabase === true ||
+    provisionDedicatedDb.isSuccess
   const { data: selectedOrg } = useSelectedOrganizationQuery()
   const gridRef = useRef<DataGridHandle>(null)
   const xScroll = useRef<number>(0)
@@ -210,7 +218,7 @@ export const UsersV2 = () => {
       providers: [],
       forceExactCount: false,
     },
-    { placeholderData: keepPreviousData }
+    { placeholderData: keepPreviousData, enabled: dedicatedDatabaseReady }
   )
   const totalUsers = totalUsersCountData?.count ?? 0
   const isCountWithinThresholdForSortBy = totalUsers <= SORT_BY_VALUE_COUNT_THRESHOLD
@@ -291,6 +299,42 @@ export const UsersV2 = () => {
     !isImprovedUserSearchFlagEnabled ||
     (!isUserSearchIndexesLoading && !isAuthConfigLoading && !isIndexWorkerStatusLoading)
 
+  const canQueryUsers = isProjectDatabaseReady(project)
+  const { mutateAsync: deleteUser } = useUserDeleteMutation()
+  const ensureAuthSchema = useEnsureAuthSchemaMutation()
+  const authSchemaRepairAttempted = useRef(false)
+
+  useEffect(() => {
+    if (
+      !projectRef ||
+      !needsDedicatedDatabase ||
+      dedicatedDbProvisionAttempted.current ||
+      provisionDedicatedDb.isPending
+    ) {
+      return
+    }
+
+    dedicatedDbProvisionAttempted.current = true
+    provisionDedicatedDb.mutate(
+      { ref: projectRef },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectRef) })
+          void queryClient.invalidateQueries({ queryKey: ['projects', projectRef, 'users-infinite'] })
+          void queryClient.invalidateQueries({ queryKey: ['projects', projectRef, 'users-count'] })
+        },
+        onError: (provisionError) => {
+          dedicatedDbProvisionAttempted.current = false
+          toast.error(
+            provisionError instanceof Error
+              ? provisionError.message
+              : 'Failed to provision a dedicated project database'
+          )
+        },
+      }
+    )
+  }, [projectRef, needsDedicatedDatabase, provisionDedicatedDb, queryClient])
+
   const {
     data,
     error,
@@ -328,17 +372,9 @@ export const UsersV2 = () => {
       // a barrage of requests to invalidate each page esp when the project has many many users.
       staleTime: Infinity,
       // NOTE(iat): query the user data only after we know whether to show improved search or not
-      enabled: improvedSearchPrerequisitesReady,
+      enabled: improvedSearchPrerequisitesReady && dedicatedDatabaseReady,
     }
   )
-
-  const canQueryUsers = isProjectDatabaseReady(project)
-
-  const { mutateAsync: deleteUser } = useUserDeleteMutation()
-  const ensureAuthSchema = useEnsureAuthSchemaMutation()
-  const provisionDedicatedDb = useProvisionDedicatedDatabaseMutation()
-  const authSchemaRepairAttempted = useRef(false)
-  const dedicatedDbRepairAttempted = useRef(false)
 
   const isAuthUsersSchemaMissing = useMemo(() => {
     if (!isError || !error) return false
@@ -353,26 +389,6 @@ export const UsersV2 = () => {
       msg
     )
   }, [isError, error])
-
-  useEffect(() => {
-    if (
-      !projectRef ||
-      !needsDedicatedProjectDatabase ||
-      dedicatedDbRepairAttempted.current ||
-      provisionDedicatedDb.isPending
-    ) {
-      return
-    }
-    dedicatedDbRepairAttempted.current = true
-    provisionDedicatedDb.mutate(
-      { ref: projectRef },
-      {
-        onSuccess: () => {
-          void refetch()
-        },
-      }
-    )
-  }, [projectRef, needsDedicatedProjectDatabase, provisionDedicatedDb, refetch])
 
   useEffect(() => {
     if (
@@ -889,6 +905,15 @@ export const UsersV2 = () => {
                             : 'Could not connect to the database. Please check your project status.',
                         }}
                       />
+                    </div>
+                  ) : needsDedicatedDatabase && !dedicatedDatabaseReady ? (
+                    <div className="absolute top-14 px-6 flex flex-col items-center justify-center w-full gap-3">
+                      <GenericSkeletonLoader />
+                      <p className="text-sm text-foreground-light text-center m-0">
+                        {provisionDedicatedDb.isPending || provisionDedicatedDb.isIdle
+                          ? 'Provisioning a dedicated database for this project…'
+                          : 'Preparing the project database for Auth user listing…'}
+                      </p>
                     </div>
                   ) : isPending ? (
                     <div className="absolute top-14 px-6 w-full">

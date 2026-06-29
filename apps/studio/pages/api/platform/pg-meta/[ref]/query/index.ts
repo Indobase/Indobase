@@ -58,7 +58,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
 
     if (
       !usesDedicatedTenantDb &&
-      process.env.SAAS_AUTO_PROVISION_DEDICATED_ON_AUTH_USERS === 'true' &&
+      process.env.SAAS_AUTO_PROVISION_DEDICATED_ON_AUTH_USERS !== 'false' &&
       claims &&
       ref
     ) {
