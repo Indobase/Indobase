@@ -1,6 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { resolvePublicAnonKey, resolvePublicGotrueUrl } from './public-env'
+import {
+  KNOWN_DEMO_SUPABASE_ANON_KEY,
+  resolvePublicAnonKey,
+  resolvePublicGotrueUrl,
+  resolveServerPublicAnonKey,
+} from './public-env'
+
+describe('resolveServerPublicAnonKey', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('prefers runtime SUPABASE_ANON_KEY over baked NEXT_PUBLIC demo key', () => {
+    vi.stubEnv('SUPABASE_ANON_KEY', 'runtime-prod-key')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', KNOWN_DEMO_SUPABASE_ANON_KEY)
+    vi.stubEnv('NEXT_PUBLIC_ANON_KEY', KNOWN_DEMO_SUPABASE_ANON_KEY)
+
+    expect(resolveServerPublicAnonKey()).toBe('runtime-prod-key')
+  })
+
+  it('ignores the known demo anon key', () => {
+    vi.stubEnv('SUPABASE_ANON_KEY', '')
+    vi.stubEnv('ANON_KEY', '')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', KNOWN_DEMO_SUPABASE_ANON_KEY)
+
+    expect(resolveServerPublicAnonKey()).toBe('')
+  })
+})
 
 describe('resolvePublicAnonKey', () => {
   afterEach(() => {
@@ -8,8 +35,8 @@ describe('resolvePublicAnonKey', () => {
     delete (globalThis as typeof globalThis & { window?: Window }).window
   })
 
-  it('prefers runtime-injected window config over build-time env', () => {
-    vi.stubEnv('NEXT_PUBLIC_ANON_KEY', 'build-time-key')
+  it('prefers usable runtime-injected window config', () => {
+    vi.stubEnv('NEXT_PUBLIC_ANON_KEY', KNOWN_DEMO_SUPABASE_ANON_KEY)
     ;(globalThis as typeof globalThis & { window: Window }).window = {
       __INDOBASE_PUBLIC_ENV__: { anonKey: 'runtime-key' },
     } as Window
@@ -17,11 +44,13 @@ describe('resolvePublicAnonKey', () => {
     expect(resolvePublicAnonKey()).toBe('runtime-key')
   })
 
-  it('falls back to NEXT_PUBLIC_SUPABASE_ANON_KEY then NEXT_PUBLIC_ANON_KEY', () => {
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'supabase-public-key')
-    vi.stubEnv('NEXT_PUBLIC_ANON_KEY', 'legacy-public-key')
+  it('ignores injected demo key and falls back to server env', () => {
+    vi.stubEnv('SUPABASE_ANON_KEY', 'runtime-prod-key')
+    ;(globalThis as typeof globalThis & { window: Window }).window = {
+      __INDOBASE_PUBLIC_ENV__: { anonKey: KNOWN_DEMO_SUPABASE_ANON_KEY },
+    } as Window
 
-    expect(resolvePublicAnonKey()).toBe('supabase-public-key')
+    expect(resolvePublicAnonKey()).toBe('runtime-prod-key')
   })
 })
 

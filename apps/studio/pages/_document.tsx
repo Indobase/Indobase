@@ -1,4 +1,8 @@
 import { BASE_PATH } from 'lib/constants'
+import {
+  resolvePublicGotrueUrlForBrowser,
+  resolveServerPublicAnonKey,
+} from 'common/public-env'
 import Document, { DocumentContext, Head, Html, Main, NextScript } from 'next/document'
 
 type RuntimePublicEnv = {
@@ -7,20 +11,8 @@ type RuntimePublicEnv = {
 }
 
 function readRuntimePublicEnv(): RuntimePublicEnv {
-  const anonKey = (
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.ANON_KEY ||
-    ''
-  ).trim()
-
-  const gotrueUrl = (
-    process.env.NEXT_PUBLIC_GOTRUE_URL ||
-    process.env.GOTRUE_URL ||
-    process.env.KONG_INTERNAL_GOTRUE_URL ||
-    ''
-  ).trim()
+  const anonKey = resolveServerPublicAnonKey()
+  const gotrueUrl = resolvePublicGotrueUrlForBrowser() ?? ''
 
   return {
     ...(anonKey ? { anonKey } : {}),
