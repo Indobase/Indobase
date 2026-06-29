@@ -10,7 +10,7 @@ import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
-import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
+import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -112,8 +112,7 @@ export async function runAutonomousPipeline(options: {
   const { connection, onProgress, progressOrderStart = 100 } = options;
   let order = progressOrderStart;
 
-  await workbenchStore.flushPendingActions();
-  await ensureProjectScaffold();
+  await finalizeCodegen();
 
   let packageJson: Record<string, unknown> | null = null;
 

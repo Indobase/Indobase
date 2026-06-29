@@ -1,4 +1,5 @@
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import type { Template } from '~/types/template';
 
 export const WORK_DIR_NAME = 'project';
@@ -74,6 +75,7 @@ PROVIDER_LIST.forEach((provider) => {
 // starter Templates
 
 export const STARTER_TEMPLATES: Template[] = [
+  ...INDOBASE_STARTER_TEMPLATES,
   {
     name: 'AI Chatbot',
     label: 'AI Chatbot',

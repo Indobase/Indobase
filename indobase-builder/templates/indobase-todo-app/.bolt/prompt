@@ -1,0 +1,2 @@
+Indobase Todo template. Apply supabase/migrations/001_todos.sql in Studio SQL editor before testing inserts.
+Use @indobaseinc/indobase-js via src/lib/indobase.ts. Add sign-in if the user is not authenticated yet.

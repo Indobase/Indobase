@@ -1,6 +1,7 @@
 import ignore from 'ignore';
 import type { ProviderInfo } from '~/types/model';
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
+import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import type { Template } from '~/types/template';
 import { STARTER_TEMPLATES } from './constants';
 
@@ -34,6 +35,7 @@ You are an experienced developer who helps people choose the best starter templa
 IMPORTANT: Vite is preferred
 IMPORTANT: Only choose shadcn templates if the user explicitly asks for shadcn.
 IMPORTANT: Prefer featured, product-ready templates for real products unless the user explicitly asks for a specific framework or lower-level starter.
+IMPORTANT: When the user mentions Indobase, auth, database, backend, waitlist, todos, dashboard, or publishing to Indobase, prefer the Indobase-ready templates first.
 IMPORTANT: Prefer content starters for blogs, docs, publishing, and marketing sites.
 IMPORTANT: Prefer mobile starters only when the request is clearly for mobile apps.
 
@@ -118,13 +120,24 @@ const parseSelectedTemplate = (llmOutput: string): { template: string; title: st
   }
 };
 
-export const selectStarterTemplate = async (options: { message: string; model: string; provider: ProviderInfo }) => {
-  const { message, model, provider } = options;
+export const selectStarterTemplate = async (options: {
+  message: string;
+  model: string;
+  provider: ProviderInfo;
+  preferIndobase?: boolean;
+}) => {
+  const { message, model, provider, preferIndobase = false } = options;
+  const availableTemplates = preferIndobase
+    ? sortTemplatesForSelection([
+        ...INDOBASE_STARTER_TEMPLATES,
+        ...STARTER_TEMPLATES.filter((template) => !template.indobaseReady),
+      ])
+    : templates;
   const requestBody = {
     message,
     model,
     provider,
-    system: starterTemplateSelectionPrompt(templates),
+    system: starterTemplateSelectionPrompt(availableTemplates),
   };
   const response = await fetch(
     '/api/llmcall',
@@ -154,6 +167,16 @@ export const selectStarterTemplate = async (options: { message: string; model: s
   }
 };
 
+const getLocalTemplateContent = async (bundleId: string) => {
+  const response = await fetch(`/api/local-template?bundle=${encodeURIComponent(bundleId)}`);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as { name: string; path: string; content: string }[];
+};
+
 const getGitHubRepoContent = async (repoName: string): Promise<{ name: string; path: string; content: string }[]> => {
   try {
     // Instead of directly fetching from GitHub, use our own API endpoint as a proxy
@@ -180,8 +203,9 @@ export async function getTemplates(templateName: string, title?: string) {
     return null;
   }
 
-  const githubRepo = template.githubRepo;
-  const files = await getGitHubRepoContent(githubRepo);
+  const files = template.localBundle
+    ? await getLocalTemplateContent(template.localBundle)
+    : await getGitHubRepoContent(template.githubRepo!);
 
   let filteredFiles = files;
 

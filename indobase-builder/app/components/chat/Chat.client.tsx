@@ -27,6 +27,7 @@ import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
+import { resolveTemplateFromMessage } from '~/lib/indobase/resolveTemplateFromMessage';
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
@@ -39,6 +40,7 @@ import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
@@ -232,15 +234,19 @@ export const ChatImpl = memo(
 
         logger.debug('Finished streaming');
 
-        if (!autonomousAgentsEnabled || chatMode !== 'build' || chatStore.get().aborted) {
-          return;
-        }
-
         void (async () => {
           try {
             await processSampledMessages.flush();
-            await workbenchStore.flushPendingActions();
+            await finalizeCodegen();
+          } catch (error) {
+            logger.error('Post-codegen finalize failed', error);
+          }
 
+          if (!autonomousAgentsEnabled || chatMode !== 'build' || chatStore.get().aborted) {
+            return;
+          }
+
+          try {
             const result = await runAutonomousPipeline({
               connection: supabaseConn,
               onProgress: (progress) => {
@@ -618,15 +624,35 @@ export const ChatImpl = memo(
       if (!chatStarted) {
         setFakeLoading(true);
 
-        if (autoSelectTemplate && !isIndobaseStudioManagedConnection(supabaseConn)) {
+        const studioLinked = isIndobaseStudioManagedConnection(supabaseConn);
+        const explicitTemplate = resolveTemplateFromMessage(finalMessageContent);
+        let templateName = explicitTemplate?.name ?? null;
+        let templateTitle = explicitTemplate ? finalMessageContent : '';
+
+        if (!templateName && autoSelectTemplate) {
           const { template, title } = await selectStarterTemplate({
             message: finalMessageContent,
             model,
             provider,
+            preferIndobase: studioLinked,
           });
 
           if (template !== 'blank') {
-            const temResp = await getTemplates(template, title).catch((e) => {
+            templateName = template;
+            templateTitle = title;
+          }
+        }
+
+        if (templateName) {
+          const templateMeta = explicitTemplate ?? resolveTemplateFromMessage(`Use the "${templateName}" template`);
+
+          if (studioLinked && templateMeta && !templateMeta.indobaseReady && !explicitTemplate) {
+            templateName = null;
+          }
+        }
+
+        if (templateName) {
+          const temResp = await getTemplates(templateName, templateTitle || undefined).catch((e) => {
               if (e.message.includes('rate limit')) {
                 toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
               } else {
@@ -679,7 +705,6 @@ export const ChatImpl = memo(
 
               return;
             }
-          }
         }
 
         // If autoSelectTemplate is disabled or template selection failed, proceed with normal message

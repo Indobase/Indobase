@@ -1,5 +1,5 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
-import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
+import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { path } from '~/utils/path';
@@ -108,8 +108,7 @@ async function resolveBuildOutputPath(buildPath: string) {
 }
 
 export async function collectBuildArtifacts(): Promise<CollectBuildArtifactsResult> {
-  await workbenchStore.flushPendingActions();
-  await ensureProjectScaffold();
+  await finalizeCodegen();
 
   const artifact = workbenchStore.firstArtifact;
 

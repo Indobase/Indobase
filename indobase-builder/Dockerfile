@@ -100,6 +100,7 @@ COPY --chown=node:node --from=build /app/node_modules /app/node_modules
 COPY --chown=node:node --from=build /app/build /app/build
 COPY --chown=node:node --from=build /app/public /app/public
 COPY --chown=node:node --from=build /app/server.js /app/server.js
+COPY --chown=node:node --from=build /app/templates /app/templates
 
 USER node
 

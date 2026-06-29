@@ -30,6 +30,7 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { supabaseConnection } from '~/lib/stores/supabase';
 import { builderFetch } from '~/lib/indobase/builder-auth.client';
+import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import { FIXED_MODEL_CHOICES, FIXED_MODEL_PROVIDER_NAME } from '~/utils/constants';
 
 const FALLBACK_CHAT_MODELS: ModelInfo[] = FIXED_MODEL_CHOICES.map((choice) => ({
@@ -45,66 +46,42 @@ const PRECHAT_STARTER_PROMPTS = [
   {
     description: 'Admin panels, analytics, auth flows, and subscription UX.',
     prompt:
-      'Build a SaaS dashboard with authentication, analytics charts, settings, and billing screens connected to my Indobase backend.',
+      'Use the "Indobase Dashboard" template and extend it into a SaaS dashboard with authentication, analytics charts, settings, and billing screens on my Indobase backend.',
     title: 'SaaS Dashboard',
   },
   {
-    description: 'A polished product surface for users and teams.',
-    prompt: 'Create a customer portal with onboarding, team management, notifications, and a clean responsive UI.',
-    title: 'Customer Portal',
+    description: 'Email login, signup, and a protected home screen.',
+    prompt:
+      'Use the "Indobase Auth App" template and customize the branding, copy, and post-login dashboard for my product.',
+    title: 'Auth + App Shell',
   },
   {
     description: 'Launch pages with strong copy, sections, and CTAs.',
-    prompt: 'Design a modern landing page with pricing, testimonials, FAQs, and a waitlist form for an AI startup.',
+    prompt:
+      'Use the "Indobase Marketing Site" template and tailor the hero, pricing, and waitlist form for my AI startup.',
     title: 'Marketing Site',
   },
   {
     description: 'CRUD workflows, search, filters, and table-heavy screens.',
     prompt:
-      'Build an internal operations tool with searchable tables, task management, audit logs, and role-based access.',
+      'Use the "Indobase Todo App" template as a starting point and evolve it into an internal operations tool with searchable tables and role-based access.',
     title: 'Internal Tool',
   },
 ];
 
 const STUDIO_LINKED_STARTER_PROMPT = {
-  description: 'Ship the web app, then use Publish to Indobase and Android bundle in Builder.',
+  description: 'Start from the Indobase auth template, then publish from Builder.',
   prompt:
-    'Create a plan and build a professional web app on my linked Indobase backend with Vite, React, TypeScript, and Tailwind. Use @indobaseinc/indobase-js and src/lib/indobase.ts. After preview works, explain how to publish with the Publish to Indobase button and queue an Android bundle from Builder.',
+    'Use the "Indobase Auth App" template, connect it to my linked Indobase backend, and customize the dashboard for my product. After preview works, explain how to publish with Publish to Indobase.',
   title: 'Linked from Studio',
 };
 
-const PRECHAT_FEATURED_TEMPLATES = [
-  {
-    icon: 'i-ph:chat-circle-dots',
-    label: 'AI Chatbot',
-    repoUrl: 'https://github.com/vercel/ai-chatbot.git',
-  },
-  {
-    icon: 'i-ph:credit-card',
-    label: 'Next.js SaaS Billing',
-    repoUrl: 'https://github.com/vercel/nextjs-subscription-payments.git',
-  },
-  {
-    icon: 'i-ph:shopping-cart',
-    label: 'Next.js Commerce',
-    repoUrl: 'https://github.com/vercel/commerce.git',
-  },
-  {
-    icon: 'i-ph:squares-four',
-    label: 'Admin Dashboard',
-    repoUrl: 'https://github.com/vercel/nextjs-postgres-nextauth-tailwindcss-template.git',
-  },
-  {
-    icon: 'i-ph:megaphone',
-    label: 'Product Landing Page',
-    repoUrl: 'https://github.com/vercel/nextjs-portfolio-starter.git',
-  },
-  {
-    icon: 'i-ph:buildings',
-    label: 'Multi-tenant Platform',
-    repoUrl: 'https://github.com/vercel/platforms.git',
-  },
-];
+const PRECHAT_FEATURED_TEMPLATES = INDOBASE_STARTER_TEMPLATES.map((template) => ({
+  icon: template.icon ?? 'i-ph:package',
+  label: template.label,
+  templateName: template.name,
+  description: template.description,
+}));
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -564,34 +541,34 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
               <div className="mt-4 flex flex-col">
                 {PRECHAT_FEATURED_TEMPLATES.map((template) => (
-                  <a
-                    key={template.label}
-                    href={`/git?url=${encodeURIComponent(template.repoUrl)}`}
-                    data-state="closed"
-                    data-discover="true"
-                    className="group flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-[#F7F4EF] dark:hover:bg-[#18130F]"
+                  <button
+                    key={template.templateName}
+                    type="button"
+                    disabled={isStreaming}
+                    onClick={(event) => {
+                      handleStarterPromptClick(
+                        event,
+                        `Use the "${template.templateName}" template and customize it for my product.`,
+                      );
+                    }}
+                    className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#18130F]"
                   >
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#F1EDE6] text-[#6A6158] dark:bg-[#18130F] dark:text-[#B6ADA3]">
                       <span className={`${template.icon} text-[15px]`} />
                     </span>
-                    <span className="text-sm font-medium text-[#6A6158] transition group-hover:text-[#18160F] dark:text-[#D5CEC5] dark:group-hover:text-[#F8F3EA]">
-                      {template.label}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-[#6A6158] transition group-hover:text-[#18160F] dark:text-[#D5CEC5] dark:group-hover:text-[#F8F3EA]">
+                        {template.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-[#A09890] dark:text-[#8E857B]">
+                        {template.description}
+                      </span>
                     </span>
                     <span className="ml-auto text-xs text-[#A09890] opacity-0 transition group-hover:opacity-100 dark:text-[#8E857B]">
                       <span className="i-ph:arrow-right" />
                     </span>
-                  </a>
+                  </button>
                 ))}
-              </div>
-
-              <div className="mt-4 border-t border-black/8 pt-4 dark:border-white/8">
-                <a
-                  href="/"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-[#E84718] transition hover:opacity-75"
-                >
-                  Browse all starters
-                  <span className="i-ph:arrow-right" />
-                </a>
               </div>
             </div>
           </div>
