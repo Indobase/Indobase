@@ -570,7 +570,6 @@ const nextConfig = {
     'icons',
     'libpg-query',
     'indobase-js',
-    '@indobaseinc/mcp-server',
   ],
   turbopack: {
     rules: {
