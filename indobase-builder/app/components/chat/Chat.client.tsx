@@ -64,8 +64,8 @@ const getAllowedChatProviders = () =>
 
 const ALLOWED_CHAT_PROVIDERS = getAllowedChatProviders();
 const DEFAULT_CHAT_PROVIDER =
+  // OpenRouter has the configured key and serves DEFAULT_MODEL; OpenAI does not.
   ALLOWED_CHAT_PROVIDERS.find((provider) => provider.name === 'OpenRouter') ||
-  ALLOWED_CHAT_PROVIDERS.find((provider) => provider.name === 'OpenAI') ||
   ALLOWED_CHAT_PROVIDERS[0] ||
   DEFAULT_PROVIDER;
 const HIDDEN_CHAT_PROVIDER =

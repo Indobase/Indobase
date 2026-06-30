@@ -1,5 +1,6 @@
 import { LLMManager } from '~/lib/modules/llm/manager';
 import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
+import { CURATED_BOILERPLATES } from '~/lib/indobase/curatedBoilerplates';
 import type { Template } from '~/types/template';
 
 export const WORK_DIR_NAME = 'project';
