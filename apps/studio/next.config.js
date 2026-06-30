@@ -43,6 +43,10 @@ const nextConfig = {
       { source: '/dashboard/:path*', destination: '/:path*' },
 
       {
+        source: '/mcp',
+        destination: '/api/mcp',
+      },
+      {
         source: `/.well-known/vercel/flags`,
         destination: `https://indobase.in/.well-known/vercel/flags`,
         basePath: false,

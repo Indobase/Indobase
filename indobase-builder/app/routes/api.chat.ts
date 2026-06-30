@@ -22,6 +22,7 @@ import {
   resolveBuilderMcpClaims,
   shouldConsumeBuilderPrompt,
 } from '~/lib/indobase/builder-prompt-quota.server';
+import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 
 const logger = createScopedLogger('api.chat');
 
@@ -45,8 +46,8 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
   const streamRecovery = new StreamRecoveryManager({
-    timeout: 45000,
-    maxRetries: 2,
+    timeout: 180_000,
+    maxRetries: 5,
     onTimeout: () => {
       logger.warn('Stream timeout - attempting recovery');
     },
@@ -151,10 +152,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         let messageSliceId = 0;
 
         const processedMessages = await mcpService.processToolInvocations(messages, dataStream);
+        streamRecovery.updateActivity();
+        const templateBootstrap = isTemplateBootstrapFollowUp(processedMessages);
         const isRepairRound = processedMessages.some(
           (message) => message.role === 'user' && String(message.content).includes('[Autonomous Tester Agent]'),
         );
-        const useMultiAgent = chatMode === 'build' && !isRepairRound;
+        const useMultiAgent = chatMode === 'build' && !isRepairRound && !templateBootstrap;
         let orchestratedMessages = processedMessages;
         const progressOrder = { value: progressCounter };
 
@@ -174,13 +177,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           });
           orchestratedMessages = plannerResult.messages;
           progressCounter = progressOrder.value;
+          streamRecovery.updateActivity();
         }
 
         if (processedMessages.length > 3) {
           messageSliceId = processedMessages.length - 3;
         }
 
-        if (filePaths.length > 0 && contextOptimization) {
+        if (filePaths.length > 0 && contextOptimization && !templateBootstrap) {
           logger.debug('Generating Chat Summary');
           dataStream.writeData({
             type: 'progress',
@@ -209,6 +213,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               }
             },
           });
+          streamRecovery.updateActivity();
           dataStream.writeData({
             type: 'progress',
             label: 'summary',
@@ -253,6 +258,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               }
             },
           });
+          streamRecovery.updateActivity();
 
           if (filteredFiles) {
             logger.debug(`files in context : ${JSON.stringify(Object.keys(filteredFiles))}`);

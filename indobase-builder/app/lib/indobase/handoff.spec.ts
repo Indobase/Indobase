@@ -140,7 +140,7 @@ describe('indobase handoff', () => {
       mcpServers: {
         indobase: {
           type: 'streamable-http',
-          url: 'https://studio.indobase.in/mcp?project_ref=proj_123',
+          url: 'https://studio.indobase.in/api/mcp?project_ref=proj_123',
           headers: {
             Authorization: 'Bearer mcp-token',
           },
@@ -154,7 +154,7 @@ describe('indobase handoff', () => {
       },
       indobase: {
         type: 'streamable-http',
-        url: 'https://studio.indobase.in/mcp?project_ref=proj_123',
+        url: 'https://studio.indobase.in/api/mcp?project_ref=proj_123',
       },
     });
   });

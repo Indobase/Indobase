@@ -4,7 +4,7 @@ import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 export const INDOBASE_MCP_SERVER_NAME = 'indobase';
 
 function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
-  const url = new URL('/mcp', studioUrl);
+  const url = new URL('/api/mcp', studioUrl);
   url.searchParams.set('project_ref', projectRef);
 
   return url.toString();

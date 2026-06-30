@@ -178,6 +178,7 @@ export class MCPService {
       transport: new StreamableHTTPClientTransport(new URL(config.url), {
         requestInit: {
           headers: config.headers,
+          signal: AbortSignal.timeout(15_000),
         },
       }),
     });
