@@ -16,6 +16,12 @@ import { MCPService } from '~/lib/services/mcpService';
 import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
 import { completeCoderPhase, runPlannerPhase } from '~/lib/.server/orchestration/orchestrate-chat';
+import {
+  buildStudioBillingUrl,
+  consumeBuilderPromptFromStudio,
+  resolveBuilderMcpClaims,
+  shouldConsumeBuilderPrompt,
+} from '~/lib/indobase/builder-prompt-quota.server';
 
 const logger = createScopedLogger('api.chat');
 
@@ -81,6 +87,43 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     parseCookies(cookieHeader || '').providers || '{}',
   );
 
+  const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
+
+  if (shouldConsumeBuilderPrompt(chatMode, messages)) {
+    const quotaResult = await consumeBuilderPromptFromStudio(request, env);
+
+    if (!quotaResult.ok) {
+      if ('unauthorized' in quotaResult && quotaResult.unauthorized) {
+        return new Response(JSON.stringify({ error: true, message: 'Unauthorized', statusCode: 401 }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const claims = await resolveBuilderMcpClaims(request, env);
+      const upgradePath = quotaResult.upgradeUrl;
+      const upgradeUrl =
+        claims && upgradePath ? buildStudioBillingUrl(claims.studio_url, upgradePath) : upgradePath;
+
+      return new Response(
+        JSON.stringify({
+          error: true,
+          message: 'Free Builder limit reached (5 prompts). Upgrade to Pro for unlimited build and discuss messages with agent orchestration.',
+          statusCode: 402,
+          errorType: 'quota',
+          used: quotaResult.quota.used,
+          limit: quotaResult.quota.limit,
+          remaining: quotaResult.quota.remaining,
+          upgradeUrl,
+        }),
+        {
+          status: 402,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }
+  }
+
   const stream = new SwitchableStream();
 
   const cumulativeUsage = {
@@ -111,7 +154,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const isRepairRound = processedMessages.some(
           (message) => message.role === 'user' && String(message.content).includes('[Autonomous Tester Agent]'),
         );
-        const useMultiAgent = Boolean(multiAgentMode) && chatMode === 'build' && !isRepairRound;
+        const useMultiAgent = chatMode === 'build' && !isRepairRound;
         let orchestratedMessages = processedMessages;
         const progressOrder = { value: progressCounter };
 

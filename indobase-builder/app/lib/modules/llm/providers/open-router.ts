@@ -1,4 +1,10 @@
 import { BaseProvider } from '~/lib/modules/llm/base-provider';
+import {
+  OPENROUTER_FREE_CODING_MODELS,
+  OPENROUTER_FREE_VISION_MODEL,
+  toOpenRouterModelInfo,
+} from '~/lib/indobase/openrouter-coding-models';
+import { isOpenRouterApiFreeModel, resolveCuratedOpenRouterFreeModels } from '~/lib/indobase/openrouter-free-models';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
 import type { LanguageModelV1 } from 'ai';
@@ -27,36 +33,8 @@ export default class OpenRouterProvider extends BaseProvider {
   };
 
   staticModels: ModelInfo[] = [
-    {
-      name: 'nvidia/nemotron-nano-9b-v2:free',
-      label: 'Indobase Fast (Free)',
-      provider: 'OpenRouter',
-      maxTokenAllowed: 128000,
-    },
-    {
-      name: 'nvidia/nemotron-3-nano-30b-a3b:free',
-      label: 'Indobase Balanced (Free)',
-      provider: 'OpenRouter',
-      maxTokenAllowed: 256000,
-    },
-    {
-      name: 'nvidia/nemotron-3-super-120b-a12b:free',
-      label: 'Indobase Strong (Free)',
-      provider: 'OpenRouter',
-      maxTokenAllowed: 1000000,
-    },
-    {
-      name: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-      label: 'Indobase Max (Free)',
-      provider: 'OpenRouter',
-      maxTokenAllowed: 1000000,
-    },
-    {
-      name: 'nvidia/nemotron-nano-12b-v2-vl:free',
-      label: 'Indobase Vision (Free)',
-      provider: 'OpenRouter',
-      maxTokenAllowed: 128000,
-    },
+    ...OPENROUTER_FREE_CODING_MODELS.map((model) => toOpenRouterModelInfo(model)),
+    toOpenRouterModelInfo(OPENROUTER_FREE_VISION_MODEL),
   ];
 
   async getDynamicModels(
@@ -73,26 +51,12 @@ export default class OpenRouterProvider extends BaseProvider {
 
       const data = (await response.json()) as OpenRouterModelsResponse;
 
-      return data.data
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((m) => {
-          // Get accurate context window from OpenRouter API
-          const contextWindow = m.context_length || 32000; // Use API value or fallback
-
-          // Cap at reasonable limits to prevent issues (OpenRouter has some very large models)
-          const maxAllowed = 1000000; // 1M tokens max for safety
-          const finalContext = Math.min(contextWindow, maxAllowed);
-
-          return {
-            name: m.id,
-            label: `${m.name} - in:$${(m.pricing.prompt * 1_000_000).toFixed(2)} out:$${(m.pricing.completion * 1_000_000).toFixed(2)} - context ${finalContext >= 1000000 ? Math.floor(finalContext / 1000000) + 'M' : Math.floor(finalContext / 1000) + 'k'}`,
-            provider: this.name,
-            maxTokenAllowed: finalContext,
-          };
-        });
+      return resolveCuratedOpenRouterFreeModels(
+        data.data.filter((model) => isOpenRouterApiFreeModel(model)),
+      );
     } catch (error) {
       console.error('Error getting OpenRouter models:', error);
-      return [];
+      return this.staticModels;
     }
   }
 

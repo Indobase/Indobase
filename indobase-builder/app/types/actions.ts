@@ -69,6 +69,7 @@ export interface LlmErrorAlertType {
   content?: string;
   provider?: string;
   errorType?: 'authentication' | 'rate_limit' | 'quota' | 'network' | 'unknown';
+  upgradeUrl?: string;
 }
 
 export interface FileHistory {

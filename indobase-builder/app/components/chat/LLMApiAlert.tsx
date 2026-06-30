@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function LlmErrorAlert({ alert, clearAlert }: Props) {
-  const { title, description, errorType, provider } = alert;
+  const { title, description, errorType, provider, upgradeUrl } = alert;
 
   const getErrorIcon = () => {
     switch (errorType) {
@@ -38,6 +38,10 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
       case 'rate_limit':
         return 'Model capacity is busy right now. Please wait a moment before retrying.';
       case 'quota':
+        if (alert.upgradeUrl) {
+          return 'You have used all 5 free prompts. Upgrade to Pro for unlimited build and discuss messages with agent orchestration.';
+        }
+
         return 'The selected model is unavailable right now. Please try another one.';
       default:
         return 'An error occurred while processing your request.';
@@ -132,6 +136,24 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
                     )}
                   >
                     {apiKeyHelp.label}
+                    <span className="i-ph:arrow-square-out w-4 h-4" />
+                  </a>
+                )}
+                {errorType === 'quota' && upgradeUrl && (
+                  <a
+                    href={upgradeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={classNames(
+                      'px-2 py-1.5 rounded-md text-sm font-medium',
+                      'bg-bolt-elements-button-primary-background',
+                      'hover:bg-bolt-elements-button-primary-backgroundHover',
+                      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bolt-elements-button-primary-background',
+                      'text-bolt-elements-button-primary-text',
+                      'inline-flex items-center gap-2',
+                    )}
+                  >
+                    Upgrade to Pro
                     <span className="i-ph:arrow-square-out w-4 h-4" />
                   </a>
                 )}

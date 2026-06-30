@@ -17,7 +17,6 @@ import type { ProviderInfo } from '~/types/model';
 import type { ActionAlert, SupabaseAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
 import DeployChatAlert from '~/components/deploy/DeployAlert';
 import ChatAlert from './ChatAlert';
-import type { ModelInfo } from '~/lib/modules/llm/types';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
 import { SupabaseChatAlert } from '~/components/chat/SupabaseAlert';
@@ -29,16 +28,12 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { supabaseConnection } from '~/lib/stores/supabase';
-import { builderFetch } from '~/lib/indobase/builder-auth.client';
 import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
-import { FIXED_MODEL_CHOICES, FIXED_MODEL_PROVIDER_NAME } from '~/utils/constants';
-
-const FALLBACK_CHAT_MODELS: ModelInfo[] = FIXED_MODEL_CHOICES.map((choice) => ({
-  name: choice.name,
-  label: choice.label,
-  provider: FIXED_MODEL_PROVIDER_NAME,
-  maxTokenAllowed: choice.maxTokenAllowed,
-}));
+import {
+  CURATED_MOBILE_BOILERPLATES,
+  CURATED_WEB_BOILERPLATES,
+} from '~/lib/indobase/curatedBoilerplates';
+import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -83,6 +78,18 @@ const PRECHAT_FEATURED_TEMPLATES = INDOBASE_STARTER_TEMPLATES.map((template) => 
   description: template.description,
 }));
 
+function mapBoilerplateButtons(templates: typeof CURATED_WEB_BOILERPLATES) {
+  return templates.map((template) => ({
+    icon: template.icon ?? 'i-ph:package',
+    label: template.label,
+    templateName: template.name,
+    description: template.description,
+  }));
+}
+
+const PRECHAT_WEB_BOILERPLATES = mapBoilerplateButtons(CURATED_WEB_BOILERPLATES);
+const PRECHAT_MOBILE_BOILERPLATES = mapBoilerplateButtons(CURATED_MOBILE_BOILERPLATES);
+
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
   messageRef?: RefCallback<HTMLDivElement> | undefined;
@@ -97,7 +104,6 @@ interface BaseChatProps {
   promptEnhanced?: boolean;
   input?: string;
   model?: string;
-  setModel?: (model: string) => void;
   provider?: ProviderInfo;
   setProvider?: (provider: ProviderInfo) => void;
   providerList?: ProviderInfo[];
@@ -130,6 +136,8 @@ interface BaseChatProps {
   setSelectedElement?: (element: ElementInfo | null) => void;
   addToolResult?: ({ toolCallId, result }: { toolCallId: string; result: any }) => void;
   onWebSearchResult?: (result: string) => void;
+  builderPromptQuota?: BuilderPromptQuotaState | null;
+  upgradeUrl?: string;
 }
 
 export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
@@ -141,7 +149,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       isStreaming = false,
       onStreamingChange,
       model,
-      setModel,
       provider,
       setProvider: _setProvider,
       providerList: _providerList,
@@ -179,15 +186,15 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       setSelectedElement,
       addToolResult = () => undefined,
       onWebSearchResult,
+      builderPromptQuota,
+      upgradeUrl,
     },
     ref,
   ) => {
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
-    const [modelList, setModelList] = useState<ModelInfo[]>(FALLBACK_CHAT_MODELS);
     const [isListening, setIsListening] = useState(false);
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
-    const [isModelLoading, setIsModelLoading] = useState<string | undefined>(undefined);
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
     const supabaseConn = useStore(supabaseConnection);
@@ -243,36 +250,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         };
 
         setRecognition(recognition);
-      }
-    }, []);
-
-    useEffect(() => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-
-      const loadModels = () => {
-        builderFetch('/api/models/OpenRouter')
-          .then((response) => response.json())
-          .then((data) => {
-            const typedData = data as { modelList?: ModelInfo[] };
-
-            if (Array.isArray(typedData.modelList) && typedData.modelList.length > 0) {
-              setModelList(typedData.modelList);
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching model list:', error);
-          })
-          .finally(() => {
-            setIsModelLoading(undefined);
-          });
-      };
-
-      if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(loadModels, { timeout: 8000 });
-      } else {
-        window.setTimeout(loadModels, 500);
       }
     }, []);
 
@@ -396,15 +373,45 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           />
         )}
         {llmErrorAlert && <LlmErrorAlert alert={llmErrorAlert} clearAlert={() => clearLlmErrorAlert?.()} />}
+        {builderPromptQuota?.isFree && builderPromptQuota.limit !== null && (
+          <div
+            className={classNames(
+              'rounded-lg border p-3 mb-2 text-sm',
+              builderPromptQuota.remaining === 0
+                ? 'border-bolt-elements-button-danger-text/40 bg-bolt-elements-button-danger-text/10'
+                : 'border-bolt-elements-borderColor bg-bolt-elements-background-depth-2',
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-bolt-elements-textSecondary">
+                {builderPromptQuota.remaining === 0 ? (
+                  <>Free plan: all {builderPromptQuota.limit} prompts used.</>
+                ) : (
+                  <>
+                    Free plan: {builderPromptQuota.remaining} of {builderPromptQuota.limit} prompts
+                    remaining (build and discuss).
+                  </>
+                )}
+              </p>
+              {upgradeUrl && (
+                <a
+                  href={upgradeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-bolt-elements-button-primary-text bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover px-2 py-1 rounded-md inline-flex items-center gap-1"
+                >
+                  Upgrade to Pro
+                  <span className="i-ph:arrow-square-out w-4 h-4" />
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
 
     const promptComposer = (
       <ChatBox
-        model={model}
-        setModel={setModel}
-        modelList={modelList}
-        isModelLoading={isModelLoading}
         uploadedFiles={uploadedFiles}
         setUploadedFiles={setUploadedFiles}
         imageDataList={imageDataList}
@@ -447,6 +454,44 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       handleSendMessage(event, prompt);
     };
 
+    const handleTemplateClick = (event: React.UIEvent<HTMLButtonElement>, templateName: string) => {
+      handleStarterPromptClick(
+        event,
+        `Use the "${templateName}" template and customize it for my product.`,
+      );
+    };
+
+    const renderTemplateButtons = (
+      templates: Array<{ icon: string; label: string; templateName: string; description: string }>,
+    ) => (
+      <div className="mt-3 flex flex-col">
+        {templates.map((template) => (
+          <button
+            key={template.templateName}
+            type="button"
+            disabled={isStreaming}
+            onClick={(event) => handleTemplateClick(event, template.templateName)}
+            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#18130F]"
+          >
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#F1EDE6] text-[#6A6158] dark:bg-[#18130F] dark:text-[#B6ADA3]">
+              <span className={`${template.icon} text-[15px]`} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-[#6A6158] transition group-hover:text-[#18160F] dark:text-[#D5CEC5] dark:group-hover:text-[#F8F3EA]">
+                {template.label}
+              </span>
+              <span className="mt-0.5 block text-xs leading-5 text-[#A09890] dark:text-[#8E857B]">
+                {template.description}
+              </span>
+            </span>
+            <span className="ml-auto text-xs text-[#A09890] opacity-0 transition group-hover:opacity-100 dark:text-[#8E857B]">
+              <span className="i-ph:arrow-right" />
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+
     const preChatLanding = (
       <div className="min-h-full bg-[#F7F4EF] text-[#18160F] dark:bg-[#16130F] dark:text-[#F8F3EA]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-20 pt-6 sm:px-6 lg:px-10">
@@ -485,7 +530,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             </div>
           </div>
 
-          <div id="builder-templates" className="grid gap-4 lg:grid-cols-2">
+          <div id="builder-templates" className="grid gap-4 xl:grid-cols-2">
             <div className="rounded-2xl border border-black/8 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-white/8 dark:bg-[#201B16]">
               <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#A09890] dark:text-[#8E857B]">
                 Starter Prompts
@@ -539,36 +584,26 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-col">
-                {PRECHAT_FEATURED_TEMPLATES.map((template) => (
-                  <button
-                    key={template.templateName}
-                    type="button"
-                    disabled={isStreaming}
-                    onClick={(event) => {
-                      handleStarterPromptClick(
-                        event,
-                        `Use the "${template.templateName}" template and customize it for my product.`,
-                      );
-                    }}
-                    className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#18130F]"
-                  >
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#F1EDE6] text-[#6A6158] dark:bg-[#18130F] dark:text-[#B6ADA3]">
-                      <span className={`${template.icon} text-[15px]`} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-[#6A6158] transition group-hover:text-[#18160F] dark:text-[#D5CEC5] dark:group-hover:text-[#F8F3EA]">
-                        {template.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-5 text-[#A09890] dark:text-[#8E857B]">
-                        {template.description}
-                      </span>
-                    </span>
-                    <span className="ml-auto text-xs text-[#A09890] opacity-0 transition group-hover:opacity-100 dark:text-[#8E857B]">
-                      <span className="i-ph:arrow-right" />
-                    </span>
-                  </button>
-                ))}
+              <div className="mt-4 flex flex-col">{renderTemplateButtons(PRECHAT_FEATURED_TEMPLATES)}</div>
+
+              <div className="mt-6 border-t border-black/8 pt-5 dark:border-white/8">
+                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09890] dark:text-[#8E857B]">
+                  Web boilerplates
+                </div>
+                <p className="mt-1 text-xs text-[#6A6158] dark:text-[#B6ADA3]">
+                  Open-source Vite/React starters, auto-adapted to Indobase on import.
+                </p>
+                {renderTemplateButtons(PRECHAT_WEB_BOILERPLATES)}
+              </div>
+
+              <div className="mt-6 border-t border-black/8 pt-5 dark:border-white/8">
+                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09890] dark:text-[#8E857B]">
+                  Mobile boilerplates
+                </div>
+                <p className="mt-1 text-xs text-[#6A6158] dark:text-[#B6ADA3]">
+                  Expo apps for Android bundles and native auth flows.
+                </p>
+                {renderTemplateButtons(PRECHAT_MOBILE_BOILERPLATES)}
               </div>
             </div>
           </div>

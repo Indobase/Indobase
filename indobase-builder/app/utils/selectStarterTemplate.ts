@@ -1,7 +1,9 @@
 import ignore from 'ignore';
 import type { ProviderInfo } from '~/types/model';
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
+import { CURATED_BOILERPLATES, INDOBASE_ADAPTATION_PROMPT } from '~/lib/indobase/curatedBoilerplates';
 import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
+import { rebrandTemplateBundleForIndobase } from '~/lib/indobase/rebrandTemplateBundle';
 import type { Template } from '~/types/template';
 import { STARTER_TEMPLATES } from './constants';
 
@@ -37,7 +39,8 @@ IMPORTANT: Only choose shadcn templates if the user explicitly asks for shadcn.
 IMPORTANT: Prefer featured, product-ready templates for real products unless the user explicitly asks for a specific framework or lower-level starter.
 IMPORTANT: When the user mentions Indobase, auth, database, backend, waitlist, todos, dashboard, or publishing to Indobase, prefer the Indobase-ready templates first.
 IMPORTANT: Prefer content starters for blogs, docs, publishing, and marketing sites.
-IMPORTANT: Prefer mobile starters only when the request is clearly for mobile apps.
+IMPORTANT: For mobile apps (Expo/React Native), prefer Expo Auth NativeWind or Expo Production Kit before generic framework starters.
+IMPORTANT: For auth-heavy web apps, prefer Indobase Auth App or React Supabase Auth community boilerplates.
 
 Available templates:
 <template>
@@ -207,7 +210,7 @@ export async function getTemplates(templateName: string, title?: string) {
     ? await getLocalTemplateContent(template.localBundle)
     : await getGitHubRepoContent(template.githubRepo!);
 
-  let filteredFiles = files;
+  let filteredFiles = template.indobaseAdaptable ? rebrandTemplateBundleForIndobase(files) : files;
 
   /*
    * ignoring common unwanted files
@@ -269,6 +272,13 @@ ${file.content}
     userMessage = `
 TEMPLATE INSTRUCTIONS:
 ${templatePromptFile.content}
+
+---
+`;
+  } else if (template.indobaseAdaptable) {
+    userMessage = `
+TEMPLATE INSTRUCTIONS:
+${INDOBASE_ADAPTATION_PROMPT}
 
 ---
 `;

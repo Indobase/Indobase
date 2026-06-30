@@ -5,6 +5,7 @@ export interface Template {
   githubRepo?: string;
   localBundle?: string;
   indobaseReady?: boolean;
+  indobaseAdaptable?: boolean;
   aliases?: string[];
   category?: 'product' | 'content' | 'framework' | 'mobile';
   featured?: boolean;

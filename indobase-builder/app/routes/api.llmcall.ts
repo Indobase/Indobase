@@ -3,6 +3,7 @@ import { streamText } from '~/lib/.server/llm/stream-text';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { generateText } from 'ai';
 import { PROVIDER_LIST } from '~/utils/constants';
+import { coerceOpenRouterFreeChatTarget, filterOpenRouterFreeModels, OPENROUTER_PROVIDER_NAME } from '~/lib/indobase/openrouter-free-models';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel } from '~/lib/.server/llm/constants';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
@@ -11,15 +12,6 @@ import { createScopedLogger } from '~/utils/logger';
 import { withSecurity } from '~/lib/security';
 
 const logger = createScopedLogger('api.llmcall');
-
-async function getModelList(options: {
-  apiKeys?: Record<string, string>;
-  providerSettings?: Record<string, IProviderSetting>;
-  serverEnv?: Record<string, string>;
-}) {
-  const llmManager = LLMManager.getInstance(import.meta.env);
-  return llmManager.updateModelList(options);
-}
 
 function getCompletionTokenLimit(modelDetails: ModelInfo): number {
   // 1. If model specifies completion tokens, use that
@@ -72,15 +64,20 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
 
   const { name: providerName } = provider;
 
+  const {
+    providerName: resolvedProviderName,
+    modelName: resolvedModelName,
+  } = coerceOpenRouterFreeChatTarget(providerName, model);
+
   // validate 'model' and 'provider' fields
-  if (!model || typeof model !== 'string') {
+  if (!resolvedModelName || typeof resolvedModelName !== 'string') {
     throw new Response('Invalid or missing model', {
       status: 400,
       statusText: 'Bad Request',
     });
   }
 
-  if (!providerName || typeof providerName !== 'string') {
+  if (!resolvedProviderName || typeof resolvedProviderName !== 'string') {
     throw new Response('Invalid or missing provider', {
       status: 400,
       statusText: 'Bad Request',
@@ -148,8 +145,22 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     }
   } else {
     try {
-      const models = await getModelList({ apiKeys, providerSettings, serverEnv: context.cloudflare?.env as any });
-      const modelDetails = models.find((m: ModelInfo) => m.name === model);
+      const openRouterProvider = LLMManager.getInstance(context.cloudflare?.env as any).getProvider(
+        OPENROUTER_PROVIDER_NAME,
+      );
+
+      if (!openRouterProvider) {
+        throw new Error('OpenRouter provider not found');
+      }
+
+      const models = filterOpenRouterFreeModels(
+        await LLMManager.getInstance(context.cloudflare?.env as any).getModelListFromProvider(openRouterProvider, {
+          apiKeys,
+          providerSettings,
+          serverEnv: context.cloudflare?.env as any,
+        }),
+      );
+      const modelDetails = models.find((m: ModelInfo) => m.name === resolvedModelName);
 
       if (!modelDetails) {
         throw new Error('Model not found');
@@ -167,13 +178,13 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         });
       }
 
-      const providerInfo = PROVIDER_LIST.find((p) => p.name === provider.name);
+      const providerInfo = PROVIDER_LIST.find((p) => p.name === resolvedProviderName);
 
       if (!providerInfo) {
         throw new Error('Provider not found');
       }
 
-      logger.info(`Generating response Provider: ${provider.name}, Model: ${modelDetails.name}`);
+      logger.info(`Generating response Provider: ${resolvedProviderName}, Model: ${modelDetails.name}`);
 
       // DEBUG: Log reasoning model detection
       const isReasoning = isReasoningModel(modelDetails.name);

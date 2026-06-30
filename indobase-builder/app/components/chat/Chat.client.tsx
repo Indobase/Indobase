@@ -15,7 +15,6 @@ import {
   FIXED_MODEL_PROVIDER_NAME,
   PROMPT_COOKIE_KEY,
   PROVIDER_LIST,
-  isFixedModel,
 } from '~/utils/constants';
 import { cubicEasingFn } from '~/utils/easings';
 import { createScopedLogger, renderLogger } from '~/utils/logger';
@@ -51,6 +50,7 @@ import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
 import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
+import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 
 const logger = createScopedLogger('Chat');
 const getAllowedChatProviders = () =>
@@ -148,12 +148,12 @@ export const ChatImpl = memo(
       (project) => project.id === supabaseConn.selectedProjectId,
     );
     const supabaseAlert = useStore(workbenchStore.supabaseAlert);
-    const { promptId, autoSelectTemplate, contextOptimizationEnabled, autonomousAgentsEnabled } = useSettings();
+    const { promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
     const [llmErrorAlert, setLlmErrorAlert] = useState<LlmErrorAlertType | undefined>(undefined);
-    const [model, setModel] = useState(() => {
-      const savedModel = Cookies.get('selectedModel');
-      return savedModel && isFixedModel(savedModel) ? savedModel : DEFAULT_MODEL;
-    });
+    const [builderPromptQuota, setBuilderPromptQuota] = useState<
+      (BuilderPromptQuotaState & { studioUrl?: string }) | null
+    >(null);
+    const [model] = useState(DEFAULT_MODEL);
     const [provider, setProvider] = useState(HIDDEN_CHAT_PROVIDER as ProviderInfo);
     const { showChat } = useStore(chatStore);
     const [animationScope, animate] = useAnimate();
@@ -163,6 +163,53 @@ export const ChatImpl = memo(
     const autonomousRepairCountRef = useRef(0);
     const MAX_AUTONOMOUS_REPAIRS = 2;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
+    const refreshBuilderPromptQuota = useCallback(async () => {
+      if (!isIndobaseStudioManagedConnection(supabaseConn)) {
+        setBuilderPromptQuota(null);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/indobase/prompt-quota', getBuilderRequestInit());
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as BuilderPromptQuotaState & {
+          studioUrl?: string;
+        };
+        setBuilderPromptQuota(payload);
+      } catch (error) {
+        logger.warn('Failed to load Builder prompt quota', error);
+      }
+    }, [supabaseConn]);
+
+    useEffect(() => {
+      void refreshBuilderPromptQuota();
+    }, [refreshBuilderPromptQuota]);
+
+    const resolveUpgradeUrl = useCallback(
+      (upgradePath?: string) => {
+        if (!upgradePath) {
+          return undefined;
+        }
+
+        if (upgradePath.startsWith('http://') || upgradePath.startsWith('https://')) {
+          return upgradePath;
+        }
+
+        const studioUrl = builderPromptQuota?.studioUrl || supabaseConn.indobase?.studioUrl;
+
+        if (!studioUrl) {
+          return upgradePath;
+        }
+
+        return new URL(upgradePath, `${studioUrl.replace(/\/+$/, '')}/`).toString();
+      },
+      [builderPromptQuota?.studioUrl, supabaseConn.indobase?.studioUrl],
+    );
+
     const mcpSettings = useMCPStore((state) => state.settings);
 
     const {
@@ -209,7 +256,7 @@ export const ChatImpl = memo(
             : undefined,
         },
         maxLLMSteps: mcpSettings.maxLLMSteps,
-        multiAgentMode: autonomousAgentsEnabled && chatMode === 'build',
+        multiAgentMode: chatMode === 'build',
       },
       sendExtraMessageFields: true,
       onError: (e) => {
@@ -234,6 +281,8 @@ export const ChatImpl = memo(
 
         logger.debug('Finished streaming');
 
+        void refreshBuilderPromptQuota();
+
         void (async () => {
           try {
             await processSampledMessages.flush();
@@ -242,7 +291,7 @@ export const ChatImpl = memo(
             logger.error('Post-codegen finalize failed', error);
           }
 
-          if (!autonomousAgentsEnabled || chatMode !== 'build' || chatStore.get().aborted) {
+          if (chatMode !== 'build' || chatStore.get().aborted) {
             return;
           }
 
@@ -429,12 +478,21 @@ export const ChatImpl = memo(
         stop();
         setFakeLoading(false);
 
-        let errorInfo = {
+        let errorInfo: {
+          message: string;
+          isRetryable: boolean;
+          statusCode: number;
+          provider: string;
+          type: 'unknown';
+          retryDelay: number;
+          upgradeUrl?: string;
+          errorType?: string;
+        } = {
           message: 'An unexpected error occurred',
           isRetryable: true,
           statusCode: 500,
           provider: provider.name,
-          type: 'unknown' as const,
+          type: 'unknown',
           retryDelay: 0,
         };
 
@@ -479,6 +537,12 @@ export const ChatImpl = memo(
         } else if (errorInfo.statusCode === 429 || errorInfo.message.toLowerCase().includes('rate limit')) {
           errorType = 'rate_limit';
           title = 'Rate Limit Exceeded';
+        } else if (errorInfo.statusCode === 402 || errorInfo.errorType === 'quota') {
+          errorType = 'quota';
+          title = 'Free Builder Limit Reached';
+          errorInfo.message =
+            errorInfo.message ||
+            'You have used all 5 free prompts. Upgrade to Pro for unlimited build and discuss messages with agent orchestration.';
         } else if (errorInfo.message.toLowerCase().includes('quota')) {
           errorType = 'quota';
           title = 'Quota Exceeded';
@@ -504,10 +568,11 @@ export const ChatImpl = memo(
           description: errorInfo.message,
           provider: provider.name,
           errorType,
+          upgradeUrl: resolveUpgradeUrl(errorInfo.upgradeUrl),
         });
         setData([]);
       },
-      [provider.name, stop, supabaseConn],
+      [provider.name, stop, supabaseConn, resolveUpgradeUrl],
     );
 
     const clearApiErrorAlert = useCallback(() => {
@@ -607,6 +672,23 @@ export const ChatImpl = memo(
         return;
       }
 
+      if (
+        builderPromptQuota?.isFree &&
+        builderPromptQuota.remaining !== null &&
+        builderPromptQuota.remaining <= 0
+      ) {
+        const upgradeUrl = resolveUpgradeUrl(builderPromptQuota.upgradeUrl);
+        setLlmErrorAlert({
+          type: 'error',
+          title: 'Free Builder Limit Reached',
+          description:
+            'You have used all 5 free prompts. Upgrade to Pro for unlimited build and discuss messages with agent orchestration.',
+          errorType: 'quota',
+          upgradeUrl,
+        });
+        return;
+      }
+
       setAutonomousProgress([]);
       autonomousRepairCountRef.current = 0;
 
@@ -646,7 +728,7 @@ export const ChatImpl = memo(
         if (templateName) {
           const templateMeta = explicitTemplate ?? resolveTemplateFromMessage(`Use the "${templateName}" template`);
 
-          if (studioLinked && templateMeta && !templateMeta.indobaseReady && !explicitTemplate) {
+          if (studioLinked && templateMeta && !templateMeta.indobaseReady && !templateMeta.indobaseAdaptable && !explicitTemplate) {
             templateName = null;
           }
         }
@@ -815,11 +897,6 @@ export const ChatImpl = memo(
       }
     }, []);
 
-    const handleModelChange = (newModel: string) => {
-      setModel(newModel);
-      Cookies.set('selectedModel', newModel, { expires: 30 });
-    };
-
     const handleProviderChange = (newProvider: ProviderInfo) => {
       setProvider(newProvider);
       Cookies.set('selectedProvider', newProvider.name, { expires: 30 });
@@ -854,7 +931,6 @@ export const ChatImpl = memo(
         promptEnhanced={promptEnhanced}
         sendMessage={sendMessage}
         model={model}
-        setModel={handleModelChange}
         provider={provider}
         setProvider={handleProviderChange}
         handleInputChange={(e) => {
@@ -899,6 +975,8 @@ export const ChatImpl = memo(
         clearDeployAlert={() => workbenchStore.clearDeployAlert()}
         llmErrorAlert={llmErrorAlert}
         clearLlmErrorAlert={clearApiErrorAlert}
+        builderPromptQuota={builderPromptQuota}
+        upgradeUrl={resolveUpgradeUrl(builderPromptQuota?.upgradeUrl)}
         data={chatData}
         extraProgress={autonomousProgress}
         chatMode={chatMode}

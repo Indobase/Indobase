@@ -448,6 +448,7 @@ async function ensureSaasTablesOnce() {
       alter table saas.organizations add column if not exists razorpay_customer_id text null;
       alter table saas.organizations add column if not exists billing_pending_tier text null;
       alter table saas.organizations add column if not exists billing_provider text null;
+      alter table saas.organizations add column if not exists builder_prompts_used integer not null default 0;
 
       create table if not exists saas.razorpay_webhook_events (
         event_id text primary key,

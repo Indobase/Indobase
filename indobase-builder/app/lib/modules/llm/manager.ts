@@ -3,6 +3,7 @@ import { BaseProvider } from './base-provider';
 import type { ModelInfo, ProviderInfo } from './types';
 import * as providers from './registry';
 import { createScopedLogger } from '~/utils/logger';
+import { filterOpenRouterFreeModels, OPENROUTER_PROVIDER_NAME } from '~/lib/indobase/openrouter-free-models';
 
 const logger = createScopedLogger('LLMManager');
 export class LLMManager {
@@ -166,7 +167,13 @@ export class LLMManager {
 
     if (cachedModels) {
       logger.info(`Found ${cachedModels.length} cached models for ${provider.name}`);
-      return [...cachedModels, ...staticModels];
+      const modelList = [...cachedModels, ...staticModels];
+
+      if (provider.name === OPENROUTER_PROVIDER_NAME) {
+        return filterOpenRouterFreeModels(modelList);
+      }
+
+      return modelList;
     }
 
     logger.info(`Getting dynamic models for ${provider.name}`);
@@ -187,6 +194,10 @@ export class LLMManager {
     const filteredStaticList = staticModels.filter((m) => !dynamicModelsName.includes(m.name));
     const modelList = [...dynamicModels, ...filteredStaticList];
     modelList.sort((a, b) => a.name.localeCompare(b.name));
+
+    if (provider.name === OPENROUTER_PROVIDER_NAME) {
+      return filterOpenRouterFreeModels(modelList);
+    }
 
     return modelList;
   }

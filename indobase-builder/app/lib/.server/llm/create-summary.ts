@@ -1,6 +1,7 @@
 import { generateText, type CoreTool, type GenerateTextResult, type Message } from 'ai';
 import type { IProviderSetting } from '~/types/model';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constants';
+import { coerceOpenRouterFreeChatTarget } from '~/lib/indobase/openrouter-free-models';
 import { extractCurrentContext, extractPropertiesFromMessage, simplifyBoltActions } from './utils';
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
@@ -38,6 +39,11 @@ export async function createSummary(props: {
 
     return message;
   });
+
+  ({ providerName: currentProvider, modelName: currentModel } = coerceOpenRouterFreeChatTarget(
+    currentProvider,
+    currentModel,
+  ));
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
   const staticModels = LLMManager.getInstance().getStaticModelListFromProvider(provider);

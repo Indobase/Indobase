@@ -3,6 +3,7 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { filterOpenRouterFreeModels, OPENROUTER_PROVIDER_NAME } from '~/lib/indobase/openrouter-free-models';
 import { withSecurity } from '~/lib/security';
 
 interface ModelsResponse {
@@ -16,13 +17,16 @@ let cachedDefaultProvider: ProviderInfo | null = null;
 
 function getProviderInfo(llmManager: LLMManager) {
   if (!cachedProviders) {
-    cachedProviders = llmManager.getAllProviders().map((provider) => ({
-      name: provider.name,
-      staticModels: provider.staticModels,
-      getApiKeyLink: provider.getApiKeyLink,
-      labelForGetApiKey: provider.labelForGetApiKey,
-      icon: provider.icon,
-    }));
+    cachedProviders = llmManager
+      .getAllProviders()
+      .filter((provider) => provider.name === OPENROUTER_PROVIDER_NAME)
+      .map((provider) => ({
+        name: provider.name,
+        staticModels: provider.staticModels,
+        getApiKeyLink: provider.getApiKeyLink,
+        labelForGetApiKey: provider.labelForGetApiKey,
+        icon: provider.icon,
+      }));
   }
 
   if (!cachedDefaultProvider) {
@@ -64,15 +68,18 @@ async function modelsLoader({
   let modelList: ModelInfo[] = [];
 
   if (params.provider) {
-    // Only update models for the specific provider
-    const provider = llmManager.getProvider(params.provider);
+    if (params.provider !== OPENROUTER_PROVIDER_NAME) {
+      modelList = [];
+    } else {
+      const provider = llmManager.getProvider(params.provider);
 
-    if (provider) {
-      modelList = await llmManager.getModelListFromProvider(provider, {
-        apiKeys,
-        providerSettings,
-        serverEnv: context.cloudflare?.env,
-      });
+      if (provider) {
+        modelList = await llmManager.getModelListFromProvider(provider, {
+          apiKeys,
+          providerSettings,
+          serverEnv: context.cloudflare?.env,
+        });
+      }
     }
   } else {
     const fastBoot = context.cloudflare?.env?.BUILDER_FAST_MODEL_BOOT === 'true';
@@ -98,6 +105,8 @@ async function modelsLoader({
       });
     }
   }
+
+  modelList = filterOpenRouterFreeModels(modelList);
 
   return json<ModelsResponse>({
     modelList,

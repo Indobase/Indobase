@@ -1,7 +1,6 @@
 import React from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { classNames } from '~/utils/classNames';
-import { ModelSelector } from '~/components/chat/ModelSelector';
 import FilePreview from './FilePreview';
 import { ScreenshotStateManager } from './ScreenshotStateManager';
 import { SendButton } from './SendButton.client';
@@ -17,8 +16,6 @@ import { McpTools } from './MCPTools';
 import { WebSearch } from './WebSearch.client';
 
 interface ChatBoxProps {
-  modelList: any[];
-  isModelLoading: string | undefined;
   uploadedFiles: File[];
   imageDataList: string[];
   textareaRef: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -36,8 +33,6 @@ interface ChatBoxProps {
   qrModalOpen: boolean;
   setQrModalOpen: (open: boolean) => void;
   handleFileUpload: () => void;
-  model?: string | undefined;
-  setModel?: ((model: string) => void) | undefined;
   setUploadedFiles?: ((files: File[]) => void) | undefined;
   setImageDataList?: ((dataList: string[]) => void) | undefined;
   handleInputChange?: ((event: React.ChangeEvent<HTMLTextAreaElement>) => void) | undefined;
@@ -210,7 +205,6 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             <SendButton
               show={props.input.length > 0 || props.isStreaming || props.uploadedFiles.length > 0}
               isStreaming={props.isStreaming}
-              disabled={(props.modelList?.length ?? 0) === 0}
               onClick={(event) => {
                 if (props.isStreaming) {
                   props.handleStop?.();
@@ -235,17 +229,6 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               onStop={props.stopListening}
               disabled={props.isStreaming}
             />
-            <ClientOnly>
-              {() => (
-                <ModelSelector
-                  key={`${props.modelList?.length ?? 0}:${props.model}`}
-                  model={props.model}
-                  setModel={props.setModel}
-                  modelList={props.modelList ?? []}
-                  modelLoading={props.isModelLoading}
-                />
-              )}
-            </ClientOnly>
             {props.chatStarted && (
               <>
                 <ColorSchemeDialog designScheme={props.designScheme} setDesignScheme={props.setDesignScheme} />

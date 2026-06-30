@@ -1,6 +1,11 @@
 import { LLMManager } from '~/lib/modules/llm/manager';
 import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import { CURATED_BOILERPLATES } from '~/lib/indobase/curatedBoilerplates';
+import {
+  DEFAULT_OPENROUTER_CODING_MODEL,
+  OPENROUTER_FREE_CODING_MODELS,
+  OPENROUTER_FREE_VISION_MODEL,
+} from '~/lib/indobase/openrouter-coding-models';
 import type { Template } from '~/types/template';
 
 export const WORK_DIR_NAME = 'project';
@@ -8,40 +13,11 @@ export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 export const MODIFICATIONS_TAG_NAME = 'bolt_file_modifications';
 export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
-export const DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
-/** OpenRouter free model used when the user attaches screenshots/images. */
-export const VISION_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
+export const DEFAULT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
+/** OpenRouter free vision model when the user attaches screenshots/images. */
+export const VISION_MODEL = OPENROUTER_FREE_VISION_MODEL.name;
 export const FIXED_MODEL_PROVIDER_NAME = 'OpenRouter';
-export const FIXED_MODEL_CHOICES = [
-  {
-    label: 'Indobase Fast (Free)',
-    maxTokenAllowed: 128000,
-    name: 'nvidia/nemotron-nano-9b-v2:free',
-    originalName: 'nvidia/nemotron-nano-9b-v2:free',
-    tier: 'Free',
-  },
-  {
-    label: 'Indobase Balanced (Free)',
-    maxTokenAllowed: 256000,
-    name: 'nvidia/nemotron-3-nano-30b-a3b:free',
-    originalName: 'nvidia/nemotron-3-nano-30b-a3b:free',
-    tier: 'Free',
-  },
-  {
-    label: 'Indobase Strong (Free)',
-    maxTokenAllowed: 1000000,
-    name: 'nvidia/nemotron-3-super-120b-a12b:free',
-    originalName: 'nvidia/nemotron-3-super-120b-a12b:free',
-    tier: 'Free',
-  },
-  {
-    label: 'Indobase Max (Free)',
-    maxTokenAllowed: 1000000,
-    name: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-    originalName: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-    tier: 'Free',
-  },
-] as const;
+export const FIXED_MODEL_CHOICES = OPENROUTER_FREE_CODING_MODELS;
 export const FIXED_MODEL_NAMES = FIXED_MODEL_CHOICES.map((model) => model.name);
 export const isFixedModel = (modelName: string) => FIXED_MODEL_NAMES.includes(modelName);
 export const getFixedModelOption = (modelName?: string) =>
@@ -65,7 +41,8 @@ export const PROVIDER_LIST = llmManager.getAllProviders();
 // Default to OpenRouter — configured API key + default models are OpenRouter-hosted.
 export const DEFAULT_PROVIDER =
   PROVIDER_LIST.find((provider) => provider.name === 'OpenRouter') ?? llmManager.getDefaultProvider();
-export const ALLOWED_CHAT_PROVIDER_NAMES = ['OpenAI', 'Anthropic', 'OpenRouter', 'Google', 'Deepseek'] as const;
+/** Chat is OpenRouter free models only (platform key). */
+export const ALLOWED_CHAT_PROVIDER_NAMES = ['OpenRouter'] as const;
 
 export const providerBaseUrlEnvKeys: Record<string, { baseUrlKey?: string; apiTokenKey?: string }> = {};
 PROVIDER_LIST.forEach((provider) => {

@@ -3,6 +3,7 @@ import ignore from 'ignore';
 import type { IProviderSetting } from '~/types/model';
 import { IGNORE_PATTERNS, type FileMap } from './constants';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constants';
+import { coerceOpenRouterFreeChatTarget } from '~/lib/indobase/openrouter-free-models';
 import { createFilesContext, extractCurrentContext, extractPropertiesFromMessage, simplifyBoltActions } from './utils';
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
@@ -46,6 +47,11 @@ export async function selectContext(props: {
 
     return message;
   });
+
+  ({ providerName: currentProvider, modelName: currentModel } = coerceOpenRouterFreeChatTarget(
+    currentProvider,
+    currentModel,
+  ));
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
   const staticModels = LLMManager.getInstance().getStaticModelListFromProvider(provider);

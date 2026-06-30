@@ -2,6 +2,7 @@ import { convertToCoreMessages, streamText as _streamText, type Message } from '
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, VISION_MODEL, WORK_DIR } from '~/utils/constants';
+import { coerceOpenRouterFreeChatTarget } from '~/lib/indobase/openrouter-free-models';
 import type { IProviderSetting } from '~/types/model';
 import { PromptLibrary } from '~/lib/common/prompt-library';
 import { allowedHTMLElements } from '~/utils/markdown';
@@ -145,6 +146,11 @@ export async function streamText(props: {
 
     return newMessage;
   });
+
+  ({ providerName: currentProvider, modelName: currentModel } = coerceOpenRouterFreeChatTarget(
+    currentProvider,
+    currentModel,
+  ));
 
   currentModel = resolveModelForMessages(currentModel, processedMessages);
 
