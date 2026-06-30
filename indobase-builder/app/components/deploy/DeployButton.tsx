@@ -43,6 +43,8 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   const customDomainsUrl = getStudioProjectCustomDomainsUrl(backendConnection, backendConnection.selectedProjectId);
   const mobileBuildsUrl = getStudioProjectMobileBuildsUrl(backendConnection, backendConnection.selectedProjectId);
   const canPublishIndobase = canQueueIndobaseDeployment(backendConnection);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [, setDeployingTo] = useState<'indobase' | 'github' | 'gitlab' | null>(null);
   const deployDisabled = isDeploying || isStreaming;
 
   const openIndobaseUrl = (url: string | null, errorMessage: string) => {
