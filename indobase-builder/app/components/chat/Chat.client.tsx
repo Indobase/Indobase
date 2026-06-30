@@ -772,8 +772,15 @@ export const ChatImpl = memo(
               parseAssistantMessage(templateMessages[1]);
 
               try {
-                await workbenchStore.flushPendingActions();
-                await workbenchStore.waitForExecutionQueue();
+                await Promise.race([
+                  (async () => {
+                    await workbenchStore.flushPendingActions();
+                    await workbenchStore.waitForExecutionQueue();
+                  })(),
+                  new Promise<void>((resolve) => {
+                    window.setTimeout(resolve, 45_000);
+                  }),
+                ]);
               } catch (error) {
                 logger.error('Template file import did not finish cleanly', error);
                 toast.warning(

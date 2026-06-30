@@ -14,6 +14,7 @@ import JSZip from 'jszip';
 import { Octokit, type RestEndpointMethodTypes } from '@octokit/rest';
 import { path } from '~/utils/path';
 import { extractRelativePath } from '~/utils/diff';
+import { WORK_DIR } from '~/utils/constants';
 import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
@@ -585,15 +586,9 @@ export class WorkbenchStore {
     }
 
     if (payload.action.type === 'file') {
-      const { getWebcontainerWithRetry } = await import('~/lib/webcontainer');
-      const wc = await getWebcontainerWithRetry(3);
-      const fullPath = toWorkdirAbsolutePath(wc.workdir, payload.action.filePath);
+      const fullPath = toWorkdirAbsolutePath(WORK_DIR, payload.action.filePath);
 
-      /*
-       * For scoped locks, we would need to implement diff checking here
-       * to determine if the AI is modifying existing code or just adding new code
-       * This is a more complex feature that would be implemented in a future update
-       */
+      this.#upsertInMemoryFile(fullPath, payload.action.content);
 
       if (this.selectedFile.value !== fullPath) {
         this.setSelectedFile(fullPath);
@@ -603,25 +598,48 @@ export class WorkbenchStore {
         this.currentView.set('code');
       }
 
-      const doc = this.#editorStore.documents.get()[fullPath];
-
-      if (!doc) {
-        await artifact.runner.runAction(payload, isStreaming);
-      }
-
-      this.#editorStore.updateFile(fullPath, payload.action.content);
-
-      if (!isStreaming && payload.action.content) {
-        await this.saveFile(fullPath);
-      }
-
-      if (!isStreaming) {
-        await artifact.runner.runAction(payload);
-        this.resetAllFileModifications();
-      }
+      void artifact.runner.runAction(payload, isStreaming).catch((error) => {
+        console.error('[workbench] WebContainer file sync failed:', error);
+      });
     } else {
       await artifact.runner.runAction(payload);
     }
+  }
+
+  #upsertInMemoryFile(fullPath: string, content: string) {
+    const files = this.#filesStore.files.get();
+    const updates: FileMap = {};
+    const relativePath = fullPath.startsWith(`${WORK_DIR}/`)
+      ? fullPath.slice(WORK_DIR.length + 1)
+      : fullPath.replace(/^\/+/, '');
+    const segments = relativePath.split('/').filter(Boolean);
+
+    let currentPath = WORK_DIR;
+
+    for (let index = 0; index < segments.length - 1; index++) {
+      currentPath = `${currentPath}/${segments[index]}`;
+
+      if (!files[currentPath] && !updates[currentPath]) {
+        updates[currentPath] = { type: 'folder' };
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      this.#filesStore.files.set({ ...files, ...updates });
+    }
+
+    this.#filesStore.files.setKey(fullPath, {
+      type: 'file',
+      content,
+      isBinary: false,
+      isLocked: false,
+    });
+
+    this.#editorStore.documents.setKey(fullPath, {
+      value: content,
+      filePath: fullPath,
+      isBinary: false,
+    });
   }
 
   actionStreamSampler = createSampler(async (data: ActionCallbackData, isStreaming: boolean = false) => {
