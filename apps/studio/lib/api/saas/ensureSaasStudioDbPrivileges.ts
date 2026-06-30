@@ -106,6 +106,21 @@ async function grantStudioPrivilegesViaSecurityDefinerFn(): Promise<boolean> {
 export async function ensureSaasStudioDbPrivileges(): Promise<void> {
   if (privilegesEnsured) return
 
+  const privilegeProbe = await executeQuery<{ ok: boolean }>({
+    query: `
+      select (
+        exists (select 1 from pg_roles where rolname = 'postgres')
+        and has_schema_privilege('postgres', 'saas', 'USAGE')
+        and has_table_privilege('postgres', 'saas.profiles', 'SELECT')
+      ) as ok
+    `,
+  })
+  if (privilegeProbe.error) throw privilegeProbe.error
+  if (privilegeProbe.data?.[0]?.ok) {
+    privilegesEnsured = true
+    return
+  }
+
   const hasFn = await grantStudioPrivilegesViaSecurityDefinerFn()
 
   if (hasFn) {

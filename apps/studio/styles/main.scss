@@ -6,14 +6,14 @@
 @import './../../../packages/ui/build/css/themes/classic-dark.css';
 
 :root {
-  /* Indobase brand (saffron) — matches apps/www marketing tokens */
-  --brand-default: 39 100% 58%;
-  --brand-600: 39 100% 35%;
-  --brand-500: 39 100% 45%;
-  --brand-400: 39 100% 60%;
-  --brand-300: 39 100% 82%;
-  --brand-200: 39 100% 92%;
-  --brand-link: 39 100% 45%;
+  /* Indobase brand (gold) — matches apps/www marketing tokens */
+  --brand-default: 43 88% 50%;
+  --brand-600: 43 90% 38%;
+  --brand-500: 43 85% 45%;
+  --brand-400: 43 90% 55%;
+  --brand-300: 43 85% 72%;
+  --brand-200: 43 80% 88%;
+  --brand-link: 43 88% 42%;
   --chart-1: var(--brand-default);
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
@@ -36,13 +36,14 @@
 .deep-dark,
 [data-theme='dark'],
 .dark {
-  --brand-default: 39 100% 58%;
-  --brand-600: 39 100% 72%;
-  --brand-500: 39 85% 28%;
-  --brand-400: 39 90% 18%;
-  --brand-300: 39 80% 12%;
-  --brand-200: 39 70% 8%;
-  --brand-link: 39 100% 62%;
+  /* Gold primary buttons in dark mode (avoid near-black brand-400/500) */
+  --brand-default: 43 90% 55%;
+  --brand-600: 43 95% 42%;
+  --brand-500: 43 92% 50%;
+  --brand-400: 43 88% 58%;
+  --brand-300: 43 80% 68%;
+  --brand-200: 43 70% 78%;
+  --brand-link: 43 95% 62%;
   --chart-1: var(--brand-default);
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;

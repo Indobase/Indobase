@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react';
+import { useMemo } from 'react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { DeployButton } from '~/components/deploy/DeployButton';
 
@@ -7,8 +8,13 @@ interface HeaderActionButtonsProps {
 }
 
 export function HeaderActionButtons({ chatStarted }: HeaderActionButtonsProps) {
-  const filesCount = useStore(workbenchStore.filesCount);
+  const files = useStore(workbenchStore.files);
   const previews = useStore(workbenchStore.previews);
+
+  const filesCount = useMemo(
+    () => Object.values(files).filter((entry) => entry?.type === 'file').length,
+    [files],
+  );
 
   const shouldShowButtons = chatStarted && (filesCount > 0 || previews.length > 0);
 
