@@ -62,7 +62,9 @@ export const TOOL_EXECUTION_ERROR = 'Error: An error occured while calling tool'
 const llmManager = LLMManager.getInstance(import.meta.env);
 
 export const PROVIDER_LIST = llmManager.getAllProviders();
-export const DEFAULT_PROVIDER = llmManager.getDefaultProvider();
+// Default to OpenRouter — configured API key + default models are OpenRouter-hosted.
+export const DEFAULT_PROVIDER =
+  PROVIDER_LIST.find((provider) => provider.name === 'OpenRouter') ?? llmManager.getDefaultProvider();
 export const ALLOWED_CHAT_PROVIDER_NAMES = ['OpenAI', 'Anthropic', 'OpenRouter', 'Google', 'Deepseek'] as const;
 
 export const providerBaseUrlEnvKeys: Record<string, { baseUrlKey?: string; apiTokenKey?: string }> = {};
