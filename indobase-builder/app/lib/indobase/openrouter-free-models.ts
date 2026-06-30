@@ -6,9 +6,8 @@ import {
   OPENROUTER_FREE_VISION_MODEL,
   toOpenRouterModelInfo,
 } from '~/lib/indobase/openrouter-coding-models';
-import { FIXED_MODEL_PROVIDER_NAME } from '~/utils/constants';
 
-export const OPENROUTER_PROVIDER_NAME = FIXED_MODEL_PROVIDER_NAME;
+export const OPENROUTER_PROVIDER_NAME = 'OpenRouter';
 
 /** Only curated OpenRouter free coding (+ vision) models are permitted. */
 export function isOpenRouterFreeModelId(modelId: string): boolean {
