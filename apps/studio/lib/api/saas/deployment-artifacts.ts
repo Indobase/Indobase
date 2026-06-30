@@ -1,7 +1,7 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { getStorageAdminClientForRef } from 'lib/api/storage-admin'
-import { publishTenantSiteHosting } from './tenant-data-plane-provision'
+import { publishTenantSiteHosting, registerTenantSiteRoute } from './tenant-data-plane-provision'
 import { updateProjectDeployment } from './deployments'
 import { getProjectSettingsForRef } from './settings'
 
@@ -30,6 +30,7 @@ export type DeploymentArtifactManifest = {
   index_path: string
   prefix: string
   published_url: string
+  route_registered: boolean
   site_synced: boolean
   storage_url: string
   total_bytes: number
@@ -209,19 +210,41 @@ export async function publishDeploymentArtifacts({
   })
   const rootUrl = resolveProjectSiteRootUrl(apiOrigin)
 
+  let routeRegistered = false
   let siteSynced = false
+
   try {
-    const sitePublish = await publishTenantSiteHosting({
-      files: normalizedFiles,
+    const routeResult = await registerTenantSiteRoute({
       ref,
+      deploymentId,
+      prefix,
     })
-    siteSynced = sitePublish.site_synced
+    routeRegistered = Boolean(routeResult.route_registered)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to sync site files to tenant nginx'
-    throw new Error(message)
+    console.warn(
+      '[deployment-artifacts] storage-first site route registration failed for %s: %s',
+      ref,
+      error instanceof Error ? error.message : String(error)
+    )
   }
 
-  const publishedUrl = siteSynced ? rootUrl : storageUrl
+  if (!routeRegistered) {
+    try {
+      const sitePublish = await publishTenantSiteHosting({
+        files: normalizedFiles,
+        ref,
+      })
+      siteSynced = sitePublish.site_synced
+    } catch (error) {
+      console.warn(
+        '[deployment-artifacts] nginx site publish failed for %s: %s',
+        ref,
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+  }
+
+  const publishedUrl = routeRegistered || siteSynced ? rootUrl : storageUrl
 
   const manifest: DeploymentArtifactManifest = {
     bucket: PROJECT_HOSTING_BUCKET,
@@ -229,6 +252,7 @@ export async function publishDeploymentArtifacts({
     index_path: indexPath,
     prefix,
     published_url: publishedUrl,
+    route_registered: routeRegistered,
     site_synced: siteSynced,
     storage_url: storageUrl,
     total_bytes: totalBytes,
@@ -236,9 +260,11 @@ export async function publishDeploymentArtifacts({
 
   await updateProjectDeployment({
     deploymentId,
-    logMessage: siteSynced
-      ? `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage and tenant nginx`
-      : `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage`,
+    logMessage: routeRegistered
+      ? `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage and registered storage-first site route`
+      : siteSynced
+        ? `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage and tenant nginx`
+        : `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage`,
     metadataPatch: {
       hosting_artifacts: manifest,
     },

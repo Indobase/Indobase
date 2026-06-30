@@ -1,15 +1,18 @@
 # Vyom backend VPS overlay (103.190.92.248).
 # Customer tenant stacks + provisioner only. Traefik installed via install-backend-traefik.sh.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.backend-vps.yml up -d data-plane-provisioner
+# docker compose -f docker-compose.yml -f docker-compose.backend-vps.yml up -d data-plane-provisioner
 services:
   data-plane-provisioner:
     ports:
       - "8787:8787"
+      - "${SITE_STATIC_PROXY_PORT:-8790}:${SITE_STATIC_PROXY_PORT:-8790}"
     environment:
       TRAEFIK_UPSTREAM_HOST: ${TRAEFIK_UPSTREAM_HOST:-172.17.0.1}
       PROVISIONER_PUBLISH_HOST: ${PROVISIONER_PUBLISH_HOST:-172.17.0.1}
       PROVISIONER_TRAEFIK_DYNAMIC_DIR: /mnt/traefik
+      SITE_STATIC_PROXY_ENABLED: ${SITE_STATIC_PROXY_ENABLED:-false}
+      SITE_STATIC_PROXY_PORT: ${SITE_STATIC_PROXY_PORT:-8790}
       # Platform Postgres lives on control-plane VPS (.249); use TCP psql instead of local docker exec.
       PROVISIONER_PG_HOST: ${PROVISIONER_PG_HOST:-103.190.92.249}
       PROVISIONER_PG_PORT: ${PROVISIONER_PG_PORT:-5432}

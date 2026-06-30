@@ -363,6 +363,53 @@ export async function publishTenantSiteHosting({
   return { ok: true, provisioner_status: resp.status, site_synced: true }
 }
 
+export async function registerTenantSiteRoute({
+  ref,
+  deploymentId,
+  prefix,
+}: {
+  ref: string
+  deploymentId: string
+  prefix?: string
+}): Promise<{ ok: boolean; route_registered: boolean; provisioner_status: number }> {
+  if (!isDataPlaneProvisionerConfigured()) {
+    return { ok: false, route_registered: false, provisioner_status: 0 }
+  }
+
+  const { provisionerUrl, provisionerToken } = provisionerConfig()
+
+  const resp = await fetch(`${provisionerUrl}/register-site-route`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${provisionerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      project_ref: ref,
+      deployment_id: deploymentId,
+      ...(prefix ? { prefix } : {}),
+    }),
+  })
+
+  const text = await resp.text()
+  let parsed: { ok?: boolean; route_registered?: boolean } = {}
+  try {
+    parsed = text ? JSON.parse(text) : {}
+  } catch {
+    parsed = {}
+  }
+
+  if (!resp.ok) {
+    throw new Error(`Site route registration failed (${resp.status}): ${text.slice(0, 300)}`)
+  }
+
+  return {
+    ok: Boolean(parsed.ok),
+    route_registered: Boolean(parsed.route_registered),
+    provisioner_status: resp.status,
+  }
+}
+
 export async function ensureTenantSiteHosting(
   ref: string
 ): Promise<{ ok: boolean; patched?: boolean; provisioner_status: number }> {

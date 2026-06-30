@@ -5,6 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
+import { readSiteRoutes } from './site-routes.mjs'
 
 export function getDockerPsLines() {
   return execSync('docker ps --format "{{.Names}}\t{{.Ports}}"', { encoding: 'utf8' })
@@ -23,7 +24,13 @@ export function hostPortFor(dockerPs, ref, svc) {
   return m ? Number(m[1]) : null
 }
 
-export function buildTenantTraefikYaml(ref, hostRule, upstream, ports) {
+export function buildTenantTraefikYaml(ref, hostRule, upstream, ports, opts = {}) {
+  const siteProxyPort =
+    opts.siteProxyPort != null && Number.isFinite(Number(opts.siteProxyPort))
+      ? Number(opts.siteProxyPort)
+      : null
+  const sitePort = siteProxyPort != null ? siteProxyPort : ports.site
+
   const strip = (name, prefix) => `    tenant-${ref}-${name}-strip:
       stripPrefix:
         prefixes:
@@ -50,7 +57,7 @@ export function buildTenantTraefikYaml(ref, hostRule, upstream, ports) {
 `
 
   const siteRouter =
-    ports.site != null
+    sitePort != null
       ? `    tenant-${ref}-site:
       rule: Host(\`${hostRule}\`)
       priority: 250
@@ -71,10 +78,10 @@ export function buildTenantTraefikYaml(ref, hostRule, upstream, ports) {
       : ''
 
   const siteService =
-    ports.site != null
+    sitePort != null
       ? `    tenant-${ref}-site:
       loadBalancer:
-        servers: [{ url: "http://${upstream}:${ports.site}" }]
+        servers: [{ url: "http://${upstream}:${sitePort}" }]
         passHostHeader: true
 `
       : ''
@@ -128,13 +135,26 @@ export function fixTenantTraefikForRef(ref, traefikDir, opts = {}) {
   if (requiredPorts.some((key) => ports[key] == null)) {
     return { ok: false, ref, ports, reason: 'stack_not_running' }
   }
+
+  const siteRoutes = readSiteRoutes(traefikDir)
+  const hasSiteRoute = Boolean(siteRoutes[ref])
+  let siteProxyPort =
+    opts.siteProxyPort != null && Number.isFinite(Number(opts.siteProxyPort))
+      ? Number(opts.siteProxyPort)
+      : null
+  if (hasSiteRoute && siteProxyPort == null) {
+    siteProxyPort = Number(process.env.SITE_STATIC_PROXY_PORT || 8790)
+  }
+
   const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
   fs.writeFileSync(
     traefikPath,
-    buildTenantTraefikYaml(ref, `${ref}.${domain}`, upstream, ports),
+    buildTenantTraefikYaml(ref, `${ref}.${domain}`, upstream, ports, {
+      siteProxyPort,
+    }),
     'utf8'
   )
-  return { ok: true, ref, ports, traefikPath }
+  return { ok: true, ref, ports, traefikPath, site_proxy_port: siteProxyPort }
 }
 
 export function fixAllTenantTraefikFromDocker(traefikDir, opts = {}) {

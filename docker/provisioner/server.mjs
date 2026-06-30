@@ -26,6 +26,8 @@ import {
   unregisterSharedGatewayTenant,
   parsePortBaseFromComposeYaml,
 } from './shared-gateway-routes.mjs'
+import { registerSiteRoute, removeSiteRoute } from './site-routes.mjs'
+import { startSiteStaticProxy } from './site-static-proxy.mjs'
 
 const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
@@ -504,6 +506,7 @@ const server = http.createServer(async (req, res) => {
       '/publish-site',
       '/ensure-site-hosting',
       '/ensure-site-fleet',
+      '/register-site-route',
     ])
     if (req.method !== 'POST' || !allowed.has(req.url || '')) {
       res.statusCode = 404
@@ -563,6 +566,38 @@ const server = http.createServer(async (req, res) => {
     if (req.url === '/ensure-site-hosting') {
       const result = await ensureTenantSiteService({ ref, tenantsDir, traefikDir })
       return json(res, result.ok ? 200 : 404, result)
+    }
+
+    if (req.url === '/register-site-route') {
+      const deploymentId = String(body?.deployment_id || '').trim()
+      if (!deploymentId) {
+        return json(res, 400, { message: 'deployment_id is required' })
+      }
+
+      const prefix = body?.prefix != null ? String(body.prefix) : undefined
+      const storagePort =
+        body?.storage_port != null ? Number(body.storage_port) : await readPublishedPort(ref, 'storage')
+      const siteProxyPort = Number(
+        body?.site_proxy_port ?? process.env.SITE_STATIC_PROXY_PORT ?? 8790
+      )
+
+      const route = registerSiteRoute({
+        ref,
+        deploymentId,
+        prefix,
+        storagePort,
+        traefikDir,
+      })
+
+      const traefik = fixTenantTraefikForRef(ref, traefikDir, { siteProxyPort })
+
+      return json(res, traefik.ok ? 200 : 500, {
+        ok: traefik.ok,
+        project_ref: ref,
+        route_registered: true,
+        route,
+        traefik,
+      })
     }
 
     if (req.url === '/repair-traefik') {
@@ -637,6 +672,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       unregisterSharedGatewayTenant(ref)
+      removeSiteRoute({ ref, traefikDir })
 
       const fnVol = `indobase-tenant-${ref}_tenant-functions-${ref}`
       await dockerVolumeRm(fnVol)
@@ -777,6 +813,10 @@ const server = http.createServer(async (req, res) => {
     return json(res, 500, { message: e?.message || 'Internal error' })
   }
 })
+
+if (process.env.SITE_STATIC_PROXY_ENABLED === 'true') {
+  startSiteStaticProxy({ traefikDir, upstream: traefikUpstreamHost })
+}
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`data-plane-provisioner listening on :${port}`)
