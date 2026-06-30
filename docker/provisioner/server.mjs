@@ -19,7 +19,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef, getDockerPsLines, hostPortFor } from './tenant-traefik.mjs'
-import { TENANT_SITE_NGINX_CONF, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
+import { TENANT_SITE_NGINX_CONF, ensureSiteNginxConfFile, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
 import {
   portsFromPortBase,
   registerSharedGatewayTenant,
@@ -188,7 +188,7 @@ function seedTenantFunctionsMain(ref) {
         'alpine',
         'sh',
         '-c',
-        'mkdir -p /f/main && cp /seed/index.ts /f/main/index.ts && test -s /f/main/index.ts',
+        'mkdir -p /f/main && rm -rf /f/main/index.ts && cp /seed/index.ts /f/main/index.ts && test -s /f/main/index.ts',
       ],
       { stdio: 'inherit' }
     )
@@ -216,7 +216,7 @@ function resolveComposeHostPaths(composePath) {
   const rel = path.relative(containerTenantsDir, tenantDir)
   const hostDir = path.join(hostTenantsDir, rel)
   return {
-    composePath,
+    composePath: path.join(hostDir, 'docker-compose.yml'),
     cwd: tenantDir,
     projectDirectory: hostDir,
   }
@@ -759,7 +759,7 @@ const server = http.createServer(async (req, res) => {
     const tenantOutDir = path.join(tenantsDir, ref)
     fs.mkdirSync(tenantOutDir, { recursive: true })
     fs.mkdirSync(path.join(tenantOutDir, 'site'), { recursive: true })
-    fs.writeFileSync(path.join(tenantOutDir, 'site-nginx.conf'), TENANT_SITE_NGINX_CONF, 'utf8')
+    ensureSiteNginxConfFile(path.join(tenantOutDir, 'site-nginx.conf'))
 
     const composePath = path.join(tenantOutDir, 'docker-compose.yml')
     const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)

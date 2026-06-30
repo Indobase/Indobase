@@ -18,6 +18,16 @@ export const TENANT_SITE_NGINX_CONF = `server {
 }
 `
 
+export function ensureSiteNginxConfFile(nginxConfPath) {
+  if (fs.existsSync(nginxConfPath)) {
+    const stat = fs.statSync(nginxConfPath)
+    if (stat.isDirectory()) {
+      fs.rmSync(nginxConfPath, { recursive: true, force: true })
+    }
+  }
+  fs.writeFileSync(nginxConfPath, TENANT_SITE_NGINX_CONF, 'utf8')
+}
+
 function safeRelativeSitePath(filePath) {
   const trimmed = String(filePath || '').trim().replace(/\\/g, '/')
   if (!trimmed || trimmed.startsWith('/') || trimmed.includes('..')) {
@@ -49,7 +59,8 @@ function resolveComposeHostPaths(composePath) {
   const rel = path.relative(containerTenantsDir, tenantDir)
   const hostDir = path.join(hostTenantsDir, rel)
   return {
-    composePath,
+    // Docker daemon resolves bind-mount sources on the host; -f must use host paths too.
+    composePath: path.join(hostDir, 'docker-compose.yml'),
     cwd: tenantDir,
     projectDirectory: hostDir,
   }
@@ -204,7 +215,7 @@ export async function ensureTenantSiteService({
   }
 
   fs.mkdirSync(siteDir, { recursive: true })
-  fs.writeFileSync(nginxConfPath, TENANT_SITE_NGINX_CONF, 'utf8')
+  ensureSiteNginxConfFile(nginxConfPath)
 
   const originalCompose = fs.readFileSync(composePath, 'utf8')
   const { composeText, patched, sitePort } = patchComposeForTenantSite(originalCompose)
