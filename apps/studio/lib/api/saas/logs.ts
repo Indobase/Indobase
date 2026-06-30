@@ -11,7 +11,7 @@ import { resolveLogflareProjectRef } from './project-database-url'
 import { WrappedResult } from './types'
 import { assertSaaSBackend } from './util'
 import assert from 'node:assert'
-import { LogsService } from '@indobaseinc/mcp-server/platform'
+import type { LogsService } from '@indobaseinc/mcp-server/platform'
 import { stripIndent } from 'common-tags'
 
 export type RetrieveAnalyticsDataOptions = {

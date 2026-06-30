@@ -1,5 +1,5 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { createIndobaseMcpServer, IndobasePlatform } from '@indobaseinc/mcp-server'
+import type { IndobasePlatform } from '@indobaseinc/mcp-server'
 import { stripIndent } from 'common-tags'
 import { commaSeparatedStringIntoArray, fromNodeHeaders, zBooleanString } from 'lib/api/apiHelpers'
 import {
@@ -153,6 +153,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    const { createIndobaseMcpServer } = await import('@indobaseinc/mcp-server')
     const server = createIndobaseMcpServer({
       platform,
       projectId: resolvedProjectRef,
