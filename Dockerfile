@@ -92,13 +92,6 @@ COPY --from=build-studio /workspace/apps/studio/public /srv/studio/public
 RUN mkdir -p /srv/studio/apps/studio/.next /srv/studio/apps/studio/public && \
     cp -a /srv/studio/.next/static /srv/studio/apps/studio/.next/ && \
     cp -a /srv/studio/public/. /srv/studio/apps/studio/public/
-# Next standalone file tracing copies only ESM for @indobaseinc/mcp-server; API routes require() index.cjs.
-COPY --from=build-studio /workspace/packages/indobase-mcp-server/dist/ /tmp/indobase-mcp-server-dist/
-RUN set -eux; \
-  MCP_DIST="$(find /srv/studio -path '*/node_modules/@indobaseinc/mcp-server/dist' -type d | head -1)"; \
-  test -n "$MCP_DIST"; \
-  cp -a /tmp/indobase-mcp-server-dist/*.cjs "$MCP_DIST/"; \
-  cp -a /tmp/indobase-mcp-server-dist/platform/*.cjs "$MCP_DIST/platform/"
 
 # Single entrypoint: run Next.js on 8080 (serves / = marketing, /dashboard = Studio)
 COPY docker/start.sh /usr/local/bin/start.sh
