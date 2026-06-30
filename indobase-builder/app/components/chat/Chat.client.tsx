@@ -4,7 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { useMessageParser, usePromptEnhancer, useShortcuts } from '~/lib/hooks';
+import { useMessageParser, usePromptEnhancer, useShortcuts, parseAssistantMessage } from '~/lib/hooks';
 import { description, useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -748,7 +748,7 @@ export const ChatImpl = memo(
               const { assistantMessage, userMessage } = temResp;
               const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
 
-              setMessages([
+              const templateMessages: Message[] = [
                 {
                   id: `1-${new Date().getTime()}`,
                   role: 'user',
@@ -766,7 +766,20 @@ export const ChatImpl = memo(
                   content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
                   annotations: ['hidden'],
                 },
-              ]);
+              ];
+
+              setMessages(templateMessages);
+              parseAssistantMessage(templateMessages[1]);
+
+              try {
+                await workbenchStore.flushPendingActions();
+                await workbenchStore.waitForExecutionQueue();
+              } catch (error) {
+                logger.error('Template file import did not finish cleanly', error);
+                toast.warning(
+                  'Template files are still loading or WebContainer is slow. Open Workbench or hard-refresh if this persists.',
+                );
+              }
 
               const reloadOptions =
                 uploadedFiles.length > 0

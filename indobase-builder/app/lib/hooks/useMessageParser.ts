@@ -54,6 +54,14 @@ const extractTextContent = (message: Message) =>
     ? (message.content.find((item) => item.type === 'text')?.text as string) || ''
     : message.content;
 
+export function parseAssistantMessage(message: Message) {
+  if (message.role !== 'assistant' && message.role !== 'user') {
+    return '';
+  }
+
+  return messageParser.parse(message.id, extractTextContent(message));
+}
+
 export function useMessageParser() {
   const [parsedMessages, setParsedMessages] = useState<{ [key: number]: string }>({});
 

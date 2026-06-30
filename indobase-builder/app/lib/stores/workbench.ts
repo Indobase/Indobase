@@ -585,7 +585,8 @@ export class WorkbenchStore {
     }
 
     if (payload.action.type === 'file') {
-      const wc = await webcontainer;
+      const { getWebcontainerWithRetry } = await import('~/lib/webcontainer');
+      const wc = await getWebcontainerWithRetry(3);
       const fullPath = toWorkdirAbsolutePath(wc.workdir, payload.action.filePath);
 
       /*

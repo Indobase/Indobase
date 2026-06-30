@@ -56,6 +56,7 @@ PROVIDER_LIST.forEach((provider) => {
 
 export const STARTER_TEMPLATES: Template[] = [
   ...INDOBASE_STARTER_TEMPLATES,
+  ...CURATED_BOILERPLATES,
   {
     name: 'AI Chatbot',
     label: 'AI Chatbot',

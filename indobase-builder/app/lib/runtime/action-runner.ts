@@ -119,16 +119,6 @@ export class ActionRunner {
       },
       abortSignal: abortController.signal,
     });
-
-    this.#currentExecutionPromise.then(() => {
-      const nextAction = this.actions.get()[actionId];
-
-      if (!nextAction || nextAction.abortSignal.aborted || nextAction.status === 'aborted') {
-        return;
-      }
-
-      this.#updateAction(actionId, { status: 'running' });
-    });
   }
 
   async runAction(data: ActionCallbackData, isStreaming: boolean = false) {
@@ -345,7 +335,7 @@ export class ActionRunner {
       unreachable('Expected file action');
     }
 
-    const webcontainer = await this.#webcontainer;
+    const webcontainer = await this.#awaitWebContainer();
     const sanitized = resolveGeneratedFileArtifact(action.filePath, action.content);
     const relativePath = toWorkdirRelativePath(webcontainer.workdir, sanitized.filePath);
 
@@ -355,20 +345,12 @@ export class ActionRunner {
     folder = folder.replace(/\/+$/g, '');
 
     if (folder !== '.') {
-      try {
-        await webcontainer.fs.mkdir(folder, { recursive: true });
-        logger.debug('Created folder', folder);
-      } catch (error) {
-        logger.error('Failed to create folder\n\n', error);
-      }
+      await webcontainer.fs.mkdir(folder, { recursive: true });
+      logger.debug('Created folder', folder);
     }
 
-    try {
-      await webcontainer.fs.writeFile(relativePath, sanitized.content);
-      logger.debug(`File written ${relativePath}`);
-    } catch (error) {
-      logger.error('Failed to write file\n\n', error);
-    }
+    await webcontainer.fs.writeFile(relativePath, sanitized.content);
+    logger.debug(`File written ${relativePath}`);
 
     const connection = supabaseConnection.get();
     if (isIndobaseStudioManagedConnection(connection)) {
@@ -392,6 +374,12 @@ export class ActionRunner {
     const actions = this.actions.get();
 
     this.actions.setKey(id, { ...actions[id], ...newState });
+  }
+
+  async #awaitWebContainer(): Promise<WebContainer> {
+    const { getWebcontainerWithRetry } = await import('~/lib/webcontainer');
+
+    return getWebcontainerWithRetry(3);
   }
 
   async getFileHistory(filePath: string): Promise<FileHistory | null> {

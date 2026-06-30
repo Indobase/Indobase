@@ -162,6 +162,21 @@ export async function consumeBuilderPromptFromStudio(
   }
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      console.warn('[builder-prompt-quota] Studio quota API unavailable, allowing request', response.status);
+      return {
+        ok: true,
+        quota: {
+          plan: 'free',
+          used: 0,
+          limit: null,
+          remaining: null,
+          isFree: false,
+          upgradeUrl: `/org/${claims.organization_slug}/billing?panel=subscriptionPlan`,
+        },
+      };
+    }
+
     throw json(
       {
         error: true,

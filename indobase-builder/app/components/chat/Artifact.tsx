@@ -30,6 +30,7 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
   const userToggledActions = useRef(false);
   const [showActions, setShowActions] = useState(false);
   const [allActionFinished, setAllActionFinished] = useState(false);
+  const [stalledImport, setStalledImport] = useState(false);
 
   const artifacts = useStore(workbenchStore.artifacts);
   const artifact = artifacts[artifactId];
@@ -55,15 +56,42 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
     }
 
     if (actions.length !== 0 && artifact.type === 'bundled') {
-      const finished = !actions.find(
-        (action) => action.status !== 'complete' && !(action.type === 'start' && action.status === 'running'),
-      );
+      const finished = !actions.find((action) => {
+        if (action.status === 'complete' || action.status === 'failed' || action.status === 'aborted') {
+          return false;
+        }
+
+        return !(action.type === 'start' && action.status === 'running');
+      });
 
       if (allActionFinished !== finished) {
         setAllActionFinished(finished);
       }
     }
   }, [actions, artifact.type, allActionFinished]);
+
+  useEffect(() => {
+    if (artifact?.type !== 'bundled' || allActionFinished || actions.length === 0) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const stalled = actions.some(
+        (action) =>
+          action.status !== 'complete' &&
+          action.status !== 'failed' &&
+          action.status !== 'aborted' &&
+          !(action.type === 'start' && action.status === 'running'),
+      );
+
+      if (stalled) {
+        setAllActionFinished(true);
+        setStalledImport(true);
+      }
+    }, 120_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [actions, allActionFinished, artifact?.type]);
 
   // Determine the dynamic title based on state for bundled artifacts
   const dynamicTitle =
@@ -126,11 +154,14 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
               )}
             </div>
             <div className="text-bolt-elements-textPrimary font-medium leading-5 text-sm">
-              {/* This status text remains the same */}
               {allActionFinished
-                ? artifact.id === 'restored-project-setup'
-                  ? 'Restore files from snapshot'
-                  : 'Initial files created'
+                ? stalledImport
+                  ? 'File import timed out — open Workbench or hard-refresh (Chrome/Edge)'
+                  : actions.some((action) => action.status === 'failed')
+                    ? 'Some files could not be created — open Workbench to retry'
+                    : artifact.id === 'restored-project-setup'
+                      ? 'Restore files from snapshot'
+                      : 'Initial files created'
                 : 'Creating initial files'}
             </div>
           </div>
