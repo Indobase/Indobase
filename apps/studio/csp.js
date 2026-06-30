@@ -85,6 +85,12 @@ const POSTHOG_URL = (() => {
   }
   return 'https://us.i.posthog.com'
 })()
+const POSTHOG_ASSETS_URL = (() => {
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
+  if (host?.includes('eu.i.posthog.com')) return 'https://eu-assets.i.posthog.com'
+  if (host?.includes('us.i.posthog.com')) return 'https://us-assets.i.posthog.com'
+  return 'https://us-assets.i.posthog.com'
+})()
 const POSTHOG_UI_URL = (() => {
   const host = process.env.NEXT_PUBLIC_POSTHOG_UI_HOST
   if (host) {
@@ -130,6 +136,7 @@ module.exports.getCSP = function getCSP() {
     ...include(STAPE_URL),
     GOOGLE_MAPS_API_URL,
     POSTHOG_URL,
+    POSTHOG_ASSETS_URL,
     POSTHOG_UI_URL,
     ...(!!NIMBUS_PROD_PROJECTS_URL ? [NIMBUS_PROD_PROJECTS_URL, NIMBUS_PROD_PROJECTS_URL_WS] : []),
     CLOUDFLARE_CDN_URL,
@@ -141,6 +148,7 @@ module.exports.getCSP = function getCSP() {
     ...include(INDOBASE_ASSETS_URL),
     ...include(STAPE_URL),
     POSTHOG_URL,
+    POSTHOG_ASSETS_URL,
     POSTHOG_UI_URL,
   ].filter(Boolean)
   const FRAME_SRC_URLS = [

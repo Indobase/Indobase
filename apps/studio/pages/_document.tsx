@@ -40,11 +40,20 @@ class MyDocument extends Document {
         ? `window.__INDOBASE_PUBLIC_ENV__=${JSON.stringify(runtimePublicEnv)};`
         : null
 
+    // Split-deploy images bake a demo anon key at build time. Static pages may omit
+    // anonKey from SSR; sync-fetch runtime config before auth-js initializes.
+    const runtimeAnonKeyBootstrapScript = !runtimePublicEnv.anonKey
+      ? `(function(){try{var x=new XMLHttpRequest();x.open('GET','${BASE_PATH}/api/platform/runtime-public-env',false);x.withCredentials=true;x.send();if(x.status===200){var j=JSON.parse(x.responseText);window.__INDOBASE_PUBLIC_ENV__=Object.assign(window.__INDOBASE_PUBLIC_ENV__||{},j);}}catch(e){}})();`
+      : null
+
     return (
       <Html lang="en">
         <Head>
           {runtimePublicEnvScript ? (
             <script dangerouslySetInnerHTML={{ __html: runtimePublicEnvScript }} />
+          ) : null}
+          {runtimeAnonKeyBootstrapScript ? (
+            <script dangerouslySetInnerHTML={{ __html: runtimeAnonKeyBootstrapScript }} />
           ) : null}
           <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/favicon-indobase.svg`} />
           <link rel="apple-touch-icon" href={`${BASE_PATH}/indobase-logo-full.png`} />
