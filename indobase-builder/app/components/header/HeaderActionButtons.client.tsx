@@ -1,27 +1,29 @@
 import { useStore } from '@nanostores/react';
-import { useMemo } from 'react';
+import { lazy, Suspense } from 'react';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { DeployButton } from '~/components/deploy/DeployButton';
+
+const DeployButton = lazy(() =>
+  import('~/components/deploy/DeployButton').then((module) => ({ default: module.DeployButton })),
+);
 
 interface HeaderActionButtonsProps {
   chatStarted: boolean;
 }
 
 export function HeaderActionButtons({ chatStarted }: HeaderActionButtonsProps) {
-  const files = useStore(workbenchStore.files);
+  const filesCount = useStore(workbenchStore.filesCountAtom);
   const previews = useStore(workbenchStore.previews);
-
-  const filesCount = useMemo(
-    () => Object.values(files).filter((entry) => entry?.type === 'file').length,
-    [files],
-  );
 
   const shouldShowButtons = chatStarted && (filesCount > 0 || previews.length > 0);
 
   return (
     <div className="flex items-center gap-1">
       {/* Deploy Button */}
-      {shouldShowButtons && <DeployButton />}
+      {shouldShowButtons && (
+        <Suspense fallback={null}>
+          <DeployButton />
+        </Suspense>
+      )}
 
       {/* Debug Tools */}
       {shouldShowButtons && (

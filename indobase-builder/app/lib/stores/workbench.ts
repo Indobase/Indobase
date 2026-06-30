@@ -1,4 +1,4 @@
-import { atom, map, type MapStore, type ReadableAtom, type WritableAtom } from 'nanostores';
+import { atom, computed, map, type MapStore, type ReadableAtom, type WritableAtom } from 'nanostores';
 import type { EditorDocument, ScrollPosition } from '~/components/editor/codemirror/CodeMirrorEditor';
 import { ActionRunner } from '~/lib/runtime/action-runner';
 import { sanitizeFileAction, toWorkdirAbsolutePath } from '~/lib/indobase/sanitizeGeneratedArtifact';
@@ -11,7 +11,6 @@ import { FilesStore, type FileMap } from './files';
 import { PreviewsStore } from './previews';
 import { TerminalStore } from './terminal';
 import JSZip from 'jszip';
-import fileSaver from 'file-saver';
 import { Octokit, type RestEndpointMethodTypes } from '@octokit/rest';
 import { path } from '~/utils/path';
 import { extractRelativePath } from '~/utils/diff';
@@ -19,8 +18,6 @@ import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, SupabaseAlert } from '~/types/actions';
-
-const { saveAs } = fileSaver;
 
 export interface ArtifactState {
   id: string;
@@ -39,6 +36,10 @@ export type WorkbenchViewType = 'code' | 'diff' | 'preview';
 export class WorkbenchStore {
   #previewsStore = new PreviewsStore(webcontainer);
   #filesStore = new FilesStore(webcontainer);
+  /** Subscribe with useStore — do not use the filesCount getter with useStore (it is a number). */
+  readonly filesCountAtom: ReadableAtom<number> = computed(this.#filesStore.files, (files) =>
+    Object.values(files).reduce((count, entry) => (entry?.type === 'file' ? count + 1 : count), 0),
+  );
   #editorStore = new EditorStore(this.#filesStore);
   #terminalStore = new TerminalStore(webcontainer);
 
@@ -666,6 +667,7 @@ export class WorkbenchStore {
 
     // Generate the zip file and save it
     const content = await zip.generateAsync({ type: 'blob' });
+    const { saveAs } = await import('file-saver');
     saveAs(content, `${uniqueProjectName}.zip`);
   }
 
