@@ -91,8 +91,8 @@ export const OPENROUTER_FREE_VISION_MODEL = {
   tier: 'Free',
 } as const satisfies CuratedCodingModel;
 
-/** Default chat model — strongest free coding model on OpenRouter today. */
-export const DEFAULT_OPENROUTER_CODING_MODEL = OPENROUTER_FREE_CODING_MODELS[0].name;
+/** Default chat model — prefer a stable free coding model with lower 429 pressure than Qwen3 Coder. */
+export const DEFAULT_OPENROUTER_CODING_MODEL = OPENROUTER_FREE_CODING_MODELS[1].name;
 
 export const OPENROUTER_ALLOWED_FREE_MODEL_IDS = [
   ...OPENROUTER_FREE_CODING_MODELS.map((model) => model.name),

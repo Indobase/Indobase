@@ -288,6 +288,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           // logger.debug('Code Files Selected');
         }
 
+        const mcpTools = mcpService.toolsWithoutExecute;
+        const hasMcpTools = Object.keys(mcpTools).length > 0;
+
         const options: StreamingOptions = {
           supabaseConnection: supabase
             ? {
@@ -296,8 +299,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
                 indobase: supabase.indobase,
               }
             : undefined,
-          toolChoice: 'auto',
-          tools: mcpService.toolsWithoutExecute,
+          toolChoice: hasMcpTools ? 'auto' : undefined,
+          tools: hasMcpTools ? mcpTools : undefined,
           maxSteps: maxLLMSteps,
           onStepFinish: ({ toolCalls }) => {
             // add tool call annotations for frontend processing
@@ -464,7 +467,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           return 'Custom error: Token limit exceeded. The conversation is too long for the selected model. Try using a model with larger context window or start a new conversation.';
         }
 
-        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
           return 'Custom error: API rate limit exceeded. Please wait a moment before trying again.';
         }
 
