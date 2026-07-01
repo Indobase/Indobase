@@ -11,7 +11,7 @@ import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
-import { collectBuildArtifactsViaServer } from '~/lib/indobase/collectBuildArtifacts.server';
+import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;

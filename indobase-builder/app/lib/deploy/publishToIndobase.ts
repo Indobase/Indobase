@@ -1,5 +1,5 @@
 import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
-import { collectBuildArtifactsViaServer } from '~/lib/indobase/collectBuildArtifacts.server';
+import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,

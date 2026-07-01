@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 
-import type { FileMap } from '~/lib/.server/llm/constants';
+import type { FileMap } from '~/lib/stores/files';
 import { getDeployEnvironmentVariables } from '~/lib/indobase/deployEnv';
 import { verifyIndobaseProxyRequest } from '~/lib/indobase/indobase-proxy.server';
 import { buildProjectArtifactsOnServer } from '~/lib/indobase/serverProjectBuild.server';
