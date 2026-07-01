@@ -1,5 +1,5 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
-import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 type ExecuteIndobaseSqlParams = {
@@ -15,13 +15,13 @@ export async function executeIndobaseSql({
   query,
   name,
 }: ExecuteIndobaseSqlParams) {
-  if (!isIndobaseStudioManagedConnection(connection)) {
+  if (!hasIndobaseStudioHandoff(connection)) {
     throw new Error('Indobase Studio connection is required');
   }
 
-  const projectRef = connection.indobase.projectRef || connection.selectedProjectId;
-  const studioUrl = connection.indobase.studioUrl;
-  const mcpToken = connection.indobase.mcpToken;
+  const projectRef = connection.indobase!.projectRef || connection.selectedProjectId!;
+  const studioUrl = connection.indobase!.studioUrl;
+  const mcpToken = connection.indobase?.mcpToken;
 
   const response = await fetch(
     '/api/indobase/sql',

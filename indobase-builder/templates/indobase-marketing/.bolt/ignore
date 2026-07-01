@@ -1,2 +1,2 @@
 src/lib/indobase.ts
-supabase/migrations/001_waitlist.sql
+indobase/migrations/001_waitlist.sql

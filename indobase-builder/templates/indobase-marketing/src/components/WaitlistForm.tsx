@@ -8,7 +8,7 @@ export function WaitlistForm() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!hasIndobaseEnv) {
-      setMessage('Connect Builder to Indobase and apply supabase/migrations/001_waitlist.sql first.');
+      setMessage('Connect Builder to Indobase and apply indobase/migrations/001_waitlist.sql first.');
       return;
     }
 

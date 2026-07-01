@@ -1,5 +1,5 @@
 This is an Indobase Auth App template using @indobaseinc/indobase-js.
 - Keep src/lib/indobase.ts as the single client entry point.
 - Auth uses email/password via GoTrue on the linked Indobase project.
-- Customize branding and dashboard cards; do not replace the Indobase client with @supabase/supabase-js.
+- Customize branding and dashboard cards; use @indobaseinc/indobase-js only via src/lib/indobase.ts.
 - Run npm install && npm run dev after import. Vite is already configured for WebContainer preview on port 5173.

@@ -3,5 +3,5 @@ This is an Indobase Shop template (ecommerce starter) using @indobaseinc/indobas
 - Auth: email/password signup and signin via GoTrue on the linked Indobase project.
 - Shop: product catalog, cart, and checkout flow using Indobase Postgres (products, orders tables with RLS).
 - Provide SQL migrations for products and orders; wire cart to authenticated users.
-- Customize branding; do not replace the Indobase client with @supabase/supabase-js.
+- Customize branding; use @indobaseinc/indobase-js only via src/lib/indobase.ts.
 - Run npm install && npm run dev after import. Vite preview on port 5173.

@@ -1,21 +1,21 @@
 import type { Template } from '~/types/template';
 
 /**
- * Community-maintained starters that map cleanly to Indobase (Supabase-compatible auth + Postgres).
+ * Community-maintained starters adapted for Indobase on import (Postgres + GoTrue-compatible).
  * Sources verified on GitHub; imported via /api/github-template and rebranded on import.
  */
 export const CURATED_WEB_BOILERPLATES: Template[] = [
   {
-    name: 'React Supabase Auth',
-    label: 'React Supabase Auth',
+    name: 'React Indobase Auth',
+    label: 'React Indobase Auth',
     description:
-      'Vite + React auth boilerplate with protected routes, session context, and React Router (mmvergara/react-supabase-auth-template)',
+      'Vite + React auth boilerplate with protected routes, session context, and React Router — adapted to @indobaseinc/indobase-js',
     category: 'product',
     featured: true,
     indobaseAdaptable: true,
     githubRepo: 'mmvergara/react-supabase-auth-template',
-    tags: ['auth', 'protected-routes', 'vite', 'react', 'router', 'boilerplate'],
-    aliases: ['react supabase auth', 'protected routes template', 'session context auth'],
+    tags: ['auth', 'protected-routes', 'vite', 'react', 'router', 'boilerplate', 'indobase'],
+    aliases: ['react indobase auth', 'react auth', 'protected routes template', 'session context auth'],
     icon: 'i-ph:shield-check',
   },
   {
@@ -27,20 +27,20 @@ export const CURATED_WEB_BOILERPLATES: Template[] = [
     featured: true,
     indobaseAdaptable: true,
     githubRepo: 'akineni/react-auth-app',
-    tags: ['auth', 'oauth', 'google', 'github', 'password-reset', 'vite', 'react'],
+    tags: ['auth', 'oauth', 'google', 'github', 'password-reset', 'vite', 'react', 'indobase'],
     aliases: ['oauth template', 'react auth app', 'password recovery auth'],
     icon: 'i-ph:key',
   },
   {
-    name: 'Vite Supabase Starter',
+    name: 'Vite Indobase Starter',
     label: 'Vite + shadcn Starter',
     description:
-      'Modern Vite + React 19 + TanStack Router/Query + shadcn/ui with optional Supabase patterns (kortix-ai/vite-supabase-starter)',
+      'Modern Vite + React 19 + TanStack Router/Query + shadcn/ui — adapted to Indobase client and env vars on import',
     category: 'framework',
     indobaseAdaptable: true,
     githubRepo: 'kortix-ai/vite-supabase-starter',
-    tags: ['vite', 'shadcn', 'tanstack', 'react', 'typescript', 'starter'],
-    aliases: ['vite supabase starter', 'shadcn supabase', 'tanstack supabase'],
+    tags: ['vite', 'shadcn', 'tanstack', 'react', 'typescript', 'starter', 'indobase'],
+    aliases: ['vite indobase starter', 'shadcn indobase', 'tanstack indobase'],
     icon: 'i-bolt:shadcn',
   },
 ];
@@ -50,12 +50,12 @@ export const CURATED_MOBILE_BOILERPLATES: Template[] = [
     name: 'Expo Auth NativeWind',
     label: 'Expo Auth (NativeWind)',
     description:
-      'Expo Router mobile auth template with NativeWind styling, TypeScript, and Supabase session handling (Owusu1946/react-native-auth-template)',
+      'Expo Router mobile auth template with NativeWind styling, TypeScript, and Indobase session handling on import',
     category: 'mobile',
     featured: true,
     indobaseAdaptable: true,
     githubRepo: 'Owusu1946/react-native-auth-template',
-    tags: ['expo', 'mobile', 'auth', 'nativewind', 'react-native', 'typescript'],
+    tags: ['expo', 'mobile', 'auth', 'nativewind', 'react-native', 'typescript', 'indobase'],
     aliases: ['expo auth template', 'nativewind auth', 'react native auth'],
     icon: 'i-bolt:expo',
   },
@@ -63,13 +63,13 @@ export const CURATED_MOBILE_BOILERPLATES: Template[] = [
     name: 'Expo Production Kit',
     label: 'Expo Production Kit',
     description:
-      'Production Expo kit with passwordless OTP auth, Expo Router guards, TanStack Query, NativeWind, and EAS scaffolding (robertguss/expo-supabase-starter-kit)',
+      'Production Expo kit with passwordless OTP auth, Expo Router guards, TanStack Query, NativeWind, and EAS scaffolding — adapted to Indobase',
     category: 'mobile',
     featured: true,
     indobaseAdaptable: true,
     githubRepo: 'robertguss/expo-supabase-starter-kit',
-    tags: ['expo', 'mobile', 'production', 'otp', 'tanstack', 'eas', 'router'],
-    aliases: ['expo production kit', 'expo supabase starter kit', 'mobile starter kit'],
+    tags: ['expo', 'mobile', 'production', 'otp', 'tanstack', 'eas', 'router', 'indobase'],
+    aliases: ['expo production kit', 'expo indobase starter kit', 'mobile starter kit'],
     icon: 'i-ph:device-mobile',
   },
   {
@@ -79,7 +79,7 @@ export const CURATED_MOBILE_BOILERPLATES: Template[] = [
     category: 'mobile',
     indobaseAdaptable: true,
     githubRepo: 'xKevIsDev/bolt-expo-template',
-    tags: ['mobile', 'expo', 'android', 'iphone'],
+    tags: ['mobile', 'expo', 'android', 'iphone', 'indobase'],
     aliases: ['bolt expo', 'expo bolt template'],
     icon: 'i-bolt:expo',
   },
@@ -89,10 +89,11 @@ export const CURATED_BOILERPLATES: Template[] = [...CURATED_WEB_BOILERPLATES, ..
 
 export const INDOBASE_ADAPTATION_PROMPT = `
 INDOBASE BACKEND ADAPTATION (required):
-- Replace @supabase/supabase-js with @indobaseinc/indobase-js only.
+- Use @indobaseinc/indobase-js only (never @supabase/supabase-js).
 - Use VITE_INDOBASE_URL / VITE_INDOBASE_ANON_KEY for web, or EXPO_PUBLIC_INDOBASE_URL / EXPO_PUBLIC_INDOBASE_ANON_KEY for Expo.
 - Prefer a single client module at src/lib/indobase.ts (or lib/indobase.ts).
+- Store SQL under indobase/migrations/ (not supabase/migrations/).
 - Keep Vite dev server on port 5173 with host: true for Builder preview.
 - Run SQL migrations from the template in Studio if the template ships schema files.
-- Do not add Stripe or Supabase Cloud-only services unless the user explicitly asks.
+- Do not add Stripe or third-party cloud-only backends unless the user explicitly asks.
 `;

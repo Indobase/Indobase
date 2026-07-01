@@ -64,6 +64,8 @@ describe('builder-launch', () => {
       storage_url: 'https://proj_123.indobase.in/storage/v1',
       project_url: 'https://studio.indobase.in/project/proj_123/backend',
       public_env: {
+        VITE_INDOBASE_URL: 'https://proj_123.indobase.in',
+        VITE_INDOBASE_ANON_KEY: 'anon-key',
         NEXT_PUBLIC_SUPABASE_URL: 'https://proj_123.indobase.in',
         NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
         SUPABASE_URL: 'https://proj_123.indobase.in',

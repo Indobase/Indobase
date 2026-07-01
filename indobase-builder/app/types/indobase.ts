@@ -6,10 +6,20 @@ export interface IndobaseBuilderBackendConfig {
   project_ref: string;
   project_url: string;
   public_env: {
+    INDOBASE_ANON_KEY: string;
+    INDOBASE_URL: string;
+    NEXT_PUBLIC_INDOBASE_ANON_KEY: string;
+    NEXT_PUBLIC_INDOBASE_URL: string;
+    VITE_INDOBASE_ANON_KEY: string;
+    VITE_INDOBASE_URL: string;
+    EXPO_PUBLIC_INDOBASE_ANON_KEY: string;
+    EXPO_PUBLIC_INDOBASE_URL: string;
     NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
     NEXT_PUBLIC_SUPABASE_URL: string;
     SUPABASE_ANON_KEY: string;
     SUPABASE_URL: string;
+    VITE_SUPABASE_ANON_KEY?: string;
+    VITE_SUPABASE_URL?: string;
   };
   rest_url: string;
   storage_url: string;

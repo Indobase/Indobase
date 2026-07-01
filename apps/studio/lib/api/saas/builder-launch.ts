@@ -19,10 +19,20 @@ type BuilderBackendConfig = {
   project_ref: string
   project_url: string
   public_env: {
+    INDOBASE_ANON_KEY: string
+    INDOBASE_URL: string
+    NEXT_PUBLIC_INDOBASE_ANON_KEY: string
+    NEXT_PUBLIC_INDOBASE_URL: string
+    VITE_INDOBASE_ANON_KEY: string
+    VITE_INDOBASE_URL: string
+    EXPO_PUBLIC_INDOBASE_ANON_KEY: string
+    EXPO_PUBLIC_INDOBASE_URL: string
     NEXT_PUBLIC_SUPABASE_ANON_KEY: string
     NEXT_PUBLIC_SUPABASE_URL: string
     SUPABASE_ANON_KEY: string
     SUPABASE_URL: string
+    VITE_SUPABASE_ANON_KEY: string
+    VITE_SUPABASE_URL: string
   }
   rest_url: string
   storage_url: string
@@ -184,10 +194,20 @@ export function buildBuilderBackendConfig(opts: {
     project_ref: opts.projectRef,
     project_url: `${opts.studioUrl.replace(/\/+$/, '')}/project/${opts.projectRef}/backend`,
     public_env: {
+      INDOBASE_ANON_KEY: anonKey,
+      INDOBASE_URL: apiUrl,
+      NEXT_PUBLIC_INDOBASE_ANON_KEY: anonKey,
+      NEXT_PUBLIC_INDOBASE_URL: apiUrl,
+      VITE_INDOBASE_ANON_KEY: anonKey,
+      VITE_INDOBASE_URL: apiUrl,
+      EXPO_PUBLIC_INDOBASE_ANON_KEY: anonKey,
+      EXPO_PUBLIC_INDOBASE_URL: apiUrl,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
       NEXT_PUBLIC_SUPABASE_URL: apiUrl,
       SUPABASE_ANON_KEY: anonKey,
       SUPABASE_URL: apiUrl,
+      VITE_SUPABASE_ANON_KEY: anonKey,
+      VITE_SUPABASE_URL: apiUrl,
     },
     rest_url: `${apiUrl}/rest/v1/`,
     storage_url: `${apiUrl}/storage/v1`,

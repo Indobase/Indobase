@@ -40,7 +40,7 @@ IMPORTANT: Prefer featured, product-ready templates for real products unless the
 IMPORTANT: When the user mentions Indobase, auth, database, backend, waitlist, todos, dashboard, or publishing to Indobase, prefer the Indobase-ready templates first.
 IMPORTANT: Prefer content starters for blogs, docs, publishing, and marketing sites.
 IMPORTANT: For mobile apps (Expo/React Native), prefer Expo Auth NativeWind or Expo Production Kit before generic framework starters.
-IMPORTANT: For auth-heavy web apps, prefer Indobase Auth App or React Supabase Auth community boilerplates.
+IMPORTANT: For auth-heavy web apps, prefer Indobase Auth App or React Indobase Auth community boilerplates.
 
 Available templates:
 <template>

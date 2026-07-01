@@ -39,7 +39,7 @@ import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
-import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { getWebcontainerWithRetry } from '~/lib/webcontainer';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
@@ -412,17 +412,25 @@ export const ChatImpl = memo(
     }, [messages, isLoading, parseMessages]);
 
     useEffect(() => {
-      if (!isIndobaseStudioManagedConnection(supabaseConn)) {
+      if (!hasIndobaseStudioHandoff(supabaseConn)) {
         return;
       }
 
-      void ensureBuilderSession();
-      void useMCPStore.getState().initialize();
-      void useMCPStore.getState().syncWithIndobaseConnection();
-    }, [supabaseConn.connectionSource, supabaseConn.indobase?.mcpToken]);
+      void ensureBuilderSession().then((restored) => {
+        if (restored) {
+          void useMCPStore.getState().initialize();
+          void useMCPStore.getState().syncWithIndobaseConnection();
+        }
+      });
+    }, [
+      supabaseConn.connectionSource,
+      supabaseConn.indobase?.mcpToken,
+      supabaseConn.credentials?.anonKey,
+      supabaseConn.credentials?.supabaseUrl,
+    ]);
 
     useEffect(() => {
-      if (!isIndobaseStudioManagedConnection(supabaseConn) || !chatStarted) {
+      if (!hasIndobaseStudioHandoff(supabaseConn) || !chatStarted) {
         return;
       }
 

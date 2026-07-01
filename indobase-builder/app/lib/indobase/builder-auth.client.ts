@@ -4,6 +4,16 @@ import { isIndobaseStudioManagedConnection } from './connection';
 
 const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
 
+type SessionResponse = {
+  error?: string;
+  mcpToken?: string;
+  organizationSlug?: string;
+  projectRef?: string;
+  statusCode?: number;
+  studioUrl?: string;
+  success?: boolean;
+};
+
 export function getStoredSupabaseConnection(): SupabaseConnectionState | null {
   if (typeof window === 'undefined') {
     return null;
@@ -95,6 +105,35 @@ export function getStudioBuilderConnectUrl(options?: {
   return `${studioUrl}/project/${encodeURIComponent(projectRef)}/builder/connect${suffix}`;
 }
 
+function applySessionToStoredConnection(session: SessionResponse) {
+  if (!session.mcpToken) {
+    return;
+  }
+
+  const connection = getStoredSupabaseConnection();
+
+  if (!connection || connection.connectionSource !== 'studio_handoff') {
+    return;
+  }
+
+  updateSupabaseConnection({
+    isConnected: true,
+    connectionSource: 'studio_handoff',
+    selectedProjectId: session.projectRef || connection.selectedProjectId,
+    indobase: {
+      apiUrl: connection.indobase?.apiUrl || connection.credentials?.supabaseUrl || '',
+      authUrl: connection.indobase?.authUrl || `${connection.credentials?.supabaseUrl || ''}/auth/v1`,
+      organizationSlug: session.organizationSlug || connection.indobase?.organizationSlug || '',
+      projectRef: session.projectRef || connection.indobase?.projectRef || connection.selectedProjectId || '',
+      projectUrl: connection.indobase?.projectUrl || '',
+      restUrl: connection.indobase?.restUrl || `${connection.credentials?.supabaseUrl || ''}/rest/v1/`,
+      storageUrl: connection.indobase?.storageUrl || `${connection.credentials?.supabaseUrl || ''}/storage/v1`,
+      studioUrl: session.studioUrl || connection.indobase?.studioUrl || DEFAULT_STUDIO_URL,
+      mcpToken: session.mcpToken,
+    },
+  });
+}
+
 export function clearStaleBuilderSession() {
   const connection = getStoredSupabaseConnection();
 
@@ -114,40 +153,22 @@ export function clearStaleBuilderSession() {
 
 export async function ensureBuilderSession(): Promise<boolean> {
   try {
-    const cookieResponse = await fetch('/api/indobase/session', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({}),
-    });
+    const storedToken = getStoredBuilderMcpToken();
+    const response = await fetch(
+      '/api/indobase/session',
+      getBuilderRequestInit({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(storedToken ? { mcpToken: storedToken } : {}),
+      }),
+    );
 
-    if (cookieResponse.ok) {
-      return true;
-    }
+    const data = (await response.json().catch(() => ({}))) as SessionResponse;
 
-    const token = getStoredBuilderMcpToken();
-
-    if (!token) {
-      if (cookieResponse.status === 401) {
-        clearStaleBuilderSession();
-      }
-
-      return false;
-    }
-
-    const response = await fetch('/api/indobase/session', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ mcpToken: token }),
-    });
-
-    if (response.ok) {
+    if (response.ok && data.success) {
+      applySessionToStoredConnection(data);
       return true;
     }
 
@@ -159,6 +180,10 @@ export async function ensureBuilderSession(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function restoreBuilderSessionOnLoad(): Promise<boolean> {
+  return ensureBuilderSession();
 }
 
 export function redirectToStudioBuilderConnect(returnTo?: string) {

@@ -1,4 +1,5 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
+import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 export type IndobaseDeploymentStatus = 'requested' | 'building' | 'ready' | 'failed' | 'archived';
@@ -37,7 +38,7 @@ export type GetDeploymentResult = {
 };
 
 type IndobaseStudioRequest = {
-  mcpToken: string;
+  mcpToken?: string;
   projectRef: string;
   studioUrl: string;
 };
@@ -58,18 +59,25 @@ export type QueueMobileBuildResult = {
 };
 
 type QueueMobileBuildRequest = QueueMobileBuildParams & {
-  mcpToken: string;
+  mcpToken?: string;
   projectRef: string;
   studioUrl: string;
 };
 
-function hasIndobaseStudioHandoff(connection?: SupabaseConnectionState | null): connection is SupabaseConnectionState {
-  return Boolean(
-    connection?.connectionSource === 'studio_handoff' &&
-      connection.indobase?.mcpToken &&
-      connection.indobase?.studioUrl &&
-      (connection.indobase?.projectRef || connection.selectedProjectId),
-  );
+function resolveIndobaseStudioRequest(connection: SupabaseConnectionState): IndobaseStudioRequest | null {
+  const projectRef = connection.indobase?.projectRef || connection.selectedProjectId;
+  const studioUrl = connection.indobase?.studioUrl;
+  const mcpToken = connection.indobase?.mcpToken?.trim();
+
+  if (!projectRef || !studioUrl) {
+    return null;
+  }
+
+  return {
+    mcpToken: mcpToken || undefined,
+    projectRef,
+    studioUrl,
+  };
 }
 
 export function canQueueIndobaseMobileBuild(connection?: SupabaseConnectionState | null): boolean {
@@ -78,22 +86,6 @@ export function canQueueIndobaseMobileBuild(connection?: SupabaseConnectionState
 
 export function canQueueIndobaseDeployment(connection?: SupabaseConnectionState | null): boolean {
   return hasIndobaseStudioHandoff(connection);
-}
-
-function resolveIndobaseStudioRequest(connection: SupabaseConnectionState): IndobaseStudioRequest | null {
-  const projectRef = connection.indobase?.projectRef || connection.selectedProjectId;
-  const studioUrl = connection.indobase?.studioUrl;
-  const mcpToken = connection.indobase?.mcpToken;
-
-  if (!projectRef || !studioUrl || !mcpToken) {
-    return null;
-  }
-
-  return {
-    mcpToken,
-    projectRef,
-    studioUrl,
-  };
 }
 
 const TERMINAL_DEPLOYMENT_STATUSES: IndobaseDeploymentStatus[] = ['ready', 'failed', 'archived'];
@@ -112,9 +104,8 @@ export async function queueIndobaseMobileBuild(
 ): Promise<QueueMobileBuildResult> {
   const projectRef = connection.indobase?.projectRef || connection.selectedProjectId;
   const studioUrl = connection.indobase?.studioUrl;
-  const mcpToken = connection.indobase?.mcpToken;
 
-  if (!projectRef || !studioUrl || !mcpToken) {
+  if (!projectRef || !studioUrl) {
     return {
       success: false,
       error: 'Connect from Indobase Studio to queue Android builds from Builder.',
@@ -122,9 +113,9 @@ export async function queueIndobaseMobileBuild(
   }
 
   const payload: QueueMobileBuildRequest = {
-    mcpToken,
     projectRef,
     studioUrl,
+    mcpToken: connection.indobase?.mcpToken,
     ...params,
   };
 

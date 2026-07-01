@@ -61,7 +61,7 @@ const inlineThemeCode = stripIndents`
 `;
 
 import { logStore } from './lib/stores/logs';
-import { ensureBuilderSession, getStoredBuilderMcpToken } from './lib/indobase/builder-auth.client';
+import { restoreBuilderSessionOnLoad } from './lib/indobase/builder-auth.client';
 import { warmWebContainer } from './lib/webcontainer';
 
 export default function App() {
@@ -95,9 +95,7 @@ export default function App() {
 
     warmWebContainer();
 
-    if (getStoredBuilderMcpToken()) {
-      void ensureBuilderSession();
-    }
+    void restoreBuilderSessionOnLoad();
   }, []);
 
   return <Outlet />;

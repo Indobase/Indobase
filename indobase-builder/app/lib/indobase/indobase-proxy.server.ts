@@ -1,6 +1,7 @@
 import { json } from '@remix-run/node';
 
-import { readBearerToken } from '~/lib/indobase/builder-auth.server';
+import { parseCookies } from '~/lib/api/cookies';
+import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
 import { isAllowedStudioOrigin, normalizeOrigin } from '~/lib/production.server';
 
@@ -21,7 +22,11 @@ export async function verifyIndobaseProxyRequest(
   },
   env?: ServerEnv,
 ): Promise<VerifiedIndobaseProxyContext> {
-  const mcpToken = body.mcpToken?.trim() || readBearerToken(request);
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const mcpToken = await resolveValidBuilderMcpToken(
+    [body.mcpToken, readBearerToken(request), cookies.indobase_builder_mcp],
+    env,
+  );
 
   if (!mcpToken) {
     throw json({ error: 'Builder authorization is required' }, { status: 401 });

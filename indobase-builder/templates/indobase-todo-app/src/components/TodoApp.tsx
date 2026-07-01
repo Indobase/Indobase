@@ -53,7 +53,7 @@ export function TodoApp() {
   }
 
   if (!hasIndobaseEnv) {
-    return <p className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100">Link Builder from Studio to seed .env, then run the SQL migration in supabase/migrations/001_todos.sql.</p>;
+    return <p className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100">Link Builder from Studio to seed .env, then run the SQL migration in indobase/migrations/001_todos.sql.</p>;
   }
 
   if (!session) {

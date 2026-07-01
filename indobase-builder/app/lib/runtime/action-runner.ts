@@ -6,7 +6,7 @@ import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
-import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { supabaseConnection } from '~/lib/stores/supabase';
 import type { ActionAlert, BoltAction, DeployAlert, FileHistory, SupabaseAction, SupabaseAlert } from '~/types/actions';
 import { createScopedLogger } from '~/utils/logger';
@@ -355,7 +355,7 @@ export class ActionRunner {
     logger.debug(`File written ${relativePath}`);
 
     const connection = supabaseConnection.get();
-    if (isIndobaseStudioManagedConnection(connection)) {
+    if (hasIndobaseStudioHandoff(connection)) {
       await this.#ensureProjectEnvFile(webcontainer, connection);
     }
   }
