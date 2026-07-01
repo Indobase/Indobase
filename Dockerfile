@@ -9,7 +9,11 @@ COPY apps ./apps
 COPY packages ./packages
 COPY blocks ./blocks
 # Install workspace deps once
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts && \
+  find /workspace -path '*/@indobaseinc/mcp-server/dist/chunk-WJNHYGQT.js' -exec \
+    sed -i 's/"@indobaseinc\/mcp-utils":""\^0.3.2""/"@indobaseinc\/mcp-utils":"^0.3.2"/g' {} + && \
+  find /workspace -path '*/@indobaseinc/mcp-server/dist/chunk-A5V4CFB4.cjs' -exec \
+    sed -i 's/"@indobaseinc\/mcp-utils":""\^0.3.2""/"@indobaseinc\/mcp-utils":"^0.3.2"/g' {} + 2>/dev/null || true
 
 # Build marketing app (www) — assumed static output
 FROM deps AS build-www
@@ -64,6 +68,10 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 # shared-types `out/` is gitignored; compile workspace package before Studio bundles it.
 WORKDIR /workspace
 RUN pnpm --filter @indobaseinc/shared-types build
+# Standalone/npm copies of @indobaseinc/mcp-server dist can ship a corrupted inlined package.json string.
+RUN sed -i 's/"@indobaseinc\/mcp-utils":""\^0.3.2""/"@indobaseinc\/mcp-utils":"^0.3.2"/g' \
+  /workspace/packages/indobase-mcp-server/dist/chunk-A5V4CFB4.cjs \
+  /workspace/packages/indobase-mcp-server/dist/chunk-WJNHYGQT.js
 WORKDIR /workspace/apps/studio
 # Bust build-studio GHA cache when the commit changes (ARG does not carry across stages).
 ARG BUILD_SHA=unknown
