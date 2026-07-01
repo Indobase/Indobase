@@ -34,6 +34,8 @@ import {
   CURATED_WEB_BOILERPLATES,
 } from '~/lib/indobase/curatedBoilerplates';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
+import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
+import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -199,7 +201,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const expoUrl = useStore(expoUrlAtom);
     const supabaseConn = useStore(supabaseConnection);
     const [qrModalOpen, setQrModalOpen] = useState(false);
-    const isStudioManagedConnection = supabaseConn.connectionSource === 'studio_handoff';
+    const isStudioManagedConnection = hasIndobaseStudioHandoff(supabaseConn);
 
     useEffect(() => {
       if (expoUrl) {
@@ -517,6 +519,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
             <div className="mt-12 flex w-full max-w-[42rem] flex-col gap-4">
               {alertStack}
+              {!isStudioManagedConnection && <BackendLinkBanner />}
               {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
               {promptComposer}
             </div>

@@ -5,12 +5,15 @@ import { useEffect } from 'react';
 import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { getStudioBuilderConnectUrl } from '~/lib/indobase/builder-auth.client';
+import { persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
+import {
+  BUILDER_MCP_COOKIE,
+  BUILDER_MCP_TOKEN_TTL_SECONDS,
+} from '~/lib/indobase/builder-session.constants';
 import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/indobase/handoff.server';
 import { isProductionEnv } from '~/lib/production.server';
 import { initializeProviders } from '~/lib/stores/settings';
 import { useMCPStore } from '~/lib/stores/mcp';
-
-const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
@@ -25,8 +28,8 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
   try {
     const handoff = await verifyIndobaseStudioHandoff(handoffToken, env);
-    const mcpToken = signIndobaseBuilderMcpToken(handoff, 60 * 60 * 12, env);
-    const maxAge = 60 * 60 * 12;
+    const mcpToken = signIndobaseBuilderMcpToken(handoff, BUILDER_MCP_TOKEN_TTL_SECONDS, env);
+    const maxAge = BUILDER_MCP_TOKEN_TTL_SECONDS;
     const nodeEnv = env?.NODE_ENV ?? process.env.NODE_ENV;
     const secure = nodeEnv === 'production' ? '; Secure' : '';
 
@@ -61,14 +64,32 @@ export default function LaunchRoute() {
     }
 
     updateSupabaseConnection(buildSupabaseConnectionFromHandoff(data.handoff, { mcpToken: data.mcpToken }));
+    persistLastProjectRef(data.handoff.project_ref);
     void initializeProviders();
     void useMCPStore.getState().initialize();
     void useMCPStore.getState().syncWithIndobaseConnection();
+
+    const popup = searchParams.get('popup') === '1';
+    const studioOrigin = data.handoff.studio_url?.replace(/\/+$/, '');
+
+    if (popup && window.opener && studioOrigin) {
+      window.opener.postMessage(
+        {
+          type: 'indobase-builder-session',
+          projectRef: data.handoff.project_ref,
+          success: true,
+        },
+        studioOrigin,
+      );
+      window.close();
+      return;
+    }
+
     const next = typeof data.next === 'string' ? data.next : null;
     const isSafeRelativePath =
       Boolean(next) && next!.startsWith('/') && !next!.startsWith('//') && !next!.includes('://');
     navigate(isSafeRelativePath ? next! : '/', { replace: true });
-  }, [data, navigate]);
+  }, [data, navigate, searchParams]);
 
   if ('error' in data) {
     const reconnectUrl = projectRef

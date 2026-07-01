@@ -48,6 +48,7 @@ import {
   getBuilderRequestInit,
   redirectToStudioBuilderConnect,
 } from '~/lib/indobase/builder-auth.client';
+import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
 import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
 import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
@@ -420,6 +421,11 @@ export const ChatImpl = memo(
         if (restored) {
           void useMCPStore.getState().initialize();
           void useMCPStore.getState().syncWithIndobaseConnection();
+          void runStudioBackendPreflight(supabaseConn).then((preflight) => {
+            if (!preflight.ready && preflight.error) {
+              toast.warning(preflight.error);
+            }
+          });
         }
       });
     }, [

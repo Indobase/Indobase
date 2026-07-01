@@ -6,6 +6,7 @@ import {
   type IndobaseDeployment,
   type QueueDeploymentResult,
 } from '~/lib/indobase/studioApi';
+import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 export type PublishToIndobaseResult = QueueDeploymentResult & {
@@ -31,6 +32,20 @@ export async function publishToIndobase(
       success: false,
       error: 'Connect from Indobase Studio to publish to your subdomain.',
       status: 401,
+    };
+  }
+
+  const preflight = await runStudioBackendPreflight(activeConnection);
+
+  if (!preflight.success || !preflight.ready) {
+    return {
+      success: false,
+      error:
+        preflight.error ||
+        (preflight.projectStatus === 'INACTIVE'
+          ? 'Project is paused in Studio. Restore it before publishing.'
+          : 'Project backend is not ready. Open Studio to repair the data plane, then retry.'),
+      status: preflight.status || 503,
     };
   }
 

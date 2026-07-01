@@ -43,6 +43,10 @@ const BuilderConnectPage: NextPageWithLayout = () => {
 
         const launchParams = new URLSearchParams()
         launchParams.set('next', returnTo)
+        const isPopup = router.query.popup === '1'
+        if (isPopup) {
+          launchParams.set('popup', '1')
+        }
 
         const response = await fetch(
           `/api/platform/projects/${encodeURIComponent(projectRef)}/builder/launch?${launchParams.toString()}`,
@@ -60,6 +64,13 @@ const BuilderConnectPage: NextPageWithLayout = () => {
 
         if (!response.ok || !payload?.url) {
           throw new Error(payload?.message || `Failed to open Builder (${response.status})`)
+        }
+
+        if (isPopup) {
+          const launchUrl = new URL(payload.url)
+          launchUrl.searchParams.set('popup', '1')
+          window.location.href = launchUrl.toString()
+          return
         }
 
         window.location.href = payload.url

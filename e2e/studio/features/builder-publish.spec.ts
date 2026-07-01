@@ -44,4 +44,12 @@ test.describe('Builder publish path', () => {
     const body = await response.json()
     expect(body.message).toMatch(/authorization|token/i)
   })
+
+  test('builder preflight API rejects missing authorization', async ({ page, ref }) => {
+    const response = await page.request.post(toUrl(`/api/platform/projects/${ref}/builder/preflight`), {
+      data: {},
+    })
+
+    expect(response.status()).toBe(401)
+  })
 })

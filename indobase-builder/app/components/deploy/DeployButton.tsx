@@ -64,11 +64,9 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
 
   const handleIndobaseDeployClick = async () => {
     if (!canPublishIndobase) {
-      if (!hostingUrl) {
-        toast.info('Open Studio to choose a project and continue with Indobase hosting.');
-      }
-
-      openIndobaseUrl(hostingUrl || studioUrl, 'Could not open Indobase Studio hosting right now. Please try again.');
+      const { redirectToStudioBuilderConnect } = await import('~/lib/indobase/builder-auth.client');
+      toast.info('Link your Indobase backend through Studio to publish.');
+      redirectToStudioBuilderConnect('/');
       return;
     }
 

@@ -2,8 +2,10 @@ import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { parseCookies } from '~/lib/api/cookies';
 import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
-
-const BUILDER_MCP_COOKIE = 'indobase_builder_mcp';
+import {
+  BUILDER_MCP_COOKIE,
+  BUILDER_MCP_TOKEN_TTL_SECONDS,
+} from '~/lib/indobase/builder-session.constants';
 
 type SessionBody = {
   mcpToken?: string;
@@ -40,7 +42,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   }
 
   const claims = await verifyIndobaseBuilderMcpToken(validToken, env);
-  const maxAge = 60 * 60 * 12;
+  const maxAge = BUILDER_MCP_TOKEN_TTL_SECONDS;
   const nodeEnv = env?.NODE_ENV ?? process.env.NODE_ENV;
   const secure = nodeEnv === 'production' ? '; Secure' : '';
 
@@ -51,6 +53,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
       projectRef: claims.project_ref,
       studioUrl: claims.studio_url,
       organizationSlug: claims.organization_slug,
+      expiresAt: claims.exp * 1000,
     },
     {
       headers: {

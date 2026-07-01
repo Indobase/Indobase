@@ -1,11 +1,18 @@
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { isIndobaseStudioManagedConnection } from './connection';
+import {
+  BUILDER_LAST_PROJECT_REF_KEY,
+  BUILDER_MCP_TOKEN_TTL_SECONDS,
+  BUILDER_SESSION_KEEPALIVE_MS,
+  BUILDER_SESSION_REFRESH_LEAD_MS,
+} from './builder-session.constants';
 
 const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
 
 type SessionResponse = {
   error?: string;
+  expiresAt?: number;
   mcpToken?: string;
   organizationSlug?: string;
   projectRef?: string;
@@ -32,6 +39,28 @@ export function getStoredSupabaseConnection(): SupabaseConnectionState | null {
   }
 }
 
+export function getLastProjectRef(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(BUILDER_LAST_PROJECT_REF_KEY)?.trim();
+  if (stored) {
+    return stored;
+  }
+
+  const connection = getStoredSupabaseConnection();
+  return connection?.indobase?.projectRef || connection?.selectedProjectId || null;
+}
+
+export function persistLastProjectRef(projectRef: string) {
+  if (typeof window === 'undefined' || !projectRef.trim()) {
+    return;
+  }
+
+  window.localStorage.setItem(BUILDER_LAST_PROJECT_REF_KEY, projectRef.trim());
+}
+
 export function getStoredBuilderMcpToken(): string | null {
   const connection = getStoredSupabaseConnection();
 
@@ -40,6 +69,21 @@ export function getStoredBuilderMcpToken(): string | null {
   }
 
   return connection.indobase.mcpToken?.trim() || null;
+}
+
+function decodeJwtExp(token: string): number | null {
+  const parts = token.split('.');
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number };
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
 }
 
 export function getBuilderAuthHeaders(): Record<string, string> {
@@ -80,6 +124,7 @@ export function getStudioBuilderConnectUrl(options?: {
   connection?: SupabaseConnectionState | null;
   projectRef?: string;
   returnTo?: string;
+  popup?: boolean;
 }): string {
   const connection = options?.connection ?? getStoredSupabaseConnection();
   const studioUrl = getStudioOrigin(connection);
@@ -87,10 +132,12 @@ export function getStudioBuilderConnectUrl(options?: {
     options?.projectRef ||
     connection?.indobase?.projectRef ||
     connection?.selectedProjectId ||
+    getLastProjectRef() ||
     '';
 
+  const returnTo = options?.returnTo || (typeof window !== 'undefined' ? window.location.pathname : '/');
+
   if (!projectRef) {
-    const returnTo = options?.returnTo || (typeof window !== 'undefined' ? window.location.pathname : '/');
     return `${studioUrl}/sign-in?returnTo=${encodeURIComponent(returnTo)}`;
   }
 
@@ -98,6 +145,10 @@ export function getStudioBuilderConnectUrl(options?: {
 
   if (options?.returnTo) {
     params.set('return_to', options.returnTo);
+  }
+
+  if (options?.popup) {
+    params.set('popup', '1');
   }
 
   const suffix = params.toString() ? `?${params.toString()}` : '';
@@ -116,15 +167,18 @@ function applySessionToStoredConnection(session: SessionResponse) {
     return;
   }
 
+  const projectRef = session.projectRef || connection.indobase?.projectRef || connection.selectedProjectId || '';
+  persistLastProjectRef(projectRef);
+
   updateSupabaseConnection({
     isConnected: true,
     connectionSource: 'studio_handoff',
-    selectedProjectId: session.projectRef || connection.selectedProjectId,
+    selectedProjectId: projectRef || connection.selectedProjectId,
     indobase: {
       apiUrl: connection.indobase?.apiUrl || connection.credentials?.supabaseUrl || '',
       authUrl: connection.indobase?.authUrl || `${connection.credentials?.supabaseUrl || ''}/auth/v1`,
       organizationSlug: session.organizationSlug || connection.indobase?.organizationSlug || '',
-      projectRef: session.projectRef || connection.indobase?.projectRef || connection.selectedProjectId || '',
+      projectRef,
       projectUrl: connection.indobase?.projectUrl || '',
       restUrl: connection.indobase?.restUrl || `${connection.credentials?.supabaseUrl || ''}/rest/v1/`,
       storageUrl: connection.indobase?.storageUrl || `${connection.credentials?.supabaseUrl || ''}/storage/v1`,
@@ -186,6 +240,89 @@ export async function restoreBuilderSessionOnLoad(): Promise<boolean> {
   return ensureBuilderSession();
 }
 
+let refreshPopup: Window | null = null;
+
+export function refreshBuilderSessionViaStudioPopup(returnTo?: string): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (refreshPopup && !refreshPopup.closed) {
+    refreshPopup.focus();
+    return true;
+  }
+
+  const url = getStudioBuilderConnectUrl({
+    returnTo: returnTo || `${window.location.pathname}${window.location.search}`,
+    popup: true,
+  });
+
+  refreshPopup = window.open(url, 'indobase-builder-connect', 'width=520,height=720');
+
+  return Boolean(refreshPopup);
+}
+
+function shouldRefreshSessionSoon(): boolean {
+  const token = getStoredBuilderMcpToken();
+
+  if (!token) {
+    return true;
+  }
+
+  const expiresAt = decodeJwtExp(token);
+
+  if (!expiresAt) {
+    return false;
+  }
+
+  return expiresAt - Date.now() < BUILDER_SESSION_REFRESH_LEAD_MS;
+}
+
+export function startBuilderSessionKeeper(): () => void {
+  if (typeof window === 'undefined') {
+    return () => undefined;
+  }
+
+  const onMessage = (event: MessageEvent) => {
+    const studioUrl = getStudioOrigin();
+
+    if (event.origin !== studioUrl) {
+      return;
+    }
+
+    if (event.data?.type === 'indobase-builder-session' && event.data?.success) {
+      void ensureBuilderSession().then((restored) => {
+        if (restored) {
+          void import('~/lib/stores/mcp').then(({ useMCPStore }) => {
+            void useMCPStore.getState().syncWithIndobaseConnection();
+          });
+        }
+      });
+    }
+  };
+
+  window.addEventListener('message', onMessage);
+
+  const intervalId = window.setInterval(() => {
+    void (async () => {
+      const restored = await ensureBuilderSession();
+
+      if (restored) {
+        return;
+      }
+
+      if (shouldRefreshSessionSoon() && getLastProjectRef()) {
+        refreshBuilderSessionViaStudioPopup();
+      }
+    })();
+  }, BUILDER_SESSION_KEEPALIVE_MS);
+
+  return () => {
+    window.removeEventListener('message', onMessage);
+    window.clearInterval(intervalId);
+  };
+}
+
 export function redirectToStudioBuilderConnect(returnTo?: string) {
   if (typeof window === 'undefined') {
     return;
@@ -196,4 +333,8 @@ export function redirectToStudioBuilderConnect(returnTo?: string) {
   });
 
   window.location.href = target;
+}
+
+export function getBuilderMcpTokenTtlSeconds() {
+  return BUILDER_MCP_TOKEN_TTL_SECONDS;
 }

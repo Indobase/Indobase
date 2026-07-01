@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { jwtVerify } from 'jose';
 import { z } from 'zod';
 
+import { BUILDER_MCP_TOKEN_TTL_SECONDS } from '~/lib/indobase/builder-session.constants';
 import type { IndobaseBuilderHandoffPayload, IndobaseBuilderMcpTokenPayload } from '~/types/indobase';
 
 const handoffSchema = z.object({
@@ -83,7 +84,7 @@ function resolveBuilderHandoffSecret(env?: ServerEnv) {
 
 export function signIndobaseBuilderMcpToken(
   payload: IndobaseBuilderHandoffPayload,
-  expiresInSeconds: number = 60 * 60 * 12,
+  expiresInSeconds: number = BUILDER_MCP_TOKEN_TTL_SECONDS,
   env?: ServerEnv,
 ): string {
   const now = Math.floor(Date.now() / 1000);
