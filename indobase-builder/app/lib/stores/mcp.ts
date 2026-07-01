@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { MCPConfig, MCPServerTools } from '~/lib/services/mcpService';
 import { getAutoIndobaseMcpConfig, mergeMcpConfigWithIndobase } from '~/lib/indobase/mcp';
+import { bindIndobaseConnectionChangedListener } from '~/lib/indobase/connection-storage';
 import { scheduleIdleWork } from '~/utils/scheduleIdleWork';
 import { builderFetch } from '~/lib/indobase/builder-auth.client';
 
@@ -80,7 +81,7 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
       }
 
       if (!hasBoundIndobaseConnectionListener) {
-        window.addEventListener('indobase:supabase-connection-changed', () => {
+        bindIndobaseConnectionChangedListener(() => {
           useMCPStore
             .getState()
             .syncWithIndobaseConnection()

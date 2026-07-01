@@ -58,7 +58,7 @@ describe('indobase handoff', () => {
     sub: 'user-123',
   };
 
-  it('maps handoff payload into the existing Supabase connection store shape', () => {
+  it('maps handoff payload into the Indobase connection store shape', () => {
     const connection = buildIndobaseConnectionFromHandoff(payload, { mcpToken: 'mcp-token' });
 
     expect(connection).toMatchObject({
@@ -71,7 +71,7 @@ describe('indobase handoff', () => {
       },
       credentials: {
         anonKey: 'anon-key',
-        supabaseUrl: 'https://proj_123.indobase.in',
+        apiUrl: 'https://proj_123.indobase.in',
       },
       indobase: {
         mcpToken: 'mcp-token',

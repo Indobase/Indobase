@@ -10,7 +10,7 @@ import { WORK_DIR } from '~/utils/constants';
 type ServerBuildBody = {
   credentials?: {
     anonKey?: string;
-    supabaseUrl?: string;
+    apiUrl?: string;
   };
   files?: FileMap;
   mcpToken?: string;

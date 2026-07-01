@@ -54,7 +54,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     credentials?: {
       anonKey?: string;
       apiUrl?: string;
-      supabaseUrl?: string;
     };
     indobase?: {
       apiUrl?: string;
@@ -83,8 +82,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       designScheme?: DesignScheme;
       multiAgentMode?: boolean;
       indobase?: BackendConnectionPayload;
-      /** @deprecated Use indobase */
-      supabase?: BackendConnectionPayload;
       maxLLMSteps: number;
     }>();
 
@@ -98,7 +95,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     maxLLMSteps,
     multiAgentMode,
   } = body;
-  const indobaseBackend = body.indobase ?? body.supabase;
+  const indobaseBackend = body.indobase;
 
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');

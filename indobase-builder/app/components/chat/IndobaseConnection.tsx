@@ -345,9 +345,6 @@ export function IndobaseConnection() {
   );
 }
 
-/** @deprecated Use IndobaseConnection */
-export const SupabaseConnection = IndobaseConnection;
-
 interface ButtonProps {
   active?: boolean;
   disabled?: boolean;

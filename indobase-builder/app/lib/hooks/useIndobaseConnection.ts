@@ -10,6 +10,7 @@ import {
   updateIndobaseConnection,
   fetchProjectApiKeys,
   initializeIndobaseConnection,
+  fetchIndobaseBackendStats,
 } from '~/lib/stores/indobase-connection';
 import {
   readStoredConnectionRaw,
@@ -48,8 +49,8 @@ export function useIndobaseConnection() {
           updateIndobaseConnection(parsed);
         }
 
-        if (parsed.token && parsed.selectedProjectId && !parsed.credentials) {
-          fetchProjectApiKeys(parsed.selectedProjectId, parsed.token).catch(console.error);
+        if (parsed.connectionSource === 'studio_handoff' && parsed.selectedProjectId && !parsed.credentials) {
+          fetchProjectApiKeys(parsed.selectedProjectId).catch(console.error);
         }
       }
     };
@@ -61,41 +62,15 @@ export function useIndobaseConnection() {
     isConnecting.set(true);
 
     try {
-      const cleanToken = connection.token.trim();
-
-      const response = await fetch('/api/supabase', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: cleanToken,
-        }),
-      });
-
-      const data = (await response.json()) as any;
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to connect');
-      }
-
-      updateIndobaseConnection({
-        user: data.user,
-        token: connection.token,
-        stats: data.stats,
-      });
-
-      toast.success('Successfully connected to Indobase backend');
-
+      await fetchIndobaseBackendStats();
+      toast.success('Connected to Indobase backend via Studio session');
       setIsProjectsExpanded(true);
-
       return true;
     } catch (error) {
       console.error('Connection error:', error);
-      logStore.logError('Failed to authenticate with Indobase backend', { error });
-      toast.error(error instanceof Error ? error.message : 'Failed to connect to Indobase backend');
-      updateIndobaseConnection({ user: null, token: '' });
-
+      logStore.logError('Failed to connect Indobase backend', { error });
+      toast.error('Open Builder from Indobase Studio to connect your project.');
+      window.open('https://studio.indobase.in', '_blank');
       return false;
     } finally {
       isConnecting.set(false);
@@ -131,9 +106,9 @@ export function useIndobaseConnection() {
       project: projectData,
     });
 
-    if (projectId && currentState.token) {
+    if (projectId && currentState.connectionSource === 'studio_handoff') {
       try {
-        await fetchProjectApiKeys(projectId, currentState.token);
+        await fetchProjectApiKeys(projectId);
         toast.success('Project selected successfully');
       } catch (error) {
         console.error('Failed to fetch API keys:', error);
@@ -165,15 +140,6 @@ export function useIndobaseConnection() {
     handleCreateProject,
     updateToken: (token: string) => updateIndobaseConnection({ ...connection, token }),
     isConnected: Boolean(connection.isConnected),
-    fetchProjectApiKeys: (projectId: string) => {
-      if (connection.token) {
-        return fetchProjectApiKeys(projectId, connection.token);
-      }
-
-      return Promise.reject(new Error('No token available'));
-    },
+    fetchProjectApiKeys: (projectId: string) => fetchProjectApiKeys(projectId),
   };
 }
-
-/** @deprecated Use useIndobaseConnection */
-export const useSupabaseConnection = useIndobaseConnection;

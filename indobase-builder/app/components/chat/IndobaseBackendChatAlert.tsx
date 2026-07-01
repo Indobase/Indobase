@@ -23,25 +23,14 @@ export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Pro
   const autoAppliedRef = useRef(false);
 
   const isStudioManaged = hasIndobaseStudioHandoff(connection);
-  const isLegacyConnected = !!(connection.token && connection.selectedProjectId);
-  const isConnected = isStudioManaged || isLegacyConnected;
+  const isConnected = isStudioManaged;
 
-  const description = isStudioManaged
-    ? 'Apply to your Indobase project database'
-    : isConnected
-      ? 'Execute database query'
-      : 'Backend connection required';
-  const message = isStudioManaged
+  const description = isConnected ? 'Apply to your Indobase project database' : 'Backend connection required';
+  const message = isConnected
     ? 'This session is linked to Indobase Studio. Database changes run on your tenant data plane automatically.'
-    : isConnected
-      ? 'Please review the proposed changes and apply them to your database.'
-      : 'Open Builder from Studio to connect your Indobase project automatically.';
+    : 'Open Builder from Studio to connect your Indobase project automatically.';
 
   const handleConnectClick = () => {
-    if (isStudioManaged) {
-      return;
-    }
-
     document.dispatchEvent(new CustomEvent(OPEN_INDOBASE_CONNECTION_EVENT));
   };
 
@@ -49,39 +38,20 @@ export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Pro
     setIsExecuting(true);
 
     try {
-      if (isStudioManaged) {
-        await ensureBuilderSession();
-        const isMigration = /migration/i.test(title);
-        const migrationName = alert.description?.match(/:\s*(.+)$/)?.[1]?.trim();
-
-        await executeIndobaseSql({
-          connection,
-          query: sql,
-          operation: isMigration ? 'migration' : 'query',
-          name: migrationName,
-        });
-      } else {
-        if (!connection.token || !connection.selectedProjectId) {
-          throw new Error('No legacy backend token or project selected');
-        }
-
-        const response = await fetch('/api/supabase/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${connection.token}`,
-          },
-          body: JSON.stringify({
-            projectId: connection.selectedProjectId,
-            query: sql,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = (await response.json()) as { error?: { message?: string } };
-          throw new Error(`Backend query failed: ${errorData.error?.message || response.statusText}`);
-        }
+      if (!isStudioManaged) {
+        throw new Error('Indobase Studio session required');
       }
+
+      await ensureBuilderSession();
+      const isMigration = /migration/i.test(title);
+      const migrationName = alert.description?.match(/:\s*(.+)$/)?.[1]?.trim();
+
+      await executeIndobaseSql({
+        connection,
+        query: sql,
+        operation: isMigration ? 'migration' : 'query',
+        name: migrationName,
+      });
 
       clearAlert();
     } catch (error) {
@@ -181,7 +151,7 @@ export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Pro
               >
                 Connect to Backend
               </button>
-            ) : isStudioManaged ? (
+            ) : (
               <button
                 disabled
                 className={classNames(
@@ -192,22 +162,6 @@ export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Pro
                 )}
               >
                 {isExecuting ? 'Applying to Indobase…' : 'Applied via Indobase'}
-              </button>
-            ) : (
-              <button
-                onClick={() => executeBackendAction(content)}
-                disabled={isExecuting}
-                className={classNames(
-                  `px-3 py-2 rounded-md text-sm font-medium`,
-                  'bg-[#098F5F]',
-                  'hover:bg-[#0aa06c]',
-                  'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500',
-                  'text-white',
-                  'flex items-center gap-1.5',
-                  isExecuting ? 'opacity-70 cursor-not-allowed' : '',
-                )}
-              >
-                {isExecuting ? 'Applying...' : 'Apply Changes'}
               </button>
             )}
             <button
@@ -230,6 +184,3 @@ export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Pro
     </AnimatePresence>
   );
 }
-
-/** @deprecated Use IndobaseBackendChatAlert */
-export const SupabaseChatAlert = IndobaseBackendChatAlert;

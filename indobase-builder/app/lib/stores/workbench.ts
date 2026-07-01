@@ -140,18 +140,8 @@ export class WorkbenchStore {
     return this.indobaseBackendAlert;
   }
 
-  /** @deprecated Use indobaseBackendAlertAtom */
-  get supabaseAlert() {
-    return this.indobaseBackendAlert;
-  }
-
   clearIndobaseBackendAlert() {
     this.indobaseBackendAlert.set(undefined);
-  }
-
-  /** @deprecated Use clearIndobaseBackendAlert */
-  clearSupabaseAlert() {
-    this.clearIndobaseBackendAlert();
   }
 
   get DeployAlert() {

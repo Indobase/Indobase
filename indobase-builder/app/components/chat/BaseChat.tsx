@@ -19,7 +19,7 @@ import DeployChatAlert from '~/components/deploy/DeployAlert';
 import ChatAlert from './ChatAlert';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
-import { IndobaseBackendChatAlert } from '~/components/chat/SupabaseAlert';
+import { IndobaseBackendChatAlert } from '~/components/chat/IndobaseBackendChatAlert';
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import { useStore } from '@nanostores/react';
 import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
@@ -123,10 +123,6 @@ interface BaseChatProps {
   clearAlert?: () => void;
   indobaseBackendAlert?: IndobaseBackendAlert;
   clearIndobaseBackendAlert?: () => void;
-  /** @deprecated Use indobaseBackendAlert */
-  supabaseAlert?: IndobaseBackendAlert;
-  /** @deprecated Use clearIndobaseBackendAlert */
-  clearSupabaseAlert?: () => void;
   deployAlert?: DeployAlert;
   clearDeployAlert?: () => void;
   llmErrorAlert?: LlmErrorAlertType;
@@ -179,8 +175,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       clearDeployAlert,
       indobaseBackendAlert,
       clearIndobaseBackendAlert,
-      supabaseAlert,
-      clearSupabaseAlert,
       llmErrorAlert,
       clearLlmErrorAlert,
       data,
@@ -206,8 +200,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
     const indobaseConn = useStore(indobaseConnection);
-    const backendAlert = indobaseBackendAlert ?? supabaseAlert;
-    const clearBackendAlert = clearIndobaseBackendAlert ?? clearSupabaseAlert;
+    const backendAlert = indobaseBackendAlert;
+    const clearBackendAlert = clearIndobaseBackendAlert;
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const isStudioManagedConnection = hasIndobaseStudioHandoff(indobaseConn);
 

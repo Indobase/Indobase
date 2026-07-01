@@ -26,11 +26,6 @@ export function getStoredIndobaseConnectionFromAuth(): IndobaseConnectionState |
   return getStoredIndobaseConnection();
 }
 
-/** @deprecated Use getStoredIndobaseConnectionFromAuth */
-export function getStoredSupabaseConnection(): IndobaseConnectionState | null {
-  return getStoredIndobaseConnectionFromAuth();
-}
-
 export function getLastProjectRef(): string | null {
   if (typeof window === 'undefined') {
     return null;
@@ -167,13 +162,13 @@ function applySessionToStoredConnection(session: SessionResponse) {
     connectionSource: 'studio_handoff',
     selectedProjectId: projectRef || connection.selectedProjectId,
     indobase: {
-      apiUrl: connection.indobase?.apiUrl || connection.credentials?.supabaseUrl || '',
-      authUrl: connection.indobase?.authUrl || `${connection.credentials?.supabaseUrl || ''}/auth/v1`,
+      apiUrl: connection.indobase?.apiUrl || connection.credentials?.apiUrl || '',
+      authUrl: connection.indobase?.authUrl || `${connection.credentials?.apiUrl || ''}/auth/v1`,
       organizationSlug: session.organizationSlug || connection.indobase?.organizationSlug || '',
       projectRef,
       projectUrl: connection.indobase?.projectUrl || '',
-      restUrl: connection.indobase?.restUrl || `${connection.credentials?.supabaseUrl || ''}/rest/v1/`,
-      storageUrl: connection.indobase?.storageUrl || `${connection.credentials?.supabaseUrl || ''}/storage/v1`,
+      restUrl: connection.indobase?.restUrl || `${connection.credentials?.apiUrl || ''}/rest/v1/`,
+      storageUrl: connection.indobase?.storageUrl || `${connection.credentials?.apiUrl || ''}/storage/v1`,
       studioUrl: session.studioUrl || connection.indobase?.studioUrl || DEFAULT_STUDIO_URL,
       mcpToken: session.mcpToken,
     },

@@ -105,7 +105,7 @@ export default function IndobaseBackendTab() {
     });
 
     try {
-      const response = await fetch('/api/supabase-user', {
+      const response = await fetch('/api/indobase/connection-status', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ export default function IndobaseBackendTab() {
         const data = (await response.json()) as any;
         setConnectionTest({
           status: 'success',
-          message: `Connected successfully using environment token. Found ${data.projects?.length || 0} projects`,
+          message: `Connected successfully. Linked project: ${data.projectRef || 'unknown'}`,
           timestamp: Date.now(),
         });
       } else {
@@ -602,7 +602,7 @@ export default function IndobaseBackendTab() {
                                 <div className="flex items-center gap-2 mt-1">
                                   <input
                                     type="text"
-                                    value={connection.credentials.apiUrl || connection.credentials.supabaseUrl || ''}
+                                    value={connection.credentials.apiUrl || ''}
                                     readOnly
                                     className="flex-1 px-2 py-1 text-xs bg-bolt-elements-background border border-bolt-elements-borderColor rounded"
                                   />
@@ -613,7 +613,7 @@ export default function IndobaseBackendTab() {
                                       e.stopPropagation();
 
                                       const apiUrl =
-                                        connection.credentials?.apiUrl || connection.credentials?.supabaseUrl;
+                                        connection.credentials?.apiUrl;
                                       if (apiUrl) {
                                         navigator.clipboard.writeText(apiUrl);
                                         toast.success('URL copied to clipboard');
@@ -1155,6 +1155,3 @@ export default function IndobaseBackendTab() {
     </div>
   );
 }
-
-/** @deprecated Use IndobaseBackendTab */
-export { IndobaseBackendTab as SupabaseTab };

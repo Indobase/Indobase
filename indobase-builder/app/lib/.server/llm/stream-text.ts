@@ -28,8 +28,6 @@ export type Messages = Message[];
 
 export interface StreamingOptions extends Omit<Parameters<typeof _streamText>[0], 'model'> {
   indobaseConnection?: BackendConnectionContext;
-  /** @deprecated Use indobaseConnection */
-  supabaseConnection?: BackendConnectionContext;
 }
 
 type BackendConnectionContext = {
@@ -39,7 +37,6 @@ type BackendConnectionContext = {
   credentials?: {
     anonKey?: string;
     apiUrl?: string;
-    supabaseUrl?: string;
   };
   indobase?: {
     apiUrl?: string;
@@ -52,7 +49,7 @@ type BackendConnectionContext = {
 };
 
 function resolveBackendConnection(options?: StreamingOptions) {
-  return options?.indobaseConnection ?? options?.supabaseConnection;
+  return options?.indobaseConnection;
 }
 
 const logger = createScopedLogger('stream-text');
@@ -328,8 +325,7 @@ export async function streamText(props: {
     );
     systemPrompt = `${systemPrompt}${getIndobaseManagedBackendPrompt({
       projectRef: backendConnection?.indobase?.projectRef,
-      supabaseUrl:
-        backendConnection?.credentials?.apiUrl || backendConnection?.credentials?.supabaseUrl,
+      apiUrl: backendConnection?.credentials?.apiUrl || backendConnection?.indobase?.apiUrl,
       anonKey: backendConnection?.credentials?.anonKey,
       authUrl: backendConnection?.indobase?.authUrl,
       storageUrl: backendConnection?.indobase?.storageUrl,

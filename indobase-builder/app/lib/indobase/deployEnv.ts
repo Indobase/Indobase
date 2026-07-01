@@ -10,33 +10,25 @@ function cleanEnvValue(value?: string) {
 export function getDeployEnvironmentVariables(
   connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
 ): DeployEnvironmentVariables {
-  const supabaseUrl =
+  const apiUrl =
     cleanEnvValue(connection?.credentials?.apiUrl) ||
-    cleanEnvValue(connection?.credentials?.supabaseUrl) ||
     cleanEnvValue(connection?.indobase?.apiUrl) ||
     cleanEnvValue(connection?.indobase?.projectUrl);
   const anonKey = cleanEnvValue(connection?.credentials?.anonKey);
 
-  if (!supabaseUrl || !anonKey) {
+  if (!apiUrl || !anonKey) {
     return {};
   }
 
   const env: DeployEnvironmentVariables = {
     NEXT_PUBLIC_INDOBASE_ANON_KEY: anonKey,
-    NEXT_PUBLIC_INDOBASE_URL: supabaseUrl,
+    NEXT_PUBLIC_INDOBASE_URL: apiUrl,
     INDOBASE_ANON_KEY: anonKey,
-    INDOBASE_URL: supabaseUrl,
+    INDOBASE_URL: apiUrl,
     VITE_INDOBASE_ANON_KEY: anonKey,
-    VITE_INDOBASE_URL: supabaseUrl,
+    VITE_INDOBASE_URL: apiUrl,
     EXPO_PUBLIC_INDOBASE_ANON_KEY: anonKey,
-    EXPO_PUBLIC_INDOBASE_URL: supabaseUrl,
-    // Legacy aliases for older generated apps
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
-    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-    SUPABASE_ANON_KEY: anonKey,
-    SUPABASE_URL: supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: anonKey,
-    VITE_SUPABASE_URL: supabaseUrl,
+    EXPO_PUBLIC_INDOBASE_URL: apiUrl,
   };
 
   const projectRef = cleanEnvValue(connection?.indobase?.projectRef);

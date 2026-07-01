@@ -1,6 +1,5 @@
 import { atom } from 'nanostores';
 import type {
-  IndobaseBackendApiKey,
   IndobaseBackendCredentials,
   IndobaseBackendStats,
   IndobaseBackendUser,
@@ -13,6 +12,7 @@ import {
   writeStoredConnectionRaw,
   writeStoredCredentialsRaw,
 } from '~/lib/indobase/connection-storage';
+import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 
 export type IndobaseBackendProject = import('~/types/indobase-backend').IndobaseBackendProject;
 
@@ -38,13 +38,8 @@ export interface IndobaseConnectionState {
   };
 }
 
-/** @deprecated Use IndobaseConnectionState */
-export type IndobaseConnectionState = IndobaseConnectionState;
-/** @deprecated Use IndobaseBackendProject */
-export type SupabaseProject = IndobaseBackendProject;
-
 function resolveApiUrl(credentials?: IndobaseBackendCredentials) {
-  return credentials?.apiUrl || credentials?.supabaseUrl;
+  return credentials?.apiUrl;
 }
 
 const savedConnection = readStoredConnectionRaw();
@@ -63,22 +58,24 @@ const initialState: IndobaseConnectionState = savedConnection
 
 if (savedCredentials && !initialState.credentials) {
   try {
-    initialState.credentials = JSON.parse(savedCredentials);
+    const parsed = JSON.parse(savedCredentials) as IndobaseBackendCredentials;
+    initialState.credentials = {
+      anonKey: parsed.anonKey,
+      apiUrl: parsed.apiUrl,
+    };
   } catch (e) {
     console.error('Failed to parse saved Indobase credentials:', e);
   }
 }
 
 export const indobaseConnection = atom<IndobaseConnectionState>(initialState);
-/** @deprecated Use indobaseConnection */
-export const supabaseConnection = indobaseConnection;
 
 export const isConnecting = atom(false);
 export const isFetchingStats = atom(false);
 export const isFetchingApiKeys = atom(false);
 
-if (initialState.token && !initialState.stats) {
-  fetchIndobaseBackendStats(initialState.token).catch(console.error);
+if (initialState.connectionSource === 'studio_handoff' && !initialState.stats) {
+  fetchIndobaseBackendStats().catch(console.error);
 }
 
 export function updateIndobaseConnection(connection: Partial<IndobaseConnectionState>) {
@@ -93,12 +90,11 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
   const nextConnectionSource =
     connection.connectionSource !== undefined ? connection.connectionSource : currentState.connectionSource;
 
-  const isManualConnection = Boolean(nextUser && nextToken);
   const isStudioManagedConnection =
     nextConnectionSource === 'studio_handoff' &&
     Boolean(nextSelectedProjectId && resolveApiUrl(nextCredentials) && nextCredentials?.anonKey);
 
-  connection.isConnected = isManualConnection || isStudioManagedConnection;
+  connection.isConnected = isStudioManagedConnection;
 
   if (connection.selectedProjectId !== undefined) {
     if (connection.selectedProjectId && nextStats?.projects) {
@@ -136,7 +132,6 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
       const storage =
         typeof globalThis !== 'undefined' && globalThis.localStorage ? globalThis.localStorage : null;
       storage?.removeItem('indobase_credentials');
-      storage?.removeItem('supabaseCredentials');
     }
   } else {
     clearStoredConnection();
@@ -145,45 +140,39 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
   dispatchIndobaseConnectionChanged();
 }
 
-/** @deprecated Use updateIndobaseConnection */
-export const updateSupabaseConnection = updateIndobaseConnection;
-
 export function initializeIndobaseConnection() {
-  const envToken =
-    import.meta.env?.VITE_INDOBASE_ACCESS_TOKEN?.trim() || import.meta.env?.VITE_SUPABASE_ACCESS_TOKEN?.trim();
-
-  if (envToken && !indobaseConnection.get().token && !indobaseConnection.get().isConnected) {
-    updateIndobaseConnection({ token: envToken });
-    fetchIndobaseBackendStats(envToken).catch(console.error);
+  if (indobaseConnection.get().connectionSource === 'studio_handoff') {
+    fetchIndobaseBackendStats().catch(console.error);
   }
 }
 
-/** @deprecated Use initializeIndobaseConnection */
-export const initializeSupabaseConnection = initializeIndobaseConnection;
-
-export async function fetchIndobaseBackendStats(token: string) {
+export async function fetchIndobaseBackendStats(_token?: string) {
   isFetchingStats.set(true);
 
   try {
-    const response = await fetch('/api/supabase', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        token,
-      }),
-    });
+    const response = await fetch('/api/indobase/connection-status', getBuilderRequestInit());
 
     if (!response.ok) {
-      throw new Error('Failed to fetch projects');
+      throw new Error('Failed to fetch Indobase backend status');
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as {
+      projects?: IndobaseBackendProject[];
+      projectRef?: string;
+    };
 
     updateIndobaseConnection({
-      user: data.user,
-      stats: data.stats,
+      user: {
+        id: data.projectRef || 'indobase',
+        email: 'Connected from Indobase Studio',
+        role: 'indobase_builder',
+        created_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+      },
+      stats: {
+        projects: data.projects || [],
+        totalProjects: data.projects?.length || 0,
+      },
     });
   } catch (error) {
     console.error('Failed to fetch Indobase backend stats:', error);
@@ -193,48 +182,26 @@ export async function fetchIndobaseBackendStats(token: string) {
   }
 }
 
-/** @deprecated Use fetchIndobaseBackendStats */
-export const fetchSupabaseStats = fetchIndobaseBackendStats;
-
-export async function fetchProjectApiKeys(projectId: string, token: string) {
+export async function fetchProjectApiKeys(projectId: string, _token?: string) {
   isFetchingApiKeys.set(true);
 
   try {
-    const response = await fetch('/api/supabase/variables', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const connection = indobaseConnection.get();
+
+    if (connection.connectionSource !== 'studio_handoff' || !connection.credentials?.anonKey) {
+      throw new Error('Open Builder from Indobase Studio to load project API keys.');
+    }
+
+    const apiUrl = connection.credentials.apiUrl || connection.indobase?.apiUrl || `https://${projectId}.indobase.in`;
+
+    updateIndobaseConnection({
+      credentials: {
+        anonKey: connection.credentials.anonKey,
+        apiUrl,
       },
-      body: JSON.stringify({
-        projectId,
-        token,
-      }),
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch API keys');
-    }
-
-    const data = (await response.json()) as any;
-    const apiKeys = data.apiKeys;
-
-    const anonKey = apiKeys.find((key: IndobaseBackendApiKey) => key.name === 'anon' || key.name === 'public');
-
-    if (anonKey) {
-      const apiUrl = `https://${projectId}.indobase.in`;
-
-      updateIndobaseConnection({
-        credentials: {
-          anonKey: anonKey.api_key,
-          apiUrl,
-          supabaseUrl: apiUrl,
-        },
-      });
-
-      return { anonKey: anonKey.api_key, apiUrl, supabaseUrl: apiUrl };
-    }
-
-    return null;
+    return { anonKey: connection.credentials.anonKey, apiUrl };
   } catch (error) {
     console.error('Failed to fetch project API keys:', error);
     throw error;

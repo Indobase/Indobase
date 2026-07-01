@@ -12,7 +12,7 @@ const baseHandoff = {
   selectedProjectId: 'proj_123',
   credentials: {
     anonKey: 'anon',
-    supabaseUrl: 'https://proj.indobase.in',
+    apiUrl: 'https://proj.indobase.in',
   },
   indobase: {
     apiUrl: 'https://proj.indobase.in',

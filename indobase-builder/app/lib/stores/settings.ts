@@ -7,6 +7,7 @@ import { DEFAULT_TAB_CONFIG } from '~/components/@settings/core/constants';
 import { toggleTheme } from './theme';
 import { create } from 'zustand';
 import { builderFetch } from '~/lib/indobase/builder-auth.client';
+import { bindIndobaseConnectionChangedListener } from '~/lib/indobase/connection-storage';
 
 export interface Shortcut {
   key: string;
@@ -200,7 +201,7 @@ if (isBrowser) {
 
   scheduleProviderInit();
 
-  window.addEventListener('indobase:supabase-connection-changed', scheduleProviderInit);
+  bindIndobaseConnectionChangedListener(scheduleProviderInit);
 }
 
 // Create a function to update provider settings that handles both store and persistence

@@ -158,7 +158,7 @@ describe('StreamingMessageParser', () => {
     });
   });
 
-  describe('supabase migration actions', () => {
+  describe('indobase migration actions', () => {
     it('should not throw when migration filePath is missing', () => {
       const callbacks = {
         onArtifactOpen: vi.fn(),
@@ -169,14 +169,14 @@ describe('StreamingMessageParser', () => {
 
       const parser = new StreamingMessageParser({ callbacks });
       const input =
-        'Before <boltArtifact title="DB" id="artifact_1"><boltAction type="supabase" operation="migration">CREATE TABLE users (id uuid primary key);</boltAction></boltArtifact> After';
+        'Before <boltArtifact title="DB" id="artifact_1"><boltAction type="indobase" operation="migration">CREATE TABLE users (id uuid primary key);</boltAction></boltArtifact> After';
 
       expect(() => parser.parse('test_migration', input)).not.toThrow();
 
       expect(callbacks.onActionOpen).toHaveBeenCalledWith(
         expect.objectContaining({
           action: expect.objectContaining({
-            type: 'supabase',
+            type: 'indobase',
             operation: 'migration',
             filePath: expect.stringMatching(/^\/indobase\/migrations\/.+\.sql$/),
           }),

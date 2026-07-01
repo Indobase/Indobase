@@ -248,7 +248,7 @@ export const ChatImpl = memo(
           hasSelectedProject,
           connectionSource: indobaseConn.connectionSource,
           credentials: {
-            apiUrl: indobaseConn?.credentials?.apiUrl ?? indobaseConn?.credentials?.supabaseUrl,
+            apiUrl: indobaseConn?.credentials?.apiUrl,
             anonKey: indobaseConn?.credentials?.anonKey,
           },
           indobase: indobaseConn.indobase
@@ -442,7 +442,7 @@ export const ChatImpl = memo(
       indobaseConn.connectionSource,
       indobaseConn.indobase?.mcpToken,
       indobaseConn.credentials?.anonKey,
-      indobaseConn.credentials?.supabaseUrl,
+      indobaseConn.credentials?.apiUrl,
     ]);
 
     useEffect(() => {
@@ -461,7 +461,7 @@ export const ChatImpl = memo(
     }, [
       indobaseConn.connectionSource,
       indobaseConn.credentials?.anonKey,
-      indobaseConn.credentials?.supabaseUrl,
+      indobaseConn.credentials?.apiUrl,
       indobaseConn.indobase?.projectRef,
     ]);
 

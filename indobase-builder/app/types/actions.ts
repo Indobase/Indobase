@@ -1,6 +1,6 @@
 import type { Change } from 'diff';
 
-export type ActionType = 'file' | 'shell' | 'indobase' | 'supabase';
+export type ActionType = 'file' | 'shell' | 'indobase';
 
 export interface BaseAction {
   content: string;
@@ -30,12 +30,7 @@ export interface IndobaseBackendAction extends BaseAction {
   projectId?: string;
 }
 
-/** @deprecated Use IndobaseBackendAction with type "indobase" */
-export interface SupabaseAction extends IndobaseBackendAction {
-  type: 'supabase';
-}
-
-export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | IndobaseBackendAction | SupabaseAction;
+export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | IndobaseBackendAction;
 
 export type BoltActionData = BoltAction | BaseAction;
 
@@ -54,9 +49,6 @@ export interface IndobaseBackendAlert {
   content: string;
   source?: 'indobase';
 }
-
-/** @deprecated Use IndobaseBackendAlert */
-export type SupabaseAlert = IndobaseBackendAlert;
 
 export interface DeployAlert {
   type: 'success' | 'error' | 'info';

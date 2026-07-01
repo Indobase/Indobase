@@ -12,7 +12,7 @@ describe('deploy environment variables', () => {
     const env = getDeployEnvironmentVariables({
       credentials: {
         anonKey: 'anon-key',
-        supabaseUrl: 'https://proj_123.indobase.in',
+        apiUrl: 'https://proj_123.indobase.in',
       },
       indobase: {
         projectRef: 'proj_123',
@@ -27,12 +27,8 @@ describe('deploy environment variables', () => {
       INDOBASE_URL: 'https://proj_123.indobase.in',
       VITE_INDOBASE_ANON_KEY: 'anon-key',
       VITE_INDOBASE_URL: 'https://proj_123.indobase.in',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
-      NEXT_PUBLIC_SUPABASE_URL: 'https://proj_123.indobase.in',
-      SUPABASE_ANON_KEY: 'anon-key',
-      SUPABASE_URL: 'https://proj_123.indobase.in',
-      VITE_SUPABASE_ANON_KEY: 'anon-key',
-      VITE_SUPABASE_URL: 'https://proj_123.indobase.in',
+      EXPO_PUBLIC_INDOBASE_ANON_KEY: 'anon-key',
+      EXPO_PUBLIC_INDOBASE_URL: 'https://proj_123.indobase.in',
       INDOBASE_PROJECT_REF: 'proj_123',
       NEXT_PUBLIC_INDOBASE_PROJECT_REF: 'proj_123',
       VITE_INDOBASE_PROJECT_REF: 'proj_123',
@@ -44,7 +40,7 @@ describe('deploy environment variables', () => {
       hasDeployEnvironmentVariables({
         credentials: {
           anonKey: 'anon-key',
-          supabaseUrl: 'https://proj_123.indobase.in',
+          apiUrl: 'https://proj_123.indobase.in',
         },
       } as any),
     ).toBe(true);
@@ -54,7 +50,7 @@ describe('deploy environment variables', () => {
     const env = getDeployEnvironmentVariables({
       credentials: {
         anonKey: '   ',
-        supabaseUrl: 'https://proj_123.indobase.in',
+        apiUrl: 'https://proj_123.indobase.in',
       },
       indobase: {
         projectRef: '   ',

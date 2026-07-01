@@ -36,9 +36,6 @@ export function getStoredIndobaseConnection(): IndobaseConnectionState | null {
   }
 }
 
-/** @deprecated Use getStoredIndobaseConnection */
-export const getStoredSupabaseConnection = getStoredIndobaseConnection;
-
 export function getAutoIndobaseMcpConfig(connection?: IndobaseConnectionState | null): MCPConfig | null {
   const resolvedConnection = connection ?? getStoredIndobaseConnection();
 

@@ -111,7 +111,7 @@ export function sanitizeGeneratedArtifactPath(filePath: string): string {
     .replace(/\/supabase\.(ts|tsx|js|jsx)$/i, '/indobase.$1');
 }
 
-function rewriteSupabaseImportPath(importPath: string): string {
+function rewriteLegacyImportPath(importPath: string): string {
   return importPath.replace(/\/lib\/supabase$/, '/lib/indobase').replace(/\/supabase$/, '/indobase');
 }
 
@@ -123,7 +123,7 @@ export function sanitizeGeneratedArtifactContent(content: string): string {
         return match;
       }
 
-      return `from ${quote}${rewriteSupabaseImportPath(importPath)}${quote}`;
+      return `from ${quote}${rewriteLegacyImportPath(importPath)}${quote}`;
     })
     .replace(/VITE_SUPABASE_URL/g, 'VITE_INDOBASE_URL')
     .replace(/VITE_SUPABASE_ANON_KEY/g, 'VITE_INDOBASE_ANON_KEY')

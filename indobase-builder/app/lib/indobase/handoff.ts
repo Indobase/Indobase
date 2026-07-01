@@ -39,7 +39,6 @@ export function buildIndobaseConnectionFromHandoff(
     credentials: {
       anonKey: payload.backend.anon_key,
       apiUrl: payload.backend.api_url,
-      supabaseUrl: payload.backend.api_url,
     },
     connectionSource: 'studio_handoff',
     indobase: {
@@ -55,6 +54,3 @@ export function buildIndobaseConnectionFromHandoff(
     },
   };
 }
-
-/** @deprecated Use buildIndobaseConnectionFromHandoff */
-export const buildSupabaseConnectionFromHandoff = buildIndobaseConnectionFromHandoff;

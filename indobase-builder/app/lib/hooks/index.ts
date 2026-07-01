@@ -11,5 +11,5 @@ export { useGitHubConnection } from './useGitHubConnection';
 export { useGitHubStats } from './useGitHubStats';
 export { useGitLabConnection } from './useGitLabConnection';
 export { useGitLabAPI } from './useGitLabAPI';
-export { useIndobaseConnection, useSupabaseConnection } from './useIndobaseConnection';
+export { useIndobaseConnection } from './useIndobaseConnection';
 export { useConnectionTest } from './useConnectionTest';

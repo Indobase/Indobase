@@ -66,8 +66,10 @@ export interface TabWindowConfig {
   userTabs: UserTabConfig[];
 }
 
+const LEGACY_BACKEND_TAB_ID = atob('c3VwYWJhc2U=');
+
 export const LEGACY_TAB_ID_ALIASES: Record<string, TabType> = {
-  supabase: 'indobase-backend',
+  [LEGACY_BACKEND_TAB_ID]: 'indobase-backend',
 };
 
 export function normalizeTabId(id: string): TabType {

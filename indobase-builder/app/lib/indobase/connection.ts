@@ -1,7 +1,7 @@
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 function resolveApiUrl(connection?: IndobaseConnectionState | null) {
-  return connection?.credentials?.apiUrl || connection?.credentials?.supabaseUrl || connection?.indobase?.apiUrl;
+  return connection?.credentials?.apiUrl || connection?.indobase?.apiUrl;
 }
 
 /** Studio handoff with backend credentials (env seeding, preview). MCP token may be restored from cookie. */

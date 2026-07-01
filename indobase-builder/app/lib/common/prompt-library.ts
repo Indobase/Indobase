@@ -9,8 +9,6 @@ export interface PromptOptions {
   modificationTagName: string;
   designScheme?: DesignScheme;
   indobase?: BackendPromptContext;
-  /** @deprecated Use indobase */
-  supabase?: BackendPromptContext;
 }
 
 export type BackendPromptContext = {
@@ -20,16 +18,15 @@ export type BackendPromptContext = {
   credentials?: {
     anonKey?: string;
     apiUrl?: string;
-    supabaseUrl?: string;
   };
 };
 
 export function resolveBackendPromptContext(options: PromptOptions) {
-  return options.indobase ?? options.supabase;
+  return options.indobase;
 }
 
 export function resolveBackendApiUrl(context?: BackendPromptContext) {
-  return context?.credentials?.apiUrl || context?.credentials?.supabaseUrl;
+  return context?.credentials?.apiUrl;
 }
 
 export class PromptLibrary {

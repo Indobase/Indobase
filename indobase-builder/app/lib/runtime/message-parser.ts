@@ -360,7 +360,7 @@ export class StreamingMessageParser {
       content: '',
     };
 
-    if (actionType === 'indobase' || actionType === 'supabase') {
+    if (actionType === 'indobase') {
       (actionAttributes as IndobaseBackendAction).type = 'indobase';
       const operation = this.#extractAttribute(actionTag, 'operation');
 

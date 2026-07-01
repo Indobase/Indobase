@@ -37,10 +37,9 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
 
   const actions = useStore(
     computed(artifact.runner.actions, (actions) => {
-      // Filter out Supabase actions except for migrations
+      // Filter out Indobase backend actions; they are handled separately
       return Object.values(actions).filter((action) => {
-        // Exclude legacy supabase bolt actions; indobase actions are handled separately
-        return action.type !== 'supabase' && action.type !== 'indobase' && !(action.type === 'shell' && action.content?.includes('supabase'));
+        return action.type !== 'indobase';
       });
     }),
   );

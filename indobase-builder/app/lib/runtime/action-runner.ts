@@ -176,8 +176,7 @@ export class ActionRunner {
           await this.#runFileAction(action);
           break;
         }
-        case 'indobase':
-        case 'supabase': {
+        case 'indobase': {
           try {
             await this.handleIndobaseBackendAction(action as IndobaseBackendAction);
           } catch (error: any) {

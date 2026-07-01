@@ -8,7 +8,7 @@ describe('seedProjectEnv', () => {
     const connection = {
       credentials: {
         anonKey: 'anon-key',
-        supabaseUrl: 'https://proj_123.indobase.in',
+        apiUrl: 'https://proj_123.indobase.in',
       },
       indobase: {
         projectRef: 'proj_123',

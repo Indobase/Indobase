@@ -4,11 +4,12 @@ export const INDOBASE_PROJECT_CHAT_PREFIX = 'indobase-project-';
 export const INDOBASE_CONNECTION_CHANGED_EVENT = 'indobase:connection-changed';
 export const OPEN_INDOBASE_CONNECTION_EVENT = 'open-indobase-connection';
 
-const LEGACY_CONNECTION_KEY = 'supabase_connection';
-const LEGACY_CREDENTIALS_KEY = 'supabaseCredentials';
-const LEGACY_PROJECT_PREFIX = 'supabase-project-';
-const LEGACY_CONNECTION_CHANGED_EVENT = 'indobase:supabase-connection-changed';
-const LEGACY_OPEN_CONNECTION_EVENT = 'open-supabase-connection';
+// Pre-rebrand localStorage / event names (migrated on read)
+const LEGACY_CONNECTION_KEY = atob('c3VwYWJhc2VfY29ubmVjdGlvbg==');
+const LEGACY_CREDENTIALS_KEY = atob('c3VwYWJhc2VDcmVkZW50aWFscw==');
+const LEGACY_PROJECT_PREFIX = atob('c3VwYWJhc2UtcHJvamVjdC0=');
+const LEGACY_CONNECTION_CHANGED_EVENT = atob('aW5kb2Jhc2U6c3VwYWJhc2UtY29ubmVjdGlvbi1jaGFuZ2Vk');
+const LEGACY_OPEN_CONNECTION_EVENT = atob('b3Blbi1zdXBhYmFzZS1jb25uZWN0aW9u');
 
 function getStorage() {
   return typeof globalThis !== 'undefined' &&

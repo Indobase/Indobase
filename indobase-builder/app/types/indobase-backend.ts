@@ -51,6 +51,4 @@ export interface IndobaseBackendApiKey {
 export interface IndobaseBackendCredentials {
   anonKey?: string;
   apiUrl?: string;
-  /** @deprecated Prefer apiUrl */
-  supabaseUrl?: string;
 }
