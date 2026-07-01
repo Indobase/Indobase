@@ -194,8 +194,9 @@ export async function streamText(props: {
 
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
-  // Use model-specific limits directly - no artificial cap needed
-  const safeMaxTokens = dynamicMaxTokens;
+  // OpenRouter free tiers reject very large completion limits — keep requests conservative.
+  const safeMaxTokens =
+    provider.name === 'OpenRouter' ? Math.min(dynamicMaxTokens, 4096) : dynamicMaxTokens;
 
   logger.info(
     `Token limits for model ${modelDetails.name}: maxTokens=${safeMaxTokens}, maxTokenAllowed=${modelDetails.maxTokenAllowed}, maxCompletionTokens=${modelDetails.maxCompletionTokens}`,

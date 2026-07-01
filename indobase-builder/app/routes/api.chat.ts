@@ -287,8 +287,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           // logger.debug('Code Files Selected');
         }
 
-        const mcpTools = mcpService.toolsWithoutExecute;
-        const hasMcpTools = Object.keys(mcpTools).length > 0;
+        const mcpTools = templateBootstrap ? {} : mcpService.toolsWithoutExecute;
+        const hasMcpTools = !templateBootstrap && Object.keys(mcpTools).length > 0;
 
         const options: StreamingOptions = {
           supabaseConnection: supabase

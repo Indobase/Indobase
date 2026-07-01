@@ -163,6 +163,7 @@ export const ChatImpl = memo(
     const [autonomousProgress, setAutonomousProgress] = useState<ProgressAnnotation[]>([]);
     const autonomousRepairCountRef = useRef(0);
     const orchestratorChatRetryRef = useRef(0);
+    const runAutonomousDeployFlowRef = useRef<() => Promise<void>>(async () => {});
     const MAX_AUTONOMOUS_REPAIRS = 10;
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
@@ -286,56 +287,63 @@ export const ChatImpl = memo(
 
         void refreshBuilderPromptQuota();
 
-        void (async () => {
-          try {
-            await processSampledMessages.flush();
-            await finalizeCodegen();
-          } catch (error) {
-            logger.error('Post-codegen finalize failed', error);
-          }
-
-          if (chatMode !== 'build' || chatStore.get().aborted) {
-            return;
-          }
-
-          try {
-            const result = await runAutonomousPipeline({
-              connection: supabaseConn,
-              onProgress: (progress) => {
-                setAutonomousProgress((current) => [...current, progress]);
-              },
-            });
-
-            if (result.needsRepair && result.repairPrompt) {
-              if (autonomousRepairCountRef.current >= MAX_AUTONOMOUS_REPAIRS) {
-                toast.error('Autonomous verification failed after multiple repair attempts.');
-                autonomousRepairCountRef.current = 0;
-                return;
-              }
-
-              autonomousRepairCountRef.current += 1;
-              append({
-                role: 'user',
-                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${result.repairPrompt}`,
-              });
-              return;
-            }
-
-            autonomousRepairCountRef.current = 0;
-            orchestratorChatRetryRef.current = 0;
-
-            if (result.deployUrl) {
-              toast.success('Autonomous deploy published your app.');
-            }
-          } catch (error) {
-            logger.error('Autonomous pipeline failed', error);
-            toast.error('Autonomous test/deploy pipeline failed.');
-          }
-        })();
+        void runAutonomousDeployFlowRef.current();
       },
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
     });
+
+    const runAutonomousDeployFlow = useCallback(async () => {
+      if (chatMode !== 'build' || chatStore.get().aborted) {
+        return;
+      }
+
+      try {
+        await processSampledMessages.flush();
+        await finalizeCodegen();
+      } catch (error) {
+        logger.error('Post-codegen finalize failed', error);
+      }
+
+      try {
+        const result = await runAutonomousPipeline({
+          connection: supabaseConn,
+          onProgress: (progress) => {
+            setAutonomousProgress((current) => [...current, progress]);
+          },
+        });
+
+        if (result.needsRepair && result.repairPrompt) {
+          if (autonomousRepairCountRef.current >= MAX_AUTONOMOUS_REPAIRS) {
+            toast.error('Autonomous verification failed after multiple repair attempts.');
+            autonomousRepairCountRef.current = 0;
+            return;
+          }
+
+          autonomousRepairCountRef.current += 1;
+          append({
+            role: 'user',
+            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${result.repairPrompt}`,
+          });
+          return;
+        }
+
+        autonomousRepairCountRef.current = 0;
+        orchestratorChatRetryRef.current = 0;
+
+        if (result.deployUrl) {
+          toast.success(`Deployed to ${result.deployUrl}`);
+        }
+      } catch (error) {
+        logger.error('Autonomous pipeline failed', error);
+        toast.error('Autonomous test/deploy pipeline failed.');
+      }
+    }, [MAX_AUTONOMOUS_REPAIRS, append, chatMode, model, provider.name, supabaseConn]);
+
+    useEffect(() => {
+      runAutonomousDeployFlowRef.current = runAutonomousDeployFlow;
+    }, [runAutonomousDeployFlow]);
+
     useEffect(() => {
       if (provider.name !== HIDDEN_CHAT_PROVIDER.name) {
         setProvider(HIDDEN_CHAT_PROVIDER as ProviderInfo);
@@ -768,7 +776,7 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
             });
 
             if (temResp) {
-              const { assistantMessage, userMessage } = temResp;
+              const { assistantMessage } = temResp;
               const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
 
               const templateMessages: Message[] = [
@@ -782,12 +790,6 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
                   id: `2-${new Date().getTime()}`,
                   role: 'assistant',
                   content: assistantMessage,
-                },
-                {
-                  id: `3-${new Date().getTime()}`,
-                  role: 'user',
-                  content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
-                  annotations: ['hidden'],
                 },
               ];
 
@@ -811,12 +813,10 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
                 );
               }
 
-              const reloadOptions =
-                uploadedFiles.length > 0
-                  ? { experimental_attachments: await filesToAttachments(uploadedFiles) }
-                  : undefined;
+              setAutonomousProgress([]);
+              autonomousRepairCountRef.current = 0;
+              void runAutonomousDeployFlow();
 
-              reload(reloadOptions);
               setInput('');
               Cookies.remove(PROMPT_COOKIE_KEY);
 

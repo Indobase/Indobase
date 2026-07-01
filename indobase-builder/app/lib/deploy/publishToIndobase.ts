@@ -1,10 +1,12 @@
 import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
+import { collectBuildArtifactsViaServer } from '~/lib/indobase/collectBuildArtifacts.server';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
   type QueueDeploymentResult,
 } from '~/lib/indobase/studioApi';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import { workbenchStore } from '~/lib/stores/workbench';
 
 export type PublishToIndobaseResult = QueueDeploymentResult & {
   openedUrl?: string;
@@ -21,7 +23,15 @@ export async function publishToIndobase(
     };
   }
 
-  const buildResult = await collectBuildArtifacts();
+  let buildResult = await collectBuildArtifacts();
+
+  if (!buildResult.success) {
+    const serverBuild = await collectBuildArtifactsViaServer(connection, workbenchStore.files.get());
+
+    if (serverBuild.success) {
+      buildResult = serverBuild;
+    }
+  }
 
   if (!buildResult.success || !buildResult.files) {
     return {

@@ -11,6 +11,7 @@ import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { collectBuildArtifactsViaServer } from '~/lib/indobase/collectBuildArtifacts.server';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -147,19 +148,29 @@ Missing package.json in /home/project. Create package.json with a "build" script
   }
 
   const buildResult = await collectBuildArtifacts();
+  let resolvedBuild = buildResult;
 
-  if (!buildResult.success) {
+  if (!resolvedBuild.success) {
+    const files = workbenchStore.files.get();
+    const serverBuild = await collectBuildArtifactsViaServer(connection, files);
+
+    if (serverBuild.success) {
+      resolvedBuild = serverBuild;
+    }
+  }
+
+  if (!resolvedBuild.success) {
     onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));
 
     return {
       success: false,
       needsRepair: true,
       verificationCommand: 'npm run build',
-      verificationOutput: buildResult.error || 'Build failed',
+      verificationOutput: resolvedBuild.error || buildResult.error || 'Build failed',
       repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
 
 Output:
-${formatBuildFailureOutput(buildResult.error) || 'Build failed'}`,
+${formatBuildFailureOutput(resolvedBuild.error || buildResult.error) || 'Build failed'}`,
     };
   }
 
@@ -198,7 +209,7 @@ ${formatBuildFailureOutput(testResult.output)}`,
   );
 
   const deployResult = await publishIndobaseDeployment(connection, {
-    artifacts: buildResult.files,
+    artifacts: resolvedBuild.files,
     metadata: {
       source: 'autonomous_agents',
     },
