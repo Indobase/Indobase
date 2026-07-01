@@ -263,7 +263,7 @@ ${file.content}
 </boltAction>`,
   )
   .join('\n')}
-</boltArtifact>
+${template.localBundle ? '<boltAction type="shell">npm install --no-audit --no-fund --yes</boltAction>\n' : ''}</boltArtifact>
 `;
   let userMessage = ``;
   const templatePromptFile = files.filter((x) => x.path.startsWith('.bolt')).find((x) => x.name == 'prompt');

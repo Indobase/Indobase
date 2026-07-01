@@ -1,5 +1,6 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { path } from '~/utils/path';
@@ -116,6 +117,15 @@ export async function collectBuildArtifacts(): Promise<CollectBuildArtifactsResu
     return {
       success: false,
       error: 'No active project found',
+    };
+  }
+
+  const installResult = await ensureNpmDependencies();
+
+  if (!installResult.success) {
+    return {
+      success: false,
+      error: installResult.error || 'npm install failed before build',
     };
   }
 

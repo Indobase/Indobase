@@ -1,5 +1,4 @@
-import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
-import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
+import { resolveProjectBuild } from '~/lib/indobase/resolveProjectBuild';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
@@ -23,15 +22,10 @@ export async function publishToIndobase(
     };
   }
 
-  let buildResult = await collectBuildArtifacts();
-
-  if (!buildResult.success) {
-    const serverBuild = await collectBuildArtifactsViaServer(connection, workbenchStore.files.get());
-
-    if (serverBuild.success) {
-      buildResult = serverBuild;
-    }
-  }
+  const buildResult = await resolveProjectBuild({
+    connection,
+    files: workbenchStore.files.get(),
+  });
 
   if (!buildResult.success || !buildResult.files) {
     return {

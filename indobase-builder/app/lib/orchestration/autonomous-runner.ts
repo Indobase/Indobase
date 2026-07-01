@@ -1,7 +1,7 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
+import { resolveProjectBuild } from '~/lib/indobase/resolveProjectBuild';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
@@ -11,7 +11,6 @@ import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
-import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -147,17 +146,11 @@ Missing package.json in /home/project. Create package.json with a "build" script
     };
   }
 
-  const buildResult = await collectBuildArtifacts();
-  let resolvedBuild = buildResult;
-
-  if (!resolvedBuild.success) {
-    const files = workbenchStore.files.get();
-    const serverBuild = await collectBuildArtifactsViaServer(connection, files);
-
-    if (serverBuild.success) {
-      resolvedBuild = serverBuild;
-    }
-  }
+  const buildResult = await resolveProjectBuild({
+    connection,
+    files: workbenchStore.files.get(),
+  });
+  const resolvedBuild = buildResult;
 
   if (!resolvedBuild.success) {
     onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));
