@@ -72,9 +72,16 @@ export async function streamOpenRouterWithFallback({
 
     const patchedFullStream = prependAsyncIterator(first.done ? undefined : first.value, iterator);
 
-    return Object.assign(result, {
-      fullStream: patchedFullStream,
-    });
+    // streamText results expose fullStream as a read-only getter — wrap instead of assigning.
+    return new Proxy(result, {
+      get(target, prop, receiver) {
+        if (prop === 'fullStream') {
+          return patchedFullStream;
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
+    }) as StreamTextResult;
   }
 
   throw lastRateLimitError ?? new Error('OpenRouter rate limited on all free models. Please wait a moment and try again.');
