@@ -4,6 +4,8 @@ import { atom, map, type MapStore } from 'nanostores';
 import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact, sanitizeFileAction, toWorkdirRelativePath } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
+import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
+import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { supabaseConnection } from '~/lib/stores/supabase';
 import type { ActionAlert, BoltAction, DeployAlert, FileHistory, SupabaseAction, SupabaseAlert } from '~/types/actions';
@@ -429,6 +431,24 @@ export class ActionRunner {
 
     const webcontainer = await this.#webcontainer;
 
+    const installResult = await ensureNpmDependencies();
+
+    if (!installResult.success) {
+      const installError = installResult.error || 'npm install failed before build';
+      this.buildOutput = { path: '', exitCode: 1, output: installError };
+      this.onDeployAlert?.({
+        type: 'error',
+        title: 'Build Failed',
+        description: 'Could not install dependencies before build',
+        content: installError,
+        stage: 'building',
+        buildStatus: 'failed',
+        deployStatus: 'pending',
+        source: 'netlify',
+      });
+      throw new ActionCommandError('Build Failed', installError);
+    }
+
     // Create a new terminal specifically for the build
     const buildProcess = await webcontainer.spawn('npm', ['run', 'build']);
     this.#activeBuildProcess = buildProcess;
@@ -491,7 +511,7 @@ export class ActionRunner {
     });
 
     // Check for common build directories
-    const commonBuildDirs = ['dist', 'build', 'out', 'output', '.next', 'public'];
+    const commonBuildDirs = [...COMMON_BUILD_OUTPUT_DIRS];
 
     // Try to find the first existing build directory
     for (const dir of commonBuildDirs) {

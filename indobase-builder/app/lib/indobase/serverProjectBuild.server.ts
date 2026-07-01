@@ -5,6 +5,10 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import type { CollectBuildArtifactsResult } from '~/lib/indobase/collectBuildArtifacts';
+import {
+  ensureIndexHtmlInArtifacts,
+  findFirstExistingBuildOutputDir,
+} from '~/lib/indobase/buildOutputDirs';
 import { createScopedLogger } from '~/utils/logger';
 
 const execFileAsync = promisify(execFile);
@@ -94,13 +98,37 @@ export async function buildProjectArtifactsOnServer(
       maxBuffer: 10 * 1024 * 1024,
     });
 
-    const distDir = path.join(workDir, 'dist');
-    const files = await readDistArtifacts(distDir);
+    const outputDirName = await findFirstExistingBuildOutputDir(async (dir) => {
+      try {
+        await fs.access(path.join(workDir, dir));
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (!outputDirName) {
+      return {
+        success: false,
+        error: 'Server build completed but no output directory (dist, build, out, etc.) was found.',
+      };
+    }
+
+    const outputRoot = path.join(workDir, outputDirName);
+    let files = await readDistArtifacts(outputRoot);
+
+    files = await ensureIndexHtmlInArtifacts(files, async (candidate) => {
+      try {
+        return await fs.readFile(path.join(outputRoot, candidate), 'utf8');
+      } catch {
+        return null;
+      }
+    });
 
     if (!files['index.html']) {
       return {
         success: false,
-        error: 'Server build completed but dist/index.html is missing.',
+        error: `Server build completed but ${outputDirName}/index.html is missing.`,
       };
     }
 

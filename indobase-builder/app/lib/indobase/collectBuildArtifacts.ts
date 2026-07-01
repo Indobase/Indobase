@@ -5,6 +5,7 @@ import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { path } from '~/utils/path';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
+import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 
 async function ensureStaticPreview(outputRoot: string): Promise<void> {
   const previews = workbenchStore.previews.get();
@@ -61,7 +62,7 @@ export type CollectBuildArtifactsResult = {
   success: boolean;
 };
 
-const COMMON_OUTPUT_DIRS = ['/dist', '/build', '/out', '/output', '/.next', '/public'];
+const COMMON_OUTPUT_DIRS = COMMON_BUILD_OUTPUT_DIRS.map((dir) => `/${dir}`);
 
 async function getAllFiles(dirPath: string, outputRoot: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {};

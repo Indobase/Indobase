@@ -3,7 +3,7 @@ import { createScopedLogger } from '~/utils/logger';
 
 const logger = createScopedLogger('ensure-npm-deps');
 
-const INSTALL_ARGS = ['install', '--no-audit', '--no-fund', '--prefer-offline', '--yes'] as const;
+const INSTALL_ARGS = ['install', '--no-audit', '--no-fund', '--prefer-offline', '--yes', '--include=dev'] as const;
 
 async function hasPackageJson(): Promise<boolean> {
   try {
@@ -19,32 +19,15 @@ async function nodeModulesReady(): Promise<boolean> {
   const container = await getWebcontainerWithRetry(2);
 
   try {
-    const entries = await container.fs.readdir('node_modules', { withFileTypes: true });
+    const binEntries = await container.fs.readdir('node_modules/.bin', { withFileTypes: true });
 
-    if (entries.length === 0) {
+    if (binEntries.length === 0) {
       return false;
     }
-  } catch {
-    return false;
-  }
 
-  try {
-    await container.fs.readFile('node_modules/vite/package.json', 'utf-8');
-    return true;
-  } catch {
-    try {
-      await container.fs.readFile('node_modules/typescript/package.json', 'utf-8');
-      return true;
-    } catch {
-      return entriesHasBin(container);
-    }
-  }
-}
+    const binNames = new Set(binEntries.map((entry) => entry.name));
 
-async function entriesHasBin(container: Awaited<ReturnType<typeof getWebcontainerWithRetry>>): Promise<boolean> {
-  try {
-    const binEntries = await container.fs.readdir('node_modules/.bin', { withFileTypes: true });
-    return binEntries.length > 0;
+    return binNames.has('vite') || binNames.has('tsc') || binNames.has('next') || binNames.has('webpack');
   } catch {
     return false;
   }

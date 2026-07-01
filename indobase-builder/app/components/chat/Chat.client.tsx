@@ -165,6 +165,7 @@ export const ChatImpl = memo(
     const autonomousRepairCountRef = useRef(0);
     const orchestratorChatRetryRef = useRef(0);
     const runAutonomousDeployFlowRef = useRef<() => Promise<void>>(async () => {});
+    const suppressAutonomousOnNextFinishRef = useRef(false);
     const MAX_AUTONOMOUS_REPAIRS = 10;
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
@@ -287,6 +288,11 @@ export const ChatImpl = memo(
         logger.debug('Finished streaming');
 
         void refreshBuilderPromptQuota();
+
+        if (suppressAutonomousOnNextFinishRef.current) {
+          suppressAutonomousOnNextFinishRef.current = false;
+          return;
+        }
 
         void runAutonomousDeployFlowRef.current();
       },
@@ -777,7 +783,7 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
             });
 
             if (temResp) {
-              const { assistantMessage } = temResp;
+              const { assistantMessage, userMessage: templateFollowUp } = temResp;
               const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
 
               const templateMessages: Message[] = [
@@ -823,7 +829,21 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
                 logger.warn('WebContainer not ready before autonomous deploy; server build may still succeed', error);
               }
 
-              void runAutonomousDeployFlow();
+              void (async () => {
+                try {
+                  await runAutonomousDeployFlow();
+                } catch (error) {
+                  logger.error('Template autonomous deploy failed', error);
+                }
+
+                if (templateFollowUp?.trim()) {
+                  suppressAutonomousOnNextFinishRef.current = true;
+                  append({
+                    role: 'user',
+                    content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${templateFollowUp}`,
+                  });
+                }
+              })();
 
               setInput('');
               Cookies.remove(PROMPT_COOKIE_KEY);

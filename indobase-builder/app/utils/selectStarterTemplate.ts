@@ -252,6 +252,16 @@ export async function getTemplates(templateName: string, title?: string) {
     filesToImport.ignoreFile = ignoredFiles;
   }
 
+  const hasPackageJson = filesToImport.files.some(
+    (file) => file.path === 'package.json' || file.name === 'package.json',
+  );
+
+  const templateBootstrapShellActions = hasPackageJson
+    ? `<boltAction type="shell">npm install --no-audit --no-fund --yes --include=dev</boltAction>
+<boltAction type="start">npm run dev</boltAction>
+`
+    : '';
+
   const assistantMessage = `
 Indobase Builder is initializing your project with the required files using the ${template.name} template.
 <boltArtifact id="imported-files" title="${title || 'Create initial files'}" type="bundled">
@@ -263,7 +273,7 @@ ${file.content}
 </boltAction>`,
   )
   .join('\n')}
-${template.localBundle ? '<boltAction type="shell">npm install --no-audit --no-fund --yes</boltAction>\n' : ''}</boltArtifact>
+${templateBootstrapShellActions}</boltArtifact>
 `;
   let userMessage = ``;
   const templatePromptFile = files.filter((x) => x.path.startsWith('.bolt')).find((x) => x.name == 'prompt');
