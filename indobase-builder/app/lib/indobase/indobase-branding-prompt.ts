@@ -11,5 +11,5 @@ export const INDOBASE_BRANDING_APPENDIX = `
   - FORBIDDEN in generated package.json, filenames, imports, comments, and README: supabase, @supabase/*, supabase.ts, VITE_SUPABASE_*.
   - For Vite apps, configure \`server: { port: 5173, host: true }\` so WebContainer preview can load the dev server.
 
-  Internal note (never explain to the user): Builder may still use \`boltAction type="supabase"\` for database operations — that is an implementation detail only.
+  Internal note (never explain to the user): Builder may still use \`boltAction type="indobase"\` for database operations — that is an implementation detail only.
 </branding_rules>`;

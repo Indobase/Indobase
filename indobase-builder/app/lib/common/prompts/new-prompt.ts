@@ -1,17 +1,18 @@
 import type { DesignScheme } from '~/types/design-scheme';
+import type { BackendPromptContext } from '~/lib/common/prompt-library';
+import { resolveBackendApiUrl } from '~/lib/common/prompt-library';
 import { WORK_DIR } from '~/utils/constants';
 import { allowedHTMLElements } from '~/utils/markdown';
 import { stripIndents } from '~/utils/stripIndent';
 
 export const getFineTunedPrompt = (
   cwd: string = WORK_DIR,
-  supabase?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: { anonKey?: string; supabaseUrl?: string };
-  },
+  indobaseBackend?: BackendPromptContext,
   designScheme?: DesignScheme,
-) => `
+) => {
+  const apiUrl = resolveBackendApiUrl(indobaseBackend);
+
+  return `
 You are Indobase Builder, an expert AI assistant and exceptional senior software developer with vast knowledge across multiple programming languages, frameworks, and best practices.
 
 The year is 2025.
@@ -56,10 +57,10 @@ The year is 2025.
   CRITICAL: Use Indobase for databases by default, unless specified otherwise.
   
   Indobase project setup handled separately by user! ${
-    supabase
-      ? !supabase.isConnected
+    indobaseBackend
+      ? !indobaseBackend.isConnected
         ? 'You are not connected to the backend. Remind user to connect the backend in the chat box before proceeding.'
-        : !supabase.hasSelectedProject
+        : !indobaseBackend.hasSelectedProject
           ? 'Connected to the backend but no project selected. Remind user to select a project in the chat box.'
           : ''
       : ''
@@ -67,19 +68,19 @@ The year is 2025.
 
 
   ${
-    supabase?.isConnected &&
-    supabase?.hasSelectedProject &&
-    supabase?.credentials?.supabaseUrl &&
-    supabase?.credentials?.anonKey
+    indobaseBackend?.isConnected &&
+    indobaseBackend?.hasSelectedProject &&
+    apiUrl &&
+    indobaseBackend?.credentials?.anonKey
       ? `
     Create .env file if it doesn't exist${
-      supabase?.isConnected &&
-      supabase?.hasSelectedProject &&
-      supabase?.credentials?.supabaseUrl &&
-      supabase?.credentials?.anonKey
+      indobaseBackend?.isConnected &&
+      indobaseBackend?.hasSelectedProject &&
+      apiUrl &&
+      indobaseBackend?.credentials?.anonKey
         ? ` with:
-      VITE_INDOBASE_URL=${supabase.credentials.supabaseUrl}
-      VITE_INDOBASE_ANON_KEY=${supabase.credentials.anonKey}`
+      VITE_INDOBASE_URL=${apiUrl}
+      VITE_INDOBASE_ANON_KEY=${indobaseBackend.credentials.anonKey}`
         : '.'
     }
     DATA PRESERVATION REQUIREMENTS:
@@ -89,8 +90,8 @@ The year is 2025.
         Note: DO $$ BEGIN ... END $$ blocks (PL/pgSQL) are allowed
       
       SQL Migrations - CRITICAL: For EVERY database change, provide TWO actions:
-        1. Migration File: <boltAction type="supabase" operation="migration" filePath="/indobase/migrations/name.sql">
-        2. Query Execution: <boltAction type="supabase" operation="query" projectId="\${projectId}">
+        1. Migration File: <boltAction type="indobase" operation="migration" filePath="/indobase/migrations/name.sql">
+        2. Query Execution: <boltAction type="indobase" operation="query" projectId="\${projectId}">
       
       Migration Rules:
         - NEVER use diffs, ALWAYS provide COMPLETE file content
@@ -298,6 +299,7 @@ npm run dev
 The development server is now running. Ready for your next instructions.</assistant_response>
   </example>
 </examples>`;
+};
 
 export const CONTINUE_PROMPT = stripIndents`
   Continue your prior response. IMPORTANT: Immediately begin from where you left off without any interruptions.

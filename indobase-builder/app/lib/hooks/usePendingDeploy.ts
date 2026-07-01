@@ -7,14 +7,14 @@ import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
 import { useGitLabDeploy } from '~/components/deploy/GitLabDeploy.client';
 import { runOneClickDeploy, type OneClickDeployTarget } from '~/lib/deploy/runOneClickDeploy';
 import { chatId } from '~/lib/persistence/useChatHistory';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 
 const VALID_TARGETS = new Set<OneClickDeployTarget>(['indobase', 'github', 'gitlab']);
 
 export function usePendingDeploy() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const connection = useStore(supabaseConnection);
+  const connection = useStore(indobaseConnection);
   const currentChatId = useStore(chatId);
   const startedRef = useRef(false);
   const { handleGitHubDeploy } = useGitHubDeploy();

@@ -10,7 +10,7 @@ export function getIndobaseManagedBackendPrompt(options: {
 
   return `
 <indobase_managed_backend>
-  CRITICAL: This Builder session is linked to an Indobase project from Studio. Use ONLY the Indobase backend — never ask the user to paste API keys, and never use boltAction type="supabase" (use the indobase MCP server instead).
+  CRITICAL: This Builder session is linked to an Indobase project from Studio. Use ONLY the Indobase backend — never ask the user to paste API keys, and never use legacy bolt database actions without the indobase type (use the indobase MCP server instead).
 
   Connected project: ${projectRef || 'active Indobase project'}
   API URL: ${supabaseUrl || 'provided in credentials'}

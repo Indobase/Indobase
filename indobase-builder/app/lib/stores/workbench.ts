@@ -18,7 +18,7 @@ import { WORK_DIR } from '~/utils/constants';
 import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
-import type { ActionAlert, DeployAlert, SupabaseAlert } from '~/types/actions';
+import type { ActionAlert, DeployAlert, IndobaseBackendAlert } from '~/types/actions';
 
 export interface ArtifactState {
   id: string;
@@ -53,8 +53,8 @@ export class WorkbenchStore {
   unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
   actionAlert: WritableAtom<ActionAlert | undefined> =
     import.meta.hot?.data.actionAlert ?? atom<ActionAlert | undefined>(undefined);
-  supabaseAlert: WritableAtom<SupabaseAlert | undefined> =
-    import.meta.hot?.data.supabaseAlert ?? atom<SupabaseAlert | undefined>(undefined);
+  indobaseBackendAlert: WritableAtom<IndobaseBackendAlert | undefined> =
+    import.meta.hot?.data.indobaseBackendAlert ?? atom<IndobaseBackendAlert | undefined>(undefined);
   deployAlert: WritableAtom<DeployAlert | undefined> =
     import.meta.hot?.data.deployAlert ?? atom<DeployAlert | undefined>(undefined);
   modifiedFiles = new Set<string>();
@@ -67,7 +67,7 @@ export class WorkbenchStore {
       import.meta.hot.data.showWorkbench = this.showWorkbench;
       import.meta.hot.data.currentView = this.currentView;
       import.meta.hot.data.actionAlert = this.actionAlert;
-      import.meta.hot.data.supabaseAlert = this.supabaseAlert;
+      import.meta.hot.data.indobaseBackendAlert = this.indobaseBackendAlert;
       import.meta.hot.data.deployAlert = this.deployAlert;
 
       // Ensure binary files are properly preserved across hot reloads
@@ -136,12 +136,22 @@ export class WorkbenchStore {
     this.actionAlert.set(undefined);
   }
 
-  get SupabaseAlert() {
-    return this.supabaseAlert;
+  get indobaseBackendAlertAtom() {
+    return this.indobaseBackendAlert;
   }
 
+  /** @deprecated Use indobaseBackendAlertAtom */
+  get supabaseAlert() {
+    return this.indobaseBackendAlert;
+  }
+
+  clearIndobaseBackendAlert() {
+    this.indobaseBackendAlert.set(undefined);
+  }
+
+  /** @deprecated Use clearIndobaseBackendAlert */
   clearSupabaseAlert() {
-    this.supabaseAlert.set(undefined);
+    this.clearIndobaseBackendAlert();
   }
 
   get DeployAlert() {
@@ -480,7 +490,7 @@ export class WorkbenchStore {
 
     this.actionAlert.set(undefined);
     this.deployAlert.set(undefined);
-    this.supabaseAlert.set(undefined);
+    this.indobaseBackendAlert.set(undefined);
   }
 
   setReloadedMessages(messages: string[]) {
@@ -518,7 +528,7 @@ export class WorkbenchStore {
             return;
           }
 
-          this.supabaseAlert.set(alert);
+          this.indobaseBackendAlert.set(alert);
         },
         (alert) => {
           if (this.#reloadedMessages.has(messageId)) {

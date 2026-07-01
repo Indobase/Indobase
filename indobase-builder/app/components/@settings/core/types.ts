@@ -15,7 +15,7 @@ export type TabType =
   | 'gitlab'
   | 'netlify'
   | 'vercel'
-  | 'supabase'
+  | 'indobase-backend'
   | 'event-logs'
   | 'mcp';
 
@@ -66,6 +66,14 @@ export interface TabWindowConfig {
   userTabs: UserTabConfig[];
 }
 
+export const LEGACY_TAB_ID_ALIASES: Record<string, TabType> = {
+  supabase: 'indobase-backend',
+};
+
+export function normalizeTabId(id: string): TabType {
+  return LEGACY_TAB_ID_ALIASES[id] ?? (id as TabType);
+}
+
 export const TAB_LABELS: Record<TabType, string> = {
   profile: 'Profile',
   settings: 'Settings',
@@ -78,7 +86,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   gitlab: 'GitLab',
   netlify: 'Netlify',
   vercel: 'Vercel',
-  supabase: 'Indobase Backend',
+  'indobase-backend': 'Indobase Backend',
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
 };

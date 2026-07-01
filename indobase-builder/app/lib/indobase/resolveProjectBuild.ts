@@ -3,10 +3,10 @@ import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
 import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
 import { canQueueIndobaseDeployment } from '~/lib/indobase/studioApi';
 import type { FileMap } from '~/lib/stores/files';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export async function resolveProjectBuild(options: {
-  connection: SupabaseConnectionState;
+  connection: IndobaseConnectionState;
   files: FileMap;
 }): Promise<CollectBuildArtifactsResult> {
   const { connection, files } = options;

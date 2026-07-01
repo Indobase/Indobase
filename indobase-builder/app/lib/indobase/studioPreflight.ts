@@ -1,5 +1,5 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { hasIndobaseStudioHandoff } from './connection';
 
 export type StudioPreflightResult = {
@@ -16,7 +16,7 @@ export type StudioPreflightResult = {
 };
 
 export async function runStudioBackendPreflight(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
 ): Promise<StudioPreflightResult> {
   if (!hasIndobaseStudioHandoff(connection)) {
     return {

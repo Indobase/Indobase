@@ -1,6 +1,6 @@
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
-type IndobaseConnection = Pick<SupabaseConnectionState, 'indobase'>;
+type IndobaseConnection = Pick<IndobaseConnectionState, 'indobase'>;
 
 export function getStudioProjectRootUrl(connection?: IndobaseConnection | null, projectId?: string): string | null {
   if (connection?.indobase?.projectUrl) {

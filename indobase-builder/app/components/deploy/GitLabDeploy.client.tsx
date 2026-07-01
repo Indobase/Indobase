@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import { getLocalStorage } from '~/lib/persistence/localStorage';
 import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { formatBuildFailureOutput } from './deployUtils';
 
 export function useGitLabDeploy() {
@@ -50,7 +50,7 @@ export function useGitLabDeploy() {
       // Notify that build is starting
       deployArtifact.runner.handleDeployAction('building', 'running', { source: 'gitlab' });
 
-      const buildResult = await runDeployBuildStep(supabaseConnection.get());
+      const buildResult = await runDeployBuildStep(indobaseConnection.get());
 
       if (!buildResult.success) {
         deployArtifact.runner.handleDeployAction('building', 'failed', {

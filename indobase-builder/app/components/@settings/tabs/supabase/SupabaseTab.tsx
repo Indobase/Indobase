@@ -6,16 +6,16 @@ import { classNames } from '~/utils/classNames';
 import { Button } from '~/components/ui/Button';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '~/components/ui/Collapsible';
 import {
-  supabaseConnection,
+  indobaseConnection,
   isConnecting,
   isFetchingStats,
   isFetchingApiKeys,
-  updateSupabaseConnection,
-  fetchSupabaseStats,
+  updateIndobaseConnection,
+  fetchIndobaseBackendStats,
   fetchProjectApiKeys,
-  initializeSupabaseConnection,
-  type SupabaseProject,
-} from '~/lib/stores/supabase';
+  initializeIndobaseConnection,
+  type IndobaseBackendProject,
+} from '~/lib/stores/indobase-connection';
 
 interface ConnectionTestResult {
   status: 'success' | 'error' | 'testing';
@@ -31,8 +31,8 @@ interface ProjectAction {
   variant?: 'default' | 'destructive' | 'outline';
 }
 
-// Supabase logo SVG component
-const SupabaseLogo = () => (
+// Indobase backend icon
+const IndobaseBackendIcon = () => (
   <svg viewBox="0 0 109 113" className="w-5 h-5">
     <path
       fill="currentColor"
@@ -50,8 +50,8 @@ const SupabaseLogo = () => (
   </svg>
 );
 
-export default function SupabaseTab() {
-  const connection = useStore(supabaseConnection);
+export default function IndobaseBackendTab() {
+  const connection = useStore(indobaseConnection);
   const connecting = useStore(isConnecting);
   const fetchingStats = useStore(isFetchingStats);
   const fetchingApiKeys = useStore(isFetchingApiKeys);
@@ -75,7 +75,7 @@ export default function SupabaseTab() {
     return null;
   };
 
-  const openProjectDestination = (projectId: string, studioPath: string, supabasePath = '') => {
+  const openProjectDestination = (projectId: string, studioPath: string) => {
     if (isStudioManagedConnection) {
       const studioRoot = getStudioProjectRootUrl(projectId);
 
@@ -88,7 +88,13 @@ export default function SupabaseTab() {
       }
     }
 
-    window.open(`https://supabase.com/dashboard/project/${projectId}${supabasePath}`, '_blank');
+    const studioRoot = getStudioProjectRootUrl(projectId);
+    if (studioRoot) {
+      window.open(studioRoot, '_blank');
+      return;
+    }
+
+    window.open(`https://studio.indobase.in/project/${projectId}`, '_blank');
   };
 
   // Connection testing function - uses server-side API to test environment token
@@ -245,16 +251,16 @@ export default function SupabaseTab() {
     const initializeConnection = async () => {
       try {
         // First try to initialize using server-side token
-        await initializeSupabaseConnection();
+        await initializeIndobaseConnection();
 
         // If no connection was established, the user will need to manually enter a token
-        const currentState = supabaseConnection.get();
+        const currentState = indobaseConnection.get();
 
         if (!currentState.user) {
-          console.log('No server-side Supabase token available, manual connection required');
+          console.log('No server-side Indobase backend token available, manual connection required');
         }
       } catch (error) {
-        console.error('Failed to initialize Supabase connection:', error);
+        console.error('Failed to initialize Indobase backend connection:', error);
       }
     };
     initializeConnection();
@@ -263,7 +269,7 @@ export default function SupabaseTab() {
   useEffect(() => {
     const fetchProjects = async () => {
       if (connection.user && connection.token && !connection.stats) {
-        await fetchSupabaseStats(connection.token);
+        await fetchIndobaseBackendStats(connection.token);
       }
     };
     fetchProjects();
@@ -278,8 +284,8 @@ export default function SupabaseTab() {
     isConnecting.set(true);
 
     try {
-      await fetchSupabaseStats(tokenInput);
-      updateSupabaseConnection({
+      await fetchIndobaseBackendStats(tokenInput);
+      updateIndobaseConnection({
         token: tokenInput,
         isConnected: true,
         connectionSource: 'manual',
@@ -289,14 +295,14 @@ export default function SupabaseTab() {
     } catch (error) {
       console.error('Auth error:', error);
       toast.error('Failed to connect to the backend');
-      updateSupabaseConnection({ user: null, token: '' });
+      updateIndobaseConnection({ user: null, token: '' });
     } finally {
       isConnecting.set(false);
     }
   };
 
   const handleDisconnect = () => {
-    updateSupabaseConnection({
+    updateIndobaseConnection({
       user: null,
       token: '',
       stats: undefined,
@@ -326,7 +332,7 @@ export default function SupabaseTab() {
 
   const handleProjectSelect = async (projectId: string) => {
     setSelectedProjectId(projectId);
-    updateSupabaseConnection({ selectedProjectId: projectId });
+    updateIndobaseConnection({ selectedProjectId: projectId });
 
     if (projectId && connection.token) {
       try {
@@ -382,19 +388,19 @@ export default function SupabaseTab() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-bolt-elements-textPrimary">
-                      {connection.stats.projects.filter((p: SupabaseProject) => p.status === 'ACTIVE_HEALTHY').length}
+                      {connection.stats.projects.filter((p: IndobaseBackendProject) => p.status === 'ACTIVE_HEALTHY').length}
                     </div>
                     <div className="text-xs text-bolt-elements-textSecondary">Active Projects</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-bolt-elements-textPrimary">
-                      {new Set(connection.stats.projects.map((p: SupabaseProject) => p.region)).size}
+                      {new Set(connection.stats.projects.map((p: IndobaseBackendProject) => p.region)).size}
                     </div>
                     <div className="text-xs text-bolt-elements-textSecondary">Regions Used</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-bolt-elements-textPrimary">
-                      {connection.stats.projects.filter((p: SupabaseProject) => p.status !== 'ACTIVE_HEALTHY').length}
+                      {connection.stats.projects.filter((p: IndobaseBackendProject) => p.status !== 'ACTIVE_HEALTHY').length}
                     </div>
                     <div className="text-xs text-bolt-elements-textSecondary">Inactive Projects</div>
                   </div>
@@ -404,7 +410,7 @@ export default function SupabaseTab() {
 
             {connection.stats?.projects?.length ? (
               <div className="grid gap-3">
-                {connection.stats.projects.map((project: SupabaseProject) => (
+                {connection.stats.projects.map((project: IndobaseBackendProject) => (
                   <div
                     key={project.id}
                     className={classNames(
@@ -596,7 +602,7 @@ export default function SupabaseTab() {
                                 <div className="flex items-center gap-2 mt-1">
                                   <input
                                     type="text"
-                                    value={connection.credentials.supabaseUrl || ''}
+                                    value={connection.credentials.apiUrl || connection.credentials.supabaseUrl || ''}
                                     readOnly
                                     className="flex-1 px-2 py-1 text-xs bg-bolt-elements-background border border-bolt-elements-borderColor rounded"
                                   />
@@ -606,8 +612,10 @@ export default function SupabaseTab() {
                                     onClick={(e) => {
                                       e.stopPropagation();
 
-                                      if (connection.credentials?.supabaseUrl) {
-                                        navigator.clipboard.writeText(connection.credentials.supabaseUrl);
+                                      const apiUrl =
+                                        connection.credentials?.apiUrl || connection.credentials?.supabaseUrl;
+                                      if (apiUrl) {
+                                        navigator.clipboard.writeText(apiUrl);
                                         toast.success('URL copied to clipboard');
                                       }
                                     }}
@@ -676,7 +684,7 @@ export default function SupabaseTab() {
       >
         <div className="flex items-center gap-2">
           <div className="text-[#3ECF8E]">
-            <SupabaseLogo />
+            <IndobaseBackendIcon />
           </div>
           <h2 className="text-lg font-medium text-bolt-elements-textPrimary dark:text-bolt-elements-textPrimary">
             Indobase Backend
@@ -787,7 +795,7 @@ export default function SupabaseTab() {
                 />
                 <div className="mt-2 text-sm text-bolt-elements-textSecondary">
                   <a
-                    href="https://supabase.com/dashboard/account/tokens"
+                    href="https://studio.indobase.in"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-bolt-elements-borderColorActive hover:underline inline-flex items-center gap-1"
@@ -866,12 +874,12 @@ export default function SupabaseTab() {
                         </span>
                         <span className="flex items-center gap-1">
                           <div className="i-ph:globe w-3 h-3" />
-                          {new Set(connection.stats?.projects?.map((p: SupabaseProject) => p.region) || []).size}{' '}
+                          {new Set(connection.stats?.projects?.map((p: IndobaseBackendProject) => p.region) || []).size}{' '}
                           Regions
                         </span>
                         <span className="flex items-center gap-1">
                           <div className="i-ph:activity w-3 h-3" />
-                          {connection.stats?.projects?.filter((p: SupabaseProject) => p.status === 'ACTIVE_HEALTHY')
+                          {connection.stats?.projects?.filter((p: IndobaseBackendProject) => p.status === 'ACTIVE_HEALTHY')
                             .length || 0}{' '}
                           Active
                         </span>
@@ -892,7 +900,7 @@ export default function SupabaseTab() {
                           {(() => {
                             const totalProjects = connection.stats?.totalProjects || 0;
                             const activeProjects =
-                              connection.stats?.projects?.filter((p: SupabaseProject) => p.status === 'ACTIVE_HEALTHY')
+                              connection.stats?.projects?.filter((p: IndobaseBackendProject) => p.status === 'ACTIVE_HEALTHY')
                                 .length || 0;
                             const healthRate =
                               totalProjects > 0 ? Math.round((activeProjects / totalProjects) * 100) : 0;
@@ -961,7 +969,7 @@ export default function SupabaseTab() {
                           {(() => {
                             const regions =
                               connection.stats?.projects?.reduce(
-                                (acc, p: SupabaseProject) => {
+                                (acc, p: IndobaseBackendProject) => {
                                   acc[p.region] = (acc[p.region] || 0) + 1;
                                   return acc;
                                 },
@@ -1147,3 +1155,6 @@ export default function SupabaseTab() {
     </div>
   );
 }
+
+/** @deprecated Use IndobaseBackendTab */
+export { IndobaseBackendTab as SupabaseTab };

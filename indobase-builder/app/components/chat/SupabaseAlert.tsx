@@ -1,26 +1,28 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import type { SupabaseAlert } from '~/types/actions';
+import type { IndobaseBackendAlert } from '~/types/actions';
 import { classNames } from '~/utils/classNames';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { useStore } from '@nanostores/react';
 import { useEffect, useRef, useState } from 'react';
-import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
+import { ensureBuilderSession } from '~/lib/indobase/builder-auth.client';
 import { executeIndobaseSql } from '~/lib/indobase/studioSql';
+import { OPEN_INDOBASE_CONNECTION_EVENT } from '~/lib/indobase/connection-storage';
 
 interface Props {
-  alert: SupabaseAlert;
+  alert: IndobaseBackendAlert;
   clearAlert: () => void;
   postMessage: (message: string) => void;
 }
 
-export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
+export function IndobaseBackendChatAlert({ alert, clearAlert, postMessage }: Props) {
   const { content, title } = alert;
-  const connection = useStore(supabaseConnection);
+  const connection = useStore(indobaseConnection);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const autoAppliedRef = useRef(false);
 
-  const isStudioManaged = isIndobaseStudioManagedConnection(connection);
+  const isStudioManaged = hasIndobaseStudioHandoff(connection);
   const isLegacyConnected = !!(connection.token && connection.selectedProjectId);
   const isConnected = isStudioManaged || isLegacyConnected;
 
@@ -40,7 +42,7 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
       return;
     }
 
-    document.dispatchEvent(new CustomEvent('open-supabase-connection'));
+    document.dispatchEvent(new CustomEvent(OPEN_INDOBASE_CONNECTION_EVENT));
   };
 
   const executeBackendAction = async (sql: string) => {
@@ -48,6 +50,7 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
 
     try {
       if (isStudioManaged) {
+        await ensureBuilderSession();
         const isMigration = /migration/i.test(title);
         const migrationName = alert.description?.match(/:\s*(.+)$/)?.[1]?.trim();
 
@@ -227,3 +230,6 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
     </AnimatePresence>
   );
 }
+
+/** @deprecated Use IndobaseBackendChatAlert */
+export const SupabaseChatAlert = IndobaseBackendChatAlert;

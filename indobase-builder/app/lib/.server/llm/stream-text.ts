@@ -21,28 +21,38 @@ import { CODER_AGENT_APPENDIX } from '~/lib/.server/orchestration/prompts';
 import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-prompt';
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
+import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
 
 export interface StreamingOptions extends Omit<Parameters<typeof _streamText>[0], 'model'> {
-  supabaseConnection?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    connectionSource?: 'manual' | 'studio_handoff';
-    credentials?: {
-      anonKey?: string;
-      supabaseUrl?: string;
-    };
-    indobase?: {
-      apiUrl?: string;
-      authUrl?: string;
-      projectRef?: string;
-      restUrl?: string;
-      storageUrl?: string;
-      studioUrl?: string;
-    };
+  indobaseConnection?: BackendConnectionContext;
+  /** @deprecated Use indobaseConnection */
+  supabaseConnection?: BackendConnectionContext;
+}
+
+type BackendConnectionContext = {
+  isConnected: boolean;
+  hasSelectedProject: boolean;
+  connectionSource?: 'manual' | 'studio_handoff';
+  credentials?: {
+    anonKey?: string;
+    apiUrl?: string;
+    supabaseUrl?: string;
   };
+  indobase?: {
+    apiUrl?: string;
+    authUrl?: string;
+    projectRef?: string;
+    restUrl?: string;
+    storageUrl?: string;
+    studioUrl?: string;
+  };
+};
+
+function resolveBackendConnection(options?: StreamingOptions) {
+  return options?.indobaseConnection ?? options?.supabaseConnection;
 }
 
 const logger = createScopedLogger('stream-text');
@@ -227,16 +237,19 @@ export async function streamText(props: {
     `Token limits for model ${modelDetails.name}: maxTokens=${safeMaxTokens}, maxTokenAllowed=${modelDetails.maxTokenAllowed}, maxCompletionTokens=${modelDetails.maxCompletionTokens}`,
   );
 
+  const backendConnection = resolveBackendConnection(options);
+
   let systemPrompt =
     PromptLibrary.getPropmtFromLibrary(promptId || 'default', {
       cwd: WORK_DIR,
       allowedHtmlElements: allowedHTMLElements,
       modificationTagName: MODIFICATIONS_TAG_NAME,
       designScheme,
-      supabase: {
-        isConnected: options?.supabaseConnection?.isConnected || false,
-        hasSelectedProject: options?.supabaseConnection?.hasSelectedProject || false,
-        credentials: options?.supabaseConnection?.credentials || undefined,
+      indobase: {
+        isConnected: backendConnection?.isConnected || false,
+        hasSelectedProject: backendConnection?.hasSelectedProject || false,
+        connectionSource: backendConnection?.connectionSource,
+        credentials: backendConnection?.credentials || undefined,
       },
     }) ?? getSystemPrompt();
 
@@ -304,18 +317,23 @@ export async function streamText(props: {
   systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;
 
   const isIndobaseManaged =
-    options?.supabaseConnection?.connectionSource === 'studio_handoff' &&
-    options?.supabaseConnection?.isConnected &&
-    options?.supabaseConnection?.hasSelectedProject;
+    backendConnection?.connectionSource === 'studio_handoff' &&
+    backendConnection?.isConnected &&
+    backendConnection?.hasSelectedProject;
 
   if (isIndobaseManaged) {
+    systemPrompt = systemPrompt.replace(
+      /<database_instructions>[\s\S]*?<\/database_instructions>/,
+      STUDIO_MANAGED_DATABASE_INSTRUCTIONS,
+    );
     systemPrompt = `${systemPrompt}${getIndobaseManagedBackendPrompt({
-      projectRef: options?.supabaseConnection?.indobase?.projectRef,
-      supabaseUrl: options?.supabaseConnection?.credentials?.supabaseUrl,
-      anonKey: options?.supabaseConnection?.credentials?.anonKey,
-      authUrl: options?.supabaseConnection?.indobase?.authUrl,
-      storageUrl: options?.supabaseConnection?.indobase?.storageUrl,
-      restUrl: options?.supabaseConnection?.indobase?.restUrl,
+      projectRef: backendConnection?.indobase?.projectRef,
+      supabaseUrl:
+        backendConnection?.credentials?.apiUrl || backendConnection?.credentials?.supabaseUrl,
+      anonKey: backendConnection?.credentials?.anonKey,
+      authUrl: backendConnection?.indobase?.authUrl,
+      storageUrl: backendConnection?.indobase?.storageUrl,
+      restUrl: backendConnection?.indobase?.restUrl,
     })}${INDOBASE_STUDIO_WORKFLOW_APPENDIX}`;
   }
 

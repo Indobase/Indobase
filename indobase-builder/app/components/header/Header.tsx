@@ -4,12 +4,12 @@ import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 
 export function Header() {
   const chat = useStore(chatStore);
-  const backend = useStore(supabaseConnection);
+  const backend = useStore(indobaseConnection);
   const isStudioManagedConnection = isIndobaseStudioManagedConnection(backend);
 
   return (

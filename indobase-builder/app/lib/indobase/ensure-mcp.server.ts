@@ -1,0 +1,56 @@
+import { parseCookies } from '~/lib/api/cookies';
+import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
+import { resolveBuilderMcpClaims } from '~/lib/indobase/builder-prompt-quota.server';
+import { BUILDER_MCP_COOKIE } from '~/lib/indobase/builder-session.constants';
+import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
+import type { MCPConfig } from '~/lib/services/mcpService';
+import type { MCPService } from '~/lib/services/mcpService';
+
+type ServerEnv = Record<string, string | undefined>;
+
+function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
+  const base = studioUrl.trim().replace(/\/+$/, '');
+  const url = new URL('/api/mcp', base);
+  url.searchParams.set('project_ref', projectRef);
+  return url.toString();
+}
+
+export async function ensureIndobaseMcpFromRequest(
+  request: Request,
+  mcpService: MCPService,
+  env?: ServerEnv,
+): Promise<void> {
+  if (Object.keys(mcpService.toolsWithoutExecute).length > 0) {
+    return;
+  }
+
+  const claims = await resolveBuilderMcpClaims(request, env);
+
+  if (!claims?.studio_url || !claims.project_ref) {
+    return;
+  }
+
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const mcpToken = await resolveValidBuilderMcpToken(
+    [readBearerToken(request), cookies[BUILDER_MCP_COOKIE]],
+    env,
+  );
+
+  if (!mcpToken) {
+    return;
+  }
+
+  const config: MCPConfig = {
+    mcpServers: {
+      [INDOBASE_MCP_SERVER_NAME]: {
+        type: 'streamable-http',
+        url: buildIndobaseMcpUrl(claims.studio_url, claims.project_ref),
+        headers: {
+          Authorization: `Bearer ${mcpToken}`,
+        },
+      },
+    },
+  };
+
+  await mcpService.updateConfig(config);
+}

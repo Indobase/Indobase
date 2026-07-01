@@ -1,7 +1,7 @@
 import type { IndobaseBuilderHandoffPayload } from '~/types/indobase';
-import type { SupabaseConnectionState, SupabaseProject } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState, IndobaseBackendProject } from '~/lib/stores/indobase-connection';
 
-export function buildSupabaseProjectFromHandoff(payload: IndobaseBuilderHandoffPayload): SupabaseProject {
+export function buildIndobaseProjectFromHandoff(payload: IndobaseBuilderHandoffPayload): IndobaseBackendProject {
   return {
     id: payload.project_ref,
     name: payload.project_name,
@@ -12,13 +12,13 @@ export function buildSupabaseProjectFromHandoff(payload: IndobaseBuilderHandoffP
   };
 }
 
-export function buildSupabaseConnectionFromHandoff(
+export function buildIndobaseConnectionFromHandoff(
   payload: IndobaseBuilderHandoffPayload,
   options?: {
     mcpToken?: string;
   },
-): Partial<SupabaseConnectionState> {
-  const project = buildSupabaseProjectFromHandoff(payload);
+): Partial<IndobaseConnectionState> {
+  const project = buildIndobaseProjectFromHandoff(payload);
 
   return {
     user: {
@@ -38,6 +38,7 @@ export function buildSupabaseConnectionFromHandoff(
     project,
     credentials: {
       anonKey: payload.backend.anon_key,
+      apiUrl: payload.backend.api_url,
       supabaseUrl: payload.backend.api_url,
     },
     connectionSource: 'studio_handoff',
@@ -54,3 +55,6 @@ export function buildSupabaseConnectionFromHandoff(
     },
   };
 }
+
+/** @deprecated Use buildIndobaseConnectionFromHandoff */
+export const buildSupabaseConnectionFromHandoff = buildIndobaseConnectionFromHandoff;

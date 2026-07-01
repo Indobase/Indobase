@@ -1,5 +1,5 @@
 import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
-import { ensureBuilderSession, getStoredSupabaseConnection } from '~/lib/indobase/builder-auth.client';
+import { ensureBuilderSession, getStoredIndobaseConnectionFromAuth } from '~/lib/indobase/builder-auth.client';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
@@ -7,7 +7,7 @@ import {
   type QueueDeploymentResult,
 } from '~/lib/indobase/studioApi';
 import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export type PublishToIndobaseResult = QueueDeploymentResult & {
   openedUrl?: string;
@@ -19,13 +19,13 @@ export type PublishToIndobaseOptions = {
 };
 
 export async function publishToIndobase(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   options: PublishToIndobaseOptions = {},
 ): Promise<PublishToIndobaseResult> {
   const metadata = options.metadata ?? { source: 'one_click_deploy' };
 
   await ensureBuilderSession();
-  const activeConnection = getStoredSupabaseConnection() ?? connection;
+  const activeConnection = getStoredIndobaseConnectionFromAuth() ?? connection;
 
   if (!canQueueIndobaseDeployment(activeConnection)) {
     return {

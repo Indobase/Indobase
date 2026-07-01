@@ -6,7 +6,7 @@ import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
 } from '~/lib/indobase/studioApi';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
@@ -105,7 +105,7 @@ function createProgress(
 }
 
 export async function runAutonomousPipeline(options: {
-  connection: SupabaseConnectionState;
+  connection: IndobaseConnectionState;
   onProgress?: (progress: ProgressAnnotation) => void;
   progressOrderStart?: number;
 }): Promise<AutonomousPipelineResult> {

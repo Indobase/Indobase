@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from './connection';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import {
+  hasIndobaseStudioHandoff,
+  hasSelectedIndobaseProject,
+  isIndobaseStudioManagedConnection,
+} from './connection';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 const baseHandoff = {
   connectionSource: 'studio_handoff',
@@ -20,11 +24,17 @@ const baseHandoff = {
     storageUrl: 'https://proj.indobase.in/storage/v1',
     studioUrl: 'https://studio.indobase.in',
   },
-} satisfies Partial<SupabaseConnectionState>;
+} satisfies Partial<IndobaseConnectionState>;
 
 describe('hasIndobaseStudioHandoff', () => {
   it('returns true when backend credentials exist without an MCP token', () => {
-    expect(hasIndobaseStudioHandoff(baseHandoff as SupabaseConnectionState)).toBe(true);
+    expect(hasIndobaseStudioHandoff(baseHandoff as IndobaseConnectionState)).toBe(true);
+  });
+});
+
+describe('hasSelectedIndobaseProject', () => {
+  it('returns true for studio handoff with project ref but no stats.projects', () => {
+    expect(hasSelectedIndobaseProject(baseHandoff as IndobaseConnectionState)).toBe(true);
   });
 });
 
@@ -36,12 +46,12 @@ describe('isIndobaseStudioManagedConnection', () => {
         ...baseHandoff.indobase,
         mcpToken: 'token',
       },
-    } satisfies Partial<SupabaseConnectionState>;
+    } satisfies Partial<IndobaseConnectionState>;
 
-    expect(isIndobaseStudioManagedConnection(connection as SupabaseConnectionState)).toBe(true);
+    expect(isIndobaseStudioManagedConnection(connection as IndobaseConnectionState)).toBe(true);
   });
 
   it('returns false when MCP token is missing', () => {
-    expect(isIndobaseStudioManagedConnection(baseHandoff as SupabaseConnectionState)).toBe(false);
+    expect(isIndobaseStudioManagedConnection(baseHandoff as IndobaseConnectionState)).toBe(false);
   });
 });

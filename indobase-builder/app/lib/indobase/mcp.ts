@@ -1,5 +1,6 @@
 import type { MCPConfig } from '~/lib/services/mcpService';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
+import { readStoredConnectionRaw } from '~/lib/indobase/connection-storage';
 
 export const INDOBASE_MCP_SERVER_NAME = 'indobase';
 
@@ -7,7 +8,6 @@ function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   const base = studioUrl.trim().replace(/\/+$/, '');
   const url = new URL('/api/mcp', base);
 
-  // Legacy handoffs or saved MCP configs may still point at /mcp — normalize to the Studio API route.
   if (url.pathname.endsWith('/mcp') && !url.pathname.includes('/api/mcp')) {
     url.pathname = '/api/mcp';
   }
@@ -17,27 +17,30 @@ function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   return url.toString();
 }
 
-export function getStoredSupabaseConnection(): SupabaseConnectionState | null {
+export function getStoredIndobaseConnection(): IndobaseConnectionState | null {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const raw = window.localStorage.getItem('supabase_connection');
+  const raw = readStoredConnectionRaw();
 
   if (!raw) {
     return null;
   }
 
   try {
-    return JSON.parse(raw) as SupabaseConnectionState;
+    return JSON.parse(raw) as IndobaseConnectionState;
   } catch (error) {
     console.error('Failed to parse stored Indobase connection for MCP sync:', error);
     return null;
   }
 }
 
-export function getAutoIndobaseMcpConfig(connection?: SupabaseConnectionState | null): MCPConfig | null {
-  const resolvedConnection = connection ?? getStoredSupabaseConnection();
+/** @deprecated Use getStoredIndobaseConnection */
+export const getStoredSupabaseConnection = getStoredIndobaseConnection;
+
+export function getAutoIndobaseMcpConfig(connection?: IndobaseConnectionState | null): MCPConfig | null {
+  const resolvedConnection = connection ?? getStoredIndobaseConnection();
 
   if (
     !resolvedConnection ||
@@ -64,7 +67,7 @@ export function getAutoIndobaseMcpConfig(connection?: SupabaseConnectionState | 
 
 export function mergeMcpConfigWithIndobase(
   baseConfig: MCPConfig,
-  connection?: SupabaseConnectionState | null,
+  connection?: IndobaseConnectionState | null,
 ): MCPConfig {
   const mergedServers = {
     ...(baseConfig.mcpServers || {}),

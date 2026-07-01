@@ -1,6 +1,6 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export type IndobaseDeploymentStatus = 'requested' | 'building' | 'ready' | 'failed' | 'archived';
 
@@ -64,7 +64,7 @@ type QueueMobileBuildRequest = QueueMobileBuildParams & {
   studioUrl: string;
 };
 
-function resolveIndobaseStudioRequest(connection: SupabaseConnectionState): IndobaseStudioRequest | null {
+function resolveIndobaseStudioRequest(connection: IndobaseConnectionState): IndobaseStudioRequest | null {
   const projectRef = connection.indobase?.projectRef || connection.selectedProjectId;
   const studioUrl = connection.indobase?.studioUrl;
   const mcpToken = connection.indobase?.mcpToken?.trim();
@@ -80,11 +80,11 @@ function resolveIndobaseStudioRequest(connection: SupabaseConnectionState): Indo
   };
 }
 
-export function canQueueIndobaseMobileBuild(connection?: SupabaseConnectionState | null): boolean {
+export function canQueueIndobaseMobileBuild(connection?: IndobaseConnectionState | null): boolean {
   return hasIndobaseStudioHandoff(connection);
 }
 
-export function canQueueIndobaseDeployment(connection?: SupabaseConnectionState | null): boolean {
+export function canQueueIndobaseDeployment(connection?: IndobaseConnectionState | null): boolean {
   return hasIndobaseStudioHandoff(connection);
 }
 
@@ -99,7 +99,7 @@ function sleep(ms: number) {
 }
 
 export async function queueIndobaseMobileBuild(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   params: QueueMobileBuildParams = {},
 ): Promise<QueueMobileBuildResult> {
   const projectRef = connection.indobase?.projectRef || connection.selectedProjectId;
@@ -148,7 +148,7 @@ export async function queueIndobaseMobileBuild(
 }
 
 export async function queueIndobaseDeployment(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   params: QueueDeploymentParams = {},
 ): Promise<QueueDeploymentResult> {
   const studioRequest = resolveIndobaseStudioRequest(connection);
@@ -195,7 +195,7 @@ export async function queueIndobaseDeployment(
 }
 
 export async function getIndobaseDeployment(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   deploymentId: string,
 ): Promise<GetDeploymentResult> {
   const studioRequest = resolveIndobaseStudioRequest(connection);
@@ -251,7 +251,7 @@ function isSyncPublishedDeployment(deployment: IndobaseDeployment) {
 }
 
 export async function publishIndobaseDeployment(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   params: QueueDeploymentParams = {},
   options?: {
     onStatus?: (deployment: IndobaseDeployment) => void;

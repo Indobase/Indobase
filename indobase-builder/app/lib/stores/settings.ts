@@ -2,6 +2,7 @@ import { atom, map } from 'nanostores';
 import { PROVIDER_LIST } from '~/utils/constants';
 import type { IProviderConfig } from '~/types/model';
 import type { TabVisibilityConfig, TabWindowConfig, UserTabConfig } from '~/components/@settings/core/types';
+import { normalizeTabId } from '~/components/@settings/core/types';
 import { DEFAULT_TAB_CONFIG } from '~/components/@settings/core/constants';
 import { toggleTheme } from './theme';
 import { create } from 'zustand';
@@ -364,7 +365,9 @@ const getInitialTabConfiguration = (): TabWindowConfig => {
 
     // Ensure proper typing of loaded configuration
     return {
-      userTabs: parsed.userTabs.filter((tab: TabVisibilityConfig): tab is UserTabConfig => tab.window === 'user'),
+      userTabs: parsed.userTabs
+        .map((tab: TabVisibilityConfig) => ({ ...tab, id: normalizeTabId(tab.id) }))
+        .filter((tab: TabVisibilityConfig): tab is UserTabConfig => tab.window === 'user'),
     };
   } catch (error) {
     console.warn('Failed to parse tab configuration:', error);

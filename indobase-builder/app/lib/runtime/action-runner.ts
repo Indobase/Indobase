@@ -7,8 +7,9 @@ import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
-import { supabaseConnection } from '~/lib/stores/supabase';
-import type { ActionAlert, BoltAction, DeployAlert, FileHistory, SupabaseAction, SupabaseAlert } from '~/types/actions';
+import { executeIndobaseSql } from '~/lib/indobase/studioSql';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
+import type { ActionAlert, BoltAction, DeployAlert, FileHistory, IndobaseBackendAction, IndobaseBackendAlert } from '~/types/actions';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 import type { ActionCallbackData } from './message-parser';
@@ -78,7 +79,7 @@ export class ActionRunner {
   runnerId = atom<string>(`${Date.now()}`);
   actions: ActionsMap = map({});
   onAlert?: (alert: ActionAlert) => void;
-  onSupabaseAlert?: (alert: SupabaseAlert) => void;
+  onIndobaseBackendAlert?: (alert: IndobaseBackendAlert) => void;
   onDeployAlert?: (alert: DeployAlert) => void;
   buildOutput?: { path: string; exitCode: number; output: string };
   lastShellOutput?: { exitCode: number; output: string };
@@ -87,13 +88,13 @@ export class ActionRunner {
     webcontainerPromise: Promise<WebContainer>,
     getShellTerminal: () => BoltShell,
     onAlert?: (alert: ActionAlert) => void,
-    onSupabaseAlert?: (alert: SupabaseAlert) => void,
+    onIndobaseBackendAlert?: (alert: IndobaseBackendAlert) => void,
     onDeployAlert?: (alert: DeployAlert) => void,
   ) {
     this.#webcontainer = webcontainerPromise;
     this.#shellTerminal = getShellTerminal;
     this.onAlert = onAlert;
-    this.onSupabaseAlert = onSupabaseAlert;
+    this.onIndobaseBackendAlert = onIndobaseBackendAlert;
     this.onDeployAlert = onDeployAlert;
   }
 
@@ -175,17 +176,16 @@ export class ActionRunner {
           await this.#runFileAction(action);
           break;
         }
+        case 'indobase':
         case 'supabase': {
           try {
-            await this.handleSupabaseAction(action as SupabaseAction);
+            await this.handleIndobaseBackendAction(action as IndobaseBackendAction);
           } catch (error: any) {
-            // Update action status
             this.#updateAction(actionId, {
               status: 'failed',
-              error: error instanceof Error ? error.message : 'Supabase action failed',
+              error: error instanceof Error ? error.message : 'Indobase backend action failed',
             });
 
-            // Return early without re-throwing
             return;
           }
           break;
@@ -354,13 +354,13 @@ export class ActionRunner {
     await webcontainer.fs.writeFile(relativePath, sanitized.content);
     logger.debug(`File written ${relativePath}`);
 
-    const connection = supabaseConnection.get();
+    const connection = indobaseConnection.get();
     if (hasIndobaseStudioHandoff(connection)) {
       await this.#ensureProjectEnvFile(webcontainer, connection);
     }
   }
 
-  async #ensureProjectEnvFile(webcontainer: WebContainer, connection: NonNullable<ReturnType<typeof supabaseConnection.get>>) {
+  async #ensureProjectEnvFile(webcontainer: WebContainer, connection: NonNullable<ReturnType<typeof indobaseConnection.get>>) {
     try {
       await seedProjectEnvIfMissing(
         (filePath, content) => webcontainer.fs.writeFile(filePath, content),
@@ -541,9 +541,9 @@ export class ActionRunner {
 
     return buildResult;
   }
-  async handleSupabaseAction(action: SupabaseAction) {
+  async handleIndobaseBackendAction(action: IndobaseBackendAction) {
     const { operation, content, filePath } = action;
-    logger.debug('[Supabase Action]:', { operation, filePath, content });
+    logger.debug('[Indobase Backend Action]:', { operation, filePath, content });
 
     switch (operation) {
       case 'migration': {
@@ -552,47 +552,67 @@ export class ActionRunner {
           content ?? '',
         ).filePath;
 
-        // Show alert for migration action
-        this.onSupabaseAlert?.({
+        this.onIndobaseBackendAlert?.({
           type: 'info',
           title: 'Indobase Migration',
           description: `Create migration file: ${sanitizedPath}`,
           content,
-          source: 'supabase',
+          source: 'indobase',
         });
 
-        // Only create the migration file
         await this.#runFileAction({
           type: 'file',
           filePath: sanitizedPath,
           content,
-          changeSource: 'supabase',
+          changeSource: 'indobase',
         } as any);
+
+        const connection = indobaseConnection.get();
+
+        if (hasIndobaseStudioHandoff(connection) && content?.trim()) {
+          try {
+            const migrationName = sanitizedPath.split('/').pop()?.replace(/\.sql$/i, '');
+            await executeIndobaseSql({
+              connection,
+              query: content,
+              operation: 'migration',
+              name: migrationName,
+            });
+          } catch (error) {
+            logger.warn('Failed to auto-apply Indobase migration', error);
+            this.onIndobaseBackendAlert?.({
+              type: 'error',
+              title: 'Indobase Migration',
+              description: 'Migration file was written but SQL apply failed',
+              content,
+              source: 'indobase',
+            });
+          }
+        }
+
         return { success: true };
       }
 
       case 'query': {
-        // Always show the alert and let the SupabaseAlert component handle connection state
-        this.onSupabaseAlert?.({
+        this.onIndobaseBackendAlert?.({
           type: 'info',
           title: 'Indobase Query',
           description: 'Execute database query',
           content,
-          source: 'supabase',
+          source: 'indobase',
         });
 
-        // The actual execution will be triggered from SupabaseChatAlert
         return { pending: true };
       }
 
       default: {
-        logger.warn(`Unknown Supabase operation: ${operation}`);
-        this.onSupabaseAlert?.({
+        logger.warn(`Unknown Indobase backend operation: ${operation}`);
+        this.onIndobaseBackendAlert?.({
           type: 'error',
           title: 'Indobase Action Failed',
           description: `Unsupported database operation: ${operation ?? 'unknown'}`,
           content,
-          source: 'supabase',
+          source: 'indobase',
         });
         return { success: false };
       }

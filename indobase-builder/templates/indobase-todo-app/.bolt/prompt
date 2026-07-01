@@ -1,2 +1,2 @@
-Indobase Todo template. Apply indobase/migrations/001_todos.sql in Studio SQL editor before testing inserts.
+Indobase Todo template. When Builder is linked from Studio, apply indobase/migrations/001_todos.sql via the **indobase** MCP server (apply_migration or execute_sql) before testing inserts.
 Use @indobaseinc/indobase-js via src/lib/indobase.ts. Add sign-in if the user is not authenticated yet.

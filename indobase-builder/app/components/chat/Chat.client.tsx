@@ -30,7 +30,7 @@ import { resolveTemplateFromMessage } from '~/lib/indobase/resolveTemplateFromMe
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -39,15 +39,17 @@ import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
-import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import { hasIndobaseStudioHandoff, hasSelectedIndobaseProject, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { getWebcontainerWithRetry } from '~/lib/webcontainer';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
   getBuilderRequestInit,
+  prepareStudioLinkedChat,
   redirectToStudioBuilderConnect,
 } from '~/lib/indobase/builder-auth.client';
+import { getStudioBackendUserPreamble } from '~/lib/indobase/studio-database-prompt';
 import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
 import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
 import type { ToolCallAnnotation } from '~/types/context';
@@ -146,11 +148,9 @@ export const ChatImpl = memo(
     const [designScheme, setDesignScheme] = useState<DesignScheme>(defaultDesignScheme);
     const actionAlert = useStore(workbenchStore.alert);
     const deployAlert = useStore(workbenchStore.deployAlert);
-    const supabaseConn = useStore(supabaseConnection);
-    const selectedProject = supabaseConn.stats?.projects?.find(
-      (project) => project.id === supabaseConn.selectedProjectId,
-    );
-    const supabaseAlert = useStore(workbenchStore.supabaseAlert);
+    const indobaseConn = useStore(indobaseConnection);
+    const hasSelectedProject = hasSelectedIndobaseProject(indobaseConn);
+    const indobaseBackendAlert = useStore(workbenchStore.indobaseBackendAlertAtom);
     const { promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
     const [llmErrorAlert, setLlmErrorAlert] = useState<LlmErrorAlertType | undefined>(undefined);
     const [builderPromptQuota, setBuilderPromptQuota] = useState<
@@ -171,7 +171,7 @@ export const ChatImpl = memo(
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const refreshBuilderPromptQuota = useCallback(async () => {
-      if (!isIndobaseStudioManagedConnection(supabaseConn)) {
+      if (!isIndobaseStudioManagedConnection(indobaseConn)) {
         setBuilderPromptQuota(null);
         return;
       }
@@ -190,7 +190,7 @@ export const ChatImpl = memo(
       } catch (error) {
         logger.warn('Failed to load Builder prompt quota', error);
       }
-    }, [supabaseConn]);
+    }, [indobaseConn]);
 
     useEffect(() => {
       void refreshBuilderPromptQuota();
@@ -206,7 +206,7 @@ export const ChatImpl = memo(
           return upgradePath;
         }
 
-        const studioUrl = builderPromptQuota?.studioUrl || supabaseConn.indobase?.studioUrl;
+        const studioUrl = builderPromptQuota?.studioUrl || indobaseConn.indobase?.studioUrl;
 
         if (!studioUrl) {
           return upgradePath;
@@ -214,7 +214,7 @@ export const ChatImpl = memo(
 
         return new URL(upgradePath, `${studioUrl.replace(/\/+$/, '')}/`).toString();
       },
-      [builderPromptQuota?.studioUrl, supabaseConn.indobase?.studioUrl],
+      [builderPromptQuota?.studioUrl, indobaseConn.indobase?.studioUrl],
     );
 
     const mcpSettings = useMCPStore((state) => state.settings);
@@ -243,22 +243,22 @@ export const ChatImpl = memo(
         contextOptimization: contextOptimizationEnabled,
         chatMode,
         designScheme,
-        supabase: {
-          isConnected: supabaseConn.isConnected ?? false,
-          hasSelectedProject: !!selectedProject,
-          connectionSource: supabaseConn.connectionSource,
+        indobase: {
+          isConnected: indobaseConn.isConnected ?? false,
+          hasSelectedProject,
+          connectionSource: indobaseConn.connectionSource,
           credentials: {
-            supabaseUrl: supabaseConn?.credentials?.supabaseUrl,
-            anonKey: supabaseConn?.credentials?.anonKey,
+            apiUrl: indobaseConn?.credentials?.apiUrl ?? indobaseConn?.credentials?.supabaseUrl,
+            anonKey: indobaseConn?.credentials?.anonKey,
           },
-          indobase: supabaseConn.indobase
+          indobase: indobaseConn.indobase
             ? {
-                apiUrl: supabaseConn.indobase.apiUrl,
-                authUrl: supabaseConn.indobase.authUrl,
-                projectRef: supabaseConn.indobase.projectRef,
-                restUrl: supabaseConn.indobase.restUrl,
-                storageUrl: supabaseConn.indobase.storageUrl,
-                studioUrl: supabaseConn.indobase.studioUrl,
+                apiUrl: indobaseConn.indobase.apiUrl,
+                authUrl: indobaseConn.indobase.authUrl,
+                projectRef: indobaseConn.indobase.projectRef,
+                restUrl: indobaseConn.indobase.restUrl,
+                storageUrl: indobaseConn.indobase.storageUrl,
+                studioUrl: indobaseConn.indobase.studioUrl,
               }
             : undefined,
         },
@@ -315,7 +315,7 @@ export const ChatImpl = memo(
 
       try {
         const result = await runAutonomousPipeline({
-          connection: supabaseConn,
+          connection: indobaseConn,
           onProgress: (progress) => {
             setAutonomousProgress((current) => [...current, progress]);
           },
@@ -346,7 +346,7 @@ export const ChatImpl = memo(
         logger.error('Autonomous pipeline failed', error);
         toast.error('Autonomous test/deploy pipeline failed.');
       }
-    }, [MAX_AUTONOMOUS_REPAIRS, append, chatMode, model, provider.name, supabaseConn]);
+    }, [MAX_AUTONOMOUS_REPAIRS, append, chatMode, model, provider.name, indobaseConn]);
 
     useEffect(() => {
       runAutonomousDeployFlowRef.current = runAutonomousDeployFlow;
@@ -381,17 +381,27 @@ export const ChatImpl = memo(
       }, { replace: true });
 
       if (shouldAutostart) {
-        runAnimation();
-        append({
-          role: 'user',
-          content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${prompt}`,
-        });
+        void (async () => {
+          const ready = await prepareStudioLinkedChat();
+          if (!ready && hasIndobaseStudioHandoff(indobaseConn)) {
+            toast.error('Builder session expired. Reconnecting through Studio…');
+            redirectToStudioBuilderConnect();
+            return;
+          }
+
+          runAnimation();
+          const preamble = hasIndobaseStudioHandoff(indobaseConn) ? getStudioBackendUserPreamble() : '';
+          append({
+            role: 'user',
+            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${preamble}${prompt}`,
+          });
+        })();
         return;
       }
 
       setInput(prompt);
       textareaRef.current?.focus();
-    }, [append, chatStarted, model, provider, searchParams, setInput, setSearchParams]);
+    }, [append, chatStarted, model, provider, searchParams, setInput, setSearchParams, indobaseConn]);
 
     const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } = usePromptEnhancer();
     const { parsedMessages, parseMessages } = useMessageParser();
@@ -413,7 +423,7 @@ export const ChatImpl = memo(
     }, [messages, isLoading, parseMessages]);
 
     useEffect(() => {
-      if (!hasIndobaseStudioHandoff(supabaseConn)) {
+      if (!hasIndobaseStudioHandoff(indobaseConn)) {
         return;
       }
 
@@ -421,7 +431,7 @@ export const ChatImpl = memo(
         if (restored) {
           void useMCPStore.getState().initialize();
           void useMCPStore.getState().syncWithIndobaseConnection();
-          void runStudioBackendPreflight(supabaseConn).then((preflight) => {
+          void runStudioBackendPreflight(indobaseConn).then((preflight) => {
             if (!preflight.ready && preflight.error) {
               toast.warning(preflight.error);
             }
@@ -429,14 +439,14 @@ export const ChatImpl = memo(
         }
       });
     }, [
-      supabaseConn.connectionSource,
-      supabaseConn.indobase?.mcpToken,
-      supabaseConn.credentials?.anonKey,
-      supabaseConn.credentials?.supabaseUrl,
+      indobaseConn.connectionSource,
+      indobaseConn.indobase?.mcpToken,
+      indobaseConn.credentials?.anonKey,
+      indobaseConn.credentials?.supabaseUrl,
     ]);
 
     useEffect(() => {
-      if (!hasIndobaseStudioHandoff(supabaseConn) || !chatStarted) {
+      if (!hasIndobaseStudioHandoff(indobaseConn)) {
         return;
       }
 
@@ -445,13 +455,18 @@ export const ChatImpl = memo(
         await seedProjectEnvIfMissing(
           (filePath, content) => container.fs.writeFile(filePath, content),
           (filePath) => container.fs.readFile(filePath, 'utf-8'),
-          supabaseConn,
+          indobaseConn,
         );
       });
-    }, [chatStarted, supabaseConn.connectionSource, supabaseConn.credentials?.anonKey, supabaseConn.credentials?.supabaseUrl]);
+    }, [
+      indobaseConn.connectionSource,
+      indobaseConn.credentials?.anonKey,
+      indobaseConn.credentials?.supabaseUrl,
+      indobaseConn.indobase?.projectRef,
+    ]);
 
     useEffect(() => {
-      if (!isIndobaseStudioManagedConnection(supabaseConn) || isLoading) {
+      if (!isIndobaseStudioManagedConnection(indobaseConn) || isLoading) {
         return;
       }
 
@@ -481,7 +496,7 @@ export const ChatImpl = memo(
           }
         }
       }
-    }, [messages, chatData, isLoading, supabaseConn, addToolResult]);
+    }, [messages, chatData, isLoading, indobaseConn, addToolResult]);
 
     const scrollTextArea = () => {
       const textarea = textareaRef.current;
@@ -553,7 +568,7 @@ export const ChatImpl = memo(
         if (errorInfo.statusCode === 401 || errorInfo.message.toLowerCase().includes('api key')) {
           if (
             errorInfo.statusCode === 401 &&
-            (isIndobaseStudioManagedConnection(supabaseConn) ||
+            (isIndobaseStudioManagedConnection(indobaseConn) ||
               errorInfo.message.toLowerCase().includes('unauthorized'))
           ) {
             void ensureBuilderSession().then((restored) => {
@@ -624,7 +639,7 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
         });
         setData([]);
       },
-      [provider.name, stop, supabaseConn, resolveUpgradeUrl, chatMode, model, append, MAX_ORCHESTRATOR_CHAT_RETRIES],
+      [provider.name, stop, indobaseConn, resolveUpgradeUrl, chatMode, model, append, MAX_ORCHESTRATOR_CHAT_RETRIES],
     );
 
     const clearApiErrorAlert = useCallback(() => {
@@ -719,6 +734,16 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
         return;
       }
 
+      if (hasIndobaseStudioHandoff(indobaseConn)) {
+        const ready = await prepareStudioLinkedChat();
+
+        if (!ready) {
+          toast.error('Builder session expired. Reconnecting through Studio…');
+          redirectToStudioBuilderConnect();
+          return;
+        }
+      }
+
       if (isLoading) {
         abort();
         return;
@@ -746,6 +771,14 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
 
       let finalMessageContent = messageContent;
 
+      if (
+        hasIndobaseStudioHandoff(indobaseConn) &&
+        !chatStarted &&
+        !finalMessageContent.includes('INDOBASE BACKEND (Studio-linked')
+      ) {
+        finalMessageContent = `${getStudioBackendUserPreamble()}${finalMessageContent}`;
+      }
+
       if (selectedElement) {
         console.log('Selected Element:', selectedElement);
 
@@ -758,7 +791,7 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
       if (!chatStarted) {
         setFakeLoading(true);
 
-        const studioLinked = isIndobaseStudioManagedConnection(supabaseConn);
+        const studioLinked = isIndobaseStudioManagedConnection(indobaseConn);
         const explicitTemplate = resolveTemplateFromMessage(finalMessageContent);
         let templateName = explicitTemplate?.name ?? null;
         let templateTitle = explicitTemplate ? finalMessageContent : '';
@@ -834,6 +867,19 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
                 );
               }
 
+              if (studioLinked) {
+                try {
+                  const container = await getWebcontainerWithRetry(1);
+                  await seedProjectEnvIfMissing(
+                    (filePath, content) => container.fs.writeFile(filePath, content),
+                    (filePath) => container.fs.readFile(filePath, 'utf-8'),
+                    indobaseConn,
+                  );
+                } catch (error) {
+                  logger.warn('Failed to seed Indobase env after template import', error);
+                }
+              }
+
               setAutonomousProgress([]);
               autonomousRepairCountRef.current = 0;
 
@@ -852,9 +898,10 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
 
                 if (templateFollowUp?.trim()) {
                   suppressAutonomousOnNextFinishRef.current = true;
+                  const studioBackendFollowUp = studioLinked ? getStudioBackendUserPreamble() : '';
                   append({
                     role: 'user',
-                    content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${templateFollowUp}`,
+                    content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${studioBackendFollowUp}${templateFollowUp}`,
                   });
                 }
               })();
@@ -1054,8 +1101,8 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
         setImageDataList={setImageDataList}
         actionAlert={actionAlert}
         clearAlert={() => workbenchStore.clearAlert()}
-        supabaseAlert={supabaseAlert}
-        clearSupabaseAlert={() => workbenchStore.clearSupabaseAlert()}
+        indobaseBackendAlert={indobaseBackendAlert}
+        clearIndobaseBackendAlert={() => workbenchStore.clearIndobaseBackendAlert()}
         deployAlert={deployAlert}
         clearDeployAlert={() => workbenchStore.clearDeployAlert()}
         llmErrorAlert={llmErrorAlert}

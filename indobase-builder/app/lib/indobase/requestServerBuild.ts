@@ -1,10 +1,10 @@
 import type { CollectBuildArtifactsResult } from '~/lib/indobase/collectBuildArtifacts';
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import type { FileMap } from '~/lib/stores/files';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export async function collectBuildArtifactsViaServer(
-  connection: SupabaseConnectionState,
+  connection: IndobaseConnectionState,
   files: FileMap,
 ): Promise<CollectBuildArtifactsResult> {
   const response = await fetch(

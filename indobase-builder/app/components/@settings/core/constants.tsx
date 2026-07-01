@@ -28,8 +28,8 @@ const NetlifyIcon = () => (
   </svg>
 );
 
-// Supabase icon component
-const SupabaseIcon = () => (
+// Indobase backend icon component
+const IndobaseBackendIcon = () => (
   <svg viewBox="0 0 24 24" className="w-4 h-4">
     <path
       fill="currentColor"
@@ -50,7 +50,7 @@ export const TAB_ICONS: Record<TabType, React.ComponentType<{ className?: string
   gitlab: () => <GitLabIcon />,
   netlify: () => <NetlifyIcon />,
   vercel: () => <VercelIcon />,
-  supabase: () => <SupabaseIcon />,
+  'indobase-backend': () => <IndobaseBackendIcon />,
   'event-logs': List,
   mcp: Wrench,
 };
@@ -67,7 +67,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   gitlab: 'GitLab',
   netlify: 'Netlify',
   vercel: 'Vercel',
-  supabase: 'Indobase Backend',
+  'indobase-backend': 'Indobase Backend',
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
 };
@@ -84,7 +84,7 @@ export const TAB_DESCRIPTIONS: Record<TabType, string> = {
   gitlab: 'Connect and manage GitLab integration',
   netlify: 'Configure Netlify deployment settings',
   vercel: 'Manage Vercel projects and deployments',
-  supabase: 'Manage your Indobase backend connection and Studio access',
+  'indobase-backend': 'Manage your Indobase backend connection and Studio access',
   'event-logs': 'View system events and logs',
   mcp: 'Configure MCP (Model Context Protocol) servers',
 };
@@ -99,7 +99,7 @@ export const DEFAULT_TAB_CONFIG = [
   { id: 'gitlab', visible: true, window: 'user' as const, order: 5 },
   { id: 'netlify', visible: false, window: 'user' as const, order: 6 },
   { id: 'vercel', visible: false, window: 'user' as const, order: 7 },
-  { id: 'supabase', visible: true, window: 'user' as const, order: 8 },
+  { id: 'indobase-backend', visible: true, window: 'user' as const, order: 8 },
   { id: 'notifications', visible: true, window: 'user' as const, order: 9 },
   { id: 'event-logs', visible: true, window: 'user' as const, order: 10 },
   { id: 'mcp', visible: true, window: 'user' as const, order: 11 },

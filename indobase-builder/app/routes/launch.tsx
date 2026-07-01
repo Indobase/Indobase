@@ -2,8 +2,8 @@ import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { useLoaderData, useNavigate, useSearchParams } from '@remix-run/react';
 import { useEffect, useState } from 'react';
 
-import { updateSupabaseConnection } from '~/lib/stores/supabase';
-import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
+import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
+import { buildIndobaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { getStudioBuilderConnectUrl, persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
 import { clearHandoffTokenFromLocation, readHandoffTokenFromLocation } from '~/lib/indobase/launch-hash.client';
 import { completeBuilderHandoff } from '~/lib/indobase/launch-handoff.server';
@@ -36,33 +36,36 @@ function applyLaunchSuccess(options: {
   next: string | null;
   popup: boolean;
 }) {
-  updateSupabaseConnection(buildSupabaseConnectionFromHandoff(options.handoff, { mcpToken: options.mcpToken }));
+  updateIndobaseConnection(buildIndobaseConnectionFromHandoff(options.handoff, { mcpToken: options.mcpToken }));
   persistLastProjectRef(options.handoff.project_ref);
-  void initializeProviders();
-  void useMCPStore.getState().initialize();
-  void useMCPStore.getState().syncWithIndobaseConnection();
 
-  const studioOrigin = options.handoff.studio_url?.replace(/\/+$/, '');
+  void (async () => {
+    await initializeProviders();
+    await useMCPStore.getState().initialize();
+    await useMCPStore.getState().syncWithIndobaseConnection();
 
-  if (options.popup && window.opener && studioOrigin) {
-    window.opener.postMessage(
-      {
-        type: 'indobase-builder-session',
-        projectRef: options.handoff.project_ref,
-        success: true,
-      },
-      studioOrigin,
-    );
-    window.close();
-    return;
-  }
+    const studioOrigin = options.handoff.studio_url?.replace(/\/+$/, '');
 
-  const isSafeRelativePath =
-    Boolean(options.next) &&
-    options.next!.startsWith('/') &&
-    !options.next!.startsWith('//') &&
-    !options.next!.includes('://');
-  options.navigate(isSafeRelativePath ? options.next! : '/', { replace: true });
+    if (options.popup && window.opener && studioOrigin) {
+      window.opener.postMessage(
+        {
+          type: 'indobase-builder-session',
+          projectRef: options.handoff.project_ref,
+          success: true,
+        },
+        studioOrigin,
+      );
+      window.close();
+      return;
+    }
+
+    const isSafeRelativePath =
+      Boolean(options.next) &&
+      options.next!.startsWith('/') &&
+      !options.next!.startsWith('//') &&
+      !options.next!.includes('://');
+    options.navigate(isSafeRelativePath ? options.next! : '/', { replace: true });
+  })();
 }
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {

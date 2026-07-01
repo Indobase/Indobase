@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
 
-import { buildSupabaseConnectionFromHandoff } from './handoff';
+import { buildIndobaseConnectionFromHandoff } from './handoff';
 import {
   signIndobaseBuilderMcpToken,
   verifyIndobaseBuilderMcpToken,
@@ -59,7 +59,7 @@ describe('indobase handoff', () => {
   };
 
   it('maps handoff payload into the existing Supabase connection store shape', () => {
-    const connection = buildSupabaseConnectionFromHandoff(payload, { mcpToken: 'mcp-token' });
+    const connection = buildIndobaseConnectionFromHandoff(payload, { mcpToken: 'mcp-token' });
 
     expect(connection).toMatchObject({
       selectedProjectId: 'proj_123',
@@ -122,7 +122,7 @@ describe('indobase handoff', () => {
   });
 
   it('auto-registers the Indobase MCP server for Studio handoff sessions', () => {
-    const connection = buildSupabaseConnectionFromHandoff(payload, { mcpToken: 'mcp-token' });
+    const connection = buildIndobaseConnectionFromHandoff(payload, { mcpToken: 'mcp-token' });
     const autoConfig = getAutoIndobaseMcpConfig(connection as any);
     const merged = mergeMcpConfigWithIndobase(
       {

@@ -1,17 +1,18 @@
 import type { DesignScheme } from '~/types/design-scheme';
+import type { BackendPromptContext } from '~/lib/common/prompt-library';
+import { resolveBackendApiUrl } from '~/lib/common/prompt-library';
 import { WORK_DIR } from '~/utils/constants';
 import { allowedHTMLElements } from '~/utils/markdown';
 import { stripIndents } from '~/utils/stripIndent';
 
 export const getSystemPrompt = (
   cwd: string = WORK_DIR,
-  supabase?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: { anonKey?: string; supabaseUrl?: string };
-  },
+  indobaseBackend?: BackendPromptContext,
   designScheme?: DesignScheme,
-) => `
+) => {
+  const apiUrl = resolveBackendApiUrl(indobaseBackend);
+
+  return `
 You are Indobase Builder, an expert AI assistant and exceptional senior software developer with vast knowledge across multiple programming languages, frameworks, and best practices.
 
 <system_constraints>
@@ -78,22 +79,22 @@ You are Indobase Builder, an expert AI assistant and exceptional senior software
   CRITICAL: Use Indobase for databases by default, unless specified otherwise.
 
   IMPORTANT NOTE: Indobase project setup and configuration is handled seperately by the user! ${
-    supabase
-      ? !supabase.isConnected
+    indobaseBackend
+      ? !indobaseBackend.isConnected
         ? 'You are not connected to the backend. Remind the user to connect the backend in the chat box before proceeding with database operations.'
-        : !supabase.hasSelectedProject
+        : !indobaseBackend.hasSelectedProject
           ? 'You are connected to the backend but no project is selected. Remind the user to select a project in the chat box before proceeding with database operations.'
           : ''
       : ''
   } 
     IMPORTANT: Create a .env file if it doesnt exist${
-      supabase?.isConnected &&
-      supabase?.hasSelectedProject &&
-      supabase?.credentials?.supabaseUrl &&
-      supabase?.credentials?.anonKey
+      indobaseBackend?.isConnected &&
+      indobaseBackend?.hasSelectedProject &&
+      apiUrl &&
+      indobaseBackend?.credentials?.anonKey
         ? ` and include the following variables:
-    VITE_INDOBASE_URL=${supabase.credentials.supabaseUrl}
-    VITE_INDOBASE_ANON_KEY=${supabase.credentials.anonKey}`
+    VITE_INDOBASE_URL=${apiUrl}
+    VITE_INDOBASE_ANON_KEY=${indobaseBackend.credentials.anonKey}`
         : '.'
     }
   NEVER modify any Indobase configuration or \`.env\` files apart from creating the \`.env\`.
@@ -114,25 +115,25 @@ You are Indobase Builder, an expert AI assistant and exceptional senior software
       Writing SQL Migrations:
       CRITICAL: For EVERY database change, you MUST provide TWO actions:
         1. Migration File Creation:
-          <boltAction type="supabase" operation="migration" filePath="/indobase/migrations/your_migration.sql">
+          <boltAction type="indobase" operation="migration" filePath="/indobase/migrations/your_migration.sql">
             /* SQL migration content */
           </boltAction>
 
         2. Immediate Query Execution:
-          <boltAction type="supabase" operation="query" projectId="\${projectId}">
+          <boltAction type="indobase" operation="query" projectId="\${projectId}">
             /* Same SQL content as migration */
           </boltAction>
 
         Example:
         <boltArtifact id="create-users-table" title="Create Users Table">
-          <boltAction type="supabase" operation="migration" filePath="/indobase/migrations/create_users.sql">
+          <boltAction type="indobase" operation="migration" filePath="/indobase/migrations/create_users.sql">
             CREATE TABLE users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text UNIQUE NOT NULL
             );
           </boltAction>
 
-          <boltAction type="supabase" operation="query" projectId="\${projectId}">
+          <boltAction type="indobase" operation="query" projectId="\${projectId}">
             CREATE TABLE users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text UNIQUE NOT NULL
@@ -707,6 +708,7 @@ Here are some examples of correct usage of artifacts:
   </example>
 </examples>
 `;
+};
 
 export const CONTINUE_PROMPT = stripIndents`
   Continue your prior response. IMPORTANT: Immediately begin from where you left off without any interruptions.

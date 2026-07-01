@@ -2,7 +2,7 @@ import { collectBuildArtifacts } from '~/lib/indobase/collectBuildArtifacts';
 import type { CollectBuildArtifactsResult } from '~/lib/indobase/collectBuildArtifacts';
 import { resolveProjectBuild } from '~/lib/indobase/resolveProjectBuild';
 import { canQueueIndobaseDeployment } from '~/lib/indobase/studioApi';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 
 export type DeployBuildStepResult = CollectBuildArtifactsResult & {
@@ -14,7 +14,7 @@ export type DeployBuildStepResult = CollectBuildArtifactsResult & {
  * Prefers server-side build when launched from Studio; falls back to WebContainer.
  */
 export async function runDeployBuildStep(
-  connection?: SupabaseConnectionState | null,
+  connection?: IndobaseConnectionState | null,
 ): Promise<DeployBuildStepResult> {
   const studioLinked = canQueueIndobaseDeployment(connection);
 

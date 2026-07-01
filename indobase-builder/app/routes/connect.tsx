@@ -7,7 +7,7 @@ import {
   restoreBuilderSessionOnLoad,
 } from '~/lib/indobase/builder-auth.client';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
-import { getStoredSupabaseConnection } from '~/lib/indobase/mcp';
+import { getStoredIndobaseConnection } from '~/lib/indobase/mcp';
 
 export default function ConnectRoute() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function ConnectRoute() {
   useEffect(() => {
     void (async () => {
       const restored = await restoreBuilderSessionOnLoad();
-      const connection = getStoredSupabaseConnection();
+      const connection = getStoredIndobaseConnection();
 
       if (restored && hasIndobaseStudioHandoff(connection)) {
         navigate('/', { replace: true });

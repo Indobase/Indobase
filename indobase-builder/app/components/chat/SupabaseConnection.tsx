@@ -1,14 +1,20 @@
 import { useEffect } from 'react';
-import { useSupabaseConnection } from '~/lib/hooks/useSupabaseConnection';
+import { useIndobaseConnection } from '~/lib/hooks/useIndobaseConnection';
 import { classNames } from '~/utils/classNames';
 import { useStore } from '@nanostores/react';
 import { chatId } from '~/lib/persistence/useChatHistory';
-import { fetchSupabaseStats } from '~/lib/stores/supabase';
+import { fetchIndobaseBackendStats } from '~/lib/stores/indobase-connection';
+import {
+  bindOpenIndobaseConnectionListener,
+  clearChatProjectId,
+  readChatProjectId,
+  writeChatProjectId,
+} from '~/lib/indobase/connection-storage';
 import { Dialog, DialogRoot, DialogClose, DialogTitle, DialogButton } from '~/components/ui/Dialog';
 
-export function SupabaseConnection() {
+export function IndobaseConnection() {
   const {
-    connection: supabaseConn,
+    connection: indobaseConn,
     connecting,
     fetchingStats,
     isProjectsExpanded,
@@ -22,60 +28,49 @@ export function SupabaseConnection() {
     updateToken,
     isConnected,
     fetchProjectApiKeys,
-  } = useSupabaseConnection();
+  } = useIndobaseConnection();
 
   const currentChatId = useStore(chatId);
 
   useEffect(() => {
-    const handleOpenConnectionDialog = () => {
+    return bindOpenIndobaseConnectionListener(() => {
       setIsDialogOpen(true);
-    };
-
-    document.addEventListener('open-supabase-connection', handleOpenConnectionDialog);
-
-    return () => {
-      document.removeEventListener('open-supabase-connection', handleOpenConnectionDialog);
-    };
+    });
   }, [setIsDialogOpen]);
 
   useEffect(() => {
     if (isConnected && currentChatId) {
-      const savedProjectId = localStorage.getItem(`supabase-project-${currentChatId}`);
+      const savedProjectId = readChatProjectId(currentChatId);
 
-      /*
-       * If there's no saved project for this chat but there is a global selected project,
-       * use the global one instead of clearing it
-       */
-      if (!savedProjectId && supabaseConn.selectedProjectId) {
-        // Save the current global project to this chat
-        localStorage.setItem(`supabase-project-${currentChatId}`, supabaseConn.selectedProjectId);
-      } else if (savedProjectId && savedProjectId !== supabaseConn.selectedProjectId) {
+      if (!savedProjectId && indobaseConn.selectedProjectId) {
+        writeChatProjectId(currentChatId, indobaseConn.selectedProjectId);
+      } else if (savedProjectId && savedProjectId !== indobaseConn.selectedProjectId) {
         selectProject(savedProjectId);
       }
     }
   }, [isConnected, currentChatId]);
 
   useEffect(() => {
-    if (currentChatId && supabaseConn.selectedProjectId) {
-      localStorage.setItem(`supabase-project-${currentChatId}`, supabaseConn.selectedProjectId);
-    } else if (currentChatId && !supabaseConn.selectedProjectId) {
-      localStorage.removeItem(`supabase-project-${currentChatId}`);
+    if (currentChatId && indobaseConn.selectedProjectId) {
+      writeChatProjectId(currentChatId, indobaseConn.selectedProjectId);
+    } else if (currentChatId && !indobaseConn.selectedProjectId) {
+      clearChatProjectId(currentChatId);
     }
-  }, [currentChatId, supabaseConn.selectedProjectId]);
+  }, [currentChatId, indobaseConn.selectedProjectId]);
 
   useEffect(() => {
-    if (isConnected && supabaseConn.token) {
-      fetchSupabaseStats(supabaseConn.token).catch(console.error);
+    if (isConnected && indobaseConn.token) {
+      fetchIndobaseBackendStats(indobaseConn.token).catch(console.error);
     }
-  }, [isConnected, supabaseConn.token]);
+  }, [isConnected, indobaseConn.token]);
 
   useEffect(() => {
-    if (isConnected && supabaseConn.selectedProjectId && supabaseConn.token && !supabaseConn.credentials) {
-      fetchProjectApiKeys(supabaseConn.selectedProjectId).catch(console.error);
+    if (isConnected && indobaseConn.selectedProjectId && indobaseConn.token && !indobaseConn.credentials) {
+      fetchProjectApiKeys(indobaseConn.selectedProjectId).catch(console.error);
     }
-  }, [isConnected, supabaseConn.selectedProjectId, supabaseConn.token, supabaseConn.credentials]);
+  }, [isConnected, indobaseConn.selectedProjectId, indobaseConn.token, indobaseConn.credentials]);
 
-  const isStudioManagedConnection = isConnected && supabaseConn.connectionSource === 'studio_handoff';
+  const isStudioManagedConnection = isConnected && indobaseConn.connectionSource === 'studio_handoff';
 
   return (
     <div className="relative">
@@ -84,8 +79,8 @@ export function SupabaseConnection() {
           <div className="flex items-center gap-2 px-2 py-1.5 bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent">
             <div className="i-ph:database w-4 h-4 text-[#3ECF8E]" />
             <span className="text-xs font-medium">Indobase Backend Connected</span>
-            {supabaseConn.project && (
-              <span className="text-xs max-w-[120px] truncate">· {supabaseConn.project.name}</span>
+            {indobaseConn.project && (
+              <span className="text-xs max-w-[120px] truncate">· {indobaseConn.project.name}</span>
             )}
           </div>
         ) : (
@@ -96,8 +91,8 @@ export function SupabaseConnection() {
             className="hover:bg-bolt-elements-item-backgroundActive !text-white flex items-center gap-2"
           >
             <div className="i-ph:database w-4 h-4 text-[#3ECF8E]" />
-            {isConnected && supabaseConn.project && (
-              <span className="ml-1 text-xs max-w-[100px] truncate">{supabaseConn.project.name}</span>
+            {isConnected && indobaseConn.project && (
+              <span className="ml-1 text-xs max-w-[100px] truncate">{indobaseConn.project.name}</span>
             )}
           </Button>
         )}
@@ -117,7 +112,7 @@ export function SupabaseConnection() {
                   <label className="block text-sm text-bolt-elements-textSecondary mb-2">Backend Access Token</label>
                   <input
                     type="password"
-                    value={supabaseConn.token}
+                    value={indobaseConn.token}
                     onChange={(e) => updateToken(e.target.value)}
                     disabled={connecting}
                     placeholder="Enter your backend access token"
@@ -149,7 +144,7 @@ export function SupabaseConnection() {
                   </DialogClose>
                   <button
                     onClick={handleConnect}
-                    disabled={connecting || !supabaseConn.token}
+                    disabled={connecting || !indobaseConn.token}
                     className={classNames(
                       'px-4 py-2 rounded-lg text-sm flex items-center gap-2',
                       'bg-[#3ECF8E] text-white',
@@ -182,15 +177,15 @@ export function SupabaseConnection() {
 
                 <div className="flex items-center gap-4 p-3 bg-[#F8F8F8] dark:bg-[#1A1A1A] rounded-lg">
                   <div>
-                    <h4 className="text-sm font-medium text-bolt-elements-textPrimary">{supabaseConn.user?.email}</h4>
+                    <h4 className="text-sm font-medium text-bolt-elements-textPrimary">{indobaseConn.user?.email}</h4>
                     <p className="text-xs text-bolt-elements-textSecondary">
-                      {supabaseConn.connectionSource === 'studio_handoff'
+                      {indobaseConn.connectionSource === 'studio_handoff'
                         ? 'Connected from Indobase Studio'
-                        : `Role: ${supabaseConn.user?.role}`}
+                        : `Role: ${indobaseConn.user?.role}`}
                     </p>
-                    {supabaseConn.indobase?.projectUrl && (
+                    {indobaseConn.indobase?.projectUrl && (
                       <a
-                        href={supabaseConn.indobase.projectUrl}
+                        href={indobaseConn.indobase.projectUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-1 inline-flex items-center gap-1 text-xs text-[#3ECF8E] hover:underline"
@@ -216,8 +211,8 @@ export function SupabaseConnection() {
                       >
                         <div className="i-ph:database w-4 h-4" />
                         {isStudioManagedConnection
-                          ? `Linked Indobase Project${supabaseConn.selectedProjectId ? '' : 's'}`
-                          : `Your Projects (${supabaseConn.stats?.totalProjects || 0})`}
+                          ? `Linked Indobase Project${indobaseConn.selectedProjectId ? '' : 's'}`
+                          : `Your Projects (${indobaseConn.stats?.totalProjects || 0})`}
                         <div
                           className={classNames(
                             'i-ph:caret-down w-4 h-4 transition-transform',
@@ -225,10 +220,10 @@ export function SupabaseConnection() {
                           )}
                         />
                       </button>
-                      {supabaseConn.connectionSource !== 'studio_handoff' && (
+                      {indobaseConn.connectionSource !== 'studio_handoff' && (
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => fetchSupabaseStats(supabaseConn.token)}
+                            onClick={() => fetchIndobaseBackendStats(indobaseConn.token)}
                             className="px-2 py-1 rounded-md text-xs bg-[#F0F0F0] dark:bg-[#252525] text-bolt-elements-textSecondary hover:bg-[#E5E5E5] dark:hover:bg-[#333333] flex items-center gap-1"
                             title="Refresh projects list"
                           >
@@ -248,21 +243,21 @@ export function SupabaseConnection() {
 
                     {isProjectsExpanded && (
                       <>
-                        {!supabaseConn.selectedProjectId && (
+                        {!indobaseConn.selectedProjectId && (
                           <div className="mb-2 p-3 bg-[#F8F8F8] dark:bg-[#1A1A1A] rounded-lg text-sm text-bolt-elements-textSecondary">
                             Select a project or create a new one for this chat
                           </div>
                         )}
-                        {supabaseConn.connectionSource === 'studio_handoff' && (
+                        {indobaseConn.connectionSource === 'studio_handoff' && (
                           <div className="mb-2 p-3 bg-[#F8F8F8] dark:bg-[#1A1A1A] rounded-lg text-sm text-bolt-elements-textSecondary">
                             This Builder session is managed by Indobase and stays linked to the project you launched
                             from Studio.
                           </div>
                         )}
 
-                        {supabaseConn.stats?.projects?.length ? (
+                        {indobaseConn.stats?.projects?.length ? (
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
-                            {supabaseConn.stats.projects.map((project) => (
+                            {indobaseConn.stats.projects.map((project) => (
                               <div
                                 key={project.id}
                                 className="block p-3 rounded-lg border border-[#E5E5E5] dark:border-[#1A1A1A] hover:border-[#3ECF8E] dark:hover:border-[#3ECF8E] transition-colors"
@@ -281,12 +276,12 @@ export function SupabaseConnection() {
                                     <div
                                       className={classNames(
                                         'px-3 py-1 rounded-md text-xs',
-                                        supabaseConn.selectedProjectId === project.id
+                                        indobaseConn.selectedProjectId === project.id
                                           ? 'bg-[#3ECF8E] text-white'
                                           : 'bg-[#F0F0F0] dark:bg-[#252525] text-bolt-elements-textSecondary',
                                       )}
                                     >
-                                      {supabaseConn.selectedProjectId === project.id ? (
+                                      {indobaseConn.selectedProjectId === project.id ? (
                                         <span className="flex items-center gap-1">
                                           <div className="i-ph:check w-3 h-3" />
                                           Linked
@@ -300,12 +295,12 @@ export function SupabaseConnection() {
                                       onClick={() => selectProject(project.id)}
                                       className={classNames(
                                         'px-3 py-1 rounded-md text-xs',
-                                        supabaseConn.selectedProjectId === project.id
+                                        indobaseConn.selectedProjectId === project.id
                                           ? 'bg-[#3ECF8E] text-white'
                                           : 'bg-[#F0F0F0] dark:bg-[#252525] text-bolt-elements-textSecondary hover:bg-[#3ECF8E] hover:text-white',
                                       )}
                                     >
-                                      {supabaseConn.selectedProjectId === project.id ? (
+                                      {indobaseConn.selectedProjectId === project.id ? (
                                         <span className="flex items-center gap-1">
                                           <div className="i-ph:check w-3 h-3" />
                                           Selected
@@ -349,6 +344,9 @@ export function SupabaseConnection() {
     </div>
   );
 }
+
+/** @deprecated Use IndobaseConnection */
+export const SupabaseConnection = IndobaseConnection;
 
 interface ButtonProps {
   active?: boolean;

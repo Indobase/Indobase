@@ -1,4 +1,4 @@
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export type DeployEnvironmentVariables = Record<string, string>;
 
@@ -8,9 +8,10 @@ function cleanEnvValue(value?: string) {
 }
 
 export function getDeployEnvironmentVariables(
-  connection?: Pick<SupabaseConnectionState, 'credentials' | 'indobase'> | null,
+  connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
 ): DeployEnvironmentVariables {
   const supabaseUrl =
+    cleanEnvValue(connection?.credentials?.apiUrl) ||
     cleanEnvValue(connection?.credentials?.supabaseUrl) ||
     cleanEnvValue(connection?.indobase?.apiUrl) ||
     cleanEnvValue(connection?.indobase?.projectUrl);
@@ -57,7 +58,7 @@ export function getDeployEnvironmentVariables(
 }
 
 export function hasDeployEnvironmentVariables(
-  connection?: Pick<SupabaseConnectionState, 'credentials' | 'indobase'> | null,
+  connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
 ): boolean {
   return Object.keys(getDeployEnvironmentVariables(connection)).length > 0;
 }

@@ -24,6 +24,7 @@ import {
 } from '~/lib/indobase/builder-prompt-quota.server';
 import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
+import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 
 const logger = createScopedLogger('api.chat');
 
@@ -46,6 +47,25 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
+  type BackendConnectionPayload = {
+    isConnected: boolean;
+    hasSelectedProject: boolean;
+    connectionSource?: 'manual' | 'studio_handoff';
+    credentials?: {
+      anonKey?: string;
+      apiUrl?: string;
+      supabaseUrl?: string;
+    };
+    indobase?: {
+      apiUrl?: string;
+      authUrl?: string;
+      projectRef?: string;
+      restUrl?: string;
+      storageUrl?: string;
+      studioUrl?: string;
+    };
+  };
+
   const streamRecovery = new StreamRecoveryManager({
     timeout: 180_000,
     maxRetries: 5,
@@ -54,8 +74,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     },
   });
 
-  const { messages, files, promptId, contextOptimization, supabase, chatMode, designScheme, maxLLMSteps, multiAgentMode } =
-    await request.json<{
+  const body = await request.json<{
       messages: Messages;
       files: any;
       promptId?: string;
@@ -63,25 +82,23 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       chatMode: 'discuss' | 'build';
       designScheme?: DesignScheme;
       multiAgentMode?: boolean;
-      supabase?: {
-        isConnected: boolean;
-        hasSelectedProject: boolean;
-        connectionSource?: 'manual' | 'studio_handoff';
-        credentials?: {
-          anonKey?: string;
-          supabaseUrl?: string;
-        };
-        indobase?: {
-          apiUrl?: string;
-          authUrl?: string;
-          projectRef?: string;
-          restUrl?: string;
-          storageUrl?: string;
-          studioUrl?: string;
-        };
-      };
+      indobase?: BackendConnectionPayload;
+      /** @deprecated Use indobase */
+      supabase?: BackendConnectionPayload;
       maxLLMSteps: number;
     }>();
+
+  const {
+    messages,
+    files,
+    promptId,
+    contextOptimization,
+    chatMode,
+    designScheme,
+    maxLLMSteps,
+    multiAgentMode,
+  } = body;
+  const indobaseBackend = body.indobase ?? body.supabase;
 
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
@@ -138,6 +155,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
   try {
     const mcpService = MCPService.getInstance();
+    await ensureIndobaseMcpFromRequest(request, mcpService, env);
     const totalMessageContent = messages.reduce((acc, message) => acc + message.content, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
@@ -156,7 +174,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         streamRecovery.updateActivity();
         const templateBootstrap = isTemplateBootstrapFollowUp(processedMessages);
         const isRepairRound = isAutonomousRepairChat(processedMessages);
-        const useMultiAgent = chatMode === 'build' && !isRepairRound && !templateBootstrap;
+        // Keep multi-agent + MCP enabled on template follow-up — that turn wires the Indobase backend.
+        const useMultiAgent = chatMode === 'build' && !isRepairRound;
         let orchestratedMessages = processedMessages;
         const progressOrder = { value: progressCounter };
 
@@ -287,15 +306,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           // logger.debug('Code Files Selected');
         }
 
-        const mcpTools = templateBootstrap ? {} : mcpService.toolsWithoutExecute;
-        const hasMcpTools = !templateBootstrap && Object.keys(mcpTools).length > 0;
+        const mcpTools = mcpService.toolsWithoutExecute;
+        const hasMcpTools = Object.keys(mcpTools).length > 0;
 
         const options: StreamingOptions = {
-          supabaseConnection: supabase
+          indobaseConnection: indobaseBackend
             ? {
-                ...supabase,
-                connectionSource: supabase.connectionSource,
-                indobase: supabase.indobase,
+                ...indobaseBackend,
+                connectionSource: indobaseBackend.connectionSource,
+                indobase: indobaseBackend.indobase,
               }
             : undefined,
           toolChoice: hasMcpTools ? 'auto' : undefined,

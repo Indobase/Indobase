@@ -1,4 +1,11 @@
-import type { ActionType, BoltAction, BoltActionData, FileAction, ShellAction, SupabaseAction } from '~/types/actions';
+import type {
+  ActionType,
+  BoltAction,
+  BoltActionData,
+  FileAction,
+  IndobaseBackendAction,
+  ShellAction,
+} from '~/types/actions';
 import type { BoltArtifactData } from '~/types/artifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { resolveGeneratedFileArtifact } from '~/lib/indobase/sanitizeGeneratedArtifact';
@@ -353,24 +360,25 @@ export class StreamingMessageParser {
       content: '',
     };
 
-    if (actionType === 'supabase') {
+    if (actionType === 'indobase' || actionType === 'supabase') {
+      (actionAttributes as IndobaseBackendAction).type = 'indobase';
       const operation = this.#extractAttribute(actionTag, 'operation');
 
       if (!operation || !['migration', 'query'].includes(operation)) {
-        logger.warn(`Invalid or missing operation for Supabase action: ${operation}; defaulting to query`);
-        (actionAttributes as SupabaseAction).operation = 'query';
+        logger.warn(`Invalid or missing operation for Indobase backend action: ${operation}; defaulting to query`);
+        (actionAttributes as IndobaseBackendAction).operation = 'query';
       } else {
-        (actionAttributes as SupabaseAction).operation = operation as 'migration' | 'query';
+        (actionAttributes as IndobaseBackendAction).operation = operation as 'migration' | 'query';
       }
 
-      if ((actionAttributes as SupabaseAction).operation === 'migration') {
+      if ((actionAttributes as IndobaseBackendAction).operation === 'migration') {
         const filePath = this.#extractAttribute(actionTag, 'filePath');
 
         if (!filePath) {
           logger.warn('Migration missing filePath; using default indobase/migrations path');
         }
 
-        (actionAttributes as SupabaseAction).filePath = resolveMigrationFilePath(filePath);
+        (actionAttributes as IndobaseBackendAction).filePath = resolveMigrationFilePath(filePath);
       }
     } else if (actionType === 'file') {
       let filePath = this.#extractAttribute(actionTag, 'filePath');

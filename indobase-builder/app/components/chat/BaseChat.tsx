@@ -14,12 +14,12 @@ import styles from './BaseChat.module.scss';
 import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
 import GitCloneButton from './GitCloneButton';
 import type { ProviderInfo } from '~/types/model';
-import type { ActionAlert, SupabaseAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
+import type { ActionAlert, IndobaseBackendAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
 import DeployChatAlert from '~/components/deploy/DeployAlert';
 import ChatAlert from './ChatAlert';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
-import { SupabaseChatAlert } from '~/components/chat/SupabaseAlert';
+import { IndobaseBackendChatAlert } from '~/components/chat/SupabaseAlert';
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import { useStore } from '@nanostores/react';
 import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
@@ -27,7 +27,7 @@ import { ChatBox } from './ChatBox';
 import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import {
   CURATED_MOBILE_BOILERPLATES,
@@ -121,7 +121,11 @@ interface BaseChatProps {
   setImageDataList?: (dataList: string[]) => void;
   actionAlert?: ActionAlert;
   clearAlert?: () => void;
-  supabaseAlert?: SupabaseAlert;
+  indobaseBackendAlert?: IndobaseBackendAlert;
+  clearIndobaseBackendAlert?: () => void;
+  /** @deprecated Use indobaseBackendAlert */
+  supabaseAlert?: IndobaseBackendAlert;
+  /** @deprecated Use clearIndobaseBackendAlert */
   clearSupabaseAlert?: () => void;
   deployAlert?: DeployAlert;
   clearDeployAlert?: () => void;
@@ -173,6 +177,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       clearAlert,
       deployAlert,
       clearDeployAlert,
+      indobaseBackendAlert,
+      clearIndobaseBackendAlert,
       supabaseAlert,
       clearSupabaseAlert,
       llmErrorAlert,
@@ -199,9 +205,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [transcript, setTranscript] = useState('');
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
-    const supabaseConn = useStore(supabaseConnection);
+    const indobaseConn = useStore(indobaseConnection);
+    const backendAlert = indobaseBackendAlert ?? supabaseAlert;
+    const clearBackendAlert = clearIndobaseBackendAlert ?? clearSupabaseAlert;
     const [qrModalOpen, setQrModalOpen] = useState(false);
-    const isStudioManagedConnection = hasIndobaseStudioHandoff(supabaseConn);
+    const isStudioManagedConnection = hasIndobaseStudioHandoff(indobaseConn);
 
     useEffect(() => {
       if (expoUrl) {
@@ -350,17 +358,17 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             clearAlert={() => clearDeployAlert?.()}
             postMessage={(message: string | undefined) => {
               sendMessage?.({} as any, message);
-              clearSupabaseAlert?.();
+              clearBackendAlert?.();
             }}
           />
         )}
-        {supabaseAlert && (
-          <SupabaseChatAlert
-            alert={supabaseAlert}
-            clearAlert={() => clearSupabaseAlert?.()}
+        {backendAlert && (
+          <IndobaseBackendChatAlert
+            alert={backendAlert}
+            clearAlert={() => clearBackendAlert?.()}
             postMessage={(message) => {
               sendMessage?.({} as any, message);
-              clearSupabaseAlert?.();
+              clearBackendAlert?.();
             }}
           />
         )}

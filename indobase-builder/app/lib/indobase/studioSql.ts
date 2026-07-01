@@ -1,9 +1,9 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 type ExecuteIndobaseSqlParams = {
-  connection: SupabaseConnectionState;
+  connection: IndobaseConnectionState;
   operation?: 'query' | 'migration';
   query: string;
   name?: string;

@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify';
 import { useStore } from '@nanostores/react';
 import { netlifyConnection } from '~/lib/stores/netlify';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { useState } from 'react';
 import { chatId } from '~/lib/persistence/useChatHistory';
@@ -11,7 +11,7 @@ import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
 export function useNetlifyDeploy() {
   const [isDeploying, setIsDeploying] = useState(false);
   const netlifyConn = useStore(netlifyConnection);
-  const backendConnection = useStore(supabaseConnection);
+  const backendConnection = useStore(indobaseConnection);
   const currentChatId = useStore(chatId);
 
   const handleNetlifyDeploy = async () => {

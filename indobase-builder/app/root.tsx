@@ -95,7 +95,17 @@ export default function App() {
 
     warmWebContainer();
 
-    void restoreBuilderSessionOnLoad();
+    void (async () => {
+      await restoreBuilderSessionOnLoad();
+      const { getStoredIndobaseConnection } = await import('~/lib/indobase/mcp');
+      const { hasIndobaseStudioHandoff } = await import('~/lib/indobase/connection');
+
+      if (hasIndobaseStudioHandoff(getStoredIndobaseConnection())) {
+        const { useMCPStore } = await import('~/lib/stores/mcp');
+        await useMCPStore.getState().initialize();
+        await useMCPStore.getState().syncWithIndobaseConnection();
+      }
+    })();
 
     const stopSessionKeeper = startBuilderSessionKeeper();
 

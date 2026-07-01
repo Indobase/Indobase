@@ -1,6 +1,6 @@
 import type { Change } from 'diff';
 
-export type ActionType = 'file' | 'shell' | 'supabase';
+export type ActionType = 'file' | 'shell' | 'indobase' | 'supabase';
 
 export interface BaseAction {
   content: string;
@@ -23,14 +23,19 @@ export interface BuildAction extends BaseAction {
   type: 'build';
 }
 
-export interface SupabaseAction extends BaseAction {
-  type: 'supabase';
+export interface IndobaseBackendAction extends BaseAction {
+  type: 'indobase';
   operation: 'migration' | 'query';
   filePath?: string;
   projectId?: string;
 }
 
-export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | SupabaseAction;
+/** @deprecated Use IndobaseBackendAction with type "indobase" */
+export interface SupabaseAction extends IndobaseBackendAction {
+  type: 'supabase';
+}
+
+export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | IndobaseBackendAction | SupabaseAction;
 
 export type BoltActionData = BoltAction | BaseAction;
 
@@ -42,13 +47,16 @@ export interface ActionAlert {
   source?: 'terminal' | 'preview'; // Add source to differentiate between terminal and preview errors
 }
 
-export interface SupabaseAlert {
+export interface IndobaseBackendAlert {
   type: string;
   title: string;
   description: string;
   content: string;
-  source?: 'supabase';
+  source?: 'indobase';
 }
+
+/** @deprecated Use IndobaseBackendAlert */
+export type SupabaseAlert = IndobaseBackendAlert;
 
 export interface DeployAlert {
   type: 'success' | 'error' | 'info';

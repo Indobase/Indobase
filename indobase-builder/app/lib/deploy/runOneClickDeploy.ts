@@ -4,14 +4,14 @@ import { publishToIndobase } from '~/lib/deploy/publishToIndobase';
 import { quickGitHubDeploy } from '~/lib/deploy/quickGitHubDeploy';
 import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
 import { getStudioProjectHostingUrl } from '~/lib/indobase/studioLinks';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 
 export type OneClickDeployTarget = 'indobase' | 'github' | 'gitlab';
 
 export type OneClickDeployContext = {
   chatId?: string | null;
-  connection: SupabaseConnectionState;
+  connection: IndobaseConnectionState;
   files?: Record<string, string>;
   projectName?: string;
 };

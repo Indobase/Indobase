@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify';
 import { useStore } from '@nanostores/react';
 import { vercelConnection } from '~/lib/stores/vercel';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { useState } from 'react';
 import { chatId } from '~/lib/persistence/useChatHistory';
@@ -13,7 +13,7 @@ import { collectWorkbenchSourceFiles } from '~/lib/indobase/collectWorkbenchSour
 export function useVercelDeploy() {
   const [isDeploying, setIsDeploying] = useState(false);
   const vercelConn = useStore(vercelConnection);
-  const backendConnection = useStore(supabaseConnection);
+  const backendConnection = useStore(indobaseConnection);
   const currentChatId = useStore(chatId);
 
   const handleVercelDeploy = async () => {

@@ -2,7 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useStore } from '@nanostores/react';
 import { toast } from 'react-toastify';
 import { isGitLabConnected } from '~/lib/stores/gitlabConnection';
-import { supabaseConnection } from '~/lib/stores/supabase';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { streamingState } from '~/lib/stores/streaming';
 import { classNames } from '~/utils/classNames';
@@ -32,7 +32,7 @@ interface DeployButtonProps {
 }
 
 export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonProps) => {
-  const backendConnection = useStore(supabaseConnection);
+  const backendConnection = useStore(indobaseConnection);
   const currentChatId = useStore(chatId);
   const gitlabIsConnected = useStore(isGitLabConnected);
   const isStreaming = useStore(streamingState);

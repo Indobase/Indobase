@@ -39,8 +39,8 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
     computed(artifact.runner.actions, (actions) => {
       // Filter out Supabase actions except for migrations
       return Object.values(actions).filter((action) => {
-        // Exclude actions with type 'supabase' or actions that contain 'supabase' in their content
-        return action.type !== 'supabase' && !(action.type === 'shell' && action.content?.includes('supabase'));
+        // Exclude legacy supabase bolt actions; indobase actions are handled separately
+        return action.type !== 'supabase' && action.type !== 'indobase' && !(action.type === 'shell' && action.content?.includes('supabase'));
       });
     }),
   );

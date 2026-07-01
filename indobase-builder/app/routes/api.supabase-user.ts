@@ -15,7 +15,7 @@ async function supabaseUserLoader({ request, context }: { request: Request; cont
       process.env.VITE_SUPABASE_ACCESS_TOKEN;
 
     if (!supabaseToken) {
-      return json({ error: 'Supabase token not found' }, { status: 401 });
+      return json({ error: 'Indobase backend token not found' }, { status: 401 });
     }
 
     // Make server-side request to Supabase API
@@ -28,7 +28,7 @@ async function supabaseUserLoader({ request, context }: { request: Request; cont
 
     if (!response.ok) {
       if (response.status === 401) {
-        return json({ error: 'Invalid Supabase token' }, { status: 401 });
+        return json({ error: 'Invalid Indobase backend token' }, { status: 401 });
       }
 
       throw new Error(`Supabase API error: ${response.status}`);
@@ -98,7 +98,7 @@ async function supabaseUserAction({ request, context }: { request: Request; cont
       process.env.VITE_SUPABASE_ACCESS_TOKEN;
 
     if (!supabaseToken) {
-      return json({ error: 'Supabase token not found' }, { status: 401 });
+      return json({ error: 'Indobase backend token not found' }, { status: 401 });
     }
 
     if (action === 'get_projects') {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { canQueueIndobaseDeployment, canQueueIndobaseMobileBuild } from './studioApi';
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 describe('studioApi', () => {
   it('allows mobile build queue only for Studio handoff sessions', () => {
@@ -19,10 +19,10 @@ describe('studioApi', () => {
         storageUrl: 'https://proj_123.indobase.in/storage/v1',
         studioUrl: 'https://studio.indobase.in',
       },
-    } satisfies Partial<SupabaseConnectionState>;
+    } satisfies Partial<IndobaseConnectionState>;
 
-    expect(canQueueIndobaseMobileBuild(connection as SupabaseConnectionState)).toBe(true);
-    expect(canQueueIndobaseDeployment(connection as SupabaseConnectionState)).toBe(true);
+    expect(canQueueIndobaseMobileBuild(connection as IndobaseConnectionState)).toBe(true);
+    expect(canQueueIndobaseDeployment(connection as IndobaseConnectionState)).toBe(true);
   });
 
   it('blocks mobile build queue for manual connections', () => {
@@ -30,13 +30,13 @@ describe('studioApi', () => {
       canQueueIndobaseMobileBuild({
         connectionSource: 'manual',
         selectedProjectId: 'proj_123',
-      } as SupabaseConnectionState),
+      } as IndobaseConnectionState),
     ).toBe(false);
     expect(
       canQueueIndobaseDeployment({
         connectionSource: 'manual',
         selectedProjectId: 'proj_123',
-      } as SupabaseConnectionState),
+      } as IndobaseConnectionState),
     ).toBe(false);
   });
 });

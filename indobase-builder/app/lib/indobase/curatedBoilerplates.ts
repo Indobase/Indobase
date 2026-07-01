@@ -93,7 +93,7 @@ INDOBASE BACKEND ADAPTATION (required):
 - Use VITE_INDOBASE_URL / VITE_INDOBASE_ANON_KEY for web, or EXPO_PUBLIC_INDOBASE_URL / EXPO_PUBLIC_INDOBASE_ANON_KEY for Expo.
 - Prefer a single client module at src/lib/indobase.ts (or lib/indobase.ts).
 - Store SQL under indobase/migrations/ (not supabase/migrations/).
+- When Builder is linked from Studio, apply migrations with the **indobase** MCP server (apply_migration or execute_sql).
 - Keep Vite dev server on port 5173 with host: true for Builder preview.
-- Run SQL migrations from the template in Studio if the template ships schema files.
 - Do not add Stripe or third-party cloud-only backends unless the user explicitly asks.
 `;

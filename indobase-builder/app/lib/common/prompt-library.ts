@@ -8,14 +8,28 @@ export interface PromptOptions {
   allowedHtmlElements: string[];
   modificationTagName: string;
   designScheme?: DesignScheme;
-  supabase?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: {
-      anonKey?: string;
-      supabaseUrl?: string;
-    };
+  indobase?: BackendPromptContext;
+  /** @deprecated Use indobase */
+  supabase?: BackendPromptContext;
+}
+
+export type BackendPromptContext = {
+  isConnected: boolean;
+  hasSelectedProject: boolean;
+  connectionSource?: 'manual' | 'studio_handoff';
+  credentials?: {
+    anonKey?: string;
+    apiUrl?: string;
+    supabaseUrl?: string;
   };
+};
+
+export function resolveBackendPromptContext(options: PromptOptions) {
+  return options.indobase ?? options.supabase;
+}
+
+export function resolveBackendApiUrl(context?: BackendPromptContext) {
+  return context?.credentials?.apiUrl || context?.credentials?.supabaseUrl;
 }
 
 export class PromptLibrary {
@@ -30,12 +44,13 @@ export class PromptLibrary {
     default: {
       label: 'Default Prompt',
       description: 'An fine tuned prompt for better results and less token usage',
-      get: (options) => getFineTunedPrompt(options.cwd, options.supabase, options.designScheme),
+      get: (options) =>
+        getFineTunedPrompt(options.cwd, resolveBackendPromptContext(options), options.designScheme),
     },
     original: {
       label: 'Old Default Prompt',
       description: 'The OG battle tested default system Prompt',
-      get: (options) => getSystemPrompt(options.cwd, options.supabase, options.designScheme),
+      get: (options) => getSystemPrompt(options.cwd, resolveBackendPromptContext(options), options.designScheme),
     },
     optimized: {
       label: 'Optimized Prompt (experimental)',

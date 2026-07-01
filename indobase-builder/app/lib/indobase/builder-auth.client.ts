@@ -1,6 +1,7 @@
-import type { SupabaseConnectionState } from '~/lib/stores/supabase';
-import { updateSupabaseConnection } from '~/lib/stores/supabase';
-import { isIndobaseStudioManagedConnection } from './connection';
+import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
+import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
+import { getStoredIndobaseConnection } from '~/lib/indobase/mcp';
+import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from './connection';
 import {
   BUILDER_LAST_PROJECT_REF_KEY,
   BUILDER_MCP_TOKEN_TTL_SECONDS,
@@ -21,22 +22,13 @@ type SessionResponse = {
   success?: boolean;
 };
 
-export function getStoredSupabaseConnection(): SupabaseConnectionState | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
+export function getStoredIndobaseConnectionFromAuth(): IndobaseConnectionState | null {
+  return getStoredIndobaseConnection();
+}
 
-  const raw = window.localStorage.getItem('supabase_connection');
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as SupabaseConnectionState;
-  } catch {
-    return null;
-  }
+/** @deprecated Use getStoredIndobaseConnectionFromAuth */
+export function getStoredSupabaseConnection(): IndobaseConnectionState | null {
+  return getStoredIndobaseConnectionFromAuth();
 }
 
 export function getLastProjectRef(): string | null {
@@ -49,7 +41,7 @@ export function getLastProjectRef(): string | null {
     return stored;
   }
 
-  const connection = getStoredSupabaseConnection();
+  const connection = getStoredIndobaseConnectionFromAuth();
   return connection?.indobase?.projectRef || connection?.selectedProjectId || null;
 }
 
@@ -62,7 +54,7 @@ export function persistLastProjectRef(projectRef: string) {
 }
 
 export function getStoredBuilderMcpToken(): string | null {
-  const connection = getStoredSupabaseConnection();
+  const connection = getStoredIndobaseConnectionFromAuth();
 
   if (!isIndobaseStudioManagedConnection(connection)) {
     return null;
@@ -116,17 +108,17 @@ export async function builderFetch(input: RequestInfo | URL, init?: RequestInit)
   return fetch(input, getBuilderRequestInit(init));
 }
 
-export function getStudioOrigin(connection?: SupabaseConnectionState | null): string {
+export function getStudioOrigin(connection?: IndobaseConnectionState | null): string {
   return connection?.indobase?.studioUrl?.replace(/\/+$/, '') || DEFAULT_STUDIO_URL;
 }
 
 export function getStudioBuilderConnectUrl(options?: {
-  connection?: SupabaseConnectionState | null;
+  connection?: IndobaseConnectionState | null;
   projectRef?: string;
   returnTo?: string;
   popup?: boolean;
 }): string {
-  const connection = options?.connection ?? getStoredSupabaseConnection();
+  const connection = options?.connection ?? getStoredIndobaseConnectionFromAuth();
   const studioUrl = getStudioOrigin(connection);
   const projectRef =
     options?.projectRef ||
@@ -161,7 +153,7 @@ function applySessionToStoredConnection(session: SessionResponse) {
     return;
   }
 
-  const connection = getStoredSupabaseConnection();
+  const connection = getStoredIndobaseConnectionFromAuth();
 
   if (!connection || connection.connectionSource !== 'studio_handoff') {
     return;
@@ -170,7 +162,7 @@ function applySessionToStoredConnection(session: SessionResponse) {
   const projectRef = session.projectRef || connection.indobase?.projectRef || connection.selectedProjectId || '';
   persistLastProjectRef(projectRef);
 
-  updateSupabaseConnection({
+  updateIndobaseConnection({
     isConnected: true,
     connectionSource: 'studio_handoff',
     selectedProjectId: projectRef || connection.selectedProjectId,
@@ -189,15 +181,14 @@ function applySessionToStoredConnection(session: SessionResponse) {
 }
 
 export function clearStaleBuilderSession() {
-  const connection = getStoredSupabaseConnection();
+  const connection = getStoredIndobaseConnectionFromAuth();
 
   if (!connection?.indobase) {
     return;
   }
 
-  updateSupabaseConnection({
-    isConnected: false,
-    connectionSource: undefined,
+  // Keep Studio handoff credentials; only drop the MCP token so the next session refresh can recover.
+  updateIndobaseConnection({
     indobase: {
       ...connection.indobase,
       mcpToken: undefined,
@@ -337,4 +328,25 @@ export function redirectToStudioBuilderConnect(returnTo?: string) {
 
 export function getBuilderMcpTokenTtlSeconds() {
   return BUILDER_MCP_TOKEN_TTL_SECONDS;
+}
+
+/** Ensure MCP session + tools are ready before a Studio-linked chat request. */
+export async function prepareStudioLinkedChat(): Promise<boolean> {
+  const connection = getStoredIndobaseConnectionFromAuth();
+
+  if (!hasIndobaseStudioHandoff(connection)) {
+    return true;
+  }
+
+  const restored = await ensureBuilderSession();
+
+  if (!restored) {
+    return false;
+  }
+
+  const { useMCPStore } = await import('~/lib/stores/mcp');
+  await useMCPStore.getState().initialize();
+  await useMCPStore.getState().syncWithIndobaseConnection();
+
+  return true;
 }
