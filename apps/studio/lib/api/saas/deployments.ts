@@ -706,11 +706,14 @@ export async function createProjectDeployment({
   metadata,
   ref,
   requestedVia = 'studio',
+  skipInlineProcessing = false,
 }: {
   claims: Claims
   metadata?: Record<string, unknown>
   ref: string
   requestedVia?: ProjectDeploymentRequestedVia
+  /** Builder sync publish uploads artifacts immediately; skip health probe until files exist. */
+  skipInlineProcessing?: boolean
 }): Promise<ProjectDeployment> {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
@@ -800,7 +803,7 @@ export async function createProjectDeployment({
     targetType: 'deployment',
   })
 
-  if (deployment.status === 'requested') {
+  if (!skipInlineProcessing && deployment.status === 'requested') {
     try {
       await processProjectDeploymentBatch({ limit: 1, workerId: 'studio_inline' })
       const refreshed = await getProjectDeployment({

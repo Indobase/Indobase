@@ -2,7 +2,7 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { getStorageAdminClientForRef } from 'lib/api/storage-admin'
 import { publishTenantSiteHosting, registerTenantSiteRoute } from './tenant-data-plane-provision'
-import { updateProjectDeployment } from './deployments'
+import { getProjectDeployment, updateProjectDeployment, type ProjectDeployment } from './deployments'
 import { getProjectSettingsForRef } from './settings'
 
 export const PROJECT_HOSTING_BUCKET = 'hosting'
@@ -158,6 +158,53 @@ async function ensureHostingBucket(client: Awaited<ReturnType<typeof getStorageA
   }
 }
 
+export type PublishDeploymentArtifactsResult = {
+  deployment: ProjectDeployment
+  manifest: DeploymentArtifactManifest
+}
+
+async function finalizePublishedDeployment({
+  claims,
+  deploymentId,
+  manifest,
+  publishedUrl,
+  ref,
+}: {
+  claims: JwtPayload
+  deploymentId: string
+  manifest: DeploymentArtifactManifest
+  publishedUrl: string
+  ref: string
+}): Promise<ProjectDeployment> {
+  const existing = await getProjectDeployment({ claims, deploymentId, ref })
+
+  if (!existing) {
+    throw new Error('Deployment not found')
+  }
+
+  if (existing.status === 'requested') {
+    await updateProjectDeployment({
+      deploymentId,
+      logMessage: 'Publishing site artifacts from Builder',
+      ref,
+      source: 'builder',
+      status: 'building',
+    })
+  }
+
+  return updateProjectDeployment({
+    deploymentId,
+    logMessage: `Published ${manifest.file_count} site files (${manifest.total_bytes} bytes)`,
+    metadataPatch: {
+      hosting_artifacts: manifest,
+    },
+    ref,
+    source: 'builder',
+    status: 'ready',
+    targetUrl: publishedUrl,
+  })
+}
+
 export async function publishDeploymentArtifacts({
   claims,
   deploymentId,
@@ -168,7 +215,7 @@ export async function publishDeploymentArtifacts({
   deploymentId: string
   files: Record<string, string>
   ref: string
-}): Promise<DeploymentArtifactManifest> {
+}): Promise<PublishDeploymentArtifactsResult> {
   const normalizedFiles = validateDeploymentArtifacts(files)
   const settings = await getProjectSettingsForRef({ claims, ref })
 
@@ -258,20 +305,13 @@ export async function publishDeploymentArtifacts({
     total_bytes: totalBytes,
   }
 
-  await updateProjectDeployment({
+  const deployment = await finalizePublishedDeployment({
+    claims,
     deploymentId,
-    logMessage: routeRegistered
-      ? `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage and registered storage-first site route`
-      : siteSynced
-        ? `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage and tenant nginx`
-        : `Published ${manifest.file_count} site files to ${PROJECT_HOSTING_BUCKET} storage`,
-    metadataPatch: {
-      hosting_artifacts: manifest,
-    },
+    manifest,
+    publishedUrl,
     ref,
-    source: 'builder',
-    targetUrl: publishedUrl,
   })
 
-  return manifest
+  return { deployment, manifest }
 }

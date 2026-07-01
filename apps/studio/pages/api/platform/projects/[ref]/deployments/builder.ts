@@ -56,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const body = (req.body || {}) as CreateDeploymentBody
 
   try {
+    const hasArtifacts = Boolean(body.artifacts && Object.keys(body.artifacts).length > 0)
     const deployment = await createProjectDeployment({
       claims: builderMcpClaimsToJwtPayload(builderClaims),
       metadata: {
@@ -66,24 +67,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       ref,
       requestedVia: 'builder',
+      skipInlineProcessing: hasArtifacts,
     })
 
-    if (body.artifacts && Object.keys(body.artifacts).length > 0) {
-      const manifest = await publishDeploymentArtifacts({
+    if (hasArtifacts && body.artifacts) {
+      const { deployment: publishedDeployment } = await publishDeploymentArtifacts({
         claims: builderMcpClaimsToJwtPayload(builderClaims),
         deploymentId: deployment.id,
         files: body.artifacts,
         ref,
       })
 
-      return res.status(201).json({
-        ...deployment,
-        metadata: {
-          ...deployment.metadata,
-          hosting_artifacts: manifest,
-        },
-        target_url: manifest.published_url,
-      })
+      return res.status(201).json(publishedDeployment)
     }
 
     return res.status(201).json(deployment)

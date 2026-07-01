@@ -6,8 +6,6 @@ import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
 import { getStudioProjectHostingUrl } from '~/lib/indobase/studioLinks';
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
-import { useGitLabDeploy } from '~/components/deploy/GitLabDeploy.client';
 
 export type OneClickDeployTarget = 'indobase' | 'github' | 'gitlab';
 
@@ -57,7 +55,7 @@ export async function runOneClickDeploy(
       }
 
       const fallback = hostingUrl || studioUrl;
-      if (fallback) {
+      if (fallback && (result.status === 401 || result.error?.includes('Connect from Indobase Studio'))) {
         window.open(fallback, '_blank', 'noopener,noreferrer');
       }
 

@@ -241,6 +241,15 @@ export async function getIndobaseDeployment(
   };
 }
 
+function isSyncPublishedDeployment(deployment: IndobaseDeployment) {
+  return Boolean(
+    deployment.target_url?.trim() &&
+      deployment.metadata?.hosting_artifacts &&
+      deployment.status !== 'failed' &&
+      deployment.status !== 'archived',
+  );
+}
+
 export async function publishIndobaseDeployment(
   connection: SupabaseConnectionState,
   params: QueueDeploymentParams = {},
@@ -262,6 +271,24 @@ export async function publishIndobaseDeployment(
   let latest = queued.deployment;
 
   options?.onStatus?.(latest);
+
+  if (isSyncPublishedDeployment(latest)) {
+    const terminalDeployment =
+      latest.status === 'ready'
+        ? latest
+        : {
+            ...latest,
+            status: 'ready' as const,
+          };
+
+    options?.onStatus?.(terminalDeployment);
+
+    return {
+      success: true,
+      deployment: terminalDeployment,
+      status: 200,
+    };
+  }
 
   while (!isTerminalDeploymentStatus(latest.status)) {
     if (Date.now() - startedAt > timeoutMs) {

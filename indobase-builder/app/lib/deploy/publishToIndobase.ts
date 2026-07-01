@@ -1,4 +1,5 @@
 import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
+import { ensureBuilderSession, getStoredSupabaseConnection } from '~/lib/indobase/builder-auth.client';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
@@ -22,14 +23,18 @@ export async function publishToIndobase(
 ): Promise<PublishToIndobaseResult> {
   const metadata = options.metadata ?? { source: 'one_click_deploy' };
 
-  if (!canQueueIndobaseDeployment(connection)) {
+  await ensureBuilderSession();
+  const activeConnection = getStoredSupabaseConnection() ?? connection;
+
+  if (!canQueueIndobaseDeployment(activeConnection)) {
     return {
       success: false,
       error: 'Connect from Indobase Studio to publish to your subdomain.',
+      status: 401,
     };
   }
 
-  const buildResult = await runDeployBuildStep(connection);
+  const buildResult = await runDeployBuildStep(activeConnection);
 
   if (!buildResult.success || !buildResult.files) {
     return {
@@ -39,7 +44,7 @@ export async function publishToIndobase(
   }
 
   const result = await publishIndobaseDeployment(
-    connection,
+    activeConnection,
     {
       artifacts: buildResult.files,
       metadata,

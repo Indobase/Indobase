@@ -4,7 +4,7 @@ import { canQueueIndobaseDeployment, canQueueIndobaseMobileBuild } from './studi
 import type { SupabaseConnectionState } from '~/lib/stores/supabase';
 
 describe('studioApi', () => {
-  it('allows mobile build queue only for Studio handoff sessions with MCP token', () => {
+  it('allows mobile build queue only for Studio handoff sessions', () => {
     const connection = {
       connectionSource: 'studio_handoff',
       selectedProjectId: 'proj_123',

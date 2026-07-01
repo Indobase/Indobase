@@ -10,7 +10,10 @@ function cleanEnvValue(value?: string) {
 export function getDeployEnvironmentVariables(
   connection?: Pick<SupabaseConnectionState, 'credentials' | 'indobase'> | null,
 ): DeployEnvironmentVariables {
-  const supabaseUrl = cleanEnvValue(connection?.credentials?.supabaseUrl);
+  const supabaseUrl =
+    cleanEnvValue(connection?.credentials?.supabaseUrl) ||
+    cleanEnvValue(connection?.indobase?.apiUrl) ||
+    cleanEnvValue(connection?.indobase?.projectUrl);
   const anonKey = cleanEnvValue(connection?.credentials?.anonKey);
 
   if (!supabaseUrl || !anonKey) {
