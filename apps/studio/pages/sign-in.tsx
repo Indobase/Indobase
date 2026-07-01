@@ -53,4 +53,8 @@ SignInPage.getLayout = (page) => (
   </AuthenticationLayout>
 )
 
+export const getServerSideProps = async () => ({
+  props: {},
+})
+
 export default SignInPage

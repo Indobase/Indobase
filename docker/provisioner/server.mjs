@@ -122,20 +122,36 @@ $2`
     `${publishHost}:$1:$2`
   )
   const remotePgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
-  const remotePgPort = (process.env.PROVISIONER_PG_REMOTE_PORT || process.env.PROVISIONER_PG_PORT || '5432').trim()
+  const remotePgPort = (process.env.PROVISIONER_PG_REMOTE_PORT || process.env.PROVISIONER_PG_PORT || '5433').trim()
   if (remotePgHost && !text.includes('tenant-db:')) {
     // Dual-VPS: platform Postgres on control plane; tenant stacks run on backend VPS.
     text = text.replace(/@db:5432/g, `@${remotePgHost}:${remotePgPort}`)
     text = text.replace(/@db:\d+/g, `@${remotePgHost}:${remotePgPort}`)
+    text = text.replace(/@indobase-db:5432/g, `@${remotePgHost}:${remotePgPort}`)
+    text = text.replace(/@indobase-db:\d+/g, `@${remotePgHost}:${remotePgPort}`)
     text = text.replace(/DB_HOST: 'db'/g, `DB_HOST: '${remotePgHost}'`)
     text = text.replace(/DB_HOST: db\b/g, `DB_HOST: ${remotePgHost}`)
+    text = text.replace(/DB_HOST: 'indobase-db'/g, `DB_HOST: '${remotePgHost}'`)
+    text = text.replace(/DB_HOST: indobase-db\b/g, `DB_HOST: ${remotePgHost}`)
     if (remotePgPort !== '5432') {
       text = text.replace(new RegExp(`@${remotePgHost}:5432`, 'g'), `@${remotePgHost}:${remotePgPort}`)
       text = text.replace(
         new RegExp(`DB_PORT: '5432'`),
         `DB_PORT: '${remotePgPort}'`
       )
+      text = text.replace(
+        new RegExp(`DB_HOST: '${remotePgHost}'\\n      DB_PORT: '5432'`, 'g'),
+        `DB_HOST: '${remotePgHost}'\n      DB_PORT: '${remotePgPort}'`
+      )
     }
+  }
+  const tenantNet = (
+    process.env.PROVISIONER_TENANT_DOCKER_NETWORK ||
+    process.env.SAAS_DOCKER_NETWORK_NAME ||
+    'indobase-backend-bmqhan_default'
+  ).trim()
+  if (tenantNet && tenantNet !== 'indobase_default') {
+    text = text.replace(/name: indobase_default\b/g, `name: ${tenantNet}`)
   }
   return text
 }

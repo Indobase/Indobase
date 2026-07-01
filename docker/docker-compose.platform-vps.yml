@@ -18,6 +18,9 @@ services:
         condition: service_started
     environment:
       DATA_PLANE_PROVISIONER_URL: ${DATA_PLANE_PROVISIONER_URL:-http://103.190.92.248:8787}
+      SAAS_DOCKER_NETWORK_NAME: ${SAAS_DOCKER_NETWORK_NAME:-indobase-backend-bmqhan_default}
+      SAAS_DATA_PLANE_PG_HOST: ${SAAS_DATA_PLANE_PG_HOST:-103.190.92.249}
+      SAAS_DATA_PLANE_PG_PORT: ${SAAS_DATA_PLANE_PG_PORT:-5433}
 
   # Customer data plane runs on backend VPS — not on platform.
   data-plane-provisioner:
@@ -37,3 +40,9 @@ services:
     volumes:
       - ./scripts/kong-entrypoint-vyom.sh:/kong-entrypoint-vyom.sh:ro
     entrypoint: ["/bin/bash", "/kong-entrypoint-vyom.sh"]
+
+  # Direct Postgres for backend VPS tenant stacks (not Supavisor :5432).
+  # Firewall: allow 103.190.92.248 only.
+  db:
+    ports:
+      - "${PLATFORM_PG_REMOTE_PORT:-5433}:5432"

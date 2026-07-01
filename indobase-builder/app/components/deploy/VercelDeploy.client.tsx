@@ -3,13 +3,12 @@ import { useStore } from '@nanostores/react';
 import { vercelConnection } from '~/lib/stores/vercel';
 import { supabaseConnection } from '~/lib/stores/supabase';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { webcontainer } from '~/lib/webcontainer';
-import { path } from '~/utils/path';
 import { useState } from 'react';
-import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import { formatBuildFailureOutput } from './deployUtils';
 import { getDeployEnvironmentVariables } from '~/lib/indobase/deployEnv';
+import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
+import { collectWorkbenchSourceFiles } from '~/lib/indobase/collectWorkbenchSourceFiles';
 
 export function useVercelDeploy() {
   const [isDeploying, setIsDeploying] = useState(false);
@@ -37,7 +36,6 @@ export function useVercelDeploy() {
         throw new Error('No active project found');
       }
 
-      // Create a deployment artifact for visual feedback
       const deploymentId = `deploy-vercel-project`;
       workbenchStore.addArtifact({
         id: deploymentId,
@@ -48,138 +46,20 @@ export function useVercelDeploy() {
 
       const deployArtifact = workbenchStore.artifacts.get()[deploymentId];
 
-      // Notify that build is starting
       deployArtifact.runner.handleDeployAction('building', 'running', { source: 'vercel' });
 
-      const actionId = 'build-' + Date.now();
-      const actionData: ActionCallbackData = {
-        messageId: 'vercel build',
-        artifactId: artifact.id,
-        actionId,
-        action: {
-          type: 'build' as const,
-          content: 'npm run build',
-        },
-      };
+      const buildResult = await runDeployBuildStep(backendConnection);
 
-      // Add the action first
-      artifact.runner.addAction(actionData);
-
-      // Then run it
-      await artifact.runner.runAction(actionData);
-
-      const buildOutput = artifact.runner.buildOutput;
-
-      if (!buildOutput || buildOutput.exitCode !== 0) {
-        // Notify that build failed
+      if (!buildResult.success || !buildResult.files) {
         deployArtifact.runner.handleDeployAction('building', 'failed', {
-          error: formatBuildFailureOutput(buildOutput?.output),
+          error: formatBuildFailureOutput(buildResult.error),
           source: 'vercel',
         });
-        throw new Error('Build failed');
+        throw new Error(buildResult.error || 'Build failed');
       }
 
-      // Notify that build succeeded and deployment is starting
       deployArtifact.runner.handleDeployAction('deploying', 'running', { source: 'vercel' });
 
-      // Get the build files
-      const container = await webcontainer;
-
-      // Remove /home/project from buildPath if it exists
-      const buildPath = buildOutput.path.replace('/home/project', '');
-
-      // Check if the build path exists
-      let finalBuildPath = buildPath;
-
-      // List of common output directories to check if the specified build path doesn't exist
-      const commonOutputDirs = [buildPath, '/dist', '/build', '/out', '/output', '/.next', '/public'];
-
-      // Verify the build path exists, or try to find an alternative
-      let buildPathExists = false;
-
-      for (const dir of commonOutputDirs) {
-        try {
-          await container.fs.readdir(dir);
-          finalBuildPath = dir;
-          buildPathExists = true;
-          break;
-        } catch {
-          // Directory doesn't exist, expected — just skip it
-          continue;
-        }
-      }
-
-      if (!buildPathExists) {
-        throw new Error('Could not find build output directory. Please check your build configuration.');
-      }
-
-      // Get all files recursively
-      async function getAllFiles(dirPath: string): Promise<Record<string, string>> {
-        const files: Record<string, string> = {};
-        const entries = await container.fs.readdir(dirPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = path.join(dirPath, entry.name);
-
-          if (entry.isFile()) {
-            const content = await container.fs.readFile(fullPath, 'utf-8');
-
-            // Remove build path prefix from the path
-            const deployPath = fullPath.replace(finalBuildPath, '');
-            files[deployPath] = content;
-          } else if (entry.isDirectory()) {
-            const subFiles = await getAllFiles(fullPath);
-            Object.assign(files, subFiles);
-          }
-        }
-
-        return files;
-      }
-
-      const fileContents = await getAllFiles(finalBuildPath);
-
-      // Get all source project files for framework detection
-      const allProjectFiles: Record<string, string> = {};
-
-      async function getAllProjectFiles(dirPath: string): Promise<void> {
-        const entries = await container.fs.readdir(dirPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = path.join(dirPath, entry.name);
-
-          if (entry.isFile()) {
-            try {
-              const content = await container.fs.readFile(fullPath, 'utf-8');
-
-              // Store with relative path from project root
-              let relativePath = fullPath;
-
-              if (fullPath.startsWith('/home/project/')) {
-                relativePath = fullPath.replace('/home/project/', '');
-              } else if (fullPath.startsWith('./')) {
-                relativePath = fullPath.replace('./', '');
-              }
-
-              allProjectFiles[relativePath] = content;
-            } catch (error) {
-              // Skip binary files or files that can't be read as text
-              console.log(`Skipping file ${entry.name}: ${error}`);
-            }
-          } else if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
-            await getAllProjectFiles(fullPath);
-          }
-        }
-      }
-
-      // Try to read from the current directory first
-      try {
-        await getAllProjectFiles('.');
-      } catch {
-        // Fallback to /home/project if current directory doesn't work
-        await getAllProjectFiles('/home/project');
-      }
-
-      // Use chatId instead of artifact.id
       const existingProjectId = localStorage.getItem(`vercel-project-${currentChatId}`);
       const environmentVariables = getDeployEnvironmentVariables(backendConnection);
 
@@ -190,8 +70,8 @@ export function useVercelDeploy() {
         },
         body: JSON.stringify({
           projectId: existingProjectId || undefined,
-          files: fileContents,
-          sourceFiles: allProjectFiles,
+          files: buildResult.files,
+          sourceFiles: collectWorkbenchSourceFiles(),
           token: vercelConn.token,
           chatId: currentChatId,
           environmentVariables: Object.keys(environmentVariables).length > 0 ? environmentVariables : undefined,
@@ -203,7 +83,6 @@ export function useVercelDeploy() {
       if (!response.ok || !data.deploy || !data.project) {
         console.error('Invalid deploy response:', data);
 
-        // Notify that deployment failed
         deployArtifact.runner.handleDeployAction('deploying', 'failed', {
           error: data.error || 'Invalid deployment response',
           source: 'vercel',
@@ -215,13 +94,11 @@ export function useVercelDeploy() {
         localStorage.setItem(`vercel-project-${currentChatId}`, data.project.id);
       }
 
-      // Notify that deployment completed successfully
       deployArtifact.runner.handleDeployAction('complete', 'complete', {
         url: data.deploy.url,
         source: 'vercel',
       });
 
-      // Show success toast notification
       toast.success(`🚀 Vercel deployment completed successfully!`);
 
       return true;

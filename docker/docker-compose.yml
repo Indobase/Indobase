@@ -117,7 +117,7 @@ services:
       DATA_PLANE_PROVISIONER_URL: http://indobase-data-plane-provisioner:8787
       DATA_PLANE_PROVISIONER_TOKEN: ${DATA_PLANE_PROVISIONER_TOKEN:-}
       # Docker network tenant stacks join (must match Compose project network, e.g. indobase-backend-bmqhan_default)
-      SAAS_DOCKER_NETWORK_NAME: ${SAAS_DOCKER_NETWORK_NAME:-indobase_default}
+      SAAS_DOCKER_NETWORK_NAME: ${SAAS_DOCKER_NETWORK_NAME:-indobase-backend-bmqhan_default}
       SAAS_DATA_PLANE_AUX_ROLE_PASSWORD: ${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}
       SAAS_PUBLIC_DOMAIN: ${SAAS_PUBLIC_DOMAIN:-}
       SAAS_SHARED_GATEWAY_PUBLIC_URL: ${SAAS_SHARED_GATEWAY_PUBLIC_URL:-${SUPABASE_PUBLIC_URL}}

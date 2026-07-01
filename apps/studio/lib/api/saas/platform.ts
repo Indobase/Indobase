@@ -28,6 +28,12 @@ import {
   tenantStorageFileSizeLimitBytes,
 } from './tenant-data-plane-tuning'
 import {
+  rewriteDbUriForRemoteDataPlane,
+  rewriteRealtimeDbHostForRemoteDataPlane,
+  rewriteRealtimeDbPortForRemoteDataPlane,
+  resolveTenantDockerNetworkName,
+} from './tenant-data-plane-pg'
+import {
   assertValidTenantComposeYaml,
   repairKnownTenantComposeYaml,
 } from './tenant-compose-validation'
@@ -3010,7 +3016,7 @@ function buildSlimTenantDockerCompose(opts: {
   const poolerMaxClientConn = String(
     Math.max(50, parseInt(process.env.SAAS_TENANT_POOLER_MAX_CLIENT_CONN?.trim() || '400', 10) || 400)
   )
-  const net = (process.env.SAAS_DOCKER_NETWORK_NAME || 'indobase_default').trim()
+  const net = resolveTenantDockerNetworkName()
   const functionsHostPath = (
     process.env.SAAS_TENANT_FUNCTIONS_HOST_PATH || process.env.INDOBASE_FUNCTIONS_DIR || ''
   ).trim()
@@ -3562,12 +3568,14 @@ export async function getTenantStackArtifacts({
   const auxDbPass =
     process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD?.trim() || tenantConnPass || ''
 
-  const restDbUri = postgresUrlWithDbRole(normalizedTenantUrl, 'authenticator', auxDbPass)
-  const authDbUri = postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_auth_admin', auxDbPass)
-  const storageDbUri = postgresUrlWithDbRole(
-    normalizedTenantUrl,
-    'supabase_storage_admin',
-    auxDbPass
+  const restDbUri = rewriteDbUriForRemoteDataPlane(
+    postgresUrlWithDbRole(normalizedTenantUrl, 'authenticator', auxDbPass),
+  )
+  const authDbUri = rewriteDbUriForRemoteDataPlane(
+    postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_auth_admin', auxDbPass),
+  )
+  const storageDbUri = rewriteDbUriForRemoteDataPlane(
+    postgresUrlWithDbRole(normalizedTenantUrl, 'supabase_storage_admin', auxDbPass),
   )
 
   const realtimeSecretKeyBase = Buffer.concat([
@@ -3633,8 +3641,8 @@ export async function getTenantStackArtifacts({
     siteUrl: sharedGateway ? origin : origin,
     uriAllowList: sharedGateway ? `${origin},${tls ? 'https' : 'http'}://${p.ref}.${domain}` : origin,
     realtime: {
-      dbHost: dbUrl.hostname,
-      dbPort: dbUrl.port || '5432',
+      dbHost: rewriteRealtimeDbHostForRemoteDataPlane(dbUrl.hostname),
+      dbPort: rewriteRealtimeDbPortForRemoteDataPlane(dbUrl.hostname, dbUrl.port || '5432'),
       dbName: dbUrl.pathname.replace(/^\//, ''),
       dbUser: 'supabase_admin',
       dbPassword: auxDbPass,

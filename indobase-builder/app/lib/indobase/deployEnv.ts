@@ -24,6 +24,8 @@ export function getDeployEnvironmentVariables(
     INDOBASE_URL: supabaseUrl,
     VITE_INDOBASE_ANON_KEY: anonKey,
     VITE_INDOBASE_URL: supabaseUrl,
+    EXPO_PUBLIC_INDOBASE_ANON_KEY: anonKey,
+    EXPO_PUBLIC_INDOBASE_URL: supabaseUrl,
     // Legacy aliases for older generated apps
     NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
