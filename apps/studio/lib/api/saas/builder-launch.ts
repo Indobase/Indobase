@@ -4,10 +4,8 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { getURL } from 'lib/helpers'
 
-import { executeQuery } from './query'
 import { getPrimaryEmail, getProject, getGotrueUserId } from './platform'
 import { getProjectSettingsForRef } from './settings'
-import { decryptString } from './util'
 
 type Claims = JwtPayload & Record<string, unknown>
 
@@ -39,10 +37,8 @@ type BuilderBackendConfig = {
 }
 
 type BuilderHandoffPayload = {
-  anonKey: string
   aud: 'indobase-builder'
   backend: BuilderBackendConfig
-  dbUrl: string
   email: string
   exp: number
   iat: number
@@ -108,22 +104,15 @@ export function buildBuilderLaunchUrl(opts: {
 }) {
   const baseUrl = (opts.baseUrl || resolveBuilderBaseUrl()).replace(/\/+$/, '')
   const url = new URL(`${baseUrl}/launch`)
-  url.searchParams.set('token', opts.handoffToken)
-  // Preserve the previous query name during rollout so existing Builder consumers keep working.
-  url.searchParams.set('handoff', opts.handoffToken)
   url.searchParams.set('project_ref', opts.projectRef)
   if (opts.next && opts.next.trim()) {
     url.searchParams.set('next', opts.next.trim())
   }
+  // JWT lives in the fragment so it is not sent on the HTTP request (avoids HTTP 431).
+  const fragment = new URLSearchParams()
+  fragment.set('token', opts.handoffToken)
+  url.hash = fragment.toString()
   return url.toString()
-}
-
-function resolveSharedDbUrl() {
-  if (!process.env.POSTGRES_PASSWORD || !process.env.POSTGRES_HOST || !process.env.POSTGRES_DB) {
-    return null
-  }
-
-  return `postgres://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`
 }
 
 function normalizeApiOrigin(protocol: string | undefined, endpoint: string | undefined) {
@@ -137,40 +126,6 @@ function getAnonKeyFromSettings(settings: Awaited<ReturnType<typeof getProjectSe
   const anon = settings?.service_api_keys?.find((entry) => entry.tags === 'anon')?.api_key?.trim() || ''
   if (!anon) throw new Error('Project anon key is missing')
   return anon
-}
-
-async function getProjectDatabaseUrl(opts: { claims: Claims; ref: string }) {
-  const gotrueId = getGotrueUserId(opts.claims)
-  const row = await executeQuery<{
-    connection_string: string | null
-    connection_string_enc: string | null
-  }>({
-    query: `
-      select p.connection_string, p.connection_string_enc
-      from saas.projects p
-      join saas.organization_members m on m.organization_id = p.organization_id
-      where p.ref = $1 and m.gotrue_id = $2
-      limit 1
-    `,
-    parameters: [opts.ref, gotrueId],
-    actorId: gotrueId,
-  })
-
-  if (row.error) throw row.error
-  if (!row.data?.length) {
-    throw new Error('Project database URL not found')
-  }
-
-  const project = row.data[0]
-  const tenantDbUrl =
-    project?.connection_string_enc?.trim() ? decryptString(project.connection_string_enc) : project?.connection_string
-  const effectiveDbUrl = tenantDbUrl?.trim() ? tenantDbUrl : resolveSharedDbUrl()
-
-  if (!effectiveDbUrl) {
-    throw new Error('Project database URL is missing')
-  }
-
-  return effectiveDbUrl
 }
 
 export function buildBuilderBackendConfig(opts: {
@@ -235,7 +190,6 @@ export async function getBuilderLaunchRedirect({
   if (!settings) {
     throw new Error('Project settings not found')
   }
-  const dbUrl = await getProjectDatabaseUrl({ claims, ref })
 
   const backend = buildBuilderBackendConfig({
     projectName: project.name,
@@ -245,10 +199,8 @@ export async function getBuilderLaunchRedirect({
   })
 
   const payload: BuilderHandoffPayload = {
-    anonKey: backend.anon_key,
     aud: 'indobase-builder',
     backend,
-    dbUrl,
     email: getPrimaryEmail(claims),
     exp: now + 60 * 5,
     iat: now,

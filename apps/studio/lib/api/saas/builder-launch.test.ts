@@ -30,14 +30,14 @@ describe('builder-launch', () => {
     expect(getStudioOrigin()).toBe('https://studio.indobase.in')
   })
 
-  it('builds a launch URL with handoff token and project ref', () => {
+  it('builds a launch URL with handoff token in the fragment and project ref in query', () => {
     expect(
       buildBuilderLaunchUrl({
         baseUrl: 'https://builder.indobase.in',
         handoffToken: 'abc.def.ghi',
         projectRef: 'proj_123',
       })
-    ).toBe('https://builder.indobase.in/launch?token=abc.def.ghi&handoff=abc.def.ghi&project_ref=proj_123')
+    ).toBe('https://builder.indobase.in/launch?project_ref=proj_123#token=abc.def.ghi')
   })
 
   it('builds public backend config for Builder bootstrapping', () => {
@@ -77,7 +77,6 @@ describe('builder-launch', () => {
   it('signs the builder handoff token with project context', () => {
     const token = makeBuilderHandoffToken(
       {
-        anonKey: 'anon-key',
         aud: 'indobase-builder',
         backend: {
           anon_key: 'anon-key',
@@ -95,7 +94,6 @@ describe('builder-launch', () => {
           rest_url: 'https://proj_123.indobase.in/rest/v1/',
           storage_url: 'https://proj_123.indobase.in/storage/v1',
         },
-        dbUrl: 'postgresql://postgres:secret@db.indobase.internal:5432/postgres',
         email: 'user@example.com',
         exp: 200,
         iat: 100,
@@ -114,7 +112,6 @@ describe('builder-launch', () => {
 
     expect(token.split('.')).toHaveLength(3)
     expect(decodeJwtPayload(token)).toMatchObject({
-      anonKey: 'anon-key',
       aud: 'indobase-builder',
       backend: {
         api_url: 'https://proj_123.indobase.in',
@@ -122,8 +119,7 @@ describe('builder-launch', () => {
           NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
         },
       },
-      dbUrl: 'postgresql://postgres:secret@db.indobase.internal:5432/postgres',
-      orgId: 42,
+      email: 'user@example.com',
       organization_slug: 'my-org',
       project_ref: 'proj_123',
       projectRef: 'proj_123',

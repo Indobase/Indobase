@@ -1,43 +1,99 @@
-import { json, type LoaderFunctionArgs, redirect } from '@remix-run/cloudflare';
+import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { useLoaderData, useNavigate, useSearchParams } from '@remix-run/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { updateSupabaseConnection } from '~/lib/stores/supabase';
 import { buildSupabaseConnectionFromHandoff } from '~/lib/indobase/handoff';
-import { getStudioBuilderConnectUrl } from '~/lib/indobase/builder-auth.client';
-import { persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
-import {
-  BUILDER_MCP_COOKIE,
-  BUILDER_MCP_TOKEN_TTL_SECONDS,
-} from '~/lib/indobase/builder-session.constants';
-import { signIndobaseBuilderMcpToken, verifyIndobaseStudioHandoff } from '~/lib/indobase/handoff.server';
+import { getStudioBuilderConnectUrl, persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
+import { clearHandoffTokenFromLocation, readHandoffTokenFromLocation } from '~/lib/indobase/launch-hash.client';
+import { completeBuilderHandoff } from '~/lib/indobase/launch-handoff.server';
 import { isProductionEnv } from '~/lib/production.server';
 import { initializeProviders } from '~/lib/stores/settings';
 import { useMCPStore } from '~/lib/stores/mcp';
+import type { IndobaseBuilderHandoffPayload } from '~/types/indobase';
+
+type LaunchLoaderData =
+  | {
+      error: string;
+      mode: 'error';
+    }
+  | {
+      handoff: IndobaseBuilderHandoffPayload;
+      mcpToken: string;
+      mode: 'ready';
+      next: string | null;
+    }
+  | {
+      mode: 'client';
+      next: string | null;
+      projectRef: string | null;
+    };
+
+function applyLaunchSuccess(options: {
+  handoff: IndobaseBuilderHandoffPayload;
+  mcpToken: string;
+  navigate: ReturnType<typeof useNavigate>;
+  next: string | null;
+  popup: boolean;
+}) {
+  updateSupabaseConnection(buildSupabaseConnectionFromHandoff(options.handoff, { mcpToken: options.mcpToken }));
+  persistLastProjectRef(options.handoff.project_ref);
+  void initializeProviders();
+  void useMCPStore.getState().initialize();
+  void useMCPStore.getState().syncWithIndobaseConnection();
+
+  const studioOrigin = options.handoff.studio_url?.replace(/\/+$/, '');
+
+  if (options.popup && window.opener && studioOrigin) {
+    window.opener.postMessage(
+      {
+        type: 'indobase-builder-session',
+        projectRef: options.handoff.project_ref,
+        success: true,
+      },
+      studioOrigin,
+    );
+    window.close();
+    return;
+  }
+
+  const isSafeRelativePath =
+    Boolean(options.next) &&
+    options.next!.startsWith('/') &&
+    !options.next!.startsWith('//') &&
+    !options.next!.includes('://');
+  options.navigate(isSafeRelativePath ? options.next! : '/', { replace: true });
+}
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
-  const handoffToken = url.searchParams.get('handoff') || url.searchParams.get('token');
+  const queryToken = url.searchParams.get('handoff') || url.searchParams.get('token');
   const next = url.searchParams.get('next');
-  const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare
-    ?.env;
+  const projectRef = url.searchParams.get('project_ref') || url.searchParams.get('ref');
+  const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
 
-  if (!handoffToken) {
-    return redirect('/');
+  // Legacy query-string tokens still work for small payloads; large JWTs use URL hash + POST.
+  if (!queryToken) {
+    return json({
+      mode: 'client',
+      next,
+      projectRef,
+    } satisfies LaunchLoaderData);
   }
 
   try {
-    const handoff = await verifyIndobaseStudioHandoff(handoffToken, env);
-    const mcpToken = signIndobaseBuilderMcpToken(handoff, BUILDER_MCP_TOKEN_TTL_SECONDS, env);
-    const maxAge = BUILDER_MCP_TOKEN_TTL_SECONDS;
-    const nodeEnv = env?.NODE_ENV ?? process.env.NODE_ENV;
-    const secure = nodeEnv === 'production' ? '; Secure' : '';
+    const { handoff, mcpToken, cookieHeader } = await completeBuilderHandoff(queryToken, env);
 
     return json(
-      { handoff, mcpToken, next },
+      {
+        mode: 'ready',
+        handoff,
+        mcpToken,
+        next,
+      } satisfies LaunchLoaderData,
       {
         headers: {
-          'Set-Cookie': `${BUILDER_MCP_COOKIE}=${mcpToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`,
+          'Set-Cookie': cookieHeader,
         },
       },
     );
@@ -48,7 +104,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
         ? error.message
         : 'Invalid Builder launch token';
 
-    return json({ error: message }, { status: 400 });
+    return json({ mode: 'error', error: message } satisfies LaunchLoaderData, { status: 400 });
   }
 };
 
@@ -57,41 +113,79 @@ export default function LaunchRoute() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const projectRef = searchParams.get('project_ref') || searchParams.get('ref');
+  const [clientError, setClientError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!('handoff' in data) || !data.handoff) {
-      return;
-    }
-
-    updateSupabaseConnection(buildSupabaseConnectionFromHandoff(data.handoff, { mcpToken: data.mcpToken }));
-    persistLastProjectRef(data.handoff.project_ref);
-    void initializeProviders();
-    void useMCPStore.getState().initialize();
-    void useMCPStore.getState().syncWithIndobaseConnection();
-
     const popup = searchParams.get('popup') === '1';
-    const studioOrigin = data.handoff.studio_url?.replace(/\/+$/, '');
+    const next = searchParams.get('next');
 
-    if (popup && window.opener && studioOrigin) {
-      window.opener.postMessage(
-        {
-          type: 'indobase-builder-session',
-          projectRef: data.handoff.project_ref,
-          success: true,
-        },
-        studioOrigin,
-      );
-      window.close();
+    if (data.mode === 'ready') {
+      applyLaunchSuccess({
+        handoff: data.handoff,
+        mcpToken: data.mcpToken,
+        navigate,
+        next: data.next,
+        popup,
+      });
       return;
     }
 
-    const next = typeof data.next === 'string' ? data.next : null;
-    const isSafeRelativePath =
-      Boolean(next) && next!.startsWith('/') && !next!.startsWith('//') && !next!.includes('://');
-    navigate(isSafeRelativePath ? next! : '/', { replace: true });
+    if (data.mode !== 'client') {
+      return;
+    }
+
+    const handoffToken = readHandoffTokenFromLocation();
+
+    if (!handoffToken) {
+      setClientError('Missing Builder launch token. Reconnect from Studio.');
+      return;
+    }
+
+    void (async () => {
+      try {
+        const response = await fetch('/api/indobase/launch', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            handoffToken,
+            next,
+          }),
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          handoff?: IndobaseBuilderHandoffPayload;
+          mcpToken?: string;
+          success?: boolean;
+        };
+
+        clearHandoffTokenFromLocation();
+
+        if (!response.ok || !payload.success || !payload.handoff || !payload.mcpToken) {
+          setClientError(payload.error || 'Invalid or expired Builder launch link. Reconnect from Studio.');
+          return;
+        }
+
+        applyLaunchSuccess({
+          handoff: payload.handoff,
+          mcpToken: payload.mcpToken,
+          navigate,
+          next,
+          popup,
+        });
+      } catch {
+        setClientError('Failed to complete Builder launch. Reconnect from Studio.');
+      }
+    })();
   }, [data, navigate, searchParams]);
 
-  if ('error' in data) {
+  const errorMessage =
+    data.mode === 'error' ? data.error : clientError;
+
+  if (errorMessage) {
     const reconnectUrl = projectRef
       ? getStudioBuilderConnectUrl({ projectRef, returnTo: '/' })
       : getStudioBuilderConnectUrl({ returnTo: '/' });
@@ -100,7 +194,7 @@ export default function LaunchRoute() {
       <div className="flex h-full w-full items-center justify-center bg-bolt-elements-background-depth-1 p-8">
         <div className="max-w-lg rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 p-6">
           <h1 className="text-xl font-semibold text-bolt-elements-textPrimary">Unable to open Builder</h1>
-          <p className="mt-3 text-sm text-bolt-elements-textSecondary">{data.error}</p>
+          <p className="mt-3 text-sm text-bolt-elements-textSecondary">{errorMessage}</p>
           <a
             href={reconnectUrl}
             className="mt-5 inline-flex items-center gap-2 rounded-lg bg-bolt-elements-button-primary-background px-4 py-2 text-sm font-medium text-bolt-elements-button-primary-text"
@@ -120,4 +214,4 @@ export default function LaunchRoute() {
       </div>
     </div>
   );
-}
+};
