@@ -22,6 +22,7 @@ import {
   resolveBuilderMcpClaims,
   shouldConsumeBuilderPrompt,
 } from '~/lib/indobase/builder-prompt-quota.server';
+import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 
 const logger = createScopedLogger('api.chat');
@@ -154,9 +155,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const processedMessages = await mcpService.processToolInvocations(messages, dataStream);
         streamRecovery.updateActivity();
         const templateBootstrap = isTemplateBootstrapFollowUp(processedMessages);
-        const isRepairRound = processedMessages.some(
-          (message) => message.role === 'user' && String(message.content).includes('[Autonomous Tester Agent]'),
-        );
+        const isRepairRound = isAutonomousRepairChat(processedMessages);
         const useMultiAgent = chatMode === 'build' && !isRepairRound && !templateBootstrap;
         let orchestratedMessages = processedMessages;
         const progressOrder = { value: progressCounter };

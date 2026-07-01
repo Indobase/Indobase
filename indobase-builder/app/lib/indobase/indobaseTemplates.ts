@@ -53,6 +53,19 @@ export const INDOBASE_STARTER_TEMPLATES: Template[] = [
     aliases: ['marketing site', 'landing page', 'waitlist', 'indobase marketing'],
     icon: 'i-ph:megaphone',
   },
+  {
+    name: 'Indobase Shop',
+    label: 'Indobase Shop',
+    description:
+      'Ecommerce starter with email signup/signin, product catalog, cart, and checkout wired to @indobaseinc/indobase-js',
+    category: 'product',
+    featured: true,
+    indobaseReady: true,
+    localBundle: 'indobase-shop',
+    tags: ['ecommerce', 'shop', 'cart', 'orders', 'auth', 'vite', 'react', 'indobase'],
+    aliases: ['ecommerce', 'online store', 'shop', 'indobase shop'],
+    icon: 'i-ph:shopping-cart',
+  },
 ];
 
 export const INDOBASE_TEMPLATE_BUNDLES = INDOBASE_STARTER_TEMPLATES.map((template) => template.localBundle).filter(

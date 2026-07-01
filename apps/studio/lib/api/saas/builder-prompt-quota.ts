@@ -4,6 +4,11 @@ import { executeQuery } from './query'
 
 export const FREE_BUILDER_PROMPT_LIMIT = 5
 
+export function isBuilderPromptQuotaDisabled(): boolean {
+  const flag = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED?.trim().toLowerCase()
+  return flag === '1' || flag === 'true' || flag === 'yes'
+}
+
 const PAID_BUILDER_PLAN_IDS = new Set<PlanId>(['pro', 'team', 'enterprise'])
 
 export function normalizeOrgPlanId(plan: string | null | undefined): PlanId {
@@ -47,6 +52,11 @@ export async function getBuilderPromptQuota(orgSlug: string): Promise<BuilderPro
   const plan = normalizeOrgPlanId(row.plan)
   const isFree = isFreeBuilderOrgPlan(row.plan)
   const used = Math.max(0, row.builder_prompts_used ?? 0)
+
+  if (isBuilderPromptQuotaDisabled()) {
+    return { plan, used, limit: null, remaining: null, isFree: false }
+  }
+
   const limit = isFree ? FREE_BUILDER_PROMPT_LIMIT : null
   const remaining = limit == null ? null : Math.max(0, limit - used)
 
@@ -61,6 +71,10 @@ export async function consumeBuilderPrompt(orgSlug: string): Promise<
 
   if (!current) {
     throw new Error('Organization not found')
+  }
+
+  if (isBuilderPromptQuotaDisabled()) {
+    return { ok: true, quota: current }
   }
 
   if (!current.isFree) {

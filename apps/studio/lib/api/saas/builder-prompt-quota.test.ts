@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   FREE_BUILDER_PROMPT_LIMIT,
+  isBuilderPromptQuotaDisabled,
   isFreeBuilderOrgPlan,
   normalizeOrgPlanId,
 } from './builder-prompt-quota'
@@ -22,5 +23,12 @@ describe('builder-prompt-quota', () => {
 
   it('exposes a five-prompt free cap', () => {
     expect(FREE_BUILDER_PROMPT_LIMIT).toBe(5)
+  })
+
+  it('can disable quota enforcement via env', () => {
+    const previous = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED
+    process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = 'true'
+    expect(isBuilderPromptQuotaDisabled()).toBe(true)
+    process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = previous
   })
 })

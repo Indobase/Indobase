@@ -35,6 +35,7 @@ import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import { runAutonomousPipeline } from '~/lib/orchestration/autonomous-runner';
+import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
@@ -161,7 +162,9 @@ export const ChatImpl = memo(
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
     const [autonomousProgress, setAutonomousProgress] = useState<ProgressAnnotation[]>([]);
     const autonomousRepairCountRef = useRef(0);
-    const MAX_AUTONOMOUS_REPAIRS = 2;
+    const orchestratorChatRetryRef = useRef(0);
+    const MAX_AUTONOMOUS_REPAIRS = 10;
+    const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const refreshBuilderPromptQuota = useCallback(async () => {
       if (!isIndobaseStudioManagedConnection(supabaseConn)) {
@@ -319,6 +322,7 @@ export const ChatImpl = memo(
             }
 
             autonomousRepairCountRef.current = 0;
+            orchestratorChatRetryRef.current = 0;
 
             if (result.deployUrl) {
               toast.success('Autonomous deploy published your app.');
@@ -561,6 +565,25 @@ export const ChatImpl = memo(
           provider: provider.name,
         });
 
+        if (
+          context === 'chat' &&
+          chatMode === 'build' &&
+          errorInfo.isRetryable &&
+          errorType !== 'quota' &&
+          errorType !== 'authentication' &&
+          orchestratorChatRetryRef.current < MAX_ORCHESTRATOR_CHAT_RETRIES
+        ) {
+          orchestratorChatRetryRef.current += 1;
+          setLlmErrorAlert(undefined);
+          append({
+            role: 'user',
+            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${ORCHESTRATOR_REPAIR_USER_PREFIX}${title}: ${errorInfo.message}
+
+Continue building the ecommerce app (signup, signin, product catalog, cart, checkout) wired to the linked Indobase backend. Fix any issues and keep existing files unless a change is required.`,
+          });
+          return;
+        }
+
         // Create API error alert
         setLlmErrorAlert({
           type: 'error',
@@ -572,7 +595,7 @@ export const ChatImpl = memo(
         });
         setData([]);
       },
-      [provider.name, stop, supabaseConn, resolveUpgradeUrl],
+      [provider.name, stop, supabaseConn, resolveUpgradeUrl, chatMode, model, append, MAX_ORCHESTRATOR_CHAT_RETRIES],
     );
 
     const clearApiErrorAlert = useCallback(() => {
