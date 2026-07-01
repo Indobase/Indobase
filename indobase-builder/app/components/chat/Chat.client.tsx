@@ -41,6 +41,7 @@ import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { getWebcontainerWithRetry } from '~/lib/webcontainer';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
@@ -815,6 +816,13 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
 
               setAutonomousProgress([]);
               autonomousRepairCountRef.current = 0;
+
+              try {
+                await getWebcontainerWithRetry(3);
+              } catch (error) {
+                logger.warn('WebContainer not ready before autonomous deploy; server build may still succeed', error);
+              }
+
               void runAutonomousDeployFlow();
 
               setInput('');

@@ -68,10 +68,18 @@ export async function buildProjectArtifactsOnServer(
       await fs.writeFile(path.join(workDir, '.env'), envFile, 'utf8');
     }
 
-    const childEnv = { ...process.env, ...env, CI: 'true' };
+    const childEnv = {
+      ...process.env,
+      ...env,
+      CI: 'true',
+      // Builder runs with NODE_ENV=production; Vite templates need devDependencies (vite, typescript, @types/*).
+      NODE_ENV: 'development',
+    };
 
     logger.info(`Server build: npm install in ${workDir}`);
-    await execFileAsync('npm', ['install', '--no-audit', '--no-fund', '--prefer-offline'], {
+    await execFileAsync(
+      'npm',
+      ['install', '--no-audit', '--no-fund', '--prefer-offline', '--include=dev'], {
       cwd: workDir,
       timeout: INSTALL_TIMEOUT_MS,
       env: childEnv,

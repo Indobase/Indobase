@@ -1,4 +1,4 @@
-import { webcontainer } from '~/lib/webcontainer';
+import { getWebcontainerWithRetry } from '~/lib/webcontainer';
 import { createScopedLogger } from '~/utils/logger';
 
 const logger = createScopedLogger('ensure-npm-deps');
@@ -7,7 +7,7 @@ const INSTALL_ARGS = ['install', '--no-audit', '--no-fund', '--prefer-offline', 
 
 async function hasPackageJson(): Promise<boolean> {
   try {
-    const container = await webcontainer;
+    const container = await getWebcontainerWithRetry(2);
     await container.fs.readFile('package.json', 'utf-8');
     return true;
   } catch {
@@ -16,7 +16,7 @@ async function hasPackageJson(): Promise<boolean> {
 }
 
 async function nodeModulesReady(): Promise<boolean> {
-  const container = await webcontainer;
+  const container = await getWebcontainerWithRetry(2);
 
   try {
     const entries = await container.fs.readdir('node_modules', { withFileTypes: true });
@@ -41,7 +41,7 @@ async function nodeModulesReady(): Promise<boolean> {
   }
 }
 
-async function entriesHasBin(container: Awaited<typeof webcontainer>): Promise<boolean> {
+async function entriesHasBin(container: Awaited<ReturnType<typeof getWebcontainerWithRetry>>): Promise<boolean> {
   try {
     const binEntries = await container.fs.readdir('node_modules/.bin', { withFileTypes: true });
     return binEntries.length > 0;
@@ -65,7 +65,7 @@ export async function ensureNpmDependencies(): Promise<EnsureNpmDependenciesResu
     return { success: true };
   }
 
-  const container = await webcontainer;
+  const container = await getWebcontainerWithRetry(3);
   logger.info('Running npm install in WebContainer (dependencies missing)');
 
   const installProcess = await container.spawn('npm', [...INSTALL_ARGS]);

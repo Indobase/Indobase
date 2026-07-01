@@ -40,5 +40,5 @@ export default function App() {
     );
   }
 
-  return session ? <ShopHome session={session} /> : <AuthForm onSignedIn={setSession} />;
+  return session ? <ShopHome session={session} /> : <AuthForm onSignedIn={() => undefined} />;
 }
