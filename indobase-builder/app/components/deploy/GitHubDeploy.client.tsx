@@ -4,9 +4,10 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { webcontainer } from '~/lib/webcontainer';
 import { path } from '~/utils/path';
 import { useState } from 'react';
-import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import { getLocalStorage } from '~/lib/persistence/localStorage';
+import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
+import { supabaseConnection } from '~/lib/stores/supabase';
 import { formatBuildFailureOutput } from './deployUtils';
 
 export function useGitHubDeploy() {
@@ -49,40 +50,20 @@ export function useGitHubDeploy() {
       // Notify that build is starting
       deployArtifact.runner.handleDeployAction('building', 'running', { source: 'github' });
 
-      const actionId = 'build-' + Date.now();
-      const actionData: ActionCallbackData = {
-        messageId: 'github build',
-        artifactId: artifact.id,
-        actionId,
-        action: {
-          type: 'build' as const,
-          content: 'npm run build',
-        },
-      };
+      const buildResult = await runDeployBuildStep(supabaseConnection.get());
 
-      // Add the action first
-      artifact.runner.addAction(actionData);
-
-      // Then run it
-      await artifact.runner.runAction(actionData);
-
-      const buildOutput = artifact.runner.buildOutput;
-
-      if (!buildOutput || buildOutput.exitCode !== 0) {
-        // Notify that build failed
+      if (!buildResult.success) {
         deployArtifact.runner.handleDeployAction('building', 'failed', {
-          error: formatBuildFailureOutput(buildOutput?.output),
+          error: formatBuildFailureOutput(buildResult.error),
           source: 'github',
         });
         throw new Error('Build failed');
       }
 
-      // Notify that build succeeded and deployment preparation is starting
       deployArtifact.runner.handleDeployAction('deploying', 'running', {
         source: 'github',
       });
 
-      // Get all project files instead of just the build directory since we're deploying to a repository
       const container = await webcontainer;
 
       // Get all files recursively - we'll deploy the entire project, not just the build directory

@@ -27,7 +27,18 @@ export async function runOneClickDeploy(
 
   switch (target) {
     case 'indobase': {
-      const result = await publishToIndobase(context.connection, { source: 'one_click_deploy' });
+      const result = await publishToIndobase(context.connection, {
+        metadata: { source: 'one_click_deploy' },
+        onDeploymentStatus: (deployment) => {
+          if (deployment.status === 'building') {
+            toast.info('Publishing build to your Indobase subdomain…');
+          } else if (deployment.status === 'ready' && deployment.target_url) {
+            toast.success(`Live at ${deployment.target_url}`);
+          } else if (deployment.status === 'failed') {
+            toast.error(deployment.last_error || 'Deployment failed.');
+          }
+        },
+      });
 
       if (result.success && result.openedUrl) {
         toast.success('Published on your Indobase subdomain.');

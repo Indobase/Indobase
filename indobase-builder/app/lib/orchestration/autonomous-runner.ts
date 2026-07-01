@@ -1,7 +1,7 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { resolveProjectBuild } from '~/lib/indobase/resolveProjectBuild';
+import { runDeployBuildStep } from '~/lib/deploy/runDeployBuild';
 import {
   canQueueIndobaseDeployment,
   publishIndobaseDeployment,
@@ -146,10 +146,7 @@ Missing package.json in /home/project. Create package.json with a "build" script
     };
   }
 
-  const buildResult = await resolveProjectBuild({
-    connection,
-    files: workbenchStore.files.get(),
-  });
+  const buildResult = await runDeployBuildStep(connection);
   const resolvedBuild = buildResult;
 
   if (!resolvedBuild.success) {
