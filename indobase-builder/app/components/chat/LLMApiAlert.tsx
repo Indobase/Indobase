@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function LlmErrorAlert({ alert, clearAlert }: Props) {
-  const { title, description, errorType, provider, upgradeUrl } = alert;
+  const { title, description, errorType, upgradeUrl } = alert;
 
   const getErrorIcon = () => {
     switch (errorType) {
@@ -31,32 +31,22 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
         }
 
         if (description?.toLowerCase().includes('missing api key')) {
-          return `Missing API key for ${provider}. Add your API key in Settings → Providers, or set it as an environment variable.`;
+          return 'Builder AI is not configured on this environment. Contact support if this persists.';
         }
 
-        return 'Authentication failed for the selected model/provider. Please check your API key and try again.';
+        return 'Authentication failed. Reconnect from Studio and try again.';
       case 'rate_limit':
-        return 'Model capacity is busy right now. Please wait a moment before retrying.';
+        return 'AI capacity is busy right now. Please wait a moment before retrying.';
       case 'quota':
         if (alert.upgradeUrl) {
           return 'You have used all 5 free prompts. Upgrade to Pro for unlimited build and discuss messages with agent orchestration.';
         }
 
-        return 'The selected model is unavailable right now. Please try another one.';
+        return 'AI is temporarily unavailable. Please try again in a moment.';
       default:
         return 'An error occurred while processing your request.';
     }
   };
-
-  const apiKeyHelp =
-    errorType === 'authentication' && description?.toLowerCase().includes('missing api key')
-      ? provider === 'OpenRouter'
-        ? {
-            label: 'Get OpenRouter API key',
-            href: 'https://openrouter.ai/settings/keys',
-          }
-        : null
-      : null;
 
   return (
     <AnimatePresence>
@@ -121,24 +111,6 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
                 >
                   Dismiss
                 </button>
-                {apiKeyHelp && (
-                  <a
-                    href={apiKeyHelp.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={classNames(
-                      'px-2 py-1.5 rounded-md text-sm font-medium',
-                      'bg-bolt-elements-button-primary-background',
-                      'hover:bg-bolt-elements-button-primary-backgroundHover',
-                      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bolt-elements-button-primary-background',
-                      'text-bolt-elements-button-primary-text',
-                      'inline-flex items-center gap-2',
-                    )}
-                  >
-                    {apiKeyHelp.label}
-                    <span className="i-ph:arrow-square-out w-4 h-4" />
-                  </a>
-                )}
                 {errorType === 'quota' && upgradeUrl && (
                   <a
                     href={upgradeUrl}

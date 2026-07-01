@@ -3,7 +3,7 @@ import ignore from 'ignore';
 import type { IProviderSetting } from '~/types/model';
 import { IGNORE_PATTERNS, type FileMap } from './constants';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constants';
-import { coerceOpenRouterFreeChatTarget } from '~/lib/indobase/openrouter-free-models';
+import { resolveOpenRouterModelForTask } from '~/lib/indobase/openrouter-model-policy';
 import { createFilesContext, extractCurrentContext, extractPropertiesFromMessage, simplifyBoltActions } from './utils';
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
@@ -48,7 +48,8 @@ export async function selectContext(props: {
     return message;
   });
 
-  ({ providerName: currentProvider, modelName: currentModel } = coerceOpenRouterFreeChatTarget(
+  ({ providerName: currentProvider, modelName: currentModel } = resolveOpenRouterModelForTask(
+    'chat',
     currentProvider,
     currentModel,
   ));

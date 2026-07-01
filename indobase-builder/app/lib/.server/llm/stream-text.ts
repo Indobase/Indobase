@@ -2,8 +2,13 @@ import { convertToCoreMessages, streamText as _streamText, type Message } from '
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, VISION_MODEL, WORK_DIR } from '~/utils/constants';
-import { coerceOpenRouterFreeChatTarget } from '~/lib/indobase/openrouter-free-models';
 import { OPENROUTER_FREE_CODING_MODELS } from '~/lib/indobase/openrouter-coding-models';
+import {
+  isOpenRouterPaidCodegenModelId,
+  resolveOpenRouterModelForTask,
+  type OpenRouterTask,
+} from '~/lib/indobase/openrouter-model-policy';
+import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { streamOpenRouterWithFallback } from '~/lib/indobase/openrouter-stream-fallback';
 import type { IProviderSetting } from '~/types/model';
 import { PromptLibrary } from '~/lib/common/prompt-library';
@@ -60,6 +65,21 @@ function messageHasImageParts(messages: Array<{ parts?: Message['parts']; conten
 
     return false;
   });
+}
+
+function resolveOpenRouterTask(
+  chatMode: 'discuss' | 'build' | undefined,
+  messages: Array<{ role: string; content: unknown }>,
+): OpenRouterTask {
+  if (isAutonomousRepairChat(messages)) {
+    return 'debugging';
+  }
+
+  if (chatMode === 'discuss') {
+    return 'chat';
+  }
+
+  return 'codegen';
 }
 
 function resolveModelForMessages(model: string, messages: Array<{ parts?: Message['parts']; content?: Message['content'] }>) {
@@ -149,7 +169,8 @@ export async function streamText(props: {
     return newMessage;
   });
 
-  ({ providerName: currentProvider, modelName: currentModel } = coerceOpenRouterFreeChatTarget(
+  ({ providerName: currentProvider, modelName: currentModel } = resolveOpenRouterModelForTask(
+    resolveOpenRouterTask(chatMode, processedMessages),
     currentProvider,
     currentModel,
   ));
@@ -194,9 +215,13 @@ export async function streamText(props: {
 
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
-  // OpenRouter free tiers reject very large completion limits — keep requests conservative.
+  // OpenRouter free tiers reject very large completion limits — paid codegen may use more.
   const safeMaxTokens =
-    provider.name === 'OpenRouter' ? Math.min(dynamicMaxTokens, 4096) : dynamicMaxTokens;
+    provider.name === 'OpenRouter'
+      ? isOpenRouterPaidCodegenModelId(modelDetails.name)
+        ? Math.min(dynamicMaxTokens, 16384)
+        : Math.min(dynamicMaxTokens, 4096)
+      : dynamicMaxTokens;
 
   logger.info(
     `Token limits for model ${modelDetails.name}: maxTokens=${safeMaxTokens}, maxTokenAllowed=${modelDetails.maxTokenAllowed}, maxCompletionTokens=${modelDetails.maxCompletionTokens}`,
@@ -383,6 +408,10 @@ export async function streamText(props: {
   );
 
   if (provider.name === 'OpenRouter') {
+    if (isOpenRouterPaidCodegenModelId(modelDetails.name)) {
+      return await _streamText(streamParams);
+    }
+
     const fallbackModels = [
       modelDetails.name,
       ...OPENROUTER_FREE_CODING_MODELS.map((model) => model.name).filter((name) => name !== modelDetails.name),

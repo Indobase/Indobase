@@ -38,6 +38,8 @@ interface ControlPanelProps {
 // Beta status for experimental features
 const BETA_TABS = new Set<TabType>(['local-providers', 'mcp']);
 const LEGACY_HOSTING_TABS = new Set<TabType>(['netlify', 'vercel']);
+/** Indobase routes LLMs server-side; hide provider/model pickers from Builder settings. */
+const HIDDEN_AI_PROVIDER_TABS = new Set<TabType>(['cloud-providers', 'local-providers']);
 
 const BetaLabel = () => (
   <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-accent-500/15 dark:bg-accent-500/20">
@@ -84,6 +86,10 @@ export const ControlPanel = ({ open, onClose }: ControlPanelProps) => {
         }
 
         if (LEGACY_HOSTING_TABS.has(tab.id)) {
+          return false;
+        }
+
+        if (HIDDEN_AI_PROVIDER_TABS.has(tab.id)) {
           return false;
         }
 

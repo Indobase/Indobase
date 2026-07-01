@@ -1,6 +1,5 @@
 /**
- * Curated OpenRouter free models tuned for codegen (verified against openrouter.ai/api/v1/models).
- * Builder chat uses this list exclusively — no paid models, no non-coding free tiers (audio, safety, etc.).
+ * Curated OpenRouter free models for discuss/planning (codegen uses paid DeepSeek server-side).
  */
 export type CuratedCodingModel = {
   label: string;

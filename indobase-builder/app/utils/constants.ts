@@ -3,7 +3,6 @@ import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
 import { CURATED_BOILERPLATES } from '~/lib/indobase/curatedBoilerplates';
 import {
   DEFAULT_OPENROUTER_CODING_MODEL,
-  OPENROUTER_FREE_CODING_MODELS,
   OPENROUTER_FREE_VISION_MODEL,
 } from '~/lib/indobase/openrouter-coding-models';
 import type { Template } from '~/types/template';
@@ -13,19 +12,11 @@ export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 export const MODIFICATIONS_TAG_NAME = 'bolt_file_modifications';
 export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
+/** Default discuss/chat model — OpenRouter free tier (codegen uses paid DeepSeek server-side). */
 export const DEFAULT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 /** OpenRouter free vision model when the user attaches screenshots/images. */
 export const VISION_MODEL = OPENROUTER_FREE_VISION_MODEL.name;
 export const FIXED_MODEL_PROVIDER_NAME = 'OpenRouter';
-export const FIXED_MODEL_CHOICES = OPENROUTER_FREE_CODING_MODELS;
-export const FIXED_MODEL_NAMES = FIXED_MODEL_CHOICES.map((model) => model.name);
-export const isFixedModel = (modelName: string) => FIXED_MODEL_NAMES.includes(modelName);
-export const getFixedModelOption = (modelName?: string) =>
-  FIXED_MODEL_CHOICES.find((option) => option.name === modelName);
-export const getPublicModelLabel = (modelName?: string) =>
-  getFixedModelOption(modelName)?.label ?? modelName ?? 'Model';
-export const getOriginalModelName = (modelName?: string) =>
-  getFixedModelOption(modelName)?.originalName ?? modelName ?? 'Model';
 export const PROMPT_COOKIE_KEY = 'cachedPrompt';
 export const TOOL_EXECUTION_APPROVAL = {
   APPROVE: 'Yes, approved.',

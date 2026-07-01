@@ -4,6 +4,7 @@ import {
   OPENROUTER_FREE_VISION_MODEL,
   toOpenRouterModelInfo,
 } from '~/lib/indobase/openrouter-coding-models';
+import { toOpenRouterPaidCodegenModelInfo } from '~/lib/indobase/openrouter-model-policy';
 import { isOpenRouterApiFreeModel, resolveCuratedOpenRouterFreeModels } from '~/lib/indobase/openrouter-free-models';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
@@ -35,6 +36,7 @@ export default class OpenRouterProvider extends BaseProvider {
   staticModels: ModelInfo[] = [
     ...OPENROUTER_FREE_CODING_MODELS.map((model) => toOpenRouterModelInfo(model)),
     toOpenRouterModelInfo(OPENROUTER_FREE_VISION_MODEL),
+    toOpenRouterPaidCodegenModelInfo(),
   ];
 
   async getDynamicModels(

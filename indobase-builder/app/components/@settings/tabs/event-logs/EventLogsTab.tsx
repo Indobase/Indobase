@@ -136,8 +136,6 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
       return (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span>Model: {details.model}</span>
-            <span>•</span>
             <span>Tokens: {details.totalTokens}</span>
             <span>•</span>
             <span>Duration: {details.duration}ms</span>

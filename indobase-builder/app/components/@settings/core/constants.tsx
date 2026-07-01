@@ -93,8 +93,8 @@ export const DEFAULT_TAB_CONFIG = [
   // User Window Tabs (Always visible by default)
   { id: 'features', visible: true, window: 'user' as const, order: 0 },
   { id: 'data', visible: true, window: 'user' as const, order: 1 },
-  { id: 'cloud-providers', visible: true, window: 'user' as const, order: 2 },
-  { id: 'local-providers', visible: true, window: 'user' as const, order: 3 },
+  { id: 'cloud-providers', visible: false, window: 'user' as const, order: 2 },
+  { id: 'local-providers', visible: false, window: 'user' as const, order: 3 },
   { id: 'github', visible: true, window: 'user' as const, order: 4 },
   { id: 'gitlab', visible: true, window: 'user' as const, order: 5 },
   { id: 'netlify', visible: false, window: 'user' as const, order: 6 },
