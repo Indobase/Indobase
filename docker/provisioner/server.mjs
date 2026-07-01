@@ -35,6 +35,8 @@ const traefikDir = process.env.PROVISIONER_TRAEFIK_DYNAMIC_DIR || '/mnt/traefik'
 const port = Number(process.env.PORT || '8787')
 const auxRolePassword = (process.env.SAAS_DATA_PLANE_AUX_ROLE_PASSWORD || '').trim()
 const legacyBootstrapPassword = 'kVfP0FQo2cGGlqAX'
+/** Wrong placeholder from backend VPS POSTGRES_PASSWORD — never use for tenant aux roles. */
+const wrongFleetPlaceholderPassword = 'indobase_db_password_change_me'
 const traefikUpstreamHost = (process.env.TRAEFIK_UPSTREAM_HOST || '172.17.0.1').trim()
 
 if (!token) {
@@ -87,6 +89,7 @@ function repairKnownComposeYaml(yml) {
   )
   if (auxRolePassword) {
     text = text.split(legacyBootstrapPassword).join(auxRolePassword)
+    text = text.split(wrongFleetPlaceholderPassword).join(auxRolePassword)
     text = text.replace(
       /(postgresql:\/\/(?:authenticator|supabase_auth_admin|supabase_storage_admin|supabase_admin):)[^@]+(@)/g,
       `$1${auxRolePassword}$2`
