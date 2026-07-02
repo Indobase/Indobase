@@ -38,26 +38,6 @@ export function isOpenRouterRetryableError(error: unknown): boolean {
   );
 }
 
-function prependAsyncIterator<T>(first: T | undefined, iterator: AsyncIterator<T>): AsyncIterable<T> {
-  return {
-    async *[Symbol.asyncIterator]() {
-      if (first !== undefined) {
-        yield first;
-      }
-
-      while (true) {
-        const next = await iterator.next();
-
-        if (next.done) {
-          break;
-        }
-
-        yield next.value;
-      }
-    },
-  };
-}
-
 export async function streamOpenRouterWithFallback({
   fallbackModels,
   buildStreamParams,
@@ -84,8 +64,25 @@ export async function streamOpenRouterWithFallback({
       throw error;
     }
 
+    /*
+     * `fullStream` is a getter that yields an independent, fully-featured
+     * ReadableStream on each access — the SDK reads it more than once (our
+     * error-watching for-await AND mergeIntoDataStream, which internally calls
+     * fullStream.pipeThrough). Peek a private copy to detect an immediate
+     * provider error so we can fall back to the next free model, then release
+     * that copy. Reading the first chunk here does NOT remove it from later
+     * accesses (the getter tees), so we return the SDK result unmodified.
+     *
+     * Do NOT replace fullStream with a bare async-iterable: it lacks
+     * `.pipeThrough`, which crashed mergeIntoDataStream with
+     * "Custom error: this.fullStream.pipeThrough is not a function".
+     */
     const iterator = result.fullStream[Symbol.asyncIterator]();
     const first = await iterator.next();
+
+    // Release the peek branch so the underlying tee doesn't buffer the whole
+    // stream for a consumer we abandon (the retained branch is unaffected).
+    void iterator.return?.(undefined);
 
     if (!first.done && first.value?.type === 'error' && isOpenRouterRetryableError(first.value.error)) {
       lastRetryableError = first.value.error;
@@ -103,18 +100,7 @@ export async function streamOpenRouterWithFallback({
       throw first.value.error;
     }
 
-    const patchedFullStream = prependAsyncIterator(first.done ? undefined : first.value, iterator);
-
-    // streamText results expose fullStream as a read-only getter — wrap instead of assigning.
-    return new Proxy(result, {
-      get(target, prop, receiver) {
-        if (prop === 'fullStream') {
-          return patchedFullStream;
-        }
-
-        return Reflect.get(target, prop, receiver);
-      },
-    }) as StreamTextResult;
+    return result;
   }
 
   throw (
