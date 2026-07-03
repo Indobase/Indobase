@@ -38,6 +38,103 @@ export function isOpenRouterRetryableError(error: unknown): boolean {
   );
 }
 
+/**
+ * Best-effort extraction of when an OpenRouter rate limit resets, as an epoch
+ * in ms. OpenRouter returns `X-RateLimit-Reset` (epoch ms) on 429s — exposed by
+ * the AI SDK on `responseHeaders`, and mirrored in the error body under
+ * `error.metadata.headers`. Falls back to a `Retry-After` (seconds) header.
+ */
+export function getRateLimitResetAt(error: unknown): number | null {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+
+  const e = error as {
+    responseHeaders?: Record<string, string>;
+    headers?: Record<string, string>;
+    cause?: { responseHeaders?: Record<string, string> };
+    data?: { error?: { metadata?: { headers?: Record<string, string> } } };
+    responseBody?: { error?: { metadata?: { headers?: Record<string, string> } } };
+    message?: string;
+  };
+
+  const fromHeaders = (h?: Record<string, string>): number | null => {
+    if (!h) {
+      return null;
+    }
+
+    const lower: Record<string, string> = {};
+
+    for (const [k, v] of Object.entries(h)) {
+      lower[k.toLowerCase()] = String(v);
+    }
+
+    const reset = lower['x-ratelimit-reset'];
+
+    if (reset) {
+      const n = Number(reset);
+
+      if (Number.isFinite(n) && n > 0) {
+        // OpenRouter uses epoch ms; treat small values as epoch seconds.
+        return n > 1e12 ? n : n * 1000;
+      }
+    }
+
+    const retryAfter = lower['retry-after'];
+
+    if (retryAfter) {
+      const secs = Number(retryAfter);
+
+      if (Number.isFinite(secs) && secs >= 0) {
+        return Date.now() + secs * 1000;
+      }
+    }
+
+    return null;
+  };
+
+  return (
+    fromHeaders(e.responseHeaders ?? e.headers ?? e.cause?.responseHeaders) ??
+    fromHeaders(e.data?.error?.metadata?.headers ?? e.responseBody?.error?.metadata?.headers) ??
+    null
+  );
+}
+
+/**
+ * A short, human-friendly rate-limit message with the wait time, or null if the
+ * error is not a rate limit. Used in place of the long generic "API limit
+ * exceeded" text so users know exactly when they can retry.
+ */
+export function describeRateLimit(error: unknown): string | null {
+  if (!isOpenRouterRateLimitError(error)) {
+    return null;
+  }
+
+  const resetAt = getRateLimitResetAt(error);
+  const remainingMs = resetAt ? resetAt - Date.now() : 0;
+
+  if (!resetAt || remainingMs <= 0) {
+    return "You've hit the free AI model's rate limit. Try again in a few seconds.";
+  }
+
+  const totalSec = Math.ceil(remainingMs / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+
+  let eta: string;
+
+  if (hours > 0) {
+    eta = `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    eta = `${minutes}m ${seconds}s`;
+  } else {
+    eta = `${seconds}s`;
+  }
+
+  return `You've hit the free AI model's rate limit. Try again in about ${eta}.`;
+}
+
 export async function streamOpenRouterWithFallback({
   fallbackModels,
   buildStreamParams,
@@ -103,8 +200,12 @@ export async function streamOpenRouterWithFallback({
     return result;
   }
 
-  throw (
-    lastRetryableError ??
-    new Error('OpenRouter failed on all free models. Please wait a moment and try again.')
-  );
+  // Re-throw the original provider error so the caller's onError handler can
+  // read its rate-limit reset headers (see describeRateLimit); only synthesize
+  // a message when we have nothing.
+  if (lastRetryableError) {
+    throw lastRetryableError;
+  }
+
+  throw new Error('The free AI models are busy right now. Please try again in a moment.');
 }
