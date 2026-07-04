@@ -30,7 +30,7 @@ import { resolveTemplateFromMessage } from '~/lib/indobase/resolveTemplateFromMe
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
-import { indobaseConnection } from '~/lib/stores/indobase-connection';
+import { indobaseConnection, updateIndobaseConnection } from '~/lib/stores/indobase-connection';
 import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -731,6 +731,35 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
       const messageContent = messageInput || input;
 
       if (!messageContent?.trim()) {
+        return;
+      }
+
+      // Composer command: `/connect [url] [anonKey]` — link a backend without
+      // leaving the chat. With a URL + anon key it connects directly; bare
+      // `/connect` opens the Studio flow.
+      const trimmedInput = messageContent.trim();
+
+      if (trimmedInput === '/connect' || trimmedInput.toLowerCase().startsWith('/connect ')) {
+        const parts = trimmedInput.split(/\s+/);
+
+        if (parts.length >= 3 && /^https?:\/\//.test(parts[1])) {
+          const apiUrl = parts[1].replace(/\/+$/, '');
+          const anonKey = parts[2];
+          const projectRef = apiUrl.replace(/^https?:\/\//, '').split('.')[0] || 'indobase';
+
+          updateIndobaseConnection({
+            credentials: { apiUrl, anonKey, projectRef },
+            selectedProjectId: projectRef,
+            connectionSource: 'manual',
+          });
+          toast.success('Connected to your Indobase backend');
+        } else {
+          toast.info('Opening Studio to connect your backend…');
+          redirectToStudioBuilderConnect();
+        }
+
+        setInput('');
+
         return;
       }
 

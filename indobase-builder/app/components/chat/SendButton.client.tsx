@@ -1,4 +1,5 @@
 import { AnimatePresence, cubicBezier, motion } from 'framer-motion';
+import { classNames } from '~/utils/classNames';
 
 interface SendButtonProps {
   show: boolean;
@@ -15,7 +16,16 @@ export const SendButton = ({ show, isStreaming, disabled, onClick }: SendButtonP
     <AnimatePresence>
       {show ? (
         <motion.button
-          className="absolute flex justify-center items-center top-[18px] right-[22px] p-1 bg-accent-500 hover:brightness-94 color-white rounded-md w-[34px] h-[34px] transition-theme disabled:opacity-50 disabled:cursor-not-allowed"
+          title={isStreaming ? 'Stop generating' : 'Send message'}
+          aria-label={isStreaming ? 'Stop generating' : 'Send message'}
+          className={classNames(
+            'absolute top-[18px] right-[22px] flex h-[34px] items-center justify-center gap-1.5 rounded-md text-white transition-theme',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            isStreaming
+              ? // Distinct, prominent Stop button so a wrong/unwanted run is easy to cancel.
+                'bg-red-500 px-2.5 shadow-[0_0_0_4px_rgba(239,68,68,0.18)] hover:bg-red-600'
+              : 'w-[34px] bg-accent-500 hover:brightness-94',
+          )}
           transition={{ ease: customEasingFn, duration: 0.17 }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -29,9 +39,14 @@ export const SendButton = ({ show, isStreaming, disabled, onClick }: SendButtonP
             }
           }}
         >
-          <div className="text-lg">
-            {!isStreaming ? <div className="i-ph:arrow-right"></div> : <div className="i-ph:stop-circle-bold"></div>}
-          </div>
+          {isStreaming ? (
+            <>
+              <div className="i-ph:stop-fill text-base" />
+              <span className="text-sm font-medium">Stop</span>
+            </>
+          ) : (
+            <div className="i-ph:arrow-right text-lg" />
+          )}
         </motion.button>
       ) : null}
     </AnimatePresence>
