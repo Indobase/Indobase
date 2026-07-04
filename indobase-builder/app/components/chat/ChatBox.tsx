@@ -20,6 +20,7 @@ interface ChatBoxProps {
   imageDataList: string[];
   textareaRef: React.RefObject<HTMLTextAreaElement> | undefined;
   input: string;
+  lastUserMessage?: string;
   handlePaste: (e: React.ClipboardEvent) => void;
   TEXTAREA_MIN_HEIGHT: number;
   TEXTAREA_MAX_HEIGHT: number;
@@ -182,6 +183,14 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               }
 
               props.handleSendMessage?.(event);
+            }
+
+            // Press ↑ in an empty composer to edit/resend your last prompt.
+            if (event.key === 'ArrowUp' && !props.input && props.lastUserMessage && !props.isStreaming) {
+              event.preventDefault();
+              props.handleInputChange?.({
+                target: { value: props.lastUserMessage },
+              } as React.ChangeEvent<HTMLTextAreaElement>);
             }
           }}
           value={props.input}
