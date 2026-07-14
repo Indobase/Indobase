@@ -192,8 +192,19 @@ Deno.serve(async (req) => {
 
 function seedTenantFunctionsMain(ref) {
   const vol = `indobase-tenant-${ref}_tenant-functions-${ref}`
-  const tmp = path.join('/tmp', `fn-main-${ref}.ts`)
-  fs.writeFileSync(tmp, TENANT_FUNCTIONS_MAIN_STUB, 'utf8')
+  // Seed file must be on a path the *host* Docker daemon can bind-mount.
+  // Writing only to container /tmp fails (daemon resolves mounts on the host).
+  const containerTenantsDir = process.env.PROVISIONER_TENANTS_DIR?.trim() || '/mnt/tenants'
+  const hostTenantsDir = process.env.PROVISIONER_TENANTS_HOST_DIR?.trim()
+  const seedName = `_seed-fn-main-${ref}.ts`
+  const seedInContainer = path.join(containerTenantsDir, seedName)
+  const seedOnHost = hostTenantsDir ? path.join(hostTenantsDir, seedName) : seedInContainer
+  try {
+    fs.mkdirSync(containerTenantsDir, { recursive: true })
+    fs.writeFileSync(seedInContainer, TENANT_FUNCTIONS_MAIN_STUB, 'utf8')
+  } catch {
+    return Promise.resolve(false)
+  }
   return new Promise((resolve) => {
     const p = spawn(
       'docker',
@@ -203,7 +214,7 @@ function seedTenantFunctionsMain(ref) {
         '-v',
         `${vol}:/f`,
         '-v',
-        `${tmp}:/seed/index.ts:ro`,
+        `${seedOnHost}:/seed/index.ts:ro`,
         'alpine',
         'sh',
         '-c',
@@ -213,13 +224,20 @@ function seedTenantFunctionsMain(ref) {
     )
     p.on('exit', (code) => {
       try {
-        fs.unlinkSync(tmp)
+        fs.unlinkSync(seedInContainer)
       } catch {
         // ignore
       }
       resolve(code === 0)
     })
-    p.on('error', () => resolve(false))
+    p.on('error', () => {
+      try {
+        fs.unlinkSync(seedInContainer)
+      } catch {
+        // ignore
+      }
+      resolve(false)
+    })
   })
 }
 
@@ -234,8 +252,10 @@ function resolveComposeHostPaths(composePath) {
 
   const rel = path.relative(containerTenantsDir, tenantDir)
   const hostDir = path.join(hostTenantsDir, rel)
+  // `-f` must stay container-readable (CLI opens the file inside the provisioner).
+  // `--project-directory` must be the host path so relative bind mounts resolve on the daemon.
   return {
-    composePath: path.join(hostDir, 'docker-compose.yml'),
+    composePath,
     cwd: tenantDir,
     projectDirectory: hostDir,
   }
