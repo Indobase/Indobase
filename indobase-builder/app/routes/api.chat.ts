@@ -3,6 +3,7 @@ import { createDataStream, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
+import { describeRateLimit } from '~/lib/indobase/openrouter-stream-fallback';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import type { IProviderSetting } from '~/types/model';
 import { createScopedLogger } from '~/utils/logger';
@@ -459,6 +460,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         result.mergeIntoDataStream(dataStream);
       },
       onError: (error: any) => {
+        // Rate limits: show the concrete wait time instead of a long generic
+        // message, so users know exactly when they can retry.
+        const rateLimitMessage = describeRateLimit(error);
+
+        if (rateLimitMessage) {
+          return `Custom error: ${rateLimitMessage}`;
+        }
+
         // Provide more specific error messages for common issues
         const errorMessage = error.message || 'Unknown error';
 

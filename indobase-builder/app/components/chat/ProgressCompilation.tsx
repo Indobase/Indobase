@@ -1,119 +1,136 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { ProgressAnnotation } from '~/types/context';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 
+const AGENT_PROGRESS_LABELS: Record<string, string> = {
+  planner: 'Planner',
+  coder: 'Coder',
+  tester: 'Tester',
+  deployer: 'Deployer',
+  response: 'Response',
+};
+
+function labelFor(label: string) {
+  return AGENT_PROGRESS_LABELS[label] ?? label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export default function ProgressCompilation({ data }: { data?: ProgressAnnotation[] }) {
-  const [progressList, setProgressList] = React.useState<ProgressAnnotation[]>([]);
   const [expanded, setExpanded] = useState(false);
-  React.useEffect(() => {
-    if (!data || data.length == 0) {
-      setProgressList([]);
-      return;
+
+  const progressList = useMemo<ProgressAnnotation[]>(() => {
+    if (!data || data.length === 0) {
+      return [];
     }
 
-    const progressMap = new Map<string, ProgressAnnotation>();
-    data.forEach((x) => {
-      const existingProgress = progressMap.get(x.label);
+    // Keep the latest annotation per label; once a step is complete it stays complete.
+    const map = new Map<string, ProgressAnnotation>();
 
-      if (existingProgress && existingProgress.status === 'complete') {
-        return;
+    for (const item of data) {
+      const existing = map.get(item.label);
+
+      if (existing && existing.status === 'complete') {
+        continue;
       }
 
-      progressMap.set(x.label, x);
-    });
+      map.set(item.label, item);
+    }
 
-    const newData = Array.from(progressMap.values());
-    newData.sort((a, b) => a.order - b.order);
-    setProgressList(newData);
+    return Array.from(map.values()).sort((a, b) => a.order - b.order);
   }, [data]);
 
   if (progressList.length === 0) {
-    return <></>;
+    return null;
   }
 
+  const doneCount = progressList.filter((p) => p.status === 'complete').length;
+  const active = progressList.filter((p) => p.status === 'in-progress');
+  const isWorking = active.length > 0;
+  const current = active[active.length - 1] ?? progressList[progressList.length - 1];
+  const allDone = doneCount === progressList.length;
+
   return (
-    <AnimatePresence>
-      <div
-        className={classNames(
-          'bg-bolt-elements-background-depth-2',
-          'border border-bolt-elements-borderColor',
-          'shadow-lg rounded-lg  relative w-full max-w-chat mx-auto z-prompt',
-          'p-1',
-        )}
-      >
-        <div
-          className={classNames(
-            'bg-bolt-elements-item-backgroundAccent',
-            'p-1 rounded-lg text-bolt-elements-item-contentAccent',
-            'flex ',
-          )}
+    <div className="w-full max-w-chat mx-auto z-prompt">
+      <div className="overflow-hidden rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 shadow-sm">
+        {/* Summary row — always visible, click to expand the full step list */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-theme hover:bg-bolt-elements-background-depth-3"
         >
-          <div className="flex-1">
-            <AnimatePresence>
-              {expanded ? (
-                <motion.div
-                  className="actions"
-                  initial={{ height: 0 }}
-                  animate={{ height: 'auto' }}
-                  exit={{ height: '0px' }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {progressList.map((x, i) => {
-                    return <ProgressItem key={i} progress={x} />;
-                  })}
-                </motion.div>
-              ) : (
-                <ProgressItem progress={progressList.slice(-1)[0]} />
-              )}
-            </AnimatePresence>
+          <StatusIcon status={allDone ? 'complete' : 'in-progress'} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="shrink-0 text-sm font-medium text-bolt-elements-textPrimary">
+                {allDone ? 'Build steps complete' : labelFor(current.label)}
+              </span>
+              <span className="truncate text-sm text-bolt-elements-textSecondary">
+                {allDone ? `${progressList.length} steps` : current.message}
+              </span>
+            </div>
           </div>
-          <motion.button
-            initial={{ width: 0 }}
-            animate={{ width: 'auto' }}
-            exit={{ width: 0 }}
-            transition={{ duration: 0.15, ease: cubicEasingFn }}
-            className=" p-1 rounded-lg bg-bolt-elements-item-backgroundAccent hover:bg-bolt-elements-artifacts-backgroundHover"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            <div className={expanded ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold'}></div>
-          </motion.button>
-        </div>
+          <span className="shrink-0 rounded-full bg-bolt-elements-background-depth-1 px-2 py-0.5 text-xs font-medium tabular-nums text-bolt-elements-textSecondary">
+            {doneCount}/{progressList.length}
+          </span>
+          <div
+            className={classNames(
+              'shrink-0 text-lg text-bolt-elements-textSecondary transition-transform',
+              expanded ? 'i-ph:caret-up' : 'i-ph:caret-down',
+            )}
+          />
+        </button>
+
+        {/* Expanded step list */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: cubicEasingFn }}
+              className="overflow-hidden border-t border-bolt-elements-borderColor"
+            >
+              <div className="flex flex-col gap-0.5 p-2">
+                {progressList.map((item, index) => (
+                  <ProgressItem key={`${item.label}-${index}`} progress={item} isLast={!isWorking && index === progressList.length - 1} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </AnimatePresence>
+    </div>
   );
 }
 
-const AGENT_PROGRESS_LABELS: Record<string, string> = {
-  planner: 'Planner Agent',
-  coder: 'Coder Agent',
-  tester: 'Tester Agent',
-  deployer: 'Deployer Agent',
-};
+function StatusIcon({ status }: { status: ProgressAnnotation['status'] }) {
+  if (status === 'in-progress') {
+    return <div className="i-svg-spinners:90-ring-with-bg shrink-0 text-lg text-bolt-elements-item-contentAccent" />;
+  }
 
-const ProgressItem = ({ progress }: { progress: ProgressAnnotation }) => {
+  if (status === 'complete') {
+    return <div className="i-ph:check-circle-fill shrink-0 text-lg text-green-500" />;
+  }
+
+  return <div className="i-ph:circle-dashed shrink-0 text-lg text-bolt-elements-textTertiary" />;
+}
+
+const ProgressItem = ({ progress }: { progress: ProgressAnnotation; isLast?: boolean }) => {
   return (
     <motion.div
-      className={classNames('flex text-sm gap-3')}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
+      className="flex items-start gap-2.5 rounded-lg px-2 py-1.5"
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.15, ease: cubicEasingFn }}
     >
-      <div className="flex items-center gap-1.5 ">
-        <div>
-          {progress.status === 'in-progress' ? (
-            <div className="i-svg-spinners:90-ring-with-bg"></div>
-          ) : progress.status === 'complete' ? (
-            <div className="i-ph:check"></div>
-          ) : null}
-        </div>
-        {AGENT_PROGRESS_LABELS[progress.label] ? (
-          <span className="font-medium">{AGENT_PROGRESS_LABELS[progress.label]}:</span>
-        ) : null}
+      <div className="mt-0.5">
+        <StatusIcon status={progress.status} />
       </div>
-      {progress.message}
+      <div className="min-w-0 flex-1 text-sm leading-relaxed">
+        <span className="font-medium text-bolt-elements-textPrimary">{labelFor(progress.label)}</span>
+        <span className="ml-1.5 break-words text-bolt-elements-textSecondary">{progress.message}</span>
+      </div>
     </motion.div>
   );
 };

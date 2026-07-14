@@ -90,11 +90,17 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
   const nextConnectionSource =
     connection.connectionSource !== undefined ? connection.connectionSource : currentState.connectionSource;
 
-  const isStudioManagedConnection =
-    nextConnectionSource === 'studio_handoff' &&
-    Boolean(nextSelectedProjectId && resolveApiUrl(nextCredentials) && nextCredentials?.anonKey);
+  const hasValidCredentials = Boolean(
+    nextSelectedProjectId && resolveApiUrl(nextCredentials) && nextCredentials?.anonKey,
+  );
+  const isStudioManagedConnection = nextConnectionSource === 'studio_handoff' && hasValidCredentials;
 
-  connection.isConnected = isStudioManagedConnection;
+  // A manually-entered project URL + anon key is enough to talk to the backend
+  // (DB/auth/storage, .env seeding). Studio handoff additionally unlocks
+  // publish, MCP and prompt quota, but a manual connection is still "connected".
+  const isManualConnection = nextConnectionSource === 'manual' && hasValidCredentials;
+
+  connection.isConnected = isStudioManagedConnection || isManualConnection;
 
   if (connection.selectedProjectId !== undefined) {
     if (connection.selectedProjectId && nextStats?.projects) {

@@ -102,12 +102,28 @@ export const AssistantMessage = memo(
       (annotation) => annotation.type === 'toolCall',
     ) as ToolCallAnnotation[];
 
+    const hasActions = Boolean((onRewind || onFork) && messageId);
+
     return (
-      <div className="overflow-hidden w-full">
-        <>
-          <div className=" flex gap-2 items-center text-sm text-bolt-elements-textSecondary mb-2">
+      <div className="flex w-full gap-3">
+        {/* Assistant avatar — gives each turn a clear visual anchor */}
+        <div className="mt-0.5 shrink-0">
+          <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2">
+            <img src="/logo.svg" alt="Indobase" className="h-4 w-4" />
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-sm font-semibold text-bolt-elements-textPrimary">Indobase</span>
             {(codeContext || chatSummary) && (
-              <Popover side="right" align="start" trigger={<div className="i-ph:info" />}>
+              <Popover
+                side="right"
+                align="start"
+                trigger={
+                  <div className="i-ph:info cursor-pointer text-bolt-elements-textTertiary transition-colors hover:text-bolt-elements-textSecondary" />
+                }
+              >
                 {chatSummary && (
                   <div className="max-w-chat">
                     <div className="summary max-h-96 flex flex-col">
@@ -145,47 +161,50 @@ export const AssistantMessage = memo(
                 <div className="context"></div>
               </Popover>
             )}
-            <div className="flex w-full items-center justify-between">
+          </div>
+
+          <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
+            {content}
+          </Markdown>
+
+          {toolInvocations && toolInvocations.length > 0 && (
+            <ToolInvocations
+              toolInvocations={toolInvocations}
+              toolCallAnnotations={toolCallAnnotations}
+              addToolResult={addToolResult}
+            />
+          )}
+
+          {(usage || hasActions) && (
+            <div className="mt-2 flex items-center gap-3 text-xs text-bolt-elements-textTertiary">
               {usage && (
-                <div>
-                  Tokens: {usage.totalTokens} (prompt: {usage.promptTokens}, completion: {usage.completionTokens})
-                </div>
+                <span title={`prompt ${usage.promptTokens} · completion ${usage.completionTokens}`}>
+                  {usage.totalTokens.toLocaleString()} tokens
+                </span>
               )}
-              {(onRewind || onFork) && messageId && (
-                <div className="flex gap-2 flex-col lg:flex-row ml-auto">
+              {hasActions && (
+                <div className="flex items-center gap-2">
                   {onRewind && (
                     <WithTooltip tooltip="Revert to this message">
                       <button
-                        onClick={() => onRewind(messageId)}
-                        key="i-ph:arrow-u-up-left"
-                        className="i-ph:arrow-u-up-left text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
+                        onClick={() => onRewind(messageId!)}
+                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-bolt-elements-textPrimary"
                       />
                     </WithTooltip>
                   )}
                   {onFork && (
                     <WithTooltip tooltip="Fork chat from this message">
                       <button
-                        onClick={() => onFork(messageId)}
-                        key="i-ph:git-fork"
-                        className="i-ph:git-fork text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
+                        onClick={() => onFork(messageId!)}
+                        className="i-ph:git-fork text-sm transition-colors hover:text-bolt-elements-textPrimary"
                       />
                     </WithTooltip>
                   )}
                 </div>
               )}
             </div>
-          </div>
-        </>
-        <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
-          {content}
-        </Markdown>
-        {toolInvocations && toolInvocations.length > 0 && (
-          <ToolInvocations
-            toolInvocations={toolInvocations}
-            toolCallAnnotations={toolCallAnnotations}
-            addToolResult={addToolResult}
-          />
-        )}
+          )}
+        </div>
       </div>
     );
   },

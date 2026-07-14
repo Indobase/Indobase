@@ -204,6 +204,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const clearBackendAlert = clearIndobaseBackendAlert;
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const isStudioManagedConnection = hasIndobaseStudioHandoff(indobaseConn);
+    // Connected via Studio handoff OR a manual project URL + anon key.
+    const isBackendConnected = isStudioManagedConnection || Boolean(indobaseConn?.isConnected);
 
     useEffect(() => {
       if (expoUrl) {
@@ -422,6 +424,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         setImageDataList={setImageDataList}
         textareaRef={textareaRef}
         input={input}
+        lastUserMessage={(() => {
+          const last = [...(messages ?? [])].reverse().find((m: { role: string }) => m.role === 'user');
+          const raw = typeof last?.content === 'string' ? last.content : '';
+          return raw
+            .replace(/\[Model:[^\]]*\]/g, '')
+            .replace(/\[Provider:[^\]]*\]/g, '')
+            .trim();
+        })()}
         handleInputChange={handleInputChange}
         handlePaste={handlePaste}
         TEXTAREA_MIN_HEIGHT={TEXTAREA_MIN_HEIGHT}
@@ -507,13 +517,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               Build with Indobase
             </h1>
             <p className="mt-5 max-w-2xl text-[15.5px] leading-7 text-[#6A6158] dark:text-[#B6ADA3]">
-              {isStudioManagedConnection
+              {isBackendConnected
                 ? 'Your Indobase project is connected. Auth, database, storage, and edge functions run on your tenant backend automatically while you build.'
                 : 'Design products with AI, wire them to your backend, and move into Studio when you need database, auth, storage, functions, and logs.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-              {isStudioManagedConnection && (
-                <span className="inline-flex items-center rounded-full border border-[#C47800]/25 bg-[#C47800]/10 px-3 py-1 text-xs font-medium text-[#8A6500] dark:border-[#E7B24D]/25 dark:bg-[#E7B24D]/12 dark:text-[#F3C969]">
+              {isBackendConnected && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C47800]/25 bg-[#C47800]/10 px-3 py-1 text-xs font-medium text-[#8A6500] dark:border-[#E7B24D]/25 dark:bg-[#E7B24D]/12 dark:text-[#F3C969]">
+                  <span className="i-ph:check-circle-fill text-sm text-green-500" />
                   Connected to Indobase Backend
                 </span>
               )}
@@ -521,7 +532,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
             <div className="mt-12 flex w-full max-w-[42rem] flex-col gap-4">
               {alertStack}
-              {!isStudioManagedConnection && <BackendLinkBanner />}
+              {!isBackendConnected && <BackendLinkBanner />}
               {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
               {promptComposer}
             </div>
