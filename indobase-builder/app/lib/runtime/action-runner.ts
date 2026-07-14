@@ -17,6 +17,9 @@ import type { BoltShell } from '~/utils/shell';
 
 const logger = createScopedLogger('ActionRunner');
 
+/** Kill hung `npm run build` processes so the Tester agent cannot block forever. */
+const BUILD_PROCESS_TIMEOUT_MS = 300_000;
+
 export type ActionStatus = 'pending' | 'running' | 'complete' | 'aborted' | 'failed';
 
 export type BaseActionState = BoltAction & {
@@ -285,10 +288,15 @@ export class ActionRunner {
       action.content = validationResult.modifiedCommand;
     }
 
-    const resp = await shell.executeCommand(this.runnerId.get(), action.content, () => {
-      logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
-      action.abort();
-    });
+    const resp = await shell.executeCommand(
+      this.runnerId.get(),
+      action.content,
+      () => {
+        logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
+        action.abort();
+      },
+      action.exitTimeoutMs != null ? { exitTimeoutMs: action.exitTimeoutMs } : undefined,
+    );
     logger.debug(`${action.type} Shell Response: [exit code:${resp?.exitCode}]`);
 
     this.lastShellOutput = {
@@ -318,10 +326,16 @@ export class ActionRunner {
       unreachable('Shell terminal not found');
     }
 
-    const resp = await shell.executeCommand(this.runnerId.get(), action.content, () => {
-      logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
-      action.abort();
-    });
+    const resp = await shell.executeCommand(
+      this.runnerId.get(),
+      action.content,
+      () => {
+        logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
+        action.abort();
+      },
+      // Dev servers never emit an exit OSC; do not kill them with the shell backstop.
+      { exitTimeoutMs: 0 },
+    );
     logger.debug(`${action.type} Shell Response: [exit code:${resp?.exitCode}]`);
 
     if (resp?.exitCode != 0) {
@@ -462,14 +476,39 @@ export class ActionRunner {
     );
 
     let exitCode: number;
+    let timedOut = false;
+    let buildTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
-      exitCode = await buildProcess.exit;
+      exitCode = await Promise.race([
+        buildProcess.exit,
+        new Promise<number>((resolve) => {
+          buildTimeoutId = setTimeout(() => {
+            timedOut = true;
+
+            try {
+              buildProcess.kill();
+            } catch (error) {
+              logger.warn('Failed to kill timed-out build process', error);
+            }
+
+            resolve(124);
+          }, BUILD_PROCESS_TIMEOUT_MS);
+        }),
+      ]);
       await outputPromise.catch(() => {
         // Ignore output piping errors; we still have whatever was captured
       });
     } finally {
+      if (buildTimeoutId) {
+        clearTimeout(buildTimeoutId);
+      }
+
       this.#activeBuildProcess = undefined;
+    }
+
+    if (timedOut) {
+      output += `\n[build timed out after ${Math.round(BUILD_PROCESS_TIMEOUT_MS / 1000)}s]`;
     }
 
     let buildDir = '';

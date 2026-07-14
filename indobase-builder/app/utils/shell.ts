@@ -89,7 +89,12 @@ export async function newShellProcess(webcontainer: WebContainer, terminal: ITer
   return process;
 }
 
-export type ExecutionResult = { output: string; exitCode: number } | undefined;
+export type ExecutionResult = { output: string; exitCode: number; timedOut?: boolean } | undefined;
+
+/** Wait for the shell prompt OSC after Ctrl+C before writing the next command. */
+export const SHELL_PROMPT_TIMEOUT_MS = 10_000;
+/** Backstop so non-terminating processes cannot block the UI forever. */
+export const SHELL_EXIT_TIMEOUT_MS = 600_000;
 
 export class BoltShell {
   #initialized: (() => void) | undefined;
@@ -102,6 +107,10 @@ export class BoltShell {
   >();
   #outputStream: ReadableStreamDefaultReader<string> | undefined;
   #shellInputStream: WritableStreamDefaultWriter<string> | undefined;
+  #outputPumpStarted = false;
+  #outputPumpDone = false;
+  #outputChunks: string[] = [];
+  #outputWaiters: Array<() => void> = [];
 
   constructor() {
     this.#readyPromise = new Promise((resolve) => {
@@ -215,7 +224,12 @@ export class BoltShell {
     return this.#process;
   }
 
-  async executeCommand(sessionId: string, command: string, abort?: () => void): Promise<ExecutionResult> {
+  async executeCommand(
+    sessionId: string,
+    command: string,
+    abort?: () => void,
+    options?: { exitTimeoutMs?: number },
+  ): Promise<ExecutionResult> {
     if (!this.process || !this.terminal) {
       return undefined;
     }
@@ -231,7 +245,8 @@ export class BoltShell {
      *  this.#shellInputStream?.write('\x03');
      */
     this.terminal.input('\x03');
-    await this.waitTillOscCode('prompt');
+    // Proceed even if the prompt OSC never arrives so the next command is still written.
+    await this.waitTillOscCode('prompt', SHELL_PROMPT_TIMEOUT_MS);
 
     if (state && state.executionPrms) {
       await state.executionPrms;
@@ -240,8 +255,9 @@ export class BoltShell {
     //start a new execution
     this.terminal.input(command.trim() + '\n');
 
-    //wait for the execution to finish
-    const executionPromise = this.getCurrentExecutionResult();
+    //wait for the execution to finish (0 / negative disables the exit backstop)
+    const exitTimeoutMs = options?.exitTimeoutMs ?? SHELL_EXIT_TIMEOUT_MS;
+    const executionPromise = this.getCurrentExecutionResult(exitTimeoutMs);
     this.executionState.set({ sessionId, active: true, executionPrms: executionPromise, abort });
 
     const resp = await executionPromise;
@@ -252,6 +268,17 @@ export class BoltShell {
         resp.output = cleanTerminalOutput(resp.output);
       } catch (error) {
         console.log('failed to format terminal output', error);
+      }
+
+      if (resp.timedOut) {
+        try {
+          // Double Ctrl+C so watch-mode runners (vitest/jest) release the TTY.
+          this.terminal.input('\x03');
+          this.terminal.input('\x03');
+          await this.waitTillOscCode('prompt', SHELL_PROMPT_TIMEOUT_MS);
+        } catch {
+          // ignore interrupt failures after timeout
+        }
       }
     }
 
@@ -268,7 +295,7 @@ export class BoltShell {
     this.terminal.input('\x03');
 
     try {
-      await this.waitTillOscCode('prompt');
+      await this.waitTillOscCode('prompt', SHELL_PROMPT_TIMEOUT_MS);
     } catch (error) {
       console.warn('Failed to abort current shell execution:', error);
     }
@@ -276,29 +303,146 @@ export class BoltShell {
     this.executionState.set({ sessionId: state.sessionId, active: false });
   }
 
-  async getCurrentExecutionResult(): Promise<ExecutionResult> {
-    const { output, exitCode } = await this.waitTillOscCode('exit');
+  async getCurrentExecutionResult(timeoutMs: number = SHELL_EXIT_TIMEOUT_MS): Promise<ExecutionResult> {
+    const { output, exitCode, timedOut } = await this.waitTillOscCode('exit', timeoutMs);
+
+    if (timedOut) {
+      return {
+        output: `${output}\n[shell command timed out after ${Math.round(timeoutMs / 1000)}s]`,
+        exitCode: 124,
+        timedOut: true,
+      };
+    }
+
     return { output, exitCode };
   }
 
   onQRCodeDetected?: (qrCode: string) => void;
 
-  async waitTillOscCode(waitCode: string) {
+  #notifyOutputWaiters() {
+    const waiters = this.#outputWaiters.splice(0);
+    for (const wake of waiters) {
+      wake();
+    }
+  }
+
+  #startOutputPump() {
+    if (this.#outputPumpStarted || !this.#outputStream) {
+      return;
+    }
+
+    this.#outputPumpStarted = true;
+    const reader = this.#outputStream;
+
+    void (async () => {
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          this.#outputChunks.push(value || '');
+          this.#notifyOutputWaiters();
+        }
+      } catch (error) {
+        console.warn('Shell output pump failed:', error);
+      } finally {
+        this.#outputPumpDone = true;
+        this.#notifyOutputWaiters();
+      }
+    })();
+  }
+
+  async #readOutputChunk(timeoutMs?: number): Promise<{ value?: string; done: boolean; timedOut?: boolean }> {
+    this.#startOutputPump();
+
+    if (this.#outputChunks.length > 0) {
+      return { value: this.#outputChunks.shift(), done: false };
+    }
+
+    if (this.#outputPumpDone) {
+      return { value: undefined, done: true };
+    }
+
+    const remaining = typeof timeoutMs === 'number' ? timeoutMs : undefined;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+      const settle = () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+
+        const waiterIndex = this.#outputWaiters.indexOf(settle);
+
+        if (waiterIndex >= 0) {
+          this.#outputWaiters.splice(waiterIndex, 1);
+        }
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        resolve();
+      };
+
+      this.#outputWaiters.push(settle);
+
+      if (typeof remaining === 'number') {
+        if (remaining <= 0) {
+          settle();
+          return;
+        }
+
+        timeoutId = setTimeout(settle, remaining);
+      }
+    });
+
+    if (this.#outputChunks.length > 0) {
+      return { value: this.#outputChunks.shift(), done: false };
+    }
+
+    if (this.#outputPumpDone) {
+      return { value: undefined, done: true };
+    }
+
+    if (typeof remaining === 'number') {
+      return { value: undefined, done: false, timedOut: true };
+    }
+
+    return { value: undefined, done: false };
+  }
+
+  async waitTillOscCode(waitCode: string, timeoutMs?: number) {
     let fullOutput = '';
     let exitCode: number = 0;
-    let buffer = ''; // <-- Add a buffer to accumulate output
+    let buffer = '';
 
     if (!this.#outputStream) {
       return { output: fullOutput, exitCode };
     }
 
-    const tappedStream = this.#outputStream;
-
-    // Regex for Expo URL
+    const deadline = typeof timeoutMs === 'number' && timeoutMs > 0 ? Date.now() + timeoutMs : null;
     const expoUrlRegex = /(exp:\/\/[^\s]+)/;
 
     while (true) {
-      const { value, done } = await tappedStream.read();
+      const remaining = deadline !== null ? deadline - Date.now() : undefined;
+
+      if (deadline !== null && remaining !== undefined && remaining <= 0) {
+        return { output: fullOutput, exitCode, timedOut: true as const };
+      }
+
+      const { value, done, timedOut } = await this.#readOutputChunk(remaining);
+
+      if (timedOut) {
+        return { output: fullOutput, exitCode, timedOut: true as const };
+      }
 
       if (done) {
         break;
@@ -306,23 +450,18 @@ export class BoltShell {
 
       const text = value || '';
       fullOutput += text;
-      buffer += text; // <-- Accumulate in buffer
+      buffer += text;
 
-      // Extract Expo URL from buffer and set store
       const expoUrlMatch = buffer.match(expoUrlRegex);
 
       if (expoUrlMatch) {
-        // Remove any trailing ANSI escape codes or non-printable characters
         const cleanUrl = expoUrlMatch[1]
           .replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '')
           .replace(/[^\x20-\x7E]+$/g, '');
         expoUrlAtom.set(cleanUrl);
-
-        // Remove everything up to and including the URL from the buffer to avoid duplicate matches
         buffer = buffer.slice(buffer.indexOf(expoUrlMatch[1]) + expoUrlMatch[1].length);
       }
 
-      // Check if command completion signal with exit code
       const [, osc, , , code] = text.match(/\x1b\]654;([^\x07=]+)=?((-?\d+):(\d+))?\x07/) || [];
 
       if (osc === 'exit') {

@@ -13,6 +13,8 @@ export interface FileAction extends BaseAction {
 
 export interface ShellAction extends BaseAction {
   type: 'shell';
+  /** Optional hard cap for waiting on the shell exit OSC (ms). */
+  exitTimeoutMs?: number;
 }
 
 export interface StartAction extends BaseAction {

@@ -7,7 +7,7 @@ describe('resolveTestCommand', () => {
       resolveTestCommand({
         scripts: { test: 'vitest run' },
       }),
-    ).toBe('npm run test -- --passWithNoTests');
+    ).toBe('export CI=true && npm run test -- --run --watch=false --watchAll=false --passWithNoTests');
   });
 
   it('skips placeholder test scripts', () => {
@@ -23,6 +23,14 @@ describe('resolveTestCommand', () => {
       resolveTestCommand({
         scripts: { test: 'echo "Error: no test specified" && exit 1', 'test:ci': 'vitest run' },
       }),
-    ).toBe('npm run test:ci');
+    ).toBe('export CI=true && npm run test:ci');
+  });
+
+  it('uses non-watch flags for test:unit', () => {
+    expect(
+      resolveTestCommand({
+        scripts: { 'test:unit': 'vitest' },
+      }),
+    ).toBe('export CI=true && npm run test:unit -- --run --watch=false --watchAll=false --passWithNoTests');
   });
 });

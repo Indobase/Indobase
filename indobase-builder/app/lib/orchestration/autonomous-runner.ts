@@ -28,18 +28,21 @@ export function resolveTestCommand(packageJson: Record<string, unknown>): string
     return null;
   }
 
+  const withCi = (command: string) => `export CI=true && ${command}`;
+
   const testScript = scripts.test;
 
   if (testScript && !/no test specified/i.test(testScript)) {
-    return 'npm run test -- --passWithNoTests';
+    // Force non-watch runners so the Tester agent cannot hang on vitest/jest interactive mode.
+    return withCi('npm run test -- --run --watch=false --watchAll=false --passWithNoTests');
   }
 
   if (scripts['test:ci']) {
-    return 'npm run test:ci';
+    return withCi('npm run test:ci');
   }
 
   if (scripts['test:unit']) {
-    return 'npm run test:unit';
+    return withCi('npm run test:unit -- --run --watch=false --watchAll=false --passWithNoTests');
   }
 
   return null;
@@ -54,6 +57,9 @@ export async function readPackageJson(): Promise<Record<string, unknown> | null>
     return null;
   }
 }
+
+/** Autonomous tests should fail fast instead of hanging the Tester progress UI. */
+const AUTONOMOUS_SHELL_TIMEOUT_MS = 180_000;
 
 async function runWorkbenchShell(command: string): Promise<{ exitCode: number; output: string }> {
   const artifact = workbenchStore.firstArtifact;
@@ -70,6 +76,7 @@ async function runWorkbenchShell(command: string): Promise<{ exitCode: number; o
     action: {
       type: 'shell',
       content: command,
+      exitTimeoutMs: AUTONOMOUS_SHELL_TIMEOUT_MS,
     },
   };
 
