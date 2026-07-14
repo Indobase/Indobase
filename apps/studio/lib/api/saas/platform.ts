@@ -2933,12 +2933,71 @@ export async function bulkBackfillTenantDataPlaneBootstrap({
   return { results }
 }
 
+/**
+ * Docker-compose service names resolvable only on the control-plane network.
+ * Tenant stacks often run on a separate host and cannot use these.
+ */
+const DOCKER_ONLY_MAIL_HOSTS = new Set([
+  'indobase-mail',
+  'indobase-smtp-relay',
+  'supabase-mail',
+  'mail',
+])
+
+function isDockerOnlyMailHost(host: string): boolean {
+  const h = host.trim().toLowerCase()
+  return DOCKER_ONLY_MAIL_HOSTS.has(h) || h.endsWith('.indobase_default')
+}
+
+function resolveControlPlaneReachableHost(): string {
+  return (
+    process.env.SAAS_CONTROL_PLANE_HOST?.trim() ||
+    process.env.SAAS_SMTP_PUBLIC_HOST?.trim() ||
+    process.env.TEMPLATES_SERVER_PUBLIC_HOST?.trim() ||
+    ''
+  )
+}
+
+/**
+ * SMTP host for tenant GoTrue. Prefer an explicit cross-host address; never
+ * bake Docker-only names into tenant compose when a public control-plane host
+ * is configured (dual-VPS).
+ */
+function resolveTenantSmtpHost(): string {
+  const explicit = process.env.SAAS_TENANT_SMTP_HOST?.trim()
+  if (explicit) return explicit
+
+  const smtp = process.env.SMTP_HOST?.trim() || ''
+  if (smtp && !isDockerOnlyMailHost(smtp)) return smtp
+
+  const controlPlane = resolveControlPlaneReachableHost()
+  if (controlPlane) return controlPlane
+
+  return smtp || 'indobase-mail'
+}
+
+/**
+ * Base URL for tenant mail HTML templates. Must be HTTP-reachable from the
+ * tenant-auth container (data-plane host → control-plane :8095 in dual-VPS).
+ */
+function resolveTenantMailerTemplatesBase(): string {
+  const explicit = process.env.SAAS_TENANT_MAILER_TEMPLATES_BASE?.trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+
+  const controlPlane = resolveControlPlaneReachableHost()
+  const port = process.env.TEMPLATES_SERVER_PUBLISH_PORT?.trim() || '8095'
+  if (controlPlane) return `http://${controlPlane}:${port}`
+
+  return 'http://indobase-templates-server'
+}
+
 /** SMTP + mailer settings for tenant GoTrue (shared control-plane mail or SAAS_TENANT_SMTP_*). */
 function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: string }) {
-  const smtpHost =
-    process.env.SAAS_TENANT_SMTP_HOST?.trim() || process.env.SMTP_HOST?.trim() || 'indobase-mail'
+  const smtpHost = resolveTenantSmtpHost()
   const smtpPort =
-    process.env.SAAS_TENANT_SMTP_PORT?.trim() || process.env.SMTP_PORT?.trim() || '2500'
+    process.env.SAAS_TENANT_SMTP_PORT?.trim() ||
+    process.env.SMTP_PORT?.trim() ||
+    (isDockerOnlyMailHost(smtpHost) || smtpHost === 'indobase-mail' ? '2500' : '587')
   const smtpUser = process.env.SAAS_TENANT_SMTP_USER?.trim() ?? process.env.SMTP_USER?.trim() ?? ''
   const smtpPass = process.env.SAAS_TENANT_SMTP_PASS?.trim() ?? process.env.SMTP_PASS?.trim() ?? ''
   const smtpAdminEmail =
@@ -2954,6 +3013,7 @@ function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: s
     process.env.ENABLE_EMAIL_AUTOCONFIRM?.trim() ??
     'false'
   const autoConfirm = autoConfirmRaw === 'true' ? 'true' : 'false'
+  const templatesBase = resolveTenantMailerTemplatesBase()
 
   const hosts = new Set<string>()
   for (const raw of [opts.apiExternalUrl, opts.siteUrl]) {
@@ -2986,6 +3046,7 @@ function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: s
   return {
     autoConfirm: composeYamlSingleQuoted(autoConfirm),
     externalHosts: composeYamlSingleQuoted([...hosts].join(',')),
+    templatesBase,
     smtpHost: composeYamlSingleQuoted(smtpHost),
     smtpPort: composeYamlSingleQuoted(smtpPort),
     smtpUser: composeYamlSingleQuoted(smtpUser),
@@ -3215,11 +3276,11 @@ ${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.go
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
-      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html
-      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html
-      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html
-      GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html
-      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: ${mailer.templatesBase}/tenant-confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: ${mailer.templatesBase}/tenant-recovery.html
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${mailer.templatesBase}/tenant-magic-link.html
+      GOTRUE_MAILER_TEMPLATES_INVITE: ${mailer.templatesBase}/tenant-invite.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: ${mailer.templatesBase}/tenant-email-change.html
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Confirm your Indobase account
       GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset your Indobase password
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Indobase sign-in link

@@ -247,6 +247,10 @@ services:
     command: ['caddy', 'file-server', '-r', '/templates', '--listen', ':80']
     volumes:
       - ./volumes/templates:/templates:ro
+    # Publish so data-plane tenant auth (other host) can fetch mail templates.
+    # Local: http://127.0.0.1:8095 ; dual-VPS: bind SAAS_CONTROL_PLANE_HOST:8095.
+    ports:
+      - "${TEMPLATES_SERVER_BIND:-0.0.0.0}:${TEMPLATES_SERVER_PUBLISH_PORT:-8095}:80"
     networks:
       - default
 

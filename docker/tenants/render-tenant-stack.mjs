@@ -78,6 +78,67 @@ const pgrstMem = /^\d+([mMgG])$/.test(pgrstMemRaw) ? pgrstMemRaw : '512m'
 const pgrstPool = parseEnvInt('SAAS_TENANT_POSTGREST_DB_POOL', 40)
 const pgrstPoolAcquire = parseEnvInt('SAAS_TENANT_POSTGREST_POOL_ACQUISITION_TIMEOUT', 15)
 const pgrstPoolIdle = parseEnvInt('SAAS_TENANT_POSTGREST_POOL_MAX_IDLETIME', 120)
+
+/** Docker DNS names only resolvable on the control-plane compose network. */
+const DOCKER_ONLY_MAIL_HOSTS = new Set([
+  'indobase-mail',
+  'indobase-smtp-relay',
+  'supabase-mail',
+  'mail',
+])
+
+function resolveTenantSmtpHost() {
+  const explicit = (process.env.SAAS_TENANT_SMTP_HOST || '').trim()
+  if (explicit) return explicit
+  const smtp = (process.env.SMTP_HOST || '').trim()
+  if (smtp && !DOCKER_ONLY_MAIL_HOSTS.has(smtp.toLowerCase())) return smtp
+  const controlPlane = (
+    process.env.SAAS_CONTROL_PLANE_HOST ||
+    process.env.SAAS_SMTP_PUBLIC_HOST ||
+    ''
+  ).trim()
+  if (controlPlane) return controlPlane
+  return smtp || 'indobase-mail'
+}
+
+function resolveTenantSmtpPort(smtpHost) {
+  const explicit = (
+    process.env.SAAS_TENANT_SMTP_PORT ||
+    process.env.SMTP_PORT ||
+    ''
+  ).trim()
+  if (explicit) return explicit
+  return DOCKER_ONLY_MAIL_HOSTS.has(smtpHost.toLowerCase()) ? '2500' : '587'
+}
+
+function resolveTenantMailerTemplatesBase() {
+  const explicit = (process.env.SAAS_TENANT_MAILER_TEMPLATES_BASE || '').trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+  const controlPlane = (
+    process.env.SAAS_CONTROL_PLANE_HOST ||
+    process.env.SAAS_SMTP_PUBLIC_HOST ||
+    ''
+  ).trim()
+  const port = (process.env.TEMPLATES_SERVER_PUBLISH_PORT || '8095').trim()
+  if (controlPlane) return `http://${controlPlane}:${port}`
+  return 'http://indobase-templates-server'
+}
+
+const tenantSmtpHost = resolveTenantSmtpHost()
+const tenantSmtpPort = resolveTenantSmtpPort(tenantSmtpHost)
+const tenantSmtpUser =
+  process.env.SAAS_TENANT_SMTP_USER ?? process.env.SMTP_USER ?? 'fake_mail_user'
+const tenantSmtpPass =
+  process.env.SAAS_TENANT_SMTP_PASS ?? process.env.SMTP_PASS ?? 'fake_mail_password'
+const tenantSmtpAdminEmail =
+  process.env.SAAS_TENANT_SMTP_ADMIN_EMAIL ||
+  process.env.SMTP_ADMIN_EMAIL ||
+  'auth@indobase.in'
+const tenantSmtpSenderName =
+  process.env.SAAS_TENANT_SMTP_SENDER_NAME ||
+  process.env.SMTP_SENDER_NAME ||
+  'Indobase'
+const tenantMailerTemplatesBase = resolveTenantMailerTemplatesBase()
 const pgrstMaxRows = parseEnvNonNegInt('SAAS_TENANT_POSTGREST_DB_MAX_ROWS', 0)
 
 function safeRef(ref) {
@@ -160,12 +221,26 @@ services:
       GOTRUE_DISABLE_SIGNUP: "false"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "false"
-      GOTRUE_SMTP_HOST: supabase-mail
-      GOTRUE_SMTP_PORT: 2500
-      GOTRUE_SMTP_USER: fake_mail_user
-      GOTRUE_SMTP_PASS: fake_mail_password
-      GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
-      GOTRUE_SMTP_SENDER_NAME: fake_sender
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: ${tenantMailerTemplatesBase}/tenant-confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: ${tenantMailerTemplatesBase}/tenant-recovery.html
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${tenantMailerTemplatesBase}/tenant-magic-link.html
+      GOTRUE_MAILER_TEMPLATES_INVITE: ${tenantMailerTemplatesBase}/tenant-invite.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: ${tenantMailerTemplatesBase}/tenant-email-change.html
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Confirm your Indobase account
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset your Indobase password
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Indobase sign-in link
+      GOTRUE_MAILER_SUBJECTS_INVITE: You are invited to Indobase
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Confirm your new Indobase email
+      GOTRUE_SMTP_HOST: ${tenantSmtpHost}
+      GOTRUE_SMTP_PORT: ${tenantSmtpPort}
+      GOTRUE_SMTP_USER: ${tenantSmtpUser}
+      GOTRUE_SMTP_PASS: ${tenantSmtpPass}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${tenantSmtpAdminEmail}
+      GOTRUE_SMTP_SENDER_NAME: ${tenantSmtpSenderName}
     ports:
       - "127.0.0.1:${ports.auth}:9999"
 

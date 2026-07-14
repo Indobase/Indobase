@@ -108,7 +108,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     body.captcha_token = hcaptchaToken
   }
 
-  const timeoutMs = parseInt(process.env.GOTRUE_SIGNUP_TIMEOUT_MS || '8000', 10)
+  // SMTP confirmation send often takes 4–12s; keep headroom so the proxy
+  // does not abort before GoTrue finishes delivering the message.
+  const timeoutMs = parseInt(process.env.GOTRUE_SIGNUP_TIMEOUT_MS || '30000', 10)
 
   async function fetchSignupWithTimeout(url: string): Promise<Response> {
     const controller = new AbortController()

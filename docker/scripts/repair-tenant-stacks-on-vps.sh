@@ -9,12 +9,36 @@ NET_NAME="${SAAS_DOCKER_NETWORK_NAME:-indobase-backend-bmqhan_default}"
 PG_ADMIN_USER="${PG_ADMIN_USER:-supabase_admin}"
 PG_ADMIN_PASSWORD="${PG_ADMIN_PASSWORD:-${POSTGRES_PASSWORD:-}}"
 AUX_PASS="${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}"
-SMTP_HOST="${SAAS_TENANT_SMTP_HOST:-${SMTP_HOST:-indobase-mail}}"
-SMTP_PORT="${SAAS_TENANT_SMTP_PORT:-${SMTP_PORT:-2500}}"
+# Dual-VPS: tenant auth cannot use Docker DNS names on the control-plane host.
+# Prefer SAAS_TENANT_SMTP_HOST / SAAS_CONTROL_PLANE_HOST (e.g. 103.190.92.249).
+_raw_smtp_host="${SAAS_TENANT_SMTP_HOST:-${SMTP_HOST:-}}"
+case "${_raw_smtp_host}" in
+  indobase-mail|indobase-smtp-relay|supabase-mail|mail|'')
+    SMTP_HOST="${SAAS_CONTROL_PLANE_HOST:-${SAAS_SMTP_PUBLIC_HOST:-${_raw_smtp_host:-indobase-mail}}}"
+    ;;
+  *)
+    SMTP_HOST="${_raw_smtp_host}"
+    ;;
+esac
+SMTP_PORT="${SAAS_TENANT_SMTP_PORT:-${SMTP_PORT:-587}}"
+if [[ "${SMTP_HOST}" == "indobase-mail" || "${SMTP_HOST}" == "supabase-mail" ]]; then
+  SMTP_PORT="${SAAS_TENANT_SMTP_PORT:-${SMTP_PORT:-2500}}"
+fi
 SMTP_USER="${SAAS_TENANT_SMTP_USER:-${SMTP_USER:-}}"
 SMTP_PASS="${SAAS_TENANT_SMTP_PASS:-${SMTP_PASS:-}}"
 SMTP_ADMIN_EMAIL="${SAAS_TENANT_SMTP_ADMIN_EMAIL:-${SMTP_ADMIN_EMAIL:-auth@indobase.in}}"
 SMTP_SENDER_NAME="${SAAS_TENANT_SMTP_SENDER_NAME:-${SMTP_SENDER_NAME:-Indobase}}"
+TEMPLATES_BASE="${SAAS_TENANT_MAILER_TEMPLATES_BASE:-}"
+if [[ -z "${TEMPLATES_BASE}" ]]; then
+  if [[ -n "${SAAS_CONTROL_PLANE_HOST:-${SAAS_SMTP_PUBLIC_HOST:-}}" ]]; then
+    _tpl_host="${SAAS_CONTROL_PLANE_HOST:-${SAAS_SMTP_PUBLIC_HOST}}"
+    TEMPLATES_BASE="http://${_tpl_host}:${TEMPLATES_SERVER_PUBLISH_PORT:-8095}"
+  else
+    TEMPLATES_BASE="http://indobase-templates-server"
+  fi
+fi
+TEMPLATES_BASE="${TEMPLATES_BASE%/}"
+export SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_ADMIN_EMAIL SMTP_SENDER_NAME TEMPLATES_BASE
 
 if [[ -z "$PG_ADMIN_PASSWORD" ]]; then
   echo "Set PG_ADMIN_PASSWORD or POSTGRES_PASSWORD (supabase_admin login)" >&2
@@ -101,11 +125,12 @@ import re, sys
 path, ref = sys.argv[1], sys.argv[2]
 import os
 smtp_host = os.environ.get("SMTP_HOST", "indobase-mail")
-smtp_port = os.environ.get("SMTP_PORT", "2500")
+smtp_port = os.environ.get("SMTP_PORT", "587")
 smtp_user = os.environ.get("SMTP_USER", "")
 smtp_pass = os.environ.get("SMTP_PASS", "")
 smtp_admin = os.environ.get("SMTP_ADMIN_EMAIL", "auth@indobase.in")
 smtp_sender = os.environ.get("SMTP_SENDER_NAME", "Indobase")
+templates_base = os.environ.get("TEMPLATES_BASE", "http://indobase-templates-server").rstrip("/")
 def yaml_quote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 domain = os.environ.get("SAAS_PUBLIC_DOMAIN", "indobase.in").strip().lstrip("https://").split("/")[0]
@@ -119,11 +144,11 @@ replacements = {
     r'GOTRUE_SMTP_ADMIN_EMAIL:.*': f'GOTRUE_SMTP_ADMIN_EMAIL: "{smtp_admin}"',
     r'GOTRUE_SMTP_SENDER_NAME:.*': f'GOTRUE_SMTP_SENDER_NAME: {smtp_sender}',
     r'GOTRUE_MAILER_AUTOCONFIRM:.*': 'GOTRUE_MAILER_AUTOCONFIRM: "false"',
-    r'GOTRUE_MAILER_TEMPLATES_CONFIRMATION:.*': 'GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html',
-    r'GOTRUE_MAILER_TEMPLATES_RECOVERY:.*': 'GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html',
-    r'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK:.*': 'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html',
-    r'GOTRUE_MAILER_TEMPLATES_INVITE:.*': 'GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html',
-    r'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE:.*': 'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html',
+    r'GOTRUE_MAILER_TEMPLATES_CONFIRMATION:.*': f'GOTRUE_MAILER_TEMPLATES_CONFIRMATION: {templates_base}/tenant-confirmation.html',
+    r'GOTRUE_MAILER_TEMPLATES_RECOVERY:.*': f'GOTRUE_MAILER_TEMPLATES_RECOVERY: {templates_base}/tenant-recovery.html',
+    r'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK:.*': f'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: {templates_base}/tenant-magic-link.html',
+    r'GOTRUE_MAILER_TEMPLATES_INVITE:.*': f'GOTRUE_MAILER_TEMPLATES_INVITE: {templates_base}/tenant-invite.html',
+    r'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE:.*': f'GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: {templates_base}/tenant-email-change.html',
 }
 for pat, val in replacements.items():
     text, n = re.subn(pat, val, text, count=1)
@@ -131,11 +156,11 @@ if "GOTRUE_MAILER_TEMPLATES_CONFIRMATION:" not in text and "GOTRUE_MAILER_URLPAT
     text = text.replace(
         'GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify',
         'GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify\n'
-        '      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://indobase-templates-server/tenant-confirmation.html\n'
-        '      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://indobase-templates-server/tenant-recovery.html\n'
-        '      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://indobase-templates-server/tenant-magic-link.html\n'
-        '      GOTRUE_MAILER_TEMPLATES_INVITE: http://indobase-templates-server/tenant-invite.html\n'
-        '      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://indobase-templates-server/tenant-email-change.html',
+        f'      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: {templates_base}/tenant-confirmation.html\n'
+        f'      GOTRUE_MAILER_TEMPLATES_RECOVERY: {templates_base}/tenant-recovery.html\n'
+        f'      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: {templates_base}/tenant-magic-link.html\n'
+        f'      GOTRUE_MAILER_TEMPLATES_INVITE: {templates_base}/tenant-invite.html\n'
+        f'      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: {templates_base}/tenant-email-change.html',
         1,
     )
 if "GOTRUE_MAILER_EXTERNAL_HOSTS:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" in text:
@@ -146,7 +171,7 @@ if "GOTRUE_MAILER_EXTERNAL_HOSTS:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" 
     )
 open(path, "w").write(text)
 PY
-    echo "  patched tenant-auth SMTP -> ${SMTP_HOST}:${SMTP_PORT}"
+    echo "  patched tenant-auth SMTP -> ${SMTP_HOST}:${SMTP_PORT} templates -> ${TEMPLATES_BASE}"
   fi
 
   for role in "$tenant_role"; do
