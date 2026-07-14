@@ -4,9 +4,11 @@ This document describes the **single Postgres database + strict RLS** tenancy mo
 
 ## Summary
 - **One Postgres instance**
-- **One shared database**
-- Tenant isolation is enforced by **Row Level Security** using a tenant identifier (`project_ref`).
-- Every data-plane request must carry tenant context:
+- **Dedicated `tenantdb_<ref>` per project is the product default** (safe isolation including GoTrue + Storage).
+- The legacy **single shared database + RLS** model (Model A) is **fail closed**:
+  - Requires `SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false` **and** `SAAS_ALLOW_SHARED_DATABASE_TENANCY=true`.
+  - Studio refuses silent fallbacks to the control-plane DB without that opt-in.
+- If you deliberately run Model A, every data-plane request must carry tenant context:
   - JWT claim `project_ref` (recommended; your per-project anon/service keys already include it), or
   - request header `x-project-ref` (gateway-injected or client-provided)
 
@@ -15,8 +17,9 @@ This document describes the **single Postgres database + strict RLS** tenancy mo
   - `docker/volumes/db/tenant-rls.sql`
   - `app.project_ref()`: resolves tenant context
   - `app.set_project_ref()`: sets `app.project_ref` and **throws** if missing
-- PostgREST is wired to run the hook on every request:
-  - `docker/docker-compose.yml` → `PGRST_DB_PRE_REQUEST: app.set_project_ref`
+- Optional PostgREST hook (Model A only — breaks CONTROL_REST Studio login if enabled without care):
+  - `docker/docker-compose.yml` → `PGRST_DB_PRE_REQUEST=app.set_project_ref`
+  - Applied via `db-migrate` / init mount of `tenant-rls.sql`
 
 ## What you must do to complete the model (permanent fix)
 To guarantee isolation, **every tenant-owned table** must:

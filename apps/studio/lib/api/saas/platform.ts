@@ -10,6 +10,9 @@ import type { PlanId } from 'data/subscriptions/types'
 
 import { resolvePublicDomainForTenantStack, resolveSaaSTenantRestUrls } from './tenant-public-urls'
 import {
+  assertProjectDatabaseIsolationAllowed,
+  isDedicatedDatabaseOnProjectCreateEnabled,
+  isSharedControlPlaneDatabaseFallbackAllowed,
   normalizeDataPlaneMode,
   resolveDataPlaneModeForPlan,
   resolveSharedGatewayPublicApiUrl,
@@ -415,7 +418,7 @@ async function ensureSaasTablesOnce() {
         name text not null,
         cloud_provider text not null default 'localhost',
         region text not null default 'local',
-        status text not null default 'ACTIVE_HEALTHY',
+        status text not null default 'PROVISIONING',
         inserted_at timestamptz not null default now(),
         is_branch boolean not null default false,
         preview_branch_refs text[] not null default '{}',
@@ -1855,7 +1858,8 @@ export async function listProjects({
 }
 
 /**
- * Promote PROVISIONING → ACTIVE_HEALTHY only when the tenant data plane is reachable.
+ * Promote PROVISIONING → ACTIVE_HEALTHY only when the tenant has a dedicated DB
+ * (unless shared Model A is explicitly allowed) and the data plane is reachable.
  */
 async function promoteProjectToActiveHealthy({
   projectRef,
@@ -1866,6 +1870,30 @@ async function promoteProjectToActiveHealthy({
   gotrueId: string
   portBase?: number | null
 }): Promise<boolean> {
+  if (!isSharedControlPlaneDatabaseFallbackAllowed()) {
+    const dedicated = await executeQuery<{ ok: boolean }>({
+      query: `
+        select (
+          coalesce(trim(p.connection_string_enc), '') <> ''
+          or coalesce(trim(p.connection_string), '') <> ''
+        ) as ok
+        from saas.projects p
+        where p.ref = $1
+        limit 1
+      `,
+      parameters: [projectRef],
+      actorId: gotrueId,
+    })
+    if (dedicated.error) throw dedicated.error
+    if (!dedicated.data?.[0]?.ok) {
+      console.warn(
+        '[saas] refusing ACTIVE_HEALTHY for %s: no dedicated tenant database (fail closed)',
+        projectRef
+      )
+      return false
+    }
+  }
+
   const { isDataPlaneProvisionerConfigured } = await import('./tenant-data-plane-provision')
   if (isDataPlaneProvisionerConfigured()) {
     const { isTenantDataPlaneReachable } = await import('./tenant-data-plane-health')
@@ -1908,7 +1936,10 @@ export async function finalizeDedicatedProjectProvisioning({
   deleteOnFailure: boolean
   userDbPass?: string
 }): Promise<void> {
-  const dedicatedOnCreate = process.env.SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE !== 'false'
+  const dedicatedOnCreate = isDedicatedDatabaseOnProjectCreateEnabled()
+
+  // Fail closed: never place an untrusted tenant on a shared database without explicit opt-in.
+  assertProjectDatabaseIsolationAllowed({ dedicatedOnCreate })
 
   if (!dedicatedOnCreate) {
     const saved = await executeQuery({
@@ -1955,7 +1986,9 @@ export async function finalizeDedicatedProjectProvisioning({
   const port = parseInt(process.env.POSTGRES_PORT || '5432', 10)
   if (!host || !adminPassword) {
     throw new Error(
-      'Dedicated project databases require POSTGRES_HOST and POSTGRES_PASSWORD on the Studio server. Set SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false to use legacy shared-database (Model A) mode.'
+      'Dedicated project databases require POSTGRES_HOST and POSTGRES_PASSWORD on the Studio server. ' +
+        'Shared-database (Model A) mode is unsupported for untrusted tenants; it requires both ' +
+        'SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=false and SAAS_ALLOW_SHARED_DATABASE_TENANCY=true.'
     )
   }
 
@@ -2470,9 +2503,13 @@ export async function getProject({ claims, ref }: { claims: Claims; ref: string 
     if (migrate.error) throw migrate.error
   }
 
-  // Prefer per-project database URI (encrypted). Fall back to shared POSTGRES_* when unset (legacy Model A).
+  // Prefer per-project database URI (encrypted). Shared POSTGRES_* only when Model A is
+  // explicitly allowed — never silently bind Studio SQL/Auth to the control-plane DB.
   const sharedDbUrl =
-    process.env.POSTGRES_PASSWORD && process.env.POSTGRES_HOST && process.env.POSTGRES_DB
+    isSharedControlPlaneDatabaseFallbackAllowed() &&
+    process.env.POSTGRES_PASSWORD &&
+    process.env.POSTGRES_HOST &&
+    process.env.POSTGRES_DB
       ? `postgres://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD}@${
           process.env.POSTGRES_HOST
         }:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`

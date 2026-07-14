@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { paths } from 'api-types'
 import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
+import { isSharedControlPlaneDatabaseFallbackAllowed } from 'lib/api/saas/data-plane-mode'
 import { getGotrueUserId } from 'lib/api/saas/platform'
 import { executeQuery } from 'lib/api/saas/query'
 import { decryptString, encryptedConnectionForPgMeta } from 'lib/api/saas/util'
@@ -59,7 +60,10 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse, claims?: Jwt
     const hasDedicated = Boolean(tenantDbUrl?.trim())
     const { restUrl } = resolveSaaSTenantRestUrls(ref, hasDedicated)
     const sharedDbUrl =
-      process.env.POSTGRES_PASSWORD && process.env.POSTGRES_HOST && process.env.POSTGRES_DB
+      isSharedControlPlaneDatabaseFallbackAllowed() &&
+      process.env.POSTGRES_PASSWORD &&
+      process.env.POSTGRES_HOST &&
+      process.env.POSTGRES_DB
         ? `postgres://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD}@${
             process.env.POSTGRES_HOST
           }:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`

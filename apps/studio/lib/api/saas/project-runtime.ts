@@ -10,6 +10,8 @@ type ProjectRuntime = {
 /** Studio can run pg-meta / SQL against this project (dedicated DB or fully healthy). */
 export function isProjectDatabaseReady(project?: ProjectRuntime): boolean {
   if (!project) return false
+  // SaaS: never treat a project as SQL-ready on shared control-plane alone.
+  if (IS_SAAS && project.hasDedicatedDatabase === false) return false
   if (project.status === PROJECT_STATUS.ACTIVE_HEALTHY) return true
   if (IS_SAAS && Boolean(project.connectionString?.trim())) return true
   return false

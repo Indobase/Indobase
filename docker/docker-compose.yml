@@ -51,8 +51,9 @@ services:
       PORT: ${STUDIO_PORT:-8080}
 
       # Default: each new project gets its own Postgres database + role on this cluster (see lib/api/saas/provision-tenant-db.ts).
-      # Set to "false" only for legacy single-DB + RLS (Model A) where all projects share POSTGRES_DB.
+      # Shared Model A is refuse-by-default; requires SAAS_ALLOW_SHARED_DATABASE_TENANCY=true as well.
       SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE: ${SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE:-true}
+      SAAS_ALLOW_SHARED_DATABASE_TENANCY: ${SAAS_ALLOW_SHARED_DATABASE_TENANCY:-false}
       # Optional: superuser/createdb user for CREATE DATABASE (defaults to POSTGRES_USER_READ_WRITE or postgres).
       # SAAS_TENANT_PROVISION_ADMIN_USER=postgres
 
@@ -382,6 +383,10 @@ services:
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+      # Defense-in-depth for Model A (shared DB) against this PostgREST: set to app.set_project_ref
+      # after applying volumes/db/tenant-rls.sql. Leave empty for dedicated-DB product (default):
+      # Studio login uses CONTROL_REST → platform rest without project_ref JWT claim.
+      PGRST_DB_PRE_REQUEST: ${PGRST_DB_PRE_REQUEST:-}
     command:
       [
         "postgrest"
@@ -629,6 +634,8 @@ services:
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       # Changes required for Pooler support
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      # Shared-DB Model A foundation (app.project_ref / app.set_project_ref). Safe no-op for dedicated DBs.
+      - ./volumes/db/tenant-rls.sql:/docker-entrypoint-initdb.d/init-scripts/96-tenant-rls.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -682,11 +689,12 @@ services:
     volumes:
       - ./volumes/db/saas-usage-metering.sql:/migrations/saas-usage-metering.sql:ro,z
       - ./volumes/db/saas-features.sql:/migrations/saas-features.sql:ro,z
+      - ./volumes/db/tenant-rls.sql:/migrations/tenant-rls.sql:ro,z
     command:
       [
         "/bin/sh",
         "-lc",
-        "psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-features.sql"
+        "psql -v ON_ERROR_STOP=1 -f /migrations/saas-usage-metering.sql && psql -v ON_ERROR_STOP=1 -f /migrations/saas-features.sql && psql -v ON_ERROR_STOP=1 -f /migrations/tenant-rls.sql"
       ]
 
   vector:

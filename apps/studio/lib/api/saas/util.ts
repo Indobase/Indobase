@@ -10,6 +10,7 @@ import {
   POSTGRES_USER_READ_WRITE,
   POSTGRES_USER_READ_ONLY,
 } from './constants'
+import { isSharedControlPlaneDatabaseFallbackAllowed } from './data-plane-mode'
 
 /** No-op: hosted Supabase Platform mode is removed; Studio always uses the Indobase SaaS control plane. */
 export function assertSaaSBackend() {}
@@ -48,7 +49,8 @@ export function getConnectionString({ readOnly }: { readOnly: boolean }) {
 /**
  * Returns the AES value for pg-meta `x-connection-encrypted` when browsing a project.
  * For one-database-per-tenant, pass the plaintext URI from `saas.projects.connection_string`.
- * When absent in SaaS, callers typically fall back to shared POSTGRES_* (legacy Model A projects).
+ * Fail closed in SaaS: never fall back to the shared control-plane DB unless Model A is
+ * explicitly allowed (`SAAS_ALLOW_SHARED_DATABASE_TENANCY=true`).
  */
 export function encryptedConnectionForPgMeta(tenantDatabaseUrl: string | null | undefined): string {
   const trimmed = tenantDatabaseUrl?.trim()
@@ -56,6 +58,9 @@ export function encryptedConnectionForPgMeta(tenantDatabaseUrl: string | null | 
     return encryptString(trimmed)
   }
   if (IS_SAAS) {
+    if (!isSharedControlPlaneDatabaseFallbackAllowed()) {
+      return ''
+    }
     return encryptString(getConnectionString({ readOnly: false }))
   }
   return encryptString(getConnectionString({ readOnly: true }))

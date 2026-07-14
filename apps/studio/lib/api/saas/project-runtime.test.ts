@@ -9,12 +9,23 @@ describe('project-runtime', () => {
     expect(isProjectDatabaseReady({ status: 'ACTIVE_HEALTHY' })).toBe(true)
   })
 
+  it('refuses SQL for SaaS projects stuck on the shared control-plane DB', () => {
+    if (!IS_SAAS) return
+    expect(
+      isProjectDatabaseReady({
+        status: 'ACTIVE_HEALTHY',
+        hasDedicatedDatabase: false,
+      })
+    ).toBe(false)
+  })
+
   it('allows SQL for SaaS projects with a dedicated connection while COMING_UP', () => {
     if (!IS_SAAS) return
     expect(
       isProjectDatabaseReady({
         status: 'COMING_UP',
         connectionString: 'enc-connection',
+        hasDedicatedDatabase: true,
       })
     ).toBe(true)
   })

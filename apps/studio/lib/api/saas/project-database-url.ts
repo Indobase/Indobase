@@ -5,6 +5,7 @@ import {
   POSTGRES_PORT,
   POSTGRES_USER,
 } from './constants'
+import { isSharedControlPlaneDatabaseFallbackAllowed } from './data-plane-mode'
 import { executeQuery } from './query'
 import { decryptString } from './util'
 
@@ -17,6 +18,11 @@ function sharedControlPlaneDatabaseUrl(): string | null {
   return `postgresql://${user}:${pass}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}`
 }
 
+/**
+ * Resolve the Postgres URI for a tenant project.
+ * Fail closed: never silently use the shared control-plane database unless the operator has
+ * explicitly opted into Model A (`SAAS_ALLOW_SHARED_DATABASE_TENANCY=true`).
+ */
 export async function resolveProjectDatabaseUrl(projectRef: string): Promise<string | null> {
   const row = await executeQuery<{
     connection_string_enc: string | null
@@ -39,6 +45,10 @@ export async function resolveProjectDatabaseUrl(projectRef: string): Promise<str
   const dedicated = enc ? decryptString(enc) : p.connection_string
   if (dedicated?.trim()) {
     return dedicated.trim().replace(/^postgres:\/\//, 'postgresql://')
+  }
+
+  if (!isSharedControlPlaneDatabaseFallbackAllowed()) {
+    return null
   }
 
   const mode = (p.data_plane_mode ?? 'model_a').trim()
@@ -71,8 +81,14 @@ export async function resolveLogflareProjectRef(projectRef: string): Promise<str
   const hasDedicated = Boolean(
     (p.connection_string_enc ?? '').trim() || (p.connection_string ?? '').trim()
   )
+  if (hasDedicated) return projectRef
+
+  // Only legacy shared-DB projects share control-plane Logflare tags.
+  if (!isSharedControlPlaneDatabaseFallbackAllowed()) {
+    return projectRef
+  }
   const mode = (p.data_plane_mode ?? 'model_a').trim()
-  if (!hasDedicated && (mode === 'model_a' || mode === 'shared_gateway')) {
+  if (mode === 'model_a' || mode === 'shared_gateway') {
     return 'default'
   }
   return projectRef

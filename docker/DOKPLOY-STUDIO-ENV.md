@@ -88,9 +88,11 @@ SUPABASE_SERVICE_KEY=your-service-role-jwt
 GOTRUE_URL=http://kong:8000/auth/v1
 KONG_INTERNAL_GOTRUE_URL=http://kong:8000/auth/v1
 
-# SaaS
+# SaaS — dedicated tenant DB required (secure by default)
 NEXT_PUBLIC_INDOBASE_SAAS=true
 SAAS_DEDICATED_DATABASE_ON_PROJECT_CREATE=true
+# Never set to true in production with untrusted tenants (cross-tenant auth/storage leak).
+SAAS_ALLOW_SHARED_DATABASE_TENANCY=false
 
 # Logs (self-hosted Logflare in compose — do NOT use logflare.app cloud)
 # Run on VPS after tokens exist: bash docker/scripts/sync-logflare-env-to-studio.sh
