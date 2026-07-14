@@ -43,8 +43,13 @@ export default function LlmErrorAlert({ alert, clearAlert }: Props) {
         }
 
         return 'AI is temporarily unavailable. Please try again in a moment.';
+      case 'network':
+        return (
+          description ||
+          'The builder connection was interrupted. Retry your message — this is usually temporary.'
+        );
       default:
-        return 'An error occurred while processing your request.';
+        return description || 'An error occurred while processing your request.';
     }
   };
 

@@ -30,6 +30,11 @@ const RATE_LIMITS = {
  * Rate limiting middleware
  */
 export function checkRateLimit(request: Request, endpoint: string): { allowed: boolean; resetTime?: number } {
+  // Health probes must never trip rate limits (connection status polls them).
+  if (endpoint === '/api/health' || endpoint.startsWith('/api/health/')) {
+    return { allowed: true };
+  }
+
   const clientIP = getClientIP(request);
   const key = `${clientIP}:${endpoint}`;
 

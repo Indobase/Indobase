@@ -74,6 +74,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     },
   });
 
+  /** Keep proxies/load balancers from closing idle SSE while the model/tools work. */
+  const STREAM_KEEPALIVE_MS = 20_000;
+
   const body = await request.json<{
       messages: Messages;
       files: any;
@@ -158,6 +161,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
+    let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
 
     const dataStream = createDataStream({
       async execute(dataStream) {
@@ -495,14 +499,32 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           return 'Custom error: API rate limit exceeded. Please wait a moment before trying again.';
         }
 
-        if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
-          return 'Custom error: Network error. Please check your internet connection and try again.';
+        if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('ECONNRESET')) {
+          return 'Custom error: The builder stream was interrupted. This is often a temporary proxy timeout — please retry. If it keeps happening, refresh the page.';
         }
 
         return `Custom error: ${errorMessage}`;
       },
     }).pipeThrough(
       new TransformStream({
+        start(controller) {
+          const ping = () => {
+            try {
+              controller.enqueue(
+                encoder.encode(`2:${JSON.stringify([{ type: 'keepalive', ts: Date.now() }])}\n`),
+              );
+            } catch {
+              if (keepaliveTimer) {
+                clearInterval(keepaliveTimer);
+                keepaliveTimer = null;
+              }
+            }
+          };
+
+          // Immediate ping so intermediaries see activity before the first model token.
+          ping();
+          keepaliveTimer = setInterval(ping, STREAM_KEEPALIVE_MS);
+        },
         transform: (chunk, controller) => {
           if (!lastChunk) {
             lastChunk = ' ';
@@ -536,6 +558,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           const str = typeof transformedChunk === 'string' ? transformedChunk : JSON.stringify(transformedChunk);
           controller.enqueue(encoder.encode(str));
         },
+        flush() {
+          if (keepaliveTimer) {
+            clearInterval(keepaliveTimer);
+            keepaliveTimer = null;
+          }
+        },
       }),
     );
 
@@ -544,8 +572,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
         Connection: 'keep-alive',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Text-Encoding': 'chunked',
+        'X-Accel-Buffering': 'no',
       },
     });
   } catch (error: any) {

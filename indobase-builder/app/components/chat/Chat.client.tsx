@@ -46,6 +46,7 @@ import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
   getBuilderRequestInit,
+  getStoredBuilderMcpToken,
   prepareStudioLinkedChat,
   redirectToStudioBuilderConnect,
 } from '~/lib/indobase/builder-auth.client';
@@ -571,10 +572,12 @@ export const ChatImpl = memo(
             (isIndobaseStudioManagedConnection(indobaseConn) ||
               errorInfo.message.toLowerCase().includes('unauthorized'))
           ) {
-            void ensureBuilderSession().then((restored) => {
-              if (!restored) {
+            void ensureBuilderSession({ retries: 2 }).then((restored) => {
+              if (!restored && !getStoredBuilderMcpToken()) {
                 toast.error('Builder session expired. Reconnecting through Studio…');
                 redirectToStudioBuilderConnect();
+              } else if (!restored) {
+                toast.error('Could not refresh the builder session. Check your connection and try again.');
               }
             });
             return;
@@ -597,6 +600,13 @@ export const ChatImpl = memo(
         } else if (errorInfo.statusCode >= 500) {
           errorType = 'network';
           title = 'Server Error';
+        } else if (
+          /failed to fetch|networkerror|network error|stream was interrupted|load failed|econnreset/i.test(
+            errorInfo.message,
+          )
+        ) {
+          errorType = 'network';
+          title = 'Connection Interrupted';
         }
 
         logStore.logError(`${context} request failed`, error, {

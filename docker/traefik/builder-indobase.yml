@@ -2,8 +2,18 @@
 # Copy to /etc/dokploy/traefik/dynamic/builder-indobase.yml on the VPS.
 # Requires DNS: builder.indobase.in -> VPS IP (187.77.30.165).
 # Backend Swarm service: indobase-builder (port 5173).
+#
+# Long-lived SSE (/api/chat) needs generous forwarding timeouts + flush so
+# idle model/tool gaps are not closed as dead connections.
 
 http:
+  serversTransports:
+    indobase-builder-long:
+      forwardingTimeouts:
+        dialTimeout: 30s
+        # 0 = wait indefinitely for the first response byte (SSE chat streams).
+        responseHeaderTimeout: 0s
+        idleConnTimeout: 3600s
   routers:
     indobase-builder-http:
       rule: Host(`builder.indobase.in`)
@@ -22,6 +32,9 @@ http:
   services:
     indobase-builder-svc:
       loadBalancer:
+        serversTransport: indobase-builder-long
+        responseForwarding:
+          flushInterval: 1ms
         servers:
           - url: http://indobase-builder:5173
         passHostHeader: true

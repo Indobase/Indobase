@@ -20,6 +20,9 @@ STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
 
 echo "==> Deploy Builder image ${IMAGE} to ${SSH_HOST}…"
 
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-indobase.yml" < "${REPO_ROOT}/docker/traefik/builder-indobase.yml"
+echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-indobase.yml"
+
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
 set -euo pipefail
 SERVICE_NAME="${SERVICE_NAME}"

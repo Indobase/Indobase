@@ -4,60 +4,62 @@ export interface ConnectionStatus {
   lastChecked: string;
 }
 
-export const checkConnection = async (): Promise<ConnectionStatus> => {
+const PROBE_TIMEOUT_MS = 5_000;
+
+async function probeEndpoint(endpoint: string): Promise<{ ok: boolean; latency: number }> {
+  const start = performance.now();
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+
   try {
-    // Check if we have network connectivity
-    const online = navigator.onLine;
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      cache: 'no-cache',
+      signal: controller.signal,
+    });
+    const latency = Math.round(performance.now() - start);
 
-    if (!online) {
-      return {
-        connected: false,
-        latency: 0,
-        lastChecked: new Date().toISOString(),
-      };
-    }
+    return { ok: response.ok || response.status === 204 || response.status === 304, latency };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
-    // Try multiple endpoints in case one fails
-    const endpoints = [
-      '/api/health',
-      '/', // Fallback to root route
-      '/favicon.ico', // Another common fallback
-    ];
+export const checkConnection = async (): Promise<ConnectionStatus> => {
+  const lastChecked = new Date().toISOString();
 
-    let latency = 0;
-    let connected = false;
+  // Prefer real reachability probes. navigator.onLine alone is unreliable
+  // (sleep/wake, VPN flaps) and previously caused false "Connection lost" banners.
+  const endpoints = ['/api/health', '/', '/favicon.ico'];
 
-    for (const endpoint of endpoints) {
-      try {
-        const start = performance.now();
-        const response = await fetch(endpoint, {
-          method: 'HEAD',
-          cache: 'no-cache',
-        });
-        const end = performance.now();
+  for (const endpoint of endpoints) {
+    try {
+      const result = await probeEndpoint(endpoint);
 
-        if (response.ok) {
-          latency = Math.round(end - start);
-          connected = true;
-          break;
-        }
-      } catch (endpointError) {
-        console.debug(`Failed to connect to ${endpoint}:`, endpointError);
-        continue;
+      if (result.ok) {
+        return {
+          connected: true,
+          latency: result.latency,
+          lastChecked,
+        };
       }
+    } catch (endpointError) {
+      console.debug(`Failed to connect to ${endpoint}:`, endpointError);
     }
+  }
 
-    return {
-      connected,
-      latency,
-      lastChecked: new Date().toISOString(),
-    };
-  } catch (error) {
-    console.error('Connection check failed:', error);
+  // Soft offline hint only after probes fail.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return {
       connected: false,
       latency: 0,
-      lastChecked: new Date().toISOString(),
+      lastChecked,
     };
   }
+
+  return {
+    connected: false,
+    latency: 0,
+    lastChecked,
+  };
 };

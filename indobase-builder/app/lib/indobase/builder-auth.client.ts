@@ -191,35 +191,57 @@ export function clearStaleBuilderSession() {
   });
 }
 
-export async function ensureBuilderSession(): Promise<boolean> {
-  try {
-    const storedToken = getStoredBuilderMcpToken();
-    const response = await fetch(
-      '/api/indobase/session',
-      getBuilderRequestInit({
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(storedToken ? { mcpToken: storedToken } : {}),
-      }),
-    );
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-    const data = (await response.json().catch(() => ({}))) as SessionResponse;
+export async function ensureBuilderSession(options?: { retries?: number }): Promise<boolean> {
+  const retries = Math.max(0, options?.retries ?? 2);
 
-    if (response.ok && data.success) {
-      applySessionToStoredConnection(data);
-      return true;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const storedToken = getStoredBuilderMcpToken();
+      const response = await fetch(
+        '/api/indobase/session',
+        getBuilderRequestInit({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(storedToken ? { mcpToken: storedToken } : {}),
+        }),
+      );
+
+      const data = (await response.json().catch(() => ({}))) as SessionResponse;
+
+      if (response.ok && data.success) {
+        applySessionToStoredConnection(data);
+        return true;
+      }
+
+      if (response.status === 401) {
+        clearStaleBuilderSession();
+        return false;
+      }
+
+      // Transient server/network failure — retry before giving up.
+      if (attempt < retries) {
+        await sleep(400 * (attempt + 1));
+        continue;
+      }
+
+      return false;
+    } catch {
+      if (attempt < retries) {
+        await sleep(400 * (attempt + 1));
+        continue;
+      }
+
+      return false;
     }
-
-    if (response.status === 401) {
-      clearStaleBuilderSession();
-    }
-
-    return false;
-  } catch {
-    return false;
   }
+
+  return false;
 }
 
 export async function restoreBuilderSessionOnLoad(): Promise<boolean> {
@@ -333,15 +355,22 @@ export async function prepareStudioLinkedChat(): Promise<boolean> {
     return true;
   }
 
-  const restored = await ensureBuilderSession();
+  const restored = await ensureBuilderSession({ retries: 2 });
 
   if (!restored) {
-    return false;
+    // Network blips must not force a Studio reconnect while a token is still present.
+    if (!getStoredBuilderMcpToken()) {
+      return false;
+    }
   }
 
-  const { useMCPStore } = await import('~/lib/stores/mcp');
-  await useMCPStore.getState().initialize();
-  await useMCPStore.getState().syncWithIndobaseConnection();
+  try {
+    const { useMCPStore } = await import('~/lib/stores/mcp');
+    await useMCPStore.getState().initialize();
+    await useMCPStore.getState().syncWithIndobaseConnection();
+  } catch {
+    // Chat can still proceed; MCP tools may recover on the next turn.
+  }
 
   return true;
 }
