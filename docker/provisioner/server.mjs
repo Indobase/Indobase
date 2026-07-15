@@ -542,6 +542,7 @@ const server = http.createServer(async (req, res) => {
       '/repair-traefik',
       '/repair-stack',
       '/repair-fleet',
+      '/stack-health',
       '/publish-site',
       '/ensure-site-hosting',
       '/ensure-site-fleet',
@@ -654,6 +655,20 @@ const server = http.createServer(async (req, res) => {
     if (req.url === '/repair-stack') {
       const result = await repairTenantStackRef(ref, body?.reason || 'repair_stack')
       return json(res, result.ok ? 200 : 500, result)
+    }
+
+    if (req.url === '/stack-health') {
+      const tenantOutDir = path.join(tenantsDir, ref)
+      const composePath = path.join(tenantOutDir, 'docker-compose.yml')
+      if (!fs.existsSync(composePath)) {
+        return json(res, 404, { ok: false, project_ref: ref, reason: 'compose_missing' })
+      }
+      const health = await verifyTenantStackHealth(ref)
+      return json(res, health.ok ? 200 : 503, {
+        ok: health.ok,
+        project_ref: ref,
+        health,
+      })
     }
 
     if (req.url === '/stop') {
