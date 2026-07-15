@@ -82,6 +82,24 @@ export const SignUpForm = () => {
       setIsSubmitted(true)
     },
     onError: (error) => {
+      const msg = error.message?.toLowerCase() ?? ''
+      // Timeouts / soft pending responses mean confirmation mail may already be sent.
+      // Prompting another signup creates duplicate confirmation emails.
+      if (
+        msg.includes('pending_confirmation') ||
+        msg.includes('check your inbox') ||
+        msg.includes('do not sign up again') ||
+        msg.includes('timed out') ||
+        msg.includes('timeout') ||
+        msg.includes('processing this request')
+      ) {
+        toast.message('Check your email to confirm', {
+          description:
+            'A confirmation link is usually already on the way. Wait a minute and check spam before trying again.',
+        })
+        setIsSubmitted(true)
+        return
+      }
       setCaptchaToken(null)
       captchaRef.current?.resetCaptcha()
       toast.error(`Failed to sign up: ${error.message}`)

@@ -3272,6 +3272,8 @@ ${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.go
       GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: ${mailer.autoConfirm}
       GOTRUE_MAILER_EXTERNAL_HOSTS: ${mailer.externalHosts}
+      GOTRUE_API_MAX_REQUEST_DURATION: "30s"
+      GOTRUE_SMTP_MAX_FREQUENCY: "60s"
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify

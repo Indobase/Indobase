@@ -1,12 +1,18 @@
-# Dokploy: auto-deploy Studio image from GitHub Actions
+# Dokploy: deploy Studio image from GitHub Actions (manual only)
 
-## Automatic deploy after every change
+## Deploy is never automatic
 
-**Deploy only runs when code reaches GitHub:** merge or push to **`main`** (or **`master`**). That triggers [`docker-publish.yml`](../.github/workflows/docker-publish.yml): build → push image → Dokploy deploy (API / webhook) → optional prod smoke check.
+Push / merge to **`main`** (or **`master`**) only **builds and pushes** Docker images via [`docker-publish.yml`](../.github/workflows/docker-publish.yml). **Dokploy / production is not rolled out** until someone explicitly asks for it.
 
-Local edits are **not** deployed until they are **committed and pushed** to `main`.
+To deploy:
 
-To actually roll out new containers on each push, configure **one** of these in GitHub → **Settings → Secrets and variables → Actions**:
+1. GitHub → **Actions** → **Build and Push Docker Image** → **Run workflow**
+2. Enable the **Deploy built images to Dokploy / production** checkbox
+3. Run on the branch that already has the image you want (usually `main`)
+
+Local edits are **not** on Docker Hub until committed and pushed; they are **not** live in prod until that manual deploy (or a Dokploy UI Deploy).
+
+To enable CI-triggered Dokploy when you *do* run a manual deploy, configure **one** of these in GitHub → **Settings → Secrets and variables → Actions**:
 
 | Goal | Secrets |
 |------|---------|
@@ -15,13 +21,13 @@ To actually roll out new containers on each push, configure **one** of these in 
 | **Full stack as Dokploy Compose** | Same plus `DOKPLOY_COMPOSE_ID` (optional **instead of** relying on Git webhook for Compose) |
 | **Git / generic deploy webhook** | `DOKPLOY_DEPLOY_WEBHOOK` |
 
-Without these, CI still builds and pushes Docker Hub; Dokploy steps are skipped or webhook-only (see warnings in the Actions log).
+Without these, a manual deploy still builds/pushes to Docker Hub; Dokploy steps are skipped or webhook-only (see warnings in the Actions log).
 
 ---
 
-CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` on every push to `main`, then calls your Dokploy deploy webhook and polls `https://studio.indobase.in/api/health/live` until `version` matches the commit. Full readiness (postgres-meta, GoTrue) is `GET /api/health` (may return 503 while env/network is wrong).
+On every push to `main`, CI pushes `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<commit-sha>` only. When you run the workflow with **deploy** enabled, it then calls your Dokploy deploy webhook/API and polls `https://studio.indobase.in/api/health/live` until `version` matches the commit. Full readiness (postgres-meta, GoTrue) is `GET /api/health` (may return 503 while env/network is wrong).
 
-If the GitHub Actions **deploy** job shows warnings, the image is on Docker Hub but **Dokploy did not run a new container with that image**. The **build** job still passes; fix Dokploy and redeploy manually.
+If the GitHub Actions **deploy** job shows warnings, the image is on Docker Hub but **Dokploy did not run a new container with that image**. Fix Dokploy and redeploy manually (or re-run the workflow with deploy enabled).
 
 ### `{"message":"Branch Not Match"}` (HTTP 301) from the deploy webhook
 
@@ -68,7 +74,7 @@ See **[DOKPLOY-STUDIO-ENV.md](./DOKPLOY-STUDIO-ENV.md)** for a full studio env b
 2. **Deploy webhook**  
    - Studio app → **Deployments** → copy **Deploy Webhook** URL  
    - GitHub repo → **Settings → Secrets → Actions** → `DOKPLOY_DEPLOY_WEBHOOK` = that URL  
-   - After each push to `main`, open Dokploy **Deployments** and confirm a new deploy started (not only "success" in GitHub).
+   - After a **manual** workflow run with deploy enabled, open Dokploy **Deployments** and confirm a new deploy started (not only "success" in GitHub).
 
 3. **Pull fresh image on deploy**  
    - Compose: `pull_policy: always` on the `studio` service (see `docker/docker-compose.yml`).  

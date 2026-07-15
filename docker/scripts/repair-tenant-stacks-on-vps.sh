@@ -144,6 +144,8 @@ replacements = {
     r'GOTRUE_SMTP_ADMIN_EMAIL:.*': f'GOTRUE_SMTP_ADMIN_EMAIL: "{smtp_admin}"',
     r'GOTRUE_SMTP_SENDER_NAME:.*': f'GOTRUE_SMTP_SENDER_NAME: {smtp_sender}',
     r'GOTRUE_MAILER_AUTOCONFIRM:.*': 'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+    r'GOTRUE_API_MAX_REQUEST_DURATION:.*': 'GOTRUE_API_MAX_REQUEST_DURATION: "30s"',
+    r'GOTRUE_SMTP_MAX_FREQUENCY:.*': 'GOTRUE_SMTP_MAX_FREQUENCY: "60s"',
     r'GOTRUE_MAILER_TEMPLATES_CONFIRMATION:.*': f'GOTRUE_MAILER_TEMPLATES_CONFIRMATION: {templates_base}/tenant-confirmation.html',
     r'GOTRUE_MAILER_TEMPLATES_RECOVERY:.*': f'GOTRUE_MAILER_TEMPLATES_RECOVERY: {templates_base}/tenant-recovery.html',
     r'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK:.*': f'GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: {templates_base}/tenant-magic-link.html',
@@ -167,6 +169,12 @@ if "GOTRUE_MAILER_EXTERNAL_HOSTS:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" 
     text = text.replace(
         'GOTRUE_MAILER_AUTOCONFIRM: "false"',
         f'GOTRUE_MAILER_AUTOCONFIRM: "false"\n      GOTRUE_MAILER_EXTERNAL_HOSTS: "{api_host},api.{domain},studio.{domain}"',
+        1,
+    )
+if "GOTRUE_API_MAX_REQUEST_DURATION:" not in text and "GOTRUE_MAILER_AUTOCONFIRM:" in text:
+    text = text.replace(
+        'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+        'GOTRUE_MAILER_AUTOCONFIRM: "false"\n      GOTRUE_API_MAX_REQUEST_DURATION: "30s"\n      GOTRUE_SMTP_MAX_FREQUENCY: "60s"',
         1,
     )
 open(path, "w").write(text)

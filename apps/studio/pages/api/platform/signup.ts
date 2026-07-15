@@ -148,7 +148,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   // Deduplicate candidates.
   const uniqueCandidates = Array.from(new Set(gotrueBaseCandidates))
 
-  const gatewayRetryStatuses = new Set([502, 503, 504])
+  const gatewayRetryStatuses = new Set([502, 503])
+  // Do NOT retry 504: GoTrue may have already queued the confirmation email before the
+  // request timed out; retrying other hosts floods the inbox with duplicate confirms.
 
   let r: Response | undefined
   const causes: Array<{ baseUrl: string; cause: string }> = []
@@ -179,10 +181,35 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     } catch (e: any) {
       const cause = e?.cause?.code ?? e?.code ?? e?.message ?? String(e)
       causes.push({ baseUrl: baseUrlCandidate, cause })
+      // AbortError = our timeout fired while GoTrue may still be sending mail.
+      // Do not hit another host — that creates duplicate confirmation emails.
+      if (
+        e?.name === 'AbortError' ||
+        cause === 'AbortError' ||
+        String(cause).toLowerCase().includes('abort')
+      ) {
+        break
+      }
     }
   }
 
   if (!r) {
+    // Timed out / unreachable after confirmation may already be in flight — tell the UI
+    // to show "check your email" instead of prompting another signup click.
+    const aborted = causes.some((c) => String(c.cause).toLowerCase().includes('abort'))
+    if (aborted) {
+      return res.status(202).json({
+        message:
+          'Signup is processing. If this email is new, a confirmation link was sent — please check your inbox (and spam). Do not sign up again.',
+        pending_confirmation: true,
+        error: {
+          gotrueUrl,
+          tried: uniqueCandidates,
+          causes,
+        },
+      })
+    }
+
     return res.status(502).json({
       message: `Failed to reach GoTrue signup endpoint`,
       error: {
@@ -195,6 +222,15 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         tried: uniqueCandidates,
         causes,
       },
+    })
+  }
+
+  // GoTrue 504: confirmation was requested before the SMTP wait timed out.
+  if (r.status === 504) {
+    return res.status(202).json({
+      message:
+        'Signup is processing. A confirmation email is typically sent even when this request times out — check your inbox (and spam) and do not sign up again.',
+      pending_confirmation: true,
     })
   }
 
