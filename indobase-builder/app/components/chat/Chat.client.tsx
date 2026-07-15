@@ -629,11 +629,23 @@ export const ChatImpl = memo(
         ) {
           orchestratorChatRetryRef.current += 1;
           setLlmErrorAlert(undefined);
+          const projectGoal =
+            description.get()?.trim() ||
+            messages.find(
+              (entry) =>
+                entry.role === 'user' &&
+                typeof entry.content === 'string' &&
+                !entry.content.includes(ORCHESTRATOR_REPAIR_USER_PREFIX),
+            )?.content
+              ?.replace(/\[Model:[^\]]*\]\s*/g, '')
+              ?.replace(/\[Provider:[^\]]*\]\s*/g, '')
+              ?.trim() ||
+            'the current project';
           append({
             role: 'user',
             content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${ORCHESTRATOR_REPAIR_USER_PREFIX}${title}: ${errorInfo.message}
 
-Continue building the ecommerce app (signup, signin, product catalog, cart, checkout) wired to the linked Indobase backend. Fix any issues and keep existing files unless a change is required.`,
+Continue building ${projectGoal} wired to the linked Indobase backend. Fix any issues and keep existing files unless a change is required.`,
           });
           return;
         }
@@ -649,7 +661,17 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
         });
         setData([]);
       },
-      [provider.name, stop, indobaseConn, resolveUpgradeUrl, chatMode, model, append, MAX_ORCHESTRATOR_CHAT_RETRIES],
+      [
+        provider.name,
+        stop,
+        indobaseConn,
+        resolveUpgradeUrl,
+        chatMode,
+        model,
+        append,
+        messages,
+        MAX_ORCHESTRATOR_CHAT_RETRIES,
+      ],
     );
 
     const clearApiErrorAlert = useCallback(() => {
@@ -846,6 +868,9 @@ Continue building the ecommerce app (signup, signin, product catalog, cart, chec
           if (template !== 'blank') {
             templateName = template;
             templateTitle = title;
+          } else if (title?.trim() && !description.get()) {
+            // Blank CRM/etc. path still needs a saved chat title for history.
+            description.set(title.trim());
           }
         }
 

@@ -41,6 +41,8 @@ IMPORTANT: When the user mentions Indobase, auth, database, backend, waitlist, t
 IMPORTANT: Prefer content starters for blogs, docs, publishing, and marketing sites.
 IMPORTANT: For mobile apps (Expo/React Native), prefer Expo Auth NativeWind or Expo Production Kit before generic framework starters.
 IMPORTANT: For auth-heavy web apps, prefer Indobase Auth App or React Indobase Auth community boilerplates.
+IMPORTANT: NEVER choose Indobase Shop (or any shop/ecommerce template) unless the user clearly asks for a shop, store, cart, checkout, marketplace, or ecommerce product catalog.
+IMPORTANT: For CRM, Zoho, Salesforce, HubSpot, sales pipeline, leads, deals, contacts, or account management apps — choose blank (generate from scratch). Do NOT pick Shop.
 
 Available templates:
 <template>
@@ -91,12 +93,13 @@ Response:
 
 Instructions:
 1. For trivial tasks and simple scripts, always recommend the blank template
-2. For real products, prefer featured product templates before generic framework starters
-3. Only choose framework starters when the user explicitly names a framework or needs a bare foundation
-4. For docs, blogs, knowledge bases, and marketing sites, prefer content templates
-5. Follow the exact XML format
-6. Consider technical requirements, category, and tags
-7. If no perfect match exists, recommend the closest option
+2. For CRM / Zoho-like / sales pipeline apps, always recommend blank (there is no CRM starter)
+3. For real products, prefer featured product templates before generic framework starters — except never Shop for non-shop intents
+4. Only choose framework starters when the user explicitly names a framework or needs a bare foundation
+5. For docs, blogs, knowledge bases, and marketing sites, prefer content templates
+6. Follow the exact XML format
+7. Consider technical requirements, category, and tags
+8. If no perfect match exists, recommend blank rather than a wrong product template (especially not Shop)
 
 Important: Provide only the selection tags in your response, no additional text.
 MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH 
@@ -105,6 +108,35 @@ MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH
 const templates: Template[] = sortTemplatesForSelection(
   STARTER_TEMPLATES.filter((t) => !t.name.toLowerCase().includes('shadcn')),
 );
+
+/** Domains that must never auto-pick Shop; generate from blank instead. */
+const BLANK_FIRST_DOMAIN_RE =
+  /\b(crm|zoho|salesforce|hubspot|pipedrive|sales\s*pipeline|lead(?:s)?\b|deal(?:s)?\b|contact(?:s)?\b|account(?:s)?\b|opportunity|opportunities)\b/i
+
+const SHOP_INTENT_RE =
+  /\b(shop|store|e-?commerce|cart|checkout|marketplace|product\s*catalog|online\s*store)\b/i
+
+/**
+ * Deterministic override before LLM template selection.
+ * CRM / sales apps have no dedicated starter — force blank so Shop is never mis-selected.
+ */
+export function resolveForcedBlankSelection(
+  message: string,
+): { template: 'blank'; title: string } | null {
+  const text = message.trim()
+  if (!text) return null
+  if (!BLANK_FIRST_DOMAIN_RE.test(text)) return null
+  if (SHOP_INTENT_RE.test(text)) return null
+
+  const cleaned = text
+    .replace(/\[[^\]]*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const title =
+    cleaned.length > 72 ? `${cleaned.slice(0, 69).trimEnd()}…` : cleaned || 'CRM application'
+
+  return { template: 'blank', title }
+}
 
 const parseSelectedTemplate = (llmOutput: string): { template: string; title: string } | null => {
   try {
@@ -130,6 +162,12 @@ export const selectStarterTemplate = async (options: {
   preferIndobase?: boolean;
 }) => {
   const { message, model, provider, preferIndobase = false } = options;
+
+  const forcedBlank = resolveForcedBlankSelection(message);
+  if (forcedBlank) {
+    return forcedBlank;
+  }
+
   const availableTemplates = preferIndobase
     ? sortTemplatesForSelection([
         ...INDOBASE_STARTER_TEMPLATES,

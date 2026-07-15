@@ -103,7 +103,15 @@ export class BoltShell {
   #terminal: ITerminal | undefined;
   #process: WebContainerProcess | undefined;
   executionState = atom<
-    { sessionId: string; active: boolean; executionPrms?: Promise<any>; abort?: () => void } | undefined
+    | {
+        sessionId: string
+        active: boolean
+        /** Long-running process (e.g. `npm run dev`) that never emits an exit OSC. */
+        background?: boolean
+        executionPrms?: Promise<any>
+        abort?: () => void
+      }
+    | undefined
   >();
   #outputStream: ReadableStreamDefaultReader<string> | undefined;
   #shellInputStream: WritableStreamDefaultWriter<string> | undefined;
@@ -248,15 +256,41 @@ export class BoltShell {
     // Proceed even if the prompt OSC never arrives so the next command is still written.
     await this.waitTillOscCode('prompt', SHELL_PROMPT_TIMEOUT_MS);
 
-    if (state && state.executionPrms) {
-      await state.executionPrms;
+    /*
+     * Never await a prior start/dev-server promise forever — that left Tester stuck at 0/1
+     * after template `npm run dev` occupied the shared shell.
+     */
+    if (state?.executionPrms) {
+      await Promise.race([
+        state.executionPrms.catch(() => undefined),
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, SHELL_PROMPT_TIMEOUT_MS);
+        }),
+      ]);
     }
 
     //start a new execution
     this.terminal.input(command.trim() + '\n');
 
-    //wait for the execution to finish (0 / negative disables the exit backstop)
+    //wait for the execution to finish (0 / negative = background / never wait for exit)
     const exitTimeoutMs = options?.exitTimeoutMs ?? SHELL_EXIT_TIMEOUT_MS;
+
+    if (!exitTimeoutMs || exitTimeoutMs <= 0) {
+      // Dev servers never emit exit OSC. Mark background and return after a short settle.
+      const backgroundPromise = this.getCurrentExecutionResult(SHELL_EXIT_TIMEOUT_MS);
+      this.executionState.set({
+        sessionId,
+        active: true,
+        background: true,
+        executionPrms: backgroundPromise,
+        abort,
+      });
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 2_000);
+      });
+      return { output: '[background process started]', exitCode: 0 };
+    }
+
     const executionPromise = this.getCurrentExecutionResult(exitTimeoutMs);
     this.executionState.set({ sessionId, active: true, executionPrms: executionPromise, abort });
 

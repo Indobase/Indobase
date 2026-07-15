@@ -86,7 +86,10 @@ export const Menu = () => {
   const loadEntries = useCallback(() => {
     if (db) {
       getAll(db)
-        .then((list) => list.filter((item) => item.urlId && item.description))
+        // Include chats that have messages even if urlId was missing (legacy save bug).
+        .then((list) =>
+          list.filter((item) => (item.urlId || item.id) && (item.description || item.messages?.length)),
+        )
         .then(setList)
         .catch((error) => toast.error(error.message));
     }

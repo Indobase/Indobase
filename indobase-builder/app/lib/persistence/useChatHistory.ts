@@ -340,11 +340,13 @@ ${value.content}
         return;
       }
 
+      // Persist the resolved urlId (_urlId), not the stale closure — otherwise the URL
+      // updates but IndexedDB never gets urlId, so /chat/:id restore fails.
       await setMessages(
         db,
         finalChatId, // Use the potentially updated chatId
         [...archivedMessages, ...messages],
-        urlId,
+        _urlId,
         description.get(),
         undefined,
         chatMetadata.get(),
