@@ -8,7 +8,6 @@ import { IconButton } from '~/components/ui/IconButton';
 import { toast } from 'react-toastify';
 import { SpeechRecognitionButton } from '~/components/chat/SpeechRecognition';
 import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
-import styles from './BaseChat.module.scss';
 import { ColorSchemeDialog } from '~/components/ui/ColorSchemeDialog';
 import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -47,47 +46,18 @@ interface ChatBoxProps {
   setDesignScheme?: (scheme: DesignScheme) => void;
   selectedElement?: ElementInfo | null;
   setSelectedElement?: ((element: ElementInfo | null) => void) | undefined;
+  /** Hide outer chrome when nested inside a landing prompt card */
+  embedded?: boolean;
+  agentStatus?: string;
 }
 
 export const ChatBox: React.FC<ChatBoxProps> = (props) => {
-  return (
-    <div
-      className={classNames(
-        'relative z-prompt mx-auto w-full max-w-chat overflow-visible rounded-2xl border border-white/12 bg-[#0D1118]/85 p-3 shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-md transition-colors duration-200',
+  const agentStatus =
+    props.agentStatus ??
+    (props.isStreaming ? 'Agent is working…' : props.chatStarted ? 'Agent is waiting…' : undefined);
 
-        /*
-         * {
-         *   'sticky bottom-2': chatStarted,
-         * },
-         */
-      )}
-    >
-      <svg className={classNames(styles.PromptEffectContainer)}>
-        <defs>
-          <linearGradient
-            id="line-gradient"
-            x1="20%"
-            y1="0%"
-            x2="-14%"
-            y2="10%"
-            gradientUnits="userSpaceOnUse"
-            gradientTransform="rotate(-45)"
-          >
-            <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0%"></stop>
-            <stop offset="40%" stopColor="#8B5CF6" stopOpacity="28%"></stop>
-            <stop offset="50%" stopColor="#A78BFA" stopOpacity="34%"></stop>
-            <stop offset="100%" stopColor="#A78BFA" stopOpacity="0%"></stop>
-          </linearGradient>
-          <linearGradient id="shine-gradient">
-            <stop offset="0%" stopColor="white" stopOpacity="0%"></stop>
-            <stop offset="40%" stopColor="#ffffff" stopOpacity="80%"></stop>
-            <stop offset="50%" stopColor="#ffffff" stopOpacity="80%"></stop>
-            <stop offset="100%" stopColor="white" stopOpacity="0%"></stop>
-          </linearGradient>
-        </defs>
-        <rect className={classNames(styles.PromptEffectLine)} pathLength="100" strokeLinecap="round"></rect>
-        <rect className={classNames(styles.PromptShine)} x="48" y="24" width="70" height="1"></rect>
-      </svg>
+  const shell = (
+    <>
       <FilePreview
         files={props.uploadedFiles}
         imageDataList={props.imageDataList}
@@ -107,32 +77,45 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         )}
       </ClientOnly>
       {props.selectedElement && (
-        <div className="flex mx-1.5 gap-2 items-center justify-between rounded-lg rounded-b-none border border-b-none border-white/15 text-zinc-100 flex py-1 px-2.5 font-medium text-xs">
-          <div className="flex gap-2 items-center lowercase">
-            <code className="bg-violet-500/85 rounded-4px px-1.5 py-1 mr-0.5 text-white">
+        <div className="mx-1.5 flex items-center justify-between gap-2 rounded-lg rounded-b-none border border-b-0 border-gray-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-gray-800">
+          <div className="flex items-center gap-2 lowercase">
+            <code className="mr-0.5 rounded bg-accent-500 px-1.5 py-1 text-white">
               {props?.selectedElement?.tagName}
             </code>
             selected for inspection
           </div>
           <button
-            className="bg-transparent text-violet-300 pointer-auto"
+            className="bg-transparent text-sky-700 pointer-auto"
             onClick={() => props.setSelectedElement?.(null)}
           >
             Clear
           </button>
         </div>
       )}
+      {props.chatStarted && agentStatus && (
+        /* Flush with the composer below (which drops its top radius) so they read as one control. */
+        <div className="flex items-center gap-2 rounded-t-xl border border-b-0 border-gray-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800">
+          <span
+            className={classNames(
+              'h-1.5 w-1.5 shrink-0 rounded-full',
+              props.isStreaming ? 'animate-pulse bg-sky-500' : 'bg-sky-300',
+            )}
+            aria-hidden
+          />
+          {agentStatus}
+        </div>
+      )}
       <div
         className={classNames(
-          'relative rounded-xl border border-white/12 bg-[#0A0E15] shadow-xs',
+          'relative rounded-xl border border-gray-200 bg-gray-50/80',
+          props.chatStarted && agentStatus ? 'rounded-t-none' : '',
         )}
       >
         <textarea
           ref={props.textareaRef}
           className={classNames(
-            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-zinc-100 placeholder:text-zinc-500 bg-transparent text-sm',
+            'w-full resize-none bg-transparent pl-4 pr-16 pt-4 text-sm text-gray-900 outline-none placeholder:text-gray-400',
             'transition-all duration-200',
-            'hover:border-violet-400/50',
           )}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -177,7 +160,6 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                 return;
               }
 
-              // ignore if using input method engine
               if (event.nativeEvent.isComposing) {
                 return;
               }
@@ -185,7 +167,6 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               props.handleSendMessage?.(event);
             }
 
-            // Press ↑ in an empty composer to edit/resend your last prompt.
             if (event.key === 'ArrowUp' && !props.input && props.lastUserMessage && !props.isStreaming) {
               event.preventDefault();
               props.handleInputChange?.({
@@ -203,9 +184,11 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             maxHeight: props.TEXTAREA_MAX_HEIGHT,
           }}
           placeholder={
-            props.chatMode === 'build'
-              ? 'Describe what you want to build with Indobase...'
-              : 'What would you like to discuss?'
+            props.chatStarted
+              ? props.chatMode === 'build'
+                ? 'Describe what you want to build with Indobase...'
+                : 'What would you like to discuss?'
+              : 'Describe your idea — we will bring it to life...'
           }
           translate="no"
         />
@@ -227,14 +210,14 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             />
           )}
         </ClientOnly>
-        <div className="flex flex-col gap-2 p-4 pt-2">
-          <div className="flex flex-wrap items-center gap-1 min-w-0">
+        <div className="flex flex-col gap-2 p-3 pt-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
             <IconButton
               title="Upload file"
-              className="shrink-0 transition-all text-zinc-300 hover:text-white"
+              className="shrink-0 text-gray-500 transition-all hover:text-gray-800"
               onClick={() => props.handleFileUpload()}
             >
-              <div className="i-ph:paperclip text-xl"></div>
+              <div className="i-ph:plus-circle text-xl"></div>
             </IconButton>
             <SpeechRecognitionButton
               isListening={props.isListening}
@@ -265,35 +248,47 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                     <div className="i-bolt:stars text-xl"></div>
                   )}
                 </IconButton>
+                <IconButton
+                  title={props.chatMode === 'discuss' ? 'Switch to Build mode' : 'Switch to Discuss mode'}
+                  aria-label={props.chatMode === 'discuss' ? 'Discuss mode active' : 'Build mode active'}
+                  className={classNames(
+                    'shrink-0 transition-all',
+                    props.chatMode === 'discuss'
+                      ? '!bg-sky-100 !text-sky-800 border border-sky-200'
+                      : 'bg-gray-100 text-gray-600 border border-gray-200',
+                  )}
+                  onClick={() => {
+                    props.setChatMode?.(props.chatMode === 'discuss' ? 'build' : 'discuss');
+                  }}
+                >
+                  <div className="i-ph:chats text-xl" />
+                </IconButton>
               </>
-            )}
-            {props.chatStarted && (
-              <IconButton
-                title={props.chatMode === 'discuss' ? 'Switch to Build mode' : 'Switch to Discuss mode'}
-                aria-label={props.chatMode === 'discuss' ? 'Discuss mode active' : 'Build mode active'}
-                className={classNames(
-                  'shrink-0 transition-all',
-                  props.chatMode === 'discuss'
-                    ? '!bg-violet-500/20 !text-violet-200 border border-violet-400/30'
-                    : 'bg-white/5 text-zinc-300 border border-white/10',
-                )}
-                onClick={() => {
-                  props.setChatMode?.(props.chatMode === 'discuss' ? 'build' : 'discuss');
-                }}
-              >
-                <div className="i-ph:chats text-xl" />
-              </IconButton>
             )}
           </div>
           {props.input.length > 3 ? (
-            <div className="text-xs text-zinc-400">
-              Use <kbd className="kdb px-1.5 py-0.5 rounded bg-white/10 text-zinc-200">Shift</kbd> +{' '}
-              <kbd className="kdb px-1.5 py-0.5 rounded bg-white/10 text-zinc-200">Return</kbd> a new line
+            <div className="text-xs text-gray-400">
+              Use <kbd className="kdb rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">Shift</kbd> +{' '}
+              <kbd className="kdb rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">Return</kbd> for a new line
             </div>
           ) : null}
         </div>
       </div>
       <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
+    </>
+  );
+
+  if (props.embedded) {
+    return <div className="relative z-prompt w-full overflow-visible">{shell}</div>;
+  }
+
+  return (
+    <div
+      className={classNames(
+        'relative z-prompt mx-auto w-full max-w-chat overflow-visible rounded-2xl border border-gray-200/80 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]',
+      )}
+    >
+      {shell}
     </div>
   );
 };
