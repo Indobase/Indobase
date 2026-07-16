@@ -44,18 +44,22 @@ function applyLaunchSuccess(options: {
     await useMCPStore.getState().initialize();
     await useMCPStore.getState().syncWithIndobaseConnection();
 
-    const studioOrigin = options.handoff.studio_url?.replace(/\/+$/, '');
-
-    if (options.popup && window.opener && studioOrigin) {
+    if (options.popup && window.opener) {
+      /*
+       * The popup was opened by the Builder main window and, after the Studio round-trip,
+       * is now back on the Builder origin. The opener is therefore same-origin — post to
+       * window.location.origin, not the Studio origin, or the browser drops the message.
+       */
       window.opener.postMessage(
         {
           type: 'indobase-builder-session',
           projectRef: options.handoff.project_ref,
           success: true,
         },
-        studioOrigin,
+        window.location.origin,
       );
       window.close();
+
       return;
     }
 
@@ -185,8 +189,7 @@ export default function LaunchRoute() {
     })();
   }, [data, navigate, searchParams]);
 
-  const errorMessage =
-    data.mode === 'error' ? data.error : clientError;
+  const errorMessage = data.mode === 'error' ? data.error : clientError;
 
   if (errorMessage) {
     const reconnectUrl = projectRef
@@ -217,4 +220,4 @@ export default function LaunchRoute() {
       </div>
     </div>
   );
-};
+}

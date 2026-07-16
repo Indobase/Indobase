@@ -1,7 +1,11 @@
 import { executeQuery } from './query'
 
-export type UsageDailyMetric = 'DATABASE_SIZE' | 'STORAGE_SIZE'
+export type UsageDailyMetric = 'DATABASE_SIZE' | 'STORAGE_SIZE' | 'MONTHLY_ACTIVE_USERS'
 
+/**
+ * Point-in-time snapshot for a project/metric/day. `valueBytes` holds bytes for size metrics
+ * and a raw count for count metrics (e.g. MONTHLY_ACTIVE_USERS); the column is a plain bigint.
+ */
 export async function upsertUsageDailyMetric(opts: {
   projectRef: string
   metric: UsageDailyMetric

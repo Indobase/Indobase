@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { checkProjectQuotas } from 'lib/api/saas/quota-enforcement'
+import { collectProjectMonthlyActiveUsers } from 'lib/api/saas/usage-collectors/auth-usage'
 import { collectProjectKongUsage, hasKongUsageMetering } from 'lib/api/saas/usage-collectors/kong-usage'
 import { collectProjectDatabaseBytes } from 'lib/api/saas/usage-collectors/postgres-usage'
 import { collectProjectStorageBytes } from 'lib/api/saas/usage-collectors/storage-usage'
@@ -39,12 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     periodStart.setUTCDate(1)
     periodStart.setUTCHours(0, 0, 0, 0)
 
-    const [kong, databaseBytes, storageBytes, quotas] = await Promise.all([
+    const [kong, databaseBytes, storageBytes, monthlyActiveUsers, quotas] = await Promise.all([
       hasKongUsageMetering()
         ? collectProjectKongUsage({ projectRef, periodStart })
         : Promise.resolve({ egressBytes: 0, requestCount: 0, errorCount: 0 }),
       collectProjectDatabaseBytes(projectRef),
       collectProjectStorageBytes(projectRef),
+      collectProjectMonthlyActiveUsers({ projectRef, periodStart }),
       checkProjectQuotas(projectRef),
     ])
 
@@ -65,6 +67,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         day: snapshotDay,
       })
     }
+    if (monthlyActiveUsers != null) {
+      await upsertUsageDailyMetric({
+        projectRef,
+        metric: 'MONTHLY_ACTIVE_USERS',
+        valueBytes: monthlyActiveUsers,
+        day: snapshotDay,
+      })
+    }
 
     return res.status(200).json({
       success: true,
@@ -75,6 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error_count: kong.errorCount,
         database_bytes: databaseBytes,
         storage_bytes: storageBytes,
+        monthly_active_users: monthlyActiveUsers,
       },
       quotas,
     })

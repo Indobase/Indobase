@@ -21,26 +21,35 @@ async function queryProjectDatabase<T>(
   return result.data ?? null
 }
 
-export async function collectProjectStorageBytes(projectRef: string): Promise<number | null> {
+/**
+ * Monthly active users for a tenant project: distinct GoTrue users who signed in since
+ * `periodStart`. Returns null when the tenant DB is unreachable, 0 when auth isn't present.
+ */
+export async function collectProjectMonthlyActiveUsers({
+  projectRef,
+  periodStart,
+}: {
+  projectRef: string
+  periodStart: Date
+}): Promise<number | null> {
   const schemaCheck = await queryProjectDatabase<{ ok: boolean }>(
     projectRef,
     `select exists (
       select 1 from information_schema.tables
-      where table_schema = 'storage' and table_name = 'objects'
+      where table_schema = 'auth' and table_name = 'users'
     ) as ok`
   )
+  if (schemaCheck == null) return null
   if (!schemaCheck?.[0]?.ok) return 0
 
-  const rows = await queryProjectDatabase<{ size: string }>(
+  const rows = await queryProjectDatabase<{ mau: string }>(
     projectRef,
-    `select coalesce(sum(coalesce((o.metadata->>'size')::bigint, 0)), 0)::text as size
-     from storage.objects o
-     left join storage.buckets b on b.id = o.bucket_id
-     where b.name = $1
-        or b.name = $2
-        or b.id is null`,
-    [projectRef, `tenant-${projectRef}`]
+    `select count(*)::text as mau
+     from auth.users
+     where last_sign_in_at is not null
+       and last_sign_in_at >= $1::timestamptz`,
+    [periodStart.toISOString()]
   )
   if (!rows?.[0]) return 0
-  return parseInt(rows[0].size ?? '0', 10) || 0
+  return parseInt(rows[0].mau ?? '0', 10) || 0
 }
