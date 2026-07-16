@@ -37,7 +37,7 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   }
 
   const userId = getGotrueUserId(claims)
-  const ref = typeof req.query.ref === 'string' ? req.query.ref : ''
+  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
 
   if (IS_SAAS && ref) {
     const { assertBackendStudioAccessForProject, backendStudioBlockedPayload } = await import(
@@ -64,7 +64,6 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
       })
     }
 
-    const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
     let usesDedicatedTenantDb = await projectHasDedicatedTenantDatabase(ref, userId)
 
     if (
@@ -132,7 +131,6 @@ const handlePost = async (req: NextApiRequest, res: NextApiResponse, claims?: Jw
   }
   let { data, error } = await executeQuery({ query, headers })
 
-  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : ''
   if (
     error &&
     IS_SAAS &&
