@@ -73,6 +73,30 @@ const STUDIO_LINKED_STARTER_PROMPT = {
   title: 'Linked from Studio',
 };
 
+function buildProjectRecommendationPrompt(options: {
+  projectName: string;
+  projectRef?: string;
+  connectionSource?: 'manual' | 'studio_handoff';
+}) {
+  const { projectName, projectRef, connectionSource } = options;
+  const sourceLabel = connectionSource === 'studio_handoff' ? 'Studio-linked' : 'manual';
+
+  return `Review my linked Indobase project and give me 3 concrete AI recommendations tailored to its current setup.
+
+Project details:
+- Name: ${projectName}
+- Ref: ${projectRef || 'unknown'}
+- Connection: ${sourceLabel}
+
+For each recommendation:
+1) Prioritize by impact (high/medium/low),
+2) Explain why it matters for this project,
+3) Give the best next step I should run in Builder.
+
+Focus on practical improvements across product UX, backend integration, and launch readiness.
+Do not make any code or schema changes yet.`;
+}
+
 const PRECHAT_FEATURED_TEMPLATES = INDOBASE_STARTER_TEMPLATES.map((template) => ({
   icon: template.icon ?? 'i-ph:package',
   label: template.label,
@@ -382,14 +406,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         {builderPromptQuota?.isFree && builderPromptQuota.limit !== null && (
           <div
             className={classNames(
-              'rounded-lg border p-3 mb-2 text-sm',
+              'rounded-lg border p-3 mb-2 text-sm transition-colors duration-200',
               builderPromptQuota.remaining === 0
-                ? 'border-bolt-elements-button-danger-text/40 bg-bolt-elements-button-danger-text/10'
-                : 'border-bolt-elements-borderColor bg-bolt-elements-background-depth-2',
+                ? 'border-rose-400/35 bg-rose-500/10'
+                : 'border-white/12 bg-white/5',
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-bolt-elements-textSecondary">
+              <p className="text-zinc-300">
                 {builderPromptQuota.remaining === 0 ? (
                   <>Free plan: all {builderPromptQuota.limit} prompts used.</>
                 ) : (
@@ -404,7 +428,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   href={upgradeUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm font-medium text-bolt-elements-button-primary-text bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover px-2 py-1 rounded-md inline-flex items-center gap-1"
+                  className="text-sm font-medium text-white bg-violet-500/85 hover:bg-violet-500 px-2 py-1 rounded-md inline-flex items-center gap-1 transition-colors duration-200"
                 >
                   Upgrade to Pro
                   <span className="i-ph:arrow-square-out w-4 h-4" />
@@ -475,6 +499,21 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       );
     };
 
+    const handleProjectRecommendationClick = (event: React.UIEvent<HTMLButtonElement>) => {
+      const projectName = indobaseConn.project?.name || indobaseConn.selectedProjectId || 'Linked project';
+      const projectRef = indobaseConn.selectedProjectId || indobaseConn.indobase?.projectRef;
+
+      setChatMode?.('discuss');
+      handleStarterPromptClick(
+        event,
+        buildProjectRecommendationPrompt({
+          projectName,
+          projectRef,
+          connectionSource: indobaseConn.connectionSource,
+        }),
+      );
+    };
+
     const renderTemplateButtons = (
       templates: Array<{ icon: string; label: string; templateName: string; description: string }>,
     ) => (
@@ -485,20 +524,20 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             type="button"
             disabled={isStreaming}
             onClick={(event) => handleTemplateClick(event, template.templateName)}
-            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#18130F]"
+            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition duration-200 hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#F1EDE6] text-[#6A6158] dark:bg-[#18130F] dark:text-[#B6ADA3]">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/8 text-zinc-300">
               <span className={`${template.icon} text-[15px]`} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-[#6A6158] transition group-hover:text-[#18160F] dark:text-[#D5CEC5] dark:group-hover:text-[#F8F3EA]">
+              <span className="block text-sm font-medium text-zinc-300 transition duration-200 group-hover:text-white">
                 {template.label}
               </span>
-              <span className="mt-0.5 block text-xs leading-5 text-[#A09890] dark:text-[#8E857B]">
+              <span className="mt-0.5 block text-xs leading-5 text-zinc-500">
                 {template.description}
               </span>
             </span>
-            <span className="ml-auto text-xs text-[#A09890] opacity-0 transition group-hover:opacity-100 dark:text-[#8E857B]">
+            <span className="ml-auto text-xs text-violet-300 opacity-0 transition duration-200 group-hover:opacity-100">
               <span className="i-ph:arrow-right" />
             </span>
           </button>
@@ -507,23 +546,23 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     );
 
     const preChatLanding = (
-      <div className="min-h-full bg-[#F7F4EF] text-[#18160F] dark:bg-[#16130F] dark:text-[#F8F3EA]">
+      <div className="min-h-full bg-[#090B10] text-zinc-100">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-20 pt-6 sm:px-6 lg:px-10">
           <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-            <div className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-[#E84718]">
+            <div className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300">
               Indobase Builder
             </div>
-            <h1 className="font-['Space_Grotesk'] text-[clamp(2.9rem,6.5vw,4.3rem)] font-bold leading-[0.98] tracking-[-0.04em] text-[#18160F] dark:text-[#F8F3EA]">
+            <h1 className="font-['Space_Grotesk'] text-[clamp(2.9rem,6.5vw,4.3rem)] font-bold leading-[0.98] tracking-[-0.04em] text-white">
               Build with Indobase
             </h1>
-            <p className="mt-5 max-w-2xl text-[15.5px] leading-7 text-[#6A6158] dark:text-[#B6ADA3]">
+            <p className="mt-5 max-w-2xl text-[15.5px] leading-7 text-zinc-300">
               {isBackendConnected
                 ? 'Your Indobase project is connected. Auth, database, storage, and edge functions run on your tenant backend automatically while you build.'
                 : 'Design products with AI, wire them to your backend, and move into Studio when you need database, auth, storage, functions, and logs.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {isBackendConnected && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C47800]/25 bg-[#C47800]/10 px-3 py-1 text-xs font-medium text-[#8A6500] dark:border-[#E7B24D]/25 dark:bg-[#E7B24D]/12 dark:text-[#F3C969]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/12 px-3 py-1 text-xs font-medium text-emerald-200">
                   <span className="i-ph:check-circle-fill text-sm text-green-500" />
                   Connected to Indobase Backend
                 </span>
@@ -541,20 +580,20 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               {ImportButtons(importChat)}
               <GitCloneButton
                 importChat={importChat}
-                className="!rounded-lg !border-black/12 !bg-white !text-[#6A6158] hover:!border-black/18 hover:!bg-[#F1EDE6] hover:!text-[#18160F] dark:!border-white/12 dark:!bg-white/8 dark:!text-[#E5DED5] dark:hover:!border-white/18 dark:hover:!bg-white/10 dark:hover:!text-[#F8F3EA]"
+                className="!rounded-lg !border-white/12 !bg-white/5 !text-zinc-300 hover:!border-violet-400/35 hover:!bg-violet-500/10 hover:!text-white transition-colors duration-200"
               />
             </div>
           </div>
 
           <div id="builder-templates" className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-black/8 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-white/8 dark:bg-[#201B16]">
-              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#A09890] dark:text-[#8E857B]">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
                 Starter Prompts
               </div>
-              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-[#18160F] dark:text-[#F8F3EA]">
+              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-white">
                 Start from a pattern
               </div>
-              <p className="mt-1 text-sm leading-6 text-[#6A6158] dark:text-[#B6ADA3]">
+              <p className="mt-1 text-sm leading-6 text-zinc-300">
                 Common Indobase product shapes. Builder fills the implementation.
               </p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -566,57 +605,97 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     key={item.title}
                     type="button"
                     onClick={(event) => handleStarterPromptClick(event, item.prompt)}
-                    className="group relative rounded-xl border border-black/8 bg-[#F7F4EF] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#E84718]/25 hover:bg-white hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)] dark:border-white/8 dark:bg-[#18130F] dark:hover:bg-[#221C16]"
+                    className="group relative rounded-xl border border-white/10 bg-[#0E121A] p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-400/45 hover:bg-[#151B27] hover:shadow-[0_4px_14px_rgba(124,58,237,0.25)]"
                   >
-                    <span className="pointer-events-none absolute right-3 top-3 text-xs text-[#E84718] opacity-0 transition group-hover:opacity-100">
+                    <span className="pointer-events-none absolute right-3 top-3 text-xs text-violet-300 opacity-0 transition group-hover:opacity-100">
                       <span className="i-ph:arrow-up-right" />
                     </span>
-                    <div className="pr-5 font-['Space_Grotesk'] text-sm font-semibold tracking-[-0.015em] text-[#18160F] dark:text-[#F8F3EA]">
+                    <div className="pr-5 font-['Space_Grotesk'] text-sm font-semibold tracking-[-0.015em] text-white">
                       {item.title}
                     </div>
-                    <div className="mt-1 text-xs leading-5 text-[#6A6158] dark:text-[#B6ADA3]">{item.description}</div>
+                    <div className="mt-1 text-xs leading-5 text-zinc-300">{item.description}</div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-black/8 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-white/8 dark:bg-[#201B16]">
-              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#A09890] dark:text-[#8E857B]">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+              {isBackendConnected ? (
+                <button
+                  type="button"
+                  disabled={isStreaming}
+                  onClick={handleProjectRecommendationClick}
+                  className="group mb-6 w-full rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-500/18 via-indigo-500/10 to-transparent p-5 text-left transition hover:-translate-y-0.5 hover:border-violet-300/60 hover:shadow-[0_8px_20px_rgba(124,58,237,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-violet-200">
+                        AI Recommendation
+                      </div>
+                      <div className="mt-2 font-['Space_Grotesk'] text-[17px] font-semibold tracking-[-0.02em] text-white">
+                        Get tailored recommendations for this project
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-zinc-200">
+                        Ask AI to inspect your linked project and suggest the highest-impact next
+                        improvements for product UX, backend wiring, and launch readiness.
+                      </p>
+                    </div>
+                    <span className="mt-0.5 rounded-full bg-black/30 px-2.5 py-1 text-[11px] font-medium text-violet-100 shadow-sm">
+                      Discuss mode
+                    </span>
+                  </div>
+                </button>
+              ) : (
+                <div className="mb-6 rounded-2xl border border-dashed border-white/20 bg-[#0D121A] p-5">
+                  <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+                    AI Recommendation
+                  </div>
+                  <div className="mt-2 font-['Space_Grotesk'] text-[16px] font-semibold tracking-[-0.02em] text-white">
+                    Connect a project to get tailored recommendations
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    Once your Indobase backend is linked, Builder can generate project-specific AI
+                    recommendations and prioritized next steps.
+                  </p>
+                </div>
+              )}
+
+              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
                 Start from a Proven Product
               </div>
-              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-[#18160F] dark:text-[#F8F3EA]">
+              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-white">
                 Indobase-ready app shapes
               </div>
-              <p className="mt-1 text-sm leading-6 text-[#6A6158] dark:text-[#B6ADA3]">
+              <p className="mt-1 text-sm leading-6 text-zinc-300">
                 Pick a template and refine the experience with Builder.
               </p>
 
               <div className="mt-5 flex items-center gap-2">
-                <span className="rounded-md border border-[#C47800]/25 bg-[#C47800]/10 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-[#C47800] dark:border-[#E7B24D]/25 dark:bg-[#E7B24D]/12 dark:text-[#F3C969]">
+                <span className="rounded-md border border-violet-400/30 bg-violet-500/12 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-violet-200">
                   Featured
                 </span>
-                <span className="text-xs text-[#6A6158] dark:text-[#B6ADA3]">
+                <span className="text-xs text-zinc-400">
                   Best first picks for most product requests
                 </span>
               </div>
 
               <div className="mt-4 flex flex-col">{renderTemplateButtons(PRECHAT_FEATURED_TEMPLATES)}</div>
 
-              <div className="mt-6 border-t border-black/8 pt-5 dark:border-white/8">
-                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09890] dark:text-[#8E857B]">
+              <div className="mt-6 border-t border-white/10 pt-5">
+                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
                   Web boilerplates
                 </div>
-                <p className="mt-1 text-xs text-[#6A6158] dark:text-[#B6ADA3]">
+                <p className="mt-1 text-xs text-zinc-400">
                   Open-source Vite/React starters, auto-adapted to Indobase on import.
                 </p>
                 {renderTemplateButtons(PRECHAT_WEB_BOILERPLATES)}
               </div>
 
-              <div className="mt-6 border-t border-black/8 pt-5 dark:border-white/8">
-                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#A09890] dark:text-[#8E857B]">
+              <div className="mt-6 border-t border-white/10 pt-5">
+                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
                   Mobile boilerplates
                 </div>
-                <p className="mt-1 text-xs text-[#6A6158] dark:text-[#B6ADA3]">
+                <p className="mt-1 text-xs text-zinc-400">
                   Expo apps for Android bundles and native auth flows.
                 </p>
                 {renderTemplateButtons(PRECHAT_MOBILE_BOILERPLATES)}
@@ -635,7 +714,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       >
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
-          <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
+          <div
+            className={classNames(
+              styles.Chat,
+              'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full',
+              chatStarted ? 'bg-[#090B10]' : '',
+            )}
+          >
             {!chatStarted ? (
               preChatLanding
             ) : (
@@ -699,9 +784,9 @@ function ScrollToBottom() {
   return (
     !isAtBottom && (
       <>
-        <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-bolt-elements-background-depth-1 to-transparent h-20 z-10" />
+        <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[#090B10] to-transparent h-20 z-10" />
         <button
-          className="sticky z-50 bottom-0 left-0 right-0 text-4xl rounded-lg px-1.5 py-0.5 flex items-center justify-center mx-auto gap-2 bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary text-sm"
+          className="sticky z-50 bottom-0 left-0 right-0 text-4xl rounded-lg px-1.5 py-0.5 flex items-center justify-center mx-auto gap-2 bg-[#0D1118]/95 border border-white/12 text-zinc-100 text-sm backdrop-blur-sm transition-colors duration-200 hover:border-violet-400/35"
           onClick={() => scrollToBottom()}
         >
           Go to last message

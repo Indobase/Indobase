@@ -53,7 +53,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
   return (
     <div
       className={classNames(
-        'relative z-prompt mx-auto w-full max-w-chat overflow-visible rounded-2xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 p-3 shadow-sm',
+        'relative z-prompt mx-auto w-full max-w-chat overflow-visible rounded-2xl border border-white/12 bg-[#0D1118]/85 p-3 shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-md transition-colors duration-200',
 
         /*
          * {
@@ -73,10 +73,10 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             gradientUnits="userSpaceOnUse"
             gradientTransform="rotate(-45)"
           >
-            <stop offset="0%" stopColor="#FFC107" stopOpacity="0%"></stop>
-            <stop offset="40%" stopColor="#FFC107" stopOpacity="28%"></stop>
-            <stop offset="50%" stopColor="#F0B429" stopOpacity="34%"></stop>
-            <stop offset="100%" stopColor="#F0B429" stopOpacity="0%"></stop>
+            <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0%"></stop>
+            <stop offset="40%" stopColor="#8B5CF6" stopOpacity="28%"></stop>
+            <stop offset="50%" stopColor="#A78BFA" stopOpacity="34%"></stop>
+            <stop offset="100%" stopColor="#A78BFA" stopOpacity="0%"></stop>
           </linearGradient>
           <linearGradient id="shine-gradient">
             <stop offset="0%" stopColor="white" stopOpacity="0%"></stop>
@@ -107,15 +107,15 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         )}
       </ClientOnly>
       {props.selectedElement && (
-        <div className="flex mx-1.5 gap-2 items-center justify-between rounded-lg rounded-b-none border border-b-none border-bolt-elements-borderColor text-bolt-elements-textPrimary flex py-1 px-2.5 font-medium text-xs">
+        <div className="flex mx-1.5 gap-2 items-center justify-between rounded-lg rounded-b-none border border-b-none border-white/15 text-zinc-100 flex py-1 px-2.5 font-medium text-xs">
           <div className="flex gap-2 items-center lowercase">
-            <code className="bg-accent-500 rounded-4px px-1.5 py-1 mr-0.5 text-white">
+            <code className="bg-violet-500/85 rounded-4px px-1.5 py-1 mr-0.5 text-white">
               {props?.selectedElement?.tagName}
             </code>
             selected for inspection
           </div>
           <button
-            className="bg-transparent text-accent-500 pointer-auto"
+            className="bg-transparent text-violet-300 pointer-auto"
             onClick={() => props.setSelectedElement?.(null)}
           >
             Clear
@@ -124,15 +124,15 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
       )}
       <div
         className={classNames(
-          'relative rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-1 shadow-xs',
+          'relative rounded-xl border border-white/12 bg-[#0A0E15] shadow-xs',
         )}
       >
         <textarea
           ref={props.textareaRef}
           className={classNames(
-            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent text-sm',
+            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-zinc-100 placeholder:text-zinc-500 bg-transparent text-sm',
             'transition-all duration-200',
-            'hover:border-bolt-elements-focus',
+            'hover:border-violet-400/50',
           )}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -229,7 +229,11 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         </ClientOnly>
         <div className="flex flex-col gap-2 p-4 pt-2">
           <div className="flex flex-wrap items-center gap-1 min-w-0">
-            <IconButton title="Upload file" className="shrink-0 transition-all" onClick={() => props.handleFileUpload()}>
+            <IconButton
+              title="Upload file"
+              className="shrink-0 transition-all text-zinc-300 hover:text-white"
+              onClick={() => props.handleFileUpload()}
+            >
               <div className="i-ph:paperclip text-xl"></div>
             </IconButton>
             <SpeechRecognitionButton
@@ -270,8 +274,8 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                 className={classNames(
                   'shrink-0 transition-all',
                   props.chatMode === 'discuss'
-                    ? '!bg-bolt-elements-item-backgroundAccent !text-bolt-elements-item-contentAccent'
-                    : 'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault',
+                    ? '!bg-violet-500/20 !text-violet-200 border border-violet-400/30'
+                    : 'bg-white/5 text-zinc-300 border border-white/10',
                 )}
                 onClick={() => {
                   props.setChatMode?.(props.chatMode === 'discuss' ? 'build' : 'discuss');
@@ -282,9 +286,9 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             )}
           </div>
           {props.input.length > 3 ? (
-            <div className="text-xs text-bolt-elements-textTertiary">
-              Use <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Shift</kbd> +{' '}
-              <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
+            <div className="text-xs text-zinc-400">
+              Use <kbd className="kdb px-1.5 py-0.5 rounded bg-white/10 text-zinc-200">Shift</kbd> +{' '}
+              <kbd className="kdb px-1.5 py-0.5 rounded bg-white/10 text-zinc-200">Return</kbd> a new line
             </div>
           ) : null}
         </div>

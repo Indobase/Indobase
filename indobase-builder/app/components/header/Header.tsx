@@ -17,8 +17,8 @@ export function Header() {
   return (
     <header
       className={classNames('h-[var(--header-height)] px-4 md:px-6', {
-        'border-transparent': !chat.started,
-        'border-b border-bolt-elements-borderColor': chat.started,
+        'border-transparent bg-transparent': !chat.started,
+        'border-b border-white/10 bg-[#0B0D12]/80 backdrop-blur-md': chat.started,
       })}
     >
       <div className="mx-auto flex h-full w-full max-w-6xl items-center gap-3">
@@ -26,14 +26,14 @@ export function Header() {
         <div className="flex items-center gap-2.5 z-logo text-bolt-elements-textPrimary">
           <a href="/" className="flex items-center gap-2 text-accent">
             <img src="/logo.svg" alt="Indobase" className="h-8 w-8 inline-block" />
-            <span className="text-lg font-semibold text-bolt-elements-textPrimary">Indobase Builder</span>
+            <span className="text-lg font-semibold text-white">Indobase Builder</span>
           </a>
           <button
             type="button"
             onClick={toggleSidebar}
             title="Previous chats"
             aria-label="Open previous chats"
-            className="flex items-center gap-1.5 rounded-lg border border-bolt-elements-borderColor px-2.5 py-1.5 text-sm text-bolt-elements-textSecondary transition-colors hover:bg-bolt-elements-item-backgroundActive hover:text-bolt-elements-textPrimary"
+            className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
           >
             <span className="i-ph:clock-counter-clockwise text-base" />
             <span className="hidden sm:inline">Chats</span>
@@ -41,7 +41,7 @@ export function Header() {
           {isBackendConnected && (
             <span
               title="Connected to your Indobase backend"
-              className="hidden shrink-0 items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-700 md:inline-flex dark:text-green-400"
+              className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-200 md:inline-flex"
             >
               <span className="i-ph:check-circle-fill text-sm text-green-500" />
               Backend linked

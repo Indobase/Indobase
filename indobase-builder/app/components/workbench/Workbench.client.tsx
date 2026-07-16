@@ -94,7 +94,7 @@ const FileModifiedDropdown = memo(
         <Popover className="relative">
           {({ open }: { open: boolean }) => (
             <>
-              <Popover.Button className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-bolt-elements-background-depth-2 hover:bg-bolt-elements-background-depth-3 transition-colors text-bolt-elements-item-contentDefault">
+              <Popover.Button className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-zinc-200 border border-white/10">
                 <span>File Changes</span>
                 {hasChanges && (
                   <span className="w-5 h-5 rounded-full bg-accent-500/20 text-accent-500 text-xs flex items-center justify-center border border-accent-500/30">
@@ -111,7 +111,7 @@ const FileModifiedDropdown = memo(
                 leaveFrom="transform scale-100 opacity-100"
                 leaveTo="transform scale-95 opacity-0"
               >
-                <Popover.Panel className="absolute right-0 z-20 mt-2 w-80 origin-top-right rounded-xl bg-bolt-elements-background-depth-2 shadow-xl border border-bolt-elements-borderColor">
+                <Popover.Panel className="absolute right-0 z-20 mt-2 w-80 origin-top-right rounded-xl bg-[#0D1118] shadow-xl border border-white/12">
                   <div className="p-2">
                     <div className="relative mx-2 mb-2">
                       <input
@@ -119,7 +119,7 @@ const FileModifiedDropdown = memo(
                         placeholder="Search files..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-[#0A0E15] border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-400/40 text-zinc-100"
                       />
                       <div className="absolute left-2 top-1/2 -translate-y-1/2 text-bolt-elements-textTertiary">
                         <div className="i-ph:magnifying-glass" />
@@ -136,7 +136,7 @@ const FileModifiedDropdown = memo(
                             <button
                               key={filePath}
                               onClick={() => onSelectFile(filePath)}
-                              className="w-full px-3 py-2 text-left rounded-md hover:bg-bolt-elements-background-depth-1 transition-colors group bg-transparent"
+                              className="w-full px-3 py-2 text-left rounded-md hover:bg-white/8 transition-colors group bg-transparent"
                             >
                               <div className="flex items-center gap-2">
                                 <div className="shrink-0 w-5 h-5 text-bolt-elements-textTertiary">
@@ -174,10 +174,10 @@ const FileModifiedDropdown = memo(
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex flex-col min-w-0">
-                                      <span className="truncate text-sm font-medium text-bolt-elements-textPrimary">
+                                      <span className="truncate text-sm font-medium text-zinc-100">
                                         {filePath.split('/').pop()}
                                       </span>
-                                      <span className="truncate text-xs text-bolt-elements-textTertiary">
+                                      <span className="truncate text-xs text-zinc-400">
                                         {filePath}
                                       </span>
                                     </div>
@@ -263,7 +263,7 @@ const FileModifiedDropdown = memo(
                             icon: <div className="i-ph:check-circle text-accent-500" />,
                           });
                         }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-bolt-elements-background-depth-1 hover:bg-bolt-elements-background-depth-3 transition-colors text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-zinc-300 hover:text-zinc-100 border border-white/10"
                       >
                         Copy File List
                       </button>
@@ -390,10 +390,10 @@ export const Workbench = memo(
             )}
           >
             <div className="absolute inset-0 px-2 lg:px-4">
-              <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor shadow-sm rounded-lg overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor gap-1.5">
+              <div className="h-full flex flex-col bg-[#0B0F16]/95 border border-white/12 shadow-[0_12px_26px_rgba(0,0,0,0.4)] rounded-lg overflow-hidden backdrop-blur-sm">
+                <div className="flex items-center px-3 py-2 border-b border-white/10 gap-1.5">
                   <button
-                    className={`${showChat ? 'i-ph:sidebar-simple-fill' : 'i-ph:sidebar-simple'} text-lg text-bolt-elements-textSecondary mr-1`}
+                    className={`${showChat ? 'i-ph:sidebar-simple-fill' : 'i-ph:sidebar-simple'} text-lg text-zinc-400 mr-1`}
                     disabled={!canHideChat || isSmallViewport}
                     onClick={() => {
                       if (canHideChat) {
@@ -411,9 +411,9 @@ export const Workbench = memo(
                       {/* Sync Button */}
                       <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden ml-1">
                         <DropdownMenu.Root>
-                          <DropdownMenu.Trigger
+                        <DropdownMenu.Trigger
                             disabled={isSyncing || streaming}
-                            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
+                          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-violet-500/80 text-white [&:not(:disabled,.disabled)]:hover:bg-violet-500 outline-violet-400 flex gap-1.7"
                           >
                             {isSyncing ? 'Syncing...' : 'Sync'}
                             <span className={classNames('i-ph:caret-down transition-transform')} />
@@ -421,9 +421,9 @@ export const Workbench = memo(
                           <DropdownMenu.Content
                             className={classNames(
                               'min-w-[240px] z-[250]',
-                              'bg-white dark:bg-[#141414]',
+                              'bg-[#0D1118]',
                               'rounded-lg shadow-lg',
-                              'border border-gray-200/50 dark:border-gray-800/50',
+                              'border border-white/12',
                               'animate-in fade-in-0 zoom-in-95',
                               'py-1',
                             )}
@@ -432,7 +432,7 @@ export const Workbench = memo(
                           >
                             <DropdownMenu.Item
                               className={classNames(
-                                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+                                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-zinc-100 hover:bg-white/10 gap-2 rounded-md group relative',
                               )}
                               onClick={handleSyncFiles}
                               disabled={isSyncing}
@@ -456,7 +456,7 @@ export const Workbench = memo(
                           onClick={() => {
                             workbenchStore.toggleTerminal(!workbenchStore.showTerminal.get());
                           }}
-                          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
+                          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-violet-500/80 text-white [&:not(:disabled,.disabled)]:hover:bg-violet-500 outline-violet-400 flex gap-1.7"
                         >
                           <div className="i-ph:terminal" />
                           Toggle Terminal
