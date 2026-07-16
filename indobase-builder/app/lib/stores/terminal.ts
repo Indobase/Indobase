@@ -67,6 +67,8 @@ export class TerminalStore {
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= SHELL_ATTACH_MAX_ATTEMPTS; attempt++) {
+      let progressTimer: ReturnType<typeof setInterval> | undefined;
+
       try {
         if (attempt === 1) {
           terminal.write(coloredText.cyan('Starting Indobase Builder workspace...\n'));
@@ -83,7 +85,16 @@ export class TerminalStore {
           }
         }
 
+        terminal.write(coloredText.dim('Booting WebContainer...\n'));
+        progressTimer = setInterval(() => {
+          terminal.write(coloredText.dim('Still booting WebContainer (StackBlitz)...\n'));
+        }, 8_000);
+
         const wc = await getWebcontainerWithRetry(attempt === 1 ? 2 : 3);
+        clearInterval(progressTimer);
+        progressTimer = undefined;
+
+        terminal.write(coloredText.dim('Starting shell...\n'));
         await this.#boltTerminal.init(wc, terminal);
         terminal.write(coloredText.green('Workspace ready.\n'));
         return;
@@ -93,6 +104,10 @@ export class TerminalStore {
 
         if (attempt < SHELL_ATTACH_MAX_ATTEMPTS) {
           await sleep(1500 * attempt);
+        }
+      } finally {
+        if (progressTimer) {
+          clearInterval(progressTimer);
         }
       }
     }

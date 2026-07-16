@@ -14,11 +14,29 @@ if (import.meta.hot?.data) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
-const WEBCONTAINER_BOOT_TIMEOUT_MS = 120_000;
+const WEBCONTAINER_BOOT_TIMEOUT_MS = 60_000;
+const WEBCONTAINER_CONFIGURE_TIMEOUT_MS = 20_000;
 const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 2;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
 }
 
 function bootWebContainerOnce(): Promise<WebContainer> {
@@ -36,17 +54,11 @@ function bootWebContainerOnce(): Promise<WebContainer> {
     forwardPreviewErrors: true,
   });
 
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(
-        new Error(
-          'Indobase Builder workspace failed to start (timed out). Use Chrome or Edge, disable extensions that block SharedArrayBuffer, and hard-refresh the page.',
-        ),
-      );
-    }, WEBCONTAINER_BOOT_TIMEOUT_MS);
-  });
-
-  return Promise.race([boot, timeout]);
+  return withTimeout(
+    boot,
+    WEBCONTAINER_BOOT_TIMEOUT_MS,
+    'Indobase Builder workspace failed to start (timed out). Use Chrome or Edge, disable extensions that block SharedArrayBuffer, and hard-refresh the page.',
+  );
 }
 
 async function configureWebContainer(container: WebContainer): Promise<WebContainer> {
@@ -55,9 +67,25 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
   const { workbenchStore } = await import('~/lib/stores/workbench');
   const { streamingState } = await import('~/lib/stores/streaming');
 
-  const response = await fetch('/inspector-script.js');
-  const inspectorScript = await response.text();
-  await container.setPreviewScript(inspectorScript);
+  try {
+    await withTimeout(
+      (async () => {
+        const response = await fetch('/inspector-script.js');
+
+        if (!response.ok) {
+          throw new Error(`Failed to load inspector script (${response.status})`);
+        }
+
+        const inspectorScript = await response.text();
+        await container.setPreviewScript(inspectorScript);
+      })(),
+      WEBCONTAINER_CONFIGURE_TIMEOUT_MS,
+      'Indobase Builder workspace configured too slowly while loading the preview inspector. Hard-refresh and try again.',
+    );
+  } catch (error) {
+    // Preview inspector is optional — do not block the shell/files if it hangs.
+    console.warn('WebContainer preview inspector setup skipped:', error);
+  }
 
   container.on('preview-message', (message) => {
     console.log('WebContainer preview message:', message);
