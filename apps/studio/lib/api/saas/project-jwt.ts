@@ -7,6 +7,17 @@ export function resolveJwtSecretFromEnv(): string {
   return (process.env.AUTH_JWT_SECRET ?? process.env.JWT_SECRET ?? '').trim()
 }
 
+/**
+ * A fresh, project-scoped HS256 signing secret.
+ *
+ * Every project MUST have its own: a tenant's GoTrue/PostgREST only verify the JWT *signature*
+ * (the `project_ref` claim is not enforced), so any two projects sharing a secret can read each
+ * other's auth users and tables — their anon/service keys are mutually valid.
+ */
+export function generateProjectJwtSecret(): string {
+  return crypto.randomBytes(48).toString('base64url')
+}
+
 function base64Url(input: Buffer | string) {
   const buf = typeof input === 'string' ? Buffer.from(input) : input
   return buf

@@ -41,6 +41,11 @@ import {
   repairKnownTenantComposeYaml,
 } from './tenant-compose-validation'
 import {
+  formatGoTrueRateLimitComposeYaml,
+  resolveGoTrueRateLimitComposeEnv,
+  type GoTrueRateLimitComposeEnv,
+} from './gotrue-rate-limits'
+import {
   ensureTenantDatabaseBootstrapped,
   isTenantDatabaseBootstrapped,
   resolveTenantProvisionAdminUser,
@@ -51,7 +56,7 @@ import { recordAuditLog } from './audit'
 import { ensureSaasControlPlaneRlsApplied } from './ensureControlPlaneRls'
 import { ensureSaasStudioDbPrivileges } from './ensureSaasStudioDbPrivileges'
 import { ensureSaasPreventLastOwnerAllowsOrgCascade } from './preventLastOwnerTeardown'
-import { makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
+import { generateProjectJwtSecret, makeProjectJwt, resolveProjectJwtSecret } from './project-jwt'
 import {
   createRazorpaySubscriptionCheckout,
   ensureRazorpayCustomer,
@@ -65,12 +70,14 @@ import {
 
 export { computeDataPlanePortBase } from './data-plane-ports'
 
-type PlanId = 'free' | 'pro' | 'team' | 'enterprise' | 'platform'
+type PlanId = 'free' | 'basic' | 'pro' | 'studio' | 'team' | 'enterprise' | 'platform'
 
 const PLAN_NAME: Record<PlanId, string> = {
-  free: 'Starter',
+  free: 'Free',
+  basic: 'Basic',
   pro: 'Pro',
-  team: 'Business',
+  studio: 'Studio',
+  team: 'Studio',
   enterprise: 'Enterprise',
   platform: 'Platform',
 }
@@ -79,16 +86,22 @@ const normalizePlanId = (tier?: string): PlanId => {
   // Accept either `tier_*` (from CreateOrganization) or `plan` ids (from stored rows).
   switch (tier) {
     case 'free':
+    case 'basic':
     case 'pro':
+    case 'studio':
     case 'team':
     case 'enterprise':
     case 'platform':
       return tier
     case 'tier_free':
       return 'free'
+    case 'tier_basic':
+      return 'basic'
     case 'tier_pro':
     case 'tier_payg':
       return 'pro'
+    case 'tier_studio':
+      return 'studio'
     case 'tier_team':
       return 'team'
     case 'tier_enterprise':
@@ -1076,6 +1089,28 @@ export async function addOrganizationMember({
   })
   if (org.error) throw org.error
   if (!org.data?.length) throw new Error('Organization not found or insufficient permissions')
+
+  const existingMember = await executeQuery<{ gotrue_id: string }>({
+    query: `
+      select gotrue_id
+      from saas.organization_members
+      where organization_id = $1 and gotrue_id = $2
+      limit 1
+    `,
+    parameters: [org.data[0].id, member_gotrue_id],
+    actorId: gotrueId,
+  })
+  if (existingMember.error) throw existingMember.error
+
+  if (!existingMember.data?.length) {
+    const { checkOrganizationSeatLimit } = await import('./plan-metering')
+    const seatLimit = await checkOrganizationSeatLimit(slug)
+    if (!seatLimit.ok) {
+      const err = new Error(seatLimit.message) as Error & { statusCode?: number }
+      err.statusCode = 402
+      throw err
+    }
+  }
 
   const inserted = await executeQuery({
     query: `
@@ -2249,7 +2284,12 @@ export async function createProject({
 }) {
   await ensureSaasTables()
   const gotrueId = getGotrueUserId(claims)
-  const jwtSecret = resolveProjectJwtSecret(null)
+  /*
+   * Per-project signing secret — never the shared env secret. Tenant GoTrue/PostgREST verify only
+   * the JWT signature (the project_ref claim is not enforced), so projects sharing a secret accept
+   * each other's anon/service keys and can read each other's auth users and tables.
+   */
+  const jwtSecret = generateProjectJwtSecret()
 
   const orgRows = await executeQuery<{
     id: number
@@ -2272,6 +2312,16 @@ export async function createProject({
 
   const org = orgRows.data[0]
   await assertOrganizationNotPlatformSuspendedById(org.id, gotrueId)
+
+  const { checkOrganizationAppLimit } = await import('./plan-metering')
+  const appLimit = await checkOrganizationAppLimit(body.organization_slug)
+  if (!appLimit.ok) {
+    const err = new Error(appLimit.message) as Error & { statusCode?: number; upgradeUrl?: string }
+    err.statusCode = 402
+    err.upgradeUrl = appLimit.upgradeUrl
+    throw err
+  }
+
   const ref = uniqueProjectRef(body.name)
   const region = body.db_region || body.region_selection?.code || 'local'
   const anonKey = makeProjectJwt(jwtSecret, 'anon', ref)
@@ -2301,6 +2351,7 @@ export async function createProject({
         anon_key,
         service_key_enc,
         anon_key_enc,
+        jwt_secret_enc,
         subscription_id,
         rest_url,
         db_host,
@@ -2309,9 +2360,9 @@ export async function createProject({
         db_pass_enc
       ) values (
         $1, $2, $3, $4, $5, $6, 'PROVISIONING',
-        '', '', $7, $8,
+        '', '', $7, $8, $9,
         '',
-        $9, '127.0.0.1', null, null, $10
+        $10, '127.0.0.1', null, null, $11
       )
       returning id, ref, name, organization_id, organization_slug, cloud_provider, region, status, inserted_at
     `,
@@ -2324,6 +2375,7 @@ export async function createProject({
       region,
       encryptString(serviceKey),
       encryptString(anonKey),
+      encryptString(jwtSecret),
       PROJECT_REST_URL,
       encryptString(body.db_pass),
     ],
@@ -3095,11 +3147,15 @@ function buildSlimTenantDockerCompose(opts: {
     auxDbPassword: string
   } | null
   edgeFunctionSecrets?: Record<string, string>
+  /** Per-IP signup/sign-in and related GoTrue rate limits (from auth_config). */
+  rateLimits?: GoTrueRateLimitComposeEnv | null
 }): string {
   const mailer = resolveTenantGoTrueMailerEnv({
     apiExternalUrl: opts.apiExternalUrl,
     siteUrl: opts.siteUrl,
   })
+  const rateLimits = opts.rateLimits ?? resolveGoTrueRateLimitComposeEnv()
+  const rateLimitYaml = formatGoTrueRateLimitComposeYaml(rateLimits)
   const edgeMem = tenantEdgeRuntimeMemLimit()
   const pgrstMem = tenantPostgrestMemLimit()
   const pgrstPool = tenantPostgrestDbPool()
@@ -3274,6 +3330,7 @@ ${opts.gotrueJwtKeys ? `      GOTRUE_JWT_KEYS: ${composeYamlSingleQuoted(opts.go
       GOTRUE_MAILER_EXTERNAL_HOSTS: ${mailer.externalHosts}
       GOTRUE_API_MAX_REQUEST_DURATION: "30s"
       GOTRUE_SMTP_MAX_FREQUENCY: "60s"
+${rateLimitYaml}
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
@@ -3569,6 +3626,7 @@ export async function getTenantStackArtifacts({
     data_plane_last_provisioned_at: string | null
     data_plane_last_provision_result: unknown | null
     data_plane_mode: string
+    auth_config: Record<string, unknown> | null
   }>({
     query: `
       select
@@ -3584,7 +3642,8 @@ export async function getTenantStackArtifacts({
         p.anon_key_enc,
         p.data_plane_last_provisioned_at,
         p.data_plane_last_provision_result,
-        p.data_plane_mode
+        p.data_plane_mode,
+        p.auth_config
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1
@@ -3751,6 +3810,9 @@ export async function getTenantStackArtifacts({
     },
     pooler: poolerCompose,
     edgeFunctionSecrets,
+    rateLimits: resolveGoTrueRateLimitComposeEnv(
+      (p.auth_config ?? null) as Parameters<typeof resolveGoTrueRateLimitComposeEnv>[0]
+    ),
     })
   )
   assertValidTenantComposeYaml(dockerComposeYml)
