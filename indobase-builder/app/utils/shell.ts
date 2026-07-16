@@ -88,7 +88,14 @@ export async function newShellProcess(webcontainer: WebContainer, terminal: ITer
     }
   });
 
-  await jshReady.promise;
+  await Promise.race([
+    jshReady.promise,
+    sleep(SHELL_INTERACTIVE_TIMEOUT_MS).then(() => {
+      throw new Error(
+        `Shell did not become interactive within ${Math.round(SHELL_INTERACTIVE_TIMEOUT_MS / 1000)}s.`,
+      );
+    }),
+  ]);
 
   return process;
 }
@@ -98,7 +105,9 @@ export type ExecutionResult = { output: string; exitCode: number; timedOut?: boo
 /** Wait for the shell prompt OSC after Ctrl+C before writing the next command. */
 export const SHELL_PROMPT_TIMEOUT_MS = 10_000;
 /** How long to wait for jsh to become interactive after spawn. */
-export const SHELL_INTERACTIVE_TIMEOUT_MS = 45_000;
+export const SHELL_INTERACTIVE_TIMEOUT_MS = 30_000;
+/** How long to wait for webcontainer.spawn('/bin/jsh') itself. */
+export const SHELL_SPAWN_TIMEOUT_MS = 30_000;
 /** Backstop so non-terminating processes cannot block the UI forever. */
 export const SHELL_EXIT_TIMEOUT_MS = 600_000;
 
@@ -155,12 +164,27 @@ export class BoltShell {
 
   async newBoltShellProcess(webcontainer: WebContainer, terminal: ITerminal) {
     const args: string[] = [];
-    const process = await webcontainer.spawn('/bin/jsh', ['--osc', ...args], {
-      terminal: {
-        cols: terminal.cols ?? 80,
-        rows: terminal.rows ?? 15,
-      },
-    });
+    let process: WebContainerProcess;
+
+    try {
+      process = await Promise.race([
+        webcontainer.spawn('/bin/jsh', ['--osc', ...args], {
+          terminal: {
+            cols: terminal.cols ?? 80,
+            rows: terminal.rows ?? 15,
+          },
+        }),
+        sleep(SHELL_SPAWN_TIMEOUT_MS).then(() => {
+          throw new Error(
+            `Indobase Builder shell spawn timed out after ${Math.round(SHELL_SPAWN_TIMEOUT_MS / 1000)}s. Click Reset Terminal or hard-refresh.`,
+          );
+        }),
+      ]);
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error('Indobase Builder failed to spawn the workspace shell.');
+    }
 
     const input = process.input.getWriter();
     this.#shellInputStream = input;

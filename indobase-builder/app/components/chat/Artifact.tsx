@@ -87,7 +87,7 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
         setAllActionFinished(true);
         setStalledImport(true);
       }
-    }, 120_000);
+    }, 45_000);
 
     return () => window.clearTimeout(timeout);
   }, [actions, allActionFinished, artifact?.type]);

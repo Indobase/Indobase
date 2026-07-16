@@ -320,7 +320,14 @@ export class ActionRunner {
     }
 
     const shell = this.#shellTerminal();
-    await shell.ready();
+    await Promise.race([
+      shell.ready(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Terminal is not ready yet. Open the terminal panel and try again.'));
+        }, 45_000);
+      }),
+    ]);
 
     if (!shell || !shell.terminal || !shell.process) {
       unreachable('Shell terminal not found');
@@ -394,7 +401,18 @@ export class ActionRunner {
   async #awaitWebContainer(): Promise<WebContainer> {
     const { getWebcontainerWithRetry } = await import('~/lib/webcontainer');
 
-    return getWebcontainerWithRetry(3);
+    return Promise.race([
+      getWebcontainerWithRetry(3),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              'WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).',
+            ),
+          );
+        }, 90_000);
+      }),
+    ]);
   }
 
   async getFileHistory(filePath: string): Promise<FileHistory | null> {
