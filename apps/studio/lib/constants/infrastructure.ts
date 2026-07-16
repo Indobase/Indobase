@@ -24,15 +24,18 @@ export const MANAGED_BY = {
 export type ManagedBy = (typeof MANAGED_BY)[keyof typeof MANAGED_BY]
 
 export const PRICING_TIER_LABELS_ORG = {
-  FREE: 'Starter - ₹0/month',
-  PRO: 'Pro - ₹2,499/month',
-  TEAM: 'Business - ₹49,999/month',
+  FREE: 'Free - ₹0/month · 1 app, badge, sleeps',
+  BASIC: 'Basic - ₹499/month · custom domain, no badge',
+  PRO: 'Pro - ₹1,999/month · backend Studio unlocked',
+  STUDIO: 'Studio - ₹6,999/month · 3 seats, 15 apps',
 }
 
 export const PRICING_TIER_PRODUCT_IDS = {
   FREE: 'tier_free',
+  BASIC: 'tier_basic',
   PRO: 'tier_pro',
   PAYG: 'tier_payg',
+  STUDIO: 'tier_studio',
   TEAM: 'tier_team',
   ENTERPRISE: 'tier_enterprise',
 }

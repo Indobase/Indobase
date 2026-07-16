@@ -46,9 +46,13 @@ export function tierToPlanId(tier: string): PlanId {
   switch (tier) {
     case 'tier_free':
       return 'free'
+    case 'tier_basic':
+      return 'basic'
     case 'tier_pro':
     case 'tier_payg':
       return 'pro'
+    case 'tier_studio':
+      return 'studio'
     case 'tier_team':
       return 'team'
     case 'tier_enterprise':
@@ -69,15 +73,18 @@ async function ensureRazorpayPlanId(planId: PlanId): Promise<string> {
     throw new Error(`Plan ${planId} does not use Razorpay checkout`)
   }
 
-  const fromEnv = process.env[planEnvKey(planId)]?.trim()
+  // Legacy team checkouts map to Studio Razorpay plan / price.
+  const checkoutPlanId: PlanId = planId === 'team' ? 'studio' : planId
+
+  const fromEnv = process.env[planEnvKey(checkoutPlanId)]?.trim()
   if (fromEnv) return fromEnv
 
-  const cached = planIdCache.get(planId)
+  const cached = planIdCache.get(checkoutPlanId)
   if (cached) return cached
 
-  const amountInr = resolveIndobasePlanPriceInr(planId)
+  const amountInr = resolveIndobasePlanPriceInr(checkoutPlanId)
   if (amountInr == null || amountInr <= 0) {
-    throw new Error(`No INR price configured for plan ${planId}`)
+    throw new Error(`No INR price configured for plan ${checkoutPlanId}`)
   }
 
   const created = await razorpayRequest<{ id: string }>('/plans', {
@@ -86,16 +93,16 @@ async function ensureRazorpayPlanId(planId: PlanId): Promise<string> {
       period: 'monthly',
       interval: 1,
       item: {
-        name: `Indobase ${planId}`,
+        name: `Indobase ${checkoutPlanId}`,
         amount: amountInr * 100,
         currency: INDOBASE_BILLING_CURRENCY,
-        description: `Indobase ${planId} monthly subscription`,
+        description: `Indobase ${checkoutPlanId} monthly subscription`,
       },
-      notes: { indobase_plan_id: planId },
+      notes: { indobase_plan_id: checkoutPlanId },
     }),
   })
 
-  planIdCache.set(planId, created.id)
+  planIdCache.set(checkoutPlanId, created.id)
   return created.id
 }
 
@@ -210,7 +217,7 @@ export function isPaidRazorpaySubscriptionStatus(status: string): boolean {
   return normalized === 'active' || normalized === 'authenticated'
 }
 
-const PAID_PLAN_IDS: PlanId[] = ['pro', 'team']
+const PAID_PLAN_IDS: PlanId[] = ['basic', 'pro', 'studio', 'team']
 
 function isPaidPlanId(planId: PlanId): boolean {
   return PAID_PLAN_IDS.includes(planId)

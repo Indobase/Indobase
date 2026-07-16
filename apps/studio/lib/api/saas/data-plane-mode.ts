@@ -11,13 +11,12 @@ export function normalizeDataPlaneMode(raw: string | null | undefined): DataPlan
 }
 
 /**
- * Free (Starter) orgs use the shared API gateway (multiplexer) + slim sidecars.
- * Each project still gets its own `tenantdb_<ref>` unless Model A is explicitly allowed.
- * Paid tiers keep isolated per-tenant stacks on ref.<domain>.
+ * Frontend-only tiers (Free / Basic) use the shared API gateway.
+ * Pro+ get isolated per-tenant stacks (backend Studio unlocked).
  */
 export function resolveDataPlaneModeForPlan(planId: PlanId | string | null | undefined): DataPlaneMode {
   const plan = (planId ?? 'free').trim().toLowerCase()
-  if (plan === 'free' || plan === 'platform') {
+  if (plan === 'free' || plan === 'basic' || plan === 'platform') {
     const override = process.env.SAAS_FREE_TIER_DATA_PLANE_MODE?.trim()
     if (override && VALID_MODES.has(override as DataPlaneMode)) {
       return override as DataPlaneMode

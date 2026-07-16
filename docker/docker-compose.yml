@@ -313,6 +313,17 @@ services:
       # Minimum gap between confirmation/recovery/etc emails to the same recipient.
       GOTRUE_SMTP_MAX_FREQUENCY: ${GOTRUE_SMTP_MAX_FREQUENCY:-60s}
 
+      # Per-IP email signup/sign-in limits (and related Auth rate limits). Key off the client IP
+      # from a trusted proxy header (Kong/Traefik sets X-Forwarded-For).
+      GOTRUE_RATE_LIMIT_HEADER: ${GOTRUE_RATE_LIMIT_HEADER:-X-Forwarded-For}
+      GOTRUE_RATE_LIMIT_OTP: ${GOTRUE_RATE_LIMIT_OTP:-30}
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: ${GOTRUE_RATE_LIMIT_EMAIL_SENT:-2}
+      GOTRUE_RATE_LIMIT_SMS_SENT: ${GOTRUE_RATE_LIMIT_SMS_SENT:-30}
+      GOTRUE_RATE_LIMIT_VERIFY: ${GOTRUE_RATE_LIMIT_VERIFY:-30}
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: ${GOTRUE_RATE_LIMIT_TOKEN_REFRESH:-150}
+      GOTRUE_RATE_LIMIT_ANONYMOUS_USERS: ${GOTRUE_RATE_LIMIT_ANONYMOUS_USERS:-30}
+      GOTRUE_SECURITY_SB_FORWARDED_FOR_ENABLED: ${GOTRUE_SECURITY_SB_FORWARDED_FOR_ENABLED:-false}
+
       # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
       # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true
 

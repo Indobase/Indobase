@@ -18,74 +18,86 @@
     }> = [
         {
             id: 'Free',
-            name: 'Start for Free',
+            name: 'Free',
             price: '₹0',
-            description: 'Get started with:',
+            description: 'Try Indobase:',
             event: 'home-pricing-cards-free-click',
-            buttonText: 'Get Started',
+            buttonText: 'Start free',
             subtitle: '/ month',
             features: [
-                'Unlimited API requests',
-                '50,000 monthly active users',
-                '500 MB database size',
-                '5 GB egress',
-                '5 GB cached egress',
-                '1 GB file storage',
-                'Community support'
+                '1 app',
+                '*.indobase.app subdomain',
+                'Indobase badge',
+                'Sleeps after 7 days idle',
+                '~20 builds/day',
+                'No backend Studio'
+            ]
+        },
+        {
+            id: 'Basic',
+            name: 'Basic',
+            price: '₹499',
+            description: 'Vanity — my domain, no badge:',
+            event: 'home-pricing-cards-basic-click',
+            buttonText: 'Get Basic',
+            subtitle: '/ month',
+            features: [
+                '3 apps',
+                'Custom domain',
+                'Badge removed',
+                'No idle sleep',
+                '~60 builds/day',
+                'No backend Studio'
             ]
         },
         {
             id: 'Pro',
-            name: 'Get Started',
-            price: '₹2,499',
-            description: 'Everything in the Free Plan, plus:',
+            name: 'Pro',
+            price: '₹1,999',
+            description: 'Necessity — users need to log in:',
+            tag: 'Popular',
             event: 'home-pricing-cards-pro-click',
-            buttonText: 'Get Started',
+            buttonText: 'Get Pro',
             subtitle: '/ month',
             features: [
-                '100,000 monthly active users',
-                '8 GB disk size per project',
-                '250 GB egress',
-                '250 GB cached egress',
-                '100 GB file storage',
-                'Email support',
-                'Daily backups stored for 7 days',
-                '7-day log retention'
+                'Backend Studio unlocked',
+                'Auth, Postgres, Storage, Functions',
+                '5 apps',
+                'Unlimited builds (fair-use)',
+                'GitHub export',
+                '2 GB database'
             ]
         },
         {
-            id: 'Scale',
-            name: 'Get Started',
-            price: '₹49,999',
-            description: 'Everything in the Pro Plan, plus:',
-            event: 'home-pricing-cards-scale-click',
-            buttonText: 'Get Started',
+            id: 'Studio',
+            name: 'Studio',
+            price: '₹6,999',
+            description: 'Team — seats and shared billing:',
+            event: 'home-pricing-cards-studio-click',
+            buttonText: 'Get Studio',
             subtitle: '/ month',
             features: [
-                'SOC2',
-                'Project-scoped and read-only access',
-                'HIPAA available as paid add-on',
-                'SSO for Indobase Dashboard',
-                'Priority email support & SLAs',
-                'Daily backups stored for 14 days',
-                '28-day log retention',
-                'Add Log Drains'
+                '3 seats',
+                '15 apps',
+                '20 GB database',
+                'Priority build queue',
+                'Shared billing',
+                'Everything in Pro'
             ]
         },
         {
             id: 'Enterprise',
-            name: 'Custom',
+            name: 'Enterprise',
             price: 'Custom',
-            description: 'Enterprise features:',
+            description: 'From ₹40,000/mo:',
             event: 'home-pricing-cards-enterprise-click',
             buttonText: 'Contact Us',
             features: [
-                'Designated Support manager',
-                'Uptime SLAs',
-                'BYO Cloud supported',
-                '24x7x365 premium enterprise support',
-                'Private Slack channel',
-                'Custom Security Questionnaires'
+                'DPDP audit pack',
+                'Uptime SLA',
+                'Dedicated placement / VPC',
+                'SSO',
+                '24×7 premium support'
             ]
         }
     ];

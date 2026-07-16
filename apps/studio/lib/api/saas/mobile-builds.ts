@@ -23,7 +23,7 @@ export type ProjectMobileBuildProfile = 'production' | 'preview'
 export type ProjectMobileBuildArtifactKind = 'android_aab' | 'mapping' | 'manifest' | 'other'
 export type ProjectMobileBuildPriority = 'standard' | 'priority'
 
-type PlanId = 'free' | 'pro' | 'team' | 'enterprise' | 'platform'
+type PlanId = 'free' | 'basic' | 'pro' | 'studio' | 'team' | 'enterprise' | 'platform'
 
 export type ProjectMobileBuildLog = {
   level: ProjectMobileBuildLogLevel
@@ -188,22 +188,28 @@ const PROJECT_MOBILE_BUILD_DEFAULT_WORKER_ID = 'studio_mobile_build_executor'
 const PROJECT_MOBILE_BUILD_DEFAULT_ORG_CONCURRENT_LIMITS: Record<PlanId, number> = {
   enterprise: 25,
   free: 1,
+  basic: 1,
   platform: 50,
   pro: 3,
+  studio: 10,
   team: 10,
 }
 const PROJECT_MOBILE_BUILD_DEFAULT_ORG_OUTSTANDING_LIMITS: Record<PlanId, number> = {
   enterprise: 100,
   free: 3,
+  basic: 5,
   platform: 200,
   pro: 10,
+  studio: 25,
   team: 25,
 }
 const PROJECT_MOBILE_BUILD_DEFAULT_PRIORITIES: Record<PlanId, ProjectMobileBuildPriority> = {
   enterprise: 'priority',
   free: 'standard',
+  basic: 'standard',
   platform: 'priority',
   pro: 'standard',
+  studio: 'priority',
   team: 'priority',
 }
 const PROJECT_MOBILE_BUILD_TRANSITIONS: Record<
@@ -282,7 +288,9 @@ function normalizePlanId(plan?: string): PlanId {
   const normalizedPlan = (plan ?? '').trim().toLowerCase()
 
   switch (normalizedPlan) {
+    case 'basic':
     case 'pro':
+    case 'studio':
     case 'team':
     case 'enterprise':
     case 'platform':
