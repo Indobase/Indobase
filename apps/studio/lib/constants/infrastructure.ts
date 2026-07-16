@@ -25,8 +25,8 @@ export type ManagedBy = (typeof MANAGED_BY)[keyof typeof MANAGED_BY]
 
 export const PRICING_TIER_LABELS_ORG = {
   FREE: 'Free - ₹0/month · 1 app, badge, sleeps',
-  BASIC: 'Basic - ₹499/month · custom domain, no badge',
-  PRO: 'Pro - ₹1,999/month · backend Studio unlocked',
+  BASIC: 'Basic - ₹499/month · Studio unlocked, custom domain',
+  PRO: 'Pro - ₹1,999/month · 5 apps, 8GB DB, GitHub export',
   STUDIO: 'Studio - ₹6,999/month · 3 seats, 15 apps',
 }
 

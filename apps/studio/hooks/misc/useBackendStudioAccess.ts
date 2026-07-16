@@ -4,7 +4,7 @@ import { getPlanEntitlements } from 'lib/api/saas/plan-entitlements'
 import { IS_SAAS } from 'lib/constants'
 
 /**
- * Free & Basic cannot open backend Studio. Pro+ can.
+ * Free cannot open backend Studio. Basic+ can (see plan-entitlements).
  * Returns loading=true until org plan is known on project routes.
  */
 export function useBackendStudioAccess() {

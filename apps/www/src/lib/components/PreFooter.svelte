@@ -1,7 +1,6 @@
 <script lang="ts">
     import { Button, type Variant } from '$lib/components/ui';
     import { getSignUpUrl } from '$lib/utils/dashboard';
-    import { SHOW_SCALE_PLAN } from '$lib/constants/feature-flags';
 
     const plans: Array<{
         name: string;
@@ -16,40 +15,48 @@
     }> = [
         {
             name: 'Free',
-            price: '$0',
-            description: 'A great fit for passion projects and small applications.',
+            price: '₹0',
+            description: '1 app to try Indobase. Builder only — no Studio.',
             buttonText: 'Get started',
             buttonLink: getSignUpUrl(),
             buttonVariant: 'secondary',
             eventName: 'footer-plans-free-click'
         },
         {
+            name: 'Basic',
+            price: '₹499',
+            variable: true,
+            description: 'Studio unlocked, custom domain, badge removed.',
+            buttonText: 'Get Basic',
+            buttonLink: getSignUpUrl(),
+            buttonVariant: 'secondary',
+            eventName: 'footer-plans-basic-click'
+        },
+        {
             name: 'Pro',
-            price: '$25',
+            price: '₹1,999',
             variable: true,
             tag: 'Most Popular',
-            description:
-                'For production applications that need powerful functionality and resources to scale.',
-            buttonText: 'Start building',
+            description: '5 apps, 8 GB DB, GitHub export, and more builds.',
+            buttonText: 'Get Pro',
             buttonLink: getSignUpUrl(),
             buttonVariant: 'primary',
             eventName: 'footer-plans-pro-click'
         },
         {
-            name: 'Scale',
-            price: '$599',
+            name: 'Studio',
+            price: '₹6,999',
             variable: true,
-            description:
-                'For teams that handle more complex and large projects and need more control and support.',
-            buttonText: 'Start building',
+            description: '3 seats, 15 apps, priority builds, shared billing.',
+            buttonText: 'Get Studio',
             buttonLink: getSignUpUrl(),
             buttonVariant: 'secondary',
-            eventName: 'footer-plans-scale-click'
+            eventName: 'footer-plans-studio-click'
         },
         {
             name: 'Enterprise',
             price: 'Custom',
-            description: 'For enterprises that need more power and premium support.',
+            description: 'DPDP audit pack, SLA, VPC, and SSO. From ₹40,000/mo.',
             buttonText: 'Contact us',
             buttonLink: '/contact-us/enterprise',
             buttonVariant: 'secondary',
@@ -57,7 +64,7 @@
         }
     ];
 
-    const visiblePlans = SHOW_SCALE_PLAN ? plans : plans.filter((plan) => plan.name !== 'Scale');
+    const visiblePlans = plans;
 </script>
 
 <img

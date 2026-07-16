@@ -8,8 +8,8 @@ import { PageContainer } from 'ui-patterns/PageContainer'
 import { PageSection, PageSectionContent } from 'ui-patterns/PageSection'
 
 /**
- * Free & Basic plans are frontend-only. Opening Studio (Auth, Database, etc.)
- * must prompt an upgrade to Pro — not silently allow access.
+ * Free plan cannot open backend Studio. Basic+ can.
+ * Opening Studio on Free must prompt an upgrade to Basic.
  */
 export function BackendStudioUpgradeGate({ children }: PropsWithChildren) {
   const { enabled, isLoading, hasAccess, organization, planName, billingHref } =
@@ -32,16 +32,16 @@ export function BackendStudioUpgradeGate({ children }: PropsWithChildren) {
       <PageSection>
         <PageSectionContent className="flex min-h-[60vh] flex-col items-center justify-center">
           <EmptyStatePresentational
-            title="Studio is locked on your plan"
-            description={`${planName} includes Builder and published apps, but not backend Studio (Auth, Database, Storage, and Edge Functions). Upgrade to Pro to unlock Studio.`}
+            title="Studio is locked on Free"
+            description={`${planName} still runs your app on an Indobase backend via Builder, but you cannot open Studio to inspect Auth, Database, Storage, or Edge Functions. Upgrade to Basic to unlock Studio.`}
           >
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <UpgradePlanButton
                 source="backendStudioGate"
-                plan="Pro"
-                featureProposition="unlock backend Studio"
+                plan="Basic"
+                featureProposition="open Studio and manage your backend"
               >
-                Upgrade to Pro — ₹1,999/mo
+                Upgrade to Basic — ₹499/mo
               </UpgradePlanButton>
               <Button asChild type="default">
                 <Link href={billingHref}>View plans</Link>
@@ -53,8 +53,8 @@ export function BackendStudioUpgradeGate({ children }: PropsWithChildren) {
               </Button>
             </div>
             <p className="mt-6 max-w-md text-center text-sm text-foreground-light">
-              Free → Basic is for a custom domain and no badge. Basic → Pro unlocks Studio when you
-              need users to sign in.
+              Free → Basic unlocks Studio (and a custom domain). Basic → Pro buys headroom — more
+              apps, larger DB, and GitHub export.
             </p>
           </EmptyStatePresentational>
         </PageSectionContent>

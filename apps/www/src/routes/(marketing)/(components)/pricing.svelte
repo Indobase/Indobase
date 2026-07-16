@@ -3,7 +3,6 @@
     import { trackEvent } from '$lib/actions/analytics';
     import { Button } from '$lib/components/ui';
     import { cn } from '$lib/utils/cn';
-    import { SHOW_SCALE_PLAN } from '$lib/constants/feature-flags';
 
     const plans: Array<{
         id: string;
@@ -30,42 +29,45 @@
                 'Indobase badge',
                 'Sleeps after 7 days idle',
                 '~20 builds/day',
-                'No backend Studio'
+                '512 MB database',
+                'No Studio (Builder only)'
             ]
         },
         {
             id: 'Basic',
             name: 'Basic',
             price: '₹499',
-            description: 'Vanity — my domain, no badge:',
+            description: 'Open Studio + your domain:',
             event: 'home-pricing-cards-basic-click',
             buttonText: 'Get Basic',
             subtitle: '/ month',
             features: [
+                'Studio unlocked',
+                'Auth, Database, Storage, Functions',
                 '3 apps',
                 'Custom domain',
                 'Badge removed',
                 'No idle sleep',
                 '~60 builds/day',
-                'No backend Studio'
+                '1 GB database'
             ]
         },
         {
             id: 'Pro',
             name: 'Pro',
             price: '₹1,999',
-            description: 'Necessity — users need to log in:',
+            description: 'Headroom for production apps:',
             tag: 'Popular',
             event: 'home-pricing-cards-pro-click',
             buttonText: 'Get Pro',
             subtitle: '/ month',
             features: [
-                'Backend Studio unlocked',
-                'Auth, Postgres, Storage, Functions',
+                'Everything in Basic',
                 '5 apps',
-                'Unlimited builds (fair-use)',
+                '~150 builds/day',
+                '8 GB database',
                 'GitHub export',
-                '2 GB database'
+                'Isolated tenant stack'
             ]
         },
         {
@@ -80,9 +82,9 @@
                 '3 seats',
                 '15 apps',
                 '20 GB database',
+                '~300 builds/day',
                 'Priority build queue',
-                'Shared billing',
-                'Everything in Pro'
+                'Shared billing'
             ]
         },
         {
@@ -108,10 +110,7 @@
 
     const { class: className }: PricingProps = $props();
 
-    // The user wants ALL 4 plans visible exactly like the image, so we overwrite the SHOW_SCALE_PLAN filter.
     const visiblePlans = plans;
-
-    const gridCols = `lg:grid-cols-${visiblePlans.length}`;
 
     const DASHBOARD_URL = getSignUpUrl();
 </script>
@@ -134,12 +133,15 @@
         <div
             class="animate-fade-in relative flex w-full flex-col gap-6 [animation-delay:150ms] [animation-duration:1000ms] lg:w-2/3"
         >
-            <h2 class="text-[#fcad42] font-medium leading-[1.1] tracking-tight text-5xl md:text-6xl max-w-2xl text-balance">
+            <h2
+                class="text-[#fcad42] font-medium leading-[1.1] tracking-tight text-5xl md:text-6xl max-w-2xl text-balance"
+            >
                 All-in-one infra for solo devs & SMBs<span class="text-white">_</span>
             </h2>
 
             <p class="text-white text-lg md:text-xl font-medium max-w-2xl leading-relaxed mt-2">
-                Indobase is an open-source, developer infrastructure platform with Auth, Database, Storage, Functions, Realtime, SMS, Email, Push, and Hosting.
+                Honest INR pricing. Free to try — Basic unlocks Studio. Scale when you need seats and
+                headroom.
             </p>
 
             <div class="mt-4 flex">
@@ -154,16 +156,20 @@
         </div>
 
         <div
-            class="grid w-[90%] md:w-[85%] lg:w-[1000px] xl:w-[1100px] grid-cols-1 md:grid-cols-2 lg:grid-cols-4 bg-[#1a1a1a] overflow-hidden rounded-[24px] border border-white/5 relative shadow-2xl"
+            class="grid w-[94%] md:w-[90%] xl:w-full max-w-[1280px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 bg-[#1a1a1a] overflow-hidden rounded-[24px] border border-white/5 relative shadow-2xl"
         >
             {#each visiblePlans as { id, name, price, tag: label, subtitle, description, event, features, buttonText }, index (`${id},${label},${index}`)}
                 {@const isEnterprise = id === 'Enterprise'}
-                <div class={cn(
-                    "flex flex-col gap-1 px-6 py-8 border-b border-white/5 lg:border-b-0",
-                    index !== visiblePlans.length - 1 ? "lg:border-r lg:border-white/5" : ""
-                )}>
+                <div
+                    class={cn(
+                        'flex flex-col gap-1 px-5 py-8 border-b border-white/5 xl:border-b-0',
+                        index !== visiblePlans.length - 1 ? 'xl:border-r xl:border-white/5' : ''
+                    )}
+                >
                     <div class="flex items-center gap-2.5">
-                        <span class="text-white text-lg font-medium tracking-normal leading-none">{name}</span>
+                        <span class="text-white text-lg font-medium tracking-normal leading-none"
+                            >{name}</span
+                        >
                         {#if label}
                             <span
                                 class="bg-accent-200 text-caption rounded-lg px-1.5 py-0.5 font-medium text-white"
@@ -172,27 +178,41 @@
                         {/if}
                     </div>
                     <div class="flex flex-1 flex-col">
-                        <span class={cn(
-                            "text-[2.75rem] font-medium mt-4 mb-8 flex items-baseline gap-1 tracking-tight font-sans text-[#fcad42]"
-                        )}>
+                        <span
+                            class={cn(
+                                'text-[2.5rem] font-medium mt-4 mb-6 flex items-baseline gap-1 tracking-tight font-sans text-[#fcad42]'
+                            )}
+                        >
                             {price}
                             {#if subtitle}
-                                <span class="text-white text-[15px] font-normal"
-                                    >{subtitle}</span
-                                >
+                                <span class="text-white text-[15px] font-normal">{subtitle}</span>
                             {/if}
                         </span>
 
-                        <p class="text-white text-[13px] mt-2 mb-6 block font-medium leading-snug">
+                        <p class="text-white text-[13px] mt-1 mb-5 block font-medium leading-snug">
                             {description}
                         </p>
 
                         {#if features && features.length > 0}
-                            <ul class="text-white text-[13px] mt-2 flex flex-col gap-3 font-normal mb-8">
+                            <ul class="text-white text-[13px] mt-1 flex flex-col gap-2.5 font-normal mb-8">
                                 {#each features as feature}
                                     <li class="flex items-start gap-2.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0 mt-[1px]"><path d="M20 6 9 17l-5-5"/></svg>
-                                        <span class="flex-1 leading-snug tracking-normal">{feature}</span>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="#fff"
+                                            stroke-width="1.5"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="h-4 w-4 shrink-0 mt-[1px]"
+                                            ><path d="M20 6 9 17l-5-5" /></svg
+                                        >
+                                        <span class="flex-1 leading-snug tracking-normal"
+                                            >{feature}</span
+                                        >
                                     </li>
                                 {/each}
                             </ul>
@@ -203,10 +223,10 @@
                         href={isEnterprise ? '/contact-us/enterprise' : DASHBOARD_URL}
                         onclick={() => trackEvent(event)}
                         class={cn(
-                            "mt-auto flex w-full items-center justify-center rounded-md px-4 py-2.5 text-[14px] font-semibold text-white transition-all",
-                            isEnterprise 
-                                ? "bg-transparent border border-white/10 hover:bg-white/5" 
-                                : "bg-gradient-to-r from-[#fcad42] to-[#fc5d5d] hover:opacity-90"
+                            'mt-auto flex w-full items-center justify-center rounded-md px-4 py-2.5 text-[14px] font-semibold text-white transition-all',
+                            isEnterprise
+                                ? 'bg-transparent border border-white/10 hover:bg-white/5'
+                                : 'bg-gradient-to-r from-[#fcad42] to-[#fc5d5d] hover:opacity-90'
                         )}
                     >
                         {buttonText}

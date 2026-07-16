@@ -12,13 +12,13 @@ import { ButtonTooltip } from './ButtonTooltip'
 import { RequestUpgradeToBillingOwners } from './RequestUpgradeToBillingOwners'
 
 export const PLAN_REQUEST_EMPTY_PLACEHOLDER =
-  '<Specify which plan to upgrade to: Pro | Team | Enterprise>'
+  '<Specify which plan to upgrade to: Basic | Pro | Studio | Enterprise>'
 
 interface UpgradePlanButtonProps {
   /** Stick to camel case for consistency */
   source: string
   variant?: 'default' | 'primary'
-  plan?: 'Pro' | 'Team' | 'Enterprise'
+  plan?: 'Basic' | 'Pro' | 'Studio' | 'Team' | 'Enterprise'
   addon?: 'pitr' | 'customDomain' | 'spendCap' | 'computeSize'
   /** Used in the default message template for request upgrade dialog, e.g: "Upgrade to ..." */
   featureProposition?: string
