@@ -84,7 +84,7 @@ export function SearchResultItem({
               e.stopPropagation();
               onAction();
             }}
-            className="px-4 py-2 h-9 rounded-lg bg-accent-500 text-[#2B1A00] hover:bg-accent-600 transition-all duration-200 flex items-center gap-2 min-w-[100px] justify-center text-sm shadow-sm hover:shadow-md"
+            className="px-4 py-2 h-9 rounded-lg bg-accent-500 text-white hover:bg-accent-600 transition-all duration-200 flex items-center gap-2 min-w-[100px] justify-center text-sm shadow-sm hover:shadow-md"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

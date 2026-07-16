@@ -22,6 +22,14 @@ function sleep(ms: number) {
 }
 
 function bootWebContainerOnce(): Promise<WebContainer> {
+  if (typeof crossOriginIsolated !== 'undefined' && !crossOriginIsolated) {
+    return Promise.reject(
+      new Error(
+        'This browser tab is not cross-origin isolated (SharedArrayBuffer unavailable). Use Chrome or Edge, close other Builder tabs, and hard-refresh. If it still fails, disable extensions that strip COOP/COEP headers.',
+      ),
+    );
+  }
+
   const boot = WebContainer.boot({
     coep: 'credentialless',
     workdirName: WORK_DIR_NAME,

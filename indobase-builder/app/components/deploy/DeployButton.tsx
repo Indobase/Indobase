@@ -290,7 +290,7 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
             )}
             onClick={() => void handleIndobaseDeployClick()}
           >
-            <div className="i-ph:rocket-launch w-5 h-5 text-[#FFC107]" />
+            <div className="i-ph:rocket-launch w-5 h-5 text-[#3B8FD6]" />
             <span className="mx-auto">Publish to Indobase subdomain</span>
           </DropdownMenu.Item>
 
