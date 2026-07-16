@@ -64,9 +64,6 @@ function bootWebContainerOnce(): Promise<WebContainer> {
 async function configureWebContainer(container: WebContainer): Promise<WebContainer> {
   webcontainerContext.loaded = true;
 
-  const { workbenchStore } = await import('~/lib/stores/workbench');
-  const { streamingState } = await import('~/lib/stores/streaming');
-
   try {
     await withTimeout(
       (async () => {
@@ -95,19 +92,30 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
        * Suppress transient errors thrown while the AI is still writing files — a half-built app
        * throws mid-generation. A persistent error re-fires on the post-generation preview reload
        * (streaming is false by then), so real failures still surface.
+       *
+       * Import workbench lazily here — never during boot — to avoid a circular
+       * webcontainer ↔ workbench import deadlock that leaves the terminal stuck on
+       * "Starting Indobase Builder workspace...".
        */
-      if (streamingState.get()) {
-        return;
-      }
+      void (async () => {
+        const { streamingState } = await import('~/lib/stores/streaming');
 
-      const isPromise = message.type === 'PREVIEW_UNHANDLED_REJECTION';
-      const title = isPromise ? 'Unhandled Promise Rejection' : 'Uncaught Exception';
-      workbenchStore.actionAlert.set({
-        type: 'preview',
-        title,
-        description: 'message' in message ? message.message : 'Unknown error',
-        content: `Error occurred at ${message.pathname}${message.search}${message.hash}\nPort: ${message.port}\n\nStack trace:\n${cleanStackTrace(message.stack || '')}`,
-        source: 'preview',
+        if (streamingState.get()) {
+          return;
+        }
+
+        const { workbenchStore } = await import('~/lib/stores/workbench');
+        const isPromise = message.type === 'PREVIEW_UNHANDLED_REJECTION';
+        const title = isPromise ? 'Unhandled Promise Rejection' : 'Uncaught Exception';
+        workbenchStore.actionAlert.set({
+          type: 'preview',
+          title,
+          description: 'message' in message ? message.message : 'Unknown error',
+          content: `Error occurred at ${message.pathname}${message.search}${message.hash}\nPort: ${message.port}\n\nStack trace:\n${cleanStackTrace(message.stack || '')}`,
+          source: 'preview',
+        });
+      })().catch((error) => {
+        console.warn('Failed to surface WebContainer preview error:', error);
       });
     }
   });
@@ -122,7 +130,13 @@ function bootWebContainer(): Promise<WebContainer> {
     for (let attempt = 1; attempt <= WEBCONTAINER_BOOT_MAX_ATTEMPTS; attempt++) {
       try {
         const container = await bootWebContainerOnce();
-        return await configureWebContainer(container);
+        // Hard ceiling for post-boot setup so a circular import / hung API cannot
+        // leave callers waiting on the shared bootPromise forever.
+        return await withTimeout(
+          configureWebContainer(container),
+          WEBCONTAINER_CONFIGURE_TIMEOUT_MS + 5_000,
+          'Indobase Builder workspace setup timed out after boot. Hard-refresh and try again.',
+        );
       } catch (error) {
         lastError = error;
         webcontainerContext.loaded = false;
@@ -180,6 +194,12 @@ export async function getWebcontainerWithRetry(maxAttempts = 3): Promise<WebCont
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
+      // Always clear a stale in-flight boot before retrying — a hung shared promise
+      // would otherwise block every caller forever.
+      if (attempt > 1) {
+        resetWebContainerBoot();
+      }
+
       return await getWebcontainer();
     } catch (error) {
       lastError = error;

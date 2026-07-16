@@ -90,7 +90,7 @@ export class TerminalStore {
           terminal.write(coloredText.dim('Still booting WebContainer (StackBlitz)...\n'));
         }, 8_000);
 
-        const wc = await getWebcontainerWithRetry(attempt === 1 ? 2 : 3);
+        const wc = await getWebcontainerWithRetry(attempt === 1 ? 2 : 2);
         clearInterval(progressTimer);
         progressTimer = undefined;
 
