@@ -4,6 +4,10 @@ import { withResolvers } from './promises';
 import { atom } from 'nanostores';
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function newShellProcess(webcontainer: WebContainer, terminal: ITerminal) {
   const args: string[] = [];
 
@@ -93,6 +97,8 @@ export type ExecutionResult = { output: string; exitCode: number; timedOut?: boo
 
 /** Wait for the shell prompt OSC after Ctrl+C before writing the next command. */
 export const SHELL_PROMPT_TIMEOUT_MS = 10_000;
+/** How long to wait for jsh to become interactive after spawn. */
+export const SHELL_INTERACTIVE_TIMEOUT_MS = 45_000;
 /** Backstop so non-terminating processes cannot block the UI forever. */
 export const SHELL_EXIT_TIMEOUT_MS = 600_000;
 
@@ -142,7 +148,8 @@ export class BoltShell {
     // Start background Expo URL watcher immediately
     this._watchExpoUrlInBackground(expoUrlStream);
 
-    await this.waitTillOscCode('interactive');
+    // newBoltShellProcess already waited for interactive on the terminal stream —
+    // do not block again on commandStream (tee races can miss the OSC and hang forever).
     this.#initialized?.();
   }
 
@@ -187,7 +194,21 @@ export class BoltShell {
       }
     });
 
-    await jshReady.promise;
+    const timedOut = await Promise.race([
+      jshReady.promise.then(() => false as const),
+      sleep(SHELL_INTERACTIVE_TIMEOUT_MS).then(() => true as const),
+    ]);
+
+    if (timedOut) {
+      try {
+        process.kill();
+      } catch {
+        // ignore
+      }
+      throw new Error(
+        `Indobase Builder shell did not become interactive within ${Math.round(SHELL_INTERACTIVE_TIMEOUT_MS / 1000)}s. Click Reset Terminal or hard-refresh.`,
+      );
+    }
 
     // Return all streams for use in init
     return { process, terminalStream: streamA, commandStream: streamC, expoUrlStream: streamD };

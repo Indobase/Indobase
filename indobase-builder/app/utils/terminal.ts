@@ -6,6 +6,7 @@ export const escapeCodes = {
   red: '\x1b[1;31m',
   yellow: '\x1b[1;33m',
   green: '\x1b[1;32m',
+  cyan: '\x1b[1;36m',
   dim: '\x1b[2m',
 };
 
@@ -17,5 +18,6 @@ export const coloredText = {
   red: (text: string) => color(escapeCodes.red, text),
   yellow: (text: string) => color(escapeCodes.yellow, text),
   green: (text: string) => color(escapeCodes.green, text),
+  cyan: (text: string) => color(escapeCodes.cyan, text),
   dim: (text: string) => color(escapeCodes.dim, text),
 };

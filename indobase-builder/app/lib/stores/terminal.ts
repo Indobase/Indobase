@@ -69,22 +69,30 @@ export class TerminalStore {
     for (let attempt = 1; attempt <= SHELL_ATTACH_MAX_ATTEMPTS; attempt++) {
       try {
         if (attempt === 1) {
-          terminal.write(coloredText.yellow('Starting Indobase Builder workspace...\n'));
+          terminal.write(coloredText.cyan('Starting Indobase Builder workspace...\n'));
         } else {
           terminal.clear();
-          terminal.write(coloredText.yellow(`Retrying Indobase Builder workspace (${attempt}/${SHELL_ATTACH_MAX_ATTEMPTS})...\n`));
+          terminal.write(
+            coloredText.cyan(`Retrying Indobase Builder workspace (${attempt}/${SHELL_ATTACH_MAX_ATTEMPTS})...\n`),
+          );
           this.#boltTerminal = newBoltShellProcess();
-          resetWebContainerBoot();
+          // Only reset the WebContainer when prior boot likely failed — shell-only hangs
+          // shouldn't tear down a healthy container.
+          if (attempt > 1) {
+            resetWebContainerBoot();
+          }
         }
 
         const wc = await getWebcontainerWithRetry(attempt === 1 ? 2 : 3);
         await this.#boltTerminal.init(wc, terminal);
+        terminal.write(coloredText.green('Workspace ready.\n'));
         return;
       } catch (error: unknown) {
         lastError = error;
+        console.warn(`Bolt terminal attach attempt ${attempt} failed:`, error);
 
         if (attempt < SHELL_ATTACH_MAX_ATTEMPTS) {
-          await sleep(2000 * attempt);
+          await sleep(1500 * attempt);
         }
       }
     }
@@ -93,7 +101,7 @@ export class TerminalStore {
     terminal.write(
       coloredText.red('Failed to start Indobase Builder terminal\n\n') +
         message +
-        '\n\nClick the reset button above the terminal or hard-refresh the page to try again.',
+        '\n\nClick the reset button above the terminal (↻) or hard-refresh the page to try again.',
     );
   }
 
