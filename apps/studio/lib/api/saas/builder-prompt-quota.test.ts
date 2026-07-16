@@ -8,9 +8,11 @@ import {
 } from './builder-prompt-quota'
 
 describe('builder-prompt-quota', () => {
-  it('treats only pro/team/enterprise as paid Builder plans', () => {
+  it('treats only free as Builder-prompt-capped; Basic+ is unlimited', () => {
     expect(isFreeBuilderOrgPlan('free')).toBe(true)
+    expect(isFreeBuilderOrgPlan('basic')).toBe(false)
     expect(isFreeBuilderOrgPlan('pro')).toBe(false)
+    expect(isFreeBuilderOrgPlan('studio')).toBe(false)
     expect(isFreeBuilderOrgPlan('team')).toBe(false)
     expect(isFreeBuilderOrgPlan('enterprise')).toBe(false)
     expect(isFreeBuilderOrgPlan('platform')).toBe(false)
@@ -18,7 +20,9 @@ describe('builder-prompt-quota', () => {
 
   it('normalizes tier_* plan ids', () => {
     expect(normalizeOrgPlanId('tier_free')).toBe('free')
+    expect(normalizeOrgPlanId('tier_basic')).toBe('basic')
     expect(normalizeOrgPlanId('tier_pro')).toBe('pro')
+    expect(normalizeOrgPlanId('tier_studio')).toBe('studio')
   })
 
   it('exposes a five-prompt free cap', () => {

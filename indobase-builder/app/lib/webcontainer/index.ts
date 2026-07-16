@@ -6,11 +6,11 @@ interface WebContainerContext {
   loaded: boolean;
 }
 
-export const webcontainerContext: WebContainerContext = import.meta.hot?.data.webcontainerContext ?? {
+export const webcontainerContext: WebContainerContext = import.meta.hot?.data?.webcontainerContext ?? {
   loaded: false,
 };
 
-if (import.meta.hot) {
+if (import.meta.hot?.data) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
@@ -45,6 +45,7 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
   webcontainerContext.loaded = true;
 
   const { workbenchStore } = await import('~/lib/stores/workbench');
+  const { streamingState } = await import('~/lib/stores/streaming');
 
   const response = await fetch('/inspector-script.js');
   const inspectorScript = await response.text();
@@ -54,6 +55,15 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
     console.log('WebContainer preview message:', message);
 
     if (message.type === 'PREVIEW_UNCAUGHT_EXCEPTION' || message.type === 'PREVIEW_UNHANDLED_REJECTION') {
+      /*
+       * Suppress transient errors thrown while the AI is still writing files — a half-built app
+       * throws mid-generation. A persistent error re-fires on the post-generation preview reload
+       * (streaming is false by then), so real failures still surface.
+       */
+      if (streamingState.get()) {
+        return;
+      }
+
       const isPromise = message.type === 'PREVIEW_UNHANDLED_REJECTION';
       const title = isPromise ? 'Unhandled Promise Rejection' : 'Uncaught Exception';
       workbenchStore.actionAlert.set({
@@ -102,7 +112,7 @@ export function resetWebContainerBoot(): void {
   bootPromise = undefined;
   webcontainerContext.loaded = false;
 
-  if (import.meta.hot) {
+  if (import.meta.hot?.data) {
     import.meta.hot.data.webcontainer = undefined;
   }
 }
@@ -114,14 +124,14 @@ export function getWebcontainer(): Promise<WebContainer> {
     });
   }
 
-  if (import.meta.hot?.data.webcontainer) {
+  if (import.meta.hot?.data?.webcontainer) {
     return import.meta.hot.data.webcontainer;
   }
 
   if (!bootPromise) {
     bootPromise = bootWebContainer();
 
-    if (import.meta.hot) {
+    if (import.meta.hot?.data) {
       import.meta.hot.data.webcontainer = bootPromise;
     }
   }

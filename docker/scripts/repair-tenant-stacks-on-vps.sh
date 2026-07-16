@@ -177,6 +177,35 @@ if "GOTRUE_API_MAX_REQUEST_DURATION:" not in text and "GOTRUE_MAILER_AUTOCONFIRM
         'GOTRUE_MAILER_AUTOCONFIRM: "false"\n      GOTRUE_API_MAX_REQUEST_DURATION: "30s"\n      GOTRUE_SMTP_MAX_FREQUENCY: "60s"',
         1,
     )
+_rate_limit_block = (
+    '      GOTRUE_RATE_LIMIT_HEADER: "X-Forwarded-For"\n'
+    '      GOTRUE_RATE_LIMIT_OTP: "30"\n'
+    '      GOTRUE_RATE_LIMIT_EMAIL_SENT: "2"\n'
+    '      GOTRUE_RATE_LIMIT_SMS_SENT: "30"\n'
+    '      GOTRUE_RATE_LIMIT_VERIFY: "30"\n'
+    '      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: "150"\n'
+    '      GOTRUE_RATE_LIMIT_ANONYMOUS_USERS: "30"\n'
+    '      GOTRUE_SECURITY_SB_FORWARDED_FOR_ENABLED: "false"'
+)
+if "GOTRUE_RATE_LIMIT_OTP:" not in text:
+    if "GOTRUE_SMTP_MAX_FREQUENCY:" in text:
+        text = text.replace(
+            'GOTRUE_SMTP_MAX_FREQUENCY: "60s"',
+            'GOTRUE_SMTP_MAX_FREQUENCY: "60s"\n' + _rate_limit_block,
+            1,
+        )
+    elif 'GOTRUE_MAILER_AUTOCONFIRM: "false"' in text:
+        text = text.replace(
+            'GOTRUE_MAILER_AUTOCONFIRM: "false"',
+            'GOTRUE_MAILER_AUTOCONFIRM: "false"\n' + _rate_limit_block,
+            1,
+        )
+    elif 'GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"' in text:
+        text = text.replace(
+            'GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"',
+            'GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"\n' + _rate_limit_block,
+            1,
+        )
 open(path, "w").write(text)
 PY
     echo "  patched tenant-auth SMTP -> ${SMTP_HOST}:${SMTP_PORT} templates -> ${TEMPLATES_BASE}"

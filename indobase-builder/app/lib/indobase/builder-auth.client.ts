@@ -1,6 +1,7 @@
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
 import { getStoredIndobaseConnection } from '~/lib/indobase/mcp';
+import type { BuilderBackendConfigResponse } from './backendConfig';
 import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from './connection';
 import {
   BUILDER_LAST_PROJECT_REF_KEY,
@@ -143,7 +144,61 @@ export function getStudioBuilderConnectUrl(options?: {
   return `${studioUrl}/project/${encodeURIComponent(projectRef)}/builder/connect${suffix}`;
 }
 
-function applySessionToStoredConnection(session: SessionResponse) {
+async function rebuildConnectionFromBackendConfig(session: SessionResponse): Promise<void> {
+  /*
+   * No stored handoff connection (e.g. localStorage cleared): the MCP cookie is still valid,
+   * so fetch the tenant backend config from Studio and reconstruct a full connection instead of
+   * forcing a fresh Studio launch. Dynamic import avoids a static cycle with this module.
+   */
+  if (!session.projectRef || !session.studioUrl) {
+    return;
+  }
+
+  const response = await fetch(
+    '/api/indobase/backend',
+    getBuilderRequestInit({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        projectRef: session.projectRef,
+        studioUrl: session.studioUrl,
+        mcpToken: session.mcpToken,
+      }),
+    }),
+  );
+
+  if (!response.ok) {
+    return;
+  }
+
+  const { buildConnectionFromSessionAndBackend } = await import('./backendConfig');
+  const backendData = (await response.json().catch(() => null)) as BuilderBackendConfigResponse | null;
+
+  if (!backendData?.backend?.anon_key) {
+    return;
+  }
+
+  const rebuilt = buildConnectionFromSessionAndBackend(
+    {
+      mcpToken: session.mcpToken,
+      projectRef: session.projectRef,
+      studioUrl: session.studioUrl,
+      organizationSlug: session.organizationSlug,
+    },
+    backendData,
+  );
+
+  if (!rebuilt) {
+    return;
+  }
+
+  persistLastProjectRef(session.projectRef);
+  updateIndobaseConnection(rebuilt);
+}
+
+async function applySessionToStoredConnection(session: SessionResponse): Promise<void> {
   if (!session.mcpToken) {
     return;
   }
@@ -151,6 +206,7 @@ function applySessionToStoredConnection(session: SessionResponse) {
   const connection = getStoredIndobaseConnectionFromAuth();
 
   if (!connection || connection.connectionSource !== 'studio_handoff') {
+    await rebuildConnectionFromBackendConfig(session);
     return;
   }
 
@@ -215,7 +271,7 @@ export async function ensureBuilderSession(options?: { retries?: number }): Prom
       const data = (await response.json().catch(() => ({}))) as SessionResponse;
 
       if (response.ok && data.success) {
-        applySessionToStoredConnection(data);
+        await applySessionToStoredConnection(data);
         return true;
       }
 
@@ -292,9 +348,11 @@ export function startBuilderSessionKeeper(): () => void {
   }
 
   const onMessage = (event: MessageEvent) => {
-    const studioUrl = getStudioOrigin();
-
-    if (event.origin !== studioUrl) {
+    /*
+     * The session-refresh popup ends up on the Builder origin before it notifies us,
+     * so this is a same-origin message — not one from Studio.
+     */
+    if (event.origin !== window.location.origin) {
       return;
     }
 

@@ -4,7 +4,7 @@ import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
 import { BuilderErrorBoundary } from '~/components/BuilderErrorBoundary';
 import { Header } from '~/components/header/Header';
-import BackgroundRays from '~/components/ui/BackgroundRays';
+import { AtmosphereBackground } from '~/components/ui/AtmosphereBackground';
 
 export const meta: MetaFunction = () => {
   return [
@@ -23,16 +23,18 @@ export const loader = () => json({});
  */
 export default function Index() {
   return (
-    <div className="flex flex-col h-full w-full bg-[#090B10]">
-      <BackgroundRays />
-      <Header />
-      <ClientOnly fallback={<BaseChat />}>
-        {() => (
-          <BuilderErrorBoundary>
-            <Chat />
-          </BuilderErrorBoundary>
-        )}
-      </ClientOnly>
+    <div className="relative flex h-full w-full flex-col bg-[#E8F2FB]">
+      <AtmosphereBackground />
+      <div className="relative z-10 flex h-full w-full flex-col">
+        <Header />
+        <ClientOnly fallback={<BaseChat />}>
+          {() => (
+            <BuilderErrorBoundary>
+              <Chat />
+            </BuilderErrorBoundary>
+          )}
+        </ClientOnly>
+      </div>
     </div>
   );
 }

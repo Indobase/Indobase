@@ -14,12 +14,12 @@ describe('HeaderActionButtons', () => {
     expect(() => render(<HeaderActionButtons chatStarted />)).not.toThrow();
   });
 
-  it('mounts deploy UI when files exist', async () => {
+  it('shows overflow actions when files exist (Publish lives on workbench)', async () => {
     workbenchStore.files.set({
       '/home/project/index.html': { type: 'file', content: '<html></html>', isBinary: false },
     });
 
-    const { findByText } = render(<HeaderActionButtons chatStarted />);
-    expect(await findByText('Publish')).toBeTruthy();
+    const { findByLabelText } = render(<HeaderActionButtons chatStarted />);
+    expect(await findByLabelText('More actions')).toBeTruthy();
   });
 });

@@ -1,6 +1,8 @@
 import { LOCAL_STORAGE_KEYS, useParams } from 'common'
 import { AppBannerWrapper } from 'components/interfaces/App/AppBannerWrapper'
+import { BackendStudioUpgradeGate } from 'components/interfaces/Billing/BackendStudioUpgradeGate'
 import { Sidebar } from 'components/interfaces/Sidebar'
+import { useBackendStudioAccess } from 'hooks/misc/useBackendStudioAccess'
 import { useLocalStorageQuery } from 'hooks/misc/useLocalStorage'
 import { useCheckLatestDeploy } from 'hooks/use-check-latest-deploy'
 import { useRouter } from 'next/router'
@@ -39,7 +41,9 @@ export const DefaultLayout = ({
   const { ref } = useParams()
   const router = useRouter()
   const appSnap = useAppStateSnapshot()
-  const showProductMenu = !!ref && router.pathname !== '/project/[ref]'
+  const { hasAccess: hasBackendStudioAccess, enabled: studioGateEnabled } = useBackendStudioAccess()
+  const studioLocked = studioGateEnabled && !hasBackendStudioAccess
+  const showProductMenu = !!ref && router.pathname !== '/project/[ref]' && !studioLocked
 
   const [lastVisitedOrganization] = useLocalStorageQuery(
     LOCAL_STORAGE_KEYS.LAST_VISITED_ORGANIZATION,
@@ -64,6 +68,13 @@ export const DefaultLayout = ({
     setIsMounted(true)
   }, [])
 
+  const showProjectSidebar =
+    !router.pathname.startsWith('/account') && !studioLocked
+
+  const content = (
+    <BackendStudioUpgradeGate>{children}</BackendStudioUpgradeGate>
+  )
+
   // Resizable panels render at 50% before settling; show a stable shell on first paint.
   if (!isMounted) {
     return (
@@ -74,7 +85,7 @@ export const DefaultLayout = ({
               <div className="flex flex-col h-screen w-screen">
                 <AppBannerWrapper />
                 <div className="flex-shrink-0">
-                  <MobileNavigationBar hideMobileMenu={hideMobileMenu} />
+                  <MobileNavigationBar hideMobileMenu={hideMobileMenu || studioLocked} />
                   <LayoutHeader
                     showProductMenu={showProductMenu}
                     headerTitle={headerTitle}
@@ -84,8 +95,8 @@ export const DefaultLayout = ({
                   />
                 </div>
                 <div className="flex flex-1 w-full overflow-y-hidden">
-                  {!router.pathname.startsWith('/account') && <Sidebar />}
-                  <div className="h-full flex-1 overflow-y-auto">{children}</div>
+                  {showProjectSidebar && <Sidebar />}
+                  <div className="h-full flex-1 overflow-y-auto">{content}</div>
                 </div>
               </div>
               <BannerStack />
@@ -102,10 +113,9 @@ export const DefaultLayout = ({
         <ProjectContextProvider projectRef={ref}>
           <BannerStackProvider>
             <div className="flex flex-col h-screen w-screen">
-              {/* Top Banner */}
               <AppBannerWrapper />
               <div className="flex-shrink-0">
-                <MobileNavigationBar hideMobileMenu={hideMobileMenu} />
+                <MobileNavigationBar hideMobileMenu={hideMobileMenu || studioLocked} />
                 <LayoutHeader
                   showProductMenu={showProductMenu}
                   headerTitle={headerTitle}
@@ -114,31 +124,32 @@ export const DefaultLayout = ({
                   }
                 />
               </div>
-              {/* Main Content Area */}
               <div className="flex flex-1 w-full overflow-y-hidden">
-                {/* Sidebar - Only show for project pages, not account pages */}
-                {!router.pathname.startsWith('/account') && <Sidebar />}
-                {/* Main Content with Layout Sidebar */}
-                <ResizablePanelGroup
-                  orientation="horizontal"
-                  className="h-full w-full overflow-x-hidden flex-1 flex flex-row gap-0"
-                  autoSaveId="default-layout-content"
-                >
-                  <ResizablePanel
-                    id="panel-content"
-                    className="w-full"
-                    minSize={`${contentMinSizePercentage}`}
-                    maxSize={`${contentMaxSizePercentage}`}
-                    defaultSize={`${contentMaxSizePercentage}`}
+                {showProjectSidebar && <Sidebar />}
+                {studioLocked ? (
+                  <div className="h-full flex-1 overflow-y-auto">{content}</div>
+                ) : (
+                  <ResizablePanelGroup
+                    orientation="horizontal"
+                    className="h-full w-full overflow-x-hidden flex-1 flex flex-row gap-0"
+                    autoSaveId="default-layout-content"
                   >
-                    <div className="h-full overflow-y-auto">{children}</div>
-                  </ResizablePanel>
-                  <LayoutSidebar
-                    minSize={`${100 - contentMaxSizePercentage}`}
-                    maxSize={`${100 - contentMinSizePercentage}`}
-                    defaultSize={`${100 - contentMaxSizePercentage}`}
-                  />
-                </ResizablePanelGroup>
+                    <ResizablePanel
+                      id="panel-content"
+                      className="w-full"
+                      minSize={`${contentMinSizePercentage}`}
+                      maxSize={`${contentMaxSizePercentage}`}
+                      defaultSize={`${contentMaxSizePercentage}`}
+                    >
+                      <div className="h-full overflow-y-auto">{content}</div>
+                    </ResizablePanel>
+                    <LayoutSidebar
+                      minSize={`${100 - contentMaxSizePercentage}`}
+                      maxSize={`${100 - contentMinSizePercentage}`}
+                      defaultSize={`${100 - contentMaxSizePercentage}`}
+                    />
+                  </ResizablePanelGroup>
+                )}
               </div>
             </div>
 

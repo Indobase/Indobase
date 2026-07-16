@@ -1,57 +1,49 @@
 import type { PlanId } from 'data/subscriptions/types'
 
-type PlanChangeType = 'upgrade' | 'downgrade' | 'none'
+import {
+  SELECTABLE_BILLING_PLAN_IDS,
+  canonicalizePlanId,
+  getPlanChangeType,
+  getPlanEntitlements,
+  type IndobasePlanId,
+} from './plan-entitlements'
 
-function getPlanChangeType(fromPlan: PlanId | undefined, toPlan: PlanId | undefined): PlanChangeType {
-  const planChangeTypes: Record<PlanId, Record<PlanId, PlanChangeType>> = {
-    free: { free: 'none', pro: 'upgrade', team: 'upgrade', enterprise: 'upgrade', platform: 'upgrade' },
-    pro: { free: 'downgrade', pro: 'none', team: 'upgrade', enterprise: 'upgrade', platform: 'upgrade' },
-    team: { free: 'downgrade', pro: 'downgrade', team: 'none', enterprise: 'upgrade', platform: 'upgrade' },
-    enterprise: {
-      free: 'downgrade',
-      pro: 'downgrade',
-      team: 'downgrade',
-      enterprise: 'none',
-      platform: 'upgrade',
-    },
-    platform: {
-      free: 'downgrade',
-      pro: 'downgrade',
-      team: 'downgrade',
-      enterprise: 'downgrade',
-      platform: 'none',
-    },
-  }
-  if (!fromPlan || !toPlan) return 'none'
-  return planChangeTypes[fromPlan]?.[toPlan] ?? 'none'
-}
+export type PlanChangeType = 'upgrade' | 'downgrade' | 'none'
+
+export { getPlanChangeType }
 
 export const INDOBASE_BILLING_CURRENCY = 'INR' as const
 
-export const INDOBASE_PLAN_DISPLAY_NAMES: Record<PlanId, string> = {
-  free: 'Starter',
+export const INDOBASE_PLAN_DISPLAY_NAMES: Record<string, string> = {
+  free: 'Free',
+  basic: 'Basic',
   pro: 'Pro',
-  team: 'Business',
+  studio: 'Studio',
+  team: 'Studio', // legacy
   enterprise: 'Enterprise',
   platform: 'Platform',
 }
 
-/** Monthly prices in INR (paise not used — whole rupees) — defaults before env overrides. */
-export const INDOBASE_PLAN_PRICES_INR: Record<PlanId, number | null> = {
+/** Monthly prices in INR — defaults before env overrides. */
+export const INDOBASE_PLAN_PRICES_INR: Record<string, number | null> = {
   free: 0,
-  pro: 2499,
-  team: 49999,
+  basic: 499,
+  pro: 1999,
+  studio: 6999,
+  team: 6999, // legacy alias
   enterprise: null,
   platform: null,
 }
 
 /**
  * Effective monthly INR for a plan. Operators can set `INDOBASE_<PLAN>_PLAN_PRICE_INR`
- * (e.g. `INDOBASE_TEAM_PLAN_PRICE_INR=17999`) to close mid-market gaps without redeploying code.
+ * (e.g. `INDOBASE_BASIC_PLAN_PRICE_INR=499`) without redeploying code.
  */
-export function resolveIndobasePlanPriceInr(planId: PlanId): number | null {
-  const base = INDOBASE_PLAN_PRICES_INR[planId]
-  const envKey = `INDOBASE_${planId.toUpperCase()}_PLAN_PRICE_INR`
+export function resolveIndobasePlanPriceInr(planId: PlanId | IndobasePlanId | string): number | null {
+  const id = canonicalizePlanId(planId)
+  const key = id === 'team' ? 'studio' : id
+  const base = INDOBASE_PLAN_PRICES_INR[key] ?? null
+  const envKey = `INDOBASE_${key.toUpperCase()}_PLAN_PRICE_INR`
   const raw = process.env[envKey]?.trim()
   if (raw === undefined || raw === '') return base
   const n = parseInt(raw, 10)
@@ -76,126 +68,141 @@ export type IndobasePublicPlan = {
   contact_sales?: boolean
   gst_notice?: string
   payment_methods?: string[]
+  motive?: string
 }
 
 export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRENCY): IndobasePublicPlan[] {
   const isInr = currency === 'INR'
+  const e = {
+    free: getPlanEntitlements('free'),
+    basic: getPlanEntitlements('basic'),
+    pro: getPlanEntitlements('pro'),
+    studio: getPlanEntitlements('studio'),
+  }
 
   const plans: IndobasePublicPlan[] = [
     {
       id: 'free',
-      name: 'Starter',
-      display_name: 'Starter',
+      name: 'Free',
+      display_name: 'Free',
       monthly_price: 0,
       annual_price: 0,
       currency,
-      description: 'Perfect for trying out the platform',
+      description: 'Ship one app on a *.indobase.app subdomain and see if Indobase fits.',
+      motive: 'Try the product',
       features: [
-        'Unlimited API requests',
-        '50,000 monthly active users',
-        '500 MB database size',
-        '5 GB egress',
-        '5 GB cached egress',
-        '1 GB file storage',
-        'Multiple projects per organization (fair-use)',
-        'Community support',
+        '1 app',
+        '*.indobase.app subdomain',
+        'Indobase badge on published sites',
+        'Sleeps after 7 days idle',
+        '~20 builds/day',
+        'No backend Studio (frontend only)',
       ],
       limits: {
-        database_size: 536870912,
-        auth_maus: 50000,
-        storage_size: 1073741824,
-        functions_invocations: 500000,
-        realtime_connections: 200,
-        realtime_messages: 2000000,
+        max_apps: e.free.maxApps ?? 1,
+        builds_per_day: e.free.buildsPerDay ?? 20,
       },
-      overage_rates: {
-        database_size: isInr ? 0.000010417 : 0.000000125,
-        auth_maus: isInr ? 0.27 : 0.00325,
-        storage_size: isInr ? 1.75 : 0.021,
-        functions_invocations: isInr ? 0.000167 : 0.000002,
-      },
+      overage_rates: {},
       popular: false,
       available: true,
+    },
+    {
+      id: 'basic',
+      name: 'Basic',
+      display_name: 'Basic',
+      monthly_price: isInr ? resolveIndobasePlanPriceInr('basic') ?? 499 : 6,
+      annual_price: isInr ? (resolveIndobasePlanPriceInr('basic') ?? 499) * 10 : 60,
+      currency,
+      description: 'Custom domain and no badge — for static sites, landings, and frontend prototypes.',
+      motive: 'Vanity: my domain, no badge',
+      features: [
+        '3 apps',
+        'Custom domain',
+        'Indobase badge removed',
+        'No idle sleep',
+        '~60 builds/day',
+        'No backend Studio (frontend only)',
+      ],
+      limits: {
+        max_apps: e.basic.maxApps ?? 3,
+        builds_per_day: e.basic.buildsPerDay ?? 60,
+      },
+      overage_rates: {},
+      popular: false,
+      available: true,
+      savings: (() => {
+        if (!isInr) return undefined
+        const m = resolveIndobasePlanPriceInr('basic') ?? 499
+        return `Save ₹${(m * 2).toLocaleString('en-IN')} with annual billing`
+      })(),
     },
     {
       id: 'pro',
       name: 'Pro',
       display_name: 'Pro',
-      monthly_price: isInr ? resolveIndobasePlanPriceInr('pro') ?? 2499 : 25,
-      annual_price: isInr ? (resolveIndobasePlanPriceInr('pro') ?? 2499) * 10 : 240,
+      monthly_price: isInr ? resolveIndobasePlanPriceInr('pro') ?? 1999 : 24,
+      annual_price: isInr ? (resolveIndobasePlanPriceInr('pro') ?? 1999) * 10 : 240,
       currency,
-      description: 'For growing applications and startups',
+      description: 'Backend Studio unlocked — Auth, Postgres, Storage, and Edge Functions.',
+      motive: 'Necessity: users need to log in',
       features: [
-        '100,000 monthly active users',
-        '8 GB disk size per project',
-        '250 GB egress',
-        '250 GB cached egress',
-        '100 GB file storage',
-        'Multiple projects per organization (no per-project platform fee)',
-        'Email support',
-        'Daily backups stored for 7 days',
-        '7-day log retention',
+        'Backend Studio unlocked',
+        'Auth, Postgres, Storage, Functions',
+        '5 apps',
+        'Unlimited builds (fair-use)',
+        'GitHub export',
+        '2 GB database',
       ],
       limits: {
-        database_size: 8589934592,
+        max_apps: e.pro.maxApps ?? 5,
+        database_size: e.pro.databaseBytes ?? 2 * 1024 ** 3,
         auth_maus: 100000,
         storage_size: 107374182400,
-        functions_invocations: 2000000,
-        realtime_connections: 2000,
-        realtime_messages: 5000000,
       },
       overage_rates: {
         database_size: isInr ? 0.000010417 : 0.000000125,
         auth_maus: isInr ? 0.27 : 0.00325,
         storage_size: isInr ? 1.75 : 0.021,
-        functions_invocations: isInr ? 0.000167 : 0.000002,
       },
-      popular: false,
+      popular: true,
       available: true,
       savings: (() => {
-        if (!isInr) return 'Save $60 with annual billing'
-        const m = resolveIndobasePlanPriceInr('pro') ?? 2499
+        if (!isInr) return 'Save with annual billing'
+        const m = resolveIndobasePlanPriceInr('pro') ?? 1999
         const save = m * 12 - m * 10
         return `Save ₹${save.toLocaleString('en-IN')} with annual billing`
       })(),
     },
     {
-      id: 'team',
-      name: 'Business',
-      display_name: 'Business',
-      monthly_price: isInr ? resolveIndobasePlanPriceInr('team') ?? 49999 : 599,
-      annual_price: isInr ? Math.round((resolveIndobasePlanPriceInr('team') ?? 49999) * 9.6) : 5750,
+      id: 'studio',
+      name: 'Studio',
+      display_name: 'Studio',
+      monthly_price: isInr ? resolveIndobasePlanPriceInr('studio') ?? 6999 : 84,
+      annual_price: isInr ? Math.round((resolveIndobasePlanPriceInr('studio') ?? 6999) * 9.6) : 800,
       currency,
-      description: 'For scaling businesses with advanced needs',
+      description: 'For agencies and dev shops — seats, more apps, and shared billing.',
+      motive: 'Team: seats and shared billing',
       features: [
-        'SOC2',
-        'Project-scoped and read-only access',
-        'HIPAA available as paid add-on',
-        'SSO for Indobase Dashboard',
-        'Priority email support & SLAs',
-        'Daily backups stored for 14 days',
-        '28-day log retention',
-        'Add Log Drains',
+        '3 seats',
+        '15 apps',
+        '20 GB database',
+        'Priority build queue',
+        'Shared billing',
+        'Everything in Pro',
       ],
       limits: {
-        database_size: 8589934592,
-        auth_maus: 100000,
-        storage_size: 107374182400,
-        functions_invocations: 2000000,
-        realtime_connections: 10000,
-        realtime_messages: 20000000,
+        max_apps: e.studio.maxApps ?? 15,
+        max_seats: e.studio.maxSeats ?? 3,
+        database_size: e.studio.databaseBytes ?? 20 * 1024 ** 3,
       },
       overage_rates: {
         database_size: isInr ? 0.000010417 : 0.000000125,
-        auth_maus: isInr ? 0.27 : 0.00325,
-        storage_size: isInr ? 1.75 : 0.021,
-        functions_invocations: isInr ? 0.000167 : 0.000002,
       },
-      popular: true,
+      popular: false,
       available: true,
       savings: (() => {
-        if (!isInr) return 'Save $1,438 with annual billing'
-        const m = resolveIndobasePlanPriceInr('team') ?? 49999
+        if (!isInr) return undefined
+        const m = resolveIndobasePlanPriceInr('studio') ?? 6999
         const annual = Math.round(m * 9.6)
         const save = m * 12 - annual
         return `Save ₹${save.toLocaleString('en-IN')} with annual billing`
@@ -208,13 +215,14 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       monthly_price: null,
       annual_price: null,
       currency,
-      description: 'Custom solutions for large organizations',
+      description: 'DPDP audit pack, SLA, dedicated placement, VPC, and SSO. From ₹40,000/mo.',
+      motive: 'Compliance and dedicated ops',
       features: [
-        'Designated Support manager',
-        'Uptime SLAs',
-        'BYO Cloud supported',
-        '24x7x365 premium enterprise support',
-        'Private Slack channel',
+        'DPDP audit pack',
+        'Uptime SLA',
+        'Dedicated placement / VPC',
+        'SSO',
+        '24×7 premium support',
         'Custom security questionnaires',
       ],
       limits: {},
@@ -242,16 +250,22 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
   return plans
 }
 
-export function getIndobaseOrgPlansResponse(currentPlanId: PlanId) {
-  const selectable: PlanId[] = ['free', 'pro', 'team', 'enterprise']
+export function getIndobaseOrgPlansResponse(currentPlanId: PlanId | string) {
+  const current = canonicalizePlanId(currentPlanId)
 
   return {
-    plans: selectable.map((id) => ({
+    plans: SELECTABLE_BILLING_PLAN_IDS.map((id) => ({
       id,
       name: INDOBASE_PLAN_DISPLAY_NAMES[id],
       price: resolveIndobasePlanPriceInr(id) ?? 0,
-      is_current: id === currentPlanId,
-      change_type: getPlanChangeType(currentPlanId, id),
+      is_current: entitlementsPlanKeyEquals(current, id),
+      change_type: getPlanChangeType(current, id),
     })),
   }
+}
+
+function entitlementsPlanKeyEquals(current: IndobasePlanId, id: IndobasePlanId): boolean {
+  if (current === id) return true
+  if ((current === 'team' || current === 'studio') && (id === 'team' || id === 'studio')) return true
+  return false
 }

@@ -51,6 +51,7 @@ import {
   redirectToStudioBuilderConnect,
 } from '~/lib/indobase/builder-auth.client';
 import { getStudioBackendUserPreamble } from '~/lib/indobase/studio-database-prompt';
+import { getStudioSchemaPreamble } from '~/lib/indobase/studioSchema';
 import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
 import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
 import type { ToolCallAnnotation } from '~/types/context';
@@ -391,7 +392,9 @@ export const ChatImpl = memo(
           }
 
           runAnimation();
-          const preamble = hasIndobaseStudioHandoff(indobaseConn) ? getStudioBackendUserPreamble() : '';
+          const preamble = hasIndobaseStudioHandoff(indobaseConn)
+            ? `${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`
+            : '';
           append({
             role: 'user',
             content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${preamble}${prompt}`,
@@ -837,14 +840,20 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         !chatStarted &&
         !finalMessageContent.includes('INDOBASE BACKEND (Studio-linked')
       ) {
-        finalMessageContent = `${getStudioBackendUserPreamble()}${finalMessageContent}`;
+        const schemaBlock = await getStudioSchemaPreamble(indobaseConn);
+        finalMessageContent = `${getStudioBackendUserPreamble()}${schemaBlock}${finalMessageContent}`;
       }
 
       if (selectedElement) {
         console.log('Selected Element:', selectedElement);
 
         const elementInfo = `<div class=\"__boltSelectedElement__\" data-element='${JSON.stringify(selectedElement)}'>${JSON.stringify(`${selectedElement.displayText}`)}</div>`;
-        finalMessageContent = messageContent + elementInfo;
+
+        /*
+         * Append to finalMessageContent so the Studio backend preamble + live schema (prepended
+         * above) survive; overwriting with messageContent here dropped that context.
+         */
+        finalMessageContent = finalMessageContent + elementInfo;
       }
 
       runAnimation();

@@ -36,6 +36,7 @@ import {
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
+import { MyAppsList } from '~/components/chat/MyAppsList.client';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -227,6 +228,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const backendAlert = indobaseBackendAlert;
     const clearBackendAlert = clearIndobaseBackendAlert;
     const [qrModalOpen, setQrModalOpen] = useState(false);
+    const [appSurface, setAppSurface] = useState<'web' | 'mobile'>('web');
+    const [templatesOpen, setTemplatesOpen] = useState(false);
     const isStudioManagedConnection = hasIndobaseStudioHandoff(indobaseConn);
     // Connected via Studio handoff OR a manual project URL + anon key.
     const isBackendConnected = isStudioManagedConnection || Boolean(indobaseConn?.isConnected);
@@ -406,14 +409,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         {builderPromptQuota?.isFree && builderPromptQuota.limit !== null && (
           <div
             className={classNames(
-              'rounded-lg border p-3 mb-2 text-sm transition-colors duration-200',
+              'mb-2 rounded-lg border p-3 text-sm transition-colors duration-200',
               builderPromptQuota.remaining === 0
-                ? 'border-rose-400/35 bg-rose-500/10'
-                : 'border-white/12 bg-white/5',
+                ? 'border-rose-200 bg-rose-50'
+                : 'border-gray-200 bg-white/80',
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-zinc-300">
+              <p className="text-gray-700">
                 {builderPromptQuota.remaining === 0 ? (
                   <>Free plan: all {builderPromptQuota.limit} prompts used.</>
                 ) : (
@@ -428,10 +431,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   href={upgradeUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm font-medium text-white bg-violet-500/85 hover:bg-violet-500 px-2 py-1 rounded-md inline-flex items-center gap-1 transition-colors duration-200"
+                  className="inline-flex items-center gap-1 rounded-md bg-accent-500 px-2 py-1 text-sm font-medium text-white transition-colors duration-200 hover:brightness-95"
                 >
-                  Upgrade to Pro
-                  <span className="i-ph:arrow-square-out w-4 h-4" />
+                  Upgrade plan
+                  <span className="i-ph:arrow-square-out h-4 w-4" />
                 </a>
               )}
             </div>
@@ -440,7 +443,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       </div>
     );
 
-    const promptComposer = (
+    const promptComposer = (embedded = false) => (
       <ChatBox
         uploadedFiles={uploadedFiles}
         setUploadedFiles={setUploadedFiles}
@@ -480,6 +483,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         selectedElement={selectedElement}
         setSelectedElement={setSelectedElement}
         onWebSearchResult={onWebSearchResult}
+        embedded={embedded}
       />
     );
 
@@ -524,20 +528,18 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             type="button"
             disabled={isStreaming}
             onClick={(event) => handleTemplateClick(event, template.templateName)}
-            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition duration-200 hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition duration-200 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/8 text-zinc-300">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gray-100 text-gray-600">
               <span className={`${template.icon} text-[15px]`} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-zinc-300 transition duration-200 group-hover:text-white">
+              <span className="block text-sm font-medium text-gray-800 transition duration-200 group-hover:text-gray-950">
                 {template.label}
               </span>
-              <span className="mt-0.5 block text-xs leading-5 text-zinc-500">
-                {template.description}
-              </span>
+              <span className="mt-0.5 block text-xs leading-5 text-gray-500">{template.description}</span>
             </span>
-            <span className="ml-auto text-xs text-violet-300 opacity-0 transition duration-200 group-hover:opacity-100">
+            <span className="ml-auto text-xs text-accent-600 opacity-0 transition duration-200 group-hover:opacity-100">
               <span className="i-ph:arrow-right" />
             </span>
           </button>
@@ -545,162 +547,149 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       </div>
     );
 
+    const surfaceTemplates =
+      appSurface === 'mobile' ? PRECHAT_MOBILE_BOILERPLATES : PRECHAT_WEB_BOILERPLATES;
+
     const preChatLanding = (
-      <div className="min-h-full bg-[#090B10] text-zinc-100">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-20 pt-6 sm:px-6 lg:px-10">
-          <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-            <div className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300">
-              Indobase Builder
-            </div>
-            <h1 className="font-['Space_Grotesk'] text-[clamp(2.9rem,6.5vw,4.3rem)] font-bold leading-[0.98] tracking-[-0.04em] text-white">
-              Build with Indobase
-            </h1>
-            <p className="mt-5 max-w-2xl text-[15.5px] leading-7 text-zinc-300">
-              {isBackendConnected
-                ? 'Your Indobase project is connected. Auth, database, storage, and edge functions run on your tenant backend automatically while you build.'
-                : 'Design products with AI, wire them to your backend, and move into Studio when you need database, auth, storage, functions, and logs.'}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-              {isBackendConnected && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/12 px-3 py-1 text-xs font-medium text-emerald-200">
-                  <span className="i-ph:check-circle-fill text-sm text-green-500" />
-                  Connected to Indobase Backend
-                </span>
-              )}
-            </div>
+      <div className="relative min-h-full text-gray-900">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pb-20 pt-16 sm:px-6 sm:pt-20">
+          <h1 className="max-w-xl text-center text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-white drop-shadow-sm">
+            Start with one prompt. You can change everything later.
+          </h1>
+          <p className="mt-3 max-w-lg text-center text-[15px] leading-6 text-white/90">
+            {isBackendConnected
+              ? 'Your Indobase backend is linked — describe the product and Builder builds it.'
+              : 'Describe your idea. Wire it to Indobase when you are ready.'}
+          </p>
 
-            <div className="mt-12 flex w-full max-w-[42rem] flex-col gap-4">
-              {alertStack}
-              {!isBackendConnected && <BackendLinkBanner />}
-              {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
-              {promptComposer}
-            </div>
+          <div className="mt-10 w-full max-w-[42rem]">
+            {alertStack}
+            {!isBackendConnected && <div className="mb-3"><BackendLinkBanner /></div>}
+            {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              {ImportButtons(importChat)}
-              <GitCloneButton
-                importChat={importChat}
-                className="!rounded-lg !border-white/12 !bg-white/5 !text-zinc-300 hover:!border-violet-400/35 hover:!bg-violet-500/10 hover:!text-white transition-colors duration-200"
-              />
-            </div>
-          </div>
-
-          <div id="builder-templates" className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
-                Starter Prompts
-              </div>
-              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-white">
-                Start from a pattern
-              </div>
-              <p className="mt-1 text-sm leading-6 text-zinc-300">
-                Common Indobase product shapes. Builder fills the implementation.
-              </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                {(isStudioManagedConnection
-                  ? [STUDIO_LINKED_STARTER_PROMPT, ...PRECHAT_STARTER_PROMPTS]
-                  : PRECHAT_STARTER_PROMPTS
-                ).map((item) => (
-                  <button
-                    key={item.title}
-                    type="button"
-                    onClick={(event) => handleStarterPromptClick(event, item.prompt)}
-                    className="group relative rounded-xl border border-white/10 bg-[#0E121A] p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-400/45 hover:bg-[#151B27] hover:shadow-[0_4px_14px_rgba(124,58,237,0.25)]"
-                  >
-                    <span className="pointer-events-none absolute right-3 top-3 text-xs text-violet-300 opacity-0 transition group-hover:opacity-100">
-                      <span className="i-ph:arrow-up-right" />
-                    </span>
-                    <div className="pr-5 font-['Space_Grotesk'] text-sm font-semibold tracking-[-0.015em] text-white">
-                      {item.title}
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-zinc-300">{item.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-              {isBackendConnected ? (
+            <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.22)] ring-1 ring-black/5">
+              <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50/70 px-3 pt-3">
                 <button
                   type="button"
-                  disabled={isStreaming}
-                  onClick={handleProjectRecommendationClick}
-                  className="group mb-6 w-full rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-500/18 via-indigo-500/10 to-transparent p-5 text-left transition hover:-translate-y-0.5 hover:border-violet-300/60 hover:shadow-[0_8px_20px_rgba(124,58,237,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => setAppSurface('web')}
+                  className={classNames(
+                    'inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition',
+                    appSurface === 'web'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800',
+                  )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-violet-200">
-                        AI Recommendation
-                      </div>
-                      <div className="mt-2 font-['Space_Grotesk'] text-[17px] font-semibold tracking-[-0.02em] text-white">
-                        Get tailored recommendations for this project
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-zinc-200">
-                        Ask AI to inspect your linked project and suggest the highest-impact next
-                        improvements for product UX, backend wiring, and launch readiness.
-                      </p>
-                    </div>
-                    <span className="mt-0.5 rounded-full bg-black/30 px-2.5 py-1 text-[11px] font-medium text-violet-100 shadow-sm">
-                      Discuss mode
-                    </span>
-                  </div>
+                  <span className="i-ph:globe text-base" />
+                  Web App
                 </button>
-              ) : (
-                <div className="mb-6 rounded-2xl border border-dashed border-white/20 bg-[#0D121A] p-5">
-                  <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
-                    AI Recommendation
-                  </div>
-                  <div className="mt-2 font-['Space_Grotesk'] text-[16px] font-semibold tracking-[-0.02em] text-white">
-                    Connect a project to get tailored recommendations
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Once your Indobase backend is linked, Builder can generate project-specific AI
-                    recommendations and prioritized next steps.
-                  </p>
+                <button
+                  type="button"
+                  onClick={() => setAppSurface('mobile')}
+                  className={classNames(
+                    'inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition',
+                    appSurface === 'mobile'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800',
+                  )}
+                >
+                  <span className="i-ph:device-mobile text-base" />
+                  Mobile App
+                </button>
+              </div>
+
+              <div className="p-3 sm:p-4">{promptComposer(true)}</div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3">
+                <div className="flex items-center gap-1">
+                  {ImportButtons(importChat)}
+                  <GitCloneButton
+                    importChat={importChat}
+                    className="!rounded-lg !border-transparent !bg-transparent !text-gray-500 hover:!bg-gray-100 hover:!text-gray-900"
+                  />
                 </div>
-              )}
-
-              <div className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
-                Start from a Proven Product
-              </div>
-              <div className="mt-3 font-['Space_Grotesk'] text-[15.5px] font-semibold tracking-[-0.02em] text-white">
-                Indobase-ready app shapes
-              </div>
-              <p className="mt-1 text-sm leading-6 text-zinc-300">
-                Pick a template and refine the experience with Builder.
-              </p>
-
-              <div className="mt-5 flex items-center gap-2">
-                <span className="rounded-md border border-violet-400/30 bg-violet-500/12 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-violet-200">
-                  Featured
-                </span>
-                <span className="text-xs text-zinc-400">
-                  Best first picks for most product requests
-                </span>
-              </div>
-
-              <div className="mt-4 flex flex-col">{renderTemplateButtons(PRECHAT_FEATURED_TEMPLATES)}</div>
-
-              <div className="mt-6 border-t border-white/10 pt-5">
-                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
-                  Web boilerplates
+                <div className="flex items-center gap-3">
+                  {isBackendConnected && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                      <span className="i-ph:check-circle-fill" />
+                      Backend linked
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isStreaming || !input?.trim()}
+                    onClick={(event) => handleSendMessage(event)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Build
+                    <span className="i-ph:arrow-right text-base" />
+                  </button>
                 </div>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Open-source Vite/React starters, auto-adapted to Indobase on import.
-                </p>
-                {renderTemplateButtons(PRECHAT_WEB_BOILERPLATES)}
-              </div>
-
-              <div className="mt-6 border-t border-white/10 pt-5">
-                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
-                  Mobile boilerplates
-                </div>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Expo apps for Android bundles and native auth flows.
-                </p>
-                {renderTemplateButtons(PRECHAT_MOBILE_BOILERPLATES)}
               </div>
             </div>
+
+            {appSurface === 'mobile' && (
+              <div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-center text-xs text-gray-600 shadow-sm ring-1 ring-black/5 backdrop-blur-md">
+                Mobile uses Expo starters — pick a boilerplate below or describe a native app idea.
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setTemplatesOpen((open) => !open)}
+                className="text-sm font-medium text-white/90 underline-offset-2 hover:underline"
+              >
+                {templatesOpen ? 'Hide templates' : 'Start from a template'}
+              </button>
+            </div>
+
+            {templatesOpen && (
+              <div
+                id="builder-templates"
+                className="mt-4 rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 backdrop-blur-md"
+              >
+                <div className="mb-3 text-sm font-semibold text-gray-900">Starter prompts</div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(isStudioManagedConnection
+                    ? [STUDIO_LINKED_STARTER_PROMPT, ...PRECHAT_STARTER_PROMPTS]
+                    : PRECHAT_STARTER_PROMPTS
+                  ).map((item) => (
+                    <button
+                      key={item.title}
+                      type="button"
+                      onClick={(event) => handleStarterPromptClick(event, item.prompt)}
+                      className="rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-accent-400 hover:shadow-sm"
+                    >
+                      <div className="text-sm font-semibold text-gray-900">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 text-gray-500">{item.description}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {appSurface === 'mobile' ? 'Mobile boilerplates' : 'Featured & web boilerplates'}
+                  </div>
+                  {appSurface === 'web' && renderTemplateButtons(PRECHAT_FEATURED_TEMPLATES)}
+                  {renderTemplateButtons(surfaceTemplates)}
+                </div>
+
+                {isBackendConnected && (
+                  <button
+                    type="button"
+                    disabled={isStreaming}
+                    onClick={handleProjectRecommendationClick}
+                    className="mt-4 w-full rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-left text-sm text-sky-900 transition hover:bg-sky-100 disabled:opacity-60"
+                  >
+                    Get tailored recommendations for this project
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-12 w-full">
+            <ClientOnly>{() => <MyAppsList />}</ClientOnly>
           </div>
         </div>
       </div>
@@ -713,30 +702,37 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         data-chat-visible={showChat}
       >
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
+        <div
+          className={classNames('flex h-full w-full flex-col overflow-y-auto lg:flex-row', {
+            'bg-transparent': !chatStarted,
+            'bg-[#F4F7FA] p-2 md:p-3': chatStarted,
+          })}
+        >
           <div
             className={classNames(
               styles.Chat,
-              'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full',
-              chatStarted ? 'bg-[#090B10]' : '',
+              'flex h-full flex-grow flex-col lg:min-w-[var(--chat-min-width)]',
+              chatStarted
+                ? 'overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5'
+                : '',
             )}
           >
             {!chatStarted ? (
               preChatLanding
             ) : (
               <StickToBottom
-                className={classNames('pt-6 px-2 sm:px-6 relative', {
-                  'h-full flex flex-col modern-scrollbar': chatStarted,
+                className={classNames('relative px-2 pt-4 sm:px-4', {
+                  'modern-scrollbar flex h-full flex-col': chatStarted,
                 })}
                 resize="smooth"
                 initial="smooth"
               >
-                <StickToBottom.Content className="flex flex-col gap-4 relative ">
+                <StickToBottom.Content className="relative flex flex-col gap-4">
                   <ClientOnly>
                     {() => {
                       return chatStarted ? (
                         <Messages
-                          className="flex flex-col w-full flex-1 max-w-chat pb-4 mx-auto z-1"
+                          className="z-1 mx-auto flex w-full max-w-chat flex-1 flex-col pb-4"
                           messages={messages}
                           isStreaming={isStreaming}
                           append={append}
@@ -752,13 +748,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <ScrollToBottom />
                 </StickToBottom.Content>
                 <div
-                  className={classNames('my-auto flex flex-col gap-2 w-full max-w-chat mx-auto z-prompt mb-6', {
+                  className={classNames('z-prompt mx-auto mb-4 flex w-full max-w-chat flex-col gap-2', {
                     'sticky bottom-2': chatStarted,
                   })}
                 >
                   {alertStack}
                   {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
-                  {promptComposer}
+                  {promptComposer()}
                 </div>
               </StickToBottom>
             )}
@@ -784,9 +780,9 @@ function ScrollToBottom() {
   return (
     !isAtBottom && (
       <>
-        <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[#090B10] to-transparent h-20 z-10" />
+        <div className="sticky bottom-0 left-0 right-0 z-10 h-20 bg-gradient-to-t from-white to-transparent" />
         <button
-          className="sticky z-50 bottom-0 left-0 right-0 text-4xl rounded-lg px-1.5 py-0.5 flex items-center justify-center mx-auto gap-2 bg-[#0D1118]/95 border border-white/12 text-zinc-100 text-sm backdrop-blur-sm transition-colors duration-200 hover:border-violet-400/35"
+          className="sticky bottom-0 left-0 right-0 z-50 mx-auto flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white/95 px-1.5 py-0.5 text-sm text-gray-800 shadow-sm backdrop-blur-sm transition-colors duration-200 hover:border-gray-300"
           onClick={() => scrollToBottom()}
         >
           Go to last message

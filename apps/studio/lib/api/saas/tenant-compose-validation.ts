@@ -2,6 +2,7 @@ import {
   resolveRemoteDataPlanePgEndpoint,
   resolveTenantDockerNetworkName,
 } from './tenant-data-plane-pg'
+import { ensureGoTrueRateLimitsInComposeYaml } from './gotrue-rate-limits'
 
 /**
  * Guards against invalid tenant docker-compose YAML before it is written to disk.
@@ -68,5 +69,5 @@ export function repairKnownTenantComposeYaml(yml: string): string {
     )
   }
 
-  return text
+  return ensureGoTrueRateLimitsInComposeYaml(text)
 }

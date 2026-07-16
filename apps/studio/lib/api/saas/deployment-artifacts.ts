@@ -230,16 +230,23 @@ export async function publishDeploymentArtifacts({
   let totalBytes = 0
   let indexPath = 'index.html'
 
+  const { getOrganizationPlanByProjectRef } = await import('./plan-metering')
+  const { applyIndobaseBadgeToHtml } = await import('./plan-badge')
+  const orgPlan = await getOrganizationPlanByProjectRef(ref)
+
   for (const [path, content] of Object.entries(normalizedFiles)) {
     const storagePath = `${prefix}/${path}`
-    const bytes = Buffer.byteLength(content, 'utf8')
-    totalBytes += bytes
+    let uploadContent = content
 
     if (path === 'index.html' || path.endsWith('/index.html')) {
       indexPath = path
+      uploadContent = applyIndobaseBadgeToHtml(content, orgPlan)
     }
 
-    const { error } = await client.storage.from(PROJECT_HOSTING_BUCKET).upload(storagePath, content, {
+    const bytes = Buffer.byteLength(uploadContent, 'utf8')
+    totalBytes += bytes
+
+    const { error } = await client.storage.from(PROJECT_HOSTING_BUCKET).upload(storagePath, uploadContent, {
       contentType: guessArtifactContentType(path),
       upsert: true,
     })

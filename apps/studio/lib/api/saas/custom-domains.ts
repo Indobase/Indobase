@@ -179,6 +179,14 @@ export async function initializeCustomDomain({
   const { id: gotrueId } = getActor(claims)
   await assertProjectMembership(ref, gotrueId)
 
+  const { getOrganizationPlanByProjectRef } = await import('./plan-metering')
+  const { assertFeatureAllowed } = await import('./plan-entitlements')
+  const plan = await getOrganizationPlanByProjectRef(ref)
+  const domainGate = assertFeatureAllowed(plan, 'customDomain')
+  if (!domainGate.ok) {
+    throw new Error(`${domainGate.message} ${domainGate.upgradeHint}`)
+  }
+
   const cleanHost = (hostname || '').trim().toLowerCase()
   if (!isValidHostname(cleanHost)) throw new Error('Invalid hostname')
 

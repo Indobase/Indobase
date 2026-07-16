@@ -723,6 +723,18 @@ export async function createProjectDeployment({
     throw new Error('Project not found')
   }
 
+  const { checkOrganizationBuildQuota } = await import('./plan-metering')
+  const orgSlug = hosting.project.organization_slug
+  if (orgSlug) {
+    const buildQuota = await checkOrganizationBuildQuota(orgSlug)
+    if (!buildQuota.ok) {
+      const err = new Error(buildQuota.message) as Error & { statusCode?: number; upgradeUrl?: string }
+      err.statusCode = 429
+      err.upgradeUrl = buildQuota.upgradeUrl
+      throw err
+    }
+  }
+
   const existingDeploymentResult = await executeQuery<{ id: string; status: ProjectDeploymentStatus }>({
     query: `
       select id::text as id, status

@@ -15,10 +15,23 @@ export const themeStore = atom<Theme>(initStore());
 
 function initStore() {
   if (!import.meta.env.SSR) {
+    // Emergent-style Builder ships as a light product surface by default.
+    // Users can still toggle dark via settings; that choice is persisted.
     const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
-    const themeAttribute = document.querySelector('html')?.getAttribute('data-theme');
 
-    return persistedTheme ?? (themeAttribute as Theme) ?? DEFAULT_THEME;
+    if (persistedTheme === 'dark' || persistedTheme === 'light') {
+      return persistedTheme;
+    }
+
+    const themeAttribute = document.querySelector('html')?.getAttribute('data-theme') as Theme | null;
+
+    if (themeAttribute === 'dark' || themeAttribute === 'light') {
+      return themeAttribute;
+    }
+
+    localStorage.setItem(kTheme, DEFAULT_THEME);
+
+    return DEFAULT_THEME;
   }
 
   return DEFAULT_THEME;

@@ -8,6 +8,13 @@ import {
   type GoTrueConfigResponse,
 } from './gotrue-config.defaults'
 import { ensureSaasTables, getGotrueUserId } from './platform'
+import {
+  authConfigTouchesRateLimits,
+} from './gotrue-rate-limits'
+import {
+  isDataPlaneProvisionerConfigured,
+  provisionTenantDataPlaneStack,
+} from './tenant-data-plane-provision'
 import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 
 type GoTruePublicSettings = {
@@ -174,6 +181,18 @@ export async function updateProjectGoTrueConfig({
   if (updated.error) throw updated.error
   if (!updated.data?.length) {
     throw new Error('Project not found or insufficient permissions to update auth configuration')
+  }
+
+  // Per-IP signup/sign-in limits live on the GoTrue container env — re-apply compose when changed.
+  if (authConfigTouchesRateLimits(patch as Record<string, unknown>) && isDataPlaneProvisionerConfigured()) {
+    await provisionTenantDataPlaneStack({
+      claims,
+      ref,
+      apply: true,
+      reason: 'auth_rate_limits',
+    }).catch((error) => {
+      console.warn('[gotrue-config] rate-limit data-plane sync failed:', error)
+    })
   }
 
   return normalizeAuthConfigNumbers(merged as GoTrueConfigResponse)

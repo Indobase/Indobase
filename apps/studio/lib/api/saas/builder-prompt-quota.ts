@@ -1,5 +1,6 @@
 import type { PlanId } from 'data/subscriptions/types'
 
+import { getPlanEntitlements, canonicalizePlanId } from './plan-entitlements'
 import { executeQuery } from './query'
 
 export const FREE_BUILDER_PROMPT_LIMIT = 5
@@ -9,21 +10,13 @@ export function isBuilderPromptQuotaDisabled(): boolean {
   return flag === '1' || flag === 'true' || flag === 'yes'
 }
 
-const PAID_BUILDER_PLAN_IDS = new Set<PlanId>(['pro', 'team', 'enterprise'])
-
 export function normalizeOrgPlanId(plan: string | null | undefined): PlanId {
-  const value = (plan || 'free').trim().toLowerCase()
-  if (value === 'tier_free') return 'free'
-  if (value === 'tier_pro' || value === 'tier_payg') return 'pro'
-  if (value === 'tier_team') return 'team'
-  if (value === 'tier_enterprise') return 'enterprise'
-  if (value === 'tier_platform') return 'platform'
-  return value as PlanId
+  return canonicalizePlanId(plan) as PlanId
 }
 
+/** Free plan only — Basic+ gets unlimited Builder prompts (frontend builds still rate-limited separately). */
 export function isFreeBuilderOrgPlan(plan: string | null | undefined): boolean {
-  const planId = normalizeOrgPlanId(plan)
-  return !PAID_BUILDER_PLAN_IDS.has(planId) && planId !== 'platform'
+  return canonicalizePlanId(plan) === 'free'
 }
 
 export type BuilderPromptQuota = {
@@ -50,6 +43,7 @@ export async function getBuilderPromptQuota(orgSlug: string): Promise<BuilderPro
   if (!row) return null
 
   const plan = normalizeOrgPlanId(row.plan)
+  const entitlements = getPlanEntitlements(row.plan)
   const isFree = isFreeBuilderOrgPlan(row.plan)
   const used = Math.max(0, row.builder_prompts_used ?? 0)
 
@@ -57,7 +51,7 @@ export async function getBuilderPromptQuota(orgSlug: string): Promise<BuilderPro
     return { plan, used, limit: null, remaining: null, isFree: false }
   }
 
-  const limit = isFree ? FREE_BUILDER_PROMPT_LIMIT : null
+  const limit = entitlements.builderPromptLimit
   const remaining = limit == null ? null : Math.max(0, limit - used)
 
   return { plan, used, limit, remaining, isFree }
@@ -89,6 +83,8 @@ export async function consumeBuilderPrompt(orgSlug: string): Promise<
     }
   }
 
+  const limit = current.limit ?? FREE_BUILDER_PROMPT_LIMIT
+
   const rows = await executeQuery<{ builder_prompts_used: number; plan: string }>({
     query: `
       update saas.organizations
@@ -100,7 +96,7 @@ export async function consumeBuilderPrompt(orgSlug: string): Promise<
         and coalesce(builder_prompts_used, 0) < $2
       returning builder_prompts_used, plan
     `,
-    parameters: [orgSlug, FREE_BUILDER_PROMPT_LIMIT],
+    parameters: [orgSlug, limit],
   })
 
   if (rows.error) throw rows.error

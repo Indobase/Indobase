@@ -7,7 +7,12 @@ describe('studioApi', () => {
   it('allows mobile build queue only for Studio handoff sessions', () => {
     const connection = {
       connectionSource: 'studio_handoff',
+      isConnected: true,
       selectedProjectId: 'proj_123',
+      credentials: {
+        anonKey: 'anon_key',
+        apiUrl: 'https://api.indobase.in',
+      },
       indobase: {
         apiUrl: 'https://api.indobase.in',
         authUrl: 'https://api.indobase.in/auth/v1',

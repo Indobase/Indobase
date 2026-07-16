@@ -108,14 +108,14 @@ export const AssistantMessage = memo(
       <div className="flex w-full gap-3">
         {/* Assistant avatar — gives each turn a clear visual anchor */}
         <div className="mt-0.5 shrink-0">
-          <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
+          <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50">
             <img src="/logo.svg" alt="Indobase" className="h-4 w-4" />
           </div>
         </div>
 
         <div className="min-w-0 flex-1 overflow-hidden">
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-semibold text-zinc-100">Indobase</span>
+            <span className="text-sm font-semibold text-gray-900">Indobase</span>
             {(codeContext || chatSummary) && (
               <Popover
                 side="right"
@@ -141,7 +141,7 @@ export const AssistantMessage = memo(
                             return (
                               <Fragment key={normalized}>
                                 <code
-                                  className="bg-white/8 text-zinc-200 px-1.5 py-1 rounded-md text-violet-200 hover:underline cursor-pointer"
+                                  className="cursor-pointer rounded-md bg-gray-100 px-1.5 py-1 text-gray-800 hover:text-gray-950 hover:underline"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -176,7 +176,7 @@ export const AssistantMessage = memo(
           )}
 
           {(usage || hasActions) && (
-            <div className="mt-2 flex items-center gap-3 text-xs text-zinc-400">
+            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
               {usage && (
                 <span title={`prompt ${usage.promptTokens} · completion ${usage.completionTokens}`}>
                   {usage.totalTokens.toLocaleString()} tokens
@@ -188,7 +188,7 @@ export const AssistantMessage = memo(
                     <WithTooltip tooltip="Revert to this message">
                       <button
                         onClick={() => onRewind(messageId!)}
-                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-zinc-100"
+                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-gray-900"
                       />
                     </WithTooltip>
                   )}
@@ -196,7 +196,7 @@ export const AssistantMessage = memo(
                     <WithTooltip tooltip="Fork chat from this message">
                       <button
                         onClick={() => onFork(messageId!)}
-                        className="i-ph:git-fork text-sm transition-colors hover:text-zinc-100"
+                        className="i-ph:git-fork text-sm transition-colors hover:text-gray-900"
                       />
                     </WithTooltip>
                   )}

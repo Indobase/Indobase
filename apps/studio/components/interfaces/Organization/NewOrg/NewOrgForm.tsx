@@ -75,7 +75,7 @@ interface NewOrgFormProps {
   onPlanSelected: (plan: string) => void
 }
 
-const plans = ['FREE', 'PRO', 'TEAM'] as const
+const plans = ['FREE', 'BASIC', 'PRO', 'STUDIO'] as const
 
 const formSchema = z.object({
   plan: z
@@ -313,6 +313,8 @@ export const NewOrgForm = ({
         | 'tier_payg'
         | 'tier_pro'
         | 'tier_free'
+        | 'tier_basic'
+        | 'tier_studio'
         | 'tier_team',
       ...(formValues.kind == 'COMPANY' ? { size: formValues.size } : {}),
       payment_method: paymentMethodId,

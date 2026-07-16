@@ -47,5 +47,15 @@ export async function executeIndobaseSql({
     throw new Error(payload.message || payload.error || 'Indobase SQL request failed');
   }
 
+  /*
+   * A migration can change the schema — drop the cached snapshot so the next prompt is fresh.
+   * Dynamic import avoids a static import cycle (studioSchema imports this module).
+   */
+  if (operation === 'migration') {
+    void import('~/lib/indobase/studioSchema')
+      .then(({ invalidateStudioSchemaCache }) => invalidateStudioSchemaCache(projectRef))
+      .catch(() => undefined);
+  }
+
   return payload;
 }
