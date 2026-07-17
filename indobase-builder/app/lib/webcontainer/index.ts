@@ -14,9 +14,10 @@ if (import.meta.hot?.data) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
-const WEBCONTAINER_BOOT_TIMEOUT_MS = 60_000;
+const WEBCONTAINER_BOOT_TIMEOUT_MS = 90_000;
 const WEBCONTAINER_CONFIGURE_TIMEOUT_MS = 20_000;
 const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 2;
+const STACKBLITZ_HEADLESS_PROBE_MS = 8_000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,26 +40,47 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
   }
 }
 
-function bootWebContainerOnce(): Promise<WebContainer> {
+async function assertWebContainerRuntimeReady(): Promise<void> {
   if (typeof crossOriginIsolated !== 'undefined' && !crossOriginIsolated) {
-    return Promise.reject(
-      new Error(
-        'This browser tab is not cross-origin isolated (SharedArrayBuffer unavailable). Use Chrome or Edge, close other Builder tabs, and hard-refresh. If it still fails, disable extensions that strip COOP/COEP headers.',
-      ),
+    throw new Error(
+      'This browser tab is not cross-origin isolated (SharedArrayBuffer unavailable). Use Chrome or Edge, close other Builder tabs, and hard-refresh. Disable extensions that strip COOP/COEP headers (Redirect Blocker, privacy shields).',
     );
   }
 
-  const boot = WebContainer.boot({
-    coep: 'credentialless',
-    workdirName: WORK_DIR_NAME,
-    forwardPreviewErrors: true,
-  });
+  // Fail fast when ad/redirect blockers prevent StackBlitz from loading.
+  const controller = new AbortController();
+  const probeTimer = setTimeout(() => controller.abort(), STACKBLITZ_HEADLESS_PROBE_MS);
 
-  return withTimeout(
-    boot,
-    WEBCONTAINER_BOOT_TIMEOUT_MS,
-    'Indobase Builder workspace failed to start (timed out). Use Chrome or Edge, disable extensions that block SharedArrayBuffer, and hard-refresh the page.',
-  );
+  try {
+    await fetch('https://stackblitz.com/headless?coep=credentialless&version=1.6.1-internal.1', {
+      mode: 'no-cors',
+      signal: controller.signal,
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach the StackBlitz WebContainer runtime. Disable Redirect Blocker / ad-block extensions for builder.indobase.in, then hard-refresh (Chrome or Edge).',
+    );
+  } finally {
+    clearTimeout(probeTimer);
+  }
+}
+
+function bootWebContainerOnce(): Promise<WebContainer> {
+  return (async () => {
+    await assertWebContainerRuntimeReady();
+
+    const boot = WebContainer.boot({
+      coep: 'credentialless',
+      workdirName: WORK_DIR_NAME,
+      forwardPreviewErrors: true,
+    });
+
+    return withTimeout(
+      boot,
+      WEBCONTAINER_BOOT_TIMEOUT_MS,
+      'Indobase Builder workspace failed to start (timed out). Disable Redirect Blocker and other extensions for this site, use Chrome or Edge, and hard-refresh.',
+    );
+  })();
 }
 
 async function configureWebContainer(container: WebContainer): Promise<WebContainer> {
@@ -150,13 +172,12 @@ function bootWebContainer(): Promise<WebContainer> {
 
     console.error('WebContainer boot failed:', lastError);
     throw lastError;
-  })().catch((error) => {
-    resetWebContainerBoot();
-    throw error;
-  });
+  })();
 }
 
 let bootPromise: Promise<WebContainer> | undefined;
+/** Coalesce concurrent getWebcontainerWithRetry callers into one retry loop. */
+let sharedRetryPromise: Promise<WebContainer> | undefined;
 
 export function resetWebContainerBoot(): void {
   bootPromise = undefined;
@@ -190,28 +211,37 @@ export function getWebcontainer(): Promise<WebContainer> {
 }
 
 export async function getWebcontainerWithRetry(maxAttempts = 3): Promise<WebContainer> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      // Always clear a stale in-flight boot before retrying — a hung shared promise
-      // would otherwise block every caller forever.
-      if (attempt > 1) {
-        resetWebContainerBoot();
-      }
-
-      return await getWebcontainer();
-    } catch (error) {
-      lastError = error;
-
-      if (attempt < maxAttempts) {
-        resetWebContainerBoot();
-        await sleep(1500 * attempt);
-      }
-    }
+  if (sharedRetryPromise) {
+    return sharedRetryPromise;
   }
 
-  throw lastError;
+  sharedRetryPromise = (async () => {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (attempt > 1) {
+          resetWebContainerBoot();
+          await sleep(2000 * attempt);
+        }
+
+        return await getWebcontainer();
+      } catch (error) {
+        lastError = error;
+        resetWebContainerBoot();
+
+        if (attempt < maxAttempts) {
+          await sleep(1500 * attempt);
+        }
+      }
+    }
+
+    throw lastError;
+  })().finally(() => {
+    sharedRetryPromise = undefined;
+  });
+
+  return sharedRetryPromise;
 }
 
 /** Start WebContainer boot as early as possible so the terminal is ready sooner. */

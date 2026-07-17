@@ -410,7 +410,7 @@ export class ActionRunner {
               'WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).',
             ),
           );
-        }, 90_000);
+        }, 120_000);
       }),
     ]);
   }
