@@ -6,17 +6,14 @@ interface Profile {
   avatar: string;
 }
 
-// Initialize with stored profile or defaults
-const storedProfile = typeof window !== 'undefined' ? localStorage.getItem('bolt_profile') : null;
-const initialProfile: Profile = storedProfile
-  ? JSON.parse(storedProfile)
-  : {
-      username: '',
-      bio: '',
-      avatar: '',
-    };
+const emptyProfile: Profile = {
+  username: '',
+  bio: '',
+  avatar: '',
+};
 
-export const profileStore = atom<Profile>(initialProfile);
+// Keep SSR and the first client render identical; hydrate from localStorage after mount.
+export const profileStore = atom<Profile>(emptyProfile);
 
 export const updateProfile = (updates: Partial<Profile>) => {
   profileStore.set({ ...profileStore.get(), ...updates });

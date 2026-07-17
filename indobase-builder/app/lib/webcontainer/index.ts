@@ -1,6 +1,9 @@
 import { WebContainer } from '@webcontainer/api';
+import { atom } from 'nanostores';
 import { WORK_DIR_NAME } from '~/utils/constants';
 import { cleanStackTrace } from '~/utils/stacktrace';
+
+export const webcontainerBootErrorAtom = atom<string | null>(null);
 
 interface WebContainerContext {
   loaded: boolean;
@@ -162,6 +165,9 @@ function bootWebContainer(): Promise<WebContainer> {
       } catch (error) {
         lastError = error;
         webcontainerContext.loaded = false;
+        webcontainerBootErrorAtom.set(
+          error instanceof Error ? error.message : 'Indobase Builder workspace failed to start.',
+        );
 
         if (attempt < WEBCONTAINER_BOOT_MAX_ATTEMPTS) {
           console.warn(`WebContainer boot attempt ${attempt} failed, retrying...`, error);
@@ -172,7 +178,10 @@ function bootWebContainer(): Promise<WebContainer> {
 
     console.error('WebContainer boot failed:', lastError);
     throw lastError;
-  })();
+  })().then((container) => {
+    webcontainerBootErrorAtom.set(null);
+    return container;
+  });
 }
 
 let bootPromise: Promise<WebContainer> | undefined;

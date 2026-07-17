@@ -11,31 +11,8 @@ export function themeIsDark() {
 
 export const DEFAULT_THEME = 'light';
 
-export const themeStore = atom<Theme>(initStore());
-
-function initStore() {
-  if (!import.meta.env.SSR) {
-    // Emergent-style Builder ships as a light product surface by default.
-    // Users can still toggle dark via settings; that choice is persisted.
-    const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
-
-    if (persistedTheme === 'dark' || persistedTheme === 'light') {
-      return persistedTheme;
-    }
-
-    const themeAttribute = document.querySelector('html')?.getAttribute('data-theme') as Theme | null;
-
-    if (themeAttribute === 'dark' || themeAttribute === 'light') {
-      return themeAttribute;
-    }
-
-    localStorage.setItem(kTheme, DEFAULT_THEME);
-
-    return DEFAULT_THEME;
-  }
-
-  return DEFAULT_THEME;
-}
+// Keep SSR and the first client render identical; hydrate from localStorage after mount.
+export const themeStore = atom<Theme>(DEFAULT_THEME);
 
 export function toggleTheme() {
   const currentTheme = themeStore.get();

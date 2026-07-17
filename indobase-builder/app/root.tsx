@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react';
 import type { LinksFunction } from '@remix-run/cloudflare';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
-import { themeStore } from './lib/stores/theme';
+import { themeStore, DEFAULT_THEME } from './lib/stores/theme';
 import { stripIndents } from './utils/stripIndent';
 import { useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -61,15 +61,17 @@ const inlineThemeCode = stripIndents`
 `;
 
 import { logStore } from './lib/stores/logs';
+import { hydrateClientPrefsFromStorage } from './lib/stores/hydrateClientPrefs';
 import { restoreBuilderSessionOnLoad, startBuilderSessionKeeper } from './lib/indobase/builder-auth.client';
 import { warmWebContainer } from './lib/webcontainer';
+import { WebContainerBootBanner } from './components/WebContainerBootBanner.client';
 
 export default function App() {
-  const theme = useStore(themeStore);
-
   useEffect(() => {
+    hydrateClientPrefsFromStorage();
+
     logStore.logSystem('Application initialized', {
-      theme,
+      theme: themeStore.get(),
       platform: navigator.platform,
       userAgent: navigator.userAgent,
       timestamp: new Date().toISOString(),
@@ -93,7 +95,12 @@ export default function App() {
         logStore.logError('Failed to initialize debug logging', error);
       });
 
-    warmWebContainer();
+    const startWorkspace = () => warmWebContainer();
+    const idleId =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(startWorkspace, { timeout: 2500 })
+        : undefined;
+    const timerId = idleId === undefined ? window.setTimeout(startWorkspace, 800) : undefined;
 
     void (async () => {
       await restoreBuilderSessionOnLoad();
@@ -111,6 +118,12 @@ export default function App() {
 
     return () => {
       stopSessionKeeper();
+      if (idleId !== undefined) {
+        cancelIdleCallback(idleId);
+      }
+      if (timerId !== undefined) {
+        window.clearTimeout(timerId);
+      }
     };
   }, []);
 
@@ -125,7 +138,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-theme={DEFAULT_THEME}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -134,6 +147,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: inlineThemeCode }} />
       </head>
       <body suppressHydrationWarning>
+        <ClientOnly fallback={null}>{() => <WebContainerBootBanner />}</ClientOnly>
         <ClientOnly fallback={<>{children}</>}>
           {() => <DndProvider backend={HTML5Backend}>{children}</DndProvider>}
         </ClientOnly>

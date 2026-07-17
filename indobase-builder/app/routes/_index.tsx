@@ -1,6 +1,5 @@
 import { json, type MetaFunction } from '@remix-run/cloudflare';
 import { ClientOnly } from 'remix-utils/client-only';
-import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
 import { BuilderErrorBoundary } from '~/components/BuilderErrorBoundary';
 import { Header } from '~/components/header/Header';
@@ -27,7 +26,13 @@ export default function Index() {
       <AtmosphereBackground />
       <div className="relative z-10 flex h-full w-full flex-col">
         <Header />
-        <ClientOnly fallback={<BaseChat />}>
+        <ClientOnly
+          fallback={
+            <div className="relative z-10 flex flex-1 items-center justify-center p-8 text-sm text-[#1E3A5F]/70">
+              Loading Indobase Builder…
+            </div>
+          }
+        >
           {() => (
             <BuilderErrorBoundary>
               <Chat />
