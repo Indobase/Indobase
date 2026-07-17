@@ -20,10 +20,6 @@ export async function ensureIndobaseMcpFromRequest(
   mcpService: MCPService,
   env?: ServerEnv,
 ): Promise<void> {
-  if (Object.keys(mcpService.toolsWithoutExecute).length > 0) {
-    return;
-  }
-
   const claims = await resolveBuilderMcpClaims(request, env);
 
   if (!claims?.studio_url || !claims.project_ref) {
@@ -40,11 +36,27 @@ export async function ensureIndobaseMcpFromRequest(
     return;
   }
 
+  const url = buildIndobaseMcpUrl(claims.studio_url, claims.project_ref);
+  const existing = mcpService.getServer(INDOBASE_MCP_SERVER_NAME);
+  const existingConfig = existing?.config;
+  const existingUrl =
+    existingConfig && 'url' in existingConfig ? existingConfig.url : undefined;
+  const existingAuth =
+    existingConfig && 'headers' in existingConfig ? existingConfig.headers?.Authorization : undefined;
+  const sameEndpoint = existingUrl === url && existingAuth === `Bearer ${mcpToken}`;
+  const toolsReady =
+    Object.keys(mcpService.toolsWithoutExecute).length > 0 && existing?.status === 'available';
+
+  // Reuse a healthy client for the same project/token; otherwise reconnect.
+  if (sameEndpoint && toolsReady) {
+    return;
+  }
+
   const config: MCPConfig = {
     mcpServers: {
       [INDOBASE_MCP_SERVER_NAME]: {
         type: 'streamable-http',
-        url: buildIndobaseMcpUrl(claims.studio_url, claims.project_ref),
+        url,
         headers: {
           Authorization: `Bearer ${mcpToken}`,
         },

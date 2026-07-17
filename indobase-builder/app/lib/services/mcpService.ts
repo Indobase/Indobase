@@ -178,7 +178,9 @@ export class MCPService {
       transport: new StreamableHTTPClientTransport(new URL(config.url), {
         requestInit: {
           headers: config.headers,
-          signal: AbortSignal.timeout(60_000),
+          // Per-request timeout only — do not attach AbortSignal.timeout() here.
+          // A creation-time signal aborts the shared transport after 60s and breaks
+          // later tool calls / availability checks with opaque fetch failures.
         },
       }),
     });
@@ -454,5 +456,9 @@ export class MCPService {
 
   get toolsWithoutExecute() {
     return this._toolsWithoutExecute;
+  }
+
+  getServer(serverName: string): MCPServer | undefined {
+    return this._mcpToolsPerServer[serverName];
   }
 }

@@ -510,6 +510,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         start(controller) {
           const ping = () => {
             try {
+              // Keepalives prove the SSE pipe is alive during long planner/model gaps;
+              // also reset stream-recovery so idle LLM work is not logged as timeouts.
+              streamRecovery.updateActivity();
               controller.enqueue(
                 encoder.encode(`2:${JSON.stringify([{ type: 'keepalive', ts: Date.now() }])}\n`),
               );

@@ -116,7 +116,12 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     auth = await resolveMcpRequestAuth(req, project_ref)
   } catch (authError) {
     const message = authError instanceof Error ? authError.message : 'Unauthorized'
-    return res.status(401).json({ error: message })
+    // MCP clients expect JSON-RPC envelopes, not `{ error: string }`.
+    return res.status(401).json({
+      jsonrpc: '2.0',
+      error: { code: -32001, message },
+      id: null,
+    })
   }
 
   const headers = fromNodeHeaders(req.headers)
@@ -170,10 +175,18 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     await transport.handleRequest(req, withIndobaseMcpBranding(res), req.body)
   } catch (error) {
     if (error instanceof Error) {
-      return res.status(400).json({ error: error.message })
+      return res.status(400).json({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: error.message },
+        id: null,
+      })
     }
 
-    return res.status(500).json({ error: 'Unable to process MCP request', cause: error })
+    return res.status(500).json({
+      jsonrpc: '2.0',
+      error: { code: -32603, message: 'Unable to process MCP request' },
+      id: null,
+    })
   }
 }
 
