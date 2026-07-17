@@ -4,7 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { useMessageParser, usePromptEnhancer, useShortcuts, parseAssistantMessage } from '~/lib/hooks';
+import { useMessageParser, usePromptEnhancer, useShortcuts } from '~/lib/hooks';
 import { description, useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -25,8 +25,6 @@ import { useSettings } from '~/lib/hooks/useSettings';
 import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
-import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
-import { resolveTemplateFromMessage } from '~/lib/indobase/resolveTemplateFromMessage';
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
@@ -41,7 +39,6 @@ import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { hasIndobaseStudioHandoff, hasSelectedIndobaseProject, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
-import { getWebcontainerWithRetry } from '~/lib/webcontainer';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
@@ -153,7 +150,7 @@ export const ChatImpl = memo(
     const indobaseConn = useStore(indobaseConnection);
     const hasSelectedProject = hasSelectedIndobaseProject(indobaseConn);
     const indobaseBackendAlert = useStore(workbenchStore.indobaseBackendAlertAtom);
-    const { promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
+    const { promptId, contextOptimizationEnabled } = useSettings();
     const [llmErrorAlert, setLlmErrorAlert] = useState<LlmErrorAlertType | undefined>(undefined);
     const [builderPromptQuota, setBuilderPromptQuota] = useState<
       (BuilderPromptQuotaState & { studioUrl?: string }) | null
@@ -880,139 +877,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         setFakeLoading(true);
 
         try {
-        const studioLinked = isIndobaseStudioManagedConnection(indobaseConn);
-        const explicitTemplate = resolveTemplateFromMessage(finalMessageContent);
-        let templateName = explicitTemplate?.name ?? null;
-        let templateTitle = explicitTemplate ? finalMessageContent : '';
-
-        if (!templateName && autoSelectTemplate) {
-          const { template, title } = await selectStarterTemplate({
-            message: finalMessageContent,
-            model,
-            provider,
-            preferIndobase: studioLinked,
-          });
-
-          if (template !== 'blank') {
-            templateName = template;
-            templateTitle = title;
-          } else if (title?.trim() && !description.get()) {
-            // Blank CRM/etc. path still needs a saved chat title for history.
-            description.set(title.trim());
-          }
-        }
-
-        if (templateName) {
-          const templateMeta = explicitTemplate ?? resolveTemplateFromMessage(`Use the "${templateName}" template`);
-
-          if (studioLinked && templateMeta && !templateMeta.indobaseReady && !templateMeta.indobaseAdaptable && !explicitTemplate) {
-            templateName = null;
-          }
-        }
-
-        if (templateName) {
-          const temResp = await getTemplates(templateName, templateTitle || undefined).catch((e) => {
-              if (e.message.includes('rate limit')) {
-                toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
-              } else {
-                toast.warning('Failed to import starter template\n Continuing with blank template');
-              }
-
-              return null;
-            });
-
-            if (temResp) {
-              const { assistantMessage, userMessage: templateFollowUp } = temResp;
-              const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
-
-              const templateMessages: Message[] = [
-                {
-                  id: `1-${new Date().getTime()}`,
-                  role: 'user',
-                  content: userMessageText,
-                  parts: createMessageParts(userMessageText, imageDataList),
-                },
-                {
-                  id: `2-${new Date().getTime()}`,
-                  role: 'assistant',
-                  content: assistantMessage,
-                },
-              ];
-
-              setMessages(templateMessages);
-              parseAssistantMessage(templateMessages[1]);
-
-              try {
-                await Promise.race([
-                  (async () => {
-                    await workbenchStore.flushPendingActions();
-                    await workbenchStore.waitForExecutionQueue();
-                  })(),
-                  new Promise<void>((resolve) => {
-                    window.setTimeout(resolve, 45_000);
-                  }),
-                ]);
-              } catch (error) {
-                logger.error('Template file import did not finish cleanly', error);
-                toast.warning(
-                  'Template files are still loading or WebContainer is slow. Open Workbench or hard-refresh if this persists.',
-                );
-              }
-
-              if (studioLinked) {
-                try {
-                  const container = await getWebcontainerWithRetry(1);
-                  await seedProjectEnvIfMissing(
-                    (filePath, content) => container.fs.writeFile(filePath, content),
-                    (filePath) => container.fs.readFile(filePath, 'utf-8'),
-                    indobaseConn,
-                  );
-                } catch (error) {
-                  logger.warn('Failed to seed Indobase env after template import', error);
-                }
-              }
-
-              setAutonomousProgress([]);
-              autonomousRepairCountRef.current = 0;
-
-              try {
-                await getWebcontainerWithRetry(3);
-              } catch (error) {
-                logger.warn('WebContainer not ready before autonomous deploy; server build may still succeed', error);
-              }
-
-              void (async () => {
-                try {
-                  await runAutonomousDeployFlow();
-                } catch (error) {
-                  logger.error('Template autonomous deploy failed', error);
-                }
-
-                if (templateFollowUp?.trim()) {
-                  suppressAutonomousOnNextFinishRef.current = true;
-                  const studioBackendFollowUp = studioLinked ? getStudioBackendUserPreamble() : '';
-                  append({
-                    role: 'user',
-                    content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${studioBackendFollowUp}${templateFollowUp}`,
-                  });
-                }
-              })();
-
-              setInput('');
-              Cookies.remove(PROMPT_COOKIE_KEY);
-
-              setUploadedFiles([]);
-              setImageDataList([]);
-
-              resetEnhancer();
-
-              textareaRef.current?.blur();
-
-              return;
-            }
-        }
-
-        // If autoSelectTemplate is disabled or template selection failed, proceed with normal message
+        // Always build from the user prompt via the model — no starter-template import.
         const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
         const attachments = uploadedFiles.length > 0 ? await filesToAttachments(uploadedFiles) : undefined;
 

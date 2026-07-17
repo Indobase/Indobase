@@ -28,11 +28,6 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { indobaseConnection } from '~/lib/stores/indobase-connection';
-import { INDOBASE_STARTER_TEMPLATES } from '~/lib/indobase/indobaseTemplates';
-import {
-  CURATED_MOBILE_BOILERPLATES,
-  CURATED_WEB_BOILERPLATES,
-} from '~/lib/indobase/curatedBoilerplates';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
@@ -44,33 +39,33 @@ const PRECHAT_STARTER_PROMPTS = [
   {
     description: 'Admin panels, analytics, auth flows, and subscription UX.',
     prompt:
-      'Use the "Indobase Dashboard" template and extend it into a SaaS dashboard with authentication, analytics charts, settings, and billing screens on my Indobase backend.',
+      'Build a SaaS dashboard with authentication, analytics charts, settings, and billing screens on my Indobase backend.',
     title: 'SaaS Dashboard',
   },
   {
     description: 'Email login, signup, and a protected home screen.',
     prompt:
-      'Use the "Indobase Auth App" template and customize the branding, copy, and post-login dashboard for my product.',
+      'Build an app with email login, signup, and a branded protected home dashboard for my product on Indobase.',
     title: 'Auth + App Shell',
   },
   {
     description: 'Launch pages with strong copy, sections, and CTAs.',
     prompt:
-      'Use the "Indobase Marketing Site" template and tailor the hero, pricing, and waitlist form for my AI startup.',
+      'Build a marketing site with hero, pricing, and waitlist form for my AI startup, wired to Indobase.',
     title: 'Marketing Site',
   },
   {
     description: 'CRUD workflows, search, filters, and table-heavy screens.',
     prompt:
-      'Use the "Indobase Todo App" template as a starting point and evolve it into an internal operations tool with searchable tables and role-based access.',
+      'Build an internal operations tool with searchable tables, filters, and role-based access on Indobase.',
     title: 'Internal Tool',
   },
 ];
 
 const STUDIO_LINKED_STARTER_PROMPT = {
-  description: 'Start from the Indobase auth template, then publish from Builder.',
+  description: 'Describe your product; Builder generates and publishes to Indobase.',
   prompt:
-    'Use the "Indobase Auth App" template, connect it to my linked Indobase backend, and customize the dashboard for my product. After preview works, explain how to publish with Publish to Indobase.',
+    'Build a web app for my product on my linked Indobase backend with auth and a polished dashboard. After preview works, explain how to publish with Publish to Indobase.',
   title: 'Linked from Studio',
 };
 
@@ -97,25 +92,6 @@ For each recommendation:
 Focus on practical improvements across product UX, backend integration, and launch readiness.
 Do not make any code or schema changes yet.`;
 }
-
-const PRECHAT_FEATURED_TEMPLATES = INDOBASE_STARTER_TEMPLATES.map((template) => ({
-  icon: template.icon ?? 'i-ph:package',
-  label: template.label,
-  templateName: template.name,
-  description: template.description,
-}));
-
-function mapBoilerplateButtons(templates: typeof CURATED_WEB_BOILERPLATES) {
-  return templates.map((template) => ({
-    icon: template.icon ?? 'i-ph:package',
-    label: template.label,
-    templateName: template.name,
-    description: template.description,
-  }));
-}
-
-const PRECHAT_WEB_BOILERPLATES = mapBoilerplateButtons(CURATED_WEB_BOILERPLATES);
-const PRECHAT_MOBILE_BOILERPLATES = mapBoilerplateButtons(CURATED_MOBILE_BOILERPLATES);
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -228,8 +204,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const backendAlert = indobaseBackendAlert;
     const clearBackendAlert = clearIndobaseBackendAlert;
     const [qrModalOpen, setQrModalOpen] = useState(false);
-    const [appSurface, setAppSurface] = useState<'web' | 'mobile'>('web');
-    const [templatesOpen, setTemplatesOpen] = useState(false);
+    const [examplesOpen, setExamplesOpen] = useState(false);
     const isStudioManagedConnection = hasIndobaseStudioHandoff(indobaseConn);
     // Connected via Studio handoff OR a manual project URL + anon key.
     const isBackendConnected = isStudioManagedConnection || Boolean(indobaseConn?.isConnected);
@@ -496,13 +471,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       handleSendMessage(event, prompt);
     };
 
-    const handleTemplateClick = (event: React.UIEvent<HTMLButtonElement>, templateName: string) => {
-      handleStarterPromptClick(
-        event,
-        `Use the "${templateName}" template and customize it for my product.`,
-      );
-    };
-
     const handleProjectRecommendationClick = (event: React.UIEvent<HTMLButtonElement>) => {
       const projectName = indobaseConn.project?.name || indobaseConn.selectedProjectId || 'Linked project';
       const projectRef = indobaseConn.selectedProjectId || indobaseConn.indobase?.projectRef;
@@ -518,38 +486,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       );
     };
 
-    const renderTemplateButtons = (
-      templates: Array<{ icon: string; label: string; templateName: string; description: string }>,
-    ) => (
-      <div className="mt-3 flex flex-col">
-        {templates.map((template) => (
-          <button
-            key={template.templateName}
-            type="button"
-            disabled={isStreaming}
-            onClick={(event) => handleTemplateClick(event, template.templateName)}
-            className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition duration-200 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gray-100 text-gray-600">
-              <span className={`${template.icon} text-[15px]`} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-gray-800 transition duration-200 group-hover:text-gray-950">
-                {template.label}
-              </span>
-              <span className="mt-0.5 block text-xs leading-5 text-gray-500">{template.description}</span>
-            </span>
-            <span className="ml-auto text-xs text-accent-600 opacity-0 transition duration-200 group-hover:opacity-100">
-              <span className="i-ph:arrow-right" />
-            </span>
-          </button>
-        ))}
-      </div>
-    );
-
-    const surfaceTemplates =
-      appSurface === 'mobile' ? PRECHAT_MOBILE_BOILERPLATES : PRECHAT_WEB_BOILERPLATES;
-
     const preChatLanding = (
       <div className="relative min-h-full text-gray-900">
         <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pb-20 pt-16 sm:px-6 sm:pt-20">
@@ -558,8 +494,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           </h1>
           <p className="mt-3 max-w-lg text-center text-[15px] leading-6 text-white/90">
             {isBackendConnected
-              ? 'Your Indobase backend is linked — describe the product and Builder builds it.'
-              : 'Describe your idea. Wire it to Indobase when you are ready.'}
+              ? 'Your Indobase backend is linked — describe the product and Builder builds it from scratch.'
+              : 'Describe your idea. The AI builds it from your prompt — no starter templates.'}
           </p>
 
           <div className="mt-10 w-full max-w-[42rem]">
@@ -568,35 +504,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
 
             <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.22)] ring-1 ring-black/5">
-              <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50/70 px-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setAppSurface('web')}
-                  className={classNames(
-                    'inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition',
-                    appSurface === 'web'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800',
-                  )}
-                >
-                  <span className="i-ph:globe text-base" />
-                  Web App
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAppSurface('mobile')}
-                  className={classNames(
-                    'inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition',
-                    appSurface === 'mobile'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800',
-                  )}
-                >
-                  <span className="i-ph:device-mobile text-base" />
-                  Mobile App
-                </button>
-              </div>
-
               <div className="p-3 sm:p-4">{promptComposer(true)}</div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3">
@@ -627,28 +534,19 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               </div>
             </div>
 
-            {appSurface === 'mobile' && (
-              <div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-center text-xs text-gray-600 shadow-sm ring-1 ring-black/5 backdrop-blur-md">
-                Mobile uses Expo starters — pick a boilerplate below or describe a native app idea.
-              </div>
-            )}
-
             <div className="mt-4 flex justify-center">
               <button
                 type="button"
-                onClick={() => setTemplatesOpen((open) => !open)}
+                onClick={() => setExamplesOpen((open) => !open)}
                 className="text-sm font-medium text-white/90 underline-offset-2 hover:underline"
               >
-                {templatesOpen ? 'Hide templates' : 'Start from a template'}
+                {examplesOpen ? 'Hide example ideas' : 'Example ideas'}
               </button>
             </div>
 
-            {templatesOpen && (
-              <div
-                id="builder-templates"
-                className="mt-4 rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 backdrop-blur-md"
-              >
-                <div className="mb-3 text-sm font-semibold text-gray-900">Starter prompts</div>
+            {examplesOpen && (
+              <div className="mt-4 rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 backdrop-blur-md">
+                <div className="mb-3 text-sm font-semibold text-gray-900">Example prompts</div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(isStudioManagedConnection
                     ? [STUDIO_LINKED_STARTER_PROMPT, ...PRECHAT_STARTER_PROMPTS]
@@ -664,14 +562,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       <div className="mt-1 text-xs leading-5 text-gray-500">{item.description}</div>
                     </button>
                   ))}
-                </div>
-
-                <div className="mt-5 border-t border-gray-100 pt-4">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {appSurface === 'mobile' ? 'Mobile boilerplates' : 'Featured & web boilerplates'}
-                  </div>
-                  {appSurface === 'web' && renderTemplateButtons(PRECHAT_FEATURED_TEMPLATES)}
-                  {renderTemplateButtons(surfaceTemplates)}
                 </div>
 
                 {isBackendConnected && (

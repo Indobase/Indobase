@@ -291,7 +291,7 @@ const getInitialSettings = () => {
 
   return {
     latestBranch: getStoredBoolean(SETTINGS_KEYS.LATEST_BRANCH, false),
-    autoSelectTemplate: getStoredBoolean(SETTINGS_KEYS.AUTO_SELECT_TEMPLATE, true),
+    autoSelectTemplate: getStoredBoolean(SETTINGS_KEYS.AUTO_SELECT_TEMPLATE, false),
     contextOptimization: getStoredBoolean(SETTINGS_KEYS.CONTEXT_OPTIMIZATION, true),
     autonomousAgents: getStoredBoolean(SETTINGS_KEYS.AUTONOMOUS_AGENTS, true),
     eventLogs: getStoredBoolean(SETTINGS_KEYS.EVENT_LOGS, true),
