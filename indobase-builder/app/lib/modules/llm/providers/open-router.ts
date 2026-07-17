@@ -78,12 +78,21 @@ export default class OpenRouterProvider extends BaseProvider {
       defaultApiTokenKey: 'OPEN_ROUTER_API_KEY',
     });
 
-    if (!apiKey) {
+    // Accept both env spellings; prefer OPEN_ROUTER_API_KEY (canonical for this provider).
+    const resolvedApiKey =
+      apiKey ||
+      apiKeys?.[this.name] ||
+      (serverEnv as any)?.OPEN_ROUTER_API_KEY ||
+      (serverEnv as any)?.OPENROUTER_API_KEY ||
+      process.env.OPEN_ROUTER_API_KEY ||
+      process.env.OPENROUTER_API_KEY;
+
+    if (!resolvedApiKey) {
       throw new Error(`Missing API key for ${this.name} provider`);
     }
 
     const openRouter = createOpenRouter({
-      apiKey,
+      apiKey: resolvedApiKey,
     });
     const instance = openRouter.chat(model) as LanguageModelV1;
 

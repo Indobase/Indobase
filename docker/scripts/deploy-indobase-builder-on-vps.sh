@@ -71,16 +71,28 @@ fi
 
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "Updating swarm service \${SERVICE_NAME}…"
-  UPDATE_ARGS=(--image "\${IMAGE}")
+  UPDATE_ARGS=(
+    --image "\${IMAGE}"
+    --dns-add 8.8.8.8
+    --dns-add 8.8.4.4
+    --dns-add 1.1.1.1
+    --env-add "NODE_OPTIONS=--dns-result-order=ipv4first"
+  )
   if [[ -n "\${STUDIO_INTERNAL_URL}" ]]; then
     UPDATE_ARGS+=(--env-add "STUDIO_INTERNAL_URL=\${STUDIO_INTERNAL_URL}")
   fi
   docker service update "\${UPDATE_ARGS[@]}" "\${SERVICE_NAME}"
 else
   echo "Creating swarm service \${SERVICE_NAME}…"
+  if ! grep -q '^NODE_OPTIONS=' "\${ENV_FILE}" 2>/dev/null; then
+    printf '\nNODE_OPTIONS=--dns-result-order=ipv4first\n' >> "\${ENV_FILE}"
+  fi
   docker service create \
     --name "\${SERVICE_NAME}" \
     --network dokploy-network \
+    --dns 8.8.8.8 \
+    --dns 8.8.4.4 \
+    --dns 1.1.1.1 \
     --env-file "\${ENV_FILE}" \
     --limit-memory 2g \
     "\${IMAGE}"

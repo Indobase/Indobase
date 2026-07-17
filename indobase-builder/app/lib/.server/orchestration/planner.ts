@@ -83,6 +83,7 @@ export async function runPlannerAgent(props: {
 ${conversation}
 
 Provide the plan now.`,
+    maxTokens: 4096,
     model: provider.getModelInstance({
       model: currentModel,
       serverEnv,

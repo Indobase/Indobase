@@ -55,17 +55,42 @@ export async function runPlannerPhase(props: {
     message: 'Planner agent analyzing request',
   } satisfies ProgressAnnotation);
 
-  const plan = await runPlannerAgent({
-    messages,
-    env,
-    apiKeys,
-    providerSettings: providerSettings as any,
-    onFinish(resp) {
-      if (resp.usage && onUsage) {
-        onUsage(resp.usage);
-      }
-    },
-  });
+  let plan = '';
+
+  try {
+    plan = await runPlannerAgent({
+      messages,
+      env,
+      apiKeys,
+      providerSettings: providerSettings as any,
+      onFinish(resp) {
+        if (resp.usage && onUsage) {
+          onUsage(resp.usage);
+        }
+      },
+    });
+  } catch (error) {
+    // Never block codegen on planner/network failures (e.g. OpenRouter DNS flake).
+    console.warn('[planner-agent] Planner failed; continuing without plan', error);
+
+    dataStream.writeData({
+      type: 'progress',
+      label: 'planner',
+      status: 'complete',
+      order: progressOrder.value++,
+      message: 'Planner unavailable — continuing with coder',
+    } satisfies ProgressAnnotation);
+
+    dataStream.writeData({
+      type: 'progress',
+      label: 'coder',
+      status: 'in-progress',
+      order: progressOrder.value++,
+      message: 'Coder agent generating implementation',
+    } satisfies ProgressAnnotation);
+
+    return { plan: '', messages };
+  }
 
   dataStream.writeData({
     type: 'progress',
