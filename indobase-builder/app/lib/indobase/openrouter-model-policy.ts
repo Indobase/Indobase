@@ -10,10 +10,10 @@ import {
 } from '~/lib/indobase/openrouter-free-models';
 
 /** Paid OpenRouter model for Builder codegen and autonomous debugging. */
-export const OPENROUTER_PAID_CODEGEN_MODEL = 'deepseek/deepseek-v4-flash';
+export const OPENROUTER_PAID_CODEGEN_MODEL = 'deepseek/deepseek-v4-pro';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
-  label: 'DeepSeek V4 Flash',
+  label: 'DeepSeek V4 Pro',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
   maxTokenAllowed: 128000,

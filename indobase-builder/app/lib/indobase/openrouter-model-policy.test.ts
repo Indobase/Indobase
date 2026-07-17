@@ -21,7 +21,7 @@ describe('openrouter-model-policy', () => {
     expect(resolved.modelName).not.toBe(OPENROUTER_PAID_CODEGEN_MODEL);
   });
 
-  it('routes codegen and debugging to DeepSeek V4 Flash', () => {
+  it('routes codegen and debugging to DeepSeek V4 Pro', () => {
     expect(resolveOpenRouterModelForTask('codegen', 'OpenRouter', 'qwen/qwen3-coder:free')).toEqual({
       providerName: 'OpenRouter',
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
