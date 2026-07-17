@@ -42,6 +42,7 @@ import {
   useSidebar,
 } from 'ui'
 
+import { BuilderSidebarNavItem } from './ProjectExperienceChooser/BuilderSidebarNavItem'
 import { Route } from '../ui/ui.types'
 import {
   useIsAPIDocsSidePanelEnabled,
@@ -272,6 +273,7 @@ const ProjectLinks = () => {
             linkElement: <ProjectIndexPageLink projectRef={ref} />,
           }}
         />
+        <BuilderSidebarNavItem />
         {toolRoutes.map((route, i) => (
           <SideBarNavLink
             key={`tools-routes-${i}`}

@@ -16,7 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
   }
 
-  const { ref, next } = req.query
+  const { connect, ref, next, popup } = req.query
   if (typeof ref !== 'string' || !ref.trim()) {
     return res.status(400).json({ message: 'Project ref is required' })
   }
@@ -25,8 +25,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
+  const connectFlow =
+    connect === '1' || connect === 'true' || popup === '1' || popup === 'true'
+
   const response = await getBuilderLaunchRedirect({
     claims,
+    connectFlow,
     ref: ref.trim(),
     next: typeof next === 'string' ? next : undefined,
   })

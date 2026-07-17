@@ -63,6 +63,18 @@ function applyLaunchSuccess(options: {
       return;
     }
 
+    if (options.popup && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'indobase-builder-session',
+          projectRef: options.handoff.project_ref,
+          success: true,
+        },
+        window.location.origin,
+      );
+      return;
+    }
+
     const isSafeRelativePath =
       Boolean(options.next) &&
       options.next!.startsWith('/') &&

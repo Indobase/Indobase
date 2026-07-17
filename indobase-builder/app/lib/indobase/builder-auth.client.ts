@@ -126,7 +126,13 @@ export function getStudioBuilderConnectUrl(options?: {
   const returnTo = options?.returnTo || (typeof window !== 'undefined' ? window.location.pathname : '/');
 
   if (!projectRef) {
-    return `${studioUrl}/sign-in?returnTo=${encodeURIComponent(returnTo)}`;
+    const params = new URLSearchParams();
+    params.set('return_to', returnTo);
+    if (options?.popup) {
+      params.set('popup', '1');
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return `${studioUrl}/builder/connect${suffix}`;
   }
 
   const params = new URLSearchParams();
@@ -305,10 +311,47 @@ export async function restoreBuilderSessionOnLoad(): Promise<boolean> {
 }
 
 let refreshPopup: Window | null = null;
+let refreshIframe: HTMLIFrameElement | null = null;
+
+function ensureSessionRefreshIframe(): HTMLIFrameElement {
+  if (refreshIframe && document.body.contains(refreshIframe)) {
+    return refreshIframe;
+  }
+
+  refreshIframe = document.createElement('iframe');
+  refreshIframe.id = 'indobase-builder-session-iframe';
+  refreshIframe.title = 'Indobase session refresh';
+  refreshIframe.setAttribute('aria-hidden', 'true');
+  refreshIframe.tabIndex = -1;
+  refreshIframe.style.cssText =
+    'position:absolute;width:0;height:0;border:0;clip:rect(0 0 0 0);overflow:hidden;';
+  document.body.appendChild(refreshIframe);
+  return refreshIframe;
+}
+
+export function refreshBuilderSessionViaStudioIframe(returnTo?: string): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const url = getStudioBuilderConnectUrl({
+    returnTo: returnTo || `${window.location.pathname}${window.location.search}`,
+    popup: true,
+  });
+
+  const iframe = ensureSessionRefreshIframe();
+  iframe.src = url;
+  return true;
+}
 
 export function refreshBuilderSessionViaStudioPopup(returnTo?: string): boolean {
   if (typeof window === 'undefined') {
     return false;
+  }
+
+  // Prefer a hidden iframe — popup blockers break silent session refresh in production.
+  if (refreshBuilderSessionViaStudioIframe(returnTo)) {
+    return true;
   }
 
   if (refreshPopup && !refreshPopup.closed) {
@@ -357,6 +400,9 @@ export function startBuilderSessionKeeper(): () => void {
     }
 
     if (event.data?.type === 'indobase-builder-session' && event.data?.success) {
+      if (refreshIframe) {
+        refreshIframe.src = 'about:blank';
+      }
       void ensureBuilderSession().then((restored) => {
         if (restored) {
           void import('~/lib/stores/mcp').then(({ useMCPStore }) => {

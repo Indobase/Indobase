@@ -88,6 +88,12 @@ export function getStudioOrigin(): string {
   return getURL() || 'https://studio.indobase.in'
 }
 
+/** Default handoff lifetime for direct Builder opens from Studio. */
+export const BUILDER_HANDOFF_TTL_SECONDS = 60 * 5
+
+/** Longer TTL for connect / session-refresh flows (sign-in + redirects). */
+export const BUILDER_HANDOFF_CONNECT_TTL_SECONDS = 60 * 15
+
 export function makeBuilderHandoffToken(payload: BuilderHandoffPayload, secret: string): string {
   const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const payloadB64 = base64Url(JSON.stringify(payload))
@@ -171,10 +177,12 @@ export function buildBuilderBackendConfig(opts: {
 
 export async function getBuilderLaunchRedirect({
   claims,
+  connectFlow,
   ref,
   next,
 }: {
   claims: Claims
+  connectFlow?: boolean
   ref: string
   next?: string
 }) {
@@ -202,7 +210,7 @@ export async function getBuilderLaunchRedirect({
     aud: 'indobase-builder',
     backend,
     email: getPrimaryEmail(claims),
-    exp: now + 60 * 5,
+    exp: now + (connectFlow ? BUILDER_HANDOFF_CONNECT_TTL_SECONDS : BUILDER_HANDOFF_TTL_SECONDS),
     iat: now,
     iss: studioUrl,
     orgId: project.organization_id,

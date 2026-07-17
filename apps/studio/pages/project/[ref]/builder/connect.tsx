@@ -43,6 +43,7 @@ const BuilderConnectPage: NextPageWithLayout = () => {
 
         const launchParams = new URLSearchParams()
         launchParams.set('next', returnTo)
+        launchParams.set('connect', '1')
         const isPopup = router.query.popup === '1'
         if (isPopup) {
           launchParams.set('popup', '1')

@@ -29,6 +29,7 @@ import { HelpDropdown } from './HelpDropdown/HelpDropdown'
 import { HomeIcon } from './HomeIcon'
 import { LocalVersionPopover } from './LocalVersionPopover'
 import { MergeRequestButton } from './MergeRequestButton'
+import { BuilderLaunchButton } from 'components/interfaces/ProjectExperienceChooser/BuilderLaunchButton'
 import { Connect } from '@/components/interfaces/Connect/Connect'
 import { ConnectButton } from '@/components/interfaces/ConnectButton/ConnectButton'
 import { ConnectSheet } from '@/components/interfaces/ConnectSheet/ConnectSheet'
@@ -231,6 +232,14 @@ export const LayoutHeader = ({
                 <AnimatePresence initial={false}>
                   {!!projectRef && (
                     <>
+                      <BuilderLaunchButton
+                        type="outline"
+                        size="tiny"
+                        className="hidden md:inline-flex rounded-full px-3"
+                        nextPath="/?source=studio"
+                      >
+                        Builder
+                      </BuilderLaunchButton>
                       <InlineEditorButton />
                       <AssistantButton />
                     </>
