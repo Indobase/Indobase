@@ -26,14 +26,14 @@ async function deployAction({ request, context }: ActionFunctionArgs) {
   }
 
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
-  const { mcpToken, projectRef, studioUrl } = await verifyIndobaseProxyRequest(request, body, env);
+  const { mcpToken, projectRef, studioFetchBase } = await verifyIndobaseProxyRequest(request, body, env);
   const deploymentId = body.deploymentId?.trim();
 
   const studioPath = deploymentId
     ? `/api/platform/projects/${encodeURIComponent(projectRef)}/deployments/builder/${encodeURIComponent(deploymentId)}`
     : `/api/platform/projects/${encodeURIComponent(projectRef)}/deployments/builder`;
 
-  const studioEndpoint = new URL(studioPath, studioUrl);
+  const studioEndpoint = new URL(studioPath, studioFetchBase);
 
   const studioResponse = await fetch(studioEndpoint.toString(), {
     method: deploymentId ? 'GET' : 'POST',

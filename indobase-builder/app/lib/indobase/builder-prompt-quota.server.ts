@@ -3,7 +3,7 @@ import { json } from '@remix-run/node';
 import { parseCookies } from '~/lib/api/cookies';
 import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
-import { isAllowedStudioOrigin, normalizeOrigin } from '~/lib/production.server';
+import { resolveStudioServerFetchBase } from '~/lib/indobase/studio-server-url.server';
 import type { IndobaseBuilderMcpTokenPayload } from '~/types/indobase';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 
@@ -82,9 +82,9 @@ export async function getBuilderPromptQuotaFromStudio(
     return null;
   }
 
-  const studioUrl = normalizeOrigin(claims.studio_url);
+  const studioUrl = resolveStudioServerFetchBase(claims.studio_url, env);
 
-  if (!isAllowedStudioOrigin(studioUrl)) {
+  if (!studioUrl) {
     return null;
   }
 
@@ -126,9 +126,9 @@ export async function consumeBuilderPromptFromStudio(
     return { ok: false, unauthorized: true };
   }
 
-  const studioUrl = normalizeOrigin(claims.studio_url);
+  const studioUrl = resolveStudioServerFetchBase(claims.studio_url, env);
 
-  if (!isAllowedStudioOrigin(studioUrl)) {
+  if (!studioUrl) {
     return { ok: false, unauthorized: true };
   }
 

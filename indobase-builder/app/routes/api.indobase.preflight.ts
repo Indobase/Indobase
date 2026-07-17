@@ -23,11 +23,11 @@ async function preflightAction({ request, context }: ActionFunctionArgs) {
   }
 
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
-  const { mcpToken, projectRef, studioUrl } = await verifyIndobaseProxyRequest(request, body, env);
+  const { mcpToken, projectRef, studioFetchBase } = await verifyIndobaseProxyRequest(request, body, env);
 
   const studioEndpoint = new URL(
     `/api/platform/projects/${encodeURIComponent(projectRef)}/builder/preflight`,
-    studioUrl,
+    studioFetchBase,
   );
 
   const studioResponse = await fetch(studioEndpoint.toString(), {

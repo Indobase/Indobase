@@ -169,6 +169,7 @@ export const ChatImpl = memo(
     const orchestratorChatRetryRef = useRef(0);
     const runAutonomousDeployFlowRef = useRef<() => Promise<void>>(async () => {});
     const suppressAutonomousOnNextFinishRef = useRef(false);
+    const autoApprovedToolCallIdsRef = useRef(new Set<string>());
     const MAX_AUTONOMOUS_REPAIRS = 10;
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
@@ -270,11 +271,14 @@ export const ChatImpl = memo(
       sendExtraMessageFields: true,
       onError: (e) => {
         setFakeLoading(false);
+        streamingState.set(false);
         handleError(e, 'chat');
       },
       onFinish: (message, response) => {
         const usage = response.usage;
         setData(undefined);
+        setFakeLoading(false);
+        streamingState.set(false);
 
         if (usage) {
           console.log('Token usage:', usage);
@@ -476,7 +480,7 @@ export const ChatImpl = memo(
     ]);
 
     useEffect(() => {
-      if (!isIndobaseStudioManagedConnection(indobaseConn) || isLoading) {
+      if (!isIndobaseStudioManagedConnection(indobaseConn)) {
         return;
       }
 
@@ -494,19 +498,24 @@ export const ChatImpl = memo(
             continue;
           }
 
-          const annotation = toolAnnotations.find(
-            (entry) => entry.toolCallId === part.toolInvocation.toolCallId,
-          );
+          const toolCallId = part.toolInvocation.toolCallId;
+
+          if (autoApprovedToolCallIdsRef.current.has(toolCallId)) {
+            continue;
+          }
+
+          const annotation = toolAnnotations.find((entry) => entry.toolCallId === toolCallId);
 
           if (annotation?.serverName === INDOBASE_MCP_SERVER_NAME) {
+            autoApprovedToolCallIdsRef.current.add(toolCallId);
             addToolResult({
-              toolCallId: part.toolInvocation.toolCallId,
+              toolCallId,
               result: TOOL_EXECUTION_APPROVAL.APPROVE,
             });
           }
         }
       }
-    }, [messages, chatData, isLoading, indobaseConn, addToolResult]);
+    }, [messages, chatData, indobaseConn, addToolResult]);
 
     const scrollTextArea = () => {
       const textarea = textareaRef.current;
@@ -518,8 +527,11 @@ export const ChatImpl = memo(
 
     const abort = () => {
       stop();
+      setFakeLoading(false);
+      streamingState.set(false);
       chatStore.setKey('aborted', true);
       workbenchStore.abortAllActions();
+      setAutonomousProgress([]);
 
       logStore.logProvider('Chat response aborted', {
         component: 'Chat',
@@ -867,6 +879,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       if (!chatStarted) {
         setFakeLoading(true);
 
+        try {
         const studioLinked = isIndobaseStudioManagedConnection(indobaseConn);
         const explicitTemplate = resolveTemplateFromMessage(finalMessageContent);
         let templateName = explicitTemplate?.name ?? null;
@@ -994,7 +1007,6 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
               resetEnhancer();
 
               textareaRef.current?.blur();
-              setFakeLoading(false);
 
               return;
             }
@@ -1014,7 +1026,6 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
           },
         ]);
         reload(attachments ? { experimental_attachments: attachments } : undefined);
-        setFakeLoading(false);
         setInput('');
         Cookies.remove(PROMPT_COOKIE_KEY);
 
@@ -1026,6 +1037,10 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         textareaRef.current?.blur();
 
         return;
+        } finally {
+          setFakeLoading(false);
+          streamingState.set(false);
+        }
       }
 
       if (error != null) {

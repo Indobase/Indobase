@@ -23,9 +23,9 @@ async function backendAction({ request, context }: ActionFunctionArgs) {
   }
 
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
-  const { mcpToken, projectRef, studioUrl } = await verifyIndobaseProxyRequest(request, body, env);
+  const { mcpToken, projectRef, studioFetchBase } = await verifyIndobaseProxyRequest(request, body, env);
 
-  const studioEndpoint = new URL(`/api/platform/projects/${encodeURIComponent(projectRef)}/builder/backend`, studioUrl);
+  const studioEndpoint = new URL(`/api/platform/projects/${encodeURIComponent(projectRef)}/builder/backend`, studioFetchBase);
 
   const studioResponse = await fetch(studioEndpoint.toString(), {
     method: 'GET',

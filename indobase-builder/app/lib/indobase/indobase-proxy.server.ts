@@ -3,6 +3,7 @@ import { json } from '@remix-run/node';
 import { parseCookies } from '~/lib/api/cookies';
 import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
+import { resolveStudioServerFetchBase } from '~/lib/indobase/studio-server-url.server';
 import { isAllowedStudioOrigin, normalizeOrigin } from '~/lib/production.server';
 
 type ServerEnv = Record<string, string | undefined>;
@@ -10,7 +11,10 @@ type ServerEnv = Record<string, string | undefined>;
 export type VerifiedIndobaseProxyContext = {
   mcpToken: string;
   projectRef: string;
+  /** Public Studio origin from the Builder session (for redirects / client links). */
   studioUrl: string;
+  /** Base URL for server-side Studio fetches (may be Docker-internal). */
+  studioFetchBase: string;
 };
 
 export async function verifyIndobaseProxyRequest(
@@ -61,9 +65,16 @@ export async function verifyIndobaseProxyRequest(
     throw json({ error: 'Studio URL is not allowed' }, { status: 403 });
   }
 
+  const studioFetchBase = resolveStudioServerFetchBase(trustedStudioUrl, env);
+
+  if (!studioFetchBase) {
+    throw json({ error: 'Studio URL is not allowed' }, { status: 403 });
+  }
+
   return {
     mcpToken,
     projectRef: claims.project_ref,
     studioUrl: trustedStudioUrl,
+    studioFetchBase,
   };
 }

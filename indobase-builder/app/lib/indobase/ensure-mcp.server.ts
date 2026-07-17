@@ -3,6 +3,7 @@ import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/bui
 import { resolveBuilderMcpClaims } from '~/lib/indobase/builder-prompt-quota.server';
 import { BUILDER_MCP_COOKIE } from '~/lib/indobase/builder-session.constants';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
+import { resolveStudioServerFetchBase } from '~/lib/indobase/studio-server-url.server';
 import type { MCPConfig } from '~/lib/services/mcpService';
 import type { MCPService } from '~/lib/services/mcpService';
 
@@ -38,7 +39,13 @@ export async function ensureIndobaseMcpFromRequest(
     return;
   }
 
-  const url = buildIndobaseMcpUrl(claims.studio_url, claims.project_ref);
+  const studioFetchBase = resolveStudioServerFetchBase(claims.studio_url, env);
+
+  if (!studioFetchBase) {
+    return;
+  }
+
+  const url = buildIndobaseMcpUrl(studioFetchBase, claims.project_ref);
   const existing = mcpService.getServer(INDOBASE_MCP_SERVER_NAME);
   const existingConfig = existing?.config;
   const existingUrl =

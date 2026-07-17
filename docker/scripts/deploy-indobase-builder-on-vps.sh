@@ -43,6 +43,22 @@ EOF
   echo "Created \${ENV_FILE} — add BUILDER_HANDOFF_SECRET and LLM keys before serving traffic."
 fi
 
+STUDIO_SVC="\$(docker service ls --format '{{.Name}}' | grep -E "\${STUDIO_FILTER}" | head -1 || true)"
+STUDIO_INTERNAL_URL="\${STUDIO_INTERNAL_URL:-}"
+if [[ -z "\${STUDIO_INTERNAL_URL}" && -n "\${STUDIO_SVC}" ]]; then
+  # Swarm DNS on dokploy-network; Studio listens on 8080 inside the container.
+  STUDIO_INTERNAL_URL="http://\${STUDIO_SVC}:8080"
+fi
+
+if [[ -n "\${STUDIO_INTERNAL_URL}" ]]; then
+  if grep -q '^STUDIO_INTERNAL_URL=' "\${ENV_FILE}" 2>/dev/null; then
+    sed -i "s|^STUDIO_INTERNAL_URL=.*|STUDIO_INTERNAL_URL=\${STUDIO_INTERNAL_URL}|" "\${ENV_FILE}"
+  else
+    printf '\nSTUDIO_INTERNAL_URL=%s\n' "\${STUDIO_INTERNAL_URL}" >> "\${ENV_FILE}"
+  fi
+  echo "Studio internal fetch base: \${STUDIO_INTERNAL_URL}"
+fi
+
 if ! grep -q '^BUILDER_HANDOFF_SECRET=.\{32,\}' "\${ENV_FILE}" 2>/dev/null; then
   echo "::error::\${ENV_FILE} is missing BUILDER_HANDOFF_SECRET (min 32 chars). Builder will refuse to start in production."
   exit 1
@@ -55,7 +71,11 @@ fi
 
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "Updating swarm service \${SERVICE_NAME}…"
-  docker service update --image "\${IMAGE}" "\${SERVICE_NAME}"
+  UPDATE_ARGS=(--image "\${IMAGE}")
+  if [[ -n "\${STUDIO_INTERNAL_URL}" ]]; then
+    UPDATE_ARGS+=(--env-add "STUDIO_INTERNAL_URL=\${STUDIO_INTERNAL_URL}")
+  fi
+  docker service update "\${UPDATE_ARGS[@]}" "\${SERVICE_NAME}"
 else
   echo "Creating swarm service \${SERVICE_NAME}…"
   docker service create \
@@ -73,7 +93,6 @@ else
   echo "Traefik route present: \${TRAEFIK_FILE}"
 fi
 
-STUDIO_SVC="\$(docker service ls --format '{{.Name}}' | grep -E "\${STUDIO_FILTER}" | head -1 || true)"
 if [[ -n "\${STUDIO_SVC}" ]]; then
   echo "Pointing Studio (\${STUDIO_SVC}) BUILDER_APP_URL to \${BUILDER_URL}…"
   docker service update \
