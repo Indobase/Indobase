@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Platform database regression suite (CRUD, constraints, transactions, bulk, concurrency, indexes, JSONB).
 # Run on VPS against a tenant DB:
-#   TENANT_DB=tenantdb_adralll_hewtietesr bash docker/scripts/platform-db-regression-test.sh
+#   TENANT_DB=tenantdb_peaqlabs_yawgparzpv bash docker/scripts/platform-db-regression-test.sh
 #
 # Optional:
 #   DB_CONTAINER=indobase-db  PG_USER=postgres  ENV_FILE=/path/to/docker/.env
@@ -10,7 +10,7 @@ set -euo pipefail
 ENV_FILE="${ENV_FILE:-/etc/dokploy/compose/indobase-backend-bmqhan/code/docker/.env}"
 DB_CONTAINER="${DB_CONTAINER:-indobase-db}"
 PG_USER="${PG_USER:-postgres}"
-TENANT_DB="${TENANT_DB:-tenantdb_adralll_hewtietesr}"
+TENANT_DB="${TENANT_DB:-tenantdb_peaqlabs_yawgparzpv}"
 SCHEMA="platform_qa_$(date +%s)"
 
 PASS=0

@@ -10,7 +10,7 @@
 set -euo pipefail
 
 ENV_FILE="${ENV_FILE:-/etc/dokploy/compose/indobase-backend-bmqhan/code/docker/.env}"
-STORAGE_TENANT="${STORAGE_TENANT:-adralll-hewtietesr}"
+STORAGE_TENANT="${STORAGE_TENANT:-peaqlabs-yawgparzpv}"
 LARGE_FILE_MB="${LARGE_FILE_MB:-49}"
 CONCURRENT_UPLOADS="${CONCURRENT_UPLOADS:-8}"
 SIGNED_URL_TTL_SEC="${SIGNED_URL_TTL_SEC:-4}"

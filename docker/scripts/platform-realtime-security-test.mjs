@@ -34,7 +34,7 @@ function loadWebSocket() {
 const WebSocket = loadWebSocket()
 
 const ENV_FILE = process.env.ENV_FILE ?? '/etc/dokploy/compose/indobase-backend-bmqhan/code/docker/.env'
-const REALTIME_TENANT = process.env.REALTIME_TENANT ?? 'adralll-hewtietesr'
+const REALTIME_TENANT = process.env.REALTIME_TENANT ?? 'peaqlabs-yawgparzpv'
 const REALTIME_HOST =
   process.env.REALTIME_HOST ?? `${REALTIME_TENANT}.${process.env.SAAS_PUBLIC_DOMAIN ?? 'indobase.in'}`
 const TENANT_DB = process.env.TENANT_DB ?? `tenantdb_${REALTIME_TENANT.replace(/-/g, '_')}`
