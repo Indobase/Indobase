@@ -1,4 +1,5 @@
 import { UpgradePlanButton } from 'components/ui/UpgradePlanButton'
+import { BuilderLaunchButton } from 'components/interfaces/ProjectExperienceChooser/BuilderLaunchButton'
 import { useBackendStudioAccess } from 'hooks/misc/useBackendStudioAccess'
 import Link from 'next/link'
 import { PropsWithChildren } from 'react'
@@ -36,6 +37,9 @@ export function BackendStudioUpgradeGate({ children }: PropsWithChildren) {
             description={`${planName} still runs your app on an Indobase backend via Builder, but you cannot open Studio to inspect Auth, Database, Storage, or Edge Functions. Upgrade to Basic to unlock Studio.`}
           >
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <BuilderLaunchButton type="primary" nextPath="/?source=studio-gate">
+                Open Builder
+              </BuilderLaunchButton>
               <UpgradePlanButton
                 source="backendStudioGate"
                 plan="Basic"

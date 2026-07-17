@@ -43,6 +43,7 @@ export const DefaultLayout = ({
   const appSnap = useAppStateSnapshot()
   const { hasAccess: hasBackendStudioAccess, enabled: studioGateEnabled } = useBackendStudioAccess()
   const studioLocked = studioGateEnabled && !hasBackendStudioAccess
+  const isProjectExperienceChooser = router.pathname === '/project/[ref]'
   const showProductMenu = !!ref && router.pathname !== '/project/[ref]' && !studioLocked
 
   const [lastVisitedOrganization] = useLocalStorageQuery(
@@ -71,7 +72,11 @@ export const DefaultLayout = ({
   const showProjectSidebar =
     !router.pathname.startsWith('/account') && !studioLocked
 
-  const content = (
+  // The project landing page is the Builder/Studio chooser for every plan.
+  // Gate only after a user explicitly chooses a Studio/backend route.
+  const content = isProjectExperienceChooser ? (
+    children
+  ) : (
     <BackendStudioUpgradeGate>{children}</BackendStudioUpgradeGate>
   )
 

@@ -1,14 +1,14 @@
 ## Learned User Preferences
 
-- External code audit must have zero Supabase naming in the shipped bundle; fork and rebrand upstream services on GitHub/npm if needed.
-- Use Indobase branding in UI, docs, and packages—not Supabase icons, logos, or "fork/clone of Supabase" language.
+- Use Indobase branding everywhere (UI, docs, packages, Builder); zero Supabase naming in the shipped bundle—including route paths, boltAction types, and filenames—not icons/logos or "fork/clone of Supabase" language. Fork/rebrand upstream on GitHub/npm if needed.
 - Default git branch is `main`; when asked to push, ship, or deploy, commit on `main`, push to `origin main` after syncing, and roll out Studio/Builder on Vyom unless the user opts out.
 - Do not commit, push, or deploy unless the user explicitly asks.
 - User grants VPS SSH access for infra fixes and expects agents to work autonomously until issues are resolved.
 - Product goal is Supabase Cloud parity, including multi-tenant architecture with a dedicated database per new project; dedicated/isolated tenant stacks are for paid users—free remains project-based.
 - Prefer fleet-wide permanent fixes for tenant data-plane and connection issues over per-project patches.
 - Product must meet India DPDP (Digital Personal Data Protection) compliance requirements.
-- Free plan cannot open backend Studio—prompt upgrade to Basic+; plan ladder is Free ₹0 / Basic ₹499 / Pro ₹1,999 / Studio ₹6,999 / Enterprise custom (Pro is capacity headroom, not Studio unlock).
+- Backend Studio unlocks at Pro+ (Free/Basic see upgrade prompt). Plan ladder: Free ₹0 / Basic ₹499 (frontend/static, no Studio) / Pro ₹1,999 (Studio unlocked) / Studio ₹6,999 (team/agency) / Enterprise custom. Free→Basic is vanity (domain/badge); Basic→Pro is necessity (auth/backend); Pro→Studio is team.
+- Project root stays a Builder/Studio chooser for every plan; choosing Studio applies the plan gate, while Builder remains reachable even from the Free-plan Studio upgrade gate.
 - Builder should offer real working starter templates wired to Indobase (`@indobaseinc/indobase-js`), not empty codegen from scratch.
 - When hardening Builder, fix whole-builder pipeline issues (build/deploy/templates/chat), not single-template-only patches.
 - Builder must not expose provider/model pickers in the UI; route LLMs server-side only (`/api/models` returns empty lists; hide Cloud/Local Providers settings).

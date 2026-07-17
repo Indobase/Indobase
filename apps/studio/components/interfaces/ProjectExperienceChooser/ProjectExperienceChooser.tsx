@@ -106,12 +106,12 @@ export const ProjectExperienceChooser = () => {
             </ExperienceTile>
 
             <ExperienceTile
-              eyebrow="Indobase Backend"
-              title="Indobase Backend"
-              description="Manage your database, authentication, storage, and serverless functions."
+              eyebrow="Indobase Studio"
+              title="Backend Studio"
+              description="Manage your database, authentication, storage, and serverless functions. Studio access follows your organization's plan."
               icon={<Database size={28} strokeWidth={1.5} />}
               href={`/project/${ref}/backend`}
-              ctaLabel="Open Indobase Backend"
+              ctaLabel="Open Studio"
             />
           </div>
         </div>
