@@ -93,7 +93,9 @@ ARG VITE_GIT_COMMIT
 ENV BUILD_SHA=${VITE_GIT_COMMIT} \
     VITE_GIT_COMMIT=${VITE_GIT_COMMIT}
 
-RUN apt-get update && apt-get install -y --no-install-recommends git tini && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git tini && rm -rf /var/lib/apt/lists/* \
+  && test -x /usr/local/bin/npm \
+  && ln -sf /usr/local/bin/npm /usr/bin/npm
 
 COPY --chown=node:node --from=build /app/package.json /app/package.json
 COPY --chown=node:node --from=build /app/node_modules /app/node_modules

@@ -17,6 +17,45 @@ const logger = createScopedLogger('server-project-build');
 const BUILD_TIMEOUT_MS = 180_000;
 const INSTALL_TIMEOUT_MS = 120_000;
 
+/** Standard PATH for Node Docker images — deploy env must never strip this. */
+const SAFE_PATH = ['/usr/local/bin', '/usr/bin', '/bin'].join(path.delimiter);
+
+async function resolveNpmBinary(): Promise<string> {
+  const candidates = [
+    path.join(path.dirname(process.execPath), 'npm'),
+    '/usr/local/bin/npm',
+    '/usr/bin/npm',
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+
+  // Last resort: rely on PATH lookup (may still fail — caller surfaces ENOENT).
+  return 'npm';
+}
+
+function buildChildEnv(env: Record<string, string>): NodeJS.ProcessEnv {
+  const basePath = typeof process.env.PATH === 'string' && process.env.PATH.trim() ? process.env.PATH : SAFE_PATH;
+
+  // Do not let deploy/project env override PATH or strip Node binaries.
+  const { PATH: _ignoredPath, path: _ignoredPathLower, ...safeProjectEnv } = env;
+
+  return {
+    ...process.env,
+    ...safeProjectEnv,
+    PATH: basePath.includes('/usr/local/bin') ? basePath : `${SAFE_PATH}${path.delimiter}${basePath}`,
+    CI: 'true',
+    // Builder runs with NODE_ENV=production; Vite templates need devDependencies.
+    NODE_ENV: 'development',
+  };
+}
+
 async function readDistArtifacts(distDir: string, root = distDir): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
   const entries = await fs.readdir(distDir, { withFileTypes: true });
@@ -72,26 +111,23 @@ export async function buildProjectArtifactsOnServer(
       await fs.writeFile(path.join(workDir, '.env'), envFile, 'utf8');
     }
 
-    const childEnv = {
-      ...process.env,
-      ...env,
-      CI: 'true',
-      // Builder runs with NODE_ENV=production; Vite templates need devDependencies (vite, typescript, @types/*).
-      NODE_ENV: 'development',
-    };
+    const childEnv = buildChildEnv(env);
+    const npmBin = await resolveNpmBinary();
 
-    logger.info(`Server build: npm install in ${workDir}`);
+    logger.info(`Server build: ${npmBin} install in ${workDir}`);
     await execFileAsync(
-      'npm',
-      ['install', '--no-audit', '--no-fund', '--prefer-offline', '--include=dev'], {
-      cwd: workDir,
-      timeout: INSTALL_TIMEOUT_MS,
-      env: childEnv,
-      maxBuffer: 10 * 1024 * 1024,
-    });
+      npmBin,
+      ['install', '--no-audit', '--no-fund', '--prefer-offline', '--include=dev'],
+      {
+        cwd: workDir,
+        timeout: INSTALL_TIMEOUT_MS,
+        env: childEnv,
+        maxBuffer: 10 * 1024 * 1024,
+      },
+    );
 
-    logger.info(`Server build: npm run build in ${workDir}`);
-    await execFileAsync('npm', ['run', 'build'], {
+    logger.info(`Server build: ${npmBin} run build in ${workDir}`);
+    await execFileAsync(npmBin, ['run', 'build'], {
       cwd: workDir,
       timeout: BUILD_TIMEOUT_MS,
       env: childEnv,

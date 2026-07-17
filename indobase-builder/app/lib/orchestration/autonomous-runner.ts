@@ -118,115 +118,158 @@ export async function runAutonomousPipeline(options: {
 }): Promise<AutonomousPipelineResult> {
   const { connection, onProgress, progressOrderStart = 100 } = options;
   let order = progressOrderStart;
+  let testerOpen = false;
+  let deployerOpen = false;
 
-  await finalizeCodegen();
-
-  let packageJson: Record<string, unknown> | null = null;
-
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    packageJson = await readPackageJson();
-
-    if (packageJson) {
-      break;
+  const markTesterComplete = (message: string) => {
+    if (!testerOpen) {
+      return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    await workbenchStore.flushPendingActions();
-  }
+    testerOpen = false;
+    onProgress?.(createProgress('tester', 'complete', order++, message));
+  };
 
-  onProgress?.(
-    createProgress('tester', 'in-progress', order++, 'Tester agent verifying build and tests'),
-  );
+  const markDeployerComplete = (message: string) => {
+    if (!deployerOpen) {
+      return;
+    }
 
-  if (!packageJson) {
-    onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));
+    deployerOpen = false;
+    onProgress?.(createProgress('deployer', 'complete', order++, message));
+  };
 
-    return {
-      success: false,
-      needsRepair: true,
-      verificationCommand: 'npm run build',
-      verificationOutput: 'Missing package.json in the project root.',
-      repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+  try {
+    await finalizeCodegen();
 
-Output:
-Missing package.json in /home/project. Create package.json with a "build" script (Vite + React for SPAs, or a static HTML build that copies *.html into dist/), write all source files using boltAction filePath attributes, then run npm install and npm run build.`,
-    };
-  }
+    let packageJson: Record<string, unknown> | null = null;
 
-  const buildResult = await runDeployBuildStep(connection);
-  const resolvedBuild = buildResult;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      packageJson = await readPackageJson();
 
-  if (!resolvedBuild.success) {
-    onProgress?.(createProgress('tester', 'complete', order++, 'Build verification failed'));
+      if (packageJson) {
+        break;
+      }
 
-    return {
-      success: false,
-      needsRepair: true,
-      verificationCommand: 'npm run build',
-      verificationOutput: resolvedBuild.error || buildResult.error || 'Build failed',
-      repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await workbenchStore.flushPendingActions();
+    }
 
-Output:
-${formatBuildFailureOutput(resolvedBuild.error || buildResult.error) || 'Build failed'}`,
-    };
-  }
+    testerOpen = true;
+    onProgress?.(
+      createProgress('tester', 'in-progress', order++, 'Tester agent verifying build and tests'),
+    );
 
-  const testCommand = resolveTestCommand(packageJson);
-
-  if (testCommand) {
-    const testResult = await runWorkbenchShell(testCommand);
-
-    if (testResult.exitCode !== 0) {
-      onProgress?.(createProgress('tester', 'complete', order++, 'Automated tests failed'));
+    if (!packageJson) {
+      markTesterComplete('Build verification failed');
 
       return {
         success: false,
         needsRepair: true,
-        verificationCommand: testCommand,
-        verificationOutput: testResult.output,
-        repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`${testCommand}\`
+        verificationCommand: 'npm run build',
+        verificationOutput: 'Missing package.json in the project root.',
+        repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+
+Output:
+Missing package.json in /home/project. Create package.json with a "build" script (Vite + React for SPAs, or a static HTML build that copies *.html into dist/), write all source files using boltAction filePath attributes, then run npm install and npm run build.`,
+      };
+    }
+
+    const buildResult = await runDeployBuildStep(connection);
+    const resolvedBuild = buildResult;
+
+    if (!resolvedBuild.success) {
+      markTesterComplete('Build verification failed');
+
+      return {
+        success: false,
+        needsRepair: true,
+        verificationCommand: 'npm run build',
+        verificationOutput: resolvedBuild.error || buildResult.error || 'Build failed',
+        repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+
+Output:
+${formatBuildFailureOutput(resolvedBuild.error || buildResult.error) || 'Build failed'}`,
+      };
+    }
+
+    const testCommand = resolveTestCommand(packageJson);
+
+    if (testCommand) {
+      const testResult = await runWorkbenchShell(testCommand);
+
+      if (testResult.exitCode !== 0) {
+        markTesterComplete('Automated tests failed');
+
+        return {
+          success: false,
+          needsRepair: true,
+          verificationCommand: testCommand,
+          verificationOutput: testResult.output,
+          repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`${testCommand}\`
 
 Output:
 ${formatBuildFailureOutput(testResult.output)}`,
+        };
+      }
+    }
+
+    markTesterComplete('Verification passed');
+
+    if (!canQueueIndobaseDeployment(connection)) {
+      return {
+        success: true,
+        needsRepair: false,
       };
     }
-  }
 
-  onProgress?.(createProgress('tester', 'complete', order++, 'Verification passed'));
+    deployerOpen = true;
+    onProgress?.(
+      createProgress('deployer', 'in-progress', order++, 'Deployer agent publishing to Indobase'),
+    );
 
-  if (!canQueueIndobaseDeployment(connection)) {
+    const deployResult = await publishIndobaseDeployment(connection, {
+      artifacts: resolvedBuild.files,
+      metadata: {
+        source: 'autonomous_agents',
+      },
+    });
+
+    if (deployResult.success && deployResult.deployment?.target_url) {
+      markDeployerComplete('Deployment published');
+
+      return {
+        success: true,
+        needsRepair: false,
+        deployUrl: deployResult.deployment.target_url,
+      };
+    }
+
+    markDeployerComplete('Deployment queued or requires Studio');
+
     return {
       success: true,
       needsRepair: false,
+      deployUrl: deployResult.deployment?.target_url,
     };
-  }
+  } catch (error) {
+    markTesterComplete('Verification interrupted');
+    markDeployerComplete('Deploy interrupted');
 
-  onProgress?.(
-    createProgress('deployer', 'in-progress', order++, 'Deployer agent publishing to Indobase'),
-  );
-
-  const deployResult = await publishIndobaseDeployment(connection, {
-    artifacts: resolvedBuild.files,
-    metadata: {
-      source: 'autonomous_agents',
-    },
-  });
-
-  if (deployResult.success && deployResult.deployment?.target_url) {
-    onProgress?.(createProgress('deployer', 'complete', order++, 'Deployment published'));
+    const message = error instanceof Error ? error.message : String(error);
 
     return {
-      success: true,
-      needsRepair: false,
-      deployUrl: deployResult.deployment.target_url,
+      success: false,
+      needsRepair: true,
+      verificationCommand: 'npm run build',
+      verificationOutput: message,
+      repairPrompt: `${TESTER_REPAIR_USER_PREFIX}\`npm run build\`
+
+Output:
+${formatBuildFailureOutput(message)}`,
     };
+  } finally {
+    markTesterComplete('Verification finished');
+    markDeployerComplete('Deploy finished');
   }
-
-  onProgress?.(createProgress('deployer', 'complete', order++, 'Deployment queued or requires Studio'));
-
-  return {
-    success: true,
-    needsRepair: false,
-    deployUrl: deployResult.deployment?.target_url,
-  };
 }

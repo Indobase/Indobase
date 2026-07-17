@@ -308,6 +308,8 @@ export const ChatImpl = memo(
         return;
       }
 
+      setAutonomousProgress([]);
+
       try {
         await processSampledMessages.flush();
         await finalizeCodegen();
@@ -327,10 +329,13 @@ export const ChatImpl = memo(
           if (autonomousRepairCountRef.current >= MAX_AUTONOMOUS_REPAIRS) {
             toast.error('Autonomous verification failed after multiple repair attempts.');
             autonomousRepairCountRef.current = 0;
+            setAutonomousProgress([]);
             return;
           }
 
           autonomousRepairCountRef.current += 1;
+          // Drop stale in-progress tester/deployer chips before the repair stream starts.
+          setAutonomousProgress([]);
           append({
             role: 'user',
             content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${result.repairPrompt}`,
@@ -347,6 +352,7 @@ export const ChatImpl = memo(
       } catch (error) {
         logger.error('Autonomous pipeline failed', error);
         toast.error('Autonomous test/deploy pipeline failed.');
+        setAutonomousProgress([]);
       }
     }, [MAX_AUTONOMOUS_REPAIRS, append, chatMode, model, provider.name, indobaseConn]);
 
