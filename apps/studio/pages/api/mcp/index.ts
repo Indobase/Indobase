@@ -109,6 +109,10 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const { features, project_ref, read_only, readonly } = data
+  // Default without docs: hosted Content API GraphQL is unavailable on self-host and breaks MCP init.
+  const resolvedFeatures = features?.length
+    ? features
+    : (['account', 'database', 'development', 'debugging'] as const)
   const readOnly = read_only ?? readonly ?? false
 
   let auth
@@ -162,7 +166,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     const server = createIndobaseMcpServer({
       platform,
       projectId: resolvedProjectRef,
-      features,
+      features: [...resolvedFeatures],
       readOnly,
     })
 

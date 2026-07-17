@@ -13,6 +13,8 @@ function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   }
 
   url.searchParams.set('project_ref', projectRef);
+  // Self-hosted Studio has no Content API for docs tools; exclude docs so MCP init succeeds.
+  url.searchParams.set('features', 'database,development,debugging');
 
   return url.toString();
 }
