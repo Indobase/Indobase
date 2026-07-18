@@ -429,14 +429,20 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
         const mcpTools = mcpService.toolsWithoutExecute;
 
-        // A model stuck calling tools round after round never ships code — cut it off from tools
-        // once the per-turn budget is spent so the only way forward is writing the implementation.
-        const hasMcpTools = Object.keys(mcpTools).length > 0 && !toolBudgetExhausted;
+        /*
+         * First build turns must write files, not poke the live database. With MCP tools enabled the
+         * coder burns rounds on list_files / apply_migration before scaffolding, then marks shell
+         * actions complete without a working preview. Tools stay available on follow-up turns.
+         */
+        const hasMcpTools =
+          Object.keys(mcpTools).length > 0 && !toolBudgetExhausted && !isFirstBuildTurn;
 
         if (toolBudgetExhausted) {
           logger.warn(
             `Tool budget exhausted for this turn (${toolInvocationsThisTurn} tool calls); disabling tools to force codegen`,
           );
+        } else if (isFirstBuildTurn && Object.keys(mcpTools).length > 0) {
+          logger.info('First build turn: MCP tools disabled so the coder scaffolds files first');
         }
 
         let continueCount = 0;

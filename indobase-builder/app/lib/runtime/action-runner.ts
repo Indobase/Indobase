@@ -333,6 +333,9 @@ export class ActionRunner {
       unreachable('Shell terminal not found');
     }
 
+    const webcontainer = await this.#awaitWebContainer();
+    const previewAlreadyReady = await this.#hasOpenPreviewPort(webcontainer);
+
     const resp = await shell.executeCommand(
       this.runnerId.get(),
       action.content,
@@ -349,7 +352,70 @@ export class ActionRunner {
       throw new ActionCommandError('Failed To Start Application', resp?.output || 'No Output Available');
     }
 
+    /*
+     * executeCommand with exitTimeoutMs:0 returns success after ~2s without verifying the
+     * server bound a port — that left "Start Application" checked with "No preview available".
+     * Wait for WebContainer to report an open port before claiming success.
+     */
+    if (!previewAlreadyReady) {
+      await this.#waitForPreviewPort(webcontainer, 90_000);
+    }
+
     return resp;
+  }
+
+  async #hasOpenPreviewPort(webcontainer: WebContainer): Promise<boolean> {
+    try {
+      const ports = typeof (webcontainer as any).getPorts === 'function' ? await (webcontainer as any).getPorts() : [];
+      return Array.isArray(ports) && ports.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  #waitForPreviewPort(webcontainer: WebContainer, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const finish = (error?: Error) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearTimeout(timer);
+
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      };
+
+      const timer = setTimeout(() => {
+        finish(
+          new ActionCommandError(
+            'Dev Server Failed',
+            'The start command ran but no preview port opened within 90s. Check that `npm install` succeeded and the dev script starts Vite/Expo on a listening port.',
+          ),
+        );
+      }, timeoutMs);
+
+      try {
+        webcontainer.on('server-ready', () => {
+          logger.info('[start] server-ready received');
+          finish();
+        });
+        webcontainer.on('port', (port, type, url) => {
+          if (type === 'open') {
+            logger.info(`[start] port open: ${port} ${url}`);
+            finish();
+          }
+        });
+      } catch (error) {
+        finish(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
   }
 
   async #runFileAction(action: ActionState) {
