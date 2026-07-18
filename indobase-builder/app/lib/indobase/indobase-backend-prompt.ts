@@ -23,7 +23,7 @@ export function getIndobaseManagedBackendPrompt(options: {
   - Do not route database work through legacy bolt database actions or external cloud APIs.
 
   Application wiring:
-  - Use \`@indobaseinc/indobase-js\` with \`createClient\` and the connected anon key + tenant API URL.
+  - Use \`@indobaseinc/indobase-js\` with \`createClient\` and the connected anon key + tenant API URL. Pin \`"@indobaseinc/indobase-js": "^1.0.8"\` in package.json (published at 1.x — 2.x versions do not exist on npm).
   - Create \`src/lib/indobase.ts\` exporting a singleton \`indobase\` client.
   - Auth, RLS, storage, and edge functions all run on this Indobase tenant data plane.
   - Put edge function source under \`indobase/functions/<name>/\` and deploy via MCP when needed.

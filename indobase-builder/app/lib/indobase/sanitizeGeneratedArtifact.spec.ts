@@ -70,4 +70,45 @@ export default function Register() {
 
     expect(result.filePath).toBe('package.json');
   });
+
+  it('coerces hallucinated @indobaseinc package versions to published ones', () => {
+    const result = sanitizeGeneratedArtifact(
+      '/home/project/package.json',
+      `{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "react": "^18.3.1"
+  }
+}`,
+    );
+
+    expect(result.content).toContain('"@indobaseinc/indobase-js": "^1.0.8"');
+    expect(result.content).not.toContain('2.49.1');
+    expect(result.content).toContain('"react": "^18.3.1"');
+  });
+
+  it('coerces versions when the model already emits @indobaseinc with a bad version', () => {
+    const result = sanitizeGeneratedArtifact(
+      '/home/project/package.json',
+      `{
+  "dependencies": {
+    "@indobaseinc/indobase-js": "^2.49.1",
+    "@indobaseinc/ssr": "^0.5.0"
+  }
+}`,
+    );
+
+    expect(result.content).toContain('"@indobaseinc/indobase-js": "^1.0.8"');
+    expect(result.content).toContain('"@indobaseinc/ssr": "^0.12.0"');
+  });
+
+  it('coerces npm install commands with bad versions', () => {
+    const result = sanitizeGeneratedArtifact(
+      '/home/project/setup.sh',
+      'npm install @supabase/supabase-js@^2.49.1 react',
+    );
+
+    expect(result.content).toContain('@indobaseinc/indobase-js@^1.0.8');
+    expect(result.content).not.toContain('2.49.1');
+  });
 });

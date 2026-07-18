@@ -115,9 +115,39 @@ function rewriteLegacyImportPath(importPath: string): string {
   return importPath.replace(/\/lib\/supabase$/, '/lib/indobase').replace(/\/supabase$/, '/indobase');
 }
 
-export function sanitizeGeneratedArtifactContent(content: string): string {
+/*
+ * Models emit @supabase/supabase-js@^2.x from training data. Renaming the package alone leaves a
+ * version that does not exist on npm for @indobaseinc/* (published at 1.x), so `npm install`
+ * fails with ETARGET and the preview never starts. Coerce to the real published versions.
+ */
+const INDOBASE_PACKAGE_VERSIONS: Record<string, string> = {
+  'indobase-js': '^1.0.8',
+  js: '^1.0.8',
+  'auth-js': '^1.0.8',
+  'postgrest-js': '^1.0.8',
+  'realtime-js': '^1.0.8',
+  'storage-js': '^1.0.8',
+  'functions-js': '^1.0.8',
+  ssr: '^0.12.0',
+  'auth-ui-react': '^1.0.1',
+};
+
+export function coerceIndobasePackageVersions(content: string): string {
   return content
-    .replace(/@supabase\/supabase-js/g, '@indobaseinc/indobase-js')
+    .replace(/"@indobaseinc\/([a-z-]+)"\s*:\s*"[^"]*"/g, (match, pkg: string) => {
+      const version = INDOBASE_PACKAGE_VERSIONS[pkg];
+      return version ? `"@indobaseinc/${pkg}": "${version}"` : match;
+    })
+    .replace(/@indobaseinc\/([a-z-]+)@[\^~]?\d[^\s"'`]*/g, (match, pkg: string) => {
+      const version = INDOBASE_PACKAGE_VERSIONS[pkg];
+      return version ? `@indobaseinc/${pkg}@${version}` : match;
+    });
+}
+
+export function sanitizeGeneratedArtifactContent(content: string): string {
+  return coerceIndobasePackageVersions(
+    content
+      .replace(/@supabase\/supabase-js/g, '@indobaseinc/indobase-js')
     .replace(/from (['"])([^'"]*supabase[^'"]*)\1/g, (match, quote, importPath) => {
       if (!importPath.includes('supabase')) {
         return match;
@@ -142,7 +172,8 @@ export function sanitizeGeneratedArtifactContent(content: string): string {
     .replace(/\bsupabase\./g, 'indobase.')
     .replace(/Indobase backend integration using @supabase\/supabase-js/gi, 'Indobase backend integration using @indobaseinc/indobase-js')
     .replace(/using @supabase\/supabase-js/gi, 'using @indobaseinc/indobase-js')
-    .replace(/\bsupabase\.ts\b/g, 'indobase.ts');
+    .replace(/\bsupabase\.ts\b/g, 'indobase.ts'),
+  );
 }
 
 export function sanitizeGeneratedArtifact(filePath: string, content: string) {

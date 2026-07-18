@@ -140,7 +140,7 @@ The year is 2025.
       CREATE POLICY "Users read own data" ON users FOR SELECT TO authenticated USING (auth.uid() = id);
     
     Client Setup:
-      - Use @indobaseinc/indobase-js with createClient
+      - Use @indobaseinc/indobase-js with createClient (pin "@indobaseinc/indobase-js": "^1.0.8" — 2.x does not exist on npm)
       - Create src/lib/indobase.ts with a singleton indobase client
       - Use Indobase environment variables from .env
     

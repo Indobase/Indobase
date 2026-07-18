@@ -89,7 +89,7 @@ export const CURATED_BOILERPLATES: Template[] = [...CURATED_WEB_BOILERPLATES, ..
 
 export const INDOBASE_ADAPTATION_PROMPT = `
 INDOBASE BACKEND ADAPTATION (required):
-- Use @indobaseinc/indobase-js only (never @supabase/supabase-js).
+- Use @indobaseinc/indobase-js only (never @supabase/supabase-js), pinned to "^1.0.8" — 2.x does not exist on npm.
 - Use VITE_INDOBASE_URL / VITE_INDOBASE_ANON_KEY for web, or EXPO_PUBLIC_INDOBASE_URL / EXPO_PUBLIC_INDOBASE_ANON_KEY for Expo.
 - Prefer a single client module at src/lib/indobase.ts (or lib/indobase.ts).
 - Store SQL under indobase/migrations/ (not supabase/migrations/).

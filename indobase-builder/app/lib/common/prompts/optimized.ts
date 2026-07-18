@@ -184,7 +184,7 @@ You are Indobase Builder, an expert AI assistant and exceptional senior software
       </example>
 
   Client Setup:
-    - Use \`@indobaseinc/indobase-js\` with \`createClient\`
+    - Use \`@indobaseinc/indobase-js\` with \`createClient\` (pin \`"@indobaseinc/indobase-js": "^1.0.8"\` — 2.x does not exist on npm)
     - Create \`src/lib/indobase.ts\` with a singleton \`indobase\` client instance
     - Use the Indobase environment variables from the project's \`.env\` file
     - Use TypeScript generated types from the schema

@@ -17,7 +17,7 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
   - You MAY also use boltAction type="indobase" (migration + query pair) — changes auto-apply to the linked tenant database.
 
   Application wiring (only for apps that actually use the backend):
-  - Use \`@indobaseinc/indobase-js\` with \`createClient\` — never @supabase/supabase-js.
+  - Use \`@indobaseinc/indobase-js\` with \`createClient\` — never @supabase/supabase-js. In package.json pin \`"@indobaseinc/indobase-js": "^1.0.8"\` (the SDK is published at 1.x — 2.x versions DO NOT exist on npm and will fail npm install).
   - Create \`src/lib/indobase.ts\` exporting a singleton client.
   - Create \`.env\` with VITE_INDOBASE_URL and VITE_INDOBASE_ANON_KEY from the linked credentials (values are in the system context).
   - Put SQL migrations under \`indobase/migrations/\`.

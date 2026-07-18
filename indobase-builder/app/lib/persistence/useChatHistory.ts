@@ -34,6 +34,43 @@ export interface ChatHistoryItem {
 
 const persistenceEnabled = !import.meta.env.VITE_DISABLE_PERSISTENCE;
 
+/*
+ * Tool calls that never got a result (the stream died or the page was closed mid-approval) would
+ * otherwise reload as permanent "Run tool" approval cards. addToolResult() only updates the LAST
+ * message, so auto-approve can never clear them — close them out at load time instead.
+ */
+function closeDanglingToolInvocations(messages: Message[]): Message[] {
+  return messages.map((message) => {
+    if (message.role !== 'assistant' || !Array.isArray(message.parts)) {
+      return message;
+    }
+
+    const hasDangling = message.parts.some(
+      (part) => part.type === 'tool-invocation' && part.toolInvocation?.state !== 'result',
+    );
+
+    if (!hasDangling) {
+      return message;
+    }
+
+    return {
+      ...message,
+      parts: message.parts.map((part) =>
+        part.type === 'tool-invocation' && part.toolInvocation?.state !== 'result'
+          ? {
+              ...part,
+              toolInvocation: {
+                ...part.toolInvocation,
+                state: 'result' as const,
+                result: 'Error: Tool call was interrupted before it ran (chat was reloaded).',
+              },
+            }
+          : part,
+      ),
+    };
+  });
+}
+
 export const db = persistenceEnabled ? await openDatabase() : undefined;
 
 export const chatId = atom<string | undefined>(undefined);
@@ -173,7 +210,7 @@ ${value.content}
               await restoreSnapshot(mixedId, validSnapshot);
             }
 
-            setInitialMessages(filteredMessages);
+            setInitialMessages(closeDanglingToolInvocations(filteredMessages));
 
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
