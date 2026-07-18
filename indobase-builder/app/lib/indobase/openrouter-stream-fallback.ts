@@ -122,7 +122,7 @@ export function describeRateLimit(error: unknown): string | null {
   const remainingMs = resetAt ? resetAt - Date.now() : 0;
 
   if (!resetAt || remainingMs <= 0) {
-    return "You've hit the free AI model's rate limit. Try again in a few seconds.";
+    return "The AI provider is rate limiting us. Try again in a few seconds.";
   }
 
   const totalSec = Math.ceil(remainingMs / 1000);
@@ -140,7 +140,7 @@ export function describeRateLimit(error: unknown): string | null {
     eta = `${seconds}s`;
   }
 
-  return `You've hit the free AI model's rate limit. Try again in about ${eta}.`;
+  return `The AI provider is rate limiting us. Try again in about ${eta}.`;
 }
 
 export async function streamOpenRouterWithFallback({
@@ -174,7 +174,7 @@ export async function streamOpenRouterWithFallback({
      * ReadableStream on each access — the SDK reads it more than once (our
      * error-watching for-await AND mergeIntoDataStream, which internally calls
      * fullStream.pipeThrough). Peek a private copy to detect an immediate
-     * provider error so we can fall back to the next free model, then release
+     * provider error so we can fall back to the next model, then release
      * that copy. Reading the first chunk here does NOT remove it from later
      * accesses (the getter tees), so we return the SDK result unmodified.
      *
@@ -215,5 +215,5 @@ export async function streamOpenRouterWithFallback({
     throw lastRetryableError;
   }
 
-  throw new Error('The free AI models are busy right now. Please try again in a moment.');
+  throw new Error('All AI models are unavailable right now. Please try again in a moment.');
 }

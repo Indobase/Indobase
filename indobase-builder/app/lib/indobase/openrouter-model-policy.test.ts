@@ -14,10 +14,10 @@ describe('openrouter-model-policy', () => {
     });
   });
 
-  it('routes planning to a free model', () => {
-    const resolved = resolveOpenRouterModelForTask('planning', 'OpenRouter', 'qwen/qwen3-coder:free');
+  it('routes planning to the cheap paid planning model', () => {
+    const resolved = resolveOpenRouterModelForTask('planning', 'OpenRouter', 'qwen/qwen3-coder-30b-a3b-instruct');
     expect(resolved.providerName).toBe('OpenRouter');
-    expect(resolved.modelName).toContain(':free');
+    expect(resolved.modelName).toBe('openai/gpt-oss-120b');
     expect(resolved.modelName).not.toBe(OPENROUTER_PAID_CODEGEN_MODEL);
   });
 

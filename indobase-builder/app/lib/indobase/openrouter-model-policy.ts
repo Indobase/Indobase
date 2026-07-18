@@ -30,9 +30,13 @@ export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
 /** General discuss chat — curated OpenRouter free tier. */
 export const DEFAULT_OPENROUTER_CHAT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 
-/** Planner agent — curated OpenRouter free tier. */
+/*
+ * Planner/scoping agent. Previously a `:free` model, which is rate-limited independently of
+ * account credits — that is why the planner kept reporting "Planner unavailable". A cheap paid
+ * model removes the 429 cliff for a fraction of a cent per plan.
+ */
 export const DEFAULT_OPENROUTER_PLANNING_MODEL =
-  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'meta-llama/llama-3.3-70b-instruct:free')?.name ??
+  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'openai/gpt-oss-120b')?.name ??
   DEFAULT_OPENROUTER_CHAT_MODEL;
 
 export type OpenRouterTask = 'chat' | 'planning' | 'codegen' | 'debugging';

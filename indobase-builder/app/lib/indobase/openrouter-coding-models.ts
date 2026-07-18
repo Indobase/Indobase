@@ -1,5 +1,10 @@
 /**
- * Curated OpenRouter free models for discuss/planning (codegen uses paid DeepSeek server-side).
+ * Curated OpenRouter models for discuss/planning and codegen fallback.
+ *
+ * These are deliberately CHEAP PAID models, not `:free` ones. Free-tier OpenRouter models are
+ * rate-limited independently of account credits, which repeatedly killed the planner and aborted
+ * codegen streams mid-build. Paying fractions of a cent per call removes that failure mode.
+ * Prices below are USD per 1M tokens (in/out) at the time of selection.
  */
 export type CuratedCodingModel = {
   label: string;
@@ -14,84 +19,66 @@ export type CuratedCodingModel = {
 
 export const OPENROUTER_FREE_CODING_MODELS = [
   {
-    label: 'Qwen3 Coder (Free)',
-    name: 'qwen/qwen3-coder:free',
-    originalName: 'qwen/qwen3-coder:free',
-    maxTokenAllowed: 1048576,
-    maxCompletionTokens: 262000,
-    tier: 'Free',
-  },
-  {
-    label: 'Cohere North Mini Code (Free)',
-    name: 'cohere/north-mini-code:free',
-    originalName: 'cohere/north-mini-code:free',
-    maxTokenAllowed: 256000,
-    maxCompletionTokens: 64000,
-    tier: 'Free',
-  },
-  {
-    label: 'Poolside Laguna M (Free)',
-    name: 'poolside/laguna-m.1:free',
-    originalName: 'poolside/laguna-m.1:free',
-    maxTokenAllowed: 262144,
+    // $0.07 / $0.27 — coder-tuned, first fallback for codegen.
+    label: 'Qwen3 Coder 30B',
+    name: 'qwen/qwen3-coder-30b-a3b-instruct',
+    originalName: 'qwen/qwen3-coder-30b-a3b-instruct',
+    maxTokenAllowed: 160000,
     maxCompletionTokens: 32768,
-    tier: 'Free',
+    tier: 'Paid',
   },
   {
-    label: 'GPT-OSS 20B (Free)',
-    name: 'openai/gpt-oss-20b:free',
-    originalName: 'openai/gpt-oss-20b:free',
-    maxTokenAllowed: 131072,
-    maxCompletionTokens: 32768,
-    tier: 'Free',
-  },
-  {
-    label: 'Qwen3 Next 80B (Free)',
-    name: 'qwen/qwen3-next-80b-a3b-instruct:free',
-    originalName: 'qwen/qwen3-next-80b-a3b-instruct:free',
-    maxTokenAllowed: 262144,
-    maxCompletionTokens: 32768,
-    tier: 'Free',
-  },
-  {
-    label: 'Llama 3.3 70B (Free)',
-    name: 'meta-llama/llama-3.3-70b-instruct:free',
-    originalName: 'meta-llama/llama-3.3-70b-instruct:free',
-    maxTokenAllowed: 131072,
-    maxCompletionTokens: 32768,
-    tier: 'Free',
-  },
-  {
-    label: 'Nemotron 3 Super (Free)',
-    name: 'nvidia/nemotron-3-super-120b-a12b:free',
-    originalName: 'nvidia/nemotron-3-super-120b-a12b:free',
+    // $0.065 / $0.26 — 1M context, fast, good general instruction following.
+    label: 'Qwen3.5 Flash',
+    name: 'qwen/qwen3.5-flash-02-23',
+    originalName: 'qwen/qwen3.5-flash-02-23',
     maxTokenAllowed: 1000000,
-    maxCompletionTokens: 262144,
-    tier: 'Free',
+    maxCompletionTokens: 65536,
+    tier: 'Paid',
   },
   {
-    label: 'Nemotron Nano 9B (Free)',
-    name: 'nvidia/nemotron-nano-9b-v2:free',
-    originalName: 'nvidia/nemotron-nano-9b-v2:free',
-    maxTokenAllowed: 128000,
-    maxCompletionTokens: 32768,
-    tier: 'Free',
+    // $0.037 / $0.17 — cheapest capable large MoE; used for planning/scoping.
+    label: 'GPT-OSS 120B',
+    name: 'openai/gpt-oss-120b',
+    originalName: 'openai/gpt-oss-120b',
+    maxTokenAllowed: 131072,
+    maxCompletionTokens: 131072,
+    tier: 'Paid',
+  },
+  {
+    // $0.05 / $0.20 — very large output budget.
+    label: 'Nemotron 3 Nano 30B',
+    name: 'nvidia/nemotron-3-nano-30b-a3b',
+    originalName: 'nvidia/nemotron-3-nano-30b-a3b',
+    maxTokenAllowed: 262144,
+    maxCompletionTokens: 228000,
+    tier: 'Paid',
+  },
+  {
+    // $0.10 / $0.15 — cheap output, also vision-capable.
+    label: 'Qwen3.5 9B',
+    name: 'qwen/qwen3.5-9b',
+    originalName: 'qwen/qwen3.5-9b',
+    maxTokenAllowed: 262144,
+    maxCompletionTokens: 262144,
+    tier: 'Paid',
   },
 ] as const satisfies readonly CuratedCodingModel[];
 
 export const OPENROUTER_FREE_VISION_MODEL = {
-  label: 'Nemotron Nano VL (Free)',
-  name: 'nvidia/nemotron-nano-12b-v2-vl:free',
-  originalName: 'nvidia/nemotron-nano-12b-v2-vl:free',
-  maxTokenAllowed: 128000,
-  maxCompletionTokens: 32768,
-  tier: 'Free',
+  // $0.10 / $0.15 — accepts image input; same model as the 9B entry above.
+  label: 'Qwen3.5 9B (Vision)',
+  name: 'qwen/qwen3.5-9b',
+  originalName: 'qwen/qwen3.5-9b',
+  maxTokenAllowed: 262144,
+  maxCompletionTokens: 262144,
+  tier: 'Paid',
 } as const satisfies CuratedCodingModel;
 
-/** Default chat model — prefer a stable free coding model with lower 429 pressure than Qwen3 Coder. */
+/** Default chat model — cheap, fast, large context. */
 /** Referenced by name, not index — reordering the list must not silently change the default model. */
 export const DEFAULT_OPENROUTER_CODING_MODEL =
-  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'cohere/north-mini-code:free')?.name ??
+  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3.5-flash-02-23')?.name ??
   OPENROUTER_FREE_CODING_MODELS[0].name;
 
 export const OPENROUTER_ALLOWED_FREE_MODEL_IDS = [

@@ -422,14 +422,29 @@ export const ChatImpl = memo(
         return;
       }
 
-      const toolAnnotations = (chatData || []).filter(
-        (entry) => typeof entry === 'object' && (entry as ToolCallAnnotation).type === 'toolCall',
-      ) as ToolCallAnnotation[];
+      /*
+       * The server emits the toolCall annotation via dataStream.writeMessageAnnotation(), which
+       * lands on the MESSAGE's annotations — not on the useChat `data` stream (that is fed by
+       * writeData). Reading it from chatData never matched, so auto-approve never fired and every
+       * Indobase MCP call sat waiting behind a manual "Run tool" button, stalling the build.
+       * Collect from both channels so it works regardless of which one carries it.
+       */
+      const collectToolAnnotations = (entries: unknown): ToolCallAnnotation[] =>
+        (Array.isArray(entries) ? entries : []).filter(
+          (entry) => typeof entry === 'object' && entry !== null && (entry as ToolCallAnnotation).type === 'toolCall',
+        ) as ToolCallAnnotation[];
+
+      const streamToolAnnotations = collectToolAnnotations(chatData);
 
       for (const message of messages) {
         if (message.role !== 'assistant' || !message.parts) {
           continue;
         }
+
+        const toolAnnotations = [
+          ...streamToolAnnotations,
+          ...collectToolAnnotations((message as { annotations?: unknown }).annotations),
+        ];
 
         for (const part of message.parts) {
           if (part.type !== 'tool-invocation' || part.toolInvocation.state !== 'call') {
@@ -444,7 +459,13 @@ export const ChatImpl = memo(
 
           const annotation = toolAnnotations.find((entry) => entry.toolCallId === toolCallId);
 
-          if (annotation?.serverName === INDOBASE_MCP_SERVER_NAME) {
+          /*
+           * Fail open on a Studio-linked session: the MCP server is one we configured ourselves,
+           * so a missing/incomplete annotation must not strand the build waiting for a click.
+           */
+          const isIndobaseTool = annotation ? annotation.serverName === INDOBASE_MCP_SERVER_NAME : true;
+
+          if (isIndobaseTool) {
             autoApprovedToolCallIdsRef.current.add(toolCallId);
             addToolResult({
               toolCallId,
@@ -478,6 +499,52 @@ export const ChatImpl = memo(
         provider: provider.name,
       });
     };
+
+    /*
+     * Stall watchdog. If the SSE stream drops mid-generation (proxy timeout, provider hang-up) the
+     * AI SDK fires neither onError nor onFinish, so isLoading stays true and the composer shows
+     * "Agent is working…" forever with no way to tell the build is dead. Detect no-progress and
+     * surface a real, retryable error instead of an eternal spinner.
+     */
+    const STREAM_STALL_TIMEOUT_MS = 120_000;
+    const lastStreamProgressRef = useRef<number>(Date.now());
+    const streamProgressMarker = useRef<string>('');
+
+    useEffect(() => {
+      if (!isLoading) {
+        lastStreamProgressRef.current = Date.now();
+        return undefined;
+      }
+
+      // Any growth in the transcript counts as progress.
+      const marker = `${messages.length}:${messages[messages.length - 1]?.content?.length ?? 0}`;
+
+      if (marker !== streamProgressMarker.current) {
+        streamProgressMarker.current = marker;
+        lastStreamProgressRef.current = Date.now();
+      }
+
+      const timer = window.setInterval(() => {
+        if (Date.now() - lastStreamProgressRef.current < STREAM_STALL_TIMEOUT_MS) {
+          return;
+        }
+
+        window.clearInterval(timer);
+        logger.error('Stream stalled with no progress; treating as a failed generation');
+        stop();
+        setFakeLoading(false);
+        streamingState.set(false);
+        setLlmErrorAlert({
+          type: 'error',
+          title: 'Generation stopped unexpectedly',
+          description:
+            'The AI stopped responding partway through (the connection dropped). Nothing was lost — send your prompt again to retry.',
+          errorType: 'network',
+        });
+      }, 10_000);
+
+      return () => window.clearInterval(timer);
+    }, [isLoading, messages, stop]);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {

@@ -3,11 +3,20 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
 <database_instructions>
   CRITICAL: This session is linked to an Indobase project from Studio. The backend is ALREADY connected — do NOT ask the user for API keys or to connect manually.
 
-  Backend operations (required for auth, tables, RLS, storage, edge functions):
+  USE THE BACKEND ONLY WHEN THE APP NEEDS IT. A backend is connected, but that does not mean this
+  app requires one. Static/local apps — timers, calculators, converters, games, landing pages, or
+  anything the user says needs no login — must be built with NO database calls and NO migrations.
+  Writing the app files is always the priority; touching the database when the feature does not
+  need persistence or auth wastes the run and delays a working preview.
+
+  The live schema is already supplied in <indobase_live_schema> above. Do NOT call list_tables or
+  otherwise re-introspect the database — you already have it.
+
+  When the app genuinely needs persistence or auth:
   - Prefer the **indobase** MCP server tools: execute_sql, apply_migration, generate_typescript_types, deploy_edge_function, etc.
   - You MAY also use boltAction type="indobase" (migration + query pair) — changes auto-apply to the linked tenant database.
 
-  Application wiring (required for full-stack apps):
+  Application wiring (only for apps that actually use the backend):
   - Use \`@indobaseinc/indobase-js\` with \`createClient\` — never @supabase/supabase-js.
   - Create \`src/lib/indobase.ts\` exporting a singleton client.
   - Create \`.env\` with VITE_INDOBASE_URL and VITE_INDOBASE_ANON_KEY from the linked credentials (values are in the system context).
@@ -22,10 +31,13 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
 </database_instructions>`;
 
 export function getStudioBackendUserPreamble(): string {
-  return `INDOBASE BACKEND (Studio-linked — required):
-- The Indobase tenant backend is already connected. Build full-stack: schema (MCP or bolt indobase actions), src/lib/indobase.ts, and .env with VITE_INDOBASE_URL / VITE_INDOBASE_ANON_KEY.
-- Apply all SQL migrations to the linked project before marking the feature complete.
-- Do not ask the user for API keys.
+  return `INDOBASE BACKEND (Studio-linked — available, not mandatory):
+- An Indobase tenant backend is already connected. Do not ask the user for API keys.
+- Build the app first. Only use the database/auth if this app actually needs to persist data or
+  sign users in. If it does not (a timer, calculator, game, landing page, or anything the user says
+  needs no login), write NO migrations and make NO database calls.
+- If it does need the backend: wire src/lib/indobase.ts and .env with VITE_INDOBASE_URL /
+  VITE_INDOBASE_ANON_KEY, and apply the migrations before marking the feature complete.
 
 `;
 }
