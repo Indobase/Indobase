@@ -16,7 +16,12 @@ import type { DesignScheme } from '~/types/design-scheme';
 import { MCPService } from '~/lib/services/mcpService';
 import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
-import { completeCoderPhase, runPlannerPhase } from '~/lib/.server/orchestration/orchestrate-chat';
+import {
+  completeCoderPhase,
+  injectClarifyingQuestions,
+  runPlannerPhase,
+  runScopingPhase,
+} from '~/lib/.server/orchestration/orchestrate-chat';
 import {
   buildStudioBillingUrl,
   consumeBuilderPromptFromStudio,
@@ -181,7 +186,33 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         let orchestratedMessages = processedMessages;
         const progressOrder = { value: progressCounter };
 
-        if (useMultiAgent) {
+        /*
+         * Scope before building, but only on the first build turn — a vague one-liner is the main
+         * cause of unfinishable builds. Follow-up turns already have context, so never re-ask.
+         */
+        const isFirstBuildTurn = !processedMessages.some((message) => message.role === 'assistant');
+        let awaitingClarification = false;
+
+        if (useMultiAgent && isFirstBuildTurn) {
+          const scoping = await runScopingPhase({
+            messages: processedMessages,
+            dataStream,
+            progressOrder,
+            env: context.cloudflare?.env,
+            apiKeys,
+            providerSettings,
+          });
+
+          progressCounter = progressOrder.value;
+          streamRecovery.updateActivity();
+
+          if (scoping.needsClarification) {
+            awaitingClarification = true;
+            orchestratedMessages = injectClarifyingQuestions(processedMessages, scoping.questions);
+          }
+        }
+
+        if (useMultiAgent && !awaitingClarification) {
           const plannerResult = await runPlannerPhase({
             messages: processedMessages,
             dataStream,
@@ -338,7 +369,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             if (finishReason !== 'length') {
-              if (useMultiAgent) {
+              // A clarification round builds nothing — don't claim an implementation was generated.
+              if (useMultiAgent && !awaitingClarification) {
                 completeCoderPhase(dataStream, progressOrder);
                 progressCounter = progressOrder.value;
               }

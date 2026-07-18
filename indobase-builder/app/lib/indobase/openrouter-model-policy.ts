@@ -16,7 +16,14 @@ export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
   label: 'DeepSeek V4 Pro',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
-  maxTokenAllowed: 128000,
+  maxTokenAllowed: 1048576,
+
+  /*
+   * Output budget for one generation. Without this the provider default (OpenRouter: 8192) applies,
+   * which truncates multi-file app artifacts mid-file — the model supports 384k output tokens.
+   * Kept well under the ceiling so a runaway generation can't burn the whole budget in one call.
+   */
+  maxCompletionTokens: 64000,
   tier: 'Paid' as const,
 };
 

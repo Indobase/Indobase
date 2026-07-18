@@ -33,8 +33,16 @@ export function isOpenRouterRetryableError(error: unknown): boolean {
   return (
     candidate.statusCode === 400 ||
     candidate.status === 400 ||
+    /*
+     * 402 = out of credits on a paid model. Retryable for our purposes: fall through to the free
+     * models so a build still completes instead of failing outright.
+     */
+    candidate.statusCode === 402 ||
+    candidate.status === 402 ||
     candidate.name === 'AI_APICallError' ||
-    /bad request|invalid model|model not found|temporarily unavailable|overloaded/i.test(candidate.message ?? '')
+    /bad request|invalid model|model not found|temporarily unavailable|overloaded|insufficient credits|payment required/i.test(
+      candidate.message ?? '',
+    )
   );
 }
 

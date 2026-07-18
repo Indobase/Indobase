@@ -32,10 +32,8 @@ import { indobaseConnection, updateIndobaseConnection } from '~/lib/stores/indob
 import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
-import { runAutonomousPipeline } from '~/lib/orchestration/autonomous-runner';
 import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
-import type { ProgressAnnotation } from '~/types/context';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
 import { hasIndobaseStudioHandoff, hasSelectedIndobaseProject, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
@@ -161,13 +159,8 @@ export const ChatImpl = memo(
     const [animationScope, animate] = useAnimate();
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
-    const [autonomousProgress, setAutonomousProgress] = useState<ProgressAnnotation[]>([]);
-    const autonomousRepairCountRef = useRef(0);
     const orchestratorChatRetryRef = useRef(0);
-    const runAutonomousDeployFlowRef = useRef<() => Promise<void>>(async () => {});
-    const suppressAutonomousOnNextFinishRef = useRef(false);
     const autoApprovedToolCallIdsRef = useRef(new Set<string>());
-    const MAX_AUTONOMOUS_REPAIRS = 10;
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const refreshBuilderPromptQuota = useCallback(async () => {
@@ -293,73 +286,21 @@ export const ChatImpl = memo(
 
         void refreshBuilderPromptQuota();
 
-        if (suppressAutonomousOnNextFinishRef.current) {
-          suppressAutonomousOnNextFinishRef.current = false;
-          return;
-        }
+        orchestratorChatRetryRef.current = 0;
 
-        void runAutonomousDeployFlowRef.current();
+        // Flush pending file actions and finalize codegen; no autonomous tester/deployer runs.
+        void (async () => {
+          try {
+            await processSampledMessages.flush();
+            await finalizeCodegen();
+          } catch (error) {
+            logger.error('Post-codegen finalize failed', error);
+          }
+        })();
       },
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
     });
-
-    const runAutonomousDeployFlow = useCallback(async () => {
-      if (chatMode !== 'build' || chatStore.get().aborted) {
-        return;
-      }
-
-      setAutonomousProgress([]);
-
-      try {
-        await processSampledMessages.flush();
-        await finalizeCodegen();
-      } catch (error) {
-        logger.error('Post-codegen finalize failed', error);
-      }
-
-      try {
-        const result = await runAutonomousPipeline({
-          connection: indobaseConn,
-          onProgress: (progress) => {
-            setAutonomousProgress((current) => [...current, progress]);
-          },
-        });
-
-        if (result.needsRepair && result.repairPrompt) {
-          if (autonomousRepairCountRef.current >= MAX_AUTONOMOUS_REPAIRS) {
-            toast.error('Autonomous verification failed after multiple repair attempts.');
-            autonomousRepairCountRef.current = 0;
-            setAutonomousProgress([]);
-            return;
-          }
-
-          autonomousRepairCountRef.current += 1;
-          // Drop stale in-progress tester/deployer chips before the repair stream starts.
-          setAutonomousProgress([]);
-          append({
-            role: 'user',
-            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${result.repairPrompt}`,
-          });
-          return;
-        }
-
-        autonomousRepairCountRef.current = 0;
-        orchestratorChatRetryRef.current = 0;
-
-        if (result.deployUrl) {
-          toast.success(`Deployed to ${result.deployUrl}`);
-        }
-      } catch (error) {
-        logger.error('Autonomous pipeline failed', error);
-        toast.error('Autonomous test/deploy pipeline failed.');
-        setAutonomousProgress([]);
-      }
-    }, [MAX_AUTONOMOUS_REPAIRS, append, chatMode, model, provider.name, indobaseConn]);
-
-    useEffect(() => {
-      runAutonomousDeployFlowRef.current = runAutonomousDeployFlow;
-    }, [runAutonomousDeployFlow]);
 
     useEffect(() => {
       if (provider.name !== HIDDEN_CHAT_PROVIDER.name) {
@@ -523,12 +464,12 @@ export const ChatImpl = memo(
     };
 
     const abort = () => {
+      // Mark aborted first so in-flight onFinish/pipeline callbacks see it immediately.
+      chatStore.setKey('aborted', true);
       stop();
       setFakeLoading(false);
       streamingState.set(false);
-      chatStore.setKey('aborted', true);
-      workbenchStore.abortAllActions();
-      setAutonomousProgress([]);
+      void workbenchStore.abortAllActions();
 
       logStore.logProvider('Chat response aborted', {
         component: 'Chat',
@@ -540,6 +481,14 @@ export const ChatImpl = memo(
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
+        // A user-initiated Stop surfaces here as an AbortError; never auto-retry it.
+        if (chatStore.get().aborted || error?.name === 'AbortError') {
+          logger.debug(`${context} request aborted by user`);
+          setFakeLoading(false);
+          streamingState.set(false);
+          return;
+        }
+
         logger.error(`${context} request failed`, error);
 
         stop();
@@ -845,9 +794,6 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         return;
       }
 
-      setAutonomousProgress([]);
-      autonomousRepairCountRef.current = 0;
-
       let finalMessageContent = messageContent;
 
       if (
@@ -872,6 +818,9 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       }
 
       runAnimation();
+
+      // A fresh send always clears any previous Stop so streaming and the autonomous flow can run.
+      chatStore.setKey('aborted', false);
 
       if (!chatStarted) {
         setFakeLoading(true);
@@ -913,8 +862,6 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       }
 
       const modifiedFiles = workbenchStore.getModifiedFiles();
-
-      chatStore.setKey('aborted', false);
 
       if (modifiedFiles !== undefined) {
         const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
@@ -1069,7 +1016,6 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         builderPromptQuota={builderPromptQuota}
         upgradeUrl={resolveUpgradeUrl(builderPromptQuota?.upgradeUrl)}
         data={chatData}
-        extraProgress={autonomousProgress}
         chatMode={chatMode}
         setChatMode={setChatMode}
         append={append}

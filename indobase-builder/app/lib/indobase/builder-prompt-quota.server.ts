@@ -21,7 +21,7 @@ export function isAutonomousRepairChat(messages: Array<{ role: string; content: 
   }
 
   const content = String(lastUser.content);
-  return content.includes('[Autonomous Tester Agent]') || content.includes('[Orchestrator Agent]');
+  return content.includes('[Orchestrator Agent]');
 }
 
 export function shouldConsumeBuilderPrompt(

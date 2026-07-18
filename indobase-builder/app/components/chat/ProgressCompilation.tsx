@@ -7,8 +7,6 @@ import { cubicEasingFn } from '~/utils/easings';
 const AGENT_PROGRESS_LABELS: Record<string, string> = {
   planner: 'Planner',
   coder: 'Coder',
-  tester: 'Tester',
-  deployer: 'Deployer',
   response: 'Response',
 };
 

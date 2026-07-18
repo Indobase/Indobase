@@ -432,10 +432,12 @@ export async function streamText(props: {
   );
 
   if (provider.name === 'OpenRouter') {
-    if (isOpenRouterPaidCodegenModelId(modelDetails.name)) {
-      return await _streamText(streamParams);
-    }
-
+    /*
+     * Codegen (every build) runs on the paid model. It previously had NO fallback, so a single
+     * unavailability — no credits, rate limit, provider blip, deprecated id — failed the whole
+     * build instead of degrading. Keep the paid model first, then fall back to free coding models
+     * so a build still completes (lower quality) rather than producing nothing.
+     */
     const fallbackModels = [
       modelDetails.name,
       ...OPENROUTER_FREE_CODING_MODELS.map((model) => model.name).filter((name) => name !== modelDetails.name),
@@ -443,15 +445,31 @@ export async function streamText(props: {
 
     return streamOpenRouterWithFallback({
       fallbackModels,
-      buildStreamParams: (modelName) => ({
-        ...streamParams,
-        model: provider.getModelInstance({
-          model: modelName,
-          serverEnv,
-          apiKeys,
-          providerSettings,
-        }),
-      }),
+      buildStreamParams: (modelName) => {
+        /*
+         * Re-clamp the output budget per model. The paid codegen model allows far more than the
+         * free fallbacks (e.g. 64k vs 32k), and sending the paid ceiling to a smaller model is a
+         * 400 — which is retryable, so it would cascade through every fallback and fail the build.
+         */
+        const fallbackDetails =
+          OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === modelName) ??
+          (modelName === modelDetails.name ? modelDetails : undefined);
+        const fallbackLimit = fallbackDetails
+          ? getCompletionTokenLimit({ ...fallbackDetails, provider: provider.name })
+          : safeMaxTokens;
+        const clamped = Math.min(safeMaxTokens, fallbackLimit);
+
+        return {
+          ...streamParams,
+          ...(isReasoning ? { maxCompletionTokens: clamped } : { maxTokens: clamped }),
+          model: provider.getModelInstance({
+            model: modelName,
+            serverEnv,
+            apiKeys,
+            providerSettings,
+          }),
+        };
+      },
     });
   }
 

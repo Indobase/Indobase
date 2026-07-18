@@ -91,6 +91,14 @@ export const AssistantMessage = memo(
       codeContext = filteredAnnotations.find((annotation) => annotation.type === 'codeContext')?.files;
     }
 
+    /*
+     * Build steps from the planner, shown as a checklist so the user can see the shape of the
+     * build before/while it happens rather than watching an opaque "coder" phase.
+     */
+    const planSteps: string[] | undefined = filteredAnnotations.find(
+      (annotation) => annotation.type === 'agentPlan',
+    )?.steps;
+
     const usage: {
       completionTokens: number;
       promptTokens: number;
@@ -162,6 +170,25 @@ export const AssistantMessage = memo(
               </Popover>
             )}
           </div>
+
+          {planSteps && planSteps.length > 0 && (
+            <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <span className="i-ph:list-checks text-sm" />
+                Build plan
+              </div>
+              <ol className="flex flex-col gap-1.5">
+                {planSteps.map((step, index) => (
+                  <li key={step} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-600">
+                      {index + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
             {content}

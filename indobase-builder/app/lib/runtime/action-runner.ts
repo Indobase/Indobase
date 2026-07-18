@@ -17,7 +17,7 @@ import type { BoltShell } from '~/utils/shell';
 
 const logger = createScopedLogger('ActionRunner');
 
-/** Kill hung `npm run build` processes so the Tester agent cannot block forever. */
+/** Kill hung `npm run build` processes so publish builds cannot block forever. */
 const BUILD_PROCESS_TIMEOUT_MS = 300_000;
 
 export type ActionStatus = 'pending' | 'running' | 'complete' | 'aborted' | 'failed';

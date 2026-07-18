@@ -194,11 +194,10 @@ export default function FeaturesTab() {
       {
         id: 'autonomousAgents',
         title: 'Autonomous Agents',
-        description: 'Planner, Coder, Tester, and Deployer agents run automatically',
+        description: 'Planner and Coder agents run automatically',
         icon: 'i-ph:robot',
         enabled: autonomousAgentsEnabled,
-        tooltip:
-          'Runs a multi-agent pipeline: plan → code → verify (build/tests) → deploy to Indobase when connected',
+        tooltip: 'Runs a multi-agent pipeline: plan → code',
       },
       {
         id: 'eventLogs',

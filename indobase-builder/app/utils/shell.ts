@@ -302,8 +302,8 @@ export class BoltShell {
     await this.waitTillOscCode('prompt', SHELL_PROMPT_TIMEOUT_MS);
 
     /*
-     * Never await a prior start/dev-server promise forever — that left Tester stuck at 0/1
-     * after template `npm run dev` occupied the shared shell.
+     * Never await a prior start/dev-server promise forever — a running `npm run dev`
+     * occupying the shared shell must not block the next command.
      */
     if (state?.executionPrms) {
       await Promise.race([
