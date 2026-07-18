@@ -1491,7 +1491,15 @@ export async function getPlatformAdminOrganizationDetail(
   }
 }
 
-const PLATFORM_ADMIN_ALLOWED_PLANS = new Set(['free', 'pro', 'team', 'enterprise', 'platform'])
+export const PLATFORM_ADMIN_ALLOWED_PLANS = new Set([
+  'free',
+  'basic',
+  'pro',
+  'studio',
+  'team', // legacy Studio alias
+  'enterprise',
+  'platform',
+])
 
 export type PlatformOrgAdminPatchInput = {
   billing?: {

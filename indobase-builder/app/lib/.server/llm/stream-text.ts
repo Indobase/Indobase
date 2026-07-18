@@ -22,6 +22,10 @@ import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-pro
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
+import {
+  getGenerationContractAppendix,
+  inferBuilderProjectTarget,
+} from '~/lib/indobase/generation-contract';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -309,6 +313,12 @@ export async function streamText(props: {
 
   if (multiAgentMode && chatMode === 'build') {
     systemPrompt = `${systemPrompt}${CODER_AGENT_APPENDIX}`;
+  }
+
+  if (chatMode === 'build') {
+    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(
+      inferBuilderProjectTarget(processedMessages, files),
+    )}`;
   }
 
   systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;

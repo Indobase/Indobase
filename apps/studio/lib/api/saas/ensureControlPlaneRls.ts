@@ -1,5 +1,6 @@
 import { SAAS_PG_ADVISORY_LOCK_CONTROL_PLANE_RLS } from './constants'
 import { SAAS_CONTROL_PLANE_RLS_SQL } from './controlPlaneRlsBootstrapSql'
+import { SAAS_CONTROL_PLANE_PLAN_CONSTRAINT_SQL } from './controlPlanePlanConstraintSql'
 import { executeQuery } from './query'
 import { repairSaasOrganizationMemberships } from './repairOrganizationMemberships'
 
@@ -26,12 +27,19 @@ export async function ensureSaasControlPlaneRlsApplied(): Promise<void> {
     `,
     })
     if (probe.error) throw probe.error
-    if ((probe.data?.[0]?.n ?? 0) > 0) return
+    if ((probe.data?.[0]?.n ?? 0) > 0) {
+      const repairedPlanConstraint = await executeQuery({ query: SAAS_CONTROL_PLANE_PLAN_CONSTRAINT_SQL })
+      if (repairedPlanConstraint.error) throw repairedPlanConstraint.error
+      return
+    }
 
     await repairSaasOrganizationMemberships()
 
     const applied = await executeQuery({ query: SAAS_CONTROL_PLANE_RLS_SQL })
     if (applied.error) throw applied.error
+
+    const repairedPlanConstraint = await executeQuery({ query: SAAS_CONTROL_PLANE_PLAN_CONSTRAINT_SQL })
+    if (repairedPlanConstraint.error) throw repairedPlanConstraint.error
   } finally {
     const unlock = await executeQuery({
       query: `select pg_advisory_unlock($1::bigint)`,

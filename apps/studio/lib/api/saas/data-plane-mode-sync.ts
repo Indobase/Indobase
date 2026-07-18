@@ -23,7 +23,7 @@ async function resolveOrgOwnerActorId(orgSlug: string): Promise<string | null> {
       join saas.organization_members m on m.organization_id = o.id
       where o.slug = $1
         and m.role = 'owner'
-      order by m.inserted_at asc nulls last, m.id asc
+      order by m.inserted_at asc nulls last, m.gotrue_id asc
       limit 1
     `,
     parameters: [orgSlug],

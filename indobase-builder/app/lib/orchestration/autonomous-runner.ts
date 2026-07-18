@@ -11,6 +11,8 @@ import type { ProgressAnnotation } from '~/types/context';
 import { TESTER_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { formatBuildFailureOutput } from '~/components/deploy/deployUtils';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { validateGeneratedProjectContract } from '~/lib/indobase/generation-contract';
+import { extractRelativePath } from '~/utils/diff';
 
 export type AutonomousPipelineResult = {
   deployUrl?: string;
@@ -56,6 +58,24 @@ export async function readPackageJson(): Promise<Record<string, unknown> | null>
   } catch {
     return null;
   }
+}
+
+function collectWorkbenchSourceFiles(): Record<string, string> {
+  const sourceFiles: Record<string, string> = {};
+
+  for (const [filePath, dirent] of Object.entries(workbenchStore.files.get())) {
+    if (dirent?.type !== 'file' || dirent.isBinary) {
+      continue;
+    }
+
+    const relativePath = extractRelativePath(filePath);
+
+    if (relativePath && !relativePath.startsWith('node_modules/')) {
+      sourceFiles[relativePath] = dirent.content;
+    }
+  }
+
+  return sourceFiles;
 }
 
 /** Autonomous tests should fail fast instead of hanging the Tester progress UI. */
@@ -172,6 +192,25 @@ export async function runAutonomousPipeline(options: {
 
 Output:
 Missing package.json in /home/project. Create package.json with a "build" script (Vite + React for SPAs, or a static HTML build that copies *.html into dist/), write all source files using boltAction filePath attributes, then run npm install and npm run build.`,
+      };
+    }
+
+    const contract = validateGeneratedProjectContract(collectWorkbenchSourceFiles());
+
+    if (!contract.valid) {
+      const output = contract.issues.join('\n');
+      markTesterComplete('Project setup needs repair');
+
+      return {
+        success: false,
+        needsRepair: true,
+        verificationCommand: 'project runtime contract',
+        verificationOutput: output,
+        repairPrompt: `${TESTER_REPAIR_USER_PREFIX}Builder rejected the generated ${contract.target} project before build because its runtime contract is incomplete.
+
+${output}
+
+Repair the existing project in the repository root. Write complete file contents using boltAction file actions. Keep the current product work, add the missing runtime files/scripts, then run npm install and npm run build.`,
       };
     }
 

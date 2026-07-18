@@ -63,7 +63,7 @@ async function listSharedDatabaseProjects(projectRef: string | null, limit: numb
           select m.gotrue_id::text
           from saas.organization_members m
           where m.organization_id = o.id and m.role = 'owner'
-          order by m.inserted_at asc nulls last, m.id asc
+          order by m.inserted_at asc nulls last, m.gotrue_id asc
           limit 1
         ) as owner_gotrue_id
       from saas.projects p

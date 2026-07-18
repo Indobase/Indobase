@@ -17,7 +17,15 @@ vi.mock('~/lib/indobase/studioApi', () => ({
 vi.mock('~/lib/stores/workbench', () => ({
   workbenchStore: {
     files: {
-      get: vi.fn(() => ({})),
+      get: vi.fn(() => ({
+        '/home/project/package.json': {
+          type: 'file',
+          isBinary: false,
+          content: JSON.stringify({ scripts: { build: 'vite build' } }),
+        },
+        '/home/project/index.html': { type: 'file', isBinary: false, content: '<div id="root"></div>' },
+        '/home/project/src/main.tsx': { type: 'file', isBinary: false, content: 'export {};' },
+      })),
     },
   },
 }));
