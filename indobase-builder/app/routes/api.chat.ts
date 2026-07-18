@@ -1,10 +1,10 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { createDataStream, generateId } from 'ai';
-import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/.server/llm/constants';
+import { createDataStream, formatDataStreamPart, generateId } from 'ai';
+import { MAX_RESPONSE_SEGMENTS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
+import { isIncompleteBoltArtifact } from '~/lib/.server/llm/incomplete-artifact';
 import { describeRateLimit } from '~/lib/indobase/openrouter-stream-fallback';
-import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import type { IProviderSetting } from '~/types/model';
 import { createScopedLogger } from '~/utils/logger';
 import { getFilePaths, selectContext } from '~/lib/.server/llm/select-context';
@@ -18,10 +18,10 @@ import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
-  injectClarifyingQuestions,
   runPlannerPhase,
   runScopingPhase,
 } from '~/lib/.server/orchestration/orchestrate-chat';
+import type { ClarifyingQuestion } from '~/lib/.server/orchestration/planner';
 import {
   buildStudioBillingUrl,
   consumeBuilderPromptFromStudio,
@@ -33,6 +33,17 @@ import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 
 const logger = createScopedLogger('api.chat');
+
+function formatClarifyingQuestionsMessage(questions: ClarifyingQuestion[]): string {
+  const rendered = questions
+    .map((q, i) => {
+      const suggestions = q.suggestions?.length ? `\n   Options: ${q.suggestions.join(' · ')}` : '';
+      return `${i + 1}. ${q.question}${suggestions}`;
+    })
+    .join('\n');
+
+  return `Before I build this, I need a couple of details:\n\n${rendered}\n\nReply with your choices (or free-form answers) and I'll start building right away.`;
+}
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -149,8 +160,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     }
   }
 
-  const stream = new SwitchableStream();
-
   const cumulativeUsage = {
     completionTokens: 0,
     promptTokens: 0,
@@ -233,7 +242,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
          * cause of unfinishable builds. Follow-up turns already have context, so never re-ask.
          */
         const isFirstBuildTurn = !processedMessages.some((message) => message.role === 'assistant');
-        let awaitingClarification = false;
 
         if (useMultiAgent && isFirstBuildTurn && !isToolContinuationRound) {
           const scoping = await runScopingPhase({
@@ -249,12 +257,27 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           streamRecovery.updateActivity();
 
           if (scoping.needsClarification) {
-            awaitingClarification = true;
-            orchestratedMessages = injectClarifyingQuestions(processedMessages, scoping.questions);
+            /*
+             * Short-circuit: do NOT run planner/summary/context/coder. Asking the model to "not
+             * write code" still burned a full codegen budget and left half-written files with the
+             * questions buried in an annotation the UI never rendered. Emit the questions as the
+             * assistant message and stop — the next user reply starts a real build.
+             */
+            const questionText = formatClarifyingQuestionsMessage(scoping.questions);
+            dataStream.write(formatDataStreamPart('text', questionText));
+            dataStream.writeData({
+              type: 'progress',
+              label: 'response',
+              status: 'complete',
+              order: progressCounter++,
+              message: 'Waiting for your answers',
+            } satisfies ProgressAnnotation);
+            streamRecovery.stop();
+            return;
           }
         }
 
-        if (useMultiAgent && !awaitingClarification && !isToolContinuationRound) {
+        if (useMultiAgent && !isToolContinuationRound) {
           const plannerResult = await runPlannerPhase({
             messages: processedMessages,
             dataStream,
@@ -416,6 +439,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           );
         }
 
+        let continueCount = 0;
+
         const options: StreamingOptions = {
           indobaseConnection: indobaseBackend
             ? {
@@ -434,6 +459,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             });
           },
           onFinish: async ({ text: content, finishReason, usage }) => {
+            logger.info(
+              `Coder stream finished: reason=${finishReason}, chars=${content?.length ?? 0}, incompleteArtifact=${isIncompleteBoltArtifact(content ?? '')}`,
+            );
             logger.debug('usage', JSON.stringify(usage));
 
             if (usage) {
@@ -442,9 +470,16 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               cumulativeUsage.totalTokens += usage.totalTokens || 0;
             }
 
-            if (finishReason !== 'length') {
-              // A clarification round builds nothing — don't claim an implementation was generated.
-              if (useMultiAgent && !awaitingClarification) {
+            /*
+             * Providers (esp. via OpenRouter) often report finishReason "stop" when they hit a soft
+             * output ceiling mid-tag. Without treating unclosed boltArtifact/boltAction as truncation,
+             * we leave half-written Navbar.jsx files and never continue — the build just stops.
+             */
+            const needsContinue =
+              finishReason === 'length' || isIncompleteBoltArtifact(content ?? '');
+
+            if (!needsContinue) {
+              if (useMultiAgent) {
                 completeCoderPhase(dataStream, progressOrder);
                 progressCounter = progressOrder.value;
               }
@@ -470,13 +505,40 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               return;
             }
 
-            if (stream.switches >= MAX_RESPONSE_SEGMENTS) {
-              throw Error('Cannot continue message: Maximum segments reached');
+            if (continueCount >= MAX_RESPONSE_SEGMENTS) {
+              logger.warn(
+                `Max response segments (${MAX_RESPONSE_SEGMENTS}) reached with incomplete artifact; finishing with partial output`,
+              );
+
+              if (useMultiAgent) {
+                completeCoderPhase(dataStream, progressOrder);
+                progressCounter = progressOrder.value;
+              }
+
+              dataStream.writeMessageAnnotation({
+                type: 'usage',
+                value: {
+                  completionTokens: cumulativeUsage.completionTokens,
+                  promptTokens: cumulativeUsage.promptTokens,
+                  totalTokens: cumulativeUsage.totalTokens,
+                },
+              });
+              dataStream.writeData({
+                type: 'progress',
+                label: 'response',
+                status: 'complete',
+                order: progressCounter++,
+                message: 'Response Generated (partial — hit segment limit)',
+              } satisfies ProgressAnnotation);
+              return;
             }
 
-            const switchesLeft = MAX_RESPONSE_SEGMENTS - stream.switches;
+            continueCount += 1;
+            const switchesLeft = MAX_RESPONSE_SEGMENTS - continueCount;
 
-            logger.info(`Reached max token limit (${MAX_TOKENS}): Continuing message (${switchesLeft} switches left)`);
+            logger.info(
+              `Continuing truncated coder output (${continueCount}/${MAX_RESPONSE_SEGMENTS}, reason=${finishReason}, ${switchesLeft} segments left)`,
+            );
 
             const lastUserMessage = orchestratedMessages.filter((x) => x.role == 'user').slice(-1)[0];
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);

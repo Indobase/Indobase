@@ -14,8 +14,9 @@ or
 Ask for clarification ONLY when the answer would materially change what you build — data model, auth, or the core screens. Ask AT MOST 3 questions. Prefer questions with concrete suggested answers so the user can pick rather than write.
 
 Do NOT ask about: styling preferences, colours, framework choice, hosting, or anything you can reasonably default.
+Do NOT ask about existing tables in a linked Indobase schema unless the user explicitly asked for login, forms that save data, or other persistence — unrelated leftover tables must not stall a landing page or marketing site.
 
-Return needsClarification:false when the request already names the app type and its main entities, or when the user has already answered clarifying questions in this conversation.`;
+Return needsClarification:false when the request already names the app type and its main sections/entities (e.g. "landing page with hero, menu, contact form"), or when the user has already answered clarifying questions in this conversation.`;
 
 export const PLANNER_SYSTEM_PROMPT = `You are the Planner agent in a multi-agent software development team.
 
