@@ -1,4 +1,12 @@
-import { convertToCoreMessages, streamText as _streamText, type Message } from 'ai';
+import {
+  convertToCoreMessages,
+  streamText as _streamText,
+  tool,
+  InvalidToolArgumentsError,
+  NoSuchToolError,
+  type Message,
+} from 'ai';
+import { z } from 'zod';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, VISION_MODEL, WORK_DIR } from '~/utils/constants';
@@ -117,6 +125,75 @@ function getCompletionTokenLimit(modelDetails: any): number {
   return Math.min(MAX_TOKENS, 16384);
 }
 
+/*
+ * Catch-all sink for hallucinated tool calls. Models regularly invent tools that do not exist
+ * (`list_files`, `read_file`, ...). Without this, the AI SDK throws AI_NoSuchToolError, which
+ * kills the whole stream — the build dies silently mid-run. Instead we reroute the bad call here
+ * via experimental_repairToolCall; the tool "result" is a corrective message and generation
+ * continues, letting the model self-correct within the same run.
+ */
+const UNAVAILABLE_TOOL_NAME = 'unavailable_tool';
+
+function buildToolGuards(baseTools: Record<string, unknown>) {
+  const realToolNames = Object.keys(baseTools);
+
+  const tools = {
+    ...baseTools,
+    [UNAVAILABLE_TOOL_NAME]: tool({
+      description:
+        'Internal fallback for calls to tools that do not exist. Never call this tool directly.',
+      parameters: z.object({}).passthrough(),
+      execute: async (args: Record<string, unknown>) => {
+        const requested = typeof args.requested_tool === 'string' ? args.requested_tool : 'unknown';
+
+        return (
+          `Error: the tool "${requested}" does not exist. ` +
+          `The only available tools are: ${realToolNames.join(', ')}. ` +
+          'Do NOT call that tool again. Project files are already provided in your context; ' +
+          'create or modify files with boltAction file actions in your response, not with tools.'
+        );
+      },
+    }),
+  };
+
+  const repairToolCall = async ({ toolCall, error }: { toolCall: any; error: unknown }) => {
+    if (NoSuchToolError.isInstance(error)) {
+      logger.warn(`Model called unavailable tool "${toolCall.toolName}" — rerouting to ${UNAVAILABLE_TOOL_NAME}`);
+
+      return {
+        toolCallType: 'function' as const,
+        toolCallId: toolCall.toolCallId,
+        toolName: UNAVAILABLE_TOOL_NAME,
+        args: JSON.stringify({ requested_tool: toolCall.toolName }),
+      };
+    }
+
+    if (InvalidToolArgumentsError.isInstance(error)) {
+      logger.warn(`Model sent invalid arguments to tool "${toolCall.toolName}" — rerouting to ${UNAVAILABLE_TOOL_NAME}`);
+
+      return {
+        toolCallType: 'function' as const,
+        toolCallId: toolCall.toolCallId,
+        toolName: UNAVAILABLE_TOOL_NAME,
+        args: JSON.stringify({ requested_tool: toolCall.toolName, problem: 'invalid arguments' }),
+      };
+    }
+
+    // Anything else: let the original error propagate.
+    return null;
+  };
+
+  const promptAppendix = `
+
+<tool_calling_rules>
+  The ONLY tools that exist are: ${realToolNames.join(', ')}.
+  NEVER call any other tool name. Tools like list_files, read_file, write_file, or run_command DO NOT exist.
+  Project files are already provided in your context. Create and modify files exclusively with boltAction file actions in your response — never with tool calls.
+</tool_calling_rules>`;
+
+  return { tools, repairToolCall, promptAppendix };
+}
+
 function sanitizeText(text: string): string {
   let sanitized = text.replace(/<div class=\\"__boltThought__\\">.*?<\/div>/s, '');
   sanitized = sanitized.replace(/<think>.*?<\/think>/s, '');
@@ -172,9 +249,14 @@ export async function streamText(props: {
 
     // Sanitize all text parts in parts array, if present
     if (Array.isArray(message.parts)) {
-      newMessage.parts = message.parts.map((part) =>
-        part.type === 'text' ? { ...part, text: sanitizeText(part.text) } : part,
-      );
+      newMessage.parts = message.parts
+        /*
+         * Drop tool invocations that never got a result (stream died mid-call, user aborted, ...).
+         * convertToCoreMessages throws "ToolInvocation must have a result" on them, which would
+         * kill this whole request because of one dangling call in the history.
+         */
+        .filter((part) => part.type !== 'tool-invocation' || part.toolInvocation?.state === 'result')
+        .map((part) => (part.type === 'text' ? { ...part, text: sanitizeText(part.text) } : part));
     }
 
     return newMessage;
@@ -397,6 +479,19 @@ export async function streamText(props: {
     ),
   );
 
+  /*
+   * When tools are in play, harden against hallucinated tool calls: register a catch-all sink
+   * tool, reroute bad calls to it via experimental_repairToolCall, and tell the model exactly
+   * which tools exist. Without this a single made-up tool name aborts the entire build stream.
+   */
+  const baseTools = (filteredOptions as { tools?: Record<string, unknown> }).tools;
+  const hasTools = baseTools && Object.keys(baseTools).length > 0;
+  const toolGuards = hasTools ? buildToolGuards(baseTools) : undefined;
+
+  if (toolGuards) {
+    systemPrompt = `${systemPrompt}${toolGuards.promptAppendix}`;
+  }
+
   const streamParams = {
     model: provider.getModelInstance({
       model: modelDetails.name,
@@ -408,6 +503,12 @@ export async function streamText(props: {
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,
+    ...(toolGuards
+      ? {
+          tools: toolGuards.tools,
+          experimental_repairToolCall: toolGuards.repairToolCall,
+        }
+      : {}),
 
     // Set temperature to 1 for reasoning models (required by OpenAI API)
     ...(isReasoning ? { temperature: 1 } : {}),

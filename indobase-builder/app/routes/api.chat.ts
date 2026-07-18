@@ -177,7 +177,19 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         let summary: string | undefined = undefined;
         let messageSliceId = 0;
 
-        const processedMessages = await mcpService.processToolInvocations(messages, dataStream);
+        /*
+         * MCP tool execution must not be able to kill the run either: an unguarded throw here
+         * rejects execute() and the browser only sees net::ERR_ABORTED. Fall back to the raw
+         * messages so the build continues without the tool results.
+         */
+        let processedMessages = messages;
+
+        try {
+          processedMessages = await mcpService.processToolInvocations(messages, dataStream);
+        } catch (error) {
+          logger.warn('MCP tool invocation processing failed; continuing without tool results', error);
+        }
+
         streamRecovery.updateActivity();
         const templateBootstrap = isTemplateBootstrapFollowUp(processedMessages);
         const isRepairRound = isAutonomousRepairChat(processedMessages);
@@ -248,22 +260,34 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           // Create a summary of the chat
           console.log(`Messages count: ${processedMessages.length}`);
 
-          summary = await createSummary({
-            messages: [...processedMessages],
-            env: context.cloudflare?.env,
-            apiKeys,
-            providerSettings,
-            promptId,
-            contextOptimization,
-            onFinish(resp) {
-              if (resp.usage) {
-                logger.debug('createSummary token usage', JSON.stringify(resp.usage));
-                cumulativeUsage.completionTokens += resp.usage.completionTokens || 0;
-                cumulativeUsage.promptTokens += resp.usage.promptTokens || 0;
-                cumulativeUsage.totalTokens += resp.usage.totalTokens || 0;
-              }
-            },
-          });
+          /*
+           * Context optimisation is an OPTIMISATION, not a requirement. It was unguarded, so a
+           * throw here rejected the whole execute(), closed the data stream, and surfaced to the
+           * browser as a bare net::ERR_ABORTED with no error — the build simply died mid-run.
+           * Degrade to "no summary" and keep building, exactly as the planner phase already does.
+           */
+          try {
+            summary = await createSummary({
+              messages: [...processedMessages],
+              env: context.cloudflare?.env,
+              apiKeys,
+              providerSettings,
+              promptId,
+              contextOptimization,
+              onFinish(resp) {
+                if (resp.usage) {
+                  logger.debug('createSummary token usage', JSON.stringify(resp.usage));
+                  cumulativeUsage.completionTokens += resp.usage.completionTokens || 0;
+                  cumulativeUsage.promptTokens += resp.usage.promptTokens || 0;
+                  cumulativeUsage.totalTokens += resp.usage.totalTokens || 0;
+                }
+              },
+            });
+          } catch (error) {
+            logger.warn('createSummary failed; continuing without a chat summary', error);
+            summary = undefined;
+          }
+
           streamRecovery.updateActivity();
           dataStream.writeData({
             type: 'progress',
@@ -291,24 +315,32 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
           // Select context files
           console.log(`Messages count: ${processedMessages.length}`);
-          filteredFiles = await selectContext({
-            messages: [...processedMessages],
-            env: context.cloudflare?.env,
-            apiKeys,
-            files,
-            providerSettings,
-            promptId,
-            contextOptimization,
-            summary,
-            onFinish(resp) {
-              if (resp.usage) {
-                logger.debug('selectContext token usage', JSON.stringify(resp.usage));
-                cumulativeUsage.completionTokens += resp.usage.completionTokens || 0;
-                cumulativeUsage.promptTokens += resp.usage.promptTokens || 0;
-                cumulativeUsage.totalTokens += resp.usage.totalTokens || 0;
-              }
-            },
-          });
+          // Same rule as the summary above: a context-selection failure must not kill the build.
+          try {
+            filteredFiles = await selectContext({
+              messages: [...processedMessages],
+              env: context.cloudflare?.env,
+              apiKeys,
+              files,
+              providerSettings,
+              promptId,
+              contextOptimization,
+              summary,
+              onFinish(resp) {
+                if (resp.usage) {
+                  logger.debug('selectContext token usage', JSON.stringify(resp.usage));
+                  cumulativeUsage.completionTokens += resp.usage.completionTokens || 0;
+                  cumulativeUsage.promptTokens += resp.usage.promptTokens || 0;
+                  cumulativeUsage.totalTokens += resp.usage.totalTokens || 0;
+                }
+              },
+            });
+          } catch (error) {
+            // Undefined => the coder sees the full file set instead of a curated subset.
+            logger.warn('selectContext failed; continuing with unfiltered files', error);
+            filteredFiles = undefined;
+          }
+
           streamRecovery.updateActivity();
 
           if (filteredFiles) {
@@ -317,7 +349,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
           dataStream.writeMessageAnnotation({
             type: 'codeContext',
-            files: Object.keys(filteredFiles).map((key) => {
+            // filteredFiles is undefined when selection failed — do not deref it.
+            files: Object.keys(filteredFiles ?? {}).map((key) => {
               let path = key;
 
               if (path.startsWith(WORK_DIR)) {

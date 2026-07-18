@@ -408,9 +408,23 @@ export class MCPService {
           if (toolInstance && typeof toolInstance.execute === 'function') {
             logger.debug(`calling tool "${toolName}" with args: ${JSON.stringify(toolInvocation.args)}`);
 
+            /*
+             * Strip tool invocations that never received a result (aborted/dropped runs leave
+             * them behind) — convertToCoreMessages throws on them, which would fail THIS tool
+             * call even though the dangling one belongs to a dead earlier run.
+             */
+            const convertibleMessages = messages.map((message) => ({
+              ...message,
+              parts: Array.isArray(message.parts)
+                ? message.parts.filter(
+                    (p) => p.type !== 'tool-invocation' || p.toolInvocation?.state === 'result',
+                  )
+                : message.parts,
+            }));
+
             try {
               result = await toolInstance.execute(toolInvocation.args, {
-                messages: convertToCoreMessages(messages),
+                messages: convertToCoreMessages(convertibleMessages),
                 toolCallId,
               });
             } catch (error) {

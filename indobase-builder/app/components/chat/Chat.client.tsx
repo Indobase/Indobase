@@ -510,6 +510,13 @@ export const ChatImpl = memo(
     const lastStreamProgressRef = useRef<number>(Date.now());
     const streamProgressMarker = useRef<string>('');
 
+    /*
+     * useChat's stop() does not reliably clear isLoading once the stream is already dead, which
+     * left the composer locked on "Agent is working…" — the user could not retry, contradicting
+     * the error we show them. This flag overrides the streaming state until the next send.
+     */
+    const [streamStalled, setStreamStalled] = useState(false);
+
     useEffect(() => {
       if (!isLoading) {
         lastStreamProgressRef.current = Date.now();
@@ -534,6 +541,9 @@ export const ChatImpl = memo(
         stop();
         setFakeLoading(false);
         streamingState.set(false);
+        setStreamStalled(true);
+        chatStore.setKey('aborted', true);
+        void workbenchStore.abortAllActions();
         setLlmErrorAlert({
           type: 'error',
           title: 'Generation stopped unexpectedly',
@@ -800,6 +810,11 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         return;
       }
 
+      // Starting a new generation clears any previous stall so this run is tracked fresh.
+      setStreamStalled(false);
+      lastStreamProgressRef.current = Date.now();
+      streamProgressMarker.current = '';
+
       // Composer command: `/connect [url] [anonKey]` — link a backend without
       // leaving the chat. With a URL + anon key it connects directly; bare
       // `/connect` opens the Studio flow.
@@ -1028,7 +1043,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         input={input}
         showChat={showChat}
         chatStarted={chatStarted}
-        isStreaming={isLoading || fakeLoading}
+        isStreaming={(isLoading || fakeLoading) && !streamStalled}
         onStreamingChange={(streaming) => {
           streamingState.set(streaming);
         }}
