@@ -160,7 +160,6 @@ export const ChatImpl = memo(
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
     const orchestratorChatRetryRef = useRef(0);
-    const autoApprovedToolCallIdsRef = useRef(new Set<string>());
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const refreshBuilderPromptQuota = useCallback(async () => {
@@ -423,6 +422,17 @@ export const ChatImpl = memo(
       }
 
       /*
+       * Only approve once the stream is idle. Approving mid-stream is worse than useless: the
+       * streaming protocol rebuilds the last message from server chunks on every update, which
+       * overwrites our client-side 'result' back to 'call' — and the dedup ref then blocks
+       * re-approval forever, stranding the build behind a "Run tool" button. Approving when idle
+       * also makes useChat trigger the continuation request that actually executes the tool.
+       */
+      if (isLoading) {
+        return;
+      }
+
+      /*
        * The server emits the toolCall annotation via dataStream.writeMessageAnnotation(), which
        * lands on the MESSAGE's annotations — not on the useChat `data` stream (that is fed by
        * writeData). Reading it from chatData never matched, so auto-approve never fired and every
@@ -436,45 +446,44 @@ export const ChatImpl = memo(
 
       const streamToolAnnotations = collectToolAnnotations(chatData);
 
-      for (const message of messages) {
-        if (message.role !== 'assistant' || !message.parts) {
+      /*
+       * addToolResult() can only resolve tool calls on the LAST message — approving older
+       * messages' calls is a silent no-op, so don't bother (persisted chats close those out at
+       * load time in useChatHistory).
+       */
+      const message = messages[messages.length - 1];
+
+      if (!message || message.role !== 'assistant' || !message.parts) {
+        return;
+      }
+
+      const toolAnnotations = [
+        ...streamToolAnnotations,
+        ...collectToolAnnotations((message as { annotations?: unknown }).annotations),
+      ];
+
+      for (const part of message.parts) {
+        if (part.type !== 'tool-invocation' || part.toolInvocation.state !== 'call') {
           continue;
         }
 
-        const toolAnnotations = [
-          ...streamToolAnnotations,
-          ...collectToolAnnotations((message as { annotations?: unknown }).annotations),
-        ];
+        const toolCallId = part.toolInvocation.toolCallId;
+        const annotation = toolAnnotations.find((entry) => entry.toolCallId === toolCallId);
 
-        for (const part of message.parts) {
-          if (part.type !== 'tool-invocation' || part.toolInvocation.state !== 'call') {
-            continue;
-          }
+        /*
+         * Fail open on a Studio-linked session: the MCP server is one we configured ourselves,
+         * so a missing/incomplete annotation must not strand the build waiting for a click.
+         */
+        const isIndobaseTool = annotation ? annotation.serverName === INDOBASE_MCP_SERVER_NAME : true;
 
-          const toolCallId = part.toolInvocation.toolCallId;
-
-          if (autoApprovedToolCallIdsRef.current.has(toolCallId)) {
-            continue;
-          }
-
-          const annotation = toolAnnotations.find((entry) => entry.toolCallId === toolCallId);
-
-          /*
-           * Fail open on a Studio-linked session: the MCP server is one we configured ourselves,
-           * so a missing/incomplete annotation must not strand the build waiting for a click.
-           */
-          const isIndobaseTool = annotation ? annotation.serverName === INDOBASE_MCP_SERVER_NAME : true;
-
-          if (isIndobaseTool) {
-            autoApprovedToolCallIdsRef.current.add(toolCallId);
-            addToolResult({
-              toolCallId,
-              result: TOOL_EXECUTION_APPROVAL.APPROVE,
-            });
-          }
+        if (isIndobaseTool) {
+          addToolResult({
+            toolCallId,
+            result: TOOL_EXECUTION_APPROVAL.APPROVE,
+          });
         }
       }
-    }, [messages, chatData, indobaseConn, addToolResult]);
+    }, [messages, chatData, indobaseConn, addToolResult, isLoading]);
 
     const scrollTextArea = () => {
       const textarea = textareaRef.current;
@@ -523,8 +532,13 @@ export const ChatImpl = memo(
         return undefined;
       }
 
-      // Any growth in the transcript counts as progress.
-      const marker = `${messages.length}:${messages[messages.length - 1]?.content?.length ?? 0}`;
+      /*
+       * Any growth in the transcript OR the data stream counts as progress. The server emits
+       * keepalives and phase-progress annotations on the data stream while the planner/summary/
+       * context phases run — those phases stream no message text for minutes, and counting only
+       * message growth made this watchdog kill perfectly healthy builds mid-planner.
+       */
+      const marker = `${messages.length}:${messages[messages.length - 1]?.content?.length ?? 0}:${chatData?.length ?? 0}`;
 
       if (marker !== streamProgressMarker.current) {
         streamProgressMarker.current = marker;
@@ -554,7 +568,7 @@ export const ChatImpl = memo(
       }, 10_000);
 
       return () => window.clearInterval(timer);
-    }, [isLoading, messages, stop]);
+    }, [isLoading, messages, chatData, stop]);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
