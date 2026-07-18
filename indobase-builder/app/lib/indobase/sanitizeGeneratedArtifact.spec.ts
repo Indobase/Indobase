@@ -111,4 +111,15 @@ export default function Register() {
     expect(result.content).toContain('@indobaseinc/indobase-js@^1.0.8');
     expect(result.content).not.toContain('2.49.1');
   });
+
+  it('strips stray HTML style tags from CSS files that break PostCSS', () => {
+    const result = sanitizeGeneratedArtifact(
+      '/home/project/src/index.css',
+      `@tailwind base;\n.foo { color: red; }\n</style>\n`,
+    );
+
+    expect(result.content).toContain('@tailwind base');
+    expect(result.content).toContain('.foo { color: red; }');
+    expect(result.content).not.toContain('</style>');
+  });
 });

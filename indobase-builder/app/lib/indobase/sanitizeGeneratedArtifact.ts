@@ -176,10 +176,25 @@ export function sanitizeGeneratedArtifactContent(content: string): string {
   );
 }
 
+export function stripHtmlTagsFromCss(content: string): string {
+  return content
+    .replace(/<\/?style\b[^>]*>/gi, '')
+    .replace(/<\/?html\b[^>]*>/gi, '')
+    .replace(/<\/?head\b[^>]*>/gi, '')
+    .replace(/<\/?body\b[^>]*>/gi, '');
+}
+
 export function sanitizeGeneratedArtifact(filePath: string, content: string) {
+  const sanitizedPath = sanitizeGeneratedArtifactPath(filePath);
+  let sanitizedContent = sanitizeGeneratedArtifactContent(content);
+
+  if (/\.css$/i.test(sanitizedPath)) {
+    sanitizedContent = stripHtmlTagsFromCss(sanitizedContent);
+  }
+
   return {
-    filePath: sanitizeGeneratedArtifactPath(filePath),
-    content: sanitizeGeneratedArtifactContent(content),
+    filePath: sanitizedPath,
+    content: sanitizedContent,
   };
 }
 
