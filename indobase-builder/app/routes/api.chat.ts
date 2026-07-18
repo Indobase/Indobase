@@ -199,13 +199,43 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const progressOrder = { value: progressCounter };
 
         /*
+         * Tool-continuation round: the last message is the assistant's own turn, resumed after an
+         * MCP tool call was approved and executed. Re-running scoping/planner/summary/context here
+         * generated a brand-new plan for EVERY tool call — each call cost a full planner round
+         * (~80s + tokens), so a build making a handful of MCP calls spent 10+ minutes replanning
+         * instead of writing code. Skip straight to the coder with the tool result.
+         */
+        const isToolContinuationRound = processedMessages[processedMessages.length - 1]?.role === 'assistant';
+
+        /*
+         * Count tool calls in the current assistant turn (since the last real user message). Used
+         * to cut the model off from further tool calls when it loops instead of building.
+         */
+        let toolInvocationsThisTurn = 0;
+
+        for (let i = processedMessages.length - 1; i >= 0; i--) {
+          const message = processedMessages[i];
+
+          if (message.role === 'user') {
+            break;
+          }
+
+          if (message.role === 'assistant' && Array.isArray(message.parts)) {
+            toolInvocationsThisTurn += message.parts.filter((part) => part.type === 'tool-invocation').length;
+          }
+        }
+
+        const MAX_TOOL_CALLS_PER_TURN = 10;
+        const toolBudgetExhausted = toolInvocationsThisTurn >= MAX_TOOL_CALLS_PER_TURN;
+
+        /*
          * Scope before building, but only on the first build turn — a vague one-liner is the main
          * cause of unfinishable builds. Follow-up turns already have context, so never re-ask.
          */
         const isFirstBuildTurn = !processedMessages.some((message) => message.role === 'assistant');
         let awaitingClarification = false;
 
-        if (useMultiAgent && isFirstBuildTurn) {
+        if (useMultiAgent && isFirstBuildTurn && !isToolContinuationRound) {
           const scoping = await runScopingPhase({
             messages: processedMessages,
             dataStream,
@@ -224,7 +254,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           }
         }
 
-        if (useMultiAgent && !awaitingClarification) {
+        if (useMultiAgent && !awaitingClarification && !isToolContinuationRound) {
           const plannerResult = await runPlannerPhase({
             messages: processedMessages,
             dataStream,
@@ -247,7 +277,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           messageSliceId = processedMessages.length - 3;
         }
 
-        if (filePaths.length > 0 && contextOptimization && !templateBootstrap) {
+        // Continuation rounds skip summary/context too: the coder already has the turn's context,
+        // and these are two more model calls per tool call otherwise.
+        if (filePaths.length > 0 && contextOptimization && !templateBootstrap && !isToolContinuationRound) {
           logger.debug('Generating Chat Summary');
           dataStream.writeData({
             type: 'progress',
@@ -373,7 +405,16 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         }
 
         const mcpTools = mcpService.toolsWithoutExecute;
-        const hasMcpTools = Object.keys(mcpTools).length > 0;
+
+        // A model stuck calling tools round after round never ships code — cut it off from tools
+        // once the per-turn budget is spent so the only way forward is writing the implementation.
+        const hasMcpTools = Object.keys(mcpTools).length > 0 && !toolBudgetExhausted;
+
+        if (toolBudgetExhausted) {
+          logger.warn(
+            `Tool budget exhausted for this turn (${toolInvocationsThisTurn} tool calls); disabling tools to force codegen`,
+          );
+        }
 
         const options: StreamingOptions = {
           indobaseConnection: indobaseBackend
