@@ -204,7 +204,7 @@ describe('StreamingMessageParser', () => {
         expect.objectContaining({
           action: expect.objectContaining({
             type: 'file',
-            filePath: '/src/pages/Register.jsx',
+            filePath: 'src/pages/Register.jsx',
             content: expect.stringContaining('export default function Register'),
           }),
         }),
@@ -340,7 +340,7 @@ export const Button: React.FC<ButtonProps> = ({ children, onClick }) => {
           expect.objectContaining({
             action: expect.objectContaining({
               type: 'file',
-              filePath: '/app/components/Button.tsx',
+              filePath: 'app/components/Button.tsx',
             }),
           }),
         );
@@ -372,7 +372,7 @@ package.json:
           expect.objectContaining({
             action: expect.objectContaining({
               type: 'file',
-              filePath: '/package.json',
+              filePath: 'package.json',
             }),
           }),
         );
@@ -403,7 +403,7 @@ export const config = {
           expect.objectContaining({
             action: expect.objectContaining({
               type: 'file',
-              filePath: '/config.ts',
+              filePath: 'config.ts',
             }),
           }),
         );
@@ -472,7 +472,7 @@ export { formatDate, debounce };
           expect.objectContaining({
             action: expect.objectContaining({
               type: 'file',
-              filePath: '/utils/helper.js',
+              filePath: 'utils/helper.js',
             }),
           }),
         );
@@ -695,7 +695,7 @@ export { Button } from './Button';
           expect.objectContaining({
             action: expect.objectContaining({
               type: 'file',
-              filePath: '/src/components/ui/Button/index.tsx',
+              filePath: 'src/components/ui/Button/index.tsx',
             }),
           }),
         );

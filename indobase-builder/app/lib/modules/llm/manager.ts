@@ -178,18 +178,19 @@ export class LLMManager {
 
     logger.info(`Getting dynamic models for ${provider.name}`);
 
-    const dynamicModels = await provider
-      .getDynamicModels?.(apiKeys, providerSettings?.[provider.name], serverEnv)
-      .then((models) => {
-        logger.info(`Got ${models.length} dynamic models for ${provider.name}`);
-        provider.storeDynamicModels(options, models);
+    const dynamicModels =
+      (await provider
+        .getDynamicModels?.(apiKeys, providerSettings?.[provider.name], serverEnv)
+        .then((models) => {
+          logger.info(`Got ${models.length} dynamic models for ${provider.name}`);
+          provider.storeDynamicModels(options, models);
 
-        return models;
-      })
-      .catch((err) => {
-        logger.error(`Error getting dynamic models ${provider.name} :`, err);
-        return [];
-      });
+          return models;
+        })
+        .catch((err) => {
+          logger.error(`Error getting dynamic models ${provider.name} :`, err);
+          return [];
+        })) ?? [];
     const dynamicModelsName = dynamicModels.map((d) => d.name);
     const filteredStaticList = staticModels.filter((m) => !dynamicModelsName.includes(m.name));
     const modelList = [...dynamicModels, ...filteredStaticList];

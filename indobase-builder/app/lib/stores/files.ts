@@ -49,11 +49,6 @@ export class FilesStore {
   #webcontainer: Promise<WebContainer>;
 
   /**
-   * Tracks the number of files without folders.
-   */
-  #size = 0;
-
-  /**
    * @note Keeps track all modified files with their original content since the last user message.
    * Needs to be reset when the user sends another message and all changes have to be submitted
    * for the model to be aware of the changes.
@@ -71,7 +66,12 @@ export class FilesStore {
   files: MapStore<FileMap> = import.meta.hot?.data?.files ?? map({});
 
   get filesCount() {
-    return this.#size;
+    // Derive from the map so direct files.set(...) updates (snapshot restore, tests)
+    // stay consistent with watcher-driven updates; a manual counter drifts.
+    return Object.values(this.files.get()).reduce(
+      (count, entry) => (entry?.type === 'file' ? count + 1 : count),
+      0,
+    );
   }
 
   constructor(webcontainerPromise: Promise<WebContainer>) {
@@ -684,12 +684,8 @@ export class FilesStore {
         const dirent = currentFiles[pathToDelete];
         updates[pathToDelete] = undefined; // Mark for deletion in the map update
 
-        if (dirent?.type === 'file') {
-          this.#size--;
-
-          if (this.#modifiedFiles.has(pathToDelete)) {
-            this.#modifiedFiles.delete(pathToDelete);
-          }
+        if (dirent?.type === 'file' && this.#modifiedFiles.has(pathToDelete)) {
+          this.#modifiedFiles.delete(pathToDelete);
         }
       }
 
@@ -724,10 +720,6 @@ export class FilesStore {
         }
         case 'add_file':
         case 'change': {
-          if (type === 'add_file') {
-            this.#size++;
-          }
-
           let content = '';
 
           /**
@@ -747,7 +739,6 @@ export class FilesStore {
           break;
         }
         case 'remove_file': {
-          this.#size--;
           this.files.setKey(sanitizedPath, undefined);
           break;
         }
@@ -863,7 +854,6 @@ export class FilesStore {
       this.#deletedPaths.add(filePath);
 
       this.files.setKey(filePath, undefined);
-      this.#size--;
 
       if (this.#modifiedFiles.has(filePath)) {
         this.#modifiedFiles.delete(filePath);
@@ -903,10 +893,6 @@ export class FilesStore {
           this.files.setKey(path, undefined);
 
           this.#deletedPaths.add(path);
-
-          if (dirent?.type === 'file') {
-            this.#size--;
-          }
 
           if (dirent?.type === 'file' && this.#modifiedFiles.has(path)) {
             this.#modifiedFiles.delete(path);

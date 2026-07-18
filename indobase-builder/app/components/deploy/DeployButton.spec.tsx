@@ -46,12 +46,14 @@ describe('DeployButton', () => {
     expect(screen.getByText(/Publish|Deploy/)).toBeTruthy();
   });
 
-  it('lists Vercel and Netlify in the deploy menu', () => {
+  it('lists Vercel and Netlify in the deploy menu', async () => {
     render(<DeployButton />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'More deploy options' }));
+    // Radix triggers open on pointer/keyboard events, not synthetic clicks, in jsdom.
+    const trigger = screen.getByRole('button', { name: 'More deploy options' });
+    fireEvent.keyDown(trigger, { key: 'Enter' });
 
-    expect(screen.getByText('Deploy to Vercel')).toBeTruthy();
-    expect(screen.getByText('No Netlify Account Connected')).toBeTruthy();
+    expect(await screen.findByText('Deploy to Vercel')).toBeTruthy();
+    expect(await screen.findByText('No Netlify Account Connected')).toBeTruthy();
   });
 });

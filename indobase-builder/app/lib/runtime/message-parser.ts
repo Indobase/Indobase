@@ -8,7 +8,7 @@ import type {
 } from '~/types/actions';
 import type { BoltArtifactData } from '~/types/artifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
-import { resolveGeneratedFileArtifact } from '~/lib/indobase/sanitizeGeneratedArtifact';
+import { normalizeGeneratedFilePath, resolveGeneratedFileArtifact } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 
@@ -388,7 +388,8 @@ export class StreamingMessageParser {
         filePath = `untitled-${Date.now()}.txt`;
       }
 
-      (actionAttributes as FileAction).filePath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+      // Canonical workdir-relative form — matches normalizeGeneratedFilePath and the enhanced parser.
+      (actionAttributes as FileAction).filePath = normalizeGeneratedFilePath(filePath);
     } else if (!['shell', 'start'].includes(actionType)) {
       logger.warn(`Unknown action type '${actionType}'`);
     }

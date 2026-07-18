@@ -49,15 +49,18 @@ export default defineConfig((config) => {
         },
       },
       config.mode !== 'test' && remixCloudflareDevProxy(),
-      remixVitePlugin({
-        future: {
-          v3_fetcherPersist: true,
-          v3_relativeSplatPath: true,
-          v3_throwAbortReason: true,
-          v3_lazyRouteDiscovery: true,
-        },
-        serverModuleFormat: 'esm',
-      }),
+      // Remix's plugin injects a React-refresh preamble check that cannot be satisfied
+      // under vitest, so component specs fail with "can't detect preamble" if enabled.
+      config.mode !== 'test' &&
+        remixVitePlugin({
+          future: {
+            v3_fetcherPersist: true,
+            v3_relativeSplatPath: true,
+            v3_throwAbortReason: true,
+            v3_lazyRouteDiscovery: true,
+          },
+          serverModuleFormat: 'esm',
+        }),
       UnoCSS(),
       tsconfigPaths({ root: appRoot, projects: [path.join(appRoot, 'tsconfig.json')] }),
       chrome129IssuePlugin(),
@@ -97,6 +100,8 @@ export default defineConfig((config) => {
       },
     },
     test: {
+      // Expose global afterEach so @testing-library/react auto-cleans the DOM between tests.
+      globals: true,
       exclude: [
         '**/node_modules/**',
         '**/dist/**',
@@ -104,6 +109,7 @@ export default defineConfig((config) => {
         '**/.{idea,git,cache,output,temp}/**',
         '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
         '**/tests/preview/**', // Exclude preview tests that require Playwright
+        '**/._*', // macOS AppleDouble metadata files on external volumes
       ],
     },
   };

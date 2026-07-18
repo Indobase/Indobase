@@ -66,8 +66,8 @@ const COMMON_OUTPUT_DIRS = COMMON_BUILD_OUTPUT_DIRS.map((dir) => `/${dir}`);
 
 async function getAllFiles(dirPath: string, outputRoot: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
-  const entries = await dirPath
-    ? (await webcontainer).fs.readdir(dirPath, { withFileTypes: true })
+  const entries = dirPath
+    ? await (await webcontainer).fs.readdir(dirPath, { withFileTypes: true })
     : [];
 
   for (const entry of entries) {
@@ -153,33 +153,48 @@ export async function collectBuildArtifacts(): Promise<CollectBuildArtifactsResu
     };
   }
 
-  const outputRoot = await resolveBuildOutputPath(buildOutput.path);
+  // The build itself passed; failures below are Builder-side artifact collection
+  // problems and must never be reported to the repair agent as a project build error.
+  try {
+    const outputRoot = await resolveBuildOutputPath(buildOutput.path);
 
-  if (!outputRoot) {
+    if (!outputRoot) {
+      return {
+        success: false,
+        error: 'Could not find build output directory. Check your build configuration.',
+      };
+    }
+
+    await ensureIndexHtml(outputRoot);
+    const files = await getAllFiles(outputRoot, outputRoot);
+
+    if (!files['index.html'] && files['login.html']) {
+      files['index.html'] = files['login.html'];
+    }
+
+    if (!files['index.html']) {
+      return {
+        success: false,
+        error: 'Build output must include index.html (or login.html copied to dist).',
+      };
+    }
+
+    try {
+      await ensureStaticPreview(outputRoot);
+    } catch {
+      // Preview is best-effort; publishing must not fail because a preview server did not start.
+    }
+
+    return {
+      success: true,
+      files,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
     return {
       success: false,
-      error: 'Could not find build output directory. Check your build configuration.',
+      error: `The project build succeeded, but Builder could not read the build output (${message}). Re-run the build; do not change project code for this.`,
     };
   }
-
-  await ensureIndexHtml(outputRoot);
-  const files = await getAllFiles(outputRoot, outputRoot);
-
-  if (!files['index.html'] && files['login.html']) {
-    files['index.html'] = files['login.html'];
-  }
-
-  if (!files['index.html']) {
-    return {
-      success: false,
-      error: 'Build output must include index.html (or login.html copied to dist).',
-    };
-  }
-
-  await ensureStaticPreview(outputRoot);
-
-  return {
-    success: true,
-    files,
-  };
 }

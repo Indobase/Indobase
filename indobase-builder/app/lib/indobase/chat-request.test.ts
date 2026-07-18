@@ -15,9 +15,9 @@ describe('getAutoIndobaseMcpConfig', () => {
       },
     });
 
-    expect(config?.mcpServers.indobase.url).toBe(
-      'https://studio.indobase.in/api/mcp?project_ref=adralproject-uspulzkzew',
-    );
+    const url = new URL(config?.mcpServers.indobase.url ?? '');
+    expect(`${url.origin}${url.pathname}`).toBe('https://studio.indobase.in/api/mcp');
+    expect(url.searchParams.get('project_ref')).toBe('adralproject-uspulzkzew');
   });
 });
 
