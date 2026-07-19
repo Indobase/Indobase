@@ -184,9 +184,82 @@ export function stripHtmlTagsFromCss(content: string): string {
     .replace(/<\/?body\b[^>]*>/gi, '');
 }
 
+/**
+ * Stream continuations sometimes splice a new `<boltArtifact>`/`<boltAction>` into the middle of a
+ * file body. Writing that markup breaks Vite/Babel. Cut at the first leak and drop the incomplete
+ * trailing line, then close any leftover braces/parens/brackets so the file stays parseable.
+ */
+export function stripLeakedBoltMarkup(content: string): string {
+  const leakIndex = content.search(/<\/?(?:boltArtifact|boltAction|bolt-quick-actions?)\b/i);
+
+  if (leakIndex === -1) {
+    return content;
+  }
+
+  let cleaned = content.slice(0, leakIndex);
+  const lastNewline = cleaned.lastIndexOf('\n');
+
+  if (lastNewline >= 0) {
+    cleaned = cleaned.slice(0, lastNewline);
+  } else {
+    cleaned = '';
+  }
+
+  return `${balanceTrailingDelimiters(cleaned)}\n`;
+}
+
+function balanceTrailingDelimiters(source: string): string {
+  let braces = 0;
+  let parens = 0;
+  let brackets = 0;
+  let quote: '"' | "'" | '`' | null = null;
+  let escaped = false;
+
+  for (const char of source) {
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === quote) {
+        quote = null;
+      }
+
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') {
+      braces += 1;
+    } else if (char === '}') {
+      braces = Math.max(0, braces - 1);
+    } else if (char === '(') {
+      parens += 1;
+    } else if (char === ')') {
+      parens = Math.max(0, parens - 1);
+    } else if (char === '[') {
+      brackets += 1;
+    } else if (char === ']') {
+      brackets = Math.max(0, brackets - 1);
+    }
+  }
+
+  return `${source}${']'.repeat(brackets)}${')'.repeat(parens)}${'}'.repeat(braces)}`;
+}
+
 export function sanitizeGeneratedArtifact(filePath: string, content: string) {
   const sanitizedPath = sanitizeGeneratedArtifactPath(filePath);
-  let sanitizedContent = sanitizeGeneratedArtifactContent(content);
+  let sanitizedContent = sanitizeGeneratedArtifactContent(stripLeakedBoltMarkup(content));
 
   if (/\.css$/i.test(sanitizedPath)) {
     sanitizedContent = stripHtmlTagsFromCss(sanitizedContent);

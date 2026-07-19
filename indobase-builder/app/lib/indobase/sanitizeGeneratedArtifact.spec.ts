@@ -122,4 +122,23 @@ export default function Register() {
     expect(result.content).toContain('.foo { color: red; }');
     expect(result.content).not.toContain('</style>');
   });
+
+  it('strips leaked bolt markup from file bodies and closes truncated delimiters', () => {
+    const result = sanitizeGeneratedArtifact(
+      '/home/project/src/components/Footer.tsx',
+      `export default function Footer() {
+  return (
+    <motion.footer
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: 0<boltArtifact id="1" title="x">
+<boltAction type="file" filePath="src/components/Footer.tsx">
+import { motion } from 'framer-motion';
+`,
+    );
+
+    expect(result.content).not.toContain('<boltArtifact');
+    expect(result.content).not.toContain('<boltAction');
+    expect(result.content).toContain('viewport={{ once: true }}');
+    expect(result.content.trim().endsWith('}')).toBe(true);
+  });
 });
