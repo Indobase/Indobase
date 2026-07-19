@@ -518,7 +518,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
                 oneShotInspection.complete
                   ? CONTINUE_PROMPT
                   : `${CONTINUE_PROMPT}
-The initial build is not runnable yet: ${oneShotInspection.issues.join(', ')}. Add a bolt artifact containing every missing execution action. Do not repeat files that are already complete.`
+The initial build response is incomplete: ${oneShotInspection.issues.join(', ')}. Emit only what is missing — execution actions belong in a bolt artifact; recommendations belong in one <bolt-quick-actions> group with type="message" entries after the artifact. Do not repeat files or actions that are already complete.`
               }`,
             });
 

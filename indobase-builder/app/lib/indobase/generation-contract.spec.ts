@@ -126,7 +126,7 @@ describe('inspectOneShotBuildResponse', () => {
     expect(inspectOneShotBuildResponse(response)).toEqual({ complete: true, issues: [] });
   });
 
-  it('reports missing execution actions without requiring recommendations', () => {
+  it('reports missing execution actions first, without also demanding recommendations', () => {
     expect(
       inspectOneShotBuildResponse(
         '<boltArtifact id="app" title="App"><boltAction type="file" filePath="package.json">{}</boltAction></boltArtifact>',
@@ -134,6 +134,21 @@ describe('inspectOneShotBuildResponse', () => {
     ).toEqual({
       complete: false,
       issues: ['missing npm install shell action', 'missing start action'],
+    });
+  });
+
+  it('requires quick-action recommendations once the build is runnable', () => {
+    const runnable = `
+<boltArtifact id="app" title="App">
+  <boltAction type="file" filePath="package.json">{}</boltAction>
+  <boltAction type="shell">npm install</boltAction>
+  <boltAction type="start">npm run dev</boltAction>
+</boltArtifact>
+Would you like me to add a dark mode toggle or product pages?`;
+
+    expect(inspectOneShotBuildResponse(runnable)).toEqual({
+      complete: false,
+      issues: ['missing <bolt-quick-actions> refinement recommendations after the artifact'],
     });
   });
 });

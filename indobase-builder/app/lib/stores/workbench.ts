@@ -83,7 +83,13 @@ export class WorkbenchStore {
   }
 
   addToExecutionQueue(callback: () => Promise<void>) {
-    this.#globalExecutionQueue = this.#globalExecutionQueue.then(() => callback());
+    // A single failed action must not poison the queue: later actions still run, and
+    // waitForExecutionQueue() resolves so finalizeCodegen can judge preview readiness itself.
+    this.#globalExecutionQueue = this.#globalExecutionQueue.then(() =>
+      callback().catch((error) => {
+        console.error('[workbench] queued action failed; continuing queue', error);
+      }),
+    );
   }
 
   async waitForExecutionQueue() {
