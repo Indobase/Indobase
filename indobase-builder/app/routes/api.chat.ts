@@ -29,7 +29,7 @@ import {
 import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
-import { inspectOneShotBuildResponse } from '~/lib/indobase/generation-contract';
+import { inspectOneShotBuildResponse, isInitialScaffoldTurn } from '~/lib/indobase/generation-contract';
 
 const logger = createScopedLogger('api.chat');
 
@@ -226,10 +226,10 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const toolBudgetExhausted = toolInvocationsThisTurn >= MAX_TOOL_CALLS_PER_TURN;
 
         /*
-         * Scope before building, but only on the first build turn — a vague one-liner is the main
-         * cause of unfinishable builds. Follow-up turns already have context, so never re-ask.
+         * Initial scaffold = no prior assistant bolt file artifact yet. Clarifying-question turns
+         * still count as pre-scaffold, so we keep MCP off and enforce install+start one-shot.
          */
-        const isFirstBuildTurn = !processedMessages.some((message) => message.role === 'assistant');
+        const isFirstBuildTurn = isInitialScaffoldTurn(processedMessages);
 
         if (useMultiAgent && !isToolContinuationRound) {
           const plannerResult = await runPlannerPhase({

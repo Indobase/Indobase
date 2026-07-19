@@ -326,7 +326,11 @@ export class PreviewsStore {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         unsubscribe();
-        reject(new Error('The dev server started, but its WebContainer preview did not finish loading.'));
+        const known = this.previews.get();
+        const message = known.some((preview) => preview.ready)
+          ? 'The dev server started, but its WebContainer preview did not finish loading.'
+          : 'No WebContainer preview became available. The install may have finished without starting the app.';
+        reject(new Error(message));
       }, timeoutMs);
       const unsubscribe = this.previews.listen((previews) => {
         const loaded = previews.find((preview) => preview.ready && preview.loaded);

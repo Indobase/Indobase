@@ -3,6 +3,7 @@ import {
   getGenerationContractAppendix,
   inferBuilderProjectTarget,
   inspectOneShotBuildResponse,
+  isInitialScaffoldTurn,
   validateGeneratedProjectContract,
 } from './generation-contract';
 
@@ -81,6 +82,31 @@ describe('getGenerationContractAppendix', () => {
     expect(appendix).toContain('<boltAction type="start">');
     expect(appendix).toContain('<bolt-quick-actions>');
     expect(appendix).toContain('Never ask the user to choose a recommendation before building');
+  });
+});
+
+describe('isInitialScaffoldTurn', () => {
+  it('treats clarifying-question assistant turns as still pre-scaffold', () => {
+    expect(
+      isInitialScaffoldTurn([
+        { role: 'user', content: 'create a crm website' },
+        { role: 'assistant', content: 'Before I build this, I need a couple of details...' },
+        { role: 'user', content: 'you choose' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns false once a file artifact has been produced', () => {
+    expect(
+      isInitialScaffoldTurn([
+        { role: 'user', content: 'create a crm website' },
+        {
+          role: 'assistant',
+          content:
+            '<boltArtifact id="app" title="CRM"><boltAction type="file" filePath="package.json">{}</boltAction></boltArtifact>',
+        },
+      ]),
+    ).toBe(false);
   });
 });
 

@@ -78,6 +78,22 @@ export function inferBuilderProjectTarget(messages: BuildMessage[], files?: File
   return latestUserMessage && MOBILE_INTENT.test(contentFromMessage(latestUserMessage)) ? 'mobile' : 'web';
 }
 
+/**
+ * True until the conversation has a real scaffold artifact (file actions). Clarifying-question
+ * assistant turns must not disable one-shot install/start enforcement or re-enable MCP tools.
+ */
+export function isInitialScaffoldTurn(messages: BuildMessage[]): boolean {
+  return !messages.some((message) => {
+    if (message.role !== 'assistant') {
+      return false;
+    }
+
+    const content = contentFromMessage(message);
+
+    return /<boltArtifact\b/i.test(content) && /<boltAction\b[^>]*\btype\s*=\s*["']file["']/i.test(content);
+  });
+}
+
 export function getGenerationContractAppendix(target: BuilderProjectTarget): string {
   const oneShotContract = `
 
