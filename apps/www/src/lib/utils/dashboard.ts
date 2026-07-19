@@ -2,19 +2,24 @@ import { getUtmSourceForLink } from '$lib/utils/utm';
 import { browser } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
 
-const DEFAULT_CONSOLE_BASE = 'https://indobase.in/dashboard';
+const DEFAULT_CONSOLE_BASE = 'https://studio.indobase.in';
 
 function normalizeConsoleBase(raw: string): string {
     const trimmed = raw.replace(/\/$/, '');
     try {
         const url = new URL(trimmed);
         const host = url.host;
-        const path = url.pathname;
+        const path = url.pathname.replace(/\/$/, '') || '';
+
+        // Studio is the product console — never send CTAs to marketing /dashboard (404).
         if (host === 'studio.indobase.in') {
-            return 'https://indobase.in/dashboard';
+            return DEFAULT_CONSOLE_BASE;
         }
-        if (host === 'indobase.in' && path === '') {
-            return 'https://indobase.in/dashboard';
+        if (
+            host === 'indobase.in' &&
+            (path === '' || path === '/dashboard')
+        ) {
+            return DEFAULT_CONSOLE_BASE;
         }
     } catch {
         return trimmed;
@@ -28,14 +33,16 @@ const DASHBOARD_BASE = normalizeConsoleBase(
         DEFAULT_CONSOLE_BASE
 );
 
-/** Use relative /dashboard when same-origin (no console URL set) or dev/localhost. */
+/** Relative /dashboard only for local vite proxy to Studio. */
 function getDashboardBase(): string {
     const isDev = import.meta.env?.DEV === true;
     if (isDev) return '/dashboard';
-    if (browser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    if (
+        browser &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ) {
         return '/dashboard';
-    if (!publicEnv.PUBLIC_APPWRITE_DASHBOARD && !publicEnv.PUBLIC_INDOBASE_CONSOLE_URL)
-        return '/dashboard';
+    }
     return DASHBOARD_BASE;
 }
 

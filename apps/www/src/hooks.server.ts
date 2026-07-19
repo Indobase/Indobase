@@ -58,6 +58,18 @@ const markdownHandler: Handle = async ({ event, resolve }) => {
 
 const redirecter: Handle = async ({ event, resolve }) => {
     const currentPath = event.url.pathname;
+
+    // Marketing used same-origin /dashboard CTAs; console lives on Studio.
+    if (currentPath === '/dashboard' || currentPath.startsWith('/dashboard/')) {
+        const studioPath = currentPath.replace(/^\/dashboard/, '') || '/';
+        return new Response(null, {
+            status: 308,
+            headers: {
+                location: `https://studio.indobase.in${studioPath}${event.url.search}`
+            }
+        });
+    }
+
     if (redirectMap.has(currentPath)) {
         return new Response(null, {
             status: 308,
