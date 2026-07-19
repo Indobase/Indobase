@@ -617,9 +617,13 @@ const server = http.createServer(async (req, res) => {
       const prefix = body?.prefix != null ? String(body.prefix) : undefined
       const storagePort =
         body?.storage_port != null ? Number(body.storage_port) : await readPublishedPort(ref, 'storage')
-      const siteProxyPort = Number(
-        body?.site_proxy_port ?? process.env.SITE_STATIC_PROXY_PORT ?? 8790
-      )
+      const siteProxyEnabled = process.env.SITE_STATIC_PROXY_ENABLED === 'true'
+      // Only point Traefik at the shared site proxy when it is actually running.
+      // Otherwise Studio publish would mark route_registered and skip nginx sync,
+      // leaving ref.<domain>/ on a dead :8790 (504) or empty tenant-site (403).
+      const siteProxyPort = siteProxyEnabled
+        ? Number(body?.site_proxy_port ?? process.env.SITE_STATIC_PROXY_PORT ?? 8790)
+        : null
 
       const route = registerSiteRoute({
         ref,
@@ -629,12 +633,17 @@ const server = http.createServer(async (req, res) => {
         traefikDir,
       })
 
-      const traefik = fixTenantTraefikForRef(ref, traefikDir, { siteProxyPort })
+      const traefik = fixTenantTraefikForRef(
+        ref,
+        traefikDir,
+        siteProxyPort != null ? { siteProxyPort } : {}
+      )
 
       return json(res, traefik.ok ? 200 : 500, {
         ok: traefik.ok,
         project_ref: ref,
-        route_registered: true,
+        route_registered: siteProxyEnabled && traefik.ok,
+        site_proxy_enabled: siteProxyEnabled,
         route,
         traefik,
       })

@@ -282,6 +282,8 @@ export async function publishDeploymentArtifacts({
     )
   }
 
+  // Always sync tenant-site nginx when the shared site proxy did not take the route.
+  // Skipping this after a false-positive route_registered left empty/dead subdomains (403/504).
   if (!routeRegistered) {
     try {
       const sitePublish = await publishTenantSiteHosting({

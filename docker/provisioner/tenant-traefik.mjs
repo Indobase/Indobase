@@ -159,12 +159,17 @@ export function fixTenantTraefikForRef(ref, traefikDir, opts = {}) {
 
   const siteRoutes = readSiteRoutes(traefikDir)
   const hasSiteRoute = Boolean(siteRoutes[ref])
+  const siteProxyEnabled = process.env.SITE_STATIC_PROXY_ENABLED === 'true'
   let siteProxyPort =
     opts.siteProxyPort != null && Number.isFinite(Number(opts.siteProxyPort))
       ? Number(opts.siteProxyPort)
       : null
-  if (hasSiteRoute && siteProxyPort == null) {
+  // Never silently redirect site traffic to :8790 unless the proxy process is enabled.
+  if (hasSiteRoute && siteProxyPort == null && siteProxyEnabled) {
     siteProxyPort = Number(process.env.SITE_STATIC_PROXY_PORT || 8790)
+  }
+  if (!siteProxyEnabled) {
+    siteProxyPort = null
   }
 
   const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)

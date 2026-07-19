@@ -58,9 +58,10 @@ function resolveComposeHostPaths(composePath) {
 
   const rel = path.relative(containerTenantsDir, tenantDir)
   const hostDir = path.join(hostTenantsDir, rel)
+  // `-f` must stay container-readable (CLI opens the file inside the provisioner).
+  // `--project-directory` must be the host path so relative bind mounts resolve on the daemon.
   return {
-    // Docker daemon resolves bind-mount sources on the host; -f must use host paths too.
-    composePath: path.join(hostDir, 'docker-compose.yml'),
+    composePath,
     cwd: tenantDir,
     projectDirectory: hostDir,
   }
