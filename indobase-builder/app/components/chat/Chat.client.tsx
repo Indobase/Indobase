@@ -35,7 +35,11 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { usePendingDeploy } from '~/lib/hooks/usePendingDeploy';
 import { INDOBASE_MCP_SERVER_NAME } from '~/lib/indobase/mcp';
-import { hasIndobaseStudioHandoff, hasSelectedIndobaseProject, isIndobaseStudioManagedConnection } from '~/lib/indobase/connection';
+import {
+  hasIndobaseStudioHandoff,
+  hasSelectedIndobaseProject,
+  isIndobaseStudioManagedConnection,
+} from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
@@ -54,6 +58,7 @@ import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
 
 const logger = createScopedLogger('Chat');
 const getAllowedChatProviders = () =>
@@ -162,6 +167,7 @@ export const ChatImpl = memo(
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
     const orchestratorChatRetryRef = useRef(0);
     const MAX_ORCHESTRATOR_CHAT_RETRIES = 8;
+    const automaticPreviewRepairAttemptRef = useRef(0);
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const refreshBuilderPromptQuota = useCallback(async () => {
       if (!isIndobaseStudioManagedConnection(indobaseConn)) {
@@ -304,6 +310,7 @@ export const ChatImpl = memo(
 
             if (chatMode === 'build') {
               await finalizeCodegen();
+              automaticPreviewRepairAttemptRef.current = 0;
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
@@ -311,14 +318,34 @@ export const ChatImpl = memo(
             }
           } catch (error) {
             logger.error('Post-codegen finalize failed', error);
+
+            const repair = decideAutomaticPreviewRepair({
+              error,
+              completedAttempts: automaticPreviewRepairAttemptRef.current,
+              files: workbenchStore.files.get(),
+              maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+            });
+
+            if (repair.shouldRepair) {
+              automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
+              setLlmErrorAlert(undefined);
+              initialBuildLifecycle.set('finalizing');
+              append({
+                role: 'user',
+                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
+              });
+
+              return;
+            }
+
             failInitialBuild();
             setLlmErrorAlert({
               type: 'error',
-              title: 'Preview did not load',
+              title: 'Automatic repair could not fix the preview',
               description:
                 error instanceof Error
-                  ? error.message
-                  : 'The generated files finished, but the WebContainer preview did not load.',
+                  ? `${error.message}\n\nTried ${automaticPreviewRepairAttemptRef.current} focused repairs.`
+                  : `The generated files finished, but the preview remained unhealthy after ${automaticPreviewRepairAttemptRef.current} focused repairs.`,
               errorType: 'unknown',
             });
           } finally {
@@ -372,9 +399,12 @@ export const ChatImpl = memo(
           const preamble = hasIndobaseStudioHandoff(indobaseConn)
             ? `${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`
             : '';
+
           if (chatMode === 'build') {
+            automaticPreviewRepairAttemptRef.current = 0;
             beginInitialBuild();
           }
+
           append({
             role: 'user',
             content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${preamble}${prompt}`,
@@ -859,6 +889,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       }
 
       // Starting a new generation clears any previous stall so this run is tracked fresh.
+      automaticPreviewRepairAttemptRef.current = 0;
       setStreamStalled(false);
       lastStreamProgressRef.current = Date.now();
       streamProgressMarker.current = '';

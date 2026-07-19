@@ -9,6 +9,10 @@ describe('ActionRunner start actions', () => {
     const listeners = new Map<string, (...args: any[]) => void>();
     const container = {
       getPorts: vi.fn().mockResolvedValue([]),
+      fs: {
+        readdir: vi.fn().mockResolvedValue([]),
+        readFile: vi.fn(),
+      },
       on: vi.fn((event: string, listener: (...args: any[]) => void) => {
         listeners.set(event, listener);
       }),
@@ -43,5 +47,47 @@ describe('ActionRunner start actions', () => {
 
     expect(runner.actions.get().start.status).toBe('complete');
     vi.useRealTimers();
+  });
+
+  it('does not start Vite when generated source has a syntax error', async () => {
+    const container = {
+      fs: {
+        readdir: vi.fn(async (path: string) => {
+          if (path === '.') {
+            return ['src'];
+          }
+
+          if (path === 'src') {
+            return ['Services.jsx'];
+          }
+
+          throw new Error('not a directory');
+        }),
+        readFile: vi.fn(async () => 'export function Services() {}\nreturn <section />'),
+      },
+      getPorts: vi.fn().mockResolvedValue([]),
+      on: vi.fn(),
+    } as unknown as WebContainer;
+    const shell = {
+      ready: vi.fn().mockResolvedValue(undefined),
+      terminal: {},
+      process: {},
+      executeCommand: vi.fn().mockResolvedValue({ exitCode: 0, output: '' }),
+    };
+    const runner = new ActionRunner(Promise.resolve(container), () => shell as any);
+    const action = {
+      messageId: 'message',
+      artifactId: 'artifact',
+      actionId: 'start-invalid',
+      action: { type: 'start' as const, content: 'npm run dev' },
+    };
+
+    runner.addAction(action);
+    await runner.runAction(action);
+
+    expect(shell.executeCommand).not.toHaveBeenCalled();
+    expect(runner.actions.get()['start-invalid']).toMatchObject({
+      status: 'failed',
+    });
   });
 });

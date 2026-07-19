@@ -254,9 +254,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           messageSliceId = processedMessages.length - 3;
         }
 
-        // Continuation rounds skip summary/context too: the coder already has the turn's context,
-        // and these are two more model calls per tool call otherwise.
-        if (filePaths.length > 0 && contextOptimization && !templateBootstrap && !isToolContinuationRound) {
+        // Continuation and focused repair rounds already carry the exact context they need.
+        // Summary + context selection are two avoidable model calls on the latency-critical path.
+        if (
+          filePaths.length > 0 &&
+          contextOptimization &&
+          !templateBootstrap &&
+          !isToolContinuationRound &&
+          !isRepairRound
+        ) {
           logger.debug('Generating Chat Summary');
           dataStream.writeData({
             type: 'progress',
@@ -389,7 +395,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
          * actions complete without a working preview. Tools stay available on follow-up turns.
          */
         const hasMcpTools =
-          Object.keys(mcpTools).length > 0 && !toolBudgetExhausted && !isFirstBuildTurn;
+          Object.keys(mcpTools).length > 0 && !toolBudgetExhausted && !isFirstBuildTurn && !isRepairRound;
 
         if (toolBudgetExhausted) {
           logger.warn(

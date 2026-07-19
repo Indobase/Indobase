@@ -6,6 +6,7 @@ import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
+import { assertGeneratedSourcesValid } from '~/lib/indobase/generated-code-validation';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { executeIndobaseSql } from '~/lib/indobase/studioSql';
 import { indobaseConnection } from '~/lib/stores/indobase-connection';
@@ -310,6 +311,8 @@ export class ActionRunner {
     }
 
     const webcontainer = await this.#awaitWebContainer();
+    await assertGeneratedSourcesValid(webcontainer.fs as Parameters<typeof assertGeneratedSourcesValid>[0]);
+
     const previewAlreadyReady = await this.#hasOpenPreviewPort(webcontainer);
 
     const resp = await shell.executeCommand(

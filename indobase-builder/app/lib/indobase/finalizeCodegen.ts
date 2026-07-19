@@ -3,6 +3,7 @@ import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { createScopedLogger } from '~/utils/logger';
+import { assertGeneratedSourcesValid, verifyViteSourceTransforms } from './generated-code-validation';
 
 const logger = createScopedLogger('finalizeCodegen');
 
@@ -13,6 +14,26 @@ async function packageHasDevScript(): Promise<boolean> {
     const packageJson = JSON.parse(raw) as { scripts?: { dev?: string } };
 
     return Boolean(packageJson.scripts?.dev);
+  } catch {
+    return false;
+  }
+}
+
+async function packageUsesVite(): Promise<boolean> {
+  try {
+    const container = await webcontainer;
+    const raw = await container.fs.readFile('package.json', 'utf-8');
+    const packageJson = JSON.parse(raw) as {
+      scripts?: Record<string, string>;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    return Boolean(
+      packageJson.dependencies?.vite ||
+        packageJson.devDependencies?.vite ||
+        Object.values(packageJson.scripts ?? {}).some((script) => /\bvite\b/.test(script)),
+    );
   } catch {
     return false;
   }
@@ -106,14 +127,24 @@ export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewU
   await workbenchStore.flushPendingActions();
 
   const scaffolded = await ensureProjectScaffold();
+  const container = await webcontainer;
+  const generatedSources = await assertGeneratedSourcesValid(
+    container.fs as Parameters<typeof assertGeneratedSourcesValid>[0],
+  );
   await ensureDevServerIfNeeded();
 
   workbenchStore.refreshAllPreviews();
 
   const preview = await workbenchStore.waitForPreviewLoaded();
 
-  // The preview is live, so any earlier "Dev Server Failed" alert (e.g. a slow first boot that
-  // tripped the port-wait timeout) is stale — do not leave a false error in front of the user.
+  if (await packageUsesVite()) {
+    await verifyViteSourceTransforms(preview.baseUrl, Object.keys(generatedSources));
+  }
+
+  /*
+   * The iframe loaded and every generated source passed Vite's transform endpoint, so an earlier
+   * "Dev Server Failed" alert is now stale and can be cleared safely.
+   */
   workbenchStore.clearAlert();
 
   return { scaffolded, previewUrl: preview.baseUrl };
