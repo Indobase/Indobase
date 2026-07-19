@@ -112,5 +112,9 @@ export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewU
 
   const preview = await workbenchStore.waitForPreviewLoaded();
 
+  // The preview is live, so any earlier "Dev Server Failed" alert (e.g. a slow first boot that
+  // tripped the port-wait timeout) is stale — do not leave a false error in front of the user.
+  workbenchStore.clearAlert();
+
   return { scaffolded, previewUrl: preview.baseUrl };
 }
