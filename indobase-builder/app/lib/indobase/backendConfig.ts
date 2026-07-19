@@ -19,10 +19,12 @@ export type BuilderBackendConfigResponse = {
 };
 
 export type BuilderSessionLike = {
+  email?: string;
   mcpToken?: string;
+  organizationSlug?: string;
   projectRef?: string;
   studioUrl?: string;
-  organizationSlug?: string;
+  sub?: string;
 };
 
 /**
@@ -49,12 +51,26 @@ export function buildConnectionFromSessionAndBackend(
     created_at: new Date().toISOString(),
   };
 
+  const email = session.email?.trim();
+  const sub = session.sub?.trim();
+
   return {
     isConnected: true,
     connectionSource: 'studio_handoff',
     selectedProjectId: projectRef,
     project,
     stats: { projects: [project], totalProjects: 1 },
+    ...(email
+      ? {
+          user: {
+            id: sub || email,
+            email,
+            role: 'indobase_builder',
+            created_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString(),
+          },
+        }
+      : {}),
     credentials: {
       anonKey: data.backend.anon_key,
       apiUrl: data.backend.api_url,

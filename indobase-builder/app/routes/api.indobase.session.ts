@@ -53,6 +53,8 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
       projectRef: claims.project_ref,
       studioUrl: claims.studio_url,
       organizationSlug: claims.organization_slug,
+      email: claims.email,
+      sub: claims.sub,
       expiresAt: claims.exp * 1000,
     },
     {

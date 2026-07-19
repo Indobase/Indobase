@@ -14,6 +14,7 @@ import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { classNames } from '~/utils/classNames';
 import { useStore } from '@nanostores/react';
 import { profileStore } from '~/lib/stores/profile';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { sidebarOpen, setSidebarOpen } from '~/lib/stores/sidebar';
 
 const menuVariants = {
@@ -75,6 +76,7 @@ export const Menu = () => {
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const profile = useStore(profileStore);
+  const backendConnection = useStore(indobaseConnection);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
@@ -351,7 +353,7 @@ export const Menu = () => {
               onClick={() => window.open('https://github.com/Indobase/Indobase/tree/indobase-builder', '_blank')}
             />
             <span className="min-w-0 max-w-[160px] truncate font-medium text-sm text-gray-900">
-              {profile?.username || 'Guest User'}
+              {profile?.username || backendConnection?.user?.email || 'Guest User'}
             </span>
             <div className="flex h-[32px] w-[32px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-gray-500">
               {profile?.avatar ? (

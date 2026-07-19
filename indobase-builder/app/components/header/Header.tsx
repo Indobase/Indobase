@@ -14,7 +14,7 @@ export function Header() {
   const profile = useStore(profileStore);
   const isStudioManagedConnection = isIndobaseStudioManagedConnection(backend);
   const isBackendConnected = isStudioManagedConnection || Boolean(backend?.isConnected);
-  const initial = (profile?.username || 'U').charAt(0).toUpperCase();
+  const initial = (profile?.username || backend?.user?.email || 'U').charAt(0).toUpperCase();
 
   // Quiet chrome: the header floats on the canvas in both states — no bar, no divider.
   return (

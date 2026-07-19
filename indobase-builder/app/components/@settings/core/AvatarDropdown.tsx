@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useStore } from '@nanostores/react';
 import { classNames } from '~/utils/classNames';
 import { profileStore } from '~/lib/stores/profile';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import type { TabType, Profile } from './types';
 
 interface AvatarDropdownProps {
@@ -11,6 +12,8 @@ interface AvatarDropdownProps {
 
 export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
   const profile = useStore(profileStore) as Profile;
+  const connection = useStore(indobaseConnection);
+  const displayName = profile?.username || connection.user?.email || 'Guest User';
 
   return (
     <DropdownMenu.Root>
@@ -72,9 +75,13 @@ export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                {profile?.username || 'Guest User'}
+                {displayName}
               </div>
-              {profile?.bio && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{profile.bio}</div>}
+              {(profile?.bio || connection.user?.email) && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {profile?.bio || connection.user?.email}
+                </div>
+              )}
             </div>
           </div>
 

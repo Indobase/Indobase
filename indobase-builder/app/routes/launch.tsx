@@ -3,6 +3,7 @@ import { useLoaderData, useNavigate, useSearchParams } from '@remix-run/react';
 import { useEffect, useState } from 'react';
 
 import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
+import { syncProfileFromStudioIdentity } from '~/lib/stores/profile';
 import { buildIndobaseConnectionFromHandoff } from '~/lib/indobase/handoff';
 import { getStudioBuilderConnectUrl, persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
 import { clearHandoffTokenFromLocation, readHandoffTokenFromLocation } from '~/lib/indobase/launch-hash.client';
@@ -38,6 +39,7 @@ function applyLaunchSuccess(options: {
 }) {
   updateIndobaseConnection(buildIndobaseConnectionFromHandoff(options.handoff, { mcpToken: options.mcpToken }));
   persistLastProjectRef(options.handoff.project_ref);
+  syncProfileFromStudioIdentity({ email: options.handoff.email, sub: options.handoff.sub });
 
   void (async () => {
     await initializeProviders();

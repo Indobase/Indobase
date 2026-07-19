@@ -1,20 +1,13 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useStore } from '@nanostores/react';
 import { toast } from 'react-toastify';
-import { isGitLabConnected } from '~/lib/stores/gitlabConnection';
 import { indobaseConnection } from '~/lib/stores/indobase-connection';
-import { workbenchStore } from '~/lib/stores/workbench';
 import { streamingState } from '~/lib/stores/streaming';
 import { classNames } from '~/utils/classNames';
 import { useState } from 'react';
-import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
-import { useGitLabDeploy } from '~/components/deploy/GitLabDeploy.client';
-import { useNetlifyDeploy } from '~/components/deploy/NetlifyDeploy.client';
-import { useVercelDeploy } from '~/components/deploy/VercelDeploy.client';
 import { runOneClickDeploy } from '~/lib/deploy/runOneClickDeploy';
 import {
   getStudioProjectCustomDomainsUrl,
-  getStudioProjectHostingUrl,
   getStudioProjectMobileBuildsUrl,
   getStudioProjectRootUrl,
 } from '~/lib/indobase/studioLinks';
@@ -26,31 +19,17 @@ import {
 import { collectMobileBuildSourceFromWorkbench } from '~/lib/indobase/collectMobileBuildSource';
 import { chatId } from '~/lib/persistence/useChatHistory';
 
-interface DeployButtonProps {
-  onGitHubDeploy?: () => Promise<void>;
-  onGitLabDeploy?: () => Promise<void>;
-}
-
-export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonProps) => {
+export const DeployButton = () => {
   const backendConnection = useStore(indobaseConnection);
   const currentChatId = useStore(chatId);
-  const gitlabIsConnected = useStore(isGitLabConnected);
   const isStreaming = useStore(streamingState);
-  const { handleGitHubDeploy } = useGitHubDeploy();
-  const { handleGitLabDeploy } = useGitLabDeploy();
-  const { handleNetlifyDeploy, isConnected: netlifyIsConnected } = useNetlifyDeploy();
-  const { handleVercelDeploy, isConnected: vercelIsConnected } = useVercelDeploy();
   const isStudioManagedConnection = backendConnection.connectionSource === 'studio_handoff';
   const studioUrl = backendConnection.indobase?.studioUrl || 'https://studio.indobase.in';
   const projectRootUrl = getStudioProjectRootUrl(backendConnection, backendConnection.selectedProjectId);
-  const hostingUrl = getStudioProjectHostingUrl(backendConnection, backendConnection.selectedProjectId);
   const customDomainsUrl = getStudioProjectCustomDomainsUrl(backendConnection, backendConnection.selectedProjectId);
   const mobileBuildsUrl = getStudioProjectMobileBuildsUrl(backendConnection, backendConnection.selectedProjectId);
   const canPublishIndobase = canQueueIndobaseDeployment(backendConnection);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [deployingTo, setDeployingTo] = useState<
-    'indobase' | 'github' | 'gitlab' | 'netlify' | 'vercel' | null
-  >(null);
   const deployDisabled = isDeploying || isStreaming;
 
   const openIndobaseUrl = (url: string | null, errorMessage: string) => {
@@ -71,7 +50,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
     }
 
     setIsDeploying(true);
-    setDeployingTo('indobase');
 
     try {
       await runOneClickDeploy('indobase', {
@@ -80,7 +58,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
       });
     } finally {
       setIsDeploying(false);
-      setDeployingTo(null);
     }
   };
 
@@ -98,7 +75,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
   const handleAndroidBundleClick = async () => {
     if (canQueueIndobaseMobileBuild(backendConnection)) {
       setIsDeploying(true);
-      setDeployingTo('indobase');
 
       try {
         const sourceResult = collectMobileBuildSourceFromWorkbench();
@@ -133,7 +109,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
         );
       } finally {
         setIsDeploying(false);
-        setDeployingTo(null);
       }
 
       return;
@@ -149,103 +124,8 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
     );
   };
 
-  const handleVercelDeployClick = async () => {
-    if (!vercelIsConnected) {
-      toast.info('Connect Vercel in Settings → Connections, then try again.');
-      return;
-    }
-
-    setIsDeploying(true);
-    setDeployingTo('vercel');
-
-    try {
-      await handleVercelDeploy();
-    } finally {
-      setIsDeploying(false);
-      setDeployingTo(null);
-    }
-  };
-
-  const handleNetlifyDeployClick = async () => {
-    if (!netlifyIsConnected) {
-      toast.info('Connect Netlify in Settings → Connections, then try again.');
-      return;
-    }
-
-    setIsDeploying(true);
-    setDeployingTo('netlify');
-
-    try {
-      await handleNetlifyDeploy();
-    } finally {
-      setIsDeploying(false);
-      setDeployingTo(null);
-    }
-  };
-
-  const handleGitHubDeployClick = async () => {
-    setIsDeploying(true);
-    setDeployingTo('github');
-
-    try {
-      if (onGitHubDeploy) {
-        await onGitHubDeploy();
-        return;
-      }
-
-      const prepared = await handleGitHubDeploy();
-
-      if (!prepared || prepared === false || !prepared.success || !prepared.files) {
-        return;
-      }
-
-      await runOneClickDeploy('github', {
-        chatId: currentChatId,
-        connection: backendConnection,
-        files: prepared.files,
-        projectName: prepared.projectName,
-      });
-    } finally {
-      setIsDeploying(false);
-      setDeployingTo(null);
-    }
-  };
-
-  const handleGitLabDeployClick = async () => {
-    setIsDeploying(true);
-    setDeployingTo('gitlab');
-
-    try {
-      if (onGitLabDeploy) {
-        await onGitLabDeploy();
-        return;
-      }
-
-      const prepared = await handleGitLabDeploy();
-
-      if (!prepared || prepared === false || !prepared.success || !prepared.files) {
-        return;
-      }
-
-      await runOneClickDeploy('gitlab', {
-        chatId: currentChatId,
-        connection: backendConnection,
-        files: prepared.files,
-        projectName: prepared.projectName,
-      });
-    } finally {
-      setIsDeploying(false);
-      setDeployingTo(null);
-    }
-  };
-
   const primaryLabel = isDeploying
-    ? deployingTo === 'github' ||
-      deployingTo === 'gitlab' ||
-      deployingTo === 'netlify' ||
-      deployingTo === 'vercel'
-      ? 'Deploying…'
-      : 'Publishing…'
+    ? 'Publishing…'
     : canPublishIndobase
       ? 'Publish'
       : isStudioManagedConnection
@@ -320,90 +200,6 @@ export const DeployButton = ({ onGitHubDeploy, onGitLabDeploy }: DeployButtonPro
                   ? 'Build Android bundle'
                   : 'Open Studio for Android builds'}
             </span>
-          </DropdownMenu.Item>
-
-          <DropdownMenu.Item
-            className={classNames(
-              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-              {
-                'opacity-60 cursor-not-allowed': !vercelIsConnected,
-              },
-            )}
-            disabled={!vercelIsConnected}
-            onClick={() => void handleVercelDeployClick()}
-          >
-            <img
-              className="w-5 h-5"
-              height="24"
-              width="24"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/vercel"
-              alt="vercel"
-            />
-            <span className="mx-auto">
-              {!vercelIsConnected ? 'No Vercel Account Connected' : 'Deploy to Vercel'}
-            </span>
-          </DropdownMenu.Item>
-
-          <DropdownMenu.Item
-            className={classNames(
-              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-              {
-                'opacity-60 cursor-not-allowed': !netlifyIsConnected,
-              },
-            )}
-            disabled={!netlifyIsConnected}
-            onClick={() => void handleNetlifyDeployClick()}
-          >
-            <img
-              className="w-5 h-5"
-              height="24"
-              width="24"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/netlify"
-              alt="netlify"
-            />
-            <span className="mx-auto">
-              {!netlifyIsConnected ? 'No Netlify Account Connected' : 'Deploy to Netlify'}
-            </span>
-          </DropdownMenu.Item>
-
-          <DropdownMenu.Item
-            className={classNames(
-              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-            )}
-            onClick={() => void handleGitHubDeployClick()}
-          >
-            <img
-              className="w-5 h-5"
-              height="24"
-              width="24"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/github"
-              alt="github"
-            />
-            <span className="mx-auto">Deploy to GitHub</span>
-          </DropdownMenu.Item>
-
-          <DropdownMenu.Item
-            className={classNames(
-              'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-              {
-                'opacity-60 cursor-not-allowed': !gitlabIsConnected,
-              },
-            )}
-            disabled={!gitlabIsConnected}
-            onClick={() => void handleGitLabDeployClick()}
-          >
-            <img
-              className="w-5 h-5"
-              height="24"
-              width="24"
-              crossOrigin="anonymous"
-              src="https://cdn.simpleicons.org/gitlab"
-              alt="gitlab"
-            />
-            <span className="mx-auto">{!gitlabIsConnected ? 'No GitLab Account Connected' : 'Deploy to GitLab'}</span>
           </DropdownMenu.Item>
 
           <DropdownMenu.Item

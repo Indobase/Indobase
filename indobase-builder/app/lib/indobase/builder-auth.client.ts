@@ -1,5 +1,6 @@
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
+import { syncProfileFromStudioIdentity } from '~/lib/stores/profile';
 import { getStoredIndobaseConnection } from '~/lib/indobase/mcp';
 import type { BuilderBackendConfigResponse } from './backendConfig';
 import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from './connection';
@@ -13,6 +14,7 @@ import {
 const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
 
 type SessionResponse = {
+  email?: string;
   error?: string;
   expiresAt?: number;
   mcpToken?: string;
@@ -20,6 +22,7 @@ type SessionResponse = {
   projectRef?: string;
   statusCode?: number;
   studioUrl?: string;
+  sub?: string;
   success?: boolean;
 };
 
@@ -188,10 +191,12 @@ async function rebuildConnectionFromBackendConfig(session: SessionResponse): Pro
 
   const rebuilt = buildConnectionFromSessionAndBackend(
     {
+      email: session.email,
       mcpToken: session.mcpToken,
       projectRef: session.projectRef,
       studioUrl: session.studioUrl,
       organizationSlug: session.organizationSlug,
+      sub: session.sub,
     },
     backendData,
   );
@@ -202,12 +207,15 @@ async function rebuildConnectionFromBackendConfig(session: SessionResponse): Pro
 
   persistLastProjectRef(session.projectRef);
   updateIndobaseConnection(rebuilt);
+  syncProfileFromStudioIdentity({ email: session.email, sub: session.sub });
 }
 
 async function applySessionToStoredConnection(session: SessionResponse): Promise<void> {
   if (!session.mcpToken) {
     return;
   }
+
+  syncProfileFromStudioIdentity({ email: session.email, sub: session.sub });
 
   const connection = getStoredIndobaseConnectionFromAuth();
 
@@ -219,10 +227,24 @@ async function applySessionToStoredConnection(session: SessionResponse): Promise
   const projectRef = session.projectRef || connection.indobase?.projectRef || connection.selectedProjectId || '';
   persistLastProjectRef(projectRef);
 
+  const email = session.email?.trim() || connection.user?.email || '';
+  const sub = session.sub?.trim() || connection.user?.id || '';
+
   updateIndobaseConnection({
     isConnected: true,
     connectionSource: 'studio_handoff',
     selectedProjectId: projectRef || connection.selectedProjectId,
+    ...(email
+      ? {
+          user: {
+            id: sub || email,
+            email,
+            role: 'indobase_builder',
+            created_at: connection.user?.created_at || new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString(),
+          },
+        }
+      : {}),
     indobase: {
       apiUrl: connection.indobase?.apiUrl || connection.credentials?.apiUrl || '',
       authUrl: connection.indobase?.authUrl || `${connection.credentials?.apiUrl || ''}/auth/v1`,

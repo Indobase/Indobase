@@ -24,10 +24,12 @@ describe('buildConnectionFromSessionAndBackend', () => {
   it('reconstructs a connection that satisfies hasIndobaseStudioHandoff', () => {
     const rebuilt = buildConnectionFromSessionAndBackend(
       {
+        email: 'ros@indobase.in',
         mcpToken: 'mcp',
         projectRef: 'proj_123',
         studioUrl: 'https://studio.indobase.in',
         organizationSlug: 'acme',
+        sub: 'user-1',
       },
       backendData,
     );
@@ -36,6 +38,10 @@ describe('buildConnectionFromSessionAndBackend', () => {
     expect(rebuilt!.credentials?.anonKey).toBe('anon_key');
     expect(rebuilt!.indobase?.mcpToken).toBe('mcp');
     expect(rebuilt!.selectedProjectId).toBe('proj_123');
+    expect(rebuilt!.user).toMatchObject({
+      email: 'ros@indobase.in',
+      id: 'user-1',
+    });
 
     // The whole point of the fix: the rebuilt connection is a valid Studio handoff.
     expect(hasIndobaseStudioHandoff(rebuilt as IndobaseConnectionState)).toBe(true);

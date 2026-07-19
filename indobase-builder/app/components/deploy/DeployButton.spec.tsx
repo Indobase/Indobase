@@ -6,34 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DeployButton } from './DeployButton';
 
-vi.mock('~/components/deploy/VercelDeploy.client', () => ({
-  useVercelDeploy: () => ({
-    isDeploying: false,
-    handleVercelDeploy: vi.fn(),
-    isConnected: true,
-  }),
-}));
-
-vi.mock('~/components/deploy/NetlifyDeploy.client', () => ({
-  useNetlifyDeploy: () => ({
-    isDeploying: false,
-    handleNetlifyDeploy: vi.fn(),
-    isConnected: false,
-  }),
-}));
-
-vi.mock('~/components/deploy/GitHubDeploy.client', () => ({
-  useGitHubDeploy: () => ({
-    isDeploying: false,
-    handleGitHubDeploy: vi.fn(),
-  }),
-}));
-
-vi.mock('~/components/deploy/GitLabDeploy.client', () => ({
-  useGitLabDeploy: () => ({
-    isDeploying: false,
-    handleGitLabDeploy: vi.fn(),
-  }),
+vi.mock('~/lib/deploy/runOneClickDeploy', () => ({
+  runOneClickDeploy: vi.fn(),
 }));
 
 describe('DeployButton', () => {
@@ -46,14 +20,17 @@ describe('DeployButton', () => {
     expect(screen.getByText(/Publish|Deploy/)).toBeTruthy();
   });
 
-  it('lists Vercel and Netlify in the deploy menu', async () => {
+  it('lists Indobase publish options and omits third-party deploys', async () => {
     render(<DeployButton />);
 
     // Radix triggers open on pointer/keyboard events, not synthetic clicks, in jsdom.
     const trigger = screen.getByRole('button', { name: 'More deploy options' });
     fireEvent.keyDown(trigger, { key: 'Enter' });
 
-    expect(await screen.findByText('Deploy to Vercel')).toBeTruthy();
-    expect(await screen.findByText('No Netlify Account Connected')).toBeTruthy();
+    expect(await screen.findByText('Publish to Indobase subdomain')).toBeTruthy();
+    expect(screen.queryByText(/Vercel/i)).toBeNull();
+    expect(screen.queryByText(/Netlify/i)).toBeNull();
+    expect(screen.queryByText(/Deploy to GitHub/i)).toBeNull();
+    expect(screen.queryByText(/GitLab/i)).toBeNull();
   });
 });
