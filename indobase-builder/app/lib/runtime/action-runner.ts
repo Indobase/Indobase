@@ -200,37 +200,13 @@ export class ActionRunner {
           break;
         }
         case 'start': {
-          // making the start app non blocking
-
-          this.#runStartAction(action)
-            .then(() => this.#updateAction(actionId, { status: 'complete' }))
-            .catch((err: Error) => {
-              if (action.abortSignal.aborted) {
-                return;
-              }
-
-              this.#updateAction(actionId, { status: 'failed', error: 'Action failed' });
-              logger.error(`[${action.type}]:Action failed\n\n`, err);
-
-              if (!(err instanceof ActionCommandError)) {
-                return;
-              }
-
-              this.onAlert?.({
-                type: 'error',
-                title: 'Dev Server Failed',
-                description: err.header,
-                content: err.output,
-              });
-            });
-
           /*
-           * adding a delay to avoid any race condition between 2 start actions
-           * i am up for a better approach
+           * executeCommand() detaches long-running dev servers, so awaiting this does not wait
+           * for process exit. It waits for the WebContainer preview port, keeping the global
+           * action queue and finalizeCodegen aligned with actual preview readiness.
            */
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-
-          return;
+          await this.#runStartAction(action);
+          break;
         }
       }
 
@@ -343,6 +319,7 @@ export class ActionRunner {
         logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
         action.abort();
       },
+
       // Dev servers never emit an exit OSC; do not kill them with the shell backstop.
       { exitTimeoutMs: 0 },
     );
@@ -465,10 +442,8 @@ export class ActionRunner {
   }
 
   async #awaitWebContainer(): Promise<WebContainer> {
-    const { getWebcontainerWithRetry } = await import('~/lib/webcontainer');
-
     return Promise.race([
-      getWebcontainerWithRetry(3),
+      this.#webcontainer,
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(

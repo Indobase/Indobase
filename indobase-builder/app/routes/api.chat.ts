@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { createDataStream, formatDataStreamPart, generateId } from 'ai';
+import { createDataStream, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
@@ -19,9 +19,7 @@ import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
   runPlannerPhase,
-  runScopingPhase,
 } from '~/lib/.server/orchestration/orchestrate-chat';
-import type { ClarifyingQuestion } from '~/lib/.server/orchestration/planner';
 import {
   buildStudioBillingUrl,
   consumeBuilderPromptFromStudio,
@@ -31,19 +29,9 @@ import {
 import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
+import { inspectOneShotBuildResponse } from '~/lib/indobase/generation-contract';
 
 const logger = createScopedLogger('api.chat');
-
-function formatClarifyingQuestionsMessage(questions: ClarifyingQuestion[]): string {
-  const rendered = questions
-    .map((q, i) => {
-      const suggestions = q.suggestions?.length ? `\n   Options: ${q.suggestions.join(' · ')}` : '';
-      return `${i + 1}. ${q.question}${suggestions}`;
-    })
-    .join('\n');
-
-  return `Before I build this, I need a couple of details:\n\n${rendered}\n\nReply with your choices (or free-form answers) and I'll start building right away.`;
-}
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -243,40 +231,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
          */
         const isFirstBuildTurn = !processedMessages.some((message) => message.role === 'assistant');
 
-        if (useMultiAgent && isFirstBuildTurn && !isToolContinuationRound) {
-          const scoping = await runScopingPhase({
-            messages: processedMessages,
-            dataStream,
-            progressOrder,
-            env: context.cloudflare?.env,
-            apiKeys,
-            providerSettings,
-          });
-
-          progressCounter = progressOrder.value;
-          streamRecovery.updateActivity();
-
-          if (scoping.needsClarification) {
-            /*
-             * Short-circuit: do NOT run planner/summary/context/coder. Asking the model to "not
-             * write code" still burned a full codegen budget and left half-written files with the
-             * questions buried in an annotation the UI never rendered. Emit the questions as the
-             * assistant message and stop — the next user reply starts a real build.
-             */
-            const questionText = formatClarifyingQuestionsMessage(scoping.questions);
-            dataStream.write(formatDataStreamPart('text', questionText));
-            dataStream.writeData({
-              type: 'progress',
-              label: 'response',
-              status: 'complete',
-              order: progressCounter++,
-              message: 'Waiting for your answers',
-            } satisfies ProgressAnnotation);
-            streamRecovery.stop();
-            return;
-          }
-        }
-
         if (useMultiAgent && !isToolContinuationRound) {
           const plannerResult = await runPlannerPhase({
             messages: processedMessages,
@@ -446,6 +400,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         }
 
         let continueCount = 0;
+        let coderResponseContent = '';
 
         const options: StreamingOptions = {
           indobaseConnection: indobaseBackend
@@ -465,8 +420,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             });
           },
           onFinish: async ({ text: content, finishReason, usage }) => {
+            coderResponseContent += content ?? '';
+
+            const oneShotInspection = isFirstBuildTurn
+              ? inspectOneShotBuildResponse(coderResponseContent)
+              : { complete: true, issues: [] };
             logger.info(
-              `Coder stream finished: reason=${finishReason}, chars=${content?.length ?? 0}, incompleteArtifact=${isIncompleteBoltArtifact(content ?? '')}`,
+              `Coder stream finished: reason=${finishReason}, chars=${content?.length ?? 0}, incompleteArtifact=${isIncompleteBoltArtifact(coderResponseContent)}, oneShotComplete=${oneShotInspection.complete}`,
             );
             logger.debug('usage', JSON.stringify(usage));
 
@@ -482,7 +442,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
              * we leave half-written Navbar.jsx files and never continue — the build just stops.
              */
             const needsContinue =
-              finishReason === 'length' || isIncompleteBoltArtifact(content ?? '');
+              finishReason === 'length' ||
+              isIncompleteBoltArtifact(coderResponseContent) ||
+              !oneShotInspection.complete;
 
             if (!needsContinue) {
               if (useMultiAgent) {
@@ -543,7 +505,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             const switchesLeft = MAX_RESPONSE_SEGMENTS - continueCount;
 
             logger.info(
-              `Continuing truncated coder output (${continueCount}/${MAX_RESPONSE_SEGMENTS}, reason=${finishReason}, ${switchesLeft} segments left)`,
+              `Continuing coder output (${continueCount}/${MAX_RESPONSE_SEGMENTS}, reason=${finishReason}, issues=${oneShotInspection.issues.join(', ') || 'truncated artifact'}, ${switchesLeft} segments left)`,
             );
 
             const lastUserMessage = orchestratedMessages.filter((x) => x.role == 'user').slice(-1)[0];
@@ -552,7 +514,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             orchestratedMessages.push({
               id: generateId(),
               role: 'user',
-              content: `[Model: ${model}]\n\n[Provider: ${provider}]\n\n${CONTINUE_PROMPT}`,
+              content: `[Model: ${model}]\n\n[Provider: ${provider}]\n\n${
+                oneShotInspection.complete
+                  ? CONTINUE_PROMPT
+                  : `${CONTINUE_PROMPT}
+The initial build is not runnable yet: ${oneShotInspection.issues.join(', ')}. Add a bolt artifact containing every missing execution action. Do not repeat files that are already complete.`
+              }`,
             });
 
             const result = await streamText({

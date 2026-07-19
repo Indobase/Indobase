@@ -53,6 +53,7 @@ import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
+import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 
 const logger = createScopedLogger('Chat');
 const getAllowedChatProviders = () =>
@@ -261,13 +262,22 @@ export const ChatImpl = memo(
       onError: (e) => {
         setFakeLoading(false);
         streamingState.set(false);
+        failInitialBuild();
         handleError(e, 'chat');
       },
       onFinish: (message, response) => {
         const usage = response.usage;
+        const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
         setData(undefined);
-        setFakeLoading(false);
-        streamingState.set(false);
+
+        if (isInitialBuild) {
+          initialBuildLifecycle.set('finalizing');
+          setFakeLoading(true);
+          streamingState.set(true);
+        } else if (chatMode !== 'build') {
+          setFakeLoading(false);
+          streamingState.set(false);
+        }
 
         if (usage) {
           console.log('Token usage:', usage);
@@ -287,13 +297,33 @@ export const ChatImpl = memo(
 
         orchestratorChatRetryRef.current = 0;
 
-        // Flush pending file actions and finalize codegen; no autonomous tester/deployer runs.
+        // Keep build mode active until all actions finish and the actual preview iframe loads.
         void (async () => {
           try {
             await processSampledMessages.flush();
-            await finalizeCodegen();
+
+            if (chatMode === 'build') {
+              await finalizeCodegen();
+
+              if (isInitialBuild) {
+                initialBuildLifecycle.set('preview-ready');
+              }
+            }
           } catch (error) {
             logger.error('Post-codegen finalize failed', error);
+            failInitialBuild();
+            setLlmErrorAlert({
+              type: 'error',
+              title: 'Preview did not load',
+              description:
+                error instanceof Error
+                  ? error.message
+                  : 'The generated files finished, but the WebContainer preview did not load.',
+              errorType: 'unknown',
+            });
+          } finally {
+            setFakeLoading(false);
+            streamingState.set(false);
           }
         })();
       },
@@ -342,6 +372,9 @@ export const ChatImpl = memo(
           const preamble = hasIndobaseStudioHandoff(indobaseConn)
             ? `${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`
             : '';
+          if (chatMode === 'build') {
+            beginInitialBuild();
+          }
           append({
             role: 'user',
             content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${preamble}${prompt}`,
@@ -352,7 +385,7 @@ export const ChatImpl = memo(
 
       setInput(prompt);
       textareaRef.current?.focus();
-    }, [append, chatStarted, model, provider, searchParams, setInput, setSearchParams, indobaseConn]);
+    }, [append, chatMode, chatStarted, model, provider, searchParams, setInput, setSearchParams, indobaseConn]);
 
     const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } = usePromptEnhancer();
     const { parsedMessages, parseMessages } = useMessageParser();
@@ -499,6 +532,7 @@ export const ChatImpl = memo(
       stop();
       setFakeLoading(false);
       streamingState.set(false);
+      failInitialBuild();
       void workbenchStore.abortAllActions();
 
       logStore.logProvider('Chat response aborted', {
@@ -920,6 +954,10 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
 
       if (!chatStarted) {
         setFakeLoading(true);
+
+        if (chatMode === 'build') {
+          beginInitialBuild();
+        }
 
         try {
         // Always build from the user prompt via the model — no starter-template import.

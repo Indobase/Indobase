@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { useStore } from '@nanostores/react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import type { BundledLanguage } from 'shiki';
 import { createScopedLogger } from '~/utils/logger';
@@ -9,6 +10,7 @@ import type { Message } from 'ai';
 import styles from './Markdown.module.scss';
 import ThoughtBox from './ThoughtBox';
 import type { ProviderInfo } from '~/types/model';
+import { buildRecommendationsReady } from '~/lib/stores/build-lifecycle';
 
 const logger = createScopedLogger('MarkdownComponent');
 
@@ -26,6 +28,8 @@ interface MarkdownProps {
 export const Markdown = memo(
   ({ children, html = false, limitedMarkdown = false, append, setChatMode, model, provider }: MarkdownProps) => {
     logger.trace('Render');
+
+    const recommendationsReady = useStore(buildRecommendationsReady);
 
     const components = useMemo(() => {
       return {
@@ -88,6 +92,10 @@ export const Markdown = memo(
           }
 
           if (className?.includes('__boltQuickAction__') || dataProps?.dataBoltQuickAction) {
+            if (!recommendationsReady) {
+              return null;
+            }
+
             return <div className="flex items-center gap-2 flex-wrap mt-3.5">{children}</div>;
           }
 
@@ -123,6 +131,10 @@ export const Markdown = memo(
             dataProps?.class?.toString().includes('__boltQuickAction__') ||
             dataProps?.dataBoltQuickAction === 'true'
           ) {
+            if (!recommendationsReady) {
+              return null;
+            }
+
             const type = dataProps['data-type'] || dataProps.dataType;
             const message = dataProps['data-message'] || dataProps.dataMessage;
             const path = dataProps['data-path'] || dataProps.dataPath;
@@ -191,7 +203,7 @@ export const Markdown = memo(
           return <button {...props}>{children}</button>;
         },
       } satisfies Components;
-    }, []);
+    }, [append, model, provider?.name, recommendationsReady, setChatMode]);
 
     return (
       <ReactMarkdown

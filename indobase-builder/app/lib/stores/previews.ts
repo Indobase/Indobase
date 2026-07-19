@@ -11,6 +11,7 @@ declare global {
 export interface PreviewInfo {
   port: number;
   ready: boolean;
+  loaded: boolean;
   baseUrl: string;
 }
 
@@ -192,12 +193,17 @@ export class PreviewsStore {
       const previews = this.previews.get();
 
       if (!previewInfo) {
-        previewInfo = { port, ready: type === 'open', baseUrl: url };
+        previewInfo = { port, ready: type === 'open', loaded: false, baseUrl: url };
         this.#availablePreviews.set(port, previewInfo);
         previews.push(previewInfo);
       }
 
       previewInfo.ready = type === 'open';
+
+      if (type !== 'open' || previewInfo.baseUrl !== url) {
+        previewInfo.loaded = false;
+      }
+
       previewInfo.baseUrl = url;
 
       this.previews.set([...previews]);
@@ -270,6 +276,7 @@ export class PreviewsStore {
 
       if (preview) {
         preview.ready = false;
+        preview.loaded = false;
         this.previews.set([...previews]);
 
         requestAnimationFrame(() => {
@@ -294,6 +301,43 @@ export class PreviewsStore {
         this.broadcastFileChange(previewId);
       }
     }
+  }
+
+  markPreviewLoaded(baseUrl: string) {
+    const previews = this.previews.get();
+    const preview = previews.find((candidate) => candidate.baseUrl === baseUrl);
+
+    if (!preview || preview.loaded) {
+      return;
+    }
+
+    preview.loaded = true;
+    preview.ready = true;
+    this.previews.set([...previews]);
+  }
+
+  async waitForPreviewLoaded(timeoutMs = 120_000): Promise<PreviewInfo> {
+    const current = this.previews.get().find((preview) => preview.ready && preview.loaded);
+
+    if (current) {
+      return current;
+    }
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unsubscribe();
+        reject(new Error('The dev server started, but its WebContainer preview did not finish loading.'));
+      }, timeoutMs);
+      const unsubscribe = this.previews.listen((previews) => {
+        const loaded = previews.find((preview) => preview.ready && preview.loaded);
+
+        if (loaded) {
+          clearTimeout(timer);
+          unsubscribe();
+          resolve(loaded);
+        }
+      });
+    });
   }
 }
 

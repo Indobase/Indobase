@@ -34,6 +34,19 @@ describe('StreamingMessageParser', () => {
     });
   });
 
+  describe('quick actions', () => {
+    it('buffers an incomplete recommendation group until its closing tag arrives', () => {
+      const parser = new StreamingMessageParser();
+      const partial =
+        'Done.<bolt-quick-actions><bolt-quick-action type="message" message="Polish it">Polish it</bolt-quick-action>';
+
+      expect(parser.parse('quick_actions', partial)).toBe('Done.');
+      expect(parser.parse('quick_actions', `${partial}</bolt-quick-actions>`)).toContain(
+        'data-bolt-quick-action="true"',
+      );
+    });
+  });
+
   describe('invalid or incomplete artifacts', () => {
     it.each<[string | string[], ExpectedResult | string]>([
       ['Foo bar <b', 'Foo bar '],

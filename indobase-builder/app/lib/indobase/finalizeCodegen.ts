@@ -52,10 +52,10 @@ async function ensureStaticDevServer(): Promise<void> {
 }
 
 /**
- * Flush streamed file actions, scaffold static HTML projects, and refresh previews.
- * Runs after each assistant response so preview/publish work without manual steps.
+ * Flush streamed actions, scaffold static HTML projects, and wait until the generated app has
+ * actually loaded in the WebContainer preview iframe.
  */
-export async function finalizeCodegen(): Promise<{ scaffolded: boolean }> {
+export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewUrl: string }> {
   await workbenchStore.flushPendingActions();
 
   const scaffolded = await ensureProjectScaffold();
@@ -66,5 +66,7 @@ export async function finalizeCodegen(): Promise<{ scaffolded: boolean }> {
 
   workbenchStore.refreshAllPreviews();
 
-  return { scaffolded };
+  const preview = await workbenchStore.waitForPreviewLoaded();
+
+  return { scaffolded, previewUrl: preview.baseUrl };
 }

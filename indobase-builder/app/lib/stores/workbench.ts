@@ -99,6 +99,14 @@ export class WorkbenchStore {
     this.#previewsStore.refreshAllPreviews();
   }
 
+  markPreviewLoaded(baseUrl: string) {
+    this.#previewsStore.markPreviewLoaded(baseUrl);
+  }
+
+  waitForPreviewLoaded(timeoutMs?: number) {
+    return this.#previewsStore.waitForPreviewLoaded(timeoutMs);
+  }
+
   get previews() {
     return this.#previewsStore.previews;
   }

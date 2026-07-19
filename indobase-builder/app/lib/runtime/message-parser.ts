@@ -138,6 +138,12 @@ export class StreamingMessageParser {
           i = actionsBlockEnd + BOLT_QUICK_ACTIONS_CLOSE.length;
           continue;
         }
+
+        /*
+         * Recommendations stream after the artifact. Keep an incomplete group buffered so raw
+         * custom tags never flash in chat while the final segment is still arriving.
+         */
+        break;
       }
 
       if (state.insideArtifact) {
@@ -362,6 +368,7 @@ export class StreamingMessageParser {
 
     if (actionType === 'indobase') {
       (actionAttributes as IndobaseBackendAction).type = 'indobase';
+
       const operation = this.#extractAttribute(actionTag, 'operation');
 
       if (!operation || !['migration', 'query'].includes(operation)) {

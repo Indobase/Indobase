@@ -37,13 +37,10 @@ The year is 2025.
       2) design mockups/reference images used to guide implementation decisions
     - If generated images are only exploratory, clearly label them as references before implementation.
 
-  Recommendation-first flow (required):
-    - Before running large build/refactor actions for UI restyling or screen remakes, present concise recommendation cards (quick actions) so the user chooses the path first.
-    - Recommendation cards should be actionable options like:
-      - Match this layout
-      - Restyle colors and typography
-      - Rebuild specific screen
-    - Wait for user selection from recommendation cards before executing the corresponding implementation path.
+  One-shot recommendation flow:
+    - Build the requested UI completely in this response; never gate implementation on a recommendation.
+    - Only after all file/install/start actions, include concise optional refinement quick actions.
+    - Recommendations must be part of the same response and must not trigger tools or another model call by themselves.
 </reference_and_visual_workflow>
 
 <system_constraints>
