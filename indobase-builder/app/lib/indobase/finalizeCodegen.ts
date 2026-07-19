@@ -1,5 +1,6 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
+import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { createScopedLogger } from '~/utils/logger';
@@ -40,17 +41,6 @@ async function packageUsesVite(): Promise<boolean> {
         packageJson.devDependencies?.vite ||
         Object.values(packageJson.scripts ?? {}).some((script) => /\bvite\b/.test(script)),
     );
-  } catch {
-    return false;
-  }
-}
-
-async function nodeModulesPresent(): Promise<boolean> {
-  try {
-    const container = await webcontainer;
-    const entries = await container.fs.readdir('node_modules');
-
-    return entries.length > 0;
   } catch {
     return false;
   }
@@ -112,9 +102,14 @@ async function ensureDevServerIfNeeded(): Promise<void> {
   }
 
   try {
-    if (!(await nodeModulesPresent())) {
-      logger.info('No node_modules found after codegen; running npm install before preview start');
-      await runArtifactAction({ type: 'shell', content: 'npm install' }, 'ensure-install');
+    const container = await webcontainer;
+    const installResult = await ensureNpmDependencies(container);
+
+    if (!installResult.success) {
+      throw new Error(
+        installResult.error ||
+          'npm install did not produce node_modules/.bin/vite. Cannot start the preview.',
+      );
     }
 
     logger.info('No preview yet after codegen; starting npm run dev');

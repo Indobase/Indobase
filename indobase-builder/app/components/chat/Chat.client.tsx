@@ -117,10 +117,23 @@ const processSampledMessages = createSampler(
     parseMessages(messages, isLoading);
 
     if (messages.length > initialMessages.length) {
-      storeMessageHistory(messages).catch((error) => toast.error(error.message));
+      if (isLoading) {
+        // IndexedDB + full file snapshots every 50ms freeze the tab during large streams.
+        persistSampledHistory(messages, storeMessageHistory);
+      } else {
+        void persistSampledHistory.flush();
+        storeMessageHistory(messages).catch((error) => toast.error(error.message));
+      }
     }
   },
   50,
+);
+
+const persistSampledHistory = createSampler(
+  (messages: Message[], storeMessageHistory: (messages: Message[]) => Promise<void>) => {
+    storeMessageHistory(messages).catch((error) => toast.error(error.message));
+  },
+  2000,
 );
 
 interface ChatProps {
@@ -558,6 +571,7 @@ export const ChatImpl = memo(
 
         try {
           await processSampledMessages.flush();
+          await persistSampledHistory.flush();
 
           if (chatMode !== 'build') {
             return true;

@@ -73,25 +73,50 @@ export function useMessageParser() {
       messageParser.reset();
     }
 
-    for (const [index, message] of messages.entries()) {
-      if (message.role === 'assistant' || message.role === 'user') {
-        try {
-          const newParsedContent = messageParser.parse(message.id, extractTextContent(message));
-          setParsedMessages((prevParsed) => ({
-            ...prevParsed,
-            [index]: !reset ? (prevParsed[index] || '') + newParsedContent : newParsedContent,
-          }));
-        } catch (error) {
-          logger.error('Failed to parse assistant message', error);
-          setParsedMessages((prevParsed) => ({
-            ...prevParsed,
-            [index]:
-              (prevParsed[index] || '') +
-              '\n\n_Indobase Builder could not render part of this response. Start a new chat or retry your prompt._\n',
-          }));
+    /*
+     * While streaming, only the last assistant message grows. Re-walking the entire transcript
+     * and calling setState per message was a main-thread killer on multi-file CRM builds.
+     */
+    const indices = isLoading && messages.length > 0 ? [messages.length - 1] : [...messages.keys()];
+    const chunks: { [key: number]: string } = {};
+    let hasChunk = false;
+
+    for (const index of indices) {
+      const message = messages[index];
+
+      if (!message || (message.role !== 'assistant' && message.role !== 'user')) {
+        continue;
+      }
+
+      try {
+        const newParsedContent = messageParser.parse(message.id, extractTextContent(message));
+
+        if (newParsedContent || reset) {
+          chunks[index] = newParsedContent;
+          hasChunk = true;
         }
+      } catch (error) {
+        logger.error('Failed to parse assistant message', error);
+        chunks[index] =
+          '\n\n_Indobase Builder could not render part of this response. Start a new chat or retry your prompt._\n';
+        hasChunk = true;
       }
     }
+
+    if (!hasChunk) {
+      return;
+    }
+
+    setParsedMessages((prevParsed) => {
+      const next = { ...prevParsed };
+
+      for (const [indexKey, chunk] of Object.entries(chunks)) {
+        const index = Number(indexKey);
+        next[index] = !reset ? (prevParsed[index] || '') + chunk : chunk;
+      }
+
+      return next;
+    });
   }, []);
 
   return { parsedMessages, parseMessages };

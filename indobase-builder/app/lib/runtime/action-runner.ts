@@ -9,7 +9,11 @@ import {
 } from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
-import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
+import {
+  ensureNpmDependencies,
+  isDevStartCommand,
+} from '~/lib/indobase/ensureNpmDependencies';
+import { yieldAfterBatch } from '~/utils/yieldToMain';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { executeIndobaseSql } from '~/lib/indobase/studioSql';
@@ -91,6 +95,7 @@ export class ActionRunner {
   #currentExecutionPromise: Promise<void> = Promise.resolve();
   #shellTerminal: () => BoltShell;
   #activeBuildProcess?: WebContainerProcess;
+  #fileActionCount = 0;
   runnerId = atom<string>(`${Date.now()}`);
   actions: ActionsMap = map({});
   onAlert?: (alert: ActionAlert) => void;
@@ -249,6 +254,23 @@ export class ActionRunner {
     }
   }
 
+  async #ensureToolchainBeforeDevStart(command: string): Promise<void> {
+    if (!isDevStartCommand(command)) {
+      return;
+    }
+
+    const webcontainer = await this.#awaitWebContainer();
+    const installResult = await ensureNpmDependencies(webcontainer);
+
+    if (!installResult.success) {
+      throw new ActionCommandError(
+        'Dependencies Missing',
+        installResult.error ||
+          'npm install did not produce node_modules/.bin/vite (or another toolchain binary). Fix install before starting the preview.',
+      );
+    }
+  }
+
   async #runShellAction(action: ActionState) {
     if (action.type !== 'shell') {
       unreachable('Expected shell action');
@@ -267,6 +289,8 @@ export class ActionRunner {
     if (!shell || !shell.terminal || !shell.process) {
       unreachable('Shell terminal not found');
     }
+
+    await this.#ensureToolchainBeforeDevStart(action.content);
 
     // Pre-validate command for common issues
     const validationResult = await this.#validateShellCommand(action.content);
@@ -326,8 +350,12 @@ export class ActionRunner {
      * fine (it serves the error overlay and HMR-reloads once the repair turn writes fixes), while
      * refusing to start left builds with "No preview available" and nothing to repair against.
      * Health gating lives in finalizeCodegen (syntax + missing-import + Vite transform checks).
+     *
+     * DO gate on a real toolchain install: `npm run dev` with no node_modules/.bin/vite produces
+     * the cryptic `sh: command not found: vite` instead of a recoverable preview.
      */
     const webcontainer = await this.#awaitWebContainer();
+    await this.#ensureToolchainBeforeDevStart(action.content);
 
     const previewAlreadyReady = await this.#hasOpenPreviewPort(webcontainer);
 
@@ -436,6 +464,9 @@ export class ActionRunner {
     await webcontainer.fs.writeFile(relativePath, sanitized.content);
     logger.debug(`File written ${relativePath}`);
 
+    this.#fileActionCount += 1;
+    await yieldAfterBatch(this.#fileActionCount, 4);
+
     const connection = indobaseConnection.get();
 
     if (hasIndobaseStudioHandoff(connection)) {
@@ -524,7 +555,7 @@ export class ActionRunner {
 
     const webcontainer = await this.#webcontainer;
 
-    const installResult = await ensureNpmDependencies();
+    const installResult = await ensureNpmDependencies(webcontainer);
 
     if (!installResult.success) {
       const installError = installResult.error || 'npm install failed before build';
@@ -955,6 +986,12 @@ export class ActionRunner {
         title: 'Permission Denied',
         getMessage: () =>
           `Permission denied for '${firstWord}'.\n\nSuggestion: The file may not be executable. Try 'chmod +x filename' first.`,
+      },
+      {
+        pattern: /command not found:\s*vite|vite:.*not found|Cannot find module ['"]vite['"]/i,
+        title: 'Vite Not Installed',
+        getMessage: () =>
+          `Vite is not available in node_modules/.bin.\n\nSuggestion: Run \`npm install --include=dev\` and confirm package.json lists vite under dependencies or devDependencies before \`npm run dev\`.`,
       },
       {
         pattern: /command not found/,

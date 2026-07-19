@@ -352,8 +352,16 @@ export const Workbench = memo(
     }, [hasPreview]);
 
     useEffect(() => {
+      /*
+       * Rebuilding every CodeMirror document on each streamed file write freezes Chrome on large
+       * CRMs. Upsert already keeps the active document in sync; do a full rebuild when idle.
+       */
+      if (isStreaming || streaming) {
+        return;
+      }
+
       workbenchStore.setDocuments(files);
-    }, [files]);
+    }, [files, isStreaming, streaming]);
 
     const onEditorChange = useCallback<OnEditorChange>((update) => {
       workbenchStore.setCurrentDocumentContent(update.content);

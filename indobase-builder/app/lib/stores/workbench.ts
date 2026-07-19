@@ -604,12 +604,20 @@ export class WorkbenchStore {
 
       this.#upsertInMemoryFile(fullPath, payload.action.content);
 
-      if (this.selectedFile.value !== fullPath) {
-        this.setSelectedFile(fullPath);
-      }
+      /*
+       * Mid-stream: avoid thrashing CodeMirror / file-tree selection on every file write.
+       * Pick the first file once; full document sync resumes when streaming ends.
+       */
+      if (!isStreaming) {
+        if (this.selectedFile.value !== fullPath) {
+          this.setSelectedFile(fullPath);
+        }
 
-      if (this.currentView.value !== 'code') {
-        this.currentView.set('code');
+        if (this.currentView.value !== 'code') {
+          this.currentView.set('code');
+        }
+      } else if (!this.selectedFile.value) {
+        this.setSelectedFile(fullPath);
       }
 
       void artifact.runner.runAction(payload, isStreaming).catch((error) => {
@@ -622,7 +630,6 @@ export class WorkbenchStore {
 
   #upsertInMemoryFile(fullPath: string, content: string) {
     const files = this.#filesStore.files.get();
-    const updates: FileMap = {};
     const relativePath = fullPath.startsWith(`${WORK_DIR}/`)
       ? fullPath.slice(WORK_DIR.length + 1)
       : fullPath.replace(/^\/+/, '');
@@ -633,13 +640,10 @@ export class WorkbenchStore {
     for (let index = 0; index < segments.length - 1; index++) {
       currentPath = `${currentPath}/${segments[index]}`;
 
-      if (!files[currentPath] && !updates[currentPath]) {
-        updates[currentPath] = { type: 'folder' };
+      if (!files[currentPath]) {
+        // Prefer setKey over spreading the whole map for each parent folder.
+        this.#filesStore.files.setKey(currentPath, { type: 'folder' });
       }
-    }
-
-    if (Object.keys(updates).length > 0) {
-      this.#filesStore.files.set({ ...files, ...updates });
     }
 
     this.#filesStore.files.setKey(fullPath, {
