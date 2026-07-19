@@ -13,7 +13,9 @@ import { useCallback, useMemo, useState } from 'react'
 
 export const DATERANGE_LIMITS: { [key: string]: number } = {
   free: 1,
+  basic: 7,
   pro: 7,
+  studio: 28,
   team: 28,
   enterprise: 90,
   platform: 1,

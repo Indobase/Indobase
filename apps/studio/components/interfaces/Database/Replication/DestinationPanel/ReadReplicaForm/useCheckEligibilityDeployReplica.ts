@@ -21,7 +21,7 @@ export const useCheckEligibilityDeployReplica = () => {
   const isAWSProvider = project?.cloud_provider === 'AWS'
   const isWalgEnabled = project?.is_physical_backups_enabled
   const isNotOnHigherPlan = useMemo(
-    () => !['team', 'enterprise', 'platform'].includes(org?.plan.id ?? ''),
+    () => !['studio', 'team', 'enterprise', 'platform'].includes(org?.plan.id ?? ''),
     [org]
   )
   const isProWithSpendCapEnabled = org?.plan.id === 'pro' && !org.usage_billing_enabled

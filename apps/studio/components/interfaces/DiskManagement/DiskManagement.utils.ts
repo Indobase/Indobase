@@ -13,7 +13,7 @@ import {
   ComputeInstanceSize,
   InfraInstanceSize,
 } from './DiskManagement.types'
-import { DISK_LIMITS, DISK_PRICING, DiskType, PLAN_DETAILS } from './ui/DiskManagement.constants'
+import { DISK_LIMITS, DISK_PRICING, DiskType, getPlanDiskDetails } from './ui/DiskManagement.constants'
 
 // Included disk size only applies to primary, not replicas
 export const calculateDiskSizePrice = ({
@@ -33,7 +33,7 @@ export const calculateDiskSizePrice = ({
 }) => {
   const oldPricePerGB = DISK_PRICING[oldStorageType]?.storage ?? 0
   const newPricePerGB = DISK_PRICING[newStorageType]?.storage ?? 0
-  const { includedDiskGB } = PLAN_DETAILS?.[planId as keyof typeof PLAN_DETAILS]
+  const { includedDiskGB } = getPlanDiskDetails(planId)
 
   const oldPrice = Math.max(oldSize - includedDiskGB[oldStorageType], 0) * oldPricePerGB
   const oldPriceReplica = oldSize * 1.25 * oldPricePerGB

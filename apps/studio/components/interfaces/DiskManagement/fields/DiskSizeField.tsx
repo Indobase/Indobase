@@ -14,7 +14,7 @@ import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 import { DiskStorageSchemaType } from '../DiskManagement.schema'
 import { calculateDiskSizePrice } from '../DiskManagement.utils'
 import { BillingChangeBadge } from '../ui/BillingChangeBadge'
-import { DiskType, PLAN_DETAILS } from '../ui/DiskManagement.constants'
+import { DiskType, getPlanDiskDetails } from '../ui/DiskManagement.constants'
 import { DiskManagementDiskSizeReadReplicas } from '../ui/DiskManagementReadReplicas'
 import { DiskSpaceBar } from '../ui/DiskSpaceBar'
 import { DiskTypeRecommendationSection } from '../ui/DiskTypeRecommendationSection'
@@ -72,8 +72,7 @@ export function DiskSizeField({
 
   const planId = org?.plan.id ?? 'free'
 
-  const { includedDiskGB: includedDiskGBMeta } =
-    PLAN_DETAILS?.[planId as keyof typeof PLAN_DETAILS] ?? {}
+  const { includedDiskGB: includedDiskGBMeta } = getPlanDiskDetails(planId)
   const includedDiskGB = includedDiskGBMeta[watchedStorageType]
 
   const diskSizePrice = calculateDiskSizePrice({

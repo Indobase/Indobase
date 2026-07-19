@@ -286,8 +286,8 @@ export const maybeShowUpgradePrompt = (from: string | null | undefined, planId?:
 
   return (
     (day > 1 && planId === 'free') ||
-    (day > 7 && planId === 'pro') ||
-    (day > 28 && planId === 'team') ||
+    (day > 7 && (planId === 'basic' || planId === 'pro')) ||
+    (day > 28 && (planId === 'studio' || planId === 'team')) ||
     (day > 90 && planId === 'enterprise')
   )
 }

@@ -88,18 +88,18 @@ describe('convertToDays', () => {
 
 describe('getAvailableInForDays', () => {
   test('returns all plans for <= 1 day', () => {
-    expect(getAvailableInForDays(0.5)).toEqual(['free', 'pro', 'team', 'enterprise', 'platform'])
-    expect(getAvailableInForDays(1)).toEqual(['free', 'pro', 'team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(0.5)).toEqual(['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(1)).toEqual(['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform'])
   })
 
   test('returns pro+ for <= 7 days', () => {
-    expect(getAvailableInForDays(2)).toEqual(['pro', 'team', 'enterprise', 'platform'])
-    expect(getAvailableInForDays(7)).toEqual(['pro', 'team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(2)).toEqual(['basic', 'pro', 'studio', 'team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(7)).toEqual(['basic', 'pro', 'studio', 'team', 'enterprise', 'platform'])
   })
 
   test('returns team+ for > 7 days', () => {
-    expect(getAvailableInForDays(8)).toEqual(['team', 'enterprise', 'platform'])
-    expect(getAvailableInForDays(30)).toEqual(['team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(8)).toEqual(['studio', 'team', 'enterprise', 'platform'])
+    expect(getAvailableInForDays(30)).toEqual(['studio', 'team', 'enterprise', 'platform'])
   })
 })
 
@@ -123,10 +123,10 @@ describe('generateDynamicHelper', () => {
 
   test('generates helper with correct availableIn based on time range', () => {
     const minuteHelper = generateDynamicHelper(30, 'minute')
-    expect(minuteHelper.availableIn).toEqual(['free', 'pro', 'team', 'enterprise', 'platform'])
+    expect(minuteHelper.availableIn).toEqual(['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform'])
 
     const dayHelper = generateDynamicHelper(14, 'day')
-    expect(dayHelper.availableIn).toEqual(['team', 'enterprise', 'platform'])
+    expect(dayHelper.availableIn).toEqual(['studio', 'team', 'enterprise', 'platform'])
   })
 
   test('calcFrom returns correct ISO string', () => {

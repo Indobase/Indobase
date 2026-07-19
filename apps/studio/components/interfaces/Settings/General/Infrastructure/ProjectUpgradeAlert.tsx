@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { useFlag, useParams } from 'common'
-import { PLAN_DETAILS } from 'components/interfaces/DiskManagement/ui/DiskManagement.constants'
+import { getPlanDiskDetails } from 'components/interfaces/DiskManagement/ui/DiskManagement.constants'
 import { Markdown } from 'components/interfaces/Markdown'
 import { extractPostgresVersionDetails } from 'components/interfaces/ProjectCreation/PostgresVersionSelector'
 import { useDiskAttributesQuery } from 'data/config/disk-attributes-query'
@@ -59,7 +59,7 @@ export const ProjectUpgradeAlert = () => {
   const planId = org?.plan.id ?? 'free'
 
   const { data: diskAttributes } = useDiskAttributesQuery({ projectRef: ref })
-  const { includedDiskGB: includedDiskGBMeta } = PLAN_DETAILS[planId]
+  const { includedDiskGB: includedDiskGBMeta } = getPlanDiskDetails(planId)
   const includedDiskGB = includedDiskGBMeta[diskAttributes?.attributes.type ?? 'gp3']
   const isDiskSizeUpdated = diskAttributes?.attributes.size_gb !== includedDiskGB
 

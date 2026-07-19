@@ -2,7 +2,9 @@ import type { ChartIntervals } from 'types'
 
 export const LOG_RETENTION = {
   free: 1,
+  basic: 7,
   pro: 7,
+  studio: 28,
   team: 28,
   enterprise: 90,
   platform: 1,
@@ -15,7 +17,7 @@ export const CHART_INTERVALS: ChartIntervals[] = [
     startValue: 1,
     startUnit: 'hour',
     format: 'MMM D, h:mma',
-    availableIn: ['free', 'pro', 'team', 'enterprise', 'platform'],
+    availableIn: ['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform'],
   },
   {
     key: '1day',
@@ -23,7 +25,7 @@ export const CHART_INTERVALS: ChartIntervals[] = [
     startValue: 24,
     startUnit: 'hour',
     format: 'MMM D, ha',
-    availableIn: ['free', 'pro', 'team', 'enterprise', 'platform'],
+    availableIn: ['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform'],
   },
   {
     key: '7day',
@@ -31,6 +33,6 @@ export const CHART_INTERVALS: ChartIntervals[] = [
     startValue: 7,
     startUnit: 'day',
     format: 'MMM D',
-    availableIn: ['pro', 'team', 'enterprise'],
+    availableIn: ['basic', 'pro', 'studio', 'team', 'enterprise'],
   },
 ]

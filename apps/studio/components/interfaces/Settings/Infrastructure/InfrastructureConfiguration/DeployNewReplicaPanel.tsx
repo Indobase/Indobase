@@ -79,7 +79,7 @@ const DeployNewReplicaPanel = ({
   const { data: diskConfiguration } = useDiskAttributesQuery({ projectRef })
 
   const isNotOnHigherPlan = useMemo(
-    () => !['team', 'enterprise', 'platform'].includes(org?.plan.id ?? ''),
+    () => !['studio', 'team', 'enterprise', 'platform'].includes(org?.plan.id ?? ''),
     [org]
   )
   const { data: allOverdueInvoices } = useOverdueInvoicesQuery({

@@ -54,10 +54,17 @@ interface PlanDetails {
 
 export const PLAN_DETAILS: Record<PlanId, PlanDetails> = {
   free: { includedDiskGB: { gp3: 1, io2: 0 } },
+  basic: { includedDiskGB: { gp3: 1, io2: 0 } },
   pro: { includedDiskGB: { gp3: 8, io2: 0 } },
+  studio: { includedDiskGB: { gp3: 8, io2: 0 } },
   team: { includedDiskGB: { gp3: 8, io2: 0 } },
   enterprise: { includedDiskGB: { gp3: 8, io2: 0 } },
   platform: { includedDiskGB: { gp3: 8, io2: 0 } },
+}
+
+/** Never crash on unknown/legacy plan ids — fall back to Free disk metadata. */
+export function getPlanDiskDetails(planId: string | null | undefined): PlanDetails {
+  return PLAN_DETAILS[planId as PlanId] ?? PLAN_DETAILS.free
 }
 
 export const RESTRICTED_COMPUTE_FOR_IOPS_ON_GP3 = ['ci_nano', 'ci_micro', 'ci_small', 'ci_medium']

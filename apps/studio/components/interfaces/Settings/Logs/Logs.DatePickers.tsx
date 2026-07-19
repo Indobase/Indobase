@@ -58,9 +58,9 @@ export const parseCustomInput = (input: string): ParsedCustomInput => {
 }
 
 export const getAvailableInForDays = (days: number): PlanId[] => {
-  if (days <= 1) return ['free', 'pro', 'team', 'enterprise', 'platform']
-  if (days <= 7) return ['pro', 'team', 'enterprise', 'platform']
-  return ['team', 'enterprise', 'platform']
+  if (days <= 1) return ['free', 'basic', 'pro', 'studio', 'team', 'enterprise', 'platform']
+  if (days <= 7) return ['basic', 'pro', 'studio', 'team', 'enterprise', 'platform']
+  return ['studio', 'team', 'enterprise', 'platform']
 }
 
 export const convertToDays = (value: number, unit: Unit): number => {

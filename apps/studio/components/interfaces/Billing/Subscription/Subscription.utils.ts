@@ -1,4 +1,5 @@
 import type { OrgSubscription, PlanId, ProjectSelectedAddon } from 'data/subscriptions/types'
+import { getPlanChangeType as getEntitlementsPlanChangeType } from 'lib/api/saas/plan-entitlements'
 import { IS_SAAS } from 'lib/constants'
 
 export const getAddons = (selectedAddons: ProjectSelectedAddon[]) => {
@@ -35,51 +36,17 @@ export const billingPartnerLabel = (billingPartner?: string) => {
 
 type PlanChangeType = 'upgrade' | 'downgrade' | 'none'
 
+/**
+ * Rank-based so every PlanId (including basic/studio and legacy team) is handled —
+ * unknown plans rank as free rather than crashing or mis-reporting.
+ */
 export const getPlanChangeType = (
   fromPlan: PlanId | undefined,
   toPlan: PlanId | undefined
 ): PlanChangeType => {
-  const planChangeTypes: Record<PlanId, Record<PlanId, PlanChangeType>> = {
-    free: {
-      free: 'none',
-      pro: 'upgrade',
-      team: 'upgrade',
-      enterprise: 'upgrade',
-      platform: 'upgrade',
-    },
-    pro: {
-      free: 'downgrade',
-      pro: 'none',
-      team: 'upgrade',
-      enterprise: 'upgrade',
-      platform: 'upgrade',
-    },
-    team: {
-      free: 'downgrade',
-      pro: 'downgrade',
-      team: 'none',
-      enterprise: 'upgrade',
-      platform: 'upgrade',
-    },
-    enterprise: {
-      free: 'downgrade',
-      pro: 'downgrade',
-      team: 'downgrade',
-      enterprise: 'none',
-      platform: 'upgrade',
-    },
-    platform: {
-      free: 'downgrade',
-      pro: 'downgrade',
-      team: 'downgrade',
-      enterprise: 'downgrade',
-      platform: 'none',
-    },
-  }
-
   if (!fromPlan || !toPlan) {
     return 'none'
   }
 
-  return planChangeTypes[fromPlan]?.[toPlan] ?? 'none'
+  return getEntitlementsPlanChangeType(fromPlan, toPlan)
 }
