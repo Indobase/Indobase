@@ -1,16 +1,27 @@
 import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { path as nodePath } from '~/utils/path';
 import { atom, map, type MapStore } from 'nanostores';
-import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact, sanitizeFileAction, toWorkdirRelativePath } from '~/lib/indobase/sanitizeGeneratedArtifact';
+import {
+  resolveGeneratedFileArtifact,
+  sanitizeGeneratedArtifact,
+  sanitizeFileAction,
+  toWorkdirRelativePath,
+} from '~/lib/indobase/sanitizeGeneratedArtifact';
 import { resolveMigrationFilePath } from '~/lib/indobase/migrationPath';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
-import { assertGeneratedSourcesValid } from '~/lib/indobase/generated-code-validation';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { executeIndobaseSql } from '~/lib/indobase/studioSql';
 import { indobaseConnection } from '~/lib/stores/indobase-connection';
-import type { ActionAlert, BoltAction, DeployAlert, FileHistory, IndobaseBackendAction, IndobaseBackendAlert } from '~/types/actions';
+import type {
+  ActionAlert,
+  BoltAction,
+  DeployAlert,
+  FileHistory,
+  IndobaseBackendAction,
+  IndobaseBackendAlert,
+} from '~/types/actions';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 import type { ActionCallbackData } from './message-parser';
@@ -310,8 +321,13 @@ export class ActionRunner {
       unreachable('Shell terminal not found');
     }
 
+    /*
+     * Do NOT hard-gate the start action on source validation: booting Vite with broken sources is
+     * fine (it serves the error overlay and HMR-reloads once the repair turn writes fixes), while
+     * refusing to start left builds with "No preview available" and nothing to repair against.
+     * Health gating lives in finalizeCodegen (syntax + missing-import + Vite transform checks).
+     */
     const webcontainer = await this.#awaitWebContainer();
-    await assertGeneratedSourcesValid(webcontainer.fs as Parameters<typeof assertGeneratedSourcesValid>[0]);
 
     const previewAlreadyReady = await this.#hasOpenPreviewPort(webcontainer);
 
@@ -421,12 +437,16 @@ export class ActionRunner {
     logger.debug(`File written ${relativePath}`);
 
     const connection = indobaseConnection.get();
+
     if (hasIndobaseStudioHandoff(connection)) {
       await this.#ensureProjectEnvFile(webcontainer, connection);
     }
   }
 
-  async #ensureProjectEnvFile(webcontainer: WebContainer, connection: NonNullable<ReturnType<typeof indobaseConnection.get>>) {
+  async #ensureProjectEnvFile(
+    webcontainer: WebContainer,
+    connection: NonNullable<ReturnType<typeof indobaseConnection.get>>,
+  ) {
     try {
       await seedProjectEnvIfMissing(
         (filePath, content) => webcontainer.fs.writeFile(filePath, content),
@@ -450,9 +470,7 @@ export class ActionRunner {
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(
-            new Error(
-              'WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).',
-            ),
+            new Error('WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).'),
           );
         }, 120_000);
       }),
@@ -647,10 +665,7 @@ export class ActionRunner {
 
     switch (operation) {
       case 'migration': {
-        const sanitizedPath = sanitizeGeneratedArtifact(
-          resolveMigrationFilePath(filePath),
-          content ?? '',
-        ).filePath;
+        const sanitizedPath = sanitizeGeneratedArtifact(resolveMigrationFilePath(filePath), content ?? '').filePath;
 
         this.onIndobaseBackendAlert?.({
           type: 'info',
@@ -671,7 +686,10 @@ export class ActionRunner {
 
         if (hasIndobaseStudioHandoff(connection) && content?.trim()) {
           try {
-            const migrationName = sanitizedPath.split('/').pop()?.replace(/\.sql$/i, '');
+            const migrationName = sanitizedPath
+              .split('/')
+              .pop()
+              ?.replace(/\.sql$/i, '');
             await executeIndobaseSql({
               connection,
               query: content,
@@ -714,6 +732,7 @@ export class ActionRunner {
           content,
           source: 'indobase',
         });
+
         return { success: false };
       }
     }

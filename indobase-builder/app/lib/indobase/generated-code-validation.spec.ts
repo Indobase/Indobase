@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  findMissingLocalImportDiagnostics,
   validateGeneratedSource,
   validateGeneratedSources,
   verifyViteSourceTransforms,
@@ -61,6 +62,74 @@ return (
       'src/card.jsx': 'export const Card = () => <article>Card</article>;',
       'src/value.ts': 'export const value: number = 42;',
       'src/App.tsx': 'export function App(): JSX.Element { return <main>Ready</main>; }',
+    });
+
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('flags an incomplete scaffold where App imports a component that was never generated', () => {
+    const diagnostics = findMissingLocalImportDiagnostics({
+      'src/App.tsx': `import Hero from './components/Hero';
+import Navbar from './components/Navbar';
+import JuiceCards from './components/JuiceCards';
+import ContactForm from './components/ContactForm';
+
+export default function App() {
+  return (
+    <main>
+      <Navbar />
+      <Hero />
+      <JuiceCards />
+      <ContactForm />
+    </main>
+  );
+}`,
+      'src/components/Hero.tsx': 'export default function Hero() { return <section>Hero</section>; }',
+      'src/components/Navbar.tsx': 'export default function Navbar() { return <nav>Nav</nav>; }',
+    });
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        filePath: 'src/App.tsx',
+        message: expect.stringContaining('./components/JuiceCards'),
+        line: 3,
+        source: 'structure',
+      }),
+      expect.objectContaining({
+        filePath: 'src/App.tsx',
+        message: expect.stringContaining('./components/ContactForm'),
+        line: 4,
+        source: 'structure',
+      }),
+    ]);
+  });
+
+  it('resolves extensionless, explicit-extension, index, and parent-relative imports', () => {
+    const diagnostics = findMissingLocalImportDiagnostics({
+      'src/App.tsx': `import Hero from './components/Hero';
+import { helpers } from './lib/helpers.ts';
+import Cards from './components/cards';
+export { default as Footer } from './components/Footer.jsx';`,
+      'src/components/Hero.tsx': 'export default function Hero() { return <section />; }',
+      'src/components/Footer.jsx': 'export default function Footer() { return <footer />; }',
+      'src/components/cards/index.tsx': 'export default function Cards() { return <div />; }',
+      'src/lib/helpers.ts': 'export const helpers = {};',
+      'src/components/cards/Card.tsx': `import type { CardProps } from '../../types';`,
+      'src/types.ts': 'export type CardProps = { name: string };',
+    });
+
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('ignores package imports and non-source assets', () => {
+    const diagnostics = findMissingLocalImportDiagnostics({
+      'src/main.tsx': `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import '@fontsource/inter';
+import './index.css';
+import logoUrl from './assets/logo.svg';
+import App from './App';`,
+      'src/App.tsx': 'export default function App() { return <main />; }',
     });
 
     expect(diagnostics).toEqual([]);

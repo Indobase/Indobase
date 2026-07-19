@@ -9,7 +9,14 @@ import {
 import { z } from 'zod';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
-import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, VISION_MODEL, WORK_DIR } from '~/utils/constants';
+import {
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER,
+  MODIFICATIONS_TAG_NAME,
+  PROVIDER_LIST,
+  VISION_MODEL,
+  WORK_DIR,
+} from '~/utils/constants';
 import { OPENROUTER_FREE_CODING_MODELS } from '~/lib/indobase/openrouter-coding-models';
 import {
   isOpenRouterPaidCodegenModelId,
@@ -30,10 +37,7 @@ import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-pro
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
-import {
-  getGenerationContractAppendix,
-  inferBuilderProjectTarget,
-} from '~/lib/indobase/generation-contract';
+import { getGenerationContractAppendix, inferBuilderProjectTarget } from '~/lib/indobase/generation-contract';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -76,8 +80,12 @@ function messageHasImageParts(messages: Array<{ parts?: Message['parts']; conten
 
     if (Array.isArray(message.content)) {
       return message.content.some((part) => {
-        if (!part || typeof part !== 'object') return false;
+        if (!part || typeof part !== 'object') {
+          return false;
+        }
+
         const type = 'type' in part ? String((part as { type?: string }).type) : '';
+
         return type === 'image' || type === 'file' || type === 'image_url';
       });
     }
@@ -101,10 +109,20 @@ function resolveOpenRouterTask(
   return 'codegen';
 }
 
-function resolveModelForMessages(model: string, messages: Array<{ parts?: Message['parts']; content?: Message['content'] }>) {
-  if (!messageHasImageParts(messages)) return model;
-  if (model.includes('-vl') || model.includes('vision')) return model;
+function resolveModelForMessages(
+  model: string,
+  messages: Array<{ parts?: Message['parts']; content?: Message['content'] }>,
+) {
+  if (!messageHasImageParts(messages)) {
+    return model;
+  }
+
+  if (model.includes('-vl') || model.includes('vision')) {
+    return model;
+  }
+
   logger.info(`Image attachment detected; switching model from ${model} to ${VISION_MODEL}`);
+
   return VISION_MODEL;
 }
 
@@ -140,8 +158,7 @@ function buildToolGuards(baseTools: Record<string, unknown>) {
   const tools = {
     ...baseTools,
     [UNAVAILABLE_TOOL_NAME]: tool({
-      description:
-        'Internal fallback for calls to tools that do not exist. Never call this tool directly.',
+      description: 'Internal fallback for calls to tools that do not exist. Never call this tool directly.',
       parameters: z.object({}).passthrough(),
       execute: async (args: Record<string, unknown>) => {
         const requested = typeof args.requested_tool === 'string' ? args.requested_tool : 'unknown';
@@ -169,7 +186,9 @@ function buildToolGuards(baseTools: Record<string, unknown>) {
     }
 
     if (InvalidToolArgumentsError.isInstance(error)) {
-      logger.warn(`Model sent invalid arguments to tool "${toolCall.toolName}" — rerouting to ${UNAVAILABLE_TOOL_NAME}`);
+      logger.warn(
+        `Model sent invalid arguments to tool "${toolCall.toolName}" — rerouting to ${UNAVAILABLE_TOOL_NAME}`,
+      );
 
       return {
         toolCallType: 'function' as const,
@@ -250,6 +269,7 @@ export async function streamText(props: {
     // Sanitize all text parts in parts array, if present
     if (Array.isArray(message.parts)) {
       newMessage.parts = message.parts
+
         /*
          * Drop tool invocations that never got a result (stream died mid-call, user aborted, ...).
          * convertToCoreMessages throws "ToolInvocation must have a result" on them, which would
@@ -308,11 +328,16 @@ export async function streamText(props: {
 
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
-  // OpenRouter free tiers reject very large completion limits — paid codegen may use more.
+  /*
+   * OpenRouter free tiers reject very large completion limits. Paid codegen must use its full
+   * configured budget (64k): clamping it to 16k truncated one-shot builds mid-file (finishReason
+   * "length"), and every continuation regenerated the project until the segment limit was hit,
+   * leaving no install/start actions and no preview.
+   */
   const safeMaxTokens =
     provider.name === 'OpenRouter'
       ? isOpenRouterPaidCodegenModelId(modelDetails.name)
-        ? Math.min(dynamicMaxTokens, 16384)
+        ? dynamicMaxTokens
         : Math.min(dynamicMaxTokens, 4096)
       : dynamicMaxTokens;
 

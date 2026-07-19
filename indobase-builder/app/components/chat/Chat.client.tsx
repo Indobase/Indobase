@@ -41,6 +41,7 @@ import {
   isIndobaseStudioManagedConnection,
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureBuilderSession,
@@ -71,8 +72,9 @@ const getAllowedChatProviders = () =>
   );
 
 const ALLOWED_CHAT_PROVIDERS = getAllowedChatProviders();
+
+// OpenRouter has the configured key and serves DEFAULT_MODEL; OpenAI does not.
 const DEFAULT_CHAT_PROVIDER =
-  // OpenRouter has the configured key and serves DEFAULT_MODEL; OpenAI does not.
   ALLOWED_CHAT_PROVIDERS.find((provider) => provider.name === 'OpenRouter') ||
   ALLOWED_CHAT_PROVIDERS[0] ||
   DEFAULT_PROVIDER;
@@ -143,6 +145,7 @@ export const ChatImpl = memo(
 
       void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer());
     }, [chatStarted]);
+
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [imageDataList, setImageDataList] = useState<string[]>([]);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -304,55 +307,7 @@ export const ChatImpl = memo(
         orchestratorChatRetryRef.current = 0;
 
         // Keep build mode active until all actions finish and the actual preview iframe loads.
-        void (async () => {
-          try {
-            await processSampledMessages.flush();
-
-            if (chatMode === 'build') {
-              await finalizeCodegen();
-              automaticPreviewRepairAttemptRef.current = 0;
-
-              if (isInitialBuild) {
-                initialBuildLifecycle.set('preview-ready');
-              }
-            }
-          } catch (error) {
-            logger.error('Post-codegen finalize failed', error);
-
-            const repair = decideAutomaticPreviewRepair({
-              error,
-              completedAttempts: automaticPreviewRepairAttemptRef.current,
-              files: workbenchStore.files.get(),
-              maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
-            });
-
-            if (repair.shouldRepair) {
-              automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
-              setLlmErrorAlert(undefined);
-              initialBuildLifecycle.set('finalizing');
-              append({
-                role: 'user',
-                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
-              });
-
-              return;
-            }
-
-            failInitialBuild();
-            setLlmErrorAlert({
-              type: 'error',
-              title: 'Automatic repair could not fix the preview',
-              description:
-                error instanceof Error
-                  ? `${error.message}\n\nTried ${automaticPreviewRepairAttemptRef.current} focused repairs.`
-                  : `The generated files finished, but the preview remained unhealthy after ${automaticPreviewRepairAttemptRef.current} focused repairs.`,
-              errorType: 'unknown',
-            });
-          } finally {
-            setFakeLoading(false);
-            streamingState.set(false);
-          }
-        })();
+        void finalizeBuildAndMaybeRepair(isInitialBuild);
       },
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
@@ -372,6 +327,7 @@ export const ChatImpl = memo(
       }
 
       const prompt = searchParams.get('prompt');
+
       if (!prompt) {
         return;
       }
@@ -379,23 +335,30 @@ export const ChatImpl = memo(
       const shouldAutostart = searchParams.get('autostart') === '1';
 
       urlPromptHandledRef.current = true;
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        next.delete('prompt');
-        next.delete('autostart');
-        return next;
-      }, { replace: true });
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete('prompt');
+          next.delete('autostart');
+
+          return next;
+        },
+        { replace: true },
+      );
 
       if (shouldAutostart) {
         void (async () => {
           const ready = await prepareStudioLinkedChat();
+
           if (!ready && hasIndobaseStudioHandoff(indobaseConn)) {
             toast.error('Builder session expired. Reconnecting through Studio…');
             redirectToStudioBuilderConnect();
+
             return;
           }
 
           runAnimation();
+
           const preamble = hasIndobaseStudioHandoff(indobaseConn)
             ? `${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`
             : '';
@@ -574,21 +537,90 @@ export const ChatImpl = memo(
     };
 
     /*
-     * Stall watchdog. If the SSE stream drops mid-generation (proxy timeout, provider hang-up) the
-     * AI SDK fires neither onError nor onFinish, so isLoading stays true and the composer shows
-     * "Agent is working…" forever with no way to tell the build is dead. Detect no-progress and
-     * surface a real, retryable error instead of an eternal spinner.
-     */
-    const STREAM_STALL_TIMEOUT_MS = 120_000;
-    const lastStreamProgressRef = useRef<number>(Date.now());
-    const streamProgressMarker = useRef<string>('');
-
-    /*
      * useChat's stop() does not reliably clear isLoading once the stream is already dead, which
      * left the composer locked on "Agent is working…" — the user could not retry, contradicting
      * the error we show them. This flag overrides the streaming state until the next send.
      */
     const [streamStalled, setStreamStalled] = useState(false);
+
+    /*
+     * Post-codegen finalize + bounded automatic repair. Runs after every completed build stream
+     * AND after a stalled/dead stream: flush parsed actions, boot install+dev if needed, verify
+     * the preview is actually healthy, and on failure feed the exact diagnostics back through a
+     * focused quota-exempt repair turn (max MAX_AUTOMATIC_PREVIEW_REPAIRS). Returns true when the
+     * build ended healthy or a repair turn was dispatched.
+     */
+    const finalizeBuildAndMaybeRepair = useCallback(
+      async (isInitialBuild: boolean): Promise<boolean> => {
+        try {
+          await processSampledMessages.flush();
+
+          if (chatMode === 'build') {
+            await finalizeCodegen();
+            automaticPreviewRepairAttemptRef.current = 0;
+
+            if (isInitialBuild) {
+              initialBuildLifecycle.set('preview-ready');
+            }
+          }
+
+          return true;
+        } catch (error) {
+          logger.error('Post-codegen finalize failed', error);
+
+          const repair = decideAutomaticPreviewRepair({
+            error,
+            completedAttempts: automaticPreviewRepairAttemptRef.current,
+            files: workbenchStore.files.get(),
+            maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+          });
+
+          if (repair.shouldRepair) {
+            automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
+            setLlmErrorAlert(undefined);
+
+            // A prior stall/abort must not block the repair turn from streaming.
+            chatStore.setKey('aborted', false);
+            setStreamStalled(false);
+            initialBuildLifecycle.set('finalizing');
+            append({
+              role: 'user',
+              content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
+            });
+
+            return true;
+          }
+
+          failInitialBuild();
+          setLlmErrorAlert({
+            type: 'error',
+            title: 'Automatic repair could not fix the preview',
+            description:
+              error instanceof Error
+                ? `${error.message}\n\nTried ${automaticPreviewRepairAttemptRef.current} focused repairs.`
+                : `The generated files finished, but the preview remained unhealthy after ${automaticPreviewRepairAttemptRef.current} focused repairs.`,
+            errorType: 'unknown',
+          });
+
+          return false;
+        } finally {
+          setFakeLoading(false);
+          streamingState.set(false);
+        }
+      },
+      [append, chatMode, model, provider.name],
+    );
+
+    /*
+     * Stall watchdog. If the SSE stream drops mid-generation (proxy timeout, provider hang-up) the
+     * AI SDK fires neither onError nor onFinish, so isLoading stays true and the composer shows
+     * "Agent is working…" forever with no way to tell the build is dead. Detect no-progress, then
+     * in build mode salvage the partial output through finalize + bounded automatic repair; only
+     * surface a retryable error when that path cannot recover.
+     */
+    const STREAM_STALL_TIMEOUT_MS = 120_000;
+    const lastStreamProgressRef = useRef<number>(Date.now());
+    const streamProgressMarker = useRef<string>('');
 
     useEffect(() => {
       if (!isLoading) {
@@ -597,12 +629,12 @@ export const ChatImpl = memo(
       }
 
       /*
-       * Any growth in the transcript OR the data stream counts as progress. The server emits
-       * keepalives and phase-progress annotations on the data stream while the planner/summary/
-       * context phases run — those phases stream no message text for minutes, and counting only
-       * message growth made this watchdog kill perfectly healthy builds mid-planner.
+       * Growth in the transcript OR real data-stream annotations counts as progress (planner/
+       * summary phases stream no message text for minutes). Keepalive pings are excluded — they
+       * arrive every 20s forever, so counting them meant a dead model stream never tripped this
+       * watchdog and the build sat on "Agent is working…" indefinitely.
        */
-      const marker = `${messages.length}:${messages[messages.length - 1]?.content?.length ?? 0}:${chatData?.length ?? 0}`;
+      const marker = computeStreamProgressMarker(messages, chatData);
 
       if (marker !== streamProgressMarker.current) {
         streamProgressMarker.current = marker;
@@ -617,11 +649,25 @@ export const ChatImpl = memo(
         window.clearInterval(timer);
         logger.error('Stream stalled with no progress; treating as a failed generation');
         stop();
+        void workbenchStore.abortAllActions();
+
+        if (chatMode === 'build') {
+          const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
+          logger.warn('Build stream stalled; attempting finalize + bounded automatic repair');
+          chatStore.setKey('aborted', false);
+          void finalizeBuildAndMaybeRepair(isInitialBuild).then((recovered) => {
+            if (!recovered) {
+              setStreamStalled(true);
+            }
+          });
+
+          return;
+        }
+
         setFakeLoading(false);
         streamingState.set(false);
         setStreamStalled(true);
         chatStore.setKey('aborted', true);
-        void workbenchStore.abortAllActions();
         setLlmErrorAlert({
           type: 'error',
           title: 'Generation stopped unexpectedly',
@@ -632,7 +678,7 @@ export const ChatImpl = memo(
       }, 10_000);
 
       return () => window.clearInterval(timer);
-    }, [isLoading, messages, chatData, stop]);
+    }, [isLoading, messages, chatData, stop, chatMode, finalizeBuildAndMaybeRepair]);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
@@ -641,6 +687,7 @@ export const ChatImpl = memo(
           logger.debug(`${context} request aborted by user`);
           setFakeLoading(false);
           streamingState.set(false);
+
           return;
         }
 
@@ -751,15 +798,17 @@ export const ChatImpl = memo(
         ) {
           orchestratorChatRetryRef.current += 1;
           setLlmErrorAlert(undefined);
+
           const projectGoal =
             description.get()?.trim() ||
-            messages.find(
-              (entry) =>
-                entry.role === 'user' &&
-                typeof entry.content === 'string' &&
-                !entry.content.includes(ORCHESTRATOR_REPAIR_USER_PREFIX),
-            )?.content
-              ?.replace(/\[Model:[^\]]*\]\s*/g, '')
+            messages
+              .find(
+                (entry) =>
+                  entry.role === 'user' &&
+                  typeof entry.content === 'string' &&
+                  !entry.content.includes(ORCHESTRATOR_REPAIR_USER_PREFIX),
+              )
+              ?.content?.replace(/\[Model:[^\]]*\]\s*/g, '')
               ?.replace(/\[Provider:[^\]]*\]\s*/g, '')
               ?.trim() ||
             'the current project';
@@ -769,6 +818,7 @@ export const ChatImpl = memo(
 
 Continue building ${projectGoal} wired to the linked Indobase backend. Fix any issues and keep existing files unless a change is required.`,
           });
+
           return;
         }
 
@@ -894,9 +944,11 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       lastStreamProgressRef.current = Date.now();
       streamProgressMarker.current = '';
 
-      // Composer command: `/connect [url] [anonKey]` — link a backend without
-      // leaving the chat. With a URL + anon key it connects directly; bare
-      // `/connect` opens the Studio flow.
+      /*
+       * Composer command: `/connect [url] [anonKey]` — link a backend without
+       * leaving the chat. With a URL + anon key it connects directly; bare
+       * `/connect` opens the Studio flow.
+       */
       const trimmedInput = messageContent.trim();
 
       if (trimmedInput === '/connect' || trimmedInput.toLowerCase().startsWith('/connect ')) {
@@ -929,6 +981,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         if (!ready) {
           toast.error('Builder session expired. Reconnecting through Studio…');
           redirectToStudioBuilderConnect();
+
           return;
         }
       }
@@ -938,11 +991,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         return;
       }
 
-      if (
-        builderPromptQuota?.isFree &&
-        builderPromptQuota.remaining !== null &&
-        builderPromptQuota.remaining <= 0
-      ) {
+      if (builderPromptQuota?.isFree && builderPromptQuota.remaining !== null && builderPromptQuota.remaining <= 0) {
         const upgradeUrl = resolveUpgradeUrl(builderPromptQuota.upgradeUrl);
         setLlmErrorAlert({
           type: 'error',
@@ -952,6 +1001,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
           errorType: 'quota',
           upgradeUrl,
         });
+
         return;
       }
 
@@ -991,31 +1041,31 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         }
 
         try {
-        // Always build from the user prompt via the model — no starter-template import.
-        const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
-        const attachments = uploadedFiles.length > 0 ? await filesToAttachments(uploadedFiles) : undefined;
+          // Always build from the user prompt via the model — no starter-template import.
+          const userMessageText = `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalMessageContent}`;
+          const attachments = uploadedFiles.length > 0 ? await filesToAttachments(uploadedFiles) : undefined;
 
-        setMessages([
-          {
-            id: `${new Date().getTime()}`,
-            role: 'user',
-            content: userMessageText,
-            parts: createMessageParts(userMessageText, imageDataList),
-            experimental_attachments: attachments,
-          },
-        ]);
-        reload(attachments ? { experimental_attachments: attachments } : undefined);
-        setInput('');
-        Cookies.remove(PROMPT_COOKIE_KEY);
+          setMessages([
+            {
+              id: `${new Date().getTime()}`,
+              role: 'user',
+              content: userMessageText,
+              parts: createMessageParts(userMessageText, imageDataList),
+              experimental_attachments: attachments,
+            },
+          ]);
+          reload(attachments ? { experimental_attachments: attachments } : undefined);
+          setInput('');
+          Cookies.remove(PROMPT_COOKIE_KEY);
 
-        setUploadedFiles([]);
-        setImageDataList([]);
+          setUploadedFiles([]);
+          setImageDataList([]);
 
-        resetEnhancer();
+          resetEnhancer();
 
-        textareaRef.current?.blur();
+          textareaRef.current?.blur();
 
-        return;
+          return;
         } finally {
           setFakeLoading(false);
           streamingState.set(false);

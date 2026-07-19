@@ -5,7 +5,7 @@ export type GeneratedCodeDiagnostic = {
   message: string;
   line?: number;
   column?: number;
-  source: 'syntax' | 'preview';
+  source: 'syntax' | 'preview' | 'structure';
 };
 
 const GENERATED_SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?)$/i;
@@ -150,6 +150,93 @@ export function validateGeneratedSource(filePath: string, content: string): Gene
 
 export function validateGeneratedSources(files: Record<string, string>): GeneratedCodeDiagnostic[] {
   return Object.entries(files).flatMap(([filePath, content]) => validateGeneratedSource(filePath, content));
+}
+
+const IMPORT_SPECIFIER_PATTERN =
+  /(?:\bimport\s+(?:[^'"]*?\bfrom\s+)?|\bexport\s+[^'"]*?\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*)['"]([^'"]+)['"]/g;
+
+const RESOLVABLE_SUFFIXES = [
+  '',
+  '.tsx',
+  '.ts',
+  '.jsx',
+  '.js',
+  '.mjs',
+  '.cjs',
+  '/index.tsx',
+  '/index.ts',
+  '/index.jsx',
+  '/index.js',
+];
+
+function normalizePath(path: string): string {
+  const segments: string[] = [];
+
+  for (const segment of path.split('/')) {
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      segments.pop();
+      continue;
+    }
+
+    segments.push(segment);
+  }
+
+  return segments.join('/');
+}
+
+function lineOfIndex(content: string, index: number): number {
+  return content.slice(0, index).split('\n').length;
+}
+
+/**
+ * Detects incomplete scaffolds: a generated source imports a relative module (e.g. App.tsx →
+ * ./components/JuiceCards) that was never written because the model stream ended mid-artifact.
+ * Only extensionless or source-extension specifiers are checked — assets (css/svg/png) are not in
+ * the collected source map and would false-positive.
+ */
+export function findMissingLocalImportDiagnostics(files: Record<string, string>): GeneratedCodeDiagnostic[] {
+  const normalizedFiles = new Set(Object.keys(files).map((filePath) => normalizePath(filePath)));
+  const diagnostics: GeneratedCodeDiagnostic[] = [];
+
+  for (const [filePath, content] of Object.entries(files)) {
+    if (!GENERATED_SOURCE_EXTENSION.test(filePath)) {
+      continue;
+    }
+
+    const directory = normalizePath(filePath).split('/').slice(0, -1).join('/');
+
+    for (const match of content.matchAll(IMPORT_SPECIFIER_PATTERN)) {
+      const specifier = match[1];
+
+      if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
+        continue;
+      }
+
+      const hasExplicitExtension = /\.[a-z0-9]+$/i.test(specifier);
+
+      if (hasExplicitExtension && !GENERATED_SOURCE_EXTENSION.test(specifier)) {
+        continue;
+      }
+
+      const base = normalizePath(directory ? `${directory}/${specifier}` : specifier);
+      const resolved = RESOLVABLE_SUFFIXES.some((suffix) => normalizedFiles.has(`${base}${suffix}`));
+
+      if (!resolved) {
+        diagnostics.push({
+          filePath,
+          message: `Missing file for import "${specifier}" — the referenced module was never generated. Create it (or fix the import path).`,
+          line: lineOfIndex(content, match.index ?? 0),
+          source: 'structure',
+        });
+      }
+    }
+  }
+
+  return diagnostics;
 }
 
 type GeneratedFs = {

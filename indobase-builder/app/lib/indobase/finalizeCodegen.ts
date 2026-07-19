@@ -3,7 +3,13 @@ import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { createScopedLogger } from '~/utils/logger';
-import { assertGeneratedSourcesValid, verifyViteSourceTransforms } from './generated-code-validation';
+import {
+  collectGeneratedSources,
+  findMissingLocalImportDiagnostics,
+  GeneratedCodeValidationError,
+  validateGeneratedSources,
+  verifyViteSourceTransforms,
+} from './generated-code-validation';
 
 const logger = createScopedLogger('finalizeCodegen');
 
@@ -128,12 +134,26 @@ export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewU
 
   const scaffolded = await ensureProjectScaffold();
   const container = await webcontainer;
-  const generatedSources = await assertGeneratedSourcesValid(
-    container.fs as Parameters<typeof assertGeneratedSourcesValid>[0],
-  );
+  const generatedSources = await collectGeneratedSources(container.fs as Parameters<typeof collectGeneratedSources>[0]);
+
+  /*
+   * Syntax errors (truncated files) and missing referenced modules (incomplete scaffolds) both
+   * mean the build is not healthy. Boot install+dev FIRST regardless — a Vite server with the
+   * error overlay is strictly better than "No preview available", and the repair turn's fixes
+   * HMR-reload into it — then fail with the diagnostics so the bounded repair loop fires.
+   */
+  const diagnostics = [
+    ...validateGeneratedSources(generatedSources),
+    ...findMissingLocalImportDiagnostics(generatedSources),
+  ];
+
   await ensureDevServerIfNeeded();
 
   workbenchStore.refreshAllPreviews();
+
+  if (diagnostics.length > 0) {
+    throw new GeneratedCodeValidationError(diagnostics);
+  }
 
   const preview = await workbenchStore.waitForPreviewLoaded();
 

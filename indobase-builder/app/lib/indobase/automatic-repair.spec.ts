@@ -41,6 +41,34 @@ describe('automatic preview repair decisions', () => {
     }
   });
 
+  it('repairs incomplete scaffolds: missing referenced components become a focused repair prompt', () => {
+    const missingFileError = new GeneratedCodeValidationError([
+      {
+        filePath: 'src/App.tsx',
+        message: 'Missing file for import "./components/JuiceCards" — the referenced module was never generated.',
+        line: 3,
+        source: 'structure',
+      },
+    ]);
+    const decision = decideAutomaticPreviewRepair({
+      error: missingFileError,
+      completedAttempts: 0,
+      files: {
+        '/home/project/src/App.tsx': {
+          type: 'file' as const,
+          content: "import JuiceCards from './components/JuiceCards';",
+        },
+      },
+    });
+
+    expect(decision).toMatchObject({ shouldRepair: true, nextAttempt: 1, implicatedFiles: ['src/App.tsx'] });
+
+    if (decision.shouldRepair) {
+      expect(decision.prompt).toContain('./components/JuiceCards');
+      expect(decision.prompt).toContain('never generated');
+    }
+  });
+
   it('stops after the bounded attempt count', () => {
     expect(decideAutomaticPreviewRepair({ error, completedAttempts: 3, files, maxAttempts: 3 })).toEqual({
       shouldRepair: false,

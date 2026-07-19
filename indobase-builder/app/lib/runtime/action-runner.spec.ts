@@ -49,7 +49,8 @@ describe('ActionRunner start actions', () => {
     vi.useRealTimers();
   });
 
-  it('does not start Vite when generated source has a syntax error', async () => {
+  it('still starts Vite when generated source has a syntax error (health gating is in finalizeCodegen)', async () => {
+    const listeners = new Map<string, (...args: any[]) => void>();
     const container = {
       fs: {
         readdir: vi.fn(async (path: string) => {
@@ -66,7 +67,9 @@ describe('ActionRunner start actions', () => {
         readFile: vi.fn(async () => 'export function Services() {}\nreturn <section />'),
       },
       getPorts: vi.fn().mockResolvedValue([]),
-      on: vi.fn(),
+      on: vi.fn((event: string, listener: (...args: any[]) => void) => {
+        listeners.set(event, listener);
+      }),
     } as unknown as WebContainer;
     const shell = {
       ready: vi.fn().mockResolvedValue(undefined),
@@ -83,11 +86,15 @@ describe('ActionRunner start actions', () => {
     };
 
     runner.addAction(action);
-    await runner.runAction(action);
 
-    expect(shell.executeCommand).not.toHaveBeenCalled();
+    const execution = runner.runAction(action);
+    await vi.waitFor(() => expect(shell.executeCommand).toHaveBeenCalled());
+
+    listeners.get('port')?.(5173, 'open', 'https://preview.local');
+    await execution;
+
     expect(runner.actions.get()['start-invalid']).toMatchObject({
-      status: 'failed',
+      status: 'complete',
     });
   });
 });
