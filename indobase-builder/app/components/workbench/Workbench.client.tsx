@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react';
 import { motion, type HTMLMotionProps, type Variants } from 'framer-motion';
 import { computed } from 'nanostores';
-import { memo, useCallback, useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { memo, useCallback, useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import { toast } from 'react-toastify';
 import { Popover, Transition } from '@headlessui/react';
 import { diffLines, type Change } from 'diff';
@@ -295,7 +295,15 @@ export const Workbench = memo(
 
     // const modifiedFiles = Array.from(useStore(workbenchStore.unsavedFiles).keys());
 
-    const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
+    /*
+     * computed() was called inline in the render body, which built a brand-new nanostore — and a
+     * new useStore subscription — on every single render. Create it once.
+     */
+    const hasPreviewStore = useMemo(
+      () => computed(workbenchStore.previews, (previews) => previews.length > 0),
+      [],
+    );
+    const hasPreview = useStore(hasPreviewStore);
     const showWorkbench = useStore(workbenchStore.showWorkbench);
     const selectedFile = useStore(workbenchStore.selectedFile);
     const currentDocument = useStore(workbenchStore.currentDocument);
@@ -329,8 +337,16 @@ export const Workbench = memo(
       }
     };
 
+    /*
+     * Auto-open the preview only the FIRST time one appears. previews.length flickers to 0 and
+     * back whenever a dev server restarts, so re-running this yanked the user back to Preview
+     * even when they had deliberately switched to Code mid-build.
+     */
+    const hasAutoOpenedPreview = useRef(false);
+
     useEffect(() => {
-      if (hasPreview) {
+      if (hasPreview && !hasAutoOpenedPreview.current) {
+        hasAutoOpenedPreview.current = true;
         setSelectedView('preview');
       }
     }, [hasPreview]);

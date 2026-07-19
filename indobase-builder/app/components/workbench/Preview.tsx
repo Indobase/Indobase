@@ -90,18 +90,36 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const expoUrl = useStore(expoUrlAtom);
   const [isExpoQrModalOpen, setIsExpoQrModalOpen] = useState(false);
 
+  /*
+   * The previews store re-emits a NEW array on every port/server event (`previews.set([...])`),
+   * so depending on the activePreview OBJECT re-ran this effect on every emit and reset
+   * displayPath to '/', throwing away whatever route the user had navigated to inside the
+   * preview. Depend on the baseUrl STRING instead: it only changes on a real preview change.
+   */
+  const activePreviewBaseUrl = activePreview?.baseUrl;
+
   useEffect(() => {
-    if (!activePreview) {
+    if (!activePreviewBaseUrl) {
       setIframeUrl(undefined);
       setDisplayPath('/');
 
       return;
     }
 
-    const { baseUrl } = activePreview;
-    setIframeUrl(baseUrl);
+    setIframeUrl(activePreviewBaseUrl);
     setDisplayPath('/');
-  }, [activePreview]);
+  }, [activePreviewBaseUrl]);
+
+  /*
+   * A dev server shutting down removes its preview, but activePreviewIndex is local state that was
+   * never clamped — a stale index left activePreview undefined and blanked the pane instead of
+   * falling back to a preview that is still running.
+   */
+  useEffect(() => {
+    if (previews.length > 0 && activePreviewIndex >= previews.length) {
+      setActivePreviewIndex(0);
+    }
+  }, [previews.length, activePreviewIndex]);
 
   const findMinPortIndex = useCallback(
     (minIndex: number, preview: { port: number }, index: number, array: { port: number }[]) => {

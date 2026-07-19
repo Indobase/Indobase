@@ -65,6 +65,10 @@ export class FilesStore {
    */
   files: MapStore<FileMap> = import.meta.hot?.data?.files ?? map({});
 
+  /** Handles for the lock-reload timers so they can be cleared (see #init and dispose). */
+  #lockReloadTimeout: ReturnType<typeof setTimeout> | undefined;
+  #lockCheckInterval: ReturnType<typeof setInterval> | undefined;
+
   get filesCount() {
     // Derive from the map so direct files.set(...) updates (snapshot restore, tests)
     // stay consistent with watcher-driven updates; a manual counter drifts.
@@ -619,11 +623,19 @@ export class FilesStore {
     // Load locked files immediately for the current chat
     this.#loadLockedFiles(currentChatId);
 
+    /*
+     * Clear timers left over from a previous HMR generation before starting new ones. The
+     * constructor re-runs on hot reload (see the import.meta.hot.data fields above), so these
+     * previously accumulated one extra timeout + interval per reload, each re-reading
+     * localStorage on its own schedule forever.
+     */
+    this.dispose();
+
     /**
      * Also set up a timer to load locked files again after a delay.
      * This ensures that locks are applied even if files are loaded asynchronously.
      */
-    setTimeout(() => {
+    this.#lockReloadTimeout = setTimeout(() => {
       this.#loadLockedFiles(currentChatId);
     }, 2000);
 
@@ -631,13 +643,30 @@ export class FilesStore {
      * Set up a less frequent periodic check to ensure locks remain applied.
      * This is now less critical since we have the storage event listener.
      */
-    setInterval(() => {
+    this.#lockCheckInterval = setInterval(() => {
       // Clear the cache to force a fresh read from localStorage
       clearCache();
 
       const latestChatId = getCurrentChatId();
       this.#loadLockedFiles(latestChatId);
     }, 30000); // Reduced from 10s to 30s
+
+    if (import.meta.hot?.data) {
+      import.meta.hot.data.lockTimers = {
+        timeout: this.#lockReloadTimeout,
+        interval: this.#lockCheckInterval,
+      };
+    }
+  }
+
+  /** Stop the lock-reload timers. Safe to call repeatedly. */
+  dispose() {
+    const carried = import.meta.hot?.data?.lockTimers;
+
+    clearTimeout(this.#lockReloadTimeout ?? carried?.timeout);
+    clearInterval(this.#lockCheckInterval ?? carried?.interval);
+    this.#lockReloadTimeout = undefined;
+    this.#lockCheckInterval = undefined;
   }
 
   /**
