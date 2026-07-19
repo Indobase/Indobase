@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react';
 import type { Message } from 'ai';
 import { memo, useMemo } from 'react';
+import { hasRenderableQuickActions } from '~/lib/runtime/quick-actions';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import type { ProviderInfo } from '~/types/model';
 
@@ -43,9 +44,9 @@ interface FallbackRecommendationsProps {
 }
 
 /**
- * Shown after a successful one-shot preview when the model did not emit its own
- * <bolt-quick-actions> block. Kept outside the streaming message parser so chips
- * always appear once preview-ready is set.
+ * Shown after a successful one-shot preview when the model did not emit any
+ * renderable quick-action chips. Kept outside the streaming message parser so
+ * chips always appear once preview-ready is set.
  */
 export const FallbackRecommendations = memo(
   ({ messages, append, model, provider }: FallbackRecommendationsProps) => {
@@ -56,8 +57,13 @@ export const FallbackRecommendations = memo(
         return false;
       }
 
+      /*
+       * Only suppress when the model emitted chips the parser can actually render.
+       * A bare <bolt-quick-actions> wrapper with no usable children (a common model
+       * mistake) must not hide the fallback chips.
+       */
       const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
-      return !/<bolt-quick-actions?\b/i.test(messageText(lastAssistant));
+      return !hasRenderableQuickActions(messageText(lastAssistant));
     }, [lifecycle, messages, append]);
 
     if (!shouldShow) {

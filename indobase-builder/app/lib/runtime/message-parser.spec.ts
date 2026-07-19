@@ -45,6 +45,43 @@ describe('StreamingMessageParser', () => {
         'data-bolt-quick-action="true"',
       );
     });
+
+    it('drops an empty <bolt-quick-actions> group instead of rendering an empty container', () => {
+      const parser = new StreamingMessageParser();
+      const output = parser.parse('quick_actions_empty', 'Done.<bolt-quick-actions></bolt-quick-actions> Bye.');
+
+      expect(output).toBe('Done. Bye.');
+      expect(output).not.toContain('data-bolt-quick-action');
+    });
+
+    it('recovers mistaken <boltAction type="message"> tags inside a quick-actions group as chips', () => {
+      const parser = new StreamingMessageParser();
+      const input =
+        'Done.<bolt-quick-actions>' +
+        '<boltAction type="message">Add dark mode</boltAction>' +
+        '<boltAction type="message" message="Improve SEO with meta tags">Improve SEO</boltAction>' +
+        '</bolt-quick-actions>';
+
+      const output = parser.parse('quick_actions_mistaken', input);
+
+      expect(output).toContain('data-bolt-quick-action="true"');
+      expect(output).toContain('data-type="message"');
+      expect(output).toContain('data-message="Add dark mode"');
+      expect(output).toContain('>Add dark mode</button>');
+      expect(output).toContain('data-message="Improve SEO with meta tags"');
+      expect(output).toContain('>Improve SEO</button>');
+    });
+
+    it('ignores non-message boltAction tags when recovering a malformed group', () => {
+      const parser = new StreamingMessageParser();
+      const input =
+        'Done.<bolt-quick-actions><boltAction type="shell">npm run dev</boltAction></bolt-quick-actions>';
+
+      const output = parser.parse('quick_actions_shell', input);
+
+      expect(output).toBe('Done.');
+      expect(output).not.toContain('data-bolt-quick-action');
+    });
   });
 
   describe('invalid or incomplete artifacts', () => {

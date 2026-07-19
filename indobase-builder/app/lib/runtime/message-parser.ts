@@ -134,7 +134,38 @@ export class StreamingMessageParser {
               ),
             );
           }
-          output += createQuickActionGroup(buttons);
+
+          /*
+           * Recovery: models sometimes wrap <boltAction type="message"> tags inside the
+           * group instead of <bolt-quick-action> chips. Accept them so chips still render.
+           */
+          if (buttons.length === 0) {
+            const mistakenActionRegex = /<boltAction\b([^>]*)>([\s\S]*?)<\/boltAction>/gi;
+
+            while ((match = mistakenActionRegex.exec(actionsBlockContent)) !== null) {
+              const tagAttrs = match[1];
+              const type = this.#extractAttribute(tagAttrs, 'type');
+
+              if (type && type.toLowerCase() !== 'message') {
+                continue;
+              }
+
+              const body = match[2].trim();
+              const message = this.#extractAttribute(tagAttrs, 'message') || body;
+              const label = body || message;
+
+              if (!label) {
+                continue;
+              }
+
+              buttons.push(createQuickActionElement({ type: 'message', message, path: '', href: '' }, label));
+            }
+          }
+
+          // An empty group renders nothing useful; drop it so fallback chips can take over.
+          if (buttons.length > 0) {
+            output += createQuickActionGroup(buttons);
+          }
           i = actionsBlockEnd + BOLT_QUICK_ACTIONS_CLOSE.length;
           continue;
         }
