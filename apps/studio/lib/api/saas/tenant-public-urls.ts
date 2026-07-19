@@ -29,7 +29,9 @@ export function resolvePublicDomainForTenantStack(): string {
 
 /**
  * When true, client SDKs should call `https://{ref}.<public-domain>` (per-project Traefik host).
- * Shared-gateway Free tier and legacy Model A use `api.<domain>` with project-scoped keys.
+ * Shared-gateway Free tier without a dedicated DB uses `api.<domain>` with project-scoped keys.
+ * Projects that already have a dedicated `tenantdb_<ref>` (and tenant storage) must use
+ * `ref.<domain>` — otherwise Studio publish hits shared Kong storage and fails (RLS / 42P01).
  */
 export function usesTenantPublicApiHost(
   hasDedicatedTenantDb: boolean,
@@ -38,8 +40,10 @@ export function usesTenantPublicApiHost(
   const mode = normalizeDataPlaneMode(
     dataPlaneMode ?? (hasDedicatedTenantDb ? 'isolated_stack' : 'model_a')
   )
-  if (mode === 'shared_gateway' || mode === 'model_a') return false
-  return hasDedicatedTenantDb
+  if (mode === 'model_a') return false
+  if (hasDedicatedTenantDb) return true
+  if (mode === 'shared_gateway') return false
+  return false
 }
 
 /** Base API URL for Connect / env snippets (`https://ref.indobase.in`, no path suffix). */

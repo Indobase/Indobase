@@ -456,6 +456,7 @@ export async function grantTenantAuxDatabasePrivileges({
       await client.query(
         'grant all on schema storage to supabase_storage_admin, supabase_admin, authenticator'
       )
+      await client.query('grant anon, authenticated, service_role to supabase_storage_admin')
       await client.query('grant all on schema _realtime to supabase_admin, authenticator')
       return
     } catch {
@@ -641,6 +642,9 @@ export async function bootstrapTenantDataPlaneSchemas({
       'grant usage on schema public to authenticator, supabase_admin, supabase_auth_admin, supabase_storage_admin'
     )
     await client.query('grant anon, authenticated, service_role to authenticator')
+    // Storage-API sets `role` / JWT claim role via set_config; without membership,
+    // service_role uploads fail with "new row violates row-level security policy".
+    await client.query('grant anon, authenticated, service_role to supabase_storage_admin')
 
     await client.query('create schema if not exists auth')
     await client.query('create schema if not exists storage')

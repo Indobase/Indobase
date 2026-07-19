@@ -54,10 +54,12 @@ describe('tenant-public-urls', () => {
     })
   })
 
-  it('usesTenantPublicApiHost mirrors dedicated tenant DB for isolated stacks', () => {
+  it('usesTenantPublicApiHost prefers ref host when a dedicated DB exists', () => {
     expect(usesTenantPublicApiHost(true)).toBe(true)
     expect(usesTenantPublicApiHost(false)).toBe(false)
-    expect(usesTenantPublicApiHost(true, 'shared_gateway')).toBe(false)
+    // shared_gateway with a dedicated tenantdb still uses ref.<domain> for storage/API
+    expect(usesTenantPublicApiHost(true, 'shared_gateway')).toBe(true)
+    expect(usesTenantPublicApiHost(false, 'shared_gateway')).toBe(false)
     expect(usesTenantPublicApiHost(true, 'model_a')).toBe(false)
   })
 
