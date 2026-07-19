@@ -552,57 +552,103 @@ export const ChatImpl = memo(
      */
     const finalizeBuildAndMaybeRepair = useCallback(
       async (isInitialBuild: boolean): Promise<boolean> => {
+        const MAX_TRANSIENT_FINALIZE_RETRIES = 2;
+        const TRANSIENT_FINALIZE_RETRY_DELAY_MS = 3_000;
+        let transientRetries = 0;
+
         try {
           await processSampledMessages.flush();
 
-          if (chatMode === 'build') {
-            await finalizeCodegen();
-            automaticPreviewRepairAttemptRef.current = 0;
-
-            if (isInitialBuild) {
-              initialBuildLifecycle.set('preview-ready');
-            }
-          }
-
-          return true;
-        } catch (error) {
-          logger.error('Post-codegen finalize failed', error);
-
-          const repair = decideAutomaticPreviewRepair({
-            error,
-            completedAttempts: automaticPreviewRepairAttemptRef.current,
-            files: workbenchStore.files.get(),
-            maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
-          });
-
-          if (repair.shouldRepair) {
-            automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
-            setLlmErrorAlert(undefined);
-
-            // A prior stall/abort must not block the repair turn from streaming.
-            chatStore.setKey('aborted', false);
-            setStreamStalled(false);
-            initialBuildLifecycle.set('finalizing');
-            append({
-              role: 'user',
-              content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
-            });
-
+          if (chatMode !== 'build') {
             return true;
           }
 
-          failInitialBuild();
-          setLlmErrorAlert({
-            type: 'error',
-            title: 'Automatic repair could not fix the preview',
-            description:
-              error instanceof Error
-                ? `${error.message}\n\nTried ${automaticPreviewRepairAttemptRef.current} focused repairs.`
-                : `The generated files finished, but the preview remained unhealthy after ${automaticPreviewRepairAttemptRef.current} focused repairs.`,
-            errorType: 'unknown',
-          });
+          while (true) {
+            try {
+              await finalizeCodegen();
+              automaticPreviewRepairAttemptRef.current = 0;
 
-          return false;
+              // The preview is verified healthy: earlier repair/terminal alerts are stale now.
+              setLlmErrorAlert(undefined);
+
+              if (isInitialBuild) {
+                initialBuildLifecycle.set('preview-ready');
+              }
+
+              return true;
+            } catch (error) {
+              logger.error('Post-codegen finalize failed', error);
+
+              const repair = decideAutomaticPreviewRepair({
+                error,
+                completedAttempts: automaticPreviewRepairAttemptRef.current,
+                files: workbenchStore.files.get(),
+                maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+              });
+
+              /*
+               * Transient preview/network flakiness is not model-repairable and does not consume
+               * the repair budget — wait briefly and re-run finalize instead of a repair turn.
+               */
+              if (
+                !repair.shouldRepair &&
+                repair.reason === 'transient' &&
+                transientRetries < MAX_TRANSIENT_FINALIZE_RETRIES
+              ) {
+                transientRetries += 1;
+                logger.warn(
+                  `Transient preview error; retrying finalize (${transientRetries}/${MAX_TRANSIENT_FINALIZE_RETRIES})`,
+                );
+                await new Promise((resolve) => setTimeout(resolve, TRANSIENT_FINALIZE_RETRY_DELAY_MS));
+                continue;
+              }
+
+              /*
+               * Persistent transient-only failures with a loaded preview iframe: fail open rather
+               * than telling the user a healthy app is broken.
+               */
+              if (!repair.shouldRepair && repair.reason === 'transient') {
+                logger.warn('Persistent transient preview errors; treating loaded preview as healthy');
+                setLlmErrorAlert(undefined);
+                workbenchStore.clearAlert();
+
+                if (isInitialBuild) {
+                  initialBuildLifecycle.set('preview-ready');
+                }
+
+                return true;
+              }
+
+              if (repair.shouldRepair) {
+                automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
+                setLlmErrorAlert(undefined);
+
+                // A prior stall/abort must not block the repair turn from streaming.
+                chatStore.setKey('aborted', false);
+                setStreamStalled(false);
+                initialBuildLifecycle.set('finalizing');
+                append({
+                  role: 'user',
+                  content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
+                });
+
+                return true;
+              }
+
+              failInitialBuild();
+              setLlmErrorAlert({
+                type: 'error',
+                title: 'Automatic repair could not fix the preview',
+                description:
+                  error instanceof Error
+                    ? `${error.message}\n\nTried ${automaticPreviewRepairAttemptRef.current} focused repairs.`
+                    : `The generated files finished, but the preview remained unhealthy after ${automaticPreviewRepairAttemptRef.current} focused repairs.`,
+                errorType: 'unknown',
+              });
+
+              return false;
+            }
+          }
         } finally {
           setFakeLoading(false);
           streamingState.set(false);

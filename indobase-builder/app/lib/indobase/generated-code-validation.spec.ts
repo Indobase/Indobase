@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   findMissingLocalImportDiagnostics,
+  GeneratedCodeValidationError,
+  isTransientPreviewError,
+  isTransientPreviewErrorMessage,
   validateGeneratedSource,
   validateGeneratedSources,
   verifyViteSourceTransforms,
@@ -135,7 +138,7 @@ import App from './App';`,
     expect(diagnostics).toEqual([]);
   });
 
-  it('treats a Vite transform failure as an unhealthy preview', async () => {
+  it('treats a persistent Vite transform failure as an unhealthy preview', async () => {
     const fetcher = vi.fn(async (input: URL | RequestInfo) => {
       const url = String(input);
       return url.includes('Services.jsx')
@@ -153,6 +156,7 @@ import App from './App';`,
         'https://preview.local/',
         ['src/main.jsx', 'src/components/Services.jsx'],
         fetcher as typeof fetch,
+        { maxAttempts: 2, retryDelayMs: 0 },
       ),
     ).rejects.toMatchObject({
       diagnostics: [
@@ -163,5 +167,72 @@ import App from './App';`,
         }),
       ],
     });
+  });
+
+  it('classifies network flakiness as transient and real compile errors as repairable', () => {
+    expect(isTransientPreviewErrorMessage('Failed to fetch')).toBe(true);
+    expect(isTransientPreviewErrorMessage('NetworkError when attempting to fetch resource.')).toBe(true);
+    expect(isTransientPreviewErrorMessage('fetch failed (ECONNRESET)')).toBe(true);
+    expect(isTransientPreviewErrorMessage('Vite transform returned HTTP 503.')).toBe(true);
+    expect(isTransientPreviewErrorMessage("src/App.tsx: 'return' outside of function. (30:4)")).toBe(false);
+    expect(isTransientPreviewErrorMessage('Duplicate JSX attribute "className".')).toBe(false);
+
+    expect(
+      isTransientPreviewError(
+        new GeneratedCodeValidationError(
+          [
+            { filePath: 'src/App.tsx', message: 'Failed to fetch', source: 'preview' },
+            { filePath: 'src/components/Menu.tsx', message: 'Failed to fetch', source: 'preview' },
+          ],
+          'Vite preview compile failed',
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isTransientPreviewError(
+        new GeneratedCodeValidationError([
+          { filePath: 'src/App.tsx', message: "'return' outside of function.", source: 'syntax' },
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it('fails open when every transform failure is transient (Failed to fetch races)', async () => {
+    const fetcher = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    await expect(
+      verifyViteSourceTransforms(
+        'https://preview.local/',
+        ['src/main.tsx', 'src/App.tsx', 'src/components/Menu.tsx'],
+        fetcher as unknown as typeof fetch,
+        { maxAttempts: 3, retryDelayMs: 0 },
+      ),
+    ).resolves.toBeUndefined();
+
+    // Retried with backoff: 3 files x 3 attempts.
+    expect(fetcher).toHaveBeenCalledTimes(9);
+  });
+
+  it('recovers when a transient failure clears on retry', async () => {
+    let calls = 0;
+    const fetcher = vi.fn(async () => {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return new Response('export const ok = true', { status: 200 });
+    });
+
+    await expect(
+      verifyViteSourceTransforms('https://preview.local/', ['src/App.tsx'], fetcher as unknown as typeof fetch, {
+        maxAttempts: 3,
+        retryDelayMs: 0,
+      }),
+    ).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

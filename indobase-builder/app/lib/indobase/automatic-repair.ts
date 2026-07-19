@@ -1,5 +1,5 @@
 import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
-import type { GeneratedCodeDiagnostic } from './generated-code-validation';
+import { isTransientPreviewError, type GeneratedCodeDiagnostic } from './generated-code-validation';
 
 export const MAX_AUTOMATIC_PREVIEW_REPAIRS = 3;
 
@@ -9,7 +9,7 @@ type RepairFile = { type: 'file'; content: string };
 type RepairFiles = Record<string, RepairFile | { type: string } | undefined>;
 
 export type AutomaticRepairDecision =
-  | { shouldRepair: false; nextAttempt: number; reason: 'exhausted' | 'no-error' }
+  | { shouldRepair: false; nextAttempt: number; reason: 'exhausted' | 'no-error' | 'transient' }
   | { shouldRepair: true; nextAttempt: number; prompt: string; implicatedFiles: string[] };
 
 function diagnosticsFromError(error: unknown): GeneratedCodeDiagnostic[] {
@@ -43,6 +43,15 @@ export function decideAutomaticPreviewRepair(options: {
     return { shouldRepair: false, nextAttempt: options.completedAttempts, reason: 'no-error' };
   }
 
+  /*
+   * Transient network/preview flakiness ("Failed to fetch", connection resets, gateway timeouts)
+   * is not repairable by the model. It must be retried by the caller and must NEVER consume the
+   * bounded repair budget — Bean & Bloom burned all 3 repairs on fetch races against a healthy app.
+   */
+  if (isTransientPreviewError(options.error)) {
+    return { shouldRepair: false, nextAttempt: options.completedAttempts, reason: 'transient' };
+  }
+
   if (options.completedAttempts >= maxAttempts) {
     return { shouldRepair: false, nextAttempt: options.completedAttempts, reason: 'exhausted' };
   }
@@ -73,6 +82,6 @@ export function decideAutomaticPreviewRepair(options: {
 Automatic focused repair attempt ${nextAttempt} of ${maxAttempts}.
 ${fileContext}
 
-Fix only the implicated file(s) and any directly required import. Preserve the rest of the project and its design. Emit complete replacement file actions for changed files only. Do not regenerate the project, do not run a planner, and do not emit quick actions.`,
+Fix ONLY the implicated file(s) listed above and any directly required import. Every other project file already exists on disk and is correct — do not touch, re-emit, or recreate them, and NEVER regenerate the whole project. Keep the project's existing JSX/TSX authoring style (do not switch to React.createElement). Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`,
   };
 }

@@ -340,39 +340,102 @@ function isBrowserSourcePath(filePath: string): boolean {
   );
 }
 
+/*
+ * Network-level failures reaching the WebContainer preview origin (cross-origin fetch races,
+ * module-graph warm-up, dev-server restarts). These are NOT compile errors: sending them to the
+ * model repair loop burned the whole repair budget and made the model recreate healthy projects.
+ */
+const TRANSIENT_PREVIEW_ERROR_PATTERN =
+  /failed to fetch|networkerror|network error|load failed|fetch failed|econnrefused|econnreset|socket hang up|timed? ?out|temporarily unavailable|aborted|http 50[234]/i;
+
+export function isTransientPreviewErrorMessage(message: string): boolean {
+  return TRANSIENT_PREVIEW_ERROR_PATTERN.test(message);
+}
+
+/**
+ * True when an error only reflects transient preview/network flakiness — every diagnostic (or the
+ * bare message) matches the transient pattern and none is a real syntax/structure/compile error.
+ */
+export function isTransientPreviewError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const diagnostics = (error as Partial<GeneratedCodeValidationError>).diagnostics;
+
+  if (Array.isArray(diagnostics) && diagnostics.length > 0) {
+    return diagnostics.every(
+      (diagnostic) => diagnostic.source === 'preview' && isTransientPreviewErrorMessage(diagnostic.message),
+    );
+  }
+
+  return isTransientPreviewErrorMessage(error.message);
+}
+
+export type ViteTransformVerifyOptions = {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+};
+
+/**
+ * Fetch each generated browser source through Vite's transform pipeline. Failures are retried
+ * with backoff; only PERSISTENT real compile errors throw. Persistent transient network failures
+ * fail open — the preview iframe already loaded, and e.g. cross-origin fetch restrictions must
+ * not trigger a model repair turn against a healthy app.
+ */
 export async function verifyViteSourceTransforms(
   baseUrl: string,
   sourcePaths: string[],
   fetcher: typeof fetch = fetch,
+  options: ViteTransformVerifyOptions = {},
 ): Promise<void> {
-  const diagnostics: GeneratedCodeDiagnostic[] = [];
+  const maxAttempts = options.maxAttempts ?? 3;
+  const retryDelayMs = options.retryDelayMs ?? 1500;
+  let pending = sourcePaths.filter(isBrowserSourcePath);
+  let diagnostics: GeneratedCodeDiagnostic[] = [];
 
-  await Promise.all(
-    sourcePaths.filter(isBrowserSourcePath).map(async (filePath) => {
-      const url = new URL(filePath.replace(/^\/+/, ''), `${baseUrl.replace(/\/+$/, '')}/`);
-      url.searchParams.set('indobase-health', Date.now().toString());
+  for (let attempt = 1; attempt <= maxAttempts && pending.length > 0; attempt++) {
+    if (attempt > 1) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (attempt - 1)));
+    }
 
-      try {
-        const response = await fetcher(url);
+    const attemptDiagnostics: GeneratedCodeDiagnostic[] = [];
+    const stillFailing: string[] = [];
 
-        if (!response.ok) {
-          diagnostics.push({
+    await Promise.all(
+      pending.map(async (filePath) => {
+        const url = new URL(filePath.replace(/^\/+/, ''), `${baseUrl.replace(/\/+$/, '')}/`);
+        url.searchParams.set('indobase-health', Date.now().toString());
+
+        try {
+          const response = await fetcher(url);
+
+          if (!response.ok) {
+            attemptDiagnostics.push({
+              filePath,
+              message: compactPreviewError(await response.text()) || `Vite transform returned HTTP ${response.status}.`,
+              source: 'preview',
+            });
+            stillFailing.push(filePath);
+          }
+        } catch (error) {
+          attemptDiagnostics.push({
             filePath,
-            message: compactPreviewError(await response.text()) || `Vite transform returned HTTP ${response.status}.`,
+            message: error instanceof Error ? error.message : String(error),
             source: 'preview',
           });
+          stillFailing.push(filePath);
         }
-      } catch (error) {
-        diagnostics.push({
-          filePath,
-          message: error instanceof Error ? error.message : String(error),
-          source: 'preview',
-        });
-      }
-    }),
-  );
+      }),
+    );
 
-  if (diagnostics.length > 0) {
-    throw new GeneratedCodeValidationError(diagnostics, 'Vite preview compile failed');
+    diagnostics = attemptDiagnostics;
+    pending = stillFailing;
+  }
+
+  const realDiagnostics = diagnostics.filter((diagnostic) => !isTransientPreviewErrorMessage(diagnostic.message));
+
+  if (realDiagnostics.length > 0) {
+    throw new GeneratedCodeValidationError(realDiagnostics, 'Vite preview compile failed');
   }
 }
