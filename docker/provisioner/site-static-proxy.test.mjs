@@ -33,7 +33,7 @@ test('resolveStorageObjectUrl builds public storage URL', () => {
   })
   assert.equal(
     url,
-    'http://172.17.0.1:5103/storage/v1/object/public/hosting/sites/dep-1/index.html'
+    'http://172.17.0.1:5103/object/public/hosting/sites/dep-1/index.html'
   )
 })
 

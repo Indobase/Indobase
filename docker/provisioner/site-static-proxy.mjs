@@ -60,7 +60,8 @@ export function resolveStorageObjectUrl({ upstream, storagePort, prefix, objectP
     ? `${normalizedPrefix}/${normalizedObject}`
     : normalizedObject
 
-  return `http://${host}:${port}/storage/v1/object/public/${HOSTING_BUCKET}/${storagePath}`
+  // Direct tenant-storage publish port has no Kong/Traefik stripPrefix — the API root is `/object/...`.
+  return `http://${host}:${port}/object/public/${HOSTING_BUCKET}/${storagePath}`
 }
 
 export function getStoragePortForRef(ref, dockerPs, routes, traefikDir) {
