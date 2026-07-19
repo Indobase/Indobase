@@ -23,6 +23,7 @@ import { IndobaseBackendChatAlert } from '~/components/chat/IndobaseBackendChatA
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import { useStore } from '@nanostores/react';
 import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
+import { FallbackRecommendations } from './FallbackRecommendations';
 import { ChatBox } from './ChatBox';
 import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -102,6 +103,8 @@ interface BaseChatProps {
   isStreaming?: boolean;
   onStreamingChange?: (streaming: boolean) => void;
   messages?: Message[];
+  /** Unparsed assistant messages — used to decide whether to show fallback recommendation chips. */
+  sourceMessages?: Message[];
   description?: string;
   enhancingPrompt?: boolean;
   promptEnhanced?: boolean;
@@ -170,6 +173,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       imageDataList = [],
       setImageDataList,
       messages,
+      sourceMessages,
       actionAlert,
       clearAlert,
       deployAlert,
@@ -621,17 +625,25 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <ClientOnly>
                     {() => {
                       return chatStarted ? (
-                        <Messages
-                          className="z-1 mx-auto flex w-full max-w-chat flex-1 flex-col pb-4"
-                          messages={messages}
-                          isStreaming={isStreaming}
-                          append={append}
-                          chatMode={chatMode}
-                          setChatMode={setChatMode}
-                          provider={provider}
-                          model={model}
-                          addToolResult={addToolResult}
-                        />
+                        <>
+                          <Messages
+                            className="z-1 mx-auto flex w-full max-w-chat flex-1 flex-col pb-4"
+                            messages={messages}
+                            isStreaming={isStreaming}
+                            append={append}
+                            chatMode={chatMode}
+                            setChatMode={setChatMode}
+                            provider={provider}
+                            model={model}
+                            addToolResult={addToolResult}
+                          />
+                          <FallbackRecommendations
+                            messages={sourceMessages ?? messages ?? []}
+                            append={append}
+                            model={model}
+                            provider={provider}
+                          />
+                        </>
                       ) : null;
                     }}
                   </ClientOnly>
