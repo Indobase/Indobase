@@ -11,7 +11,7 @@ describe('inferBuilderProjectTarget', () => {
   it('selects mobile only for explicit native intent', () => {
     expect(
       inferBuilderProjectTarget([
-        { id: '1', role: 'user', content: 'Build an Android and iOS mobile app for recipes.' },
+        { role: 'user', content: 'Build an Android and iOS mobile app for recipes.' },
       ]),
     ).toBe('mobile');
   });
@@ -19,14 +19,14 @@ describe('inferBuilderProjectTarget', () => {
   it('keeps a responsive website on the web contract', () => {
     expect(
       inferBuilderProjectTarget([
-        { id: '1', role: 'user', content: 'Build a responsive website that works on mobile.' },
+        { role: 'user', content: 'Build a responsive website that works on mobile.' },
       ]),
     ).toBe('web');
   });
 
   it('preserves Expo target for follow-up edits', () => {
     expect(
-      inferBuilderProjectTarget([{ id: '1', role: 'user', content: 'Make the buttons more rounded.' }], {
+      inferBuilderProjectTarget([{ role: 'user', content: 'Make the buttons more rounded.' }], {
         '/home/project/package.json': {
           type: 'file',
           isBinary: false,
@@ -126,7 +126,7 @@ describe('inspectOneShotBuildResponse', () => {
     expect(inspectOneShotBuildResponse(response)).toEqual({ complete: true, issues: [] });
   });
 
-  it('reports missing execution actions first, without also demanding recommendations', () => {
+  it('reports missing execution actions without demanding recommendations', () => {
     expect(
       inspectOneShotBuildResponse(
         '<boltArtifact id="app" title="App"><boltAction type="file" filePath="package.json">{}</boltAction></boltArtifact>',
@@ -137,7 +137,7 @@ describe('inspectOneShotBuildResponse', () => {
     });
   });
 
-  it('requires quick-action recommendations once the build is runnable', () => {
+  it('does not force a continuation just because quick-action chips are missing', () => {
     const runnable = `
 <boltArtifact id="app" title="App">
   <boltAction type="file" filePath="package.json">{}</boltAction>
@@ -146,9 +146,6 @@ describe('inspectOneShotBuildResponse', () => {
 </boltArtifact>
 Would you like me to add a dark mode toggle or product pages?`;
 
-    expect(inspectOneShotBuildResponse(runnable)).toEqual({
-      complete: false,
-      issues: ['missing <bolt-quick-actions> refinement recommendations after the artifact'],
-    });
+    expect(inspectOneShotBuildResponse(runnable)).toEqual({ complete: true, issues: [] });
   });
 });

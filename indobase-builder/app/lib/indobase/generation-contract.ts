@@ -133,7 +133,6 @@ export function inspectOneShotBuildResponse(response: string): OneShotBuildRespo
       response,
     );
   const hasStartAction = /<boltAction\b[^>]*\btype\s*=\s*["']start["'][^>]*>[\s\S]*?<\/boltAction>/i.test(response);
-  const hasQuickActions = /<bolt-quick-actions>[\s\S]*?<\/bolt-quick-actions>/i.test(response);
 
   if (!hasInstallAction) {
     issues.push('missing npm install shell action');
@@ -143,12 +142,11 @@ export function inspectOneShotBuildResponse(response: string): OneShotBuildRespo
     issues.push('missing start action');
   }
 
-  // Recommendations must be clickable quick actions, not prose — only ask once the build itself
-  // is runnable so a chips-only continuation stays a short, cheap round.
-  if (hasInstallAction && hasStartAction && !hasQuickActions) {
-    issues.push('missing <bolt-quick-actions> refinement recommendations after the artifact');
-  }
-
+  /*
+   * Deliberately NOT enforced: <bolt-quick-actions> recommendations. Forcing a continuation for
+   * missing chips makes the model rewrite the whole project again (degrading files) instead of
+   * emitting one chips block. The client renders fallback recommendations after preview success.
+   */
   return { complete: issues.length === 0, issues };
 }
 

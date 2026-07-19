@@ -98,6 +98,22 @@ export function Chat() {
   );
 }
 
+/*
+ * Rendered post-preview when the model forgot its own <bolt-quick-actions> block. Enforcing the
+ * block server-side made continuation rounds regenerate the entire project, so we patch the last
+ * assistant message client-side instead.
+ */
+const FALLBACK_QUICK_ACTIONS = [
+  '\n\n<bolt-quick-actions>',
+  '<bolt-quick-action type="message" message="Polish the visual design with better spacing, typography, and color contrast">Polish the design</bolt-quick-action>',
+  '<bolt-quick-action type="message" message="Make the layout fully responsive for mobile and tablet">Improve mobile layout</bolt-quick-action>',
+  '<bolt-quick-action type="message" message="Add smooth scroll and subtle entrance animations">Add animations</bolt-quick-action>',
+  '<bolt-quick-action type="message" message="Improve SEO with better meta tags, page titles, and descriptions">Improve SEO</bolt-quick-action>',
+  '</bolt-quick-actions>',
+].join('\n');
+
+const QUICK_ACTIONS_MARKUP_PATTERN = /<bolt-quick-actions?\b/i;
+
 const processSampledMessages = createSampler(
   (options: {
     messages: Message[];
@@ -307,6 +323,7 @@ export const ChatImpl = memo(
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
+                appendFallbackQuickActionsIfMissing();
               }
             }
           } catch (error) {
@@ -330,6 +347,38 @@ export const ChatImpl = memo(
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
     });
+
+    function appendFallbackQuickActionsIfMissing() {
+      setMessages((current) => {
+        const lastIndex = current.length - 1;
+
+        if (lastIndex < 0 || current[lastIndex].role !== 'assistant') {
+          return current;
+        }
+
+        const last = current[lastIndex];
+        const text = Array.isArray(last.content)
+          ? ((last.content as any[]).find((item) => item.type === 'text')?.text as string) || ''
+          : last.content;
+
+        if (QUICK_ACTIONS_MARKUP_PATTERN.test(text)) {
+          return current;
+        }
+
+        logger.info('Assistant response had no quick actions; appending fallback recommendations');
+
+        const patched: Message = Array.isArray(last.content)
+          ? {
+              ...last,
+              content: (last.content as any[]).map((item) =>
+                item.type === 'text' ? { ...item, text: `${item.text}${FALLBACK_QUICK_ACTIONS}` } : item,
+              ) as any,
+            }
+          : { ...last, content: `${text}${FALLBACK_QUICK_ACTIONS}` };
+
+        return [...current.slice(0, lastIndex), patched];
+      });
+    }
 
     useEffect(() => {
       if (provider.name !== HIDDEN_CHAT_PROVIDER.name) {
