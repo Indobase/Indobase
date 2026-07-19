@@ -9,6 +9,12 @@ COMPOSE_FILES=(-f docker-compose.yml)
 if [[ -f docker-compose.dokploy.yml ]]; then
   COMPOSE_FILES+=(-f docker-compose.dokploy.yml)
 fi
+# Host port publish for Studio on the control-plane VPS (DATA_PLANE_PROVISIONER_URL=http://103.190.92.248:8787).
+if [[ -f docker-compose.backend-vps.yml ]]; then
+  COMPOSE_FILES+=(-f docker-compose.backend-vps.yml)
+elif [[ -f docker-compose.backend-override.yml ]]; then
+  COMPOSE_FILES+=(-f docker-compose.backend-override.yml)
+fi
 
 IMAGE_TAG="${1:-latest}"
 export DATA_PLANE_PROVISIONER_IMAGE="roshanraghavander/ind-repo-provisioner:${IMAGE_TAG}"
