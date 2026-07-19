@@ -36,6 +36,13 @@ import { MyAppsList } from '~/components/chat/MyAppsList.client';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
+/*
+ * Stable default for the optional `extraProgress` prop. An inline `= []` default creates a new
+ * array identity on every render, which re-fired the progress effect and re-set state each pass —
+ * an infinite render loop that churned the whole chat tree during streaming (visible jitter).
+ */
+const NO_EXTRA_PROGRESS: ProgressAnnotation[] = [];
+
 const PRECHAT_STARTER_PROMPTS = [
   {
     description: 'Admin panels, analytics, auth flows, and subscription UX.',
@@ -183,7 +190,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       llmErrorAlert,
       clearLlmErrorAlert,
       data,
-      extraProgress = [],
+      extraProgress = NO_EXTRA_PROGRESS,
       chatMode,
       setChatMode,
       append,
