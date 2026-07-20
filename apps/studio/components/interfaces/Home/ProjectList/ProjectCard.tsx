@@ -5,7 +5,6 @@ import type { IntegrationProjectConnection } from 'data/integrations/integration
 import { ProjectIndexPageLink } from 'data/prefetchers/project.$ref'
 import { getComputeSize, OrgProject } from 'data/projects/org-projects-infinite-query'
 import type { ResourceWarning } from 'data/usage/resource-warnings-query'
-import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { BASE_PATH } from 'lib/constants'
 import { Copy, Github, MoreVertical, Trash } from 'lucide-react'
@@ -23,7 +22,7 @@ import {
 } from 'ui'
 
 import { DataPlaneListBadge } from './DataPlaneListBadge'
-import { inferProjectStatus } from './ProjectCard.utils'
+import { getProjectLocationLabel, inferProjectStatus } from './ProjectCard.utils'
 import { ProjectCardStatus } from './ProjectCardStatus'
 
 export interface ProjectCardProps {
@@ -47,12 +46,7 @@ export const ProjectCard = ({
 }: ProjectCardProps) => {
   const { name, ref: projectRef } = project
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-
-  const { infraAwsNimbusLabel } = useCustomContent(['infra:aws_nimbus_label'])
-  const providerLabel =
-    project.cloud_provider === 'AWS_NIMBUS' ? infraAwsNimbusLabel : project.cloud_provider
-
-  const desc = `${providerLabel} | ${project.region}`
+  const desc = getProjectLocationLabel(project.region)
 
   const { projectHomepageShowInstanceSize } = useIsFeatureEnabled([
     'project_homepage:show_instance_size',
@@ -115,7 +109,7 @@ export const ProjectCard = ({
                     </DropdownMenu>
                   </div>
                 </div>
-                <p className="text-sm text-foreground-lighter">{desc}</p>
+                {desc && <p className="text-sm text-foreground-lighter">{desc}</p>}
               </div>
               <div className="flex items-center gap-x-1.5 relative overflow-hidden">
                 <ProjectCardStatus

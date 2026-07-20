@@ -21,7 +21,7 @@ import {
 } from 'ui'
 import { TimestampInfo } from 'ui-patterns'
 import { DataPlaneListBadge } from './DataPlaneListBadge'
-import { inferProjectStatus } from './ProjectCard.utils'
+import { getProjectLocationLabel, inferProjectStatus } from './ProjectCard.utils'
 import { ProjectCardStatus } from './ProjectCardStatus'
 import { DeleteProjectModal } from 'components/interfaces/Settings/General/DeleteProjectPanel/DeleteProjectModal'
 import { toast } from 'sonner'
@@ -150,8 +150,8 @@ export const ProjectTableRow = ({
           </div>
         </TableCell>
         <TableCell>
-          <span className="lowercase text-sm text-foreground-light">
-            {project.cloud_provider} | {project.region || 'N/A'}
+          <span className="text-sm text-foreground-light">
+            {getProjectLocationLabel(project.region) ?? 'N/A'}
           </span>
         </TableCell>
         <TableCell>

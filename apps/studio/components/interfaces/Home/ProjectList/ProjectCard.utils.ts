@@ -39,6 +39,14 @@ export const inferProjectStatus = (projectStatus: string) => {
   return status as InferredProjectStatus
 }
 
+export const getProjectLocationLabel = (region?: string | null) => {
+  const normalizedRegion = region?.trim()
+  if (!normalizedRegion) return undefined
+
+  // Keep the useful location while stripping vendor-prefixed labels from older data.
+  return normalizedRegion.replace(/^(aws|fly)\s*[|:-]?\s*/i, '').trim() || undefined
+}
+
 export type InferredProjectStatus =
   | 'isHealthy'
   | 'isPausing'
