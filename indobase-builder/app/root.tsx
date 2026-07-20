@@ -65,6 +65,7 @@ import { hydrateClientPrefsFromStorage } from './lib/stores/hydrateClientPrefs';
 import { restoreBuilderSessionOnLoad, startBuilderSessionKeeper } from './lib/indobase/builder-auth.client';
 import { warmWebContainer } from './lib/webcontainer';
 import { WebContainerBootBanner } from './components/WebContainerBootBanner.client';
+import { PostHogAnalytics } from './components/analytics/PostHogAnalytics.client';
 
 export default function App() {
   useEffect(() => {
@@ -147,6 +148,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: inlineThemeCode }} />
       </head>
       <body suppressHydrationWarning>
+        <ClientOnly fallback={null}>{() => <PostHogAnalytics />}</ClientOnly>
         <ClientOnly fallback={null}>{() => <WebContainerBootBanner />}</ClientOnly>
         <ClientOnly fallback={<>{children}</>}>
           {() => <DndProvider backend={HTML5Backend}>{children}</DndProvider>}

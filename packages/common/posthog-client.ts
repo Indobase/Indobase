@@ -305,6 +305,25 @@ class PostHogClient {
     this.fireExposureIfNew(experimentId, properties)
   }
 
+  capture(event: string, properties?: Record<string, any>, hasConsent: boolean = true) {
+    if (!hasConsent) return
+
+    if (!this.initialized) {
+      if (this.pendingEvents.length >= this.maxPendingEvents) {
+        this.pendingEvents.shift()
+      }
+      this.pendingEvents.push({ event, properties: properties ?? {} })
+      return
+    }
+
+    try {
+      posthog.capture(event, properties, { transport: 'sendBeacon' })
+      this.emitToDevListeners('capture', event, properties)
+    } catch (error) {
+      console.error('PostHog capture failed:', error)
+    }
+  }
+
   private fireExposureIfNew(experimentId: string, properties: Record<string, any>) {
     const sessionId = this.getSessionId()
     if (!sessionId) return

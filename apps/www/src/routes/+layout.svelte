@@ -57,8 +57,9 @@
     import { onMount } from 'svelte';
     import { SvelteSet } from 'svelte/reactivity';
     import { loggedIn } from '$lib/utils/console';
-    import { beforeNavigate } from '$app/navigation';
+    import { afterNavigate, beforeNavigate } from '$app/navigation';
     import { trackEvent } from '$lib/actions/analytics';
+    import { capturePostHogPageview, initPostHog } from '$lib/analytics/posthog';
     import { saveReferrerAndUtmSource } from '$lib/utils/utm';
     import { Sprite } from '$lib/components/ui/icon/sprite';
     import { displayHiringMessage } from '$lib/utils/console';
@@ -85,6 +86,14 @@
         applyTheme(initialTheme);
 
         saveReferrerAndUtmSource(page.url);
+
+        initPostHog();
+        capturePostHogPageview(page.url.pathname);
+    });
+
+    afterNavigate(({ to }) => {
+        if (!to?.url) return;
+        capturePostHogPageview(to.url.pathname);
     });
 
     currentTheme.subscribe(applyTheme);

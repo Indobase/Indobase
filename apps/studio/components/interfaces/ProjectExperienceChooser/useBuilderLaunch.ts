@@ -1,4 +1,4 @@
-import { getAccessToken, useParams } from 'common'
+import { getAccessToken, hasConsented, isPostHogConfigured, posthogClient, useParams } from 'common'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -55,6 +55,13 @@ export function useBuilderLaunch(options?: UseBuilderLaunchOptions) {
       } else {
         toast.error('Popup blocked. Opening Builder in the current tab instead.')
         window.location.href = payload.url
+      }
+
+      if (hasConsented() && isPostHogConfigured()) {
+        posthogClient.capture('builder_handoff_launched', {
+          connect_flow: Boolean(options?.connectFlow),
+          project_ref: ref,
+        })
       }
 
       setIsLaunching(false)

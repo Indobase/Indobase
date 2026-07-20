@@ -2,7 +2,7 @@ import { page } from '$app/state';
 import { ENV } from '$lib/system';
 import { browser } from '$app/environment';
 
-import posthogEvent from 'posthog-js';
+import { capturePostHogEvent } from '$lib/analytics/posthog';
 import Plausible from 'plausible-tracker';
 import { Analytics, type AnalyticsPlugin } from 'analytics';
 
@@ -68,6 +68,6 @@ export const trackEvent = (eventArgs?: string | TrackEventArgs): void => {
         return;
     }
 
-    posthogEvent.capture(name, data);
+    capturePostHogEvent(name, data);
     analytics.track(name, data).then();
 };

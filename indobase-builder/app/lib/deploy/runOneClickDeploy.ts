@@ -1,5 +1,6 @@
 import { toast } from 'react-toastify';
 
+import { capturePostHogEvent } from '~/lib/analytics/posthog.client';
 import { publishToIndobase } from '~/lib/deploy/publishToIndobase';
 import { quickGitHubDeploy } from '~/lib/deploy/quickGitHubDeploy';
 import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
@@ -39,6 +40,11 @@ export async function runOneClickDeploy(
       });
 
       if (result.success && result.openedUrl) {
+        capturePostHogEvent('builder_deploy_succeeded', {
+          target: 'indobase',
+          project_ref: context.connection.selectedProjectId,
+          source: metadata.source,
+        });
         toast.success('Published on your Indobase subdomain.');
         window.open(result.openedUrl, '_blank', 'noopener,noreferrer');
         return true;
@@ -51,6 +57,12 @@ export async function runOneClickDeploy(
         window.open(result.deployment.target_url, '_blank', 'noopener,noreferrer');
         return true;
       } else {
+        capturePostHogEvent('builder_deploy_failed', {
+          target: 'indobase',
+          project_ref: context.connection.selectedProjectId,
+          status: result.status,
+          source: metadata.source,
+        });
         toast.error(result.error || 'Could not publish to Indobase.');
       }
 
@@ -78,11 +90,19 @@ export async function runOneClickDeploy(
       });
 
       if (result.success && result.repoUrl) {
+        capturePostHogEvent('builder_deploy_succeeded', {
+          target: 'github',
+          project_ref: context.connection.selectedProjectId,
+        });
         toast.success('Pushed to GitHub.');
         window.open(result.repoUrl, '_blank', 'noopener,noreferrer');
         return true;
       }
 
+      capturePostHogEvent('builder_deploy_failed', {
+        target: 'github',
+        project_ref: context.connection.selectedProjectId,
+      });
       toast.error(result.error || 'GitHub deploy failed.');
       return false;
     }
@@ -103,11 +123,19 @@ export async function runOneClickDeploy(
       });
 
       if (result.success && result.repoUrl) {
+        capturePostHogEvent('builder_deploy_succeeded', {
+          target: 'gitlab',
+          project_ref: context.connection.selectedProjectId,
+        });
         toast.success('Pushed to GitLab.');
         window.open(result.repoUrl, '_blank', 'noopener,noreferrer');
         return true;
       }
 
+      capturePostHogEvent('builder_deploy_failed', {
+        target: 'gitlab',
+        project_ref: context.connection.selectedProjectId,
+      });
       toast.error(result.error || 'GitLab deploy failed.');
       return false;
     }
