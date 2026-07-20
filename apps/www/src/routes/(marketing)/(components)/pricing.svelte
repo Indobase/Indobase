@@ -24,13 +24,17 @@
             buttonText: 'Start free',
             subtitle: '/ month',
             features: [
+                'No Studio (Builder only)',
                 '1 app',
                 '*.indobase.app subdomain',
                 'Indobase badge',
+                '~20 AI builds/day',
+                '500 MB database',
+                '1 GB file storage',
+                '10k MAU',
+                '5 GB egress',
                 'Sleeps after 7 days idle',
-                '~20 builds/day',
-                '512 MB database',
-                'No Studio (Builder only)'
+                'Community support'
             ]
         },
         {
@@ -45,11 +49,15 @@
                 'Studio unlocked',
                 'Auth, Database, Storage, Functions',
                 '3 apps',
+                '~50 AI builds/day',
+                '1 GB database',
+                '5 GB file storage',
+                '25k MAU',
+                '25 GB egress',
                 'Custom domain',
                 'Badge removed',
-                'No idle sleep',
-                '~60 builds/day',
-                '1 GB database'
+                'Sleeps after 30 days idle',
+                'Email support (48h)'
             ]
         },
         {
@@ -64,8 +72,12 @@
             features: [
                 'Everything in Basic',
                 '5 apps',
-                '~150 builds/day',
+                '~150 AI builds/day',
                 '8 GB database',
+                '100 GB file storage',
+                '100k MAU',
+                '250 GB egress',
+                'Sleeps after 30 days idle (pin to keep warm)',
                 'GitHub export',
                 'Isolated tenant stack'
             ]
@@ -79,12 +91,17 @@
             buttonText: 'Get Studio',
             subtitle: '/ month',
             features: [
-                '3 seats',
+                'Everything in Pro',
                 '15 apps',
+                '3 seats',
+                '~300 AI builds/day',
                 '20 GB database',
-                '~300 builds/day',
+                '250 GB file storage',
+                '500 GB egress',
+                'No idle sleep',
                 'Priority build queue',
-                'Shared billing'
+                'Shared billing',
+                'Priority support'
             ]
         },
         {
