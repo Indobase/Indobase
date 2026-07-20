@@ -53,7 +53,8 @@ export default defineConfig({
         devSourcemap: !isProd
     },
     build: {
-        sourcemap: false,
+        // Hidden source maps for PostHog error-tracking symbolication (see docs/POSTHOG-ERROR-TRACKING.md).
+        sourcemap: isProd ? 'hidden' : false,
         reportCompressedSize: false
     },
     test: {

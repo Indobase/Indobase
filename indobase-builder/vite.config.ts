@@ -23,6 +23,7 @@ export default defineConfig((config) => {
     },
     build: {
       target: 'esnext',
+      sourcemap: config.mode === 'production' ? 'hidden' : false,
     },
     plugins: [
       nodePolyfills({

@@ -26,6 +26,9 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   FeatureFlagProvider,
   getFlags,
+  hasConsented,
+  isPostHogConfigured,
+  posthogClient,
   TelemetryTagManager,
   ThemeProvider,
   useThemeSandbox,
@@ -112,6 +115,13 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
         ;(error as any).sentryId = eventId
       }
     })
+
+    if (hasConsented() && isPostHogConfigured()) {
+      posthogClient.captureException(error, {
+        boundary: 'global',
+        component_stack: info.componentStack,
+      })
+    }
 
     console.error(error.stack)
   }

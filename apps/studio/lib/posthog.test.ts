@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as common from 'common'
 import { trackFeatureFlag } from './posthog'
+import { capturePostHogException } from './posthog-server'
 
 vi.mock('common', async (importOriginal) => {
   const actual = await importOriginal<typeof import('common')>()
@@ -10,10 +11,21 @@ vi.mock('common', async (importOriginal) => {
     isPostHogConfigured: vi.fn(),
     posthogClient: {
       captureFeatureFlagCall: vi.fn(),
+      captureException: vi.fn(),
     },
     trackFeatureFlag: vi.fn(),
   }
 })
+
+const captureExceptionMock = vi.fn()
+const flushMock = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('posthog-node', () => ({
+  PostHog: vi.fn().mockImplementation(() => ({
+    captureException: captureExceptionMock,
+    flush: flushMock,
+  })),
+}))
 
 describe('trackFeatureFlag', () => {
   beforeEach(() => {
@@ -45,5 +57,35 @@ describe('trackFeatureFlag', () => {
       'new-home',
       true
     )
+  })
+})
+
+describe('capturePostHogException', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test')
+  })
+
+  it('no-ops when PostHog is not configured', async () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', '')
+    vi.resetModules()
+    const { capturePostHogException: capture } = await import('./posthog-server')
+
+    await capture('user-1', new Error('fail'))
+
+    expect(captureExceptionMock).not.toHaveBeenCalled()
+  })
+
+  it('captures server exceptions when configured', async () => {
+    vi.resetModules()
+    const { capturePostHogException: capture } = await import('./posthog-server')
+    const error = new Error('platform failure')
+
+    await capture('user-1', error, { route: '/api/platform/test' })
+
+    expect(captureExceptionMock).toHaveBeenCalledWith(error, 'user-1', {
+      route: '/api/platform/test',
+    })
+    expect(flushMock).toHaveBeenCalled()
   })
 })

@@ -60,6 +60,7 @@ import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
+import { capturePostHogException } from '~/lib/analytics/posthog.client';
 
 const logger = createScopedLogger('Chat');
 const getAllowedChatProviders = () =>
@@ -881,6 +882,14 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
 
           return;
         }
+
+        capturePostHogException(error, {
+          context,
+          error_type: errorType,
+          status_code: errorInfo.statusCode,
+          provider: provider.name,
+          chat_mode: chatMode,
+        });
 
         // Create API error alert
         setLlmErrorAlert({

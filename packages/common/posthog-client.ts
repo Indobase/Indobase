@@ -1,6 +1,10 @@
 import posthog, { PostHogConfig } from 'posthog-js'
 
-import { getPostHogApiHost, getPostHogUiHost } from './posthog-config'
+import {
+  getPostHogApiHost,
+  getPostHogCaptureExceptionsConfig,
+  getPostHogUiHost,
+} from './posthog-config'
 
 // Limit the max number of queued events
 // (e.g. if a user navigates around a lot before accepting consent)
@@ -58,6 +62,7 @@ class PostHogClient {
       autocapture: false, // We'll manually track events
       capture_pageview: false, // We'll manually track pageviews
       capture_pageleave: false, // We'll manually track page leaves
+      capture_exceptions: getPostHogCaptureExceptionsConfig(),
       loaded: (posthog) => {
         // Apply pending properties that were set before PostHog
         // initialized due to poor connection or user not accepting
@@ -321,6 +326,26 @@ class PostHogClient {
       this.emitToDevListeners('capture', event, properties)
     } catch (error) {
       console.error('PostHog capture failed:', error)
+    }
+  }
+
+  captureException(
+    error: unknown,
+    properties?: Record<string, any>,
+    hasConsent: boolean = true
+  ) {
+    if (!hasConsent || !this.initStarted) return
+
+    const normalizedError = error instanceof Error ? error : new Error(String(error))
+
+    if (!this.initialized) {
+      return
+    }
+
+    try {
+      posthog.captureException(normalizedError, properties)
+    } catch (captureError) {
+      console.error('PostHog captureException failed:', captureError)
     }
   }
 

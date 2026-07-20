@@ -55,6 +55,20 @@ export async function capturePostHogEvent(
   await ph.flush()
 }
 
+export async function capturePostHogException(
+  distinctId: string,
+  error: unknown,
+  properties?: Record<string, unknown>
+) {
+  const ph = getPostHogServer()
+  if (!ph) return
+
+  const normalizedError = error instanceof Error ? error : new Error(String(error))
+
+  ph.captureException(normalizedError, distinctId, properties)
+  await ph.flush()
+}
+
 export async function identifyPostHogGroups(
   distinctId: string,
   options: { organizationSlug?: string; projectRef?: string }

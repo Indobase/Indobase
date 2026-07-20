@@ -1,6 +1,6 @@
 import { toast } from 'react-toastify';
 
-import { capturePostHogEvent } from '~/lib/analytics/posthog.client';
+import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
 import { publishToIndobase } from '~/lib/deploy/publishToIndobase';
 import { quickGitHubDeploy } from '~/lib/deploy/quickGitHubDeploy';
 import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
@@ -43,7 +43,7 @@ export async function runOneClickDeploy(
         capturePostHogEvent('builder_deploy_succeeded', {
           target: 'indobase',
           project_ref: context.connection.selectedProjectId,
-          source: metadata.source,
+          source: 'one_click_deploy',
         });
         toast.success('Published on your Indobase subdomain.');
         window.open(result.openedUrl, '_blank', 'noopener,noreferrer');
@@ -61,7 +61,13 @@ export async function runOneClickDeploy(
           target: 'indobase',
           project_ref: context.connection.selectedProjectId,
           status: result.status,
-          source: metadata.source,
+          source: 'one_click_deploy',
+        });
+        capturePostHogException(new Error(result.error || 'Could not publish to Indobase.'), {
+          target: 'indobase',
+          project_ref: context.connection.selectedProjectId,
+          status: result.status,
+          source: 'one_click_deploy',
         });
         toast.error(result.error || 'Could not publish to Indobase.');
       }
@@ -103,6 +109,10 @@ export async function runOneClickDeploy(
         target: 'github',
         project_ref: context.connection.selectedProjectId,
       });
+      capturePostHogException(new Error(result.error || 'GitHub deploy failed.'), {
+        target: 'github',
+        project_ref: context.connection.selectedProjectId,
+      });
       toast.error(result.error || 'GitHub deploy failed.');
       return false;
     }
@@ -133,6 +143,10 @@ export async function runOneClickDeploy(
       }
 
       capturePostHogEvent('builder_deploy_failed', {
+        target: 'gitlab',
+        project_ref: context.connection.selectedProjectId,
+      });
+      capturePostHogException(new Error(result.error || 'GitLab deploy failed.'), {
         target: 'gitlab',
         project_ref: context.connection.selectedProjectId,
       });
