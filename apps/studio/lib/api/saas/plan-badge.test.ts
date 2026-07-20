@@ -19,7 +19,12 @@ describe('plan-badge', () => {
   it('reports badge / backend studio correctly', () => {
     expect(planRequiresIndobaseBadge('free')).toBe(true)
     expect(planRequiresIndobaseBadge('basic')).toBe(false)
-    expect(planHasBackendStudio('basic')).toBe(false)
+
+    // Studio opens at Basic — this asserted `false` while the entitlement enforced `true`, and the
+    // broken setup meant this file never ran, so the contradiction went unnoticed all the way onto
+    // the pricing page ("No backend Studio (frontend only)" on a plan that had it).
+    expect(planHasBackendStudio('free')).toBe(false)
+    expect(planHasBackendStudio('basic')).toBe(true)
     expect(planHasBackendStudio('pro')).toBe(true)
   })
 })

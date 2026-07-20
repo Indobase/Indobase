@@ -1,5 +1,7 @@
 import MarkdownIt from 'markdown-it';
 
+import { DEFAULT_HOST } from './metadata';
+
 const md = new MarkdownIt('commonmark');
 export function parse(content: string): string {
     const env = {};
@@ -26,7 +28,8 @@ function transform_tokens(tokens: ReturnType<typeof md.parse>): ReturnType<typeo
             case 'link_open': {
                 const href = token.attrGet('href');
                 if (href?.startsWith('http')) {
-                    if (!href.startsWith('https://appwrite.io')) {
+                    // Our own links stay in-tab; everything else opens externally.
+                    if (!href.startsWith(DEFAULT_HOST)) {
                         token.attrPush(['rel', 'noopener noreferrer']);
                         token.attrPush(['target', '_blank']);
                     }

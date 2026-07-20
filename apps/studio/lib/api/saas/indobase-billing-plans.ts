@@ -4,9 +4,9 @@ import {
   SELECTABLE_BILLING_PLAN_IDS,
   canonicalizePlanId,
   getPlanChangeType,
-  getPlanEntitlements,
   type IndobasePlanId,
 } from './plan-entitlements'
+import { getPlanFeatureLines, getPlanLimits } from './plan-feature-lines'
 
 export type PlanChangeType = 'upgrade' | 'downgrade' | 'none'
 
@@ -73,12 +73,6 @@ export type IndobasePublicPlan = {
 
 export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRENCY): IndobasePublicPlan[] {
   const isInr = currency === 'INR'
-  const e = {
-    free: getPlanEntitlements('free'),
-    basic: getPlanEntitlements('basic'),
-    pro: getPlanEntitlements('pro'),
-    studio: getPlanEntitlements('studio'),
-  }
 
   const plans: IndobasePublicPlan[] = [
     {
@@ -90,18 +84,8 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       currency,
       description: 'Ship one app on a *.indobase.app subdomain and see if Indobase fits.',
       motive: 'Try the product',
-      features: [
-        '1 app',
-        '*.indobase.app subdomain',
-        'Indobase badge on published sites',
-        'Sleeps after 7 days idle',
-        '~20 builds/day',
-        'No backend Studio (frontend only)',
-      ],
-      limits: {
-        max_apps: e.free.maxApps ?? 1,
-        builds_per_day: e.free.buildsPerDay ?? 20,
-      },
+      features: ['*.indobase.app subdomain', ...getPlanFeatureLines('free')],
+      limits: getPlanLimits('free'),
       overage_rates: {},
       popular: false,
       available: true,
@@ -113,20 +97,10 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       monthly_price: isInr ? resolveIndobasePlanPriceInr('basic') ?? 499 : 6,
       annual_price: isInr ? (resolveIndobasePlanPriceInr('basic') ?? 499) * 10 : 60,
       currency,
-      description: 'Custom domain and no badge — for static sites, landings, and frontend prototypes.',
-      motive: 'Vanity: my domain, no badge',
-      features: [
-        '3 apps',
-        'Custom domain',
-        'Indobase badge removed',
-        'No idle sleep',
-        '~60 builds/day',
-        'No backend Studio (frontend only)',
-      ],
-      limits: {
-        max_apps: e.basic.maxApps ?? 3,
-        builds_per_day: e.basic.buildsPerDay ?? 60,
-      },
+      description: 'Studio unlocked plus your own domain — Auth, Database, Storage, and Functions.',
+      motive: 'Open Studio + my domain',
+      features: getPlanFeatureLines('basic'),
+      limits: getPlanLimits('basic'),
       overage_rates: {},
       popular: false,
       available: true,
@@ -143,22 +117,10 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       monthly_price: isInr ? resolveIndobasePlanPriceInr('pro') ?? 1999 : 24,
       annual_price: isInr ? (resolveIndobasePlanPriceInr('pro') ?? 1999) * 10 : 240,
       currency,
-      description: 'Backend Studio unlocked — Auth, Postgres, Storage, and Edge Functions.',
-      motive: 'Necessity: users need to log in',
-      features: [
-        'Backend Studio unlocked',
-        'Auth, Postgres, Storage, Functions',
-        '5 apps',
-        'Unlimited builds (fair-use)',
-        'GitHub export',
-        '2 GB database',
-      ],
-      limits: {
-        max_apps: e.pro.maxApps ?? 5,
-        database_size: e.pro.databaseBytes ?? 2 * 1024 ** 3,
-        auth_maus: 100000,
-        storage_size: 107374182400,
-      },
+      description: 'Headroom for production apps — isolated stack, more database, GitHub export.',
+      motive: 'Production headroom and isolation',
+      features: getPlanFeatureLines('pro', { inheritsFrom: 'basic' }),
+      limits: getPlanLimits('pro'),
       overage_rates: {
         database_size: isInr ? 0.000010417 : 0.000000125,
         auth_maus: isInr ? 0.27 : 0.00325,
@@ -182,19 +144,8 @@ export function getIndobasePublicPlans(currency: string = INDOBASE_BILLING_CURRE
       currency,
       description: 'For agencies and dev shops — seats, more apps, and shared billing.',
       motive: 'Team: seats and shared billing',
-      features: [
-        '3 seats',
-        '15 apps',
-        '20 GB database',
-        'Priority build queue',
-        'Shared billing',
-        'Everything in Pro',
-      ],
-      limits: {
-        max_apps: e.studio.maxApps ?? 15,
-        max_seats: e.studio.maxSeats ?? 3,
-        database_size: e.studio.databaseBytes ?? 20 * 1024 ** 3,
-      },
+      features: getPlanFeatureLines('studio', { inheritsFrom: 'pro' }),
+      limits: getPlanLimits('studio'),
       overage_rates: {
         database_size: isInr ? 0.000010417 : 0.000000125,
       },

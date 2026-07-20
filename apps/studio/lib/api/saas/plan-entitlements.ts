@@ -33,7 +33,25 @@ export type PlanEntitlements = {
   buildsPerDay: number | null
   /** Database size budget bytes (org aggregate guidance) */
   databaseBytes: number | null
-  /** Free-tier idle sleep after N days; null = never auto-sleep */
+  /** Object storage budget bytes; null = custom / negotiated */
+  storageBytes: number | null
+  /** Monthly active auth users; null = custom / negotiated */
+  mauLimit: number | null
+  /** Monthly egress budget bytes; null = custom / negotiated */
+  egressBytes: number | null
+  /**
+   * Automated backup retention in days. 0 = no backups.
+   *
+   * Currently 0 on EVERY plan: there is no backup implementation — `database-backups.ts` returns
+   * an empty list and no WAL-G / pg_dump job exists. Do not surface a backup claim on any pricing
+   * surface until this is non-zero AND a real backup job is running.
+   */
+  backupRetentionDays: number
+  /** Support channel and response target. */
+  supportTier: 'community' | 'email-48h' | 'priority'
+  /** Owner may pin a project to exempt it from idle sleep. */
+  canPinProject: boolean
+  /** Idle sleep after N days of no traffic; null = never auto-sleep */
   idleSleepDays: number | null
   showIndobaseBadge: boolean
   customDomain: boolean
@@ -78,7 +96,13 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       maxSeats: 1,
       buildsPerDay: 20,
       /** Free apps still get a real backend, so this must be capped — null would be unbounded. */
-      databaseBytes: 512 * 1024 ** 2,
+      databaseBytes: 500 * 1024 ** 2,
+      storageBytes: 1 * GB,
+      mauLimit: 10_000,
+      egressBytes: 5 * GB,
+      backupRetentionDays: 0,
+      supportTier: 'community',
+      canPinProject: false,
       idleSleepDays: 7,
       showIndobaseBadge: true,
       customDomain: false,
@@ -95,9 +119,20 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       priceInr: 499,
       maxApps: 3,
       maxSeats: 1,
-      buildsPerDay: 60,
+      buildsPerDay: 50,
       databaseBytes: 1 * GB,
-      idleSleepDays: null,
+      storageBytes: 5 * GB,
+      mauLimit: 25_000,
+      egressBytes: 25 * GB,
+      backupRetentionDays: 0,
+      supportTier: 'email-48h',
+      canPinProject: false,
+      /**
+       * Sleeps after 30 quiet days (wakes on first request). Always-on for every Basic tenant is
+       * not affordable: each app is a full 7-container stack, so unbounded always-on caps the host
+       * at ~15 Basic customers. See docker/docs/SCALING_CHECKLIST.md.
+       */
+      idleSleepDays: 30,
       showIndobaseBadge: false,
       customDomain: true,
       /** Apps on every tier run on an Indobase backend; Basic is where the owner can open Studio. */
@@ -121,7 +156,14 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
        */
       buildsPerDay: 150,
       databaseBytes: 8 * GB,
-      idleSleepDays: null,
+      storageBytes: 100 * GB,
+      mauLimit: 100_000,
+      egressBytes: 250 * GB,
+      backupRetentionDays: 0,
+      supportTier: 'email-48h',
+      /** Pro may pin a project to keep it always-warm despite the 30-day idle policy. */
+      canPinProject: true,
+      idleSleepDays: 30,
       showIndobaseBadge: false,
       customDomain: true,
       backendStudio: true,
@@ -140,6 +182,13 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       /** Pooled across seats; still bounded so a team can't run an open tab on inference. */
       buildsPerDay: 300,
       databaseBytes: 20 * GB,
+      storageBytes: 250 * GB,
+      mauLimit: 100_000,
+      /** Table quotes 500 GB–1 TB; the committed floor is what we enforce. */
+      egressBytes: 500 * GB,
+      backupRetentionDays: 0,
+      supportTier: 'priority',
+      canPinProject: true,
       idleSleepDays: null,
       showIndobaseBadge: false,
       customDomain: true,
@@ -158,6 +207,12 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       maxSeats: null,
       buildsPerDay: null,
       databaseBytes: null,
+      storageBytes: null,
+      mauLimit: null,
+      egressBytes: null,
+      backupRetentionDays: 0,
+      supportTier: 'priority',
+      canPinProject: true,
       idleSleepDays: null,
       showIndobaseBadge: false,
       customDomain: true,
@@ -176,6 +231,12 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       maxSeats: null,
       buildsPerDay: null,
       databaseBytes: null,
+      storageBytes: null,
+      mauLimit: null,
+      egressBytes: null,
+      backupRetentionDays: 0,
+      supportTier: 'priority',
+      canPinProject: true,
       idleSleepDays: null,
       showIndobaseBadge: false,
       customDomain: true,

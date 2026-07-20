@@ -1,4 +1,4 @@
-import { getIndobasePublicPlans, type IndobasePublicPlan } from './indobase-billing-plans'
+import { getPlanEntitlements } from './plan-entitlements'
 import { pauseProjectForSystem, restoreProjectForSystem } from './project-lifecycle'
 import { executeQuery } from './query'
 import { collectProjectKongUsage, hasKongUsageMetering } from './usage-collectors/kong-usage'
@@ -13,16 +13,25 @@ export type QuotaViolation = {
   hard: boolean
 }
 
-const EGRESS_LIMITS: Record<string, number> = {
-  free: 5 * 1024 * 1024 * 1024,
-  pro: 250 * 1024 * 1024 * 1024,
-  team: 1024 * 1024 * 1024 * 1024,
-  enterprise: Number.MAX_SAFE_INTEGER,
-  platform: Number.MAX_SAFE_INTEGER,
-}
+/**
+ * Quota ceilings come from plan-entitlements — the same object the rest of the runtime gates on.
+ *
+ * This previously used a local EGRESS_LIMITS map that had no `basic` or `studio` key, so both fell
+ * through to the free-tier 5 GB ceiling: Basic was throttled at 1/5 of its 25 GB allowance and
+ * Studio (₹6,999) at 1/100 of its 500 GB. The database ceiling also fell back to an *egress*
+ * constant. Deriving from entitlements is what stops that class of bug.
+ */
+function quotaCeilings(planId: string | null | undefined): {
+  egressLimit: number
+  dbLimit: number
+} {
+  const e = getPlanEntitlements(planId)
 
-function planForOrg(planId: string | null | undefined): IndobasePublicPlan | undefined {
-  return getIndobasePublicPlans().find((p) => p.id === (planId || 'free'))
+  return {
+    // null = negotiated / unbounded (enterprise, platform).
+    egressLimit: e.egressBytes ?? Number.MAX_SAFE_INTEGER,
+    dbLimit: e.databaseBytes ?? Number.MAX_SAFE_INTEGER,
+  }
 }
 
 function periodStart(): Date {
@@ -53,10 +62,7 @@ export async function checkProjectQuotas(projectRef: string): Promise<{
   const p = row.data?.[0]
   if (!p) throw new Error('Project not found')
 
-  const plan = planForOrg(p.plan)
-  const limits = plan?.limits ?? {}
-  const egressLimit = EGRESS_LIMITS[p.plan] ?? EGRESS_LIMITS.free
-  const dbLimit = limits.database_size ?? EGRESS_LIMITS.free
+  const { egressLimit, dbLimit } = quotaCeilings(p.plan)
 
   let egressBytes = 0
   if (await hasKongUsageMetering()) {

@@ -22,15 +22,19 @@ describe('plan-entitlements', () => {
     expect(free.idleSleepDays).toBe(7)
     expect(free.priceInr).toBe(0)
     // Free has a real backend, so its database must be bounded.
-    expect(free.databaseBytes).toBe(512 * 1024 ** 2)
+    expect(free.databaseBytes).toBe(500 * 1024 ** 2)
 
     expect(basic.maxApps).toBe(3)
     expect(basic.customDomain).toBe(true)
     expect(basic.showIndobaseBadge).toBe(false)
     expect(basic.backendStudio).toBe(true)
-    expect(basic.buildsPerDay).toBe(60)
+    expect(basic.buildsPerDay).toBe(50)
     expect(basic.databaseBytes).toBe(1024 ** 3)
-    expect(basic.idleSleepDays).toBeNull()
+    /*
+     * Basic sleeps after 30 quiet days. Always-on for every Basic tenant is not affordable — each
+     * app is a full multi-container stack, which caps the host at roughly 15 Basic customers.
+     */
+    expect(basic.idleSleepDays).toBe(30)
     expect(basic.priceInr).toBe(499)
   })
 

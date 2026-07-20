@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# Pause tenant data-plane stacks when the host is over capacity (2 vCPU cannot run 40+ full stacks).
+# Host capacity valve: pause tenant data-plane stacks when more are running than the host can hold.
 #
-# Keeps up to MAX_RUNNING_TENANT_STACKS stacks running, preferring:
-#   1. Projects marked ACTIVE_HEALTHY in saas.projects (when STUDIO_PG_URL is set)
-#   2. Otherwise tenants with running compose services
+# This is the HARD valve, not the idle policy. The graceful path is the plan-aware idle sweep in
+# apps/studio (plan-lifecycle.ts), which sleeps a project once it passes its plan's idleSleepDays.
+# This script exists for the case where too many stacks are awake RIGHT NOW regardless of policy,
+# and something must be stopped to keep the box alive.
 #
-# Stopped stacks: `docker compose stop` (data volumes retained; Traefik routes may 502 until resumed).
+# Eviction order (cheapest customer first):
+#   1. Lowest plan tier goes first — free, then basic, pro, studio, enterprise/platform
+#   2. Within a tier, least recently active goes first
+#   3. Projects pinned `keep_warm` are evicted LAST (a pin is a strong hint, not a guarantee —
+#      if pinned stacks alone exceed the cap, some still have to stop, and we log loudly)
+#
+# Without STUDIO_PG_URL there is no plan data, so it degrades to "stop the extras arbitrarily".
+# Set STUDIO_PG_URL in production or paying customers will be evicted alongside free ones.
+#
+# Stopped stacks: `docker compose stop` (data volumes retained; routes may 502 until resumed).
 #
 # Usage on VPS:
 #   MAX_RUNNING_TENANT_STACKS=12 STUDIO_PG_URL='postgresql://...' bash docker/scripts/cap-idle-tenant-stacks.sh
@@ -32,15 +42,39 @@ running_refs() {
     | sort -u
 }
 
-priority_refs_from_db() {
+# Refs ordered WORST-to-KEEP first (i.e. evict from the top of this list).
+#
+# Ranking mirrors plan-entitlements.ts: free(0) < basic(1) < pro(2) < studio/team(3) <
+# enterprise(4) < platform(5). We sort ascending by rank so the cheapest tier is evicted first,
+# and ascending by last activity so the most dormant project within a tier goes before an
+# actively-used one. `keep_warm` sorts pinned projects to the very end.
+eviction_order_from_db() {
   if [[ -z "$STUDIO_PG_URL" ]]; then
     return 0
   fi
   docker run --rm postgres:15-alpine psql "$STUDIO_PG_URL" -tA -c "
-    select ref from saas.projects
-    where not coalesce(is_branch, false)
-      and status = 'ACTIVE_HEALTHY'
-    order by updated_at desc nulls last, created_at desc
+    select p.ref
+    from saas.projects p
+    join saas.organizations o on o.id = p.organization_id
+    where not coalesce(p.is_branch, false)
+    order by
+      coalesce(p.keep_warm, false) asc,
+      case lower(coalesce(o.plan, 'free'))
+        when 'platform' then 5
+        when 'enterprise' then 4
+        when 'studio' then 3
+        when 'team' then 3
+        when 'pro' then 2
+        when 'basic' then 1
+        else 0
+      end asc,
+      greatest(
+        coalesce(p.updated_at, p.inserted_at),
+        coalesce(
+          (select max(d.updated_at) from saas.project_deployments d where d.project_ref = p.ref),
+          p.inserted_at
+        )
+      ) asc nulls first
   " 2>/dev/null || true
 }
 
@@ -64,27 +98,47 @@ if [[ "$count" -le "$MAX_RUNNING" ]]; then
   exit 0
 fi
 
-declare -A keep=()
+need_stop=$((count - MAX_RUNNING))
+
+# Set membership test for "is this ref currently running".
+declare -A is_running=()
+for ref in "${running[@]}"; do
+  is_running["$ref"]=1
+done
+
+#
+# Build the eviction list: DB order first (worst candidates first), restricted to refs that are
+# actually running. Anything running but absent from the DB (orphan stack, deleted project) is
+# appended first — an orphan is the best possible thing to stop.
+#
+to_stop=()
+declare -A queued=()
+
 while IFS= read -r ref; do
   [[ -n "$ref" ]] || continue
-  keep["$ref"]=1
-done < <(priority_refs_from_db)
-
-for ref in "${running[@]}"; do
-  if [[ "${#keep[@]}" -ge "$MAX_RUNNING" ]]; then
-    break
-  fi
-  keep["$ref"]=1
-done
-
-to_stop=()
-for ref in "${running[@]}"; do
-  [[ -n "${keep[$ref]:-}" ]] && continue
+  [[ -n "${is_running[$ref]:-}" ]] || continue
+  [[ -n "${queued[$ref]:-}" ]] && continue
+  queued["$ref"]=1
   to_stop+=("$ref")
-done
+done < <(eviction_order_from_db)
 
-need_stop=$((count - MAX_RUNNING))
-echo "will_pause=${#to_stop[@]} (need ~$need_stop)"
+if [[ "${#to_stop[@]}" -eq 0 && -z "$STUDIO_PG_URL" ]]; then
+  echo "WARNING: STUDIO_PG_URL unset — no plan data, evicting arbitrarily. Paying tenants may be stopped."
+fi
+
+# Orphans (running but not in the DB result) go to the FRONT — safest to stop.
+orphans=()
+for ref in "${running[@]}"; do
+  [[ -n "${queued[$ref]:-}" ]] && continue
+  orphans+=("$ref")
+  queued["$ref"]=1
+done
+if [[ "${#orphans[@]}" -gt 0 ]]; then
+  echo "orphan_stacks=${#orphans[@]} (not in saas.projects — stopping these first)"
+  to_stop=("${orphans[@]}" "${to_stop[@]}")
+fi
+
+echo "eviction_candidates=${#to_stop[@]} need_stop=$need_stop"
 
 idx=0
 for ref in "${to_stop[@]}"; do
@@ -92,5 +146,9 @@ for ref in "${to_stop[@]}"; do
   stop_tenant_stack "$ref"
   idx=$((idx + 1))
 done
+
+if [[ "$idx" -lt "$need_stop" ]]; then
+  echo "WARNING: wanted to pause $need_stop but only $idx had a compose file; host is still over capacity."
+fi
 
 echo "done paused=$idx"

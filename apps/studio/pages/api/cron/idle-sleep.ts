@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { setNoStore } from 'lib/api/no-store'
-import { pauseIdleFreeTierProjects } from 'lib/api/saas/plan-lifecycle'
+import { pauseIdleProjects } from 'lib/api/saas/plan-lifecycle'
 
 /**
- * Cron: sleep free-tier apps idle for 7+ days.
+ * Cron: sleep apps idle past their plan's threshold (Free 7 days, Basic/Pro 30, Studio+ never).
+ * Owner-pinned projects are skipped on plans that grant pinning.
  * Protect with CRON_SECRET (Authorization: Bearer …) when set.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 50
 
   try {
-    const result = await pauseIdleFreeTierProjects({ dryRun, limit })
+    const result = await pauseIdleProjects({ dryRun, limit })
     return res.status(200).json({ ok: true, dry_run: dryRun, ...result })
   } catch (error) {
     console.error('[cron/idle-sleep]', error)

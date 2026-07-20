@@ -26,26 +26,33 @@ class PointerEvent extends Event {
   }
 }
 
-window.PointerEvent = PointerEvent
-window.HTMLElement.prototype.scrollIntoView = function () {}
+/*
+ * setupFiles run for EVERY test, including `@vitest-environment node` files where `window` does not
+ * exist. Unguarded, this threw before those files could load and they reported "no tests" — silently
+ * skipped rather than failed. This whole file is jsdom-only shimming, so skip it outside a DOM.
+ */
+if (typeof window !== 'undefined') {
+  window.PointerEvent = PointerEvent
+  window.HTMLElement.prototype.scrollIntoView = function () {}
 
-// // https://github.com/radix-ui/primitives/issues/420#issuecomment-771615182
-window.ResizeObserver = class ResizeObserver {
-  constructor(cb) {
-    this.cb = cb
+  // // https://github.com/radix-ui/primitives/issues/420#issuecomment-771615182
+  window.ResizeObserver = class ResizeObserver {
+    constructor(cb) {
+      this.cb = cb
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
   }
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
 
-window.DOMRect = {
-  fromRect: () => ({
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-    width: 0,
-    height: 0,
-  }),
+  window.DOMRect = {
+    fromRect: () => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    }),
+  }
 }

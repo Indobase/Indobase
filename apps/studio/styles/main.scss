@@ -6,14 +6,20 @@
 @import './../../../packages/ui/build/css/themes/classic-dark.css';
 
 :root {
-  /* Indobase brand (gold) — matches apps/www marketing tokens */
-  --brand-default: 43 88% 50%;
-  --brand-600: 43 90% 38%;
-  --brand-500: 43 85% 45%;
-  --brand-400: 43 90% 55%;
-  --brand-300: 43 85% 72%;
-  --brand-200: 43 80% 88%;
-  --brand-link: 43 88% 42%;
+  /*
+   * Indobase brand (blue) — matched to the Builder accent ramp in indobase-builder/uno.config.ts
+   * so Studio and Builder read as one product. Lightness steps mirror the upstream Supabase green
+   * they replace, so contrast behaviour is unchanged; only the hue moves (43deg gold → ~207deg blue).
+   *
+   * Builder reference: accent-500 #3B8FD6, accent-600 #2F7BC0, accent-700 #2566A3.
+   */
+  --brand-default: 207.5 65% 53.5%; /* Builder accent-500 */
+  --brand-600: 209 63% 39%; /* accent-700 */
+  --brand-500: 208.6 61% 47%; /* accent-600 */
+  --brand-400: 207.5 65% 53.5%; /* accent-500 */
+  --brand-300: 207 66% 73.5%; /* accent-300 */
+  --brand-200: 205.8 68% 88%; /* between accent-100 and accent-200 */
+  --brand-link: 208.8 62% 43%;
   --chart-1: var(--brand-default);
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
@@ -24,7 +30,8 @@
   --sidebar-background: var(--background-dash-sidebar);
   --sidebar-foreground: var(--foreground-default);
   --sidebar-primary: var(--foreground-default);
-  --sidebar-primary-foreground: var(--warning-default);
+  /* Text ON the primary surface — was --warning-default, which painted it orange. */
+  --sidebar-primary-foreground: var(--background-default);
   --sidebar-accent: var(--background-selection);
   --sidebar-accent-foreground: var(--foreground-default);
   --sidebar-border: var(--border-default);
@@ -36,14 +43,18 @@
 .deep-dark,
 [data-theme='dark'],
 .dark {
-  /* Gold primary buttons in dark mode (avoid near-black brand-400/500) */
-  --brand-default: 43 90% 55%;
-  --brand-600: 43 95% 42%;
-  --brand-500: 43 92% 50%;
-  --brand-400: 43 88% 58%;
-  --brand-300: 43 80% 68%;
-  --brand-200: 43 70% 78%;
-  --brand-link: 43 95% 62%;
+  /*
+   * Blue primary buttons in dark mode. Kept brighter than the light-mode ramp so brand surfaces
+   * stay legible on dark backgrounds (the upstream dark theme drops brand-400/500 to near-black,
+   * which is unusable for buttons).
+   */
+  --brand-default: 207.5 65% 55%;
+  --brand-600: 208.6 63% 44%;
+  --brand-500: 207.5 65% 50%;
+  --brand-400: 207 66% 58%;
+  --brand-300: 207 66% 68%;
+  --brand-200: 206 67% 78%;
+  --brand-link: 207 70% 65%;
   --chart-1: var(--brand-default);
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
@@ -54,7 +65,8 @@
   --sidebar-background: var(--background-dash-sidebar);
   --sidebar-foreground: var(--foreground-default);
   --sidebar-primary: var(--foreground-default);
-  --sidebar-primary-foreground: var(--warning-default);
+  /* Text ON the primary surface — was --warning-default, which painted it orange. */
+  --sidebar-primary-foreground: var(--background-default);
   --sidebar-accent: var(--background-selection);
   --sidebar-accent-foreground: var(--foreground-default);
   --sidebar-border: var(--border-default);

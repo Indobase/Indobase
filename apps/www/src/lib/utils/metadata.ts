@@ -5,12 +5,15 @@ export const DEFAULT_DESCRIPTION =
     'Indobase is an open-source platform for building applications at any scale, using your preferred programming languages and tools.';
 
 /**
- * Generates an Open Graph image URL with encoded title and description.
+ * Open Graph image for a page.
+ *
+ * This previously called `https://og.appwrite.global/image.png` — a third-party Appwrite service —
+ * which rendered Appwrite-branded cards on every share and sent our page titles to their server.
+ * Serve our own static card instead. Args are kept so call sites need no change, and so this can
+ * become a real per-page renderer later without another signature churn.
  */
-export function buildOpenGraphImage(title: string, description: string): string {
-    return `https://og.appwrite.global/image.png?title=${encodeURIComponent(
-        title
-    )}&subtitle=${encodeURIComponent(description)}`;
+export function buildOpenGraphImage(_title: string, _description: string): string {
+    return `${DEFAULT_HOST}/images/open-graph/website.png`;
 }
 
 /**

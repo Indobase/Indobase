@@ -3,6 +3,8 @@ import type { components } from 'api-types'
 
 import { PROJECT_REST_URL } from 'lib/constants/api'
 import { getProject, getGotrueUserId } from './platform'
+import { restoreProjectForActor } from './project-lifecycle'
+import { repairTenantDataPlaneStack } from './tenant-data-plane-provision'
 import { resolveSaaSTenantRestUrls } from './tenant-public-urls'
 import { executeQuery } from './query'
 import { decryptString } from './util'
@@ -74,6 +76,7 @@ async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: stri
     connection_string: string | null
     connection_string_enc: string | null
     status: string
+    pause_reason: string | null
   }>({
     query: `
       select
@@ -81,7 +84,8 @@ async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: stri
         p.data_plane_port_base,
         p.connection_string,
         p.connection_string_enc,
-        p.status
+        p.status,
+        p.pause_reason
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
       where p.ref = $1 and m.gotrue_id = $2
@@ -90,6 +94,58 @@ async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: stri
     parameters: [ref, gotrueId],
     actorId: gotrueId,
   })
+}
+
+/*
+ * ── Wake-on-visit ───────────────────────────────────────────────────────────────────────────────
+ *
+ * Stacks get STOPPED legitimately (idle sleep per plan, the host capacity valve, a VPS reboot),
+ * but nothing woke them again: every probe failed and the dashboard showed six "Unhealthy" rows
+ * forever. Per the pricing model, sleeping is normal and opening the dashboard IS activity — so a
+ * failed probe on a stack that *should* be runnable triggers an automatic wake, and the UI reports
+ * COMING_UP ("can take up to 5 minutes") instead of a dead-end UNHEALTHY.
+ *
+ * Quota-paused projects are excluded: those must stay paused until the violation clears.
+ */
+const WAKE_DEBOUNCE_MS = 90_000
+const wakeAttempts = new Map<string, number>()
+
+function isAutoWakeEligible(status: string | undefined, pauseReason: string | null | undefined): boolean {
+  if (status === 'ACTIVE_HEALTHY' || status === 'COMING_UP') return true
+
+  // Idle-slept projects wake on use; quota/system pauses stay paused.
+  if (status === 'INACTIVE' || status === 'PAUSED') {
+    return (pauseReason ?? '').startsWith('idle_sleep_')
+  }
+  return false
+}
+
+function triggerWake({ claims, ref, status }: { claims: Claims; ref: string; status: string | undefined }): boolean {
+  const last = wakeAttempts.get(ref) ?? 0
+  const withinDebounce = Date.now() - last < WAKE_DEBOUNCE_MS
+  if (withinDebounce) return true // a wake is already in flight — still report COMING_UP
+
+  wakeAttempts.set(ref, Date.now())
+
+  /*
+   * Status ACTIVE_HEALTHY with dead probes means the CONTAINERS are stopped while the DB row still
+   * says healthy (capacity valve, VPS reboot). restoreProjectForActor early-returns on that status,
+   * so it must not be the entry point here — repair the stack directly. For genuinely paused rows
+   * (idle sleep) use the restore path, which fixes the status and audit-logs the restore.
+   */
+  const wake =
+    status === 'ACTIVE_HEALTHY'
+      ? repairTenantDataPlaneStack({ ref, reason: 'wake_on_dashboard' })
+      : restoreProjectForActor({ claims, ref })
+
+  // Fire-and-forget: compose up can take tens of seconds and the health response must stay fast.
+  void Promise.resolve(wake).catch((err) => {
+    console.warn(`[project-health] auto-wake failed for ${ref}:`, err instanceof Error ? err.message : err)
+    // Allow a retry on the next poll rather than sitting out the full debounce window.
+    wakeAttempts.delete(ref)
+  })
+
+  return true
 }
 
 /** Direct container ports (bypasses Traefik + wildcard DNS). */
@@ -194,6 +250,18 @@ export async function getSaaSProjectServiceHealth({
       hasDedicated,
       hasProvisionedDataPlane,
     })
+
+    // A project stuck COMING_UP (a wake died mid-way) must keep retrying, not poll forever.
+    // triggerWake's debounce makes this a no-op while a wake is genuinely in flight.
+    if (
+      meta?.status === 'COMING_UP' &&
+      hasDedicated &&
+      hasProvisionedDataPlane &&
+      requested.some((name) => !probes[name].ok)
+    ) {
+      triggerWake({ claims, ref, status: meta.status })
+    }
+
     return requested.map((name) => {
       const probe = probes[name]
       if (probe.ok) return serviceResponse(name, 'ACTIVE_HEALTHY')
@@ -207,6 +275,23 @@ export async function getSaaSProjectServiceHealth({
     hasDedicated,
     hasProvisionedDataPlane,
   })
+
+  const failures = requested.filter((name) => !probes[name].ok)
+  const canWake = hasDedicated && hasProvisionedDataPlane
+  const wakeEligible = canWake && isAutoWakeEligible(meta?.status, meta?.pause_reason)
+
+  // Every probe down on a runnable stack = it is stopped (idle sleep, capacity valve, reboot).
+  // Wake it and report COMING_UP so the dashboard shows "starting", not a dead-end Unhealthy.
+  if (failures.length === requested.length && requested.length > 0 && wakeEligible) {
+    triggerWake({ claims, ref, status: meta?.status })
+    return requested.map((name) => serviceResponse(name, 'COMING_UP', 'waking from sleep'))
+  }
+
+  // Partial failure = the stack is up but a container crashed. Repair in the background
+  // (compose up is idempotent and only restarts dead services) but report honestly.
+  if (failures.length > 0 && wakeEligible) {
+    triggerWake({ claims, ref, status: meta?.status })
+  }
 
   return requested.map((name) => {
     const probe = probes[name]
