@@ -1,6 +1,7 @@
 # Indobase Payments — product overview
 
-Status: **planning** (Coming soon on the project landing page). Nothing is implemented yet.
+Status: **early surface** — project chooser links to `/project/[ref]/payments` (getting started).
+Merchant onboarding and live checkout are not implemented yet.
 
 **Indobase Payments** is a first-party Indobase product: businesses built on Indobase can take
 payments from *their own* customers — subscriptions, invoices, usage-based charges — inside the same
