@@ -1,12 +1,26 @@
 ---
-description: Always commit and push to the main branch on origin (not feature branches).
+description: Git branch rules — staging for Studio/Builder; main only for prod promotion.
 alwaysApply: true
 ---
 
-# Git: push to main
+# Git: staging vs main
 
-- Use branch `main` as the default working branch unless the user explicitly asks for a feature branch.
-- When the user asks to push, ship, or publish changes: commit on `main` (only when they asked to commit or push), then push to `origin main`.
-- Before pushing, sync with remote: `git fetch origin` and integrate if behind (`git pull --rebase origin main`, or merge if rebase fails).
-- Do not force-push `main` unless the user explicitly requests it.
-- Do not push to a different branch unless the user explicitly names one.
+## Studio / Builder / platform control-plane
+
+- Default working branch: **`staging`**.
+- When asked to commit/push these changes: commit on `staging`, then `git push origin staging` (after `git fetch` + rebase onto `origin/staging` if it exists).
+- Do **not** commit or push these to `main` unless the user explicitly asks to **promote to prod**.
+
+## Production promotion
+
+- Only when the user asks to promote, ship to prod, deploy to Vyom, or merge to `main`:
+  1. Ensure staging smoke on `*.indobase.fun` is OK (or they explicitly skip).
+  2. Merge/rebase `staging` into `main` (or cherry-pick as directed).
+  3. `git push origin main`.
+- Before pushing `main`: `git fetch origin` and integrate if behind (`git pull --rebase origin main`).
+- Do not force-push `main` or `staging` unless explicitly requested.
+
+## Other work
+
+- Unrelated one-off branches only if the user names one.
+- Marketing (`apps/www`) and infra-only docs may follow the user’s explicit branch choice; if unclear and it touches Studio/Builder deploy paths, prefer `staging`.

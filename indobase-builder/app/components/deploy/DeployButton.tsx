@@ -11,6 +11,7 @@ import {
   getStudioProjectMobileBuildsUrl,
   getStudioProjectRootUrl,
 } from '~/lib/indobase/studioLinks';
+import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 import {
   canQueueIndobaseDeployment,
   canQueueIndobaseMobileBuild,
@@ -24,7 +25,7 @@ export const DeployButton = () => {
   const currentChatId = useStore(chatId);
   const isStreaming = useStore(streamingState);
   const isStudioManagedConnection = backendConnection.connectionSource === 'studio_handoff';
-  const studioUrl = backendConnection.indobase?.studioUrl || 'https://studio.indobase.in';
+  const studioUrl = getStudioOrigin(backendConnection);
   const projectRootUrl = getStudioProjectRootUrl(backendConnection, backendConnection.selectedProjectId);
   const customDomainsUrl = getStudioProjectCustomDomainsUrl(backendConnection, backendConnection.selectedProjectId);
   const mobileBuildsUrl = getStudioProjectMobileBuildsUrl(backendConnection, backendConnection.selectedProjectId);

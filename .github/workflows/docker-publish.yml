@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - staging
   workflow_dispatch:
     inputs:
       deploy:

@@ -106,12 +106,23 @@ describe('getURL', () => {
 
   it('returns NEXT_PUBLIC_SITE_URL when set', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://studio.example.com')
+    vi.stubGlobal('window', undefined)
     expect(getURL()).toEqual('https://studio.example.com')
+  })
+
+  it('prefers runtime-injected siteUrl over bake-time NEXT_PUBLIC_SITE_URL', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://studio.indobase.in')
+    vi.stubGlobal('window', {
+      __INDOBASE_PUBLIC_ENV__: { siteUrl: 'https://studio.indobase.fun' },
+      location: { origin: 'https://studio.indobase.fun' },
+    })
+    expect(getURL()).toEqual('https://studio.indobase.fun')
   })
 
   it('falls back to NEXT_PUBLIC_VERCEL_BRANCH_URL when SITE_URL is unset', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
     vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'preview-abc.vercel.app')
+    vi.stubGlobal('window', undefined)
     expect(getURL()).toEqual('https://preview-abc.vercel.app')
   })
 
@@ -124,6 +135,7 @@ describe('getURL', () => {
 
   it('returns empty string when nothing is available (server-side, no env)', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
+    vi.stubEnv('SITE_URL', '')
     vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', '')
     vi.stubGlobal('window', undefined)
     expect(getURL()).toEqual('')

@@ -1,6 +1,12 @@
 type ServerEnv = Record<string, string | undefined>;
 
-const ALLOWED_STUDIO_HOST_SUFFIXES = ['.indobase.in', 'studio.indobase.in', 'localhost'];
+const ALLOWED_STUDIO_HOST_SUFFIXES = [
+  '.indobase.in',
+  'studio.indobase.in',
+  '.indobase.fun',
+  'studio.indobase.fun',
+  'localhost',
+];
 
 export function isProductionEnv(env?: ServerEnv): boolean {
   const nodeEnv = env?.NODE_ENV ?? process.env.NODE_ENV;

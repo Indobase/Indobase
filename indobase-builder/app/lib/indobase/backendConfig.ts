@@ -1,6 +1,6 @@
 import type { IndobaseBackendProject, IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
-const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
+import { readViteStudioUrl, resolveDefaultStudioUrl } from './studio-origin';
 
 export type BuilderBackendConfigResponse = {
   backend: {
@@ -84,7 +84,10 @@ export function buildConnectionFromSessionAndBackend(
       projectUrl: data.backend.project_url,
       restUrl: data.backend.rest_url,
       storageUrl: data.backend.storage_url,
-      studioUrl: session.studioUrl || data.studio_url || DEFAULT_STUDIO_URL,
+      studioUrl:
+        session.studioUrl ||
+        data.studio_url ||
+        resolveDefaultStudioUrl({ envStudioUrl: readViteStudioUrl() }),
     },
   };
 }

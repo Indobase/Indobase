@@ -1,0 +1,33 @@
+---
+description: Studio/Builder work ships via staging branch → indobase.fun; promote to main/Vyom only after staging is OK.
+alwaysApply: true
+---
+
+# Staging-first Studio & Builder
+
+## Branches
+
+| Branch | Environment | Hosts |
+|--------|-------------|--------|
+| **`staging`** | Staging | `studio.indobase.fun`, `builder.indobase.fun` (Hostinger `72.61.242.251`) |
+| **`main`** | Production | `studio.indobase.in`, `builder.indobase.in` (Vyom `.249`) |
+
+Shared prod data plane stays on Vyom (`api.indobase.in`, `*.indobase.in` tenants) for both.
+
+## Default workflow (Studio / Builder / control-plane)
+
+1. Work and **commit on `staging`** (create/checkout if needed). Do **not** commit Studio/Builder changes to `main` by default.
+2. When asked to push/deploy staging: `git push origin staging`, wait for CI images, roll out with `IMAGE_TAG=<sha> ./docker/scripts/deploy-staging-hostinger.sh`.
+3. Smoke on `*.indobase.fun` before any prod talk.
+4. Only when the user explicitly asks to **promote / ship to prod / deploy to Vyom**: merge or cherry-pick into `main`, push `origin main`, then follow the production redeploy rule (Vyom `.249`).
+
+## Do not
+
+- Push Studio/Builder fixes straight to `main` or Vyom while staging is untested.
+- Treat “deploy” as prod by default — prefer staging unless they say prod/Vyom/`indobase.in`.
+- Force-push `staging` or `main` unless explicitly requested.
+
+## Docs
+
+- Staging: `docker/docs/HOSTINGER-STAGING.md`
+- Prod: `.cursor/rules/indobase-prod-redeploy.mdc`

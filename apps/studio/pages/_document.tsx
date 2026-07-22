@@ -2,21 +2,29 @@ import { BASE_PATH } from 'lib/constants'
 import {
   resolvePublicGotrueUrlForBrowser,
   resolveServerPublicAnonKey,
+  resolveServerPublicBuilderAppUrl,
+  resolveServerPublicSiteUrl,
 } from 'common/public-env'
 import Document, { DocumentContext, Head, Html, Main, NextScript } from 'next/document'
 
 type RuntimePublicEnv = {
   anonKey?: string
   gotrueUrl?: string
+  siteUrl?: string
+  builderAppUrl?: string
 }
 
 function readRuntimePublicEnv(): RuntimePublicEnv {
   const anonKey = resolveServerPublicAnonKey()
   const gotrueUrl = resolvePublicGotrueUrlForBrowser() ?? ''
+  const siteUrl = resolveServerPublicSiteUrl() ?? ''
+  const builderAppUrl = resolveServerPublicBuilderAppUrl() ?? ''
 
   return {
     ...(anonKey ? { anonKey } : {}),
     ...(gotrueUrl ? { gotrueUrl } : {}),
+    ...(siteUrl ? { siteUrl } : {}),
+    ...(builderAppUrl ? { builderAppUrl } : {}),
   }
 }
 
@@ -40,11 +48,12 @@ class MyDocument extends Document {
         ? `window.__INDOBASE_PUBLIC_ENV__=${JSON.stringify(runtimePublicEnv)};`
         : null
 
-    // Split-deploy images bake a demo anon key at build time. Static pages may omit
-    // anonKey from SSR; sync-fetch runtime config before auth-js initializes.
-    const runtimeAnonKeyBootstrapScript = !runtimePublicEnv.anonKey
-      ? `(function(){try{var x=new XMLHttpRequest();x.open('GET','${BASE_PATH}/api/platform/runtime-public-env',false);x.withCredentials=true;x.send();if(x.status===200){var j=JSON.parse(x.responseText);window.__INDOBASE_PUBLIC_ENV__=Object.assign(window.__INDOBASE_PUBLIC_ENV__||{},j);}}catch(e){}})();`
-      : null
+    // Split-deploy images bake demo anon / prod SITE_URL at build time. Sync-fetch
+    // runtime config before auth-js initializes when SSR omitted critical keys.
+    const runtimeAnonKeyBootstrapScript =
+      !runtimePublicEnv.anonKey || !runtimePublicEnv.siteUrl
+        ? `(function(){try{var x=new XMLHttpRequest();x.open('GET','${BASE_PATH}/api/platform/runtime-public-env',false);x.withCredentials=true;x.send();if(x.status===200){var j=JSON.parse(x.responseText);window.__INDOBASE_PUBLIC_ENV__=Object.assign(window.__INDOBASE_PUBLIC_ENV__||{},j);}}catch(e){}})();`
+        : null
 
     return (
       <Html lang="en">

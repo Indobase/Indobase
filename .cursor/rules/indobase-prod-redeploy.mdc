@@ -1,45 +1,38 @@
 ---
-description: How to redeploy Indobase Studio to production (GitHub + VPS Docker Swarm)
+description: How to redeploy Indobase Studio/Builder to production (Vyom) after staging is OK.
 alwaysApply: true
 ---
 
-# Indobase production redeploy (Studio)
+# Indobase production redeploy (Vyom / indobase.in)
 
-When the user asks to **deploy**, **redeploy**, **ship to prod**, or after **production-facing** Studio/control-plane changes are merged, use this flow unless they opt out.
+Use this **only** when the user asks to ship to **prod**, deploy to **Vyom**, or promote after staging is OK. Day-to-day Studio/Builder work goes to **`staging`** → `indobase.fun` first (see `staging-first-deploy.mdc`).
 
 ## 1. Source of truth
 
-- **Repo:** `main` on GitHub (`Indobase/Indobase`).
-- **CI:** Push triggers `.github/workflows/docker-publish.yml` → Docker Hub `roshanraghavander/ind-repo:latest` and `roshanraghavander/ind-repo:<full-git-sha>`.
-- **Prefer the commit SHA tag** for rollout — `:latest` on the server can lag right after CI finishes.
+- **Repo branch:** `main` on GitHub (`Indobase/Indobase`) — after promotion from `staging`.
+- **CI:** Push to `main` triggers `.github/workflows/docker-publish.yml` → Docker Hub `roshanraghavander/ind-repo:<sha>` and `roshanraghavander/indobase-builder:<sha>`.
+- Prefer the **commit SHA** tag for rollout (not `:latest`).
 
-## 2. Git (when there are local commits to ship)
+## 2. Git (promotion)
 
-- `git fetch origin && git pull --rebase origin main`
-- Commit if needed, then **`git push origin main`** (workspace default branch).
+- Confirm staging was validated on `studio.indobase.fun` / `builder.indobase.fun` (or user opts out).
+- Integrate `staging` → `main` as directed, then **`git push origin main`**.
+- `SHA=$(git rev-parse HEAD)` on `main` after that push.
 
-## 3. VPS rollout (Docker Swarm Studio service)
+## 3. VPS rollout (Docker Swarm)
 
-- **Control-plane host:** `root@103.190.92.249` (Vyom — Studio + Builder + platform Postgres)
-- **Tenant data-plane host:** `root@103.190.92.248` (Vyom — provisioner + tenant stacks only)
+- **Control-plane:** `root@103.190.92.249` (Studio + Builder + platform Postgres)
+- **Tenant data-plane:** `root@103.190.92.248` (provisioner + tenant stacks)
 - **SSH key:** `~/.ssh/id_ed25519_indobase_vps`
-- **Commit SHA:** `SHA=$(git rev-parse HEAD)` from the repo **after** the push you intend to deploy.
-- **Service name:** resolve dynamically on **`.249`**: `docker service ls --format '{{.Name}}' | grep -E 'indobase-studio' | head -1` (expect `indobase-studio-erpgp1` or similar).
+- **Service:** on `.249`, `docker service ls --format '{{.Name}}' | grep -E 'indobase-studio' | head -1`
 
-**Script pattern:**
+1. Wait for Hub tag `roshanraghavander/ind-repo:<SHA>` (and Builder tag) HTTP 200.
+2. On `.249`: pull image(s), `docker service update --image …`, run `indobase-studio-attach-compose-network.sh`.
+3. Verify: `curl -sS https://studio.indobase.in/api/health/live` → `version` == `<SHA>`.
 
-1. Confirm the image tag exists (optional):  
-   `GET https://hub.docker.com/v2/repositories/roshanraghavander/ind-repo/tags/<SHA>/` → HTTP 200 after CI publishes.
-2. On **control-plane VPS (`.249`)**:
-   - `docker pull roshanraghavander/ind-repo:<SHA>`
-   - `docker service update --image roshanraghavander/ind-repo:<SHA> <swarm_service_name>`
-   - `/usr/local/bin/indobase-studio-attach-compose-network.sh` (split Studio ↔ compose backend network; safe if already attached).
-3. Verify: `curl -sS https://studio.indobase.in/api/health/live` → JSON **`version`** equals **`<SHA>`**.
-
-Do **not** deploy Studio/Builder to Hostinger (`187.77.30.165`). See `docker/docs/VYOM-DUAL-VPS.md`.
-
-If the SHA tag is not on Docker Hub yet, wait/retry (CI build ~minutes) before `docker pull`.
+Do **not** deploy Studio/Builder to Hostinger `187.77.30.165`. Staging Hostinger is `72.61.242.251` (`indobase.fun`) only.
 
 ## 4. Docs
 
-Details and secrets (Dokploy API, webhooks): `docker/DOKPLOY-STUDIO-DEPLOY.md`.
+- Staging: `docker/docs/HOSTINGER-STAGING.md`
+- Prod secrets/Dokploy: `docker/DOKPLOY-STUDIO-DEPLOY.md`

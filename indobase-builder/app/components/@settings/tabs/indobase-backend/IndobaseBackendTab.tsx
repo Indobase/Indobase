@@ -16,6 +16,7 @@ import {
   initializeIndobaseConnection,
   type IndobaseBackendProject,
 } from '~/lib/stores/indobase-connection';
+import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 
 interface ConnectionTestResult {
   status: 'success' | 'error' | 'testing';
@@ -94,7 +95,7 @@ export default function IndobaseBackendTab() {
       return;
     }
 
-    window.open(`https://studio.indobase.in/project/${projectId}`, '_blank');
+    window.open(`${getStudioOrigin()}/project/${projectId}`, '_blank');
   };
 
   // Connection testing function - uses server-side API to test environment token
@@ -795,7 +796,7 @@ export default function IndobaseBackendTab() {
                 />
                 <div className="mt-2 text-sm text-bolt-elements-textSecondary">
                   <a
-                    href="https://studio.indobase.in"
+                    href={getStudioOrigin()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-bolt-elements-borderColorActive hover:underline inline-flex items-center gap-1"

@@ -9,6 +9,8 @@ const GOTRUE_URL = process.env.NEXT_PUBLIC_GOTRUE_URL
   : ''
 const INDOBASE_PROJECTS_URL = 'https://*.indobase.in https://*.storage.indobase.in'
 const INDOBASE_PROJECTS_URL_WS = 'wss://*.indobase.in'
+// Hostinger staging Studio/Builder (same CI image; runtime SITE_URL is .fun)
+const INDOBASE_HOSTINGER_STAGING_URLS = 'https://studio.indobase.fun https://builder.indobase.fun'
 
 // construct the URL for the Websocket Local URLs
 let INDOBASE_LOCAL_PROJECTS_URL_WS = ''
@@ -122,6 +124,7 @@ module.exports.getCSP = function getCSP() {
     INDOBASE_LOCAL_PROJECTS_URL_WS,
     INDOBASE_PROJECTS_URL,
     INDOBASE_PROJECTS_URL_WS,
+    INDOBASE_HOSTINGER_STAGING_URLS,
     HCAPTCHA_SUBDOMAINS_URL,
     CONFIGCAT_URL,
     ...include(CONFIGCAT_PROXY_URL),

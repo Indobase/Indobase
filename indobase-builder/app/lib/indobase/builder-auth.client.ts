@@ -7,11 +7,11 @@ import { hasIndobaseStudioHandoff, isIndobaseStudioManagedConnection } from './c
 import {
   BUILDER_LAST_PROJECT_REF_KEY,
   BUILDER_MCP_TOKEN_TTL_SECONDS,
+  BUILDER_PENDING_PROMPT_KEY,
   BUILDER_SESSION_KEEPALIVE_MS,
   BUILDER_SESSION_REFRESH_LEAD_MS,
 } from './builder-session.constants';
-
-const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
+import { readViteStudioUrl, resolveDefaultStudioUrl } from './studio-origin';
 
 type SessionResponse = {
   email?: string;
@@ -108,7 +108,10 @@ export async function builderFetch(input: RequestInfo | URL, init?: RequestInit)
 }
 
 export function getStudioOrigin(connection?: IndobaseConnectionState | null): string {
-  return connection?.indobase?.studioUrl?.replace(/\/+$/, '') || DEFAULT_STUDIO_URL;
+  return (
+    connection?.indobase?.studioUrl?.replace(/\/+$/, '') ||
+    resolveDefaultStudioUrl({ envStudioUrl: readViteStudioUrl() })
+  );
 }
 
 export function getStudioBuilderConnectUrl(options?: {
@@ -253,7 +256,10 @@ async function applySessionToStoredConnection(session: SessionResponse): Promise
       projectUrl: connection.indobase?.projectUrl || '',
       restUrl: connection.indobase?.restUrl || `${connection.credentials?.apiUrl || ''}/rest/v1/`,
       storageUrl: connection.indobase?.storageUrl || `${connection.credentials?.apiUrl || ''}/storage/v1`,
-      studioUrl: session.studioUrl || connection.indobase?.studioUrl || DEFAULT_STUDIO_URL,
+      studioUrl:
+        session.studioUrl ||
+        connection.indobase?.studioUrl ||
+        resolveDefaultStudioUrl({ envStudioUrl: readViteStudioUrl() }),
       mcpToken: session.mcpToken,
     },
   });
@@ -457,8 +463,99 @@ export function startBuilderSessionKeeper(): () => void {
   };
 }
 
-export function redirectToStudioBuilderConnect(returnTo?: string) {
+/**
+ * Stash a build prompt that is about to be interrupted by the Studio auth round-trip, so it can be
+ * replayed once the handoff completes. Empty prompts clear any stale value.
+ */
+export function persistPendingBuildPrompt(prompt: string | null | undefined) {
   if (typeof window === 'undefined') {
+    return;
+  }
+
+  const trimmed = prompt?.trim();
+
+  try {
+    if (trimmed) {
+      window.sessionStorage.setItem(BUILDER_PENDING_PROMPT_KEY, trimmed);
+    } else {
+      window.sessionStorage.removeItem(BUILDER_PENDING_PROMPT_KEY);
+    }
+  } catch {
+    // Private-mode / storage-disabled: losing the prompt is the pre-existing behaviour, not worse.
+  }
+}
+
+/** Read and clear the stashed build prompt (single-use — it must not replay on every mount). */
+export function consumePendingBuildPrompt(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(BUILDER_PENDING_PROMPT_KEY)?.trim() || null;
+    window.sessionStorage.removeItem(BUILDER_PENDING_PROMPT_KEY);
+
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+const REDIRECT_LOG_KEY = 'indobase_builder_connect_redirects';
+const REDIRECT_LOOP_WINDOW_MS = 30_000;
+const REDIRECT_LOOP_LIMIT = 3;
+
+/**
+ * Detect a Studio-connect redirect loop. If the browser refuses to persist the session cookie
+ * (private mode, blocked third-party/site cookies, aggressive tracking prevention), the
+ * build → 401 → connect → handoff → build cycle repeats forever and the browser eventually shows
+ * ERR_TOO_MANY_REDIRECTS — the "redirect error" seen on some client machines. We count redirects
+ * in a rolling window (survives full-page navigations via sessionStorage) and break the loop
+ * before the browser does, so we can show a real, actionable message instead.
+ */
+function recordAndCheckRedirectLoop(): boolean {
+  try {
+    const now = Date.now();
+    const raw = window.sessionStorage.getItem(REDIRECT_LOG_KEY);
+    const recent = (raw ? (JSON.parse(raw) as number[]) : []).filter(
+      (ts) => typeof ts === 'number' && now - ts < REDIRECT_LOOP_WINDOW_MS,
+    );
+
+    recent.push(now);
+    window.sessionStorage.setItem(REDIRECT_LOG_KEY, JSON.stringify(recent));
+
+    return recent.length > REDIRECT_LOOP_LIMIT;
+  } catch {
+    // No sessionStorage (which is itself a likely cause of the loop) — fail open, don't block.
+    return false;
+  }
+}
+
+export function clearRedirectLoopCounter() {
+  try {
+    window.sessionStorage.removeItem(REDIRECT_LOG_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function redirectToStudioBuilderConnect(returnTo?: string, pendingPrompt?: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  // Preserve the in-flight prompt across the full-page navigation to Studio and back.
+  if (pendingPrompt !== undefined) {
+    persistPendingBuildPrompt(pendingPrompt);
+  }
+
+  if (recordAndCheckRedirectLoop()) {
+    // Break the loop instead of letting the browser hit ERR_TOO_MANY_REDIRECTS. Land on the Builder
+    // home with a flag the app reads to explain that cookies are being blocked.
+    const home = new URL('/', window.location.origin);
+    home.searchParams.set('builder_session_error', 'cookies');
+    window.location.href = home.toString();
+
     return;
   }
 

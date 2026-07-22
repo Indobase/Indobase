@@ -4,6 +4,7 @@ import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/po
 import { publishToIndobase } from '~/lib/deploy/publishToIndobase';
 import { quickGitHubDeploy } from '~/lib/deploy/quickGitHubDeploy';
 import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
+import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 import { getStudioProjectHostingUrl } from '~/lib/indobase/studioLinks';
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -22,7 +23,7 @@ export async function runOneClickDeploy(
   context: OneClickDeployContext,
 ): Promise<boolean> {
   const hostingUrl = getStudioProjectHostingUrl(context.connection, context.connection.selectedProjectId);
-  const studioUrl = context.connection.indobase?.studioUrl || 'https://studio.indobase.in';
+  const studioUrl = getStudioOrigin(context.connection);
 
   switch (target) {
     case 'indobase': {

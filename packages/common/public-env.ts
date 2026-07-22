@@ -3,6 +3,10 @@ declare global {
     __INDOBASE_PUBLIC_ENV__?: {
       anonKey?: string
       gotrueUrl?: string
+      /** Runtime Studio public origin (overrides bake-time NEXT_PUBLIC_SITE_URL). */
+      siteUrl?: string
+      /** Runtime Builder public origin (overrides bake-time NEXT_PUBLIC_BUILDER_APP_URL). */
+      builderAppUrl?: string
     }
   }
 }
@@ -14,6 +18,12 @@ export const KNOWN_DEMO_SUPABASE_ANON_KEY =
 function isUsableAnonKey(key: string | undefined): key is string {
   const trimmed = key?.trim()
   return Boolean(trimmed && trimmed !== KNOWN_DEMO_SUPABASE_ANON_KEY)
+}
+
+function normalizePublicOrigin(url: string | undefined): string | undefined {
+  const trimmed = url?.trim()
+  if (!trimmed) return undefined
+  return trimmed.replace(/\/+$/, '')
 }
 
 /**
@@ -55,6 +65,20 @@ export function resolvePublicGotrueUrlForBrowser(): string | undefined {
   return undefined
 }
 
+/** Studio public origin from server/runtime env (staging containers override CI bake-ins). */
+export function resolveServerPublicSiteUrl(): string | undefined {
+  return normalizePublicOrigin(
+    process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.SUPABASE_PUBLIC_URL
+  )
+}
+
+/** Builder public origin from server/runtime env. */
+export function resolveServerPublicBuilderAppUrl(): string | undefined {
+  return normalizePublicOrigin(
+    process.env.BUILDER_APP_URL || process.env.NEXT_PUBLIC_BUILDER_APP_URL
+  )
+}
+
 /**
  * Public anon key for Kong / GoTrue. CI bakes `NEXT_PUBLIC_ANON_KEY` at build time;
  * production Studio also sets `SUPABASE_ANON_KEY` at runtime. Prefer the injected
@@ -78,15 +102,40 @@ export function resolvePublicGotrueUrl(): string | undefined {
   return resolvePublicGotrueUrlForBrowser()
 }
 
+export function resolvePublicSiteUrl(): string | undefined {
+  if (typeof window !== 'undefined') {
+    const injected = normalizePublicOrigin(window.__INDOBASE_PUBLIC_ENV__?.siteUrl)
+    if (injected) return injected
+  }
+
+  return resolveServerPublicSiteUrl()
+}
+
+export function resolvePublicBuilderAppUrl(): string | undefined {
+  if (typeof window !== 'undefined') {
+    const injected = normalizePublicOrigin(window.__INDOBASE_PUBLIC_ENV__?.builderAppUrl)
+    if (injected) return injected
+  }
+
+  return resolveServerPublicBuilderAppUrl()
+}
+
 /**
- * Hydrate browser auth config from a runtime API when SSG HTML omitted anonKey.
+ * Hydrate browser auth/public config from a runtime API when SSG HTML omitted values.
  * Safe to call multiple times; deduped per page load.
  */
 let runtimePublicEnvBootstrap: Promise<void> | null = null
 
+function hasCompleteRuntimePublicEnv(): boolean {
+  return Boolean(
+    isUsableAnonKey(window.__INDOBASE_PUBLIC_ENV__?.anonKey) &&
+      window.__INDOBASE_PUBLIC_ENV__?.siteUrl?.trim()
+  )
+}
+
 export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
-  if (isUsableAnonKey(window.__INDOBASE_PUBLIC_ENV__?.anonKey)) {
+  if (hasCompleteRuntimePublicEnv()) {
     return Promise.resolve()
   }
 
@@ -96,11 +145,22 @@ export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
         const response = await fetch(configUrl, { credentials: 'same-origin' })
         if (!response.ok) return
 
-        const json = (await response.json()) as { anonKey?: string; gotrueUrl?: string }
+        const json = (await response.json()) as {
+          anonKey?: string
+          gotrueUrl?: string
+          siteUrl?: string
+          builderAppUrl?: string
+        }
         window.__INDOBASE_PUBLIC_ENV__ = {
           ...window.__INDOBASE_PUBLIC_ENV__,
           ...(isUsableAnonKey(json.anonKey) ? { anonKey: json.anonKey!.trim() } : {}),
           ...(json.gotrueUrl?.trim() ? { gotrueUrl: json.gotrueUrl.trim() } : {}),
+          ...(normalizePublicOrigin(json.siteUrl)
+            ? { siteUrl: normalizePublicOrigin(json.siteUrl) }
+            : {}),
+          ...(normalizePublicOrigin(json.builderAppUrl)
+            ? { builderAppUrl: normalizePublicOrigin(json.builderAppUrl) }
+            : {}),
         }
       } catch {
         // Best-effort; auth may still work when build-time public env is correct.

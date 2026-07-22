@@ -16,6 +16,7 @@ import {
   readStoredConnectionRaw,
   readStoredCredentialsRaw,
 } from '~/lib/indobase/connection-storage';
+import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 
 export function useIndobaseConnection() {
   const connection = useStore(indobaseConnection);
@@ -70,7 +71,7 @@ export function useIndobaseConnection() {
       console.error('Connection error:', error);
       logStore.logError('Failed to connect Indobase backend', { error });
       toast.error('Open Builder from Indobase Studio to connect your project.');
-      window.open('https://studio.indobase.in', '_blank');
+      window.open(getStudioOrigin(), '_blank');
       return false;
     } finally {
       isConnecting.set(false);
@@ -122,7 +123,7 @@ export function useIndobaseConnection() {
   };
 
   const handleCreateProject = async () => {
-    window.open('https://studio.indobase.in', '_blank');
+    window.open(getStudioOrigin(), '_blank');
   };
 
   return {

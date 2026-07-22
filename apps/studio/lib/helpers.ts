@@ -63,17 +63,27 @@ export const timeout = (ms: number) => {
 }
 
 export const getURL = () => {
+  // Browser: prefer runtime-injected siteUrl (staging overrides CI bake-ins).
+  if (typeof window !== 'undefined') {
+    const injected = window.__INDOBASE_PUBLIC_ENV__?.siteUrl?.trim()
+    if (injected) {
+      return injected.includes('http') ? injected.replace(/\/+$/, '') : `https://${injected}`
+    }
+  }
+
   const url =
     process?.env?.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL !== ''
       ? process.env.NEXT_PUBLIC_SITE_URL
-      : process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL &&
-          process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL !== ''
-        ? process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL
-        : typeof window !== 'undefined' && window.location?.origin
-          ? window.location.origin
-          : ''
+      : process?.env?.SITE_URL && process.env.SITE_URL !== ''
+        ? process.env.SITE_URL
+        : process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL &&
+            process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL !== ''
+          ? process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL
+          : typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin
+            : ''
   if (!url) return ''
-  return url.includes('http') ? url : `https://${url}`
+  return url.includes('http') ? url.replace(/\/+$/, '') : `https://${url}`
 }
 
 /**

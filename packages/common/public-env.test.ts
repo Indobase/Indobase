@@ -4,7 +4,9 @@ import {
   KNOWN_DEMO_SUPABASE_ANON_KEY,
   resolvePublicAnonKey,
   resolvePublicGotrueUrl,
+  resolvePublicSiteUrl,
   resolveServerPublicAnonKey,
+  resolveServerPublicSiteUrl,
 } from './public-env'
 
 describe('resolveServerPublicAnonKey', () => {
@@ -67,5 +69,27 @@ describe('resolvePublicGotrueUrl', () => {
     } as Window
 
     expect(resolvePublicGotrueUrl()).toBe('https://runtime.example/auth/v1')
+  })
+})
+
+describe('resolvePublicSiteUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    delete (globalThis as typeof globalThis & { window?: Window }).window
+  })
+
+  it('prefers runtime-injected siteUrl over bake-time env', () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://studio.indobase.in')
+    ;(globalThis as typeof globalThis & { window: Window }).window = {
+      __INDOBASE_PUBLIC_ENV__: { siteUrl: 'https://studio.indobase.fun' },
+    } as Window
+
+    expect(resolvePublicSiteUrl()).toBe('https://studio.indobase.fun')
+  })
+
+  it('reads SITE_URL on the server', () => {
+    vi.stubEnv('SITE_URL', 'https://studio.indobase.fun/')
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://studio.indobase.in')
+    expect(resolveServerPublicSiteUrl()).toBe('https://studio.indobase.fun')
   })
 })

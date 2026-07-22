@@ -11,6 +11,7 @@ import {
   writeChatProjectId,
 } from '~/lib/indobase/connection-storage';
 import { Dialog, DialogRoot, DialogClose, DialogTitle, DialogButton } from '~/components/ui/Dialog';
+import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 
 export function IndobaseConnection() {
   const {
@@ -127,7 +128,7 @@ export function IndobaseConnection() {
                   />
                   <div className="mt-2 text-sm text-bolt-elements-textSecondary">
                     <a
-                      href="https://studio.indobase.in"
+                      href={getStudioOrigin()}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#3ECF8E] hover:underline inline-flex items-center gap-1"
