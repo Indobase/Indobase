@@ -100,6 +100,16 @@ Open the failing response in DevTools → **Response** body; newer builds includ
 
 ---
 
+## Troubleshooting: Sign up / login fails with `Database error querying schema`
+
+That string is returned by **GoTrue** when it cannot query Postgres (generic 500). Check Auth logs for the real cause.
+
+**Control-plane disk full (production `.249`):** If `indobase-db` logs show `could not write lock file "postmaster.pid": No space left on device`, Docker DNS for hostname `db` fails and Auth returns this error. Free space (`docker image prune -af`, builder cache, journals), restart `indobase-db` / `indobase-auth` / `indobase-meta`, and ensure `/usr/local/bin/indobase-control-plane-disk-prune.sh` + `indobase-disk-prune.timer` are installed so unused Studio/Builder SHA images do not fill the disk again.
+
+Other common causes: NULL token columns in `auth.users` (see below), broken Auth↔DB networking, or privilege/schema mismatches.
+
+---
+
 ## Troubleshooting: Sign up fails with `Database error finding user`
 
 That string is returned by **GoTrue** (your Auth service) when a query against `auth.users` fails. Studio only proxies the request to `/auth/v1/signup`; fixing it is always on the **database + Auth container** side.

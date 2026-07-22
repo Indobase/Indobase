@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Indobase control-plane disk prune (and on boot)
+
+[Timer]
+OnBootSec=5min
+OnCalendar=daily
+Persistent=true
+AccuracySec=1h
+
+[Install]
+WantedBy=timers.target

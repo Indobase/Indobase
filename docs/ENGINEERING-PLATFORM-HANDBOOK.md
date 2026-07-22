@@ -612,6 +612,7 @@ curl -sS https://studio.indobase.in/api/health/live  # version == SHA
 | Script | Purpose |
 |--------|---------|
 | `indobase-studio-attach-compose-network.sh` | Studio ↔ compose network |
+| `indobase-control-plane-disk-prune.sh` | Prune unused images when disk ≥80% (prevents Postgres ENOSPC → GoTrue “Database error querying schema”) |
 | `indobase-traefik-attach-compose-network.sh` | Traefik ↔ compose backend |
 | `tenant-fleet-health-repair.sh` | Fleet self-heal |
 | `repair-tenant-stacks-on-vps.sh` | Password + routing repair |

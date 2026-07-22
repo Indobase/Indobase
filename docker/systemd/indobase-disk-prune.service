@@ -1,0 +1,8 @@
+[Unit]
+Description=Prune unused Docker images/cache on Indobase control-plane when disk is high
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/indobase-control-plane-disk-prune.sh
