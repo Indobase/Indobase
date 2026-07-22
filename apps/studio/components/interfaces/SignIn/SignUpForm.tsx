@@ -253,14 +253,14 @@ export const SignUpForm = () => {
                   name="dpdpConsent"
                   label={
                     <span className="text-xs text-foreground-light font-normal leading-relaxed">
-                      I agree to Indobase&apos;s{' '}
+                      I agree to the{' '}
                       <Link
                         href={INDOBASE_TERMS_URL}
                         className="underline text-foreground"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Terms of Service
+                        Terms
                       </Link>{' '}
                       and{' '}
                       <Link
@@ -271,8 +271,7 @@ export const SignUpForm = () => {
                       >
                         Privacy Policy
                       </Link>
-                      , and consent to processing of my personal data under India&apos;s DPDP Act,
-                      2023.
+                      .
                     </span>
                   }
                 >
@@ -292,7 +291,7 @@ export const SignUpForm = () => {
               form={formId}
               htmlType="submit"
               size="large"
-              type="warning"
+              type="primary"
               disabled={password.length === 0 || isSubmitting}
               loading={isSubmitting}
             >
