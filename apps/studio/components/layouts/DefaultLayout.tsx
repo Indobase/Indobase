@@ -69,8 +69,14 @@ export const DefaultLayout = ({
     setIsMounted(true)
   }, [])
 
+  /*
+   * The project landing page is the Builder/Studio chooser — it is not a backend screen, and every
+   * item in the sidebar (Table Editor, SQL Editor, Auth, Storage…) navigates into Studio. Showing it
+   * there presents the backend as the default context before the user has chosen one, so the
+   * sidebar now appears only once they are actually inside the backend.
+   */
   const showProjectSidebar =
-    !router.pathname.startsWith('/account') && !studioLocked
+    !router.pathname.startsWith('/account') && !studioLocked && !isProjectExperienceChooser
 
   // The project landing page is the Builder/Studio chooser for every plan.
   // Gate only after a user explicitly chooses a Studio/backend route.
