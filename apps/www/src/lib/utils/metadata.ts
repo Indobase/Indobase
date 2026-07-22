@@ -43,7 +43,7 @@ export function organizationJsonSchema() {
         legalName: 'Indobase Technologies Ltd.',
         description:
             'A secure open-source backend server provides the core APIs required to build web and mobile applications. Indobase provides authentication, database, storage, functions, messaging, and advanced realtime capabilities.',
-        logo: 'https://indobase.in/assets/logotype/indobase-white.png'
+        logo: 'https://indobase.in/images/logos/indobase-light.svg'
     });
 }
 

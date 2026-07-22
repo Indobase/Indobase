@@ -116,7 +116,7 @@ const ConfirmResetCodeForm = ({ email }: { email: string }) => {
           form="code-input-form"
           htmlType="submit"
           size="large"
-          type="warning"
+          type="primary"
           loading={isLoading}
         >
           Confirm reset code
@@ -220,7 +220,7 @@ const ForgotPasswordForm = ({ onSuccess }: { onSuccess: (email: string) => void 
           form="forgot-password-form"
           htmlType="submit"
           size="large"
-          type="warning"
+          type="primary"
           disabled={isPending}
           loading={isPending}
         >
