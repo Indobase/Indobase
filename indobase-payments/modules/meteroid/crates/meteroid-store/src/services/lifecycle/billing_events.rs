@@ -1,0 +1,906 @@
+use crate::StoreResult;
+use crate::domain::ScheduledEventTypeEnum;
+use crate::domain::scheduled_events::{ScheduledEvent, ScheduledEventData};
+use crate::domain::slot_transactions::SlotTransactionNewInternal;
+use crate::errors::StoreError;
+use crate::repositories::SubscriptionInterface;
+use crate::services::Services;
+use crate::store::PgConn;
+use crate::utils::errors::format_error_chain;
+use chrono::{Duration, NaiveDateTime, Utc};
+use diesel_models::enums::{SubscriptionEventType, SubscriptionStatusEnum};
+use diesel_models::scheduled_events::ScheduledEventRow;
+use futures::stream::StreamExt;
+use scoped_futures::ScopedFutureExt;
+
+const MAX_PARALLEL_PROCESSING: usize = 4;
+const BATCH_SIZE: i64 = (MAX_PARALLEL_PROCESSING * 2) as i64; // Small buffer, small blast radius on crash
+
+impl Services {
+    pub async fn cleanup_timeout_scheduled_events(&self) -> StoreResult<()> {
+        let mut conn = self.store.get_conn().await?;
+        ScheduledEventRow::retry_timeout_events(&mut conn).await?;
+        Ok(())
+    }
+
+    pub async fn get_and_process_due_events(&self) -> StoreResult<usize> {
+        let mut conn = self.store.get_conn().await?;
+        let events = ScheduledEventRow::find_and_claim_due_events(&mut conn, BATCH_SIZE).await?;
+
+        let len = events.len();
+        if len == 0 {
+            return Ok(0);
+        }
+
+        // Process each event with bounded parallelism
+        let results: Vec<_> = futures::stream::iter(events)
+            .map(|event| self.process_single_event(event))
+            .buffer_unordered(MAX_PARALLEL_PROCESSING)
+            .collect()
+            .await;
+
+        // Log any unexpected errors (individual event errors are already handled)
+        for result in &results {
+            if let Err(e) = result {
+                log::error!("Unexpected error in event processing: {:?}", e);
+            }
+        }
+
+        Ok(len)
+    }
+
+    /// Process a single event in its own transaction
+    async fn process_single_event(&self, event: ScheduledEventRow) -> StoreResult<()> {
+        let event_id = event.id;
+        let retries = event.retries;
+
+        self.store
+            .transaction(|conn| {
+                async move {
+                    match self.process_event(conn, event).await {
+                        Ok(()) => {
+                            ScheduledEventRow::mark_as_completed(conn, &[event_id]).await?;
+                        }
+                        Err(err) => {
+                            let inner = err.current_context();
+                            let error_message = format_error_chain(&err);
+
+                            if self.should_retry_event(retries, inner) {
+                                let retry_time = calculate_retry_time(retries);
+                                log::warn!(
+                                    "Scheduled event {} failed (attempt {}/5), retrying at {:?}: {}",
+                                    event_id,
+                                    retries + 1,
+                                    retry_time,
+                                    error_message
+                                );
+                                ScheduledEventRow::retry_event(
+                                    conn,
+                                    &event_id,
+                                    retry_time,
+                                    &error_message,
+                                )
+                                .await?;
+                            } else {
+                                log::error!(
+                                    "Scheduled event {} exceeded max retries, marking as failed: {}",
+                                    event_id,
+                                    error_message
+                                );
+                                ScheduledEventRow::mark_as_failed(conn, &event_id, &error_message)
+                                    .await?;
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await
+    }
+
+    /// Process events sequentially on a provided connection (used by period_transitions)
+    pub(super) async fn process_event_batch(
+        &self,
+        conn: &mut PgConn,
+        events: Vec<ScheduledEventRow>,
+    ) -> StoreResult<()> {
+        for event in events {
+            let event_id = event.id;
+            let retries = event.retries;
+            match self.process_event(conn, event).await {
+                Ok(()) => {
+                    ScheduledEventRow::mark_as_completed(conn, &[event_id]).await?;
+                }
+                Err(err) => {
+                    let inner = err.current_context();
+                    let error_message = format_error_chain(&err);
+
+                    if self.should_retry_event(retries, inner) {
+                        let retry_time = calculate_retry_time(retries);
+                        log::warn!(
+                            "Scheduled event {} failed (attempt {}/5), retrying at {:?}: {}",
+                            event_id,
+                            retries + 1,
+                            retry_time,
+                            error_message
+                        );
+                        ScheduledEventRow::retry_event(conn, &event_id, retry_time, &error_message)
+                            .await?;
+                    } else {
+                        log::error!(
+                            "Scheduled event {} exceeded max retries, marking as failed: {}",
+                            event_id,
+                            error_message
+                        );
+                        ScheduledEventRow::mark_as_failed(conn, &event_id, &error_message).await?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // can we batch more ? ex: group by event type before
+    /// Process a scheduled event
+    async fn process_event(&self, conn: &mut PgConn, event: ScheduledEventRow) -> StoreResult<()> {
+        let event: ScheduledEvent = event.try_into().map_err(|_| {
+            StoreError::InvalidArgument("Failed to convert ScheduledEventRow".into())
+        })?;
+
+        // Process based on event type
+        match event.event_type {
+            ScheduledEventTypeEnum::FinalizeInvoice => {
+                self.process_finalize_invoice(conn, &event).await
+            }
+            ScheduledEventTypeEnum::RetryPayment => self.process_retry_payment(conn, &event).await,
+            ScheduledEventTypeEnum::CancelSubscription => {
+                self.process_cancel_subscription(conn, &event).await
+            }
+            ScheduledEventTypeEnum::ApplyPlanChange => {
+                self.process_apply_plan_change(conn, &event).await
+            }
+            ScheduledEventTypeEnum::PauseSubscription => {
+                self.process_pause_subscription(conn, &event).await
+            }
+            ScheduledEventTypeEnum::EndTrial => self.process_end_trial(conn, &event).await,
+            ScheduledEventTypeEnum::ApplyAmendment => {
+                self.process_apply_amendment(conn, &event).await
+            }
+        }
+    }
+    /// Determine if event should be retried
+    fn should_retry_event(&self, retries: i32, _error: &StoreError) -> bool {
+        // TODO retry transient errors, but not configuration or validation errors
+        retries < 5
+    }
+
+    async fn process_finalize_invoice(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        if let ScheduledEventData::FinalizeInvoice { invoice_id } = event.event_data {
+            // Merge this draft with the customer's eligible same-day siblings, else finalize it.
+            self.consolidate_and_finalize(conn, event.tenant_id, invoice_id)
+                .await?;
+        } else {
+            log::error!(
+                "Unexpected event data for type FinalizeInvoice: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+        Ok(())
+    }
+
+    async fn process_retry_payment(
+        &self,
+        _conn: &mut PgConn,
+        _event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        // TODO
+        Ok(())
+    }
+
+    async fn process_cancel_subscription(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        // TODO store the reason & churn data
+        if let ScheduledEventData::CancelSubscription { .. } = &event.event_data {
+            self.terminate_subscription(
+                conn,
+                event.tenant_id,
+                event.subscription_id,
+                event.scheduled_time.date(),
+                SubscriptionStatusEnum::Cancelled,
+            )
+            .await?;
+        } else {
+            log::error!(
+                "Unexpected event data for type CancelSubscription: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+
+        Ok(())
+    }
+
+    async fn process_apply_plan_change(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        use crate::domain::scheduled_events::ComponentMapping;
+        use crate::domain::subscription_components::{
+            SubscriptionComponentNew, SubscriptionComponentNewInternal,
+        };
+        use crate::services::subscriptions::plan_change::calculate_components_mrr_with_slots;
+        use crate::services::subscriptions::utils::calculate_mrr;
+        use diesel_models::plan_version_add_ons::PlanVersionAddOnRow;
+        use diesel_models::subscription_add_ons::SubscriptionAddOnRow;
+        use diesel_models::subscription_components::{
+            SubscriptionComponentRow, SubscriptionComponentRowNew,
+        };
+        use diesel_models::subscriptions::SubscriptionRow;
+
+        if let ScheduledEventData::ApplyPlanChange {
+            source_plan_version_id,
+            new_plan_version_id,
+            ref component_mappings,
+        } = event.event_data
+        {
+            // Lock subscription to serialize with immediate plan changes.
+            SubscriptionRow::lock_subscription_for_update(conn, event.subscription_id)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            let sub = SubscriptionRow::get_subscription_by_id(
+                conn,
+                &event.tenant_id,
+                event.subscription_id,
+            )
+            .await
+            .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // Precondition: if another plan change already landed, this event is stale.
+            if let Some(expected) = source_plan_version_id
+                && sub.subscription.plan_version_id != expected
+            {
+                log::info!(
+                    "Plan change event {} superseded for subscription {}: expected plan_version {:?}, found {:?}",
+                    event.id,
+                    event.subscription_id,
+                    expected,
+                    sub.subscription.plan_version_id,
+                );
+                return Ok(());
+            }
+
+            match sub.subscription.status {
+                SubscriptionStatusEnum::Active | SubscriptionStatusEnum::TrialActive => {}
+                other => {
+                    log::warn!(
+                        "Skipping plan change for subscription {} — status is {:?}, event_id={}",
+                        event.subscription_id,
+                        other,
+                        event.id,
+                    );
+                    return Err(StoreError::InvalidArgument(format!(
+                        "Cannot apply plan change: subscription is in {:?} status",
+                        other
+                    ))
+                    .into());
+                }
+            }
+
+            // 1. Update subscription's plan_version_id (and billing period if changed)
+            let new_period =
+                ComponentMapping::derive_billing_period(component_mappings).map(|p| p.into());
+
+            SubscriptionRow::update_plan_version(
+                conn,
+                &event.subscription_id,
+                &event.tenant_id,
+                new_plan_version_id,
+                new_period,
+            )
+            .await
+            .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // 2. Process component mappings using temporal rotation
+            let mut components_to_close = Vec::new();
+            let mut components_to_insert: Vec<SubscriptionComponentRowNew> = Vec::new();
+            let apply_date = event.scheduled_time.date();
+
+            for mapping in component_mappings {
+                match mapping {
+                    ComponentMapping::Matched {
+                        current_component_id,
+                        target_component_id,
+                        product_id,
+                        price_id,
+                        name,
+                        fee,
+                        period,
+                    } => {
+                        // Close the old component
+                        components_to_close.push(*current_component_id);
+
+                        // Insert a new component with effective_from = apply_date
+                        let row_new: SubscriptionComponentRowNew = SubscriptionComponentNew {
+                            subscription_id: event.subscription_id,
+                            internal: SubscriptionComponentNewInternal {
+                                price_component_id: Some(*target_component_id),
+                                product_id: Some(*product_id),
+                                name: name.clone(),
+                                period: *period,
+                                fee: fee.clone(),
+                                is_override: false,
+                                price_id: Some(*price_id),
+                                effective_from: apply_date,
+                            },
+                        }
+                        .try_into()
+                        .map_err(|_| {
+                            StoreError::InvalidArgument(
+                                "Failed to convert matched component for plan change".to_string(),
+                            )
+                        })?;
+
+                        components_to_insert.push(row_new);
+                    }
+                    ComponentMapping::Added {
+                        target_component_id,
+                        product_id,
+                        price_id,
+                        name,
+                        fee,
+                        period,
+                    } => {
+                        let row_new: SubscriptionComponentRowNew = SubscriptionComponentNew {
+                            subscription_id: event.subscription_id,
+                            internal: SubscriptionComponentNewInternal {
+                                price_component_id: Some(*target_component_id),
+                                product_id: *product_id,
+                                name: name.clone(),
+                                period: *period,
+                                fee: fee.clone(),
+                                is_override: false,
+                                price_id: *price_id,
+                                effective_from: apply_date,
+                            },
+                        }
+                        .try_into()
+                        .map_err(|_| {
+                            StoreError::InvalidArgument(
+                                "Failed to convert new component for plan change".to_string(),
+                            )
+                        })?;
+
+                        components_to_insert.push(row_new);
+                    }
+                    ComponentMapping::Removed {
+                        current_component_id,
+                    } => {
+                        components_to_close.push(*current_component_id);
+                    }
+                }
+            }
+
+            // Close old components (set effective_to)
+            SubscriptionComponentRow::close_components(conn, &components_to_close, apply_date)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // Insert new components
+            if !components_to_insert.is_empty() {
+                let refs: Vec<&SubscriptionComponentRowNew> = components_to_insert.iter().collect();
+                SubscriptionComponentRow::insert_subscription_component_batch(conn, refs)
+                    .await
+                    .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            }
+
+            // Seed slot transactions for newly added Slot components
+            for mapping in component_mappings {
+                if let ComponentMapping::Added { fee, .. } = mapping
+                    && let Some(tx) = SlotTransactionNewInternal::from_fee(fee, apply_date)
+                {
+                    tx.into_row(event.subscription_id)
+                        .insert(conn)
+                        .await
+                        .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+                }
+            }
+
+            // Remove subscription add-ons incompatible with the new plan version
+            let compatible_addon_ids: Vec<common_domain::ids::AddOnId> =
+                PlanVersionAddOnRow::list_by_plan_version_id(
+                    conn,
+                    new_plan_version_id,
+                    event.tenant_id,
+                )
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?
+                .into_iter()
+                .map(|pva| pva.add_on_id)
+                .collect();
+
+            let removed_addons = SubscriptionAddOnRow::delete_incompatible(
+                conn,
+                &event.subscription_id,
+                &compatible_addon_ids,
+            )
+            .await
+            .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            if !removed_addons.is_empty() {
+                log::info!(
+                    "Removed {} incompatible add-on(s) during scheduled plan change for subscription {}: {:?}",
+                    removed_addons.len(),
+                    event.subscription_id,
+                    removed_addons
+                        .iter()
+                        .map(|a| a.add_on_id)
+                        .collect::<Vec<_>>(),
+                );
+            }
+
+            // 3. Insert Switch subscription event
+            let sub_event = diesel_models::subscription_events::SubscriptionEventRow {
+                id: uuid::Uuid::now_v7(),
+                subscription_id: event.subscription_id,
+                event_type: SubscriptionEventType::Switch,
+                details: Some(serde_json::json!({
+                    "new_plan_version_id": new_plan_version_id.to_string(),
+                })),
+                created_at: chrono::Utc::now().naive_utc(),
+                mrr_delta: None, // MRR delta computed below
+                bi_mrr_movement_log_id: None,
+                applies_to: apply_date,
+            };
+            sub_event
+                .insert(conn)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // 4. Recalculate MRR
+            let sub_details = self
+                .store
+                .get_subscription_details_with_conn(conn, event.tenant_id, event.subscription_id)
+                .await?;
+
+            let precision = crate::constants::Currencies::resolve_currency_precision(
+                &sub_details.subscription.currency,
+            )
+            .unwrap_or(2);
+
+            let component_mrr: i64 = calculate_components_mrr_with_slots(
+                conn,
+                event.tenant_id,
+                event.subscription_id,
+                &sub_details.price_components,
+                precision,
+            )
+            .await?;
+
+            let add_on_mrr: i64 = sub_details
+                .add_ons
+                .iter()
+                .map(|a| calculate_mrr(&a.fee, &a.period, precision) * a.quantity as i64)
+                .sum();
+
+            let new_mrr = component_mrr + add_on_mrr;
+            let old_mrr = sub_details.subscription.mrr_cents as i64;
+            let mrr_delta = new_mrr - old_mrr;
+
+            if mrr_delta != 0 {
+                SubscriptionRow::update_subscription_mrr_delta(
+                    conn,
+                    event.subscription_id,
+                    mrr_delta,
+                )
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            }
+
+            // Trial → Active transition (paid trial with scheduled plan change)
+            if sub.subscription.status == SubscriptionStatusEnum::TrialActive {
+                use diesel_models::subscriptions::SubscriptionCycleRowPatch;
+
+                // Cancel the EndTrial scheduled event
+                ScheduledEventRow::cancel_pending_subscription_events(
+                    conn,
+                    event.subscription_id,
+                    &event.tenant_id,
+                    "Plan change during paid trial (scheduled)",
+                )
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+                let patch = SubscriptionCycleRowPatch {
+                    id: event.subscription_id,
+                    tenant_id: event.tenant_id,
+                    status: Some(SubscriptionStatusEnum::Active),
+                    cycle_index: None,
+                    next_cycle_action: None,
+                    current_period_start: None,
+                    current_period_end: None,
+                    pending_checkout: None,
+                    processing_started_at: None,
+                    billing_start_date: None,
+                    billing_day_anchor: None,
+                };
+                patch.patch(conn).await?;
+
+                log::info!(
+                    "Paid trial ended via scheduled plan change for subscription {}",
+                    event.subscription_id,
+                );
+            }
+
+            log::info!(
+                "Applied plan change for subscription {}: plan_version={}, matched={}, added={}, removed={}, mrr_delta={}",
+                event.subscription_id,
+                new_plan_version_id,
+                component_mappings
+                    .iter()
+                    .filter(|m| matches!(m, ComponentMapping::Matched { .. }))
+                    .count(),
+                component_mappings
+                    .iter()
+                    .filter(|m| matches!(m, ComponentMapping::Added { .. }))
+                    .count(),
+                component_mappings
+                    .iter()
+                    .filter(|m| matches!(m, ComponentMapping::Removed { .. }))
+                    .count(),
+                mrr_delta,
+            );
+        } else {
+            log::error!(
+                "Unexpected event data for type ApplyPlanChange: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+        Ok(())
+    }
+
+    /// Apply a manual/sales-led amendment scheduled for end-of-period.
+    /// Mirrors `process_apply_plan_change` but keeps the plan version and period:
+    /// it only rotates the carried component/add-on deltas at the scheduled date.
+    async fn process_apply_amendment(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        use crate::domain::subscription_components::{
+            SubscriptionComponentNew, SubscriptionComponentNewInternal,
+        };
+        use crate::services::subscriptions::plan_change::calculate_components_mrr_with_slots;
+        use crate::services::subscriptions::utils::calculate_mrr;
+        use diesel_models::subscription_add_ons::{SubscriptionAddOnRow, SubscriptionAddOnRowNew};
+        use diesel_models::subscription_components::{
+            SubscriptionComponentRow, SubscriptionComponentRowNew,
+        };
+        use diesel_models::subscriptions::SubscriptionRow;
+
+        if let ScheduledEventData::ApplyAmendment {
+            component_close,
+            component_insert,
+            addon_close,
+            addon_insert,
+        } = &event.event_data
+        {
+            SubscriptionRow::lock_subscription_for_update(conn, event.subscription_id)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            let sub = SubscriptionRow::get_subscription_by_id(
+                conn,
+                &event.tenant_id,
+                event.subscription_id,
+            )
+            .await
+            .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            match sub.subscription.status {
+                SubscriptionStatusEnum::Active | SubscriptionStatusEnum::TrialActive => {}
+                other => {
+                    log::warn!(
+                        "Skipping amendment for subscription {} — status is {:?}, event_id={}",
+                        event.subscription_id,
+                        other,
+                        event.id,
+                    );
+                    return Err(StoreError::InvalidArgument(format!(
+                        "Cannot apply amendment: subscription is in {:?} status",
+                        other
+                    ))
+                    .into());
+                }
+            }
+
+            let apply_date = event.scheduled_time.date();
+
+            // Close removed/edited components and add-ons.
+            SubscriptionComponentRow::close_components(conn, component_close, apply_date)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            SubscriptionAddOnRow::close_addons(conn, addon_close, apply_date)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // Insert new components.
+            let component_rows: Vec<SubscriptionComponentRowNew> = component_insert
+                .iter()
+                .map(|c| {
+                    let mut row: SubscriptionComponentRowNew = SubscriptionComponentNew {
+                        subscription_id: event.subscription_id,
+                        internal: SubscriptionComponentNewInternal {
+                            price_component_id: c.price_component_id,
+                            product_id: c.product_id,
+                            name: c.name.clone(),
+                            period: c.period,
+                            fee: c.fee.clone(),
+                            is_override: c.is_override,
+                            price_id: c.price_id,
+                            effective_from: apply_date,
+                        },
+                    }
+                    .try_into()?;
+                    // Preserve the overridden component's lineage so amendment credits
+                    // stay matched to the originally-billed invoice line across overrides.
+                    row.lineage_id = c.lineage_id;
+                    // Mark as amendment-added so a one-time fee bills on its effective period.
+                    row.added_by_amendment = true;
+                    Ok::<_, error_stack::Report<StoreError>>(row)
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|_: error_stack::Report<StoreError>| {
+                    StoreError::InvalidArgument("Failed to convert amended component".to_string())
+                })?;
+
+            if !component_rows.is_empty() {
+                let refs: Vec<&SubscriptionComponentRowNew> = component_rows.iter().collect();
+                SubscriptionComponentRow::insert_subscription_component_batch(conn, refs)
+                    .await
+                    .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            }
+
+            // Insert new add-ons.
+            let addon_rows: Vec<SubscriptionAddOnRowNew> = addon_insert
+                .iter()
+                .map(|a| {
+                    let mut row: SubscriptionAddOnRowNew =
+                        crate::domain::subscription_add_ons::SubscriptionAddOnNew {
+                            subscription_id: event.subscription_id,
+                            internal:
+                                crate::domain::subscription_add_ons::SubscriptionAddOnNewInternal {
+                                    add_on_id: a.add_on_id,
+                                    name: a.name.clone(),
+                                    period: a.period,
+                                    fee: a.fee.clone(),
+                                    product_id: a.product_id,
+                                    price_id: a.price_id,
+                                    quantity: a.quantity,
+                                    effective_from: apply_date,
+                                },
+                        }
+                        .try_into()?;
+                    row.lineage_id = a.lineage_id;
+                    row.added_by_amendment = true;
+                    Ok::<_, error_stack::Report<StoreError>>(row)
+                })
+                .collect::<Result<Vec<_>, error_stack::Report<StoreError>>>()?;
+
+            if !addon_rows.is_empty() {
+                let refs: Vec<&SubscriptionAddOnRowNew> = addon_rows.iter().collect();
+                SubscriptionAddOnRow::insert_batch(conn, refs)
+                    .await
+                    .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            }
+
+            // Seed slot transactions for newly added Slot components/add-ons.
+            for c in component_insert {
+                if let Some(tx) = SlotTransactionNewInternal::from_fee(&c.fee, apply_date) {
+                    tx.into_row(event.subscription_id)
+                        .insert(conn)
+                        .await
+                        .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+                }
+            }
+            for a in addon_insert {
+                if let Some(tx) = SlotTransactionNewInternal::from_fee(&a.fee, apply_date) {
+                    tx.into_row(event.subscription_id)
+                        .insert(conn)
+                        .await
+                        .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+                }
+            }
+
+            let sub_event = diesel_models::subscription_events::SubscriptionEventRow {
+                id: uuid::Uuid::now_v7(),
+                subscription_id: event.subscription_id,
+                event_type: SubscriptionEventType::Switch,
+                details: Some(serde_json::json!({ "kind": "amendment", "mode": "end_of_period" })),
+                created_at: chrono::Utc::now().naive_utc(),
+                mrr_delta: None,
+                bi_mrr_movement_log_id: None,
+                applies_to: apply_date,
+            };
+            sub_event
+                .insert(conn)
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+
+            // Recalculate MRR.
+            let sub_details = self
+                .store
+                .get_subscription_details_with_conn(conn, event.tenant_id, event.subscription_id)
+                .await?;
+
+            let precision = crate::constants::Currencies::resolve_currency_precision(
+                &sub_details.subscription.currency,
+            )
+            .unwrap_or(2);
+
+            let component_mrr: i64 = calculate_components_mrr_with_slots(
+                conn,
+                event.tenant_id,
+                event.subscription_id,
+                &sub_details.price_components,
+                precision,
+            )
+            .await?;
+
+            let add_on_mrr: i64 = sub_details
+                .add_ons
+                .iter()
+                .map(|a| calculate_mrr(&a.fee, &a.period, precision) * a.quantity as i64)
+                .sum();
+
+            let new_mrr = component_mrr + add_on_mrr;
+            let old_mrr = sub_details.subscription.mrr_cents as i64;
+            let mrr_delta = new_mrr - old_mrr;
+
+            if mrr_delta != 0 {
+                SubscriptionRow::update_subscription_mrr_delta(
+                    conn,
+                    event.subscription_id,
+                    mrr_delta,
+                )
+                .await
+                .map_err(Into::<error_stack::Report<StoreError>>::into)?;
+            }
+
+            log::info!(
+                "Applied amendment for subscription {}: closed_components={}, added_components={}, closed_addons={}, added_addons={}, mrr_delta={}",
+                event.subscription_id,
+                component_close.len(),
+                component_insert.len(),
+                addon_close.len(),
+                addon_insert.len(),
+                mrr_delta,
+            );
+        } else {
+            log::error!(
+                "Unexpected event data for type ApplyAmendment: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+        Ok(())
+    }
+
+    async fn process_pause_subscription(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        if let ScheduledEventData::PauseSubscription = &event.event_data {
+            self.terminate_subscription(
+                conn,
+                event.tenant_id,
+                event.subscription_id,
+                event.scheduled_time.date(),
+                SubscriptionStatusEnum::Paused,
+            )
+            .await?;
+        } else {
+            log::error!(
+                "Unexpected event data for type PauseSubscription: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Process EndTrial event for paid trials.
+    /// This transitions the subscription from TrialActive to Active.
+    /// Billing continues normally via RenewSubscription - this just handles the status change.
+    async fn process_end_trial(
+        &self,
+        conn: &mut PgConn,
+        event: &ScheduledEvent,
+    ) -> StoreResult<()> {
+        use common_domain::ids::BaseId;
+        use diesel_models::subscriptions::{SubscriptionCycleRowPatch, SubscriptionRow};
+
+        if let ScheduledEventData::EndTrial = &event.event_data {
+            // Get the subscription
+            let subscription = SubscriptionRow::get_subscription_by_id(
+                conn,
+                &event.tenant_id,
+                event.subscription_id,
+            )
+            .await?;
+
+            // Only process if subscription is still in TrialActive status
+            if subscription.subscription.status == SubscriptionStatusEnum::TrialActive {
+                // Transition to Active - billing continues normally via RenewSubscription
+                let patch = SubscriptionCycleRowPatch {
+                    id: event.subscription_id,
+                    tenant_id: event.tenant_id,
+                    status: Some(SubscriptionStatusEnum::Active),
+                    cycle_index: None,
+                    next_cycle_action: None,
+                    current_period_start: None,
+                    current_period_end: None,
+                    pending_checkout: None,
+                    processing_started_at: None,
+                    billing_start_date: None,
+                    billing_day_anchor: None,
+                };
+                patch.patch(conn).await?;
+
+                log::info!(
+                    "Paid trial ended for subscription {}, transitioned to Active",
+                    event.subscription_id.as_base62()
+                );
+            } else {
+                log::warn!(
+                    "EndTrial event for subscription {} but status is {:?}, skipping",
+                    event.subscription_id.as_base62(),
+                    subscription.subscription.status
+                );
+            }
+        } else {
+            log::error!(
+                "Unexpected event data for type EndTrial: {:?}, event_id={}",
+                event.event_data,
+                event.id
+            );
+        }
+
+        Ok(())
+    }
+
+    async fn _process_send_payment_reminder(
+        &self,
+        _conn: &mut PgConn,
+        _event: &ScheduledEventRow,
+    ) -> StoreResult<()> {
+        // TODO
+        Ok(())
+    }
+}
+
+/// backoff for retries
+fn calculate_retry_time(retries: i32) -> NaiveDateTime {
+    let delay_minutes = match retries {
+        1 => 1,
+        2 => 5,
+        3 => 30,
+        _ => 180,
+    };
+
+    let jitter = rand::random::<u64>() % 60; // up to 1 min
+    Utc::now().naive_utc() + Duration::minutes(delay_minutes) + Duration::seconds(jitter as i64)
+}

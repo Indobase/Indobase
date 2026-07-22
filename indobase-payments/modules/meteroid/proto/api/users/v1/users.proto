@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package meteroid.api.users.v1;
+
+import "api/organizations/v1/models.proto";
+import "api/users/v1/models.proto";
+
+message GetUserByIdRequest {
+  string id = 1;
+}
+
+message GetUserByIdResponse {
+  UserWithRole user = 1;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated UserWithRole users = 1;
+}
+
+message MeRequest {}
+
+message MeResponse {
+  User user = 1;
+  repeated meteroid.api.organizations.v1.Organization organizations = 2;
+  optional OrganizationUserRole current_organization_role = 3;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  User user = 2;
+}
+
+
+message InitRegistrationRequest {
+  string email = 1;
+  optional string invite_key = 2;
+  // Relative path to redirect to after email validation (e.g. /connect/onboard/{token})
+  optional string return_path = 3;
+}
+
+message InitRegistrationResponse {
+  bool validation_required = 1;
+}
+
+message CompleteRegistrationRequest {
+  string email = 1;
+  string password = 2;
+  optional string validation_token = 3;
+  // only if not validation_required
+  optional string invite_key = 4;
+}
+
+message CompleteRegistrationResponse {
+  string token = 1;
+  User user = 2;
+}
+
+
+message OnboardMeRequest {
+  optional string first_name = 1;
+  optional string last_name = 2;
+  optional string department = 3;
+  optional string know_us_from = 4;
+}
+
+message OnboardMeResponse {
+  User user = 1;
+}
+
+message InitResetPasswordRequest {
+  string email = 1;
+}
+
+message InitResetPasswordResponse {}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {}
+
+message AcceptInviteRequest {
+  string invite_id = 1;
+}
+
+message InviteMemberRequest {
+  string email = 1;
+  OrganizationUserRole role = 2;
+}
+message InviteMemberResponse {
+  string invite_id = 1;
+}
+
+message ResendInviteRequest {
+  string invite_id = 1;
+}
+message ResendInviteResponse {}
+
+message RevokeInviteRequest {
+  string invite_id = 1;
+}
+message RevokeInviteResponse {}
+
+message OrganizationInvite {
+  string id = 1;
+  string invited_email = 2;
+  OrganizationUserRole role = 3;
+  string invited_by_email = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  bool is_expired = 7;
+}
+
+message ListPendingInvitesRequest {}
+message ListPendingInvitesResponse {
+  repeated OrganizationInvite invites = 1;
+}
+
+message AcceptInviteResponse {
+  meteroid.api.organizations.v1.Organization organization = 1;
+}
+
+message LeaveOrganizationRequest {}
+message LeaveOrganizationResponse {}
+
+message RemoveMemberRequest {
+  string user_id = 1;
+}
+message RemoveMemberResponse {}
+
+service UsersService {
+  rpc Me(MeRequest) returns (MeResponse) {}
+  rpc OnboardMe(OnboardMeRequest) returns (OnboardMeResponse) {}
+  rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse) {}
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {}
+
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+
+  rpc InitRegistration(InitRegistrationRequest) returns (InitRegistrationResponse) {}
+  rpc CompleteRegistration(CompleteRegistrationRequest) returns (CompleteRegistrationResponse) {}
+
+  rpc InitResetPassword(InitResetPasswordRequest) returns (InitResetPasswordResponse) {}
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse) {}
+
+  rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse) {}
+
+  rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {}
+  rpc ResendInvite(ResendInviteRequest) returns (ResendInviteResponse) {}
+  rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse) {}
+  rpc ListPendingInvites(ListPendingInvitesRequest) returns (ListPendingInvitesResponse) {}
+
+  rpc LeaveOrganization(LeaveOrganizationRequest) returns (LeaveOrganizationResponse) {}
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {}
+}

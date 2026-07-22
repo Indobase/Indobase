@@ -4,10 +4,12 @@ Status: **phase 1** — AGPL fork of Meteroid, branded **Indobase Payments**,
 self-hosted stack ready for prod-like deploy. Razorpay and Studio SSO are
 follow-ups.
 
-Sibling repository (AGPL boundary, outside proprietary monorepo apps):
+## Location (in monorepo)
 
-- Local: `/Volumes/PortableSSD/Indobase/indobase-payments`
-- GitHub: `https://github.com/Indobase/indobase-payments` (create/push if missing)
+AGPL boundary directory inside **Indobase/Indobase** (not a separate GitHub repo):
+
+- Path: [`indobase-payments/`](../indobase-payments/)
+- Published source: `https://github.com/Indobase/Indobase/tree/main/indobase-payments`
 - Upstream: `https://github.com/meteroid-oss/meteroid` (AGPL-3.0)
 
 See also [PAYMENTS.md](./PAYMENTS.md) (product) and
@@ -31,38 +33,44 @@ Meteroid customer-facing naming.
 
 ## Production-ready stack
 
-From the fork:
+From the monorepo tree (Vyom control-plane **103.190.92.249**):
 
 ```bash
-cd /path/to/indobase-payments/docker/deploy
+cd indobase-payments/docker/deploy
 cp .env.example .env
 # Set JWT_SECRET, INTERNAL_API_SECRET, SECRETS_CRYPT_KEY (32 chars),
 # DATABASE_PASSWORD, CLICKHOUSE_PASSWORD
 
-# Ensure Traefik network exists on the host (Vyom .249 or dedicated):
+# Ensure Traefik network exists and matches dokploy-traefik (see below):
 docker network create traefik-public 2>/dev/null || true
 
 docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
+DNS: `payments.indobase.in` and `api.payments.indobase.in` must be **A records to
+`.249`** (same host as Studio/Builder). Pointing them at the tenant data-plane
+(`.248`) yields Traefik’s default/self-signed cert (`NET::ERR_CERT_AUTHORITY_INVALID`).
+
 ### Image pins
 
-Prod compose pins Meteroid release **`v1.0.0-rc6`** for API / scheduler /
-metering / web (no `:latest`). Override with Indobase-built tags when ready:
+Prod compose pins Meteroid **`sha-80512c2`** (git tag `v1.0.0-rc6` — GHCR does not
+publish a `v1.0.0-rc6` image tag). Override with Indobase-built tags when ready:
 
 | Env | Default |
 |---|---|
-| `INDOBASE_PAYMENTS_WEB_IMAGE` | `ghcr.io/meteroid-oss/meteroid-web:v1.0.0-rc6` |
-| `INDOBASE_PAYMENTS_API_IMAGE` | `ghcr.io/meteroid-oss/meteroid-api:v1.0.0-rc6` |
+| `INDOBASE_PAYMENTS_WEB_IMAGE` | `ghcr.io/meteroid-oss/meteroid-web:sha-80512c2` |
+| `INDOBASE_PAYMENTS_API_IMAGE` | `ghcr.io/meteroid-oss/meteroid-api:sha-80512c2` |
 | … | … |
 
-**Rebuild the web image from the fork** so Indobase logos/titles ship in the
+**Rebuild the web image from this tree** so Indobase logos/titles ship in the
 container (upstream web image still has Meteroid chrome until you publish your
 own):
 
 ```bash
+# From monorepo root
 docker build -t roshanraghavander/indobase-payments-web:<sha> \
-  -f modules/web/web-app/Dockerfile modules/web
+  -f indobase-payments/modules/web/web-app/Dockerfile \
+  indobase-payments/modules/web
 # set INDOBASE_PAYMENTS_WEB_IMAGE=...
 ```
 
@@ -73,12 +81,10 @@ docker build -t roshanraghavander/indobase-payments-web:<sha> \
 - Web: `Host(payments.indobase.in)` → port 80
 - REST API: `Host(api.payments.indobase.in)` → port 8084
 
-Assumes external Traefik on network `traefik-public` with entrypoint
-`websecure` and cert resolver `letsencrypt` (override via env). Attach the
-stack to the same Traefik Docker network used by Studio/Builder on Vyom
-`.249`, or run Payments on a dedicated host with its own Traefik.
-
-DNS: point `payments.indobase.in` and `api.payments.indobase.in` at the host.
+Assumes external Traefik (`dokploy-traefik` on Vyom `.249`) on network
+`traefik-public` (or the Dokploy overlay in use) with entrypoint `websecure` and
+cert resolver matching Studio (override via `TRAEFIK_*` env). Attach the stack to
+the same Traefik Docker network used by Studio/Builder.
 
 ### Health / restart
 
@@ -88,9 +94,9 @@ DNS: point `payments.indobase.in` and `api.payments.indobase.in` at the host.
 
 ### AGPL
 
-Fork includes `NOTICE.md`. Publish source at
-`github.com/Indobase/indobase-payments`. Network users of modified builds must
-be able to obtain Corresponding Source. This is not legal advice.
+Directory includes `LICENSE` + `NOTICE.md`. Corresponding Source is the monorepo
+path above. Network users of modified builds must be able to obtain Corresponding
+Source. This is not legal advice.
 
 ---
 
@@ -116,6 +122,6 @@ phase 1 does not invent a separate Payments marketing brand or identity product.
 2. **Studio SSO** — handoff from Studio GoTrue / org membership into Payments
    (same session messaging already on the Studio page).
 3. **Publish CI images** — build/push `indobase-payments-web` (and optionally
-   API) from the fork on each release.
+   API) from `indobase-payments/` on each release.
 4. **Merchant KYC / Route** — after aggregator commercial relationship is
    settled (see PAYMENTS.md regulatory notes).

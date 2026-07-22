@@ -1,0 +1,127 @@
+use chrono::NaiveDateTime;
+
+use crate::enums::CustomerVatValidationStatusEnum;
+use common_domain::ids::{
+    ConnectedAccountId, CustomerId, CustomerPaymentMethodId, InvoicingEntityId, TenantId,
+};
+use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
+
+#[derive(Clone, Debug, Identifiable, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::customer)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CustomerRow {
+    pub id: CustomerId,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: Option<NaiveDateTime>,
+    pub archived_at: Option<NaiveDateTime>,
+    pub tenant_id: TenantId,
+    pub alias: Option<String>,
+    pub billing_email: Option<String>,
+    pub phone: Option<String>,
+    pub balance_value_cents: i64,
+    pub currency: String,
+    pub billing_address: Option<serde_json::Value>,
+    pub shipping_address: Option<serde_json::Value>,
+    pub invoicing_entity_id: InvoicingEntityId,
+    pub current_payment_method_id: Option<CustomerPaymentMethodId>,
+    pub vat_number: Option<String>,
+    pub invoicing_emails: Vec<Option<String>>,
+    pub conn_meta: Option<serde_json::Value>,
+    //  logo_url -> Nullable<Text>,
+    //  website_url -> Nullable<Text>,
+    pub is_tax_exempt: bool,
+    pub vat_number_format_valid: bool,
+    pub custom_taxes: serde_json::Value,
+    pub connected_account_id: Option<ConnectedAccountId>,
+    pub vat_number_validation_status: Option<CustomerVatValidationStatusEnum>,
+    pub vat_number_checked_at: Option<NaiveDateTime>,
+    pub vat_number_vies_check: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::customer)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CustomerBriefRow {
+    pub id: CustomerId,
+    pub name: String,
+    pub alias: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = crate::schema::customer)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CustomerRowNew {
+    pub id: CustomerId,
+    pub name: String,
+    pub tenant_id: TenantId,
+    pub alias: Option<String>,
+    pub phone: Option<String>,
+    pub balance_value_cents: i64,
+    pub currency: String,
+    pub billing_address: Option<serde_json::Value>,
+    pub shipping_address: Option<serde_json::Value>,
+    pub invoicing_entity_id: InvoicingEntityId,
+    // for seed, else default to None
+    pub created_at: Option<NaiveDateTime>,
+    pub billing_email: Option<String>,
+    pub current_payment_method_id: Option<CustomerPaymentMethodId>,
+    pub vat_number: Option<String>,
+    pub invoicing_emails: Vec<Option<String>>,
+    pub is_tax_exempt: bool,
+    pub custom_taxes: serde_json::Value,
+    pub vat_number_format_valid: bool,
+    pub connected_account_id: Option<ConnectedAccountId>,
+    pub vat_number_validation_status: Option<CustomerVatValidationStatusEnum>,
+}
+
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = crate::schema::customer)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CustomerRowPatch {
+    pub id: CustomerId,
+    pub name: Option<String>,
+    pub alias: Option<String>,
+    pub billing_email: Option<String>,
+    pub invoicing_emails: Option<Vec<Option<String>>>,
+    pub phone: Option<String>,
+    pub balance_value_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub billing_address: Option<serde_json::Value>,
+    pub shipping_address: Option<serde_json::Value>,
+    pub invoicing_entity_id: Option<InvoicingEntityId>,
+    pub vat_number: Option<Option<String>>,
+    pub current_payment_method_id: Option<Option<CustomerPaymentMethodId>>,
+    pub is_tax_exempt: Option<bool>,
+    pub custom_taxes: Option<serde_json::Value>,
+    pub vat_number_format_valid: Option<bool>,
+    pub connected_account_id: Option<Option<ConnectedAccountId>>,
+    // outer None = leave untouched; Some(_) = reset on vat number change
+    pub vat_number_validation_status: Option<Option<CustomerVatValidationStatusEnum>>,
+    pub vat_number_checked_at: Option<Option<NaiveDateTime>>,
+    pub vat_number_vies_check: Option<Option<serde_json::Value>>,
+}
+
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = crate::schema::customer)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(treat_none_as_null = true)]
+pub struct CustomerRowUpdate {
+    pub id: CustomerId,
+    pub name: String,
+    pub alias: Option<String>,
+    pub billing_email: Option<String>,
+    pub invoicing_emails: Vec<Option<String>>,
+    pub phone: Option<String>,
+    pub currency: String,
+    pub billing_address: Option<serde_json::Value>,
+    pub shipping_address: Option<serde_json::Value>,
+    pub invoicing_entity_id: InvoicingEntityId,
+    pub vat_number: Option<String>,
+    pub is_tax_exempt: bool,
+    pub custom_taxes: serde_json::Value,
+    pub vat_number_format_valid: bool,
+    pub vat_number_validation_status: Option<CustomerVatValidationStatusEnum>,
+    pub vat_number_checked_at: Option<NaiveDateTime>,
+    pub vat_number_vies_check: Option<serde_json::Value>,
+}

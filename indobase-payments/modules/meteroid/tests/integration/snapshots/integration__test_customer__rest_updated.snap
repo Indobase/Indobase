@@ -1,0 +1,34 @@
+---
+source: modules/meteroid/tests/integration/test_customer.rs
+expression: "&updated"
+---
+{
+  "id": "cus_xxx",
+  "name": "Test Customer REST",
+  "alias": "test-customer-rest",
+  "billing_email": "billing@meteroid.com",
+  "invoicing_emails": [
+    "invoicing@meteroid.com"
+  ],
+  "phone": "123456789",
+  "billing_address": {
+    "line1": "123 Test St",
+    "city": "Test City",
+    "country": "FR",
+    "zip_code": "12345"
+  },
+  "shipping_address": {
+    "same_as_billing": true
+  },
+  "currency": "USD",
+  "invoicing_entity_id": "ive_xxx",
+  "vat_number": "VAT123456",
+  "custom_taxes": [
+    {
+      "tax_code": "TAX001",
+      "name": "Standard Tax",
+      "rate": 20.0
+    }
+  ],
+  "connected_account_id": null
+}

@@ -1,0 +1,465 @@
+use crate::enums::QuoteStatusEnum;
+use crate::errors::IntoDbResult;
+use crate::extend::order::{OrderByParam, OrderDirection};
+use crate::extend::pagination::{Paginate, PaginatedVec, PaginationRequest};
+use crate::quotes::{
+    QuoteComponentRow, QuoteComponentRowNew, QuoteRow, QuoteRowNew, QuoteRowUpdate,
+    QuoteSignatureRow, QuoteSignatureRowNew, QuoteWithCustomerRow,
+};
+use crate::{DbResult, PgConn};
+use common_domain::ids::{CustomerId, ProductId, QuoteId, StoredDocumentId, TenantId};
+use diesel::{
+    BoolExpressionMethods, JoinOnDsl, PgSortExpressionMethods, PgTextExpressionMethods,
+    SelectableHelper, debug_query,
+};
+use diesel::{ExpressionMethods, QueryDsl};
+use error_stack::ResultExt;
+
+impl QuoteRowNew {
+    pub async fn insert(&self, conn: &mut PgConn) -> DbResult<QuoteRow> {
+        use crate::schema::quote::dsl::quote;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(quote).values(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while inserting quote")
+            .into_db_result()
+    }
+
+    pub async fn insert_batch(rows: &[QuoteRowNew], conn: &mut PgConn) -> DbResult<Vec<QuoteRow>> {
+        use crate::schema::quote::dsl::quote;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(quote).values(rows);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while batch inserting quotes")
+            .into_db_result()
+    }
+}
+
+impl QuoteRow {
+    pub async fn find_by_id(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_quote_id: QuoteId,
+    ) -> DbResult<QuoteRow> {
+        use crate::schema::quote::dsl::{id, quote, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = quote
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(id.eq(param_quote_id));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding quote by id")
+            .into_db_result()
+    }
+
+    pub async fn find_with_customer_by_id(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_quote_id: QuoteId,
+    ) -> DbResult<QuoteWithCustomerRow> {
+        use crate::schema::customer::dsl as c_dsl;
+        use crate::schema::quote::dsl as q_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = q_dsl::quote
+            .inner_join(c_dsl::customer.on(q_dsl::customer_id.eq(c_dsl::id)))
+            .filter(q_dsl::tenant_id.eq(param_tenant_id))
+            .filter(q_dsl::id.eq(param_quote_id))
+            .select(QuoteWithCustomerRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding quote with customer by id")
+            .into_db_result()
+    }
+
+    pub async fn list(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_customer_id: Option<CustomerId>,
+        param_status: Option<QuoteStatusEnum>,
+        search: Option<String>,
+        order_by: Option<&str>,
+        pagination: PaginationRequest,
+    ) -> DbResult<PaginatedVec<QuoteWithCustomerRow>> {
+        use crate::schema::customer::dsl as c_dsl;
+        use crate::schema::quote::dsl as q_dsl;
+        let mut query = q_dsl::quote
+            .inner_join(c_dsl::customer.on(q_dsl::customer_id.eq(c_dsl::id)))
+            .filter(q_dsl::tenant_id.eq(param_tenant_id))
+            .into_boxed();
+
+        if let Some(customer_id) = param_customer_id {
+            query = query.filter(q_dsl::customer_id.eq(customer_id));
+        }
+
+        if let Some(status) = param_status {
+            query = query.filter(q_dsl::status.eq(status));
+        }
+
+        if let Some(search_str) = search {
+            let search_pattern = format!("%{search_str}%");
+            query = query.filter(
+                q_dsl::quote_number
+                    .ilike(search_pattern.clone())
+                    .or(q_dsl::internal_notes.ilike(search_pattern.clone()))
+                    .or(c_dsl::name.ilike(search_pattern)),
+            );
+        }
+
+        let order = OrderByParam::parse(order_by, "created_at.desc");
+
+        match (order.column.as_str(), order.direction) {
+            ("quote_number", OrderDirection::Asc) => {
+                query = query.order((q_dsl::quote_number.asc(), q_dsl::id.asc()))
+            }
+            ("quote_number", OrderDirection::Desc) => {
+                query = query.order((q_dsl::quote_number.desc(), q_dsl::id.desc()))
+            }
+            ("customer_name", OrderDirection::Asc) => {
+                query = query.order((c_dsl::name.asc(), q_dsl::id.asc()))
+            }
+            ("customer_name", OrderDirection::Desc) => {
+                query = query.order((c_dsl::name.desc(), q_dsl::id.desc()))
+            }
+            ("status", OrderDirection::Asc) => {
+                query = query.order((q_dsl::status.asc(), q_dsl::id.asc()))
+            }
+            ("status", OrderDirection::Desc) => {
+                query = query.order((q_dsl::status.desc(), q_dsl::id.desc()))
+            }
+            ("created_at", OrderDirection::Asc) => {
+                query = query.order((q_dsl::created_at.asc(), q_dsl::id.asc()))
+            }
+            ("created_at", OrderDirection::Desc) => {
+                query = query.order((q_dsl::created_at.desc(), q_dsl::id.desc()))
+            }
+            ("expires_at", OrderDirection::Asc) => {
+                query = query.order((q_dsl::expires_at.asc().nulls_last(), q_dsl::id.asc()))
+            }
+            ("expires_at", OrderDirection::Desc) => {
+                query = query.order((q_dsl::expires_at.desc().nulls_first(), q_dsl::id.desc()))
+            }
+            _ => query = query.order((q_dsl::created_at.desc(), q_dsl::id.desc())),
+        }
+
+        let query = query.select(QuoteWithCustomerRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .paginate(pagination)
+            .load_and_count_pages(conn)
+            .await
+            .attach("Error while listing quotes")
+            .into_db_result()
+    }
+
+    pub async fn list_by_ids(conn: &mut PgConn, ids: Vec<QuoteId>) -> DbResult<Vec<QuoteRow>> {
+        use crate::schema::quote::dsl::{id, quote};
+        use diesel_async::RunQueryDsl;
+
+        let query = quote.filter(id.eq_any(ids));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .load(conn)
+            .await
+            .attach("Error while listing quotes by ids")
+            .into_db_result()
+    }
+
+    pub async fn update_by_id(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_quote_id: QuoteId,
+        update: QuoteRowUpdate,
+    ) -> DbResult<QuoteRow> {
+        use crate::schema::quote::dsl::{id, quote, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(quote)
+            .filter(id.eq(param_quote_id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .set(update);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while updating quote")
+            .into_db_result()
+    }
+
+    pub async fn update_documents(
+        conn: &mut PgConn,
+        param_quote_id: QuoteId,
+        param_tenant_id: TenantId,
+        pdf_id: StoredDocumentId,
+        param_sharing_key: String,
+    ) -> DbResult<()> {
+        use crate::schema::quote::dsl::{
+            id, pdf_document_id, quote, sharing_key, tenant_id, updated_at,
+        };
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(quote)
+            .filter(id.eq(param_quote_id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .set((
+                pdf_document_id.eq(Some(pdf_id)),
+                sharing_key.eq(Some(param_sharing_key)),
+                updated_at.eq(chrono::Utc::now().naive_utc()),
+            ));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .attach("Error while updating quote documents")
+            .into_db_result()
+            .map(|_| ())
+    }
+
+    /// Atomically marks a quote as converted to subscription.
+    /// Uses optimistic locking by checking that converted_to_subscription_id is NULL.
+    /// Returns the number of rows affected (0 if already converted, 1 if successful).
+    pub async fn mark_as_converted_to_subscription(
+        conn: &mut PgConn,
+        param_quote_id: QuoteId,
+        param_tenant_id: TenantId,
+        subscription_id: common_domain::ids::SubscriptionId,
+    ) -> DbResult<usize> {
+        use crate::schema::quote::dsl::{
+            converted_at, converted_to_subscription_id, id, quote, status, tenant_id, updated_at,
+        };
+        use diesel_async::RunQueryDsl;
+
+        let now = chrono::Utc::now().naive_utc();
+
+        // Only update if not already converted (converted_to_subscription_id IS NULL)
+        let query = diesel::update(quote)
+            .filter(id.eq(param_quote_id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(status.eq(QuoteStatusEnum::Accepted))
+            .filter(converted_to_subscription_id.is_null())
+            .set((
+                converted_to_subscription_id.eq(Some(subscription_id)),
+                converted_at.eq(Some(now)),
+                updated_at.eq(Some(now)),
+            ));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .attach("Error while converting quote to subscription")
+            .into_db_result()
+    }
+
+    /// Finds a quote by ID and locks it for update within a transaction.
+    /// This prevents race conditions when multiple processes try to convert the same quote.
+    pub async fn find_by_id_for_update(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_quote_id: QuoteId,
+    ) -> DbResult<QuoteRow> {
+        use crate::schema::quote::dsl::{id, quote, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = quote
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(id.eq(param_quote_id))
+            .for_update();
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding quote by id for update")
+            .into_db_result()
+    }
+
+    pub async fn set_purchase_order(
+        conn: &mut PgConn,
+        param_quote_id: QuoteId,
+        param_tenant_id: TenantId,
+        param_purchase_order: Option<String>,
+    ) -> DbResult<QuoteRow> {
+        use crate::schema::quote::dsl::{id, purchase_order, quote, status, tenant_id, updated_at};
+        use diesel_async::RunQueryDsl;
+
+        let now = chrono::Utc::now().naive_utc();
+
+        let query = diesel::update(quote)
+            .filter(id.eq(param_quote_id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(status.eq(QuoteStatusEnum::Pending))
+            .set((
+                purchase_order.eq(param_purchase_order),
+                updated_at.eq(Some(now)),
+            ));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while setting quote's purchase_order")
+            .into_db_result()
+    }
+}
+
+impl QuoteSignatureRowNew {
+    pub async fn insert(&self, conn: &mut PgConn) -> DbResult<QuoteSignatureRow> {
+        use crate::schema::quote_signature::dsl::quote_signature;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(quote_signature).values(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while inserting quote signature")
+            .into_db_result()
+    }
+}
+
+impl QuoteSignatureRow {
+    pub async fn list_by_quote_id(
+        conn: &mut PgConn,
+        param_quote_id: QuoteId,
+    ) -> DbResult<Vec<QuoteSignatureRow>> {
+        use crate::schema::quote_signature::dsl::{quote_id, quote_signature, signed_at};
+        use diesel_async::RunQueryDsl;
+
+        let query = quote_signature
+            .filter(quote_id.eq(param_quote_id))
+            .order(signed_at.desc());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .load(conn)
+            .await
+            .attach("Error while listing quote signatures")
+            .into_db_result()
+    }
+}
+
+impl QuoteComponentRow {
+    /// Fetch distinct product IDs from quote components for the given quotes.
+    pub async fn list_product_ids(
+        conn: &mut PgConn,
+        quote_ids: &[QuoteId],
+        tenant_id: &TenantId,
+    ) -> DbResult<Vec<ProductId>> {
+        use crate::schema::quote::dsl as q_dsl;
+        use crate::schema::quote_component::dsl as qc_dsl;
+        use diesel::dsl::not;
+        use diesel_async::RunQueryDsl;
+
+        if quote_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let query = qc_dsl::quote_component
+            .inner_join(q_dsl::quote)
+            .filter(qc_dsl::quote_id.eq_any(quote_ids))
+            .filter(q_dsl::tenant_id.eq(tenant_id))
+            .filter(not(qc_dsl::product_id.is_null()))
+            .select(qc_dsl::product_id);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        let rows: Vec<Option<ProductId>> = query
+            .get_results(conn)
+            .await
+            .attach("Error while fetching product ids from quote components")
+            .into_db_result()?;
+
+        Ok(rows.into_iter().flatten().collect())
+    }
+
+    pub async fn list_by_quote_id(
+        conn: &mut PgConn,
+        param_quote_id: QuoteId,
+    ) -> DbResult<Vec<QuoteComponentRow>> {
+        use crate::schema::quote_component::dsl::{id, quote_component, quote_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = quote_component
+            .filter(quote_id.eq(param_quote_id))
+            .order(id.asc());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .load(conn)
+            .await
+            .attach("Error while listing quote components")
+            .into_db_result()
+    }
+}
+
+impl QuoteComponentRowNew {
+    pub async fn insert(&self, conn: &mut PgConn) -> DbResult<QuoteComponentRow> {
+        use crate::schema::quote_component::dsl::quote_component;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(quote_component).values(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while inserting quote component")
+            .into_db_result()
+    }
+
+    pub async fn insert_batch(
+        rows: &[QuoteComponentRowNew],
+        conn: &mut PgConn,
+    ) -> DbResult<Vec<QuoteComponentRow>> {
+        use crate::schema::quote_component::dsl::quote_component;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(quote_component).values(rows);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while batch inserting quote components")
+            .into_db_result()
+    }
+}

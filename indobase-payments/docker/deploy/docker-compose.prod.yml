@@ -1,0 +1,274 @@
+# Indobase Payments — production Compose
+#
+# Pinned upstream Meteroid images (v1.0.0-rc6) + Indobase-branded web image.
+# Copy .env.example → .env and set secrets before `docker compose up`.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+#
+# TLS: Traefik labels assume Dokploy Traefik on Vyom .249 (`dokploy-network`,
+# cert resolver `letsencrypt`). Override TRAEFIK_NETWORK if needed.
+
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+x-restart: &restart
+  restart: unless-stopped
+
+# Pin app images via INDOBASE_PAYMENTS_*_IMAGE env (defaults: Meteroid v1.0.0-rc6).
+
+volumes:
+  pg_data:
+  clickhouse_data:
+  clickhouse_coordination:
+  redpanda_data:
+  object_store_data:
+
+networks:
+  indobase_payments_net:
+    name: indobase-payments
+  traefik_public:
+    name: ${TRAEFIK_NETWORK:-dokploy-network}
+    external: true
+
+name: indobase-payments
+
+services:
+  meteroid-db:
+    <<: *restart
+    image: ${INDOBASE_PAYMENTS_POSTGRES_IMAGE:-ghcr.io/meteroid-oss/meteroid-postgres:18.3-standard}
+    user: postgres
+    environment:
+      - POSTGRES_USER=${DATABASE_USER:-meteroid}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:?set DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME:-meteroid}
+    volumes:
+      - pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+    networks:
+      - indobase_payments_net
+    logging: *logging
+    # No host ports in production — reach via Docker network only.
+
+  clickhouse-volume-init:
+    image: alpine:3.21.3
+    user: root
+    command:
+      - sh
+      - -c
+      - mkdir -p /coordination/log /coordination/snapshots && chown -R 101:101 /coordination
+    volumes:
+      - clickhouse_coordination:/coordination
+    restart: "no"
+    logging: *logging
+
+  clickhouse:
+    <<: *restart
+    depends_on:
+      clickhouse-volume-init:
+        condition: service_completed_successfully
+    image: clickhouse/clickhouse-server:25.6.2-alpine
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-meteroid}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://clickhouse:8123/ping || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 100
+      start_period: 30s
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_coordination:/var/lib/clickhouse/coordination
+      - ./volume/clickhouse/config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+    networks:
+      - indobase_payments_net
+    logging: *logging
+
+  redpanda:
+    <<: *restart
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.1
+    hostname: redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      - --advertise-kafka-addr INTERNAL://redpanda:29092,EXTERNAL://redpanda:9092
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - indobase_payments_net
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *logging
+
+  redpanda-topic-create:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.1
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        for topic in meteroid-events-raw; do \
+          echo "Creating topic: $$topic" && \
+          rpk topic create "$$topic" --brokers redpanda:29092 || true; \
+        done
+    networks:
+      - indobase_payments_net
+
+  meteroid-api:
+    <<: *restart
+    # Upstream publishes :latest (and sha-*) — version tags like v1.0.0-rc6 are not on GHCR.
+    image: ${INDOBASE_PAYMENTS_API_IMAGE:-ghcr.io/meteroid-oss/meteroid-api:sha-80512c2}
+    depends_on:
+      meteroid-db:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET:?set INTERNAL_API_SECRET}
+      - SECRETS_CRYPT_KEY=${SECRETS_CRYPT_KEY:?set SECRETS_CRYPT_KEY}
+      - DATABASE_URL=postgres://${DATABASE_USER:-meteroid}:${DATABASE_PASSWORD}@meteroid-db:5432/${DATABASE_NAME:-meteroid}?sslmode=disable
+      - METEROID_API_LISTEN_ADDRESS=0.0.0.0:50061
+      - METEROID_REST_API_LISTEN_ADDRESS=0.0.0.0:8084
+      - METERING_API_EXTERNAL_URL=http://metering-api:50062
+      - ENABLE_MULTI_ORGANIZATION=${ENABLE_MULTI_ORGANIZATION:-false}
+      - METEROID_PUBLIC_URL=${METEROID_PUBLIC_URL:-https://payments.indobase.in}
+      - OBJECT_STORE_URI=${OBJECT_STORE_URI:-file:///data/object-store}
+      - SVIX_JWT_TOKEN=${SVIX_JWT_TOKEN:-}
+      - MAILER_SMTP_HOST=${MAILER_SMTP_HOST:-}
+      - MAILER_SMTP_USERNAME=${MAILER_SMTP_USERNAME:-}
+      - MAILER_SMTP_PASSWORD=${MAILER_SMTP_PASSWORD:-}
+      - MAILER_SMTP_TLS=${MAILER_SMTP_TLS:-true}
+      - MAILER_FROM=${MAILER_FROM:-Indobase Payments <payments@indobase.in>}
+      - TELEMETRY_TRACING_ENABLED=${TELEMETRY_TRACING_ENABLED:-false}
+      - TELEMETRY_METRICS_ENABLED=${TELEMETRY_METRICS_ENABLED:-false}
+      - TELEMETRY_OTEL_ENDPOINT=${TELEMETRY_OTEL_ENDPOINT:-}
+    volumes:
+      - object_store_data:/data/object-store
+    healthcheck:
+      test: ["CMD", "/bin/grpc_health_probe", "-addr=:50061"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - indobase_payments_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik-public}
+      - traefik.http.routers.indobase-payments-api.rule=Host(`${PAYMENTS_API_HOST:-api.payments.indobase.in}`)
+      - traefik.http.routers.indobase-payments-api.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-payments-api.tls=true
+      - traefik.http.routers.indobase-payments-api.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.indobase-payments-api.loadbalancer.server.port=8084
+    logging: *logging
+
+  meteroid-scheduler:
+    <<: *restart
+    image: ${INDOBASE_PAYMENTS_SCHEDULER_IMAGE:-ghcr.io/meteroid-oss/meteroid-scheduler:sha-80512c2}
+    depends_on:
+      meteroid-db:
+        condition: service_healthy
+      meteroid-api:
+        condition: service_healthy
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
+      - SECRETS_CRYPT_KEY=${SECRETS_CRYPT_KEY}
+      - DATABASE_URL=postgres://${DATABASE_USER:-meteroid}:${DATABASE_PASSWORD}@meteroid-db:5432/${DATABASE_NAME:-meteroid}?sslmode=disable
+      - METEROID_API_LISTEN_ADDRESS=0.0.0.0:50061
+      - METEROID_REST_API_LISTEN_ADDRESS=0.0.0.0:8084
+      - METERING_API_EXTERNAL_URL=http://metering-api:50062
+      - ENABLE_MULTI_ORGANIZATION=${ENABLE_MULTI_ORGANIZATION:-false}
+      - METEROID_PUBLIC_URL=${METEROID_PUBLIC_URL:-https://payments.indobase.in}
+      - OBJECT_STORE_URI=${OBJECT_STORE_URI:-file:///data/object-store}
+      - SVIX_JWT_TOKEN=${SVIX_JWT_TOKEN:-}
+      - MAILER_FROM=${MAILER_FROM:-Indobase Payments <payments@indobase.in>}
+    volumes:
+      - object_store_data:/data/object-store
+    networks:
+      - indobase_payments_net
+    logging: *logging
+
+  metering-api:
+    <<: *restart
+    image: ${INDOBASE_PAYMENTS_METERING_IMAGE:-ghcr.io/meteroid-oss/metering-api:sha-80512c2}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
+      - METERING_API_LISTEN_ADDRESS=0.0.0.0:50062
+      - METEROID_API_EXTERNAL_URL=http://meteroid-api:50061
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+      - KAFKA_RAW_TOPIC=${KAFKA_RAW_TOPIC:-meteroid-events-raw}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-meteroid}
+      - CLICKHOUSE_HTTP_ADDRESS=http://clickhouse:8123
+      - CLICKHOUSE_TCP_ADDRESS=clickhouse:9000
+      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_CLUSTER_NAME=${CLICKHOUSE_CLUSTER_NAME:-meteroid}
+      - TELEMETRY_TRACING_ENABLED=${TELEMETRY_TRACING_ENABLED:-false}
+      - TELEMETRY_METRICS_ENABLED=${TELEMETRY_METRICS_ENABLED:-false}
+      - TELEMETRY_OTEL_ENDPOINT=${TELEMETRY_OTEL_ENDPOINT:-}
+    networks:
+      - indobase_payments_net
+    logging: *logging
+
+  meteroid-web:
+    <<: *restart
+    image: ${INDOBASE_PAYMENTS_WEB_IMAGE:-ghcr.io/meteroid-oss/meteroid-web:sha-80512c2}
+    depends_on:
+      meteroid-api:
+        condition: service_healthy
+    environment:
+      - VITE_METEROID_API_EXTERNAL_URL=${VITE_METEROID_API_EXTERNAL_URL:-https://api.payments.indobase.in}
+      - VITE_METEROID_REST_API_EXTERNAL_URL=${VITE_METEROID_REST_API_EXTERNAL_URL:-https://api.payments.indobase.in}
+    networks:
+      - indobase_payments_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik-public}
+      - traefik.http.routers.indobase-payments-web.rule=Host(`${PAYMENTS_WEB_HOST:-payments.indobase.in}`)
+      - traefik.http.routers.indobase-payments-web.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-payments-web.tls=true
+      - traefik.http.routers.indobase-payments-web.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.indobase-payments-web.loadbalancer.server.port=80
+    logging: *logging

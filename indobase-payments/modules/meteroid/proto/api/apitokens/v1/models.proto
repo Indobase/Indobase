@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package meteroid.api.apitokens.v1;
+
+message ApiToken {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string hint = 4;
+  string created_at = 5;
+}

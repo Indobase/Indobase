@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package meteroid.api.products.v1;
+
+import "common/v1/pagination.proto";
+import "api/products/v1/models.proto";
+import "api/prices/v1/models.proto";
+
+message CreateProductRequest {
+  string name = 1;
+  optional string description = 2;
+  string family_local_id = 3;
+  meteroid.api.prices.v1.FeeType fee_type = 4;
+  meteroid.api.prices.v1.FeeStructure fee_structure = 5;
+  optional bool catalog = 6;
+}
+
+message CreateProductResponse {
+  Product product = 1;
+}
+
+message UpdateProductRequest {
+  string product_id = 1;
+  string name = 2;
+  optional string description = 3;
+  optional meteroid.api.prices.v1.FeeType fee_type = 4;
+  optional meteroid.api.prices.v1.FeeStructure fee_structure = 5;
+}
+
+message UpdateProductResponse {
+  Product product = 1;
+}
+
+message ListProductsRequest {
+  optional string family_local_id = 1;
+  meteroid.common.v1.Pagination pagination = 2;
+  optional bool catalog_only = 3;
+}
+
+message ListProductsResponse {
+  repeated ProductMeta products = 1;
+  meteroid.common.v1.PaginationResponse pagination_meta = 2;
+}
+
+message SearchProductsRequest {
+  optional string family_local_id = 1;
+  optional string query = 2;
+  meteroid.common.v1.Pagination pagination = 3;
+  optional bool catalog_only = 4;
+  optional string order_by = 5;
+}
+
+message SearchProductsResponse {
+  repeated ProductMeta products = 1;
+  meteroid.common.v1.PaginationResponse pagination_meta = 2;
+}
+
+message GetProductRequest {
+  string product_id = 1;
+}
+
+message GetProductResponse {
+  Product product = 1;
+  // Distinct currencies across all prices for this product
+  repeated string currencies = 2;
+  // Resolved metric name when the product's fee structure references a billable metric
+  optional string metric_name = 3;
+}
+
+message ListProductsWithPricesRequest {
+  optional string family_local_id = 1;
+  string currency = 2;
+  optional string query = 3;
+  meteroid.common.v1.Pagination pagination = 4;
+  optional bool catalog_only = 5;
+  repeated meteroid.api.prices.v1.FeeType fee_types = 6;
+}
+
+message ListProductsWithPricesResponse {
+  repeated ProductWithPrice products = 1;
+  meteroid.common.v1.PaginationResponse pagination_meta = 2;
+}
+
+service ProductsService {
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse) {}
+  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse) {}
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {}
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse) {}
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse) {}
+  rpc ListProductsWithPrices(ListProductsWithPricesRequest) returns (ListProductsWithPricesResponse) {}
+}

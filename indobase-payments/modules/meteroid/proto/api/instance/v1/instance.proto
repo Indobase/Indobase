@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package meteroid.api.instance.v1;
+
+import "api/users/v1/models.proto";
+
+message GetInstanceRequest {}
+message GetInstanceResponse {
+  bool multi_organization_enabled = 1;
+  bool instance_initiated = 2;
+  bool mailer_enabled = 3;
+  optional string google_oauth_client_id = 6;
+  optional string hubspot_oauth_client_id = 7;
+  optional string pennylane_oauth_client_id = 8;
+  bool svix_enabled = 9;
+}
+
+message GetInviteDetailsRequest {
+  string invite_id = 1;
+}
+message GetInviteDetailsResponse {
+  string organization_name = 1;
+  meteroid.api.users.v1.OrganizationUserRole role = 2;
+  string invited_email = 3;
+}
+
+message GetCountriesRequest {}
+
+message GetCountriesResponse {
+  repeated Country countries = 1;
+
+  message Country {
+    string code = 1;
+    string name = 2;
+    string currency = 3;
+  }
+}
+
+message GetCurrenciesRequest {}
+
+message GetCurrenciesResponse {
+  repeated Currency currencies = 1;
+
+  message Currency {
+    string code = 1;
+    string name = 2;
+    string symbol = 3;
+    uint32 precision = 4;
+  }
+}
+
+message GetSubdivisionsRequest {
+  string country_code = 1;
+}
+
+message GetSubdivisionsResponse {
+  repeated Subdivision subdivisions = 1;
+
+  message Subdivision {
+    string code = 1;
+    string name = 2;
+  }
+}
+
+service InstanceService {
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse) {}
+  rpc GetInviteDetails(GetInviteDetailsRequest) returns (GetInviteDetailsResponse) {}
+  rpc GetCountries(GetCountriesRequest) returns (GetCountriesResponse) {}
+  rpc GetCurrencies(GetCurrenciesRequest) returns (GetCurrenciesResponse) {}
+  rpc GetSubdivisions(GetSubdivisionsRequest) returns (GetSubdivisionsResponse) {}
+}

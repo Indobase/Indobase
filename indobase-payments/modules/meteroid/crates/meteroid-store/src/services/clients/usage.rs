@@ -1,0 +1,243 @@
+use crate::StoreResult;
+use crate::domain::{BillableMetric, UsagePeriod};
+use crate::errors::StoreError;
+use chrono::{NaiveDate, NaiveDateTime};
+use common_domain::ids::{BillableMetricId, CustomerId, TenantId};
+use error_stack::bail;
+use rust_decimal::Decimal;
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct UsageData {
+    pub data: Vec<GroupedUsageData>,
+    pub period: UsagePeriod,
+}
+
+#[derive(Debug, Clone)]
+pub struct GroupedUsageData {
+    pub value: Decimal,
+    pub dimensions: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowedUsageData {
+    pub data: Vec<WindowedUsagePoint>,
+    pub period: UsagePeriod,
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowedUsagePoint {
+    pub window_start: NaiveDate,
+    pub window_end: NaiveDate,
+    pub value: Decimal,
+    pub dimensions: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Metadata {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct EventSearchOptions {
+    pub from: Option<prost_types::Timestamp>,
+    pub to: Option<prost_types::Timestamp>,
+    pub limit: u32,
+    pub offset: u32,
+    pub search: Option<String>,
+    pub event_codes: Vec<String>,
+    pub customer_ids: Vec<String>,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct EventSearchResult {
+    pub events: Vec<metering_grpc::meteroid::metering::v1::Event>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IngestEventsRequest {
+    pub events: Vec<metering_grpc::meteroid::metering::v1::Event>,
+    pub allow_backfilling: bool,
+    pub fail_on_error: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct IngestEventsFailure {
+    pub event_id: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct IngestEventsResult {
+    pub failures: Vec<IngestEventsFailure>,
+}
+
+#[async_trait::async_trait]
+pub trait UsageClient: Send + Sync {
+    async fn fetch_usage(
+        &self,
+        tenant_id: &TenantId,
+        customer_id: &CustomerId,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<UsageData>;
+
+    async fn fetch_total_usage(
+        &self,
+        tenant_id: &TenantId,
+        customer_id: &CustomerId,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<Decimal>;
+
+    async fn fetch_windowed_usage(
+        &self,
+        tenant_id: &TenantId,
+        customer_id: &CustomerId,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<WindowedUsageData>;
+
+    /// Fetch aggregated usage for a metric over a period.
+    /// If `customer_id` is Some, scoped to that customer; if None, cross-customer aggregation.
+    async fn fetch_usage_summary(
+        &self,
+        tenant_id: &TenantId,
+        customer_id: Option<&CustomerId>,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<UsageData>;
+
+    async fn search_events(
+        &self,
+        tenant_id: &TenantId,
+        options: EventSearchOptions,
+    ) -> StoreResult<EventSearchResult>;
+    async fn ingest_events(
+        &self,
+        tenant_id: &TenantId,
+        request: IngestEventsRequest,
+    ) -> StoreResult<IngestEventsResult>;
+}
+
+#[derive(Eq, Hash, PartialEq)]
+pub struct MockUsageDataParams {
+    pub metric_id: BillableMetricId,
+    pub period_start: NaiveDateTime,
+    pub period_end: NaiveDateTime,
+}
+
+pub struct MockUsageClient {
+    pub data: HashMap<MockUsageDataParams, UsageData>,
+}
+
+#[async_trait::async_trait]
+impl UsageClient for MockUsageClient {
+    async fn fetch_usage(
+        &self,
+        _tenant_id: &TenantId,
+        _customer_id: &CustomerId,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<UsageData> {
+        let params = MockUsageDataParams {
+            metric_id: metric.id,
+            period_start: period.start,
+            period_end: period.end,
+        };
+        let usage_data = self
+            .data
+            .get(&params)
+            .cloned()
+            .unwrap_or_else(|| UsageData {
+                data: vec![],
+                period: period.clone(),
+            });
+        Ok(usage_data)
+    }
+
+    async fn fetch_total_usage(
+        &self,
+        _tenant_id: &TenantId,
+        _customer_id: &CustomerId,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<Decimal> {
+        let params = MockUsageDataParams {
+            metric_id: metric.id,
+            period_start: period.start,
+            period_end: period.end,
+        };
+        Ok(self
+            .data
+            .get(&params)
+            .map(|d| d.data.iter().map(|g| g.value).sum())
+            .unwrap_or(Decimal::ZERO))
+    }
+
+    async fn fetch_windowed_usage(
+        &self,
+        _tenant_id: &TenantId,
+        _customer_id: &CustomerId,
+        _metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<WindowedUsageData> {
+        Ok(WindowedUsageData {
+            data: vec![],
+            period,
+        })
+    }
+
+    async fn fetch_usage_summary(
+        &self,
+        _tenant_id: &TenantId,
+        _customer_id: Option<&CustomerId>,
+        metric: &BillableMetric,
+        period: UsagePeriod,
+    ) -> StoreResult<UsageData> {
+        let params = MockUsageDataParams {
+            metric_id: metric.id,
+            period_start: period.start,
+            period_end: period.end,
+        };
+        let usage_data = self
+            .data
+            .get(&params)
+            .cloned()
+            .unwrap_or_else(|| UsageData {
+                data: vec![],
+                period: period.clone(),
+            });
+        Ok(usage_data)
+    }
+
+    async fn search_events(
+        &self,
+        _tenant_id: &TenantId,
+        _options: EventSearchOptions,
+    ) -> StoreResult<EventSearchResult> {
+        bail!(StoreError::InvalidArgument(
+            "Mock client does not support event search".to_string()
+        ));
+    }
+
+    async fn ingest_events(
+        &self,
+        _tenant_id: &TenantId,
+        _request: IngestEventsRequest,
+    ) -> StoreResult<IngestEventsResult> {
+        bail!(StoreError::InvalidArgument(
+            "Mock client does not support event ingestion".to_string()
+        ));
+    }
+}
+
+impl MockUsageClient {
+    pub fn noop() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+}

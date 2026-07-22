@@ -1,0 +1,911 @@
+use crate::domain::entity_activity::Actor;
+use crate::domain::enums::InvoiceType;
+use crate::domain::outbox_event::{InvoicePdfGeneratedEvent, OutboxEvent};
+use crate::domain::pgmq::{
+    PennylaneSyncInvoice, PennylaneSyncRequestEvent, PgmqMessageNew, PgmqQueue,
+};
+use crate::domain::{
+    ConnectorProviderEnum, CursorPaginatedVec, CursorPaginationRequest, DetailedInvoice, Invoice,
+    InvoiceNew, InvoiceWithCustomer, LineItem, PaginatedVec, PaginationRequest, TaxBreakdownItem,
+};
+use crate::errors::StoreError;
+use crate::repositories::connectors::ConnectorsInterface;
+use crate::repositories::credit_notes::{
+    CreateCreditNoteTxParams, CreditType, create_credit_note_tx,
+};
+use crate::repositories::customer_balance::CustomerBalance;
+use crate::repositories::pgmq::PgmqInterface;
+use crate::store::Store;
+use crate::{StoreResult, domain};
+use common_domain::ids::{
+    AliasOr, BaseId, ConnectorId, CustomerId, EventId, InvoiceId, StoredDocumentId, SubscriptionId,
+    TenantId,
+};
+use diesel_models::PgConn;
+use diesel_models::customer_balance_txs::CustomerBalancePendingTxRow;
+use diesel_models::enums::{MrrMovementType, SubscriptionEventType, SubscriptionStatusEnum};
+use diesel_models::invoices::{InvoiceRow, InvoiceRowNew};
+use diesel_models::subscriptions::SubscriptionRow;
+use error_stack::{Report, bail};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+use scoped_futures::ScopedFutureExt;
+use std::collections::HashMap;
+use tracing_log::log;
+use uuid::Uuid;
+
+#[async_trait::async_trait]
+pub trait InvoiceInterface {
+    async fn get_detailed_invoice_by_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<DetailedInvoice>;
+
+    async fn get_detailed_invoice_by_id_with_conn(
+        &self,
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<DetailedInvoice>;
+
+    async fn get_invoice_by_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<Invoice>;
+
+    async fn find_child_invoice_id(
+        &self,
+        tenant_id: TenantId,
+        parent_invoice_id: InvoiceId,
+    ) -> StoreResult<Option<InvoiceId>>;
+
+    /// Lists the per-subscription child invoices merged into the given consolidated parent.
+    async fn list_consolidated_children(
+        &self,
+        tenant_id: TenantId,
+        parent_invoice_id: InvoiceId,
+    ) -> StoreResult<Vec<Invoice>>;
+
+    #[allow(clippy::too_many_arguments)]
+    async fn list_invoices(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<CustomerId>,
+        subscription_id: Option<SubscriptionId>,
+        status: Option<domain::enums::InvoiceStatusEnum>,
+        query: Option<String>,
+        order_by: Option<String>,
+        pagination: PaginationRequest,
+    ) -> StoreResult<PaginatedVec<InvoiceWithCustomer>>;
+
+    #[allow(clippy::too_many_arguments)]
+    async fn list_full_invoices(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<AliasOr<CustomerId>>,
+        subscription_id: Option<SubscriptionId>,
+        statuses: Option<Vec<domain::enums::InvoiceStatusEnum>>,
+        query: Option<String>,
+        order_by: Option<String>,
+        pagination: PaginationRequest,
+    ) -> StoreResult<PaginatedVec<(InvoiceWithCustomer, Vec<domain::PaymentTransaction>)>>;
+
+    async fn insert_invoice(&self, invoice: InvoiceNew) -> StoreResult<Invoice>;
+
+    async fn insert_invoice_batch(&self, invoice: Vec<InvoiceNew>) -> StoreResult<Vec<Invoice>>;
+
+    async fn list_invoices_to_finalize(
+        &self,
+        pagination: CursorPaginationRequest,
+    ) -> StoreResult<CursorPaginatedVec<Invoice>>;
+
+    async fn list_outdated_invoices(
+        &self,
+        pagination: CursorPaginationRequest,
+    ) -> StoreResult<CursorPaginatedVec<Invoice>>;
+
+    async fn list_invoices_by_ids(&self, ids: Vec<InvoiceId>) -> StoreResult<Vec<Invoice>>;
+
+    async fn list_detailed_invoices_by_ids(
+        &self,
+        ids: Vec<InvoiceId>,
+    ) -> StoreResult<Vec<DetailedInvoice>>;
+
+    async fn save_invoice_documents(
+        &self,
+        id: InvoiceId,
+        tenant_id: TenantId,
+        customer_id: CustomerId,
+
+        pdf_id: StoredDocumentId,
+        xml_id: Option<StoredDocumentId>,
+    ) -> StoreResult<()>;
+
+    async fn sync_invoices_to_pennylane(
+        &self,
+        ids: Vec<InvoiceId>,
+        tenant_id: TenantId,
+    ) -> StoreResult<()>;
+
+    async fn patch_invoice_conn_meta(
+        &self,
+        invoice_id: InvoiceId,
+        connector_id: ConnectorId,
+        provider: ConnectorProviderEnum,
+        external_id: &str,
+        external_company_id: &str,
+    ) -> StoreResult<()>;
+
+    async fn delete_invoice(&self, id: InvoiceId, tenant_id: TenantId) -> StoreResult<()>;
+
+    async fn void_invoice(
+        &self,
+        actor: Actor,
+        id: InvoiceId,
+        tenant_id: TenantId,
+    ) -> StoreResult<DetailedInvoice>;
+
+    async fn mark_invoice_as_uncollectible(
+        &self,
+        id: InvoiceId,
+        tenant_id: TenantId,
+    ) -> StoreResult<DetailedInvoice>;
+}
+
+#[async_trait::async_trait]
+impl InvoiceInterface for Store {
+    async fn get_detailed_invoice_by_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<DetailedInvoice> {
+        let mut conn = self.get_conn().await?;
+
+        self.get_detailed_invoice_by_id_with_conn(&mut conn, tenant_id, invoice_id)
+            .await
+    }
+
+    async fn get_detailed_invoice_by_id_with_conn(
+        &self,
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<DetailedInvoice> {
+        InvoiceRow::find_detailed_by_id(conn, tenant_id, invoice_id)
+            .await
+            .map_err(Into::into)
+            .and_then(std::convert::TryInto::try_into)
+    }
+
+    async fn get_invoice_by_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<Invoice> {
+        let mut conn = self.get_conn().await?;
+
+        InvoiceRow::find_by_id(&mut conn, tenant_id, invoice_id)
+            .await
+            .map_err(Into::into)
+            .and_then(std::convert::TryInto::try_into)
+    }
+
+    async fn find_child_invoice_id(
+        &self,
+        tenant_id: TenantId,
+        parent_invoice_id: InvoiceId,
+    ) -> StoreResult<Option<InvoiceId>> {
+        let mut conn = self.get_conn().await?;
+
+        InvoiceRow::find_child_id_by_parent(&mut conn, tenant_id, parent_invoice_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn list_consolidated_children(
+        &self,
+        tenant_id: TenantId,
+        parent_invoice_id: InvoiceId,
+    ) -> StoreResult<Vec<Invoice>> {
+        let mut conn = self.get_conn().await?;
+
+        InvoiceRow::list_consolidated_children(&mut conn, tenant_id, parent_invoice_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
+
+    async fn list_invoices(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<CustomerId>,
+        subscription_id: Option<SubscriptionId>,
+        status: Option<domain::enums::InvoiceStatusEnum>,
+        query: Option<String>,
+        order_by: Option<String>,
+        pagination: PaginationRequest,
+    ) -> StoreResult<PaginatedVec<InvoiceWithCustomer>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = InvoiceRow::list(
+            &mut conn,
+            tenant_id,
+            customer_id,
+            subscription_id,
+            status.map(Into::into),
+            query,
+            order_by.as_deref(),
+            pagination.into(),
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        let res: PaginatedVec<InvoiceWithCustomer> = PaginatedVec {
+            items: rows
+                .items
+                .into_iter()
+                .map(std::convert::TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            total_pages: rows.total_pages,
+            total_results: rows.total_results,
+        };
+
+        Ok(res)
+    }
+
+    async fn list_full_invoices(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<AliasOr<CustomerId>>,
+        subscription_id: Option<SubscriptionId>,
+        statuses: Option<Vec<domain::enums::InvoiceStatusEnum>>,
+        query: Option<String>,
+        order_by: Option<String>,
+        pagination: PaginationRequest,
+    ) -> StoreResult<PaginatedVec<(InvoiceWithCustomer, Vec<domain::PaymentTransaction>)>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = InvoiceRow::list_with_transactions(
+            &mut conn,
+            tenant_id,
+            customer_id,
+            subscription_id,
+            statuses.map(|s| s.into_iter().map(Into::into).collect()),
+            query,
+            order_by.as_deref(),
+            pagination.into(),
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        let items: Vec<(InvoiceWithCustomer, Vec<domain::PaymentTransaction>)> = rows
+            .items
+            .into_iter()
+            .map(|(invoice_row, txs)| {
+                let invoice: InvoiceWithCustomer = invoice_row.try_into()?;
+                let transactions: Vec<domain::PaymentTransaction> =
+                    txs.into_iter().map(Into::into).collect();
+                Ok((invoice, transactions))
+            })
+            .collect::<Result<Vec<_>, Report<StoreError>>>()?;
+
+        Ok(PaginatedVec {
+            total_results: rows.total_results,
+            total_pages: rows.total_pages,
+            items,
+        })
+    }
+
+    async fn insert_invoice(&self, invoice: InvoiceNew) -> StoreResult<Invoice> {
+        self.transaction(|conn| {
+            async move { insert_invoice_tx(self, conn, invoice).await }.scope_boxed()
+        })
+        .await
+    }
+
+    async fn insert_invoice_batch(&self, invoice: Vec<InvoiceNew>) -> StoreResult<Vec<Invoice>> {
+        self.transaction(|conn| {
+            async move { insert_invoice_batch_tx(self, conn, invoice).await }.scope_boxed()
+        })
+        .await
+    }
+
+    async fn list_invoices_to_finalize(
+        &self,
+        pagination: CursorPaginationRequest,
+    ) -> StoreResult<CursorPaginatedVec<Invoice>> {
+        let mut conn = self.get_conn().await?;
+
+        let invoices = InvoiceRow::list_to_finalize(&mut conn, pagination.into())
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        let res: CursorPaginatedVec<Invoice> = CursorPaginatedVec {
+            items: invoices
+                .items
+                .into_iter()
+                .map(std::convert::TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            next_cursor: invoices.next_cursor,
+        };
+
+        Ok(res)
+    }
+
+    async fn list_outdated_invoices(
+        &self,
+        pagination: CursorPaginationRequest,
+    ) -> StoreResult<CursorPaginatedVec<Invoice>> {
+        let mut conn = self.get_conn().await?;
+
+        let invoices = InvoiceRow::list_outdated(&mut conn, pagination.into())
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        let res: CursorPaginatedVec<Invoice> = CursorPaginatedVec {
+            items: invoices
+                .items
+                .into_iter()
+                .map(std::convert::TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            next_cursor: invoices.next_cursor,
+        };
+
+        Ok(res)
+    }
+
+    async fn list_invoices_by_ids(&self, ids: Vec<InvoiceId>) -> StoreResult<Vec<Invoice>> {
+        let mut conn = self.get_conn().await?;
+
+        let invoices = InvoiceRow::list_by_ids(&mut conn, ids)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        invoices
+            .into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    async fn list_detailed_invoices_by_ids(
+        &self,
+        ids: Vec<InvoiceId>,
+    ) -> StoreResult<Vec<DetailedInvoice>> {
+        let mut conn = self.get_conn().await?;
+
+        let invoices = InvoiceRow::list_detailed_by_ids(&mut conn, ids)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        invoices
+            .into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    async fn save_invoice_documents(
+        &self,
+        id: InvoiceId,
+        tenant_id: TenantId,
+        customer_id: CustomerId,
+        pdf_id: StoredDocumentId,
+        xml_id: Option<StoredDocumentId>,
+    ) -> StoreResult<()> {
+        self.transaction(|conn| {
+            async move {
+                InvoiceRow::save_invoice_documents(conn, id, tenant_id, pdf_id, xml_id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                let evt: PgmqMessageNew =
+                    OutboxEvent::invoice_pdf_generated(InvoicePdfGeneratedEvent {
+                        id: EventId::new(),
+                        invoice_id: id,
+                        tenant_id,
+                        customer_id,
+                        pdf_id,
+                    })
+                    .try_into()?;
+                self.pgmq_send_batch_tx(conn, PgmqQueue::OutboxEvent, vec![evt])
+                    .await?;
+
+                Ok(())
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+        Ok(())
+    }
+
+    async fn sync_invoices_to_pennylane(
+        &self,
+        ids: Vec<InvoiceId>,
+        tenant_id: TenantId,
+    ) -> StoreResult<()> {
+        let connector = self.get_pennylane_connector(tenant_id).await?;
+
+        if connector.is_none() {
+            bail!(StoreError::InvalidArgument(
+                "No Pennylane connector found".to_string()
+            ));
+        }
+
+        let mut conn = self.get_conn().await?;
+
+        let invoices = InvoiceRow::list_by_ids(&mut conn, ids)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        self.pgmq_send_batch(
+            PgmqQueue::PennylaneSync,
+            invoices
+                .into_iter()
+                .map(|invoice| {
+                    PennylaneSyncRequestEvent::Invoice(Box::new(PennylaneSyncInvoice {
+                        id: invoice.id,
+                        tenant_id,
+                    }))
+                    .try_into()
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        )
+        .await
+    }
+
+    async fn patch_invoice_conn_meta(
+        &self,
+        invoice_id: InvoiceId,
+        connector_id: ConnectorId,
+        provider: ConnectorProviderEnum,
+        external_id: &str,
+        external_company_id: &str,
+    ) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        InvoiceRow::upsert_conn_meta(
+            &mut conn,
+            provider.into(),
+            invoice_id,
+            connector_id,
+            external_id,
+            external_company_id,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)
+    }
+
+    async fn delete_invoice(&self, id: InvoiceId, tenant_id: TenantId) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        // Deleting a consolidated child would sever its parent's audit trail.
+        let invoice: Invoice = InvoiceRow::find_by_id(&mut conn, tenant_id, id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)
+            .and_then(TryInto::try_into)?;
+        invoice.ensure_not_consolidated_child("delete")?;
+
+        InvoiceRow::delete(&mut conn, id, tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)
+    }
+
+    async fn void_invoice(
+        &self,
+        actor: Actor,
+        id: InvoiceId,
+        tenant_id: TenantId,
+    ) -> StoreResult<DetailedInvoice> {
+        self.transaction(|conn| {
+            let actor = &actor;
+            async move {
+                // 1. Get and validate the invoice
+                let detailed_invoice = InvoiceRow::find_detailed_by_id(conn, tenant_id, id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                let invoice: Invoice = detailed_invoice.invoice.try_into()?;
+
+                // A consolidated child is superseded by its parent and never finalized on its own;
+                // it must never be voided independently.
+                invoice.ensure_not_consolidated_child("void")?;
+
+                // 2. Validate invoice can be voided (must be finalized and not paid)
+                if invoice.status != domain::enums::InvoiceStatusEnum::Finalized {
+                    bail!(StoreError::InvalidArgument(
+                        "Only finalized invoices can be voided".to_string()
+                    ));
+                }
+
+                if matches!(
+                    invoice.payment_status,
+                    domain::enums::InvoicePaymentStatus::Paid
+                        | domain::enums::InvoicePaymentStatus::PartiallyPaid
+                ) {
+                    bail!(StoreError::InvalidArgument(
+                        "Paid or partially paid invoices cannot be voided".to_string()
+                    ));
+                }
+
+                // 2b. A consolidated parent activates its member subscriptions only when it is
+                // paid (see `activate_subscription_on_invoice_paid`). Voiding it never pays, so any
+                // member still awaiting that payment (TrialExpired / PendingCharge) would be
+                // stranded with no remaining activation path — its own FinalizeInvoice event has
+                // already no-op'd via `is_consolidated_child()`. Block the void in that case.
+                if invoice.subscription_id.is_none() {
+                    let children = InvoiceRow::list_consolidated_children(conn, tenant_id, id)
+                        .await
+                        .map_err(Into::<Report<StoreError>>::into)?;
+                    let member_sub_ids: Vec<_> =
+                        children.iter().filter_map(|c| c.subscription_id).collect();
+                    if !member_sub_ids.is_empty() {
+                        let members = SubscriptionRow::list_by_ids(conn, &member_sub_ids)
+                            .await
+                            .map_err(Into::<Report<StoreError>>::into)?;
+                        let has_pending_activation = members.iter().any(|s| {
+                            matches!(
+                                s.subscription.status,
+                                SubscriptionStatusEnum::TrialExpired
+                                    | SubscriptionStatusEnum::PendingCharge
+                            )
+                        });
+                        if has_pending_activation {
+                            bail!(StoreError::InvalidArgument(
+                                "Cannot void this consolidated invoice while some of its \
+                                 subscriptions are awaiting this payment to activate"
+                                    .to_string()
+                            ));
+                        }
+                    }
+                }
+
+                // 3. Create credit note for the full invoice amount using shared implementation
+                let _credit_note = create_credit_note_tx(
+                    self,
+                    conn,
+                    tenant_id,
+                    actor,
+                    CreateCreditNoteTxParams {
+                        invoice,
+                        line_items: None, // Credit all line items
+                        status: domain::enums::CreditNoteStatus::Finalized,
+                        finalized_at: Some(chrono::Utc::now().naive_utc()),
+                        reason: Some("Invoice voided".to_string()),
+                        memo: None,
+                        credit_type: CreditType::CreditToBalance,
+                        from_proration: false,
+                    },
+                )
+                .await?;
+
+                // 4. Void the invoice
+                InvoiceRow::void(conn, id, tenant_id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                // 5. Get the voided invoice
+                let voided_invoice: DetailedInvoice =
+                    InvoiceRow::find_detailed_by_id(conn, tenant_id, id)
+                        .await
+                        .map_err(Into::<Report<StoreError>>::into)?
+                        .try_into()?;
+
+                // 6. Emit outbox event for voided invoice
+                self.internal
+                    .record_outbox_batch_tx(
+                        conn,
+                        tenant_id,
+                        actor,
+                        vec![domain::outbox_event::OutboxEvent::invoice_voided(
+                            (&voided_invoice.invoice).into(),
+                        )],
+                    )
+                    .await?;
+
+                Ok(voided_invoice)
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn mark_invoice_as_uncollectible(
+        &self,
+        id: InvoiceId,
+        tenant_id: TenantId,
+    ) -> StoreResult<DetailedInvoice> {
+        let mut conn = self.get_conn().await?;
+
+        // A consolidated child is never finalized on its own, so it can't legitimately become
+        // uncollectible; guard explicitly rather than relying on the SQL status filter silently
+        // no-op'ing.
+        let invoice: Invoice = InvoiceRow::find_by_id(&mut conn, tenant_id, id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)
+            .and_then(TryInto::try_into)?;
+        invoice.ensure_not_consolidated_child("mark as uncollectible")?;
+
+        InvoiceRow::mark_as_uncollectible(&mut conn, id, tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        InvoiceRow::find_detailed_by_id(&mut conn, tenant_id, id)
+            .await
+            .map_err(Into::into)
+            .and_then(TryInto::try_into)
+    }
+}
+
+/*
+
+TODO special cases :
+- cancellation/all invoice => all mrr logs after that should be cancelled, unless reactivation
+- cancellation : recalculate the mrr delta (as the one in the event was calculated before the invoice was created)
+- consolidation if multiple events in the same day. Ex: new business + expansion = new business, or cancellation + reactivation => nothing
+ */
+async fn process_mrr(inserted: &Invoice, conn: &mut PgConn) -> StoreResult<()> {
+    use crate::repositories::historical_rates::get_historical_rate_from_usd_by_date_cached;
+    use diesel_models::query::bi::MrrDailyUpsertInput;
+
+    log::info!("Processing MRR logs for invoice {}", inserted.id);
+    if inserted.invoice_type == InvoiceType::Recurring
+        || inserted.invoice_type == InvoiceType::Adjustment
+    {
+        // A consolidated invoice has no subscription_id; its members already logged their MRR.
+        let subscription_id = match inserted.subscription_id {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+
+        let subscription_events = diesel_models::subscription_events::SubscriptionEventRow::fetch_by_subscription_id_and_date(
+            conn,
+            subscription_id,
+            inserted.invoice_date,
+        )
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        let mut mrr_logs = vec![];
+
+        for event in subscription_events {
+            let mrr_delta = match event.mrr_delta {
+                None | Some(0) => continue,
+                Some(c) => c,
+            };
+
+            let movement_type = match event.event_type {
+                // TODO
+                // SubscriptionEventType::Created => continue,
+                SubscriptionEventType::Created => MrrMovementType::NewBusiness, // TODO
+                SubscriptionEventType::Activated => MrrMovementType::NewBusiness,
+                SubscriptionEventType::Switch => {
+                    if mrr_delta > 0 {
+                        MrrMovementType::Expansion
+                    } else {
+                        MrrMovementType::Contraction
+                    }
+                }
+                SubscriptionEventType::Cancelled => MrrMovementType::Churn,
+                SubscriptionEventType::Reactivated => MrrMovementType::Reactivation,
+                SubscriptionEventType::Updated => {
+                    if mrr_delta > 0 {
+                        MrrMovementType::Expansion
+                    } else {
+                        MrrMovementType::Contraction
+                    }
+                }
+            };
+
+            // TODO proper description from event_type + details
+            let description = match event.event_type {
+                SubscriptionEventType::Created => "Subscription created",
+                SubscriptionEventType::Activated => "Subscription activated",
+                SubscriptionEventType::Switch => "Switched plan",
+                SubscriptionEventType::Cancelled => "Subscription cancelled",
+                SubscriptionEventType::Reactivated => "Subscription reactivated",
+                SubscriptionEventType::Updated => "Subscription updated",
+            };
+
+            if let Some(plan_version_id) = inserted.plan_version_id {
+                let new_log = diesel_models::bi::BiMrrMovementLogRowNew {
+                    id: Uuid::now_v7(),
+                    description: description.to_string(),
+                    movement_type: movement_type.clone(),
+                    net_mrr_change: mrr_delta,
+                    currency: inserted.currency.clone(),
+                    applies_to: inserted.invoice_date,
+                    invoice_id: inserted.id,
+                    credit_note_id: None,
+                    plan_version_id,
+                    tenant_id: inserted.tenant_id,
+                };
+
+                mrr_logs.push((new_log, movement_type));
+            }
+        }
+
+        let mrr_delta_cents: i64 = mrr_logs.iter().map(|(l, _)| l.net_mrr_change).sum();
+
+        // Get historical rate for USD conversion
+        let rates =
+            get_historical_rate_from_usd_by_date_cached(conn, inserted.invoice_date).await?;
+
+        // Insert MRR movement logs
+        let logs_to_insert: Vec<_> = mrr_logs.iter().map(|(l, _)| (*l).clone()).collect();
+        diesel_models::bi::BiMrrMovementLogRow::insert_movement_log_batch(conn, logs_to_insert)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        // Aggregate into bi_delta_mrr_daily (replaces trigger)
+        if let Some(rates) = rates {
+            for (log, movement_type) in &mrr_logs {
+                let rate = rates.rates.get(&log.currency).copied().unwrap_or(1.0);
+                // Convert to USD with full Decimal precision (stored as NUMERIC(20,4))
+                let mrr_change_usd = if rate != 0.0 {
+                    let rate_decimal = Decimal::from_f32(rate).unwrap_or(Decimal::ONE);
+                    Decimal::from(log.net_mrr_change) / rate_decimal
+                } else {
+                    Decimal::ZERO
+                };
+
+                diesel_models::bi::BiDeltaMrrDailyRow::upsert_mrr_movement(
+                    conn,
+                    MrrDailyUpsertInput {
+                        tenant_id: log.tenant_id.as_uuid(),
+                        plan_version_id: log.plan_version_id.as_uuid(),
+                        date: log.applies_to,
+                        currency: log.currency.clone(),
+                        movement_type: movement_type.clone(),
+                        net_mrr_change: log.net_mrr_change,
+                        net_mrr_change_usd: mrr_change_usd,
+                        historical_rate_id: rates.id,
+                    },
+                )
+                .await
+                .map_err(Into::<Report<StoreError>>::into)?;
+            }
+        } else {
+            log::warn!(
+                "No historical rates found for date {}, MRR USD values will be zero",
+                inserted.invoice_date
+            );
+        }
+
+        SubscriptionRow::update_subscription_mrr_delta(conn, subscription_id, mrr_delta_cents)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+    }
+    Ok(())
+}
+
+pub async fn insert_invoice_tx(
+    store: &Store,
+    tx: &mut PgConn,
+    invoice: InvoiceNew,
+) -> StoreResult<Invoice> {
+    insert_invoice_batch_tx(store, tx, vec![invoice])
+        .await?
+        .pop()
+        .ok_or(StoreError::InsertError.into())
+}
+
+async fn insert_invoice_batch_tx(
+    store: &Store,
+    tx: &mut PgConn,
+    invoice: Vec<InvoiceNew>,
+) -> StoreResult<Vec<Invoice>> {
+    // Check if any customers are archived before creating invoices
+    use diesel_models::customers::CustomerRow;
+    use itertools::Itertools;
+
+    let customer_ids: Vec<CustomerId> =
+        invoice.iter().map(|inv| inv.customer_id).unique().collect();
+
+    if !customer_ids.is_empty() {
+        let tenant_id = invoice.first().ok_or(StoreError::InsertError)?.tenant_id;
+
+        if let Some((id, name)) =
+            CustomerRow::find_archived_customer_in_batch(tx, tenant_id, customer_ids)
+                .await
+                .map_err(Into::<Report<StoreError>>::into)?
+        {
+            return Err(StoreError::InvalidArgument(format!(
+                "Cannot create invoice for archived customer: {} ({})",
+                name, id
+            ))
+            .into());
+        }
+    }
+
+    let insertable_invoice: Vec<InvoiceRowNew> = invoice
+        .into_iter()
+        .map(std::convert::TryInto::try_into)
+        .collect::<Result<_, _>>()?;
+
+    let inserted: Vec<Invoice> = InvoiceRow::insert_invoice_batch(tx, insertable_invoice)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)
+        .and_then(|v| {
+            v.into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, Report<StoreError>>>()
+        })?;
+
+    // TODO batch
+    for inv in &inserted {
+        process_mrr(inv, tx).await?; // TODO
+        let final_invoice: Invoice = InvoiceRow::find_by_id(tx, inv.tenant_id, inv.id)
+            .await
+            .map_err(Into::into)
+            .and_then(std::convert::TryInto::try_into)?;
+
+        // Invoice creation here is always system-triggered (billing pipeline,
+        // subscription activation, slot transactions). User-initiated invoice
+        // creation goes through a different path with a typed Actor.
+        store
+            .internal
+            .record_outbox_batch_tx(
+                tx,
+                final_invoice.tenant_id,
+                &Actor::System,
+                vec![OutboxEvent::invoice_created((&final_invoice).into())],
+            )
+            .await?;
+    }
+
+    Ok(inserted)
+}
+
+// TODO unused (was in update_invoice_external_status)
+async fn _process_pending_tx(conn: &mut PgConn, invoice_id: InvoiceId) -> StoreResult<()> {
+    let pending_tx = CustomerBalancePendingTxRow::find_unprocessed_by_invoice_id(conn, invoice_id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    if let Some(pending_tx) = pending_tx {
+        let tx_id = CustomerBalance::update(
+            conn,
+            pending_tx.customer_id,
+            pending_tx.tenant_id,
+            pending_tx.amount_cents,
+            Some(invoice_id),
+        )
+        .await?
+        .tx_id;
+
+        CustomerBalancePendingTxRow::update_tx_id(conn, pending_tx.id, tx_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+    }
+
+    Ok(())
+}
+
+pub fn compute_tax_breakdown(lines: &[LineItem]) -> Vec<TaxBreakdownItem> {
+    let mut tax_groups: HashMap<Decimal, (u64, u64)> = HashMap::new();
+
+    for line in lines {
+        if line.tax_amount > 0 || line.taxable_amount > 0 {
+            let entry = tax_groups.entry(line.tax_rate).or_insert((0, 0));
+            entry.0 += line.taxable_amount as u64;
+            entry.1 += line.tax_amount as u64;
+        }
+    }
+
+    tax_groups
+        .into_iter()
+        .map(
+            |(tax_rate, (taxable_amount, tax_amount))| TaxBreakdownItem {
+                taxable_amount,
+                tax_amount,
+                tax_rate,
+                name: "Tax".to_string(),
+                exemption_type: None,
+            },
+        )
+        .collect()
+}

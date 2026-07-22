@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package meteroid.api.products.v1;
+
+import "api/prices/v1/models.proto";
+
+message Product {
+  string id = 1;
+  string name = 2;
+  optional string description = 3;
+  string created_at = 4;
+  string local_id = 5;
+  optional meteroid.api.prices.v1.FeeType fee_type = 6;
+  optional meteroid.api.prices.v1.FeeStructure fee_structure = 7;
+  bool catalog = 8;
+}
+
+message ProductMeta {
+  string id = 1;
+  string name = 2;
+  string local_id = 3;
+  optional meteroid.api.prices.v1.FeeType fee_type = 4;
+  optional string description = 5;
+  string created_at = 6;
+  bool catalog = 7;
+}
+
+message ProductWithPrice {
+  Product product = 1;
+  optional meteroid.api.prices.v1.Price latest_price = 2;
+}

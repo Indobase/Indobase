@@ -1,0 +1,51 @@
+[package]
+name = "common-grpc"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+common-config.workspace = true
+common-logging = { workspace = true }
+common-grpc-error-as-tonic-macros = { workspace = true }
+common-domain = { workspace = true }
+prost.workspace = true
+anyhow.workspace = true
+chrono = { workspace = true, features = ["clock"] }
+time.workspace = true
+rust_decimal.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+http = { workspace = true }
+moka = { workspace = true }
+tonic = { workspace = true }
+tonic-tracing-opentelemetry.workspace = true
+tower = { workspace = true }
+hyper = { workspace = true }
+tracing = { workspace = true }
+opentelemetry = { workspace = true }
+http-body = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+pin-project = { workspace = true }
+hex = { workspace = true }
+
+argon2 = { workspace = true }
+base62 = { workspace = true }
+uuid = { workspace = true, features = ["serde"] }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+secrecy = { workspace = true }
+
+[build-dependencies]
+prost-build.workspace = true
+
+[features]
+server = []
+client = []
+default = ["client"]
+
+[package.metadata.cargo-machete]
+# serde used in middleware source files; machete misses it due to re-exports
+ignored = ["serde"]

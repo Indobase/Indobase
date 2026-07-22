@@ -1,0 +1,36 @@
+[package]
+name = "meteroid-invoicing"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = { workspace = true }
+bytes.workspace = true
+once_cell = { workspace = true }
+chrono = { workspace = true, features = ["clock", "serde", "unstable-locales", "alloc"] }
+fluent-static.workspace = true
+rust_decimal = { workspace = true }
+rusty-money = { workspace = true }
+thiserror = { workspace = true }
+unic-langid.workspace = true
+serde_json.workspace = true
+# pinned (see root Cargo.toml): matches the ecow version used by typst-library
+ecow = { workspace = true }
+typst = { workspace = true }
+typst-layout = { workspace = true }
+typst-pdf = { workspace = true }
+typst-svg = { workspace = true }
+typst-as-lib = { workspace = true }
+derive_typst_intoval = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+common-domain.workspace = true
+
+[build-dependencies]
+serde_json.workspace = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(trybuild)'] }

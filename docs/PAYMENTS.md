@@ -12,8 +12,8 @@ It is **not** Indobase plan billing. Platform subscriptions (Free / Basic / Pro 
 Studio) stay on the existing Razorpay flow in Studio. Indobase Payments is for
 *your* end users paying *you*.
 
-Engine source (AGPL-3.0, separate from proprietary Studio/Builder):  
-[`Indobase/indobase-payments`](https://github.com/Indobase/indobase-payments) —
+Engine source (AGPL-3.0 boundary inside the monorepo, separate from proprietary
+Studio/Builder apps): [`indobase-payments/`](../indobase-payments/) —
 see [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) for deploy.
 
 ---
