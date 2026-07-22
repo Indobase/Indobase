@@ -1,14 +1,20 @@
 # Indobase Payments — product overview
 
-Status: **early surface** — project chooser links to `/project/[ref]/payments` (getting started).
-Merchant onboarding and live checkout are not implemented yet.
+Status: **phase 1 engine live as self-hosted Indobase Payments** (Meteroid-derived
+AGPL fork). Studio surface deep-links to the Payments app. Razorpay money movement
+and Studio SSO handoff are next.
 
-**Indobase Payments** is a first-party Indobase product: businesses built on Indobase can take
-payments from *their own* customers — subscriptions, invoices, usage-based charges — inside the same
-project as Builder, Studio, and Analytics.
+**Indobase Payments** is a first-party Indobase product: businesses built on Indobase
+can take payments from *their own* customers — subscriptions, invoices, usage-based
+charges — alongside Builder, Studio, and Analytics.
 
-It is **not** Indobase plan billing. Platform subscriptions (Free / Basic / Pro / Studio) stay on the
-existing Razorpay flow in Studio. Indobase Payments is for *your* end users paying *you*.
+It is **not** Indobase plan billing. Platform subscriptions (Free / Basic / Pro /
+Studio) stay on the existing Razorpay flow in Studio. Indobase Payments is for
+*your* end users paying *you*.
+
+Engine source (AGPL-3.0, separate from proprietary Studio/Builder):  
+[`Indobase/indobase-payments`](https://github.com/Indobase/indobase-payments) —
+see [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) for deploy.
 
 ---
 
@@ -16,103 +22,69 @@ existing Razorpay flow in Studio. Indobase Payments is for *your* end users payi
 
 | Capability | Intent |
 |---|---|
-| Collect INR | Cards, UPI, and other methods via a licensed Indian aggregator |
-| Plans & invoices | Subscriptions and one-off invoices owned by the project |
-| Payouts | Settlements land in the merchant’s own bank account |
-| In-project UI | Onboarding, keys, and payment history live inside Studio — same session |
-| Access | **No separate login.** Same Studio sign-up / sign-in (GoTrue) as Builder and Backend |
+| Billing engine | Plans, metering, invoices, proration (Indobase Payments / Meteroid fork) |
+| Collect money | Stripe adapter today; **Razorpay Recurring Payments later** (INR / UPI) |
+| Payouts | Settlements to the merchant’s own bank account via the licensed aggregator |
+| In-project UI | Studio `/project/[ref]/payments` deep-links to Payments; same Studio session messaging |
+| Access (target) | **No separate Payments marketing brand.** Operators use Studio login; SSO/handoff is follow-up |
 
-Brand surfaces (chooser tile, marketing hero “Payments” tile, docs) always say **Indobase Payments**.
-
----
-
-## Auth — same Studio account
-
-Indobase Payments is a surface inside Studio, not a separate product portal.
-
-- Operators use the existing Studio **sign-up / sign-in** (`studio.indobase.in`). No second password,
-  no Payments-only account, no OAuth app of its own.
-- Authorization is the same org / project membership already used for Backend Studio and Builder
-  handoff. Opening Payments from the project chooser continues the current session.
-- Merchant KYC / sub-merchant onboarding is **additional business verification**, not a new login.
-  It attaches to the signed-in org member; it does not replace GoTrue.
-
-End-customers paying a merchant never use Studio auth — they pay via the merchant’s app / checkout
-(hosted by Indobase Payments + the aggregator). That is payer checkout, not an Indobase login.
+Brand surfaces always say **Indobase Payments** — never Meteroid in customer-facing UI.
 
 ---
 
-## Regulatory shape (decides the data model)
+## Auth — same Studio account (target)
 
-Indobase Payments collects money from an Indobase customer’s end users and settles it to that
-customer. In India, doing that as a principal is **Payment Aggregator (PA) activity and requires RBI
-authorisation**. Using one Indobase-owned Razorpay account so funds land in Indobase’s bank account
-would make Indobase an unlicensed PA.
+Indobase Payments is a product surface of Indobase, not a separate SaaS brand.
 
-The intended model uses a licensed aggregator’s platform / marketplace product (for example Razorpay
-Route or Cashfree Easy Split):
+- **Target:** operators use existing Studio **sign-up / sign-in** (`studio.indobase.in`).
+  No second password, no Payments-only marketing portal.
+- **Phase 1:** self-hosted Payments stack may show its own login until Studio
+  SSO/handoff ships. Studio still frames Payments as the same Indobase product.
+- Authorization should map to org / project membership (handoff design = follow-up).
+- Merchant KYC is **business verification**, not a new Indobase login.
 
-- Every Indobase customer onboarded as a **sub-merchant in their own name**, with their own KYC and
-  settlement bank account.
-- Funds settle **directly to the sub-merchant**. Indobase orchestrates and never takes custody.
-- Any Indobase commission is a platform fee via the aggregator’s split, not custody + re-payout.
-
-**This is not legal advice.** Confirm with counsel and the aggregator’s partnerships team before
-implementation. Schema implication: no “Indobase balance” table; every payment object is owned by a
-sub-merchant.
-
-**Open question blocking implementation:** which aggregator product, and are we a reseller or a
-technology partner? That answer sets onboarding, KYC fields, webhook shapes, and settlement.
+End-customers paying a merchant never use Studio auth — they pay via checkout
+hosted by Indobase Payments + the payment adapter.
 
 ---
 
 ## Billing engine vs money movement
 
-Indobase Payments owns **what to charge and when** (plans, metering, invoices, proration). The
-aggregator **moves the money**.
+Indobase Payments owns **what to charge and when**. The payment adapter
+**moves the money**.
 
-For Razorpay specifically:
+| Adapter | Status |
+|---|---|
+| Stripe | Supported by the engine today (keep for non-India / interim) |
+| Razorpay Recurring Payments (token / mandate) | **Next** — see [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md) |
+| Razorpay Subscriptions (Razorpay-owned schedule) | Do **not** use — collides with Indobase’s billing engine |
 
-| Model | Who owns the schedule | Fit |
-|---|---|---|
-| Razorpay **Subscriptions** | Razorpay auto-charges on its schedule | ✗ Collides with Indobase’s billing engine |
-| Razorpay **Recurring Payments** (token / mandate) | Indobase decides when to debit | ✓ Correct |
+### Regulatory shape (India)
 
-Use token-based Recurring Payments. Indobase computes amount and timing; Razorpay executes against a
-registered mandate.
+Collecting as a principal can be Payment Aggregator activity. Intended model:
+licensed aggregator platform / marketplace (e.g. Razorpay Route) with
+sub-merchants in their own name; Indobase orchestrates and does not take custody.
 
-### RBI pre-debit notification
-
-Recurring mandates require **advance notice before each debit** (typically 24 hours) and additional
-factor authentication above AFA thresholds. A charge call cannot always mean “debit now”:
-
-```
-Indobase decides "charge ₹X on date D"
-        │
-        ├─ D−1 : send pre-debit notification
-        │
-        └─ D   : execute debit against token
-```
-
-The payments service needs its own scheduling state for that window. Confirm current thresholds with
-Razorpay at implementation time.
+**This is not legal advice.** Confirm with counsel and the aggregator before
+implementation.
 
 ---
 
 ## What is NOT Indobase Payments
 
-`apps/studio/lib/api/saas/razorpay-billing.ts` (and related Studio billing) charges **Indobase’s own
-customers** for Indobase plans. Different money owner, different regulatory footing — do not extend
-that path into Indobase Payments.
+`apps/studio/lib/api/saas/razorpay-billing.ts` (and related Studio billing) charges
+**Indobase’s own customers** for Indobase plans. Different money owner — do not
+extend that path into Indobase Payments.
 
 ---
 
 ## Sequencing
 
-1. Settle aggregator relationship (legal + partnerships). **Blocking.**
-2. Sub-merchant KYC / onboarding UI in Studio, attached to the existing org session (no new auth).
-3. Project-scoped payment APIs and webhook ingestion (Studio `/api/platform/*` session already required).
-4. Product UI — replace the Coming soon tile on the project chooser; deep-link from the same login.
+1. ~~Stand up Indobase Payments engine (this fork) + Studio deep-link~~ **phase 1**
+2. Studio SSO / session handoff into Payments (no second operator identity)
+3. Razorpay Recurring Payments connector + pre-debit notification scheduling
+4. Sub-merchant KYC / onboarding UI attached to org session
+5. Project-scoped payment APIs and webhook ingestion under Studio session
 
-Until step 1 is closed, aggregator API authentication (platform key vs sub-merchant key), chargeback
-liability, and settlement split remain undefined. That is **provider** auth, not user login.
+AGPL: publish fork source (`NOTICE.md` in the payments repo). Renaming does not
+remove AGPL obligations.
