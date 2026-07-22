@@ -38,8 +38,8 @@
         background: radial-gradient(
             98.13% 199.7% at 98.13% 100%,
             #fe6947 0%,
-            #ff9933 41.6%,
-            #ff9933 100%
+            #3b8fd6 41.6%,
+            #3b8fd6 100%
         );
         box-shadow:
             0.1875rem 0.1875rem var(--shadow-bg-color),

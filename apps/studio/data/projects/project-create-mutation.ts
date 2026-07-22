@@ -7,6 +7,7 @@ import { PROVIDERS } from 'lib/constants'
 import { captureCriticalError } from 'lib/error-reporting'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
 import { DesiredInstanceSize, PostgresEngine, ReleaseChannel } from './new-project.constants'
+import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useInvalidateProjectsInfiniteQuery } from './org-projects-infinite-query'
 
 type CreateProjectBody = components['schemas']['CreateProjectBody']
@@ -84,11 +85,24 @@ export const useProjectCreateMutation = ({
   'mutationFn'
 > = {}) => {
   const { invalidateProjectsQuery } = useInvalidateProjectsInfiniteQuery()
+  const { mutate: sendEvent } = useSendEventMutation()
 
   return useMutation<ProjectCreateData, ResponseError, ProjectCreateVariables>({
     mutationFn: (vars) => createProject(vars),
     async onSuccess(data, variables, context) {
       await invalidateProjectsQuery()
+
+      /*
+       * Instrumented on the mutation rather than in a page component: every creation path
+       * (dashboard, onboarding, Builder handoff) funnels through here, so activation can never be
+       * under-counted by a new entry point forgetting to fire the event.
+       */
+      sendEvent({
+        action: 'project.created',
+        properties: { region: variables.dbRegion, plan: variables.dbPricingTierId },
+        groups: { organization: variables.organizationSlug, project: data?.ref ?? 'Unknown' },
+      })
+
       await onSuccess?.(data, variables, context)
     },
     async onError(data, variables, context) {

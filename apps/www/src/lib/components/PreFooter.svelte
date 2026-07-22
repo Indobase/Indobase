@@ -80,8 +80,13 @@
         <h2 class="text-display font-aeonik-pro text-primary max-w-[500px] text-center">
             Start building with Indobase today
         </h2>
+        <!--
+            This is the page's closing call to action, so it uses the primary (brand blue) variant.
+            It was `transparent`, which renders rgba(237,237,240,0.16) — a 16%-opacity grey that all
+            but disappears against a light section, making the main CTA look unstyled.
+        -->
         <Button
-            variant="transparent"
+            variant="primary"
             class="self-center"
             href={getSignUpUrl()}
             event="footer-plans-get_started-click"

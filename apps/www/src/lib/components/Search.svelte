@@ -7,17 +7,26 @@
 
     import { type Hit, type Hits, MeiliSearch } from 'meilisearch';
     import { tick } from 'svelte';
+    import { env } from '$env/dynamic/public';
 
     export let open = true;
 
     let value: string;
     let container: HTMLDivElement;
 
-    const client = new MeiliSearch({
-        host: 'https://search.appwrite.org',
-        apiKey: '10a5fea149bfaff21ef4d7cbe7f8a09d4fab404d6c3510279a365e065f8955a7'
-    });
-    const index = client.index<Props>('website');
+    /*
+     * Live search is backed by a self-hosted MeiliSearch index, configured via env. When those
+     * vars are unset the search box still opens and shows the recommended links, but does not make
+     * a network call — so there is no dependency on any third-party search service.
+     */
+    const searchHost = env.PUBLIC_SEARCH_HOST?.trim();
+    const searchApiKey = env.PUBLIC_SEARCH_API_KEY?.trim();
+    const searchIndexName = env.PUBLIC_SEARCH_INDEX?.trim() || 'indobase';
+    const searchEnabled = Boolean(searchHost && searchApiKey);
+
+    const index = searchEnabled
+        ? new MeiliSearch({ host: searchHost!, apiKey: searchApiKey! }).index<Props>(searchIndexName)
+        : null;
 
     type Props = {
         url: string;
@@ -39,13 +48,16 @@
     let results: Hits<Props> = [];
 
     async function search(value: string) {
+        if (!index) {
+            return { hits: [] as Hits<Props> };
+        }
         return index.search(value, {
             limit: 20
         });
     }
 
     async function handleInput(value: string) {
-        if (!value) {
+        if (!value || !searchEnabled) {
             results = [];
         } else {
             const response = await search(value);
@@ -69,28 +81,28 @@
 
     const recommended: Hits<Props> = [
         {
-            uid: 'recommended-references-account',
-            url: '/docs/references/cloud/client-web/account',
-            h1: 'API reference',
-            h2: 'Account'
+            uid: 'recommended-pricing',
+            url: '/pricing',
+            h1: 'Indobase',
+            h2: 'Pricing'
         },
         {
-            uid: 'recommended-references-teams',
-            url: '/docs/references/cloud/client-web/teams',
-            h1: 'API reference',
-            h2: 'Teams'
+            uid: 'recommended-get-started',
+            url: '/',
+            h1: 'Indobase',
+            h2: 'Get started'
         },
         {
-            uid: 'recommended-references-databases',
-            url: '/docs/references/cloud/client-web/databases',
-            h1: 'API reference',
-            h2: 'Databases'
+            uid: 'recommended-enterprise',
+            url: '/contact-us/enterprise',
+            h1: 'Indobase',
+            h2: 'Enterprise & sales'
         },
         {
-            uid: 'recommended-references-storage',
-            url: '/docs/references/cloud/client-web/storage',
-            h1: 'API reference',
-            h2: 'Storage'
+            uid: 'recommended-privacy',
+            url: '/privacy',
+            h1: 'Legal',
+            h2: 'Privacy & DPDP'
         }
     ];
 
@@ -169,7 +181,7 @@
             type="text"
             id="search"
             bind:value
-            placeholder="Search in docs"
+            placeholder="Search Indobase"
             style:inline-size="100%"
             use:melt={$input}
             bind:this={inputEl}
@@ -185,7 +197,7 @@
             use:melt={$menu}
             style="--card-padding-mobile:1rem; border-radius:0 0 0.5rem 0.5rem;"
         >
-            {#if value}
+            {#if value && searchEnabled}
                 <section>
                     {#if results.length > 0}
                         <h6 class="text-eyebrow font-aeonik-fono uppercase">

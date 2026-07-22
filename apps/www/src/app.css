@@ -14,8 +14,8 @@
     /* theme */
     --color-primary: var(--color-primary);
     --color-secondary: var(--color-secondary);
-    --color-accent: var(--color-saffron-500);
-    --color-accent-darker: hsl(39 100% 45%);
+    --color-accent: var(--color-indoblue-500);
+    --color-accent-darker: var(--color-indoblue-600);
     --color-smooth: var(--color-smooth);
     --color-subtle: var(--color-subtle);
     --color-tertiary: var(--color-tertiary);
@@ -27,11 +27,24 @@
     --color-pink-600: hsl(var(--color-pink-hue) 65% 48%);
     --color-pink-700: hsl(var(--color-pink-hue) 65% 36%);
 
-    /* saffron (India-inspired primary) */
+    /* saffron (legacy — kept so any remaining references still resolve) */
     --color-saffron-200: hsl(var(--color-saffron-hue) 100% 88%);
     --color-saffron-500: hsl(var(--color-saffron-hue) 100% 60%);
     --color-saffron-600: hsl(var(--color-saffron-hue) 100% 45%);
     --color-saffron-700: hsl(var(--color-saffron-hue) 100% 35%);
+
+    /*
+     * Indobase blue — the brand accent. This is the Builder's own accent ramp
+     * (indobase-builder/uno.config.ts), so marketing, Studio, and Builder share one blue
+     * instead of three different palettes.
+     */
+    --color-indoblue-100: #dcecf8;
+    --color-indoblue-200: #b8d9f2;
+    --color-indoblue-300: #8fc0e8;
+    --color-indoblue-400: #6aabe0;
+    --color-indoblue-500: #3b8fd6;
+    --color-indoblue-600: #2f7bc0;
+    --color-indoblue-700: #2566a3;
 
     /* green (India-inspired secondary) */
     --color-green-200: hsl(var(--color-green-hue) 78% 75%);
@@ -476,15 +489,14 @@
     --color-primary-bg: var(--color-greyscale-25);
 
     /* base */
-    /* --color-primary: var(--color-greyscale-900); */
-    --color-primary: #ff9933;
+    /* Brand accent is Indobase blue (was saffron #3b8fd6). */
+    --color-primary: #3b8fd6;
     /* --color-secondary: var(--color-greyscale-700); */
     /* --color-secondary: #138808; */
     --color-secondary: #ffffff;
     /* --color-accent: var(--color-pink-500); */
     --color-accent: #ffffff;
-    /* --color-accent-darker: #ca2b58; */
-    --color-accent-darker: #e6851f;
+    --color-accent-darker: #2f7bc0;
     --carousel-gradient: transparent;
     --color-badge-bg: var(--color-badge-bg-light);
     --color-badge-border: var(--color-badge-border-light);
@@ -498,7 +510,7 @@
 .dark {
     /* --color-primary: var(--color-greyscale-100);
     --color-secondary: var(--color-greyscale-300); */
-    --color-primary: #ff9933; /* Saffron */
+    --color-primary: #6aabe0; /* Indobase blue, lifted for dark backgrounds */
     --color-secondary: #ffffff;
     /* --color-secondary: #138808;  */
     --carousel-gradient: 23, 23, 26;
@@ -509,11 +521,12 @@
     --color-card: var(--color-greyscale-850);
 }
 
+/* Kept under the original class name so existing markup keeps working; now brand blue. */
 .saffron-button {
-    background: hsl(var(--color-saffron-500));
+    background: var(--color-indoblue-500);
     color: white;
 }
 
 .saffron-button:hover {
-    background: hsl(var(--color-saffron-600));
+    background: var(--color-indoblue-600);
 }

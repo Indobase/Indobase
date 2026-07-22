@@ -42,7 +42,7 @@
     }
 
     .melt-switch :global([data-state='checked']) {
-        background-color: #ff9933;
+        background-color: #3b8fd6;
     }
 
     .thumb {

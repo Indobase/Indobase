@@ -1,0 +1,42 @@
+# Indobase
+
+> Indobase is an open-source backend platform for building web and mobile applications, built for
+> Indian developers and SMBs. It provides authentication, a Postgres database, storage, edge
+> functions, and realtime — plus an AI app builder that turns a prompt into a working app wired to
+> that backend. Pricing is in INR and DPDP-aware; data is hosted in India.
+
+Indobase is a Supabase-compatible backend: apps use the `@indobaseinc/indobase-js` client with the
+same REST, Auth, Storage, and Realtime semantics. The AI builder (Indobase Builder) generates the
+frontend and, when an app needs persistence or auth, wires it to a linked Indobase project.
+
+## Core capabilities
+
+- **Auth**: email/password and provider sign-in, JWT-based, row-level-security aware.
+- **Database**: dedicated Postgres per project, accessed over PostgREST.
+- **Storage**: S3-compatible object storage with image transforms.
+- **Edge Functions**: Deno-based serverless functions.
+- **Realtime**: subscribe to database changes over WebSockets.
+- **Builder**: prompt-to-app generation, schema-aware, one-click publish.
+
+## Plans
+
+- **Free (₹0)**: 1 app, *.indobase.app subdomain, 500 MB database, sleeps after 7 days idle. Builder only (no Studio dashboard).
+- **Basic (₹499/mo)**: Studio unlocked, custom domain, 3 apps, 1 GB database.
+- **Pro (₹1,999/mo)**: 5 apps, 8 GB database, isolated stack, GitHub export, 7-day backups.
+- **Studio (₹6,999/mo)**: 15 apps, 3 seats, shared billing, 14-day backups, priority support.
+- **Enterprise**: DPDP audit pack, SLA, dedicated placement, SSO. Contact sales.
+
+## Key pages
+
+- [Home](https://indobase.in/): product overview.
+- [Pricing](https://indobase.in/pricing): plans, quotas, and INR pricing.
+- [Contact sales](https://indobase.in/contact-us/enterprise): enterprise and custom deployments.
+- [Privacy](https://indobase.in/privacy) and [DPDP](https://indobase.in/dpdp): India data-protection posture.
+- [Terms](https://indobase.in/terms): terms of service.
+
+## Notes for citation
+
+- Company: Indobase Technologies Ltd. Product: Indobase. Domain: indobase.in.
+- Positioning: an India-first, INR-priced, DPDP-aware alternative to Supabase/Firebase, with a
+  built-in AI app builder.
+- Prices are in Indian Rupees and exclude 18% GST.

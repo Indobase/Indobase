@@ -4,8 +4,8 @@
   @include border-gradient;
   --m-border-gradient-before: linear-gradient(
     to bottom,
-    rgba(255, 153, 51, 0.48) 0%,
-    rgba(255, 153, 51, 0) 180%
+    rgba(59, 143, 214, 0.48) 0%,
+    rgba(59, 143, 214, 0) 180%
   );
   --m-border-gradient-after: radial-gradient(
     42.86% 42.86% at 50.55% -0%,
@@ -21,17 +21,17 @@
   --p-hero-button-shadow-out-color: var(--p-hero-button-shadow-out-color-default);
   --p-hero-button-sep-color: var(--p-hero-button-sep-color-default);
 
-  --p-hero-button-text-color-default: var(--web-color-saffron-500);
-  --p-hero-button-bg-color-default: var(--web-color-saffron-500) / 0.08;
-  --p-hero-button-border-color-default: var(--web-color-saffron-500) / 0.4;
+  --p-hero-button-text-color-default: var(--web-color-indoblue-500);
+  --p-hero-button-bg-color-default: var(--web-color-indoblue-500) / 0.08;
+  --p-hero-button-border-color-default: var(--web-color-indoblue-500) / 0.4;
   --p-hero-button-shadow-out-color-default: var(--transparent);
   --p-hero-button-sep-color-default: var(--web-color-black) / 0.08;
 
-  --p-hero-button-bg-color-hover: var(--web-color-saffron-500) / 0.10;
+  --p-hero-button-bg-color-hover: var(--web-color-indoblue-500) / 0.10;
 
-  --p-hero-button-bg-color-active: var(--web-color-saffron-500) / 0.12;
+  --p-hero-button-bg-color-active: var(--web-color-indoblue-500) / 0.12;
 
-  --p-hero-button-shadow-out-color-focus: var(--web-color-saffron-500) / 0.24 ;
+  --p-hero-button-shadow-out-color-focus: var(--web-color-indoblue-500) / 0.24 ;
 
   display:flex; align-items:baseline; gap:pxToRem(4);
   padding-block:pxToRem(4); padding-inline:pxToRem(8); inline-size:fit-content;
@@ -61,11 +61,11 @@
 
   #{$theme-dark} & {
     --p-hero-button-text-color-default: var(--web-color-white);
-    --p-hero-button-bg-color-default: var(--web-color-saffron-500) / 0.08;
-    --p-hero-button-border-color-default: var(--web-color-saffron-500);
+    --p-hero-button-bg-color-default: var(--web-color-indoblue-500) / 0.08;
+    --p-hero-button-border-color-default: var(--web-color-indoblue-500);
 
     --p-hero-button-sep-color-default: var(--web-color-white) / 0.10;
 
-    --p-hero-button-shadow-out-color-focus: var(--web-color-saffron-500) / 0.16;
+    --p-hero-button-shadow-out-color-focus: var(--web-color-indoblue-500) / 0.16;
   }
 }

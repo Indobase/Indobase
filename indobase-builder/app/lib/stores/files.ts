@@ -69,6 +69,9 @@ export class FilesStore {
   #lockReloadTimeout: ReturnType<typeof setTimeout> | undefined;
   #lockCheckInterval: ReturnType<typeof setInterval> | undefined;
 
+  /** Teardown for the chat-navigation listener (replaces a whole-document MutationObserver). */
+  #navListenerCleanup: (() => void) | undefined;
+
   get filesCount() {
     // Derive from the map so direct files.set(...) updates (snapshot restore, tests)
     // stay consistent with watcher-driven updates; a manual counter drifts.
@@ -108,22 +111,44 @@ export class FilesStore {
       import.meta.hot.data.deletedPaths = this.#deletedPaths;
     }
 
-    // Listen for URL changes to detect chat ID changes
+    /*
+     * Detect chat navigation to reload locks. This previously used a MutationObserver watching the
+     * ENTIRE document (subtree + childList), so during a streaming build — when the DOM mutates on
+     * every token — the callback fired thousands of times per second. That was a major cause of the
+     * console flood and slow, janky loads. A chat URL only changes via history navigation, so hook
+     * that directly: patch pushState/replaceState and listen for popstate. Near-zero cost.
+     */
     if (typeof window !== 'undefined') {
       let lastChatId = getCurrentChatId();
 
-      // Use MutationObserver to detect URL changes (for SPA navigation)
-      const observer = new MutationObserver(() => {
+      const onNavigate = () => {
         const currentChatId = getCurrentChatId();
 
         if (currentChatId !== lastChatId) {
-          logger.info(`Chat ID changed from ${lastChatId} to ${currentChatId}, reloading locks`);
           lastChatId = currentChatId;
           this.#loadLockedFiles(currentChatId);
         }
-      });
+      };
 
-      observer.observe(document, { subtree: true, childList: true });
+      const history = window.history;
+      const originalPushState = history.pushState.bind(history);
+      const originalReplaceState = history.replaceState.bind(history);
+
+      history.pushState = function (this: History, ...args: Parameters<History['pushState']>) {
+        originalPushState(...args);
+        onNavigate();
+      };
+      history.replaceState = function (this: History, ...args: Parameters<History['replaceState']>) {
+        originalReplaceState(...args);
+        onNavigate();
+      };
+      window.addEventListener('popstate', onNavigate);
+
+      this.#navListenerCleanup = () => {
+        history.pushState = originalPushState;
+        history.replaceState = originalReplaceState;
+        window.removeEventListener('popstate', onNavigate);
+      };
     }
 
     scheduleIdleWork(() => {
@@ -153,7 +178,8 @@ export class FilesStore {
       const lockedFolders = lockedItems.filter((item) => item.isFolder);
 
       if (lockedItems.length === 0) {
-        logger.info(`No locked items found for chat ID: ${currentChatId}`);
+        // Routine on almost every load — trace, not info, or it floods the console during builds.
+        logger.trace(`No locked items found for chat ID: ${currentChatId}`);
         return;
       }
 
@@ -659,7 +685,7 @@ export class FilesStore {
     }
   }
 
-  /** Stop the lock-reload timers. Safe to call repeatedly. */
+  /** Stop the lock-reload timers and navigation listener. Safe to call repeatedly. */
   dispose() {
     const carried = import.meta.hot?.data?.lockTimers;
 
@@ -667,6 +693,9 @@ export class FilesStore {
     clearInterval(this.#lockCheckInterval ?? carried?.interval);
     this.#lockReloadTimeout = undefined;
     this.#lockCheckInterval = undefined;
+
+    this.#navListenerCleanup?.();
+    this.#navListenerCleanup = undefined;
   }
 
   /**

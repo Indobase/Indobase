@@ -12,6 +12,30 @@ body {
   height: 100%;
   width: 100%;
   background-color: var(--bolt-elements-bg-depth-1);
+
+  /*
+   * Typography baseline. None of this was set before, which is why text could look slightly
+   * heavier and less even than the design intends — the browser defaults to subpixel antialiasing
+   * on light grounds and no kerning/ligature hinting.
+   */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Brand-coloured selection instead of the browser default blue. */
+::selection {
+  background-color: var(--bolt-elements-borderColorActive);
+  color: #fff;
+}
+
+/*
+ * Digits that sit in columns (token counts, timers, file sizes, prices) should not jitter as they
+ * change — proportional figures shift width per glyph and make live-updating numbers twitch.
+ */
+.tabular-nums,
+[data-tabular-nums] {
+  font-variant-numeric: tabular-nums;
 }
 
 :root {
@@ -19,6 +43,50 @@ body {
   --primary-color: rgba(59, 143, 214, var(--gradient-opacity));
   --secondary-color: rgba(106, 171, 224, var(--gradient-opacity));
   --accent-color: rgba(37, 102, 163, var(--gradient-opacity));
+
+  /*
+   * Focus ring, defined once so every surface agrees. Built from existing resolved tokens rather
+   * than theme() — index.scss has never used theme(), and only variables.scss is known to be
+   * processed for it, so relying on it here would be an unverified build assumption.
+   */
+  --bolt-focus-ring: 0 0 0 2px var(--bolt-elements-bg-depth-1),
+    0 0 0 4px var(--bolt-elements-borderColorActive);
+}
+
+/*
+ * Keyboard focus baseline.
+ *
+ * Two problems this fixes across the app:
+ *   1. Components using `outline-none` without adding a ring left keyboard users with no visible
+ *      focus at all — you could tab into a control and have no idea where you were.
+ *   2. Rings bound to `:focus` (rather than `:focus-visible`) flashed on *mouse* clicks too, which
+ *      reads as noisy and unfinished.
+ *
+ * Scoping the ring to :focus-visible means it appears for keyboard/AT navigation and stays out of
+ * the way for pointer users. Defined globally so a component can never accidentally opt out.
+ */
+:where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: none;
+  box-shadow: var(--bolt-focus-ring);
+  border-radius: max(4px, var(--bolt-focus-radius, 6px));
+  transition: box-shadow 0.15s ease;
+}
+
+/* A pointer click should never paint a focus ring. */
+:where(a, button, input, textarea, select, summary):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respect users who ask for less motion — no transitions, no ambient animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .modern-scrollbar {

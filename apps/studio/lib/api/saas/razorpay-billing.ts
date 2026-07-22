@@ -2,8 +2,28 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 import type { PlanId } from 'data/subscriptions/types'
 
+import { captureBillingEvent } from './billing-analytics'
 import { INDOBASE_BILLING_CURRENCY, resolveIndobasePlanPriceInr } from './indobase-billing-plans'
+import { planRank } from './plan-entitlements'
 import { executeQuery } from './query'
+
+/**
+ * Current plan for an org, read before a webhook mutates it so billing events can report the real
+ * transition (from_plan -> to_plan). Best-effort: returns 'free' if unreadable, since a missing
+ * analytics label must never block a billing webhook.
+ */
+async function readOrganizationPlanForAnalytics(orgSlug: string): Promise<string> {
+  try {
+    const rows = await executeQuery<{ plan: string }>({
+      query: `select plan from saas.organizations where slug = $1 limit 1`,
+      parameters: [orgSlug],
+    })
+    if (rows.error) throw rows.error
+    return rows.data?.[0]?.plan ?? 'free'
+  } catch {
+    return 'free'
+  }
+}
 
 const RAZORPAY_API = 'https://api.razorpay.com/v1'
 
@@ -415,7 +435,16 @@ export async function handleRazorpayWebhookEvent(
       }
     | undefined
 
-  const notes = subscription?.notes ?? {}
+  /*
+   * `payment.*` events carry a payment entity, not a subscription one — reading notes only from
+   * `subscription` would leave payment.failed without an org slug and bail out below, making its
+   * handler unreachable. Fall back to the payment entity's notes.
+   */
+  const payment = event.payload?.payment?.entity as
+    | { notes?: Record<string, string>; error_code?: string }
+    | undefined
+
+  const notes = subscription?.notes ?? payment?.notes ?? {}
   const orgSlug = notes.org_slug
   const planId = (notes.indobase_plan_id as PlanId | undefined) ?? undefined
 
@@ -439,12 +468,24 @@ export async function handleRazorpayWebhookEvent(
         return
       }
 
+      // Read the current plan BEFORE applying, so the event reports the actual transition.
+      const previousPlan = await readOrganizationPlanForAnalytics(orgSlug)
+
       await applyOrganizationPlan({
         orgSlug,
         planId,
         razorpayCustomerId: subscription?.customer_id,
         razorpaySubscriptionId: subscription?.id,
       })
+
+      if (previousPlan !== planId) {
+        void captureBillingEvent({
+          orgSlug,
+          event:
+            planRank(planId) >= planRank(previousPlan) ? 'billing.upgraded' : 'billing.downgraded',
+          properties: { from_plan: previousPlan, to_plan: planId },
+        })
+      }
       try {
         const { syncOrganizationDataPlaneForPlan } = await import('./data-plane-mode-sync')
         await syncOrganizationDataPlaneForPlan({
@@ -460,7 +501,28 @@ export async function handleRazorpayWebhookEvent(
     case 'subscription.cancelled':
     case 'subscription.completed':
     case 'subscription.halted': {
+      const cancelledFromPlan = await readOrganizationPlanForAnalytics(orgSlug)
+
       await downgradeOrganizationToFree(orgSlug)
+
+      void captureBillingEvent({
+        orgSlug,
+        event: 'billing.subscription_cancelled',
+        properties: {
+          from_plan: cancelledFromPlan,
+          // 'cancelled' | 'completed' | 'halted' — halted usually means repeated payment failure.
+          reason: eventName.replace('subscription.', ''),
+        },
+      })
+      break
+    }
+    case 'payment.failed': {
+      void captureBillingEvent({
+        orgSlug,
+        event: 'billing.payment_failed',
+        // Provider error code only — never the raw message, which can echo payer detail.
+        properties: { plan: planId, error_code: payment?.error_code },
+      })
       break
     }
     default:

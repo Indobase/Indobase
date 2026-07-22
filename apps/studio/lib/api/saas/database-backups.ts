@@ -1,7 +1,9 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { getGotrueUserId } from './platform'
+import { getPlanEntitlements } from './plan-entitlements'
 import { executeQuery } from './query'
+import { listProjectBackups } from './tenant-backups'
 
 type Claims = JwtPayload & Record<string, unknown>
 
@@ -11,6 +13,7 @@ type ProjectBackupRow = {
   region: string
   status: string
   physical_backups_enabled: boolean
+  plan: string
 }
 
 async function loadProjectForBackups({
@@ -27,9 +30,11 @@ async function loadProjectForBackups({
         p.ref,
         p.region,
         p.status,
-        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled
+        coalesce(p.physical_backups_enabled, false) as physical_backups_enabled,
+        o.plan
       from saas.projects p
       join saas.organization_members m on m.organization_id = p.organization_id
+      join saas.organizations o on o.id = p.organization_id
       where p.ref = $1
         and m.gotrue_id = $2
         and m.role in ('owner', 'admin', 'developer')
@@ -53,18 +58,31 @@ export async function getProjectBackupsResponse({
   const p = await loadProjectForBackups({ ref, gotrueId })
   if (!p) throw new Error('Project not found')
 
+  const retentionDays = getPlanEntitlements(p.plan).backupRetentionDays
+  const rows = retentionDays > 0 ? await listProjectBackups(ref) : []
+
+  const statusMap: Record<string, 'COMPLETED' | 'FAILED' | 'PENDING'> = {
+    completed: 'COMPLETED',
+    failed: 'FAILED',
+    in_progress: 'PENDING',
+  }
+
   return {
-    backups: [] as {
-      id: number
-      inserted_at: string
-      isPhysicalBackup: boolean
-      project_id: number
-      status: 'COMPLETED' | 'FAILED' | 'PENDING' | 'REMOVED' | 'ARCHIVED' | 'CANCELLED'
-    }[],
+    backups: rows.map((b) => ({
+      id: Number(b.id),
+      inserted_at: b.started_at,
+      // Logical (pg_dump) backups, never physical/WAL — PITR is not possible on the shared cluster.
+      isPhysicalBackup: false,
+      project_id: p.id,
+      status: statusMap[b.status] ?? 'PENDING',
+      size_bytes: b.size_bytes ?? undefined,
+    })),
     physicalBackupData: {},
-    pitr_enabled: p.physical_backups_enabled,
+    // No PITR/WAL-G on this architecture; retention is delivered via scheduled logical dumps.
+    pitr_enabled: false,
+    walg_enabled: false,
+    retention_days: retentionDays,
     region: p.region,
-    walg_enabled: p.physical_backups_enabled,
   }
 }
 
@@ -79,15 +97,25 @@ export async function getDownloadableBackupsResponse({
   const p = await loadProjectForBackups({ ref, gotrueId })
   if (!p) throw new Error('Project not found')
 
+  const retentionDays = getPlanEntitlements(p.plan).backupRetentionDays
+
   const status =
-    p.status === 'ACTIVE_HEALTHY'
-      ? p.physical_backups_enabled
-        ? ('physical-backups-enabled' as const)
-        : ('ok' as const)
-      : ('project-not-active' as const)
+    p.status !== 'ACTIVE_HEALTHY'
+      ? ('project-not-active' as const)
+      : retentionDays > 0
+        ? ('ok' as const)
+        : ('backups-not-available' as const)
+
+  const rows = retentionDays > 0 ? await listProjectBackups(ref) : []
 
   return {
-    backups: [],
+    backups: rows
+      .filter((b) => b.status === 'completed' && b.object_key)
+      .map((b) => ({
+        id: Number(b.id),
+        inserted_at: b.started_at,
+        size_bytes: b.size_bytes ?? undefined,
+      })),
     status,
   }
 }

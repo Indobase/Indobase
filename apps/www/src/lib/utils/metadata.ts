@@ -2,7 +2,9 @@ import type { AuthorData } from '$routes/blog/content';
 
 export const DEFAULT_HOST = 'https://indobase.in';
 export const DEFAULT_DESCRIPTION =
-    'Indobase is an open-source platform for building applications at any scale, using your preferred programming languages and tools.';
+    'Indobase is an India-first, open-source backend platform: Postgres database, authentication, ' +
+    'storage, edge functions, and realtime — plus an AI app builder that ships a working app from a ' +
+    'prompt. INR pricing, DPDP-aware, hosted in India. A Supabase/Firebase alternative for Indian devs and SMBs.';
 
 /**
  * Open Graph image for a page.

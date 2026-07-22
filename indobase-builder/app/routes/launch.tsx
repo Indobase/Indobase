@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react';
 import { updateIndobaseConnection } from '~/lib/stores/indobase-connection';
 import { syncProfileFromStudioIdentity } from '~/lib/stores/profile';
 import { buildIndobaseConnectionFromHandoff } from '~/lib/indobase/handoff';
-import { getStudioBuilderConnectUrl, persistLastProjectRef } from '~/lib/indobase/builder-auth.client';
+import {
+  clearRedirectLoopCounter,
+  getStudioBuilderConnectUrl,
+  persistLastProjectRef,
+} from '~/lib/indobase/builder-auth.client';
 import { clearHandoffTokenFromLocation, readHandoffTokenFromLocation } from '~/lib/indobase/launch-hash.client';
 import { completeBuilderHandoff } from '~/lib/indobase/launch-handoff.server';
 import { isProductionEnv } from '~/lib/production.server';
@@ -41,49 +45,63 @@ function applyLaunchSuccess(options: {
   persistLastProjectRef(options.handoff.project_ref);
   syncProfileFromStudioIdentity({ email: options.handoff.email, sub: options.handoff.sub });
 
+  // A successful handoff means the loop (if any) is resolved — reset the guard.
+  clearRedirectLoopCounter();
+
+  /*
+   * Warm providers + MCP in the BACKGROUND. Navigation (below) must not wait on these: they are
+   * three sequential network round-trips, and blocking the redirect on them is what made the launch
+   * hang ("Connecting Builder…" for ages) on slower machines. Worse, an unhandled rejection here
+   * used to strand the user on the spinner forever, which looks like a broken redirect. The
+   * connection is already set synchronously above, which is all navigation actually needs.
+   */
   void (async () => {
-    await initializeProviders();
-    await useMCPStore.getState().initialize();
-    await useMCPStore.getState().syncWithIndobaseConnection();
-
-    if (options.popup && window.opener) {
-      /*
-       * The popup was opened by the Builder main window and, after the Studio round-trip,
-       * is now back on the Builder origin. The opener is therefore same-origin — post to
-       * window.location.origin, not the Studio origin, or the browser drops the message.
-       */
-      window.opener.postMessage(
-        {
-          type: 'indobase-builder-session',
-          projectRef: options.handoff.project_ref,
-          success: true,
-        },
-        window.location.origin,
-      );
-      window.close();
-
-      return;
+    try {
+      await initializeProviders();
+      await useMCPStore.getState().initialize();
+      await useMCPStore.getState().syncWithIndobaseConnection();
+    } catch (error) {
+      console.warn('Builder post-launch warmup failed (non-fatal, retried on next use):', error);
     }
-
-    if (options.popup && window.parent !== window) {
-      window.parent.postMessage(
-        {
-          type: 'indobase-builder-session',
-          projectRef: options.handoff.project_ref,
-          success: true,
-        },
-        window.location.origin,
-      );
-      return;
-    }
-
-    const isSafeRelativePath =
-      Boolean(options.next) &&
-      options.next!.startsWith('/') &&
-      !options.next!.startsWith('//') &&
-      !options.next!.includes('://');
-    options.navigate(isSafeRelativePath ? options.next! : '/', { replace: true });
   })();
+
+  if (options.popup && window.opener) {
+    /*
+     * The popup was opened by the Builder main window and, after the Studio round-trip,
+     * is now back on the Builder origin. The opener is therefore same-origin — post to
+     * window.location.origin, not the Studio origin, or the browser drops the message.
+     */
+    window.opener.postMessage(
+      {
+        type: 'indobase-builder-session',
+        projectRef: options.handoff.project_ref,
+        success: true,
+      },
+      window.location.origin,
+    );
+    window.close();
+
+    return;
+  }
+
+  if (options.popup && window.parent !== window) {
+    window.parent.postMessage(
+      {
+        type: 'indobase-builder-session',
+        projectRef: options.handoff.project_ref,
+        success: true,
+      },
+      window.location.origin,
+    );
+    return;
+  }
+
+  const isSafeRelativePath =
+    Boolean(options.next) &&
+    options.next!.startsWith('/') &&
+    !options.next!.startsWith('//') &&
+    !options.next!.includes('://');
+  options.navigate(isSafeRelativePath ? options.next! : '/', { replace: true });
 }
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {

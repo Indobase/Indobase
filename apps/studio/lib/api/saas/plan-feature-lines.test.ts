@@ -10,11 +10,18 @@ import { formatBytesLabel, getPlanFeatureLines, getPlanLimits } from './plan-fea
  * against an 8 GB entitlement.
  */
 describe('pricing copy matches enforced entitlements', () => {
-  it('never claims backups while no backup implementation exists', () => {
-    for (const plan of ['free', 'basic', 'pro', 'studio', 'enterprise']) {
+  it('advertises backups only where retention is actually granted', () => {
+    // Free/Basic have no backups; the line must not appear.
+    for (const plan of ['free', 'basic']) {
       expect(getPlanEntitlements(plan).backupRetentionDays).toBe(0)
       expect(getPlanFeatureLines(plan).join(' | ')).not.toMatch(/backup/i)
     }
+
+    // Paid tiers carry real retention (logical pg_dump backups) and must surface it.
+    expect(getPlanEntitlements('pro').backupRetentionDays).toBe(7)
+    expect(getPlanFeatureLines('pro', { inheritsFrom: 'basic' })).toContain('7-day backups')
+    expect(getPlanEntitlements('studio').backupRetentionDays).toBe(14)
+    expect(getPlanFeatureLines('studio', { inheritsFrom: 'pro' })).toContain('14-day backups')
   })
 
   it('states Studio access per the backendStudio entitlement', () => {

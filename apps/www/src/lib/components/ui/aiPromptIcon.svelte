@@ -72,21 +72,21 @@
     class={className}
     {...rest}
 >
-    <rect width="36" height="36" rx="8" fill="#FF9933" fill-opacity="0.04" />
+    <rect width="36" height="36" rx="8" fill="#3b8fd6" fill-opacity="0.04" />
     <rect
         x="0.625"
         y="0.625"
         width="34.75"
         height="34.75"
         rx="7.375"
-        stroke="#FF9933"
+        stroke="#3b8fd6"
         stroke-opacity="0.12"
         stroke-width="1.25"
     />
     <path
         d="M14.0156 9.20801C14.3539 8.29392 15.6461 8.29392 15.9844 9.20801L17.5801 13.5186C17.7776 14.052 18.198 14.4724 18.7314 14.6699L23.042 16.2656C23.9561 16.6039 23.9561 17.8961 23.042 18.2344L18.7314 19.8301C18.198 20.0276 17.7776 20.448 17.5801 20.9814L15.9844 25.292C15.6461 26.2061 14.3539 26.2061 14.0156 25.292L12.4199 20.9814C12.2224 20.448 11.802 20.0276 11.2686 19.8301L6.95801 18.2344C6.04392 17.8961 6.04392 16.6039 6.95801 16.2656L11.2686 14.6699C11.802 14.4724 12.2224 14.052 12.4199 13.5186L14.0156 9.20801Z"
         fill={`url(#${gradient0})`}
-        stroke="#FF9933"
+        stroke="#3b8fd6"
         stroke-width="0.9"
     />
     <path
@@ -120,8 +120,8 @@
             y2="29.25"
             gradientUnits="userSpaceOnUse"
         >
-            <stop stop-color="#FF9933" stop-opacity="0" />
-            <stop offset="1" stop-color="#FF9933" stop-opacity="0.4" />
+            <stop stop-color="#3b8fd6" stop-opacity="0" />
+            <stop offset="1" stop-color="#3b8fd6" stop-opacity="0.4" />
         </linearGradient>
         <linearGradient
             id={gradient1}
@@ -154,8 +154,8 @@
             y2="31.5"
             gradientUnits="userSpaceOnUse"
         >
-            <stop stop-color="#FF9933" stop-opacity="0" />
-            <stop offset="1" stop-color="#FF9933" stop-opacity="0.4" />
+            <stop stop-color="#3b8fd6" stop-opacity="0" />
+            <stop offset="1" stop-color="#3b8fd6" stop-opacity="0.4" />
         </linearGradient>
         <linearGradient
             id={gradient2Light}
@@ -165,8 +165,8 @@
             y2="15.75"
             gradientUnits="userSpaceOnUse"
         >
-            <stop stop-color="#FF9933" stop-opacity="0" />
-            <stop offset="1" stop-color="#FF9933" stop-opacity="0.4" />
+            <stop stop-color="#3b8fd6" stop-opacity="0" />
+            <stop offset="1" stop-color="#3b8fd6" stop-opacity="0.4" />
         </linearGradient>
     </defs>
 </svg>
@@ -177,6 +177,6 @@
     }
 
     :global(body.light .small-star) {
-        stroke: #ff9933;
+        stroke: #3b8fd6;
     }
 </style>

@@ -71,7 +71,14 @@ export async function capturePostHogException(
 
 export async function identifyPostHogGroups(
   distinctId: string,
-  options: { organizationSlug?: string; projectRef?: string }
+  options: {
+    organizationSlug?: string
+    projectRef?: string
+    /** Person properties (plan, role, …) — resolved server-side, never trusted from the client. */
+    personProperties?: Record<string, unknown>
+    /** Extra organization group properties (plan, seat_count, …) for group-level breakdowns. */
+    organizationProperties?: Record<string, unknown>
+  }
 ) {
   const ph = getPostHogServer()
   if (!ph) return
@@ -80,7 +87,8 @@ export async function identifyPostHogGroups(
     ph.groupIdentify({
       groupType: 'organization',
       groupKey: options.organizationSlug,
-      properties: { slug: options.organizationSlug },
+      // Plan lives on the group too, so revenue/usage can be broken down per organization.
+      properties: { slug: options.organizationSlug, ...options.organizationProperties },
     })
   }
 
@@ -97,6 +105,8 @@ export async function identifyPostHogGroups(
     properties: {
       ...(options.organizationSlug && { organization_slug: options.organizationSlug }),
       ...(options.projectRef && { project_ref: options.projectRef }),
+      // Plan/role here are what make Free-vs-Pro and role-based cohorts possible.
+      ...options.personProperties,
     },
   })
 

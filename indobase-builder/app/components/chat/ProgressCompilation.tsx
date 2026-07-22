@@ -4,10 +4,14 @@ import type { ProgressAnnotation } from '~/types/context';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 
+// User-facing phase names — plain language, not the internal agent identifiers.
 const AGENT_PROGRESS_LABELS: Record<string, string> = {
-  planner: 'Planner',
-  coder: 'Coder',
-  response: 'Response',
+  scoping: 'Understanding',
+  planner: 'Planning',
+  summary: 'Reviewing',
+  context: 'Reading files',
+  coder: 'Building',
+  response: 'Building',
 };
 
 function labelFor(label: string) {

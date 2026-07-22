@@ -56,6 +56,7 @@ export function Header() {
           )}
           <button
             type="button"
+            data-sidebar-toggle
             onClick={toggleSidebar}
             title="Menu & settings"
             aria-label="Open menu"

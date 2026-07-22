@@ -12,9 +12,9 @@
                 variant: {
                     primary: [
                         'to-secondary-100 bg-gradient-to-br from-pink-500 via-pink-500',
-                        'hover:shadow-[0_0_2rem_#ff993352]'
+                        'hover:shadow-[0_0_2rem_#3b8fd652]'
                     ],
-                    secondary: ['bg-[#ff99330a] relative'],
+                    secondary: ['bg-[#3b8fd60a] relative'],
                     text: [
                         'bg-transparent border-transparent',
                         'hover:bg-gradient-to-b from-[#ffffff0f] via-[#ffffff1a] to-[#ffffff0f];'
@@ -51,8 +51,8 @@
     .has-border-gradient {
         --border-gradient-before: linear-gradient(
             to bottom,
-            rgba(255, 153, 51, 0.48) 0%,
-            rgba(255, 153, 51, 0) 180%
+            rgba(59, 143, 214, 0.48) 0%,
+            rgba(59, 143, 214, 0) 180%
         );
         --border-gradient-after: radial-gradient(
             42.86% 42.86% at 50.55% -0%,

@@ -25,6 +25,55 @@ function quotePgLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`
 }
 
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  if (!raw?.trim()) return fallback
+  const n = parseInt(raw.trim(), 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+/**
+ * Per-tenant safety limits applied at the DATABASE level (not the role — roles are cluster-global
+ * here and shared across every tenantdb_*, so a role limit would be a fleet-wide limit).
+ *
+ * - connectionLimit caps how many backends a single tenant DB can hold, so one runaway project
+ *   cannot exhaust the shared cluster and take everyone down. It must sit ABOVE the tenant's own
+ *   pooled services at full load — after the pool cuts in tenant-data-plane-tuning.ts that is
+ *   PostgREST 10 + Realtime 6 + Supavisor pooler 15 (if embedded) + GoTrue/Storage ≈ 46. 75
+ *   clears that with headroom while still stopping a tenant from opening hundreds.
+ * - statementTimeout kills a query stuck in an infinite loop. Generous (120s) so legitimate
+ *   migrations and large aggregations still complete.
+ * - idleTxTimeout reaps transactions left idle (holding locks) — nothing legitimate sits idle
+ *   mid-transaction for two minutes.
+ *
+ * NOTE: connectionLimit is per-tenant; the CLUSTER's max_connections must be sized for
+ * (expected concurrent tenants × pooled usage) or fronted by Supavisor, or tenants will contend.
+ */
+function resolveTenantDbLimits() {
+  return {
+    connectionLimit: parsePositiveInt(process.env.SAAS_TENANT_DB_CONNECTION_LIMIT, 75),
+    statementTimeout: process.env.SAAS_TENANT_DB_STATEMENT_TIMEOUT?.trim() || '120s',
+    idleTxTimeout: process.env.SAAS_TENANT_DB_IDLE_TX_TIMEOUT?.trim() || '120s',
+  }
+}
+
+/** Apply per-tenant connection + timeout guards. Idempotent — safe to re-run to retrofit tenants. */
+async function applyTenantDbLimits(client: Client, dbIdent: string): Promise<void> {
+  const limits = resolveTenantDbLimits()
+
+  try {
+    await client.query(`alter database ${dbIdent} connection limit ${limits.connectionLimit}`)
+    await client.query(
+      `alter database ${dbIdent} set statement_timeout = ${quotePgLiteral(limits.statementTimeout)}`
+    )
+    await client.query(
+      `alter database ${dbIdent} set idle_in_transaction_session_timeout = ${quotePgLiteral(limits.idleTxTimeout)}`
+    )
+  } catch (e) {
+    // Never fail provisioning over a hardening step; log so it can be retried/backfilled.
+    console.warn('[provision-tenant-db] applying per-tenant DB limits failed for %s: %O', dbIdent, e)
+  }
+}
+
 /**
  * Login role for tenant CREATE/GRANT/bootstrap DDL (TCP from Studio → `POSTGRES_HOST`).
  * Use `postgres` + `POSTGRES_PASSWORD` by default: it authenticates over the Docker network.
@@ -116,9 +165,15 @@ export async function provisionTenantDatabase({
       'select exists(select 1 from pg_database where datname = $1)',
       [dbName]
     )
+    const dbIdent = quotePgIdent(dbName)
+
     if (!dbExists.rows[0]?.exists) {
-      await client.query(`create database ${quotePgIdent(dbName)} owner ${roleIdent}`)
+      await client.query(`create database ${dbIdent} owner ${roleIdent}`)
     }
+
+    // Cap blast radius: one runaway tenant must not exhaust the shared cluster. Re-applied on
+    // existing databases too, so re-provisioning retrofits tenants created before this guard.
+    await applyTenantDbLimits(client, dbIdent)
 
     const otherDatabases = await client.query<{ datname: string }>(
       `select datname from pg_database where datistemplate = false and datname <> $1`,

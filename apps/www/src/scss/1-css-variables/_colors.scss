@@ -6,9 +6,10 @@
     --web-color-primary: var(--web-color-greyscale-900);
     --web-color-secondary: var(--web-color-white);
     --web-color-tertiary: var(--web-color-greyscale-600);
-    --web-color-accent: var(--web-color-saffron-500);
-    --web-color-accent-darker: var(--web-color-saffron-600);
-    --web-color-accent-click: var(--web-color-saffron-500);
+    /* Brand accent is Indobase blue; the saffron ramp stays defined for legacy references. */
+    --web-color-accent: var(--web-color-indoblue-500);
+    --web-color-accent-darker: var(--web-color-indoblue-600);
+    --web-color-accent-click: var(--web-color-indoblue-500);
     --web-color-card: var(--web-color-white) / 0.9;
     --web-color-smooth: var(--web-color-greyscale-900) / 0.04;
     --web-color-subtle: var(--web-color-greyscale-50);
@@ -24,7 +25,7 @@
     --web-color-secondary: var(--web-color-white);
     --web-color-tertiary: var(--web-color-greyscale-600);
     --web-color-accent: #FFFFFF;
-    --web-color-accent-darker: var(--web-color-saffron-600);
+    --web-color-accent-darker: var(--web-color-indoblue-400);
     --web-color-accent-click: var(--web-color-greyscale-50);
     --web-color-card: var(--web-color-greyscale-850) / 0.9;
     --web-color-smooth: var(--web-color-white) / 0.06;
@@ -42,7 +43,15 @@
   --web-color-pink-600: var(--web-color-pink-hue) 65% 48%;
   --web-color-pink-700: var(--web-color-pink-hue) 65% 36%;
 
-  /* saffron (India-inspired primary) */
+  /* indobase blue (brand accent — matches the Builder/Studio accent ramp) */
+  --web-color-indoblue-hue: 207;
+  --web-color-indoblue-200: var(--web-color-indoblue-hue) 65% 84%;
+  --web-color-indoblue-400: var(--web-color-indoblue-hue) 66% 65%; /* #6AABE0 — for dark grounds */
+  --web-color-indoblue-500: var(--web-color-indoblue-hue) 65% 54%; /* #3B8FD6 */
+  --web-color-indoblue-600: var(--web-color-indoblue-hue) 61% 47%;
+  --web-color-indoblue-700: var(--web-color-indoblue-hue) 63% 39%;
+
+  /* saffron (legacy — retained so existing references still resolve) */
   --web-color-saffron-hue: 39;
   --web-color-saffron-200: var(--web-color-saffron-hue) 100% 88%;
   --web-color-saffron-500: var(--web-color-saffron-hue) 100% 60%; /* #FF9933 */

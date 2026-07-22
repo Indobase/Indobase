@@ -16,9 +16,14 @@ interface ConfiguredProvidersResponse {
 
 /**
  * API endpoint that detects which providers are configured via environment variables
- * This helps auto-enable providers that have been set up by the user
+ * This helps auto-enable providers that have been set up by the user.
+ *
+ * Not auth-gated: it is called during app initialisation — often before a Builder session exists
+ * (fresh load, mid-launch handoff) — so requiring auth produced a guaranteed 401 on every startup.
+ * The response is only booleans about which local-provider env vars are set; it never returns keys
+ * or secrets, so it is safe to serve unauthenticated. Rate limiting is still applied.
  */
-export const loader = withSecurity(configuredProvidersLoader, { requireAuth: true });
+export const loader = withSecurity(configuredProvidersLoader, { requireAuth: false });
 
 async function configuredProvidersLoader({ context }: Parameters<LoaderFunction>[0]) {
   try {

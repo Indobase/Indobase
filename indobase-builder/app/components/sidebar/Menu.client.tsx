@@ -287,30 +287,44 @@ export const Menu = () => {
     }
   }, [open, selectionMode]);
 
+  /*
+   * The sidebar opens via the explicit header toggle (toggleSidebar). It previously ALSO sprang
+   * open whenever the cursor drifted within 20px of the left edge — a hidden, surprising trigger
+   * that fired on a global mousemove listener (a perf cost on every pointer move too). Production
+   * builders (Emergent, Linear) use an explicit control plus click-outside / Escape to dismiss.
+   */
   useEffect(() => {
-    const enterThreshold = 20;
-    const exitThreshold = 20;
+    if (!open || isSettingsOpen) {
+      return undefined;
+    }
 
-    function onMouseMove(event: MouseEvent) {
-      if (isSettingsOpen) {
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+
+      // The header toggle manages open/close itself; closing here too would close-then-reopen.
+      if (target?.closest('[data-sidebar-toggle]')) {
         return;
       }
 
-      if (event.pageX < enterThreshold) {
-        setOpen(true);
-      }
-
-      if (menuRef.current && event.clientX > menuRef.current.getBoundingClientRect().right + exitThreshold) {
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setOpen(false);
       }
     }
 
-    window.addEventListener('mousemove', onMouseMove);
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
 
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
     };
-  }, [isSettingsOpen]);
+  }, [open, isSettingsOpen, setOpen]);
 
   const handleDuplicate = async (id: string) => {
     await duplicateCurrentChat(id);
@@ -333,6 +347,16 @@ export const Menu = () => {
 
   return (
     <>
+      {/* Scrim: dims the workspace behind the drawer and gives a second dismiss target. */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.2, ease: cubicEasingFn }}
+        style={{ pointerEvents: open ? 'auto' : 'none' }}
+        onClick={() => setOpen(false)}
+        className="fixed inset-0 z-sidebar bg-gray-950/20 backdrop-blur-[1px]"
+        aria-hidden
+      />
       <motion.div
         ref={menuRef}
         initial="closed"

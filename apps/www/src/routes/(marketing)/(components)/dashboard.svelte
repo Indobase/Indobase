@@ -34,8 +34,8 @@
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
             >
-                <circle cx="18" cy="23" r="8.2" fill="#FF9933" />
-                <circle cx="40" cy="23" r="4.5" fill="#FF9933" />
+                <circle cx="18" cy="23" r="8.2" fill="#3b8fd6" />
+                <circle cx="40" cy="23" r="4.5" fill="#3b8fd6" />
                 <text
                     x="55"
                     y="32"

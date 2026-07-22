@@ -9,9 +9,16 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
-/** PostgREST ↔ Postgres connection pool size (per tenant-rest container). */
+/**
+ * PostgREST ↔ Postgres connection pool size (per tenant-rest container).
+ *
+ * Default cut from 40 → 10. Forty is a single-tenant self-hosted default; when packing many
+ * tenants onto one shared cluster it is ruinous — 12 concurrent stacks × 40 alone is ~480
+ * backends. Ten is ample for a small app's API traffic and roughly quadruples how many tenants
+ * the box holds. Raise per-tenant via env only for genuinely high-traffic Pro projects.
+ */
 export function tenantPostgrestDbPool(): string {
-  return String(parsePositiveInt(process.env.SAAS_TENANT_POSTGREST_DB_POOL, 40))
+  return String(parsePositiveInt(process.env.SAAS_TENANT_POSTGREST_DB_POOL, 10))
 }
 
 /** Seconds to wait for a free pool connection before failing the request. */
@@ -55,9 +62,14 @@ export function tenantRealtimeRlimitNofile(): string {
   return String(parsePositiveInt(process.env.SAAS_TENANT_REALTIME_RLIMIT_NOFILE, 50_000))
 }
 
-/** Realtime DB connection pool (Phoenix ↔ Postgres). */
+/**
+ * Realtime DB connection pool (Phoenix ↔ Postgres).
+ *
+ * Default cut from 24 → 6 for the same shared-cluster reason as the PostgREST pool. Most tenant
+ * apps use little or no Realtime; six connections comfortably covers those that do.
+ */
 export function tenantRealtimeDbPoolSize(): string {
-  return String(parsePositiveInt(process.env.SAAS_TENANT_REALTIME_DB_POOL_SIZE, 24))
+  return String(parsePositiveInt(process.env.SAAS_TENANT_REALTIME_DB_POOL_SIZE, 6))
 }
 
 /** Storage API max upload size in bytes (default 5 GiB). */

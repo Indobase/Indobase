@@ -429,7 +429,8 @@ export function migrateLegacyLocks(currentChatId: string): void {
 export function clearCache(): void {
   lockedItemsCache = null;
   lockedItemsMap.clear();
-  logger.info('Cleared locked items cache');
+  // Fires on every periodic lock refresh — trace, not info, to keep the console usable.
+  logger.trace('Cleared locked items cache');
 }
 
 /**

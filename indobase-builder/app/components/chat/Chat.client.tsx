@@ -44,6 +44,7 @@ import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
+  consumePendingBuildPrompt,
   ensureBuilderSession,
   getBuilderRequestInit,
   getStoredBuilderMcpToken,
@@ -60,7 +61,8 @@ import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
-import { capturePostHogException } from '~/lib/analytics/posthog.client';
+import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
+import { BUILDER_EVENTS } from '~/lib/analytics/events';
 
 const logger = createScopedLogger('Chat');
 const getAllowedChatProviders = () =>
@@ -286,6 +288,19 @@ export const ChatImpl = memo(
         setFakeLoading(false);
         streamingState.set(false);
         failInitialBuild();
+
+        capturePostHogEvent(BUILDER_EVENTS.generationFailed, {
+          model,
+          provider: provider.name,
+          chat_mode: chatMode,
+          duration_ms: generationStartedAtRef.current
+            ? Date.now() - generationStartedAtRef.current
+            : undefined,
+          // Reason code only — never the raw message, which can echo user content.
+          error_type: e instanceof Error ? e.name : 'unknown',
+        });
+        generationStartedAtRef.current = null;
+
         handleError(e, 'chat');
       },
       onFinish: (message, response) => {
@@ -316,6 +331,20 @@ export const ChatImpl = memo(
 
         logger.debug('Finished streaming');
 
+        // Token counts + duration here are what make cost-per-user and model comparison possible.
+        capturePostHogEvent(BUILDER_EVENTS.generationCompleted, {
+          model,
+          provider: provider.name,
+          chat_mode: chatMode,
+          tokens_in: usage?.promptTokens,
+          tokens_out: usage?.completionTokens,
+          duration_ms: generationStartedAtRef.current
+            ? Date.now() - generationStartedAtRef.current
+            : undefined,
+          response_length: message.content.length,
+        });
+        generationStartedAtRef.current = null;
+
         void refreshBuilderPromptQuota();
 
         orchestratorChatRetryRef.current = 0;
@@ -335,18 +364,43 @@ export const ChatImpl = memo(
 
     const urlPromptHandledRef = useRef(false);
 
+    // Raw user text of the in-flight submit, stashed so a mid-submit Studio redirect can replay it.
+    const pendingBuildPromptRef = useRef<string>('');
+
+    // Start time of the current generation, so completed/failed events can report duration.
+    const generationStartedAtRef = useRef<number | null>(null);
+
     useEffect(() => {
       if (urlPromptHandledRef.current || chatStarted) {
         return;
       }
 
-      const prompt = searchParams.get('prompt');
+      const urlPrompt = searchParams.get('prompt');
+
+      /*
+       * A prompt stashed before the Studio auth round-trip (see redirectToStudioBuilderConnect).
+       * Only replay it once the connection is actually linked — otherwise the autostart below would
+       * fail prepareStudioLinkedChat and bounce back to Studio, re-persisting the prompt in a loop.
+       * The effect re-runs when indobaseConn changes, so waiting here is safe.
+       */
+      let pendingPrompt: string | null = null;
+
+      if (!urlPrompt) {
+        if (!hasIndobaseStudioHandoff(indobaseConn) && !hasSelectedProject) {
+          return;
+        }
+
+        pendingPrompt = consumePendingBuildPrompt();
+      }
+
+      const prompt = urlPrompt || pendingPrompt;
 
       if (!prompt) {
         return;
       }
 
-      const shouldAutostart = searchParams.get('autostart') === '1';
+      // A restored prompt was already a Build click, so run it rather than just filling the box.
+      const shouldAutostart = searchParams.get('autostart') === '1' || Boolean(pendingPrompt);
 
       urlPromptHandledRef.current = true;
       setSearchParams(
@@ -393,6 +447,36 @@ export const ChatImpl = memo(
       setInput(prompt);
       textareaRef.current?.focus();
     }, [append, chatMode, chatStarted, model, provider, searchParams, setInput, setSearchParams, indobaseConn]);
+
+    /*
+     * The connect-redirect loop guard (builder-auth.client) lands here with this flag when the
+     * browser is blocking the session cookie. Explain it instead of leaving the user in a silent
+     * loop / ERR_TOO_MANY_REDIRECTS.
+     */
+    useEffect(() => {
+      if (searchParams.get('builder_session_error') !== 'cookies') {
+        return;
+      }
+
+      setLlmErrorAlert({
+        type: 'error',
+        title: 'Sign-in was blocked by your browser',
+        description:
+          'Your browser blocked the cookie needed to keep you signed in, so connecting kept looping. ' +
+          'Turn off private/incognito mode, allow cookies for indobase.in, or try a different browser, then reconnect.',
+        errorType: 'authentication',
+      });
+
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete('builder_session_error');
+
+          return next;
+        },
+        { replace: true },
+      );
+    }, [searchParams, setSearchParams]);
 
     const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } = usePromptEnhancer();
     const { parsedMessages, parseMessages } = useMessageParser();
@@ -805,7 +889,7 @@ export const ChatImpl = memo(
             void ensureBuilderSession({ retries: 2 }).then((restored) => {
               if (!restored && !getStoredBuilderMcpToken()) {
                 toast.error('Builder session expired. Reconnecting through Studio…');
-                redirectToStudioBuilderConnect();
+                redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
               } else if (!restored) {
                 toast.error('Could not refresh the builder session. Check your connection and try again.');
               }
@@ -1013,6 +1097,22 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       lastStreamProgressRef.current = Date.now();
       streamProgressMarker.current = '';
 
+      // Remember the raw prompt so a Studio auth redirect mid-submit can replay it after handoff.
+      pendingBuildPromptRef.current = messageContent;
+
+      /*
+       * Top of the build funnel. Length only — never the prompt text itself, which is user content
+       * and would put customer product ideas into analytics.
+       */
+      generationStartedAtRef.current = Date.now();
+      capturePostHogEvent(BUILDER_EVENTS.promptSubmitted, {
+        prompt_length: messageContent.length,
+        chat_mode: chatMode,
+        model,
+        provider: provider.name,
+        is_first_message: !chatStarted,
+      });
+
       /*
        * Composer command: `/connect [url] [anonKey]` — link a backend without
        * leaving the chat. With a URL + anon key it connects directly; bare
@@ -1049,7 +1149,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
 
         if (!ready) {
           toast.error('Builder session expired. Reconnecting through Studio…');
-          redirectToStudioBuilderConnect();
+          redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
 
           return;
         }

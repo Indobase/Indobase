@@ -68,6 +68,7 @@ export function buildTenantTraefikYaml(ref, hostRule, upstream, ports, opts = {}
       rule: Host(\`${hostRule}\`) && PathPrefix(\`${prefix}\`)
       priority: 300
       middlewares:
+        - indobase-wake
         - tenant-${ref}-cors
         - tenant-${ref}-${name}-strip
       service: tenant-${ref}-${name}
@@ -90,6 +91,8 @@ export function buildTenantTraefikYaml(ref, hostRule, upstream, ports, opts = {}
     tenant-${ref}-site-https:
       rule: Host(\`${hostRule}\`)
       priority: 250
+      middlewares:
+        - indobase-wake
       service: tenant-${ref}-site
       entryPoints:
         - websecure

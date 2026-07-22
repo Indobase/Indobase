@@ -7,11 +7,46 @@ import { ScreenshotSelector } from './ScreenshotSelector';
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
 import type { ElementInfo } from './Inspector';
+import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { streamingState } from '~/lib/stores/streaming';
 
 type ResizeSide = 'left' | 'right' | null;
 
 interface PreviewProps {
   setSelectedElement?: (element: ElementInfo | null) => void;
+}
+
+/**
+ * Placeholder shown when no dev server is bound yet. Distinguishes an active build (spinner +
+ * "starting" copy) from a resting workspace, so a cold start reads as progress instead of a blank
+ * "No preview available" panel.
+ */
+function PreviewEmptyState({ busy }: { busy: boolean }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1 px-6 text-center">
+      <div className="relative flex h-14 w-14 items-center justify-center">
+        {busy ? (
+          <>
+            <span className="absolute inset-0 rounded-full border-2 border-accent-500/25" />
+            <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-accent-500" />
+            <span className="i-ph:app-window text-xl text-accent-500" />
+          </>
+        ) : (
+          <span className="i-ph:app-window text-3xl text-bolt-elements-textTertiary" />
+        )}
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-bolt-elements-textPrimary">
+          {busy ? 'Starting your app…' : 'Preview will appear here'}
+        </p>
+        <p className="max-w-xs text-xs leading-5 text-bolt-elements-textTertiary">
+          {busy
+            ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
+            : 'Once the app is running, its live preview shows up in this panel.'}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 interface WindowSize {
@@ -62,6 +97,10 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const hasSelectedPreview = useRef(false);
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
+  const buildLifecycle = useStore(initialBuildLifecycle);
+  const isStreaming = useStore(streamingState);
+  // A dev server is expected soon while generating/finalizing or mid-stream — show "starting", not "empty".
+  const previewStarting = isStreaming || buildLifecycle === 'generating' || buildLifecycle === 'finalizing';
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -1039,9 +1078,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               />
             </>
           ) : (
-            <div className="flex w-full h-full justify-center items-center bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary">
-              No preview available
-            </div>
+            <PreviewEmptyState busy={previewStarting} />
           )}
 
           {isDeviceModeOn && !showDeviceFrameInPreview && (

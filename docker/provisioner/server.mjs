@@ -313,6 +313,56 @@ function runComposeStop(composePath) {
   })
 }
 
+/** Resume stopped containers WITHOUT recreating them (idle-slept / capacity-valve stacks). */
+function runComposeStart(composePath) {
+  const { composePath: containerComposePath, cwd, projectDirectory } =
+    resolveComposeHostPaths(composePath)
+
+  return new Promise((resolve, reject) => {
+    const p = spawn(
+      'docker',
+      ['compose', '--project-directory', projectDirectory, '-f', containerComposePath, 'start'],
+      { stdio: 'inherit', cwd }
+    )
+    p.on('error', reject)
+    p.on('exit', (code) => {
+      if (code === 0) resolve(undefined)
+      else reject(new Error(`docker compose start exited with code ${code}`))
+    })
+  })
+}
+
+/*
+ * Wake-on-traffic: when a visitor hits a sleeping tenant, resume its stack instead of 502ing. This
+ * is the public-traffic half of the sleep/wake lifecycle (the dashboard half lives in Studio's
+ * project-health). Debounced per ref so a burst of requests during boot triggers exactly one start.
+ */
+const WAKE_DEBOUNCE_MS = 60_000
+const wakeAttempts = new Map()
+
+async function wakeTenantStack(ref) {
+  const safe = safeRef(ref)
+  if (!safe) return
+
+  const last = wakeAttempts.get(safe) || 0
+  if (Date.now() - last < WAKE_DEBOUNCE_MS) return
+  wakeAttempts.set(safe, Date.now())
+
+  const composePath = path.join(tenantsDir, safe, 'docker-compose.yml')
+  if (!fs.existsSync(composePath)) {
+    wakeAttempts.delete(safe)
+    return
+  }
+
+  try {
+    await runComposeStart(composePath)
+    console.log(`[wake] resumed tenant stack ${safe}`)
+  } catch (e) {
+    console.warn(`[wake] failed to resume ${safe}: ${e?.message || e}`)
+    wakeAttempts.delete(safe) // allow a retry on the next request rather than waiting out the window
+  }
+}
+
 function runComposeDown(composePath) {
   const { composePath: containerComposePath, cwd, projectDirectory } =
     resolveComposeHostPaths(composePath)
@@ -530,6 +580,181 @@ async function repairTenantStackRef(ref, reason) {
   }
 }
 
+// ── Per-tenant logical backups ──────────────────────────────────────────────────────────────────
+// pg_dump the tenant DB and stream it straight to S3/MinIO. Both tools run in throwaway containers
+// (postgres:16-alpine already has pg_dump/pg_restore; amazon/aws-cli for the transfer), piped
+// through this process — so the provisioner image needs no extra binaries.
+
+function s3BackupConfig() {
+  return {
+    bucket: (process.env.BACKUP_S3_BUCKET || process.env.S3_BUCKET || '').trim(),
+    endpoint: (process.env.BACKUP_S3_ENDPOINT || '').trim(),
+    region: (process.env.BACKUP_S3_REGION || 'us-east-1').trim(),
+    accessKeyId: (process.env.BACKUP_S3_ACCESS_KEY_ID || process.env.S3_PROTOCOL_ACCESS_KEY_ID || '').trim(),
+    secretAccessKey: (
+      process.env.BACKUP_S3_SECRET_ACCESS_KEY ||
+      process.env.S3_PROTOCOL_ACCESS_KEY_SECRET ||
+      ''
+    ).trim(),
+  }
+}
+
+function s3EnvArgs(cfg) {
+  return [
+    '-e', `AWS_ACCESS_KEY_ID=${cfg.accessKeyId}`,
+    '-e', `AWS_SECRET_ACCESS_KEY=${cfg.secretAccessKey}`,
+    '-e', `AWS_DEFAULT_REGION=${cfg.region}`,
+  ]
+}
+
+function awsCliArgs(cfg, cliArgs) {
+  return ['run', '--rm', '-i', ...s3EnvArgs(cfg), 'amazon/aws-cli', ...cliArgs, ...(cfg.endpoint ? ['--endpoint-url', cfg.endpoint] : [])]
+}
+
+/** Spawn pg_dump for a tenant DB (custom format). Mirrors the psql invocation modes above. */
+function spawnPgDump(dbName) {
+  const dbContainer = (process.env.PROVISIONER_DB_CONTAINER || 'indobase-db').trim()
+  const pgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
+  const pgPort = (process.env.PROVISIONER_PG_PORT || '5432').trim()
+  const adminUser = (process.env.PROVISIONER_PG_ADMIN_USER || 'supabase_admin').trim()
+  const adminPassword = process.env.POSTGRES_PASSWORD?.trim() || ''
+  const dumpFlags = ['-Fc', '--no-owner', '--no-acl', dbName]
+
+  if (pgHost) {
+    return spawn('docker', [
+      'run', '--rm', '-e', `PGPASSWORD=${adminPassword}`,
+      'postgres:16-alpine', 'pg_dump', '-h', pgHost, '-p', pgPort, '-U', adminUser, ...dumpFlags,
+    ])
+  }
+  return spawn('docker', [
+    'exec', '-e', `PGPASSWORD=${adminPassword}`,
+    dbContainer, 'pg_dump', '-h', '127.0.0.1', '-U', adminUser, ...dumpFlags,
+  ])
+}
+
+/** Spawn pg_restore reading from stdin into a tenant DB. DESTRUCTIVE: --clean --if-exists. */
+function spawnPgRestore(dbName) {
+  const dbContainer = (process.env.PROVISIONER_DB_CONTAINER || 'indobase-db').trim()
+  const pgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
+  const pgPort = (process.env.PROVISIONER_PG_PORT || '5432').trim()
+  const adminUser = (process.env.PROVISIONER_PG_ADMIN_USER || 'supabase_admin').trim()
+  const adminPassword = process.env.POSTGRES_PASSWORD?.trim() || ''
+  const restoreFlags = ['--clean', '--if-exists', '--no-owner', '--no-acl', '-d', dbName]
+
+  if (pgHost) {
+    return spawn('docker', [
+      'run', '--rm', '-i', '-e', `PGPASSWORD=${adminPassword}`,
+      'postgres:16-alpine', 'pg_restore', '-h', pgHost, '-p', pgPort, '-U', adminUser, ...restoreFlags,
+    ])
+  }
+  return spawn('docker', [
+    'exec', '-i', '-e', `PGPASSWORD=${adminPassword}`,
+    dbContainer, 'pg_restore', '-h', '127.0.0.1', '-U', adminUser, ...restoreFlags,
+  ])
+}
+
+async function backupTenant({ dbName, objectKey }) {
+  const cfg = s3BackupConfig()
+  if (!cfg.bucket || !cfg.accessKeyId || !cfg.secretAccessKey) {
+    return { ok: false, error: 'Backup storage not configured (set BACKUP_S3_BUCKET and credentials).' }
+  }
+
+  return new Promise((resolve) => {
+    const dump = spawnPgDump(dbName)
+    const upload = spawn('docker', awsCliArgs(cfg, ['s3', 'cp', '-', `s3://${cfg.bucket}/${objectKey}`]))
+
+    let bytes = 0
+    let errText = ''
+    let dumpCode = null
+    let settled = false
+    const finish = (v) => {
+      if (!settled) {
+        settled = true
+        resolve(v)
+      }
+    }
+
+    dump.stdout.on('data', (c) => {
+      bytes += c.length
+    })
+    dump.stdout.pipe(upload.stdin)
+    dump.stderr.on('data', (c) => (errText += c))
+    upload.stderr.on('data', (c) => (errText += c))
+    dump.on('error', (e) => finish({ ok: false, error: `pg_dump: ${e.message}` }))
+    upload.on('error', (e) => finish({ ok: false, error: `upload: ${e.message}` }))
+    dump.on('exit', (code) => {
+      dumpCode = code
+      if (code !== 0) {
+        try {
+          upload.stdin.end()
+        } catch {
+          /* already closed */
+        }
+      }
+    })
+    upload.on('exit', (code) => {
+      if (code === 0 && dumpCode === 0) finish({ ok: true, size_bytes: bytes })
+      else finish({ ok: false, error: (errText || `exit dump=${dumpCode} upload=${code}`).slice(0, 500) })
+    })
+  })
+}
+
+async function restoreTenant({ dbName, objectKey }) {
+  const cfg = s3BackupConfig()
+  if (!cfg.bucket || !cfg.accessKeyId || !cfg.secretAccessKey) {
+    return { ok: false, error: 'Backup storage not configured.' }
+  }
+
+  return new Promise((resolve) => {
+    const download = spawn('docker', awsCliArgs(cfg, ['s3', 'cp', `s3://${cfg.bucket}/${objectKey}`, '-']))
+    const restore = spawnPgRestore(dbName)
+
+    let errText = ''
+    let dlCode = null
+    let settled = false
+    const finish = (v) => {
+      if (!settled) {
+        settled = true
+        resolve(v)
+      }
+    }
+
+    download.stdout.pipe(restore.stdin)
+    download.stderr.on('data', (c) => (errText += c))
+    restore.stderr.on('data', (c) => (errText += c))
+    download.on('error', (e) => finish({ ok: false, error: `download: ${e.message}` }))
+    restore.on('error', (e) => finish({ ok: false, error: `pg_restore: ${e.message}` }))
+    download.on('exit', (code) => {
+      dlCode = code
+      if (code !== 0) {
+        try {
+          restore.stdin.end()
+        } catch {
+          /* already closed */
+        }
+      }
+    })
+    restore.on('exit', (code) => {
+      // pg_restore returns non-zero on ignorable warnings; treat download failure as the hard error.
+      if (dlCode === 0) finish({ ok: code === 0, warnings: code !== 0 ? errText.slice(0, 500) : undefined })
+      else finish({ ok: false, error: (errText || `download exit ${dlCode}`).slice(0, 500) })
+    })
+  })
+}
+
+async function deleteBackupObject(objectKey) {
+  const cfg = s3BackupConfig()
+  if (!cfg.bucket || !cfg.accessKeyId || !cfg.secretAccessKey) {
+    return { ok: false, error: 'Backup storage not configured.' }
+  }
+  try {
+    await spawnSyncText('docker', awsCliArgs(cfg, ['s3', 'rm', `s3://${cfg.bucket}/${objectKey}`]))
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e?.message || 'delete failed' }
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.url === '/health') return json(res, 200, { ok: true })
@@ -547,6 +772,9 @@ const server = http.createServer(async (req, res) => {
       '/ensure-site-hosting',
       '/ensure-site-fleet',
       '/register-site-route',
+      '/backup-tenant',
+      '/restore-tenant',
+      '/delete-backup',
     ])
     if (req.method !== 'POST' || !allowed.has(req.url || '')) {
       res.statusCode = 404
@@ -596,6 +824,32 @@ const server = http.createServer(async (req, res) => {
       const ready = siteResults.filter((r) => r.ok).length
       const failed = siteResults.filter((r) => !r.ok).length
       return json(res, 200, { ok: true, ready, failed, results: siteResults })
+    }
+
+    // Backup endpoints validate their own inputs (db_name / object_key), not just project_ref.
+    if (req.url === '/backup-tenant' || req.url === '/restore-tenant') {
+      const dbName = String(body?.db_name || '')
+      const objectKey = String(body?.object_key || '')
+      if (!/^[a-z0-9_]+$/.test(dbName)) {
+        return json(res, 400, { message: 'Invalid db_name' })
+      }
+      if (!/^backups\/[A-Za-z0-9._/-]+$/.test(objectKey)) {
+        return json(res, 400, { message: 'Invalid object_key' })
+      }
+      const result =
+        req.url === '/backup-tenant'
+          ? await backupTenant({ dbName, objectKey })
+          : await restoreTenant({ dbName, objectKey })
+      return json(res, result.ok ? 200 : 500, result)
+    }
+
+    if (req.url === '/delete-backup') {
+      const objectKey = String(body?.object_key || '')
+      if (!/^backups\/[A-Za-z0-9._/-]+$/.test(objectKey)) {
+        return json(res, 400, { message: 'Invalid object_key' })
+      }
+      const result = await deleteBackupObject(objectKey)
+      return json(res, result.ok ? 200 : 500, result)
     }
 
     const ref = safeRef(body?.project_ref)
@@ -878,7 +1132,7 @@ const server = http.createServer(async (req, res) => {
 })
 
 if (process.env.SITE_STATIC_PROXY_ENABLED === 'true') {
-  startSiteStaticProxy({ traefikDir, upstream: traefikUpstreamHost })
+  startSiteStaticProxy({ traefikDir, upstream: traefikUpstreamHost, wakeTenant: wakeTenantStack })
 }
 
 server.listen(port, '0.0.0.0', () => {

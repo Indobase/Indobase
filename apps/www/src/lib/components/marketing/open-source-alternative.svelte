@@ -68,11 +68,11 @@
 
                 <br class="block md:hidden" />
                 <div
-                    class="relative inline-flex bg-[linear-gradient(-146deg,_#FF9933,_#19191D_47%,_#19191D)] bg-clip-text pb-2 text-transparent"
+                    class="relative inline-flex bg-[linear-gradient(-146deg,_#3b8fd6,_#19191D_47%,_#19191D)] bg-clip-text pb-2 text-transparent"
                 >
                     {activePlatformText}
                     <div
-                        class="animate-caret-blink -right-2 bottom-0 mt-1 ml-2 block h-full min-h-14 w-px bg-[linear-gradient(-146deg,_#FF9933,_#19191D_47%,_#19191D)]"
+                        class="animate-caret-blink -right-2 bottom-0 mt-1 ml-2 block h-full min-h-14 w-px bg-[linear-gradient(-146deg,_#3b8fd6,_#19191D_47%,_#19191D)]"
                     ></div>
                 </div>
             </h2>

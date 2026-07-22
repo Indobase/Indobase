@@ -3,7 +3,9 @@ import posthog, { PostHogConfig } from 'posthog-js'
 import {
   getPostHogApiHost,
   getPostHogCaptureExceptionsConfig,
+  getPostHogSessionRecordingConfig,
   getPostHogUiHost,
+  isSessionReplayBlockedPath,
 } from './posthog-config'
 
 // Limit the max number of queued events
@@ -56,6 +58,9 @@ class PostHogClient {
       return
     }
 
+    const disableSessionRecording =
+      typeof window !== 'undefined' && isSessionReplayBlockedPath(window.location.pathname)
+
     const config: Partial<PostHogConfig> = {
       api_host: this.config.apiHost,
       ui_host: this.config.uiHost,
@@ -63,6 +68,8 @@ class PostHogClient {
       capture_pageview: false, // We'll manually track pageviews
       capture_pageleave: false, // We'll manually track page leaves
       capture_exceptions: getPostHogCaptureExceptionsConfig(),
+      disable_session_recording: disableSessionRecording,
+      session_recording: getPostHogSessionRecordingConfig(),
       loaded: (posthog) => {
         // Apply pending properties that were set before PostHog
         // initialized due to poor connection or user not accepting
