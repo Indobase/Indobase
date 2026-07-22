@@ -123,8 +123,8 @@ export const ProjectExperienceChooser = () => {
                 </h1>
                 <p className="max-w-2xl text-base leading-relaxed text-foreground-light">
                   Start in Indobase Builder to ship your web app with AI and publish to Indobase
-                  hosting. Open Backend Studio for database, auth, and storage. Analytics and Indo
-                  Payments round out the same project when you are ready to grow.
+                  hosting. Open Backend Studio for database, auth, and storage. Analytics and
+                  Indobase Payments round out the same project when you are ready to grow.
                 </p>
               </div>
             </div>
@@ -170,12 +170,11 @@ export const ProjectExperienceChooser = () => {
               />
 
               {/*
-                Indo Payments is the product name (see docs/PAYMENTS.md). Accent matches the
-                marketing hero Payments tile (#4F46E5) so the brand reads the same on www and Studio.
-                Still Coming soon — implementation is blocked on the aggregator relationship.
+                Indobase Payments — first-party product tile. Accent matches the marketing hero
+                Payments tile (#4F46E5). Coming soon until aggregator onboarding ships.
               */}
               <ExperienceTile
-                eyebrow="Indo Payments"
+                eyebrow="Indobase Payments"
                 title="Payments"
                 description="Collect INR from your customers — subscriptions, invoices, and payouts — without leaving this project. Settles to your own merchant account."
                 icon={<CreditCard size={24} strokeWidth={1.75} className="text-[#4F46E5]" />}
