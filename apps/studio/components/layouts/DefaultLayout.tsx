@@ -44,7 +44,10 @@ export const DefaultLayout = ({
   const { hasAccess: hasBackendStudioAccess, enabled: studioGateEnabled } = useBackendStudioAccess()
   const studioLocked = studioGateEnabled && !hasBackendStudioAccess
   const isProjectExperienceChooser = router.pathname === '/project/[ref]'
-  const showProductMenu = !!ref && router.pathname !== '/project/[ref]' && !studioLocked
+  // Payments is a project product surface (same Studio session), not Backend Studio.
+  const isProjectPayments = router.pathname === '/project/[ref]/payments'
+  const isUngatedProjectSurface = isProjectExperienceChooser || isProjectPayments
+  const showProductMenu = !!ref && !isUngatedProjectSurface && !studioLocked
 
   const [lastVisitedOrganization] = useLocalStorageQuery(
     LOCAL_STORAGE_KEYS.LAST_VISITED_ORGANIZATION,
@@ -73,14 +76,14 @@ export const DefaultLayout = ({
    * The project landing page is the Builder/Studio chooser — it is not a backend screen, and every
    * item in the sidebar (Table Editor, SQL Editor, Auth, Storage…) navigates into Studio. Showing it
    * there presents the backend as the default context before the user has chosen one, so the
-   * sidebar now appears only once they are actually inside the backend.
+   * sidebar now appears only once they are actually inside the backend. Indobase Payments is the
+   * same kind of product surface (not Backend Studio), so it stays sidebar-free as well.
    */
   const showProjectSidebar =
-    !router.pathname.startsWith('/account') && !studioLocked && !isProjectExperienceChooser
+    !router.pathname.startsWith('/account') && !studioLocked && !isUngatedProjectSurface
 
-  // The project landing page is the Builder/Studio chooser for every plan.
-  // Gate only after a user explicitly chooses a Studio/backend route.
-  const content = isProjectExperienceChooser ? (
+  // Chooser + Payments stay reachable on every plan. Gate only Backend Studio routes.
+  const content = isUngatedProjectSurface ? (
     children
   ) : (
     <BackendStudioUpgradeGate>{children}</BackendStudioUpgradeGate>

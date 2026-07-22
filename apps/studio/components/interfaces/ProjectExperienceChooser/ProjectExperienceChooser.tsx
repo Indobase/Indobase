@@ -78,9 +78,11 @@ const ExperienceTile = ({
           {children}
           {href && ctaLabel ? (
             <Button asChild type="primary" size="small" className="w-full sm:w-auto">
-              <Link href={href} className="inline-flex items-center gap-2">
-                {ctaLabel}
-                <ArrowRight size={16} />
+              <Link href={href}>
+                <span className="inline-flex items-center gap-2">
+                  {ctaLabel}
+                  <ArrowRight size={16} />
+                </span>
               </Link>
             </Button>
           ) : null}
@@ -144,7 +146,7 @@ export const ProjectExperienceChooser = () => {
                   nextPath="/?source=studio"
                 >
                   <span className="inline-flex items-center gap-2">
-                    Open Indobase Builder
+                    Open Builder
                     <ArrowRight size={16} />
                   </span>
                 </BuilderLaunchButton>
@@ -171,7 +173,7 @@ export const ProjectExperienceChooser = () => {
 
               {/*
                 Indobase Payments — first-party product tile. Accent matches the marketing hero
-                Payments tile (#4F46E5). Coming soon until aggregator onboarding ships.
+                Payments tile (#4F46E5). Opens the in-project Payments surface (same Studio session).
               */}
               <ExperienceTile
                 eyebrow="Indobase Payments"
@@ -179,7 +181,8 @@ export const ProjectExperienceChooser = () => {
                 description="Collect INR from your customers — subscriptions, invoices, and payouts — in this project. Same Studio login; settles to your own merchant account."
                 icon={<CreditCard size={24} strokeWidth={1.75} className="text-[#4F46E5]" />}
                 accentClassName="bg-[#4F46E5]/10"
-                comingSoon
+                href={`/project/${ref}/payments`}
+                ctaLabel="Open Payments"
               />
             </div>
           </div>
