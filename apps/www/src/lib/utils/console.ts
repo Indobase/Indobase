@@ -34,7 +34,7 @@ const ASCII_ART = `
 
 export function displayHiringMessage() {
     if (browser) {
-        console.log('%c' + ASCII_ART, 'font-family: monospace; white-space: pre; color: #ff9933;');
+        console.log('%c' + ASCII_ART, 'font-family: monospace; white-space: pre; color: #3b8fd6;');
         console.log(
             '%cWe are hiring!',
             'font-family: Aeonik Pro, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 20px; font-weight: bold;'

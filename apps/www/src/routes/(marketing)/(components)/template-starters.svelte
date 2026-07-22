@@ -134,7 +134,7 @@
                             <h3
                                 class={cn(
                                     'font-aeonik-pro text-lg font-medium tracking-tight md:text-xl',
-                                    starter.lightText ? 'text-white' : 'text-neutral-900'
+                                    starter.lightText ? 'text-white' : 'text-greyscale-900'
                                 )}
                             >
                                 {starter.title}
@@ -142,7 +142,7 @@
                             <p
                                 class={cn(
                                     'mt-1 text-sm leading-snug',
-                                    starter.lightText ? 'text-white/70' : 'text-neutral-700/80'
+                                    starter.lightText ? 'text-white/70' : 'text-greyscale-700/80'
                                 )}
                             >
                                 {starter.subtitle}
@@ -150,7 +150,7 @@
                             <span
                                 class={cn(
                                     'mt-3 inline-flex items-center gap-1 text-sm font-semibold opacity-0 transition group-hover:opacity-100',
-                                    starter.lightText ? 'text-white' : 'text-neutral-900'
+                                    starter.lightText ? 'text-white' : 'text-greyscale-900'
                                 )}
                             >
                                 Build this

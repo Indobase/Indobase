@@ -177,7 +177,7 @@
         <div id="searchbox"></div>
 
         <input
-            class="web-input-button bg-white-800/75! relative z-1 !rounded-b-none !pl-10"
+            class="web-input-button bg-white/75! relative z-1 !rounded-b-none !pl-10"
             type="text"
             id="search"
             bind:value

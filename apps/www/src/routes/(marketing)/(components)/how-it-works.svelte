@@ -42,7 +42,7 @@
         <h2
             class="font-aeonik-pro text-center text-[clamp(2rem,4vw,3.25rem)] leading-tight font-medium tracking-[-0.02em] text-[#0a0a0a] dark:text-white"
         >
-            Meet <span class="text-[#C47A1A] dark:text-[#3b8fd6]">Indobase</span>
+            Meet <span class="text-[#3b8fd6]">Indobase</span>
         </h2>
 
         <div class="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-14">
@@ -112,7 +112,7 @@
                             </div>
                             <div class="grid flex-1 gap-3 p-4 sm:grid-cols-3">
                                 <div
-                                    class="rounded-xl bg-gradient-to-br from-sky-100 to-blue-200/80 p-3 dark:from-sky-900/40 dark:to-blue-900/30 sm:col-span-2"
+                                    class="rounded-xl bg-gradient-to-br from-indoblue-100 to-indoblue-200/80 p-3 sm:col-span-2"
                                 >
                                     <div class="mb-2 h-2 w-24 rounded bg-black/15 dark:bg-white/20"></div>
                                     <div class="h-2 w-40 rounded bg-black/10 dark:bg-white/10"></div>
@@ -140,9 +140,9 @@
                                     app.indobase.in
                                 </p>
                                 <div
-                                    class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400"
+                                    class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-semibold text-green-700"
                                 >
-                                    <span class="size-1.5 rounded-full bg-emerald-500"></span>
+                                    <span class="size-1.5 rounded-full bg-green-500"></span>
                                     Live
                                 </div>
                             </div>

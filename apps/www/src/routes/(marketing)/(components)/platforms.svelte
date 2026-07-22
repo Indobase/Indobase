@@ -27,7 +27,6 @@
     import Noise from '$lib/components/fancy/noise.svelte';
     import { Tooltip } from 'bits-ui';
     import { trackEvent } from '$lib/actions/analytics';
-    import { themeInUse } from '$routes/+layout.svelte';
 
     const platforms = [
         // Web Frameworks (by popularity)
@@ -180,9 +179,7 @@
                                                 )}
                                         >
                                             <img
-                                                src={$themeInUse === 'light' && platform.light
-                                                    ? platform.light
-                                                    : platform.dark}
+                                                src={platform.light ?? platform.dark}
                                                 alt={platform.name}
                                                 class={cn(
                                                     'h-8 w-auto grayscale transition-all duration-500 group-hover:grayscale-0'

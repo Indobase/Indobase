@@ -3,6 +3,18 @@
     import { trackEvent } from '$lib/actions/analytics';
     import { cn } from '$lib/utils/cn';
 
+    /*
+     * Some "features" are actually exclusions — every row rendered the same blue tick, so a
+     * limitation read as an included benefit. These get a muted dash instead, so a prospect cannot
+     * come away thinking Free or Basic include Studio.
+     *
+     * Listed explicitly rather than pattern-matched on a leading "No": Studio's "No idle sleep" is
+     * a premium benefit (apps stay warm), and a heuristic marks it as a limitation — inverting the
+     * meaning of the top tier's headline perk. Add new exclusions here by hand.
+     */
+    const EXCLUDED_FEATURES = new Set(['Builder only (no Studio)', 'No Studio (upgrade to Pro)']);
+    const isExclusion = (feature: string) => EXCLUDED_FEATURES.has(feature.trim());
+
     const plans: Array<{
         id: string;
         name: string;
@@ -118,7 +130,7 @@
     <div
         class={cn(
             'pointer-events-none absolute top-0 left-1/2 -z-0 h-[420px] w-[min(100%,900px)] -translate-x-1/2',
-            'bg-[radial-gradient(ellipse_at_center,rgba(59,143,214,0.18)_0%,transparent_65%)]'
+            'bg-[radial-gradient(ellipse_at_center,rgba(59, 143, 214,0.18)_0%,transparent_65%)]'
         )}
         aria-hidden="true"
     ></div>
@@ -183,6 +195,7 @@
                         {#if features && features.length > 0}
                             <ul class="mb-8 flex flex-col gap-2.5 text-[13px] font-normal text-white/80">
                                 {#each features as feature}
+                                    {@const excluded = isExclusion(feature)}
                                     <li class="flex items-start gap-2.5">
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
@@ -194,11 +207,20 @@
                                             stroke-width="1.5"
                                             stroke-linecap="round"
                                             stroke-linejoin="round"
-                                            class="mt-[1px] h-4 w-4 shrink-0 text-[#3b8fd6]"
-                                            ><path d="M20 6 9 17l-5-5" /></svg
+                                            class={cn(
+                                                'mt-[1px] h-4 w-4 shrink-0',
+                                                excluded ? 'text-white/35' : 'text-[#3b8fd6]'
+                                            )}
+                                            aria-hidden="true"
+                                            >{#if excluded}<path d="M5 12h14" />{:else}<path
+                                                    d="M20 6 9 17l-5-5"
+                                                />{/if}</svg
                                         >
-                                        <span class="flex-1 leading-snug tracking-normal"
-                                            >{feature}</span
+                                        <span
+                                            class={cn(
+                                                'flex-1 leading-snug tracking-normal',
+                                                excluded ? 'text-white/45' : ''
+                                            )}>{feature}</span
                                         >
                                     </li>
                                 {/each}

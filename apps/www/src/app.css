@@ -1,5 +1,10 @@
 @import '../node_modules/tailwindcss';
 @import './styles/typography.css';
+/*
+ * The site is light-only: `.dark` is never applied to any element, so every `dark:` utility is
+ * unreachable. The variant itself is deliberately kept declared — Tailwind errors on an unknown
+ * variant, so removing it would break the build for the ~119 `dark:` classes still in the markup.
+ */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -507,19 +512,7 @@
     --color-subtle: var(--color-greyscale-850);
 }
 
-.dark {
-    /* --color-primary: var(--color-greyscale-100);
-    --color-secondary: var(--color-greyscale-300); */
-    --color-primary: #6aabe0; /* Indobase blue, lifted for dark backgrounds */
-    --color-secondary: #ffffff;
-    /* --color-secondary: #138808;  */
-    --carousel-gradient: 23, 23, 26;
-    --color-primary-bg: var(--color-greyscale-900);
-    --color-smooth: hsl(0 0% 100% / 0.06);
-    --color-tertiary: var(--color-greyscale-600);
-    --color-offset: hsl(0 0% 100% / 0.1);
-    --color-card: var(--color-greyscale-850);
-}
+/* The `.dark` token overrides were removed with dark mode; the light values above are now final. */
 
 /* Kept under the original class name so existing markup keeps working; now brand blue. */
 .saffron-button {

@@ -26,7 +26,12 @@
             <h2
                 class="font-aeonik-pro text-[clamp(2rem,4vw,3rem)] leading-tight font-medium tracking-[-0.02em] text-[#0a0a0a] dark:text-white"
             >
-                <span class="text-[#C47A1A] dark:text-[#3b8fd6]">Indobase</span> in numbers
+                <!--
+                    Was "Indobase in numbers", but the three stats below are words (Builder /
+                    Studio / India), not figures — the heading promised metrics we do not publish.
+                    Retitled to match what the section actually shows.
+                -->
+                What you get with <span class="text-[#3b8fd6]">Indobase</span>
             </h2>
             <p class="mt-3 text-base font-medium text-[#5c5c5c] md:text-lg dark:text-white/55">
                 An AI builder with a real backend — built for Indian founders and SMBs.
@@ -37,7 +42,7 @@
             {#each stats as stat (stat.value)}
                 <div class="flex flex-col items-center gap-3 text-center">
                     <p
-                        class="font-aeonik-pro text-[clamp(2.5rem,5vw,3.75rem)] leading-none font-medium tracking-[-0.03em] text-[#C47A1A] dark:text-[#3b8fd6]"
+                        class="font-aeonik-pro text-[clamp(2.5rem,5vw,3.75rem)] leading-none font-medium tracking-[-0.03em] text-[#3b8fd6]"
                     >
                         {stat.value}
                     </p>

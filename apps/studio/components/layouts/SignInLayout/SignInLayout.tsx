@@ -177,65 +177,86 @@ const SignInLayout = ({
           </nav>
         </div>
 
-        <div className="flex flex-1 h-full">
-          <main className="flex flex-col items-center flex-1 flex-shrink-0 px-5 pt-16 pb-8 border-r shadow-lg bg-studio border-default">
-            <div className="flex-1 flex flex-col justify-center w-[330px] sm:w-[384px]">
-              <div className="mb-10">
-                <h1 className="mt-8 mb-2 lg:text-3xl">{heading}</h1>
-                <h2 className="text-sm text-foreground-light">{subheading}</h2>
-              </div>
-
-              {children}
-            </div>
-
-            {showDisclaimer && showTos && (
-              <div className="text-center text-balance">
-                <p className="text-xs text-foreground-lighter sm:mx-auto sm:max-w-sm">
-                  By continuing, you agree to Indobase’s{' '}
-                  <Link
-                    href="https://indobase.in/terms"
-                    className="underline hover:text-foreground-light"
-                  >
-                    Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link
-                    href="https://indobase.in/privacy"
-                    className="underline hover:text-foreground-light"
-                  >
-                    Privacy Policy
-                  </Link>
-                  , and to receive periodic emails with updates.
-                </p>
-              </div>
-            )}
-          </main>
-
-          <aside className="flex-col items-center justify-center flex-1 flex-shrink hidden basis-1/4 xl:flex">
-            {quote !== null && showTestimonial && (
-              <div className="relative flex flex-col gap-6">
-                <div className="absolute select-none -top-12 -left-11">
-                  <span className="text-[160px] leading-none text-foreground-muted/30">{'“'}</span>
+        {/*
+          Centered card rather than the previous full-bleed split. The old layout stretched the form
+          to half the viewport, so on a wide monitor a 384px form sat in a ~900px column of empty
+          panel. The card bounds the whole thing and pairs the form with an illustration panel.
+        */}
+        <div className="flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
+          <div className="w-full max-w-[1040px] overflow-hidden rounded-2xl border border-default bg-studio shadow-2xl lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <main className="flex flex-col items-center px-6 py-12 sm:px-10">
+              <div className="flex w-full max-w-[384px] flex-1 flex-col justify-center">
+                <div className="mb-10">
+                  <h1 className="mb-2 lg:text-3xl">{heading}</h1>
+                  <h2 className="text-sm text-foreground-light">{subheading}</h2>
                 </div>
 
-                <blockquote className="z-10 max-w-lg text-3xl">{quote.text}</blockquote>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-surface-200 border border-default flex items-center justify-center text-sm text-foreground">
-                    {initials}
-                  </div>
-                  <div className="flex flex-col">
-                    <cite className="not-italic font-medium text-foreground-light whitespace-nowrap">
-                      {quote.name}
-                    </cite>
-                    {quote.role && (
-                      <span className="text-xs text-foreground-lighter">{quote.role}</span>
-                    )}
-                  </div>
-                </div>
+                {children}
               </div>
-            )}
-          </aside>
+
+              {showDisclaimer && showTos && (
+                <div className="mt-10 text-balance text-center">
+                  <p className="text-xs text-foreground-lighter sm:mx-auto sm:max-w-sm">
+                    By continuing, you agree to Indobase’s{' '}
+                    <Link
+                      href="https://indobase.in/terms"
+                      className="underline hover:text-foreground-light"
+                    >
+                      Terms of Service
+                    </Link>{' '}
+                    and{' '}
+                    <Link
+                      href="https://indobase.in/privacy"
+                      className="underline hover:text-foreground-light"
+                    >
+                      Privacy Policy
+                    </Link>
+                    , and to receive periodic emails with updates.
+                  </p>
+                </div>
+              )}
+            </main>
+
+            {/*
+              Illustration panel. Hidden below lg so the form keeps the full card on small screens —
+              the panel is decoration and must never push the inputs into a narrow column.
+            */}
+            <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#EAF3FB] p-10 dark:bg-[#12212E] lg:flex">
+              {/*
+                Fills the panel and is anchored to the top, so the shapes spread across the width
+                instead of stacking in a column. The artwork's lower third is intentionally sparse —
+                the testimonial card sits over it.
+              */}
+              <img
+                src={`${BASE_PATH}/img/auth-illustration.svg`}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-95"
+              />
+
+              {quote !== null && showTestimonial && (
+                <figure className="relative z-10 mt-auto rounded-xl border border-default/60 bg-studio/85 p-6 backdrop-blur-sm">
+                  <blockquote className="text-base leading-relaxed text-foreground">
+                    “{quote.text}”
+                  </blockquote>
+
+                  <figcaption className="mt-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-default bg-surface-200 text-xs text-foreground">
+                      {initials}
+                    </div>
+                    <div className="flex flex-col">
+                      <cite className="whitespace-nowrap font-medium not-italic text-foreground-light">
+                        {quote.name}
+                      </cite>
+                      {quote.role && (
+                        <span className="text-xs text-foreground-lighter">{quote.role}</span>
+                      )}
+                    </div>
+                  </figcaption>
+                </figure>
+              )}
+            </aside>
+          </div>
         </div>
       </div>
     </>

@@ -55,8 +55,16 @@ export function getAppwriteDashboardUrl(path = ''): string {
     return `${resolvedPath}${separator}${utmParams}`;
 }
 
-/** Sign-up URL that sends users to plan selection after first sign-in (marketing → create account → choose plan → product). */
+/**
+ * Sign-up URL — lands directly on Studio's sign-up.
+ *
+ * This used to append `returnTo=/billing/plans`, pushing every new account into plan selection
+ * before they had seen the product. Sign-up now ends where Studio's own post-sign-in flow decides,
+ * so the marketing CTAs ask for one step rather than two.
+ *
+ * `extraParams` still passes through for campaign links (e.g. `{ code: 'sites300' }`).
+ */
 export function getSignUpUrl(extraParams: Record<string, string> = {}): string {
-    const params = new URLSearchParams({ returnTo: '/billing/plans', ...extraParams });
-    return getAppwriteDashboardUrl(`/sign-up?${params.toString()}`);
+    const query = new URLSearchParams(extraParams).toString();
+    return getAppwriteDashboardUrl(`/sign-up${query ? `?${query}` : ''}`);
 }

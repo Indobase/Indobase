@@ -8,7 +8,7 @@
         aria-hidden="true"
     ></div>
     <div
-        class="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-64 bg-[radial-gradient(ellipse_60%_80%_at_50%_100%,rgba(59,143,214,0.18)_0%,transparent_70%)]"
+        class="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-64 bg-[radial-gradient(ellipse_60%_80%_at_50%_100%,rgba(59, 143, 214,0.18)_0%,transparent_70%)]"
         aria-hidden="true"
     ></div>
 

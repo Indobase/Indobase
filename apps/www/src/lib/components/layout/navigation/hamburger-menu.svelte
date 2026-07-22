@@ -34,7 +34,7 @@
     <span class="h-4.5 w-7">
         <span
             class={cn(
-                'dark:bg-primary relative block h-px w-6 translate-y-1 bg-gray-800 transition-all duration-200 ease-in-out',
+                'dark:bg-primary relative block h-px w-6 translate-y-1 bg-greyscale-800 transition-all duration-200 ease-in-out',
                 'before:bg-primary before:absolute before:bottom-1 before:left-0 before:block before:h-px before:w-7',
                 'before:ease-in-out before:[transition:bottom_200ms_200ms,transform_200ms]',
                 'after:bg-primary after:absolute after:top-1 after:left-0 after:block after:h-px after:w-7',

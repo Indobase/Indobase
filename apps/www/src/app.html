@@ -3,6 +3,12 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!--
+            The site is light-only. Declaring it here keeps native UI (form controls, scrollbars,
+            spellcheck underlines) light even when the visitor's OS is set to dark, which would
+            otherwise render dark widgets on our light surfaces.
+        -->
+        <meta name="color-scheme" content="light" />
         <meta name="twitter:site" content="@Indobase" />
         <link rel="icon" type="image/svg+xml" href="/favicon-indobase.svg" />
 
@@ -42,28 +48,8 @@
         />
         %sveltekit.head%
     </head>
-    <body class="dark group/body antialiased" data-sveltekit-preload-data="hover">
+    <body class="light group/body antialiased" data-sveltekit-preload-data="hover">
         <script>
-            // Theme
-            const isDocs = window.location.pathname.startsWith('/docs');
-            if (isDocs) {
-                const theme = localStorage.getItem('theme');
-                if (theme) {
-                    document.body.classList.remove('dark', 'light');
-                    if (theme === 'system') {
-                        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-                            .matches
-                            ? 'dark'
-                            : 'light';
-                        document.body.classList.add(systemTheme);
-                    } else {
-                        document.body.classList.add(theme);
-                        // Color scheme in html
-                        document.documentElement.style.setProperty('color-scheme', theme);
-                    }
-                }
-            }
-
             // Progressive enhancement
             document.body.dataset.jsEnabled = '';
 

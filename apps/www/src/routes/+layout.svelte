@@ -1,49 +1,19 @@
 <script lang="ts" module>
     import { browser } from '$app/environment';
     import { type Reo, loadReoScript } from '$lib/reodotdev';
-    import { derived as storeDerived, writable } from 'svelte/store';
 
-    export type Theme = 'dark' | 'light' | 'system';
-    export const currentTheme = (() => {
-        const { subscribe, set: baseSet, update } = writable<Theme>(getPreferredTheme());
-
-        const set: typeof baseSet = (value) => {
-            baseSet(value);
-            if (browser) {
-                localStorage.setItem('theme', value);
-                document.documentElement.style.setProperty('color-scheme', value);
-            }
-        };
-
-        return { subscribe, set, update };
-    })();
-
-    export const themeInUse = storeDerived(currentTheme, (theme) => {
-        return theme === 'system' ? getSystemTheme() : theme;
-    });
-
-    function isTheme(theme: unknown): theme is Theme {
-        return ['dark', 'light', 'system'].includes(theme as Theme);
-    }
-
-    function getSystemTheme(): Theme {
-        if (!browser) return 'dark';
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-
-    function getPreferredTheme() {
-        if (!browser) {
-            return 'dark';
-        }
-
-        const theme = localStorage.getItem('theme');
-
-        if (!isTheme(theme)) {
-            return 'dark';
-        }
-
-        return theme;
-    }
+    /*
+     * The marketing site is light-only.
+     *
+     * The theme store, the OS `prefers-color-scheme` probe, and the localStorage preference all
+     * used to live here and defaulted to 'dark' — which is why the site rendered dark for every
+     * first-time visitor. `light` is now set statically on <body> in app.html, so no theme class is
+     * ever swapped at runtime and there is no dark flash before hydration.
+     *
+     * Consumers that varied by theme (the platform/technology logo sets) now reference the light
+     * asset directly. The `.dark` class is never applied, so the remaining `dark:` utilities and
+     * `#{$theme-dark}` SCSS blocks are unreachable rather than conditional.
+     */
 </script>
 
 <script lang="ts">
@@ -65,26 +35,11 @@
     import { displayHiringMessage } from '$lib/utils/console';
     import { getCanonicalUrl } from '$lib/utils/canonical';
 
-    function applyTheme(theme: Theme) {
-        if (!browser) return;
-
-        const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
-        const className = `${resolvedTheme}`;
-        document.body.classList.remove('dark', 'light');
-        document.body.classList.add(className);
-    }
-
     const thresholds = [0.25, 0.5, 0.75];
     const tracked = new SvelteSet<number>();
 
     onMount(() => {
         displayHiringMessage();
-        saveReferrerAndUtmSource(page.url);
-
-        const initialTheme = getPreferredTheme();
-
-        applyTheme(initialTheme);
-
         saveReferrerAndUtmSource(page.url);
 
         initPostHog();
@@ -96,8 +51,6 @@
         capturePostHogPageview(to.url.pathname);
     });
 
-    currentTheme.subscribe(applyTheme);
-
     beforeNavigate(({ willUnload, to }) => {
         if (window) {
             tracked.clear();
@@ -105,12 +58,6 @@
 
         if (updated.current && !willUnload && to?.url) {
             location.href = to.url.href;
-        }
-    });
-
-    $effect(() => {
-        if (browser && !document.body.classList.contains(`${$currentTheme}`)) {
-            applyTheme($currentTheme);
         }
     });
 

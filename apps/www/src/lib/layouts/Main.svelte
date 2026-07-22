@@ -10,94 +10,44 @@
     import { browser } from '$app/environment';
     import { MobileNav, IsLoggedIn } from '$lib/components';
     import { BANNER_KEY } from '$lib/constants';
-    import { isVisible } from '$lib/utils/isVisible';
     import { createScrollInfo } from '$lib/utils/scroll';
-    import { addEventListener } from '@melt-ui/svelte/internal/helpers';
     import { onMount } from 'svelte';
     import { getSignUpUrl } from '$lib/utils/dashboard';
+    import { getBuilderUrl } from '$lib/utils/builder';
     import MainNav from '$lib/components/MainNav.svelte';
     import { Button, Icon } from '$lib/components/ui';
 
     export let omitMainId = false;
     export let hideNavigation = false;
-    let theme: 'light' | 'dark' | null = 'dark';
-
-    function setupThemeObserver() {
-        const handleVisibility = () => {
-            theme = getVisibleTheme();
-        };
-
-        const observer = new MutationObserver(handleVisibility);
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        const callbacks = [
-            addEventListener(window, 'scroll', handleVisibility),
-            addEventListener(window, 'resize', handleVisibility)
-        ];
-
-        return () => {
-            observer.disconnect();
-            callbacks.forEach((callback) => callback());
-        };
-    }
-
-    function isInViewport(element: Element): boolean {
-        const mobileHeader = document.querySelector('.aw-mobile-header');
-        const isMobile =
-            mobileHeader &&
-            getComputedStyle(mobileHeader).display !== 'none' &&
-            isVisible(mobileHeader, {
-                top: 0,
-                bottom: window.innerHeight,
-                left: 0,
-                right: window.innerWidth
-            });
-        const h = isMobile || 'bannerHidden' in document.body.dataset ? 32 : 64;
-
-        return isVisible(element, {
-            top: h,
-            bottom: h,
-            left: 0,
-            right: window.innerWidth
-        });
-    }
-
-    function getVisibleTheme() {
-        const themes = Array.from(document.querySelectorAll('.dark, .light')).filter((element) => {
-            const { classList, dataset } = element as HTMLElement;
-            if (
-                classList.contains('web-mobile-header') ||
-                classList.contains('web-main-header') ||
-                element === document.body ||
-                typeof dataset['themeIgnore'] === 'string'
-            ) {
-                return false;
-            }
-            return true;
-        });
-
-        for (const theme of themes) {
-            if (isInViewport(theme)) {
-                return theme.classList.contains('light') ? 'light' : 'dark';
-            }
-        }
-
-        return 'dark';
-    }
+    /*
+     * The header used to pick its own theme by scanning the page for whichever `.dark`/`.light`
+     * section was in view, driven by a MutationObserver on document.body (childList + subtree) plus
+     * unthrottled scroll and resize handlers.
+     *
+     * Two reasons it is gone: the site is light-only now, and the scan explicitly skipped
+     * document.body, so with no other themed section on the page it always fell through to its
+     * 'dark' fallback — a dark header on a light page. Pinning the value also drops an observer that
+     * re-ran on every DOM mutation and every scroll frame.
+     */
+    const theme: 'light' | 'dark' = 'light';
 
     onMount(() => {
         setTimeout(() => {
             $initialized = true;
         }, 1000);
-        return setupThemeObserver();
     });
 
+    /*
+     * Terms and Privacy used to sit here. They are legal boilerplate, not destinations a visitor
+     * navigates to while evaluating the product, and both are already linked in the footer next to
+     * DPDP and Cookies — so they were spending primary-nav real estate twice over. Builder takes
+     * that space instead, since trying the product is the action this page is asking for.
+     */
     const navLinks = [
+        { label: 'Builder', href: getBuilderUrl() },
         { label: 'Pricing', href: '/pricing' },
-        { label: 'Contact', href: '/contact-us' },
-        { label: 'Terms', href: '/terms' },
-        { label: 'Privacy', href: '/privacy' },
-        { label: 'Enterprise', href: '/contact-us/enterprise' }
+        { label: 'Enterprise', href: '/contact-us/enterprise' },
+        { label: 'Contact', href: '/contact-us' }
     ];
 
     $: resolvedTheme = $isMobileNavOpen ? 'dark' : theme;

@@ -2,9 +2,9 @@
   <!-- Background rectangle for consistent sizing -->
   <rect width="280" height="50" fill="none" />
   
-  <!-- Two saffron-colored dots (first a bigger one, then a smaller one) -->
-  <circle cx="18" cy="25" r="9" fill="#FF9933" />
-  <circle cx="42" cy="25" r="5" fill="#FF9933" />
+  <!-- Two brand-blue dots (first a bigger one, then a smaller one) -->
+  <circle cx="18" cy="25" r="9" fill="#3b8fd6" />
+  <circle cx="42" cy="25" r="5" fill="#3b8fd6" />
   
   <!-- "indobase" text -->
   <text x="60" y="34" font-family="Arial, sans-serif" font-size="30" fill="#EDEDF0">indobase</text>

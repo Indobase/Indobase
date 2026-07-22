@@ -1,6 +1,5 @@
 <script lang="ts">
     import { socials } from '$lib/constants';
-    import ThemeSelect from './ThemeSelect.svelte';
     import { trackEvent } from '$lib/actions/analytics';
 
     export let variant: 'homepage' | 'docs' = 'homepage';
@@ -89,9 +88,13 @@
                     </li>
                 {/each}
             </ul>
-            <div class="web-main-footer-grid-1-column-2">
-                <ThemeSelect />
-            </div>
+            <!--
+                Column 2 held the light/dark theme picker. The site is light-only now, so the cell
+                is kept (empty) rather than deleted: the web-main-footer-grid-1-column-* styles come
+                from the external design-system package, and if that grid relies on auto-placement
+                instead of explicit grid-column values, dropping a cell would shift columns 3 and 4.
+            -->
+            <div class="web-main-footer-grid-1-column-2"></div>
             <ul class="web-main-footer-grid-1-column-3 web-main-footer-links items-end text-right">
                 <li>
                     <a

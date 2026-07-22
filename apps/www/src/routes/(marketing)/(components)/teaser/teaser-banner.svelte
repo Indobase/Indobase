@@ -24,12 +24,12 @@
     {#if showLabel}
         <!-- Label: Teaser Banner -->
         <div class="absolute -top-8 left-0 z-20 flex items-center gap-2">
-            <span class="text-sm font-medium text-blue-400">Teaser Banner</span>
+            <span class="text-sm font-medium text-indoblue-400">Teaser Banner</span>
         </div>
         <!-- Code Icon -->
         <div class="absolute -top-8 right-0 z-20">
             <svg
-                class="h-4 w-4 text-blue-400"
+                class="h-4 w-4 text-indoblue-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

@@ -90,9 +90,15 @@
                 type="button"
                 class={cn(
                     'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all',
+                    /*
+                     * This input now only renders in the closing "Ready to build?" section, which
+                     * sits on a light ground in the blue brand palette — so the button stays
+                     * near-black rather than the hero's purple, which would be a lone purple
+                     * element outside the cloud.
+                     */
                     prompt.trim()
-                        ? 'bg-[#0a0a0a] text-white hover:opacity-90 dark:bg-white dark:text-black'
-                        : 'cursor-not-allowed bg-black/5 text-[#9a9a9a] dark:bg-white/10 dark:text-white/35'
+                        ? 'bg-[#0a0a0a] text-white hover:opacity-90'
+                        : 'cursor-not-allowed bg-black/5 text-[#9a9a9a]'
                 )}
                 disabled={!prompt.trim()}
                 onclick={submit}

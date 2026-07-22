@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 520" width="560" height="520" role="img" aria-label="Abstract Indobase shapes">
+  <!--
+    Auth panel illustration.
+    Inline-animated SVG rather than a GIF: ~3KB against a GIF's hundreds, scales to any panel size
+    without artefacts, and the drift respects prefers-reduced-motion, which a GIF cannot.
+    Composition is weighted to the upper two-thirds — the testimonial card is pinned to the bottom
+    of the panel, so anything down there would be covered.
+  -->
+  <defs>
+    <linearGradient id="ib-leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6AABE0"/><stop offset="100%" stop-color="#3B8FD6"/>
+    </linearGradient>
+    <linearGradient id="ib-blob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B8D9F2"/><stop offset="100%" stop-color="#8FC0E8"/>
+    </linearGradient>
+    <linearGradient id="ib-ribbon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#DCECF8"/><stop offset="100%" stop-color="#B8D9F2"/>
+    </linearGradient>
+    <linearGradient id="ib-accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2F7BC0"/><stop offset="100%" stop-color="#2566A3"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .drift  { animation: drift 11s ease-in-out infinite; transform-origin: center; }
+    .drift2 { animation: drift 14s ease-in-out infinite reverse; transform-origin: center; }
+    .drift3 { animation: drift 9s ease-in-out infinite; transform-origin: center; }
+    @keyframes drift {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-14px) rotate(3deg); }
+    }
+    @media (prefers-reduced-motion: reduce) { .drift, .drift2, .drift3 { animation: none; } }
+  </style>
+
+  <!-- leaf, upper left -->
+  <g class="drift">
+    <ellipse cx="150" cy="150" rx="104" ry="112" fill="url(#ib-leaf)" transform="rotate(-16 150 150)"/>
+    <path d="M150 56v190M150 104l46-28M150 146l52-32M150 188l46-28M150 104l-46-28M150 146l-52-32M150 188l-46-28"
+          stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" fill="none" opacity=".85"
+          transform="rotate(-16 150 150)"/>
+  </g>
+
+  <!-- ribbon, upper right -->
+  <g class="drift2">
+    <path d="M420 44c44-18 74 10 68 46-6 40-38 54-50 90-10 32 6 58-10 72-18 16-50 4-54-22-6-34 22-48 28-86 6-36-24-78 18-100Z"
+          fill="url(#ib-ribbon)"/>
+    <path d="M430 84c-12 32 8 58 2 90-6 30-26 42-24 66"
+          stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none" opacity=".9"/>
+  </g>
+
+  <!-- blob, centre -->
+  <g class="drift3">
+    <path d="M300 250c72 0 122 50 122 112 0 66-54 114-122 114s-122-48-122-114c0-62 50-112 122-112Z"
+          fill="url(#ib-blob)"/>
+    <path d="M244 340c13-15 31-15 44 0M312 340c13-15 31-15 44 0"
+          stroke="#1F3B52" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <circle cx="368" cy="374" r="10" fill="#FFFFFF" opacity=".95"/>
+  </g>
+
+  <!-- brand dots -->
+  <circle cx="300" cy="228" r="12" fill="url(#ib-accent)" class="drift"/>
+  <circle cx="62"  cy="300" r="15" fill="#B8D9F2" class="drift2"/>
+  <circle cx="500" cy="268" r="9"  fill="#3B8FD6" opacity=".6" class="drift3"/>
+  <circle cx="118" cy="396" r="8"  fill="#6AABE0" opacity=".7" class="drift"/>
+</svg>
