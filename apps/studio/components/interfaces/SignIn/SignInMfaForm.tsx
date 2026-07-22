@@ -168,6 +168,7 @@ export const SignInMfaForm = ({ context = 'sign-in' }: SignInMfaFormProps) => {
                 form={formId}
                 htmlType="submit"
                 size="large"
+                type="primary"
                 disabled={isVerifying || isSuccess}
                 loading={isVerifying || isSuccess}
               >

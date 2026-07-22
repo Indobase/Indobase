@@ -243,7 +243,7 @@ export const SignInForm = () => {
             form={formId}
             htmlType="submit"
             size="large"
-            type="warning"
+            type="primary"
             loading={isSubmitting}
           >
             Sign in

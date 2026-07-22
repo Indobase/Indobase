@@ -31,7 +31,14 @@
 >
     <div class="web-footer-nav container">
         <img
-            class="web-logo"
+            class="web-logo block dark:hidden"
+            src="/images/logos/indobase-light.svg"
+            alt="Indobase"
+            height="24"
+            width="130"
+        />
+        <img
+            class="web-logo hidden dark:block"
             src="/images/logos/indobase.svg"
             alt="Indobase"
             height="24"

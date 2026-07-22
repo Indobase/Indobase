@@ -158,7 +158,7 @@ const ResetPasswordForm = () => {
           block
           htmlType="submit"
           size="large"
-          type="warning"
+          type="primary"
           disabled={form.formState.isSubmitting}
           loading={form.formState.isSubmitting}
         >
