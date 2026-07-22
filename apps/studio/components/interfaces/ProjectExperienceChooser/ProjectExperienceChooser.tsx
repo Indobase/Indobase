@@ -176,7 +176,7 @@ export const ProjectExperienceChooser = () => {
               <ExperienceTile
                 eyebrow="Indobase Payments"
                 title="Payments"
-                description="Collect INR from your customers — subscriptions, invoices, and payouts — without leaving this project. Settles to your own merchant account."
+                description="Collect INR from your customers — subscriptions, invoices, and payouts — in this project. Same Studio login; settles to your own merchant account."
                 icon={<CreditCard size={24} strokeWidth={1.75} className="text-[#4F46E5]" />}
                 accentClassName="bg-[#4F46E5]/10"
                 comingSoon

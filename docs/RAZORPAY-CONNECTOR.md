@@ -3,6 +3,9 @@
 Companion to [PAYMENTS.md](./PAYMENTS.md). Product-facing name is always **Indobase Payments**. This
 note covers how Indobase talks to Razorpay once the commercial relationship is settled.
 
+Operators never get a separate Payments login — Studio sign-up / sign-in is the only human auth.
+Razorpay keys below are **machine credentials** for money movement, not a second user account.
+
 ---
 
 ## 1. Recurring Payments, not Razorpay Subscriptions

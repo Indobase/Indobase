@@ -18,9 +18,26 @@ existing Razorpay flow in Studio. Indobase Payments is for *your* end users payi
 | Collect INR | Cards, UPI, and other methods via a licensed Indian aggregator |
 | Plans & invoices | Subscriptions and one-off invoices owned by the project |
 | Payouts | Settlements land in the merchant’s own bank account |
-| In-project UI | Onboarding, keys, and payment history live next to Backend Studio |
+| In-project UI | Onboarding, keys, and payment history live inside Studio — same session |
+| Access | **No separate login.** Same Studio sign-up / sign-in (GoTrue) as Builder and Backend |
 
 Brand surfaces (chooser tile, marketing hero “Payments” tile, docs) always say **Indobase Payments**.
+
+---
+
+## Auth — same Studio account
+
+Indobase Payments is a surface inside Studio, not a separate product portal.
+
+- Operators use the existing Studio **sign-up / sign-in** (`studio.indobase.in`). No second password,
+  no Payments-only account, no OAuth app of its own.
+- Authorization is the same org / project membership already used for Backend Studio and Builder
+  handoff. Opening Payments from the project chooser continues the current session.
+- Merchant KYC / sub-merchant onboarding is **additional business verification**, not a new login.
+  It attaches to the signed-in org member; it does not replace GoTrue.
+
+End-customers paying a merchant never use Studio auth — they pay via the merchant’s app / checkout
+(hosted by Indobase Payments + the aggregator). That is payer checkout, not an Indobase login.
 
 ---
 
@@ -92,9 +109,9 @@ that path into Indobase Payments.
 ## Sequencing
 
 1. Settle aggregator relationship (legal + partnerships). **Blocking.**
-2. Sub-merchant onboarding + KYC state in Studio / control plane.
-3. Project-scoped payment APIs and webhook ingestion.
-4. Product UI — replace the Coming soon tile on the project chooser.
+2. Sub-merchant KYC / onboarding UI in Studio, attached to the existing org session (no new auth).
+3. Project-scoped payment APIs and webhook ingestion (Studio `/api/platform/*` session already required).
+4. Product UI — replace the Coming soon tile on the project chooser; deep-link from the same login.
 
-Until step 1 is closed, authentication (platform key vs sub-merchant key), chargeback liability, and
-settlement split remain undefined.
+Until step 1 is closed, aggregator API authentication (platform key vs sub-merchant key), chargeback
+liability, and settlement split remain undefined. That is **provider** auth, not user login.
