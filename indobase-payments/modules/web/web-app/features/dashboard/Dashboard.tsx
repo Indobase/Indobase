@@ -1,5 +1,5 @@
 import { Button, Card, Checkbox, Flex, Separator } from '@md/ui'
-import { Heart, SettingsIcon } from 'lucide-react'
+import { SettingsIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -106,19 +106,6 @@ export const Dashboard = () => {
         {!isExpress && <MrrSection />}
         <Separator />
         <DetailsSection />
-        <Separator />
-        <div className="h-10 text-center justify-center text-xs text-muted-foreground flex gap-1 ">
-          <span>2026 © Indobase /</span>
-          <span className="flex items-baseline gap-1">
-            Built with <Heart size="10" fill="red" strokeWidth={0} className="" /> in Europe /
-          </span>
-          <span>
-            Open-source on{' '}
-            <a href="https://github.com/Indobase/indobase-payments" className="underline">
-              Github
-            </a>
-          </span>
-        </div>
       </div>
     </>
   )
