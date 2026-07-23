@@ -53,16 +53,27 @@ export const ProtectedRoutes: FC = () => {
     return [expirationTime - now < 60 * 60 * 1000]
   }, [expirationTime])
 
-  if (meQuery.isError) {
-    return logout('No user profile')
-  }
+  useEffect(() => {
+    if (!session?.token) {
+      logout('No session token')
+      return
+    }
+    if (meQuery.isError) {
+      // Prefer Studio sign-in with return path — never bounce to Payments /registration (sign-up).
+      logout('No user profile')
+      return
+    }
+    if (shouldRefresh) {
+      logout('Token expiring')
+    }
+  }, [session?.token, meQuery.isError, shouldRefresh, logout])
 
   if (!session?.token) {
-    return logout('No session token')
+    return <Loader />
   }
 
-  if (shouldRefresh) {
-    logout('Token expiring')
+  if (meQuery.isError) {
+    return <Loader />
   }
 
   if (meQuery.isLoading) {

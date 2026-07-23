@@ -2,6 +2,12 @@
 # Copy to /etc/dokploy/traefik/dynamic/indobase-payments.yml
 # Requires DNS: payments.indobase.in + api.payments.indobase.in → 103.190.92.249
 # Backend Compose project: indobase-payments (dokploy-network)
+#
+# api.payments.indobase.in serves TWO backends on one host:
+#   - gRPC-Web (browser Connect/gRPC-Web) → meteroid-api:50061  PathPrefix(`/meteroid.`)
+#   - REST (OAuth handoff, OpenAPI, /health) → meteroid-api:8084  everything else
+# Without the gRPC route, Studio SSO succeeds then /me fails (404 on REST) and the
+# web app logs the operator out to Studio auth.
 
 http:
   routers:
@@ -19,9 +25,29 @@ http:
         - websecure
       tls:
         certResolver: letsencrypt
+
+    # gRPC-Web / Connect — higher priority than the catch-all REST router
+    indobase-payments-grpc-http:
+      rule: Host(`api.payments.indobase.in`) && PathPrefix(`/meteroid.`)
+      service: indobase-payments-grpc
+      priority: 100
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+    indobase-payments-grpc-https:
+      rule: Host(`api.payments.indobase.in`) && PathPrefix(`/meteroid.`)
+      service: indobase-payments-grpc
+      priority: 100
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
     indobase-payments-api-http:
       rule: Host(`api.payments.indobase.in`)
       service: indobase-payments-api
+      priority: 1
       middlewares:
         - redirect-to-https
       entryPoints:
@@ -29,15 +55,22 @@ http:
     indobase-payments-api-https:
       rule: Host(`api.payments.indobase.in`)
       service: indobase-payments-api
+      priority: 1
       entryPoints:
         - websecure
       tls:
         certResolver: letsencrypt
+
   services:
     indobase-payments-web:
       loadBalancer:
         servers:
           - url: http://indobase-payments-meteroid-web-1:80
+        passHostHeader: true
+    indobase-payments-grpc:
+      loadBalancer:
+        servers:
+          - url: http://indobase-payments-meteroid-api-1:50061
         passHostHeader: true
     indobase-payments-api:
       loadBalancer:

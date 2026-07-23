@@ -192,10 +192,21 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-traefik-public}
+      # gRPC-Web (browser) — must win over the REST catch-all on the same host
+      - traefik.http.routers.indobase-payments-grpc.rule=Host(`${PAYMENTS_API_HOST:-api.payments.indobase.in}`) && PathPrefix(`/meteroid.`)
+      - traefik.http.routers.indobase-payments-grpc.priority=100
+      - traefik.http.routers.indobase-payments-grpc.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-payments-grpc.tls=true
+      - traefik.http.routers.indobase-payments-grpc.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-payments-grpc.service=indobase-payments-grpc
+      - traefik.http.services.indobase-payments-grpc.loadbalancer.server.port=50061
+      # REST (OAuth handoff, OpenAPI, /health)
       - traefik.http.routers.indobase-payments-api.rule=Host(`${PAYMENTS_API_HOST:-api.payments.indobase.in}`)
+      - traefik.http.routers.indobase-payments-api.priority=1
       - traefik.http.routers.indobase-payments-api.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-payments-api.tls=true
       - traefik.http.routers.indobase-payments-api.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-payments-api.service=indobase-payments-api
       - traefik.http.services.indobase-payments-api.loadbalancer.server.port=8084
     logging: *logging
 

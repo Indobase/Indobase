@@ -77,9 +77,9 @@ export const AuthLayout = () => {
         <Flex justify="between" align="center">
           <IndobasePaymentsTitle forceTheme="dark" />
           <div className="text-xs">
-            <span className="text-muted-foreground mr-1">Need an Indobase account?</span>
-            <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-up`} className="underline">
-              Sign up in Studio
+            <span className="text-muted-foreground mr-1">Use your Indobase Studio account</span>
+            <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-in`} className="underline">
+              Sign in to Studio
             </a>
           </div>
         </Flex>
