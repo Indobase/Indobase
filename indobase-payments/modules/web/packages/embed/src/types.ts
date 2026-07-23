@@ -27,7 +27,7 @@ export interface BillingPortalOptions {
   view?: EmbedView
   /** Force the color theme. */
   theme?: EmbedTheme
-  /** Hex accent color override, e.g. `#C6F94E`. */
+  /** Hex accent color override, e.g. `#3B8FD6`. */
   accent?: string
   /** Control roundness override. */
   radius?: EmbedRadius

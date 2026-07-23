@@ -2,7 +2,7 @@
  * Portal design tokens.
  *
  * Ported from the "Customer Portal" design (Layout B — centered, slim tabs,
- * light-default with a dark variant, blush accent, dark "spotlight" cards).
+ * light-default with a dark variant, Indobase blue accent, dark "spotlight" cards).
  *
  * The portal renders inside a single scoped root so its tokens never leak into
  * (or inherit from) the host product's global Tailwind theme. Everything is
@@ -10,9 +10,9 @@
  * including embeds and overlays.
  *
  * Resolution precedence (highest wins):
- *   1. URL overrides         (?theme=dark&accent=%23C6F94E&radius=Rounded)
+ *   1. URL overrides         (?theme=dark&accent=%233B8FD6&radius=Rounded)
  *   2. Tenant branding        (invoicing entity brand color, future portal settings)
- *   3. Built-in defaults      (light · Modern radii · blush)
+ *   3. Built-in defaults      (light · Modern radii · Indobase blue)
  */
 
 export type PortalThemeMode = 'light' | 'dark'
@@ -46,10 +46,10 @@ export interface PortalThemeConfig {
   colors?: PortalColorOverrides
 }
 
-export const DEFAULT_ACCENT = '#EFC9C9'
+export const DEFAULT_ACCENT = '#3B8FD6'
 
 export const DEFAULT_THEME: PortalThemeConfig = {
-  theme: 'dark',
+  theme: 'light',
   roundness: 'Modern',
   accent: DEFAULT_ACCENT,
 }
@@ -148,7 +148,7 @@ export interface PortalBrandPreset {
  */
 export const BRAND_PRESETS: PortalBrandPreset[] = (
   [
-    { key: 'hex', label: 'Hex violet', light: '255 38% 37%', dark: '0 71% 86%' },
+    { key: 'hex', label: 'Indobase blue', light: '207.5 65.4% 53.5%', dark: '207 66% 68%' },
     { key: 'indigo', label: 'Linear indigo', light: '239 84% 60%', dark: '234 89% 74%' },
     { key: 'emerald', label: 'Emerald', light: '160 84% 32%', dark: '158 64% 60%' },
     { key: 'amber', label: 'Amber', light: '32 95% 44%', dark: '38 92% 65%' },

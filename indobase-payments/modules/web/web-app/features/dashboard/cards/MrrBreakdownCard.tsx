@@ -87,7 +87,7 @@ const colors = {
   expansion: 'bg-blue-700',
   reactivation: 'bg-yellow-700',
   churn: 'bg-red-700',
-  contraction: 'bg-purple-700',
+  contraction: 'bg-sky-700',
 }
 
 // same in tailwind :
