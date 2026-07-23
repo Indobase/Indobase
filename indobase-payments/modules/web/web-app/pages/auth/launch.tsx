@@ -43,18 +43,12 @@ export const Launch = () => {
     cleanUrl.searchParams.delete('handoff')
     window.history.replaceState({}, '', cleanUrl.toString())
 
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = `${env.meteroidRestApiUri.replace(/\/+$/, '')}/oauth/studio-handoff`
-    form.style.display = 'none'
-
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = 'token'
-    input.value = token
-    form.appendChild(input)
-    document.body.appendChild(form)
-    form.submit()
+    // Full-page GET exchange (same pattern as OAuth callback) — no CORS needed.
+    const exchange = new URL(
+      `${env.meteroidRestApiUri.replace(/\/+$/, '')}/oauth/studio-handoff`
+    )
+    exchange.searchParams.set('token', token)
+    window.location.replace(exchange.toString())
   }, [navigate, searchParams])
 
   if (error) {
