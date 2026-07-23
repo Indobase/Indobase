@@ -5,8 +5,9 @@ usage-billing engine. It is an AGPL-3.0 fork of
 [Meteroid](https://github.com/meteroid-oss/meteroid), rebranded for Indobase.
 
 > Customer-facing brand is **Indobase Payments** only. There is no separate
-> Meteroid marketing surface. Operators eventually use Studio login; phase 1
-> ships a self-hosted stack with its own auth until Studio SSO/handoff lands.
+> Meteroid marketing surface. Operators use **Studio login** via a signed
+> handoff (`/launch` + `STUDIO_HANDOFF_SECRET`); unauthenticated visits redirect
+> to Studio sign-in.
 
 This directory lives **inside the Indobase monorepo** (`Indobase/Indobase`) as an
 AGPL boundary — not a separate GitHub repository. Source ships on the same
@@ -25,7 +26,8 @@ any network-deployed modifications (monorepo path is the published source).
 | Plans, metering, invoices, proration | Indobase Payments (this directory) |
 | Money movement (cards / UPI / mandates) | Payment adapter — **Stripe today**; **Razorpay later** |
 | Indobase platform plan billing (Free/Basic/Pro…) | Studio Razorpay (`apps/studio`) — **not** this product |
-| Operator auth (target) | Studio GoTrue session / SSO handoff (follow-up) |
+| Operator auth | Studio GoTrue session → Payments handoff JWT (`/launch`) |
+
 
 Monorepo docs: [`docs/INDOBASE-PAYMENTS.md`](../docs/INDOBASE-PAYMENTS.md),
 [`docs/PAYMENTS.md`](../docs/PAYMENTS.md),
@@ -84,9 +86,10 @@ in this phase.
 
 ## Studio surface
 
-Studio project page `/project/[ref]/payments` deep-links to
-`NEXT_PUBLIC_INDOBASE_PAYMENTS_URL` (default `https://payments.indobase.in`).
-Same Studio session messaging; dedicated Payments SSO is a follow-up.
+Studio project page `/project/[ref]/payments` launches Payments with a short-lived
+handoff token (`GET /api/platform/projects/[ref]/payments/launch` → Payments
+`/launch` → `POST /oauth/studio-handoff`). Operators never use a separate
+Meteroid password login.
 
 ## AGPL reminder
 

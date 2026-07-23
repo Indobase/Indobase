@@ -55,6 +55,14 @@ pub struct LoginUserRequest {
     pub password: SecretString,
 }
 
+/// Studio → Payments SSO: find-or-create operator user + org membership.
+#[derive(Clone, Debug)]
+pub struct StudioHandoffSigninRequest {
+    pub email: String,
+    pub organization_slug: String,
+    pub organization_name: Option<String>,
+}
+
 #[derive(Clone, Debug)]
 pub struct LoginUserResponse {
     pub token: SecretString,

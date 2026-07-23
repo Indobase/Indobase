@@ -1,8 +1,9 @@
 import { Flex } from '@ui/components'
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 
 import { IndobasePaymentsTitle } from '@/components/svg'
+import { env } from '@/lib/env'
 import { useForceTheme } from 'providers/ThemeProvider'
 
 type StarStyle = {
@@ -26,27 +27,22 @@ export const AuthLayout = () => {
   const [stars, setStars] = useState<StarStyle[]>([])
 
   useEffect(() => {
-    // Create an array of random stars
     const generateStars = () => {
       const newStars = []
-      const count = Math.floor(Math.random() * 50) + 150 // Between 150-200 stars
+      const count = Math.floor(Math.random() * 50) + 150
 
       for (let i = 0; i < count; i++) {
-        // Random position
         const left = Math.random() * 100
         const top = Math.random() * 100
 
-        // Skip stars that would appear in the center Outlet area
-        // This is an approximate calculation to avoid the center area
         const isCenterX = left > 30 && left < 70
         const isCenterY = top > 20 && top < 80
         if (isCenterX && isCenterY) continue
 
-        // Randomize between white and gray with varying opacity
         const color =
           Math.random() > 0.5
-            ? `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.2})` // white with 0.2-0.7 opacity
-            : `rgba(180, 180, 180, ${Math.random() * 0.4 + 0.1})` // gray with 0.1-0.5 opacity
+            ? `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.2})`
+            : `rgba(180, 180, 180, ${Math.random() * 0.4 + 0.1})`
 
         newStars.push({
           left: `${left}%`,
@@ -79,13 +75,10 @@ export const AuthLayout = () => {
         <Flex justify="between" align="center">
           <IndobasePaymentsTitle forceTheme="dark" />
           <div className="text-xs">
-            <span className="text-muted-foreground mr-1">
-              {isLogin ? `Don't have an account?` : 'Already have an account?'}
-            </span>
-
-            <Link to={isLogin ? 'registration' : 'login'}>
-              <span className="underline">{isLogin ? 'Sign up' : 'Log in'}</span>
-            </Link>
+            <span className="text-muted-foreground mr-1">Need an Indobase account?</span>
+            <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-up`} className="underline">
+              Sign up in Studio
+            </a>
           </div>
         </Flex>
       </div>
@@ -93,21 +86,20 @@ export const AuthLayout = () => {
       <Flex justify="center" align="center" className="grow pb-20">
         <Flex direction="column" className="p-10 w-96 gap-3 text-start relative z-10">
           <Outlet />
-          <div className="text-xs">
-            <span className="text-muted-foreground mr-1">
-              {isLogin ? `Don't have an account?` : 'Already have an account?'}
-            </span>
-
-            <Link to={isLogin ? 'registration' : 'login'}>
-              <span className="underline">{isLogin ? 'Sign up' : 'Log in'}</span>
-            </Link>
-          </div>
+          {isLogin ? null : (
+            <div className="text-xs">
+              <span className="text-muted-foreground mr-1">Already have an account?</span>
+              <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-in`} className="underline">
+                Sign in with Studio
+              </a>
+            </div>
+          )}
         </Flex>
       </Flex>
       <div className="absolute bottom-0 w-full">
         <img
           src="/sliced.svg"
-          alt="Decorative slice"
+          alt=""
           className="w-full"
           style={{
             pointerEvents: 'none',

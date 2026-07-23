@@ -30,6 +30,7 @@ add_optional() {
     echo "    IS_DOCKER: true,"
     echo "    VITE_METEROID_API_EXTERNAL_URL: \"${VITE_METEROID_API_EXTERNAL_URL}\","
     echo "    VITE_METEROID_REST_API_EXTERNAL_URL: \"${VITE_METEROID_REST_API_EXTERNAL_URL}\","
+    add_optional VITE_STUDIO_URL
     add_optional VITE_PUBLIC_POSTHOG_KEY
     add_optional VITE_PUBLIC_POSTHOG_HOST
     add_optional VITE_PUBLIC_POSTHOG_HOST_FALLBACK

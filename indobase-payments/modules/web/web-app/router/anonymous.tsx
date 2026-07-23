@@ -12,11 +12,17 @@ import {
   ResetPassword,
   ValidateEmail,
 } from '@/pages/auth'
+import { Launch } from '@/pages/auth/launch'
 import { OauthSuccess } from '@/pages/auth/oauth-success'
 
 export const anonymousRoutes: RouteObject = {
   element: <AnonymousRoutes />,
   children: [
+    {
+      path: '/launch',
+      element: <Launch />,
+      handle: { title: 'Connecting…' },
+    },
     {
       element: <AuthLayout />,
       children: [

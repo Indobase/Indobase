@@ -88,6 +88,11 @@ pub struct Config {
     #[envconfig(from = "ORGANIZATION_INVITE_TTL_DAYS", default = "7")]
     pub invite_ttl_days: u32,
 
+    /// Shared with Studio (`PAYMENTS_HANDOFF_SECRET` / `BUILDER_HANDOFF_SECRET`).
+    /// When set (>= 32 chars), `GET/POST /oauth/studio-handoff` accepts Studio SSO.
+    #[envconfig(from = "STUDIO_HANDOFF_SECRET")]
+    pub studio_handoff_secret: Option<SecretString>,
+
     #[envconfig(nested)]
     pub redis: RedisConfig,
 }

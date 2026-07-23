@@ -2,11 +2,14 @@ use crate::api_rest::AppState;
 use crate::api_rest::empty_string_as_none;
 use crate::config::Config;
 use crate::errors::RestApiError;
+use axum::Form;
 use axum::extract::{Path, Query, State};
 use axum::response::Redirect;
 use error_stack::Report;
+use jsonwebtoken::{DecodingKey, Validation};
 use meteroid_oauth::model::OauthProvider;
 use meteroid_store::domain::oauth::{OauthVerifierData, SignInData};
+use meteroid_store::domain::users::StudioHandoffSigninRequest;
 use meteroid_store::errors::StoreError;
 use meteroid_store::repositories::TenantInterface;
 use meteroid_store::repositories::connectors::ConnectorsInterface;
@@ -26,6 +29,124 @@ pub struct GetCallbackUrlParams {
 pub struct CallbackParams {
     code: String,
     state: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StudioHandoffParams {
+    token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct StudioHandoffClaims {
+    aud: String,
+    email: String,
+    exp: i64,
+    organization_slug: String,
+    #[serde(default)]
+    organization_name: Option<String>,
+}
+
+fn resolve_studio_handoff_secret() -> Option<SecretString> {
+    let from_config = Config::get()
+        .studio_handoff_secret
+        .as_ref()
+        .map(|s| s.expose_secret().to_string())
+        .filter(|s| s.len() >= 32);
+    let from_env = std::env::var("PAYMENTS_HANDOFF_SECRET")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| s.len() >= 32);
+    from_config.or(from_env).map(SecretString::from)
+}
+
+fn verify_studio_handoff_token(
+    token: &str,
+    secret: &SecretString,
+) -> Result<StudioHandoffClaims, String> {
+    let mut validation = Validation::default();
+    validation.set_audience(&["indobase-payments"]);
+    validation.validate_exp = true;
+
+    let data = jsonwebtoken::decode::<StudioHandoffClaims>(
+        token,
+        &DecodingKey::from_secret(secret.expose_secret().as_bytes()),
+        &validation,
+    )
+    .map_err(|e| format!("invalid handoff token: {e}"))?;
+
+    if data.claims.aud != "indobase-payments" {
+        return Err("invalid handoff audience".into());
+    }
+    if data.claims.email.trim().is_empty() || data.claims.organization_slug.trim().is_empty() {
+        return Err("handoff token missing email or organization".into());
+    }
+
+    Ok(data.claims)
+}
+
+#[axum::debug_handler]
+pub async fn studio_handoff(
+    Query(params): Query<StudioHandoffParams>,
+    State(app_state): State<AppState>,
+) -> Redirect {
+    exchange_studio_handoff(&params.token, app_state).await
+}
+
+#[axum::debug_handler]
+pub async fn studio_handoff_form(
+    Form(params): Form<StudioHandoffParams>,
+    State(app_state): State<AppState>,
+) -> Redirect {
+    exchange_studio_handoff(&params.token, app_state).await
+}
+
+async fn exchange_studio_handoff(token: &str, app_state: AppState) -> Redirect {
+    let Some(secret) = resolve_studio_handoff_secret() else {
+        log::warn!("STUDIO_HANDOFF_SECRET / PAYMENTS_HANDOFF_SECRET not configured");
+        return Redirect::to(signin_error_url_msg("studio handoff is not configured").as_str());
+    };
+
+    let claims = match verify_studio_handoff_token(token, &secret) {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("Studio handoff verify failed: {e}");
+            return Redirect::to(signin_error_url_msg(&e).as_str());
+        }
+    };
+
+    let auth_res = app_state
+        .store
+        .studio_handoff_signin(StudioHandoffSigninRequest {
+            email: claims.email,
+            organization_slug: claims.organization_slug,
+            organization_name: claims.organization_name,
+        })
+        .await;
+
+    match auth_res {
+        Ok(resp) => Redirect::to(signin_success_url(&resp.token).as_str()),
+        Err(e) => {
+            log::warn!("Studio handoff signin failed: {e:?}");
+            Redirect::to(signin_error_url(e).as_str())
+        }
+    }
+}
+
+fn signin_error_url_msg(error: &str) -> String {
+    format!(
+        "{}/login?error={}",
+        Config::get().public_url.as_str(),
+        urlencoding_encode(error)
+    )
+}
+
+fn urlencoding_encode(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
+            _ => format!("%{:02X}", c as u8),
+        })
+        .collect()
 }
 
 #[axum::debug_handler]
@@ -89,10 +210,6 @@ async fn oauth_connect_callback(
                 .await
                 .map_err(RestApiError::from)?;
 
-            // Initiator threaded through the verifier row (server-side keyed
-            // by an opaque id) so the callback can attribute the audit to
-            // the user who clicked "Connect". Pre-upgrade verifier rows
-            // didn't carry this — fall back to System.
             use common_domain::actor::Actor;
             use common_domain::ids::{BaseId, UserId};
             use meteroid_store::domain::entity_activity::{
@@ -173,14 +290,12 @@ async fn signin_callback(
 fn signin_error_url(error: Report<StoreError>) -> String {
     let error = match error.current_context() {
         StoreError::OauthError(error) => error.as_ref(),
+        StoreError::UserRegistrationClosed(error) => error.as_ref(),
+        StoreError::InvalidArgument(error) => error.as_ref(),
         _ => "internal server error",
     };
 
-    format!(
-        "{}/login?error={}",
-        Config::get().public_url.as_str(),
-        error
-    )
+    signin_error_url_msg(error)
 }
 
 fn signin_success_url(token: &SecretString) -> String {

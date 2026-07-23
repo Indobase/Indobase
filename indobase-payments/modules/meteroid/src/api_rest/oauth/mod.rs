@@ -6,6 +6,11 @@ mod router;
 
 pub fn oauth_routes() -> Router<AppState> {
     Router::new()
+        // Register concrete path before `/oauth/{provider}` so it is not captured as a provider.
+        .route(
+            "/oauth/studio-handoff",
+            get(router::studio_handoff).post(router::studio_handoff_form),
+        )
         .route(
             "/oauth/{provider}",
             get(router::redirect_to_identity_provider),
