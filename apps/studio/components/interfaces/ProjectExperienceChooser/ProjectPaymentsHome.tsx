@@ -1,54 +1,94 @@
-import { CreditCard, ExternalLink } from 'lucide-react'
-import { Badge, Button } from 'ui'
-import { EmptyStatePresentational } from 'ui-patterns'
-import { PageContainer } from 'ui-patterns/PageContainer'
-import { PageSection, PageSectionContent } from 'ui-patterns/PageSection'
+import { useParams } from 'common'
+import { ExternalLink, Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Button } from 'ui'
 
 const DEFAULT_PAYMENTS_URL = 'https://payments.indobase.in'
 
-function getIndobasePaymentsUrl(): string {
+function getIndobasePaymentsBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_INDOBASE_PAYMENTS_URL?.trim()
   if (!fromEnv) return DEFAULT_PAYMENTS_URL
   return fromEnv.replace(/\/+$/, '')
 }
 
 /**
- * Indobase Payments — in-project getting-started surface.
- * Deep-links to the Indobase Payments app (Meteroid-derived AGPL engine).
- * Operators stay on the Studio session; SSO/handoff into Payments is follow-up.
+ * Opens the live Indobase Payments product from the project surface.
+ * Prefers an in-panel iframe (CSP allows Studio hosts); falls back to same-tab
+ * navigation so operators never land on a dead Getting Started card.
  */
 export const ProjectPaymentsHome = () => {
-  const paymentsUrl = getIndobasePaymentsUrl()
+  const { ref } = useParams()
+  const [iframeFailed, setIframeFailed] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+
+  const paymentsUrl = useMemo(() => {
+    const url = new URL(getIndobasePaymentsBaseUrl())
+    url.searchParams.set('from', 'studio')
+    if (ref) url.searchParams.set('project_ref', ref)
+    return url.toString()
+  }, [ref])
+
+  const openPayments = (mode: 'same-tab' | 'new-tab') => {
+    if (mode === 'new-tab') {
+      window.open(paymentsUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+    setRedirecting(true)
+    window.location.assign(paymentsUrl)
+  }
+
+  // If the iframe is blocked (legacy CSP) or errors, fall through to same-tab.
+  useEffect(() => {
+    if (!iframeFailed) return
+    setRedirecting(true)
+    const timer = window.setTimeout(() => {
+      window.location.assign(paymentsUrl)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [iframeFailed, paymentsUrl])
+
+  if (redirecting || iframeFailed) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-foreground-light" aria-hidden />
+        <p className="text-sm text-foreground-light">Opening Indobase Payments…</p>
+        <Button type="primary" icon={<ExternalLink size={14} />} onClick={() => openPayments('same-tab')}>
+          Continue in Indobase Payments
+        </Button>
+      </div>
+    )
+  }
 
   return (
-    <PageContainer size="large">
-      <PageSection>
-        <PageSectionContent className="flex min-h-[60vh] flex-col items-center justify-center py-16">
-          <EmptyStatePresentational
-            icon={<CreditCard size={28} strokeWidth={1.5} className="text-[#3B8FD6]" />}
-            title="Indobase Payments"
-            description="Collect payments from your customers — subscriptions, invoices, and usage-based charges — with the Indobase Payments engine. You are already signed in with Studio; SSO into Payments is coming next."
+    <div className="flex h-[calc(100vh-3.5rem)] min-h-[28rem] flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-default bg-surface-100 px-4 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">Indobase Payments</p>
+          <p className="truncate text-xs text-foreground-lighter">
+            Live product — plans, customers, invoices, and metering
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <Button type="default" onClick={() => openPayments('same-tab')}>
+            Continue in Indobase Payments
+          </Button>
+          <Button
+            type="primary"
+            icon={<ExternalLink size={14} />}
+            onClick={() => openPayments('new-tab')}
           >
-            <div className="mt-4 flex flex-col items-center gap-4">
-              <Badge variant="default">Available · engine ready</Badge>
-              <p className="max-w-md text-center text-sm text-foreground-light">
-                Open Indobase Payments to manage plans, customers, and invoices. Stripe works today;
-                Razorpay Recurring Payments for INR is next. Settlements go to your merchant account
-                — Indobase orchestrates; it does not take custody of funds.
-              </p>
-              <Button asChild type="primary" icon={<ExternalLink size={14} />}>
-                <a href={paymentsUrl} target="_blank" rel="noopener noreferrer">
-                  Open Indobase Payments
-                </a>
-              </Button>
-              <p className="max-w-sm text-center text-xs text-foreground-lighter">
-                Same Indobase product — no separate Payments marketing brand. Studio SSO/handoff
-                will replace a second login when ready.
-              </p>
-            </div>
-          </EmptyStatePresentational>
-        </PageSectionContent>
-      </PageSection>
-    </PageContainer>
+            Open in new tab
+          </Button>
+        </div>
+      </div>
+      <iframe
+        title="Indobase Payments"
+        src={paymentsUrl}
+        className="h-full w-full flex-1 border-0 bg-surface-100"
+        allow="clipboard-write; payment"
+        referrerPolicy="strict-origin-when-cross-origin"
+        onError={() => setIframeFailed(true)}
+      />
+    </div>
   )
 }

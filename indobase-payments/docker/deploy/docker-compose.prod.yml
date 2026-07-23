@@ -260,6 +260,9 @@ services:
     environment:
       - VITE_METEROID_API_EXTERNAL_URL=${VITE_METEROID_API_EXTERNAL_URL:-https://api.payments.indobase.in}
       - VITE_METEROID_REST_API_EXTERNAL_URL=${VITE_METEROID_REST_API_EXTERNAL_URL:-https://api.payments.indobase.in}
+    volumes:
+      # Persist Studio-embed CSP (frame-ancestors) across recreate; file lives next to this compose.
+      - ./nginx-web.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - indobase_payments_net
       - traefik_public
