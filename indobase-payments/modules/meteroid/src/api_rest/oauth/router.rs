@@ -2,7 +2,6 @@ use crate::api_rest::AppState;
 use crate::api_rest::empty_string_as_none;
 use crate::config::Config;
 use crate::errors::RestApiError;
-use axum::Form;
 use axum::extract::{Path, Query, State};
 use axum::response::Redirect;
 use error_stack::Report;
@@ -87,14 +86,6 @@ fn verify_studio_handoff_token(
 #[axum::debug_handler]
 pub async fn studio_handoff(
     Query(params): Query<StudioHandoffParams>,
-    State(app_state): State<AppState>,
-) -> Redirect {
-    exchange_studio_handoff(&params.token, app_state).await
-}
-
-#[axum::debug_handler]
-pub async fn studio_handoff_form(
-    Form(params): Form<StudioHandoffParams>,
     State(app_state): State<AppState>,
 ) -> Redirect {
     exchange_studio_handoff(&params.token, app_state).await
