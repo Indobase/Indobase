@@ -46,4 +46,7 @@ changelogUI.md
 docs/instructions/Roadmap.md
 .cursorrules
 *.md
+# Vendored upstream skill sources + attribution (runtime uses *.generated.ts)
+!app/lib/skills/**/*.md
 .qodo
+.pnpm-store

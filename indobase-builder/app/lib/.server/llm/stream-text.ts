@@ -38,6 +38,7 @@ import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
 import { getGenerationContractAppendix, inferBuilderProjectTarget } from '~/lib/indobase/generation-contract';
+import { getWebSkillsPromptAppendix } from '~/lib/skills/select-web-skills';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -423,9 +424,26 @@ export async function streamText(props: {
   }
 
   if (chatMode === 'build') {
-    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(
-      inferBuilderProjectTarget(processedMessages, files),
-    )}`;
+    const projectTarget = inferBuilderProjectTarget(processedMessages, files);
+
+    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(projectTarget)}`;
+
+    /*
+     * Selective web-development skill injection (vendored MIT skills). Never dumps the
+     * full catalog — ranking picks a small stack-aware subset for this turn.
+     */
+    const skillsAppendix = getWebSkillsPromptAppendix({
+      messages: processedMessages,
+      files,
+      target: projectTarget,
+    });
+
+    if (skillsAppendix) {
+      systemPrompt = `${systemPrompt}${skillsAppendix}`;
+      logger.info(
+        `Injected web-development skills for ${projectTarget} build (${skillsAppendix.length} chars)`,
+      );
+    }
   }
 
   systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;

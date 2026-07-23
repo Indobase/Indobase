@@ -1,0 +1,10 @@
+Web-development skills under `web-development/` are adapted from:
+
+  https://github.com/davila7/claude-code-templates
+  path: cli-tool/components/skills/web-development
+
+Upstream license: MIT (Copyright (c) 2025 Daniel (San) Ávila)
+See LICENSE-claude-code-templates.txt in this directory.
+
+Indobase Builder selects and injects a subset of these skills into server-side
+codegen prompts. Skills are vendored so production does not fetch them at runtime.
