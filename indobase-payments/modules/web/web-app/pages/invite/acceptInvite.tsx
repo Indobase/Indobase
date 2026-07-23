@@ -1,11 +1,12 @@
 import { skipToken } from '@connectrpc/connect-query'
 import { Button } from '@md/ui'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Loader } from '@/features/auth/components/Loader'
 import { useSession } from '@/features/auth/session'
 import { useQuery } from '@/lib/connectrpc'
+import { env } from '@/lib/env'
 import { getInviteDetails } from '@/rpc/api/instance/v1/instance-InstanceService_connectquery'
 import { OrganizationUserRole } from '@/rpc/api/users/v1/models_pb'
 
@@ -75,20 +76,20 @@ export const AcceptInvite = () => {
         </div>
 
         <div className="space-y-3">
-          <Link to="/login" className="block">
+          <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-in`} className="block">
             <Button variant="primary" className="w-full">
-              Sign in to existing account
+              Sign in with Studio
             </Button>
-          </Link>
-          <Link to="/registration" className="block">
+          </a>
+          <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-up`} className="block">
             <Button variant="secondary" className="w-full">
-              Create new account
+              Create Studio account
             </Button>
-          </Link>
+          </a>
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Your invite will be automatically applied after you sign in or register.
+          After Studio sign-in, open Payments from your project — invite acceptance uses your Studio session.
         </p>
       </div>
     </div>

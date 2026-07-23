@@ -1,13 +1,13 @@
-import { FunctionComponent } from 'react'
+import { useEffect } from 'react'
 
-import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
+import { Loading } from '@/components/Loading'
+import { redirectToStudioSignIn } from '@/lib/studioAuthRedirect'
 
-export const ForgotPassword: FunctionComponent = () => (
-  <>
-    <div className="font-medium text-xl -mb-0.5">Forgot password?</div>
-    <div className="text-muted-foreground text-[13px] mb-3 leading-[18px]">
-      Enter your email address and we will send you instructions to reset your password.
-    </div>
-    <ForgotPasswordForm />
-  </>
-)
+/** Password reset lives in Studio — not on Payments. */
+export const ForgotPassword = (): JSX.Element => {
+  useEffect(() => {
+    redirectToStudioSignIn()
+  }, [])
+
+  return <Loading />
+}
