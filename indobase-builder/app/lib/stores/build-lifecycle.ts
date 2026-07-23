@@ -6,7 +6,12 @@ export const initialBuildLifecycle = atom<InitialBuildLifecycle>('idle');
 
 export const buildRecommendationsReady = computed(
   initialBuildLifecycle,
-  (state) => state === 'idle' || state === 'preview-ready',
+  /*
+   * Hide chips only while the initial build is actively generating/finalizing so they
+   * do not flicker mid-stream. After preview success — or a failed build the user can
+   * still continue from — show recommendation chips again.
+   */
+  (state) => state === 'idle' || state === 'preview-ready' || state === 'failed',
 );
 
 export function beginInitialBuild() {

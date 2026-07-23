@@ -109,17 +109,21 @@ export const Markdown = memo(
           const { children, node, ...rest } = props;
 
           const [firstChild] = node?.children ?? [];
-
-          if (
+          const codeChild =
             firstChild &&
             firstChild.type === 'element' &&
             firstChild.tagName === 'code' &&
-            firstChild.children[0].type === 'text'
-          ) {
-            const { className, ...rest } = firstChild.properties;
+            Array.isArray(firstChild.children)
+              ? firstChild.children[0]
+              : undefined;
+
+          if (codeChild && codeChild.type === 'text') {
+            const { className, ...codeRest } = firstChild.properties ?? {};
             const [, language = 'plaintext'] = /language-(\w+)/.exec(String(className) || '') ?? [];
 
-            return <CodeBlock code={firstChild.children[0].value} language={language as BundledLanguage} {...rest} />;
+            return (
+              <CodeBlock code={codeChild.value} language={language as BundledLanguage} {...codeRest} />
+            );
           }
 
           return <pre {...rest}>{children}</pre>;

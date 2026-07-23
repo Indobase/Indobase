@@ -505,17 +505,17 @@ export async function streamText(props: {
   );
 
   /*
-   * When tools are in play, harden against hallucinated tool calls: register a catch-all sink
-   * tool, reroute bad calls to it via experimental_repairToolCall, and tell the model exactly
-   * which tools exist. Without this a single made-up tool name aborts the entire build stream.
+   * Always harden against hallucinated tool calls — even when MCP tools are intentionally
+   * omitted (first build turn). Without a sink + experimental_repairToolCall, a single
+   * made-up name like `shell` / `read_file` throws AI_NoSuchToolError ("No tools are
+   * available") and aborts the whole stream — which is what left users with error toasts
+   * and no post-build recommendation chips.
    */
-  const baseTools = (filteredOptions as { tools?: Record<string, unknown> }).tools;
-  const hasTools = baseTools && Object.keys(baseTools).length > 0;
-  const toolGuards = hasTools ? buildToolGuards(baseTools) : undefined;
+  const baseTools = (filteredOptions as { tools?: Record<string, unknown> }).tools ?? {};
+  const hadRealTools = Object.keys(baseTools).length > 0;
+  const toolGuards = buildToolGuards(baseTools);
 
-  if (toolGuards) {
-    systemPrompt = `${systemPrompt}${toolGuards.promptAppendix}`;
-  }
+  systemPrompt = `${systemPrompt}${toolGuards.promptAppendix}`;
 
   const streamParams = {
     model: provider.getModelInstance({
@@ -528,11 +528,15 @@ export async function streamText(props: {
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,
-    ...(toolGuards
-      ? {
-          tools: toolGuards.tools,
-          experimental_repairToolCall: toolGuards.repairToolCall,
-        }
+    tools: toolGuards.tools,
+    experimental_repairToolCall: toolGuards.repairToolCall,
+    /*
+     * First-build / discuss turns pass no MCP tools. Keep the sink registered for repair,
+     * but force toolChoice none so the model still writes boltAction files instead of
+     * looping on unavailable_tool.
+     */
+    ...(!hadRealTools && !(filteredOptions as { toolChoice?: unknown }).toolChoice
+      ? { toolChoice: 'none' as const }
       : {}),
 
     // Set temperature to 1 for reasoning models (required by OpenAI API)

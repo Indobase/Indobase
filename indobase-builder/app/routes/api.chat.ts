@@ -158,7 +158,18 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
   try {
     const mcpService = MCPService.getInstance();
-    await ensureIndobaseMcpFromRequest(request, mcpService, env);
+
+    /*
+     * Payments / Studio MCP registration must never take down chat. A failing payments
+     * endpoint previously could reject ensure() and surface as a hard chat error before
+     * the model even started.
+     */
+    try {
+      await ensureIndobaseMcpFromRequest(request, mcpService, env);
+    } catch (error) {
+      logger.warn('Indobase MCP ensure failed; continuing without MCP tools', error);
+    }
+
     const totalMessageContent = messages.reduce((acc, message) => acc + message.content, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 

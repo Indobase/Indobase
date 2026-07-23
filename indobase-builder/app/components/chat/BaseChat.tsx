@@ -33,6 +33,7 @@ import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { MyAppsList } from '~/components/chat/MyAppsList.client';
+import { ChatPaneErrorBoundary } from './ChatPaneErrorBoundary';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -632,7 +633,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <ClientOnly>
                     {() => {
                       return chatStarted ? (
-                        <>
+                        <ChatPaneErrorBoundary>
                           <Messages
                             className="z-1 mx-auto flex w-full max-w-chat flex-1 flex-col pb-4"
                             messages={messages}
@@ -650,7 +651,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                             model={model}
                             provider={provider}
                           />
-                        </>
+                        </ChatPaneErrorBoundary>
                       ) : null;
                     }}
                   </ClientOnly>
