@@ -32,7 +32,7 @@ pnpm add react react-dom
     baseUrl: 'https://payments.indobase.in',
     view: 'plan',
     theme: 'light',
-    accent: '#C6F94E',
+    accent: '#3B8FD6',
     radius: 'Modern',
     onNavigate: target => {
       // Optional. Provide this to handle widget buttons ("Manage", "View all", …)
@@ -56,7 +56,7 @@ export function Billing({ token }: { token: string }) {
   return (
     <>
       {/* full portal */}
-      <BillingPortal token={token} accent="#C6F94E" />
+      <BillingPortal token={token} accent="#3B8FD6" />
 
       {/* compact widget — BillingEmbed takes `view` up front */}
       <BillingEmbed view="invoices" token={token} theme="dark" />
@@ -139,7 +139,7 @@ the tenant's branding, then the built-in defaults.
 | Option   | Values                          | Maps to URL param |
 | -------- | ------------------------------- | ----------------- |
 | `theme`  | `light` \| `dark`               | `?theme=`         |
-| `accent` | hex color, e.g. `#C6F94E`       | `?accent=`        |
+| `accent` | hex color, e.g. `#3B8FD6`       | `?accent=`        |
 | `radius` | `Sharp` \| `Modern` \| `Rounded`| `?radius=`        |
 
 ### Curated palette overrides

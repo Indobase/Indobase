@@ -34,7 +34,7 @@ export const LogoSymbol: FunctionComponent<LogoProps> = ({
     <LogoSVG
       className={cn(
         sizeClasses[size],
-        isDarkMode ? 'text-white' : 'text-[#030008]',
+        isDarkMode ? 'text-white' : 'text-[#3B8FD6]',
         'transition-colors duration-100',
         className
       )}

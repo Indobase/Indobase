@@ -8,7 +8,7 @@ import { topRevenueByCustomer } from '@/rpc/api/stats/v1/stats-StatsService_conn
 
 const colors = [
   'bg-red-700',
-  'bg-purple-700',
+  'bg-sky-700',
   'bg-slate-500',
   'bg-indigo-700',
   'bg-blue-700',

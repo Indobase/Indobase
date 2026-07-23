@@ -11,8 +11,9 @@
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --brand: 242 89.1% 71.2%;
-    --brand-foreground: 242 88% 97%;
+    /* Indobase brand blue #3B8FD6 (Studio/www accent-500) */
+    --brand: 207.5 65.4% 53.5%;
+    --brand-foreground: 0 0% 100%;
     --primary: 240 15% 5%;
     --primary-foreground: 0 0% 90%;
     --secondary: 240 4.8% 95.9%;
@@ -31,17 +32,17 @@
 
     --border: 240 5.9% 90%;
     --input: 0 0% 100%;
-    --ring: 142.1 76.2% 36.3%;
+    --ring: 207.5 65.4% 53.5%;
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary: 207.5 65.4% 53.5%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 207.5 65.4% 53.5%;
   }
 
   .dark {
@@ -51,9 +52,9 @@
     --card-foreground: 0 0% 95%;
     --popover: 240 15% 5%;
     --popover-foreground: 0 0% 95%;
-    /* TODO rename primary into brand and alternative into primary */
-    --brand: 211 95% 63%;
-    --brand-foreground: 144 21% 9%;
+    /* Indobase brand blue — slightly brighter on dark surfaces */
+    --brand: 207.5 65% 58%;
+    --brand-foreground: 210 20% 8%;
     --primary: 0 0% 90%;
     --primary-foreground: 240 15% 5%;
     --secondary: 233 11% 17%;
@@ -72,16 +73,16 @@
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 211 95% 63%;
+    --ring: 207.5 65% 58%;
 
     --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 207.5 65% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 10%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 207.5 65% 58%;
   }
 
   body .light {
@@ -99,7 +100,7 @@
 }
 
 @utility btn-brand {
-  @apply inline-block rounded border border-green-500 bg-green-500 py-1 px-3 text-sm;
+  @apply inline-block rounded border border-brand bg-brand py-1 px-3 text-sm;
   color: #fff !important;
   font-weight: 600;
   line-height: 20px;
@@ -107,7 +108,7 @@
 }
 
 @utility btn-brand-hover {
-  @apply bg-green-600;
+  @apply bg-brand/90;
   cursor: pointer;
 }
 
@@ -273,7 +274,7 @@ div[data-radix-portal]:not(.portal--toast) {
     width: 3px;
     border-top-left-radius: 1.5px;
     border-bottom-left-radius: 1.5px;
-    background: linear-gradient(180deg, #4f46ff -37.5%, #817aff 100%), #7b74ff;
+    background: linear-gradient(180deg, #3B8FD6 -37.5%, #5AA0DE 100%), #6AABE0;
     animation: nav-active-state 0.3s ease-in;
     transition: transform 0.3s ease-out, opacity 0.3s ease-out;
   }
@@ -288,7 +289,7 @@ div[data-radix-portal]:not(.portal--toast) {
 .nav-item-divider {
   width: calc(100% - 1.5rem);
   @apply h-px border-none ml-3;
-  background: linear-gradient(81deg, rgba(246, 202, 220, 0) 0%, hsl(var(--border)) 49%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(81deg, rgba(59, 143, 214, 0) 0%, hsl(var(--border)) 49%, rgba(255, 255, 255, 0) 100%);
 }
 
 /* Chart dotted background */
