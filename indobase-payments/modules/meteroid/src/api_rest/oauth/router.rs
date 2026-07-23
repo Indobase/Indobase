@@ -43,6 +43,9 @@ struct StudioHandoffClaims {
     organization_slug: String,
     #[serde(default)]
     organization_name: Option<String>,
+    /// Caller's Studio org role. Payments moves money, so only owner/admin are accepted.
+    #[serde(default)]
+    role: Option<String>,
 }
 
 fn resolve_studio_handoff_secret() -> Option<SecretString> {
@@ -78,6 +81,13 @@ fn verify_studio_handoff_token(
     }
     if data.claims.email.trim().is_empty() || data.claims.organization_slug.trim().is_empty() {
         return Err("handoff token missing email or organization".into());
+    }
+    // Only owners/admins may access Payments. Studio already rejects members before minting a
+    // token; this re-check means a token that lacks (or forges a non-privileged) role is refused
+    // here too — the engine never trusts Studio's gate alone.
+    match data.claims.role.as_deref() {
+        Some("owner") | Some("admin") => {}
+        _ => return Err("Payments access requires an organization owner or admin".into()),
     }
 
     Ok(data.claims)

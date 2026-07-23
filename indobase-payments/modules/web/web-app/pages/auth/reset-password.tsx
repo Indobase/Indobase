@@ -1,15 +1,13 @@
-import { ResetPasswordForm } from '@/features/auth/components/ResetPasswordForm'
+import { useEffect } from 'react'
 
-import type { FunctionComponent } from 'react'
+import { Loading } from '@/components/Loading'
+import { redirectToStudioSignIn } from '@/lib/studioAuthRedirect'
 
-export const ResetPassword: FunctionComponent = () => {
-  return (
-    <>
-      <div className="font-medium text-xl -mb-0.5">Change your password</div>
-      <div className="text-muted-foreground text-[13px] mb-1 leading-[18px]">
-        Set your new password for your Indobase Payments account.
-      </div>
-      <ResetPasswordForm />
-    </>
-  )
+/** Password reset lives in Studio — not on Payments. */
+export const ResetPassword = (): JSX.Element => {
+  useEffect(() => {
+    redirectToStudioSignIn()
+  }, [])
+
+  return <Loading />
 }

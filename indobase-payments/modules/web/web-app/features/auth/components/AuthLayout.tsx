@@ -1,6 +1,6 @@
 import { Flex } from '@ui/components'
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 
 import { IndobasePaymentsTitle } from '@/components/svg'
 import { env } from '@/lib/env'
@@ -20,10 +20,12 @@ const Star = ({ style }: { style: React.CSSProperties }) => (
   <div className="absolute rounded-full" style={style} />
 )
 
+/**
+ * Minimal Indobase chrome for transient auth routes (handoff errors / redirects).
+ * Never shows Meteroid branding or password forms.
+ */
 export const AuthLayout = () => {
   useForceTheme('dark')
-  const location = useLocation()
-  const isLogin = location.pathname === '/login'
   const [stars, setStars] = useState<StarStyle[]>([])
 
   useEffect(() => {
@@ -86,14 +88,6 @@ export const AuthLayout = () => {
       <Flex justify="center" align="center" className="grow pb-20">
         <Flex direction="column" className="p-10 w-96 gap-3 text-start relative z-10">
           <Outlet />
-          {isLogin ? null : (
-            <div className="text-xs">
-              <span className="text-muted-foreground mr-1">Already have an account?</span>
-              <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-in`} className="underline">
-                Sign in with Studio
-              </a>
-            </div>
-          )}
         </Flex>
       </Flex>
       <div className="absolute bottom-0 w-full">

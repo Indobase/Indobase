@@ -16,3 +16,6 @@ target
 .history
 k8s/*/values.*.yaml
 .env
+# macOS AppleDouble / resource forks (break docker context on external volumes)
+**/._*
+**/.DS_Store

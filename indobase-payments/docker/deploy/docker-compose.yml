@@ -135,10 +135,10 @@ services:
       - meteroid_net
 
   ### Indobase Payments Application Services
-  # Images pinned to Meteroid release tag (no :latest). Rebuild web from this fork for Indobase branding.
+  # Prefer Indobase-built images (handoff + branding). Override via .env.
 
   meteroid-api:
-    image: ghcr.io/meteroid-oss/meteroid-api:sha-80512c2
+    image: ${INDOBASE_PAYMENTS_API_IMAGE:-ghcr.io/meteroid-oss/meteroid-api:sha-80512c2}
     restart: unless-stopped
     depends_on:
       meteroid-db:
@@ -159,6 +159,8 @@ services:
       - ENABLE_MULTI_ORGANIZATION=${ENABLE_MULTI_ORGANIZATION:-false}
       - METEROID_PUBLIC_URL=${METEROID_PUBLIC_URL:-http://localhost:3000}
       - OBJECT_STORE_URI=${OBJECT_STORE_URI:-file:///data/object-store}
+      - STUDIO_HANDOFF_SECRET=${STUDIO_HANDOFF_SECRET:-${PAYMENTS_HANDOFF_SECRET:-}}
+      - PAYMENTS_HANDOFF_SECRET=${PAYMENTS_HANDOFF_SECRET:-${STUDIO_HANDOFF_SECRET:-}}
       - SVIX_JWT_TOKEN=${SVIX_JWT_TOKEN:-}
     #      # S3/MinIO configuration (only needed if using s3:// OBJECT_STORE_URI)
     #      - AWS_ALLOW_HTTP=${AWS_ALLOW_HTTP:-}
@@ -266,7 +268,7 @@ services:
     logging: *logging
 
   meteroid-web:
-    image: ghcr.io/meteroid-oss/meteroid-web:sha-80512c2
+    image: ${INDOBASE_PAYMENTS_WEB_IMAGE:-ghcr.io/meteroid-oss/meteroid-web:sha-80512c2}
     restart: unless-stopped
     depends_on:
       meteroid-api:
@@ -276,6 +278,7 @@ services:
     environment:
       - VITE_METEROID_API_EXTERNAL_URL=${VITE_METEROID_API_EXTERNAL_URL:-http://localhost:50061}
       - VITE_METEROID_REST_API_EXTERNAL_URL=${VITE_METEROID_REST_API_EXTERNAL_URL:-http://localhost:8084}
+      - VITE_STUDIO_URL=${VITE_STUDIO_URL:-https://studio.indobase.in}
     networks:
       - meteroid_net
     logging: *logging

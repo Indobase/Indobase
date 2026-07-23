@@ -5,8 +5,17 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { getURL } from 'lib/helpers'
 
 import { getPrimaryEmail, getProject, getGotrueUserId } from './platform'
+import { executeQuery } from './query'
 
 type Claims = JwtPayload & Record<string, unknown>
+
+/**
+ * Roles allowed to open Payments. Payments controls money movement (payouts, refunds), so a
+ * view-only org member must not reach it — only owners and admins. The engine re-checks `role` in
+ * the handoff token, so this is defence in depth, not the only gate.
+ */
+const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin'] as const
+type PaymentsRole = (typeof PAYMENTS_ALLOWED_ROLES)[number]
 
 export type PaymentsHandoffPayload = {
   aud: 'indobase-payments'
@@ -18,8 +27,32 @@ export type PaymentsHandoffPayload = {
   organization_slug: string
   project_name: string
   project_ref: string
+  /** Caller's org role, propagated so the engine grants matching Payments access (owner/admin only). */
+  role: PaymentsRole
   studio_url: string
   sub: string
+}
+
+/**
+ * The caller's role in the org, or null if they are not an owner/admin (or not a member).
+ * Deliberately returns only the privileged roles — a plain member resolves to null and is denied.
+ */
+async function resolvePaymentsRole(gotrueId: string, organizationSlug: string): Promise<PaymentsRole | null> {
+  if (!gotrueId || !organizationSlug) return null
+  const rows = await executeQuery<{ role: string }>({
+    query: `
+      select m.role
+      from saas.organizations o
+      join saas.organization_members m on m.organization_id = o.id
+      where o.slug = $1 and m.gotrue_id = $2 and m.role in ('owner', 'admin')
+      limit 1
+    `,
+    parameters: [organizationSlug, gotrueId],
+    actorId: gotrueId,
+  })
+  if (rows.error) throw rows.error
+  const role = rows.data?.[0]?.role
+  return role === 'owner' || role === 'admin' ? role : null
 }
 
 function base64Url(input: Buffer | string) {
@@ -105,6 +138,13 @@ export async function getPaymentsLaunchRedirect({
   const studioUrl = getStudioOrigin()
   const userId = getGotrueUserId(claims)
 
+  // Gate on org role: only owners/admins may open Payments (money movement). A member is denied
+  // here — before a token is even minted — and the engine re-checks the role claim as well.
+  const role = await resolvePaymentsRole(userId, project.organization_slug)
+  if (!role) {
+    throw new Error('Payments is available to organization owners and admins only')
+  }
+
   const payload: PaymentsHandoffPayload = {
     aud: 'indobase-payments',
     email: getPrimaryEmail(claims),
@@ -115,6 +155,7 @@ export async function getPaymentsLaunchRedirect({
     organization_slug: project.organization_slug,
     project_name: project.name,
     project_ref: project.ref,
+    role,
     studio_url: studioUrl,
     sub: userId,
   }

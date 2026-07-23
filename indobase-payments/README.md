@@ -67,16 +67,22 @@ Upstream `meteroid-web` images still contain Meteroid chrome. For Indobase
 branding, **build the web image from this tree**:
 
 ```bash
-# From monorepo root
+# From monorepo root — context is indobase-payments/ (not modules/web)
 docker build -t indobase-payments-web:local \
   -f indobase-payments/modules/web/web-app/Dockerfile \
-  indobase-payments/modules/web
+  indobase-payments
+
+docker build -t indobase-payments-api:local \
+  -f indobase-payments/modules/meteroid/api.Dockerfile \
+  --build-arg MOLD_ARCH=aarch64 \
+  --build-arg PROTO_ARCH=aarch_64 \
+  --build-arg GRPC_HEALTH_PROBE_ARCH=arm64 \
+  --build-arg PROFILE=release \
+  indobase-payments
 ```
 
-Point `INDOBASE_PAYMENTS_WEB_IMAGE` (see prod compose) at your registry tag.
-
-Backend API/scheduler/metering may use pinned upstream `ghcr.io/meteroid-oss/*:v1.0.0-rc6`
-until Indobase publishes its own builds; env/secrets and UI brand are Indobase.
+Point `INDOBASE_PAYMENTS_WEB_IMAGE` / `INDOBASE_PAYMENTS_API_IMAGE` at those tags
+(see deploy `.env.example`). Upstream images lack Studio handoff.
 
 ## Stripe (current adapter)
 
@@ -88,7 +94,7 @@ in this phase.
 
 Studio project page `/project/[ref]/payments` launches Payments with a short-lived
 handoff token (`GET /api/platform/projects/[ref]/payments/launch` → Payments
-`/launch` → `POST /oauth/studio-handoff`). Operators never use a separate
+`/launch` → `GET /oauth/studio-handoff`). Operators never use a separate
 Meteroid password login.
 
 ## AGPL reminder

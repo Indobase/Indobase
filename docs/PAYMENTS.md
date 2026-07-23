@@ -1,8 +1,6 @@
 # Indobase Payments — product overview
 
-Status: **phase 1 engine live as self-hosted Indobase Payments** (Meteroid-derived
-AGPL fork). Studio surface deep-links to the Payments app. Razorpay money movement
-and Studio SSO handoff are next.
+Status: **engine live + Studio SSO handoff**. Razorpay money movement is next.
 
 **Indobase Payments** is a first-party Indobase product: businesses built on Indobase
 can take payments from *their own* customers — subscriptions, invoices, usage-based
@@ -25,22 +23,22 @@ see [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) for deploy.
 | Billing engine | Plans, metering, invoices, proration (Indobase Payments / Meteroid fork) |
 | Collect money | Stripe adapter today; **Razorpay Recurring Payments later** (INR / UPI) |
 | Payouts | Settlements to the merchant’s own bank account via the licensed aggregator |
-| In-project UI | Studio `/project/[ref]/payments` deep-links to Payments; same Studio session messaging |
-| Access (target) | **No separate Payments marketing brand.** Operators use Studio login; SSO/handoff is follow-up |
+| In-project UI | Studio `/project/[ref]/payments` → signed handoff → Payments dashboard |
+| Access | **Studio login only.** No Meteroid email/password; unauthenticated Payments visits redirect to Studio |
 
 Brand surfaces always say **Indobase Payments** — never Meteroid in customer-facing UI.
 
 ---
 
-## Auth — same Studio account (target)
+## Auth — same Studio account
 
 Indobase Payments is a product surface of Indobase, not a separate SaaS brand.
 
-- **Target:** operators use existing Studio **sign-up / sign-in** (`studio.indobase.in`).
+- Operators use existing Studio **sign-up / sign-in** (`studio.indobase.in`).
   No second password, no Payments-only marketing portal.
-- **Phase 1:** self-hosted Payments stack may show its own login until Studio
-  SSO/handoff ships. Studio still frames Payments as the same Indobase product.
-- Authorization should map to org / project membership (handoff design = follow-up).
+- Studio mints a short-lived HS256 JWT (`aud=indobase-payments`); Payments
+  `GET /oauth/studio-handoff` verifies it and creates/links a session.
+- Authorization: org **owner/admin** only (Studio gate + token `role` claim).
 - Merchant KYC is **business verification**, not a new Indobase login.
 
 End-customers paying a merchant never use Studio auth — they pay via checkout
@@ -80,8 +78,8 @@ extend that path into Indobase Payments.
 
 ## Sequencing
 
-1. ~~Stand up Indobase Payments engine (this fork) + Studio deep-link~~ **phase 1**
-2. Studio SSO / session handoff into Payments (no second operator identity)
+1. ~~Stand up Indobase Payments engine (this fork) + Studio deep-link~~ **done**
+2. ~~Studio SSO / session handoff into Payments~~ **done**
 3. Razorpay Recurring Payments connector + pre-debit notification scheduling
 4. Sub-merchant KYC / onboarding UI attached to org session
 5. Project-scoped payment APIs and webhook ingestion under Studio session
