@@ -14,8 +14,8 @@ type Claims = JwtPayload & Record<string, unknown>
  * view-only org member must not reach it — only owners and admins. The engine re-checks `role` in
  * the handoff token, so this is defence in depth, not the only gate.
  */
-const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin'] as const
-type PaymentsRole = (typeof PAYMENTS_ALLOWED_ROLES)[number]
+export const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin'] as const
+export type PaymentsRole = (typeof PAYMENTS_ALLOWED_ROLES)[number]
 
 export type PaymentsHandoffPayload = {
   aud: 'indobase-payments'
@@ -37,7 +37,7 @@ export type PaymentsHandoffPayload = {
  * The caller's role in the org, or null if they are not an owner/admin (or not a member).
  * Deliberately returns only the privileged roles — a plain member resolves to null and is denied.
  */
-async function resolvePaymentsRole(gotrueId: string, organizationSlug: string): Promise<PaymentsRole | null> {
+export async function resolvePaymentsRole(gotrueId: string, organizationSlug: string): Promise<PaymentsRole | null> {
   if (!gotrueId || !organizationSlug) return null
   const rows = await executeQuery<{ role: string }>({
     query: `
@@ -98,7 +98,10 @@ export function getStudioOrigin(): string {
 
 export const PAYMENTS_HANDOFF_TTL_SECONDS = 60 * 5
 
-export function makePaymentsHandoffToken(payload: PaymentsHandoffPayload, secret: string): string {
+export function makePaymentsHandoffToken(
+  payload: PaymentsHandoffPayload | Record<string, unknown>,
+  secret: string
+): string {
   const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const payloadB64 = base64Url(JSON.stringify(payload))
   const data = `${headerB64}.${payloadB64}`

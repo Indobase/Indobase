@@ -47,6 +47,10 @@ const nextConfig = {
         destination: '/api/mcp',
       },
       {
+        source: '/mcp/payments',
+        destination: '/api/mcp/payments',
+      },
+      {
         source: `/.well-known/vercel/flags`,
         destination: `https://indobase.in/.well-known/vercel/flags`,
         basePath: false,

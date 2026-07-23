@@ -33,15 +33,17 @@ echo "    Builder: ${BUILDER_IMAGE} @ ${BUILDER_URL}"
 echo "    API:     ${API_URL} (shared prod)"
 echo "    Host:    ${SSH_HOST} (srv1085730)"
 
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
+  env \
+  STUDIO_IMAGE="$STUDIO_IMAGE" \
+  BUILDER_IMAGE="$BUILDER_IMAGE" \
+  STUDIO_URL="$STUDIO_URL" \
+  BUILDER_URL="$BUILDER_URL" \
+  API_URL="$API_URL" \
+  STUDIO_SVC="$STUDIO_SVC" \
+  BUILDER_SVC="$BUILDER_SVC" \
+  bash -s <<'REMOTE'
 set -euo pipefail
-STUDIO_IMAGE="${STUDIO_IMAGE}"
-BUILDER_IMAGE="${BUILDER_IMAGE}"
-STUDIO_URL="${STUDIO_URL}"
-BUILDER_URL="${BUILDER_URL}"
-API_URL="${API_URL}"
-STUDIO_SVC="${STUDIO_SVC}"
-BUILDER_SVC="${BUILDER_SVC}"
 
 mkdir -p /opt/indobase-staging/env
 
@@ -57,19 +59,19 @@ if [[ ! -f /opt/indobase-staging/env/handoff.secret ]]; then
   openssl rand -hex 32 > /opt/indobase-staging/env/handoff.secret
   chmod 600 /opt/indobase-staging/env/handoff.secret
 fi
-HANDOFF="\$(cat /opt/indobase-staging/env/handoff.secret)"
+HANDOFF="$(cat /opt/indobase-staging/env/handoff.secret)"
 
 upsert_env() {
-  local file="\$1" key="\$2" value="\$3"
-  touch "\$file"
-  chmod 600 "\$file"
-  if grep -q "^\$\{key\}=" "\$file" 2>/dev/null; then
+  local file="$1" key="$2" value="$3"
+  touch "$file"
+  chmod 600 "$file"
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
     # Escape sed replacement specials in value
     local escaped
-    escaped=\$(printf '%s' "\$value" | sed -e 's/[\\\\\\/&]/\\\\\\\\&/g')
-    sed -i "s|^\$\{key\}=.*|\$\{key\}=\$\{escaped\}|" "\$file"
+    escaped=$(printf '%s' "$value" | sed -e 's/[\\/&]/\\&/g')
+    sed -i "s|^${key}=.*|${key}=${escaped}|" "$file"
   else
-    printf '%s=%s\n' "\$key" "\$value" >> "\$file"
+    printf '%s=%s\n' "$key" "$value" >> "$file"
   fi
 }
 
@@ -77,9 +79,9 @@ upsert_env() {
 upsert_env /opt/indobase-staging/env/builder.env NODE_ENV production
 upsert_env /opt/indobase-staging/env/builder.env HOST 0.0.0.0
 upsert_env /opt/indobase-staging/env/builder.env PORT 5173
-upsert_env /opt/indobase-staging/env/builder.env BUILDER_HANDOFF_SECRET "\$HANDOFF"
-upsert_env /opt/indobase-staging/env/builder.env STUDIO_INTERNAL_URL "\$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/builder.env INDOBASE_STUDIO_URL "\$STUDIO_URL"
+upsert_env /opt/indobase-staging/env/builder.env BUILDER_HANDOFF_SECRET "$HANDOFF"
+upsert_env /opt/indobase-staging/env/builder.env STUDIO_INTERNAL_URL "$STUDIO_URL"
+upsert_env /opt/indobase-staging/env/builder.env INDOBASE_STUDIO_URL "$STUDIO_URL"
 upsert_env /opt/indobase-staging/env/builder.env NODE_OPTIONS '--dns-result-order=ipv4first'
 
 # Studio: create skeleton once, then always upsert public URLs + handoff.
@@ -93,13 +95,14 @@ EOF
   chmod 600 /opt/indobase-staging/env/studio.env
 fi
 
-upsert_env /opt/indobase-staging/env/studio.env BUILDER_HANDOFF_SECRET "\$HANDOFF"
-upsert_env /opt/indobase-staging/env/studio.env BUILDER_APP_URL "\$BUILDER_URL"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_BUILDER_APP_URL "\$BUILDER_URL"
-upsert_env /opt/indobase-staging/env/studio.env SITE_URL "\$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_SITE_URL "\$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "\$API_URL"
+upsert_env /opt/indobase-staging/env/studio.env BUILDER_HANDOFF_SECRET "$HANDOFF"
+upsert_env /opt/indobase-staging/env/studio.env BUILDER_APP_URL "$BUILDER_URL"
+upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_BUILDER_APP_URL "$BUILDER_URL"
+upsert_env /opt/indobase-staging/env/studio.env SITE_URL "$STUDIO_URL"
+upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_SITE_URL "$STUDIO_URL"
+upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
 
+# Quoted heredocs so Traefik Host(`…`) backticks are not executed by the local shell.
 cat > /etc/dokploy/traefik/dynamic/studio-indobase-fun.yml <<EOF
 http:
   routers:
@@ -121,7 +124,7 @@ http:
     studio-fun-svc:
       loadBalancer:
         servers:
-          - url: http://\${STUDIO_SVC}:8080
+          - url: http://${STUDIO_SVC}:8080
         passHostHeader: true
 EOF
 
@@ -155,43 +158,43 @@ http:
         responseForwarding:
           flushInterval: 1ms
         servers:
-          - url: http://\${BUILDER_SVC}:5173
+          - url: http://${BUILDER_SVC}:5173
         passHostHeader: true
 EOF
 
-echo "Pulling \${STUDIO_IMAGE} and \${BUILDER_IMAGE}…"
-docker pull "\${STUDIO_IMAGE}"
-docker pull "\${BUILDER_IMAGE}"
+echo "Pulling ${STUDIO_IMAGE} and ${BUILDER_IMAGE}…"
+docker pull "${STUDIO_IMAGE}"
+docker pull "${BUILDER_IMAGE}"
 
-if docker service inspect "\${STUDIO_SVC}" >/dev/null 2>&1; then
-  docker service update --image "\${STUDIO_IMAGE}" --limit-memory 1100m "\${STUDIO_SVC}"
+if docker service inspect "${STUDIO_SVC}" >/dev/null 2>&1; then
+  docker service update --image "${STUDIO_IMAGE}" --limit-memory 1100m "${STUDIO_SVC}"
 else
-  docker service create \\
-    --name "\${STUDIO_SVC}" \\
-    --network dokploy-network \\
-    --replicas 1 \\
-    --limit-memory 1100m \\
-    --reserve-memory 512m \\
-    --env-file /opt/indobase-staging/env/studio.env \\
-    --dns 8.8.8.8 --dns 8.8.4.4 \\
-    "\${STUDIO_IMAGE}"
+  docker service create \
+    --name "${STUDIO_SVC}" \
+    --network dokploy-network \
+    --replicas 1 \
+    --limit-memory 1100m \
+    --reserve-memory 512m \
+    --env-file /opt/indobase-staging/env/studio.env \
+    --dns 8.8.8.8 --dns 8.8.4.4 \
+    "${STUDIO_IMAGE}"
 fi
 
-if docker service inspect "\${BUILDER_SVC}" >/dev/null 2>&1; then
-  docker service update --image "\${BUILDER_IMAGE}" --limit-memory 1100m \\
-    --env-add "STUDIO_INTERNAL_URL=\${STUDIO_URL}" \\
-    --env-add "INDOBASE_STUDIO_URL=\${STUDIO_URL}" \\
-    "\${BUILDER_SVC}"
+if docker service inspect "${BUILDER_SVC}" >/dev/null 2>&1; then
+  docker service update --image "${BUILDER_IMAGE}" --limit-memory 1100m \
+    --env-add "STUDIO_INTERNAL_URL=${STUDIO_URL}" \
+    --env-add "INDOBASE_STUDIO_URL=${STUDIO_URL}" \
+    "${BUILDER_SVC}"
 else
-  docker service create \\
-    --name "\${BUILDER_SVC}" \\
-    --network dokploy-network \\
-    --replicas 1 \\
-    --limit-memory 1100m \\
-    --reserve-memory 512m \\
-    --env-file /opt/indobase-staging/env/builder.env \\
-    --dns 8.8.8.8 --dns 8.8.4.4 \\
-    "\${BUILDER_IMAGE}"
+  docker service create \
+    --name "${BUILDER_SVC}" \
+    --network dokploy-network \
+    --replicas 1 \
+    --limit-memory 1100m \
+    --reserve-memory 512m \
+    --env-file /opt/indobase-staging/env/builder.env \
+    --dns 8.8.8.8 --dns 8.8.4.4 \
+    "${BUILDER_IMAGE}"
 fi
 
 docker service ls | grep indobase || true

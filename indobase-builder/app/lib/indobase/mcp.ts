@@ -3,6 +3,7 @@ import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { readStoredConnectionRaw } from '~/lib/indobase/connection-storage';
 
 export const INDOBASE_MCP_SERVER_NAME = 'indobase';
+export const INDOBASE_PAYMENTS_MCP_SERVER_NAME = 'indobase-payments';
 
 function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   const base = studioUrl.trim().replace(/\/+$/, '');
@@ -16,6 +17,13 @@ function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   // Self-hosted Studio has no Content API for docs tools; exclude docs so MCP init succeeds.
   url.searchParams.set('features', 'database,development,debugging');
 
+  return url.toString();
+}
+
+function buildIndobasePaymentsMcpUrl(studioUrl: string, projectRef: string) {
+  const base = studioUrl.trim().replace(/\/+$/, '');
+  const url = new URL('/api/mcp/payments', base);
+  url.searchParams.set('project_ref', projectRef);
   return url.toString();
 }
 
@@ -51,14 +59,23 @@ export function getAutoIndobaseMcpConfig(connection?: IndobaseConnectionState | 
     return null;
   }
 
+  const studioUrl = resolvedConnection.indobase.studioUrl;
+  const projectRef = resolvedConnection.indobase.projectRef;
+  const authHeaders = {
+    Authorization: `Bearer ${resolvedConnection.indobase.mcpToken}`,
+  };
+
   return {
     mcpServers: {
       [INDOBASE_MCP_SERVER_NAME]: {
         type: 'streamable-http',
-        url: buildIndobaseMcpUrl(resolvedConnection.indobase.studioUrl, resolvedConnection.indobase.projectRef),
-        headers: {
-          Authorization: `Bearer ${resolvedConnection.indobase.mcpToken}`,
-        },
+        url: buildIndobaseMcpUrl(studioUrl, projectRef),
+        headers: authHeaders,
+      },
+      [INDOBASE_PAYMENTS_MCP_SERVER_NAME]: {
+        type: 'streamable-http',
+        url: buildIndobasePaymentsMcpUrl(studioUrl, projectRef),
+        headers: authHeaders,
       },
     },
   };
@@ -94,6 +111,13 @@ export function mergeMcpConfigWithIndobase(
         url: buildIndobaseMcpUrl(connection.indobase.studioUrl, connection.indobase.projectRef),
       };
     }
+  }
+
+  if (autoConfig?.mcpServers?.[INDOBASE_PAYMENTS_MCP_SERVER_NAME]) {
+    mergedServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME] =
+      autoConfig.mcpServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME];
+  } else {
+    delete mergedServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME];
   }
 
   return {
