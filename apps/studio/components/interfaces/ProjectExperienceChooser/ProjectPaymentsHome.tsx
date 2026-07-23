@@ -1,5 +1,5 @@
 import { ExternalLink, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from 'ui'
 
 import { usePaymentsLaunch } from './usePaymentsLaunch'
@@ -7,14 +7,18 @@ import { usePaymentsLaunch } from './usePaymentsLaunch'
 /**
  * Opens the live Indobase Payments product from the project surface using a
  * Studio→Payments handoff token (same pattern as Builder `/launch`).
- * Prefers an in-panel iframe; falls back to same-tab navigation.
+ *
+ * Same-tab navigation is the primary UX: the handoff redirects through
+ * `api.payments.indobase.in` and sets a first-party session, which is unreliable
+ * inside a cross-origin iframe (Studio CSP `frame-src`, third-party cookie
+ * blocking, Brave shields). Embedding previously showed Chromium's empty/sad
+ * document instead of Payments.
  */
 export const ProjectPaymentsHome = () => {
-  const { isLaunching, launch } = usePaymentsLaunch()
+  const { launch } = usePaymentsLaunch()
   const [paymentsUrl, setPaymentsUrl] = useState<string | null>(null)
-  const [iframeFailed, setIframeFailed] = useState(false)
-  const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const redirectedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -26,6 +30,10 @@ export const ProjectPaymentsHome = () => {
         return
       }
       setPaymentsUrl(url)
+      if (!redirectedRef.current) {
+        redirectedRef.current = true
+        window.location.assign(url)
+      }
     })()
     return () => {
       cancelled = true
@@ -40,74 +48,54 @@ export const ProjectPaymentsHome = () => {
       window.open(paymentsUrl, '_blank', 'noopener,noreferrer')
       return
     }
-    setRedirecting(true)
     window.location.assign(paymentsUrl)
   }
-
-  useEffect(() => {
-    if (!iframeFailed || !paymentsUrl) return
-    setRedirecting(true)
-    const timer = window.setTimeout(() => {
-      window.location.assign(paymentsUrl)
-    }, 400)
-    return () => window.clearTimeout(timer)
-  }, [iframeFailed, paymentsUrl])
 
   if (error) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
         <p className="text-sm text-foreground-light">{error}</p>
-        <Button type="primary" onClick={() => void launch().then((url) => url && setPaymentsUrl(url))}>
+        <Button
+          type="primary"
+          onClick={() => {
+            redirectedRef.current = false
+            void launch().then((url) => {
+              if (!url) {
+                setError('Could not start Indobase Payments session')
+                return
+              }
+              setError(null)
+              setPaymentsUrl(url)
+              redirectedRef.current = true
+              window.location.assign(url)
+            })
+          }}
+        >
           Retry
         </Button>
       </div>
     )
   }
 
-  if (redirecting || iframeFailed || isLaunching || !paymentsUrl) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-foreground-light" aria-hidden />
-        <p className="text-sm text-foreground-light">Opening Indobase Payments…</p>
-        {paymentsUrl ? (
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-foreground-light" aria-hidden />
+      <div className="max-w-md text-center">
+        <p className="text-sm font-medium text-foreground">Opening Indobase Payments…</p>
+        <p className="mt-1 text-xs text-foreground-lighter">
+          Live product — plans, customers, invoices, and metering
+        </p>
+      </div>
+      {paymentsUrl ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <Button type="primary" icon={<ExternalLink size={14} />} onClick={() => openPayments('same-tab')}>
             Continue in Indobase Payments
           </Button>
-        ) : null}
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex h-[calc(100vh-3.5rem)] min-h-[28rem] flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-default bg-surface-100 px-4 py-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">Indobase Payments</p>
-          <p className="truncate text-xs text-foreground-lighter">
-            Live product — plans, customers, invoices, and metering
-          </p>
-        </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
-          <Button type="default" onClick={() => openPayments('same-tab')}>
-            Continue in Indobase Payments
-          </Button>
-          <Button
-            type="primary"
-            icon={<ExternalLink size={14} />}
-            onClick={() => openPayments('new-tab')}
-          >
+          <Button type="default" icon={<ExternalLink size={14} />} onClick={() => openPayments('new-tab')}>
             Open in new tab
           </Button>
         </div>
-      </div>
-      <iframe
-        title="Indobase Payments"
-        src={paymentsUrl}
-        className="h-full w-full flex-1 border-0 bg-surface-100"
-        allow="clipboard-write; payment"
-        referrerPolicy="strict-origin-when-cross-origin"
-        onError={() => setIframeFailed(true)}
-      />
+      ) : null}
     </div>
   )
 }

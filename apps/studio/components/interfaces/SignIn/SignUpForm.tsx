@@ -13,7 +13,8 @@ import z from 'zod'
 import { useSignUpMutation } from 'data/misc/signup-mutation'
 import { BASE_PATH } from 'lib/constants'
 import { INDOBASE_DPDP_POLICY_URL, INDOBASE_TERMS_URL } from 'common'
-import { auth, buildPathWithParams } from 'lib/gotrue'
+import { buildPathWithParams } from 'lib/gotrue'
+import { resendSignupConfirmation } from 'lib/resend-confirmation-api'
 import {
   AlertDescription_Shadcn_,
   AlertTitle_Shadcn_,
@@ -63,6 +64,8 @@ export const SignUpForm = () => {
   const captchaRef = useRef<HCaptcha>(null)
   const [showConditions, setShowConditions] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submittedEmail, setSubmittedEmail] = useState('')
+  const [isResending, setIsResending] = useState(false)
   const [passwordHidden, setPasswordHidden] = useState(true)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const router = useRouter()
@@ -78,10 +81,11 @@ export const SignUpForm = () => {
 
   const { mutate: signup, isPending: isSigningUp } = useSignUpMutation({
     onSuccess: async (_data, variables) => {
-      toast.success(`Signed up successfully!`)
+      toast.success(`Check your email to confirm your account`)
+      setSubmittedEmail(variables.email)
       setIsSubmitted(true)
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       const msg = error.message?.toLowerCase() ?? ''
       // Timeouts / soft pending responses mean confirmation mail may already be sent.
       // Prompting another signup creates duplicate confirmation emails.
@@ -97,6 +101,7 @@ export const SignUpForm = () => {
           description:
             'A confirmation link is usually already on the way. Wait a minute and check spam before trying again.',
         })
+        setSubmittedEmail(variables.email)
         setIsSubmitted(true)
         return
       }
@@ -127,12 +132,14 @@ export const SignUpForm = () => {
     if (isInsideOAuthFlow) {
       redirectTo = `${redirectUrlBase}/authorize?auth_id=${searchParams.auth_id}${searchParams.token && `&token=${searchParams.token}`}`
     } else {
-      // Use getRedirectToPath to handle redirect_to parameter and other query params
+      // After email confirm, land in the app (not sign-in). returnTo is still honored when safe.
       const { returnTo } = router.query
-      const basePath = returnTo || '/sign-in'
-      const fullPath = buildPathWithParams(basePath as string)
-      const fullRedirectUrl = `${redirectUrlBase}${fullPath}`
-      redirectTo = fullRedirectUrl
+      const basePath =
+        typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '/organizations'
+      const fullPath = buildPathWithParams(basePath)
+      redirectTo = `${redirectUrlBase}${fullPath}`
     }
 
     signup({
@@ -142,6 +149,40 @@ export const SignUpForm = () => {
       redirectTo,
       dpdpConsent,
     })
+  }
+
+  const onResendConfirmation = async () => {
+    if (!submittedEmail) return
+    setIsResending(true)
+    try {
+      let token = captchaToken
+      if (hcaptchaSiteKey && !token) {
+        const captchaResponse = await captchaRef.current?.execute({ async: true })
+        token = captchaResponse?.response ?? null
+      }
+
+      const redirectTo = `${location.origin}${BASE_PATH}/organizations`
+      const { error, pending } = await resendSignupConfirmation({
+        email: submittedEmail,
+        redirectTo,
+        hcaptchaToken: token,
+      })
+
+      if (error) {
+        toast.error(error.message)
+        setCaptchaToken(null)
+        captchaRef.current?.resetCaptcha()
+        return
+      }
+
+      toast.success(
+        pending
+          ? 'Confirmation email is processing — check inbox and spam'
+          : 'Confirmation email resent — check inbox and spam'
+      )
+    } finally {
+      setIsResending(false)
+    }
   }
 
   const password = form.watch('password')
@@ -159,9 +200,35 @@ export const SignUpForm = () => {
           <Alert_Shadcn_ variant="default">
             <CheckCircle />
             <AlertTitle_Shadcn_>Check your email to confirm</AlertTitle_Shadcn_>
-            <AlertDescription_Shadcn_ className="text-xs">
-              You've successfully signed up. Please check your email to confirm your account before
-              signing in to the Indobase dashboard. The confirmation link expires in 10 minutes.
+            <AlertDescription_Shadcn_ className="flex flex-col gap-3 text-xs">
+              <span>
+                We sent a confirmation link (and a short code) to{' '}
+                <strong>{submittedEmail || 'your inbox'}</strong>. Confirm before signing in. The
+                link expires in about 60 minutes — check spam if you do not see it.
+              </span>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  type="default"
+                  size="tiny"
+                  loading={isResending}
+                  disabled={isResending}
+                  onClick={() => void onResendConfirmation()}
+                >
+                  Resend confirmation email
+                </Button>
+                <Link
+                  href={{
+                    pathname: '/sign-in',
+                    query: {
+                      email: submittedEmail || undefined,
+                      pendingConfirmation: '1',
+                    },
+                  }}
+                  className="underline text-foreground"
+                >
+                  Already confirmed? Sign in
+                </Link>
+              </div>
             </AlertDescription_Shadcn_>
           </Alert_Shadcn_>
         </motion.div>
