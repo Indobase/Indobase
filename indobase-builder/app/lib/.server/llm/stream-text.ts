@@ -38,6 +38,7 @@ import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
 import { getGenerationContractAppendix, inferBuilderProjectTarget } from '~/lib/indobase/generation-contract';
+import { getWebSkillsPromptAppendix } from '~/lib/skills/select-web-skills';
 import type { DesignScheme } from '~/types/design-scheme';
 
 export type Messages = Message[];
@@ -423,9 +424,26 @@ export async function streamText(props: {
   }
 
   if (chatMode === 'build') {
-    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(
-      inferBuilderProjectTarget(processedMessages, files),
-    )}`;
+    const projectTarget = inferBuilderProjectTarget(processedMessages, files);
+
+    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(projectTarget)}`;
+
+    /*
+     * Selective web-development skill injection (vendored MIT skills). Never dumps the
+     * full catalog — ranking picks a small stack-aware subset for this turn.
+     */
+    const skillsAppendix = getWebSkillsPromptAppendix({
+      messages: processedMessages,
+      files,
+      target: projectTarget,
+    });
+
+    if (skillsAppendix) {
+      systemPrompt = `${systemPrompt}${skillsAppendix}`;
+      logger.info(
+        `Injected web-development skills for ${projectTarget} build (${skillsAppendix.length} chars)`,
+      );
+    }
   }
 
   systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;
@@ -505,17 +523,17 @@ export async function streamText(props: {
   );
 
   /*
-   * When tools are in play, harden against hallucinated tool calls: register a catch-all sink
-   * tool, reroute bad calls to it via experimental_repairToolCall, and tell the model exactly
-   * which tools exist. Without this a single made-up tool name aborts the entire build stream.
+   * Always harden against hallucinated tool calls — even when MCP tools are intentionally
+   * omitted (first build turn). Without a sink + experimental_repairToolCall, a single
+   * made-up name like `shell` / `read_file` throws AI_NoSuchToolError ("No tools are
+   * available") and aborts the whole stream — which is what left users with error toasts
+   * and no post-build recommendation chips.
    */
-  const baseTools = (filteredOptions as { tools?: Record<string, unknown> }).tools;
-  const hasTools = baseTools && Object.keys(baseTools).length > 0;
-  const toolGuards = hasTools ? buildToolGuards(baseTools) : undefined;
+  const baseTools = (filteredOptions as { tools?: Record<string, unknown> }).tools ?? {};
+  const hadRealTools = Object.keys(baseTools).length > 0;
+  const toolGuards = buildToolGuards(baseTools);
 
-  if (toolGuards) {
-    systemPrompt = `${systemPrompt}${toolGuards.promptAppendix}`;
-  }
+  systemPrompt = `${systemPrompt}${toolGuards.promptAppendix}`;
 
   const streamParams = {
     model: provider.getModelInstance({
@@ -528,11 +546,15 @@ export async function streamText(props: {
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,
-    ...(toolGuards
-      ? {
-          tools: toolGuards.tools,
-          experimental_repairToolCall: toolGuards.repairToolCall,
-        }
+    tools: toolGuards.tools,
+    experimental_repairToolCall: toolGuards.repairToolCall,
+    /*
+     * First-build / discuss turns pass no MCP tools. Keep the sink registered for repair,
+     * but force toolChoice none so the model still writes boltAction files instead of
+     * looping on unavailable_tool.
+     */
+    ...(!hadRealTools && !(filteredOptions as { toolChoice?: unknown }).toolChoice
+      ? { toolChoice: 'none' as const }
       : {}),
 
     // Set temperature to 1 for reasoning models (required by OpenAI API)

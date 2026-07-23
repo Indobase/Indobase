@@ -14,8 +14,26 @@ const AGENT_PROGRESS_LABELS: Record<string, string> = {
   response: 'Building',
 };
 
-function labelFor(label: string) {
+function labelFor(label: unknown) {
+  if (typeof label !== 'string' || !label.trim()) {
+    return 'Working';
+  }
+
   return AGENT_PROGRESS_LABELS[label] ?? label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function normalizeProgressItem(item: ProgressAnnotation | null | undefined, index: number): ProgressAnnotation | null {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+
+  const label = typeof item.label === 'string' && item.label.trim() ? item.label : `step-${index + 1}`;
+  const status: ProgressAnnotation['status'] =
+    item.status === 'complete' || item.status === 'in-progress' ? item.status : 'in-progress';
+  const order = typeof item.order === 'number' && Number.isFinite(item.order) ? item.order : index;
+  const message = typeof item.message === 'string' ? item.message : '';
+
+  return { ...item, type: 'progress', label, status, order, message };
 }
 
 export default function ProgressCompilation({ data }: { data?: ProgressAnnotation[] }) {
@@ -29,15 +47,21 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
     // Keep the latest annotation per label; once a step is complete it stays complete.
     const map = new Map<string, ProgressAnnotation>();
 
-    for (const item of data) {
+    data.forEach((raw, index) => {
+      const item = normalizeProgressItem(raw, index);
+
+      if (!item) {
+        return;
+      }
+
       const existing = map.get(item.label);
 
       if (existing && existing.status === 'complete') {
-        continue;
+        return;
       }
 
       map.set(item.label, item);
-    }
+    });
 
     return Array.from(map.values()).sort((a, b) => a.order - b.order);
   }, [data]);
@@ -52,6 +76,10 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
   const current = active[active.length - 1] ?? progressList[progressList.length - 1];
   const allDone = doneCount === progressList.length;
 
+  if (!current) {
+    return null;
+  }
+
   return (
     <div className="w-full max-w-chat mx-auto z-prompt">
       <div className="overflow-hidden rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 shadow-sm">
@@ -60,6 +88,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-theme hover:bg-bolt-elements-background-depth-3"
+          aria-expanded={expanded}
         >
           <StatusIcon status={allDone ? 'complete' : 'in-progress'} />
           <div className="min-w-0 flex-1">
@@ -68,7 +97,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
                 {allDone ? 'Build steps complete' : labelFor(current.label)}
               </span>
               <span className="truncate text-sm text-bolt-elements-textSecondary">
-                {allDone ? `${progressList.length} steps` : current.message}
+                {allDone ? `${progressList.length} steps` : current.message || 'In progress'}
               </span>
             </div>
           </div>
@@ -80,6 +109,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
               'shrink-0 text-lg text-bolt-elements-textSecondary transition-transform',
               expanded ? 'i-ph:caret-up' : 'i-ph:caret-down',
             )}
+            aria-hidden
           />
         </button>
 
@@ -95,7 +125,11 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
             >
               <div className="flex flex-col gap-0.5 p-2">
                 {progressList.map((item, index) => (
-                  <ProgressItem key={`${item.label}-${index}`} progress={item} isLast={!isWorking && index === progressList.length - 1} />
+                  <ProgressItem
+                    key={`${item.label}-${index}`}
+                    progress={item}
+                    isLast={!isWorking && index === progressList.length - 1}
+                  />
                 ))}
               </div>
             </motion.div>
@@ -131,7 +165,9 @@ const ProgressItem = ({ progress }: { progress: ProgressAnnotation; isLast?: boo
       </div>
       <div className="min-w-0 flex-1 text-sm leading-relaxed">
         <span className="font-medium text-bolt-elements-textPrimary">{labelFor(progress.label)}</span>
-        <span className="ml-1.5 break-words text-bolt-elements-textSecondary">{progress.message}</span>
+        {progress.message ? (
+          <span className="ml-1.5 break-words text-bolt-elements-textSecondary">{progress.message}</span>
+        ) : null}
       </div>
     </motion.div>
   );

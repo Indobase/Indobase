@@ -22,11 +22,11 @@ describe('initial build lifecycle', () => {
     expect(buildRecommendationsReady.get()).toBe(true);
   });
 
-  it('keeps recommendations hidden after a failed initial build', () => {
+  it('shows recommendations again after a failed initial build so the user can continue', () => {
     beginInitialBuild();
     failInitialBuild();
 
     expect(initialBuildLifecycle.get()).toBe('failed');
-    expect(buildRecommendationsReady.get()).toBe(false);
+    expect(buildRecommendationsReady.get()).toBe(true);
   });
 });
