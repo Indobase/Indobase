@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package meteroid.api.customers.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/connectors/v1/models.proto";
+
+
+message CustomerBrief {
+  string id = 1;
+  string name = 2;
+  optional string billing_email = 3;
+  optional string alias = 4;
+  optional string country = 5;
+  string created_at = 6;
+  string local_id = 7;
+}
+
+message Address {
+  optional string line1 = 1;
+  optional string line2 = 2;
+  optional string city = 3;
+  optional string country = 4;
+  optional string state = 5;
+  optional string zipCode = 6;
+}
+
+message ShippingAddress {
+  Address address = 1;
+  bool sameAsBilling = 7;
+}
+
+message CustomTaxRate {
+  string tax_code = 1;
+  string name = 2;
+  string rate = 3;
+}
+
+// External (VIES) verification state of the customer's VAT number.
+// UNSPECIFIED = never checked (non-EU number, or predates validation).
+enum VatNumberValidationStatus {
+  VAT_NUMBER_VALIDATION_STATUS_UNSPECIFIED = 0;
+  VAT_NUMBER_VALIDATION_STATUS_PENDING = 1;
+  VAT_NUMBER_VALIDATION_STATUS_VALID = 2;
+  VAT_NUMBER_VALIDATION_STATUS_INVALID = 3;
+  VAT_NUMBER_VALIDATION_STATUS_UNAVAILABLE = 4;
+}
+
+message Customer {
+  string id = 1;
+  string name = 2;
+  optional string billing_email = 3;
+  optional string alias = 4;
+  repeated string invoicing_emails = 6;
+  optional string phone = 7;
+  int64 balance_value_cents = 8;
+  string currency = 9;
+  optional google.protobuf.Timestamp archived_at = 10;
+  optional google.protobuf.Timestamp created_at = 11;
+  optional Address billing_address = 12;
+  optional ShippingAddress shipping_address = 13;
+  string invoicing_entity_id = 14;
+  string local_id = 15;
+  optional string vat_number = 16;
+  optional string current_payment_method_id = 17;
+  optional api.connectors.v1.ConnectionMetadata connection_metadata = 18;
+  repeated CustomTaxRate custom_taxes = 20;
+  bool is_tax_exempt = 21;
+  bool is_vat_number_valid = 22;
+  repeated CustomerConnection customer_connections = 23;
+  repeated CustomerPaymentMethod payment_methods = 24;
+  optional string connected_account_id = 25;
+  reserved 26; // lifecycle_state, enterprise-only
+  VatNumberValidationStatus vat_number_validation_status = 27;
+  optional google.protobuf.Timestamp vat_number_checked_at = 28;
+  // Registered company name returned by VIES with the last definitive answer.
+  optional string vat_number_registered_name = 29;
+  // VIES consultation number (audit proof); present only for qualified checks.
+  optional string vat_number_consultation_number = 30;
+
+}
+
+message CustomerNew {
+  string name = 2;
+  optional string billing_email = 3;
+  optional string alias = 4;
+  repeated string invoicing_emails = 6;
+  optional string phone = 7;
+  string currency = 9;
+  optional Address billing_address = 12;
+  optional ShippingAddress shipping_address = 13;
+  optional string invoicing_entity_id = 14;
+  optional string vat_number = 16;
+  repeated CustomTaxRate custom_taxes = 17;
+  optional bool is_tax_exempt = 18;
+  optional string connected_account_id = 19;
+}
+
+
+message UpdateCustomer {
+  string id = 10;
+  optional string name = 1;
+  optional string billing_email = 2;
+  optional string alias = 3;
+  InvoicingEmails invoicing_emails = 4;
+  optional string phone = 5;
+  optional int64 balance_value_cents = 6;
+  optional string currency = 7;
+  optional Address billing_address = 8;
+  optional ShippingAddress shipping_address = 9;
+  optional string invoicing_entity_id = 14;
+  optional string vat_number = 15;
+  CustomTaxesList custom_taxes = 17;
+  optional bool is_tax_exempt = 18;
+
+  message InvoicingEmails {
+    repeated string emails = 1;
+  }
+
+  message CustomTaxesList {
+    repeated CustomTaxRate taxes = 1;
+  }
+}
+
+message CustomerPaymentMethod {
+  string id = 1;
+  string customer_id = 2;
+  string connection_id = 3;
+  string external_payment_method = 4;
+  PaymentMethodTypeEnum payment_method_type = 8;
+  optional string card_brand = 9;
+  optional string card_last4 = 10;
+  optional int32 card_exp_month = 11;
+  optional int32 card_exp_year = 12;
+  optional string account_number_hint = 13;
+
+  enum PaymentMethodTypeEnum {
+    CARD = 0;
+    TRANSFER = 1;
+    DIRECT_DEBIT_SEPA = 2;
+    DIRECT_DEBIT_ACH = 3;
+    DIRECT_DEBIT_BACS = 4;
+    OTHER = 5;
+  }
+}
+
+message CustomerConnection {
+  string id = 1;
+  string connector_id = 2;
+  string external_customer_id = 3;
+  api.connectors.v1.ConnectorProviderEnum connector_provider = 4;
+  optional string external_company_id = 5;
+}
+

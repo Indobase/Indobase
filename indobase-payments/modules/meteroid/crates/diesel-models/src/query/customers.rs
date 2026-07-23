@@ -1,0 +1,676 @@
+use crate::customers::{
+    CustomerBriefRow, CustomerRow, CustomerRowNew, CustomerRowPatch, CustomerRowUpdate,
+};
+use crate::enums::ConnectorProviderEnum;
+use crate::errors::IntoDbResult;
+use crate::extend::connection_metadata;
+use crate::extend::order::{OrderByParam, OrderDirection};
+use crate::extend::pagination::{Paginate, PaginatedVec, PaginationRequest};
+use crate::{DbResult, PgConn};
+use common_domain::ids::{AliasOr, BaseId, ConnectorId, CustomerId, TenantId};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgSortExpressionMethods,
+    PgTextExpressionMethods, QueryDsl, SelectableHelper, debug_query,
+};
+use error_stack::ResultExt;
+use itertools::Itertools;
+use std::ops::Add;
+use tap::TapFallible;
+
+impl CustomerRowNew {
+    pub async fn insert(self, conn: &mut PgConn) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl::customer;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(customer).values(&self);
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while inserting customer")
+            .into_db_result()
+    }
+}
+
+impl CustomerRow {
+    pub async fn find_by_ids_or_aliases(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        ids_or_aliases: Vec<AliasOr<CustomerId>>,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let (ids, aliases): (Vec<CustomerId>, Vec<String>) = ids_or_aliases
+            .into_iter()
+            .partition_map(|id_or_alias| match id_or_alias {
+                AliasOr::Id(id) => itertools::Either::Left(id),
+                AliasOr::Alias(alias) => itertools::Either::Right(alias),
+            });
+
+        let query = c_dsl::customer
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .filter(c_dsl::id.eq_any(ids).or(c_dsl::alias.eq_any(aliases)))
+            .select(CustomerRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while finding customers by ids or aliases")
+            .into_db_result()
+    }
+
+    /// Customers whose VAT number is due for a best-effort VIES (re)check:
+    /// format-valid number, not archived, never checked or last checked before
+    /// `checked_before`. Excludes recently created rows so the event-driven
+    /// initial validation stays the owner of fresh customers. Oldest first,
+    /// never-checked rows leading, across all tenants.
+    pub async fn list_vat_revalidation_candidates(
+        conn: &mut PgConn,
+        checked_before: chrono::NaiveDateTime,
+        created_before: chrono::NaiveDateTime,
+        limit: i64,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = c_dsl::customer
+            .filter(c_dsl::vat_number.is_not_null())
+            .filter(c_dsl::vat_number_format_valid.eq(true))
+            .filter(c_dsl::archived_at.is_null())
+            .filter(
+                c_dsl::vat_number_checked_at
+                    .is_null()
+                    .or(c_dsl::vat_number_checked_at.lt(checked_before)),
+            )
+            .filter(c_dsl::created_at.lt(created_before))
+            .order(c_dsl::vat_number_checked_at.asc().nulls_first())
+            .limit(limit)
+            .select(CustomerRow::as_select());
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while listing vat revalidation candidates")
+            .into_db_result()
+    }
+
+    pub async fn find_by_id_or_alias(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        id_or_alias: AliasOr<CustomerId>,
+    ) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let mut query = c_dsl::customer
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .select(CustomerRow::as_select())
+            .into_boxed();
+
+        match id_or_alias {
+            AliasOr::Id(id) => {
+                query = query.filter(c_dsl::id.eq(id));
+            }
+            AliasOr::Alias(alias) => {
+                query = query.filter(c_dsl::alias.eq(alias));
+            }
+        }
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding customer by id or alias")
+            .into_db_result()
+    }
+
+    pub async fn find_by_id_or_alias_including_archived(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        id_or_alias: AliasOr<CustomerId>,
+    ) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let mut query = c_dsl::customer
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .select(CustomerRow::as_select())
+            .into_boxed();
+
+        match id_or_alias {
+            AliasOr::Id(id) => {
+                query = query.filter(c_dsl::id.eq(id));
+            }
+            AliasOr::Alias(alias) => {
+                query = query.filter(c_dsl::alias.eq(alias));
+            }
+        }
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding customer by id or alias (including archived)")
+            .into_db_result()
+    }
+
+    pub async fn find_by_id(
+        conn: &mut PgConn,
+        customer_id: &CustomerId,
+        tenant_id_param: &TenantId,
+    ) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = c_dsl::customer
+            .filter(c_dsl::id.eq(customer_id))
+            .filter(c_dsl::tenant_id.eq(tenant_id_param));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding customer by id")
+            .into_db_result()
+    }
+
+    pub async fn find_by_alias(
+        conn: &mut PgConn,
+        customer_alias: String,
+        tenant_id_param: TenantId,
+    ) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl::{alias, customer, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = customer
+            .filter(alias.eq(customer_alias))
+            .filter(tenant_id.eq(tenant_id_param));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding customer by alias")
+            .into_db_result()
+    }
+
+    pub async fn resolve_ids_by_aliases(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_customer_aliases: Vec<String>,
+    ) -> DbResult<Vec<CustomerBriefRow>> {
+        use crate::schema::customer::dsl::{alias, customer, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = customer
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(alias.eq_any(param_customer_aliases))
+            .select(CustomerBriefRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while finding customer by aliases")
+            .into_db_result()
+    }
+
+    pub async fn resolve_id_by_alias(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        param_customer_alias: String,
+    ) -> DbResult<CustomerBriefRow> {
+        use crate::schema::customer::dsl::{alias, customer, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = customer
+            .filter(tenant_id.eq(param_tenant_id))
+            .filter(alias.eq(param_customer_alias))
+            .select(CustomerBriefRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while finding customer by aliases")
+            .into_db_result()
+    }
+
+    pub async fn list(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        pagination: PaginationRequest,
+        order_by: Option<&str>,
+        param_query: Option<String>,
+        param_archived: Option<bool>,
+    ) -> DbResult<PaginatedVec<CustomerRow>> {
+        use crate::schema::customer::dsl::{
+            alias, archived_at, billing_email, created_at, customer, id, name, tenant_id,
+        };
+
+        let mut query = customer
+            .filter(tenant_id.eq(param_tenant_id))
+            .select(CustomerRow::as_select())
+            .into_boxed();
+
+        match param_archived {
+            Some(true) => {
+                query = query.filter(archived_at.is_not_null());
+            }
+            None | Some(false) => {
+                query = query.filter(archived_at.is_null());
+            }
+        }
+
+        if let Some(param_query) = param_query {
+            query = query.filter(
+                name.ilike(format!("%{param_query}%"))
+                    .or(alias.ilike(format!("%{param_query}%")))
+                    .or(billing_email.ilike(format!("%{param_query}%"))),
+            );
+        }
+
+        let order = OrderByParam::parse(order_by, "name.asc");
+
+        match (order.column.as_str(), order.direction) {
+            ("name", OrderDirection::Asc) => query = query.order((name.asc(), id.asc())),
+            ("name", OrderDirection::Desc) => query = query.order((name.desc(), id.desc())),
+            ("email", OrderDirection::Asc) => query = query.order((billing_email.asc(), id.asc())),
+            ("email", OrderDirection::Desc) => {
+                query = query.order((billing_email.desc(), id.desc()))
+            }
+            ("alias", OrderDirection::Asc) => query = query.order((alias.asc(), id.asc())),
+            ("alias", OrderDirection::Desc) => query = query.order((alias.desc(), id.desc())),
+            ("created_at", OrderDirection::Asc) => {
+                query = query.order((created_at.asc(), id.asc()))
+            }
+            ("created_at", OrderDirection::Desc) => {
+                query = query.order((created_at.desc(), id.desc()))
+            }
+            _ => query = query.order((name.asc(), id.asc())),
+        }
+
+        let paginated_query = query.paginate(pagination);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&paginated_query));
+
+        paginated_query
+            .load_and_count_pages(conn)
+            .await
+            .attach("Error while fetching customers")
+            .into_db_result()
+    }
+
+    pub async fn list_by_ids_global(
+        conn: &mut PgConn,
+        ids: Vec<CustomerId>,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl::{customer, id};
+        use diesel_async::RunQueryDsl;
+
+        let query = customer
+            .filter(id.eq_any(ids))
+            .select(CustomerRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while listing customers by ids")
+            .into_db_result()
+    }
+
+    pub async fn list_by_ids(
+        conn: &mut PgConn,
+        tenant_id_param: &TenantId,
+        ids: Vec<CustomerId>,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl::{customer, id, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = customer
+            .filter(tenant_id.eq(tenant_id_param))
+            .filter(id.eq_any(ids))
+            .select(CustomerRow::as_select());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while listing customers by ids")
+            .into_db_result()
+    }
+
+    pub async fn insert_customer_batch(
+        conn: &mut PgConn,
+        batch: Vec<CustomerRowNew>,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl::customer;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(customer).values(&batch);
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while inserting customer batch")
+            .into_db_result()
+    }
+
+    pub async fn upsert_customer_batch(
+        conn: &mut PgConn,
+        batch: Vec<CustomerRowNew>,
+    ) -> DbResult<Vec<CustomerRow>> {
+        use crate::schema::customer::dsl::*;
+        use diesel::upsert::excluded;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::insert_into(customer)
+            .values(&batch)
+            .on_conflict((tenant_id, alias))
+            .do_update()
+            .set((
+                name.eq(excluded(name)),
+                billing_email.eq(excluded(billing_email)),
+                phone.eq(excluded(phone)),
+                currency.eq(excluded(currency)),
+                billing_address.eq(excluded(billing_address)),
+                shipping_address.eq(excluded(shipping_address)),
+                invoicing_entity_id.eq(excluded(invoicing_entity_id)),
+                vat_number.eq(excluded(vat_number)),
+                invoicing_emails.eq(excluded(invoicing_emails)),
+                is_tax_exempt.eq(excluded(is_tax_exempt)),
+                custom_taxes.eq(excluded(custom_taxes)),
+                vat_number_format_valid.eq(excluded(vat_number_format_valid)),
+                updated_at.eq(diesel::dsl::now),
+            ));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .attach("Error while upserting customer batch")
+            .into_db_result()
+    }
+
+    pub async fn select_for_update(
+        conn: &mut PgConn,
+        id: CustomerId,
+        tenant_id: TenantId,
+    ) -> DbResult<CustomerRow> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = c_dsl::customer
+            .for_no_key_update()
+            .filter(c_dsl::id.eq(id))
+            .filter(c_dsl::tenant_id.eq(tenant_id));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while selecting for update customer by id")
+            .into_db_result()
+    }
+
+    pub async fn update_balance(
+        conn: &mut PgConn,
+        id: CustomerId,
+        delta_cents: i64,
+    ) -> DbResult<usize> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(c_dsl::customer)
+            .filter(c_dsl::id.eq(id))
+            .set((
+                c_dsl::balance_value_cents.eq(c_dsl::balance_value_cents.add(delta_cents)),
+                c_dsl::updated_at.eq(diesel::dsl::now),
+            ));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .attach("Error while update customer balance")
+            .into_db_result()
+    }
+
+    pub async fn archive(
+        conn: &mut PgConn,
+        id: CustomerId,
+        tenant_id: TenantId,
+    ) -> DbResult<usize> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(c_dsl::customer)
+            .filter(c_dsl::id.eq(id))
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .set(c_dsl::archived_at.eq(diesel::dsl::now));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .attach("Error while archiving customer")
+            .into_db_result()
+    }
+
+    pub async fn unarchive(
+        conn: &mut PgConn,
+        id: CustomerId,
+        tenant_id: TenantId,
+    ) -> DbResult<usize> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(c_dsl::customer)
+            .filter(c_dsl::id.eq(id))
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .set(c_dsl::archived_at.eq(None::<chrono::NaiveDateTime>));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .attach("Error while unarchiving customer")
+            .into_db_result()
+    }
+
+    pub async fn find_archived_customer_in_batch(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        customer_ids: Vec<CustomerId>,
+    ) -> DbResult<Option<(CustomerId, String)>> {
+        use crate::schema::customer::dsl as c_dsl;
+        use diesel_async::RunQueryDsl;
+
+        let query = c_dsl::customer
+            .filter(c_dsl::tenant_id.eq(tenant_id))
+            .filter(c_dsl::id.eq_any(customer_ids))
+            .filter(c_dsl::archived_at.is_not_null())
+            .select((c_dsl::id, c_dsl::name))
+            .limit(1);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first::<(CustomerId, String)>(conn)
+            .await
+            .optional()
+            .attach("Error while checking for archived customers")
+            .into_db_result()
+    }
+}
+
+impl CustomerRowPatch {
+    pub async fn update(
+        &self,
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+    ) -> DbResult<Option<CustomerRow>> {
+        use crate::schema::customer::dsl::{customer, id, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(customer)
+            .filter(id.eq(self.id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .set(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .optional()
+            .tap_err(|e| log::error!("Error while patching customer: {e:?}"))
+            .attach("Error while patching customer")
+            .into_db_result()
+    }
+
+    /// Persists the outcome of an external (VIES) VAT check for a single customer.
+    ///
+    /// The update is conditional on the row still holding the exact number we
+    /// validated, so a concurrent VAT-number change (which resets the status)
+    /// is never clobbered with a stale result. `vies_check` (audit evidence of a
+    /// definitive answer) is only written when present, so an outage never
+    /// erases the evidence of the last real answer.
+    pub async fn update_vat_validation(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        customer_id: CustomerId,
+        expected_vat_number: &str,
+        status: crate::enums::CustomerVatValidationStatusEnum,
+        checked_at: chrono::NaiveDateTime,
+        vies_check: Option<serde_json::Value>,
+    ) -> DbResult<()> {
+        use crate::schema::customer::dsl as c;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(c::customer)
+            .filter(c::id.eq(customer_id))
+            .filter(c::tenant_id.eq(param_tenant_id))
+            .filter(c::vat_number.eq(expected_vat_number));
+
+        let res = match vies_check {
+            Some(check) => {
+                query
+                    .set((
+                        c::vat_number_validation_status.eq(status),
+                        c::vat_number_checked_at.eq(checked_at),
+                        c::vat_number_vies_check.eq(check),
+                    ))
+                    .execute(conn)
+                    .await
+            }
+            None => {
+                query
+                    .set((
+                        c::vat_number_validation_status.eq(status),
+                        c::vat_number_checked_at.eq(checked_at),
+                    ))
+                    .execute(conn)
+                    .await
+            }
+        };
+
+        res.tap_err(|e| log::error!("Error while updating vat validation: {e:?}"))
+            .attach("Error while updating vat validation")
+            .into_db_result()
+            .map(|_| ())
+    }
+
+    /// Moves a customer's VAT validation back to `PENDING` ahead of a manual
+    /// re-check, guarded on the number so a concurrent edit is not overridden.
+    /// Returns the number of rows updated (0 = number changed under us).
+    pub async fn mark_vat_validation_pending(
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+        customer_id: CustomerId,
+        expected_vat_number: &str,
+    ) -> DbResult<usize> {
+        use crate::enums::CustomerVatValidationStatusEnum;
+        use crate::schema::customer::dsl as c;
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(c::customer)
+            .filter(c::id.eq(customer_id))
+            .filter(c::tenant_id.eq(param_tenant_id))
+            .filter(c::vat_number.eq(expected_vat_number))
+            .set(c::vat_number_validation_status.eq(CustomerVatValidationStatusEnum::Pending));
+
+        query
+            .execute(conn)
+            .await
+            .tap_err(|e| log::error!("Error while marking vat validation pending: {e:?}"))
+            .attach("Error while marking vat validation pending")
+            .into_db_result()
+    }
+
+    pub async fn upsert_conn_meta(
+        conn: &mut PgConn,
+        provider: ConnectorProviderEnum,
+        customer_id: CustomerId,
+        connector_id: ConnectorId,
+        external_id: &str,
+        external_company_id: &str,
+    ) -> DbResult<()> {
+        connection_metadata::upsert(
+            conn,
+            "customer",
+            provider.as_meta_key(),
+            customer_id.as_uuid(),
+            connector_id,
+            external_id,
+            external_company_id,
+        )
+        .await
+        .map(|_| ())
+    }
+}
+
+impl CustomerRowUpdate {
+    pub async fn update(
+        &self,
+        conn: &mut PgConn,
+        param_tenant_id: TenantId,
+    ) -> DbResult<Option<CustomerRow>> {
+        use crate::schema::customer::dsl::{customer, id, tenant_id};
+        use diesel_async::RunQueryDsl;
+
+        let query = diesel::update(customer)
+            .filter(id.eq(self.id))
+            .filter(tenant_id.eq(param_tenant_id))
+            .set(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .optional()
+            .tap_err(|e| log::error!("Error while updating customer: {e:?}"))
+            .attach("Error while updating customer")
+            .into_db_result()
+    }
+}

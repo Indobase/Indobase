@@ -1,0 +1,63 @@
+<clickhouse>
+  <logger>
+    <level>debug</level>
+    <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+    <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+    <size>1000M</size>
+    <count>3</count>
+  </logger>
+  <display_name>clickhouse_dev</display_name>
+  <listen_host>0.0.0.0</listen_host>
+  <http_port>8123</http_port>
+  <tcp_port>9000</tcp_port>
+  <kafka>
+    <debug>all</debug>
+  </kafka>
+
+  <!-- Embedded Keeper (single node, no separate ZooKeeper needed) -->
+  <keeper_server>
+    <tcp_port>9181</tcp_port>
+    <server_id>1</server_id>
+    <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
+    <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+    <coordination_settings>
+      <operation_timeout_ms>10000</operation_timeout_ms>
+      <session_timeout_ms>30000</session_timeout_ms>
+      <raft_logs_level>warning</raft_logs_level>
+    </coordination_settings>
+    <raft_configuration>
+      <server>
+        <id>1</id>
+        <hostname>localhost</hostname>
+        <port>9234</port>
+      </server>
+    </raft_configuration>
+  </keeper_server>
+
+  <!-- Point ClickHouse at the embedded Keeper -->
+  <zookeeper>
+    <node>
+      <host>localhost</host>
+      <port>9181</port>
+    </node>
+  </zookeeper>
+
+  <!-- Single-node cluster-->
+  <remote_servers>
+    <meteroid>
+      <shard>
+        <replica>
+          <host>localhost</host>
+          <port>9000</port>
+        </replica>
+      </shard>
+    </meteroid>
+  </remote_servers>
+
+  <!-- Macros substituted in ReplicatedMergeTree paths and ON CLUSTER DDL -->
+  <macros>
+    <cluster>meteroid</cluster>
+    <shard>1</shard>
+    <replica>replica-1</replica>
+  </macros>
+</clickhouse>

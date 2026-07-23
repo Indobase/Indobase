@@ -1,0 +1,46 @@
+# Traefik dynamic config for Indobase Payments on Vyom .249
+# Copy to /etc/dokploy/traefik/dynamic/indobase-payments.yml
+# Requires DNS: payments.indobase.in + api.payments.indobase.in → 103.190.92.249
+# Backend Compose project: indobase-payments (dokploy-network)
+
+http:
+  routers:
+    indobase-payments-web-http:
+      rule: Host(`payments.indobase.in`)
+      service: indobase-payments-web
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+    indobase-payments-web-https:
+      rule: Host(`payments.indobase.in`)
+      service: indobase-payments-web
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+    indobase-payments-api-http:
+      rule: Host(`api.payments.indobase.in`)
+      service: indobase-payments-api
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+    indobase-payments-api-https:
+      rule: Host(`api.payments.indobase.in`)
+      service: indobase-payments-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+  services:
+    indobase-payments-web:
+      loadBalancer:
+        servers:
+          - url: http://indobase-payments-meteroid-web-1:80
+        passHostHeader: true
+    indobase-payments-api:
+      loadBalancer:
+        servers:
+          - url: http://indobase-payments-meteroid-api-1:8084
+        passHostHeader: true

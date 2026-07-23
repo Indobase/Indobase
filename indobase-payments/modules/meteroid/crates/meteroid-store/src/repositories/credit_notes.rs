@@ -1,0 +1,1726 @@
+use crate::StoreResult;
+use crate::constants::Currencies;
+use crate::domain::entity_activity::Actor;
+use crate::domain::invoice_lines::{LineItem, TaxDetail};
+use crate::domain::invoices::TaxBreakdownItem;
+use crate::domain::{
+    CreditNote, CreditNoteNew, Invoice, InvoicePaymentStatus, InvoiceStatusEnum,
+    outbox_event::OutboxEvent,
+};
+use crate::errors::StoreError;
+use crate::repositories::customer_balance::{CustomerBalance, convert_currency};
+use crate::store::Store;
+use chrono::NaiveDateTime;
+use common_domain::ids::{CreditNoteId, CustomerId, InvoiceId, StoredDocumentId, TenantId};
+use common_utils::decimals::{ToSubunit, ToUnit};
+use diesel_models::PgConn;
+use diesel_models::credit_notes::CreditNoteRow;
+use diesel_models::customers::CustomerRow;
+use diesel_models::invoices::InvoiceRow;
+use diesel_models::invoicing_entities::InvoicingEntityRow;
+use diesel_models::payments::PaymentTransactionRow;
+use error_stack::{Report, bail};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
+use scoped_futures::ScopedFutureExt;
+use std::collections::HashMap;
+
+pub use crate::domain::enums::CreditType;
+
+/// Specifies a line item to credit.
+#[derive(Debug, Clone)]
+pub enum CreditLineItem {
+    /// Credit `quantity × line.unit_price`. The line must have a unit_price.
+    Line { local_id: String, quantity: Decimal },
+    /// Credit specific sub-lines; line subtotal is summed from their
+    /// `quantity × unit_price`. Sub-lines not listed are dropped from the credited line.
+    SubLines {
+        local_id: String,
+        sub_lines: Vec<CreditSubLineItem>,
+    },
+}
+
+impl CreditLineItem {
+    pub fn local_id(&self) -> &str {
+        match self {
+            CreditLineItem::Line { local_id, .. } | CreditLineItem::SubLines { local_id, .. } => {
+                local_id
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CreditSubLineItem {
+    pub local_id: String,
+    pub quantity: Decimal,
+}
+
+/// Parameters for creating a credit note via the public API
+#[derive(Debug, Clone)]
+pub struct CreateCreditNoteParams {
+    pub invoice_id: InvoiceId,
+    /// Line items to credit. Empty means credit all line items with full amounts.
+    pub line_items: Vec<CreditLineItem>,
+    pub reason: Option<String>,
+    pub memo: Option<String>,
+    pub credit_type: CreditType,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CreateCreditNoteTxParams {
+    pub invoice: Invoice,
+    /// Line items to credit. If None, credits all invoice line items with full amounts.
+    pub line_items: Option<Vec<CreditLineItem>>,
+    /// Initial status of the credit note
+    pub status: crate::domain::enums::CreditNoteStatus,
+    /// When the credit note was finalized (only set if status is Finalized)
+    pub finalized_at: Option<NaiveDateTime>,
+    /// Reason for the credit note
+    pub reason: Option<String>,
+    /// Optional memo
+    pub memo: Option<String>,
+    /// How to apply the credit
+    pub credit_type: CreditType,
+    /// Whether these credits come from a proration calculation (e.g. amendments crediting
+    /// unused time). A category, not a per-line value: each line is then flagged prorated
+    /// only when proration actually reduced it below the billed amount (see `negate_line_items`).
+    pub from_proration: bool,
+}
+
+#[async_trait::async_trait]
+pub trait CreditNoteInterface {
+    async fn insert_credit_note(&self, credit_note: CreditNoteNew) -> StoreResult<CreditNote>;
+
+    async fn create_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        params: CreateCreditNoteParams,
+    ) -> StoreResult<CreditNote>;
+
+    /// Create and finalize a credit note in a single transaction. Used by interactive
+    /// UI paths so the user never sees a Draft CN (which would be a footgun: actions
+    /// like settling the parent invoice and offering reissue only fire on finalize).
+    async fn create_and_finalize_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        params: CreateCreditNoteParams,
+    ) -> StoreResult<CreditNote>;
+
+    #[allow(clippy::too_many_arguments)]
+    async fn list_credit_notes(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<CustomerId>,
+        invoice_id: Option<InvoiceId>,
+        status: Option<crate::domain::enums::CreditNoteStatus>,
+        search: Option<String>,
+        order_by: Option<String>,
+        pagination: crate::domain::PaginationRequest,
+    ) -> StoreResult<crate::domain::PaginatedVec<CreditNote>>;
+
+    async fn get_credit_note_by_id(
+        &self,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote>;
+
+    async fn list_credit_notes_by_invoice_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<Vec<CreditNote>>;
+
+    async fn list_credit_notes_by_customer_id(
+        &self,
+        tenant_id: TenantId,
+        customer_id: CustomerId,
+    ) -> StoreResult<Vec<CreditNote>>;
+
+    async fn finalize_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote>;
+
+    async fn void_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote>;
+
+    async fn delete_draft_credit_note(
+        &self,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<()>;
+
+    async fn list_credit_notes_by_ids(
+        &self,
+        credit_note_ids: Vec<CreditNoteId>,
+    ) -> StoreResult<Vec<CreditNote>>;
+
+    async fn save_credit_note_pdf_document(
+        &self,
+        credit_note_id: CreditNoteId,
+        tenant_id: TenantId,
+        pdf_document_id: StoredDocumentId,
+    ) -> StoreResult<()>;
+}
+
+/// Prorates each tax detail by `proportion`, negates it, and applies a largest-magnitude
+/// residual correction so the resulting sum equals `expected_sum` exactly (to the cent).
+fn prorate_and_negate_tax_details(
+    details: &[TaxDetail],
+    proportion: Decimal,
+    expected_sum: i64,
+) -> Vec<TaxDetail> {
+    if details.is_empty() {
+        return Vec::new();
+    }
+
+    let mut out: Vec<TaxDetail> = details
+        .iter()
+        .map(|d| TaxDetail {
+            tax_rate: d.tax_rate,
+            tax_name: d.tax_name.clone(),
+            tax_amount: -(Decimal::from(d.tax_amount) * proportion)
+                .round()
+                .to_i64()
+                .unwrap_or(0),
+        })
+        .collect();
+
+    let current_sum: i64 = out.iter().map(|d| d.tax_amount).sum();
+    let diff = expected_sum - current_sum;
+    if diff != 0
+        && let Some((idx, _)) = out
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, d)| d.tax_amount.unsigned_abs())
+    {
+        out[idx].tax_amount += diff;
+    }
+
+    out
+}
+
+/// Builds negated sub_lines for a credited line.
+/// - If `override_` is Some: keep only the listed sublines (preserving original order),
+///   set their `quantity`/`total` to the requested values (negated), drop the rest.
+/// - If None: simply negate the original sublines as-is.
+fn negate_sub_lines(
+    original: &[crate::domain::invoice_lines::SubLineItem],
+    override_: Option<&[SubLineOverride]>,
+) -> Vec<crate::domain::invoice_lines::SubLineItem> {
+    use crate::domain::invoice_lines::SubLineItem;
+    match override_ {
+        None => original
+            .iter()
+            .map(|sl| SubLineItem {
+                local_id: sl.local_id.clone(),
+                name: sl.name.clone(),
+                total: -sl.total,
+                quantity: -sl.quantity,
+                unit_price: sl.unit_price,
+                attributes: sl.attributes.clone(),
+            })
+            .collect(),
+        Some(ovs) => original
+            .iter()
+            .filter_map(|sl| {
+                let ov = ovs.iter().find(|o| o.original_local_id == sl.local_id)?;
+                Some(SubLineItem {
+                    local_id: sl.local_id.clone(),
+                    name: sl.name.clone(),
+                    total: -ov.new_total_cents,
+                    quantity: -ov.new_quantity,
+                    unit_price: sl.unit_price,
+                    attributes: sl.attributes.clone(),
+                })
+            })
+            .collect(),
+    }
+}
+
+/// Per-line resolved credit instruction used by `negate_line_items`.
+#[derive(Debug, Clone)]
+struct ResolvedCredit {
+    /// Subtotal (excl. tax) to credit, in cents. `None` means credit the full line as-is.
+    credit_subtotal: Option<i64>,
+    /// When set, replaces the line's sub_lines with these (already non-negated; will be negated).
+    /// Each entry is the subline's new (quantity, total_cents) and the original subline to copy from.
+    sub_lines_override: Option<Vec<SubLineOverride>>,
+}
+
+#[derive(Debug, Clone)]
+struct SubLineOverride {
+    original_local_id: String,
+    new_quantity: Decimal,
+    new_total_cents: i64,
+}
+
+/// Creates negated line items for a credit note.
+/// `resolved` maps line local_id → ResolvedCredit. Lines not present are skipped.
+fn negate_line_items(
+    line_items: &[LineItem],
+    resolved: &HashMap<String, ResolvedCredit>,
+    precision: u8,
+    from_proration: bool,
+) -> Vec<LineItem> {
+    line_items
+        .iter()
+        .filter_map(|item| {
+            let r = resolved.get(&item.local_id)?;
+            Some((item, r))
+        })
+        .map(|(item, r)| {
+            let partial_subtotal = r.credit_subtotal;
+            let sub_override = r.sub_lines_override.as_deref();
+            let negated_sub_lines = negate_sub_lines(&item.sub_lines, sub_override);
+
+            if let Some(credit_subtotal) = partial_subtotal {
+                // Partial credit: amount is the subtotal (excl. tax)
+                let original_subtotal = item.amount_subtotal;
+                if original_subtotal == 0 {
+                    // Avoid division by zero - return zero amounts
+                    return LineItem {
+                        local_id: item.local_id.clone(),
+                        name: item.name.clone(),
+                        amount_subtotal: 0,
+                        taxable_amount: 0,
+                        tax_amount: 0,
+                        amount_total: 0,
+                        tax_rate: item.tax_rate,
+                        tax_details: item.tax_details.clone(),
+                        quantity: item.quantity,
+                        unit_price: Some(Decimal::ZERO),
+                        start_date: item.start_date,
+                        end_date: item.end_date,
+                        sub_lines: negated_sub_lines,
+                        is_prorated: item.is_prorated,
+                        price_component_id: item.price_component_id,
+                        sub_component_id: item.sub_component_id,
+                        sub_add_on_id: item.sub_add_on_id,
+                        product_id: item.product_id,
+                        metric_id: item.metric_id,
+                        description: item.description.clone(),
+                        group_by_dimensions: item.group_by_dimensions.clone(),
+                    };
+                }
+
+                // Calculate the proportion based on subtotal: credit_subtotal / original_subtotal
+                let proportion = Decimal::from(credit_subtotal) / Decimal::from(original_subtotal);
+
+                // Taxable amount is prorated proportionally
+                let prorated_taxable = (Decimal::from(item.taxable_amount) * proportion)
+                    .round()
+                    .to_i64()
+                    .unwrap_or(0);
+
+                // Tax is prorated proportionally
+                let prorated_tax = (Decimal::from(item.tax_amount) * proportion)
+                    .round()
+                    .to_i64()
+                    .unwrap_or(0);
+
+                // Prorate each tax detail so the breakdown reflects the credited portion,
+                // then negate and apply a residual correction so the sum matches -prorated_tax
+                // to the cent (largest-magnitude detail absorbs the rounding delta).
+                let prorated_tax_details =
+                    prorate_and_negate_tax_details(&item.tax_details, proportion, -prorated_tax);
+
+                // Total = taxable + tax (uses taxable to account for discounts)
+                let credit_total = prorated_taxable + prorated_tax;
+
+                // Effective-rate display so qty × unit_price always reconciles to the credited
+                // amount: quantity = the line's real unit count, unit_price = amount ÷ quantity
+                // (the effective, possibly-prorated, per-unit rate). Never divide to fabricate a
+                // fractional quantity (that produced the repeating decimal). Sub-line overrides
+                // keep the parent blank — the negated sub-lines carry the detail.
+                let (credited_quantity, credited_unit_price) = if sub_override.is_some() {
+                    (None, None)
+                } else {
+                    let qty = item
+                        .quantity
+                        .filter(|q| *q > Decimal::ZERO)
+                        .unwrap_or(Decimal::ONE);
+                    let unit = credit_subtotal.to_unit(precision) / qty;
+                    (Some(qty), Some(unit))
+                };
+                // Per line: flagged prorated when the line was itself billed prorated, or —
+                // for a proration-driven batch (`from_proration`, i.e. amendments) — when
+                // proration actually reduced THIS line below what was billed. Within such a
+                // batch the credit IS `billed × time_factor`, so `credit_subtotal < amount`
+                // is exactly `factor < 1` (covers less than the full period). The
+                // `from_proration` gate keeps manual partial credits (also a smaller amount,
+                // but not a time-proration) from being mislabelled.
+                let credited_is_prorated =
+                    item.is_prorated || (from_proration && credit_subtotal < item.amount_subtotal);
+
+                LineItem {
+                    local_id: item.local_id.clone(),
+                    name: item.name.clone(),
+                    amount_subtotal: -credit_subtotal,
+                    taxable_amount: -prorated_taxable,
+                    tax_amount: -prorated_tax,
+                    amount_total: -credit_total,
+                    tax_rate: item.tax_rate,
+                    tax_details: prorated_tax_details,
+                    quantity: credited_quantity,
+                    unit_price: credited_unit_price,
+                    start_date: item.start_date,
+                    end_date: item.end_date,
+                    sub_lines: negated_sub_lines,
+                    is_prorated: credited_is_prorated,
+                    price_component_id: item.price_component_id,
+                    sub_component_id: item.sub_component_id,
+                    sub_add_on_id: item.sub_add_on_id,
+                    product_id: item.product_id,
+                    metric_id: item.metric_id,
+                    description: item.description.clone(),
+                    group_by_dimensions: item.group_by_dimensions.clone(),
+                }
+            } else {
+                // Full credit: negate the amounts, keep original quantity and positive
+                // unit_price (the sign lives in the amounts).
+                // Note: amount_total is recalculated as taxable_amount + tax_amount to properly
+                // account for discounts (which reduce taxable_amount but not amount_subtotal)
+                LineItem {
+                    local_id: item.local_id.clone(),
+                    name: item.name.clone(),
+                    amount_subtotal: -item.amount_subtotal,
+                    taxable_amount: -item.taxable_amount,
+                    tax_amount: -item.tax_amount,
+                    amount_total: -(item.taxable_amount + item.tax_amount),
+                    tax_rate: item.tax_rate,
+                    tax_details: item
+                        .tax_details
+                        .iter()
+                        .map(|d| TaxDetail {
+                            tax_rate: d.tax_rate,
+                            tax_name: d.tax_name.clone(),
+                            tax_amount: -d.tax_amount,
+                        })
+                        .collect(),
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    start_date: item.start_date,
+                    end_date: item.end_date,
+                    sub_lines: negated_sub_lines,
+                    is_prorated: item.is_prorated,
+                    price_component_id: item.price_component_id,
+                    sub_component_id: item.sub_component_id,
+                    sub_add_on_id: item.sub_add_on_id,
+                    product_id: item.product_id,
+                    metric_id: item.metric_id,
+                    description: item.description.clone(),
+                    group_by_dimensions: item.group_by_dimensions.clone(),
+                }
+            }
+        })
+        .collect()
+}
+
+fn compute_tax_breakdown(line_items: &[LineItem]) -> Vec<TaxBreakdownItem> {
+    // Group by (tax_rate, tax_name) to preserve detailed breakdown
+    let mut tax_groups: HashMap<(Decimal, String), u64> = HashMap::new();
+    // Track taxable amounts separately per tax rate (since multiple taxes can apply to same base)
+    let mut taxable_by_rate: HashMap<Decimal, u64> = HashMap::new();
+
+    for item in line_items {
+        let taxable = item.taxable_amount.unsigned_abs();
+
+        if item.tax_details.is_empty() {
+            // No detailed breakdown available, use combined rate
+            if item.tax_amount != 0 || taxable > 0 {
+                let key = (item.tax_rate, "Tax".to_string());
+                *tax_groups.entry(key).or_insert(0) += item.tax_amount.unsigned_abs();
+                *taxable_by_rate.entry(item.tax_rate).or_insert(0) += taxable;
+            }
+        } else {
+            // Use detailed breakdown - each tax_detail has its own rate and amount
+            for detail in &item.tax_details {
+                let key = (detail.tax_rate, detail.tax_name.clone());
+                *tax_groups.entry(key).or_insert(0) += detail.tax_amount.unsigned_abs();
+                // Taxable amount is shared across all taxes on this line item
+                // We track it per rate to avoid double-counting when multiple taxes share a rate
+            }
+            // Add taxable amount once per unique rate on this item
+            let mut seen_rates: HashMap<Decimal, bool> = HashMap::new();
+            for detail in &item.tax_details {
+                seen_rates.entry(detail.tax_rate).or_insert_with(|| {
+                    *taxable_by_rate.entry(detail.tax_rate).or_insert(0) += taxable;
+                    true
+                });
+            }
+        }
+    }
+
+    tax_groups
+        .into_iter()
+        .map(|((tax_rate, name), tax_amount)| {
+            let taxable_amount = taxable_by_rate.get(&tax_rate).copied().unwrap_or(0);
+            TaxBreakdownItem {
+                taxable_amount,
+                tax_amount,
+                tax_rate,
+                name,
+                exemption_type: None, // TODO: preserve exemption info if needed
+            }
+        })
+        .collect()
+}
+
+/// Reduces an invoice's `amount_due` by the credit note total.
+/// If the outstanding balance reaches zero, transitions `payment_status` to Paid and emits an
+/// `invoice_paid` outbox event for audit. Only applies to DebtCancellation credit notes
+async fn apply_credit_note_to_invoice_tx(
+    store: &Store,
+    conn: &mut PgConn,
+    tenant_id: TenantId,
+    actor: &Actor,
+    credit_note: &CreditNote,
+) -> StoreResult<()> {
+    if credit_note.credit_type != CreditType::DebtCancellation {
+        return Ok(());
+    }
+
+    let cn_amount = credit_note.total.unsigned_abs() as i64;
+    if cn_amount == 0 {
+        return Ok(());
+    }
+
+    let updated = InvoiceRow::apply_transaction(conn, credit_note.invoice_id, tenant_id, cn_amount)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    if updated.amount_due <= 0
+        && updated.payment_status != diesel_models::enums::InvoicePaymentStatus::Paid
+    {
+        let updated_row = InvoiceRow::apply_payment_status(
+            conn,
+            credit_note.invoice_id,
+            tenant_id,
+            diesel_models::enums::InvoicePaymentStatus::Paid,
+            credit_note.finalized_at,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        let invoice: Invoice = updated_row.try_into()?;
+        store
+            .internal
+            .record_outbox_batch_tx(
+                conn,
+                tenant_id,
+                actor,
+                vec![OutboxEvent::invoice_paid((&invoice).into())],
+            )
+            .await?;
+    }
+
+    Ok(())
+}
+
+/// Reverses the effect of `apply_credit_note_to_invoice_tx` when voiding a CN.
+/// Adds the credit note total back to `amount_due`. If the invoice was Paid and now has outstanding balance, recomputes payment_status from
+/// settled payment transactions (Unpaid if none, PartiallyPaid otherwise).
+async fn revert_credit_note_from_invoice_tx(
+    conn: &mut PgConn,
+    tenant_id: TenantId,
+    credit_note_row: &CreditNoteRow,
+) -> StoreResult<()> {
+    if credit_note_row.credit_type != diesel_models::enums::CreditTypeEnum::DebtCancellation {
+        return Ok(());
+    }
+
+    let cn_amount = credit_note_row.total.unsigned_abs() as i64;
+    if cn_amount == 0 {
+        return Ok(());
+    }
+
+    let updated =
+        InvoiceRow::apply_transaction(conn, credit_note_row.invoice_id, tenant_id, -cn_amount)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+    if updated.payment_status == diesel_models::enums::InvoicePaymentStatus::Paid
+        && updated.amount_due > 0
+    {
+        let txs =
+            PaymentTransactionRow::list_by_invoice_id(conn, credit_note_row.invoice_id, tenant_id)
+                .await
+                .map_err(Into::<Report<StoreError>>::into)?;
+
+        let amount_paid: i64 = txs
+            .iter()
+            .filter(|t| t.transaction.status == diesel_models::enums::PaymentStatusEnum::Settled)
+            .map(|t| t.transaction.amount)
+            .sum();
+
+        let new_status = if amount_paid > 0 {
+            diesel_models::enums::InvoicePaymentStatus::PartiallyPaid
+        } else {
+            diesel_models::enums::InvoicePaymentStatus::Unpaid
+        };
+
+        InvoiceRow::apply_payment_status(
+            conn,
+            credit_note_row.invoice_id,
+            tenant_id,
+            new_status,
+            None,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+    }
+
+    Ok(())
+}
+
+/// User-facing create path: loads the invoice, validates status + credit type invariants,
+/// and delegates to the shared `create_credit_note_tx`. Used by both `create_credit_note`
+/// (draft) and `create_and_finalize_credit_note` (interactive).
+pub(crate) async fn create_user_credit_note_tx(
+    store: &Store,
+    conn: &mut PgConn,
+    tenant_id: TenantId,
+    actor: &Actor,
+    params: CreateCreditNoteParams,
+    from_proration: bool,
+) -> StoreResult<CreditNote> {
+    let detailed_invoice = InvoiceRow::find_detailed_by_id(conn, tenant_id, params.invoice_id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    let invoice: Invoice = detailed_invoice.invoice.try_into()?;
+
+    if invoice.status != InvoiceStatusEnum::Finalized {
+        bail!(StoreError::InvalidArgument(
+            "Credit notes can only be created for finalized invoices".to_string()
+        ));
+    }
+
+    match params.credit_type {
+        CreditType::DebtCancellation => {
+            if invoice.amount_due <= 0 {
+                bail!(StoreError::InvalidArgument(
+                    "DebtCancellation credit notes can only be created for invoices with an outstanding balance".to_string()
+                ));
+            }
+        }
+        CreditType::Refund => {
+            if !matches!(
+                invoice.payment_status,
+                InvoicePaymentStatus::Paid | InvoicePaymentStatus::PartiallyPaid
+            ) {
+                bail!(StoreError::InvalidArgument(
+                    "Refund-type credit notes can only be created for paid or partially paid invoices".to_string()
+                ));
+            }
+        }
+        CreditType::CreditToBalance => {
+            if !matches!(
+                invoice.payment_status,
+                InvoicePaymentStatus::Paid | InvoicePaymentStatus::PartiallyPaid
+            ) {
+                bail!(StoreError::InvalidArgument(
+                    "CreditToBalance credit notes can only be created for paid or partially paid invoices".to_string()
+                ));
+            }
+        }
+    }
+
+    let line_items = if params.line_items.is_empty() {
+        None
+    } else {
+        Some(params.line_items)
+    };
+
+    create_credit_note_tx(
+        store,
+        conn,
+        tenant_id,
+        actor,
+        CreateCreditNoteTxParams {
+            invoice,
+            line_items,
+            status: crate::domain::enums::CreditNoteStatus::Draft,
+            finalized_at: None,
+            reason: params.reason,
+            memo: params.memo,
+            credit_type: params.credit_type,
+            from_proration,
+        },
+    )
+    .await
+}
+
+pub(crate) async fn finalize_credit_note_tx(
+    store: &Store,
+    conn: &mut PgConn,
+    tenant_id: TenantId,
+    actor: &Actor,
+    credit_note_id: CreditNoteId,
+) -> StoreResult<CreditNote> {
+    let credit_note_row = CreditNoteRow::find_by_id(conn, tenant_id, credit_note_id).await?;
+
+    if credit_note_row.status != diesel_models::enums::CreditNoteStatus::Draft {
+        bail!(StoreError::InvalidArgument(
+            "Only draft credit notes can be finalized".to_string()
+        ));
+    }
+
+    let invoicing_entity = InvoicingEntityRow::select_for_update_by_id_and_tenant(
+        conn,
+        credit_note_row.invoicing_entity_id,
+        tenant_id,
+    )
+    .await
+    .map_err(Into::<Report<StoreError>>::into)?;
+
+    let credit_note_number_value = invoicing_entity.next_credit_note_number;
+    let credit_note_number = format!("CN-{:06}", credit_note_number_value);
+
+    CreditNoteRow::finalize_with_number(conn, credit_note_id, tenant_id, &credit_note_number)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    InvoicingEntityRow::update_credit_note_number(
+        conn,
+        credit_note_row.invoicing_entity_id,
+        tenant_id,
+        credit_note_number_value,
+    )
+    .await
+    .map_err(Into::<Report<StoreError>>::into)?;
+
+    if credit_note_row.credited_amount_cents > 0 {
+        let customer = CustomerRow::find_by_id(conn, &credit_note_row.customer_id, &tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        let converted_amount = convert_currency(
+            conn,
+            credit_note_row.credited_amount_cents,
+            &credit_note_row.currency,
+            &customer.currency,
+        )
+        .await?;
+
+        CustomerBalance::update(
+            conn,
+            credit_note_row.customer_id,
+            tenant_id,
+            converted_amount,
+            None,
+        )
+        .await?;
+    }
+
+    let credit_note: CreditNote = CreditNoteRow::find_by_id(conn, tenant_id, credit_note_id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?
+        .try_into()?;
+
+    apply_credit_note_to_invoice_tx(store, conn, tenant_id, actor, &credit_note).await?;
+
+    store
+        .internal
+        .record_outbox_batch_tx(
+            conn,
+            tenant_id,
+            actor,
+            vec![OutboxEvent::credit_note_finalized((&credit_note).into())],
+        )
+        .await?;
+
+    Ok(credit_note)
+}
+
+// shared implementation used by both `create_credit_note` and `void_invoice`.
+pub(crate) async fn create_credit_note_tx(
+    store: &Store,
+    conn: &mut PgConn,
+    tenant_id: TenantId,
+    actor: &Actor,
+    params: CreateCreditNoteTxParams,
+) -> StoreResult<CreditNote> {
+    let invoice = params.invoice;
+
+    // 1. Lock the invoice row to prevent race conditions when creating credit notes
+    // This ensures that concurrent credit note creations for the same invoice are serialized
+    let _invoice_lock = InvoiceRow::select_for_update_by_id(conn, tenant_id, invoice.id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    // Get existing credit notes for this invoice to track already credited amounts
+    let existing_credit_notes = CreditNoteRow::list_by_invoice_id(conn, tenant_id, invoice.id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    // Calculate total credited amount per line item (excluding voided credit notes)
+    // We use the absolute value of amount_subtotal since credit note amounts are negative
+    let mut already_credited_amounts: HashMap<String, i64> = HashMap::new();
+    for cn in existing_credit_notes
+        .iter()
+        .filter(|cn| cn.status != diesel_models::enums::CreditNoteStatus::Voided)
+    {
+        let line_items: Vec<LineItem> =
+            serde_json::from_value(cn.line_items.clone()).unwrap_or_default();
+        for item in line_items {
+            *already_credited_amounts.entry(item.local_id).or_insert(0) +=
+                item.amount_subtotal.abs();
+        }
+    }
+
+    let precision = Currencies::resolve_currency_precision(&invoice.currency).ok_or_else(|| {
+        Report::from(StoreError::InvalidArgument(format!(
+            "Unknown currency '{}'",
+            invoice.currency
+        )))
+    })?;
+
+    // 2. Resolve which lines are being credited and how (full / partial qty / per-subline)
+    let requested: Vec<CreditLineItem> = params.line_items.unwrap_or_default();
+
+    // Map original invoice lines by local_id for lookup
+    let invoice_lines_by_id: HashMap<&str, &LineItem> = invoice
+        .line_items
+        .iter()
+        .map(|l| (l.local_id.as_str(), l))
+        .collect();
+
+    let mut resolved: HashMap<String, ResolvedCredit> = HashMap::new();
+    let line_items_to_credit: Vec<LineItem>;
+
+    if requested.is_empty() {
+        // Credit all lines with their remaining amounts (full credit)
+        line_items_to_credit = invoice
+            .line_items
+            .iter()
+            .filter(|item| {
+                let already = already_credited_amounts
+                    .get(&item.local_id)
+                    .copied()
+                    .unwrap_or(0);
+                item.amount_subtotal > already
+            })
+            .cloned()
+            .collect();
+        for item in &line_items_to_credit {
+            let already = already_credited_amounts
+                .get(&item.local_id)
+                .copied()
+                .unwrap_or(0);
+            let remaining = item.amount_subtotal - already;
+            // Treat as partial when there's already been a credit; otherwise full negation
+            let credit_subtotal = if already == 0 { None } else { Some(remaining) };
+            resolved.insert(
+                item.local_id.clone(),
+                ResolvedCredit {
+                    credit_subtotal,
+                    sub_lines_override: None,
+                },
+            );
+        }
+    } else {
+        let mut items: Vec<LineItem> = Vec::with_capacity(requested.len());
+        for ci in requested {
+            let local_id = ci.local_id().to_string();
+            let item = *invoice_lines_by_id.get(local_id.as_str()).ok_or_else(|| {
+                Report::from(StoreError::InvalidArgument(format!(
+                    "Line item '{}' not found on invoice",
+                    local_id
+                )))
+            })?;
+            let already = already_credited_amounts
+                .get(&item.local_id)
+                .copied()
+                .unwrap_or(0);
+            let remaining = item.amount_subtotal - already;
+            if remaining <= 0 {
+                bail!(StoreError::InvalidArgument(format!(
+                    "Line item '{}' has already been fully credited",
+                    item.local_id
+                )));
+            }
+
+            let rc = match ci {
+                CreditLineItem::SubLines { sub_lines, .. } => {
+                    if item.sub_lines.is_empty() {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Line item '{}' has no sub-lines to credit",
+                            item.local_id
+                        )));
+                    }
+                    let mut overrides: Vec<SubLineOverride> = Vec::new();
+                    let mut total_cents: i64 = 0;
+                    for csl in &sub_lines {
+                        if csl.quantity <= Decimal::ZERO {
+                            bail!(StoreError::InvalidArgument(format!(
+                                "Sub-line '{}' quantity must be positive",
+                                csl.local_id
+                            )));
+                        }
+                        let original_sl = item
+                            .sub_lines
+                            .iter()
+                            .find(|s| s.local_id == csl.local_id)
+                            .ok_or_else(|| {
+                                Report::from(StoreError::InvalidArgument(format!(
+                                    "Sub-line '{}' not found on line '{}'",
+                                    csl.local_id, item.local_id
+                                )))
+                            })?;
+                        if original_sl.quantity <= Decimal::ZERO {
+                            bail!(StoreError::InvalidArgument(format!(
+                                "Sub-line '{}' has non-positive original quantity",
+                                csl.local_id
+                            )));
+                        }
+                        if csl.quantity > original_sl.quantity {
+                            bail!(StoreError::InvalidArgument(format!(
+                                "Sub-line '{}' credit quantity {} exceeds original {}",
+                                csl.local_id, csl.quantity, original_sl.quantity
+                            )));
+                        }
+                        let new_total = (original_sl.unit_price * csl.quantity)
+                            .to_subunit_opt(precision)
+                            .ok_or_else(|| {
+                                Report::from(StoreError::InvalidArgument(format!(
+                                    "Sub-line '{}' credit amount overflow",
+                                    csl.local_id
+                                )))
+                            })?;
+                        total_cents += new_total;
+                        overrides.push(SubLineOverride {
+                            original_local_id: csl.local_id.clone(),
+                            new_quantity: csl.quantity,
+                            new_total_cents: new_total,
+                        });
+                    }
+                    if overrides.is_empty() {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Line item '{}': at least one sub-line is required",
+                            item.local_id
+                        )));
+                    }
+                    if total_cents > remaining {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Sub-line credit total {} for line '{}' exceeds remaining {}",
+                            total_cents, item.local_id, remaining
+                        )));
+                    }
+                    ResolvedCredit {
+                        credit_subtotal: Some(total_cents),
+                        sub_lines_override: Some(overrides),
+                    }
+                }
+                CreditLineItem::Line { quantity: qty, .. } => {
+                    if qty <= Decimal::ZERO {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Line item '{}' quantity must be positive",
+                            item.local_id
+                        )));
+                    }
+                    let unit_price = item.unit_price.ok_or_else(|| {
+                        Report::from(StoreError::InvalidArgument(format!(
+                            "Line item '{}' has no unit_price; provide sub_lines instead",
+                            item.local_id
+                        )))
+                    })?;
+                    let original_qty = item.quantity.unwrap_or(Decimal::ONE);
+                    if original_qty <= Decimal::ZERO {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Line item '{}' has non-positive original quantity",
+                            item.local_id
+                        )));
+                    }
+                    if qty > original_qty {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Line item '{}' credit quantity {} exceeds original {}",
+                            item.local_id, qty, original_qty
+                        )));
+                    }
+                    let credit_cents =
+                        (unit_price * qty)
+                            .to_subunit_opt(precision)
+                            .ok_or_else(|| {
+                                Report::from(StoreError::InvalidArgument(format!(
+                                    "Line item '{}' credit amount overflow",
+                                    item.local_id
+                                )))
+                            })?;
+                    if credit_cents > remaining {
+                        bail!(StoreError::InvalidArgument(format!(
+                            "Credit amount {} for line item '{}' exceeds remaining {}",
+                            credit_cents, item.local_id, remaining
+                        )));
+                    }
+                    ResolvedCredit {
+                        credit_subtotal: Some(credit_cents),
+                        sub_lines_override: None,
+                    }
+                }
+            };
+
+            resolved.insert(item.local_id.clone(), rc);
+            items.push(item.clone());
+        }
+        line_items_to_credit = items;
+    }
+
+    if line_items_to_credit.is_empty() {
+        bail!(StoreError::InvalidArgument(
+            "No line items to credit".to_string()
+        ));
+    }
+
+    // 3. Create negated line items for the credit note
+    let negated_line_items = negate_line_items(
+        &line_items_to_credit,
+        &resolved,
+        precision,
+        params.from_proration,
+    );
+
+    // 6. Calculate totals from negated line items (will be negative)
+    let subtotal: i64 = negated_line_items
+        .iter()
+        .map(|item| item.amount_subtotal)
+        .sum();
+    let tax_amount: i64 = negated_line_items.iter().map(|item| item.tax_amount).sum();
+    let total: i64 = negated_line_items
+        .iter()
+        .map(|item| item.amount_total)
+        .sum();
+
+    if params.credit_type == CreditType::DebtCancellation
+        && total.unsigned_abs() as i64 > invoice.amount_due
+    {
+        bail!(StoreError::InvalidArgument(format!(
+            "DebtCancellation credit note total ({}) exceeds invoice outstanding amount due ({})",
+            total.unsigned_abs(),
+            invoice.amount_due
+        )));
+    }
+
+    // 7. Compute tax breakdown from negated line items (uses actual credited amounts)
+    let tax_breakdown = compute_tax_breakdown(&negated_line_items);
+
+    // 8. Get credit note number - only assign real number when finalizing
+    let (credit_note_number, credit_note_number_value) =
+        if params.status == crate::domain::enums::CreditNoteStatus::Finalized {
+            // Lock invoicing entity for sequential numbering
+            let invoicing_entity = InvoicingEntityRow::select_for_update_by_id_and_tenant(
+                conn,
+                invoice.invoicing_entity_id,
+                tenant_id,
+            )
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+            let number_value = invoicing_entity.next_credit_note_number;
+            (format!("CN-{:06}", number_value), Some(number_value))
+        } else {
+            // Draft credit notes use placeholder
+            ("draft".to_string(), None)
+        };
+
+    // 9. Determine credit/refund amounts based on credit type
+    // These are positive values representing how much is credited/refunded
+    let credit_total = total.unsigned_abs() as i64;
+
+    let (credited_amount_cents, refunded_amount_cents) = match params.credit_type {
+        CreditType::CreditToBalance => (credit_total, 0),
+        CreditType::DebtCancellation => (0, 0),
+        CreditType::Refund => {
+            // For refunds, we need to handle applied credits from the original invoice.
+            // If the invoice was partially paid with customer balance (applied_credits),
+            // we should restore that portion to the balance and only refund what was actually paid.
+            //
+            // Calculate proportionally based on how much of the invoice we're crediting:
+            // - If crediting full invoice: use full applied_credits
+            // - If partial: prorate the applied_credits
+            let invoice_total = invoice.total;
+
+            if invoice_total > 0 && invoice.applied_credits > 0 {
+                // Calculate the proportion of the invoice being credited
+                let credit_proportion = Decimal::from(credit_total) / Decimal::from(invoice_total);
+
+                // Prorate the applied_credits for this credit note
+                let applied_credits_portion = (Decimal::from(invoice.applied_credits)
+                    * credit_proportion)
+                    .round()
+                    .to_i64()
+                    .unwrap_or(0);
+
+                // The rest should be refunded
+                let refund_portion = credit_total - applied_credits_portion;
+
+                (applied_credits_portion, refund_portion)
+            } else {
+                // No applied credits, full refund
+                (0, credit_total)
+            }
+        }
+    };
+
+    // 10. Build the credit note
+    let credit_note_new = CreditNoteNew {
+        credit_note_number: credit_note_number.clone(),
+        status: params.status.clone(),
+        credit_type: params.credit_type,
+        tenant_id,
+        customer_id: invoice.customer_id,
+        invoice_id: invoice.id,
+        invoice_number: invoice.invoice_number.clone(),
+        plan_version_id: invoice.plan_version_id,
+        subscription_id: invoice.subscription_id,
+        currency: invoice.currency.clone(),
+        subtotal,
+        tax_amount,
+        total,
+        refunded_amount_cents,
+        credited_amount_cents,
+        line_items: negated_line_items,
+        tax_breakdown,
+        reason: params.reason,
+        memo: params.memo,
+        customer_details: invoice.customer_details.clone(),
+        seller_details: invoice.seller_details.clone(),
+        invoicing_entity_id: invoice.invoicing_entity_id,
+        finalized_at: params.finalized_at,
+    };
+
+    // 11. Insert the credit note
+    let insertable: diesel_models::credit_notes::CreditNoteRowNew = credit_note_new.try_into()?;
+    let inserted_credit_note = insertable
+        .insert(conn)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+    // 12. Convert to domain model
+    let credit_note: CreditNote = inserted_credit_note.try_into()?;
+
+    // 13a. If credit note is created as Finalized and is a DebtCancellation,
+    // apply it to the invoice's amount_due (settle if reaching zero).
+    if params.status == crate::domain::enums::CreditNoteStatus::Finalized {
+        apply_credit_note_to_invoice_tx(store, conn, tenant_id, actor, &credit_note).await?;
+    }
+
+    // 13b. If credit note is created as Finalized, update customer balance immediately
+    if params.status == crate::domain::enums::CreditNoteStatus::Finalized
+        && credit_note.credited_amount_cents > 0
+    {
+        // Get the customer to determine their balance currency
+        let customer = CustomerRow::find_by_id(conn, &credit_note.customer_id, &tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        // Convert credited amount from credit note currency to customer's balance currency
+        let converted_amount = convert_currency(
+            conn,
+            credit_note.credited_amount_cents,
+            &credit_note.currency,
+            &customer.currency,
+        )
+        .await?;
+
+        CustomerBalance::update(
+            conn,
+            credit_note.customer_id,
+            tenant_id,
+            converted_amount,
+            None, // No invoice_id for credit note balance updates
+        )
+        .await?;
+    }
+
+    let mut events = vec![OutboxEvent::credit_note_created((&credit_note).into())];
+    // If created as finalized, also emit the finalized event
+    if params.status == crate::domain::enums::CreditNoteStatus::Finalized {
+        events.push(OutboxEvent::credit_note_finalized((&credit_note).into()));
+    }
+    store
+        .internal
+        .record_outbox_batch_tx(conn, tenant_id, actor, events)
+        .await?;
+
+    // 15. Update the credit note number in the invoicing entity (only when finalizing)
+    if let Some(number_value) = credit_note_number_value {
+        InvoicingEntityRow::update_credit_note_number(
+            conn,
+            invoice.invoicing_entity_id,
+            tenant_id,
+            number_value,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+    }
+
+    Ok(credit_note)
+}
+
+#[async_trait::async_trait]
+impl CreditNoteInterface for Store {
+    async fn insert_credit_note(&self, credit_note: CreditNoteNew) -> StoreResult<CreditNote> {
+        let mut conn = self.get_conn().await?;
+
+        let insertable: diesel_models::credit_notes::CreditNoteRowNew = credit_note.try_into()?;
+
+        insertable
+            .insert(&mut conn)
+            .await
+            .map_err(Into::into)
+            .and_then(std::convert::TryInto::try_into)
+    }
+
+    async fn create_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        params: CreateCreditNoteParams,
+    ) -> StoreResult<CreditNote> {
+        self.transaction(|conn| {
+            let actor = &actor;
+            async move {
+                create_user_credit_note_tx(self, conn, tenant_id, actor, params, false).await
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn create_and_finalize_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        params: CreateCreditNoteParams,
+    ) -> StoreResult<CreditNote> {
+        self.transaction(|conn| {
+            let actor = &actor;
+            async move {
+                let draft =
+                    create_user_credit_note_tx(self, conn, tenant_id, actor, params, false).await?;
+                finalize_credit_note_tx(self, conn, tenant_id, actor, draft.id).await
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn list_credit_notes(
+        &self,
+        tenant_id: TenantId,
+        customer_id: Option<CustomerId>,
+        invoice_id: Option<InvoiceId>,
+        status: Option<crate::domain::enums::CreditNoteStatus>,
+        search: Option<String>,
+        order_by: Option<String>,
+        pagination: crate::domain::PaginationRequest,
+    ) -> StoreResult<crate::domain::PaginatedVec<CreditNote>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = CreditNoteRow::list(
+            &mut conn,
+            tenant_id,
+            customer_id,
+            invoice_id,
+            status.map(Into::into),
+            search,
+            order_by.as_deref(),
+            pagination.into(),
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        let items: Vec<CreditNote> = rows
+            .items
+            .into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(crate::domain::PaginatedVec {
+            items,
+            total_pages: rows.total_pages,
+            total_results: rows.total_results,
+        })
+    }
+
+    async fn get_credit_note_by_id(
+        &self,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote> {
+        let mut conn = self.get_conn().await?;
+
+        CreditNoteRow::find_by_id(&mut conn, tenant_id, credit_note_id)
+            .await
+            .map_err(Into::into)
+            .and_then(std::convert::TryInto::try_into)
+    }
+
+    async fn list_credit_notes_by_invoice_id(
+        &self,
+        tenant_id: TenantId,
+        invoice_id: InvoiceId,
+    ) -> StoreResult<Vec<CreditNote>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = CreditNoteRow::list_by_invoice_id(&mut conn, tenant_id, invoice_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        rows.into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    async fn list_credit_notes_by_customer_id(
+        &self,
+        tenant_id: TenantId,
+        customer_id: CustomerId,
+    ) -> StoreResult<Vec<CreditNote>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = CreditNoteRow::list_by_customer_id(&mut conn, tenant_id, customer_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        rows.into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    async fn finalize_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote> {
+        self.transaction(|conn| {
+            let actor = &actor;
+            async move {
+                finalize_credit_note_tx(self, conn, tenant_id, actor, credit_note_id).await
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn void_credit_note(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<CreditNote> {
+        self.transaction(|conn| {
+            let actor = &actor;
+            async move {
+                // 1. Get the credit note to check if balance needs to be reversed
+                let credit_note_row =
+                    CreditNoteRow::find_by_id(conn, tenant_id, credit_note_id).await?;
+
+                // 2. Validate it's finalized (only finalized credit notes can be voided)
+                if credit_note_row.status != diesel_models::enums::CreditNoteStatus::Finalized {
+                    bail!(StoreError::InvalidArgument(
+                        "Only finalized credit notes can be voided".to_string()
+                    ));
+                }
+
+                // 3. Void the credit note
+                CreditNoteRow::void(conn, credit_note_id, tenant_id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                // 3b. Reverse the invoice settlement (DebtCancellation only)
+                revert_credit_note_from_invoice_tx(conn, tenant_id, &credit_note_row).await?;
+
+                // 4. Reverse customer balance if there were credited amounts
+                if credit_note_row.credited_amount_cents > 0 {
+                    // Get the customer to determine their balance currency
+                    let customer =
+                        CustomerRow::find_by_id(conn, &credit_note_row.customer_id, &tenant_id)
+                            .await
+                            .map_err(Into::<Report<StoreError>>::into)?;
+
+                    // Convert credited amount from credit note currency to customer's balance currency
+                    let converted_amount = convert_currency(
+                        conn,
+                        credit_note_row.credited_amount_cents,
+                        &credit_note_row.currency,
+                        &customer.currency,
+                    )
+                    .await?;
+
+                    CustomerBalance::update(
+                        conn,
+                        credit_note_row.customer_id,
+                        tenant_id,
+                        -converted_amount, // Negative to reverse
+                        None,
+                    )
+                    .await?;
+                }
+
+                // 5. Get the voided credit note
+                let credit_note: CreditNote =
+                    CreditNoteRow::find_by_id(conn, tenant_id, credit_note_id)
+                        .await
+                        .map_err(Into::<Report<StoreError>>::into)?
+                        .try_into()?;
+
+                // 6. Emit outbox event for voided credit note
+                self.internal
+                    .record_outbox_batch_tx(
+                        conn,
+                        tenant_id,
+                        actor,
+                        vec![OutboxEvent::credit_note_voided((&credit_note).into())],
+                    )
+                    .await?;
+
+                Ok(credit_note)
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn delete_draft_credit_note(
+        &self,
+        tenant_id: TenantId,
+        credit_note_id: CreditNoteId,
+    ) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        let rows_affected = CreditNoteRow::delete_draft(&mut conn, credit_note_id, tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        if rows_affected == 0 {
+            bail!(StoreError::InvalidArgument(
+                "Credit note not found or is not a draft".to_string()
+            ));
+        }
+
+        Ok(())
+    }
+
+    async fn list_credit_notes_by_ids(
+        &self,
+        credit_note_ids: Vec<CreditNoteId>,
+    ) -> StoreResult<Vec<CreditNote>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = CreditNoteRow::list_by_ids(&mut conn, credit_note_ids)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        rows.into_iter()
+            .map(std::convert::TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    async fn save_credit_note_pdf_document(
+        &self,
+        credit_note_id: CreditNoteId,
+        tenant_id: TenantId,
+        pdf_document_id: StoredDocumentId,
+    ) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        CreditNoteRow::update_pdf_document_id(
+            &mut conn,
+            credit_note_id,
+            tenant_id,
+            pdf_document_id,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::invoice_lines::{SubLineItem, TaxDetail};
+    use chrono::NaiveDate;
+    use rust_decimal_macros::dec;
+
+    fn resolved_map(entries: &[(&str, Option<i64>)]) -> HashMap<String, ResolvedCredit> {
+        entries
+            .iter()
+            .map(|(id, credit_subtotal)| {
+                (
+                    (*id).to_string(),
+                    ResolvedCredit {
+                        credit_subtotal: *credit_subtotal,
+                        sub_lines_override: None,
+                    },
+                )
+            })
+            .collect()
+    }
+
+    fn make_line(
+        local_id: &str,
+        amount_subtotal: i64,
+        taxable_amount: i64,
+        tax_amount: i64,
+        tax_details: Vec<TaxDetail>,
+    ) -> LineItem {
+        LineItem {
+            local_id: local_id.to_string(),
+            name: "test".to_string(),
+            amount_subtotal,
+            tax_rate: dec!(0.2),
+            taxable_amount,
+            tax_amount,
+            amount_total: taxable_amount + tax_amount,
+            tax_details,
+            quantity: Some(Decimal::ONE),
+            unit_price: Some(Decimal::from(amount_subtotal) / Decimal::from(100)),
+            start_date: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            end_date: NaiveDate::from_ymd_opt(2025, 1, 31).unwrap(),
+            sub_lines: Vec::<SubLineItem>::new(),
+            is_prorated: false,
+            price_component_id: None,
+            sub_component_id: None,
+            sub_add_on_id: None,
+            product_id: None,
+            metric_id: None,
+            description: None,
+            group_by_dimensions: None,
+        }
+    }
+
+    fn assert_breakdown_matches(items: &[LineItem], expected_tax_amount: i64, case: &str) {
+        let breakdown = compute_tax_breakdown(items);
+        let sum: i64 = breakdown.iter().map(|b| b.tax_amount as i64).sum();
+        assert_eq!(
+            sum,
+            expected_tax_amount.unsigned_abs() as i64,
+            "[{}] Σ breakdown.tax_amount ({}) != |credit_note.tax_amount| ({})",
+            case,
+            sum,
+            expected_tax_amount.unsigned_abs()
+        );
+    }
+
+    #[test]
+    fn full_credit_breakdown_matches_tax_amount() {
+        let line = make_line(
+            "l1",
+            10_000,
+            10_000,
+            2_000,
+            vec![
+                TaxDetail {
+                    tax_rate: dec!(0.15),
+                    tax_name: "VAT".into(),
+                    tax_amount: 1_500,
+                },
+                TaxDetail {
+                    tax_rate: dec!(0.05),
+                    tax_name: "City".into(),
+                    tax_amount: 500,
+                },
+            ],
+        );
+        let amounts = resolved_map(&[("l1", None)]);
+        let negated = negate_line_items(&[line], &amounts, 2, false);
+        let tax: i64 = negated.iter().map(|i| i.tax_amount).sum();
+        assert_eq!(tax, -2_000);
+        assert_breakdown_matches(&negated, tax, "full");
+    }
+
+    #[test]
+    fn partial_credit_breakdown_matches_tax_amount_and_values() {
+        // 3333 / 10000 = 0.3333 proportion
+        // VAT: 1500 * 0.3333 = 499.95 → 500
+        // City: 500 * 0.3333 = 166.65 → 167
+        // Total tax: 2000 * 0.3333 = 666.6 → 667 (equals 500 + 167)
+        let line = make_line(
+            "l1",
+            10_000,
+            10_000,
+            2_000,
+            vec![
+                TaxDetail {
+                    tax_rate: dec!(0.15),
+                    tax_name: "VAT".into(),
+                    tax_amount: 1_500,
+                },
+                TaxDetail {
+                    tax_rate: dec!(0.05),
+                    tax_name: "City".into(),
+                    tax_amount: 500,
+                },
+            ],
+        );
+        let amounts = resolved_map(&[("l1", Some(3_333))]);
+        let negated = negate_line_items(&[line], &amounts, 2, false);
+        let tax: i64 = negated.iter().map(|i| i.tax_amount).sum();
+        assert_eq!(tax, -667, "prorated tax_amount on negated line");
+        assert_breakdown_matches(&negated, tax, "partial");
+
+        // Value-level: each detail must reflect the credited portion, not the invoice
+        let details = &negated[0].tax_details;
+        let vat = details.iter().find(|d| d.tax_name == "VAT").unwrap();
+        let city = details.iter().find(|d| d.tax_name == "City").unwrap();
+        assert_eq!(
+            vat.tax_amount, -500,
+            "VAT detail should be prorated 1500→500"
+        );
+        assert_eq!(
+            city.tax_amount, -167,
+            "City detail should be prorated 500→167"
+        );
+    }
+
+    #[test]
+    fn two_partials_of_same_line_sum_exactly() {
+        // Helper-level test: exercises proration math. Does NOT go through
+        // create_credit_note_tx's already-credited tracking — see integration tests
+        // for the full sequential-credit flow.
+        //
+        // VAT 1501 + City 500 = 2001 total tax.
+        // a1 (40%): tax = round(800.4) = 800; VAT = round(600.4) = 600; City = 200
+        // a2 (60%): tax = round(1200.6) = 1201; VAT = round(900.6) = 901; City = 300
+        // Σ = 800 + 1201 = 2001 exactly.
+        let line = make_line(
+            "l1",
+            10_000,
+            10_000,
+            2_001,
+            vec![
+                TaxDetail {
+                    tax_rate: dec!(0.15),
+                    tax_name: "VAT".into(),
+                    tax_amount: 1_501,
+                },
+                TaxDetail {
+                    tax_rate: dec!(0.05),
+                    tax_name: "City".into(),
+                    tax_amount: 500,
+                },
+            ],
+        );
+        let a1 = resolved_map(&[("l1", Some(4_000))]);
+        let a2 = resolved_map(&[("l1", Some(6_000))]);
+        let n1 = negate_line_items(std::slice::from_ref(&line), &a1, 2, false);
+        let n2 = negate_line_items(&[line], &a2, 2, false);
+
+        let tax1: i64 = n1.iter().map(|i| i.tax_amount).sum();
+        let tax2: i64 = n2.iter().map(|i| i.tax_amount).sum();
+        assert_breakdown_matches(&n1, tax1, "partial-1");
+        assert_breakdown_matches(&n2, tax2, "partial-2");
+        // Exactly equal — residual correction must guarantee no drift
+        assert_eq!(
+            tax1.unsigned_abs() + tax2.unsigned_abs(),
+            2_001,
+            "Σ partial tax should exactly equal original tax"
+        );
+    }
+
+    #[test]
+    fn partial_credit_with_empty_tax_details_uses_fallback() {
+        // No tax_details: compute_tax_breakdown must use the scalar tax_rate/tax_amount
+        // path and still produce a correct breakdown.
+        let line = make_line("l1", 10_000, 10_000, 2_000, vec![]);
+        let amounts = resolved_map(&[("l1", Some(3_333))]);
+        let negated = negate_line_items(&[line], &amounts, 2, false);
+        let tax: i64 = negated.iter().map(|i| i.tax_amount).sum();
+        assert_eq!(tax, -667);
+        assert!(
+            negated[0].tax_details.is_empty(),
+            "tax_details should remain empty"
+        );
+
+        let breakdown = compute_tax_breakdown(&negated);
+        assert_eq!(breakdown.len(), 1);
+        assert_eq!(breakdown[0].name, "Tax");
+        assert_eq!(breakdown[0].tax_rate, dec!(0.2));
+        assert_eq!(breakdown[0].tax_amount, 667);
+    }
+
+    #[test]
+    fn partial_credit_uses_effective_rate_and_reconciles() {
+        // The classic repeating-decimal case: credit 900 of a 2900 line. The old code
+        // showed quantity = 900/2900 = 0.31034482…; the effective-rate model shows the
+        // integer unit count with unit_price = amount / qty, which reconciles cleanly.
+        let line = make_line("l1", 2_900, 2_900, 0, vec![]);
+        let resolved = resolved_map(&[("l1", Some(900))]);
+        let negated = negate_line_items(&[line], &resolved, 2, false);
+        let cn = &negated[0];
+        assert_eq!(cn.amount_subtotal, -900, "amount is authoritative");
+        assert_eq!(
+            cn.quantity,
+            Some(dec!(1)),
+            "quantity stays the integer unit count, never the 900/2900 fraction"
+        );
+        let q = cn.quantity.unwrap();
+        let p = cn.unit_price.unwrap();
+        assert_eq!(
+            (q * p).round_dp(2),
+            dec!(9.00),
+            "qty × unit_price reconciles to the credited amount"
+        );
+    }
+
+    #[test]
+    fn partial_credit_multi_instance_keeps_integer_quantity() {
+        // 2/3 of a 3-unit line: the effective rate (6400/3) repeats, but the displayed
+        // quantity stays the integer 3 and the amount stays authoritative.
+        let mut line = make_line("l1", 9_600, 9_600, 0, vec![]);
+        line.quantity = Some(dec!(3));
+        line.unit_price = Some(dec!(32));
+        let resolved = resolved_map(&[("l1", Some(6_400))]);
+        let negated = negate_line_items(&[line], &resolved, 2, false);
+        let cn = &negated[0];
+        assert_eq!(cn.amount_subtotal, -6_400);
+        assert_eq!(
+            cn.quantity,
+            Some(dec!(3)),
+            "multi-instance credit shows the integer count, not a fraction"
+        );
+        assert_eq!(
+            (cn.quantity.unwrap() * cn.unit_price.unwrap()).round_dp(2),
+            dec!(64.00),
+            "qty × unit_price reconciles to the credited amount"
+        );
+    }
+
+    #[test]
+    fn prorated_is_decided_per_line_within_a_proration_batch() {
+        let line = make_line("l1", 1_000, 1_000, 0, vec![]); // is_prorated: false
+        let partial = resolved_map(&[("l1", Some(420))]);
+        let full = resolved_map(&[("l1", Some(1_000))]);
+
+        // Proration batch (prorated = true): a reduced credit IS flagged…
+        assert!(
+            negate_line_items(std::slice::from_ref(&line), &partial, 2, true)[0].is_prorated,
+            "a reduced credit in a proration batch is prorated"
+        );
+        // …but a 100% credit (factor 1.0) of the same line is NOT — proration didn't reduce it.
+        assert!(
+            !negate_line_items(std::slice::from_ref(&line), &full, 2, true)[0].is_prorated,
+            "a full (100%) credit is not prorated even in a proration batch"
+        );
+        // Manual partial credit (prorated = false) is never inferred from the amount alone.
+        assert!(
+            !negate_line_items(&[line], &partial, 2, false)[0].is_prorated,
+            "a manual partial credit is not mislabelled prorated"
+        );
+    }
+}

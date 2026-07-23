@@ -1,0 +1,337 @@
+use crate::domain::entity_activity::Actor;
+use crate::domain::outbox_event::OutboxEvent;
+use crate::domain::{
+    BillableMetric, BillableMetricMeta, BillableMetricNew, PaginatedVec, PaginationRequest,
+};
+use crate::errors::StoreError;
+use crate::{Store, StoreResult, domain};
+use common_domain::identifiers::validate_code;
+use common_domain::ids::{BaseId, BillableMetricId, ProductFamilyId, TenantId};
+use common_eventbus::Event;
+use diesel_models::billable_metrics::{BillableMetricRow, BillableMetricRowNew};
+use diesel_models::product_families::ProductFamilyRow;
+use error_stack::Report;
+use scoped_futures::ScopedFutureExt;
+
+#[async_trait::async_trait]
+pub trait BillableMetricInterface {
+    async fn find_billable_metric_by_id(
+        &self,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<domain::BillableMetric>;
+
+    async fn list_billable_metrics(
+        &self,
+        tenant_id: TenantId,
+        pagination: PaginationRequest,
+        product_family_id: Option<ProductFamilyId>,
+        archived: Option<bool>,
+        order_by: Option<String>,
+        search: Option<String>,
+    ) -> StoreResult<PaginatedVec<domain::BillableMetricMeta>>;
+
+    async fn insert_billable_metric(
+        &self,
+        actor: Actor,
+        billable_metric: domain::BillableMetricNew,
+    ) -> StoreResult<domain::BillableMetric>;
+
+    async fn list_billable_metrics_by_code(
+        &self,
+        tenant_id: TenantId,
+        code: String,
+    ) -> StoreResult<Vec<BillableMetric>>;
+
+    /// List all non-archived billable metrics for a tenant (full objects, no pagination).
+    async fn list_active_billable_metrics(
+        &self,
+        tenant_id: TenantId,
+    ) -> StoreResult<Vec<BillableMetric>>;
+
+    async fn archive_billable_metric(
+        &self,
+        actor: Actor,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<()>;
+
+    async fn unarchive_billable_metric(
+        &self,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<()>;
+
+    async fn update_billable_metric(
+        &self,
+        actor: Actor,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+        update: domain::BillableMetricUpdate,
+    ) -> StoreResult<domain::BillableMetric>;
+}
+
+#[async_trait::async_trait]
+impl BillableMetricInterface for Store {
+    async fn find_billable_metric_by_id(
+        &self,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<domain::BillableMetric> {
+        let mut conn = self.get_conn().await?;
+
+        BillableMetricRow::find_by_id(&mut conn, id, tenant_id)
+            .await
+            .map_err(Into::into)
+            .and_then(TryInto::try_into)
+    }
+
+    async fn list_billable_metrics(
+        &self,
+        tenant_id: TenantId,
+        pagination: PaginationRequest,
+        product_family_id: Option<ProductFamilyId>,
+        archived: Option<bool>,
+        order_by: Option<String>,
+        search: Option<String>,
+    ) -> StoreResult<PaginatedVec<BillableMetricMeta>> {
+        let mut conn = self.get_conn().await?;
+
+        let rows = BillableMetricRow::list(
+            &mut conn,
+            tenant_id,
+            pagination.into(),
+            product_family_id,
+            archived,
+            order_by.as_deref(),
+            search,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        let res: PaginatedVec<BillableMetricMeta> = PaginatedVec {
+            items: rows
+                .items
+                .into_iter()
+                .map(std::convert::Into::into)
+                .collect(),
+            total_pages: rows.total_pages,
+            total_results: rows.total_results,
+        };
+
+        Ok(res)
+    }
+
+    async fn insert_billable_metric(
+        &self,
+        actor: Actor,
+        billable_metric: BillableMetricNew,
+    ) -> StoreResult<BillableMetric> {
+        validate_code(&billable_metric.code)
+            .map_err(|e| Report::new(StoreError::InvalidArgument(e.to_string())))?;
+
+        let mut conn = self.get_conn().await?;
+
+        let family = ProductFamilyRow::find_by_id(
+            &mut conn,
+            billable_metric.product_family_id,
+            billable_metric.tenant_id,
+        )
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+
+        // TODO create product if None ?
+
+        let insertable_entity = BillableMetricRowNew {
+            id: BillableMetricId::new(),
+            name: billable_metric.name,
+            description: billable_metric.description,
+            code: billable_metric.code,
+            aggregation_type: billable_metric.aggregation_type.into(),
+            aggregation_key: billable_metric.aggregation_key,
+            unit_conversion_factor: billable_metric.unit_conversion_factor,
+            unit_conversion_rounding: billable_metric.unit_conversion_rounding.map(Into::into),
+            segmentation_matrix: billable_metric
+                .segmentation_matrix
+                .map(|x| {
+                    serde_json::to_value(&x).map_err(|e| {
+                        StoreError::SerdeError(
+                            "Failed to serialize segmentation_matrix".to_string(),
+                            e,
+                        )
+                    })
+                })
+                .transpose()?,
+            usage_group_key: billable_metric.usage_group_key,
+            tenant_id: billable_metric.tenant_id,
+            product_family_id: family.id,
+            product_id: billable_metric.product_id,
+        };
+
+        let tenant_id = insertable_entity.tenant_id;
+        let res: BillableMetric = self
+            .transaction_with(&mut conn, |conn| {
+                let actor = &actor;
+                async move {
+                    let res: BillableMetric = insertable_entity
+                        .insert(conn)
+                        .await
+                        .map_err(Into::<Report<StoreError>>::into)
+                        .and_then(TryInto::try_into)?;
+
+                    self.internal
+                        .record_outbox_batch_tx(
+                            conn,
+                            tenant_id,
+                            actor,
+                            vec![OutboxEvent::billable_metric_created(res.clone().into())],
+                        )
+                        .await?;
+
+                    Ok(res)
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        let _ = self
+            .eventbus
+            .publish(Event::billable_metric_created(actor, res.id, res.tenant_id))
+            .await;
+
+        Ok(res)
+    }
+
+    async fn list_billable_metrics_by_code(
+        &self,
+        tenant_id: TenantId,
+        code: String,
+    ) -> StoreResult<Vec<BillableMetric>> {
+        let mut conn = self.get_conn().await?;
+
+        BillableMetricRow::list_by_code(&mut conn, &tenant_id, code.as_str())
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
+
+    async fn list_active_billable_metrics(
+        &self,
+        tenant_id: TenantId,
+    ) -> StoreResult<Vec<BillableMetric>> {
+        let mut conn = self.get_conn().await?;
+
+        BillableMetricRow::list_active(&mut conn, &tenant_id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
+
+    async fn archive_billable_metric(
+        &self,
+        actor: Actor,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        self.transaction_with(&mut conn, |conn| {
+            let actor = &actor;
+            async move {
+                BillableMetricRow::archive(conn, id, tenant_id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                let metric: BillableMetric = BillableMetricRow::find_by_id(conn, id, tenant_id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)
+                    .and_then(TryInto::try_into)?;
+
+                self.internal
+                    .record_outbox_batch_tx(
+                        conn,
+                        tenant_id,
+                        actor,
+                        vec![OutboxEvent::billable_metric_archived(metric.into())],
+                    )
+                    .await?;
+
+                Ok(())
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+
+    async fn unarchive_billable_metric(
+        &self,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+    ) -> StoreResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        BillableMetricRow::unarchive(&mut conn, id, tenant_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn update_billable_metric(
+        &self,
+        actor: Actor,
+        id: BillableMetricId,
+        tenant_id: TenantId,
+        update: domain::BillableMetricUpdate,
+    ) -> StoreResult<domain::BillableMetric> {
+        use diesel_models::billable_metrics::BillableMetricRowPatch;
+        let mut conn = self.get_conn().await?;
+
+        let patch = BillableMetricRowPatch {
+            name: update.name,
+            description: update.description,
+            unit_conversion_factor: update.unit_conversion_factor,
+            unit_conversion_rounding: update.unit_conversion_rounding.map(|x| x.map(Into::into)),
+            segmentation_matrix: update
+                .segmentation_matrix
+                .map(|opt| {
+                    opt.map(|x| {
+                        serde_json::to_value(&x).map_err(|e| {
+                            StoreError::SerdeError(
+                                "Failed to serialize segmentation_matrix".to_string(),
+                                e,
+                            )
+                        })
+                    })
+                    .transpose()
+                })
+                .transpose()?,
+            updated_at: Some(chrono::Utc::now().naive_utc()),
+        };
+
+        self.transaction_with(&mut conn, |conn| {
+            let actor = &actor;
+            async move {
+                let metric: BillableMetric = BillableMetricRow::update(conn, id, tenant_id, patch)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)
+                    .and_then(TryInto::try_into)?;
+
+                self.internal
+                    .record_outbox_batch_tx(
+                        conn,
+                        tenant_id,
+                        actor,
+                        vec![OutboxEvent::billable_metric_updated(metric.clone().into())],
+                    )
+                    .await?;
+
+                Ok(metric)
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+}

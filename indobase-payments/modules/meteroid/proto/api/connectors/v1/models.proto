@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package meteroid.api.connectors.v1;
+
+
+enum ConnectorProviderEnum {
+  STRIPE = 0;
+  HUBSPOT = 1;
+  PENNYLANE = 2;
+}
+
+enum ConnectorTypeEnum {
+  PAYMENT_PROVIDER = 0;
+  CRM = 1;
+  ACCOUNTING = 2;
+}
+
+message ConnectorData {
+  oneof data {
+    HubspotConnectorData hubspot = 1;
+    PennylaneConnectorData pennylane = 2;
+  }
+}
+
+message Connector {
+  string id = 1;
+  string alias = 2;
+  ConnectorProviderEnum provider = 3;
+  ConnectorTypeEnum connector_type = 4;
+  optional ConnectorData data = 5;
+}
+
+// we could add some Stripe Connect to simplify cloud onboarding later
+message StripeConnector {
+  string alias = 1;
+  string api_publishable_key = 4;
+  string api_secret_key = 5;
+  string webhook_secret = 6;
+}
+
+message HubspotConnectorData {
+  bool auto_sync = 1;
+  string external_company_id = 2;
+}
+
+message PennylaneConnectorData {
+  string external_company_id = 1;
+}
+
+message ConnectionMetadata {
+  repeated ConnectionMetadataItem hubspot = 1;
+  repeated ConnectionMetadataItem pennylane = 2;
+}
+
+message ConnectionMetadataItem {
+  string connector_id = 1;
+  string external_id = 2;
+  string sync_at = 3;
+  string external_company_id = 4;
+}

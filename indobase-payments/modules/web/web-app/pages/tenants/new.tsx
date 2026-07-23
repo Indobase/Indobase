@@ -1,0 +1,180 @@
+import { useMutation } from '@connectrpc/connect-query'
+import {
+  Button,
+  Card,
+  CheckboxFormField,
+  Form,
+  InputFormField,
+  SelectFormField,
+  SelectItem,
+} from '@md/ui'
+import { ChevronLeft } from 'lucide-react'
+import { FunctionComponent, useState } from 'react'
+import { useWatch } from 'react-hook-form'
+import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { z } from 'zod'
+
+import { buildSyncParam } from '@/hooks/useSyncQueries'
+import { useZodForm } from '@/hooks/useZodForm'
+import { TenantEnvironmentEnum } from '@/rpc/api/tenants/v1/models_pb'
+import { createTenant } from '@/rpc/api/tenants/v1/tenants-TenantsService_connectquery'
+
+const tenantSchema = z.object({
+  name: z.string().min(3).max(50),
+  environment: z.string().transform((val: string, ctx) => {
+    try {
+      return Number(val) as TenantEnvironmentEnum
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid environment',
+        path: ['environment'],
+      })
+    }
+  }),
+  disableEmails: z.boolean(),
+})
+
+const environmentPlaceholders: Record<TenantEnvironmentEnum, string> = {
+  [TenantEnvironmentEnum.PRODUCTION]: 'Production',
+  [TenantEnvironmentEnum.DEVELOPMENT]: 'Development',
+  [TenantEnvironmentEnum.SANDBOX]: 'Sandbox',
+  [TenantEnvironmentEnum.STAGING]: 'Staging',
+  [TenantEnvironmentEnum.QA]: 'QA',
+  [TenantEnvironmentEnum.DEMO]: 'Demo',
+}
+
+export const TenantNew: FunctionComponent = () => {
+  const { organizationSlug } = useParams()
+  const methods = useZodForm({
+    schema: tenantSchema,
+    defaultValues: {
+      name: '',
+      environment: `${TenantEnvironmentEnum.DEVELOPMENT}` as unknown as TenantEnvironmentEnum,
+      disableEmails: true,
+    },
+  })
+
+  const [error, setError] = useState<string | null>(null)
+
+  const navigate = useNavigate()
+
+  const mut = useMutation(createTenant, {
+    onSuccess: ({ tenant }) => {
+      navigate(`../${tenant?.slug}`)
+    },
+    onError: error => {
+      console.error('Error creating tenant:', { error })
+      toast.error('Failed to create tenant: ' + error.rawMessage)
+      setError(error.rawMessage)
+    },
+  })
+
+  const environment = useWatch({
+    control: methods.control,
+    name: 'environment',
+  })
+
+  return (
+    <main className="flex  flex-col flex-1 w-full max-w-screen-2xl pl-8 pr-2 mx-auto h-full overflow-x-hidden ">
+      <div className="pt-4">
+        <div className="flex space-x-4 items-center">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="">
+            <ChevronLeft size={16} />
+          </Button>
+
+          <div className="text-lg font-semibold">New tenant</div>
+        </div>
+      </div>
+
+      <div className="relative py-8 px-4 max-w-screen-sm">
+        <div className="  space-y-6 w-full h-full overflow-x-hidden">
+          <Form {...methods}>
+            <form
+              onSubmit={methods.handleSubmit(async values => {
+                const result = await mut.mutateAsync({
+                  name: values.name,
+                  environment: values.environment,
+                  disableEmails: values.disableEmails,
+                })
+                if (result.tenant) {
+                  // Add query param for sandbox tenants to trigger data refresh on dashboard
+                  const isSandbox = values.environment === TenantEnvironmentEnum.SANDBOX
+                  const queryParam = isSandbox ? `?${buildSyncParam('stats')}` : ''
+                  navigate(`/${organizationSlug}/${result.tenant.slug}${queryParam}`)
+                }
+              })}
+            >
+              <Card className="px-8 py-6">
+                <div className="w-full space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <InputFormField
+                      label="Tenant name"
+                      name="name"
+                      className="max-w-xs"
+                      type="text"
+                      placeholder={
+                        environmentPlaceholders[environment ?? TenantEnvironmentEnum.SANDBOX]
+                      }
+                      control={methods.control}
+                    />
+                  </div>
+
+                  <SelectFormField
+                    name="environment"
+                    label="Environment"
+                    control={methods.control}
+                    placeholder="Select an environment"
+                    className="max-w-xs"
+                  >
+                    <SelectItem value={`${TenantEnvironmentEnum.DEVELOPMENT}`}>
+                      Development
+                    </SelectItem>
+                    <SelectItem value={`${TenantEnvironmentEnum.SANDBOX}`}>
+                      Sandbox (with data)
+                    </SelectItem>
+                    <SelectItem value={`${TenantEnvironmentEnum.STAGING}`}>Staging</SelectItem>
+                    <SelectItem value={`${TenantEnvironmentEnum.QA}`}>QA</SelectItem>
+                    <SelectItem value={`${TenantEnvironmentEnum.PRODUCTION}`}>
+                      Production
+                    </SelectItem>
+                  </SelectFormField>
+
+                  <div className="pt-4 text-sm">Advanced</div>
+
+                  <CheckboxFormField
+                    name="disableEmails"
+                    label="Disable all email notifications"
+                    control={methods.control}
+                    description="Invoices, receipts, payment reminders etc will not be sent to your customers."
+                  />
+                </div>
+                {error && <div className="text-destructive text-xs pt-2">{error}</div>}
+
+                <div className="w-full flex justify-end items-center pt-6">
+                  <Button
+                    variant="ghost"
+                    className="!rounded-r-none"
+                    size="sm"
+                    type="button"
+                    onClick={() => navigate(-1)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="!rounded-l-none"
+                    size="sm"
+                    disabled={!methods.formState.isValid}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </Card>
+            </form>
+          </Form>
+        </div>
+      </div>
+    </main>
+  )
+}

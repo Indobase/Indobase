@@ -1,0 +1,292 @@
+import { Code, ConnectError } from '@connectrpc/connect'
+import { useMutation } from '@connectrpc/connect-query'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+
+import { PaymentPanel } from '@/features/checkout/PaymentPanel'
+import { ReadonlyPaymentView } from '@/features/checkout/components/ReadonlyPaymentView'
+import { hasCompleteBillingInformation } from '@/features/checkout/utils/billingInfo'
+import { getCheckoutPaymentAvailability } from '@/features/checkout/utils/paymentAvailability'
+import { BillingInfo } from '@/features/customers/components/BillingInfo'
+import { BankTransferInfo } from '@/features/invoice-payment/components/BankTransferInfo'
+import {
+  confirmCheckout,
+  getCheckout,
+} from '@/rpc/portal/checkout/v1/checkout-PortalCheckoutService_connectquery'
+import { CheckoutType } from '@/rpc/portal/checkout/v1/checkout_pb'
+import { Checkout } from '@/rpc/portal/checkout/v1/models_pb'
+import { formatCurrency } from '@/utils/numbers'
+
+import { SubscriptionSummary } from './components/SubscriptionSummary'
+import { CheckoutFlowProps } from './types'
+/**
+ * Main checkout flow component
+ */
+const CheckoutFlow: React.FC<CheckoutFlowProps> = ({
+  checkoutData: initialCheckoutData,
+  checkoutType,
+  planChangeContext,
+  addonPurchaseContext,
+}) => {
+  const [isAddressEditing, setIsAddressEditing] = useState(
+    initialCheckoutData.requireBillingInformation &&
+      !hasCompleteBillingInformation(initialCheckoutData.customer)
+  )
+  const [couponCode, setCouponCode] = useState('')
+  const [couponError, setCouponError] = useState<string | undefined>(undefined)
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
+  const [checkoutData, setCheckoutData] = useState<Checkout>(initialCheckoutData)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnUrl = searchParams.get('return_url')
+  const {
+    subscription,
+    customer,
+    paymentMethods,
+    amountDue,
+    cardConnectionId,
+    directDebitConnectionId,
+    bankAccount,
+    requireBillingInformation,
+  } = checkoutData
+
+  const billingBlocksPayment =
+    requireBillingInformation && !hasCompleteBillingInformation(customer)
+
+  // Mutation to confirm the checkout using unified endpoint
+  const confirmCheckoutMutation = useMutation(confirmCheckout, {
+    onError: error => {
+      console.error('Checkout confirmation error:', error)
+    },
+  })
+
+  // Mutation to apply coupon (fetches checkout with coupon preview using unified endpoint)
+  const applyCouponMutation = useMutation(getCheckout)
+
+  /**
+   * Apply coupon code and update checkout totals
+   */
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim()
+    if (!code) return
+
+    setIsApplyingCoupon(true)
+    setCouponError(undefined)
+
+    try {
+      // Unified endpoint - session ID is in the auth token
+      const response = await applyCouponMutation.mutateAsync({
+        couponCode: code,
+      })
+
+      if (response.checkout) {
+        setCheckoutData(response.checkout)
+      }
+    } catch (error) {
+      if (error instanceof ConnectError) {
+        setCouponError(error.message)
+      } else {
+        setCouponError('Failed to apply coupon')
+      }
+    } finally {
+      setIsApplyingCoupon(false)
+    }
+  }
+
+  // Clear coupon and revert to original data
+  const handleClearCoupon = async () => {
+    setCouponCode('')
+    setCouponError(undefined)
+
+    try {
+      // Unified endpoint - session ID is in the auth token, no coupon = clear
+      const response = await applyCouponMutation.mutateAsync({})
+      if (response.checkout) {
+        setCheckoutData(response.checkout)
+      }
+    } catch {
+      // Fallback to initial data if refetch fails
+      setCheckoutData(initialCheckoutData)
+    }
+  }
+
+  /**
+   * Process payment with selected payment method
+   */
+  const handlePaymentSubmit = async (paymentMethodId: string) => {
+    try {
+      setCouponError(undefined)
+
+      if (billingBlocksPayment) {
+        setIsAddressEditing(true)
+        throw new Error('Please complete your billing information before continuing.')
+      }
+
+      if (!subscription?.subscription?.currency) {
+        throw new Error('Currency is not defined')
+      }
+
+      await confirmCheckoutMutation.mutateAsync({
+        displayedAmount: amountDue,
+        displayedCurrency: subscription.subscription.currency,
+        paymentMethodId,
+        couponCode: couponCode.trim() || undefined,
+      })
+
+      // On success, redirect to success page
+      const params = new URLSearchParams({
+        plan: subscription.subscription.planName || '',
+        customer: customer?.name || '',
+      })
+      if (returnUrl) {
+        params.set('return_url', returnUrl)
+      }
+      navigate(`success?${params.toString()}`)
+    } catch (error) {
+      console.error('Payment submission error:', error)
+
+      // Check if error is coupon-related and show it inline
+      if (
+        error instanceof ConnectError &&
+        error.message.toLowerCase().includes('coupon') &&
+        (error.code === Code.NotFound || error.code === Code.InvalidArgument)
+      ) {
+        setCouponError('No active coupon found with this code.')
+        return // Don't re-throw, let user fix the coupon
+      }
+
+      throw error // Let the PaymentPanel handle this error
+    }
+  }
+
+  if (!subscription?.subscription || !customer) {
+    return <div className="p-8 text-center">Loading checkout information...</div>
+  }
+
+  // Determine what payment UI to show
+  const paymentAvailability = getCheckoutPaymentAvailability({
+    subscriptionStatus: subscription.subscription.status,
+    checkoutType,
+    cardConnectionId,
+    directDebitConnectionId,
+    bankAccount,
+  })
+
+  return (
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      {/* Mobile header */}
+      <div className="lg:hidden w-full p-4 border-b border-gray-100 flex items-center">
+        <button className=" flex items-center" onClick={() => window.history.back()}>
+          <ArrowLeft size={16} className="mr-2" />
+          <span className="mr-2">{checkoutData.tradeName}</span>
+          {checkoutData.logoUrl && (
+            <img src={checkoutData.logoUrl} alt="logo" width={24} height={24} />
+          )}
+        </button>
+        <div className="text-sm font-medium mx-auto">
+          {checkoutType === CheckoutType.PLAN_CHANGE
+            ? `Upgrade to ${planChangeContext?.newPlanName ?? subscription.subscription.planName}`
+            : checkoutType === CheckoutType.ADDON_PURCHASE
+              ? `Add ${addonPurchaseContext?.addOnName ?? 'add-on'}`
+              : `Subscribe to ${subscription.subscription.planName}`}
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="min-h-screen max-h-screen w-full flex md:flex-row flex-col overflow-auto">
+        {/* Left panel - Order summary */}
+        <div className="flex flex-col md:h-screen bg-background-gray gap-5 px-5 md:px-4 lg:px-20 lg:pt-16 lg:pb-20 pt-5 pb-5 border-b border-border-regular md:pb-8 md:pt-16 w-full md:overflow-auto">
+          <div className="md:max-w-[500px] w-full ml-auto  ">
+            <SubscriptionSummary
+              checkoutData={checkoutData}
+              couponCode={couponCode}
+              onCouponCodeChange={setCouponCode}
+              onApplyCoupon={handleApplyCoupon}
+              onClearCoupon={handleClearCoupon}
+              couponError={couponError}
+              isApplyingCoupon={isApplyingCoupon}
+              isPlanChange={checkoutType === CheckoutType.PLAN_CHANGE}
+              isAddonPurchase={checkoutType === CheckoutType.ADDON_PURCHASE}
+              planChangeContext={planChangeContext}
+              addonPurchaseContext={addonPurchaseContext}
+            />
+          </div>
+        </div>
+        {/* Right panel - Payment form */}
+        <div className="w-full flex lg:px-20 md:px-4 px-5 flex-col bg-white md:h-screen md:overflow-auto lg:pt-16 py-5 shadow-md">
+          <div className="mr-auto ml-auto md:ml-0 md:pt-0 md:h-screen w-full max-w-[440px]">
+            {/* Billing information */}
+            <BillingInfo
+              customer={customer}
+              isEditing={isAddressEditing}
+              setIsEditing={setIsAddressEditing}
+              required={requireBillingInformation}
+              onUpdated={updatedCustomer =>
+                setCheckoutData(prev => ({ ...prev, customer: updatedCustomer }))
+              }
+            />
+
+            {billingBlocksPayment ? (
+              <div className="mt-6 p-3 bg-amber-50 text-amber-800 rounded-lg text-sm flex items-start">
+                <AlertCircle size={16} className="mr-2 mt-0.5 shrink-0" />
+                <span>
+                  Please provide your billing email and complete billing address above to continue.
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Render based on payment availability */}
+                {paymentAvailability.type === 'readonly' && (
+                  <ReadonlyPaymentView reason={paymentAvailability.reason} />
+                )}
+
+                {paymentAvailability.type === 'bank_only' && (
+                  <BankTransferInfo
+                    bankAccount={paymentAvailability.bankAccount}
+                    invoiceNumber={subscription?.subscription?.planName}
+                    customerName={customer?.name}
+                  />
+                )}
+
+                {paymentAvailability.type === 'payment_form' && (
+                  <>
+                    {/* Show payment panel if card or DD available */}
+                    {(paymentAvailability.cardConnectionId ||
+                      paymentAvailability.directDebitConnectionId) && (
+                      <PaymentPanel
+                        customer={customer}
+                        paymentMethods={paymentMethods || []}
+                        currency={subscription.subscription.currency}
+                        totalAmount={formatCurrency(amountDue, subscription.subscription.currency)}
+                        onPaymentSubmit={handlePaymentSubmit}
+                        cardConnectionId={paymentAvailability.cardConnectionId}
+                        directDebitConnectionId={paymentAvailability.directDebitConnectionId}
+                      />
+                    )}
+
+                    {/* Show bank transfer as alternative if available */}
+                    {paymentAvailability.bankAccount &&
+                      !paymentAvailability.cardConnectionId &&
+                      !paymentAvailability.directDebitConnectionId && (
+                        <div className="mt-6">
+                          <div className="text-center text-sm text-gray-500 mb-4">or</div>
+                          <BankTransferInfo
+                            bankAccount={paymentAvailability.bankAccount}
+                            invoiceNumber={subscription?.subscription?.planName}
+                            customerName={customer?.name}
+                          />
+                        </div>
+                      )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default CheckoutFlow

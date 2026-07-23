@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package meteroid.metering.v1;
+
+message Event {
+  string id = 1;
+  string code = 2; // billable metric code
+  oneof customer_id {
+    string meteroid_customer_id = 3;
+    string external_customer_alias = 4;
+    // TODO we can allow external_subscription_id as well if a resource is linked to a specific subscription (and if we don't have the customer_id)
+  }
+  // rfc3339 string
+  string timestamp = 5;
+  map<string, string> properties = 6;
+  // sdk : value as an alias to properties["value"] ?
+  // optional source ?
+}
+
+message Meter {
+  enum AggregationType {
+    SUM = 0;
+    MIN = 1;
+    MAX = 2;
+    MEAN = 3;
+    LATEST = 4;
+    COUNT = 5;
+    COUNT_DISTINCT = 6;
+  }
+
+  // unit conversions
+  // segmentation matrix (or that's just the group_by_dimensions ?)
+}
+
+message IngestFailure {
+  string event_id = 1;
+  string reason = 2;
+}

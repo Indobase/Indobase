@@ -1,0 +1,994 @@
+//! Subscription lifecycle and renewal tests.
+//!
+//! Tests for:
+//! - Renewal cycles
+//! - Period transitions
+//! - Multi-cycle scenarios
+//!
+//! Ported from test_subscription_lifecycle.rs
+
+use chrono::NaiveDate;
+use rstest::rstest;
+
+use crate::data::ids::*;
+use crate::harness::{InvoicesAssertExt, SubscriptionAssertExt, TestEnv, subscription, test_env};
+use diesel_models::enums::{CycleActionEnum, SubscriptionStatusEnum};
+
+// =============================================================================
+// BASIC RENEWAL TESTS
+// =============================================================================
+
+/// OnStart: Active → renewal → Active with new invoice
+#[rstest]
+#[tokio::test]
+async fn test_onstart_renewal_creates_new_invoice(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .start_date(start_date)
+        .on_start()
+        .no_trial()
+        .create(env.services())
+        .await;
+
+    // Initial state: cycle 0
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(0);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+
+    // First renewal: cycle 1
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(1);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+    invoices
+        .assert()
+        .invoice_at(1)
+        .is_finalized_unpaid()
+        .has_total(3500);
+
+    // Second renewal: cycle 2
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(2);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(3);
+}
+
+/// Multiple renewals verify period dates advance correctly
+#[rstest]
+#[tokio::test]
+async fn test_renewal_advances_period_dates(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID)
+        .start_date(start_date)
+        .on_start()
+        .no_trial()
+        .create(env.services())
+        .await;
+
+    // Cycle 0
+    let sub = env.get_subscription(sub_id).await;
+    assert_eq!(sub.current_period_start, start_date);
+    let period_end_0 = sub.current_period_end.expect("Should have period end");
+
+    // Cycle 1
+    env.process_cycles().await;
+    let sub = env.get_subscription(sub_id).await;
+    assert_eq!(
+        sub.current_period_start, period_end_0,
+        "Period start should be previous period end"
+    );
+    let period_end_1 = sub.current_period_end.expect("Should have period end");
+    assert!(period_end_1 > period_end_0, "Period end should advance");
+
+    // Cycle 2
+    env.process_cycles().await;
+    let sub = env.get_subscription(sub_id).await;
+    assert_eq!(sub.current_period_start, period_end_1);
+    let period_end_2 = sub.current_period_end.expect("Should have period end");
+    assert!(period_end_2 > period_end_1, "Period end should advance");
+}
+
+// =============================================================================
+// RENEWAL AFTER FREE TRIAL
+// =============================================================================
+
+/// OnCheckout + Free Trial: checkout during trial → trial ends → 2 renewals
+/// Total: 3 invoices at the end
+#[rstest]
+#[tokio::test]
+async fn test_renewal_after_free_trial_with_checkout_during_trial(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    env.seed_payments().await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_FREE_TRIAL_ID) // $49/month
+        .start_date(start_date)
+        .on_checkout()
+        .trial_days(14)
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: TrialActive ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_trial_active()
+        .has_pending_checkout(true)
+        .has_cycle_index(0);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // === Phase 2: Complete checkout during trial (no charge, just save PM) ===
+    let mut conn = env.conn().await;
+    let (transaction, _) = env
+        .services()
+        .complete_subscription_checkout_tx(
+            &mut conn,
+            TENANT_ID,
+            sub_id,
+            CUST_UBER_PAYMENT_METHOD_ID,
+            0, // Free trial - no charge
+            "EUR".to_string(),
+            None,
+        )
+        .await
+        .expect("Checkout should succeed");
+
+    assert!(
+        transaction.is_none(),
+        "No payment during free trial checkout"
+    );
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_trial_active()
+        .has_pending_checkout(false)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    // === Phase 3: Process trial end → TrialExpired (OnCheckout waits for payment) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_trial_expired().has_pending_checkout(false);
+
+    // Invoice created but payment not yet processed
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+
+    // === Phase 3b: Payment settles → Active ===
+    env.run_outbox_and_orchestration().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_cycle_index(0)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+
+    invoices.assert().invoice_at(0).has_total(4900);
+
+    let period_end_0 = sub
+        .current_period_end
+        .expect("current_period_end should be set");
+
+    // === Phase 4: First renewal (Cycle 1) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(1);
+    assert_eq!(
+        sub.current_period_start, period_end_0,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+    invoices.assert().invoice_at(1).has_total(4900);
+
+    let period_end_1 = sub.current_period_end;
+
+    // === Phase 5: Second renewal (Cycle 2) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(2);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_1,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(3);
+}
+
+// =============================================================================
+// RENEWAL AFTER PAID TRIAL
+// =============================================================================
+
+/// OnCheckout + Paid Trial: checkout → renewals
+///
+/// With paid trials, billing is decoupled from trial status:
+/// - Checkout creates invoice 1 (trial active, bills immediately)
+/// - First process_cycles fires both trial end AND month-1 renewal → invoice 2
+/// - Each subsequent process_cycles creates another renewal invoice
+///
+/// Total: 4 invoices at the end (1 from checkout + 3 renewals)
+#[rstest]
+#[tokio::test]
+async fn test_renewal_after_paid_trial(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    env.seed_payments().await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_TRIAL_ID) // $99/month
+        .start_date(start_date)
+        .on_checkout()
+        .trial_days(7)
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: PendingActivation ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 1: PendingActivation")
+        .is_pending_activation()
+        .has_pending_checkout(true);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // === Phase 2: Complete checkout with full payment ===
+    let mut conn = env.conn().await;
+    let (transaction, is_pending) = env
+        .services()
+        .complete_subscription_checkout_tx(
+            &mut conn,
+            TENANT_ID,
+            sub_id,
+            CUST_UBER_PAYMENT_METHOD_ID,
+            9900, // Full $99 - paid trial
+            "EUR".to_string(),
+            None,
+        )
+        .await
+        .expect("Checkout should succeed");
+
+    assert!(
+        transaction.is_some(),
+        "Should have payment transaction for paid trial"
+    );
+    assert!(!is_pending, "Payment should not be pending");
+
+    // After checkout: TrialActive with 1 invoice
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 2: After checkout")
+        .is_trial_active()
+        .has_next_action(Some(CycleActionEnum::RenewSubscription)) // Paid trial = normal billing
+        .has_pending_checkout(false)
+        .has_cycle_index(0)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .with_context("Invoice 1: at checkout")
+        .has_total(9900)
+        .has_invoice_date(start_date)
+        .check_prorated(false);
+
+    // === Phase 3: First process_cycles - trial ends AND renewal fires ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 3: After first process_cycles")
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(Some(7))
+        .has_cycle_index(1) // Cycle advanced due to renewal
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    // 2 invoices: checkout + first renewal
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+    invoices
+        .assert()
+        .invoice_at(1)
+        .with_context("Invoice 2: first renewal")
+        .has_total(9900)
+        .has_invoice_date(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
+
+    let period_end_1 = sub.current_period_end;
+
+    // === Phase 4: Second renewal (Cycle 2) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 4: Second renewal")
+        .is_active()
+        .has_cycle_index(2);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_1,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(3);
+    invoices
+        .assert()
+        .invoice_at(2)
+        .has_total(9900)
+        .has_invoice_date(NaiveDate::from_ymd_opt(2024, 3, 1).unwrap());
+
+    let period_end_2 = sub.current_period_end;
+
+    // === Phase 5: Third renewal (Cycle 3) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 5: Third renewal")
+        .is_active()
+        .has_cycle_index(3);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_2,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(4);
+}
+
+// =============================================================================
+// RENEWAL AFTER TRIAL EXPIRED REACTIVATION
+// =============================================================================
+
+/// TrialExpired → checkout → Active → 2 renewals
+/// Verifies renewal works correctly after reactivation from expired state.
+///
+/// NOTE: This test does NOT seed customer payment methods initially. If the customer
+/// already has a payment method on file, the subscription will auto-charge at trial end
+/// (see test_renewal_after_free_trial_with_checkout_during_trial for that flow).
+/// This test specifically covers the case where a new customer signs up for a trial
+/// without having a saved payment method.
+/// TODO : should we allow forcing a checkout even if a card is on file (or be clearer on the OnCheckout naming)
+#[rstest]
+#[tokio::test]
+async fn test_renewal_after_trial_expired_reactivation(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    // Only seed the payment provider, NOT the customer payment methods
+    // This simulates a new customer without a saved card
+    env.seed_mock_payment_provider(false).await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_FREE_TRIAL_ID)
+        .start_date(start_date)
+        .on_checkout()
+        .trial_days(14)
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: TrialActive ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_trial_active().has_pending_checkout(true);
+
+    // === Phase 2: Let trial expire without checkout ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_trial_expired().has_pending_checkout(true);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // Seed customer payment methods now (simulates customer adding card during checkout)
+    env.seed_customer_payment_methods().await;
+
+    // === Phase 3: Complete checkout after expiry → Active ===
+    let mut conn = env.conn().await;
+    let (transaction, is_pending) = env
+        .services()
+        .complete_subscription_checkout_tx(
+            &mut conn,
+            TENANT_ID,
+            sub_id,
+            CUST_UBER_PAYMENT_METHOD_ID,
+            4900, // Now we charge
+            "EUR".to_string(),
+            None,
+        )
+        .await
+        .expect("Checkout should succeed");
+
+    assert!(transaction.is_some(), "Should have payment transaction");
+    assert!(!is_pending, "Payment should not be pending");
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_cycle_index(0)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+
+    let period_end_0 = sub.current_period_end;
+
+    // === Phase 4: First renewal (Cycle 1) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(1);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_0,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+
+    let period_end_1 = sub.current_period_end;
+
+    // === Phase 5: Second renewal (Cycle 2) ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(2);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_1,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(3);
+}
+
+// =============================================================================
+// ONSTART WITH AUTO-CHARGE RENEWAL
+// =============================================================================
+
+/// OnStart + Free Trial + auto-charge: trial ends → Active → 2 renewals
+#[rstest]
+#[tokio::test]
+async fn test_onstart_free_trial_auto_charge_renewal(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    env.seed_payments().await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_FREE_TRIAL_ID)
+        .start_date(start_date)
+        .on_start()
+        .trial_days(14)
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // Trial state
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_trial_active()
+        .has_pending_checkout(false)
+        .has_cycle_index(0);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // Trial ends → Active
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(0);
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices.assert().invoice_at(0).has_total(4900);
+
+    let period_end_0 = sub.current_period_end;
+
+    // First renewal: cycle 1
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(1);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_0,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+
+    let period_end_1 = sub.current_period_end;
+
+    // Second renewal: cycle 2
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_active().has_cycle_index(2);
+    assert_eq!(
+        Some(sub.current_period_start),
+        period_end_1,
+        "Period start should advance to previous period end"
+    );
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(3);
+}
+
+// =============================================================================
+// ONSTART SCENARIOS (Ported from test_subscription_lifecycle.rs)
+// =============================================================================
+
+/// OnStart + No Trial + charge_automatically=false
+/// Expected: Active immediately, invoice created (trust-based, unpaid)
+#[rstest]
+#[tokio::test]
+async fn test_onstart_no_trial_no_auto_charge(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .on_start()
+        .no_trial()
+        .no_auto_charge()
+        .create(env.services())
+        .await;
+
+    // Verify subscription state
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(None);
+
+    // Verify invoice created
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_unpaid() // Trust-based, not auto-charged
+        .has_total(3500) // $35.00
+        .check_prorated(false);
+}
+
+/// OnStart + No Trial + charge_automatically=true + payment method
+/// Expected: Active immediately, invoice created and paid via auto-charge
+#[rstest]
+#[tokio::test]
+async fn test_onstart_no_trial_auto_charge_with_payment_method(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    env.seed_payments().await;
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .on_start()
+        .no_trial()
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // Verify subscription state - payment method is set from customer's default
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(None)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_unpaid()
+        .has_total(3500)
+        .check_prorated(false);
+
+    // Process outbox events to trigger payment collection.
+    // TODO improve the run_outbox_and_orchestration to run the full pipeline
+    env.services()
+        .complete_invoice_payment(TENANT_ID, invoices[0].id, CUST_UBER_PAYMENT_METHOD_ID)
+        .await
+        .unwrap();
+    env.run_outbox_and_orchestration().await;
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_paid()
+        .has_total(3500)
+        .check_prorated(false);
+}
+/// OnStart + No Trial + charge_automatically=true but NO payment method on customer
+/// Expected: Active immediately, invoice created but UNPAID (no payment method to charge)
+#[rstest]
+#[tokio::test]
+async fn test_onstart_no_trial_auto_charge_without_payment_method(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    // Note: NOT calling seed_payments() - customer has no payment method
+    env.seed_mock_payment_provider(false).await;
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .on_start()
+        .no_trial()
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // Verify subscription state
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(None);
+
+    env.run_outbox_and_orchestration().await;
+
+    // Invoice created but unpaid - no payment method available for auto-charge
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_unpaid()
+        .has_total(3500)
+        .check_prorated(false);
+}
+
+/// OnStart + Free Trial + charge_automatically=false
+/// Expected: TrialActive → (trial ends) → Active with invoice
+#[rstest]
+#[tokio::test]
+async fn test_onstart_free_trial_no_auto_charge(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_FREE_TRIAL_ID) // $49/month, 14-day free trial
+        .on_start()
+        .trial_days(14)
+        .no_auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: Trial Active ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_trial_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(Some(14));
+
+    // No invoices during free trial
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // === Phase 2: Process trial end ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(Some(14));
+
+    // Invoice created after trial ends (trust-based billing)
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_unpaid()
+        .has_total(4900) // $49.00
+        .check_prorated(false);
+}
+
+/// OnStart + Paid Trial: billing is decoupled from trial status.
+///
+/// Key behavior:
+/// - Paid trial bills immediately using normal billing cycles (RenewSubscription)
+/// - Trial status change (TrialActive → Active) happens via scheduled EndTrial event
+/// - Trial end does NOT create an invoice - only billing cycle renewal does
+///
+/// Expected timeline for 7-day trial with monthly billing:
+/// - Day 0: Invoice 1 (creation), status = TrialActive
+/// - Day 7: Status → Active (no invoice)
+/// - Day 31: Invoice 2 (renewal)
+#[rstest]
+#[tokio::test]
+async fn test_onstart_paid_trial(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_PAID_TRIAL_ID) // $99/month, 7-day PAID trial
+        .start_date(start_date)
+        .on_start()
+        .trial_days(7)
+        .no_auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: Initial state ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Initial state")
+        .is_trial_active()
+        .has_next_action(Some(CycleActionEnum::RenewSubscription)) // Paid trial = normal billing
+        .has_pending_checkout(false)
+        .has_trial_duration(Some(7))
+        .has_cycle_index(0);
+
+    // Paid trial creates FULL invoice immediately (NOT prorated)
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .with_context("Invoice 1: at creation")
+        .is_finalized_unpaid()
+        .has_total(9900) // Full $99/month
+        .has_invoice_date(start_date)
+        .check_prorated(false);
+
+    // === Phase 2: process_cycles - trial ends AND renewal fires ===
+    // Both happen because dates are in the past when test runs
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("After process_cycles")
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(Some(7))
+        .has_cycle_index(1); // Cycle advanced
+
+    // Two invoices: creation + renewal at month end
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+
+    // Verify invoice 2 is at month-end, not trial-end
+    let expected_renewal_date = NaiveDate::from_ymd_opt(2024, 2, 1).unwrap();
+    invoices
+        .assert()
+        .invoice_at(1)
+        .with_context("Invoice 2: at renewal")
+        .is_finalized_unpaid()
+        .has_total(9900)
+        .has_invoice_date(expected_renewal_date);
+}
+
+// =============================================================================
+// ONCHECKOUT SCENARIOS (Ported from test_subscription_lifecycle.rs)
+// =============================================================================
+
+/// OnCheckout + No Trial
+/// Expected: PendingActivation → (checkout) → Active with paid invoice
+#[rstest]
+#[tokio::test]
+async fn test_oncheckout_no_trial_full_flow(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+    env.seed_payments().await;
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .on_checkout()
+        .no_trial()
+        .auto_charge()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: PendingActivation ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_pending_activation()
+        .has_pending_checkout(true)
+        .has_trial_duration(None)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    // No invoice before checkout
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().assert_empty();
+
+    // Cycle processing should NOT activate the subscription
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert().is_pending_activation();
+
+    // === Phase 2: Complete checkout ===
+    let mut conn = env.conn().await;
+    let (transaction, is_pending) = env
+        .services()
+        .complete_subscription_checkout_tx(
+            &mut conn,
+            TENANT_ID,
+            sub_id,
+            CUST_UBER_PAYMENT_METHOD_ID,
+            3500, // $35.00
+            "EUR".to_string(),
+            None,
+        )
+        .await
+        .expect("Checkout should succeed");
+
+    assert!(transaction.is_some(), "Should have payment transaction");
+    assert!(!is_pending, "Payment should not be pending");
+
+    // === Phase 3: Verify Active state ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .is_active()
+        .has_pending_checkout(false)
+        .has_trial_duration(None)
+        .has_resolved_payment_method(&env, true)
+        .await;
+
+    // Invoice should exist - payment_status remains Unpaid until webhook processes it
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_unpaid() // Updated via webhook, not sync
+        .has_total(3500)
+        .check_prorated(false);
+
+    // Process outbox events to trigger payment collection
+    env.run_outbox_and_orchestration().await;
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .is_finalized_paid()
+        .has_total(3500)
+        .check_prorated(false);
+}
+
+// =============================================================================
+// END DATE LIFECYCLE TESTS
+// =============================================================================
+
+/// Subscription with end_date in the past (skip_past_invoices=false):
+/// billing terminates at end_date via the cycle worker.
+///
+/// Timeline (monthly billing, billing_day=1):
+/// - Creation (2024-01-01): Active, cycle_index=0, period=[Jan1, Feb1], Invoice 1 ($35)
+/// - process_cycles #1: RenewSubscription fires; end_date(Feb15) truncates [Feb1, Mar1] → [Feb1, Feb15];
+///   EndSubscription scheduled; Invoice 2 created ($35, billed for advance period [Feb1, Mar1])
+/// - process_cycles #2: EndSubscription fires → Completed;
+///   No Invoice 3 (advance_period=None for completed subscriptions)
+///
+/// Key assertion: billing ends after end_date — no invoice is created beyond Invoice 2.
+#[rstest]
+#[tokio::test]
+async fn test_lifecycle_end_date_billing_terminates(#[future] test_env: TestEnv) {
+    let env = test_env.await;
+
+    let start_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+    // end_date falls within the second billing period [Feb1, Mar1]
+    let end_date = NaiveDate::from_ymd_opt(2024, 2, 15).unwrap();
+
+    let sub_id = subscription()
+        .plan_version(PLAN_VERSION_1_LEETCODE_ID) // $35/month
+        .start_date(start_date)
+        .end_date(end_date)
+        .on_start()
+        .no_trial()
+        .create(env.services())
+        .await;
+
+    // === Phase 1: Creation ===
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 1: After creation")
+        .is_active()
+        .has_cycle_index(0)
+        .has_period_start(start_date)
+        .has_period_end(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
+
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(1);
+    invoices
+        .assert()
+        .invoice_at(0)
+        .with_context("Invoice 1: first full period")
+        .is_finalized_unpaid()
+        .has_invoice_date(start_date)
+        .has_total(3500)
+        .check_prorated(false);
+
+    // === Phase 2: First renewal — period is truncated at end_date ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 2: After first process_cycles")
+        // Active + EndSubscription (not RenewSubscription) because end_date is within this period
+        .has_status(SubscriptionStatusEnum::Active)
+        .has_next_action(Some(CycleActionEnum::EndSubscription))
+        .has_cycle_index(1)
+        .has_period_start(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap())
+        // Period is truncated to end_date in the DB (even though billing uses the full advance period)
+        .has_period_end(end_date);
+
+    // Invoice 2 created for the second billing cycle.
+    // Note: the billing advance period [Feb1, Mar1] is used even though the subscription
+    // ends Feb 15 — mid-period end_date truncation does not retroactively prorate
+    // non-zero-index billing cycles.
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+    invoices
+        .assert()
+        .invoice_at(1)
+        .with_context("Invoice 2: second billing cycle (billed at period start)")
+        .is_finalized_unpaid()
+        .has_invoice_date(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap())
+        .has_total(3500);
+
+    // === Phase 3: EndSubscription fires — subscription completes with no new invoice ===
+    env.process_cycles().await;
+
+    let sub = env.get_subscription(sub_id).await;
+    sub.assert()
+        .with_context("Phase 3: After second process_cycles")
+        .has_status(SubscriptionStatusEnum::Completed)
+        .has_next_action(None);
+
+    // No Invoice 3: when EndSubscription fires, current_period_end=None in the DB,
+    // so the billing layer treats the subscription as completed and skips advance billing.
+    let invoices = env.get_invoices(sub_id).await;
+    invoices.assert().has_count(2);
+}

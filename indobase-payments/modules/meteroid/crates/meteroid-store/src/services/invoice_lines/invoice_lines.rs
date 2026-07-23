@@ -1,0 +1,1015 @@
+use crate::StoreResult;
+use crate::constants::{Currencies, Currency};
+use crate::domain::{
+    ComponentPeriods, CouponLineItem, Customer, Invoice, InvoicingEntity, LineItem, Period,
+    SubscriptionAddOn, SubscriptionComponent, SubscriptionDetails, SubscriptionFee,
+    SubscriptionFeeInterface, TaxBreakdownItem, TaxResolverEnum, VatNumberValidationStatus,
+};
+use chrono::NaiveDate;
+use common_domain::ids::{PriceComponentId, SubscriptionAddOnId, SubscriptionPriceComponentId};
+use diesel_models::subscription_add_ons::SubscriptionAddOnRow;
+use diesel_models::subscription_components::SubscriptionComponentRow;
+use itertools::Itertools;
+use std::cmp::min;
+use std::collections::{HashMap, HashSet};
+
+use crate::domain::BillableMetric;
+use crate::errors::StoreError;
+use crate::repositories::accounting::AccountingInterface;
+use crate::repositories::customer_balance::convert_currency;
+use crate::services::Services;
+use crate::services::invoice_lines::component::ExistingLineKey;
+use crate::services::invoice_lines::discount::calculate_coupons_discount;
+use crate::store::PgConn;
+use crate::utils::periods::calculate_component_period_for_invoice_date;
+use common_utils::integers::ToNonNegativeU64;
+use diesel_models::billable_metrics::BillableMetricRow;
+use error_stack::{Report, ResultExt};
+use meteroid_tax::{ManualTaxEngine, MeteroidTaxEngine, TaxDetails, TaxEngine};
+
+impl Services {}
+
+#[derive(Debug, Clone)]
+pub struct ComputedInvoiceContent {
+    pub invoice_lines: Vec<LineItem>,
+    pub subtotal: i64, // before discounts, coupons, credits, taxes
+    pub applied_coupons: Vec<CouponLineItem>,
+    pub discount: i64,
+    pub tax_breakdown: Vec<TaxBreakdownItem>,
+    pub applied_credits: i64,
+
+    pub total: i64,
+    pub tax_amount: i64,
+    pub amount_due: i64,
+    //
+    pub subtotal_recurring: i64,
+}
+
+impl Services {
+    pub async fn compute_invoice(
+        &self,
+        conn: &mut PgConn,
+        invoice_date: &NaiveDate,
+        subscription_details: &SubscriptionDetails,
+        prepaid_amount: Option<u64>,
+        invoice: Option<&Invoice>, // for refresh purposes
+    ) -> StoreResult<ComputedInvoiceContent> {
+        let is_usage_based_line = |line: &LineItem| {
+            line.metric_id.is_some()
+                && (line.sub_component_id.is_some() || line.sub_add_on_id.is_some())
+        };
+
+        // do not recompute if invoice has no usage-based lines
+        if let Some(invoice) = invoice
+            && !invoice.line_items.iter().any(is_usage_based_line)
+        {
+            // recalculate applied_credits based on current customer balance
+            let total = invoice.total as u64;
+            let balance_in_invoice_currency = convert_currency(
+                conn,
+                subscription_details.customer.balance_value_cents.max(0),
+                &subscription_details.customer.currency,
+                &subscription_details.subscription.currency,
+            )
+            .await?;
+            let applied_credits = min(total, balance_in_invoice_currency.to_non_negative_u64());
+            let already_paid = prepaid_amount.unwrap_or(0);
+            let applied = (already_paid + applied_credits) as i64;
+            let amount_due = ((total as i64) - applied).to_non_negative_u64();
+
+            return Ok(ComputedInvoiceContent {
+                invoice_lines: invoice.line_items.clone(),
+                subtotal: invoice.subtotal,
+                applied_coupons: invoice.coupons.clone(),
+                discount: invoice.discount,
+                tax_breakdown: invoice.tax_breakdown.clone(),
+                applied_credits: applied_credits as i64,
+                total: invoice.total,
+                amount_due: amount_due as i64,
+                subtotal_recurring: invoice.subtotal_recurring,
+                tax_amount: invoice.tax_amount,
+            });
+        }
+
+        let billing_start_date = subscription_details
+            .subscription
+            .billing_start_date
+            // TODO should we return empty ?
+            .ok_or(Report::new(StoreError::BillingError))
+            .attach("No billing_start_date is present")?;
+
+        let currency = Currencies::resolve_currency(&subscription_details.subscription.currency)
+            .ok_or(Report::new(StoreError::ValueNotFound(format!(
+                "Currency {} not found",
+                subscription_details.subscription.currency
+            ))))?;
+
+        let cycle_index = subscription_details.subscription.cycle_index.unwrap_or(0);
+
+        let invoice_date = *invoice_date;
+
+        // Build map of existing line items for refresh (only usage-based lines)
+        let existing_lines: HashMap<ExistingLineKey, &LineItem> = if let Some(invoice) = invoice {
+            invoice
+                .line_items
+                .iter()
+                .filter(|line| is_usage_based_line(line))
+                .filter_map(|line| ExistingLineKey::from_line_item(line).map(|key| (key, line)))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+
+        let price_components_lines = self
+            .process_fee_records(
+                conn,
+                subscription_details,
+                &subscription_details.price_components,
+                invoice_date,
+                billing_start_date,
+                cycle_index,
+                currency,
+                &existing_lines,
+            )
+            .await?;
+
+        // Add-ons store their fee per-unit with an instance count in `quantity`.
+        // compute_component reads instance_count() from the trait and multiplies
+        // the fee's own quantity, so no pre-scaling is needed here.
+        let add_ons_lines = self
+            .process_fee_records(
+                conn,
+                subscription_details,
+                &subscription_details.add_ons,
+                invoice_date,
+                billing_start_date,
+                cycle_index,
+                currency,
+                &existing_lines,
+            )
+            .await?;
+
+        // Load and process historical (closed) components for usage temporal split.
+        // When a mid-period plan change occurred, closed components with arrears billing
+        // need to be billed for their temporal segment [effective_from, effective_to].
+        let historical_lines = {
+            let active_ids: HashSet<SubscriptionPriceComponentId> = subscription_details
+                .price_components
+                .iter()
+                .map(|c| c.id)
+                .collect();
+
+            let historical_rows = SubscriptionComponentRow::list_component_history_for_period(
+                conn,
+                &subscription_details.subscription.id,
+                billing_start_date,
+                invoice_date,
+            )
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+            let historical_components: Vec<SubscriptionComponent> = historical_rows
+                .into_iter()
+                .filter(|row| row.effective_to.is_some())
+                .filter(|row| !active_ids.contains(&row.id))
+                .filter_map(|row| {
+                    let comp: Result<SubscriptionComponent, _> = row.try_into();
+                    comp.ok()
+                })
+                .filter(|comp| comp.fee.is_pure_arrears())
+                .collect();
+
+            if !historical_components.is_empty() {
+                // Historical components may reference metrics not loaded in subscription_details
+                // (e.g. after a plan change from a plan with usage to one without).
+                // Load any missing metrics so fetch_usage can resolve them.
+                let known_metric_ids: HashSet<_> =
+                    subscription_details.metrics.iter().map(|m| m.id).collect();
+
+                let missing_metric_ids: Vec<_> = historical_components
+                    .iter()
+                    .filter_map(|c| c.metric_id())
+                    .filter(|id| !known_metric_ids.contains(id))
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect();
+
+                let details_for_historical = if !missing_metric_ids.is_empty() {
+                    let extra_metrics: Vec<BillableMetric> = BillableMetricRow::get_by_ids(
+                        conn,
+                        &missing_metric_ids,
+                        &subscription_details.subscription.tenant_id,
+                    )
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?
+                    .into_iter()
+                    .map(std::convert::TryInto::try_into)
+                    .collect::<Result<Vec<_>, Report<_>>>()?;
+
+                    let mut extended = subscription_details.clone();
+                    extended.metrics.extend(extra_metrics);
+                    Some(extended)
+                } else {
+                    None
+                };
+
+                let effective_details = details_for_historical
+                    .as_ref()
+                    .unwrap_or(subscription_details);
+
+                self.process_fee_records(
+                    conn,
+                    effective_details,
+                    &historical_components,
+                    invoice_date,
+                    billing_start_date,
+                    cycle_index,
+                    currency,
+                    &existing_lines,
+                )
+                .await?
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Load and process historical (closed) add-ons for arrears temporal split.
+        // When a mid-period amendment removed an arrears/usage add-on, the closed row
+        // still needs to be billed for its temporal segment [effective_from, effective_to].
+        let historical_addon_lines = {
+            let active_addon_ids: HashSet<SubscriptionAddOnId> =
+                subscription_details.add_ons.iter().map(|a| a.id).collect();
+
+            let historical_rows = SubscriptionAddOnRow::list_add_on_history_for_period(
+                conn,
+                &subscription_details.subscription.id,
+                billing_start_date,
+                invoice_date,
+            )
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+            let historical_addons: Vec<SubscriptionAddOn> = historical_rows
+                .into_iter()
+                .filter(|row| row.effective_to.is_some())
+                .filter(|row| !active_addon_ids.contains(&row.id))
+                .filter_map(|row| {
+                    let ao: Result<SubscriptionAddOn, _> = row.try_into();
+                    ao.ok()
+                })
+                .filter(|ao| ao.fee.is_pure_arrears())
+                .collect();
+
+            if !historical_addons.is_empty() {
+                // Historical add-ons may reference metrics not loaded in subscription_details
+                // (e.g. the metric is no longer used by any active component/add-on).
+                let known_metric_ids: HashSet<_> =
+                    subscription_details.metrics.iter().map(|m| m.id).collect();
+
+                let missing_metric_ids: Vec<_> = historical_addons
+                    .iter()
+                    .filter_map(|a| a.fee.metric_id())
+                    .filter(|id| !known_metric_ids.contains(id))
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect();
+
+                let details_for_historical = if !missing_metric_ids.is_empty() {
+                    let extra_metrics: Vec<BillableMetric> = BillableMetricRow::get_by_ids(
+                        conn,
+                        &missing_metric_ids,
+                        &subscription_details.subscription.tenant_id,
+                    )
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?
+                    .into_iter()
+                    .map(std::convert::TryInto::try_into)
+                    .collect::<Result<Vec<_>, Report<_>>>()?;
+
+                    let mut extended = subscription_details.clone();
+                    extended.metrics.extend(extra_metrics);
+                    Some(extended)
+                } else {
+                    None
+                };
+
+                let effective_details = details_for_historical
+                    .as_ref()
+                    .unwrap_or(subscription_details);
+
+                self.process_fee_records(
+                    conn,
+                    effective_details,
+                    &historical_addons,
+                    invoice_date,
+                    billing_start_date,
+                    cycle_index,
+                    currency,
+                    &existing_lines,
+                )
+                .await?
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Merge non-usage-based lines from existing invoice (if refreshing)
+        let mut invoice_lines = if let Some(invoice) = invoice {
+            // TODO quick fix, do that part in process_component instead
+            let computed_lines = price_components_lines
+                .into_iter()
+                .chain(add_ons_lines)
+                .chain(historical_lines)
+                .chain(historical_addon_lines)
+                .filter(&is_usage_based_line)
+                .collect_vec();
+
+            // Combine computed usage-based lines with preserved non-usage-based lines
+            let non_usage_lines = invoice
+                .line_items
+                .iter()
+                .filter(|line| !is_usage_based_line(line))
+                .cloned();
+
+            computed_lines
+                .into_iter()
+                .chain(non_usage_lines)
+                .collect_vec()
+        } else {
+            price_components_lines
+                .into_iter()
+                .chain(add_ons_lines)
+                .chain(historical_lines)
+                .chain(historical_addon_lines)
+                .collect_vec()
+        };
+
+        // Append date range to line item names when a temporal split occurred
+        // (multiple sub_component_ids for the same price_component_id)
+        apply_temporal_date_range_to_names(&mut invoice_lines);
+
+        let subtotal = invoice_lines
+            .iter()
+            .fold(0, |acc, x| acc + x.amount_subtotal);
+
+        let coupons_discount = calculate_coupons_discount(
+            subtotal,
+            &subscription_details.subscription.currency,
+            &subscription_details.applied_coupons,
+        );
+
+        let discount_total = coupons_discount.discount_subunit.to_non_negative_u64(); // TODO we need to define the rules for negatives, same below with taxes & subtotal
+        let invoice_lines = super::discount::distribute_discount(invoice_lines, discount_total);
+
+        // we add taxes
+        let (invoice_lines, breakdown) = self
+            .process_invoice_lines_taxes(
+                invoice_lines,
+                &subscription_details.invoicing_entity,
+                &subscription_details.customer,
+                subscription_details.subscription.currency.clone(),
+                &invoice_date,
+            )
+            .await?;
+
+        let subtotal = invoice_lines
+            .iter()
+            .fold(0, |acc, x| acc + x.amount_subtotal)
+            .to_non_negative_u64();
+
+        let subtotal_with_discounts = subtotal.saturating_sub(discount_total);
+        let tax_amount = invoice_lines
+            .iter()
+            .fold(0, |acc, x| acc + x.tax_amount)
+            .to_non_negative_u64();
+
+        let total = subtotal_with_discounts + tax_amount;
+        let balance_in_invoice_currency = convert_currency(
+            conn,
+            subscription_details.customer.balance_value_cents.max(0),
+            &subscription_details.customer.currency,
+            &subscription_details.subscription.currency,
+        )
+        .await?;
+        let applied_credits = min(total, balance_in_invoice_currency.to_non_negative_u64());
+        let already_paid = prepaid_amount.unwrap_or(0);
+        let amount_due = total
+            .checked_sub(already_paid)
+            .and_then(|subtotal| subtotal.checked_sub(applied_credits))
+            .unwrap_or(0);
+        let subtotal_recurring = invoice_lines
+            .iter()
+            .filter(|x| x.metric_id.is_none())
+            .fold(0, |acc, x| acc + x.amount_subtotal)
+            .to_non_negative_u64();
+
+        Ok(ComputedInvoiceContent {
+            invoice_lines,
+            subtotal: subtotal as i64,
+            applied_coupons: coupons_discount.applied_coupons,
+            discount: discount_total as i64,
+            tax_breakdown: breakdown,
+            applied_credits: applied_credits as i64,
+            total: total as i64,
+            amount_due: amount_due as i64,
+            subtotal_recurring: subtotal_recurring as i64,
+            tax_amount: tax_amount as i64,
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn compute_oneoff_invoice(
+        &self,
+        conn: &mut PgConn,
+        invoice_date: &NaiveDate,
+        invoice_lines: Vec<LineItem>,
+        invoicing_entity: &InvoicingEntity,
+        customer: &Customer,
+        currency: String,
+        discount: Option<u64>,
+        prepaid_amount: Option<u64>,
+    ) -> StoreResult<ComputedInvoiceContent> {
+        let discount_total = discount.unwrap_or(0);
+        let invoice_lines = super::discount::distribute_discount(invoice_lines, discount_total);
+
+        let invoice_currency = currency.clone();
+
+        // we add taxes
+        let (line_items, breakdown) = self
+            .process_invoice_lines_taxes(
+                invoice_lines,
+                invoicing_entity,
+                customer,
+                currency,
+                invoice_date,
+            )
+            .await?;
+
+        let subtotal = line_items
+            .iter()
+            .fold(0, |acc, x| acc + x.amount_subtotal)
+            .to_non_negative_u64();
+
+        let subtotal_with_discounts = subtotal - discount_total;
+        let tax_amount = line_items
+            .iter()
+            .fold(0, |acc, x| acc + x.tax_amount)
+            .to_non_negative_u64();
+
+        let total = subtotal_with_discounts + tax_amount;
+        let balance_in_invoice_currency = convert_currency(
+            conn,
+            customer.balance_value_cents.max(0),
+            &customer.currency,
+            &invoice_currency,
+        )
+        .await?;
+        let applied_credits = min(total, balance_in_invoice_currency.to_non_negative_u64());
+        let already_paid = prepaid_amount.unwrap_or(0);
+        let amount_due = total
+            .checked_sub(already_paid)
+            .and_then(|subtotal| subtotal.checked_sub(applied_credits))
+            .unwrap_or(0);
+        let subtotal_recurring = line_items
+            .iter()
+            .filter(|x| x.metric_id.is_none())
+            .fold(0, |acc, x| acc + x.amount_subtotal)
+            .to_non_negative_u64();
+
+        Ok(ComputedInvoiceContent {
+            invoice_lines: line_items,
+            subtotal: subtotal as i64,
+            applied_coupons: Vec::new(),
+            discount: discount_total as i64,
+            tax_breakdown: breakdown,
+            applied_credits: applied_credits as i64,
+            total: total as i64,
+            amount_due: amount_due as i64,
+            subtotal_recurring: subtotal_recurring as i64,
+            tax_amount: tax_amount as i64,
+        })
+    }
+
+    pub(in crate::services) async fn process_invoice_lines_taxes(
+        &self,
+        invoice_lines: Vec<LineItem>,
+        invoicing_entity: &InvoicingEntity,
+        customer: &Customer,
+        currency: String,
+        invoice_date: &NaiveDate,
+    ) -> StoreResult<(Vec<LineItem>, Vec<TaxBreakdownItem>)> {
+        if invoicing_entity.tenant_id != customer.tenant_id {
+            return Err(Report::new(StoreError::InvalidArgument(
+                "Tenant mismatch: invoicing_entity and customer must belong to the same tenant"
+                    .to_string(),
+            )));
+        }
+
+        let customer_address = match &customer.billing_address {
+            Some(address) => address.clone(),
+            None => return Ok((invoice_lines.clone(), Vec::new())),
+        };
+
+        let tax_engine: Box<dyn TaxEngine + Send + Sync> = match invoicing_entity.tax_resolver {
+            TaxResolverEnum::None => {
+                return Ok((invoice_lines.clone(), Vec::new()));
+            }
+            TaxResolverEnum::Manual => Box::new(ManualTaxEngine {}),
+            TaxResolverEnum::MeteroidEuVat => Box::new(MeteroidTaxEngine {}),
+        };
+
+        let customer = meteroid_tax::CustomerForTax {
+            vat_number: customer.vat_number.clone(),
+            vat_number_format_valid: customer.vat_number_format_valid,
+            vat_number_vies_valid: match customer.vat_number_validation_status {
+                Some(VatNumberValidationStatus::Valid) => Some(true),
+                Some(VatNumberValidationStatus::Invalid) => Some(false),
+                _ => None,
+            },
+            require_vies_valid_for_reverse_charge: invoicing_entity
+                .require_vies_valid_for_reverse_charge,
+            custom_tax_rates: customer
+                .custom_taxes
+                .iter()
+                .map(|t| meteroid_tax::CustomerCustomTaxRate {
+                    tax_code: t.tax_code.clone(),
+                    name: t.name.clone(),
+                    rate: t.rate,
+                })
+                .collect(),
+            tax_exempt: customer.is_tax_exempt,
+            billing_address: customer_address.into(),
+        };
+
+        // we retrieve the custom tax rates for each line item
+        // Note: we use a separate connection here to avoid holding transaction locks
+        // while fetching read-only tax configuration data
+        let product_ids = invoice_lines
+            .iter()
+            .filter_map(|line| line.product_id)
+            .collect::<Vec<_>>();
+
+        let product_taxes = {
+            let mut fresh_conn = self.store.get_conn().await?;
+            self.store
+                .list_product_tax_configuration_by_product_ids_and_invoicing_entity_id_grouped(
+                    &mut fresh_conn,
+                    invoicing_entity.tenant_id,
+                    product_ids,
+                    invoicing_entity.id,
+                )
+                .await?
+        };
+
+        let invoice_lines_for_tax: Vec<meteroid_tax::LineItemForTax> = invoice_lines
+            .iter()
+            .filter_map(|line| {
+                if line.taxable_amount > 0 {
+                    let total = line.taxable_amount.to_non_negative_u64();
+
+                    let custom_taxes = line
+                        .product_id
+                        .and_then(|p| product_taxes.iter().find(|tax| tax.product_id == p))
+                        .map(|p| {
+                            p.custom_taxes
+                                .iter()
+                                .map(|t| meteroid_tax::CustomTax {
+                                    reference: t.id.to_string(),
+                                    name: t.name.clone(),
+                                    tax_rules: t
+                                        .rules
+                                        .iter()
+                                        .cloned()
+                                        .map(std::convert::Into::into)
+                                        .collect(),
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    Some(meteroid_tax::LineItemForTax {
+                        line_id: line.local_id.to_string(),
+                        amount: total,
+                        custom_taxes,
+                    })
+                } else {
+                    // If the line amount is zero (or refund), we skip it
+                    // TODO : consider whether we want to allow tax credits within an invoice, or if we restrict to using a separate credit note (prob cleaner)
+                    None
+                }
+            })
+            .collect();
+
+        let res = tax_engine
+            .calculate_line_items_tax(
+                currency,
+                customer,
+                invoicing_entity.address().into(),
+                invoice_lines_for_tax,
+                *invoice_date,
+            )
+            .await
+            .change_context(StoreError::TaxError)?;
+
+        let mut updated_invoice_lines = invoice_lines.clone();
+
+        for line in &mut updated_invoice_lines {
+            // we get the matching taxed line
+            if let Some(taxed_line) = res.line_items.iter().find(|l| l.line_id == line.local_id) {
+                // we update the line with the tax details
+                use crate::domain::TaxDetail;
+
+                match &taxed_line.tax_details {
+                    TaxDetails::Tax {
+                        tax_rate,
+                        tax_amount,
+                        tax_name,
+                        ..
+                    } => {
+                        line.tax_amount = *tax_amount as i64;
+                        line.tax_rate = *tax_rate;
+                        line.tax_details = vec![TaxDetail {
+                            tax_rate: *tax_rate,
+                            tax_name: tax_name.clone(),
+                            tax_amount: *tax_amount as i64,
+                        }];
+                    }
+                    TaxDetails::MultipleTaxes {
+                        taxes,
+                        total_tax_amount,
+                    } => {
+                        line.tax_amount = *total_tax_amount as i64;
+                        line.tax_rate = taxes.iter().map(|t| t.tax_rate).sum();
+                        line.tax_details = taxes
+                            .iter()
+                            .map(|t| TaxDetail {
+                                tax_rate: t.tax_rate,
+                                tax_name: t.tax_name.clone(),
+                                tax_amount: t.tax_amount as i64,
+                            })
+                            .collect();
+                    }
+                    TaxDetails::Exempt(_) => {
+                        line.tax_amount = 0;
+                        line.tax_rate = rust_decimal::Decimal::ZERO;
+                        line.tax_details = vec![];
+                    }
+                }
+                line.taxable_amount = taxed_line.pre_tax_amount as i64;
+            } else {
+                // no tax details found
+                line.tax_rate = rust_decimal::Decimal::ZERO;
+                line.tax_amount = 0;
+                line.tax_details = vec![];
+            }
+            // Recalculate amount_total after discount and tax have been applied
+            line.amount_total = line.taxable_amount + line.tax_amount;
+        }
+
+        // Convert tax breakdown items, expanding any MultipleTaxes into separate items
+        let breakdown = res
+            .breakdown
+            .into_iter()
+            .flat_map(|item| {
+                match item.details {
+                    TaxDetails::Tax {
+                        tax_rate,
+                        tax_name,
+                        tax_amount,
+                        ..
+                    } => vec![TaxBreakdownItem {
+                        taxable_amount: item.taxable_amount,
+                        tax_amount,
+                        tax_rate,
+                        name: tax_name,
+                        exemption_type: None,
+                    }],
+                    TaxDetails::MultipleTaxes { taxes, .. } => {
+                        // Expand multiple taxes into separate breakdown items
+                        taxes
+                            .into_iter()
+                            .map(|tax| TaxBreakdownItem {
+                                taxable_amount: item.taxable_amount,
+                                tax_amount: tax.tax_amount,
+                                tax_rate: tax.tax_rate,
+                                name: tax.tax_name,
+                                exemption_type: None,
+                            })
+                            .collect()
+                    }
+                    TaxDetails::Exempt(reason) => {
+                        use crate::domain::TaxExemptionType;
+                        use meteroid_tax::VatExemptionReason;
+
+                        let exemption_type = match reason {
+                            VatExemptionReason::ReverseCharge => TaxExemptionType::ReverseCharge,
+                            VatExemptionReason::TaxExempt => TaxExemptionType::TaxExempt,
+                            VatExemptionReason::NotRegistered => TaxExemptionType::NotRegistered,
+                        };
+
+                        vec![TaxBreakdownItem {
+                            taxable_amount: item.taxable_amount,
+                            tax_amount: 0,
+                            tax_rate: rust_decimal::Decimal::ZERO,
+                            name: "Exempt".to_string(),
+                            exemption_type: Some(exemption_type),
+                        }]
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok((updated_invoice_lines, breakdown))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn process_fee_records<T: SubscriptionFeeInterface>(
+        &self,
+        conn: &mut PgConn,
+        subscription_details: &SubscriptionDetails,
+        fee_records: &[T],
+        invoice_date: NaiveDate,
+        billing_start_or_resume_date: NaiveDate,
+        cycle_index: u32,
+        currency: &Currency,
+        existing_lines: &HashMap<ExistingLineKey, &LineItem>,
+    ) -> StoreResult<Vec<LineItem>> {
+        // One-time fees are billed exactly once and follow a different rule than the
+        // cadence-based components below: `applies_this_period` only admits one-time
+        // fees on cycle 0, which would silently drop a one-time fee added by a later
+        // amendment. Handle them separately so they bill on the invoice generated on
+        // the date they become effective.
+        let (one_time_records, recurring_records): (Vec<&T>, Vec<&T>) = fee_records
+            .iter()
+            .partition(|c| matches!(c.fee_ref(), SubscriptionFee::OneTime { .. }));
+
+        let component_groups = recurring_records
+            .into_iter()
+            .into_group_map_by(|c| c.period_ref());
+
+        // TODO case when invoiced early via threshold (that's for usage-based only)
+        // can be quite easy => we need some last_invoice_threshold date in the subscription, to reduce the usage periods if that date is within the period
+
+        let component_period_components: Vec<(ComponentPeriods, Vec<&T>)> = component_groups
+            .into_iter()
+            .filter_map(|(billing_period, components)| {
+                let is_completed = subscription_details
+                    .subscription
+                    .current_period_end
+                    .is_none()
+                    && !subscription_details.subscription.pending_checkout;
+
+                // we calculate the periods range, for each billing_period. There can be advance, arrears, or both
+                let period = calculate_component_period_for_invoice_date(
+                    invoice_date,
+                    &subscription_details.subscription.period,
+                    billing_period,
+                    billing_start_or_resume_date,
+                    cycle_index,
+                    u32::from(subscription_details.subscription.billing_day_anchor),
+                    is_completed,
+                );
+
+                // if period is None - the components are not relevant for this invoice
+                period.map(|period| (period, components))
+            })
+            .collect();
+
+        // we can now compute all the components for each period
+        let mut invoice_lines = Vec::new();
+        for (period, components) in component_period_components {
+            for component in components {
+                // Apply temporal bounds to arrear period for usage-based billing split
+                let adjusted_period = restrict_arrear_period_by_temporal_bounds(
+                    period.clone(),
+                    component.effective_from(),
+                    component.effective_to(),
+                );
+
+                let lines = self
+                    .compute_component(
+                        conn,
+                        subscription_details,
+                        component,
+                        adjusted_period,
+                        &invoice_date,
+                        currency.precision,
+                        existing_lines,
+                    )
+                    .await?;
+
+                invoice_lines.extend(lines);
+            }
+        }
+
+        // One-time fees: billed in full, never prorated, exactly once. Billing point:
+        //  - plan-level one-time fees bill on the subscription's first invoice
+        //    (`cycle_index == 0`); they are not re-billed on renewals or carried over
+        //    by a plan change (which is why `applies_this_period` excludes them);
+        //  - a one-time fee added by a manual amendment bills on the invoice for the
+        //    period it becomes effective (`effective_from == invoice_date`), which for
+        //    an immediate amendment is its adjustment invoice (handled elsewhere) and
+        //    for an end-of-period amendment is the upcoming renewal.
+        for component in one_time_records {
+            let bill_now = cycle_index == 0
+                || (component.added_by_amendment()
+                    && component.effective_from() == Some(invoice_date));
+            if !bill_now {
+                continue;
+            }
+
+            let periods = ComponentPeriods {
+                proration_factor: None,
+                arrear_proration_factor: None,
+                advance: Some(Period {
+                    start: invoice_date,
+                    end: invoice_date,
+                }),
+                arrear: None,
+            };
+
+            let lines = self
+                .compute_component(
+                    conn,
+                    subscription_details,
+                    component,
+                    periods,
+                    &invoice_date,
+                    currency.precision,
+                    existing_lines,
+                )
+                .await?;
+
+            invoice_lines.extend(lines);
+        }
+
+        Ok(invoice_lines)
+    }
+}
+
+/// Restrict the arrear period of a ComponentPeriods based on a component's temporal bounds.
+/// - If effective_from > arrear.start: restrict arrear start to effective_from
+/// - If effective_to < arrear.end: restrict arrear end to effective_to
+/// - Returns the period unchanged if there are no temporal bounds or no arrear period.
+///
+/// When the arrear window is shrunk by a temporal bound (e.g. an arrears component
+/// added or removed mid-period via an amendment), a fixed-rate arrears fee must be
+/// prorated to the fraction of the period it was actually active — otherwise it
+/// would bill a full period's rate for a partial window. A proration factor is set
+/// for that case. Usage-based arrears ignore the factor (their amount derives from
+/// usage queried over the restricted window), so this is a no-op for them.
+fn restrict_arrear_period_by_temporal_bounds(
+    mut periods: ComponentPeriods,
+    effective_from: Option<NaiveDate>,
+    effective_to: Option<NaiveDate>,
+) -> ComponentPeriods {
+    if let Some(ref mut arrear) = periods.arrear {
+        let full_days = (arrear.end - arrear.start).num_days();
+
+        if let Some(from) = effective_from
+            && from > arrear.start
+        {
+            arrear.start = from;
+        }
+        if let Some(to) = effective_to
+            && to < arrear.end
+        {
+            arrear.end = to;
+        }
+        // If the restriction made the period invalid, remove it
+        if arrear.start >= arrear.end {
+            periods.arrear = None;
+            return periods;
+        }
+
+        // Prorate fixed-rate arrears down to the active fraction of the period. This
+        // is set on the arrear-only factor so it never affects the advance line of a
+        // component billed on the same period (e.g. an advance Rate add-on added
+        // mid-cycle must still bill its full next period at renewal).
+        let restricted_days = (arrear.end - arrear.start).num_days();
+        if full_days > 0 && restricted_days < full_days {
+            periods.arrear_proration_factor = Some(restricted_days as f64 / full_days as f64);
+        }
+    }
+    periods
+}
+
+/// Detect temporal splits and append date range to disambiguate line item names.
+/// A temporal split occurs when multiple sub_component_ids exist for the same price_component_id,
+/// indicating a mid-period plan change with old and new component versions.
+fn apply_temporal_date_range_to_names(lines: &mut [LineItem]) {
+    let mut price_component_sub_ids: HashMap<
+        PriceComponentId,
+        HashSet<SubscriptionPriceComponentId>,
+    > = HashMap::new();
+
+    for line in lines.iter() {
+        if let (Some(pc_id), Some(sc_id)) = (line.price_component_id, line.sub_component_id) {
+            price_component_sub_ids
+                .entry(pc_id)
+                .or_default()
+                .insert(sc_id);
+        }
+    }
+
+    let split_price_components: HashSet<PriceComponentId> = price_component_sub_ids
+        .into_iter()
+        .filter(|(_, sub_ids)| sub_ids.len() > 1)
+        .map(|(pc_id, _)| pc_id)
+        .collect();
+
+    if split_price_components.is_empty() {
+        return;
+    }
+
+    for line in lines.iter_mut() {
+        if let Some(pc_id) = line.price_component_id
+            && split_price_components.contains(&pc_id)
+        {
+            line.name = format!("{} ({} - {})", line.name, line.start_date, line.end_date);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn date(y: i32, m: u32, d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    fn arrear_periods(start: NaiveDate, end: NaiveDate) -> ComponentPeriods {
+        ComponentPeriods {
+            arrear: Some(Period { start, end }),
+            advance: None,
+            proration_factor: None,
+            arrear_proration_factor: None,
+        }
+    }
+
+    #[test]
+    fn arrear_added_mid_period_is_prorated() {
+        // An arrears component effective from Jan 16 in a [Jan 1, Feb 1] period
+        // should be prorated to the remaining 16 of 31 days.
+        let periods = restrict_arrear_period_by_temporal_bounds(
+            arrear_periods(date(2025, 1, 1), date(2025, 2, 1)),
+            Some(date(2025, 1, 16)),
+            None,
+        );
+
+        let arrear = periods.arrear.expect("arrear retained");
+        assert_eq!(arrear.start, date(2025, 1, 16));
+        assert_eq!(arrear.end, date(2025, 2, 1));
+        let factor = periods.arrear_proration_factor.expect("arrear prorated");
+        assert!((factor - 16.0 / 31.0).abs() < 1e-9, "got {factor}");
+        // The advance factor must stay untouched (advance lines bill in full).
+        assert_eq!(periods.proration_factor, None);
+    }
+
+    #[test]
+    fn arrear_removed_mid_period_is_prorated() {
+        // Closed at Jan 16: only [Jan 1, Jan 16] (15/31) should be billed.
+        let periods = restrict_arrear_period_by_temporal_bounds(
+            arrear_periods(date(2025, 1, 1), date(2025, 2, 1)),
+            None,
+            Some(date(2025, 1, 16)),
+        );
+
+        let arrear = periods.arrear.expect("arrear retained");
+        assert_eq!(arrear.start, date(2025, 1, 1));
+        assert_eq!(arrear.end, date(2025, 1, 16));
+        let factor = periods.arrear_proration_factor.expect("arrear prorated");
+        assert!((factor - 15.0 / 31.0).abs() < 1e-9, "got {factor}");
+        assert_eq!(periods.proration_factor, None);
+    }
+
+    #[test]
+    fn arrear_full_period_is_not_prorated() {
+        // A component active for the whole period (effective_from == arrear.start)
+        // keeps the full rate — no proration factor.
+        let periods = restrict_arrear_period_by_temporal_bounds(
+            arrear_periods(date(2025, 1, 1), date(2025, 2, 1)),
+            Some(date(2025, 1, 1)),
+            None,
+        );
+
+        assert_eq!(periods.arrear_proration_factor, None);
+        assert_eq!(periods.proration_factor, None);
+        let arrear = periods.arrear.expect("arrear retained");
+        assert_eq!(arrear.start, date(2025, 1, 1));
+        assert_eq!(arrear.end, date(2025, 2, 1));
+    }
+
+    #[test]
+    fn arrear_restricted_to_empty_is_dropped() {
+        // effective_from at/after the period end removes the arrear entirely.
+        let periods = restrict_arrear_period_by_temporal_bounds(
+            arrear_periods(date(2025, 1, 1), date(2025, 2, 1)),
+            Some(date(2025, 2, 1)),
+            None,
+        );
+
+        assert!(periods.arrear.is_none());
+    }
+}

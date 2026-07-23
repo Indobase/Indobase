@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package meteroid.internal.v1;
+
+import "api/billablemetrics/v1/models.proto";
+
+message ResolvedId {
+  string alias = 1;
+  string local_id = 2;
+}
+
+message ResolveCustomerAliasesRequest {
+  string tenant_id = 1;
+  repeated string aliases = 2;
+}
+
+message ResolveCustomerAliasesResponse {
+  repeated ResolvedId customers = 1;
+  repeated string unresolved_aliases = 2;
+}
+
+message ResolveApiKeyRequest {
+  string api_key_id = 1;
+}
+
+message ResolveApiKeyResponse {
+  string tenant_id = 1;
+  string organization_id = 2;
+  string hash = 3;
+}
+
+message ListBillableMetricsRequest {
+  string tenant_id = 1;
+  string code = 2;
+}
+
+message ListBillableMetricsResponse {
+  repeated api.billablemetrics.v1.BillableMetric items = 1;
+}
+
+service InternalService {
+  rpc ResolveCustomerAliases(ResolveCustomerAliasesRequest) returns (ResolveCustomerAliasesResponse) {}
+  rpc ResolveApiKey(ResolveApiKeyRequest) returns (ResolveApiKeyResponse) {}
+  rpc ListBillableMetrics(ListBillableMetricsRequest) returns (ListBillableMetricsResponse) {}
+}

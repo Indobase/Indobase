@@ -1,0 +1,17 @@
+[package]
+name = "distributed-lock"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+thiserror.workspace = true
+log = { workspace = true }
+diesel = { workspace = true, optional = true, features = ["postgres"] }
+diesel-async = { workspace = true, optional = true, features = ["postgres"] }
+
+[features]
+default = ["postgres-support"]
+postgres-support = ["dep:diesel", "dep:diesel-async"]

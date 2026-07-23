@@ -1,0 +1,723 @@
+use crate::StoreResult;
+use crate::domain::entity_activity::Actor;
+use crate::domain::outbox_event::{OutboxEvent, PaymentTransactionEvent};
+use crate::domain::{Invoice, InvoicePaymentStatus, SubscriptionStatusEnum};
+use crate::errors::StoreError;
+use crate::repositories::SubscriptionInterface;
+use crate::services::Services;
+use crate::services::subscriptions::PaymentActivationParams;
+use crate::services::subscriptions::utils::is_paid_trial;
+use crate::utils::periods::calculate_advance_period_range;
+use chrono::{Datelike, Utc};
+use diesel_models::checkout_sessions::CheckoutSessionRow;
+use diesel_models::enums::{CycleActionEnum, SubscriptionActivationConditionEnum};
+use diesel_models::invoices::InvoiceRow;
+use diesel_models::subscriptions::SubscriptionRow;
+use error_stack::Report;
+use scoped_futures::ScopedFutureExt;
+
+impl Services {
+    pub async fn on_payment_transaction_settled(
+        &self,
+        event: PaymentTransactionEvent,
+    ) -> StoreResult<()> {
+        match (event.invoice_id, event.checkout_session_id) {
+            (Some(invoice_id), _) => self.on_invoice_payment_settled(event, invoice_id).await,
+            (None, Some(checkout_session_id)) => {
+                self.on_checkout_payment_settled(event, checkout_session_id)
+                    .await
+            }
+            (None, None) => {
+                log::warn!(
+                    "Payment transaction {} has neither invoice_id nor checkout_session_id",
+                    event.payment_transaction_id
+                );
+                Err(Report::new(StoreError::InvalidArgument(
+                    "Payment transaction must have either invoice_id or checkout_session_id"
+                        .to_string(),
+                )))
+            }
+        }
+    }
+
+    /// Handle payment settlement for a standard invoice payment
+    async fn on_invoice_payment_settled(
+        &self,
+        event: PaymentTransactionEvent,
+        invoice_id: common_domain::ids::InvoiceId,
+    ) -> StoreResult<()> {
+        self.store
+            .transaction(|conn| {
+                async move {
+                    let invoice =
+                        InvoiceRow::select_for_update_by_id(conn, event.tenant_id, invoice_id)
+                            .await
+                            .map_err(Into::<Report<StoreError>>::into)?;
+
+                    let subscription_id = invoice.invoice.subscription_id;
+
+                    let should_finalize =
+                        invoice.invoice.status == diesel_models::enums::InvoiceStatusEnum::Draft;
+
+                    // if the invoice is not finalized nor void, finalize it (no line data refresh)
+                    if should_finalize {
+                        self.finalize_invoice_tx(conn, &Actor::System, invoice.invoice.id, invoice.invoice.tenant_id,
+                            false,
+                            &None,
+                        )
+                        .await?;
+                    }
+
+                    // update the invoice amount due to amount_due - transaction.amount
+                    let res = InvoiceRow::apply_transaction(
+                        conn,
+                        invoice_id,
+                        event.tenant_id,
+                        event.amount,
+                    )
+                    .await?;
+
+                    let completed = res.amount_due == 0;
+
+                    if completed {
+                        let invoice: Invoice = res.try_into()?;
+
+                        if invoice.payment_status != InvoicePaymentStatus::Paid {
+                            InvoiceRow::apply_payment_status(
+                                conn,
+                                invoice_id,
+                                event.tenant_id,
+                                diesel_models::enums::InvoicePaymentStatus::Paid,
+                                event.processed_at,
+                            )
+                            .await?;
+
+                            self.store
+                                .internal
+                                .record_outbox_batch_tx(
+                                    conn,
+                                    event.tenant_id,
+                                    &Actor::System,
+                                    vec![OutboxEvent::invoice_paid((&invoice).into())],
+                                )
+                                .await?;
+                        }
+
+                        // Apply deferred plan change if the transaction carries a pending plan version.
+                        if let (Some(sub_id), Some(target_pvid)) =
+                            (invoice.subscription_id, event.pending_plan_version_id)
+                        {
+                            log::info!(
+                                "Applying deferred plan change for subscription {} to plan_version {}",
+                                sub_id,
+                                target_pvid,
+                            );
+
+                            // Use current date instead of invoice_date: async payments
+                            // (SEPA) can settle days later, after the billing period rolls over.
+                            let change_date = Utc::now().date_naive();
+                            let prepared = self
+                                .prepare_plan_change_tx(
+                                    conn,
+                                    sub_id,
+                                    event.tenant_id,
+                                    target_pvid,
+                                    &[],
+                                    change_date,
+                                )
+                                .await?;
+
+                            self.execute_plan_change_tx(
+                                conn,
+                                &prepared,
+                                sub_id,
+                                event.tenant_id,
+                                target_pvid,
+                                change_date,
+                            )
+                            .await?;
+                        }
+
+                        // Activate subscription if pending checkout (TrialExpired activation is handled by on_invoice_paid)
+                        if let Some(subscription_id) = subscription_id.as_ref() {
+                            let subscription = SubscriptionRow::get_subscription_by_id(
+                                conn,
+                                &event.tenant_id,
+                                *subscription_id,
+                            )
+                            .await?;
+
+                            let should_activate = subscription.subscription.activated_at.is_none()
+                                && subscription.subscription.activation_condition
+                                    == SubscriptionActivationConditionEnum::OnCheckout;
+
+                            if should_activate {
+                                let billing_start_date = subscription
+                                    .subscription
+                                    .billing_start_date
+                                    .unwrap_or(chrono::Utc::now().date_naive());
+
+                                let current_period_start;
+                                let current_period_end;
+                                let next_cycle_action;
+                                let mut cycle_index = None;
+                                let status;
+
+                                if let Some(trial_duration) = subscription.subscription.trial_duration {
+                                    status = SubscriptionStatusEnum::TrialActive;
+                                    current_period_start = billing_start_date;
+                                    current_period_end = Some(
+                                        current_period_start
+                                            + chrono::Duration::days(i64::from(trial_duration)),
+                                    );
+                                    next_cycle_action = Some(CycleActionEnum::EndTrial);
+                                } else {
+                                    let range = calculate_advance_period_range(
+                                        billing_start_date,
+                                        subscription.subscription.billing_day_anchor as u32,
+                                        true,
+                                        &subscription.subscription.period.into(),
+                                    );
+
+                                    status = SubscriptionStatusEnum::Active;
+                                    cycle_index = Some(0);
+                                    current_period_start = range.start;
+                                    current_period_end = Some(range.end);
+                                    next_cycle_action = Some(CycleActionEnum::RenewSubscription);
+                                }
+
+                                // TODO send a subscription_activated event
+                                SubscriptionRow::activate_subscription(
+                                    conn,
+                                    subscription_id,
+                                    &event.tenant_id,
+                                    current_period_start,
+                                    current_period_end,
+                                    next_cycle_action,
+                                    cycle_index,
+                                    status.into(),
+                                )
+                                .await?;
+                            }
+                        }
+                    } else {
+                        InvoiceRow::apply_payment_status(
+                            conn,
+                            invoice_id,
+                            event.tenant_id,
+                            diesel_models::enums::InvoicePaymentStatus::PartiallyPaid,
+                            event.processed_at,
+                        )
+                        .await?;
+                    }
+
+                    // TODO payment receipt
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    /// Handle payment settlement for a checkout session (async payment that was pending)
+    ///
+    /// For SelfServe checkouts: Creates the subscription, bills it, and marks checkout complete.
+    /// For SubscriptionActivation checkouts: Bills the existing subscription and marks checkout complete.
+    async fn on_checkout_payment_settled(
+        &self,
+        event: PaymentTransactionEvent,
+        checkout_session_id: common_domain::ids::CheckoutSessionId,
+    ) -> StoreResult<()> {
+        use crate::domain::checkout_sessions::CheckoutType;
+        use crate::services::InvoiceBillingMode;
+        use crate::services::checkout_completion::DirectChargeResult;
+        use diesel_models::customers::CustomerRow;
+
+        self.store
+            .transaction(|conn| {
+                async move {
+                    let session: crate::domain::checkout_sessions::CheckoutSession =
+                        CheckoutSessionRow::get_by_id(conn, event.tenant_id, checkout_session_id)
+                            .await
+                            .map_err(Into::<Report<StoreError>>::into)?
+                            .into();
+
+                    if session.is_completed() {
+                        log::warn!(
+                            "Checkout session {} already completed, ignoring duplicate webhook",
+                            checkout_session_id
+                        );
+                        return Ok(());
+                    }
+
+                    if session.is_expired() {
+                        log::warn!(
+                            "Payment settled for expired checkout session {}",
+                            checkout_session_id
+                        );
+                        return Err(Report::new(StoreError::InvalidArgument(
+                            "Checkout session has expired".to_string(),
+                        )));
+                    }
+
+                    let charge_result = DirectChargeResult {
+                        payment_intent: crate::domain::payment_transactions::PaymentIntent {
+                            external_id: event.provider_transaction_id.clone().unwrap_or_default(),
+                            transaction_id: event.payment_transaction_id,
+                            tenant_id: event.tenant_id,
+                            amount_requested: event.amount,
+                            amount_received: Some(event.amount),
+                            currency: event.currency.clone(),
+                            next_action: None,
+                            status: crate::domain::PaymentStatusEnum::Settled,
+                            last_payment_error: None,
+                            processed_at: event.processed_at,
+                        },
+                        transaction_id: event.payment_transaction_id,
+                        amount: event.amount,
+                        currency: event.currency.clone(),
+                        payment_method_id: event.payment_method_id.ok_or_else(|| {
+                            Report::new(StoreError::InvalidArgument(
+                                "Payment method ID required".to_string(),
+                            ))
+                        })?,
+                    };
+
+                    let subscription_id = match session.checkout_type {
+                        CheckoutType::SelfServe => {
+                            // Create subscription now that payment is confirmed
+                            let coupon_ids = self
+                                .resolve_coupon_ids_for_checkout_tx(
+                                    conn,
+                                    event.tenant_id,
+                                    &session,
+                                    None,
+                                )
+                                .await?;
+
+                            let start_date = session
+                                .billing_start_date
+                                .unwrap_or_else(|| Utc::now().date_naive());
+
+                            let create_subscription =
+                                session.to_create_subscription(start_date, coupon_ids);
+
+                            let context = self
+                                .gather_subscription_context(
+                                    conn,
+                                    std::slice::from_ref(&create_subscription),
+                                    event.tenant_id,
+                                    &self.store.settings.crypt_key,
+                                )
+                                .await?;
+
+                            let detailed_subscriptions =
+                                self.build_subscription_details(&[create_subscription], &context)?;
+
+                            let detailed_sub = detailed_subscriptions.into_iter().next().ok_or(
+                                Report::new(StoreError::InsertError)
+                                    .attach("No subscription details built"),
+                            )?;
+
+                            // Skip provider setup since payment already happened
+                            let payment_result = crate::services::PaymentSetupResult { checkout: false };
+
+                            let processed = self.process_subscription(
+                                &detailed_sub,
+                                &payment_result,
+                                &context,
+                                event.tenant_id,
+                                None,
+                            )?;
+
+                            // Skip coupon validation since coupons were already validated before
+                            // charging. The customer already paid the discounted price.
+                            let created_subscriptions = self
+                                .persist_subscriptions_skip_coupon_validation(
+                                    conn,
+                                    &[processed],
+                                    event.tenant_id,
+                                    &self.store.settings.jwt_secret,
+                                    &self.store.settings.public_url,
+                                )
+                                .await?;
+
+                            let created_subscription =
+                                created_subscriptions.into_iter().next().ok_or(
+                                    Report::new(StoreError::InsertError)
+                                        .attach("No subscription created"),
+                                )?;
+
+                            self.bill_subscription_tx(
+                                conn,
+                                event.tenant_id,
+                                created_subscription.id,
+                                InvoiceBillingMode::AlreadyPaid {
+                                    charge_result: charge_result.clone(),
+                                    existing_transaction_id: Some(event.payment_transaction_id),
+                                },
+                            )
+                            .await?
+                            .ok_or(
+                                Report::new(StoreError::InsertError)
+                                    .attach("Failed to create invoice for subscription"),
+                            )?;
+
+                            // Activate the subscription now that payment is confirmed
+                            let billing_start_date = session
+                                .billing_start_date
+                                .unwrap_or_else(|| Utc::now().date_naive());
+
+                            // Get subscription to determine the period
+                            let subscription = SubscriptionRow::get_subscription_by_id(
+                                conn,
+                                &event.tenant_id,
+                                created_subscription.id,
+                            )
+                            .await?;
+
+                            let billing_day_anchor = session
+                                .billing_day_anchor
+                                .map(|a| a as u32)
+                                .unwrap_or_else(|| billing_start_date.day());
+
+                            let is_paid_trial_flag = is_paid_trial(
+                                conn,
+                                subscription.subscription.plan_version_id,
+                                event.tenant_id,
+                                session.trial_duration_days.is_some(),
+                            )
+                            .await?;
+
+                            self.activate_subscription_after_payment(
+                                conn,
+                                &created_subscription.id,
+                                &event.tenant_id,
+                                PaymentActivationParams {
+                                    billing_start_date,
+                                    trial_duration: session.trial_duration_days,
+                                    is_paid_trial: is_paid_trial_flag,
+                                    billing_day_anchor,
+                                    period: subscription.subscription.period.into(),
+                                },
+                            )
+                            .await?;
+
+                            created_subscription.id
+                        }
+                        CheckoutType::SubscriptionActivation => {
+                            let subscription_id = session.subscription_id.ok_or_else(|| {
+                                Report::new(StoreError::InvalidArgument(
+                                    "SubscriptionActivation checkout missing subscription_id"
+                                        .to_string(),
+                                ))
+                            })?;
+
+                            let subscription = self
+                                .store
+                                .get_subscription_details_with_conn(
+                                    conn,
+                                    event.tenant_id,
+                                    subscription_id,
+                                )
+                                .await?;
+
+                            let customer: crate::domain::Customer = CustomerRow::find_by_id(
+                                conn,
+                                &subscription.subscription.customer_id,
+                                &event.tenant_id,
+                            )
+                            .await
+                            .map_err(Into::into)
+                            .and_then(TryInto::try_into)?;
+
+                            self.bill_subscription_with_data_tx(
+                                conn,
+                                event.tenant_id,
+                                subscription.clone(),
+                                customer,
+                                InvoiceBillingMode::AlreadyPaid {
+                                    charge_result: charge_result.clone(),
+                                    existing_transaction_id: Some(event.payment_transaction_id),
+                                },
+                            )
+                            .await?;
+
+                            // Activate the subscription if it was pending checkout
+                            let should_activate = subscription.subscription.activated_at.is_none()
+                                && subscription.subscription.activation_condition
+                                    == crate::domain::enums::SubscriptionActivationCondition::OnCheckout;
+
+                            if should_activate {
+                                let billing_start_date = subscription
+                                    .subscription
+                                    .billing_start_date
+                                    .unwrap_or_else(|| Utc::now().date_naive());
+
+                                let is_paid_trial_flag = is_paid_trial(
+                                    conn,
+                                    subscription.subscription.plan_version_id,
+                                    event.tenant_id,
+                                    subscription.subscription.trial_duration.is_some(),
+                                )
+                                .await?;
+
+                                self.activate_subscription_after_payment(
+                                    conn,
+                                    &subscription_id,
+                                    &event.tenant_id,
+                                    PaymentActivationParams {
+                                        billing_start_date,
+                                        trial_duration: subscription
+                                            .subscription
+                                            .trial_duration
+                                            .map(|d| d as i32),
+                                        is_paid_trial: is_paid_trial_flag,
+                                        billing_day_anchor: subscription.subscription.billing_day_anchor
+                                            as u32,
+                                        period: subscription.subscription.period,
+                                    },
+                                )
+                                .await?;
+                            }
+
+                            subscription_id
+                        }
+                        CheckoutType::PlanChange => {
+                            let subscription_id = session.subscription_id.ok_or_else(|| {
+                                Report::new(StoreError::InvalidArgument(
+                                    "PlanChange checkout missing subscription_id".to_string(),
+                                ))
+                            })?;
+
+                            let new_plan_version_id = session.plan_version_id;
+                            // Use current date, not the stored change_date from session creation.
+                            // Async payments (SEPA) can take days; the billing period may have
+                            // rolled over, making the original date invalid.
+                            let today = Utc::now().date_naive();
+
+                            let prepared = self
+                                .prepare_plan_change_tx(
+                                    conn,
+                                    subscription_id,
+                                    event.tenant_id,
+                                    new_plan_version_id,
+                                    &[],
+                                    today,
+                                )
+                                .await?;
+
+                            let is_free_trial = prepared.is_free_trial();
+
+                            // Apply the plan change (handles trial→Active transition)
+                            self.execute_plan_change_tx(
+                                conn,
+                                &prepared,
+                                subscription_id,
+                                event.tenant_id,
+                                new_plan_version_id,
+                                today,
+                            )
+                            .await?;
+
+                            if is_free_trial {
+                                // Create first invoice linked to settled payment
+                                use crate::services::InvoiceBillingMode;
+
+                                self.bill_subscription_tx(
+                                    conn,
+                                    event.tenant_id,
+                                    subscription_id,
+                                    InvoiceBillingMode::AlreadyPaid {
+                                        charge_result,
+                                        existing_transaction_id: Some(event.payment_transaction_id),
+                                    },
+                                )
+                                .await?;
+                            } else {
+                                // Normal plan change: create adjustment invoice
+                                let net_amount = prepared.proration.net_amount_cents;
+                                if net_amount != 0 {
+                                    let invoice = self
+                                        .create_adjustment_invoice(
+                                            conn,
+                                            event.tenant_id,
+                                            &prepared.subscription_details.subscription,
+                                            &prepared.subscription_details.customer,
+                                            &prepared.proration,
+                                        )
+                                        .await?;
+
+                                    if let Some(inv) = &invoice {
+                                        self.finalize_invoice_tx(conn, &Actor::System, inv.id, event.tenant_id, false, &None,
+                                        )
+                                        .await?;
+
+                                        diesel_models::invoices::InvoiceRow::apply_transaction(
+                                            conn, inv.id, event.tenant_id,
+                                            charge_result.amount,
+                                        )
+                                        .await?;
+                                        diesel_models::invoices::InvoiceRow::apply_payment_status(
+                                            conn, inv.id, event.tenant_id,
+                                            diesel_models::enums::InvoicePaymentStatus::Paid,
+                                            charge_result.payment_intent.processed_at,
+                                        )
+                                        .await?;
+                                    }
+                                }
+                            }
+
+                            subscription_id
+                        }
+                        CheckoutType::AddonPurchase => {
+                            let subscription_id = session.subscription_id.ok_or_else(|| {
+                                Report::new(StoreError::InvalidArgument(
+                                    "AddonPurchase checkout missing subscription_id".to_string(),
+                                ))
+                            })?;
+
+                            let create_add_ons = session.add_ons.as_ref().ok_or_else(|| {
+                                Report::new(StoreError::InvalidArgument(
+                                    "AddonPurchase checkout session has no add_ons".to_string(),
+                                ))
+                            })?;
+
+                            let addon_ids: Vec<_> =
+                                create_add_ons.add_ons.iter().map(|a| a.add_on_id).collect();
+                            let addons = {
+                                let rows = diesel_models::add_ons::AddOnRow::list_by_ids(
+                                    conn,
+                                    &addon_ids,
+                                    &event.tenant_id,
+                                )
+                                .await
+                                .map_err(Into::<Report<StoreError>>::into)?;
+                                crate::repositories::add_ons::enrich_add_ons(
+                                    conn,
+                                    rows,
+                                    event.tenant_id,
+                                )
+                                .await?
+                            };
+
+                            let product_ids: Vec<_> =
+                                addons.iter().map(|a| a.product_id).collect();
+                            let price_ids: Vec<_> = addons.iter().map(|a| a.price_id).collect();
+                            let (prices_by_id, products_by_id) =
+                                crate::repositories::subscriptions::fetch_prices_and_products(
+                                    conn,
+                                    event.tenant_id,
+                                    price_ids.into_iter(),
+                                    product_ids.into_iter(),
+                                )
+                                .await?;
+
+                            let addon_effective_from = session
+                                .change_date
+                                .unwrap_or_else(|| Utc::now().date_naive());
+
+                            crate::repositories::subscription_add_ons::resolve_and_insert_checkout_addons(
+                                conn,
+                                subscription_id,
+                                &addons,
+                                &create_add_ons.add_ons,
+                                &products_by_id,
+                                &prices_by_id,
+                                addon_effective_from,
+                            )
+                            .await?;
+
+                            // Create prorated one-off invoice for the addon purchase
+                            let result = self
+                                .compute_addon_purchase_invoice(
+                                    conn,
+                                    event.tenant_id,
+                                    subscription_id,
+                                    &create_add_ons.add_ons,
+                                    &addons,
+                                    &products_by_id,
+                                    &prices_by_id,
+                                )
+                                .await?;
+
+                            let content =
+                                crate::services::invoices::AdjustmentInvoiceContent {
+                                    computed: result.invoice_content,
+                                    invoicing_entity: None,
+                                };
+
+                            let draft = self
+                                .create_adjustment_invoice_from_content(
+                                    conn,
+                                    &result.subscription,
+                                    &result.customer,
+                                    &result.proration,
+                                    content,
+                                )
+                                .await?;
+
+                            if let Some(invoice) = draft {
+                                self.finalize_invoice_tx(conn, &Actor::System, invoice.id, event.tenant_id,
+                                    false,
+                                    &None,
+                                )
+                                .await?;
+
+                                self.link_transaction_to_invoice(
+                                    conn,
+                                    event.tenant_id,
+                                    event.payment_transaction_id,
+                                    invoice.id,
+                                )
+                                .await?;
+
+                                diesel_models::invoices::InvoiceRow::apply_transaction(
+                                    conn,
+                                    invoice.id,
+                                    event.tenant_id,
+                                    charge_result.amount,
+                                )
+                                .await?;
+                                diesel_models::invoices::InvoiceRow::apply_payment_status(
+                                    conn,
+                                    invoice.id,
+                                    event.tenant_id,
+                                    diesel_models::enums::InvoicePaymentStatus::Paid,
+                                    charge_result.payment_intent.processed_at,
+                                )
+                                .await?;
+                            }
+
+                            subscription_id
+                        }
+                    };
+
+                    CheckoutSessionRow::mark_completed(
+                        conn,
+                        event.tenant_id,
+                        checkout_session_id,
+                        subscription_id,
+                        chrono::Utc::now(),
+                    )
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                    log::info!(
+                        "Completed checkout session {} with subscription {} after async payment",
+                        checkout_session_id,
+                        subscription_id
+                    );
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(())
+    }
+}

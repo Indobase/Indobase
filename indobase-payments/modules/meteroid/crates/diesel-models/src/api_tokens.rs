@@ -1,0 +1,45 @@
+use chrono::NaiveDateTime;
+
+use crate::enums::TenantEnvironmentEnum;
+use common_domain::ids::{ApiTokenId, OrganizationId, TenantId};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
+
+#[derive(Debug, Queryable, Identifiable)]
+#[diesel(table_name = crate::schema::api_token)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ApiTokenRow {
+    pub id: ApiTokenId,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub tenant_id: TenantId,
+    pub hash: String,
+    pub hint: String,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::api_token)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ApiTokenRowNew {
+    pub id: ApiTokenId,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub tenant_id: TenantId,
+    pub hash: String,
+    pub hint: String,
+}
+
+// ApiTokenValidationRow
+#[derive(Debug, Queryable, Identifiable, Selectable)]
+#[diesel(table_name = crate::schema::api_token)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ApiTokenValidationRow {
+    pub id: ApiTokenId,
+    pub tenant_id: TenantId,
+    pub hash: String,
+    #[diesel(select_expression = crate::schema::tenant::organization_id)]
+    #[diesel(select_expression_type = crate::schema::tenant::organization_id)]
+    pub organization_id: OrganizationId,
+    #[diesel(select_expression = crate::schema::tenant::environment)]
+    #[diesel(select_expression_type = crate::schema::tenant::environment)]
+    pub environment: TenantEnvironmentEnum,
+}

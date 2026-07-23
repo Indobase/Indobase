@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package meteroid.api.components.v1;
+
+import "api/pricecomponents/v1/models.proto";
+
+message EditPriceComponentRequest {
+  string plan_version_id = 1;
+  PriceComponent component = 2;
+  repeated PriceEntry prices = 4;
+}
+
+message EditPriceComponentResponse {
+  PriceComponent component = 1;
+}
+
+message CreatePriceComponentRequest {
+  string plan_version_id = 1;
+  string name = 2;
+  reserved 3, 4, 5, 6;
+  ProductRef product = 7;
+  repeated PriceEntry prices = 8;
+}
+
+message CreatePriceComponentResponse {
+  PriceComponent component = 1;
+}
+
+message RemovePriceComponentRequest {
+  string price_component_id = 1;
+}
+
+message ListPriceComponentRequest {
+  string plan_version_id = 1;
+}
+
+message ListPriceComponentResponse {
+  repeated PriceComponent components = 1;
+}
+
+message EmptyResponse {
+}
+
+service PriceComponentsService {
+  rpc ListPriceComponents(ListPriceComponentRequest) returns (ListPriceComponentResponse) {}
+  rpc CreatePriceComponent(CreatePriceComponentRequest) returns (CreatePriceComponentResponse) {}
+  rpc EditPriceComponent(EditPriceComponentRequest) returns (EditPriceComponentResponse) {}
+  rpc RemovePriceComponent(RemovePriceComponentRequest) returns (EmptyResponse) {}
+}

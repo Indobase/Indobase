@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package meteroid.api.quotes.v1;
+
+import "api/customers/v1/models.proto";
+import "api/entitlements/v1/models.proto";
+import "api/invoicingentities/v1/models.proto";
+import "api/subscriptions/v1/models.proto";
+
+enum QuoteStatus {
+  DRAFT = 0;
+  PENDING = 1;
+  ACCEPTED = 2;
+  DECLINED = 3;
+  EXPIRED = 4;
+  CANCELLED = 5;
+}
+
+message Quote {
+  string id = 1;
+  string quote_number = 2;
+  QuoteStatus status = 3;
+  string created_at = 4;
+  optional string updated_at = 5;
+  string customer_id = 6;
+  optional string customer_name = 7;
+  string plan_version_id = 8;
+  string currency = 9;
+
+  // Subscription-like fields
+  optional uint32 trial_duration = 10;
+  optional string start_date = 11;  // now optional for dynamic start date
+  optional string billing_start_date = 12;
+  optional string end_date = 13;
+  optional uint32 billing_day_anchor = 14;
+  meteroid.api.subscriptions.v1.ActivationCondition activation_condition = 15;
+
+  // Quote-specific fields
+  optional string valid_until = 16;
+  optional string expires_at = 17;
+  optional string accepted_at = 18;
+  optional string declined_at = 19;
+
+  // Documentation fields
+  optional string internal_notes = 20;
+  optional string cover_image = 21;
+  optional string overview = 22;
+  optional string terms_and_services = 23;
+  repeated string attachments = 24;
+  repeated RecipientDetails recipients = 25;
+
+  int32 net_terms = 26;
+
+  optional string purchase_order = 27;
+
+  // Payment configuration fields
+  bool auto_advance_invoices = 29;
+  bool charge_automatically = 30;
+  optional string invoice_memo = 31;
+  optional string invoice_threshold = 32;
+  bool create_subscription_on_acceptance = 33;
+  optional meteroid.api.subscriptions.v1.PaymentMethodsConfig payment_methods_config = 36;
+
+  // Conversion tracking
+  optional string converted_to_subscription_id = 34;
+  optional string converted_at = 35;
+}
+
+message RecipientDetails {
+  string name = 1;
+  string email = 2;
+}
+
+
+
+message DetailedQuote {
+  Quote quote = 1;
+  meteroid.api.customers.v1.Customer customer = 2;
+  meteroid.api.invoicingentities.v1.InvoicingEntity invoicing_entity = 3;
+  repeated QuoteComponent components = 5;
+  repeated QuoteAddOn add_ons = 8;
+  repeated QuoteCoupon coupons = 9;
+  repeated QuoteSignature signatures = 6;
+}
+
+
+message QuoteComponent {
+  string id = 1;
+  optional string price_component_id = 2;
+  optional string product_id = 3;
+  string name = 4;
+  meteroid.api.subscriptions.v1.SubscriptionFeeBillingPeriod period = 5;
+  meteroid.api.subscriptions.v1.SubscriptionFee fee = 6;
+  bool is_override = 7;
+  optional string example_usage_quantity = 8;
+  // Computed informative amount for example_usage_quantity, decimal string in
+  // major units. Absent for non-usage components or models that can't be priced
+  // from a single quantity (e.g. matrix). Display-only, never billed.
+  optional string example_usage_amount = 9;
+}
+
+message QuoteUsageExample {
+  optional string price_component_id = 1;
+  optional string component_name = 2;
+  string example_quantity = 3;
+}
+
+message QuoteAddOn {
+  string id = 1;
+  string quote_id = 2;
+  string add_on_id = 3;
+  string name = 4;
+  meteroid.api.subscriptions.v1.SubscriptionFeeBillingPeriod period = 5;
+  meteroid.api.subscriptions.v1.SubscriptionFee fee = 6;
+  uint32 quantity = 7;
+}
+
+message QuoteCoupon {
+  string id = 1;
+  string quote_id = 2;
+  string coupon_id = 3;
+}
+
+message QuoteSignature {
+  string id = 1;
+  string quote_id = 2;
+  string signed_by_name = 3;
+  string signed_by_email = 4;
+  optional string signed_by_title = 5;
+  optional string signature_data = 6;
+  string signature_method = 7;
+  string signed_at = 8;
+  optional string ip_address = 9;
+  optional string user_agent = 10;
+  optional string verification_token = 11;
+  optional string verified_at = 12;
+}
+
+message CreateQuote {
+  string plan_version_id = 1;
+  string customer_id = 2;
+  string currency = 3;
+  optional string quote_number = 4;
+
+  // Subscription-like fields
+  optional uint32 trial_duration = 5;
+  optional string start_date = 6;  // now optional for dynamic start date
+  optional string billing_start_date = 7;
+  optional string end_date = 8;
+  optional uint32 billing_day_anchor = 9;
+  meteroid.api.subscriptions.v1.ActivationCondition activation_condition = 10;
+
+  // Quote-specific fields
+  optional string valid_until = 11;
+  optional string expires_at = 12;
+
+  // Documentation fields
+  optional string internal_notes = 13;
+  optional string cover_image = 14;
+  optional string overview = 15;
+  optional string terms_and_services = 16;
+  optional int32 net_terms = 17;
+  repeated string attachments = 18;
+  repeated RecipientDetails recipients = 19;
+
+  meteroid.api.subscriptions.v1.CreateSubscriptionComponents components = 20;
+
+  // Payment configuration fields
+  optional bool auto_advance_invoices = 22;
+  optional bool charge_automatically = 23;
+  optional string invoice_memo = 24;
+  optional string invoice_threshold = 25;
+  optional bool create_subscription_on_acceptance = 26;
+  optional meteroid.api.subscriptions.v1.PaymentMethodsConfig payment_methods_config = 29;
+
+  // Add-ons and coupons
+  meteroid.api.subscriptions.v1.CreateSubscriptionAddOns add_ons = 27;
+  CreateQuoteCoupons coupons = 28;
+
+  // Inline entitlement specs to attach to the quote
+  repeated meteroid.api.entitlements.v1.EntitlementSpec entitlements = 30;
+
+  // Informative example usage quantities to display for usage-based components.
+  repeated QuoteUsageExample usage_examples = 31;
+}
+
+message CreateQuoteCoupon {
+  string coupon_id = 1;
+}
+
+message CreateQuoteCoupons {
+  repeated CreateQuoteCoupon coupons = 1;
+}

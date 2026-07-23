@@ -1,0 +1,209 @@
+use crate::add_ons::{AddOnRow, AddOnRowNew, AddOnRowPatch};
+use crate::errors::IntoDbResult;
+use crate::extend::order::{OrderByParam, OrderDirection};
+use crate::extend::pagination::{Paginate, PaginatedVec, PaginationRequest};
+use crate::{DbResult, PgConn};
+use common_domain::ids::{AddOnId, PlanVersionId, TenantId};
+use diesel::{ExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper, debug_query};
+use diesel_async::RunQueryDsl;
+use error_stack::ResultExt;
+use tap::TapFallible;
+
+impl AddOnRowNew {
+    pub async fn insert(&self, conn: &mut PgConn) -> DbResult<AddOnRow> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = diesel::insert_into(ao_dsl::add_on).values(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while inserting add-on")
+            .into_db_result()
+    }
+}
+
+impl AddOnRow {
+    pub async fn get_by_id(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        id: AddOnId,
+    ) -> DbResult<AddOnRow> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = ao_dsl::add_on
+            .filter(ao_dsl::id.eq(id))
+            .filter(ao_dsl::tenant_id.eq(tenant_id));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .first(conn)
+            .await
+            .attach("Error while getting add-on")
+            .into_db_result()
+    }
+
+    /// List add-ons for a tenant. If `plan_version_id` is provided, filters through the junction table.
+    /// If `currency` is provided, filters add-ons whose price matches that currency.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_by_tenant_id(
+        conn: &mut PgConn,
+        tenant_id: TenantId,
+        plan_version_id: Option<PlanVersionId>,
+        pagination: PaginationRequest,
+        search: Option<String>,
+        currency: Option<String>,
+        include_archived: bool,
+        order_by: Option<&str>,
+    ) -> DbResult<PaginatedVec<AddOnRow>> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let mut query = ao_dsl::add_on
+            .filter(ao_dsl::tenant_id.eq(tenant_id))
+            .into_boxed();
+
+        if !include_archived {
+            query = query.filter(ao_dsl::archived_at.is_null());
+        }
+
+        if let Some(pv_id) = plan_version_id {
+            use crate::schema::plan_version_add_on::dsl as pva_dsl;
+
+            let add_on_ids_subquery = pva_dsl::plan_version_add_on
+                .filter(pva_dsl::plan_version_id.eq(pv_id))
+                .select(pva_dsl::add_on_id);
+
+            query = query.filter(ao_dsl::id.eq_any(add_on_ids_subquery));
+        }
+
+        if let Some(currency) = currency {
+            use crate::schema::price::dsl as p_dsl;
+
+            let price_ids_subquery = p_dsl::price
+                .filter(p_dsl::currency.eq(currency))
+                .select(p_dsl::id);
+
+            query = query.filter(ao_dsl::price_id.eq_any(price_ids_subquery));
+        }
+
+        if let Some(search) = search {
+            query = query.filter(ao_dsl::name.ilike(format!("%{search}%")));
+        }
+
+        let mut query = query.select(AddOnRow::as_select());
+
+        let order = OrderByParam::parse(order_by, "created_at.desc");
+
+        match (order.column.as_str(), order.direction) {
+            ("name", OrderDirection::Asc) => {
+                query = query.order((ao_dsl::name.asc(), ao_dsl::id.asc()))
+            }
+            ("name", OrderDirection::Desc) => {
+                query = query.order((ao_dsl::name.desc(), ao_dsl::id.desc()))
+            }
+            ("created_at", OrderDirection::Asc) => {
+                query = query.order((ao_dsl::created_at.asc(), ao_dsl::id.asc()))
+            }
+            ("created_at", OrderDirection::Desc) => {
+                query = query.order((ao_dsl::created_at.desc(), ao_dsl::id.desc()))
+            }
+            _ => query = query.order((ao_dsl::created_at.desc(), ao_dsl::id.desc())),
+        }
+
+        let query = query.paginate(pagination);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .load_and_count_pages(conn)
+            .await
+            .tap_err(|e| log::error!("Error while listing add-ons: {e:?}"))
+            .attach("Error while listing add-ons")
+            .into_db_result()
+    }
+
+    pub async fn archive(conn: &mut PgConn, id: AddOnId, tenant_id: TenantId) -> DbResult<()> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = diesel::update(ao_dsl::add_on)
+            .filter(ao_dsl::id.eq(id))
+            .filter(ao_dsl::tenant_id.eq(tenant_id))
+            .filter(ao_dsl::archived_at.is_null())
+            .set(ao_dsl::archived_at.eq(diesel::dsl::now));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .tap_err(|e| log::error!("Error while archiving add-on: {e:?}"))
+            .attach("Error while archiving add-on")
+            .into_db_result()?;
+
+        Ok(())
+    }
+
+    pub async fn unarchive(conn: &mut PgConn, id: AddOnId, tenant_id: TenantId) -> DbResult<()> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = diesel::update(ao_dsl::add_on)
+            .filter(ao_dsl::id.eq(id))
+            .filter(ao_dsl::tenant_id.eq(tenant_id))
+            .set(ao_dsl::archived_at.eq::<Option<chrono::NaiveDateTime>>(None));
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .execute(conn)
+            .await
+            .tap_err(|e| log::error!("Error while unarchiving add-on: {e:?}"))
+            .attach("Error while unarchiving add-on")
+            .into_db_result()?;
+
+        Ok(())
+    }
+
+    pub async fn list_by_ids(
+        conn: &mut PgConn,
+        ids: &[AddOnId],
+        tenant_id: &TenantId,
+    ) -> DbResult<Vec<AddOnRow>> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = ao_dsl::add_on
+            .filter(ao_dsl::id.eq_any(ids))
+            .filter(ao_dsl::tenant_id.eq(tenant_id))
+            .filter(ao_dsl::archived_at.is_null());
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_results(conn)
+            .await
+            .tap_err(|e| log::error!("Error while fetching add-ons: {e:?}"))
+            .attach("Error while fetching add-ons")
+            .into_db_result()
+    }
+}
+
+impl AddOnRowPatch {
+    pub async fn patch(&self, conn: &mut PgConn) -> DbResult<AddOnRow> {
+        use crate::schema::add_on::dsl as ao_dsl;
+
+        let query = diesel::update(ao_dsl::add_on)
+            .filter(ao_dsl::id.eq(self.id))
+            .filter(ao_dsl::tenant_id.eq(self.tenant_id))
+            .set(self);
+
+        log::debug!("{}", debug_query::<diesel::pg::Pg, _>(&query));
+
+        query
+            .get_result(conn)
+            .await
+            .attach("Error while updating add-on")
+            .into_db_result()
+    }
+}

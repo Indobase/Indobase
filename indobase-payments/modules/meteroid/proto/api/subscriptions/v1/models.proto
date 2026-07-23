@@ -1,0 +1,391 @@
+syntax = "proto3";
+
+import "api/shared/v1/shared.proto";
+
+import "api/entitlements/v1/models.proto";
+import "api/schedules/v1/models.proto";
+import "api/pricecomponents/v1/models.proto";
+import "api/prices/v1/models.proto";
+import "api/coupons/v1/models.proto";
+import "api/connectors/v1/models.proto";
+
+package meteroid.api.subscriptions.v1;
+
+
+/*
+PendingActivation, // before trial
+    PendingCharge,     // after billing start date, while awaiting payment
+    TrialActive,
+    Active,
+    TrialExpired,
+    Paused,
+    Suspended, // due to non-payment
+    Cancelled,
+    Completed,
+    Superseded, // upgrade/
+ */
+
+enum SubscriptionStatus {
+  PENDING = 0;
+  TRIALING = 1;
+  ACTIVE = 2;
+  CANCELED = 3;
+  ENDED = 4;
+  TRIAL_EXPIRED = 5; // trial ended on paid plan without payment method, awaiting checkout
+  ERRORED = 6;
+}
+
+message Subscription {
+  string id = 1;
+  string customer_id = 2;
+  string customer_name = 3;
+  optional string customer_alias = 4;
+  uint32 billing_day_anchor = 5;
+  string tenant_id = 6;
+  string currency = 7;
+  optional uint32 trial_duration = 8;
+  string start_date = 9;
+  optional string end_date = 10;
+  string plan_id = 11;
+  string plan_name = 12;
+  string plan_version_id = 13;
+  uint32 version = 14;
+  string created_at = 15;
+  uint32 net_terms = 17;
+  optional string invoice_memo = 18;
+  optional string invoice_threshold = 19;
+  optional string activated_at = 20;
+  uint64 mrr_cents = 23;
+  SubscriptionStatus status = 24;
+  // TODO accrued (total up until now ? ) , due (next billing cycle) , last X months of revenue for a graph ?
+  string local_id = 25;
+  optional string billing_start_date = 26;
+  optional string checkout_url = 27;
+  bool pending_checkout = 36;
+
+  optional api.connectors.v1.ConnectionMetadata connection_metadata = 32;
+  optional string purchase_order = 33;
+  bool auto_advance_invoices = 34;
+  bool charge_automatically = 35;
+
+  // Billing cycle and error tracking fields
+  optional string current_period_start = 37;
+  optional string current_period_end = 38;
+  int32 error_count = 39;
+  optional string last_error = 40;
+  optional string next_retry = 41;
+
+  // Quote to subscription linking
+  optional string quote_id = 42;
+  optional PaymentMethodsConfig payment_methods_config = 43;
+}
+
+// Trial configuration resolved from the plan version
+message TrialConfig {
+  uint32 duration_days = 1;
+  bool is_free = 2;
+  optional string trialing_plan_id = 3;
+  optional string trialing_plan_name = 4; // resolved name for display
+}
+
+message SubscriptionDetails {
+  Subscription subscription = 1;
+  repeated meteroid.api.schedules.v1.Schedule schedules = 2;
+  repeated SubscriptionComponent price_components = 3;
+  repeated BillableMetric metrics = 4;
+  repeated SubscriptionAddOn add_ons = 5;
+  repeated meteroid.api.coupons.v1.AppliedCouponDetailed applied_coupons = 6;
+  optional TrialConfig trial_config = 7;
+  repeated PendingScheduledEvent pending_events = 8;
+}
+
+enum ScheduledEventType {
+  PLAN_CHANGE = 0;
+  CANCEL = 1;
+  PAUSE = 2;
+  END_TRIAL = 3;
+  AMENDMENT = 4;
+}
+
+// Human-readable summary of what a scheduled amendment will change, for the
+// pending-event banner. Removed names are resolved against the subscription's
+// current components/add-ons when available, otherwise omitted.
+message AmendmentSummary {
+  repeated string added_component_names = 1;
+  repeated string removed_component_names = 2;
+  repeated string added_add_on_names = 3;
+  repeated string removed_add_on_names = 4;
+}
+
+message PendingScheduledEvent {
+  string id = 1;
+  ScheduledEventType event_type = 2;
+  string scheduled_date = 3;
+  optional string new_plan_name = 4;
+  optional string new_plan_version_id = 5;
+  optional string cancel_reason = 6;
+  // True when the event was scheduled by the customer (e.g. via the portal),
+  // false when scheduled by an admin/API actor.
+  bool customer_initiated = 7;
+  optional AmendmentSummary amendment_summary = 8;
+}
+
+// TODO replace by subscription or even subscription details
+message CreatedSubscription {
+  string id = 1;
+  string customer_id = 2;
+  string tenant_id = 3;
+  string currency = 4;
+  optional uint32 trial_duration = 5;
+  string start_date = 6;
+  optional string billing_start_date = 7;
+  optional string end_date = 8;
+  string plan_version_id = 9;
+  string created_at = 10;
+  uint32 net_terms = 12;
+  optional string invoice_memo = 13;
+  optional string invoice_threshold = 14;
+  optional string activated_at = 15;
+  uint64 mrr_cents = 18;
+  string local_id = 19;
+  uint32 billing_day_anchor = 20;
+  optional string checkout_url = 21;
+  optional string purchase_order = 22;
+}
+
+message CreateSubscription {
+  string plan_version_id = 2;
+  string customer_id = 3;
+  optional uint32 trial_duration = 5;
+  string start_date = 6;
+  optional string end_date = 7;
+  optional uint32 billing_day_anchor = 8;
+  optional uint32 net_terms = 10;
+  optional string invoice_memo = 11;
+  optional string invoice_threshold = 12;
+  optional string purchase_order = 13;
+  CreateSubscriptionComponents components = 14;
+  CreateSubscriptionAddOns add_ons = 15;
+  CreateSubscriptionCoupons coupons = 16;
+  ActivationCondition activation_condition = 17;
+  optional bool auto_advance_invoices = 18;
+  optional bool charge_automatically = 19;
+  optional PaymentMethodsConfig payment_methods_config = 21;
+  // Migration mode: when true with a past start_date, skip creating invoices for past cycles.
+  // The subscription will be set to the current billing period with correct cycle_index.
+  optional bool skip_past_invoices = 22;
+  repeated meteroid.api.entitlements.v1.EntitlementSpec entitlements = 23;
+}
+
+enum ActivationCondition {
+  ON_START = 0;
+  ON_CHECKOUT = 1;
+  MANUAL = 2;
+}
+
+// Online, BankTransfer, or External.
+message PaymentMethodsConfig {
+  oneof config {
+    OnlinePayment online = 1;
+    BankTransfer bank_transfer = 2;
+    External external = 3;
+  }
+}
+
+message OnlinePayment {
+  // If not set, inherits all online providers from invoicing entity.
+  optional OnlineMethodsConfig config = 1;
+}
+
+message OnlineMethodsConfig {
+  optional OnlineMethodConfig card = 1;
+  optional OnlineMethodConfig direct_debit = 2;
+}
+
+message OnlineMethodConfig {
+  bool enabled = 1;
+}
+
+message BankTransfer {}
+
+message External {}
+
+message CreateSubscriptionAddOn {
+  string add_on_id = 1;
+  uint32 quantity = 4;
+
+  oneof customization {
+    AddOnParameterization parameterization = 2;
+    AddOnPriceOverride price_override = 3;
+  }
+
+  message AddOnParameterization {
+    optional uint32 initial_slot_count = 1;
+    optional meteroid.api.shared.v1.BillingPeriod billing_period = 2;
+    optional uint64 committed_capacity = 3;
+  }
+
+  message AddOnPriceOverride {
+    optional string name = 1;
+    meteroid.api.components.v1.PriceEntry price_entry = 2;
+  }
+}
+
+message CreateSubscriptionAddOns {
+  repeated CreateSubscriptionAddOn add_ons = 1;
+}
+
+message SubscriptionAddOn {
+  string id = 1;
+  string add_on_id = 2;
+  string subscription_id = 3;
+  string name = 4;
+  SubscriptionFeeBillingPeriod period = 5;
+  SubscriptionFee fee = 6;
+  uint32 quantity = 7;
+}
+
+message CreateSubscriptionCoupon {
+  string coupon_id = 1;
+}
+
+message CreateSubscriptionCoupons {
+  repeated CreateSubscriptionCoupon coupons = 1;
+}
+
+message CreateSubscriptionComponents {
+  repeated ComponentParameterization parameterized_components = 18;
+  repeated ComponentOverride overridden_components = 19;
+  repeated ExtraComponent extra_components = 20;
+  repeated string remove_components = 21;
+
+  message ComponentParameterization {
+    string component_id = 1;
+    optional uint32 initial_slot_count = 2;
+    optional meteroid.api.shared.v1.BillingPeriod billing_period = 3;
+    optional uint64 committed_capacity = 4;
+  }
+
+  message ComponentOverride {
+    string component_id = 1;
+    string name = 2;
+    meteroid.api.components.v1.PriceEntry price = 3;
+  }
+
+  message ExtraComponent {
+    string name = 1;
+    meteroid.api.components.v1.ProductRef product = 2;
+    meteroid.api.components.v1.PriceEntry price = 3;
+  }
+}
+
+message BillableMetric {
+  string id = 1;
+  string alias = 2;
+  string name = 3;
+}
+
+
+message SubscriptionComponent {
+  string id = 1;
+  optional string price_component_id = 2;
+  optional string product_id = 3;
+  string subscription_id = 4;
+  string name = 5;
+  SubscriptionFeeBillingPeriod period = 6;
+  SubscriptionFee fee = 7;
+  bool is_override = 8;
+}
+
+
+message SubscriptionComponentNewInternal {
+  optional string price_component_id = 1;
+  optional string product_id = 2;
+  string name = 3;
+  SubscriptionFeeBillingPeriod period = 4;
+  SubscriptionFee fee = 5;
+  optional string price_id = 6;
+}
+
+enum SubscriptionFeeBillingPeriod {
+  ONE_TIME = 0;
+  MONTHLY = 1;
+  QUARTERLY = 2;
+  YEARLY = 3;
+  SEMIANNUAL = 4;
+}
+
+enum SlotUpgradeBillingMode {
+  // Optimistic mode: slots activate immediately, invoice created after (trust-based)
+  SLOT_OPTIMISTIC = 0;
+  // OnCheckout mode: payment attempted first, slots only activate if payment succeeds
+  SLOT_ON_CHECKOUT = 1;
+  // OnInvoicePaid mode: invoice created first, slots activate automatically when invoice is paid
+  SLOT_ON_INVOICE_PAID = 2;
+}
+
+enum SlotTransactionStatus {
+  SLOT_PENDING = 0; // Awaiting payment
+  SLOT_ACTIVE = 1;
+}
+
+message SlotTransaction {
+  string id = 1;
+  string subscription_id = 2;
+  string unit = 3;
+  int32 delta = 4;
+  int32 prev_active_slots = 5;
+  int32 new_active_slots = 6;
+  string effective_at = 7;
+  string transaction_at = 8;
+  SlotTransactionStatus status = 9;
+  optional string invoice_id = 10;
+}
+
+message SubscriptionFee {
+  oneof fee {
+    RateSubscriptionFee rate = 1;
+    OneTimeSubscriptionFee one_time = 2;
+    ExtraRecurringSubscriptionFee recurring = 3;
+    CapacitySubscriptionFee capacity = 4;
+    SlotSubscriptionFee slot = 5;
+    meteroid.api.components.v1.UsageFee usage = 6;
+  }
+
+
+
+  message RateSubscriptionFee {
+    string rate = 1;
+  }
+
+  message OneTimeSubscriptionFee {
+    string rate = 1;
+    uint32 quantity = 2;
+    string total = 3;
+  }
+
+
+  message ExtraRecurringSubscriptionFee {
+    string rate = 1;
+    uint32 quantity = 2;
+    string total = 3;
+    meteroid.api.prices.v1.FeeStructure.BillingType billing_type = 4;
+  }
+
+  message CapacitySubscriptionFee {
+    string rate = 1;
+    uint64 included = 2;
+    string overage_rate = 3;
+    string metric_id = 4;
+  }
+
+  message SlotSubscriptionFee {
+    string unit = 1;
+    string unit_rate = 2;
+    optional uint32 min_slots = 3;
+    optional uint32 max_slots = 4;
+    uint32 initial_slots = 5;
+    meteroid.api.prices.v1.FeeStructure.UpgradePolicy upgrade_policy = 6;
+    meteroid.api.prices.v1.FeeStructure.DowngradePolicy downgrade_policy = 7;
+  }
+}

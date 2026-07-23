@@ -163,3 +163,8 @@ keys.json
 
 # Playwright MCP
 .playwright-mcp/*
+# Indobase Payments (AGPL Meteroid fork) — build artifacts only
+indobase-payments/**/target/
+indobase-payments/**/node_modules/
+indobase-payments/**/.turbo/
+indobase-payments/**/dist/

@@ -1,0 +1,1228 @@
+import { createConnectQueryKey, useMutation } from '@connectrpc/connect-query'
+import {
+  Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Flex,
+  Separator,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@md/ui'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  BanIcon,
+  CheckCircleIcon,
+  ChevronDown,
+  CreditCard,
+  Download,
+  Edit,
+  ExternalLink,
+  FilePlus2,
+  FileText,
+  FileX2Icon,
+  FolderSyncIcon,
+  RefreshCcw,
+  Trash2,
+} from 'lucide-react'
+import { Fragment, useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import { EntityActivityTimeline } from '@/features/activity/EntityActivityTimeline'
+import { CreditNoteStatusBadge } from '@/features/creditNotes'
+import { AddressLinesCompact } from '@/features/customers/cards/address/AddressCard'
+import { AddManualPaymentDialog } from '@/features/invoices/AddManualPaymentDialog'
+import { CreateCreditNoteDialog } from '@/features/invoices/CreateCreditNoteDialog'
+import { InvoiceStatusBadge } from '@/features/invoices/InvoiceStatusBadge'
+import { MarkAsPaidDialog } from '@/features/invoices/MarkAsPaidDialog'
+import { PaymentStatusBadge } from '@/features/invoices/PaymentStatusBadge'
+import { TransactionList } from '@/features/invoices/TransactionList'
+import {
+  IntegrationType,
+  SyncInvoiceModal,
+} from '@/features/settings/integrations/SyncInvoiceModal'
+import { getCountryName } from '@/features/settings/utils'
+import { useBasePath } from '@/hooks/useBasePath'
+import { useIsExpressOrganization } from '@/hooks/useIsExpressOrganization'
+import { useQuery } from '@/lib/connectrpc'
+import { env } from '@/lib/env'
+import {
+  formatCurrency,
+  formatCurrencyNoRounding,
+  formatUsage,
+  rateToPercent,
+} from '@/lib/utils/numbers'
+import { resizeSvgContent } from '@/pages/tenants/invoice/utils'
+import { getLatestConnMeta } from '@/pages/tenants/utils'
+import { listConnectors } from '@/rpc/api/connectors/v1/connectors-ConnectorsService_connectquery'
+import { ConnectorProviderEnum } from '@/rpc/api/connectors/v1/models_pb'
+import { listCreditNotesByInvoiceId } from '@/rpc/api/creditnotes/v1/creditnotes-CreditNotesService_connectquery'
+import { CreditNoteStatus } from '@/rpc/api/creditnotes/v1/models_pb'
+import {
+  createCorrectedInvoice,
+  deleteInvoice,
+  finalizeInvoice,
+  generateInvoicePaymentToken,
+  getInvoice,
+  listInvoices,
+  markInvoiceAsUncollectible,
+  previewInvoiceSvg,
+  refreshInvoiceData,
+  voidInvoice,
+} from '@/rpc/api/invoices/v1/invoices-InvoicesService_connectquery'
+import {
+  DetailedInvoice,
+  InvoicePaymentStatus,
+  InvoiceStatus,
+  LineItem,
+} from '@/rpc/api/invoices/v1/models_pb'
+import { parseAndFormatDate, parseAndFormatDateOptional } from '@/utils/date'
+import { useTypedParams } from '@/utils/params'
+
+import { InvoiceConfirmationDialog } from './InvoiceConfirmationDialog'
+import { InvoiceEditForm } from './InvoiceEditForm'
+
+export const Invoice = () => {
+  const { invoiceId } = useTypedParams<{ invoiceId: string }>()
+  const invoiceQuery = useQuery(
+    getInvoice,
+    {
+      id: invoiceId ?? '',
+    },
+    { enabled: Boolean(invoiceId) }
+  )
+
+  const data = invoiceQuery.data?.invoice
+  const isLoading = invoiceQuery.isLoading
+
+  return (
+    <Fragment>
+      <Flex direction="column" className="h-full">
+        {isLoading || !data ? (
+          <>
+            <Skeleton height={16} width={50} />
+            <Skeleton height={44} />
+          </>
+        ) : (
+          <InvoiceView invoice={data} invoiceId={invoiceId ?? ''} />
+        )}
+      </Flex>
+    </Fragment>
+  )
+}
+
+interface Props {
+  invoice: DetailedInvoice
+}
+
+// Component for inline invoice preview with direct SVG rendering
+const InvoicePreviewFrame: React.FC<{ invoiceId: string; invoice: DetailedInvoice }> = ({
+  invoiceId,
+  invoice,
+}) => {
+  const previewQuery = useQuery(previewInvoiceSvg, { id: invoiceId }, { refetchOnMount: 'always' })
+
+  if (previewQuery.isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <div className="text-sm text-muted-foreground">Loading preview...</div>
+      </div>
+    )
+  }
+
+  if (previewQuery.error) {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <div className="text-sm text-muted-foreground">Failed to load preview</div>
+      </div>
+    )
+  }
+
+  // Extract and resize SVG content
+  const svgContents =
+    previewQuery.data?.svgs.map(svg => {
+      const scaledHtml = svg ? resizeSvgContent(svg, 1) : ''
+
+      // Extract just the SVG from the HTML
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(scaledHtml, 'text/html')
+      const svgElement = doc.querySelector('svg')
+      return svgElement?.outerHTML || ''
+    }) ?? []
+
+  return (
+    <div className="w-full h-full   flex flex-col">
+      <div
+        className="flex flex-col items-center justify-center gap-5 bg-gray-100 py-10 relative"
+        style={{ minHeight: 'fit-content' }}
+      >
+        {svgContents.map((svgContent, i) => (
+          <div
+            className="  bg-white"
+            key={`svg-${i}`}
+            style={{
+              boxShadow: '0px 4px 12px rgba(89, 85, 101, .2)',
+            }}
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
+        ))}
+
+        {/* Floating Download Button */}
+        {invoice.pdfDocumentId && (
+          <div className="absolute top-16 right-16">
+            <Button asChild variant="flat" size="icon" className="shadow-lg">
+              <a
+                href={
+                  invoice.pdfDocumentId && invoice.documentSharingKey
+                    ? `${env.meteroidRestApiUri}/files/v1/invoice/pdf/${invoice.localId}?token=${invoice.documentSharingKey}`
+                    : '#'
+                }
+                download={`invoice_${invoice.invoiceNumber}.pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Download size="16" />
+              </a>
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export const InvoiceView: React.FC<Props & { invoiceId: string }> = ({ invoice, invoiceId }) => {
+  const basePath = useBasePath()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const isExpress = useIsExpressOrganization()
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false)
+  const [isMarkAsPaidDialogOpen, setIsMarkAsPaidDialogOpen] = useState(false)
+
+  const refresh = useMutation(refreshInvoiceData, {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: createConnectQueryKey({
+          schema: getInvoice,
+          cardinality: undefined
+        })
+      })
+    },
+  })
+
+  const deleteInvoiceMutation = useMutation(deleteInvoice, {
+    onSuccess: async () => {
+      // Show success toast
+      toast.success(`Invoice deleted`)
+      // Invalidate the list invoices query to refresh the list
+      await queryClient.invalidateQueries({
+        queryKey: createConnectQueryKey({
+          schema: listInvoices,
+          input: {},
+          cardinality: 'finite'
+        }),
+      })
+      // Navigate back to the invoices list after successful deletion
+      navigate(`${basePath}/invoices`)
+    },
+    onError: error => {
+      toast.error(`Failed to delete invoice: ${error.message}`)
+    },
+  })
+
+  const finalizeInvoiceMutation = useMutation(finalizeInvoice, {
+    onSuccess: async () => {
+      toast.success('Invoice finalized')
+      await queryClient.invalidateQueries({
+        queryKey: createConnectQueryKey({
+          schema: getInvoice,
+          input: { id: invoice?.id ?? '' },
+          cardinality: 'finite'
+        }),
+      })
+    },
+    onError: error => {
+      toast.error(`Failed to finalize invoice: ${error.message}`)
+    },
+  })
+
+  const voidInvoiceMutation = useMutation(voidInvoice, {
+    onSuccess: async () => {
+      toast.success('Invoice voided')
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: createConnectQueryKey({
+            schema: getInvoice,
+            input: { id: invoice?.id ?? '' },
+            cardinality: 'finite'
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: createConnectQueryKey({
+            schema: listCreditNotesByInvoiceId,
+
+            input: {
+              invoiceId: invoice?.id ?? '',
+            },
+
+            cardinality: 'finite'
+          }),
+        }),
+      ])
+    },
+    onError: error => {
+      toast.error(`Failed to void invoice: ${error.message}`)
+    },
+  })
+
+  const markInvoiceAsUncollectibleMutation = useMutation(markInvoiceAsUncollectible, {
+    onSuccess: async () => {
+      toast.success('Invoice marked as uncollectible')
+      await queryClient.invalidateQueries({
+        queryKey: createConnectQueryKey({
+          schema: getInvoice,
+          input: { id: invoice?.id ?? '' },
+          cardinality: 'finite'
+        }),
+      })
+    },
+    onError: error => {
+      toast.error(`Failed to mark invoice as uncollectible: ${error.message}`)
+    },
+  })
+
+  const paymentTokenMutation = useMutation(generateInvoicePaymentToken, {
+    onSuccess: data => {
+      const paymentUrl = `${window.location.origin}/portal/invoice-payment?token=${data.token}`
+      window.open(paymentUrl, '_blank')
+    },
+    onError: error => {
+      console.error('Failed to generate payment token:', error)
+    },
+  })
+
+  const doRefresh = () => refresh.mutateAsync({ id: invoice?.id ?? '' })
+  const handlePayOnline = () => paymentTokenMutation.mutate({ invoiceId: invoice?.id ?? '' })
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteConfirmation(false)
+    deleteInvoiceMutation.mutateAsync({ id: invoice?.id ?? '' })
+  }
+
+  const handleFinalizeConfirm = () => {
+    setShowFinalizeConfirmation(false)
+    finalizeInvoiceMutation.mutateAsync({ id: invoice?.id ?? '' })
+  }
+
+  const handleVoidConfirm = () => {
+    setShowVoidConfirmation(false)
+    voidInvoiceMutation.mutateAsync({ id: invoice?.id ?? '' })
+  }
+
+  const handleMarkAsUncollectibleConfirm = () => {
+    setShowMarkAsUncollectibleConfirmation(false)
+    markInvoiceAsUncollectibleMutation.mutateAsync({ id: invoice?.id ?? '' })
+  }
+
+  const isDraft = invoice && invoice.status === InvoiceStatus.DRAFT
+  const isFinalized = invoice && invoice.status === InvoiceStatus.FINALIZED
+  const canEdit = isDraft
+
+  const pdf_url =
+    invoice.documentSharingKey &&
+    `${env.meteroidRestApiUri}/files/v1/invoice/pdf/${invoice.localId}?token=${invoice.documentSharingKey}`
+
+  const connectorsQuery = useQuery(listConnectors, {})
+  const connectorsData = connectorsQuery.data?.connectors ?? []
+
+  const [showSyncPennylaneModal, setShowSyncPennylaneModal] = useState(false)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [showFinalizeConfirmation, setShowFinalizeConfirmation] = useState(false)
+  const [showVoidConfirmation, setShowVoidConfirmation] = useState(false)
+  const [showMarkAsUncollectibleConfirmation, setShowMarkAsUncollectibleConfirmation] =
+    useState(false)
+  const [showCreateCreditNoteDialog, setShowCreateCreditNoteDialog] = useState(false)
+  const isPennylaneConnected = connectorsData.some(
+    connector => connector.provider === ConnectorProviderEnum.PENNYLANE
+  )
+
+  // Query for related credit notes
+  const creditNotesQuery = useQuery(
+    listCreditNotesByInvoiceId,
+    { invoiceId: invoice.id },
+    { enabled: Boolean(invoice.id) }
+  )
+  const creditNotes = creditNotesQuery.data?.creditNotes ?? []
+
+  const canRefresh = isDraft && !invoice.manual
+  const canDelete = isDraft
+  const canFinalize = isDraft
+  const canCreateCreditNote = isFinalized
+  const canSendToPennylane = isPennylaneConnected
+
+  const canVoid = isFinalized
+  const canMarkAsUncollectible = isFinalized
+
+  // "Create Corrected Invoice" is enabled when the parent is fully credited
+  // (sum of finalized CN totals ≥ invoice total) and no child draft exists yet.
+  // Matches the backend invariant in create_corrected_invoice_from_tx.
+  const totalCredited = creditNotes
+    .filter(cn => cn.status === CreditNoteStatus.FINALIZED)
+    .reduce((sum, cn) => sum + Math.abs(Number(cn.total)), 0)
+  const hasChildInvoice = Boolean(invoice.childInvoiceId)
+  const canCreateCorrectedInvoice =
+    totalCredited >= Number(invoice.total) && !hasChildInvoice
+
+  const createCorrectedInvoiceMutation = useMutation(createCorrectedInvoice, {
+    onSuccess: data => {
+      toast.success('Corrected invoice created')
+      if (data.invoice?.id) {
+        navigate(`${basePath}/invoices/${data.invoice.id}`)
+      }
+    },
+    onError: error => {
+      toast.error(`Failed to create corrected invoice: ${error.message}`)
+    },
+  })
+
+  const handleCreateCorrectedInvoice = () => {
+    createCorrectedInvoiceMutation.mutate({ parentInvoiceId: invoice.id })
+  }
+
+  useEffect(() => {
+    if (canRefresh) {
+      // doRefresh() TODO uncomment
+    }
+  }, [])
+
+  if (isEditMode) {
+    return (
+      <InvoiceEditForm
+        invoice={invoice}
+        invoiceId={invoiceId}
+        onCancel={() => {
+          setIsEditMode(false)
+          queryClient.invalidateQueries({
+            queryKey: createConnectQueryKey({
+              schema: getInvoice,
+              input: { id: invoiceId },
+              cardinality: 'finite'
+            }),
+          })
+        }}
+        onSuccess={() => setIsEditMode(false)}
+      />
+    );
+  }
+
+  return (
+    <Flex className="h-full">
+      {showSyncPennylaneModal && (
+        <SyncInvoiceModal
+          invoiceNumber={invoice.invoiceNumber}
+          id={invoice.id}
+          integrationType={IntegrationType.Pennylane}
+          onClose={() => setShowSyncPennylaneModal(false)}
+        />
+      )}
+
+      <InvoiceConfirmationDialog
+        open={showDeleteConfirmation}
+        onOpenChange={setShowDeleteConfirmation}
+        onConfirm={handleDeleteConfirm}
+        icon={Trash2}
+        title="Delete invoice"
+        description="Are you sure you want to delete this draft invoice? This action cannot be undone."
+      />
+
+      <InvoiceConfirmationDialog
+        open={showFinalizeConfirmation}
+        onOpenChange={setShowFinalizeConfirmation}
+        onConfirm={handleFinalizeConfirm}
+        icon={CheckCircleIcon}
+        title="Finalize & Send invoice"
+        description="Finalize this invoice and send it to the customer. Once finalized, the invoice cannot be edited."
+        invoiceNumber={invoice.invoiceNumber}
+      />
+
+      <InvoiceConfirmationDialog
+        open={showVoidConfirmation}
+        onOpenChange={setShowVoidConfirmation}
+        onConfirm={handleVoidConfirm}
+        icon={BanIcon}
+        title="Void invoice"
+        description="Are you sure you want to void this invoice? This action cannot be undone."
+        invoiceNumber={invoice.invoiceNumber}
+      />
+
+      <InvoiceConfirmationDialog
+        open={showMarkAsUncollectibleConfirmation}
+        onOpenChange={setShowMarkAsUncollectibleConfirmation}
+        onConfirm={handleMarkAsUncollectibleConfirm}
+        icon={FileX2Icon}
+        title="Mark invoice as Uncollectible"
+        description="Are you sure you want to mark this invoice as uncollectible? This action cannot be undone."
+        invoiceNumber={invoice.invoiceNumber}
+      />
+
+      <CreateCreditNoteDialog
+        open={showCreateCreditNoteDialog}
+        onOpenChange={setShowCreateCreditNoteDialog}
+        invoice={invoice}
+      />
+
+      {/* Left Panel - Invoice Details */}
+      <Flex direction="column" className="w-1/3 border-r border-border">
+        {/* Fixed Header - Always Visible */}
+        <Flex direction="column" className="gap-2 p-6 border-b border-border">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <InvoiceStatusBadge
+                status={invoice.status}
+                consolidatedInto={invoice.consolidatedIntoInvoiceId}
+              />
+              {invoice.consolidatedIntoInvoiceId ? (
+                <Link
+                  to={`${basePath}/invoices/${invoice.consolidatedIntoInvoiceId}`}
+                  className="flex items-center gap-1 text-lg font-medium hover:underline"
+                >
+                  Merged into {invoice.consolidatedIntoInvoiceNumber ?? 'consolidated invoice'}
+                  <ExternalLink size={15} />
+                </Link>
+              ) : (
+                <div className="text-lg font-medium">Invoice {invoice.invoiceNumber}</div>
+              )}
+              {invoice.parentInvoiceId && (
+                <Link
+                  to={`${basePath}/invoices/${invoice.parentInvoiceId}`}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Replaces original
+                </Link>
+              )}
+              {invoice.childInvoiceId && (
+                <Link
+                  to={`${basePath}/invoices/${invoice.childInvoiceId}`}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Replaced by corrected
+                </Link>
+              )}
+            </div>
+            {!invoice.consolidatedIntoInvoiceId && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" hasIcon>
+                  Actions
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem onClick={() => setIsEditMode(true)} disabled={!canEdit}>
+                          <Edit size="16" className="mr-2" />
+                          Edit Invoice
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canEdit && <TooltipContent>Only draft invoices can be edited</TooltipContent>}
+                  </Tooltip>
+                )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          onClick={doRefresh}
+                          disabled={!canRefresh || refresh.isPending}
+                        >
+                          <RefreshCcw
+                            size="16"
+                            className={cn(refresh.isPending && 'animate-spin', 'mr-2')}
+                          />
+                          Refresh
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canRefresh && (
+                      <TooltipContent>
+                        {!isDraft
+                          ? 'Only draft invoices can be refreshed'
+                          : 'Manual invoices cannot be refreshed'}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {invoice.paymentStatus !== InvoicePaymentStatus.PAID &&
+                  Number(invoice.amountDue) > 0 && (
+                    <DropdownMenuItem
+                      onClick={handlePayOnline}
+                      disabled={paymentTokenMutation.isPending}
+                    >
+                      <ExternalLink size="16" className="mr-2" />
+                      Share Payment Link
+                    </DropdownMenuItem>
+                  )}
+                {!isExpress &&
+                  invoice.status === InvoiceStatus.FINALIZED &&
+                  Number(invoice.amountDue) > 0 && (
+                    <DropdownMenuItem onClick={() => setIsMarkAsPaidDialogOpen(true)}>
+                      <CheckCircleIcon size="16" className="mr-2" />
+                      Mark as Paid
+                    </DropdownMenuItem>
+                  )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canFinalize}
+                          onClick={() => setShowFinalizeConfirmation(true)}
+                        >
+                          <CheckCircleIcon size="16" className="mr-2" />
+                          Finalize & Send
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canFinalize && (
+                      <TooltipContent>Only draft invoices can be finalized</TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canSendToPennylane}
+                          onClick={() => setShowSyncPennylaneModal(true)}
+                        >
+                          <FolderSyncIcon size="16" className="mr-2" />
+                          Sync to Pennylane
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canSendToPennylane && (
+                      <TooltipContent>Pennylane integration not connected</TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canCreateCreditNote}
+                          onClick={() => setShowCreateCreditNoteDialog(true)}
+                        >
+                          <FileText size="16" className="mr-2" />
+                          Create Credit Note
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canCreateCreditNote && (
+                      <TooltipContent>Only finalized invoices can have credit notes</TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {!isExpress && totalCredited > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={
+                            !canCreateCorrectedInvoice || createCorrectedInvoiceMutation.isPending
+                          }
+                          onClick={handleCreateCorrectedInvoice}
+                        >
+                          <FilePlus2 size="16" className="mr-2" />
+                          Create Corrected Invoice
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {hasChildInvoice && (
+                      <TooltipContent>
+                        A corrected invoice already exists for this invoice
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <DropdownMenuItem disabled={!invoice.pdfDocumentId}>
+                        <a
+                          href={invoice.pdfDocumentId ? pdf_url : '#'}
+                          download={`invoice_${invoice.invoiceNumber}.pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2"
+                        >
+                          <Download size="16" />
+                          Download PDF
+                        </a>
+                      </DropdownMenuItem>
+                    </span>
+                  </TooltipTrigger>
+                  {!invoice.pdfDocumentId && <TooltipContent>PDF not yet generated</TooltipContent>}
+                </Tooltip>
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canDelete}
+                          onClick={() => setShowDeleteConfirmation(true)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 size="16" className="mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canDelete && (
+                      <TooltipContent>Only draft invoices can be deleted</TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canVoid}
+                          onClick={() => setShowVoidConfirmation(true)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <BanIcon size="16" className="mr-2" />
+                          Void
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canVoid && (
+                      <TooltipContent>Only finalized invoices can be voided</TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {!isExpress && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <DropdownMenuItem
+                          disabled={!canMarkAsUncollectible}
+                          onClick={() => setShowMarkAsUncollectibleConfirmation(true)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <FileX2Icon size="16" className="mr-2" />
+                          Mark As Uncollectible
+                        </DropdownMenuItem>
+                      </span>
+                    </TooltipTrigger>
+                    {!canMarkAsUncollectible && (
+                      <TooltipContent>
+                        Only finalized invoices can be marked as uncollectible
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            )}
+          </div>
+
+          {invoice.consolidatedIntoInvoiceId && (
+            <Link
+              to={`${basePath}/invoices/${invoice.consolidatedIntoInvoiceId}`}
+              className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink size={14} />
+              <span>
+                This invoice was consolidated into{' '}
+                <span className="font-medium">
+                  {invoice.consolidatedIntoInvoiceNumber ?? 'a single invoice'}
+                </span>
+                . It is not charged or sent on its own — open the consolidated invoice to view or
+                pay.
+              </span>
+            </Link>
+          )}
+
+          <div className="text-3xl font-bold">
+            {formatCurrency(Number(invoice.total) || 0, invoice.currency)}
+          </div>
+        </Flex>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-auto">
+          <Flex direction="column" className="gap-2 p-6">
+            <FlexDetails title="Invoice number" value={invoice.invoiceNumber} />
+
+            <FlexDetails
+              title="Plan"
+              value={
+                <Link
+                  to={`${basePath}/plan-version/${invoice.planVersionId}`}
+                  className="text-[13px] text-brand hover:underline"
+                >
+                  {invoice.planName}
+                </Link>
+              }
+            />
+            {invoice.subscriptionId && (
+              <FlexDetails
+                title="Subscription"
+                value={
+                  <Link
+                    to={`${basePath}/subscriptions/${invoice.subscriptionId}`}
+                    className="text-[13px] text-brand hover:underline"
+                  >
+                    View subscription
+                  </Link>
+                }
+              />
+            )}
+            <FlexDetails title="Invoice date" value={parseAndFormatDate(invoice.invoiceDate)} />
+            <FlexDetails title="Due date" value={parseAndFormatDateOptional(invoice.dueAt)} />
+            {invoice.purchaseOrder && (
+              <FlexDetails title="Purchase order" value={invoice.purchaseOrder} />
+            )}
+            <FlexDetails title="Currency" value={invoice.currency} />
+          </Flex>
+
+          <Separator className="-my-3" />
+
+          <Flex direction="column" className="gap-2 p-6">
+            <div className="text-[15px] font-medium">Customer</div>
+            <FlexDetails
+              title="Customer"
+              value={invoice.customerDetails?.name}
+              link={`${basePath}/customers/${invoice.customerId}`}
+            />
+            <FlexDetails title="Email" value={invoice.customerDetails?.email} />
+            {invoice.customerDetails?.billingAddress && (
+              <>
+                <FlexDetails
+                  title="Address"
+                  value={
+                    <AddressLinesCompact
+                      address={invoice.customerDetails.billingAddress}
+                      className="text-right"
+                    />
+                  }
+                />
+                <FlexDetails
+                  title="Country"
+                  value={
+                    invoice.customerDetails.billingAddress.country &&
+                    getCountryName(invoice.customerDetails.billingAddress.country)
+                  }
+                />
+              </>
+            )}
+            {invoice.customerDetails?.vatNumber && (
+              <FlexDetails title="VAT Number" value={invoice.customerDetails.vatNumber} />
+            )}
+          </Flex>
+
+          <Separator className="-my-3" />
+
+          <Flex direction="column" className="gap-2 p-6">
+            <div className="text-[15px] font-medium">Line Items</div>
+            <InvoiceLineItems items={invoice.lineItems} invoice={invoice} />
+            <div className="mt-4 pt-4 border-t">
+              <InvoiceSummaryLines invoice={invoice} />
+            </div>
+          </Flex>
+
+          <Separator className="-my-3" />
+
+          <Flex direction="column" className="gap-2 p-6">
+            <div className="text-[15px] font-medium">Payment Information</div>
+            <FlexDetails
+              title="Payment Status"
+              value={<PaymentStatusBadge status={invoice.paymentStatus} />}
+            />
+            <FlexDetails
+              title="Amount Due"
+              value={formatCurrency(Number(invoice.amountDue) || 0, invoice.currency)}
+            />
+            {invoice.transactions && invoice.transactions.length > 0 && (
+              <div className="mt-4">
+                <TransactionList
+                  transactions={invoice.transactions}
+                  currency={invoice.currency}
+                  isLoading={false}
+                />
+              </div>
+            )}
+
+            {!isExpress &&
+              invoice.status === InvoiceStatus.FINALIZED &&
+              Number(invoice.amountDue) > 0 && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddPaymentDialogOpen(true)}
+                    className="w-full"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Add Manual Payment
+                  </Button>
+                </div>
+              )}
+          </Flex>
+
+          <AddManualPaymentDialog
+            open={isAddPaymentDialogOpen}
+            onOpenChange={setIsAddPaymentDialogOpen}
+            invoiceId={invoiceId}
+            currency={invoice.currency}
+            maxAmount={(Number(invoice.amountDue) / 100).toFixed(2)}
+          />
+
+          <MarkAsPaidDialog
+            open={isMarkAsPaidDialogOpen}
+            onOpenChange={setIsMarkAsPaidDialogOpen}
+            invoiceId={invoiceId}
+            invoiceNumber={invoice.invoiceNumber}
+            currency={invoice.currency}
+            totalAmount={(Number(invoice.amountDue) / 100).toFixed(2)}
+          />
+
+          {invoice.memo && (
+            <>
+              <Separator className="-my-3" />
+              <Flex direction="column" className="gap-2 p-6">
+                <div className="text-[15px] font-medium">Memo</div>
+                <div className="text-[13px] text-muted-foreground whitespace-pre-line">
+                  {invoice.memo}
+                </div>
+              </Flex>
+            </>
+          )}
+
+          {creditNotes.length > 0 && (
+            <>
+              <Separator className="-my-3" />
+              <Flex direction="column" className="gap-2 p-6">
+                <div className="text-[15px] font-medium">Credit Notes</div>
+                <div className="space-y-2">
+                  {creditNotes.map(cn => (
+                    <Link
+                      key={cn.id}
+                      to={`${basePath}/credit-notes/${cn.id}`}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText size={14} className="text-muted-foreground" />
+                        <div>
+                          <div className="text-[13px] font-medium">{cn.creditNoteNumber}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {parseAndFormatDate(cn.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-medium">
+                          {formatCurrency(Math.abs(Number(cn.total)), cn.currency)}
+                        </span>
+                        <CreditNoteStatusBadge status={cn.status} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </Flex>
+            </>
+          )}
+
+          {invoice.consolidatedChildren.length > 0 && (
+            <>
+              <Separator className="-my-3" />
+              <Flex direction="column" className="gap-2 p-6">
+                <div className="text-[15px] font-medium">
+                  Consolidated from {invoice.consolidatedChildren.length} subscriptions
+                </div>
+                <div className="text-[12px] text-muted-foreground">
+                  This invoice merges the same-day subscription renewals below into a single charge.
+                </div>
+                <div className="space-y-2">
+                  {invoice.consolidatedChildren.map(child => (
+                    <div
+                      key={child.id}
+                      className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText size={14} className="shrink-0 text-muted-foreground" />
+                        {child.subscriptionId ? (
+                          <Link
+                            to={`${basePath}/subscriptions/${child.subscriptionId}`}
+                            className="truncate text-[13px] font-medium text-brand hover:underline"
+                          >
+                            {child.planName ?? 'Subscription'}
+                          </Link>
+                        ) : (
+                          <div className="truncate text-[13px] font-medium">
+                            {child.planName ?? 'Subscription'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-[13px] font-medium">
+                          {formatCurrency(Number(child.total), invoice.currency)}
+                        </span>
+                        <Link
+                          to={`${basePath}/invoices/${child.id}`}
+                          className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
+                          title="Open the per-subscription document"
+                        >
+                          Document
+                          <ExternalLink size={12} />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Flex>
+            </>
+          )}
+
+          <Separator className="-my-3" />
+          <Flex direction="column" className="gap-2 p-6">
+            <div className="text-[15px] font-medium">Activity</div>
+            <EntityActivityTimeline
+              entityType="invoice"
+              entityId={invoiceId}
+              emptyLabel="No activity yet for this invoice"
+            />
+          </Flex>
+
+          {getLatestConnMeta(invoice.connectionMetadata?.pennylane)?.externalId && (
+            <>
+              <Separator className="-my-3" />
+              <Flex direction="column" className="gap-2 p-6">
+                <div className="text-[15px] font-medium">Integrations</div>
+                <FlexDetails
+                  title="Pennylane ID"
+                  value={getLatestConnMeta(invoice.connectionMetadata?.pennylane)?.externalId}
+                  externalLink={`https://app.pennylane.com/companies/${getLatestConnMeta(invoice.connectionMetadata?.pennylane)?.externalCompanyId}/clients/customer_invoices?invoice_id=${getLatestConnMeta(invoice.connectionMetadata?.pennylane)?.externalId}`}
+                />
+              </Flex>
+            </>
+          )}
+        </div>
+      </Flex>
+
+      {/* Right Panel - Invoice Preview (a merged child has no standalone document) */}
+      <div className="w-2/3 flex flex-col">
+        <div className="flex-1 overflow-auto p-6">
+          {invoice.consolidatedIntoInvoiceId ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <FileText size={32} className="opacity-50" />
+              <div className="text-sm font-medium text-foreground">
+                No standalone document
+              </div>
+              <div className="max-w-sm text-[13px]">
+                This is an internal per-subscription record that was merged into{' '}
+                {invoice.consolidatedIntoInvoiceNumber ?? 'a consolidated invoice'}. The customer
+                only ever receives the consolidated invoice.
+              </div>
+              <Link
+                to={`${basePath}/invoices/${invoice.consolidatedIntoInvoiceId}`}
+                className="flex items-center gap-1 text-[13px] font-medium text-foreground hover:underline"
+              >
+                Open the consolidated invoice
+                <ExternalLink size={14} />
+              </Link>
+            </div>
+          ) : (
+            <InvoicePreviewFrame invoiceId={invoiceId} invoice={invoice} />
+          )}
+        </div>
+      </div>
+    </Flex>
+  )
+}
+
+export const InvoiceSummaryLines: React.FC<{ invoice: DetailedInvoice }> = ({ invoice }) => {
+  const subtotal = Number(invoice.subtotal) || 0
+  const taxAmount = Number(invoice.taxAmount) || 0
+  const total = Number(invoice.total) || 0
+  const appliedCredits = Number(invoice.appliedCredits) || 0
+
+  return (
+    <div className="space-y-1">
+      <FlexDetails title="Subtotal" value={formatCurrency(subtotal, invoice.currency)} />
+
+      {invoice.couponLineItems.map(c => {
+        const couponTotal = Number(c.total) || 0
+        return (
+          <FlexDetails
+            key={c.name}
+            title={c.name}
+            value={`-${formatCurrency(couponTotal, invoice.currency)}`}
+          />
+        )
+      })}
+
+      {invoice.taxBreakdown && invoice.taxBreakdown.length > 0
+        ? invoice.taxBreakdown.map(tax => {
+            const taxRate = rateToPercent(tax.taxRate)
+            const taxAmountValue = Number(tax.amount) || 0
+            // Only show tax breakdown if rate is greater than 0
+            if (taxRate > 0) {
+              return (
+                <FlexDetails
+                  key={tax.name}
+                  title={`${tax.name} (${taxRate}%)`}
+                  value={formatCurrency(taxAmountValue, invoice.currency)}
+                />
+              )
+            }
+            return null
+          })
+        : taxAmount > 0 && (
+            <FlexDetails title="Tax" value={formatCurrency(taxAmount, invoice.currency)} />
+          )}
+
+      <div className="pt-2 border-t">
+        <FlexDetails
+          title={<span className="font-semibold">Total</span>}
+          value={
+            <span className="font-semibold text-[15px]">
+              {formatCurrency(total, invoice.currency)}
+            </span>
+          }
+        />
+      </div>
+
+      {appliedCredits > 0 && (
+        <FlexDetails
+          title="Credits applied"
+          value={
+            <span className="text-success">
+              -{formatCurrency(appliedCredits, invoice.currency)}
+            </span>
+          }
+        />
+      )}
+    </div>
+  )
+}
+
+export const InvoiceLineItems: React.FC<{ items: LineItem[]; invoice: DetailedInvoice }> = ({
+  items,
+  invoice,
+}) => {
+  return (
+    <div className="space-y-2">
+      {items
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(item => {
+          return <InvoiceLineItemCard key={item.id} line_item={item} invoice={invoice} />
+        })}
+    </div>
+  )
+}
+
+const InvoiceLineItemCard: React.FC<{
+  line_item: LineItem
+  invoice: DetailedInvoice
+}> = ({ line_item, invoice }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const hasSubItems = line_item.subLineItems && line_item.subLineItems.length > 0
+
+  return (
+    <div className="py-2">
+      <div
+        className={cn('flex justify-between items-start gap-2', hasSubItems && 'cursor-pointer')}
+        onClick={() => hasSubItems && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            {hasSubItems && (
+              <ChevronDown
+                size={12}
+                className={cn(
+                  'text-muted-foreground transition-transform shrink-0 mt-0.5',
+                  isExpanded && 'rotate-180'
+                )}
+              />
+            )}
+            <div className="text-[13px] font-medium break-words">{line_item.name}</div>
+          </div>
+          {line_item.startDate && line_item.endDate && (
+            <div className="text-[11px] text-muted-foreground mt-1 ml-4">
+              {parseAndFormatDate(line_item.startDate)} → {parseAndFormatDate(line_item.endDate)}
+            </div>
+          )}
+        </div>
+        <div className="text-right">
+          {!hasSubItems && line_item.quantity && line_item.unitPrice && (
+            <div className="text-[11px] text-muted-foreground">
+              {formatUsage(parseFloat(line_item.quantity))} ×{' '}
+              {formatCurrencyNoRounding(line_item.unitPrice, invoice.currency)}
+            </div>
+          )}
+          <div className="text-[13px] font-medium">
+            {hasSubItems
+              ? formatCurrency(
+                  line_item.subLineItems.reduce((sum, sub) => sum + Number(sub.total), 0),
+                  invoice.currency
+                )
+              : formatCurrency(line_item.subtotal, invoice.currency)}
+          </div>
+        </div>
+      </div>
+
+      {isExpanded && hasSubItems && (
+        <div className="mt-2 ml-4 pt-2 border-t space-y-1">
+          {line_item.subLineItems.map(subItem => (
+            <div key={subItem.id} className="flex justify-between items-center py-1">
+              <span className="text-[11px] text-muted-foreground">{subItem.name}</span>
+              <span className="text-[11px]">{formatCurrency(subItem.total, invoice.currency)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// FlexDetails component matching the customer page pattern
+const FlexDetails = ({
+  title,
+  value,
+  externalLink,
+  link,
+}: {
+  title: string | React.ReactNode
+  value?: string | React.ReactNode
+  externalLink?: string
+  link?: string
+}) => (
+  <Flex align="start" justify="between">
+    <div className="text-[13px] text-muted-foreground">{title}</div>
+    {externalLink ? (
+      <a href={externalLink} target="_blank" rel="noopener noreferrer">
+        <div className="text-[13px] text-brand hover:underline">{value ?? 'N/A'}</div>
+      </a>
+    ) : link ? (
+      <Link to={link}>
+        <div className="text-[13px] text-brand hover:underline">{value ?? 'N/A'}</div>
+      </Link>
+    ) : (
+      <div className="text-[13px]">{value ?? 'N/A'}</div>
+    )}
+  </Flex>
+)

@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package meteroid.api.components.v1;
+
+import "api/shared/v1/shared.proto";
+import "api/prices/v1/models.proto";
+
+message UsageFee {
+  string metric_id = 1;
+  oneof model {
+    string per_unit = 2;
+    meteroid.api.prices.v1.UsagePricing.TieredAndVolumePricing tiered = 3;
+    meteroid.api.prices.v1.UsagePricing.TieredAndVolumePricing volume = 4;
+    meteroid.api.prices.v1.UsagePricing.PackagePricing package = 5;
+    meteroid.api.prices.v1.UsagePricing.MatrixPricing matrix = 6;
+  }
+  meteroid.api.shared.v1.BillingPeriod term = 7;
+}
+
+message PriceComponent {
+  string id = 1;
+  string name = 2;
+  optional string product_id = 4;
+  string local_id = 5;
+  repeated meteroid.api.prices.v1.Price prices = 6;
+}
+
+message ProductRef {
+  oneof ref {
+    string existing_product_id = 1;
+    NewProduct new_product = 2;
+  }
+}
+
+message NewProduct {
+  string name = 1;
+  meteroid.api.prices.v1.FeeType fee_type = 2;
+  meteroid.api.prices.v1.FeeStructure fee_structure = 3;
+}
+
+message PriceEntry {
+  oneof entry {
+    string existing_price_id = 1;
+    PriceInput new_price = 2;
+  }
+}
+
+message PriceInput {
+  meteroid.api.shared.v1.BillingPeriod cadence = 1;
+  string currency = 2;
+  oneof pricing {
+    meteroid.api.prices.v1.RatePricing rate_pricing = 3;
+    meteroid.api.prices.v1.SlotPricing slot_pricing = 4;
+    meteroid.api.prices.v1.CapacityPricing capacity_pricing = 5;
+    meteroid.api.prices.v1.UsagePricing usage_pricing = 6;
+    meteroid.api.prices.v1.ExtraRecurringPricing extra_recurring_pricing = 7;
+    meteroid.api.prices.v1.OneTimePricing one_time_pricing = 8;
+  }
+}
