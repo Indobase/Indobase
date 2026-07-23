@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 
 import { Loading } from '@/components/Loading'
-import { env } from '@/lib/env'
+import { redirectToStudioSignIn } from '@/lib/studioAuthRedirect'
 
 /**
- * No Payments-native signup — create accounts in Studio, then open Payments via handoff.
+ * No Payments-native signup — Studio is the only IdP. Send operators to Studio
+ * sign-in (not sign-up) so an existing session can complete the handoff.
  */
 export const Registration = (): JSX.Element => {
   useEffect(() => {
-    const studio = env.studioUrl.replace(/\/+$/, '')
-    window.location.replace(`${studio}/sign-up`)
+    redirectToStudioSignIn()
   }, [])
 
   return <Loading />
