@@ -2,8 +2,13 @@ use crate::domain::Organization;
 use crate::domain::oauth::{OauthConnection, OauthVerifierData};
 use crate::domain::users::{
     InitRegistrationResponse, LoginUserRequest, LoginUserResponse, Me, RegisterUserRequest,
-    RegisterUserRequestInternal, RegisterUserResponse, UpdateUser, User, UserWithRole,
+    RegisterUserRequestInternal, RegisterUserResponse, StudioHandoffSigninRequest, UpdateUser,
+    User, UserWithRole,
 };
+use crate::domain::{TenantNew, enums::TenantEnvironmentEnum};
+use common_domain::country::CountryCode;
+use diesel_models::enums::OrganizationUserRole;
+use diesel_models::organizations::OrganizationRowNew;
 use crate::errors::StoreError;
 use crate::repositories::oauth::OauthInterface;
 use crate::store::PgConn;
@@ -93,6 +98,13 @@ pub trait UserInterface {
         provider: OauthProvider,
         code: SecretString,
         state: SecretString,
+    ) -> StoreResult<LoginUserResponse>;
+
+    /// Exchange a verified Studio identity for a Payments session JWT.
+    /// Creates the user (passwordless) and org membership when missing.
+    async fn studio_handoff_signin(
+        &self,
+        req: StudioHandoffSigninRequest,
     ) -> StoreResult<LoginUserResponse>;
 }
 
@@ -547,6 +559,225 @@ impl UserInterface for Store {
             }
         }
     }
+
+    async fn studio_handoff_signin(
+        &self,
+        req: StudioHandoffSigninRequest,
+    ) -> StoreResult<LoginUserResponse> {
+        let email = req.email.trim().to_lowercase();
+        if email.is_empty() || !email.contains('@') {
+            bail!(StoreError::InvalidArgument("invalid email".into()));
+        }
+
+        validate_domain(&email, &self.settings.domains_whitelist)?;
+
+        let payments_slug = sanitize_studio_org_slug(&req.organization_slug);
+        let trade_name = req
+            .organization_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(req.organization_slug.as_str())
+            .to_string();
+
+        // Passwordless find-or-create (bypasses multi-org registration gate — Studio is the IdP).
+        let mut conn = self.get_conn().await?;
+        let existing = UserRow::find_by_email(&mut conn, email.clone())
+            .await
+            .map_err(Into::<Report<StoreError>>::into)?;
+
+        let user: User = match existing {
+            Some(row) => row.into(),
+            None => {
+                let user_new = UserRowNew {
+                    id: Uuid::now_v7().into(),
+                    email: email.clone(),
+                    password_hash: None,
+                };
+                user_new
+                    .insert(&mut conn)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+                let _ = self
+                    .eventbus
+                    .publish(Event::user_created(None, user_new.id))
+                    .await;
+                UserRow::find_by_id(&mut conn, *user_new.id)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)
+                    .map(Into::into)?
+            }
+        };
+        drop(conn);
+
+        if !user.onboarded {
+            let _ = self.mark_user_onboarded(user.id).await;
+        }
+
+        ensure_studio_org_membership(self, user.id, &payments_slug, &trade_name).await?;
+
+        let mut conn = self.get_conn().await?;
+        let user: User = UserRow::find_by_id(&mut conn, *user.id)
+            .await
+            .map_err(Into::<Report<StoreError>>::into)
+            .map(Into::into)?;
+
+        Ok(LoginUserResponse {
+            token: generate_auth_jwt_token(&user.id, &self.settings.jwt_secret)?,
+            user,
+        })
+    }
+}
+
+fn sanitize_studio_org_slug(raw: &str) -> String {
+    let cleaned: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let trimmed = cleaned.trim_matches('-');
+    let body = if trimmed.is_empty() {
+        "org"
+    } else {
+        let max = trimmed.len().min(40);
+        &trimmed[..max]
+    };
+    format!("ib-{body}")
+}
+
+async fn ensure_studio_org_membership(
+    store: &Store,
+    user_id: UserId,
+    payments_slug: &str,
+    trade_name: &str,
+) -> StoreResult<()> {
+    let mut conn = store.get_conn().await?;
+
+    let user_orgs = OrganizationRow::list_by_user_id(&mut conn, *user_id)
+        .await
+        .map_err(Into::<Report<StoreError>>::into)?;
+    if !user_orgs.is_empty() {
+        // Already a member of at least one org — session is enough for Root redirect.
+        return Ok(());
+    }
+
+    match OrganizationRow::find_by_slug(&mut conn, payments_slug.to_string()).await {
+        Ok(org) => {
+            let om = OrganizationMemberRow {
+                user_id,
+                organization_id: org.id,
+                role: OrganizationUserRole::Admin,
+            };
+            om.insert(&mut conn)
+                .await
+                .map_err(Into::<Report<StoreError>>::into)?;
+            Ok(())
+        }
+        Err(e) => {
+            let report: Report<StoreError> = e.into();
+            if !matches!(report.current_context(), StoreError::ValueNotFound(_)) {
+                return Err(report);
+            }
+            drop(conn);
+
+            if !store.settings.multi_organization_enabled {
+                let mut conn = store.get_conn().await?;
+                let exists = OrganizationRow::exists(&mut conn)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+                drop(conn);
+                if exists {
+                    bail!(StoreError::UserRegistrationClosed(
+                        "Payments instance already has an organization; enable ENABLE_MULTI_ORGANIZATION or invite this user"
+                            .into()
+                    ));
+                }
+            }
+
+            create_studio_organization(store, user_id, payments_slug, trade_name).await
+        }
+    }
+}
+
+async fn create_studio_organization(
+    store: &Store,
+    user_id: UserId,
+    payments_slug: &str,
+    trade_name: &str,
+) -> StoreResult<()> {
+    let mut conn = store.get_conn().await?;
+
+    let country = CountryCode::parse_as_opt("IN").unwrap_or_default();
+
+    let org = OrganizationRowNew {
+        id: OrganizationId::new(),
+        slug: payments_slug.to_string(),
+        trade_name: trade_name.to_string(),
+        default_country: country.clone(),
+        is_express: false,
+    };
+
+    let org_member = OrganizationMemberRow {
+        user_id,
+        organization_id: org.id,
+        role: OrganizationUserRole::Admin,
+    };
+
+    let dev_tenant_new = TenantNew {
+        name: "Development".to_string(),
+        environment: TenantEnvironmentEnum::Development,
+        disable_emails: None,
+        invoicing_entity: None,
+    };
+
+    let org_id = org.id;
+    let trade = org.trade_name.clone();
+    let country_clone = org.default_country.clone();
+
+    store
+        .transaction_with(&mut conn, |conn| {
+            async move {
+                OrganizationRowNew::insert(&org, conn)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                OrganizationMemberRow::insert(&org_member, conn)
+                    .await
+                    .map_err(Into::<Report<StoreError>>::into)?;
+
+                store
+                    .internal
+                    .insert_tenant_with_default_entities(
+                        conn,
+                        dev_tenant_new,
+                        org_id,
+                        trade,
+                        country_clone,
+                        vec![],
+                        Default::default(),
+                    )
+                    .await?;
+
+                Ok(())
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+    let _ = store
+        .eventbus
+        .publish(Event::organization_created(
+            Actor::User { id: user_id },
+            org_id,
+        ))
+        .await;
+
+    Ok(())
 }
 
 fn generate_jwt_token(

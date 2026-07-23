@@ -11,6 +11,7 @@ if (!window._env) {
 const _env = parseEnv(window._env, {
   VITE_METEROID_API_EXTERNAL_URL: z.string().default('http://127.0.0.1:50061'),
   VITE_METEROID_REST_API_EXTERNAL_URL: z.string().default('http://127.0.0.1:8080'),
+  VITE_STUDIO_URL: z.string().default('https://studio.indobase.in'),
   // enable developer experience mode
   VITE_DX: z.boolean().default(false),
   // todo move to feature flag service
@@ -20,6 +21,7 @@ const _env = parseEnv(window._env, {
 export const env = {
   meteroidApiUri: _env.VITE_METEROID_API_EXTERNAL_URL,
   meteroidRestApiUri: _env.VITE_METEROID_REST_API_EXTERNAL_URL,
+  studioUrl: _env.VITE_STUDIO_URL,
   dx: _env.VITE_DX,
   entitlementsEnabled: _env.VITE_ENTITLEMENTS_ENABLED,
 }

@@ -1,34 +1,41 @@
-import { useParams } from 'common'
 import { ExternalLink, Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from 'ui'
 
-const DEFAULT_PAYMENTS_URL = 'https://payments.indobase.in'
-
-function getIndobasePaymentsBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_INDOBASE_PAYMENTS_URL?.trim()
-  if (!fromEnv) return DEFAULT_PAYMENTS_URL
-  return fromEnv.replace(/\/+$/, '')
-}
+import { usePaymentsLaunch } from './usePaymentsLaunch'
 
 /**
- * Opens the live Indobase Payments product from the project surface.
- * Prefers an in-panel iframe (CSP allows Studio hosts); falls back to same-tab
- * navigation so operators never land on a dead Getting Started card.
+ * Opens the live Indobase Payments product from the project surface using a
+ * Studio→Payments handoff token (same pattern as Builder `/launch`).
+ * Prefers an in-panel iframe; falls back to same-tab navigation.
  */
 export const ProjectPaymentsHome = () => {
-  const { ref } = useParams()
+  const { isLaunching, launch } = usePaymentsLaunch()
+  const [paymentsUrl, setPaymentsUrl] = useState<string | null>(null)
   const [iframeFailed, setIframeFailed] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const paymentsUrl = useMemo(() => {
-    const url = new URL(getIndobasePaymentsBaseUrl())
-    url.searchParams.set('from', 'studio')
-    if (ref) url.searchParams.set('project_ref', ref)
-    return url.toString()
-  }, [ref])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const url = await launch()
+      if (cancelled) return
+      if (!url) {
+        setError('Could not start Indobase Payments session')
+        return
+      }
+      setPaymentsUrl(url)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // Intentionally once on mount — launch() is stable per project ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const openPayments = (mode: 'same-tab' | 'new-tab') => {
+    if (!paymentsUrl) return
     if (mode === 'new-tab') {
       window.open(paymentsUrl, '_blank', 'noopener,noreferrer')
       return
@@ -37,9 +44,8 @@ export const ProjectPaymentsHome = () => {
     window.location.assign(paymentsUrl)
   }
 
-  // If the iframe is blocked (legacy CSP) or errors, fall through to same-tab.
   useEffect(() => {
-    if (!iframeFailed) return
+    if (!iframeFailed || !paymentsUrl) return
     setRedirecting(true)
     const timer = window.setTimeout(() => {
       window.location.assign(paymentsUrl)
@@ -47,14 +53,27 @@ export const ProjectPaymentsHome = () => {
     return () => window.clearTimeout(timer)
   }, [iframeFailed, paymentsUrl])
 
-  if (redirecting || iframeFailed) {
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
+        <p className="text-sm text-foreground-light">{error}</p>
+        <Button type="primary" onClick={() => void launch().then((url) => url && setPaymentsUrl(url))}>
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  if (redirecting || iframeFailed || isLaunching || !paymentsUrl) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
         <Loader2 className="h-6 w-6 animate-spin text-foreground-light" aria-hidden />
         <p className="text-sm text-foreground-light">Opening Indobase Payments…</p>
-        <Button type="primary" icon={<ExternalLink size={14} />} onClick={() => openPayments('same-tab')}>
-          Continue in Indobase Payments
-        </Button>
+        {paymentsUrl ? (
+          <Button type="primary" icon={<ExternalLink size={14} />} onClick={() => openPayments('same-tab')}>
+            Continue in Indobase Payments
+          </Button>
+        ) : null}
       </div>
     )
   }
