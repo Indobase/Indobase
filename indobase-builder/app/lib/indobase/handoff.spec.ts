@@ -137,12 +137,20 @@ describe('indobase handoff', () => {
     );
 
     const expectedMcpUrl = `https://studio.indobase.in/api/mcp?project_ref=proj_123&features=${encodeURIComponent('database,development,debugging')}`;
+    const expectedPaymentsMcpUrl = 'https://studio.indobase.in/api/mcp/payments?project_ref=proj_123';
 
     expect(autoConfig).toEqual({
       mcpServers: {
         indobase: {
           type: 'streamable-http',
           url: expectedMcpUrl,
+          headers: {
+            Authorization: 'Bearer mcp-token',
+          },
+        },
+        'indobase-payments': {
+          type: 'streamable-http',
+          url: expectedPaymentsMcpUrl,
           headers: {
             Authorization: 'Bearer mcp-token',
           },
@@ -157,6 +165,10 @@ describe('indobase handoff', () => {
       indobase: {
         type: 'streamable-http',
         url: expectedMcpUrl,
+      },
+      'indobase-payments': {
+        type: 'streamable-http',
+        url: expectedPaymentsMcpUrl,
       },
     });
   });

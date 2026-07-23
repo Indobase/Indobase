@@ -145,12 +145,100 @@ Source. This is not legal advice.
 
 ```bash
 NEXT_PUBLIC_INDOBASE_PAYMENTS_URL=https://payments.indobase.in
+# Optional explicit REST base (defaults to api.<payments-host>)
+INDOBASE_PAYMENTS_API_URL=https://api.payments.indobase.in
 PAYMENTS_HANDOFF_SECRET=<same-as-payments-api-≥32-chars>
 # or reuse BUILDER_HANDOFF_SECRET
+
+# Optional transitional fallback: tenant API key instead of Studio MCP JWT
+# (prefer JWT once Payments image includes studio MCP auth)
+# INDOBASE_PAYMENTS_API_KEY=pv_…
 ```
 
 Project page `/project/[ref]/payments` → `GET /api/platform/projects/[ref]/payments/launch`
 → Payments `/launch` → session. Owners/admins only.
+
+---
+
+## MCP (Builder ↔ Payments)
+
+Studio exposes a streamable-HTTP MCP server that proxies Indobase Payments REST,
+scoped to the Studio project’s organization (owners/admins only).
+
+```mermaid
+sequenceDiagram
+  participant Builder as builder.indobase.in
+  participant Studio as studio.indobase.in
+  participant PayAPI as api.payments.indobase.in
+
+  Builder->>Studio: POST /api/mcp/payments?project_ref=…
+  Note over Builder,Studio: Bearer Builder MCP token (same as /api/mcp)
+  Studio->>Studio: Verify token, resolve org role (owner/admin)
+  Studio->>Studio: Mint aud=indobase-payments-mcp JWT (15 min)
+  Studio->>PayAPI: REST /api/v1/* with MCP JWT (or API key fallback)
+  PayAPI-->>Studio: JSON
+  Studio-->>Builder: MCP tool result
+```
+
+### Endpoints
+
+| Surface | URL |
+|---|---|
+| Studio Payments MCP | `https://studio.indobase.in/api/mcp/payments?project_ref=<ref>` |
+| Alias rewrite | `/mcp/payments` → `/api/mcp/payments` |
+| Payments REST | `https://api.payments.indobase.in/api/v1/*` |
+
+Auth (Studio MCP): same as database MCP — `Authorization: Bearer <builder-mcp-token>` or Studio user JWT.
+
+Auth (Payments REST): Bearer `aud=indobase-payments-mcp` JWT signed with `PAYMENTS_HANDOFF_SECRET` / `STUDIO_HANDOFF_SECRET`, **or** a classic Payments API key via Studio env `INDOBASE_PAYMENTS_API_KEY`.
+
+### Tools
+
+| Tool | Access |
+|---|---|
+| `list_plans` / `get_plan` | read |
+| `list_customers` / `get_customer` | read |
+| `list_invoices` / `get_invoice` | read |
+| `list_subscriptions` / `get_subscription` | read |
+| `list_product_families` | read |
+| `create_customer` | write |
+| `create_plan` | write (full CreatePlanRequest body) |
+| `create_subscription` | write (full CreateSubscriptionRequest body) |
+
+Pass `?read_only=true` to omit write tools. Invoices are subscription-generated in Payments REST — there is no `create_invoice` tool.
+
+### Builder auto-wire
+
+When Builder is launched from Studio (`studio_handoff` + MCP token), chat registers two MCP servers:
+
+1. `indobase` → `/api/mcp` (database / development / debugging)
+2. `indobase-payments` → `/api/mcp/payments` (this surface)
+
+No extra Builder env is required beyond the existing Studio handoff / MCP token.
+
+### Enable checklist
+
+1. Studio + Payments share `PAYMENTS_HANDOFF_SECRET` (≥32 chars).
+2. Deploy Payments API image that includes Studio MCP JWT auth in REST middleware.
+3. Redeploy Studio (and Builder) so `/api/mcp/payments` and auto-wire are live.
+4. Open Payments once from Studio for the org (provisions the `ib-*` Payments org/tenant).
+5. From Builder (linked project): ask the agent to list plans/customers — it should call `indobase-payments` tools.
+
+### Cursor / external agents
+
+```json
+{
+  "mcpServers": {
+    "indobase-payments": {
+      "type": "streamable-http",
+      "url": "https://studio.indobase.in/api/mcp/payments?project_ref=YOUR_REF",
+      "headers": {
+        "Authorization": "Bearer YOUR_STUDIO_OR_BUILDER_MCP_TOKEN"
+      }
+    }
+  }
+}
+```
 
 ---
 

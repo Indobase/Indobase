@@ -6,14 +6,20 @@ const INDOBASE_SERVER_INFO = {
   version: '1.0.0',
 } as const
 
-function rewriteMcpPayload(body: string): string {
+export type McpServerInfoBranding = {
+  name: string
+  title: string
+  version: string
+}
+
+function rewriteMcpPayload(body: string, serverInfo: McpServerInfoBranding): string {
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>
     const result = parsed.result
     if (result && typeof result === 'object' && !Array.isArray(result)) {
       const record = result as Record<string, unknown>
       if (record.serverInfo && typeof record.serverInfo === 'object') {
-        record.serverInfo = { ...(record.serverInfo as object), ...INDOBASE_SERVER_INFO }
+        record.serverInfo = { ...(record.serverInfo as object), ...serverInfo }
       }
     }
     return JSON.stringify(parsed)
@@ -66,7 +72,10 @@ function resolveWriteCallback(encodingOrCb?: unknown, cb?: unknown): (() => void
 /**
  * Wraps a Node ServerResponse so MCP JSON responses advertise Indobase instead of Supabase.
  */
-export function withIndobaseMcpBranding(res: ServerResponse): ServerResponse {
+export function withIndobaseMcpBranding(
+  res: ServerResponse,
+  serverInfo: McpServerInfoBranding = INDOBASE_SERVER_INFO
+): ServerResponse {
   const chunks: Buffer[] = []
   let ended = false
 
@@ -104,7 +113,7 @@ export function withIndobaseMcpBranding(res: ServerResponse): ServerResponse {
     )
 
     if (contentType.includes('application/json') && raw.length > 0) {
-      const branded = rewriteMcpPayload(raw)
+      const branded = rewriteMcpPayload(raw, serverInfo)
       res.setHeader('content-length', Buffer.byteLength(branded))
       return originalEnd(branded, callback as never)
     }
