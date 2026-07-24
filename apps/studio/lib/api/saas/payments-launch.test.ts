@@ -2,16 +2,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   buildPaymentsLaunchUrl,
+  makePaymentsHandoffToken,
+  resolvePaymentsBaseUrl,
+} from './payments-launch'
+import {
   isPaymentsMerchantAdminRole,
   isPaymentsRole,
   isPaymentsRoleDeniedMessage,
-  makePaymentsHandoffToken,
   PAYMENTS_ALLOWED_ROLES,
   PAYMENTS_ROLE_DENIED_CODE,
   paymentsTenantSlugForOrg,
-  resolvePaymentsBaseUrl,
   sanitizePaymentsOrgSlug,
-} from './payments-launch'
+} from './payments-launch-shared'
 
 function decodeJwtPayload(token: string) {
   const [, payload] = token.split('.')
