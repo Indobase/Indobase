@@ -11,7 +11,7 @@ import type { MenuProps } from 'antd'
 // --- Hooks ---
 import { useFloatingMenu } from '../../hooks/useFloatingMenu'
 import { useMenuKeyboard } from '../../hooks/useMenuKeyboard'
-import { useNotifuseEditor } from '../../hooks/useEditor'
+import { useIndobaseEditor } from '../../hooks/useEditor'
 
 // --- Local Types and Config ---
 import { emojiConfig } from './configs/emoji-config'
@@ -30,7 +30,7 @@ interface EmojiMenuProps {
  */
 export const EmojiMenu = ({ editor: providedEditor }: EmojiMenuProps) => {
   const { t } = useLingui()
-  const { editor } = useNotifuseEditor(providedEditor)
+  const { editor } = useIndobaseEditor(providedEditor)
 
   const [show, setShow] = useState<boolean>(false)
   const [internalDecorationNode, setInternalDecorationNode] = useState<HTMLElement | null>(null)

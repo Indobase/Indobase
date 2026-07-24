@@ -51,7 +51,7 @@ interface DraftState {
 }
 
 const getLocalStorageKey = (workspaceId: string, version: number | null) =>
-  `notifuse-theme-draft-${workspaceId}-${version || 'new'}`
+  `indobase-theme-draft-${workspaceId}-${version || 'new'}`
 
 export function ThemeEditorDrawer({
   open,

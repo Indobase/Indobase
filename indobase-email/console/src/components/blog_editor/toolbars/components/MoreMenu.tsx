@@ -99,9 +99,9 @@ export function MoreMenu({ hideWhenUnavailable = false }: MoreMenuProps) {
           type="text"
           size="small"
           disabled={!hasAvailableActions}
-          className="notifuse-editor-toolbar-button"
+          className="indobase-editor-toolbar-button"
         >
-          <MoreVertical className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+          <MoreVertical className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
         </Button>
       </Tooltip>
     </Popover>

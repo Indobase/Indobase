@@ -3,7 +3,7 @@ import type { EmailBlock, MJMLComponentType } from './types'
 
 /**
  * Tool definitions for the Email AI Assistant
- * Follows the pattern from mjml_builder but adapted for Notifuse SSE streaming
+ * Follows the pattern from mjml_builder but adapted for Indobase SSE streaming
  *
  * Key difference: No bidirectional tool results - tools are "fire and forget"
  * Tree context is injected in the system prompt instead of via getEmailStructure
@@ -183,7 +183,7 @@ export const SET_EMAIL_TREE_TOOL: LLMTool = {
   }
 }
 
-// Tool 7: updateEmailMetadata - Subject/preview (Notifuse-specific)
+// Tool 7: updateEmailMetadata - Subject/preview (Indobase-specific)
 export const UPDATE_EMAIL_METADATA_TOOL: LLMTool = {
   name: 'updateEmailMetadata',
   description: 'Update the email subject line and/or preview text.',

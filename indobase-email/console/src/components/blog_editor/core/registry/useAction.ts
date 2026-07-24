@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { useNotifuseEditor } from '../../hooks/useEditor'
-import { notifuseActionRegistry } from './ActionRegistry'
+import { useIndobaseEditor } from '../../hooks/useEditor'
+import { indobaseActionRegistry } from './ActionRegistry'
 import type { ActionDefinition } from './ActionRegistry'
 
 /**
@@ -70,10 +70,10 @@ export interface ActionState {
  */
 export function useAction(actionId: string, config?: UseActionConfig): ActionState {
   const { editor: providedEditor, hideWhenUnavailable = false } = config || {}
-  const { editor } = useNotifuseEditor(providedEditor)
+  const { editor } = useIndobaseEditor(providedEditor)
 
   // Get the action definition from the registry
-  const action = notifuseActionRegistry.get(actionId)
+  const action = indobaseActionRegistry.get(actionId)
 
   // Track visibility state
   const [isVisible, setIsVisible] = useState(true)

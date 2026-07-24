@@ -189,17 +189,17 @@
 }
 
 /* Active state for toolbar buttons - blue icon instead of blue background */
-.youtube-toolbar-popover .notifuse-editor-toolbar-button.ant-btn-primary {
+.youtube-toolbar-popover .indobase-editor-toolbar-button.ant-btn-primary {
   background-color: transparent;
   color: #1890ff;
 }
 
-.youtube-toolbar-popover .notifuse-editor-toolbar-button.ant-btn-primary:hover:not(:disabled) {
+.youtube-toolbar-popover .indobase-editor-toolbar-button.ant-btn-primary:hover:not(:disabled) {
   background-color: #f0f0f0;
   color: #1890ff;
 }
 
-.youtube-toolbar-popover .notifuse-editor-toolbar-button.ant-btn-primary .notifuse-editor-toolbar-icon {
+.youtube-toolbar-popover .indobase-editor-toolbar-button.ant-btn-primary .indobase-editor-toolbar-icon {
   color: #1890ff;
 }
 

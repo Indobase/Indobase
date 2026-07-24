@@ -1,16 +1,16 @@
-# Notifuse Editor - Dynamic Styling Guide
+# Indobase Editor - Dynamic Styling Guide
 
-This guide explains how to customize the Notifuse Editor's appearance through the `styleConfig` prop.
+This guide explains how to customize the Indobase Editor's appearance through the `styleConfig` prop.
 
 ## Overview
 
-The Notifuse Editor supports dynamic styling through a type-safe JSON configuration. This allows you to customize fonts, colors, sizes, and spacing for all text elements in the editor.
+The Indobase Editor supports dynamic styling through a type-safe JSON configuration. This allows you to customize fonts, colors, sizes, and spacing for all text elements in the editor.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [Style Configuration Reference](#style-configuration-reference)
-- [Integration with Notifuse Go Backend](#integration-with-notifuse-go-backend)
+- [Integration with Indobase Go Backend](#integration-with-indobase-go-backend)
 - [Blog Post Rendering](#blog-post-rendering)
 - [Examples](#examples)
 - [Validation](#validation)
@@ -19,19 +19,19 @@ The Notifuse Editor supports dynamic styling through a type-safe JSON configurat
 
 ```typescript
 import {
-  NotifuseEditor,
+  IndobaseEditor,
   defaultEditorStyles,
   type EditorStyleConfig
 } from '@/components/blog_editor'
 
 // Use default styles (styleConfig is optional)
 function MyEditor() {
-  return <NotifuseEditor />
+  return <IndobaseEditor />
 }
 
 // Or explicitly pass default styles
 function MyEditorWithDefaults() {
-  return <NotifuseEditor styleConfig={defaultEditorStyles} />
+  return <IndobaseEditor styleConfig={defaultEditorStyles} />
 }
 
 // Or customize
@@ -45,7 +45,7 @@ const customStyles: EditorStyleConfig = {
 }
 
 function MyCustomEditor() {
-  return <NotifuseEditor styleConfig={customStyles} />
+  return <IndobaseEditor styleConfig={customStyles} />
 }
 ```
 
@@ -74,7 +74,7 @@ interface EditorStyleConfig {
 }
 
 // Component Props
-interface NotifuseEditorProps {
+interface IndobaseEditorProps {
   placeholder?: string
   initialContent?: string
   styleConfig?: EditorStyleConfig // Optional - defaults to defaultEditorStyles
@@ -182,7 +182,7 @@ interface LinkStyles {
 }
 ```
 
-## Integration with Notifuse Go Backend
+## Integration with Indobase Go Backend
 
 ### Step 1: Store Style Config in Database
 
@@ -192,7 +192,7 @@ Store the `EditorStyleConfig` JSON in your database alongside blog posts or as u
 
 ```typescript
 import {
-  NotifuseEditor,
+  IndobaseEditor,
   defaultEditorStyles,
   validateStyleConfig,
   type EditorStyleConfig
@@ -209,7 +209,7 @@ function BlogEditorComponent({ configFromBackend }: EditorComponentProps) {
   // Validate config (throws StyleConfigValidationError on invalid config)
   const validConfig = validateStyleConfig(styleConfig)
 
-  return <NotifuseEditor styleConfig={validConfig} />
+  return <IndobaseEditor styleConfig={validConfig} />
 }
 ```
 
@@ -276,9 +276,9 @@ The editor includes four ready-to-use presets:
 Traditional newspaper typography with classic serif fonts:
 
 ```typescript
-import { NotifuseEditor, timesJournalPreset } from '@/components/blog_editor'
+import { IndobaseEditor, timesJournalPreset } from '@/components/blog_editor'
 
-;<NotifuseEditor styleConfig={timesJournalPreset} />
+;<IndobaseEditor styleConfig={timesJournalPreset} />
 ```
 
 - ✍️ Georgia/Times New Roman serif
@@ -291,9 +291,9 @@ import { NotifuseEditor, timesJournalPreset } from '@/components/blog_editor'
 Clean, contemporary design with sans-serif:
 
 ```typescript
-import { NotifuseEditor, modernMagazinePreset } from '@/components/blog_editor'
+import { IndobaseEditor, modernMagazinePreset } from '@/components/blog_editor'
 
-;<NotifuseEditor styleConfig={modernMagazinePreset} />
+;<IndobaseEditor styleConfig={modernMagazinePreset} />
 ```
 
 - 🎨 System sans-serif fonts
@@ -306,9 +306,9 @@ import { NotifuseEditor, modernMagazinePreset } from '@/components/blog_editor'
 Distraction-free Medium-inspired design:
 
 ```typescript
-import { NotifuseEditor, minimalBlogPreset } from '@/components/blog_editor'
+import { IndobaseEditor, minimalBlogPreset } from '@/components/blog_editor'
 
-;<NotifuseEditor styleConfig={minimalBlogPreset} />
+;<IndobaseEditor styleConfig={minimalBlogPreset} />
 ```
 
 - 📖 Clean 18px reading size
@@ -321,9 +321,9 @@ import { NotifuseEditor, minimalBlogPreset } from '@/components/blog_editor'
 Formal, structured scholarly writing:
 
 ```typescript
-import { NotifuseEditor, academicPaperPreset } from '@/components/blog_editor'
+import { IndobaseEditor, academicPaperPreset } from '@/components/blog_editor'
 
-;<NotifuseEditor styleConfig={academicPaperPreset} />
+;<IndobaseEditor styleConfig={academicPaperPreset} />
 ```
 
 - 📚 Georgia/Times serif
@@ -596,4 +596,4 @@ These stacks:
 
 ## Support
 
-For issues or questions about dynamic styling, refer to the Notifuse Editor documentation or contact support.
+For issues or questions about dynamic styling, refer to the Indobase Editor documentation or contact support.

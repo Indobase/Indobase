@@ -53,16 +53,16 @@ Pre-configured style presets for common use cases.
 ### Import a single preset:
 
 ```typescript
-import { NotifuseEditor, timesJournalPreset } from '@/components/blog_editor'
+import { IndobaseEditor, timesJournalPreset } from '@/components/blog_editor'
 
-;<NotifuseEditor styleConfig={timesJournalPreset} />
+;<IndobaseEditor styleConfig={timesJournalPreset} />
 ```
 
 ### Import multiple presets:
 
 ```typescript
 import {
-  NotifuseEditor,
+  IndobaseEditor,
   timesJournalPreset,
   modernMagazinePreset,
   minimalBlogPreset,
@@ -77,7 +77,7 @@ const presets = {
   academic: academicPaperPreset
 }
 
-<NotifuseEditor styleConfig={presets[selectedPreset]} />
+<IndobaseEditor styleConfig={presets[selectedPreset]} />
 ```
 
 ### Customize a preset:
@@ -97,7 +97,7 @@ const customJournal = {
   }
 }
 
-<NotifuseEditor styleConfig={customJournal} />
+<IndobaseEditor styleConfig={customJournal} />
 ```
 
 ## Creating Your Own Preset

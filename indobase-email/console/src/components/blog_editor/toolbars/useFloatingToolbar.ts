@@ -164,7 +164,7 @@ export function useFloatingToolbar(
       }
 
       // Check if click is inside the floating toolbar
-      const toolbar = document.querySelector('.notifuse-editor-floating-toolbar')
+      const toolbar = document.querySelector('.indobase-editor-floating-toolbar')
       if (toolbar && toolbar.contains(target)) {
         return
       }

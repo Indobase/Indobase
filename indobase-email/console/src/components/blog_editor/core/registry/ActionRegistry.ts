@@ -118,4 +118,4 @@ export class ActionRegistry {
 /**
  * Singleton instance of the action registry
  */
-export const notifuseActionRegistry = new ActionRegistry()
+export const indobaseActionRegistry = new ActionRegistry()

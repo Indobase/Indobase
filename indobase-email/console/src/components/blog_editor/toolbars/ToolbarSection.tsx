@@ -20,7 +20,7 @@ export interface ToolbarSectionProps {
 export function ToolbarSection({ children, showDivider = true }: ToolbarSectionProps) {
   return (
     <>
-      <div className="notifuse-editor-toolbar-section">{children}</div>
+      <div className="indobase-editor-toolbar-section">{children}</div>
       {showDivider && <Divider type="vertical" style={{ height: '20px', margin: '0 4px' }} />}
     </>
   )

@@ -246,13 +246,13 @@ export function CodeBlockToolbar() {
             size="small"
             icon={
               <MessageSquare
-                className="notifuse-editor-toolbar-icon"
+                className="indobase-editor-toolbar-icon"
                 style={{ fontSize: '16px' }}
               />
             }
             type="text"
-            className={`notifuse-editor-toolbar-button ${
-              showCaption ? 'notifuse-editor-toolbar-button-active' : ''
+            className={`indobase-editor-toolbar-button ${
+              showCaption ? 'indobase-editor-toolbar-button-active' : ''
             }`}
             onClick={handleToggleCaption}
           />

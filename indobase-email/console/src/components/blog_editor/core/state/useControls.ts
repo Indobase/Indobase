@@ -31,7 +31,7 @@ export function useControls(editor: Editor | null): EditorControls {
       selector: ({ editor }) => {
         if (!editor) return INITIAL_EDITOR_CONTROLS
 
-        const controls = editor.storage.notifuseEditorControls
+        const controls = editor.storage.indobaseEditorControls
         if (!controls) {
           console.warn(
             'ControlsExtension is not initialized. Ensure you have added ControlsExtension to your editor extensions.'

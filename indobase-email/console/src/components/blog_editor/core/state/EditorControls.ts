@@ -25,7 +25,7 @@ export const INITIAL_EDITOR_CONTROLS: EditorControls = {
  */
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
-    notifuseEditorControls: {
+    indobaseEditorControls: {
       setDragging: (value: boolean) => ReturnType
       setHandleLock: (value: boolean) => ReturnType
       setActiveMenu: (id: string | null) => ReturnType
@@ -34,7 +34,7 @@ declare module '@tiptap/core' {
   }
 
   interface Storage {
-    notifuseEditorControls: EditorControls
+    indobaseEditorControls: EditorControls
   }
 }
 
@@ -46,13 +46,13 @@ export interface ControlsExtensionOptions {
 }
 
 /**
- * ControlsExtension - Manages UI control state for the Notifuse editor
+ * ControlsExtension - Manages UI control state for the Indobase editor
  *
  * This extension provides a centralized way to manage editor UI state separate
  * from document state, including drag operations, menu visibility, and control locks.
  */
 export const ControlsExtension = Extension.create<ControlsExtensionOptions>({
-  name: 'notifuseEditorControls',
+  name: 'indobaseEditorControls',
 
   addOptions() {
     return {
@@ -62,29 +62,29 @@ export const ControlsExtension = Extension.create<ControlsExtensionOptions>({
 
   addStorage() {
     return {
-      notifuseEditorControls: { ...INITIAL_EDITOR_CONTROLS }
+      indobaseEditorControls: { ...INITIAL_EDITOR_CONTROLS }
     }
   },
 
   addCommands() {
     return {
       setDragging: (value: boolean) => () => {
-        this.storage.notifuseEditorControls.isDragging = value
+        this.storage.indobaseEditorControls.isDragging = value
         return true
       },
 
       setHandleLock: (value: boolean) => () => {
-        this.storage.notifuseEditorControls.dragHandleLocked = value
+        this.storage.indobaseEditorControls.dragHandleLocked = value
         return true
       },
 
       setActiveMenu: (id: string | null) => () => {
-        this.storage.notifuseEditorControls.activeMenuId = id
+        this.storage.indobaseEditorControls.activeMenuId = id
         return true
       },
 
       resetControls: () => () => {
-        this.storage.notifuseEditorControls = { ...INITIAL_EDITOR_CONTROLS }
+        this.storage.indobaseEditorControls = { ...INITIAL_EDITOR_CONTROLS }
         return true
       }
     }
@@ -92,7 +92,7 @@ export const ControlsExtension = Extension.create<ControlsExtensionOptions>({
 
   onCreate() {
     // Initialize storage on extension creation with options
-    this.storage.notifuseEditorControls = {
+    this.storage.indobaseEditorControls = {
       ...INITIAL_EDITOR_CONTROLS,
       disableH1: this.options.disableH1 ?? false
     }

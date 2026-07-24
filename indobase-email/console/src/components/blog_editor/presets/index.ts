@@ -1,5 +1,5 @@
 /**
- * Notifuse Editor Style Presets
+ * Indobase Editor Style Presets
  *
  * Collection of pre-configured style presets for different use cases
  */

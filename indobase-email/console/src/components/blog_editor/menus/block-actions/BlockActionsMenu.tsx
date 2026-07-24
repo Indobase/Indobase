@@ -6,7 +6,7 @@ import type { MenuProps } from 'antd'
 import type { Node } from '@tiptap/pm/model'
 
 // Hooks
-import { useNotifuseEditor } from '../../hooks/useEditor'
+import { useIndobaseEditor } from '../../hooks/useEditor'
 import { useControls } from '../../core/state/useControls'
 import { selectNodeAndHideFloating } from '../../hooks/useNodeSelection'
 import { useBlockPositioning } from './useBlockPositioning'
@@ -40,7 +40,7 @@ import './block-actions.css'
  */
 export function BlockActionsMenu() {
   const { t } = useLingui()
-  const { editor } = useNotifuseEditor()
+  const { editor } = useIndobaseEditor()
   const { isDragging } = useControls(editor)
   const [optionsVisible, setOptionsVisible] = useState(false)
   const [blockPos, setBlockPos] = useState<number>(-1)

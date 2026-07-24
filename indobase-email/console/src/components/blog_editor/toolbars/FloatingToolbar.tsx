@@ -64,7 +64,7 @@ export function FloatingToolbar({
     <div
       ref={ref}
       style={style}
-      className="notifuse-editor-floating-toolbar"
+      className="indobase-editor-floating-toolbar"
       onMouseDown={(e) => {
         // Prevent toolbar clicks from affecting editor selection
         // But allow clicks on interactive elements (inputs, buttons inside popovers)
@@ -80,7 +80,7 @@ export function FloatingToolbar({
         }
       }}
     >
-      <div className="notifuse-editor-floating-toolbar-content">{children}</div>
+      <div className="indobase-editor-floating-toolbar-content">{children}</div>
     </div>
   )
 }

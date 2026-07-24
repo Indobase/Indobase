@@ -2989,7 +2989,7 @@ msgid "e.g. email"
 msgstr ""
 
 #: src/components/transactional/UpsertTransactionalNotificationDrawer.tsx:317
-msgid "e.g. notifuse"
+msgid "e.g. indobase"
 msgstr ""
 
 #: src/components/transactional/UpsertTransactionalNotificationDrawer.tsx:263
@@ -4559,8 +4559,8 @@ msgid "Help & Support"
 msgstr "Aiuto e Supporto"
 
 #: src/pages/SetupWizard.tsx:524
-msgid "Help us improve Notifuse by sending anonymous usage statistics. No personal data or message content is collected."
-msgstr "Aiutaci a migliorare Notifuse inviando statistiche di utilizzo anonime. Nessun dato personale o contenuto dei messaggi viene raccolto."
+msgid "Help us improve Indobase Email by sending anonymous usage statistics. No personal data or message content is collected."
+msgstr "Aiutaci a migliorare Indobase Email inviando statistiche di utilizzo anonime. Nessun dato personale o contenuto dei messaggi viene raccolto."
 
 #: src/components/blog_editor/components/image/ImageNodeView.tsx:329
 msgid "Helps screen readers describe the image"
@@ -5438,7 +5438,7 @@ msgstr "Caricamento eventi webhook..."
 msgid "Loading webhook status..."
 msgstr "Caricamento stato webhook..."
 
-#: src/components/blog_editor/NotifuseEditor.tsx:478
+#: src/components/blog_editor/IndobaseEditor.tsx:478
 #: src/components/messages/MessageHistoryTab.tsx:610
 #: src/components/templates/TemplateSelectorInput.tsx:129
 #: src/components/timeline/ContactTimeline.tsx:823
@@ -6428,7 +6428,7 @@ msgid "Pending confirmation"
 msgstr ""
 
 #: src/pages/SetupWizard.tsx:534
-msgid "Periodically check for new Notifuse versions and security updates. A popup will list new versions available."
+msgid "Periodically check for new Indobase Email versions and security updates. A popup will list new versions available."
 msgstr ""
 
 #: src/components/settings/WorkspaceMembers.tsx:129
@@ -6930,7 +6930,7 @@ msgid "Public lists are visible in the Notification Center for users to subscrib
 msgstr ""
 
 #: src/pages/SetupWizard.tsx:360
-msgid "Public URL where this Notifuse instance is accessible"
+msgid "Public URL where this Indobase Email instance is accessible"
 msgstr ""
 
 #: src/components/blog/PublishModal.tsx:113
@@ -8371,7 +8371,7 @@ msgstr ""
 msgid "Start writing your blog post..."
 msgstr ""
 
-#: src/components/blog_editor/NotifuseEditor.tsx:367
+#: src/components/blog_editor/IndobaseEditor.tsx:367
 #: src/components/email_builder/ui/tiptap/TiptapRichEditor.tsx:21
 msgid "Start writing..."
 msgstr ""
@@ -10128,7 +10128,7 @@ msgid "Your files can be uploaded to any S3 compatible storage."
 msgstr ""
 
 #: src/pages/SetupWizard.tsx:298
-msgid "Your Notifuse instance has been successfully configured."
+msgid "Your Indobase Email instance has been successfully configured."
 msgstr ""
 
 #: src/components/broadcasts/UpsertBroadcastDrawer.tsx:543

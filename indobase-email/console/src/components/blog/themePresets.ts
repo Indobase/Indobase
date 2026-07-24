@@ -2124,7 +2124,7 @@ h3 {
 
     'scripts.js': `// ==================== CONFIGURATION ====================
 // Dynamically configured from workspace settings
-const NOTIFUSE_CONFIG = {
+const INDOBASE_EMAIL_CONFIG = {
   domain: '{{ base_url }}',
   workspaceId: '{{ workspace.id }}',
   listIds: [
@@ -2343,18 +2343,18 @@ function preservePreviewParameter(previewVersion) {
  */
 async function subscribeToNewsletter(email, firstName = null) {
   try {
-    const response = await fetch(\`\${NOTIFUSE_CONFIG.domain}/subscribe\`, {
+    const response = await fetch(\`\${INDOBASE_EMAIL_CONFIG.domain}/subscribe\`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        workspace_id: NOTIFUSE_CONFIG.workspaceId,
+        workspace_id: INDOBASE_EMAIL_CONFIG.workspaceId,
         contact: {
           email: email,
           first_name: firstName || null
         },
-        list_ids: NOTIFUSE_CONFIG.listIds
+        list_ids: INDOBASE_EMAIL_CONFIG.listIds
       })
     });
 
@@ -2465,7 +2465,7 @@ function initNewsletterForms() {
       }
 
       // Check if public lists are configured
-      if (!NOTIFUSE_CONFIG.listIds || NOTIFUSE_CONFIG.listIds.length === 0) {
+      if (!INDOBASE_EMAIL_CONFIG.listIds || INDOBASE_EMAIL_CONFIG.listIds.length === 0) {
         showMessage(form, 'A public list should be configured first.', true);
         return;
       }

@@ -3264,8 +3264,8 @@ msgid "e.g. email"
 msgstr "es. email"
 
 #: src/components/transactional/UpsertTransactionalNotificationDrawer.tsx:339
-msgid "e.g. notifuse"
-msgstr "es. notifuse"
+msgid "e.g. indobase"
+msgstr "es. indobase"
 
 #: src/components/transactional/UpsertTransactionalNotificationDrawer.tsx:272
 msgid "E.g. Password Reset Email"
@@ -4799,11 +4799,11 @@ msgid "Format"
 msgstr ""
 
 #: src/components/settings/Integrations.tsx:204
-#~ msgid "Forwards inbound replies to Notifuse so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the Mailgun route; you must also point your domain's MX records at Mailgun."
+#~ msgid "Forwards inbound replies to Indobase Email so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the Mailgun route; you must also point your domain's MX records at Mailgun."
 #~ msgstr ""
 
 #: src/components/settings/Integrations.tsx:213
-msgid "Forwards inbound replies to Notifuse so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the provider-side route; you must also point your domain's MX records at your email provider."
+msgid "Forwards inbound replies to Indobase Email so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the provider-side route; you must also point your domain's MX records at your email provider."
 msgstr ""
 
 #. placeholder {0}: parsedData.emails.length
@@ -5026,8 +5026,8 @@ msgid "Help & Support"
 msgstr "Aiuto e Supporto"
 
 #: src/pages/SetupWizard.tsx:557
-msgid "Help us improve Notifuse by sending anonymous usage statistics. No personal data or message content is collected."
-msgstr "Aiutaci a migliorare Notifuse inviando statistiche di utilizzo anonime. Nessun dato personale o contenuto dei messaggi viene raccolto."
+msgid "Help us improve Indobase Email by sending anonymous usage statistics. No personal data or message content is collected."
+msgstr "Aiutaci a migliorare Indobase Email inviando statistiche di utilizzo anonime. Nessun dato personale o contenuto dei messaggi viene raccolto."
 
 #: src/components/blog_editor/components/image/ImageNodeView.tsx:329
 msgid "Helps screen readers describe the image"
@@ -5994,7 +5994,7 @@ msgstr "Caricamento eventi webhook..."
 msgid "Loading webhook status..."
 msgstr "Caricamento stato webhook..."
 
-#: src/components/blog_editor/NotifuseEditor.tsx:478
+#: src/components/blog_editor/IndobaseEditor.tsx:478
 #: src/components/messages/MessageHistoryTab.tsx:610
 #: src/components/templates/TemplateSelectorInput.tsx:145
 #: src/components/timeline/ContactTimeline.tsx:831
@@ -7138,8 +7138,8 @@ msgid "Per-recipient feed URL is required when enabled"
 msgstr "L'URL del feed per destinatario è richiesto quando abilitato"
 
 #: src/pages/SetupWizard.tsx:567
-msgid "Periodically check for new Notifuse versions and security updates. A popup will list new versions available."
-msgstr "Controlla periodicamente nuove versioni di Notifuse e aggiornamenti di sicurezza. Un popup elencherà le nuove versioni disponibili."
+msgid "Periodically check for new Indobase Email versions and security updates. A popup will list new versions available."
+msgstr "Controlla periodicamente nuove versioni di Indobase Email e aggiornamenti di sicurezza. Un popup elencherà le nuove versioni disponibili."
 
 #: src/components/settings/WorkspaceMembers.tsx:130
 #: src/components/settings/WorkspaceMembers.tsx:145
@@ -7678,8 +7678,8 @@ msgid "Public lists are visible in the Notification Center for users to subscrib
 msgstr "Le liste pubbliche sono visibili nel Centro Notifiche per permettere agli utenti di iscriversi"
 
 #: src/pages/SetupWizard.tsx:385
-msgid "Public URL where this Notifuse instance is accessible"
-msgstr "URL pubblico dove questa istanza Notifuse è accessibile"
+msgid "Public URL where this Indobase Email instance is accessible"
+msgstr "URL pubblico dove questa istanza Indobase Email è accessibile"
 
 #: src/components/blog/PublishModal.tsx:113
 msgid "Publication"
@@ -9311,7 +9311,7 @@ msgstr "Inizia caricamento"
 msgid "Start writing your blog post..."
 msgstr "Inizia a scrivere il tuo post del blog..."
 
-#: src/components/blog_editor/NotifuseEditor.tsx:367
+#: src/components/blog_editor/IndobaseEditor.tsx:367
 #: src/components/email_builder/ui/tiptap/TiptapRichEditor.tsx:21
 msgid "Start writing..."
 msgstr "Inizia a scrivere..."
@@ -9358,7 +9358,7 @@ msgid "Status unknown"
 msgstr "Stato sconosciuto"
 
 #: src/components/automations/UpsertAutomationDrawer.tsx:212
-msgid "Stops this automation for a contact as soon as they reply to one of its emails. This requires inbound reply forwarding to be configured at your email provider (ESP): replies to your sending domain must be routed to the provider, which forwards them to Notifuse. Without that setup, replies aren't detected and the sequence won't stop."
+msgid "Stops this automation for a contact as soon as they reply to one of its emails. This requires inbound reply forwarding to be configured at your email provider (ESP): replies to your sending domain must be routed to the provider, which forwards them to Indobase Email. Without that setup, replies aren't detected and the sequence won't stop."
 msgstr ""
 
 #: src/components/file_manager/fileManager.tsx:687
@@ -11334,8 +11334,8 @@ msgid "Your files can be uploaded to any S3 compatible storage."
 msgstr "I tuoi file possono essere caricati su qualsiasi storage compatibile con S3."
 
 #: src/pages/SetupWizard.tsx:323
-msgid "Your Notifuse instance has been successfully configured."
-msgstr "La tua istanza Notifuse è stata configurata con successo."
+msgid "Your Indobase Email instance has been successfully configured."
+msgstr "La tua istanza Indobase Email è stata configurata con successo."
 
 #: src/components/broadcasts/UpsertBroadcastDrawer.tsx:616
 msgid "Your website or company name"

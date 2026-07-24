@@ -1,1 +1,1 @@
-window.API_ENDPOINT = 'https://localapi.notifuse.com:4000'
+window.API_ENDPOINT = 'https://localapi.indobase.dev:4000'

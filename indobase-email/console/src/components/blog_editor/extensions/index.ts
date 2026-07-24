@@ -1,5 +1,5 @@
 /**
- * Notifuse Editor Extensions
+ * Indobase Editor Extensions
  */
 
 export { BackgroundExtension } from './BackgroundExtension'

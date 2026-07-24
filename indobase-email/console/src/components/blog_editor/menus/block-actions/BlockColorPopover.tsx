@@ -3,7 +3,7 @@ import { useLingui } from '@lingui/react/macro'
 import { Popover } from 'antd'
 import { Palette, ChevronRight } from 'lucide-react'
 import type { MenuProps } from 'antd'
-import { useNotifuseEditor } from '../../hooks/useEditor'
+import { useIndobaseEditor } from '../../hooks/useEditor'
 import { useRecentColors } from '../../toolbars/components/useRecentColors'
 import { ColorGrid } from '../../components/colors/ColorGrid'
 
@@ -15,7 +15,7 @@ export function useBlockColorPopover(
   onCloseMenu: () => void
 ): NonNullable<MenuProps['items']>[number] | null {
   const { t } = useLingui()
-  const { editor } = useNotifuseEditor()
+  const { editor } = useIndobaseEditor()
   const [open, setOpen] = useState(false)
   const { recentColors, addRecentColor, isInitialized } = useRecentColors()
 

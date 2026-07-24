@@ -202,7 +202,7 @@ describe('SignInPage', () => {
 
   it('auto-fills and submits email from URL parameter', async () => {
     // Set email in URL search params
-    (mockSearch as { email: string | undefined }).email = 'demo@notifuse.com'
+    (mockSearch as { email: string | undefined }).email = 'demo@indobase.com'
 
     // Mock successful response
     vi.mocked(authService.authService.signIn).mockResolvedValueOnce({
@@ -214,7 +214,7 @@ describe('SignInPage', () => {
     // Wait for auto-submit to complete
     await waitFor(() => {
       expect(authService.authService.signIn).toHaveBeenCalledWith({
-        email: 'demo@notifuse.com'
+        email: 'demo@indobase.com'
       })
     })
 
@@ -224,7 +224,7 @@ describe('SignInPage', () => {
     })
 
     // Verify the email is shown in the code form message
-    expect(screen.getByText(/demo@notifuse.com/i)).toBeInTheDocument()
+    expect(screen.getByText(/demo@indobase.com/i)).toBeInTheDocument()
   })
 
   it('does not auto-submit when email parameter is not present', async () => {

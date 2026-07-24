@@ -39,13 +39,13 @@ export default defineConfig({
       : {}),
     proxy: {
       '/config.js': {
-        target: 'https://localapi.notifuse.com:4000',
+        target: 'https://localapi.indobase.dev:4000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/console/, '')
       },
       '/console/config.js': {
-        target: 'https://localapi.notifuse.com:4000',
+        target: 'https://localapi.indobase.dev:4000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/console/, '')
