@@ -1,0 +1,117 @@
+@import "tailwindcss";
+@import "./components/email_builder/editor.css";
+@import "./styles/reactflow.css";
+@theme {
+  --color-primary: #3B9AE8;
+}
+
+:root {
+  --background: rgb(243, 246, 252);
+  --foreground: #171717;
+  --primary: #3B9AE8;
+
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* .drawer-no-transition .ant-drawer-content-wrapper {
+  transition: none !important;
+} */
+
+.ant-table-tbody>tr:hover>td, .tr-hover:hover>td {
+  border-bottom: 1px solid rgba(78, 108, 255, 0.4) !important;
+}
+
+/* Contacts table: fixed left (email) and right (actions) columns need an
+ * opaque background so scrolling content doesn't bleed through. Use enough
+ * selector specificity to beat antd's own `.ant-table-cell.ant-table-cell-fix-*`
+ * rules (0,2,0), otherwise the cells render transparent and horizontal scroll
+ * content shows through underneath. */
+td.ant-table-cell.contacts-fixed-col,
+th.ant-table-cell.contacts-fixed-col {
+  background-color: #F9F9F9;
+}
+.ant-table-tbody > tr:hover > td.ant-table-cell.contacts-fixed-col {
+  background-color: #F9F9F9;
+}
+/* antd v5 doesn't expose --ant-control-item-bg-active as a CSS variable on
+ * :root — it generates selected-row styles at runtime with the literal color.
+ * Use the same literal value so our higher-specificity selector matches. */
+.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell.contacts-fixed-col,
+.ant-table-tbody > tr.ant-table-row-selected:hover > td.ant-table-cell.contacts-fixed-col {
+  background-color: rgb(244, 240, 255);
+}
+
+.drawer-body-no-padding .ant-drawer-body {
+  padding: 0;
+}
+
+.tabs-in-header {
+  position: absolute;
+  top: 0;
+  height: 65px;
+  width: 40%;
+  right: 30%;
+  left: 30%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tabs-in-header .ant-tabs-tab {
+  line-height: 41px;
+}
+
+.vertical-tabs .ant-tabs-nav {
+  padding-top: 32px;
+}
+/* Custom Alert styling with left border */
+.ant-alert {
+  border: none !important;
+  border-left: 3px solid transparent !important;
+}
+
+.ant-alert.ant-alert-info {
+  border-left-color: #1890ff !important;
+}
+
+.ant-alert.ant-alert-success {
+  border-left-color: #52c41a !important;
+}
+
+.ant-alert.ant-alert-warning {
+  border-left-color: #faad14 !important;
+}
+
+.ant-alert.ant-alert-error {
+  border-left-color: #ff4d4f !important;
+}
+
+/* Required mark inscreses the line height of the form item creating discrepancy when using 2 columns */
+:where(.css-dev-only-do-not-override-1d0rgb4).ant-form-item .ant-form-item-label > label.ant-form-item-required::before {
+  font-family: inherit;
+}
+
