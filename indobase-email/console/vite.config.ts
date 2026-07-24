@@ -5,11 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 import { lingui } from '@lingui/vite-plugin'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+const certKeyPath = resolve(__dirname, 'certificates/key.pem')
+const certPath = resolve(__dirname, 'certificates/cert.pem')
+const hasLocalCerts = existsSync(certKeyPath) && existsSync(certPath)
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -24,11 +28,15 @@ export default defineConfig({
     lingui(),
   ],
   server: {
-    host: 'notifusedev.com',
-    https: {
-      key: readFileSync(resolve(__dirname, 'certificates/key.pem')),
-      cert: readFileSync(resolve(__dirname, 'certificates/cert.pem'))
-    },
+    host: 'localhost',
+    ...(hasLocalCerts
+      ? {
+          https: {
+            key: readFileSync(certKeyPath),
+            cert: readFileSync(certPath),
+          },
+        }
+      : {}),
     proxy: {
       '/config.js': {
         target: 'https://localapi.notifuse.com:4000',
