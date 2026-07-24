@@ -68,12 +68,18 @@ DNS: A records for `email.indobase.fun` / `email.indobase.in` → deploy host.
 
 Compose: `indobase-email/docker/deploy/docker-compose.yml`
 
+CI builds `roshanraghavander/indobase-email:<git-sha>` on push to `staging` /
+`main` (see `.github/workflows/docker-publish.yml`). Deploy with that SHA — do
+not ship a local `:latest` build.
+
 ```bash
-# On deploy host
+# On deploy host (after CI finishes for $SHA)
 cd /opt/indobase-email   # or clone path
 cp docker/deploy/.env.example docker/deploy/.env
 # edit secrets + EMAIL_HOST / API_ENDPOINT / STUDIO_PUBLIC_URL
-docker compose -f docker/deploy/docker-compose.yml --env-file docker/deploy/.env up -d --build
+# set INDOBASE_EMAIL_IMAGE=roshanraghavander/indobase-email:$SHA
+docker compose -f docker/deploy/docker-compose.yml --env-file docker/deploy/.env pull
+docker compose -f docker/deploy/docker-compose.yml --env-file docker/deploy/.env up -d
 ```
 
 Studio env (staging/prod):
@@ -89,6 +95,7 @@ Smoke:
 curl -sS https://email.indobase.fun/healthz
 curl -sS -o /dev/null -w '%{http_code}\n' https://email.indobase.fun/console/signin
 # expect redirect / 200 then SPA → Studio
+# Splash / title must say Indobase Email (not upstream product name)
 ```
 
 ---

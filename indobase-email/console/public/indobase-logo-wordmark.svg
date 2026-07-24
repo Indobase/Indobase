@@ -1,8 +1,14 @@
 <svg width="280" height="50" viewBox="0 0 280 50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Indobase">
   <rect width="280" height="50" fill="none"/>
-  <!-- Brand mark: two blue dots -->
-  <circle cx="18" cy="25" r="9" fill="#3b8fd6"/>
-  <circle cx="42" cy="25" r="5" fill="#3b8fd6"/>
+  <!-- Brand mark: Indobase stacked tiles -->
+  <g transform="translate(1,1) scale(2)">
+    <path fill="none" stroke="#F0B429" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"
+      d="M12 19.25 L18.75 14.75 L12 10.25 L5.25 14.75 Z"/>
+    <path fill="none" stroke="#19191C" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"
+      d="M12 16.85 L17.35 13.55 L12 10.25 L6.65 13.55 Z"/>
+    <path fill="#F0B429" stroke="#F0B429" stroke-width="0.35" stroke-linejoin="round" stroke-linecap="round"
+      d="M12 14.35 L15.85 12 L12 9.65 L8.15 12 Z"/>
+  </g>
   <!-- Wordmark as outlined paths (no system font dependency) -->
   <path d="M61.9921875 15.5576171875V12.525390625H64.62890625V15.5576171875ZM61.9921875 34.0V18.443359375H64.62890625V34.0Z" fill="#19191C"/>
   <path d="M68.642578125 34.0V18.443359375H71.015625V20.6552734375Q72.7294921875 18.091796875 75.966796875 18.091796875Q77.373046875 18.091796875 78.55224609375 18.59716796875Q79.7314453125 19.1025390625 80.3173828125 19.9228515625Q80.9033203125 20.7431640625 81.1376953125 21.87109375Q81.2841796875 22.603515625 81.2841796875 24.4345703125V34.0H78.6474609375V24.537109375Q78.6474609375 22.92578125 78.33984375 22.12744140625Q78.0322265625 21.3291015625 77.24853515625 20.85302734375Q76.46484375 20.376953125 75.41015625 20.376953125Q73.7255859375 20.376953125 72.50244140625 21.4462890625Q71.279296875 22.515625 71.279296875 25.50390625V34.0Z" fill="#19191C"/>
