@@ -32,39 +32,39 @@ export const anonymousRoutes: RouteObject = {
             {
               path: '/login',
               element: <Login />,
-              handle: { title: 'Sign in' },
+              handle: { title: 'Studio sign-in' },
             },
             {
               path: '/registration',
               element: <Registration />,
-              handle: { title: 'Sign up' },
+              handle: { title: 'Studio sign-in' },
             },
           ],
         },
         {
           path: '/check-inbox',
           element: <CheckInbox />,
-          handle: { title: 'Check your inbox' },
+          handle: { title: 'Studio sign-in' },
         },
         {
           path: '/validate-email',
           element: <ValidateEmail />,
-          handle: { title: 'Validate email' },
+          handle: { title: 'Studio sign-in' },
         },
         {
           path: '/forgot-password',
           element: <ForgotPassword />,
-          handle: { title: 'Forgot password' },
+          handle: { title: 'Studio sign-in' },
         },
         {
           path: '/check-inbox-password',
           element: <CheckInboxPassword />,
-          handle: { title: 'Check your inbox' },
+          handle: { title: 'Studio sign-in' },
         },
         {
           path: '/reset-password',
           element: <ResetPassword />,
-          handle: { title: 'Reset password' },
+          handle: { title: 'Studio sign-in' },
         },
         {
           path: '/oauth_success',

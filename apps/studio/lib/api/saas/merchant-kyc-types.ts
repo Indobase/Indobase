@@ -64,6 +64,14 @@ export type MerchantProfilePublic = {
   /** Soft-gate helpers for Studio UI. */
   can_browse_payments: boolean
   can_go_live: boolean
+  /** Owner/admin only — developer/viewer can browse but not edit KYC. */
+  can_edit_merchant_kyc: boolean
+  /** Studio organization slug (saas.organizations.slug). */
+  organization_slug: string
+  /** Payments engine tenant slug (`ib-{sanitized-org-slug}`). */
+  payments_tenant_slug: string
+  /** Caller's org role used for Payments SSO. */
+  payments_role: 'owner' | 'admin' | 'developer' | 'viewer' | null
   inserted_at: string
   updated_at: string
 }
