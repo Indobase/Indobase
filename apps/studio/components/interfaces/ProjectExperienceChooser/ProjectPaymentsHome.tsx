@@ -10,7 +10,7 @@ import { useState } from 'react'
 
 import { useMerchantProfileQuery } from 'data/payments/merchant-profile-query'
 import type { MerchantKycStatus } from 'lib/api/saas/merchant-kyc-types'
-import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-launch'
+import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-launch-shared'
 import { Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import {
   isPaymentsRoleDeniedMessage,
   PAYMENTS_ROLE_DENIED_CODE,
-} from 'lib/api/saas/payments-launch'
+} from 'lib/api/saas/payments-launch-shared'
 
 type UsePaymentsLaunchOptions = {
   projectRef?: string
