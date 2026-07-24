@@ -44,9 +44,11 @@ export const DefaultLayout = ({
   const { hasAccess: hasBackendStudioAccess, enabled: studioGateEnabled } = useBackendStudioAccess()
   const studioLocked = studioGateEnabled && !hasBackendStudioAccess
   const isProjectExperienceChooser = router.pathname === '/project/[ref]'
-  // Payments is a project product surface (same Studio session), not Backend Studio.
+  // Payments + Marketing are project product surfaces (same Studio session), not Backend Studio.
   const isProjectPayments = router.pathname === '/project/[ref]/payments'
-  const isUngatedProjectSurface = isProjectExperienceChooser || isProjectPayments
+  const isProjectMarketing = router.pathname === '/project/[ref]/marketing'
+  const isUngatedProjectSurface =
+    isProjectExperienceChooser || isProjectPayments || isProjectMarketing
   const showProductMenu = !!ref && !isUngatedProjectSurface && !studioLocked
 
   const [lastVisitedOrganization] = useLocalStorageQuery(
@@ -76,13 +78,13 @@ export const DefaultLayout = ({
    * The project landing page is the Builder/Studio chooser — it is not a backend screen, and every
    * item in the sidebar (Table Editor, SQL Editor, Auth, Storage…) navigates into Studio. Showing it
    * there presents the backend as the default context before the user has chosen one, so the
-   * sidebar now appears only once they are actually inside the backend. Indobase Payments is the
-   * same kind of product surface (not Backend Studio), so it stays sidebar-free as well.
+   * sidebar now appears only once they are actually inside the backend. Indobase Payments and
+   * Marketing are the same kind of product surface (not Backend Studio), so they stay sidebar-free.
    */
   const showProjectSidebar =
     !router.pathname.startsWith('/account') && !studioLocked && !isUngatedProjectSurface
 
-  // Chooser + Payments stay reachable on every plan. Gate only Backend Studio routes.
+  // Chooser + Payments + Marketing stay reachable on every plan. Gate only Backend Studio routes.
   const content = isUngatedProjectSurface ? (
     children
   ) : (

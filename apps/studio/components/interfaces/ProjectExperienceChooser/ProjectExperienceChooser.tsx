@@ -4,7 +4,7 @@ import { useParams } from 'common'
 import { ScaffoldContainer, ScaffoldSection } from 'components/layouts/Scaffold'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { ArrowRight, BarChart3, Blocks, CreditCard, Database } from 'lucide-react'
+import { ArrowRight, BarChart3, Blocks, CreditCard, Database, Megaphone } from 'lucide-react'
 import { Badge, Button, cn } from 'ui'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
@@ -117,16 +117,16 @@ export const ProjectExperienceChooser = () => {
               </Badge>
               <div className="space-y-3">
                 <h1 className="max-w-3xl text-4xl font-medium leading-[1.1] tracking-tight md:text-5xl">
-                  Build, backend, analytics, and{' '}
+                  Build, backend, payments, and{' '}
                   <span className="bg-gradient-to-r from-[#3B8FD6] via-[#5AA0DE] to-[#6AABE0] bg-clip-text text-transparent">
-                    payments
+                    marketing
                   </span>{' '}
                   — one project
                 </h1>
                 <p className="max-w-2xl text-base leading-relaxed text-foreground-light">
                   Start in Indobase Builder to ship your web app with AI and publish to Indobase
-                  hosting. Open Backend Studio for database, auth, and storage. Analytics and
-                  Indobase Payments round out the same project when you are ready to grow.
+                  hosting. Open Backend Studio for database, auth, and storage. Indobase Payments
+                  and Marketing round out the same project when you are ready to grow.
                 </p>
               </div>
             </div>
@@ -183,6 +183,20 @@ export const ProjectExperienceChooser = () => {
                 accentClassName="bg-[#4F46E5]/10"
                 href={`/project/${ref}/payments`}
                 ctaLabel="Open Payments"
+              />
+
+              {/*
+                Indobase Marketing — hub launcher (email, social, design, video). Accent teal
+                matches the Marketing hub. Opens the in-project Marketing surface (same Studio session).
+              */}
+              <ExperienceTile
+                eyebrow="Indobase Marketing"
+                title="Marketing"
+                description="Email, social, design, and video tools for this project — pick one from the Marketing hub. Same Studio login; engines ship over time."
+                icon={<Megaphone size={24} strokeWidth={1.75} className="text-[#0D9488]" />}
+                accentClassName="bg-[#0D9488]/10"
+                href={`/project/${ref}/marketing`}
+                ctaLabel="Open Marketing"
               />
             </div>
           </div>
