@@ -61,4 +61,19 @@ describe('selectWebSkills', () => {
     expect(appendix).toContain('davila7/claude-code-templates');
     expect(appendix).toContain('<web_skill id="react-best-practices">');
   });
+
+  it('selects Indobase Payments skill for checkout / pricing prompts', () => {
+    const selected = selectWebSkills({
+      target: 'web',
+      messages: [
+        {
+          role: 'user',
+          content: 'Add a pricing page with Stripe checkout and a customer billing portal',
+        },
+      ],
+    });
+
+    expect(selected.some((skill) => skill.id === 'indobase-payments')).toBe(true);
+    expect(selected.some((skill) => skill.id === 'shopify-development')).toBe(false);
+  });
 });

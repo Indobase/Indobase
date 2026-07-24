@@ -9,10 +9,12 @@ import { useParams } from 'common'
 import { useState } from 'react'
 
 import { useMerchantProfileQuery } from 'data/payments/merchant-profile-query'
+import { useMerchantProfileReviewMutation } from 'data/payments/merchant-profile-mutation'
 import type { MerchantKycStatus } from 'lib/api/saas/merchant-kyc-types'
 import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-launch-shared'
 import { Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
+import { toast } from 'sonner'
 
 import { MerchantKycOnboarding } from './MerchantKycOnboarding'
 import { usePaymentsLaunch } from './usePaymentsLaunch'
@@ -47,6 +49,7 @@ export const ProjectPaymentsHome = () => {
   const { data, isLoading, error, refetch, isFetching } = useMerchantProfileQuery({
     projectRef: ref,
   })
+  const { mutateAsync: reviewMerchant, isPending: isReviewing } = useMerchantProfileReviewMutation()
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [launchDenied, setLaunchDenied] = useState(false)
 
@@ -56,6 +59,17 @@ export const ProjectPaymentsHome = () => {
     (!!error && isPaymentsRoleDeniedMessage(error.message))
   const verified = merchant?.can_go_live === true
   const canEditKyc = merchant?.can_edit_merchant_kyc === true
+  const canConfirmGoLive = merchant?.can_confirm_go_live === true
+
+  const confirmStripeGoLive = async () => {
+    if (!ref) return
+    try {
+      await reviewMerchant({ projectRef: ref, action: 'verify' })
+      toast.success('Merchant verified for Stripe go-live')
+    } catch {
+      // toast handled by mutation default onError
+    }
+  }
 
   const openPayments = async (mode: 'same-tab' | 'new-tab') => {
     setLaunchError(null)
@@ -224,12 +238,29 @@ export const ProjectPaymentsHome = () => {
       </section>
 
       {(merchant.kyc_status === 'submitted' || merchant.kyc_status === 'under_review') && (
-        <div className="rounded-md border border-border px-4 py-3 text-sm text-foreground-light">
-          Your merchant KYC is {statusLabel(merchant.kyc_status).toLowerCase()}.
-          {merchant.aggregator_account_id
-            ? ` Aggregator account id: ${merchant.aggregator_account_id}.`
-            : ''}{' '}
-          You can still browse the Payments dashboard while review completes.
+        <div className="space-y-3 rounded-md border border-border px-4 py-3 text-sm text-foreground-light">
+          <p>
+            Your merchant KYC is {statusLabel(merchant.kyc_status).toLowerCase()}.
+            {merchant.aggregator_account_id
+              ? ` Aggregator account id: ${merchant.aggregator_account_id}.`
+              : ''}{' '}
+            You can still browse the Payments dashboard while review completes.
+          </p>
+          {canConfirmGoLive ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-foreground-lighter">
+                Stripe settlement: after confirming go-live, connect Stripe keys in Indobase Payments
+                and configure the webhook so invoices settle when charges succeed.
+              </p>
+              <Button
+                type="primary"
+                loading={isReviewing}
+                onClick={() => void confirmStripeGoLive()}
+              >
+                Confirm Stripe go-live
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 

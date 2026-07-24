@@ -27,12 +27,30 @@ const paginationShape = {
   per_page: z.number().int().min(1).max(100).optional().describe('Items per page (max 100)'),
 }
 
+export type PaymentsMcpServerOptions = {
+  readOnly?: boolean
+  /**
+   * When false, live-charge tools (checkout session / subscription create) refuse.
+   * Browse + plan/customer create remain available for setup before go-live.
+   */
+  liveChargesAllowed?: boolean
+}
+
+function liveChargeGate(liveChargesAllowed: boolean | undefined) {
+  if (liveChargesAllowed === false) {
+    throw new Error(
+      'Merchant KYC is not verified — confirm Stripe go-live in Studio Payments before create_checkout_session or create_subscription.'
+    )
+  }
+}
+
 /**
  * Indobase Payments MCP tools — proxies Indobase Payments REST (`/api/v1/*`).
  * Brand: Indobase Payments (not Meteroid) in all tool descriptions.
  */
-export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: { readOnly?: boolean }) {
+export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: PaymentsMcpServerOptions) {
   const readOnly = opts?.readOnly ?? false
+  const liveChargesAllowed = opts?.liveChargesAllowed
   const server = new McpServer({
     name: 'indobase-payments',
     title: 'Indobase Payments',
@@ -171,7 +189,8 @@ export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: { read
     'get_invoice',
     {
       title: 'Get invoice',
-      description: 'Get an Indobase Payments invoice by id.',
+      description:
+        'Get an Indobase Payments invoice by id (includes payment transactions / settlement status after Stripe webhooks).',
       inputSchema: {
         invoice_id: z.string().min(1),
       },
@@ -263,6 +282,56 @@ export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: { read
     }
   )
 
+  server.registerTool(
+    'list_checkout_sessions',
+    {
+      title: 'List checkout sessions',
+      description: 'List Indobase Payments checkout sessions (optionally by customer or status).',
+      inputSchema: {
+        customer_id: z.string().optional().describe('Customer id'),
+        status: z
+          .string()
+          .optional()
+          .describe('CREATED | AWAITING_PAYMENT | COMPLETED | EXPIRED | CANCELLED'),
+      },
+    },
+    async (args) => {
+      try {
+        const data = await client.request('GET', '/api/v1/checkout-sessions', {
+          query: {
+            customer_id: args.customer_id,
+            status: args.status,
+          },
+        })
+        return textResult(data)
+      } catch (error) {
+        return errorResult(error)
+      }
+    }
+  )
+
+  server.registerTool(
+    'get_checkout_session',
+    {
+      title: 'Get checkout session',
+      description: 'Get a checkout session by id (includes checkout_url when still completable).',
+      inputSchema: {
+        session_id: z.string().min(1),
+      },
+    },
+    async (args) => {
+      try {
+        const data = await client.request(
+          'GET',
+          `/api/v1/checkout-sessions/${encodeURIComponent(args.session_id)}`
+        )
+        return textResult(data)
+      } catch (error) {
+        return errorResult(error)
+      }
+    }
+  )
+
   if (!readOnly) {
     server.registerTool(
       'create_customer',
@@ -328,14 +397,90 @@ export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: { read
       'create_subscription',
       {
         title: 'Create subscription',
-        description: 'Create an Indobase Payments subscription. Pass a full CreateSubscriptionRequest body.',
+        description:
+          'Create an Indobase Payments subscription (live charge path). Requires verified merchant KYC. Prefer create_checkout_session for self-serve pricing pages.',
         inputSchema: {
           body: z.record(z.unknown()).describe('CreateSubscriptionRequest JSON body'),
         },
       },
       async (args) => {
         try {
+          liveChargeGate(liveChargesAllowed)
           const data = await client.request('POST', '/api/v1/subscriptions', { body: args.body })
+          return textResult(data)
+        } catch (error) {
+          return errorResult(error)
+        }
+      }
+    )
+
+    server.registerTool(
+      'create_checkout_session',
+      {
+        title: 'Create checkout session',
+        description:
+          'Create a hosted Indobase Payments checkout session. Returns session.checkout_url for pricing CTAs. Requires verified merchant KYC. Required: customer_id, plan_version_id.',
+        inputSchema: {
+          customer_id: z.string().min(1).describe('Customer id or alias'),
+          plan_version_id: z.string().min(1).describe('Plan version id from get_plan / create_plan'),
+          expires_in_hours: z.number().int().min(0).optional(),
+          trial_duration_days: z.number().int().optional(),
+          coupon_code: z.string().optional(),
+          charge_automatically: z.boolean().optional(),
+          auto_advance_invoices: z.boolean().optional(),
+          body: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional extra CreateCheckoutSessionRequest fields merged into the body'),
+        },
+      },
+      async (args) => {
+        try {
+          liveChargeGate(liveChargesAllowed)
+          const { body: extra, ...fields } = args
+          const data = await client.request('POST', '/api/v1/checkout-sessions', {
+            body: {
+              customer_id: fields.customer_id,
+              plan_version_id: fields.plan_version_id,
+              ...(fields.expires_in_hours !== undefined
+                ? { expires_in_hours: fields.expires_in_hours }
+                : {}),
+              ...(fields.trial_duration_days !== undefined
+                ? { trial_duration_days: fields.trial_duration_days }
+                : {}),
+              ...(fields.coupon_code ? { coupon_code: fields.coupon_code } : {}),
+              ...(fields.charge_automatically !== undefined
+                ? { charge_automatically: fields.charge_automatically }
+                : {}),
+              ...(fields.auto_advance_invoices !== undefined
+                ? { auto_advance_invoices: fields.auto_advance_invoices }
+                : {}),
+              ...(extra || {}),
+            },
+          })
+          return textResult(data)
+        } catch (error) {
+          return errorResult(error)
+        }
+      }
+    )
+
+    server.registerTool(
+      'create_portal_token',
+      {
+        title: 'Create customer portal token',
+        description:
+          'Mint a customer portal token + portal_url. Open `${portal_url}/portal/customer?token=…` for manage-billing UX. Prefer server/edge minting in published apps.',
+        inputSchema: {
+          id_or_alias: z.string().min(1).describe('Customer id or alias'),
+        },
+      },
+      async (args) => {
+        try {
+          const data = await client.request(
+            'POST',
+            `/api/v1/customers/${encodeURIComponent(args.id_or_alias)}/portal-token`
+          )
           return textResult(data)
         } catch (error) {
           return errorResult(error)

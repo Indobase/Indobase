@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   StubRazorpayRouteProvider,
+  StripeSettlementOnboardingProvider,
   __resetMerchantOnboardingProviderForTests,
   getMerchantOnboardingProvider,
+  resolveSettlementAdapter,
 } from './merchant-kyc-provider'
 
 describe('merchant-kyc-provider', () => {
@@ -12,7 +14,35 @@ describe('merchant-kyc-provider', () => {
     vi.unstubAllEnvs()
   })
 
-  it('stubs linked account without Razorpay keys', async () => {
+  it('defaults settlement adapter to stripe', () => {
+    vi.stubEnv('INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER', '')
+    expect(resolveSettlementAdapter()).toBe('stripe')
+  })
+
+  it('uses Stripe settlement provider by default', async () => {
+    vi.stubEnv('INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER', 'stripe')
+    const provider = getMerchantOnboardingProvider()
+    const result = await provider.createOrUpdateLinkedAccount({
+      projectRef: 'abcdefghijklmnop',
+      businessLegalName: 'Acme India Pvt Ltd',
+      businessType: 'private_limited',
+      pan: 'ABCDE1234F',
+      gstin: null,
+      contactEmail: 'ops@example.com',
+      contactPhone: null,
+      bankAccountHolderName: 'Acme India Pvt Ltd',
+      bankAccountLast4: '7890',
+      bankIfsc: 'HDFC0001234',
+    })
+
+    expect(result.provider).toBe('stripe')
+    expect(result.status).toBe('pending')
+    expect(result.stubbed).toBe(false)
+    expect(result.accountId).toMatch(/^stripe_merchant_/)
+  })
+
+  it('stubs linked account without Razorpay keys when route adapter selected', async () => {
+    vi.stubEnv('INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER', 'razorpay_route')
     vi.stubEnv('RAZORPAY_ROUTE_KEY_ID', '')
     vi.stubEnv('RAZORPAY_ROUTE_KEY_SECRET', '')
     const provider = new StubRazorpayRouteProvider()
@@ -35,7 +65,8 @@ describe('merchant-kyc-provider', () => {
     expect(result.meta.keys_present).toBe(false)
   })
 
-  it('still stubs when keys are present until live API is wired', async () => {
+  it('still stubs Route when keys are present until live API is wired', async () => {
+    vi.stubEnv('INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER', 'razorpay_route')
     vi.stubEnv('RAZORPAY_ROUTE_KEY_ID', 'rzp_test_key')
     vi.stubEnv('RAZORPAY_ROUTE_KEY_SECRET', 'rzp_test_secret')
     const provider = getMerchantOnboardingProvider()
@@ -55,5 +86,12 @@ describe('merchant-kyc-provider', () => {
     expect(result.stubbed).toBe(true)
     expect(result.meta.keys_present).toBe(true)
     expect(result.message).toMatch(/not wired yet/i)
+  })
+
+  it('Stripe provider sync stays pending until Studio go-live', async () => {
+    const provider = new StripeSettlementOnboardingProvider()
+    const synced = await provider.syncLinkedAccountStatus('stripe_merchant_abc')
+    expect(synced.status).toBe('pending')
+    expect(synced.provider).toBe('stripe')
   })
 })

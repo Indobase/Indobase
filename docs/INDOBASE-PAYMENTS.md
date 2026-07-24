@@ -198,14 +198,28 @@ Auth (Payments REST): Bearer `aud=indobase-payments-mcp` JWT signed with `PAYMEN
 |---|---|
 | `list_plans` / `get_plan` | read |
 | `list_customers` / `get_customer` | read |
-| `list_invoices` / `get_invoice` | read |
+| `list_invoices` / `get_invoice` | read (invoice shows settlement after Stripe webhooks) |
 | `list_subscriptions` / `get_subscription` | read |
 | `list_product_families` | read |
+| `list_checkout_sessions` / `get_checkout_session` | read |
 | `create_customer` | write |
 | `create_plan` | write (full CreatePlanRequest body) |
-| `create_subscription` | write (full CreateSubscriptionRequest body) |
+| `create_subscription` | write — **requires verified merchant KYC** |
+| `create_checkout_session` | write — hosted checkout URL; **requires verified merchant KYC** |
+| `create_portal_token` | write — `{ token, portal_url }` for customer portal |
 
-Pass `?read_only=true` to omit write tools. Invoices are subscription-generated in Payments REST — there is no `create_invoice` tool.
+Pass `?read_only=true` to omit write tools. Invoices are subscription/checkout-generated in Payments REST — there is no `create_invoice` tool.
+
+### Builder codegen
+
+Builder build-mode injects the `indobase-payments` skill when the prompt mentions payments / checkout / pricing / portal. Happy path:
+
+1. Generate pricing UI (first scaffold turn — MCP off).
+2. Follow-up: MCP `list_product_families` → `create_plan` / `list_plans`.
+3. `create_customer` → `create_checkout_session` → wire Subscribe to `session.checkout_url`.
+4. Manage billing: `create_portal_token` → `${portal_url}/portal/customer?token=…`.
+
+Live charge tools fail until Studio merchant KYC is **verified** (Confirm Stripe go-live).
 
 ### Builder auto-wire
 
@@ -222,7 +236,8 @@ No extra Builder env is required beyond the existing Studio handoff / MCP token.
 2. Deploy Payments API image that includes Studio MCP JWT auth in REST middleware.
 3. Redeploy Studio (and Builder) so `/api/mcp/payments` and auto-wire are live.
 4. Open Payments once from Studio for the org (provisions the `ib-*` Payments org/tenant).
-5. From Builder (linked project): ask the agent to list plans/customers — it should call `indobase-payments` tools.
+5. Complete merchant KYC → **Confirm Stripe go-live** → connect Stripe in Payments.
+6. From Builder (linked project): ask for pricing/checkout — skill + MCP tools should engage.
 
 ### Cursor / external agents
 
@@ -248,6 +263,6 @@ No extra Builder env is required beyond the existing Studio handoff / MCP token.
    Stripe until India path is live. See [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md).
 2. **Publish CI images** — build/push `indobase-payments-web` and
    `indobase-payments-api` from `indobase-payments/` on each release.
-3. **Live Route Linked Accounts** — replace the Studio KYC stub provider
-   (`merchant-kyc-provider.ts`) once the aggregator commercial relationship is
-   settled. Schema + wizard already store KYC state and `aggregator_account_id`.
+3. **Live Route Linked Accounts** — set `INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER=razorpay_route`
+   and replace `StubRazorpayRouteProvider` once the aggregator commercial relationship is
+   settled. Stripe go-live verify remains the default settlement path.

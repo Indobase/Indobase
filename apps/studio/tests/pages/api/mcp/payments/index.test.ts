@@ -28,6 +28,10 @@ vi.mock('lib/api/saas/payments-mcp', () => ({
   }),
 }))
 
+vi.mock('lib/api/saas/merchant-kyc', () => ({
+  getMerchantCanGoLive: vi.fn().mockResolvedValue(true),
+}))
+
 vi.mock('lib/api/saas/builder-mcp-auth', async () => {
   const actual = await vi.importActual<typeof import('lib/api/saas/builder-mcp-auth')>(
     'lib/api/saas/builder-mcp-auth'
@@ -51,7 +55,7 @@ vi.mock('lib/gotrue', () => ({
   }),
 }))
 
-import handler from '../../../../pages/api/mcp/payments/index'
+import handler from '../../../../../pages/api/mcp/payments/index'
 
 describe('/api/mcp/payments', () => {
   beforeEach(() => {

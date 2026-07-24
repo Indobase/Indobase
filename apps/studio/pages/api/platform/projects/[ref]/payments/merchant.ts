@@ -7,6 +7,7 @@ import { setNoStore } from 'lib/api/no-store'
 import {
   getMerchantProfile,
   patchMerchantProfile,
+  reviewMerchantProfile,
   submitMerchantProfile,
 } from 'lib/api/saas/merchant-kyc'
 import type { MerchantProfilePatch } from 'lib/api/saas/merchant-kyc-types'
@@ -44,11 +45,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
       const body =
         typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body ?? {})
       const action = typeof body?.action === 'string' ? body.action.trim() : 'submit'
-      if (action !== 'submit') {
-        return res.status(400).json({ message: 'Unsupported action. Use action: "submit".' })
+      if (action === 'submit') {
+        const profile = await submitMerchantProfile({ claims, ref })
+        return res.status(200).json({ merchant: profile })
       }
-      const profile = await submitMerchantProfile({ claims, ref })
-      return res.status(200).json({ merchant: profile })
+      if (action === 'verify' || action === 'reject') {
+        const profile = await reviewMerchantProfile({
+          claims,
+          ref,
+          decision: action,
+          reason: typeof body?.reason === 'string' ? body.reason : null,
+        })
+        return res.status(200).json({ merchant: profile })
+      }
+      return res.status(400).json({
+        message: 'Unsupported action. Use action: "submit" | "verify" | "reject".',
+      })
     }
 
     res.setHeader('Allow', ['GET', 'PATCH', 'POST'])
@@ -67,7 +79,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
               lower.includes('missing') ||
               lower.includes('invalid') ||
               lower.includes('must be') ||
-              lower.includes('already')
+              lower.includes('already') ||
+              lower.includes('only enabled')
             ? 400
             : 500
     const body: { message: string; code?: string } = { message }

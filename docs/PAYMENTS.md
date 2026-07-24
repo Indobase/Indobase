@@ -58,15 +58,21 @@ onboarding can land before live Razorpay Route APIs.
 | Schema | `saas.project_payment_merchants` — KYC status, business + bank fields, document metadata, `aggregator_account_id` placeholder |
 | APIs | `GET` / `PATCH` / `POST` (submit) `/api/platform/projects/[ref]/payments/merchant` |
 | UI | `/project/[ref]/payments` — wizard (business → bank → documents → review) |
-| Provider | `merchant-kyc-provider.ts` — Route/Linked-Accounts-shaped stub; plugs in when Razorpay keys exist |
+| Provider | `merchant-kyc-provider.ts` — default **Stripe** settlement (`INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER=stripe`); Razorpay Route stub when set to `razorpay_route` |
 
 **KYC statuses:** `draft` → `submitted` / `under_review` → `verified` | `rejected`.
 
-**Soft gate:** owners/admins can always open the Payments dashboard (browse plans,
-invoices). **Go live / collect payments** requires `kyc_status = verified`. Bank
-account numbers are encrypted at rest; APIs return masked PAN and last-4 only.
+**Gates:** owners/admins can always open the Payments dashboard (browse plans,
+invoices). **Go live / create live charges** (checkout sessions, subscriptions via
+MCP) requires `kyc_status = verified`. For Stripe settlement, org owners/admins
+confirm go-live with `POST …/merchant` `action: "verify"` (Studio button:
+**Confirm Stripe go-live**). Then connect Stripe keys + webhook in Payments so
+charges settle onto invoices (`get_invoice`).
 
-Settlements are intended to the merchant’s own account via a licensed aggregator.
+Bank account numbers are encrypted at rest; APIs return masked PAN and last-4 only.
+
+Settlements (Stripe path): customer pays via Stripe → Payments webhook → invoice
+paid / subscription active. India bank payout via Razorpay Route remains next.
 **Indobase does not take custody of funds.** This is not legal advice.
 
 ---
@@ -105,9 +111,39 @@ extend that path into Indobase Payments.
 
 1. ~~Stand up Indobase Payments engine (this fork) + Studio deep-link~~ **done**
 2. ~~Studio SSO / session handoff into Payments~~ **done**
-3. ~~Sub-merchant KYC / onboarding UI in Studio~~ **done** (stub aggregator; live Route later)
-4. Razorpay Recurring Payments connector + pre-debit notification scheduling
-5. Project-scoped payment APIs and webhook ingestion under Studio session
+3. ~~Sub-merchant KYC / onboarding UI in Studio~~ **done**
+4. ~~Stripe go-live verify + MCP checkout/portal tools + Builder skill~~ **done**
+5. Razorpay Recurring Payments connector + pre-debit notification scheduling
+6. Live Route Linked Accounts (replace Route stub when aggregator commercial terms land)
 
 AGPL: publish fork source (`NOTICE.md` in the payments repo). Renaming does not
 remove AGPL obligations.
+
+## Verify (smoke)
+
+### A. Builder → checkout via MCP
+
+1. Launch Builder from a Studio project (handoff).
+2. Prompt: “Add a pricing page with checkout and a customer billing portal.”
+3. Expect `indobase-payments` skill injection; on follow-up turns, MCP tools
+   `list_plans` / `create_checkout_session` / `create_portal_token` (not invented names).
+4. Subscribe CTA should use `checkout_url` from `create_checkout_session`.
+
+### B. KYC → live Stripe charge → settlement
+
+```bash
+# After Studio session cookie / Bearer available:
+# 1) Submit KYC via Studio UI (Payments wizard), then:
+curl -sS -X POST "https://studio.indobase.fun/api/platform/projects/$REF/payments/merchant" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"verify"}'
+# → merchant.kyc_status == verified, can_go_live true
+
+# 2) Open Payments dashboard → Connect Stripe + webhook URL
+#    POST /webhooks/v1/{tenant_id}/{connection_alias}
+
+# 3) MCP or REST: create_customer → create_checkout_session → pay test card
+# 4) get_invoice → payment_status Paid / settled transactions
+```
+
+See also [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) MCP section.
