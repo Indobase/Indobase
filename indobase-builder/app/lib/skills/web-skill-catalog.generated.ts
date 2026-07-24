@@ -1,6 +1,6 @@
 /**
  * AUTO-GENERATED — do not edit by hand.
- * Source: app/lib/skills/web-development/*/SKILL.md
+ * Source: app/lib/skills/web-development/<skill>/SKILL.md
  * Upstream: https://github.com/davila7/claude-code-templates (MIT)
  * Regenerate: python scripts are in repo history / agent session.
  */
