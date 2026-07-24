@@ -1,16 +1,30 @@
 import { ScaffoldContainer, ScaffoldSection } from 'components/layouts/Scaffold'
-import { Clapperboard, Mail, Megaphone, Palette, Share2 } from 'lucide-react'
-import { Badge, cn } from 'ui'
+import {
+  Clapperboard,
+  ExternalLink,
+  Loader2,
+  Mail,
+  Megaphone,
+  Palette,
+  Share2,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useParams } from 'common'
+
+import { Badge, Button, cn } from 'ui'
+import { Admonition } from 'ui-patterns/admonition'
+
+import { useEmailLaunch } from './useEmailLaunch'
 
 type MarketingToolTileProps = {
   title: string
   description: string
   icon: React.ReactNode
   accentClassName: string
-  /** Elevated “first up” tile (Email) vs other Coming soon tools. */
   elevated?: boolean
   statusLabel: string
   statusHint?: string
+  actions?: React.ReactNode
 }
 
 const MarketingToolTile = ({
@@ -21,6 +35,7 @@ const MarketingToolTile = ({
   elevated = false,
   statusLabel,
   statusHint,
+  actions,
 }: MarketingToolTileProps) => {
   return (
     <div
@@ -49,17 +64,43 @@ const MarketingToolTile = ({
             <p className="text-xs leading-relaxed text-foreground-lighter">{statusHint}</p>
           ) : null}
         </div>
+
+        {actions ? <div className="mt-auto flex flex-wrap gap-2 pt-1">{actions}</div> : null}
       </div>
     </div>
   )
 }
 
 /**
- * Indobase Marketing hub — launcher for planned product engines (email, social, design, video).
- * Same ungated project surface pattern as Payments: no Backend Studio sidebar / plan gate.
- * Engines are not forked or deployed yet; tiles are Coming soon with Email elevated as first up.
+ * Indobase Marketing hub — launcher for product engines (email, social, design, video).
+ * Email opens Indobase Email via Studio SSO (same pattern as Payments).
  */
 export const ProjectMarketingHome = () => {
+  const { ref } = useParams()
+  const { launch, isLaunching } = useEmailLaunch()
+  const [launchError, setLaunchError] = useState<string | null>(null)
+  const [launchDenied, setLaunchDenied] = useState(false)
+
+  const openEmail = async (mode: 'same-tab' | 'new-tab') => {
+    setLaunchError(null)
+    setLaunchDenied(false)
+    const result = await launch()
+    if (!result.ok) {
+      if (result.denied) {
+        setLaunchDenied(true)
+        setLaunchError(result.message)
+        return
+      }
+      setLaunchError(result.message || 'Could not start Indobase Email session')
+      return
+    }
+    if (mode === 'new-tab') {
+      window.open(result.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    window.location.assign(result.url)
+  }
+
   return (
     <div className="relative isolate">
       <div
@@ -78,21 +119,65 @@ export const ProjectMarketingHome = () => {
                 </h1>
                 <p className="max-w-2xl text-base leading-relaxed text-foreground-light">
                   Marketing is a hub launcher, not a single frankenstein app. Choose email, social,
-                  visual design, or video when you are ready. Each tool will open with the same
-                  Studio login (SSO) once its engine ships.
+                  visual design, or video when you are ready. Email opens with the same Studio login
+                  (SSO).
                 </p>
               </div>
             </header>
 
+            {launchDenied ? (
+              <Admonition
+                type="warning"
+                title="Ask an organization owner or admin"
+                description={
+                  launchError ||
+                  'You do not have access to Indobase Email for this project. Ask an owner or admin to add you as a member.'
+                }
+              />
+            ) : null}
+
+            {launchError && !launchDenied ? (
+              <Admonition type="destructive" title="Could not open Email" description={launchError} />
+            ) : null}
+
             <div className="grid gap-5 md:grid-cols-2">
               <MarketingToolTile
                 title="Email marketing"
-                description="Campaigns, audiences, and transactional email for this project — powered by Indobase Email (Notifuse fork)."
+                description="Campaigns, audiences, and transactional email for this project — Indobase Email."
                 icon={<Mail size={24} strokeWidth={1.75} className="text-[#0D9488]" />}
                 accentClassName="bg-[#0D9488]/10"
                 elevated
-                statusLabel="First up"
-                statusHint="Coming soon — Studio SSO next. No separate password; handoff from this project."
+                statusLabel="Available"
+                statusHint={
+                  ref
+                    ? `Opens Indobase Email for project ${ref} (workspace mapped 1:1). No separate password.`
+                    : 'Studio SSO handoff — no separate password.'
+                }
+                actions={
+                  <>
+                    <Button
+                      type="primary"
+                      icon={
+                        isLaunching ? (
+                          <Loader2 className="animate-spin" size={14} />
+                        ) : (
+                          <ExternalLink size={14} />
+                        )
+                      }
+                      disabled={isLaunching || !ref}
+                      onClick={() => void openEmail('same-tab')}
+                    >
+                      Open Email
+                    </Button>
+                    <Button
+                      type="default"
+                      disabled={isLaunching || !ref}
+                      onClick={() => void openEmail('new-tab')}
+                    >
+                      Open in new tab
+                    </Button>
+                  </>
+                }
               />
 
               <MarketingToolTile
@@ -124,10 +209,8 @@ export const ProjectMarketingHome = () => {
             <p className="flex items-start gap-2 text-xs text-foreground-lighter">
               <Megaphone size={14} className="mt-0.5 shrink-0" aria-hidden />
               <span>
-                Engines are planned forks with their own licenses (AGPL for Email/Social; MPL for
-                design; MIT for video). See{' '}
-                <code className="text-foreground">docs/MARKETING.md</code> for sequencing and
-                compliance notes.
+                Email is AGPL-3.0 (Notifuse fork) under <code className="text-foreground">indobase-email/</code>.
+                See <code className="text-foreground">docs/MARKETING.md</code>.
               </span>
             </p>
           </div>

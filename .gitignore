@@ -168,3 +168,12 @@ indobase-payments/**/target/
 indobase-payments/**/node_modules/
 indobase-payments/**/.turbo/
 indobase-payments/**/dist/
+
+# Indobase Email (AGPL Notifuse fork) — build artifacts only
+indobase-email/**/node_modules/
+indobase-email/**/dist/
+indobase-email/data/
+indobase-email/bin/
+indobase-email/**/coverage*
+indobase-email/docker/deploy/.env
+
