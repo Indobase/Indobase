@@ -245,11 +245,14 @@ async fn validate_studio_mcp_jwt(
         });
     }
     match data.claims.role.as_deref() {
-        Some("owner") | Some("admin") => {}
+        Some("owner") | Some("admin") | Some("developer") | Some("viewer") => {}
         _ => {
             return Err(AuthStatus {
                 status: StatusCode::UNAUTHORIZED,
-                msg: Some("Payments MCP requires an organization owner or admin".to_string()),
+                msg: Some(
+                    "Payments MCP requires an organization owner, admin, developer, or viewer"
+                        .to_string(),
+                ),
             });
         }
     }

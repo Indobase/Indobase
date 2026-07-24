@@ -3,7 +3,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
-import { getPaymentsLaunchRedirect } from 'lib/api/saas/payments-launch'
+import {
+  getPaymentsLaunchRedirect,
+  isPaymentsRoleDeniedMessage,
+  PAYMENTS_ROLE_DENIED_CODE,
+  paymentsTenantSlugForOrg,
+} from 'lib/api/saas/payments-launch'
 
 const paymentsLaunchHandler = (req: NextApiRequest, res: NextApiResponse) =>
   apiWrapper(req, res, handler, { withAuth: true })
@@ -36,10 +41,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
       url: response.url,
       project_ref: response.project.ref,
       organization_slug: response.project.organization_slug,
+      payments_tenant_slug: response.paymentsTenantSlug,
+      role: response.role,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to launch Payments'
-    const status = message.toLowerCase().includes('secret') ? 503 : 500
+    if (isPaymentsRoleDeniedMessage(message)) {
+      return res.status(403).json({
+        code: PAYMENTS_ROLE_DENIED_CODE,
+        message:
+          'Ask an organization owner or admin to grant you Payments access. Developers and viewers can open Payments once they are members of this organization.',
+      })
+    }
+    const status =
+      message.toLowerCase().includes('not found')
+        ? 404
+        : message.toLowerCase().includes('secret')
+          ? 503
+          : 500
     return res.status(status).json({ message })
   }
 }
+
+// Re-export helper for tests / callers that only need slug mapping.
+export { paymentsTenantSlugForOrg }

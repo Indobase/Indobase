@@ -10,7 +10,9 @@ import { useState } from 'react'
 
 import { useMerchantProfileQuery } from 'data/payments/merchant-profile-query'
 import type { MerchantKycStatus } from 'lib/api/saas/merchant-kyc-types'
+import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-launch'
 import { Button, cn } from 'ui'
+import { Admonition } from 'ui-patterns/admonition'
 
 import { MerchantKycOnboarding } from './MerchantKycOnboarding'
 import { usePaymentsLaunch } from './usePaymentsLaunch'
@@ -35,7 +37,8 @@ function statusLabel(status: MerchantKycStatus): string {
 /**
  * Indobase Payments project hub: soft-gated merchant KYC + SSO into the Payments product.
  *
- * - Browse / open Payments dashboard: always available (billing UI, plans, invoices).
+ * - Browse / open Payments dashboard: org owner, admin, developer, or viewer.
+ * - Merchant KYC edits: owner/admin only (others see Ask an admin).
  * - Go live / collect payments: requires verified merchant KYC.
  */
 export const ProjectPaymentsHome = () => {
@@ -45,22 +48,33 @@ export const ProjectPaymentsHome = () => {
     projectRef: ref,
   })
   const [launchError, setLaunchError] = useState<string | null>(null)
+  const [launchDenied, setLaunchDenied] = useState(false)
 
   const merchant = data?.merchant
+  const accessDenied =
+    launchDenied ||
+    (!!error && isPaymentsRoleDeniedMessage(error.message))
   const verified = merchant?.can_go_live === true
+  const canEditKyc = merchant?.can_edit_merchant_kyc === true
 
   const openPayments = async (mode: 'same-tab' | 'new-tab') => {
     setLaunchError(null)
-    const url = await launch()
-    if (!url) {
-      setLaunchError('Could not start Indobase Payments session')
+    setLaunchDenied(false)
+    const result = await launch()
+    if (!result.ok) {
+      if (result.denied) {
+        setLaunchDenied(true)
+        setLaunchError(result.message)
+        return
+      }
+      setLaunchError(result.message || 'Could not start Indobase Payments session')
       return
     }
     if (mode === 'new-tab') {
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(result.url, '_blank', 'noopener,noreferrer')
       return
     }
-    window.location.assign(url)
+    window.location.assign(result.url)
   }
 
   if (!ref) {
@@ -76,6 +90,21 @@ export const ProjectPaymentsHome = () => {
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 px-6">
         <Loader2 className="h-6 w-6 animate-spin text-foreground-light" aria-hidden />
         <p className="text-sm text-foreground-light">Loading Indobase Payments…</p>
+      </div>
+    )
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-6 py-16">
+        <Admonition
+          type="warning"
+          title="Ask an organization owner or admin"
+          description="You do not have access to Indobase Payments for this project. Ask an owner or admin to add you as a member (developer or viewer is enough to open the dashboard)."
+        />
+        <Button type="default" loading={isFetching} onClick={() => refetch()}>
+          Retry
+        </Button>
       </div>
     )
   }
@@ -106,6 +135,26 @@ export const ProjectPaymentsHome = () => {
           does not take custody of funds.
         </p>
       </header>
+
+      <section className="rounded-md border border-border px-4 py-3 text-sm">
+        <p className="font-medium text-foreground">Project ↔ Payments tenant</p>
+        <dl className="mt-2 grid gap-1 text-foreground-light sm:grid-cols-[10rem_1fr]">
+          <dt className="text-foreground-lighter">Studio project</dt>
+          <dd className="font-mono text-xs text-foreground">{merchant.project_ref}</dd>
+          <dt className="text-foreground-lighter">Studio organization</dt>
+          <dd className="font-mono text-xs text-foreground">
+            {merchant.organization_slug || '—'}
+          </dd>
+          <dt className="text-foreground-lighter">Payments tenant</dt>
+          <dd className="font-mono text-xs text-foreground">
+            {merchant.payments_tenant_slug || '—'}
+          </dd>
+        </dl>
+        <p className="mt-2 text-xs text-foreground-lighter">
+          Mapping: Studio org slug → Payments tenant{' '}
+          <code className="text-foreground">{'ib-{slug}'}</code>.
+        </p>
+      </section>
 
       {!verified ? (
         <div
@@ -184,10 +233,19 @@ export const ProjectPaymentsHome = () => {
         </div>
       )}
 
+      {!canEditKyc ? (
+        <Admonition
+          type="note"
+          title="Ask an admin to complete merchant KYC"
+          description="Merchant onboarding (business details, bank account, documents) is limited to organization owners and admins. You can still open the Payments dashboard."
+        />
+      ) : null}
+
       <MerchantKycOnboarding
         projectRef={ref}
         merchant={merchant}
         readOnly={
+          !canEditKyc ||
           merchant.kyc_status === 'submitted' ||
           merchant.kyc_status === 'under_review' ||
           merchant.kyc_status === 'verified'

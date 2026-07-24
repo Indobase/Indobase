@@ -10,7 +10,12 @@ import type {
   MerchantProfilePublic,
 } from './merchant-kyc-types'
 import { ensureSaasTables, getGotrueUserId, getPrimaryEmail } from './platform'
-import { resolvePaymentsRole } from './payments-launch'
+import {
+  isPaymentsMerchantAdminRole,
+  paymentsTenantSlugForOrg,
+  resolvePaymentsRole,
+  type PaymentsRole,
+} from './payments-launch'
 import { executeQuery } from './query'
 import { encryptString } from './util'
 
@@ -241,8 +246,28 @@ function toPublic(row: MerchantRow): MerchantProfilePublic {
     aggregator_status: row.aggregator_status,
     can_browse_payments: true,
     can_go_live: status === 'verified',
+    can_edit_merchant_kyc: false,
+    organization_slug: '',
+    payments_tenant_slug: '',
+    payments_role: null,
     inserted_at: row.inserted_at,
     updated_at: row.updated_at,
+  }
+}
+
+function withAccessMeta(
+  profile: MerchantProfilePublic,
+  opts: {
+    organizationSlug: string
+    role: PaymentsRole
+  }
+): MerchantProfilePublic {
+  return {
+    ...profile,
+    can_edit_merchant_kyc: isPaymentsMerchantAdminRole(opts.role),
+    organization_slug: opts.organizationSlug,
+    payments_tenant_slug: paymentsTenantSlugForOrg(opts.organizationSlug),
+    payments_role: opts.role,
   }
 }
 
@@ -269,10 +294,20 @@ async function assertPaymentsAccess(claims: Claims, ref: string) {
 
   const role = await resolvePaymentsRole(actorId, project.data[0].organization_slug)
   if (!role) {
-    throw new Error('Merchant onboarding is available to organization owners and admins only')
+    throw new Error(
+      'Ask an organization owner or admin to grant you Payments access (owner, admin, developer, or viewer).'
+    )
   }
 
   return { actorId, project: project.data[0], role }
+}
+
+async function assertMerchantAdminAccess(claims: Claims, ref: string) {
+  const access = await assertPaymentsAccess(claims, ref)
+  if (!isPaymentsMerchantAdminRole(access.role)) {
+    throw new Error('Merchant onboarding is available to organization owners and admins only')
+  }
+  return access
 }
 
 async function loadRow(projectRef: string, actorId: string): Promise<MerchantRow | null> {
@@ -348,14 +383,17 @@ export async function getMerchantProfile({
   claims: Claims
   ref: string
 }): Promise<MerchantProfilePublic> {
-  const { actorId, project } = await assertPaymentsAccess(claims, ref)
+  const { actorId, project, role } = await assertPaymentsAccess(claims, ref)
   const row = await ensureDraftRow({
     actorId,
     projectRef: project.ref,
     organizationId: project.organization_id,
     contactEmail: getPrimaryEmail(claims),
   })
-  return toPublic(row)
+  return withAccessMeta(toPublic(row), {
+    organizationSlug: project.organization_slug,
+    role,
+  })
 }
 
 export async function patchMerchantProfile({
@@ -367,7 +405,7 @@ export async function patchMerchantProfile({
   ref: string
   patch: MerchantProfilePatch
 }): Promise<MerchantProfilePublic> {
-  const { actorId, project } = await assertPaymentsAccess(claims, ref)
+  const { actorId, project, role } = await assertMerchantAdminAccess(claims, ref)
   const current = await ensureDraftRow({
     actorId,
     projectRef: project.ref,
@@ -478,7 +516,10 @@ export async function patchMerchantProfile({
   if (updated.error) throw updated.error
   const row = updated.data?.[0]
   if (!row) throw new Error('Merchant profile not found')
-  return toPublic(row)
+  return withAccessMeta(toPublic(row), {
+    organizationSlug: project.organization_slug,
+    role,
+  })
 }
 
 function assertReadyToSubmit(row: MerchantRow) {
@@ -510,7 +551,7 @@ export async function submitMerchantProfile({
   claims: Claims
   ref: string
 }): Promise<MerchantProfilePublic> {
-  const { actorId, project } = await assertPaymentsAccess(claims, ref)
+  const { actorId, project, role } = await assertMerchantAdminAccess(claims, ref)
   const current = await ensureDraftRow({
     actorId,
     projectRef: project.ref,
@@ -587,5 +628,8 @@ export async function submitMerchantProfile({
   if (updated.error) throw updated.error
   const row = updated.data?.[0]
   if (!row) throw new Error('Merchant profile not found')
-  return toPublic(row)
+  return withAccessMeta(toPublic(row), {
+    organizationSlug: project.organization_slug,
+    role,
+  })
 }

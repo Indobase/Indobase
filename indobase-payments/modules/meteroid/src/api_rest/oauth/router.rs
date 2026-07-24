@@ -43,9 +43,16 @@ struct StudioHandoffClaims {
     organization_slug: String,
     #[serde(default)]
     organization_name: Option<String>,
-    /// Caller's Studio org role. Payments moves money, so only owner/admin are accepted.
+    /// Caller's Studio org role. Accepted: owner, admin, developer, viewer.
     #[serde(default)]
     role: Option<String>,
+}
+
+fn studio_role_allowed(role: Option<&str>) -> bool {
+    matches!(
+        role,
+        Some("owner") | Some("admin") | Some("developer") | Some("viewer")
+    )
 }
 
 fn resolve_studio_handoff_secret() -> Option<SecretString> {
@@ -82,12 +89,12 @@ fn verify_studio_handoff_token(
     if data.claims.email.trim().is_empty() || data.claims.organization_slug.trim().is_empty() {
         return Err("handoff token missing email or organization".into());
     }
-    // Only owners/admins may access Payments. Studio already rejects members before minting a
-    // token; this re-check means a token that lacks (or forges a non-privileged) role is refused
-    // here too — the engine never trusts Studio's gate alone.
-    match data.claims.role.as_deref() {
-        Some("owner") | Some("admin") => {}
-        _ => return Err("Payments access requires an organization owner or admin".into()),
+    // Studio already gates membership; re-check role so forged tokens without a valid
+    // org role are refused here too.
+    if !studio_role_allowed(data.claims.role.as_deref()) {
+        return Err(
+            "Payments access requires an organization owner, admin, developer, or viewer".into(),
+        );
     }
 
     Ok(data.claims)
@@ -133,10 +140,20 @@ async fn exchange_studio_handoff(token: &str, app_state: AppState) -> Redirect {
     }
 }
 
+fn studio_sign_in_base() -> String {
+    std::env::var("STUDIO_PUBLIC_URL")
+        .ok()
+        .map(|s| s.trim().trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://studio.indobase.in".to_string())
+}
+
 fn signin_error_url_msg(error: &str) -> String {
+    // Never send operators to Payments /login (nginx redirects that to Studio anyway).
+    // Surface the failure on Studio sign-in so there is no Meteroid password UI.
     format!(
-        "{}/login?error={}",
-        Config::get().public_url.as_str(),
+        "{}/sign-in?error={}",
+        studio_sign_in_base(),
         urlencoding_encode(error)
     )
 }

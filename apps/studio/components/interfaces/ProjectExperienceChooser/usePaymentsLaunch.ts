@@ -2,19 +2,30 @@ import { getAccessToken, useParams } from 'common'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
+import {
+  isPaymentsRoleDeniedMessage,
+  PAYMENTS_ROLE_DENIED_CODE,
+} from 'lib/api/saas/payments-launch'
+
 type UsePaymentsLaunchOptions = {
   projectRef?: string
 }
+
+export type PaymentsLaunchResult =
+  | { ok: true; url: string; paymentsTenantSlug?: string; role?: string }
+  | { ok: false; denied: true; message: string }
+  | { ok: false; denied: false; message: string }
 
 export function usePaymentsLaunch(options?: UsePaymentsLaunchOptions) {
   const params = useParams()
   const ref = options?.projectRef || params.ref
   const [isLaunching, setIsLaunching] = useState(false)
 
-  const launch = useCallback(async (): Promise<string | null> => {
+  const launch = useCallback(async (): Promise<PaymentsLaunchResult> => {
     if (!ref) {
-      toast.error('Project ref is required to open Payments')
-      return null
+      const message = 'Project ref is required to open Payments'
+      toast.error(message)
+      return { ok: false, denied: false, message }
     }
 
     setIsLaunching(true)
@@ -35,15 +46,35 @@ export function usePaymentsLaunch(options?: UsePaymentsLaunchOptions) {
 
       const payload = await response.json().catch(() => ({}))
       if (!response.ok || !payload?.url) {
-        throw new Error(payload?.message || `Failed to open Payments (${response.status})`)
+        const message =
+          (typeof payload?.message === 'string' && payload.message) ||
+          `Failed to open Payments (${response.status})`
+        if (
+          response.status === 403 ||
+          payload?.code === PAYMENTS_ROLE_DENIED_CODE ||
+          isPaymentsRoleDeniedMessage(message)
+        ) {
+          setIsLaunching(false)
+          return { ok: false, denied: true, message }
+        }
+        throw new Error(message)
       }
 
       setIsLaunching(false)
-      return payload.url as string
+      return {
+        ok: true,
+        url: payload.url as string,
+        paymentsTenantSlug:
+          typeof payload.payments_tenant_slug === 'string'
+            ? payload.payments_tenant_slug
+            : undefined,
+        role: typeof payload.role === 'string' ? payload.role : undefined,
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to open Payments')
+      const message = error instanceof Error ? error.message : 'Failed to open Payments'
+      toast.error(message)
       setIsLaunching(false)
-      return null
+      return { ok: false, denied: false, message }
     }
   }, [ref])
 

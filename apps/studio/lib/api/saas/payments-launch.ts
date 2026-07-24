@@ -10,12 +10,18 @@ import { executeQuery } from './query'
 type Claims = JwtPayload & Record<string, unknown>
 
 /**
- * Roles allowed to open Payments. Payments controls money movement (payouts, refunds), so a
- * view-only org member must not reach it — only owners and admins. The engine re-checks `role` in
- * the handoff token, so this is defence in depth, not the only gate.
+ * Org roles allowed to open Payments via Studio SSO.
+ * Matches saas.organization_members.role: owner | admin | developer | viewer.
+ * Merchant KYC edits stay owner/admin-only (see merchant-kyc).
  */
-export const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin'] as const
+export const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin', 'developer', 'viewer'] as const
 export type PaymentsRole = (typeof PAYMENTS_ALLOWED_ROLES)[number]
+
+/** Owner/admin only — merchant KYC / money-movement onboarding. */
+export const PAYMENTS_MERCHANT_ADMIN_ROLES = ['owner', 'admin'] as const
+export type PaymentsMerchantAdminRole = (typeof PAYMENTS_MERCHANT_ADMIN_ROLES)[number]
+
+export const PAYMENTS_ROLE_DENIED_CODE = 'payments_role_denied' as const
 
 export type PaymentsHandoffPayload = {
   aud: 'indobase-payments'
@@ -27,24 +33,60 @@ export type PaymentsHandoffPayload = {
   organization_slug: string
   project_name: string
   project_ref: string
-  /** Caller's org role, propagated so the engine grants matching Payments access (owner/admin only). */
+  /** Caller's org role, propagated so the engine grants matching Payments access. */
   role: PaymentsRole
   studio_url: string
   sub: string
 }
 
+const ALLOWED_ROLE_SET = new Set<string>(PAYMENTS_ALLOWED_ROLES)
+const MERCHANT_ADMIN_ROLE_SET = new Set<string>(PAYMENTS_MERCHANT_ADMIN_ROLES)
+
+export function isPaymentsRole(role: string | null | undefined): role is PaymentsRole {
+  return !!role && ALLOWED_ROLE_SET.has(role)
+}
+
+export function isPaymentsMerchantAdminRole(
+  role: string | null | undefined
+): role is PaymentsMerchantAdminRole {
+  return !!role && MERCHANT_ADMIN_ROLE_SET.has(role)
+}
+
 /**
- * The caller's role in the org, or null if they are not an owner/admin (or not a member).
- * Deliberately returns only the privileged roles — a plain member resolves to null and is denied.
+ * Same slug mapping as Payments `sanitize_studio_org_slug`:
+ * Studio org slug → Payments org/tenant slug `ib-{sanitized}`.
  */
-export async function resolvePaymentsRole(gotrueId: string, organizationSlug: string): Promise<PaymentsRole | null> {
+export function sanitizePaymentsOrgSlug(raw: string): string {
+  const cleaned = raw
+    .split('')
+    .map((c) => (/[a-zA-Z0-9]/.test(c) ? c.toLowerCase() : '-'))
+    .join('')
+  const trimmed = cleaned.replace(/^-+|-+$/g, '')
+  const body = trimmed.length === 0 ? 'org' : trimmed.slice(0, 40)
+  return `ib-${body}`
+}
+
+export function paymentsTenantSlugForOrg(organizationSlug: string): string {
+  return sanitizePaymentsOrgSlug(organizationSlug)
+}
+
+/**
+ * The caller's Payments-eligible role, or null if they are not an org member
+ * with owner/admin/developer/viewer.
+ */
+export async function resolvePaymentsRole(
+  gotrueId: string,
+  organizationSlug: string
+): Promise<PaymentsRole | null> {
   if (!gotrueId || !organizationSlug) return null
   const rows = await executeQuery<{ role: string }>({
     query: `
       select m.role
       from saas.organizations o
       join saas.organization_members m on m.organization_id = o.id
-      where o.slug = $1 and m.gotrue_id = $2 and m.role in ('owner', 'admin')
+      where o.slug = $1
+        and m.gotrue_id = $2
+        and m.role in ('owner', 'admin', 'developer', 'viewer')
       limit 1
     `,
     parameters: [organizationSlug, gotrueId],
@@ -52,7 +94,27 @@ export async function resolvePaymentsRole(gotrueId: string, organizationSlug: st
   })
   if (rows.error) throw rows.error
   const role = rows.data?.[0]?.role
-  return role === 'owner' || role === 'admin' ? role : null
+  return isPaymentsRole(role) ? role : null
+}
+
+export async function resolvePaymentsMerchantAdminRole(
+  gotrueId: string,
+  organizationSlug: string
+): Promise<PaymentsMerchantAdminRole | null> {
+  const role = await resolvePaymentsRole(gotrueId, organizationSlug)
+  return isPaymentsMerchantAdminRole(role) ? role : null
+}
+
+export function isPaymentsRoleDeniedMessage(message: string | null | undefined): boolean {
+  if (!message) return false
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('owners and admins only') ||
+    lower.includes('organization owner or admin') ||
+    lower.includes(PAYMENTS_ROLE_DENIED_CODE) ||
+    lower.includes('ask an organization owner or admin') ||
+    (lower.includes('payments') && lower.includes('available to organization'))
+  )
 }
 
 function base64Url(input: Buffer | string) {
@@ -141,12 +203,14 @@ export async function getPaymentsLaunchRedirect({
   const studioUrl = getStudioOrigin()
   const userId = getGotrueUserId(claims)
 
-  // Gate on org role: only owners/admins may open Payments (money movement). A member is denied
-  // here — before a token is even minted — and the engine re-checks the role claim as well.
   const role = await resolvePaymentsRole(userId, project.organization_slug)
   if (!role) {
-    throw new Error('Payments is available to organization owners and admins only')
+    throw new Error(
+      'Ask an organization owner or admin to grant you Payments access (owner, admin, developer, or viewer).'
+    )
   }
+
+  const paymentsTenantSlug = paymentsTenantSlugForOrg(project.organization_slug)
 
   const payload: PaymentsHandoffPayload = {
     aud: 'indobase-payments',
@@ -166,6 +230,8 @@ export async function getPaymentsLaunchRedirect({
   const token = makePaymentsHandoffToken(payload, resolvePaymentsHandoffSecret())
   return {
     project,
+    paymentsTenantSlug,
+    role,
     token,
     url: buildPaymentsLaunchUrl({
       handoffToken: token,

@@ -84,7 +84,9 @@ export async function mintPaymentsMcpBearer({
   const userId = getGotrueUserId(claims)
   const role = await resolvePaymentsRole(userId, project.organization_slug)
   if (!role) {
-    throw new Error('Payments MCP is available to organization owners and admins only')
+    throw new Error(
+      'Ask an organization owner or admin to grant you Payments access (owner, admin, developer, or viewer).'
+    )
   }
 
   const apiBaseUrl = resolvePaymentsApiBaseUrl()

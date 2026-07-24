@@ -59,7 +59,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     const status =
       lower.includes('not found') || lower.includes('insufficient')
         ? 404
-        : lower.includes('owners and admins') || lower.includes('unauthorized')
+        : lower.includes('owners and admins') ||
+            lower.includes('ask an organization') ||
+            lower.includes('unauthorized')
           ? 403
           : lower.includes('cannot') ||
               lower.includes('missing') ||
@@ -68,6 +70,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
               lower.includes('already')
             ? 400
             : 500
-    return res.status(status).json({ message })
+    const body: { message: string; code?: string } = { message }
+    if (status === 403 && lower.includes('ask an organization')) {
+      body.code = 'payments_role_denied'
+    }
+    return res.status(status).json(body)
   }
 }
