@@ -1,6 +1,6 @@
 {
-  "name": "Notifuse",
-  "short_name": "Notifuse",
+  "name": "Indobase Email",
+  "short_name": "Indobase Email",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,7 +13,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#161616",
+  "background_color": "#161616",
   "display": "standalone"
 }

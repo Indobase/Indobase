@@ -1,19 +1,19 @@
 openapi: 3.0.3
 info:
-  title: Notifuse API
-  description: API for Notifuse - a transactional email and newsletter management platform
+  title: Indobase Email API
+  description: API for Indobase Email — transactional email and newsletter management
   version: 1.0.0
   contact:
-    name: Notifuse Support
-    url: https://www.notifuse.com/support
-    email: hello@notifuse.com
+    name: Indobase Support
+    url: https://indobase.in
+    email: hello@indobase.in
 servers:
-  - url: https://{notifuseDomain}
-    description: Customer-specific Notifuse API server
+  - url: https://{emailDomain}
+    description: Indobase Email API server
     variables:
-      notifuseDomain:
-        description: Your unique Notifuse domain
-        default: demo.notifuse.com
+      emailDomain:
+        description: Your Indobase Email host
+        default: email.indobase.in
 paths:
   /api/transactional.send:
     $ref: './paths/transactional.yaml#/~1api~1transactional.send'

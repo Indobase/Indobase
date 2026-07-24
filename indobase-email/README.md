@@ -20,3 +20,7 @@ Open Studio Marketing hub → **Email marketing** → Open (SSO handoff).
 ## Deploy
 
 See `docker/deploy/` and monorepo `docs/MARKETING.md`.
+
+CI image: `roshanraghavander/indobase-email:<git-sha>` from
+`.github/workflows/docker-publish.yml`. Pin that tag in
+`docker/deploy/.env` as `INDOBASE_EMAIL_IMAGE`.

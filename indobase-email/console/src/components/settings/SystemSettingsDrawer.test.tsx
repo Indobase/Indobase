@@ -24,7 +24,7 @@ function makeSettings(oidc: Partial<SystemSettingsData> = {}): SystemSettingsDat
     smtp_username: 'u',
     smtp_password: '••••••••',
     smtp_from_email: 'from@example.com',
-    smtp_from_name: 'Notifuse',
+    smtp_from_name: 'Indobase Email',
     smtp_use_tls: true,
     smtp_ehlo_hostname: '',
     telemetry_enabled: false,

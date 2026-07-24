@@ -195,7 +195,7 @@ const EmailIntegration = ({
   // Render webhook status
   // Inbound (reply) forwarding status — for providers that support stop-on-reply. The
   // "Register Webhooks" action also creates the provider-side route (a Mailgun Route, or an
-  // SES receipt rule + SNS topic) that forwards replies to Notifuse (for automation
+  // SES receipt rule + SNS topic) that forwards replies to Indobase Email (for automation
   // Exit-on-reply); surface whether that route exists, plus the manual MX-records prerequisite.
   const renderInboundReplyStatus = () => {
     if (!INBOUND_REPLY_PROVIDER_KINDS.includes(provider.kind) || !webhookStatus) return null
@@ -210,7 +210,7 @@ const EmailIntegration = ({
     return (
       <div className="mb-2">
         <Tooltip
-          title={t`Forwards inbound replies to Notifuse so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the provider-side route; you must also point your domain's MX records at your email provider.`}
+          title={t`Forwards inbound replies to Indobase Email so automations can stop when a contact replies (Exit on reply). Registering webhooks creates the provider-side route; you must also point your domain's MX records at your email provider.`}
         >
           <Tag bordered={false} color={inboundRegistered ? 'green' : 'orange'}>
             {inboundRegistered ? (
