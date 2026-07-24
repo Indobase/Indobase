@@ -59,12 +59,18 @@ Reference (platform billing only — different product):
 
 ---
 
-## 4. Still blocking before implementation
+## 4. Still blocking before money-movement implementation
 
 1. Commercial relationship (Route / Linked Accounts vs partner) — sets whose
    `key_id` authenticates each call, liability, and settlement.
 2. Connector in the Indobase Payments fork (replace/augment Stripe adapter).
-3. Studio SSO so operators do not maintain a separate Payments password.
+3. ~~Studio SSO~~ **done**. ~~Merchant KYC UI + `saas.project_payment_merchants`~~
+   **done** (stub provider until Route HTTP is wired).
+
+Studio KYC already exposes `MerchantOnboardingProvider` /
+`StubRazorpayRouteProvider` in `apps/studio/lib/api/saas/merchant-kyc-provider.ts`.
+Wire live Linked Account create/sync there when keys and partnership land —
+do not extend `razorpay-billing.ts` (Indobase plan billing).
 
 Settle partnerships before writing the HTTP client — it changes auth on every
 call above.

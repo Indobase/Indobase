@@ -1,6 +1,7 @@
 # Indobase Payments — product overview
 
-Status: **engine live + Studio SSO handoff**. Razorpay money movement is next.
+Status: **engine live + Studio SSO + merchant KYC onboarding**. Razorpay money
+movement connector is next.
 
 **Indobase Payments** is a first-party Indobase product: businesses built on Indobase
 can take payments from *their own* customers — subscriptions, invoices, usage-based
@@ -23,7 +24,8 @@ see [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) for deploy.
 | Billing engine | Plans, metering, invoices, proration (Indobase Payments / Meteroid fork) |
 | Collect money | Stripe adapter today; **Razorpay Recurring Payments later** (INR / UPI) |
 | Payouts | Settlements to the merchant’s own bank account via the licensed aggregator |
-| In-project UI | Studio `/project/[ref]/payments` → signed handoff → Payments dashboard |
+| Merchant KYC | Studio onboarding wizard → `saas.project_payment_merchants` (Route-shaped) |
+| In-project UI | Studio `/project/[ref]/payments` → KYC hub + signed handoff → Payments dashboard |
 | Access | **Studio login only.** No Meteroid email/password; unauthenticated Payments visits redirect to Studio |
 
 Brand surfaces always say **Indobase Payments** — never Meteroid in customer-facing UI.
@@ -43,6 +45,29 @@ Indobase Payments is a product surface of Indobase, not a separate SaaS brand.
 
 End-customers paying a merchant never use Studio auth — they pay via checkout
 hosted by Indobase Payments + the payment adapter.
+
+---
+
+## Merchant KYC / sub-merchant onboarding
+
+Studio stores a **project-scoped** merchant profile so India marketplace-style
+onboarding can land before live Razorpay Route APIs.
+
+| Piece | Location |
+|---|---|
+| Schema | `saas.project_payment_merchants` — KYC status, business + bank fields, document metadata, `aggregator_account_id` placeholder |
+| APIs | `GET` / `PATCH` / `POST` (submit) `/api/platform/projects/[ref]/payments/merchant` |
+| UI | `/project/[ref]/payments` — wizard (business → bank → documents → review) |
+| Provider | `merchant-kyc-provider.ts` — Route/Linked-Accounts-shaped stub; plugs in when Razorpay keys exist |
+
+**KYC statuses:** `draft` → `submitted` / `under_review` → `verified` | `rejected`.
+
+**Soft gate:** owners/admins can always open the Payments dashboard (browse plans,
+invoices). **Go live / collect payments** requires `kyc_status = verified`. Bank
+account numbers are encrypted at rest; APIs return masked PAN and last-4 only.
+
+Settlements are intended to the merchant’s own account via a licensed aggregator.
+**Indobase does not take custody of funds.** This is not legal advice.
 
 ---
 
@@ -80,8 +105,8 @@ extend that path into Indobase Payments.
 
 1. ~~Stand up Indobase Payments engine (this fork) + Studio deep-link~~ **done**
 2. ~~Studio SSO / session handoff into Payments~~ **done**
-3. Razorpay Recurring Payments connector + pre-debit notification scheduling
-4. Sub-merchant KYC / onboarding UI attached to org session
+3. ~~Sub-merchant KYC / onboarding UI in Studio~~ **done** (stub aggregator; live Route later)
+4. Razorpay Recurring Payments connector + pre-debit notification scheduling
 5. Project-scoped payment APIs and webhook ingestion under Studio session
 
 AGPL: publish fork source (`NOTICE.md` in the payments repo). Renaming does not

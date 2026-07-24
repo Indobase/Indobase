@@ -248,5 +248,6 @@ No extra Builder env is required beyond the existing Studio handoff / MCP token.
    Stripe until India path is live. See [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md).
 2. **Publish CI images** — build/push `indobase-payments-web` and
    `indobase-payments-api` from `indobase-payments/` on each release.
-3. **Merchant KYC / Route** — after aggregator commercial relationship is
-   settled (see PAYMENTS.md regulatory notes).
+3. **Live Route Linked Accounts** — replace the Studio KYC stub provider
+   (`merchant-kyc-provider.ts`) once the aggregator commercial relationship is
+   settled. Schema + wizard already store KYC state and `aggregator_account_id`.
