@@ -147,11 +147,11 @@ export function LinkPopover({ hideWhenUnavailable = false }: LinkPopoverProps) {
           type="text"
           size="small"
           disabled={!canToggle}
-          className={`notifuse-editor-toolbar-button ${
-            isActive ? 'notifuse-editor-toolbar-button-active' : ''
+          className={`indobase-editor-toolbar-button ${
+            isActive ? 'indobase-editor-toolbar-button-active' : ''
           }`}
         >
-          <Link2 className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+          <Link2 className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
         </Button>
       </Tooltip>
     </Popover>

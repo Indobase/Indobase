@@ -39,8 +39,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   let defaultOrigin = window.location.origin
-  if (defaultOrigin.includes('notifusedev.com')) {
-    defaultOrigin = 'https://localapi.notifuse.com:4000'
+  if (defaultOrigin.includes('indobasedev.com')) {
+    defaultOrigin = 'https://localapi.indobase.dev:4000'
   }
 
   const apiEndpoint = window.API_ENDPOINT?.trim().replace(/\/+$/, '') || defaultOrigin

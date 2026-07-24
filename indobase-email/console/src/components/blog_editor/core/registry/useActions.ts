@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { useNotifuseEditor } from '../../hooks/useEditor'
-import { notifuseActionRegistry } from './ActionRegistry'
+import { useIndobaseEditor } from '../../hooks/useEditor'
+import { indobaseActionRegistry } from './ActionRegistry'
 import type { ActionDefinition } from './ActionRegistry'
 
 /**
@@ -81,7 +81,7 @@ export function useActions(
   config?: UseActionsConfig
 ): Map<string, BatchActionState> {
   const { editor: providedEditor, hideWhenUnavailable = false } = config || {}
-  const { editor } = useNotifuseEditor(providedEditor)
+  const { editor } = useIndobaseEditor(providedEditor)
 
   // Track visibility states for all actions
   const [visibilityMap, setVisibilityMap] = useState<Map<string, boolean>>(() => {
@@ -101,7 +101,7 @@ export function useActions(
         const newMap = new Map<string, boolean>()
 
         actionIds.forEach((id) => {
-          const action = notifuseActionRegistry.get(id)
+          const action = indobaseActionRegistry.get(id)
           if (!action) {
             newMap.set(id, false)
             return
@@ -151,7 +151,7 @@ export function useActions(
   const actionsMap = new Map<string, BatchActionState>()
 
   actionIds.forEach((id) => {
-    const action = notifuseActionRegistry.get(id)
+    const action = indobaseActionRegistry.get(id)
     const isVisible = visibilityMap.get(id) ?? false
     const isAvailable = action?.checkAvailability(editor) ?? false
     const isActive = action?.checkActive?.(editor) ?? false

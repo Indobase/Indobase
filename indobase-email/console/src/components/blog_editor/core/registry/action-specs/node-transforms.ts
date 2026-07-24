@@ -64,7 +64,7 @@ export const toHeading1Action: ActionDefinition = {
   group: 'Basics',
   checkAvailability: (editor: Editor | null) => {
     // Check if H1 is disabled via editor config
-    if (editor?.storage?.notifuseEditorControls?.disableH1 === true) {
+    if (editor?.storage?.indobaseEditorControls?.disableH1 === true) {
       return false
     }
     return canToggleHeading(editor, 1)

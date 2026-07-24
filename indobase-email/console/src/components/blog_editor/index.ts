@@ -1,12 +1,12 @@
 /**
- * Notifuse Editor - Public API
+ * Indobase Editor - Public API
  *
  * Main entry point for the blog editor with dynamic styling support
  */
 
 // Main component
-export { NotifuseEditor, DEFAULT_INITIAL_CONTENT } from './NotifuseEditor'
-export type { NotifuseEditorProps, NotifuseEditorRef, TOCAnchor } from './NotifuseEditor'
+export { IndobaseEditor, DEFAULT_INITIAL_CONTENT } from './IndobaseEditor'
+export type { IndobaseEditorProps, IndobaseEditorRef, TOCAnchor } from './IndobaseEditor'
 
 // Types
 export type {

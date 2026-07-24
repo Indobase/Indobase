@@ -334,16 +334,16 @@ export function ImageNodeView(props: NodeViewProps) {
   // Toolbar popover content
   const toolbarContent = (
     <div
-      className="notifuse-editor-floating-toolbar-content"
+      className="indobase-editor-floating-toolbar-content"
       contentEditable={false}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="notifuse-editor-toolbar-section">
+      <div className="indobase-editor-toolbar-section">
         <Tooltip title={t`Align left`}>
           <Button
             size="small"
             icon={
-              <AlignLeft className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+              <AlignLeft className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
             }
             type="text"
             onClick={(e) => {
@@ -351,8 +351,8 @@ export function ImageNodeView(props: NodeViewProps) {
               handleAlign('left')
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className={`notifuse-editor-toolbar-button ${
-              align === 'left' ? 'notifuse-editor-toolbar-button-active' : ''
+            className={`indobase-editor-toolbar-button ${
+              align === 'left' ? 'indobase-editor-toolbar-button-active' : ''
             }`}
           />
         </Tooltip>
@@ -360,7 +360,7 @@ export function ImageNodeView(props: NodeViewProps) {
           <Button
             size="small"
             icon={
-              <AlignCenter className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+              <AlignCenter className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
             }
             type="text"
             onClick={(e) => {
@@ -368,8 +368,8 @@ export function ImageNodeView(props: NodeViewProps) {
               handleAlign('center')
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className={`notifuse-editor-toolbar-button ${
-              align === 'center' ? 'notifuse-editor-toolbar-button-active' : ''
+            className={`indobase-editor-toolbar-button ${
+              align === 'center' ? 'indobase-editor-toolbar-button-active' : ''
             }`}
           />
         </Tooltip>
@@ -377,7 +377,7 @@ export function ImageNodeView(props: NodeViewProps) {
           <Button
             size="small"
             icon={
-              <AlignRight className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+              <AlignRight className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
             }
             type="text"
             onClick={(e) => {
@@ -385,8 +385,8 @@ export function ImageNodeView(props: NodeViewProps) {
               handleAlign('right')
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className={`notifuse-editor-toolbar-button ${
-              align === 'right' ? 'notifuse-editor-toolbar-button-active' : ''
+            className={`indobase-editor-toolbar-button ${
+              align === 'right' ? 'indobase-editor-toolbar-button-active' : ''
             }`}
           />
         </Tooltip>
@@ -394,13 +394,13 @@ export function ImageNodeView(props: NodeViewProps) {
 
       <Divider type="vertical" style={{ height: '20px', margin: '0 4px' }} />
 
-      <div className="notifuse-editor-toolbar-section">
+      <div className="indobase-editor-toolbar-section">
         <Tooltip title={t`Toggle caption`}>
           <Button
             size="small"
             icon={
               <MessageSquare
-                className="notifuse-editor-toolbar-icon"
+                className="indobase-editor-toolbar-icon"
                 style={{ fontSize: '16px' }}
               />
             }
@@ -410,8 +410,8 @@ export function ImageNodeView(props: NodeViewProps) {
               handleToggleCaption()
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className={`notifuse-editor-toolbar-button ${
-              showCaption ? 'notifuse-editor-toolbar-button-active' : ''
+            className={`indobase-editor-toolbar-button ${
+              showCaption ? 'indobase-editor-toolbar-button-active' : ''
             }`}
           />
         </Tooltip>
@@ -428,7 +428,7 @@ export function ImageNodeView(props: NodeViewProps) {
             <Button
               size="small"
               icon={
-                <FileText className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />
+                <FileText className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />
               }
               type="text"
               onClick={(e) => {
@@ -436,8 +436,8 @@ export function ImageNodeView(props: NodeViewProps) {
                 setAltPopoverOpen(!altPopoverOpen)
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className={`notifuse-editor-toolbar-button ${
-                altValue ? 'notifuse-editor-toolbar-button-active' : ''
+              className={`indobase-editor-toolbar-button ${
+                altValue ? 'indobase-editor-toolbar-button-active' : ''
               }`}
             />
           </Tooltip>

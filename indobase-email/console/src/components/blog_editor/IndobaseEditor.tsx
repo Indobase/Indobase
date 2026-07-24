@@ -213,9 +213,9 @@ function addSyntaxHighlightingToHTML(html: string, lowlightInstance: LowlightIns
 }
 
 /**
- * Ref API for NotifuseEditor - allows parent components to retrieve content on-demand
+ * Ref API for IndobaseEditor - allows parent components to retrieve content on-demand
  */
-export interface NotifuseEditorRef {
+export interface IndobaseEditorRef {
   getJSON: () => Record<string, unknown> | null
   getHTML: () => string
   getCSS: () => string
@@ -309,7 +309,7 @@ export const DEFAULT_INITIAL_CONTENT = `
 <p>Start editing and make this document your own! ✨</p>
 `
 
-export interface NotifuseEditorProps {
+export interface IndobaseEditorProps {
   placeholder?: string
   initialContent?: string
   styleConfig?: EditorStyleConfig
@@ -344,7 +344,7 @@ export function EditorContentArea() {
     <EditorContent
       editor={editor}
       role="presentation"
-      className="notifuse-editor-content"
+      className="indobase-editor-content"
       style={{
         cursor: isDragging ? 'grabbing' : 'auto'
       }}
@@ -361,7 +361,7 @@ export function EditorContentArea() {
 /**
  * Component that creates and provides the editor instance
  */
-export const EditorProvider = forwardRef<NotifuseEditorRef, EditorProviderProps>((props, ref) => {
+export const EditorProvider = forwardRef<IndobaseEditorRef, EditorProviderProps>((props, ref) => {
   const { t } = useLingui()
   const {
     placeholder = t`Start writing...`,
@@ -384,7 +384,7 @@ export const EditorProvider = forwardRef<NotifuseEditorRef, EditorProviderProps>
     },
     editorProps: {
       attributes: {
-        class: 'notifuse-editor'
+        class: 'indobase-editor'
       }
     },
     extensions: [
@@ -479,7 +479,7 @@ export const EditorProvider = forwardRef<NotifuseEditorRef, EditorProviderProps>
   }
 
   return (
-    <div className="notifuse-editor-wrapper" style={editorStyles}>
+    <div className="indobase-editor-wrapper" style={editorStyles}>
       <EditorContext.Provider value={{ editor }}>
         {showHeader && <EditorHeader />}
         <EditorContentArea />
@@ -493,7 +493,7 @@ EditorProvider.displayName = 'EditorProvider'
 /**
  * Full editor with all necessary providers, ready to use
  */
-export const NotifuseEditor = forwardRef<NotifuseEditorRef, NotifuseEditorProps>(
+export const IndobaseEditor = forwardRef<IndobaseEditorRef, IndobaseEditorProps>(
   (
     {
       placeholder = 'Start writing...',
@@ -521,7 +521,7 @@ export const NotifuseEditor = forwardRef<NotifuseEditorRef, NotifuseEditorProps>
   }
 )
 
-NotifuseEditor.displayName = 'NotifuseEditor'
+IndobaseEditor.displayName = 'IndobaseEditor'
 
 // Export default styles and utility functions for external use
 // eslint-disable-next-line react-refresh/only-export-components -- Utility exports co-located with component

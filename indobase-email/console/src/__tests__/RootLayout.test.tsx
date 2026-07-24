@@ -97,14 +97,14 @@ describe('RootLayout', () => {
     ;(window as unknown as { location: Location }).location = {
       ...originalLocation,
       pathname: '/console/',
-      search: '?email=demo@notifuse.com',
-      href: 'http://localhost:3000/console/?email=demo@notifuse.com'
+      search: '?email=demo@indobase.com',
+      href: 'http://localhost:3000/console/?email=demo@indobase.com'
     } as Location
 
     render(<RootLayout />)
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/console/signin',
-      search: { email: 'demo@notifuse.com' },
+      search: { email: 'demo@indobase.com' },
       replace: true
     })
   })
@@ -125,8 +125,8 @@ describe('RootLayout', () => {
     ;(window as unknown as { location: Location }).location = {
       ...originalLocation,
       pathname: '/console/signin',
-      search: '?email=demo@notifuse.com',
-      href: 'http://localhost:3000/console/signin?email=demo@notifuse.com'
+      search: '?email=demo@indobase.com',
+      href: 'http://localhost:3000/console/signin?email=demo@indobase.com'
     } as Location
 
     render(<RootLayout />)

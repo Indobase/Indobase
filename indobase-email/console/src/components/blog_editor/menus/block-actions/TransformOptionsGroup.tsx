@@ -6,7 +6,7 @@ import {
 } from '../../hooks/useResetAllFormatting'
 import { RotateCcw } from 'lucide-react'
 import { createActionMenuItem } from './ActionButton'
-import { useNotifuseEditor } from '../../hooks/useEditor'
+import { useIndobaseEditor } from '../../hooks/useEditor'
 import { useBlockTransformPopover } from './BlockTransformPopover'
 import { useBlockColorPopover } from './BlockColorPopover'
 
@@ -16,7 +16,7 @@ import { useBlockColorPopover } from './BlockColorPopover'
  */
 export function useTransformOptionsGroup(onCloseMenu: () => void): MenuProps['items'] {
   const { t } = useLingui()
-  const { editor } = useNotifuseEditor()
+  const { editor } = useIndobaseEditor()
   const transformPopover = useBlockTransformPopover(onCloseMenu)
   const colorPopover = useBlockColorPopover(onCloseMenu)
 

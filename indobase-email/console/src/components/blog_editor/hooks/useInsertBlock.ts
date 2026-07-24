@@ -3,7 +3,7 @@ import type { Editor } from '@tiptap/react'
 import type { Node } from '@tiptap/pm/model'
 
 // --- Hooks ---
-import { useNotifuseEditor } from '../hooks/useEditor'
+import { useIndobaseEditor } from '../hooks/useEditor'
 
 /**
  * Configuration for the insert block functionality
@@ -247,7 +247,7 @@ export function shouldShowButton(props: {
 }
 
 /**
- * Custom hook that provides insert block functionality for the notifuse editor
+ * Custom hook that provides insert block functionality for the Indobase editor
  *
  * @example
  * ```tsx
@@ -263,7 +263,7 @@ export function shouldShowButton(props: {
 export function useInsertBlock(config?: UseInsertBlockConfig) {
   const { editor: providedEditor, node, nodePos, trigger = '/', onTriggered } = config || {}
 
-  const { editor } = useNotifuseEditor(providedEditor)
+  const { editor } = useIndobaseEditor(providedEditor)
   const [isVisible, setIsVisible] = useState<boolean>(true)
   const canInsert = canInsertSlashCommand(editor, node, nodePos)
 

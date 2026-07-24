@@ -31,8 +31,8 @@ import { ApiError } from '../../services/api/client'
 import { useTemplateConflictModal } from '../templates/useTemplateConflictModal'
 import { AuthorsTable } from './AuthorsTable'
 import {
-  NotifuseEditor,
-  type NotifuseEditorRef,
+  IndobaseEditor,
+  type IndobaseEditorRef,
   type TOCAnchor,
   DEFAULT_INITIAL_CONTENT
 } from '../blog_editor'
@@ -96,7 +96,7 @@ export function PostDrawer({ open, onClose, post, workspace, initialCategoryId }
   )
 
   // Editor ref for undo/redo
-  const editorRef = useRef<NotifuseEditorRef>(null)
+  const editorRef = useRef<IndobaseEditorRef>(null)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
@@ -804,7 +804,7 @@ export function PostDrawer({ open, onClose, post, workspace, initialCategoryId }
                     </Space>
                   </div>
                 ) : (
-                  <NotifuseEditor
+                  <IndobaseEditor
                     key={`editor-${post?.id || 'new'}-${post?.settings.template.template_id || 'no-template'}-${post?.settings.template.template_version || 0}-${editorKeyCounter}`}
                     ref={editorRef}
                     placeholder={t`Start writing your blog post...`}

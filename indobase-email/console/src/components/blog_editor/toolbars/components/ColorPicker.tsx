@@ -263,8 +263,8 @@ export function ColorPicker({ hideWhenUnavailable = false }: ColorPickerProps) {
           type="text"
           size="small"
           disabled={!canSetAny}
-          className={`notifuse-editor-toolbar-button ${
-            isActive ? 'notifuse-editor-toolbar-button-active' : ''
+          className={`indobase-editor-toolbar-button ${
+            isActive ? 'indobase-editor-toolbar-button-active' : ''
           }`}
           style={{ display: 'flex', alignItems: 'center', gap: '1px' }}
         >

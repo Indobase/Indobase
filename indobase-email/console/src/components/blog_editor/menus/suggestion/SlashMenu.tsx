@@ -9,7 +9,7 @@ import type { Editor } from '@tiptap/react'
 // --- Hooks ---
 import { useFloatingMenu } from '../../hooks/useFloatingMenu'
 import { useMenuKeyboard } from '../../hooks/useMenuKeyboard'
-import { useNotifuseEditor } from '../../hooks/useEditor'
+import { useIndobaseEditor } from '../../hooks/useEditor'
 
 // --- Components ---
 import { SlashPopoverContent } from './SlashPopoverContent'
@@ -30,7 +30,7 @@ interface SlashMenuProps {
  */
 export const SlashMenu = ({ editor: providedEditor }: SlashMenuProps) => {
   const { t } = useLingui()
-  const { editor } = useNotifuseEditor(providedEditor)
+  const { editor } = useIndobaseEditor(providedEditor)
 
   const [show, setShow] = useState<boolean>(false)
   const [internalDecorationNode, setInternalDecorationNode] = useState<HTMLElement | null>(null)

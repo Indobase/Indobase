@@ -61,12 +61,12 @@ export function ToolbarButton({
       size="small"
       disabled={!isAvailable}
       onClick={handleClick}
-      className={`notifuse-editor-toolbar-button ${
-        isActive ? 'notifuse-editor-toolbar-button-active' : ''
+      className={`indobase-editor-toolbar-button ${
+        isActive ? 'indobase-editor-toolbar-button-active' : ''
       }`}
       {...buttonProps}
     >
-      {Icon && <Icon className="notifuse-editor-toolbar-icon" style={{ fontSize: '16px' }} />}
+      {Icon && <Icon className="indobase-editor-toolbar-icon" style={{ fontSize: '16px' }} />}
     </Button>
   )
 

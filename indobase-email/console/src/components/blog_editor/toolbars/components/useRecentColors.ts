@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-const STORAGE_KEY = 'notifuse-editor-recent-colors'
+const STORAGE_KEY = 'indobase-editor-recent-colors'
 const MAX_RECENT_COLORS = 8
 
 export interface RecentColor {

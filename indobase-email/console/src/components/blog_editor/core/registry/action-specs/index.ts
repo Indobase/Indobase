@@ -6,7 +6,7 @@
  * setup to make all actions available throughout the application.
  */
 
-import { notifuseActionRegistry } from '../ActionRegistry'
+import { indobaseActionRegistry } from '../ActionRegistry'
 
 // Import all action specification modules
 import { blockOperationSpecs } from './block-ops'
@@ -18,7 +18,7 @@ import { linkColorSpecs } from './link-color-actions'
 /**
  * Register all action definitions with the registry
  */
-notifuseActionRegistry.registerMany([
+indobaseActionRegistry.registerMany([
   ...blockOperationSpecs,
   ...nodeTransformSpecs,
   ...textMarkSpecs,
@@ -38,7 +38,7 @@ export * from './link-color-actions'
 /**
  * Export the registry instance for direct access
  */
-export { notifuseActionRegistry } from '../ActionRegistry'
+export { indobaseActionRegistry } from '../ActionRegistry'
 
 /**
  * Export consumer hooks

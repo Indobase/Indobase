@@ -1,6 +1,6 @@
 import type { Editor, Range } from '@tiptap/react'
 import { Smile } from 'lucide-react'
-import { notifuseActionRegistry } from '../../../core/registry/ActionRegistry'
+import { indobaseActionRegistry } from '../../../core/registry/ActionRegistry'
 import type { ActionDefinition } from '../../../core/registry/ActionRegistry'
 import type { SuggestionConfig, SuggestionItem } from '../types'
 
@@ -71,7 +71,7 @@ export const slashConfig: SuggestionConfig<ActionDefinition | { type: string }> 
   // Get available actions from registry and filter by query
   getItems: async (query: string, editor: Editor | null): Promise<SuggestionItem<ActionDefinition | { type: string }>[]> => {
     // Get only transform actions (Style section)
-    const transformActions = notifuseActionRegistry.getByType('transform')
+    const transformActions = indobaseActionRegistry.getByType('transform')
 
     // Convert to SuggestionItems, filtering out unavailable ones
     const actionItems = transformActions

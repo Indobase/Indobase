@@ -84,7 +84,7 @@ export function TurnIntoDropdown({ hideWhenUnavailable = false }: TurnIntoDropdo
           <Button
             type="text"
             size="small"
-            className="notifuse-editor-toolbar-turn-into"
+            className="indobase-editor-toolbar-turn-into"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
