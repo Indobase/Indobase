@@ -93,6 +93,14 @@ const SKILL_RULES: SkillRule[] = [
     patterns: [/\bhono\b/i],
   },
   {
+    id: 'indobase-payments',
+    patterns: [
+      /\bindobase\s*payments\b/i,
+      /\b(payment|payments|checkout|pricing\s*page|subscribe|subscription|billing\s*portal|customer\s*portal)\b/i,
+      /\b(stripe|razorpay)\b/i,
+    ],
+  },
+  {
     id: 'drizzle-orm-expert',
     patterns: [/\bdrizzle\b/i, /\borm\b/i],
   },
@@ -211,7 +219,8 @@ export function selectWebSkills(options: SelectWebSkillsOptions): SelectedWebSki
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 
   const overrideHit = ranked.find((entry) => FRAMEWORK_OVERRIDE.includes(entry.id) && entry.score >= 8);
-  const filtered = overrideHit
+  const paymentsHit = ranked.find((entry) => entry.id === 'indobase-payments' && entry.score >= 8);
+  const filtered = (overrideHit
     ? ranked.filter((entry) => {
         if (entry.id === 'react-best-practices' || entry.id === 'tailwind-design-system') {
           // Keep Tailwind when still relevant; drop React baseline for non-React frameworks.
@@ -222,7 +231,14 @@ export function selectWebSkills(options: SelectWebSkillsOptions): SelectedWebSki
 
         return true;
       })
-    : ranked;
+    : ranked
+  ).filter((entry) => {
+    // Prefer Indobase Payments over Shopify checkout when the user asked for payments/pricing.
+    if (paymentsHit && (entry.id === 'shopify-development' || entry.id === 'shopify-apps')) {
+      return false;
+    }
+    return true;
+  });
 
   const selected: SelectedWebSkill[] = [];
   let usedChars = 0;

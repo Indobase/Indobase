@@ -1,9 +1,9 @@
 /**
- * Merchant onboarding provider — Route / Linked-Accounts shaped.
+ * Merchant onboarding provider — settlement-adapter shaped.
  *
- * Indobase Payments intends settlements to the merchant's own bank account via a
- * licensed aggregator (e.g. Razorpay Route). This interface is the plug-in point;
- * the stub works without live API keys so Studio KYC UI can ship first.
+ * Default money path today is **Stripe** (Indobase Payments connector). Razorpay
+ * Route Linked Accounts remain the India aggregator target; the stub keeps that
+ * interface ready without half-wired HTTP calls.
  *
  * Not Indobase plan billing (`razorpay-billing.ts`).
  */
@@ -11,6 +11,8 @@
 import type { MerchantKycStatus } from './merchant-kyc-types'
 
 export type { MerchantKycStatus }
+
+export type SettlementAdapter = 'stripe' | 'razorpay_route'
 
 export type AggregatorLinkedAccountInput = {
   projectRef: string
@@ -26,11 +28,10 @@ export type AggregatorLinkedAccountInput = {
 }
 
 export type AggregatorLinkedAccountResult = {
-  /** Placeholder until Razorpay Route Linked Accounts are wired. */
   accountId: string
   status: 'created' | 'pending' | 'active' | 'rejected' | 'stubbed'
-  provider: 'razorpay_route'
-  /** True when no live Razorpay credentials were used. */
+  provider: SettlementAdapter
+  /** True when no live aggregator credentials were used. */
   stubbed: boolean
   message: string
   meta: Record<string, unknown>
@@ -43,6 +44,20 @@ export interface MerchantOnboardingProvider {
   syncLinkedAccountStatus(accountId: string): Promise<AggregatorLinkedAccountResult>
 }
 
+export function resolveSettlementAdapter(): SettlementAdapter {
+  const raw = (
+    process.env.INDOBASE_PAYMENTS_SETTLEMENT_ADAPTER ||
+    process.env.PAYMENTS_SETTLEMENT_ADAPTER ||
+    'stripe'
+  )
+    .trim()
+    .toLowerCase()
+  if (raw === 'razorpay_route' || raw === 'razorpay' || raw === 'route') {
+    return 'razorpay_route'
+  }
+  return 'stripe'
+}
+
 function razorpayRouteKeysConfigured(): boolean {
   const keyId =
     process.env.RAZORPAY_ROUTE_KEY_ID?.trim() ||
@@ -53,6 +68,45 @@ function razorpayRouteKeysConfigured(): boolean {
     process.env.INDOBASE_PAYMENTS_RAZORPAY_KEY_SECRET?.trim() ||
     ''
   return keyId.length > 0 && keySecret.length > 0
+}
+
+/**
+ * Stripe settlement path: KYC collects merchant identity/bank metadata in Studio;
+ * live charges run through Indobase Payments' Stripe adapter after go-live confirm.
+ */
+export class StripeSettlementOnboardingProvider implements MerchantOnboardingProvider {
+  async createOrUpdateLinkedAccount(
+    input: AggregatorLinkedAccountInput
+  ): Promise<AggregatorLinkedAccountResult> {
+    const accountId = `stripe_merchant_${input.projectRef.replace(/[^a-zA-Z0-9]/g, '').slice(0, 24)}`
+
+    return {
+      accountId,
+      status: 'pending',
+      provider: 'stripe',
+      stubbed: false,
+      message:
+        'Merchant KYC submitted for Stripe settlement. An organization owner or admin must confirm go-live in Studio, then connect Stripe in Indobase Payments (keys + webhook) before live charges.',
+      meta: {
+        settlement_adapter: 'stripe',
+        business_legal_name: input.businessLegalName,
+        bank_last4: input.bankAccountLast4,
+        created_at: new Date().toISOString(),
+      },
+    }
+  }
+
+  async syncLinkedAccountStatus(accountId: string): Promise<AggregatorLinkedAccountResult> {
+    return {
+      accountId,
+      status: 'pending',
+      provider: 'stripe',
+      stubbed: false,
+      message:
+        'Stripe merchant status is confirmed in Studio (go-live) and via the Payments Stripe connector — not via Razorpay Route sync.',
+      meta: { synced_at: new Date().toISOString(), settlement_adapter: 'stripe' },
+    }
+  }
 }
 
 /**
@@ -80,6 +134,7 @@ export class StubRazorpayRouteProvider implements MerchantOnboardingProvider {
         business_legal_name: input.businessLegalName,
         bank_last4: input.bankAccountLast4,
         created_at: new Date().toISOString(),
+        settlement_adapter: 'razorpay_route',
       },
     }
   }
@@ -91,7 +146,7 @@ export class StubRazorpayRouteProvider implements MerchantOnboardingProvider {
       provider: 'razorpay_route',
       stubbed: true,
       message: 'Live Linked Account status sync is not wired yet.',
-      meta: { synced_at: new Date().toISOString() },
+      meta: { synced_at: new Date().toISOString(), settlement_adapter: 'razorpay_route' },
     }
   }
 }
@@ -100,7 +155,10 @@ let cachedProvider: MerchantOnboardingProvider | null = null
 
 export function getMerchantOnboardingProvider(): MerchantOnboardingProvider {
   if (!cachedProvider) {
-    cachedProvider = new StubRazorpayRouteProvider()
+    cachedProvider =
+      resolveSettlementAdapter() === 'razorpay_route'
+        ? new StubRazorpayRouteProvider()
+        : new StripeSettlementOnboardingProvider()
   }
   return cachedProvider
 }

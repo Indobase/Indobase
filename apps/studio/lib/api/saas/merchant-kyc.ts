@@ -1,7 +1,7 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { randomUUID } from 'node:crypto'
 
-import { getMerchantOnboardingProvider } from './merchant-kyc-provider'
+import { getMerchantOnboardingProvider, resolveSettlementAdapter } from './merchant-kyc-provider'
 import type {
   MerchantBusinessType,
   MerchantDocumentMeta,
@@ -213,6 +213,9 @@ function normalizeDocuments(docs: MerchantDocumentMeta[] | null | undefined): Me
 
 function toPublic(row: MerchantRow): MerchantProfilePublic {
   const status = row.kyc_status
+  const settlementAdapter = resolveSettlementAdapter()
+  const canConfirmGoLive =
+    (status === 'submitted' || status === 'under_review') && settlementAdapter === 'stripe'
   return {
     id: row.id,
     project_ref: row.project_ref,
@@ -244,6 +247,8 @@ function toPublic(row: MerchantRow): MerchantProfilePublic {
     aggregator_provider: row.aggregator_provider,
     aggregator_account_id: row.aggregator_account_id,
     aggregator_status: row.aggregator_status,
+    settlement_adapter: settlementAdapter,
+    can_confirm_go_live: canConfirmGoLive,
     can_browse_payments: true,
     can_go_live: status === 'verified',
     can_edit_merchant_kyc: false,
@@ -262,9 +267,11 @@ function withAccessMeta(
     role: PaymentsRole
   }
 ): MerchantProfilePublic {
+  const canEdit = isPaymentsMerchantAdminRole(opts.role)
   return {
     ...profile,
-    can_edit_merchant_kyc: isPaymentsMerchantAdminRole(opts.role),
+    can_edit_merchant_kyc: canEdit,
+    can_confirm_go_live: canEdit && profile.can_confirm_go_live,
     organization_slug: opts.organizationSlug,
     payments_tenant_slug: paymentsTenantSlugForOrg(opts.organizationSlug),
     payments_role: opts.role,
@@ -599,7 +606,7 @@ export async function submitMerchantProfile({
         aggregator_account_id = $4,
         aggregator_status = $5,
         aggregator_meta = $6::jsonb,
-        aggregator_provider = 'razorpay_route',
+        aggregator_provider = $8,
         updated_by_gotrue_id = $7,
         updated_at = now()
       where project_ref = $1
@@ -622,6 +629,7 @@ export async function submitMerchantProfile({
       linked.status,
       JSON.stringify({ ...linked.meta, message: linked.message, stubbed: linked.stubbed }),
       actorId,
+      linked.provider,
     ],
     actorId,
   })
@@ -632,4 +640,181 @@ export async function submitMerchantProfile({
     organizationSlug: project.organization_slug,
     role,
   })
+}
+
+/**
+ * Owner/admin review for Stripe settlement go-live (or explicit reject).
+ * Unblocks live charges / checkout MCP tools when status becomes verified.
+ */
+export async function reviewMerchantProfile({
+  claims,
+  ref,
+  decision,
+  reason,
+}: {
+  claims: Claims
+  ref: string
+  decision: 'verify' | 'reject'
+  reason?: string | null
+}): Promise<MerchantProfilePublic> {
+  const { actorId, project, role } = await assertMerchantAdminAccess(claims, ref)
+  const current = await ensureDraftRow({
+    actorId,
+    projectRef: project.ref,
+    organizationId: project.organization_id,
+    contactEmail: getPrimaryEmail(claims),
+  })
+
+  if (current.kyc_status === 'verified' && decision === 'verify') {
+    throw new Error('Merchant KYC is already verified')
+  }
+  if (current.kyc_status !== 'submitted' && current.kyc_status !== 'under_review') {
+    throw new Error(
+      `Cannot ${decision} merchant KYC while status is "${current.kyc_status}". Submit KYC first.`
+    )
+  }
+
+  const settlementAdapter = resolveSettlementAdapter()
+  if (decision === 'verify' && settlementAdapter !== 'stripe') {
+    const allowManual =
+      process.env.INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY === 'true' ||
+      process.env.INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY === '1'
+    if (!allowManual) {
+      throw new Error(
+        'Manual KYC verify is only enabled for the Stripe settlement adapter (or set INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY=true).'
+      )
+    }
+  }
+
+  if (decision === 'reject') {
+    const rejection =
+      typeof reason === 'string' && reason.trim()
+        ? reason.trim()
+        : 'Merchant KYC rejected by organization admin.'
+    const updated = await executeQuery<MerchantRow>({
+      query: `
+        update saas.project_payment_merchants
+        set
+          kyc_status = 'rejected',
+          kyc_rejection_reason = $2,
+          reviewed_at = now(),
+          verified_at = null,
+          aggregator_status = 'rejected',
+          aggregator_meta = coalesce(aggregator_meta, '{}'::jsonb) || $3::jsonb,
+          updated_by_gotrue_id = $4,
+          updated_at = now()
+        where project_ref = $1
+        returning
+          id, project_ref, organization_id, kyc_status, kyc_rejection_reason,
+          submitted_at, reviewed_at, verified_at,
+          business_legal_name, business_trade_name, business_type, pan, gstin,
+          business_address_line1, business_address_line2, business_city, business_state,
+          business_postal_code, business_country, contact_email, contact_phone,
+          bank_account_holder_name, bank_account_number_enc, bank_account_last4,
+          bank_ifsc, bank_name, documents,
+          aggregator_provider, aggregator_account_id, aggregator_status, aggregator_meta,
+          inserted_at, updated_at
+      `,
+      parameters: [
+        project.ref,
+        rejection,
+        JSON.stringify({
+          reviewed_at: new Date().toISOString(),
+          decision: 'reject',
+          settlement_adapter: settlementAdapter,
+        }),
+        actorId,
+      ],
+      actorId,
+    })
+    if (updated.error) throw updated.error
+    const row = updated.data?.[0]
+    if (!row) throw new Error('Merchant profile not found')
+    return withAccessMeta(toPublic(row), {
+      organizationSlug: project.organization_slug,
+      role,
+    })
+  }
+
+  const updated = await executeQuery<MerchantRow>({
+    query: `
+      update saas.project_payment_merchants
+      set
+        kyc_status = 'verified',
+        kyc_rejection_reason = null,
+        reviewed_at = now(),
+        verified_at = now(),
+        aggregator_provider = $2,
+        aggregator_status = 'active',
+        aggregator_meta = coalesce(aggregator_meta, '{}'::jsonb) || $3::jsonb,
+        updated_by_gotrue_id = $4,
+        updated_at = now()
+      where project_ref = $1
+      returning
+        id, project_ref, organization_id, kyc_status, kyc_rejection_reason,
+        submitted_at, reviewed_at, verified_at,
+        business_legal_name, business_trade_name, business_type, pan, gstin,
+        business_address_line1, business_address_line2, business_city, business_state,
+        business_postal_code, business_country, contact_email, contact_phone,
+        bank_account_holder_name, bank_account_number_enc, bank_account_last4,
+        bank_ifsc, bank_name, documents,
+        aggregator_provider, aggregator_account_id, aggregator_status, aggregator_meta,
+        inserted_at, updated_at
+    `,
+    parameters: [
+      project.ref,
+      settlementAdapter,
+      JSON.stringify({
+        reviewed_at: new Date().toISOString(),
+        decision: 'verify',
+        settlement_adapter: settlementAdapter,
+        message:
+          settlementAdapter === 'stripe'
+            ? 'Verified for Stripe settlement. Connect Stripe in Indobase Payments, then create checkout sessions / subscriptions.'
+            : 'Verified by organization admin.',
+      }),
+      actorId,
+    ],
+    actorId,
+  })
+  if (updated.error) throw updated.error
+  const row = updated.data?.[0]
+  if (!row) throw new Error('Merchant profile not found')
+  return withAccessMeta(toPublic(row), {
+    organizationSlug: project.organization_slug,
+    role,
+  })
+}
+
+/** Hard gate for live charges / checkout (MCP + APIs). Browse remains allowed when false. */
+export async function assertMerchantCanGoLive({
+  claims,
+  ref,
+}: {
+  claims: Claims
+  ref: string
+}): Promise<MerchantProfilePublic> {
+  const profile = await getMerchantProfile({ claims, ref })
+  if (!profile.can_go_live) {
+    throw new Error(
+      `Merchant KYC is "${profile.kyc_status}" — verify merchant KYC in Studio (Payments → Confirm Stripe go-live) before creating live charges or checkout sessions.`
+    )
+  }
+  return profile
+}
+
+/** Lightweight go-live probe for MCP server options (no throw). */
+export async function getMerchantCanGoLive({
+  claims,
+  ref,
+}: {
+  claims: Claims
+  ref: string
+}): Promise<boolean> {
+  try {
+    const profile = await getMerchantProfile({ claims, ref })
+    return profile.can_go_live === true
+  } catch {
+    return false
+  }
 }

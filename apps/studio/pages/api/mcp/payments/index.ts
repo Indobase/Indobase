@@ -8,6 +8,7 @@ import {
 import { withIndobaseMcpBranding } from 'lib/api/mcp-branding'
 import { createPaymentsMcpServer } from 'lib/api/saas/payments-mcp-server'
 import { createPaymentsApiClient, mintPaymentsMcpBearer } from 'lib/api/saas/payments-mcp'
+import { getMerchantCanGoLive } from 'lib/api/saas/merchant-kyc'
 import { getUserClaims } from 'lib/gotrue'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -123,7 +124,11 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       apiBaseUrl: minted.apiBaseUrl,
       bearerToken: minted.bearerToken,
     })
-    const server = createPaymentsMcpServer(client, { readOnly })
+    const liveChargesAllowed = await getMerchantCanGoLive({
+      claims: userClaims as never,
+      ref: auth.projectRef,
+    })
+    const server = createPaymentsMcpServer(client, { readOnly, liveChargesAllowed })
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

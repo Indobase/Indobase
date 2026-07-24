@@ -52,6 +52,32 @@ async function submitMerchant(projectRef: string) {
   return payload as MerchantMutationResult
 }
 
+async function reviewMerchant(
+  projectRef: string,
+  action: 'verify' | 'reject',
+  reason?: string | null
+) {
+  const accessToken = await getAccessToken()
+  const response = await fetch(`/api/platform/projects/${projectRef}/payments/merchant`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw Object.assign(new Error(payload?.message || `Failed to ${action} merchant KYC`), {
+      code: response.status,
+      message: payload?.message || `Failed to ${action} merchant KYC`,
+    })
+  }
+  return payload as MerchantMutationResult
+}
+
 export type MerchantProfileUpdateVariables = {
   projectRef: string
   patch: MerchantProfilePatch
@@ -109,6 +135,40 @@ export const useMerchantProfileSubmitMutation = ({
     async onError(error, variables, context) {
       if (onError === undefined) {
         toast.error(error.message || 'Failed to submit merchant KYC')
+      } else {
+        await onError(error, variables, context)
+      }
+    },
+    ...options,
+  })
+}
+
+export type MerchantProfileReviewVariables = {
+  projectRef: string
+  action: 'verify' | 'reject'
+  reason?: string | null
+}
+
+export const useMerchantProfileReviewMutation = ({
+  onSuccess,
+  onError,
+  ...options
+}: Omit<
+  UseCustomMutationOptions<MerchantMutationResult, ResponseError, MerchantProfileReviewVariables>,
+  'mutationFn'
+> = {}) => {
+  const queryClient = useQueryClient()
+  return useMutation<MerchantMutationResult, ResponseError, MerchantProfileReviewVariables>({
+    mutationFn: ({ projectRef, action, reason }) => reviewMerchant(projectRef, action, reason),
+    async onSuccess(data, variables, context) {
+      await queryClient.invalidateQueries({
+        queryKey: merchantProfileKeys.detail(variables.projectRef),
+      })
+      await onSuccess?.(data, variables, context)
+    },
+    async onError(error, variables, context) {
+      if (onError === undefined) {
+        toast.error(error.message || `Failed to ${variables.action} merchant KYC`)
       } else {
         await onError(error, variables, context)
       }

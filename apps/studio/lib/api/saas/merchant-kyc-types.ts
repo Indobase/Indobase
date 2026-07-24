@@ -61,6 +61,13 @@ export type MerchantProfilePublic = {
   aggregator_provider: string
   aggregator_account_id: string | null
   aggregator_status: string | null
+  /** Active settlement adapter for this environment (stripe | razorpay_route). */
+  settlement_adapter: 'stripe' | 'razorpay_route'
+  /**
+   * Owner/admin can confirm Stripe go-live while KYC is under review
+   * (interim until Razorpay Route auto-activates linked accounts).
+   */
+  can_confirm_go_live: boolean
   /** Soft-gate helpers for Studio UI. */
   can_browse_payments: boolean
   can_go_live: boolean
