@@ -67,13 +67,17 @@ done
 cp "$APP_DIR/images/indobase/indobase-mark.png" "$APP_DIR/images/indobase-link-preview.png"
 
 echo "==> Swapping logo sprite symbols"
-# The dashboard / auth logos live in SVG sprites as <symbol id="penpot-logo*">.
-# Replace their contents with the Indobase diamond mark. Best-effort: if the
-# sprite layout changes upstream this simply leaves the original in place.
+# The dashboard / auth / loader logos live as <symbol> defs inlined in
+# index.html AND in the sprite SVGs. Upstream ids are prefixed
+# (icon-penpot-logo, asset-penpot-logo, asset-penpot-logo-subtle, …), so match
+# any prefix and rebuild the tag with a square viewBox (dropping the wide
+# wordmark viewBox) plus the Indobase diamond mark. Best-effort: unknown
+# layouts are simply left untouched.
 INDOBASE_MARK='<path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round" d="M12 19.25 L18.75 14.75 L12 10.25 L5.25 14.75 Z"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round" d="M12 16.85 L17.35 13.55 L12 10.25 L6.65 13.55 Z"/><path fill="currentColor" d="M12 14.35 L15.85 12 L12 9.65 L8.15 12 Z"/>'
-find "$APP_DIR" -type f -name '*.svg' | while read -r f; do
+{ echo "$APP_DIR/index.html"; find "$APP_DIR" -type f -name '*.svg'; } | while read -r f; do
+  [ -f "$f" ] || continue
   if grep -q 'penpot-logo' "$f" 2>/dev/null; then
-    perl -0pi -e 's|(<symbol[^>]*id="penpot-logo[^"]*"[^>]*)( viewBox="[^"]*")?([^>]*>).*?(</symbol>)|$1 viewBox="0 0 24 24"$3'"$INDOBASE_MARK"'$4|gs' "$f"
+    perl -0pi -e 's|<symbol\b[^>]*?\bid="([A-Za-z-]*penpot-logo[^"]*)"[^>]*?>.*?</symbol>|<symbol id="$1" viewBox="0 0 24 24">'"$INDOBASE_MARK"'</symbol>|gs' "$f"
     echo "    patched sprite: $f"
   fi
 done
