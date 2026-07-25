@@ -26,16 +26,22 @@ find "$APP_DIR" -type f \( -name '*.js' -o -name '*.html' -o -name '*.css' -o -n
     -e 's|https://help\.penpot\.app|https://indobase.in/docs|g' \
     -e 's|https://community\.penpot\.app|https://indobase.in|g' \
     -e 's|https://www\.penpot\.app|https://indobase.in|g' \
+    -e 's|@penpotapp|@indobase|g' \
     -e 's|Penpot|Indobase Design|g' \
     -e 's|PENPOT|INDOBASE DESIGN|g' \
     "$f"
 done
 
-echo "==> Replacing favicons"
+echo "==> Replacing favicons and link-preview artwork"
 find "$APP_DIR/images" -maxdepth 1 -type f -name 'favicon*' | while read -r f; do
   case "$f" in
     *.png|*.ico) cp "$APP_DIR/images/indobase/favicon-128.png" "$f" ;;
   esac
+done
+# og:image / twitter:image referenced from index.html (keep the filename,
+# swap the artwork for the Indobase mark).
+find "$APP_DIR/images" -maxdepth 1 -type f -name '*link-preview*' | while read -r f; do
+  cp "$APP_DIR/images/indobase/indobase-mark.png" "$f"
 done
 
 echo "==> Swapping logo sprite symbols"
@@ -45,7 +51,7 @@ echo "==> Swapping logo sprite symbols"
 INDOBASE_MARK='<path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round" d="M12 19.25 L18.75 14.75 L12 10.25 L5.25 14.75 Z"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round" d="M12 16.85 L17.35 13.55 L12 10.25 L6.65 13.55 Z"/><path fill="currentColor" d="M12 14.35 L15.85 12 L12 9.65 L8.15 12 Z"/>'
 find "$APP_DIR" -type f -name '*.svg' | while read -r f; do
   if grep -q 'penpot-logo' "$f" 2>/dev/null; then
-    perl -0pi -e 's|(<symbol[^>]*id="penpot-logo[^"]*"[^>]*)( viewBox="[^"]*")?([^>]*>).*?(</symbol>)|$1 viewBox="0 0 24 24"$3'"$INDOBASE_MARK"'$4|gs' "$f" || true
+    perl -0pi -e 's|(<symbol[^>]*id="penpot-logo[^"]*"[^>]*)( viewBox="[^"]*")?([^>]*>).*?(</symbol>)|$1 viewBox="0 0 24 24"$3'"$INDOBASE_MARK"'$4|gs' "$f"
     echo "    patched sprite: $f"
   fi
 done

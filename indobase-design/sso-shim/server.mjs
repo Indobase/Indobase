@@ -230,8 +230,8 @@ const LAUNCH_PAGE = `<!doctype html>
   })
     .then(function (r) {
       if (!r.ok) throw new Error('session rejected');
-      // Start Penpot's own OIDC flow (it signs the state parameter itself).
-      return fetch('/api/auth/oauth/oidc', {
+      // Start the design engine's own OIDC flow (it signs the state itself).
+      return fetch('/api/auth/oidc?provider=oidc', {
         method: 'POST',
         headers: { accept: 'application/json', 'content-type': 'application/json' },
         body: '{}',
@@ -240,9 +240,17 @@ const LAUNCH_PAGE = `<!doctype html>
     })
     .then(function (r) { return r.text() })
     .then(function (text) {
-      var m = text.match(/https?:\\/\\/[^"\\\\ ]+/)
-      if (!m) throw new Error('no redirect uri in ' + text.slice(0, 120))
-      window.location.replace(m[0])
+      var uri = null
+      try {
+        var data = JSON.parse(text)
+        uri = data.redirectUri || data['redirect-uri'] || null
+      } catch (_) {}
+      if (!uri) {
+        var m = text.replace(/\\\\\\//g, '/').match(/https?:\\/\\/[^"' ]+/)
+        uri = m ? m[0] : null
+      }
+      if (!uri) throw new Error('no redirect uri in ' + text.slice(0, 120))
+      window.location.replace(uri)
     })
     .catch(function (e) { fail('Could not start the session (' + e.message + ').') })
 })();

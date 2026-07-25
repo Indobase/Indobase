@@ -7,4 +7,12 @@ COPY indobase-design.css /var/www/app/css/indobase-design.css
 COPY assets/ /var/www/app/images/indobase/
 COPY rebrand.sh /tmp/rebrand.sh
 
-RUN sh /tmp/rebrand.sh && rm /tmp/rebrand.sh
+# Upstream image is Alpine and runs as penpot:penpot; the overlay needs root
+# (apk + file ownership) and perl for the multiline sprite substitution.
+USER root
+RUN apk add --no-cache perl \
+  && sh /tmp/rebrand.sh \
+  && rm -f /tmp/rebrand.sh \
+  && apk del perl \
+  && chown -R penpot:penpot /var/www/app
+USER penpot:penpot
