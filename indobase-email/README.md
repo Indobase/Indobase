@@ -19,7 +19,8 @@ Open Studio Marketing hub → **Email marketing** → Open (SSO handoff).
 
 ## Deploy
 
-See `docker/deploy/` and monorepo `docs/MARKETING.md`.
+See `docker/deploy/` and monorepo `docs/MARKETING.md` + `docs/INDOBASE-EMAIL.md`
+(system SMTP vs workspace SES/SMTP providers; recommended SES `ap-south-1`).
 
 CI image: `roshanraghavander/indobase-email:<git-sha>` from
 `.github/workflows/docker-publish.yml`. Pin that tag in

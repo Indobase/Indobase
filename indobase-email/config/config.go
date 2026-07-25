@@ -62,6 +62,7 @@ type EnvValues struct {
 	SMTPFromName            string
 	SMTPUseTLS              string // "true", "false", or "" (empty = not set, defaults to true)
 	SMTPEHLOHostname        string
+	SMTPMailer              string // "smtp" (default) or "console"
 	SMTPBridgeEnabled       string // "true", "false", or "" (empty = not set, allows setup wizard to configure)
 	SMTPBridgeDomain        string
 	SMTPBridgePort          int
@@ -167,6 +168,9 @@ type SMTPConfig struct {
 	FromName     string
 	UseTLS       bool
 	EHLOHostname string
+	// Mailer selects the system transactional transport: "smtp" (default) or
+	// "console" (log-only, for staging/smoke without real ESP credentials).
+	Mailer string
 }
 
 type SMTPBridgeConfig struct {
@@ -433,8 +437,12 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("VERSION", VERSION)
 
-	// SMTP defaults
+	// SMTP defaults (system transactional mailer — magic codes, invites, alerts)
 	v.SetDefault("SMTP_FROM_NAME", "Indobase Email")
+	v.SetDefault("SMTP_MAILER", "smtp") // "smtp" | "console" (log-only smoke transport)
+	// Do NOT default SMTP_PORT here — a viper default would make EnvValues.SMTPPort
+	// non-zero and lock the system-settings UI via GetEnvOverrides. Port 587 is
+	// applied later when building SMTPConfig if unset.
 	v.SetDefault("STUDIO_PUBLIC_URL", "https://studio.indobase.in")
 	v.SetDefault("STUDIO_HANDOFF_ONLY", true)
 	v.SetDefault("TRACING_SERVICE_NAME", "indobase-email-api")
@@ -624,6 +632,11 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 		oidcAutoCreateStr = v.GetString("OIDC_AUTO_CREATE_USERS")
 	}
 
+	smtpMailer := strings.ToLower(strings.TrimSpace(v.GetString("SMTP_MAILER")))
+	if smtpMailer != "console" {
+		smtpMailer = "smtp"
+	}
+
 	envVals := EnvValues{
 		RootEmail:               v.GetString("ROOT_EMAIL"),
 		APIEndpoint:             v.GetString("API_ENDPOINT"),
@@ -635,6 +648,7 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 		SMTPFromName:            v.GetString("SMTP_FROM_NAME"),
 		SMTPUseTLS:              smtpUseTLSStr, // "true", "false", or "" (empty = not set, defaults to true)
 		SMTPEHLOHostname:        v.GetString("SMTP_EHLO_HOSTNAME"),
+		SMTPMailer:              smtpMailer,
 		SMTPBridgeEnabled:       smtpBridgeEnabledStr, // "true", "false", or "" (empty = not set)
 		SMTPBridgeDomain:        smtpBridgeDomain,
 		SMTPBridgePort:          smtpBridgePort,
@@ -698,6 +712,7 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 			FromName:     envVals.SMTPFromName,
 			UseTLS:       envVals.SMTPUseTLS != "false", // Default to true unless explicitly set to false
 			EHLOHostname: envVals.SMTPEHLOHostname,
+			Mailer:       envVals.SMTPMailer,
 		}
 
 		// Use database values as fallback
@@ -723,7 +738,7 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 			smtpConfig.FromName = systemSettings.SMTPFromName
 		}
 		if smtpConfig.FromName == "" {
-			smtpConfig.FromName = "Notifuse" // Default
+			smtpConfig.FromName = "Indobase Email" // Default
 		}
 		// Use database value for TLS if env var is not set
 		if envVals.SMTPUseTLS == "" {
@@ -780,13 +795,14 @@ func LoadWithOptions(opts LoadOptions) (*Config, error) {
 			FromName:     envVals.SMTPFromName,
 			UseTLS:       envVals.SMTPUseTLS != "false", // Default to true unless explicitly set to false
 			EHLOHostname: envVals.SMTPEHLOHostname,
+			Mailer:       envVals.SMTPMailer,
 		}
 		// Apply defaults for first-run
 		if smtpConfig.Port == 0 {
 			smtpConfig.Port = 587
 		}
 		if smtpConfig.FromName == "" {
-			smtpConfig.FromName = "Notifuse"
+			smtpConfig.FromName = "Indobase Email"
 		}
 
 		smtpBridgeConfig = SMTPBridgeConfig{

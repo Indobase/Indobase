@@ -68,6 +68,18 @@ export const getProviderIcon = (
 export const emailProviders: ProviderInfo[] = [
   {
     type: 'email',
+    kind: 'ses',
+    name: 'Amazon SES',
+    getIcon: (className = '', size = 'small') => (
+      <img
+        src="/console/amazonses.png"
+        alt="Amazon SES"
+        className={`${size === 'small' ? 'h-3 object-contain inline-block' : 'h-5 object-contain inline-block'} ${className}`.trim()}
+      />
+    )
+  },
+  {
+    type: 'email',
     kind: 'smtp',
     name: 'SMTP',
     getIcon: (className = '', size = 'small') => (
@@ -82,18 +94,6 @@ export const emailProviders: ProviderInfo[] = [
       >
         SMTP
       </span>
-    )
-  },
-  {
-    type: 'email',
-    kind: 'ses',
-    name: 'Amazon SES',
-    getIcon: (className = '', size = 'small') => (
-      <img
-        src="/console/amazonses.png"
-        alt="Amazon SES"
-        className={`${size === 'small' ? 'h-3 object-contain inline-block' : 'h-5 object-contain inline-block'} ${className}`.trim()}
-      />
     )
   },
   {

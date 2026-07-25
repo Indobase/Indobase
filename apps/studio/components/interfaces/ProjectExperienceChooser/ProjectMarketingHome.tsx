@@ -150,8 +150,8 @@ export const ProjectMarketingHome = () => {
                 statusLabel="Available"
                 statusHint={
                   ref
-                    ? `Opens Indobase Email for project ${ref} (workspace mapped 1:1). No separate password.`
-                    : 'Studio SSO handoff — no separate password.'
+                    ? `Opens Indobase Email for project ${ref} (workspace mapped 1:1). After open: Settings → Integrations → Amazon SES (ap-south-1) to send.`
+                    : 'Studio SSO handoff — no separate password. Configure Amazon SES (Mumbai) under Email Settings → Integrations to send.'
                 }
                 actions={
                   <>

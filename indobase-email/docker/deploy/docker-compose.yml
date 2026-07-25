@@ -87,7 +87,17 @@ services:
       EMAIL_HANDOFF_SECRET: ${EMAIL_HANDOFF_SECRET:-}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       STUDIO_HANDOFF_ONLY: ${STUDIO_HANDOFF_ONLY:-true}
+      # System transactional SMTP (app emails). Empty until operator fills .env —
+      # recommended: Amazon SES SMTP email-smtp.ap-south-1.amazonaws.com (see .env.example).
+      SMTP_MAILER: ${SMTP_MAILER:-smtp}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Indobase Email}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-}
+      SMTP_EHLO_HOSTNAME: ${SMTP_EHLO_HOSTNAME:-}
     volumes:
       - email_app_data:/app/data
     healthcheck:

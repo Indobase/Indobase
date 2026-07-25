@@ -88,6 +88,7 @@ type EnvironmentConfig struct {
 	SMTPFromName           string
 	SMTPUseTLS             string // "true", "false", or "" (empty = not set, defaults to true)
 	SMTPEHLOHostname       string
+	SMTPMailer             string // "smtp" (default) or "console" (log-only)
 	SMTPBridgeEnabled       string // "true", "false", or "" (empty = not set, allows setup wizard to configure)
 	SMTPBridgeDomain        string
 	SMTPBridgePort          int
@@ -140,11 +141,17 @@ func (s *SetupService) GetConfigurationStatus() *ConfigurationStatus {
 		}
 	}
 
-	// SMTP is configured if ALL required SMTP fields are present
-	// Note: Username/Password are optional (some SMTP servers don't require auth)
-	smtpConfigured := s.envConfig.SMTPHost != "" &&
-		s.envConfig.SMTPPort > 0 &&
-		s.envConfig.SMTPFromEmail != ""
+	// SMTP is configured if either:
+	// 1. Real SMTP: HOST + PORT + FROM_EMAIL (username/password optional)
+	// 2. Console transport: SMTP_MAILER=console + FROM_EMAIL (log-only smoke path)
+	smtpConfigured := false
+	if strings.EqualFold(s.envConfig.SMTPMailer, "console") {
+		smtpConfigured = s.envConfig.SMTPFromEmail != ""
+	} else {
+		smtpConfigured = s.envConfig.SMTPHost != "" &&
+			s.envConfig.SMTPPort > 0 &&
+			s.envConfig.SMTPFromEmail != ""
+	}
 
 	// SMTP Bridge is configured if:
 	// 1. SMTP_BRIDGE_ENABLED env var is explicitly set (even if "" or "false") - this prevents setup wizard from enabling it
@@ -214,6 +221,10 @@ func (s *SetupService) GetEnvOverrides() map[string]bool {
 	}
 	if s.envConfig.SMTPEHLOHostname != "" {
 		result["smtp_ehlo_hostname"] = true
+	}
+	if s.envConfig.SMTPMailer != "" && !strings.EqualFold(s.envConfig.SMTPMailer, "smtp") {
+		// Only lock the UI when an explicit non-default mailer is set via env
+		result["smtp_mailer"] = true
 	}
 	if s.envConfig.SMTPBridgeEnabled != "" {
 		result["smtp_bridge_enabled"] = true

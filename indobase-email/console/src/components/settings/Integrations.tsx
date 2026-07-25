@@ -1511,23 +1511,31 @@ export function Integrations({ workspace, onSave, loading, isOwner }: Integratio
 
         {providerType === 'ses' && (
           <>
-            <Form.Item name={['ses', 'region']} label={t`AWS Region`} rules={[{ required: true }]}>
+            <Form.Item
+              name={['ses', 'region']}
+              label={t`AWS Region`}
+              rules={[{ required: true }]}
+              initialValue="ap-south-1"
+              help={t`Recommended for Indobase (India / DPDP): Asia Pacific (Mumbai) — ap-south-1`}
+            >
               <Select placeholder={t`Select AWS Region`} disabled={!isOwner}>
-                <Select.Option value="us-east-2">US East (Ohio) - us-east-2</Select.Option>
-                <Select.Option value="us-east-1">US East (N. Virginia) - us-east-1</Select.Option>
-                <Select.Option value="us-west-1">US West (N. California) - us-west-1</Select.Option>
-                <Select.Option value="us-west-2">US West (Oregon) - us-west-2</Select.Option>
-                <Select.Option value="af-south-1">Africa (Cape Town) - af-south-1</Select.Option>
+                <Select.Option value="ap-south-1">
+                  Asia Pacific (Mumbai) - ap-south-1 ★ recommended
+                </Select.Option>
                 <Select.Option value="ap-south-2">
                   Asia Pacific (Hyderabad) - ap-south-2
                 </Select.Option>
+                <Select.Option value="us-east-1">US East (N. Virginia) - us-east-1</Select.Option>
+                <Select.Option value="us-east-2">US East (Ohio) - us-east-2</Select.Option>
+                <Select.Option value="us-west-1">US West (N. California) - us-west-1</Select.Option>
+                <Select.Option value="us-west-2">US West (Oregon) - us-west-2</Select.Option>
+                <Select.Option value="af-south-1">Africa (Cape Town) - af-south-1</Select.Option>
                 <Select.Option value="ap-southeast-3">
                   Asia Pacific (Jakarta) - ap-southeast-3
                 </Select.Option>
                 <Select.Option value="ap-southeast-5">
                   Asia Pacific (Malaysia) - ap-southeast-5
                 </Select.Option>
-                <Select.Option value="ap-south-1">Asia Pacific (Mumbai) - ap-south-1</Select.Option>
                 <Select.Option value="ap-northeast-3">
                   Asia Pacific (Osaka) - ap-northeast-3
                 </Select.Option>

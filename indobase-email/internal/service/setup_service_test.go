@@ -217,6 +217,31 @@ func TestSetupService_OIDC_StatusAndValidation(t *testing.T) {
 		assert.False(t, svc.GetConfigurationStatus().OIDCConfigured)
 	})
 
+	t.Run("SMTP configured via host/port/from", func(t *testing.T) {
+		svc := newSvc(&service.EnvironmentConfig{
+			SMTPHost:      "email-smtp.ap-south-1.amazonaws.com",
+			SMTPPort:      587,
+			SMTPFromEmail: "noreply@example.com",
+		})
+		assert.True(t, svc.GetConfigurationStatus().SMTPConfigured)
+	})
+
+	t.Run("SMTP configured via console mailer + from", func(t *testing.T) {
+		svc := newSvc(&service.EnvironmentConfig{
+			SMTPMailer:    "console",
+			SMTPFromEmail: "noreply@example.com",
+		})
+		assert.True(t, svc.GetConfigurationStatus().SMTPConfigured)
+	})
+
+	t.Run("SMTP not configured when incomplete", func(t *testing.T) {
+		svc := newSvc(&service.EnvironmentConfig{
+			SMTPHost: "email-smtp.ap-south-1.amazonaws.com",
+			SMTPPort: 587,
+		})
+		assert.False(t, svc.GetConfigurationStatus().SMTPConfigured)
+	})
+
 	t.Run("wizard-enabled OIDC requires issuer/client/secret", func(t *testing.T) {
 		svc := newSvc(&service.EnvironmentConfig{})
 		err := svc.ValidateSetupConfig(&service.SetupConfig{
