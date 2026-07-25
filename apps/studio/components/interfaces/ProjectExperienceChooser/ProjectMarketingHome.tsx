@@ -326,11 +326,11 @@ export const ProjectMarketingHome = () => {
 
               <MarketingToolTile
                 title="Video editor"
-                description="Cut and export product videos and ads without leaving Indobase."
+                description="Cut and export product videos and ads without leaving Indobase — Indobase Video."
                 icon={<Clapperboard size={24} strokeWidth={1.75} className="text-[#E11D48]" />}
                 accentClassName="bg-[#E11D48]/10"
                 statusLabel="Coming soon"
-                statusHint="The engine we build on is being rewritten upstream. We will ship the video editor when it is stable — no half-working beta here."
+                statusHint="Indobase Video will open with Studio SSO like Email, Social, and Design. The editor engine is being rewritten upstream — we will ship when it is stable, not a half-working beta."
               />
             </div>
 
@@ -340,6 +340,7 @@ export const ProjectMarketingHome = () => {
                 Email is AGPL-3.0 under <code className="text-foreground">indobase-email/</code>.
                 Social is AGPL-3.0 under <code className="text-foreground">indobase-social/</code>.
                 Design is MPL-2.0 under <code className="text-foreground">indobase-design/</code>.
+                Video (Coming soon) will live under <code className="text-foreground">indobase-video/</code>.
                 See <code className="text-foreground">docs/MARKETING.md</code>.
               </span>
             </p>

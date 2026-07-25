@@ -6,9 +6,10 @@
 #   1. Replaces the product name "Penpot" with "Indobase Design" in all
 #      user-visible strings (JS bundles include the translations).
 #   2. Points penpot.app / help / community links at indobase.in.
-#   3. Replaces favicons with the Indobase mark.
+#   3. Replaces favicons + PWA / theme meta with Indobase brand tokens.
 #   4. Swaps the logo <symbol>s in the SVG sprite for the Indobase mark.
-#   5. Injects a small CSS override (indobase-design.css) into index.html.
+#   5. Renames link-preview asset paths away from upstream filenames.
+#   6. Injects a small CSS override (indobase-design.css) into index.html.
 #
 # Upstream Penpot is MPL-2.0; per-file license notices are preserved (we only
 # transform built artifacts, source remains upstream — see ../NOTICE.md).
@@ -20,17 +21,37 @@ APP_DIR=/var/www/app
 echo "==> Rebranding product strings"
 find "$APP_DIR" -type f \( -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.json' -o -name '*.webmanifest' \) | while read -r f; do
   # Product name (capitalized occurrences are display strings; lowercase
-  # `penpot` stays untouched: file format `.penpot`, API paths, class names).
+  # `penpot` stays untouched where it is a file format / API path / class name,
+  # except for the explicit URL / social / preview renames below).
   sed -i \
     -e 's|https://penpot\.app|https://indobase.in|g' \
     -e 's|https://help\.penpot\.app|https://indobase.in/docs|g' \
     -e 's|https://community\.penpot\.app|https://indobase.in|g' \
     -e 's|https://www\.penpot\.app|https://indobase.in|g' \
     -e 's|@penpotapp|@indobase|g' \
+    -e 's|/images/penpot-link-preview\.png|/images/indobase-link-preview.png|g' \
     -e 's|Penpot|Indobase Design|g' \
     -e 's|PENPOT|INDOBASE DESIGN|g' \
     "$f"
 done
+
+echo "==> Patching HTML meta (title already rebranded; force PWA / theme)"
+if [ -f "$APP_DIR/index.html" ]; then
+  # theme-color → Indobase dark surface (matches Email / Marketing suite)
+  sed -i \
+    -e 's|name="theme-color" content="[^"]*"|name="theme-color" content="#161616"|g' \
+    -e 's|name="application-name" content="[^"]*"|name="application-name" content="Indobase Design"|g' \
+    -e 's|name="apple-mobile-web-app-title" content="[^"]*"|name="apple-mobile-web-app-title" content="Indobase Design"|g' \
+    "$APP_DIR/index.html"
+
+  # Ensure application-name / apple title exist even if upstream omitted them.
+  if ! grep -q 'application-name' "$APP_DIR/index.html"; then
+    sed -i 's|</head>|<meta name="application-name" content="Indobase Design"></head>|' "$APP_DIR/index.html"
+  fi
+  if ! grep -q 'apple-mobile-web-app-title' "$APP_DIR/index.html"; then
+    sed -i 's|</head>|<meta name="apple-mobile-web-app-title" content="Indobase Design"></head>|' "$APP_DIR/index.html"
+  fi
+fi
 
 echo "==> Replacing favicons and link-preview artwork"
 find "$APP_DIR/images" -maxdepth 1 -type f -name 'favicon*' | while read -r f; do
@@ -38,11 +59,12 @@ find "$APP_DIR/images" -maxdepth 1 -type f -name 'favicon*' | while read -r f; d
     *.png|*.ico) cp "$APP_DIR/images/indobase/favicon-128.png" "$f" ;;
   esac
 done
-# og:image / twitter:image referenced from index.html (keep the filename,
-# swap the artwork for the Indobase mark).
+# og:image / twitter:image — keep upstream filename as fallback AND write
+# Indobase-named copy referenced after the string rewrite above.
 find "$APP_DIR/images" -maxdepth 1 -type f -name '*link-preview*' | while read -r f; do
   cp "$APP_DIR/images/indobase/indobase-mark.png" "$f"
 done
+cp "$APP_DIR/images/indobase/indobase-mark.png" "$APP_DIR/images/indobase-link-preview.png"
 
 echo "==> Swapping logo sprite symbols"
 # The dashboard / auth logos live in SVG sprites as <symbol id="penpot-logo*">.
@@ -58,12 +80,17 @@ done
 
 echo "==> Injecting CSS override into index.html"
 if [ -f "$APP_DIR/index.html" ]; then
-  sed -i 's|</head>|<link rel="stylesheet" href="/css/indobase-design.css"></head>|' "$APP_DIR/index.html"
+  if ! grep -q 'indobase-design.css' "$APP_DIR/index.html"; then
+    sed -i 's|</head>|<link rel="stylesheet" href="/css/indobase-design.css"></head>|' "$APP_DIR/index.html"
+  fi
 fi
 
 echo "==> Verifying no residual product naming in HTML entrypoint"
 if grep -o 'Penpot' "$APP_DIR/index.html" >/dev/null 2>&1; then
   echo "WARN: index.html still mentions upstream product name" >&2
+fi
+if grep -o 'penpot-link-preview' "$APP_DIR/index.html" >/dev/null 2>&1; then
+  echo "WARN: index.html still references upstream link-preview filename" >&2
 fi
 
 echo "==> Rebrand complete"

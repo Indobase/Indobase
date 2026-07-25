@@ -1,31 +1,32 @@
-# Indobase Marketing — hub launcher + Email + Social + Design
+# Indobase Marketing — hub launcher + Email + Social + Design + Video
 
-Status: **Email**, **Social**, and **Design** live paths (Studio SSO). Video
-remains Coming soon (upstream engine rewrite — see below).
+Status: **Email**, **Social**, and **Design** live (Studio SSO). **Indobase
+Video** is Coming soon (honest — see below).
 
 **Indobase Marketing** is a first-party **hub**, not one combined frankenstein app.
 From the project chooser, customers open Marketing and pick a tool:
 
-| Tile | Engine | License | Status |
+| Tile | Product | License | Status |
 |---|---|---|---|
-| Email marketing | [Notifuse](https://github.com/Notifuse/notifuse) fork → `indobase-email/` | AGPL-3.0 | **Live** — Studio SSO |
-| Social media posting | [Postiz](https://github.com/gitroomhq/postiz-app) fork → `indobase-social/` | AGPL-3.0 | **Live** — Studio SSO |
-| Visual designer | [Penpot](https://github.com/penpot/penpot) engine → `indobase-design/` | MPL-2.0 | **Live** — Studio SSO |
-| Video editor | [OpenCut](https://github.com/OpenCut-app/OpenCut) | MIT | Coming soon — upstream rewrite |
+| Email marketing | **Indobase Email** (`indobase-email/`) | AGPL-3.0 | **Live** — Studio SSO |
+| Social media posting | **Indobase Social** (`indobase-social/`) | AGPL-3.0 | **Live** — Studio SSO |
+| Visual designer | **Indobase Design** (`indobase-design/`) | MPL-2.0 | **Live** — Studio SSO |
+| Video editor | **Indobase Video** (`indobase-video/` planned) | MIT (planned) | Coming soon |
 
 Brand surfaces always say **Indobase Marketing** / **Indobase Email** /
-**Indobase Social** / **Indobase Design** — never upstream product names in
-customer-facing UI.
+**Indobase Social** / **Indobase Design** / **Indobase Video** — never upstream
+product names in customer-facing UI. Engine attribution stays in `NOTICE.md`
+and engineering docs only.
 
-### Why Video is still Coming soon
+### Why Indobase Video is still Coming soon
 
-OpenCut is being rewritten from the ground up (Rust core, plugin-first); the
-rewrite is scaffold-level and explicitly not production-ready. The previous
-codebase (`opencut-app/opencut-classic`) is **archived and unmaintained**
+The candidate open-source video editor is being rewritten from the ground up
+(Rust core, plugin-first); the rewrite is scaffold-level and not
+production-ready. The previous classic codebase is archived and unmaintained
 upstream. We will not ship a broken or dead-end editor as GA — the tile stays
-Coming soon with honest copy until the rewrite stabilizes, then it gets the
-same fork + rebrand + Studio SSO treatment (`indobase-video/`,
-`video.indobase.fun` / `video.indobase.in`).
+Coming soon with Indobase branding until the rewrite stabilizes, then it gets
+the same fork + rebrand + Studio SSO treatment (`indobase-video/`,
+`video.indobase.fun` / `video.indobase.in`, `VIDEO_HANDOFF_SECRET`).
 
 ---
 
@@ -38,6 +39,7 @@ same fork + rebrand + Studio SSO treatment (`indobase-video/`,
 | Email launch | `GET /api/platform/projects/[ref]/email/launch` |
 | Social launch | `GET /api/platform/projects/[ref]/social/launch` |
 | Design launch | `GET /api/platform/projects/[ref]/design/launch` |
+| Video launch | `GET /api/platform/projects/[ref]/video/launch` (when shipped) |
 | Layout | Ungated like Payments (no Backend Studio sidebar / plan gate) |
 
 ### How to open Email
@@ -65,9 +67,9 @@ same fork + rebrand + Studio SSO treatment (`indobase-video/`,
 2. On **Visual designer**, click **Open Design**.
 3. Studio mints JWT (`aud=indobase-design`) →
    `https://design.<domain>/sso/launch#token=…`.
-4. The `design-sso` shim verifies the token, then drives Penpot's OIDC flow
-   (shim is the OIDC provider) — user is created/logged in, lands on the
-   Design dashboard. Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
+4. The `design-sso` shim verifies the token, then drives the design engine's
+   OIDC flow (shim is the OIDC provider) — user is created/logged in, lands on
+   the Design dashboard. Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
 
 Org roles (same as Payments): **owner, admin, developer, viewer**.
 
@@ -75,15 +77,14 @@ Org roles (same as Payments): **owner, admin, developer, viewer**.
 
 ## Hosts
 
-| Env | Email | Social | Design | Studio | Control plane |
-|---|---|---|---|---|---|
-| Staging | `email.indobase.fun` | `social.indobase.fun` | `design.indobase.fun` | `studio.indobase.fun` | Hostinger / Vyom |
-| Production | `email.indobase.in` | `social.indobase.in` | `design.indobase.in` | `studio.indobase.in` | Vyom `103.190.92.249` |
+| Env | Email | Social | Design | Video | Studio | Control plane |
+|---|---|---|---|---|---|---|
+| Staging | `email.indobase.fun` | `social.indobase.fun` | `design.indobase.fun` | — (Coming soon) | `studio.indobase.fun` | Hostinger / Vyom |
+| Production | `email.indobase.in` | `social.indobase.in` | `design.indobase.in` | — (Coming soon) | `studio.indobase.in` | Vyom `103.190.92.249` |
 
 DNS: A records for email/social/design hosts → deploy host (`.249` — not the
-`*.indobase.in` tenant wildcard on `.248`). Design's canonical
-`PENPOT_PUBLIC_URI` is `design.indobase.in`; the `.fun` host serves the same
-stack.
+`*.indobase.in` tenant wildcard on `.248`). Design's canonical public URI is
+`design.indobase.in`; the `.fun` host serves the same stack.
 
 ---
 
@@ -91,8 +92,8 @@ stack.
 
 - Operators use Studio sign-up / sign-in only.
 - Public magic-code / password UI on Email and Social hosts redirect to Studio.
-- Design: password login + registration disabled via `PENPOT_FLAGS`; the only
-  entry is the Studio-driven OIDC flow through the `design-sso` shim.
+- Design: password login + registration disabled; the only entry is the
+  Studio-driven OIDC flow through the `design-sso` shim.
 - Email env: `STUDIO_HANDOFF_ONLY=true`, `STUDIO_HANDOFF_SECRET` (≥32 chars).
 - Social env: same + `SOCIAL_HANDOFF_SECRET` alias.
 - Design env: `DESIGN_HANDOFF_SECRET` (shim) — reuse the shared handoff secret.
@@ -116,9 +117,11 @@ Details: [INDOBASE-SOCIAL.md](./INDOBASE-SOCIAL.md).
 
 ### Design
 
-Compose: `indobase-design/docker/deploy/docker-compose.yml` (upstream Penpot
-images, `PENPOT_VERSION`-pinned; frontend branding wrapper + `design-sso` shim
-built on the VPS with `docker compose build` — no CI image needed).  
+Compose: `indobase-design/docker/deploy/docker-compose.yml` (upstream engine
+images version-pinned; frontend branding wrapper + `design-sso` shim built on
+the VPS with `docker compose build`). Traefik file provider (container DNS):
+`indobase-design/docker/deploy/traefik/indobase-design.yml` →
+`/etc/dokploy/traefik/dynamic/`.  
 Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
 
 CI builds `roshanraghavander/indobase-email:<git-sha>` and
@@ -138,7 +141,7 @@ Studio env:
 ```bash
 INDOBASE_EMAIL_URL=https://email.indobase.fun   # or .in
 INDOBASE_SOCIAL_URL=https://social.indobase.fun # or .in
-INDOBASE_DESIGN_URL=https://design.indobase.in  # canonical (PENPOT_PUBLIC_URI)
+INDOBASE_DESIGN_URL=https://design.indobase.in  # canonical public URI
 EMAIL_HANDOFF_SECRET=<same-as-email-STUDIO_HANDOFF_SECRET>
 SOCIAL_HANDOFF_SECRET=<same-as-social-STUDIO_HANDOFF_SECRET>
 DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
@@ -148,13 +151,13 @@ DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
 
 ## License / compliance
 
-- **AGPL (Notifuse / Postiz):** source in `indobase-email/` and `indobase-social/`;
-  see each `NOTICE.md` + license file. Corresponding Source for network use is
-  the monorepo path under `https://github.com/Indobase/Indobase/tree/main/…`.
-- **MPL-2.0 (Penpot):** we deploy unmodified upstream images with a branding
-  overlay + an original SSO shim (no Penpot code) — see
-  `indobase-design/NOTICE.md`. File-level copyleft only applies if we ever
-  modify MPL-covered source files.
+- **AGPL (Email / Social engines):** source in `indobase-email/` and
+  `indobase-social/`; see each `NOTICE.md` + license file. Corresponding Source
+  for network use is the monorepo path under
+  `https://github.com/Indobase/Indobase/tree/main/…`.
+- **MPL-2.0 (Design engine):** we deploy unmodified upstream images with a
+  branding overlay + an original SSO shim — see `indobase-design/NOTICE.md`.
+  File-level copyleft only applies if we ever modify MPL-covered source files.
 - Do not mix AGPL into proprietary Studio/Builder bundles without a deliberate
   boundary (same approach as `indobase-payments/`).
 - India DPDP applies to audience/contact and social account data.
@@ -163,6 +166,6 @@ DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
 
 ## Out of scope (this ship)
 
-- OpenCut / `indobase-video/` (upstream rewrite in progress; classic is
-  archived — tile stays Coming soon)
+- Indobase Video / `indobase-video/` (Coming soon — see
+  [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md))
 - Razorpay / Payments changes
