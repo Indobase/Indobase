@@ -111,6 +111,7 @@ export class AuthService {
           password: '',
           provider: Provider.GENERIC,
           providerId,
+          datafast_visitor_id: '',
         },
         ip,
         userAgent
@@ -125,6 +126,7 @@ export class AuthService {
           password: '',
           provider: Provider.GENERIC,
           providerId,
+          datafast_visitor_id: '',
         },
         ip,
         userAgent
@@ -144,6 +146,7 @@ export class AuthService {
           password: '',
           provider: Provider.GENERIC,
           providerId: `studio-org:${projectRef}`,
+          datafast_visitor_id: '',
         },
         ip,
         userAgent
