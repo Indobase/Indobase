@@ -68,6 +68,9 @@ DNS: A records for `email.indobase.fun` / `email.indobase.in` → deploy host.
 
 Compose: `indobase-email/docker/deploy/docker-compose.yml`
 
+**Sending / SES / DNS:** see [INDOBASE-EMAIL.md](./INDOBASE-EMAIL.md)
+(system SMTP vs workspace providers; recommended SES `ap-south-1`).
+
 CI builds `roshanraghavander/indobase-email:<git-sha>` on push to `staging` /
 `main` (see `.github/workflows/docker-publish.yml`). Deploy with that SHA — do
 not ship a local `:latest` build.
@@ -93,10 +96,14 @@ Smoke:
 
 ```bash
 curl -sS https://email.indobase.fun/healthz
+curl -sS https://email.indobase.fun/api/setup.status   # smtp_configured after SMTP_* set
 curl -sS -o /dev/null -w '%{http_code}\n' https://email.indobase.fun/console/signin
 # expect redirect / 200 then SPA → Studio
 # Splash / title must say Indobase Email (not upstream product name)
 ```
+
+Without SES/SMTP secrets, `smtp_configured` stays `false` and campaigns cannot
+deliver — configure per [INDOBASE-EMAIL.md](./INDOBASE-EMAIL.md).
 
 ---
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -373,10 +374,13 @@ func (a *App) InitMailer() error {
 	// Always initialize/reinitialize the mailer
 	// This allows config changes (e.g., after setup wizard) to take effect
 
-	if a.config.IsDevelopment() {
-		// Use console mailer in development
+	useConsole := a.config.IsDevelopment() ||
+		strings.EqualFold(strings.TrimSpace(a.config.SMTP.Mailer), "console")
+
+	if useConsole {
+		// Console mailer: development, or explicit SMTP_MAILER=console smoke transport
 		a.mailer = mailer.NewConsoleMailer()
-		a.logger.Info("Using console mailer for development")
+		a.logger.Info("Using console mailer (log-only; no SMTP delivery)")
 	} else {
 		// Use SMTP mailer in production
 		mailerConfig := &mailer.Config{
@@ -527,6 +531,7 @@ func (a *App) InitServices() error {
 		SMTPFromName:            smtpFromName,
 		SMTPUseTLS:              smtpUseTLS,
 		SMTPEHLOHostname:        a.config.EnvValues.SMTPEHLOHostname,
+		SMTPMailer:              a.config.EnvValues.SMTPMailer,
 		SMTPBridgeEnabled:       smtpBridgeEnabled,
 		SMTPBridgeDomain:        smtpBridgeDomain,
 		SMTPBridgePort:          smtpBridgePort,
