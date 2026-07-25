@@ -173,12 +173,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget -q -O /dev/null http://127.0.0.1:5000/ || exit 1",
+          "node -e \"fetch('http://127.0.0.1:5000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
         ]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 90s
+      start_period: 120s
     networks:
       - indobase_social_net
       - temporal_net
