@@ -1,0 +1,15 @@
+/*
+ * Indobase Design — branding overrides layered on the upstream Penpot UI.
+ * Loaded from index.html after the app styles (see rebrand.sh).
+ */
+
+/* Gold brand accent for the auth screens' primary action (Indobase hue ~43). */
+:root {
+  --indobase-gold: #f0b429;
+}
+
+/* Hide "powered by"-style external links that survive the string rebrand. */
+a[href*="penpot.app"],
+a[href*="penpot.github"] {
+  display: none !important;
+}
