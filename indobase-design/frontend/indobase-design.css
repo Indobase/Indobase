@@ -1,0 +1,37 @@
+/*
+ * Indobase Design — branding overrides layered on the upstream engine UI.
+ * Loaded from index.html after the app styles (see rebrand.sh).
+ *
+ * Brand tokens align with Studio / Email / Marketing (gold hue ~43).
+ */
+
+:root {
+  --indobase-gold: #f0b429;
+  --indobase-gold-hover: #d9a01f;
+  --indobase-surface: #161616;
+  --indobase-ink: #ededed;
+}
+
+/* Auth / splash primary actions → Indobase gold */
+button.btn-primary,
+.btn-primary,
+[data-testid='login-submit'],
+.auth-form button[type='submit'] {
+  background-color: var(--indobase-gold) !important;
+  border-color: var(--indobase-gold) !important;
+  color: #161616 !important;
+}
+
+button.btn-primary:hover,
+.btn-primary:hover {
+  background-color: var(--indobase-gold-hover) !important;
+  border-color: var(--indobase-gold-hover) !important;
+}
+
+/* Hide "powered by" / community links that survive the string rebrand. */
+a[href*='penpot.app'],
+a[href*='penpot.github'],
+a[href*='help.penpot'],
+a[href*='community.penpot'] {
+  display: none !important;
+}

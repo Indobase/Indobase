@@ -1,0 +1,19 @@
+# Traefik dynamic config for Indobase Social on Vyom .249
+# Copy to /etc/dokploy/traefik/dynamic/indobase-social.yml
+# Prefer container DNS over pinned overlay IPs (IPs change on recreate → 502).
+# Docker labels on social-app also register the same Host rules.
+http:
+  routers:
+    indobase-social:
+      rule: Host(`social.indobase.fun`) || Host(`social.indobase.in`)
+      entryPoints:
+        - websecure
+      service: indobase-social
+      tls:
+        certResolver: letsencrypt
+  services:
+    indobase-social:
+      loadBalancer:
+        servers:
+          - url: "http://indobase-social-social-app-1:5000"
+        passHostHeader: true
