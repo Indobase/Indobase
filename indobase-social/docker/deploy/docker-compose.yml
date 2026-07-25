@@ -1,0 +1,194 @@
+# Indobase Social — production / staging Compose
+#
+# Usage (SHA-pinned Hub image — required for staging/prod):
+#   cp .env.example .env
+#   # set secrets + INDOBASE_SOCIAL_IMAGE=roshanraghavander/indobase-social:<git-sha>
+#   docker compose -f docker-compose.yml --env-file .env pull
+#   docker compose -f docker-compose.yml --env-file .env up -d
+#
+# TLS: Traefik labels assume Dokploy Traefik (`dokploy-network`, cert resolver
+# `letsencrypt`). Override TRAEFIK_NETWORK / SOCIAL_HOST as needed.
+#
+# Hosts:
+#   staging: social.indobase.fun
+#   prod:    social.indobase.in
+#   (Vyom .249 can serve both via SOCIAL_TRAEFIK_RULE)
+#
+# CI publishes: roshanraghavander/indobase-social:<git-sha> (and :latest)
+# via .github/workflows/docker-publish.yml on push to staging/main.
+
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+x-restart: &restart
+  restart: unless-stopped
+
+volumes:
+  social_pg_data:
+  social_redis_data:
+  social_uploads:
+  social_config:
+  temporal_pg_data:
+  temporal_es_data:
+
+networks:
+  indobase_social_net:
+    name: indobase-social
+  temporal_net:
+    name: indobase-social-temporal
+  traefik_public:
+    name: ${TRAEFIK_NETWORK:-dokploy-network}
+    external: true
+
+name: indobase-social
+
+services:
+  social-db:
+    <<: *restart
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-social}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-social}
+    volumes:
+      - social_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - indobase_social_net
+    logging: *logging
+
+  social-redis:
+    <<: *restart
+    image: redis:7.2-alpine
+    volumes:
+      - social_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - indobase_social_net
+    logging: *logging
+
+  temporal-elasticsearch:
+    <<: *restart
+    image: elasticsearch:7.17.27
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    volumes:
+      - temporal_es_data:/usr/share/elasticsearch/data
+    networks:
+      - temporal_net
+    logging: *logging
+
+  temporal-postgresql:
+    <<: *restart
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
+      POSTGRES_USER: temporal
+    volumes:
+      - temporal_pg_data:/var/lib/postgresql/data
+    networks:
+      - temporal_net
+    logging: *logging
+
+  temporal:
+    <<: *restart
+    image: temporalio/auto-setup:1.28.1
+    depends_on:
+      - temporal-postgresql
+      - temporal-elasticsearch
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal}
+      - POSTGRES_SEEDS=temporal-postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=true
+      - ES_SEEDS=temporal-elasticsearch
+      - ES_VERSION=v7
+      - TEMPORAL_NAMESPACE=default
+    volumes:
+      - ../../dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    networks:
+      - temporal_net
+      - indobase_social_net
+    logging: *logging
+
+  social-app:
+    <<: *restart
+    image: ${INDOBASE_SOCIAL_IMAGE:?set INDOBASE_SOCIAL_IMAGE=roshanraghavander/indobase-social:<git-sha>}
+    depends_on:
+      social-db:
+        condition: service_healthy
+      social-redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    environment:
+      MAIN_URL: ${MAIN_URL:-https://social.indobase.in}
+      FRONTEND_URL: ${FRONTEND_URL:-https://social.indobase.in}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-https://social.indobase.in/api}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      DATABASE_URL: postgresql://${DB_USER:-social}:${DB_PASSWORD}@social-db:5432/${POSTGRES_DB:-social}
+      REDIS_URL: redis://social-redis:6379
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      TEMPORAL_ADDRESS: temporal:7233
+      IS_GENERAL: "true"
+      PRODUCT_NAME: Indobase Social
+      DISABLE_REGISTRATION: "true"
+      STUDIO_HANDOFF_ONLY: ${STUDIO_HANDOFF_ONLY:-true}
+      STUDIO_HANDOFF_SECRET: ${STUDIO_HANDOFF_SECRET:?set STUDIO_HANDOFF_SECRET}
+      SOCIAL_HANDOFF_SECRET: ${SOCIAL_HANDOFF_SECRET:-}
+      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      NEXT_PUBLIC_STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      NX_ADD_PLUGINS: "false"
+      API_LIMIT: ${API_LIMIT:-30}
+      FEE_AMOUNT: "0"
+    volumes:
+      - social_uploads:/uploads
+      - social_config:/config
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:5000/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
+    networks:
+      - indobase_social_net
+      - temporal_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      - traefik.http.routers.indobase-social.rule=${SOCIAL_TRAEFIK_RULE:-Host(`social.indobase.in`) || Host(`social.indobase.fun`)}
+      - traefik.http.routers.indobase-social.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-social.tls=true
+      - traefik.http.routers.indobase-social.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.indobase-social.loadbalancer.server.port=5000
+    logging: *logging
