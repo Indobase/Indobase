@@ -1,0 +1,66 @@
+# Indobase Video — Compose on Vyom .249
+#
+#   cd /opt/indobase-video/docker/deploy
+#   cp .env.example .env   # VIDEO_HANDOFF_SECRET (>=32)
+#   docker compose --env-file .env up -d --build
+#
+# Or pull CI image:
+#   IMAGE=roshanraghavander/indobase-video:<sha> docker compose --env-file .env up -d
+
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+x-restart: &restart
+  restart: unless-stopped
+
+name: indobase-video
+
+networks:
+  indobase_video_net:
+    name: indobase-video
+  traefik_public:
+    name: ${TRAEFIK_NETWORK:-dokploy-network}
+    external: true
+
+services:
+  video:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: ${IMAGE:-indobase-video:local}
+    environment:
+      PORT: 8780
+      VIDEO_HANDOFF_SECRET: ${VIDEO_HANDOFF_SECRET:?set VIDEO_HANDOFF_SECRET}
+      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      PUBLIC_ORIGIN: ${VIDEO_PUBLIC_URL:-https://video.indobase.in}
+      STATIC_ROOT: /app/web/dist
+    networks:
+      - indobase_video_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      - traefik.http.routers.indobase-video.rule=${VIDEO_TRAEFIK_RULE:-Host(`video.indobase.in`) || Host(`video.indobase.fun`)}
+      - traefik.http.routers.indobase-video.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-video.tls=true
+      - traefik.http.routers.indobase-video.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-video.service=indobase-video
+      - traefik.http.services.indobase-video.loadbalancer.server.port=8780
+    logging: *logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8780/sso/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

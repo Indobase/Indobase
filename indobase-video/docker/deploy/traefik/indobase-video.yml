@@ -1,0 +1,19 @@
+# Traefik dynamic config for Indobase Video on Vyom .249
+# Copy to /etc/dokploy/traefik/dynamic/indobase-video.yml
+# Prefer container DNS over pinned overlay IPs.
+http:
+  routers:
+    indobase-video:
+      rule: Host(`video.indobase.fun`) || Host(`video.indobase.in`)
+      entryPoints:
+        - websecure
+      service: indobase-video
+      tls:
+        certResolver: letsencrypt
+      priority: 10
+  services:
+    indobase-video:
+      loadBalancer:
+        servers:
+          - url: "http://indobase-video-video-1:8780"
+        passHostHeader: true
