@@ -101,6 +101,9 @@ upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_BUILDER_APP_URL "$BU
 upsert_env /opt/indobase-staging/env/studio.env SITE_URL "$STUDIO_URL"
 upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_SITE_URL "$STUDIO_URL"
 upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
+upsert_env /opt/indobase-staging/env/studio.env INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env ANALYTICS_HANDOFF_SECRET "$HANDOFF"
 
 # Quoted heredocs so Traefik Host(`…`) backticks are not executed by the local shell.
 cat > /etc/dokploy/traefik/dynamic/studio-indobase-fun.yml <<EOF
