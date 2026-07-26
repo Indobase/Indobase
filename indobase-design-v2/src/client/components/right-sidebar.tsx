@@ -370,6 +370,41 @@ export function RightSidebar() {
                 </button>
               </div>
             </div>
+            <div>
+              <label class="text-[11px] text-zinc-400 mb-1 block">Crop (clip)</label>
+              <div class="flex gap-1">
+                <button
+                  class="flex-1 py-1.5 rounded border border-zinc-300 text-[11px] cursor-pointer bg-white hover:border-accent"
+                  onClick={() => {
+                    if (!canvas || !selectedObject) return;
+                    const img = selectedObject as fabric.FabricImage;
+                    const w = (img.width || 100) * (img.scaleX || 1);
+                    const h = (img.height || 100) * (img.scaleY || 1);
+                    const clip = new fabric.Rect({
+                      originX: "center",
+                      originY: "center",
+                      width: w * 0.85,
+                      height: h * 0.85,
+                      absolutePositioned: false,
+                    });
+                    img.set({ clipPath: clip });
+                    canvas.requestRenderAll();
+                  }}
+                >
+                  Apply 85% crop
+                </button>
+                <button
+                  class="flex-1 py-1.5 rounded border border-zinc-300 text-[11px] cursor-pointer bg-white hover:border-accent"
+                  onClick={() => {
+                    if (!canvas || !selectedObject) return;
+                    selectedObject.set({ clipPath: undefined });
+                    canvas.requestRenderAll();
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           </>
         )}
 

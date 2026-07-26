@@ -520,33 +520,39 @@ export function ParityToolsPanel() {
       <section>
         <p class="text-zinc-500 uppercase tracking-wide font-semibold mb-2 m-0">Suite handoffs</p>
         <p class="text-[10px] text-zinc-400 m-0 mb-2">
-          Canva Video/Social/Email categories → Indobase products (not rebuilt here).
+          Export from the toolbar, then open Indobase Video / Social / Email / Marketing.
         </p>
         <div class="flex flex-col gap-1">
-          <a
-            class="block text-center py-1.5 rounded border border-zinc-200 bg-white text-zinc-700 no-underline hover:border-accent"
-            href="https://studio.indobase.in"
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => {
-              e.preventDefault()
-              // Export PNG then open Studio Marketing (Video/Social live there).
-              try {
-                // Parent toolbar export is preferred; here we deep-link Studio.
-                const studio = (window as unknown as { __STUDIO_URL?: string }).__STUDIO_URL
-                location.href = studio || 'https://studio.indobase.in'
-              } catch {
-                location.href = 'https://studio.indobase.in'
-              }
-            }}
-          >
-            <Sparkles size={12} class="inline mr-1" />
-            Open Studio Marketing
-          </a>
-          <p class="text-[10px] text-zinc-400 m-0">
-            Export PNG/JPG from the toolbar, then use <strong>Open Video</strong> /{' '}
-            <strong>Open Social</strong> / Email from the Marketing hub with your asset.
-          </p>
+          {(
+            [
+              ['Marketing hub', 'marketing'],
+              ['Open Video', 'marketing'],
+              ['Open Social', 'marketing'],
+              ['Email (Marketing)', 'marketing'],
+            ] as const
+          ).map(([label, path]) => (
+            <button
+              key={label}
+              class="w-full py-1.5 rounded border border-zinc-200 bg-white text-zinc-700 cursor-pointer hover:border-accent text-[11px]"
+              onClick={async () => {
+                try {
+                  const me = await api<{
+                    projectRef: string
+                    studioUrl: string
+                  }>('GET', '/api/me')
+                  const base = (me.studioUrl || 'https://studio.indobase.in').replace(/\/+$/, '')
+                  const ref = me.projectRef
+                  const url = `${base}/project/${encodeURIComponent(ref)}/${path}`
+                  window.open(url, '_blank', 'noopener,noreferrer')
+                } catch {
+                  window.open('https://studio.indobase.in', '_blank', 'noopener,noreferrer')
+                }
+              }}
+            >
+              <Sparkles size={12} class="inline mr-1" />
+              {label}
+            </button>
+          ))}
         </div>
       </section>
     </div>

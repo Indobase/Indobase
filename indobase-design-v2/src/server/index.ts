@@ -310,6 +310,7 @@ app.get('/api/me', (c) => {
     orgSlug: s.orgSlug,
     role: s.role,
     canEdit: s.canEdit,
+    studioUrl: STUDIO_URL,
   })
 })
 

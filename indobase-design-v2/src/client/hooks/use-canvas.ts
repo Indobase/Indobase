@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import * as fabric from "fabric";
 import type { BrandKit, Template } from "../types";
-import { attachSmartGuides } from "../utils/canvas-tools";
+import { attachSmartGuides, groupSelection, ungroupSelection } from "../utils/canvas-tools";
+import { exportCanvas } from "../utils/export";
 
 const MAX_HISTORY = 50;
 
@@ -591,6 +592,30 @@ export function useCanvasState() {
       } else if (meta && e.key === "z" && e.shiftKey) {
         e.preventDefault();
         redo();
+      } else if (meta && e.key === "g" && !e.shiftKey) {
+        e.preventDefault();
+        const canvas = getActiveCanvas();
+        if (canvas) void groupSelection(canvas);
+      } else if (meta && e.key === "g" && e.shiftKey) {
+        e.preventDefault();
+        const canvas = getActiveCanvas();
+        if (canvas) void ungroupSelection(canvas);
+      } else if (meta && e.key === "d") {
+        e.preventDefault();
+        const canvas = getActiveCanvas();
+        const obj = canvas?.getActiveObject();
+        if (canvas && obj) {
+          void obj.clone().then((clone) => {
+            clone.set({ left: (obj.left || 0) + 20, top: (obj.top || 0) + 20 });
+            canvas.add(clone);
+            canvas.setActiveObject(clone);
+            canvas.requestRenderAll();
+          });
+        }
+      } else if (meta && e.key === "s") {
+        e.preventDefault();
+        // Autosave is wired via scheduleSave from App; Cmd+S bumps layers to trigger it.
+        bumpLayers();
       } else if ((e.key === "Delete" || e.key === "Backspace") && !isTextEditing()) {
         e.preventDefault();
         deleteSelected();
@@ -598,7 +623,7 @@ export function useCanvasState() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, deleteSelected]);
+  }, [undo, redo, deleteSelected, getActiveCanvas, bumpLayers]);
 
   function isTextEditing(): boolean {
     const canvas = getActiveCanvas();
