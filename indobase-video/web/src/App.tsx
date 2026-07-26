@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { exportTimelineWebm } from './lib/export'
+import { exportTimelineMp4, exportTimelineWebm } from './lib/export'
 import { loadProject, saveProject, sanitizeClips, storageKey } from './lib/storage'
 import {
   formatTime,
@@ -333,7 +333,35 @@ export default function App() {
     )
   }
 
-  const exportVideo = async () => {
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  const exportMp4 = async () => {
+    if (!clips.length) return
+    setExportProgress(0)
+    try {
+      const result = await exportTimelineMp4({
+        clips,
+        mediaById,
+        width: CANVAS.width,
+        height: CANVAS.height,
+        fps: CANVAS.fps,
+        onProgress: setExportProgress,
+      })
+      downloadBlob(result.blob, `${session?.project_ref || 'indobase'}-video.${result.extension}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'MP4 export failed')
+    } finally {
+      setExportProgress(null)
+    }
+  }
+
+  const exportWebm = async () => {
     if (!clips.length) return
     setExportProgress(0)
     try {
@@ -345,13 +373,9 @@ export default function App() {
         fps: CANVAS.fps,
         onProgress: setExportProgress,
       })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `${session?.project_ref || 'indobase'}-video.webm`
-      a.click()
-      URL.revokeObjectURL(a.href)
+      downloadBlob(blob, `${session?.project_ref || 'indobase'}-video.webm`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed')
+      alert(err instanceof Error ? err.message : 'WebM export failed')
     } finally {
       setExportProgress(null)
     }
@@ -413,8 +437,22 @@ export default function App() {
             hidden
             onChange={(e) => void importFiles(e.target.files)}
           />
-          <button type="button" className="btn-primary btn" onClick={() => void exportVideo()} disabled={!clips.length || exportProgress !== null}>
-            {exportProgress !== null ? `Exporting ${Math.round(exportProgress * 100)}%` : 'Export WebM'}
+          <button
+            type="button"
+            className="btn-primary btn"
+            onClick={() => void exportMp4()}
+            disabled={!clips.length || exportProgress !== null}
+            title="H.264 MP4 (native when available, otherwise FFmpeg in the browser)"
+          >
+            {exportProgress !== null ? `Exporting ${Math.round(exportProgress * 100)}%` : 'Export MP4'}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void exportWebm()}
+            disabled={!clips.length || exportProgress !== null}
+          >
+            Export WebM
           </button>
         </div>
       </header>

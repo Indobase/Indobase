@@ -14,7 +14,7 @@
 | Timeline + trim + split | Yes |
 | Text / title clips | Yes |
 | Preview playback | Yes |
-| Export downloadable video | Yes — **WebM** via Canvas + MediaRecorder (VP8/VP9). MP4/FFmpeg WASM not required for v1. |
+| Export downloadable video | Yes — **MP4** (H.264/AAC): native MediaRecorder when the browser supports it, otherwise WebM → **ffmpeg.wasm**. WebM still available as a secondary download. |
 | Autosave / restore | Yes — **IndexedDB** keyed by `project_ref` + Studio user `sub` (browser-local, project-scoped) |
 
 ## Architecture
@@ -60,11 +60,11 @@ VIDEO_HANDOFF_SECRET=<same as video .env>
 ```bash
 curl -sS https://video.indobase.fun/sso/health
 curl -sS https://video.indobase.in/sso/health
-# Studio → project → Marketing → Open Video → import → trim/text → Play → Export WebM
+# Studio → project → Marketing → Open Video → import → trim/text → Play → Export MP4
 ```
 
 ## Limitations
 
-- Export is **WebM** (browser MediaRecorder), not MP4. Fine for product clips; convert externally if a client requires H.264.
+- First MP4 export on Chromium may download ~30 MB ffmpeg.wasm from jsDelivr and encode slower than realtime (`ultrafast` preset). Safari often records MP4 natively and skips WASM.
 - Project media lives in the browser IndexedDB for that Studio user + project — not a multi-device cloud library yet.
 - No collaborative multiplayer editing.

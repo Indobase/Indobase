@@ -363,8 +363,8 @@ export const ProjectMarketingHome = () => {
                 statusLabel="Available"
                 statusHint={
                   ref
-                    ? `Opens Indobase Video for project ${ref} (timeline autosaved in-browser). Studio SSO — no separate password. Export is WebM.`
-                    : 'Studio SSO handoff — no separate password. Export is WebM.'
+                    ? `Opens Indobase Video for project ${ref} (timeline autosaved in-browser). Studio SSO — no separate password. Export MP4 (or WebM).`
+                    : 'Studio SSO handoff — no separate password. Export MP4 (or WebM).'
                 }
                 actions={
                   <>
