@@ -31,6 +31,18 @@ Cloudflare Workers is incompatible with the self-hosted Docker/VPS model the res
 Google Fonts (SIL Open Font License 1.1), loaded at runtime. No fonts are redistributed in this
 repository.
 
+## Davronov/canva-clone — Apache-2.0
+
+The **layers panel** z-order controls (`bringForward` / `sendBackwards` via Fabric, plus the
+layers list UX in `src/client/components/layers-panel.tsx`) are adapted from
+[Davronov-Alimardon/canva-clone](https://github.com/Davronov-Alimardon/canva-clone),
+Copyright 2025 Alimardon Davronov, licensed under the Apache License, Version 2.0.
+The full licence text is retained in [`LICENSE.davronov`](./LICENSE.davronov).
+
+Modifications: rewritten for Preact + Fabric.js v6 APIs (`bringObjectForward` /
+`sendObjectBackwards`), multi-page canvas map, and Indobase branding — not a verbatim copy of
+upstream React/Next components.
+
 ## Template content
 
 The built-in templates in `src/server/templates.ts` are original Indobase work, authored as Fabric.js

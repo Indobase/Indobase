@@ -47,6 +47,12 @@ export interface EditorContextValue {
   zoomIn: () => void;
   zoomOut: () => void;
   exportPNG: () => void;
+  exportDesign: (format: "png" | "jpg" | "svg" | "pdf", designName?: string | null) => void;
+  bringForward: (obj?: fabric.FabricObject | null) => void;
+  sendBackward: (obj?: fabric.FabricObject | null) => void;
+  setLayerVisible: (obj: fabric.FabricObject, visible: boolean) => void;
+  setLayerLocked: (obj: fabric.FabricObject, locked: boolean) => void;
+  layersVersion: number;
   getCanvasJSON: () => string;
   getCanvasJSONForPage: (pageId: string) => string;
   loadTemplate: (template: Template) => void;

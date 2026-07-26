@@ -10,18 +10,21 @@ import {
   Palette,
   LayoutGrid,
   Sparkles,
+  Layers,
 } from "lucide-preact";
 import { useEditor } from "../context";
 import { TemplateCard } from "./template-card";
 import { DesignList } from "./design-list";
+import { LayersPanel } from "./layers-panel";
 
-type Section = "templates" | "text" | "shapes" | "images" | "background" | "designs";
+type Section = "templates" | "text" | "shapes" | "images" | "background" | "layers" | "designs";
 
 const SECTIONS: { key: Section; icon: typeof LayoutGrid; label: string }[] = [
   { key: "templates", icon: Sparkles, label: "Templates" },
   { key: "shapes", icon: Square, label: "Elements" },
   { key: "text", icon: Type, label: "Text" },
   { key: "images", icon: Upload, label: "Uploads" },
+  { key: "layers", icon: Layers, label: "Layers" },
   { key: "background", icon: Palette, label: "Bg" },
   { key: "designs", icon: LayoutGrid, label: "Designs" },
 ];
@@ -31,6 +34,7 @@ const SECTION_TITLES: Record<Section, string> = {
   shapes: "Elements",
   text: "Text",
   images: "Uploads",
+  layers: "Layers",
   background: "Background",
   designs: "Designs",
 };
@@ -297,6 +301,8 @@ export function LeftSidebar() {
                     />
                   </div>
                 )}
+
+                {activeSection === "layers" && <LayersPanel />}
 
                 {activeSection === "designs" && <DesignList />}
               </div>

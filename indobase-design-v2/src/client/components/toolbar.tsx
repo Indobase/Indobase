@@ -26,7 +26,7 @@ export function Toolbar() {
     zoomToFit,
     zoomIn,
     zoomOut,
-    exportPNG,
+    exportDesign,
     saveDesign,
     saving,
     activeDesign,
@@ -35,6 +35,7 @@ export function Toolbar() {
   } = useEditor();
 
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
 
@@ -54,6 +55,11 @@ export function Toolbar() {
       renameDesign(activeDesign.id, nameValue.trim());
     }
     setEditingName(false);
+  };
+
+  const runExport = (format: "png" | "jpg" | "svg" | "pdf") => {
+    exportDesign(format, activeDesign?.name);
+    setShowExportMenu(false);
   };
 
   return (
@@ -176,14 +182,37 @@ export function Toolbar() {
 
         <div class="w-px h-5 bg-zinc-300 mx-1" />
 
-        <button
-          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold border border-zinc-300 cursor-pointer transition-all bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-          onClick={exportPNG}
-          title="Export as PNG"
-        >
-          <Download size={13} />
-          Export
-        </button>
+        <div class="relative">
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold border border-zinc-300 cursor-pointer transition-all bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+            onClick={() => setShowExportMenu((v) => !v)}
+            title="Export design"
+          >
+            <Download size={13} />
+            Export
+            <ChevronDown size={12} />
+          </button>
+          {showExportMenu && (
+            <div class="absolute right-0 top-full mt-1 z-30 min-w-[140px] rounded-md border border-zinc-200 bg-white shadow-lg py-1">
+              {(
+                [
+                  ["png", "PNG"],
+                  ["jpg", "JPG"],
+                  ["svg", "SVG"],
+                  ["pdf", "PDF"],
+                ] as const
+              ).map(([fmt, label]) => (
+                <button
+                  key={fmt}
+                  class="w-full text-left px-3 py-1.5 text-[11px] text-zinc-700 bg-transparent border-none cursor-pointer hover:bg-zinc-50"
+                  onClick={() => runExport(fmt)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-md text-[11px] font-semibold border-none cursor-pointer transition-all bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
           onClick={saveDesign}

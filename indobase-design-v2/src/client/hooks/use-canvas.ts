@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import * as fabric from "fabric";
 import type { Template } from "../types";
+import { exportCanvas } from "../utils/export";
 
 const MAX_HISTORY = 50;
 
@@ -34,6 +35,11 @@ export function useCanvasState() {
   const [fitScale, setFitScale] = useState(0.58);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [layersVersion, setLayersVersion] = useState(0);
+
+  const bumpLayers = useCallback(() => {
+    setLayersVersion((v) => v + 1);
+  }, []);
   const isRestoringRef = useRef<Set<string>>(new Set());
 
   // Helper to get the active canvas
@@ -97,18 +103,28 @@ export function useCanvasState() {
       }
     });
 
-    // History events
-    canvas.on("object:added", () => saveHistory(pageId));
-    canvas.on("object:modified", () => saveHistory(pageId));
-    canvas.on("object:removed", () => saveHistory(pageId));
+    // History + layers panel refresh
+    canvas.on("object:added", () => {
+      saveHistory(pageId);
+      if (activeCanvasIdRef.current === pageId) bumpLayers();
+    });
+    canvas.on("object:modified", () => {
+      saveHistory(pageId);
+      if (activeCanvasIdRef.current === pageId) bumpLayers();
+    });
+    canvas.on("object:removed", () => {
+      saveHistory(pageId);
+      if (activeCanvasIdRef.current === pageId) bumpLayers();
+    });
 
     // Initial history snapshot
     setTimeout(() => {
       const json = JSON.stringify(canvas.toJSON());
       historyMapRef.current.set(pageId, { entries: [json], index: 0 });
       updateUndoRedoState(pageId);
+      if (activeCanvasIdRef.current === pageId) bumpLayers();
     }, 100);
-  }, [saveHistory, updateUndoRedoState]);
+  }, [saveHistory, updateUndoRedoState, bumpLayers]);
 
   const unregisterCanvas = useCallback((pageId: string) => {
     canvasMapRef.current.delete(pageId);
@@ -370,29 +386,82 @@ export function useCanvasState() {
 
   // ── Export ──────────────────────────────────────────────────────────
 
+  const exportDesign = useCallback(
+    (format: "png" | "jpg" | "svg" | "pdf", designName?: string | null) => {
+      const canvas = getActiveCanvas();
+      if (!canvas) return;
+      exportCanvas(canvas, format, designName);
+    },
+    [getActiveCanvas]
+  );
+
+  /** @deprecated Prefer exportDesign('png') — kept for older call sites. */
   const exportPNG = useCallback(() => {
-    const canvas = getActiveCanvas();
-    if (!canvas) return;
-    const activeObj = canvas.getActiveObject();
-    canvas.discardActiveObject();
-    canvas.requestRenderAll();
+    exportDesign("png");
+  }, [exportDesign]);
 
-    const dataURL = canvas.toDataURL({
-      format: "png",
-      multiplier: 2,
-      quality: 1,
-    });
+  // ── Layers (Davronov-style z-order via Fabric v6 APIs) ───────────────
 
-    const link = document.createElement("a");
-    link.download = "design.png";
-    link.href = dataURL;
-    link.click();
-
-    if (activeObj) {
-      canvas.setActiveObject(activeObj);
+  const bringForward = useCallback(
+    (obj?: fabric.FabricObject | null) => {
+      const canvas = getActiveCanvas();
+      const target = obj ?? canvas?.getActiveObject() ?? null;
+      if (!canvas || !target) return;
+      canvas.bringObjectForward(target);
       canvas.requestRenderAll();
-    }
-  }, [getActiveCanvas]);
+      bumpLayers();
+      const pageId = activeCanvasIdRef.current;
+      if (pageId) saveHistory(pageId);
+    },
+    [getActiveCanvas, bumpLayers, saveHistory]
+  );
+
+  const sendBackward = useCallback(
+    (obj?: fabric.FabricObject | null) => {
+      const canvas = getActiveCanvas();
+      const target = obj ?? canvas?.getActiveObject() ?? null;
+      if (!canvas || !target) return;
+      canvas.sendObjectBackwards(target);
+      canvas.requestRenderAll();
+      bumpLayers();
+      const pageId = activeCanvasIdRef.current;
+      if (pageId) saveHistory(pageId);
+    },
+    [getActiveCanvas, bumpLayers, saveHistory]
+  );
+
+  const setLayerVisible = useCallback(
+    (obj: fabric.FabricObject, visible: boolean) => {
+      const canvas = getActiveCanvas();
+      if (!canvas) return;
+      obj.set({ visible });
+      canvas.requestRenderAll();
+      bumpLayers();
+      const pageId = activeCanvasIdRef.current;
+      if (pageId) saveHistory(pageId);
+    },
+    [getActiveCanvas, bumpLayers, saveHistory]
+  );
+
+  const setLayerLocked = useCallback(
+    (obj: fabric.FabricObject, locked: boolean) => {
+      const canvas = getActiveCanvas();
+      if (!canvas) return;
+      obj.set({
+        selectable: !locked,
+        evented: !locked,
+        hasControls: !locked,
+      });
+      if (locked && canvas.getActiveObject() === obj) {
+        canvas.discardActiveObject();
+      }
+      canvas.requestRenderAll();
+      bumpLayers();
+      const pageId = activeCanvasIdRef.current;
+      if (pageId) saveHistory(pageId);
+    },
+    [getActiveCanvas, bumpLayers, saveHistory]
+  );
 
   // ── Serialization ───────────────────────────────────────────────────
 
@@ -501,6 +570,12 @@ export function useCanvasState() {
     zoomIn,
     zoomOut,
     exportPNG,
+    exportDesign,
+    bringForward,
+    sendBackward,
+    setLayerVisible,
+    setLayerLocked,
+    layersVersion,
     getCanvasJSON,
     getCanvasJSONForPage,
     loadTemplate,

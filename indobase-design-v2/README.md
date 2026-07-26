@@ -77,32 +77,30 @@ See [`docs/INDOBASE-DESIGN-V2.md`](../docs/INDOBASE-DESIGN-V2.md).
 
 ## Status
 
-**Working and verified:** editor (text, shapes, images, multi-page, undo/redo, autosave, PNG export),
-Studio SSO with role gating, multi-tenant storage, 8 built-in India-first templates, healthcheck.
+**Working and verified:** editor (text, shapes, images, multi-page, undo/redo, autosave,
+PNG/JPG/SVG/PDF export, layers panel), Studio SSO with role gating, multi-tenant storage,
+8 built-in India-first templates, healthcheck.
 
-Verified by: `tsc --noEmit` clean · 17 auth/tenant-isolation tests · 8 template-integrity tests ·
-production `vite build`. **Not yet verified against a live Postgres or a real Studio handoff** — no
-database was reachable in the build environment, so the first deploy is where the DB paths and the
-end-to-end SSO round-trip get their real test.
+Live staging: `https://studio-design.indobase.fun` (SSO-only; Penpot remains on
+`design.indobase.in`).
+
+Verified by: unit suites · production `vite build` · live SSO create/save smoke on staging.
 
 ## Canva parity — what's still missing
 
 Honest list, roughly by value:
 
-1. **Layers panel** — Fabric supports z-order; the UI doesn't expose it. (Apache-2.0
-   [Davronov/canva-clone](https://github.com/Davronov-Alimardon/canva-clone) has one that can be
-   adapted with attribution.)
-2. **Export formats** — PNG only today; needs JPG/SVG/PDF.
-3. **Brand kit** — logo/colours/fonts applied across the suite.
-4. **More templates** — 8 is a starter set. The India-first angle (festivals, WhatsApp, GST-style
+1. **Brand kit** — logo/colours/fonts applied across the suite.
+2. **More templates** — 8 is a starter set. The India-first angle (festivals, WhatsApp, GST-style
    invoices, Indic-language type) is where this beats Canva rather than trailing it.
-5. **AI drafting** — "describe your post" → template + copy + image. Now possible because templates
+3. **AI drafting** — "describe your post" → template + copy + image. Now possible because templates
    are JSON.
-6. **Business-data merge** — auto-fill a sale poster from real products/prices. Needs the shared
+4. **Business-data merge** — auto-fill a sale poster from real products/prices. Needs the shared
    business schema.
-7. **Magic resize** — one design → every social format.
+5. **Magic resize** — one design → every social format.
 
-Items 5 and 6 are the differentiators; 1–3 are table stakes.
+Items 3 and 4 are the differentiators; brand kit / templates are table stakes.
+Layers panel and JPG/SVG/PDF export shipped.
 
 ## Migration from the Penpot fork
 
