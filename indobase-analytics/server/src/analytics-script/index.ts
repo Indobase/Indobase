@@ -19,7 +19,7 @@ declare global {
 }
 
 /** Expose `window.indobase` alongside the default `rybbit` namespace for docs/snippets. */
-function exposeIndobaseAlias(api: RybbitAPI, namespace: string) {
+function exposeIndobaseAlias(api: any, namespace: string) {
   if (namespace === "rybbit" || namespace === "indobase") {
     window.indobase = api;
     if (namespace === "indobase" && !window.rybbit) {
@@ -42,7 +42,7 @@ function exposeIndobaseAlias(api: RybbitAPI, namespace: string) {
   // Check if user has opted out
   if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
     // Create no-op implementation
-    const noopApi: RybbitAPI = {
+    const noopApi = {
       pageview: () => {},
       event: () => {},
       error: () => {},

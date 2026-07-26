@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { useExtracted } from "next-intl";
 import { useWhiteLabel } from "../../hooks/useIsWhiteLabel";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
@@ -7,124 +7,71 @@ import {
   INDOBASE_ANALYTICS_DOCS_URL,
   INDOBASE_HOME_URL,
   INDOBASE_PRIVACY_URL,
-  INDOBASE_SOURCE_URL,
-  INDOBASE_SUPPORT_EMAIL,
   INDOBASE_TERMS_URL,
-  IS_CLOUD,
 } from "../../lib/const";
 
 interface FooterProps {
   disabled?: boolean;
 }
 
+/**
+ * Minimal Indobase product footer — no upstream sponsor/affiliate/social/community UI.
+ */
 export function Footer({ disabled = false }: FooterProps) {
-  const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
   const { isWhiteLabel } = useWhiteLabel();
   const t = useExtracted();
   if (disabled || isWhiteLabel) {
     return null;
   }
 
+  const year = String(new Date().getFullYear());
+
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900">
-      <div className="max-w-[1100px] mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-          <div className="space-y-4">
+      <div className="max-w-[1100px] mx-auto px-4 py-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href={INDOBASE_HOME_URL}
+            className="flex items-center gap-2.5 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+            aria-label="Indobase Analytics"
+          >
             <Image
-              src="/indobase/wordmark.svg"
-              alt="Indobase Analytics"
-              width={140}
+              src="/indobase/logo.svg"
+              alt=""
+              width={28}
               height={28}
-              style={{ width: 140, height: 28, objectFit: "contain" }}
+              className="shrink-0"
+              style={{ width: 28, height: 28 }}
             />
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
-              Privacy-focused web analytics by Indobase.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("Resources")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a
-                  href={INDOBASE_ANALYTICS_DOCS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                >
-                  {t("Documentation")}
-                </a>
-              </li>
-              <li>
-                <a
-                  href={INDOBASE_SOURCE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li>
-                <a
-                  href={INDOBASE_HOME_URL}
-                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                >
-                  Indobase
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("Company")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a
-                  href={INDOBASE_PRIVACY_URL}
-                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                >
-                  {t("Privacy Policy")}
-                </a>
-              </li>
-              <li>
-                <a
-                  href={INDOBASE_TERMS_URL}
-                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                >
-                  {t("Terms and Conditions")}
-                </a>
-              </li>
-              {IS_CLOUD && (
-                <li>
-                  <a
-                    href={INDOBASE_SUPPORT_EMAIL}
-                    className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
-                  >
-                    {t("Support")}
-                  </a>
-                </li>
-              )}
-            </ul>
-          </div>
+            <span className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
+              Indobase Analytics
+            </span>
+          </Link>
+          <span className="hidden sm:inline text-neutral-300 dark:text-neutral-700">·</span>
+          <span className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
+            {t("© {year} Indobase. All rights reserved.", { year })}
+          </span>
         </div>
 
-        <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
-              <span>{t("© {year} Indobase. All rights reserved.", { year: String(new Date().getFullYear()) })}</span>
-              {APP_VERSION ? <span>v{APP_VERSION}</span> : null}
-            </div>
-            <div className="flex items-center gap-4">
-              <LanguageSwitcher />
-              <Link
-                href={INDOBASE_HOME_URL}
-                className="text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
-              >
-                Indobase
-              </Link>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <a
+            href={INDOBASE_ANALYTICS_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-neutral-900 dark:hover:text-white transition-colors"
+          >
+            {t("Documentation")}
+          </a>
+          <a
+            href={INDOBASE_PRIVACY_URL}
+            className="hover:text-neutral-900 dark:hover:text-white transition-colors"
+          >
+            {t("Privacy Policy")}
+          </a>
+          <a href={INDOBASE_TERMS_URL} className="hover:text-neutral-900 dark:hover:text-white transition-colors">
+            {t("Terms and Conditions")}
+          </a>
+          <LanguageSwitcher />
         </div>
       </div>
     </footer>
