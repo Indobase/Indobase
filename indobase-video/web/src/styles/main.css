@@ -258,6 +258,8 @@ button {
   border-radius: 8px;
   color: var(--text);
   padding: 0.5rem 0.65rem;
+  width: 100%;
+  resize: vertical;
 }
 
 .timeline {
@@ -275,7 +277,7 @@ button {
 
 .timeline-track {
   position: relative;
-  height: 64px;
+  height: 52px;
   border-radius: 10px;
   background: repeating-linear-gradient(
     90deg,
@@ -287,12 +289,38 @@ button {
     var(--bg-panel);
   border: 1px solid var(--line);
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.timeline-lane {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.lane-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.25rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .clip {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 6px;
+  bottom: 6px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 0.35rem 0.5rem;

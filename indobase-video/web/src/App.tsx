@@ -2,14 +2,27 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { exportTimelineMp4, exportTimelineWebm } from './lib/export'
 import { loadProject, saveProject, sanitizeClips, storageKey } from './lib/storage'
 import {
+  base64ToBlob,
+  fetchVideoQuota,
+  generateStoryboard,
+  listCloudProjects,
+  saveCloudProject,
+  synthesizeTts,
+  type VideoAiQuota,
+} from './lib/studio-api'
+import {
+  TRACKS,
+  defaultTrackForKind,
   formatTime,
   projectDuration,
+  sortClipsForDraw,
   uid,
   type MediaAsset,
   type MediaKind,
   type ProjectDocument,
   type SessionInfo,
   type TimelineClip,
+  type TrackId,
 } from './lib/types'
 
 const CANVAS = { width: 1280, height: 720, fps: 30 }
@@ -53,30 +66,53 @@ async function probeMedia(file: File): Promise<Omit<MediaAsset, 'id' | 'objectUr
   return { name: file.name, kind, duration, width, height }
 }
 
+async function probeBlobDuration(blob: Blob): Promise<number> {
+  const url = URL.createObjectURL(blob)
+  const audio = document.createElement('audio')
+  audio.preload = 'metadata'
+  audio.src = url
+  try {
+    await new Promise<void>((resolve, reject) => {
+      audio.onloadedmetadata = () => resolve()
+      audio.onerror = () => reject(new Error('audio meta failed'))
+    })
+    return Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 3
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [clips, setClips] = useState<TimelineClip[]>([])
+  const [cloudId, setCloudId] = useState<string | undefined>()
+  const [projectTitle, setProjectTitle] = useState('Untitled video')
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
   const [playhead, setPlayhead] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'cloud'>('idle')
   const [exportProgress, setExportProgress] = useState<number | null>(null)
   const [textDraft, setTextDraft] = useState('Indobase')
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiDuration, setAiDuration] = useState(30)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiStatus, setAiStatus] = useState<string | null>(null)
+  const [quota, setQuota] = useState<VideoAiQuota | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoCache = useRef(new Map<string, HTMLVideoElement>())
   const imageCache = useRef(new Map<string, HTMLImageElement>())
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
+  const trackRefs = useRef(new Map<TrackId, HTMLDivElement>())
   const saveTimer = useRef<number | null>(null)
+  const canvasSize = useRef({ ...CANVAS })
 
   const mediaById = useMemo(() => new Map(media.map((m) => [m.id, m])), [media])
   const duration = Math.max(projectDuration(clips), 1)
   const selected = clips.find((c) => c.id === selectedClipId) || null
   const pxPerSec = 48
 
-  // Boot session + restore
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -98,11 +134,50 @@ export default function App() {
         document.title = `Indobase Video · ${me.project_name || me.project_ref}`
 
         const key = storageKey(me.project_ref, me.sub)
-        const restored = await loadProject(key)
+        let restoredClips: TimelineClip[] = []
+        let restoredMedia: MediaAsset[] = []
+        let restoredCloudId: string | undefined
+        let restoredTitle = 'Untitled video'
+
+        try {
+          const cloud = await listCloudProjects(me)
+          if (cloud.latest?.doc) {
+            restoredClips = sanitizeClips((cloud.latest.doc.clips || []) as TimelineClip[])
+            restoredCloudId = cloud.latest.id
+            restoredTitle = cloud.latest.title || cloud.latest.doc.title || restoredTitle
+            if (cloud.latest.doc.canvas) {
+              canvasSize.current = {
+                width: cloud.latest.doc.canvas.width || CANVAS.width,
+                height: cloud.latest.doc.canvas.height || CANVAS.height,
+                fps: cloud.latest.doc.canvas.fps || CANVAS.fps,
+              }
+            }
+          }
+        } catch {
+          // Cloud optional at boot — fall back to IndexedDB cache.
+        }
+
+        const local = await loadProject(key)
+        if (local) {
+          restoredMedia = local.media
+          if (!restoredClips.length) {
+            restoredClips = sanitizeClips(local.doc.clips)
+            restoredCloudId = local.doc.cloudId || restoredCloudId
+            restoredTitle = local.doc.title || restoredTitle
+          }
+        }
+
         if (cancelled) return
-        if (restored) {
-          setMedia(restored.media)
-          setClips(sanitizeClips(restored.doc.clips))
+        setMedia(restoredMedia)
+        setClips(restoredClips)
+        setCloudId(restoredCloudId)
+        setProjectTitle(restoredTitle)
+
+        try {
+          const q = await fetchVideoQuota(me)
+          if (!cancelled) setQuota(q)
+        } catch {
+          /* ignore */
         }
       } catch (err) {
         if (!cancelled) setBootError(err instanceof Error ? err.message : 'Failed to start')
@@ -113,7 +188,6 @@ export default function App() {
     }
   }, [])
 
-  // Autosave (debounced), scoped to Indobase project + user
   useEffect(() => {
     if (!session) return
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
@@ -124,21 +198,34 @@ export default function App() {
         projectName: session.project_name,
         updatedAt: Date.now(),
         clips,
-        canvas: CANVAS,
+        canvas: canvasSize.current,
+        cloudId,
+        title: projectTitle,
       }
       setSaveState('saving')
-      void saveProject({
-        key: storageKey(session.project_ref, session.sub),
-        doc,
-        media,
-      })
-        .then(() => setSaveState('saved'))
-        .catch(() => setSaveState('idle'))
-    }, 700)
+      void (async () => {
+        try {
+          await saveProject({
+            key: storageKey(session.project_ref, session.sub),
+            doc,
+            media,
+          })
+          const saved = await saveCloudProject(session, {
+            id: cloudId,
+            title: projectTitle,
+            doc,
+          })
+          setCloudId(saved.id)
+          setSaveState('cloud')
+        } catch {
+          setSaveState('saved')
+        }
+      })()
+    }, 900)
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
     }
-  }, [session, clips, media])
+  }, [session, clips, media, cloudId, projectTitle])
 
   const ensureVideo = useCallback(async (asset: MediaAsset) => {
     let v = videoCache.current.get(asset.id)
@@ -175,10 +262,12 @@ export default function App() {
       if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
+      const { width, height } = canvasSize.current
       ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, CANVAS.width, CANVAS.height)
+      ctx.fillRect(0, 0, width, height)
 
-      for (const clip of clips) {
+      for (const clip of sortClipsForDraw(clips)) {
+        if (clip.kind === 'audio') continue
         if (time < clip.start || time > clip.start + clip.duration) continue
         const local = time - clip.start + clip.trimIn
 
@@ -187,7 +276,7 @@ export default function App() {
           ctx.font = `600 ${clip.fontSize || 64}px "Segoe UI", system-ui, sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(clip.text || 'Title', CANVAS.width / 2, CANVAS.height / 2)
+          ctx.fillText(clip.text || 'Title', width / 2, height / 2)
           continue
         }
 
@@ -198,20 +287,20 @@ export default function App() {
         if (asset.kind === 'video') {
           const v = await ensureVideo(asset)
           if (Math.abs(v.currentTime - local) > 0.04) v.currentTime = local
-          const sw = v.videoWidth || CANVAS.width
-          const sh = v.videoHeight || CANVAS.height
-          const scale = Math.max(CANVAS.width / sw, CANVAS.height / sh)
+          const sw = v.videoWidth || width
+          const sh = v.videoHeight || height
+          const scale = Math.max(width / sw, height / sh)
           const dw = sw * scale
           const dh = sh * scale
-          ctx.drawImage(v, (CANVAS.width - dw) / 2, (CANVAS.height - dh) / 2, dw, dh)
+          ctx.drawImage(v, (width - dw) / 2, (height - dh) / 2, dw, dh)
         } else if (asset.kind === 'image') {
           const img = await ensureImage(asset)
           const sw = img.naturalWidth
           const sh = img.naturalHeight
-          const scale = Math.max(CANVAS.width / sw, CANVAS.height / sh)
+          const scale = Math.max(width / sw, height / sh)
           const dw = sw * scale
           const dh = sh * scale
-          ctx.drawImage(img, (CANVAS.width - dw) / 2, (CANVAS.height - dh) / 2, dw, dh)
+          ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh)
         }
       }
     },
@@ -222,7 +311,6 @@ export default function App() {
     void drawPreview(playhead)
   }, [playhead, drawPreview])
 
-  // Playback loop
   useEffect(() => {
     if (!playing) return
     let raf = 0
@@ -260,10 +348,12 @@ export default function App() {
         ...meta,
       }
       added.push(asset)
+      const trackId = defaultTrackForKind(meta.kind)
       if (meta.kind !== 'audio') {
         newClips.push({
           id: uid('clip'),
           kind: meta.kind,
+          trackId,
           mediaId: asset.id,
           start: cursor,
           duration: Math.min(meta.duration, 30),
@@ -275,6 +365,7 @@ export default function App() {
         newClips.push({
           id: uid('clip'),
           kind: 'audio',
+          trackId: 'a1',
           mediaId: asset.id,
           start: 0,
           duration: meta.duration,
@@ -292,6 +383,7 @@ export default function App() {
     const clip: TimelineClip = {
       id: uid('clip'),
       kind: 'text',
+      trackId: 't1',
       start: playhead,
       duration: 3,
       trimIn: 0,
@@ -348,9 +440,9 @@ export default function App() {
       const result = await exportTimelineMp4({
         clips,
         mediaById,
-        width: CANVAS.width,
-        height: CANVAS.height,
-        fps: CANVAS.fps,
+        width: canvasSize.current.width,
+        height: canvasSize.current.height,
+        fps: canvasSize.current.fps,
         onProgress: setExportProgress,
       })
       downloadBlob(result.blob, `${session?.project_ref || 'indobase'}-video.${result.extension}`)
@@ -368,9 +460,9 @@ export default function App() {
       const blob = await exportTimelineWebm({
         clips,
         mediaById,
-        width: CANVAS.width,
-        height: CANVAS.height,
-        fps: CANVAS.fps,
+        width: canvasSize.current.width,
+        height: canvasSize.current.height,
+        fps: canvasSize.current.fps,
         onProgress: setExportProgress,
       })
       downloadBlob(blob, `${session?.project_ref || 'indobase'}-video.webm`)
@@ -381,12 +473,119 @@ export default function App() {
     }
   }
 
-  const onTrackPointer = (clientX: number) => {
-    const el = trackRef.current
+  const createWithAi = async () => {
+    if (!session || !aiPrompt.trim() || aiBusy) return
+    setAiBusy(true)
+    setAiStatus('Writing storyboard…')
+    try {
+      const draft = await generateStoryboard(session, {
+        prompt: aiPrompt.trim(),
+        durationTargetSec: aiDuration,
+        aspect: '16:9',
+      })
+      if (draft.quota) setQuota(draft.quota)
+      setProjectTitle(draft.title || 'AI draft')
+
+      const newMedia: MediaAsset[] = []
+      const newClips: TimelineClip[] = []
+      let cursor = 0
+      let voiceNote: string | null = null
+
+      for (let i = 0; i < draft.scenes.length; i++) {
+        const scene = draft.scenes[i]
+        const dur = Math.max(2, scene.durationSec || 4)
+        newClips.push({
+          id: uid('clip'),
+          kind: 'text',
+          trackId: 't1',
+          start: cursor,
+          duration: dur,
+          trimIn: 0,
+          sourceDuration: dur,
+          text: scene.textOverlay || scene.title,
+          fontSize: 56,
+          color: '#F0B429',
+        })
+
+        if (scene.narration?.trim()) {
+          setAiStatus(`Narrating scene ${i + 1}/${draft.scenes.length}…`)
+          try {
+            const tts = await synthesizeTts(session, { text: scene.narration.trim() })
+            if (tts.available) {
+              if (tts.quota) setQuota(tts.quota)
+              const blob = base64ToBlob(tts.audioBase64, tts.mime)
+              const audioDur = await probeBlobDuration(blob)
+              const asset: MediaAsset = {
+                id: uid('media'),
+                name: `Narration ${i + 1}.${tts.extension}`,
+                kind: 'audio',
+                blob,
+                objectUrl: URL.createObjectURL(blob),
+                duration: audioDur,
+              }
+              newMedia.push(asset)
+              newClips.push({
+                id: uid('clip'),
+                kind: 'audio',
+                trackId: 'a1',
+                mediaId: asset.id,
+                start: cursor,
+                duration: Math.min(audioDur, dur + 0.5),
+                trimIn: 0,
+                sourceDuration: audioDur,
+              })
+            } else {
+              voiceNote = tts.message
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'TTS failed'
+            voiceNote = msg
+            if ((err as { code?: string }).code === 'video_ai_quota_exhausted') break
+          }
+        }
+
+        cursor += dur
+      }
+
+      setMedia((m) => [...m, ...newMedia])
+      setClips((c) => sanitizeClips([...c, ...newClips]))
+      if (newClips[0]) setSelectedClipId(newClips[0].id)
+      setAiStatus(
+        voiceNote
+          ? `Draft ready · ${draft.scenes.length} scenes (voice: ${voiceNote})`
+          : `Draft ready · ${draft.scenes.length} scenes (${draft.model})`
+      )
+      try {
+        setQuota(await fetchVideoQuota(session))
+      } catch {
+        /* ignore */
+      }
+    } catch (err) {
+      setAiStatus(err instanceof Error ? err.message : 'AI generate failed')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  const onTrackPointer = (trackId: TrackId, clientX: number) => {
+    const el = trackRefs.current.get(trackId)
     if (!el) return
     const rect = el.getBoundingClientRect()
     const x = Math.min(Math.max(0, clientX - rect.left), rect.width)
     setPlayhead((x / (duration * pxPerSec)) * duration)
+  }
+
+  const moveClipToTrack = (clipId: string, trackId: TrackId) => {
+    setClips((c) =>
+      sanitizeClips(
+        c.map((clip) => {
+          if (clip.id !== clipId) return clip
+          const track = TRACKS.find((t) => t.id === trackId)
+          if (!track || !track.kinds.includes(clip.kind)) return clip
+          return { ...clip, trackId }
+        })
+      )
+    )
   }
 
   if (bootError) {
@@ -409,6 +608,13 @@ export default function App() {
     )
   }
 
+  const quotaLabel =
+    quota == null
+      ? null
+      : quota.limit == null
+        ? `AI unlimited · used ${quota.used}`
+        : `AI ${quota.remaining ?? 0}/${quota.limit} left`
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -424,8 +630,15 @@ export default function App() {
         <div className="toolbar">
           <span className="status-pill">
             <span className="dot" />
-            {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Autosaved' : 'Ready'}
+            {saveState === 'saving'
+              ? 'Saving…'
+              : saveState === 'cloud'
+                ? 'Cloud synced'
+                : saveState === 'saved'
+                  ? 'Local cache'
+                  : 'Ready'}
           </span>
+          {quotaLabel ? <span className="status-pill">{quotaLabel}</span> : null}
           <button type="button" className="btn" onClick={() => fileInputRef.current?.click()}>
             Import media
           </button>
@@ -459,10 +672,42 @@ export default function App() {
 
       <div className="workspace">
         <aside className="panel">
-          <h2>Media library</h2>
+          <h2>Create with AI</h2>
+          <div className="field">
+            <label htmlFor="ai-prompt">Prompt</label>
+            <textarea
+              id="ai-prompt"
+              rows={4}
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="30s product explainer for Indobase Video…"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="ai-dur">Target duration (s)</label>
+            <input
+              id="ai-dur"
+              type="number"
+              min={8}
+              max={90}
+              value={aiDuration}
+              onChange={(e) => setAiDuration(Math.max(8, Number(e.target.value) || 30))}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={aiBusy || !aiPrompt.trim()}
+            onClick={() => void createWithAi()}
+          >
+            {aiBusy ? 'Generating…' : 'Generate draft'}
+          </button>
+          {aiStatus ? <p className="hint">{aiStatus}</p> : null}
+
+          <h2 style={{ marginTop: '1.25rem' }}>Media library</h2>
           <div className="media-list">
             {media.length === 0 ? (
-              <p className="hint">Import video, audio, or images to start editing.</p>
+              <p className="hint">Import media or generate an AI draft to start.</p>
             ) : (
               media.map((m) => (
                 <button
@@ -473,6 +718,7 @@ export default function App() {
                     const clip: TimelineClip = {
                       id: uid('clip'),
                       kind: m.kind,
+                      trackId: defaultTrackForKind(m.kind),
                       mediaId: m.id,
                       start: playhead,
                       duration: Math.min(m.duration, 10),
@@ -502,13 +748,24 @@ export default function App() {
 
         <section className="preview-wrap">
           <div className="preview-stage">
-            <canvas ref={canvasRef} width={CANVAS.width} height={CANVAS.height} />
+            <canvas
+              ref={canvasRef}
+              width={canvasSize.current.width}
+              height={canvasSize.current.height}
+            />
           </div>
           <div className="transport">
             <button type="button" className="btn btn-primary" onClick={() => setPlaying((p) => !p)}>
               {playing ? 'Pause' : 'Play'}
             </button>
-            <button type="button" className="btn" onClick={() => { setPlaying(false); setPlayhead(0) }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setPlaying(false)
+                setPlayhead(0)
+              }}
+            >
               Stop
             </button>
             <span className="time">
@@ -524,6 +781,14 @@ export default function App() {
 
         <aside className="panel">
           <h2>Inspector</h2>
+          <div className="field">
+            <label htmlFor="project-title">Project title</label>
+            <input
+              id="project-title"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+            />
+          </div>
           <div className="field">
             <label htmlFor="title-text">Add title</label>
             <input
@@ -542,9 +807,23 @@ export default function App() {
               <div className="field">
                 <label>Selected clip</label>
                 <div className="hint">
-                  {selected.kind}
+                  {selected.kind} · {selected.trackId}
                   {selected.text ? ` · “${selected.text}”` : ''}
                 </div>
+              </div>
+              <div className="field">
+                <label htmlFor="clip-track">Track</label>
+                <select
+                  id="clip-track"
+                  value={selected.trackId}
+                  onChange={(e) => moveClipToTrack(selected.id, e.target.value as TrackId)}
+                >
+                  {TRACKS.filter((t) => t.kinds.includes(selected.kind)).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               {selected.kind === 'text' ? (
                 <>
@@ -577,7 +856,9 @@ export default function App() {
                   min={0.1}
                   step={0.1}
                   value={Number(selected.duration.toFixed(2))}
-                  onChange={(e) => updateSelected({ duration: Math.max(0.1, Number(e.target.value) || 0.1) })}
+                  onChange={(e) =>
+                    updateSelected({ duration: Math.max(0.1, Number(e.target.value) || 0.1) })
+                  }
                 />
               </div>
               <div className="field">
@@ -609,34 +890,44 @@ export default function App() {
       <section className="timeline">
         <div className="timeline-header">
           <h2 style={{ margin: 0 }}>Timeline</h2>
-          <span className="hint">Drag playhead · trim via inspector · split at playhead</span>
+          <span className="hint">Multi-track · drag playhead · trim via inspector · split at playhead</span>
         </div>
-        <div
-          className="timeline-track"
-          ref={trackRef}
-          style={{ width: '100%', overflowX: 'auto' }}
-          onPointerDown={(e) => onTrackPointer(e.clientX)}
-        >
-          <div style={{ position: 'relative', width: duration * pxPerSec, height: '100%' }}>
-            {clips.map((clip) => (
+        <div className="timeline-lanes" style={{ width: '100%', overflowX: 'auto' }}>
+          {TRACKS.map((track) => (
+            <div key={track.id} className="timeline-lane">
+              <div className="lane-label">{track.label}</div>
               <div
-                key={clip.id}
-                className={`clip ${clip.kind} ${clip.id === selectedClipId ? 'selected' : ''}`}
-                style={{
-                  left: clip.start * pxPerSec,
-                  width: Math.max(24, clip.duration * pxPerSec),
+                className="timeline-track"
+                ref={(el) => {
+                  if (el) trackRefs.current.set(track.id, el)
                 }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedClipId(clip.id)
-                }}
-                title={clip.text || clip.kind}
+                onPointerDown={(e) => onTrackPointer(track.id, e.clientX)}
               >
-                {clip.kind === 'text' ? clip.text : clip.kind}
+                <div style={{ position: 'relative', width: duration * pxPerSec, height: '100%' }}>
+                  {clips
+                    .filter((c) => c.trackId === track.id)
+                    .map((clip) => (
+                      <div
+                        key={clip.id}
+                        className={`clip ${clip.kind} ${clip.id === selectedClipId ? 'selected' : ''}`}
+                        style={{
+                          left: clip.start * pxPerSec,
+                          width: Math.max(24, clip.duration * pxPerSec),
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedClipId(clip.id)
+                        }}
+                        title={clip.text || clip.kind}
+                      >
+                        {clip.kind === 'text' ? clip.text : clip.kind}
+                      </div>
+                    ))}
+                  <div className="playhead" style={{ left: playhead * pxPerSec }} />
+                </div>
               </div>
-            ))}
-            <div className="playhead" style={{ left: playhead * pxPerSec }} />
-          </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

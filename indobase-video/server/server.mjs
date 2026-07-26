@@ -92,6 +92,29 @@ function verifyCookie(value) {
   return payload
 }
 
+/** Long-lived bearer for Studio Video APIs (aud=indobase-video-api). */
+function mintVideoApiToken(session) {
+  const now = Math.floor(Date.now() / 1000)
+  const payload = {
+    aud: 'indobase-video-api',
+    email: session.email,
+    exp: typeof session.exp === 'number' ? session.exp : now + SESSION_TTL_S,
+    iat: now,
+    iss: STUDIO_PUBLIC_URL,
+    organization_slug: session.organization_slug || '',
+    project_name: session.project_name || session.project_ref,
+    project_ref: session.project_ref,
+    role: session.role || 'viewer',
+    studio_url: session.studio_url || STUDIO_PUBLIC_URL,
+    sub: session.sub,
+  }
+  const headerB64 = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payloadB64 = b64url(JSON.stringify(payload))
+  const data = `${headerB64}.${payloadB64}`
+  const signature = b64url(crypto.createHmac('sha256', HANDOFF_SECRET).update(data).digest())
+  return `${data}.${signature}`
+}
+
 function parseCookies(req) {
   const out = {}
   const raw = req.headers.cookie || ''
@@ -278,6 +301,7 @@ const server = http.createServer(async (req, res) => {
         project_name: claims.project_name || claims.project_ref,
         organization_slug: claims.organization_slug || '',
         role: claims.role || 'viewer',
+        studio_url: claims.studio_url || STUDIO_PUBLIC_URL,
         exp: Math.floor(Date.now() / 1000) + SESSION_TTL_S,
       }
       const cookie = signCookie(session)
@@ -290,6 +314,7 @@ const server = http.createServer(async (req, res) => {
           project_ref: session.project_ref,
           project_name: session.project_name,
           email: session.email,
+          api_token: mintVideoApiToken(session),
         },
         {
           'set-cookie': `${COOKIE_NAME}=${encodeURIComponent(cookie)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_S}${secure ? '; Secure' : ''}`,
@@ -307,6 +332,8 @@ const server = http.createServer(async (req, res) => {
         project_name: session.project_name,
         organization_slug: session.organization_slug,
         role: session.role,
+        studio_url: session.studio_url || STUDIO_PUBLIC_URL,
+        api_token: mintVideoApiToken(session),
       })
     }
 

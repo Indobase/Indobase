@@ -1,4 +1,5 @@
-import type { MediaAsset, ProjectDocument, TimelineClip } from './types'
+import type { MediaAsset, ProjectDocument, TimelineClip, TrackId } from './types'
+import { defaultTrackForKind } from './types'
 
 const DB_NAME = 'indobase-video'
 const DB_VERSION = 1
@@ -86,13 +87,24 @@ export async function loadProject(key: string): Promise<{
   return { doc: record.doc, media }
 }
 
+function normalizeTrackId(clip: TimelineClip): TrackId {
+  if (clip.trackId === 'v1' || clip.trackId === 'v2' || clip.trackId === 't1' || clip.trackId === 'a1') {
+    return clip.trackId
+  }
+  return defaultTrackForKind(clip.kind)
+}
+
 export function sanitizeClips(clips: TimelineClip[]): TimelineClip[] {
   return clips
     .map((c) => ({
       ...c,
+      trackId: normalizeTrackId(c),
       start: Math.max(0, c.start),
       duration: Math.max(0.1, c.duration),
       trimIn: Math.max(0, c.trimIn),
     }))
-    .sort((a, b) => a.start - b.start)
+    .sort((a, b) => {
+      if (a.trackId !== b.trackId) return a.trackId.localeCompare(b.trackId)
+      return a.start - b.start
+    })
 }

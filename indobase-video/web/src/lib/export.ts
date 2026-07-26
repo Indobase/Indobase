@@ -1,7 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { MediaAsset, TimelineClip } from './types'
-import { projectDuration } from './types'
+import { projectDuration, sortClipsForDraw } from './types'
 
 export type ExportProgress = (ratio: number) => void
 
@@ -310,7 +310,8 @@ async function drawFrame(opts: {
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, width, height)
 
-  for (const clip of clips) {
+  for (const clip of sortClipsForDraw(clips)) {
+    if (clip.kind === 'audio') continue
     if (time < clip.start || time > clip.start + clip.duration) continue
     const local = time - clip.start + clip.trimIn
 
