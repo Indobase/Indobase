@@ -1,8 +1,8 @@
-# Indobase Design (Canva-class editor) — staging stack on Vyom .249
+# Indobase Design — Canva-class editor (production + staging aliases on Vyom .249)
 #
-# Isolated from the Penpot fork at /opt/indobase-design (design.indobase.in|.fun).
-# Staging host: studio-design.indobase.fun
-# Prod design.indobase.in stays on Penpot until an explicit cutover.
+# Canonical hosts: design.indobase.in · design.indobase.fun
+# Legacy staging alias: studio-design.indobase.fun
+# Source: indobase-design-v2/ (Fabric.js / Preact). Pin image with DESIGN_VERSION=<git-sha>.
 
 x-restart: &restart
   restart: unless-stopped
@@ -32,6 +32,10 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
+      labels:
+        org.opencontainers.image.source: https://github.com/Indobase/Indobase
+        org.opencontainers.image.title: indobase-design
+        org.opencontainers.image.revision: ${DESIGN_VERSION:-dev}
     image: indobase-design-v2:${DESIGN_VERSION:-0.1.0}
     depends_on:
       design-postgres:
@@ -41,7 +45,7 @@ services:
       # Shared with Studio — same secret Studio signs the design handoff with. The app refuses to
       # start if this is missing or under 32 chars rather than serving unauthenticated.
       DESIGN_HANDOFF_SECRET: ${DESIGN_HANDOFF_SECRET:?set DESIGN_HANDOFF_SECRET}
-      STUDIO_URL: ${STUDIO_URL:-https://studio.indobase.fun}
+      STUDIO_URL: ${STUDIO_URL:-https://studio.indobase.in}
       DESIGN_DATABASE_URL: postgresql://${DB_USER:-design}:${DB_PASSWORD:?set DB_PASSWORD}@design-postgres:5432/${DB_NAME:-design}
       DESIGN_DB_POOL_MAX: ${DESIGN_DB_POOL_MAX:-10}
     networks:
@@ -50,12 +54,14 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      - traefik.http.routers.indobase-design-v2.rule=${DESIGN_V2_TRAEFIK_RULE:-Host(`studio-design.indobase.fun`)}
+      - traefik.http.routers.indobase-design-v2.rule=${DESIGN_V2_TRAEFIK_RULE:-Host(`design.indobase.in`) || Host(`design.indobase.fun`) || Host(`studio-design.indobase.fun`)}
       - traefik.http.routers.indobase-design-v2.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-design-v2.tls=true
       - traefik.http.routers.indobase-design-v2.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
-      - traefik.http.routers.indobase-design-v2.tls.domains[0].main=studio-design.indobase.fun
+      - traefik.http.routers.indobase-design-v2.tls.domains[0].main=design.indobase.in
+      - traefik.http.routers.indobase-design-v2.tls.domains[0].sans=design.indobase.fun,studio-design.indobase.fun
       - traefik.http.routers.indobase-design-v2.service=indobase-design-v2
+      - traefik.http.routers.indobase-design-v2.priority=20
       - traefik.http.services.indobase-design-v2.loadbalancer.server.port=8080
     healthcheck:
       test:

@@ -1,16 +1,20 @@
-# Optional file-based Traefik route (labels on design-app are preferred).
-# Copy to /etc/dokploy/traefik/dynamic/indobase-design-v2.yml only if label discovery fails.
+# Traefik file provider for Indobase Design (Canva-class editor) on Vyom .249
+# Copy to /etc/dokploy/traefik/dynamic/indobase-design-v2.yml
+# Prefer container DNS over pinned overlay IPs (IPs change on recreate → 502).
+# Refresh after recreate: docker/scripts/refresh-traefik-route.sh
 http:
   routers:
     indobase-design-v2:
-      rule: Host(`studio-design.indobase.fun`)
+      rule: Host(`design.indobase.in`) || Host(`design.indobase.fun`) || Host(`studio-design.indobase.fun`)
       entryPoints:
         - websecure
       service: indobase-design-v2
       tls:
         certResolver: letsencrypt
+      priority: 20
   services:
     indobase-design-v2:
       loadBalancer:
         servers:
-          - url: http://indobase-design-v2-design-app-1:8080
+          - url: "http://indobase-design-v2-design-app-1:8080"
+        passHostHeader: true

@@ -104,10 +104,17 @@ upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
 upsert_env /opt/indobase-staging/env/studio.env INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
 upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
 upsert_env /opt/indobase-staging/env/studio.env ANALYTICS_HANDOFF_SECRET "$HANDOFF"
-# Canva-class Design editor (indobase-design-v2) — staging only. Prod Studio keeps Penpot at design.indobase.in.
-upsert_env /opt/indobase-staging/env/studio.env INDOBASE_DESIGN_URL "https://studio-design.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_DESIGN_URL "https://studio-design.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env DESIGN_HANDOFF_SECRET "$HANDOFF"
+# Indobase Design (Canva-class, indobase-design-v2) on Vyom .249.
+# Prefer design.indobase.fun; studio-design.indobase.fun remains a Traefik alias.
+# DESIGN_HANDOFF_SECRET must match the design stack on .249 (same as prod Studio).
+# If /opt/indobase-staging/env/design.handoff.secret exists, use it; else shared HANDOFF.
+DESIGN_HANDOFF="$HANDOFF"
+if [ -f /opt/indobase-staging/env/design.handoff.secret ]; then
+  DESIGN_HANDOFF=$(tr -d '[:space:]' </opt/indobase-staging/env/design.handoff.secret)
+fi
+upsert_env /opt/indobase-staging/env/studio.env INDOBASE_DESIGN_URL "https://design.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_DESIGN_URL "https://design.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env DESIGN_HANDOFF_SECRET "$DESIGN_HANDOFF"
 
 # Quoted heredocs so Traefik Host(`…`) backticks are not executed by the local shell.
 cat > /etc/dokploy/traefik/dynamic/studio-indobase-fun.yml <<EOF

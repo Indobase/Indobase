@@ -9,7 +9,7 @@ From the project chooser, customers open Marketing and pick a tool:
 |---|---|---|---|
 | Email marketing | **Indobase Email** (`indobase-email/`) | AGPL-3.0 | **Live** — Studio SSO |
 | Social media posting | **Indobase Social** (`indobase-social/`) | AGPL-3.0 | **Live** — Studio SSO |
-| Visual designer | **Indobase Design** (`indobase-design/`) | MPL-2.0 | **Live** — Studio SSO |
+| Visual designer | **Indobase Design** (`indobase-design-v2/`) | MIT + Apache-2.0 (NOTICE) | **Live** — Studio SSO |
 | Video editor | **Indobase Video** (`indobase-video/`) | MIT (NOTICE) | **Live** — Studio SSO |
 
 Brand surfaces always say **Indobase Marketing** / **Indobase Email** /
@@ -68,9 +68,9 @@ projects, quota-gated AI, MP4/WebM export) inspired by classic OpenCut — see
 2. On **Visual designer**, click **Open Design**.
 3. Studio mints JWT (`aud=indobase-design`) →
    `https://design.<domain>/sso/launch#token=…`.
-4. The `design-sso` shim verifies the token, then drives the design engine's
-   OIDC flow (shim is the OIDC provider) — user is created/logged in, lands on
-   the Design dashboard. Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
+4. Indobase Design verifies the token (HMAC), sets a session cookie, and opens
+   the Canva-class editor (Fabric.js). Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
+   There is no `.penpot` import — designs are Fabric JSON.
 
 ### How to open Video
 
@@ -104,8 +104,8 @@ DNS: A records for email/social/design/video hosts → deploy host (`.249` — n
 
 - Operators use Studio sign-up / sign-in only.
 - Public magic-code / password UI on Email and Social hosts redirect to Studio.
-- Design: password login + registration disabled; the only entry is the
-  Studio-driven OIDC flow through the `design-sso` shim.
+- Design: no public auth — unauthenticated requests redirect to Studio sign-in;
+  entry is Studio handoff JWT only.
 - Video: no public auth — unauthenticated requests redirect to Studio sign-in.
 - Email env: `STUDIO_HANDOFF_ONLY=true`, `STUDIO_HANDOFF_SECRET` (≥32 chars).
 - Social env: same + `SOCIAL_HANDOFF_SECRET` alias.
@@ -132,11 +132,10 @@ Details: [INDOBASE-SOCIAL.md](./INDOBASE-SOCIAL.md).
 
 ### Design
 
-Compose: `indobase-design/docker/deploy/docker-compose.yml` (upstream engine
-images version-pinned; frontend branding wrapper + `design-sso` shim built on
-the VPS with `docker compose build`). Traefik file provider (container DNS):
-`indobase-design/docker/deploy/traefik/indobase-design.yml` →
-`/etc/dokploy/traefik/dynamic/`.  
+Compose: `indobase-design-v2/docker/deploy/docker-compose.yml` (app + Postgres;
+pin `DESIGN_VERSION=<git-sha>`). Traefik file provider (container DNS):
+`indobase-design-v2/docker/deploy/traefik/indobase-design-v2.yml` →
+`/etc/dokploy/traefik/dynamic/` (refresh via `refresh-traefik-route.sh`).  
 Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
 
 ### Video
@@ -180,9 +179,11 @@ VIDEO_HANDOFF_SECRET=<same-as-video-.env-VIDEO_HANDOFF_SECRET>
   `indobase-social/`; see each `NOTICE.md` + license file. Corresponding Source
   for network use is the monorepo path under
   `https://github.com/Indobase/Indobase/tree/main/…`.
-- **MPL-2.0 (Design engine):** we deploy unmodified upstream images with a
-  branding overlay + an original SSO shim — see `indobase-design/NOTICE.md`.
-  File-level copyleft only applies if we ever modify MPL-covered source files.
+- **MIT + Apache-2.0 (Design):** Canva-class editor in `indobase-design-v2/` —
+  MIT client (clawnify/open-design), Apache-2.0 Davronov layers attribution,
+  original Hono/Postgres/SSO server — see `indobase-design-v2/NOTICE.md`.
+  The former Penpot fork (`indobase-design/`) is decommissioned and not
+  deployed.
 - **MIT (Video):** Indobase Video v1 + OpenCut classic attribution in
   `indobase-video/NOTICE.md` / `LICENSE`.
 - Do not mix AGPL into proprietary Studio/Builder bundles without a deliberate

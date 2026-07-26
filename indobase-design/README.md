@@ -1,20 +1,10 @@
-# Indobase Design
+# Indobase Design (legacy — decommissioned)
 
-Visual designer for the Indobase Marketing suite (landing pages, creatives,
-brand assets). Customer-facing product name: **Indobase Design**.
+**Do not deploy this tree.** Production Indobase Design is the Canva-class
+editor in [`indobase-design-v2/`](../indobase-design-v2/). See
+[`docs/INDOBASE-DESIGN.md`](../docs/INDOBASE-DESIGN.md).
 
-Engine images are upstream MPL-2.0 (see `NOTICE.md`). Branding overlay + Studio
-SSO live in this tree — see `docs/INDOBASE-DESIGN.md` and `docs/MARKETING.md`.
-
-## Quick deploy
-
-```bash
-cd docker/deploy
-cp .env.example .env   # fill secrets
-docker compose --env-file .env build
-docker compose --env-file .env up -d
-# optional Traefik file provider:
-# cp traefik/indobase-design.yml /etc/dokploy/traefik/dynamic/
-```
-
-Hosts: `design.indobase.fun` · `design.indobase.in`
+This directory retained the former Penpot-based fork (MPL-2.0 engine images +
+branding overlay + OIDC SSO shim) for reference only. The compose stack on
+Vyom `.249` (`/opt/indobase-design`) has been stopped; volumes were backed up
+before removal.

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Staging smoke for studio-design.indobase.fun (run on Vyom .249).
+# Smoke for Indobase Design (Canva-class). Run on Vyom .249.
+# Usage: BASE=https://design.indobase.in ./smoke-staging.sh
 set -euo pipefail
 
 APP=indobase-design-v2-design-app-1
-BASE=https://studio-design.indobase.fun
+BASE=${BASE:-https://design.indobase.in}
 COOKIE_JAR=$(mktemp)
 HEADERS=$(mktemp)
 SPA=$(mktemp)
@@ -20,7 +21,7 @@ const now = Math.floor(Date.now() / 1000);
 const payload = b64url(JSON.stringify({
   aud: "indobase-design",
   sub: "00000000-0000-4000-8000-000000000001",
-  email: "smoke@indobase.fun",
+  email: "smoke@indobase.in",
   role: "admin",
   project_ref: "smokeproj",
   iat: now,
@@ -30,7 +31,7 @@ const data = header + "." + payload;
 const sig = crypto.createHmac("sha256", secret).update(data).digest("base64url");
 process.stdout.write(data + "." + sig);
 ')
-echo "TOKEN_LEN=${#TOKEN}"
+echo "BASE=$BASE TOKEN_LEN=${#TOKEN}"
 
 RESP=$(curl -sk -m 15 -c "$COOKIE_JAR" -D "$HEADERS" \
   -X POST "$BASE/sso/session" \
@@ -46,7 +47,12 @@ ASSET=$(grep -oE 'index-[A-Za-z0-9_-]+\.js' "$SPA" | head -1)
 curl -sk -m 15 -b "$COOKIE_JAR" -o "$JS" "$BASE/assets/$ASSET"
 echo "ASSET=$ASSET SIZE=$(wc -c < "$JS")"
 echo -n "Layers_count="; grep -c Layers "$JS" || true
-grep -oE '"jpg"|"svg"|"pdf"|Layers' "$JS" | sort | uniq -c || true
+# Rebrand guard — served bundle must not mention upstream editor products.
+if grep -qiE 'penpot|clawnify' "$JS" "$SPA"; then
+  echo "REBRAND_FAIL: upstream product name found in served assets" >&2
+  exit 1
+fi
+grep -oE '"jpg"|"svg"|"pdf"|Layers|Indobase' "$JS" | sort | uniq -c || true
 
 CREATE=$(curl -sk -m 15 -b "$COOKIE_JAR" -X POST "$BASE/api/designs" \
   -H "Content-Type: application/json" \
