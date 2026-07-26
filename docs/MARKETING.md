@@ -23,7 +23,7 @@ OpenCut **rewrite** (`OpenCut-app/OpenCut`) is still scaffold-level. OpenCut
 **classic** is MIT and runnable but archived, and a full fork pulls Postgres /
 Redis / better-auth / marketing-site deps that fight Studio-SSO-only and
 balloon on this workspace’s exFAT volume. **v1** is a purpose-built Indobase
-editor (import, timeline trim/split, text, preview, WebM export, project-scoped
+editor (import, timeline trim/split, text, preview, MP4/WebM export, project-scoped
 IndexedDB autosave) inspired by classic OpenCut — see
 [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
 
@@ -190,4 +190,4 @@ VIDEO_HANDOFF_SECRET=<same-as-video-.env-VIDEO_HANDOFF_SECRET>
 ## Out of scope (this ship)
 
 - Razorpay / Payments changes
-- MP4/FFmpeg WASM export (Video v1 ships WebM; see INDOBASE-VIDEO.md)
+- Cloud media library for Video (today: browser IndexedDB only)

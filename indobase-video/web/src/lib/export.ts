@@ -1,11 +1,66 @@
+import { FFmpeg } from '@ffmpeg/ffmpeg'
+import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { MediaAsset, TimelineClip } from './types'
 import { projectDuration } from './types'
 
 export type ExportProgress = (ratio: number) => void
 
+export type ExportResult = {
+  blob: Blob
+  extension: 'mp4' | 'webm'
+  mime: string
+}
+
+const FFMPEG_CORE_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'
+
+let ffmpegSingleton: FFmpeg | null = null
+let ffmpegLoad: Promise<FFmpeg> | null = null
+
+async function getFfmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> {
+  if (ffmpegSingleton?.loaded) return ffmpegSingleton
+  if (!ffmpegLoad) {
+    ffmpegLoad = (async () => {
+      const ffmpeg = new FFmpeg()
+      ffmpeg.on('log', ({ message }) => onLog?.(message))
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+      })
+      ffmpegSingleton = ffmpeg
+      return ffmpeg
+    })()
+  }
+  return ffmpegLoad
+}
+
+function pickWebmMime(): string {
+  if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+    return 'video/webm;codecs=vp9,opus'
+  }
+  if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+    return 'video/webm;codecs=vp8,opus'
+  }
+  return 'video/webm'
+}
+
+function pickNativeMp4Mime(): string | null {
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1.4D401F,mp4a.40.2',
+    'video/mp4;codecs=avc1.640028,mp4a.40.2',
+    'video/mp4',
+  ]
+  for (const mime of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+      return mime
+    }
+  }
+  return null
+}
+
 /**
- * Browser export via Canvas + MediaRecorder (WebM).
- * Plays the composed timeline into a canvas stream and muxes audio when present.
+ * Browser timeline export via Canvas + MediaRecorder.
+ * Used for WebM downloads and as the intermediate for FFmpeg MP4.
  */
 export async function exportTimelineWebm(opts: {
   clips: TimelineClip[]
@@ -15,6 +70,7 @@ export async function exportTimelineWebm(opts: {
   fps: number
   onProgress?: ExportProgress
   signal?: AbortSignal
+  mimeType?: string
 }): Promise<Blob> {
   const { clips, mediaById, width, height, fps, onProgress, signal } = opts
   const duration = Math.max(projectDuration(clips), 0.5)
@@ -78,13 +134,7 @@ export async function exportTimelineWebm(opts: {
     }
   }
 
-  const mime =
-    MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-      ? 'video/webm;codecs=vp9,opus'
-      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-        ? 'video/webm;codecs=vp8,opus'
-        : 'video/webm'
-
+  const mime = opts.mimeType || pickWebmMime()
   const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 })
   const chunks: BlobPart[] = []
   recorder.ondataavailable = (e) => {
@@ -92,7 +142,7 @@ export async function exportTimelineWebm(opts: {
   }
 
   const stopped = new Promise<Blob>((resolve, reject) => {
-    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }))
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mime.split(';')[0] }))
     recorder.onerror = () => reject(new Error('MediaRecorder failed'))
   })
 
@@ -120,7 +170,6 @@ export async function exportTimelineWebm(opts: {
       imageEls,
     })
 
-    // Keep media element clocks roughly in sync for audio capture.
     for (const clip of clips) {
       if (!clip.mediaId) continue
       const asset = mediaById.get(clip.mediaId)
@@ -141,7 +190,6 @@ export async function exportTimelineWebm(opts: {
 
     onProgress?.(Math.min(1, t / duration))
     t += frameInterval
-    // Pace roughly realtime so MediaRecorder gets steady frames.
     const targetWall = startWall + t * 1000
     const wait = targetWall - performance.now()
     if (wait > 0) await sleep(Math.min(wait, 40))
@@ -155,6 +203,97 @@ export async function exportTimelineWebm(opts: {
   await audioCtx.close().catch(() => undefined)
   onProgress?.(1)
   return stopped
+}
+
+/**
+ * Prefer native MP4 MediaRecorder when the browser supports it (often Safari).
+ * Otherwise capture WebM and remux/transcode to H.264 AAC MP4 via ffmpeg.wasm.
+ */
+export async function exportTimelineMp4(opts: {
+  clips: TimelineClip[]
+  mediaById: Map<string, MediaAsset>
+  width: number
+  height: number
+  fps: number
+  onProgress?: ExportProgress
+  signal?: AbortSignal
+}): Promise<ExportResult> {
+  const nativeMp4 = pickNativeMp4Mime()
+  if (nativeMp4) {
+    const blob = await exportTimelineWebm({
+      ...opts,
+      mimeType: nativeMp4,
+      onProgress: (r) => opts.onProgress?.(r),
+    })
+    return { blob, extension: 'mp4', mime: 'video/mp4' }
+  }
+
+  const webm = await exportTimelineWebm({
+    ...opts,
+    onProgress: (r) => opts.onProgress?.(r * 0.62),
+  })
+
+  if (opts.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError')
+  }
+
+  opts.onProgress?.(0.64)
+  const ffmpeg = await getFfmpeg()
+  opts.onProgress?.(0.7)
+
+  const onProgress = ({ progress }: { progress: number }) => {
+    // ffmpeg progress is 0..1 for the encode phase
+    opts.onProgress?.(0.7 + Math.min(1, Math.max(0, progress)) * 0.28)
+  }
+  ffmpeg.on('progress', onProgress)
+
+  try {
+    await ffmpeg.writeFile('input.webm', await fetchFile(webm))
+    if (opts.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    const code = await ffmpeg.exec([
+      '-i',
+      'input.webm',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-shortest',
+      'output.mp4',
+    ])
+    if (code !== 0) {
+      throw new Error(`MP4 encode failed (ffmpeg exit ${code})`)
+    }
+    const data = await ffmpeg.readFile('output.mp4')
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
+    // Copy into a standalone ArrayBuffer so BlobPart typing is satisfied (SharedArrayBuffer-safe).
+    const copy = new Uint8Array(bytes.byteLength)
+    copy.set(bytes)
+    const blob = new Blob([copy.buffer], { type: 'video/mp4' })
+    opts.onProgress?.(1)
+    return { blob, extension: 'mp4', mime: 'video/mp4' }
+  } finally {
+    ffmpeg.off('progress', onProgress)
+    try {
+      await ffmpeg.deleteFile('input.webm')
+    } catch {
+      /* ignore */
+    }
+    try {
+      await ffmpeg.deleteFile('output.mp4')
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 async function drawFrame(opts: {
