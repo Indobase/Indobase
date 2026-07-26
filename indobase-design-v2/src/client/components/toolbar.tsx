@@ -58,10 +58,10 @@ export function Toolbar() {
     setEditingName(false);
   };
 
-  const runExport = (format: "png" | "jpg" | "svg" | "pdf") => {
+  const runExport = (format: "png" | "png-transparent" | "jpg" | "svg" | "pdf") => {
     try {
       exportDesign(format, activeDesign?.name);
-      showToast(`Exported ${format.toUpperCase()}`, "success");
+      showToast(`Exported ${format.replace("-", " ").toUpperCase()}`, "success");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Export failed", "error");
     }
@@ -203,6 +203,7 @@ export function Toolbar() {
               {(
                 [
                   ["png", "PNG"],
+                  ["png-transparent", "PNG transparent"],
                   ["jpg", "JPG"],
                   ["svg", "SVG"],
                   ["pdf", "PDF"],

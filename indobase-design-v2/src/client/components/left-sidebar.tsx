@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "preact/hooks";
+import { useState, useRef, useCallback, useEffect } from "preact/hooks";
 import {
   Type,
   Square,
@@ -13,6 +13,7 @@ import {
   Paintbrush,
   Bot,
   Database,
+  Wrench,
 } from "lucide-preact";
 import { useEditor } from "../context";
 import { TemplateCard } from "./template-card";
@@ -21,6 +22,7 @@ import { LayersPanel } from "./layers-panel";
 import { BrandKitPanel } from "./brand-kit-panel";
 import { AiDraftPanel } from "./ai-draft-panel";
 import { DataMergePanel } from "./data-merge-panel";
+import { ParityToolsPanel } from "./parity-tools-panel";
 import { showToast } from "./toast";
 
 type Section =
@@ -33,10 +35,12 @@ type Section =
   | "brand"
   | "ai"
   | "merge"
+  | "tools"
   | "designs";
 
 const SECTIONS: { key: Section; icon: typeof LayoutGrid; label: string }[] = [
   { key: "templates", icon: Sparkles, label: "Templates" },
+  { key: "tools", icon: Wrench, label: "Tools" },
   { key: "brand", icon: Paintbrush, label: "Brand" },
   { key: "ai", icon: Bot, label: "AI" },
   { key: "merge", icon: Database, label: "Data" },
@@ -58,6 +62,7 @@ const SECTION_TITLES: Record<Section, string> = {
   brand: "Brand kit",
   ai: "AI draft",
   merge: "Data merge",
+  tools: "Design tools",
   designs: "Designs",
 };
 
@@ -68,6 +73,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   print: "Print",
   presentation: "Presentation",
   brand: "Brand",
+  docs: "Docs",
 };
 
 const GRADIENT_PRESETS = [
@@ -91,7 +97,9 @@ export function LeftSidebar() {
     useEditor();
   const [activeSection, setActiveSection] = useState<Section | null>("templates");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [templateQuery, setTemplateQuery] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [recentAssets, setRecentAssets] = useState<Array<{ id: string; url: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
 
@@ -156,10 +164,22 @@ export function LeftSidebar() {
 
   const isOpen = activeSection !== null;
   const categories = Array.from(new Set(templates.map((t) => t.category)));
-  const filteredTemplates =
-    categoryFilter === "all"
-      ? templates
-      : templates.filter((t) => t.category === categoryFilter);
+  const filteredTemplates = templates.filter((t) => {
+    if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
+    if (!templateQuery.trim()) return true;
+    const q = templateQuery.trim().toLowerCase();
+    return t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+  });
+
+  useEffect(() => {
+    if (activeSection !== "images") return;
+    void fetch("/api/uploads")
+      .then((r) => r.json())
+      .then((rows) => {
+        if (Array.isArray(rows)) setRecentAssets(rows.filter((x: { url?: string }) => x.url));
+      })
+      .catch(() => undefined);
+  }, [activeSection]);
 
   return (
     <aside class="flex flex-row shrink-0 max-md:hidden">
@@ -197,6 +217,12 @@ export function LeftSidebar() {
               <div class="flex-1 overflow-y-auto px-3 pb-3">
                 {activeSection === "templates" && (
                   <div>
+                    <input
+                      class="w-full mb-2 bg-zinc-50 border border-zinc-200 rounded-md px-2 py-1.5 text-[11px]"
+                      placeholder="Search templates…"
+                      value={templateQuery}
+                      onInput={(e) => setTemplateQuery((e.target as HTMLInputElement).value)}
+                    />
                     <div class="flex flex-wrap gap-1 mb-3">
                       <button
                         class={`px-2 py-0.5 rounded text-[10px] border cursor-pointer ${
@@ -222,7 +248,9 @@ export function LeftSidebar() {
                         </button>
                       ))}
                     </div>
-                    <p class="text-zinc-400 text-[11px] mb-3">Click a template to apply</p>
+                    <p class="text-zinc-400 text-[11px] mb-3">
+                      {filteredTemplates.length} templates — click to apply
+                    </p>
                     <div class="grid grid-cols-2 gap-2">
                       {filteredTemplates.map((t) => (
                         <TemplateCard
@@ -237,10 +265,12 @@ export function LeftSidebar() {
                       ))}
                     </div>
                     {filteredTemplates.length === 0 && (
-                      <p class="text-[11px] text-zinc-400">No templates in this category.</p>
+                      <p class="text-[11px] text-zinc-400">No templates match.</p>
                     )}
                   </div>
                 )}
+
+                {activeSection === "tools" && <ParityToolsPanel />}
 
                 {activeSection === "brand" && <BrandKitPanel />}
                 {activeSection === "ai" && <AiDraftPanel />}
@@ -331,6 +361,25 @@ export function LeftSidebar() {
                       class="hidden"
                       onChange={(e) => handleImageUpload((e.target as HTMLInputElement).files)}
                     />
+                    {recentAssets.length > 0 && (
+                      <div class="mt-3">
+                        <p class="text-zinc-400 text-[11px] mb-2">Recent assets</p>
+                        <div class="grid grid-cols-3 gap-1">
+                          {recentAssets.slice(0, 12).map((a) => (
+                            <button
+                              key={a.id}
+                              class="aspect-square rounded border border-zinc-200 overflow-hidden p-0 cursor-pointer bg-zinc-50"
+                              onClick={() => addImage(a.url)}
+                            >
+                              <img src={a.url} alt="" class="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p class="text-[10px] text-zinc-400 mt-3 m-0">
+                      Stock search (Pexels/Unsplash) needs an API key — not configured. Use uploads or templates.
+                    </p>
                   </div>
                 )}
 
