@@ -80,7 +80,7 @@ export function createGuard(log?: (message: string) => void): ToolGuard {
     } catch (error) {
       if (error instanceof RybbitApiError) {
         const hint = ERROR_HINTS[error.status];
-        return fail(`Rybbit API error ${error.status}: ${error.message}${hint ? ` — ${hint}` : ""}`);
+        return fail(`Indobase Analytics API error ${error.status}: ${error.message}${hint ? ` — ${hint}` : ""}`);
       }
       // Argument problems the caller can correct — surface the message so the
       // model can fix its next call.
@@ -90,7 +90,7 @@ export function createGuard(log?: (message: string) => void): ToolGuard {
       // Unexpected errors may carry internals (stack traces, hostnames); log
       // them server-side and return a generic message.
       log?.(`MCP tool failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
-      return fail("Rybbit could not complete the request");
+      return fail("Indobase Analytics could not complete the request");
     }
   };
 }

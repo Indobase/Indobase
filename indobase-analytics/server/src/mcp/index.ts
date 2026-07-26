@@ -11,7 +11,7 @@ import { authenticateMcpRequest, McpAuthenticationError, type McpAuthenticator }
 import { registerTools, type ToolRegistrationConfig } from "./tools/index.js";
 import { getResourceMetadataUrl } from "./wellKnown.js";
 
-const INSTRUCTIONS = `Rybbit web analytics: read tools for traffic and behavior data, plus write tools to manage sites, goals, funnels, organization members, teams, and user profiles.
+const INSTRUCTIONS = `Indobase Analytics: read tools for traffic and behavior data, plus write tools to manage sites, goals, funnels, organization members, teams, and user profiles.
 Start with list_sites to resolve the numeric site_id and organization_id used by other tools; its role field shows the API key's role per organization.
 Omit time inputs to query all time, or pass start_date/end_date or past_minutes.
 Site and organization management tools (create_site, update_site_config, delete_site, delete_user, member and team tools) require the key's user to be an org admin or owner; other write tools require site access.

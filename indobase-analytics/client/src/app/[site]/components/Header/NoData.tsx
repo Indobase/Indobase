@@ -53,60 +53,60 @@ interface PlatformGuide {
 // The first VISIBLE_PLATFORM_COUNT entries are the most common platforms and
 // show by default; the rest are alphabetical behind the "Show all" toggle.
 const PLATFORM_GUIDES: PlatformGuide[] = [
-  { title: "WordPress", icon: <SiWordpress className={ICON} />, href: "https://rybbit.com/docs/guides/wordpress" },
-  { title: "Shopify", icon: <SiShopify className={ICON} />, href: "https://rybbit.com/docs/guides/shopify" },
-  { title: "Next.js", icon: <SiNextdotjs className={ICON} />, href: "https://rybbit.com/docs/guides/react/next-js" },
-  { title: "React", icon: <SiReact className={ICON} />, href: "https://rybbit.com/docs/guides/react/vite-cra" },
+  { title: "WordPress", icon: <SiWordpress className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Shopify", icon: <SiShopify className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Next.js", icon: <SiNextdotjs className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "React", icon: <SiReact className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
   {
     title: "Google Tag Manager",
     icon: <SiGoogletagmanager className={ICON} />,
-    href: "https://rybbit.com/docs/guides/google-tag-manager",
+    href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md",
   },
-  { title: "Webflow", icon: <SiWebflow className={ICON} />, href: "https://rybbit.com/docs/guides/webflow" },
+  { title: "Webflow", icon: <SiWebflow className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
   {
     title: "Squarespace",
     icon: <SiSquarespace className={ICON} />,
-    href: "https://rybbit.com/docs/guides/squarespace",
+    href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md",
   },
-  { title: "Wix", icon: <SiWix className={ICON} />, href: "https://rybbit.com/docs/guides/wix" },
-  { title: "Framer", icon: <SiFramer className={ICON} />, href: "https://rybbit.com/docs/guides/framer" },
-  { title: "Vue", icon: <SiVuedotjs className={ICON} />, href: "https://rybbit.com/docs/guides/vue/vite" },
-  { title: "Angular", icon: <SiAngular className={ICON} />, href: "https://rybbit.com/docs/guides/angular" },
-  { title: "Astro", icon: <SiAstro className={ICON} />, href: "https://rybbit.com/docs/guides/astro" },
+  { title: "Wix", icon: <SiWix className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Framer", icon: <SiFramer className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Vue", icon: <SiVuedotjs className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Angular", icon: <SiAngular className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Astro", icon: <SiAstro className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
   {
     title: "BigCommerce",
     icon: <SiBigcommerce className={ICON} />,
-    href: "https://rybbit.com/docs/guides/bigcommerce",
+    href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md",
   },
-  { title: "Carrd", icon: <SiCarrd className={ICON} />, href: "https://rybbit.com/docs/guides/carrd" },
-  { title: "Contentful", icon: <SiContentful className={ICON} />, href: "https://rybbit.com/docs/guides/contentful" },
-  { title: "Docusaurus", icon: <SiDocusaurus className={ICON} />, href: "https://rybbit.com/docs/guides/docusaurus" },
-  { title: "Drupal", icon: <SiDrupal className={ICON} />, href: "https://rybbit.com/docs/guides/drupal" },
-  { title: "Gatsby", icon: <SiGatsby className={ICON} />, href: "https://rybbit.com/docs/guides/react/gatsby" },
-  { title: "Ghost", icon: <SiGhost className={ICON} />, href: "https://rybbit.com/docs/guides/ghost" },
-  { title: "GitBook", icon: <SiGitbook className={ICON} />, href: "https://rybbit.com/docs/guides/gitbook" },
-  { title: "Hugo", icon: <SiHugo className={ICON} />, href: "https://rybbit.com/docs/guides/hugo" },
-  { title: "Jekyll", icon: <SiJekyll className={ICON} />, href: "https://rybbit.com/docs/guides/jekyll" },
-  { title: "Joomla", icon: <SiJoomla className={ICON} />, href: "https://rybbit.com/docs/guides/joomla" },
-  { title: "Laravel", icon: <SiLaravel className={ICON} />, href: "https://rybbit.com/docs/guides/laravel" },
-  { title: "Mintlify", icon: <SiMintlify className={ICON} />, href: "https://rybbit.com/docs/guides/mintlify" },
-  { title: "Nuxt", icon: <SiNuxt className={ICON} />, href: "https://rybbit.com/docs/guides/vue/nuxt" },
-  { title: "PrestaShop", icon: <SiPrestashop className={ICON} />, href: "https://rybbit.com/docs/guides/prestashop" },
-  { title: "Remix", icon: <SiRemix className={ICON} />, href: "https://rybbit.com/docs/guides/react/remix" },
-  { title: "Sanity", icon: <SiSanity className={ICON} />, href: "https://rybbit.com/docs/guides/sanity" },
-  { title: "Strapi", icon: <SiStrapi className={ICON} />, href: "https://rybbit.com/docs/guides/strapi" },
-  { title: "Svelte", icon: <SiSvelte className={ICON} />, href: "https://rybbit.com/docs/guides/svelte/vite" },
-  { title: "SvelteKit", icon: <SiSvelte className={ICON} />, href: "https://rybbit.com/docs/guides/svelte/sveltekit" },
+  { title: "Carrd", icon: <SiCarrd className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Contentful", icon: <SiContentful className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Docusaurus", icon: <SiDocusaurus className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Drupal", icon: <SiDrupal className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Gatsby", icon: <SiGatsby className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Ghost", icon: <SiGhost className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "GitBook", icon: <SiGitbook className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Hugo", icon: <SiHugo className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Jekyll", icon: <SiJekyll className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Joomla", icon: <SiJoomla className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Laravel", icon: <SiLaravel className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Mintlify", icon: <SiMintlify className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Nuxt", icon: <SiNuxt className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "PrestaShop", icon: <SiPrestashop className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Remix", icon: <SiRemix className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Sanity", icon: <SiSanity className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Strapi", icon: <SiStrapi className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "Svelte", icon: <SiSvelte className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
+  { title: "SvelteKit", icon: <SiSvelte className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
   {
     title: "ThriveCart",
     icon: <img src="/platforms/thrivecart.svg" alt="" className={`${ICON} grayscale`} />,
-    href: "https://rybbit.com/docs/guides/thrivecart",
+    href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md",
   },
-  { title: "VitePress", icon: <SiVitepress className={ICON} />, href: "https://rybbit.com/docs/guides/vitepress" },
+  { title: "VitePress", icon: <SiVitepress className={ICON} />, href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" },
   {
     title: "WooCommerce",
     icon: <SiWoocommerce className={ICON} />,
-    href: "https://rybbit.com/docs/guides/woocommerce",
+    href: "https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md",
   },
 ];
 
@@ -147,14 +147,14 @@ export function NoData() {
   })();
 </script>`;
 
-  const aiPrompt = `Install Rybbit analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>\n`;
+  const aiPrompt = `Install Indobase Analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>\n`;
 
   const rnInstallSnippet = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
 
   const rnInitSnippet = `import AsyncStorage from "@react-native-async-storage/async-storage";
-import rybbit from "@rybbit/react-native";
+import indobase from "@rybbit/react-native";
 
-await rybbit.init({
+await indobase.init({
   analyticsHost: "${globalThis.location.origin}/api",
   siteId: "${siteId}",
   appIdentifier: "${siteMetadata?.domain || "com.example.app"}",
@@ -162,7 +162,7 @@ await rybbit.init({
   initialScreenName: "Home",
 });`;
 
-  const rnAiPrompt = `Install Rybbit analytics in this React Native app.\n\n1. Install the SDK:\n\nnpm install @rybbit/react-native @react-native-async-storage/async-storage\n\n2. Initialize it once in the app entry point:\n\n${rnInitSnippet}\n\n3. If the app uses React Navigation, track screens automatically:\n\nconst navigationTracker = rybbit.createNavigationTracker();\n\n<NavigationContainer\n  ref={navigationRef}\n  onReady={() => navigationTracker.onReady(navigationRef)}\n  onStateChange={() => navigationTracker.onStateChange(navigationRef)}\n>\n\nDocs: https://rybbit.com/docs/sdks/react-native\n`;
+  const rnAiPrompt = `Install Indobase Analytics in this React Native app.\n\n1. Install the SDK:\n\nnpm install @rybbit/react-native @react-native-async-storage/async-storage\n\n2. Initialize it once in the app entry point:\n\n${rnInitSnippet}\n\n3. If the app uses React Navigation, track screens automatically:\n\nconst navigationTracker = rybbit.createNavigationTracker();\n\n<NavigationContainer\n  ref={navigationRef}\n  onReady={() => navigationTracker.onReady(navigationRef)}\n  onStateChange={() => navigationTracker.onStateChange(navigationRef)}\n>\n\nDocs: https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md`;
 
   return (
     <section className="mt-4 rounded-lg border border-neutral-100 bg-white p-4 dark:border-neutral-850 dark:bg-neutral-900">
@@ -244,14 +244,14 @@ await rybbit.init({
           </Tabs>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {isMobileSite ? (
-              <ExternalLink href="https://rybbit.com/docs/sdks/react-native">{t("React Native SDK docs")}</ExternalLink>
+              <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">{t("React Native SDK docs")}</ExternalLink>
             ) : (
               <>
-                <ExternalLink href="https://rybbit.com/docs/script">{t("Installation docs")}</ExternalLink>
+                <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">{t("Installation docs")}</ExternalLink>
                 <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
                   ·
                 </span>
-                <ExternalLink href="https://rybbit.com/docs/script-troubleshooting">
+                <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">
                   {t("Troubleshooting guide")}
                 </ExternalLink>
               </>

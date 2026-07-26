@@ -41,9 +41,9 @@ export function EventTrackingNotice({ type, className }: EventTrackingNoticeProp
   if (type === "event") {
     return (
       <p className={cn("text-xs leading-relaxed text-neutral-500 dark:text-neutral-400", className)}>
-        {t("Custom events aren't captured automatically. Your site has to send them with rybbit.event().")}{" "}
+        {t("Custom events aren't captured automatically. Your site has to send them with indobase.event().")}{" "}
         <a
-          href="https://www.rybbit.io/docs/track-events"
+          href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-200"

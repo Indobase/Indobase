@@ -14,8 +14,8 @@ export function useTrack() {
 
   const user = authClient.useSession();
   useEffect(() => {
-    if (typeof window !== "undefined" && user.data?.user?.id && window?.rybbit && !isLoading && !isLoadingSites) {
-      window.rybbit?.identify(user.data?.user?.id, {
+    if (typeof window !== "undefined" && user.data?.user?.id && window?.indobase && !isLoading && !isLoadingSites) {
+      window.indobase?.identify(user.data?.user?.id, {
         email: user.data?.user?.email,
         name: user.data?.user?.name,
         plan: subscription?.planName,

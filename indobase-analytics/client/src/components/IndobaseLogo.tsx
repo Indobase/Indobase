@@ -9,7 +9,7 @@ function getTextLogoHeight(width: number, height?: number) {
   return height && height > 0 ? height : Math.round(width / HORIZONTAL_LOGO_ASPECT_RATIO);
 }
 
-export function RybbitLogo({ width = 32, height = 32 }: { width?: number; height?: number }) {
+export function IndobaseLogo({ width = 32, height = 32 }: { width?: number; height?: number }) {
   const { whiteLabelImage, isPending } = useWhiteLabel();
   const [mounted, setMounted] = useState(false);
   const imageStyle = { width, height, objectFit: "contain" as const };
@@ -37,7 +37,7 @@ export function RybbitLogo({ width = 32, height = 32 }: { width?: number; height
   );
 }
 
-export function RybbitTextLogo({ width = 150, height }: { width?: number; height?: number }) {
+export function IndobaseTextLogo({ width = 150, height }: { width?: number; height?: number }) {
   const { whiteLabelImage, isPending } = useWhiteLabel();
   const [mounted, setMounted] = useState(false);
   const resolvedHeight = getTextLogoHeight(width, height);
@@ -64,14 +64,21 @@ export function RybbitTextLogo({ width = 150, height }: { width?: number; height
     );
   }
 
+  // Prefer mark + text over dark-washed wordmark SVG paths.
   return (
-    <Image
-      src="/indobase/wordmark.svg"
-      alt="Indobase Analytics"
-      width={width}
-      height={resolvedHeight}
-      style={imageStyle}
-      loading="eager"
-    />
+    <span
+      className="inline-flex items-center gap-2 text-neutral-900 dark:text-neutral-50 font-semibold tracking-tight"
+      style={{ height: resolvedHeight }}
+    >
+      <Image
+        src="/indobase/logo.svg"
+        alt=""
+        width={Math.round(resolvedHeight)}
+        height={Math.round(resolvedHeight)}
+        style={{ width: resolvedHeight, height: resolvedHeight }}
+        loading="eager"
+      />
+      <span style={{ fontSize: Math.max(12, Math.round(resolvedHeight * 0.55)) }}>Indobase Analytics</span>
+    </span>
   );
 }

@@ -1558,6 +1558,10 @@
         },
         isSessionReplayActive: () => false
       };
+      if (namespace === "rybbit" || namespace === "indobase") {
+        window.indobase = window[namespace];
+        if (namespace === "indobase" && !window.rybbit) window.rybbit = window[namespace];
+      }
       return;
     }
     const earlyQueue = [];
@@ -1582,6 +1586,10 @@
       stopSessionReplay: queueMethod("stopSessionReplay"),
       isSessionReplayActive: () => false
     };
+    if (namespace === "rybbit" || namespace === "indobase") {
+      window.indobase = window[namespace];
+      if (namespace === "indobase" && !window.rybbit) window.rybbit = window[namespace];
+    }
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -1693,6 +1701,10 @@
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
+    if (config.namespace === "rybbit" || config.namespace === "indobase") {
+      window.indobase = window[config.namespace];
+      if (config.namespace === "indobase" && !window.rybbit) window.rybbit = window[config.namespace];
+    }
     const api = window[config.namespace];
     for (const [method, args] of earlyQueue) {
       api[method](...args);

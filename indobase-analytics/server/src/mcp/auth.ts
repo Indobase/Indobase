@@ -46,7 +46,7 @@ const defaultDependencies: McpAuthenticatorDependencies = {
 
 /**
  * Verifies the bearer credential once per MCP HTTP request, before any
- * protocol message is processed: first as a Rybbit API key, then as an OAuth
+ * protocol message is processed: first as an Indobase Analytics API key, then as an OAuth
  * access token issued by the better-auth MCP plugin. Tool calls still go
  * through the REST routes' own auth and access checks; this guard exists so
  * initialize/tools/list never run for an invalid credential and so clients get
@@ -57,7 +57,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     const bearerToken = extractBearerToken(request.headers.authorization);
     if (!bearerToken) {
       throw new McpAuthenticationError(
-        "Unauthorized: send a Rybbit API key as 'Authorization: Bearer <key>' (Settings > Account > Personal API Keys), or connect with an OAuth-capable MCP client.",
+        "Unauthorized: send an Indobase Analytics API key as 'Authorization: Bearer <key>' (Settings > Account > Personal API Keys), or connect with an OAuth-capable MCP client.",
         401
       );
     }
@@ -74,7 +74,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
       case "rate_limited":
         throw new McpAuthenticationError("API key rate limit exceeded", 429);
       case "verify_error":
-        throw new McpAuthenticationError("Rybbit could not verify the API key", 503);
+        throw new McpAuthenticationError("Indobase Analytics could not verify the API key", 503);
       default:
         throw new McpAuthenticationError("Invalid or expired credentials", 401);
     }

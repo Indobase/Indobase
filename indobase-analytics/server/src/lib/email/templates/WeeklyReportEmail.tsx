@@ -272,7 +272,7 @@ export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyRe
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
               src="https://app.rybbit.io/rybbit/horizontal_black.svg"
-              alt="Rybbit"
+              alt="Indobase Analytics"
               width="120"
               height="28"
               className="mb-8"
@@ -401,7 +401,7 @@ export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyRe
                 Unsubscribe from weekly reports
               </Link>
             </Text>
-            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
+            <Text className="text-mutedText text-xs">© {currentYear} Indobase Analytics</Text>
           </Container>
         </Body>
       </Tailwind>

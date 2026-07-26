@@ -66,7 +66,7 @@ export const ReengagementEmail = ({
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
               src="https://app.rybbit.io/rybbit/horizontal_black.svg"
-              alt="Rybbit"
+              alt="Indobase Analytics"
               width="120"
               height="28"
               className="mb-8"
@@ -96,7 +96,7 @@ export const ReengagementEmail = ({
             <Text className="text-darkText text-base leading-relaxed mt-8">
               You can reply to this email,
               <br />
-              Bill – Founder of Rybbit
+              The Indobase team
             </Text>
 
             <Hr className="border-borderColor my-8" />

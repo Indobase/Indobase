@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import React, { Suspense, useEffect, useState } from "react";
 import { addSite } from "../../api/admin/endpoints";
-import { RybbitLogo, RybbitTextLogo } from "../../components/RybbitLogo";
+import { IndobaseLogo, IndobaseTextLogo } from "../../components/IndobaseLogo";
 
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
@@ -33,7 +33,7 @@ function StudioOnlySignupRedirect({ studioUrl }: { studioUrl: string }) {
     <div className="flex justify-center items-center h-dvh w-full">
       <Card className="w-full max-w-sm p-1">
         <CardHeader>
-          <RybbitLogo width={32} height={32} />
+          <IndobaseLogo width={32} height={32} />
           <CardTitle className="text-2xl flex justify-center">Indobase Analytics</CardTitle>
         </CardHeader>
         <CardContent>
@@ -171,7 +171,7 @@ function SignupPageContent() {
       await authClient.organization.setActive({ organizationId: data.id });
 
       if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
-        window.rybbit?.identify(userStore.getState().user?.id || "", {
+        window.indobase?.identify(userStore.getState().user?.id || "", {
           source: referralSource,
         });
       }
@@ -318,15 +318,15 @@ function SignupPageContent() {
       <div className="w-full max-w-[550px] flex flex-col p-6 lg:p-10">
         {/* Logo */}
         <div className="mb-8">
-          <a href="https://rybbit.com" target="_blank" className="inline-block">
-            <RybbitTextLogo />
+          <a href="https://indobase.in" target="_blank" className="inline-block">
+            <IndobaseTextLogo />
           </a>
         </div>
 
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-medium">
-              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Rybbit")}
+              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Indobase Analytics")}
             </h1>
             {IS_CLOUD && (
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-3">
@@ -385,12 +385,12 @@ function SignupPageContent() {
         {!IS_CLOUD && (
           <div className="text-xs text-muted-foreground mt-8">
             <a
-              href="https://rybbit.com"
+              href="https://indobase.in"
               target="_blank"
               rel="noopener"
-              title="Rybbit - Open Source Privacy-Focused Web Analytics"
+              title="Indobase Analytics"
             >
-              {t("Open source web analytics powered by Rybbit")}
+              {t("Privacy-focused web analytics by Indobase")}
             </a>
           </div>
         )}

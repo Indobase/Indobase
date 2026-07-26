@@ -335,7 +335,7 @@ export function UsersTable() {
           </Label>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="https://www.rybbit.io/docs/identify-users" target="_blank">
+              <Link href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md" target="_blank">
                 <Info className="h-4 w-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer" />
               </Link>
             </TooltipTrigger>

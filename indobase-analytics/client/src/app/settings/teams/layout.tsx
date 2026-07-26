@@ -6,6 +6,7 @@ import { Button } from "../../../components/ui/button";
 import { authClient } from "../../../lib/auth";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
 import { ExternalLink } from "../../../components/ExternalLink";
+import { INDOBASE_ANALYTICS_DOCS_URL } from "../../../lib/const";
 
 export default function TeamsLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
@@ -23,7 +24,7 @@ export default function TeamsLayout({ children }: { children: React.ReactNode })
           <h1 className="text-3xl font-bold tracking-tight">{t("Teams")}</h1>
           <p className="text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
             {t("Organize sites into teams to control which members can access them.")}
-            <ExternalLink href="https://www.rybbit.com/docs/teams">
+            <ExternalLink href={INDOBASE_ANALYTICS_DOCS_URL}>
               {t("Learn more about teams")}
             </ExternalLink>
           </p>

@@ -72,14 +72,17 @@ interface Rybbit {
   /**
    * Runs a callback once the tracking script and feature flags are ready.
    * Use this before reading flags during page initialization.
-   * @param callback Receives the ready rybbit instance
+   * @param callback Receives the ready analytics instance (`window.indobase` / `window.rybbit`)
    */
-  onReady: (callback: (rybbit: Rybbit) => void) => void;
+  onReady: (callback: (api: Rybbit) => void) => void;
 }
 
 declare global {
   interface Window {
+    /** Upstream default namespace — kept for tracking compatibility. */
     rybbit: Rybbit;
+    /** Indobase alias of the tracking API (same object as `rybbit` by default). */
+    indobase: Rybbit;
   }
 }
 

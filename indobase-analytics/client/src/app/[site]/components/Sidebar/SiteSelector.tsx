@@ -110,7 +110,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
   };
 
   const siteOptions: SiteOption[] | undefined = isDemo
-    ? [{ siteId: 81, name: "rybbit.com", domain: "rybbit.com" }]
+    ? [{ siteId: 81, name: "analytics.indobase.in", domain: "analytics.indobase.in" }]
     : sites?.sites.map(site => ({
         siteId: site.siteId,
         name: site.name,
