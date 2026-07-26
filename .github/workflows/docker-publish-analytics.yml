@@ -1,0 +1,84 @@
+name: Build and Push Indobase Analytics
+
+# Separate from docker-publish.yml so Studio/Builder concurrency cancels do not
+# abort Analytics image builds.
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+    paths:
+      - "indobase-analytics/**"
+      - ".github/workflows/docker-publish-analytics.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-publish-analytics-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_BACKEND_REPO: roshanraghavander/indobase-analytics-backend
+  DOCKERHUB_CLIENT_REPO: roshanraghavander/indobase-analytics-client
+
+jobs:
+  build-analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Analytics backend (linux/amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./indobase-analytics
+          file: ./indobase-analytics/server/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_REPO }}:latest
+            ${{ env.DOCKERHUB_BACKEND_REPO }}:${{ github.sha }}
+          cache-from: type=gha,scope=indobase-analytics-backend-v1
+          cache-to: type=gha,mode=max,scope=indobase-analytics-backend-v1
+
+      - name: Build and push Analytics client (linux/amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./indobase-analytics
+          file: ./indobase-analytics/client/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=https://analytics.indobase.in
+            NEXT_PUBLIC_DISABLE_SIGNUP=true
+            NEXT_PUBLIC_STUDIO_PUBLIC_URL=https://studio.indobase.in
+          tags: |
+            ${{ env.DOCKERHUB_CLIENT_REPO }}:latest
+            ${{ env.DOCKERHUB_CLIENT_REPO }}:${{ github.sha }}
+          cache-from: type=gha,scope=indobase-analytics-client-v1
+          cache-to: type=gha,mode=max,scope=indobase-analytics-client-v1
+
+      - name: Verify images on Docker Hub
+        run: |
+          docker buildx imagetools inspect "${{ env.DOCKERHUB_BACKEND_REPO }}:${{ github.sha }}"
+          docker buildx imagetools inspect "${{ env.DOCKERHUB_CLIENT_REPO }}:${{ github.sha }}"
+
+      - name: Build summary
+        run: |
+          echo "## Indobase Analytics" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Backend:** \`${{ env.DOCKERHUB_BACKEND_REPO }}:${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Client:** \`${{ env.DOCKERHUB_CLIENT_REPO }}:${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"

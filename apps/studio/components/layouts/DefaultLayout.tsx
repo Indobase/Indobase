@@ -44,11 +44,12 @@ export const DefaultLayout = ({
   const { hasAccess: hasBackendStudioAccess, enabled: studioGateEnabled } = useBackendStudioAccess()
   const studioLocked = studioGateEnabled && !hasBackendStudioAccess
   const isProjectExperienceChooser = router.pathname === '/project/[ref]'
-  // Payments + Marketing are project product surfaces (same Studio session), not Backend Studio.
+  // Payments + Marketing + Analytics are project product surfaces (same Studio session), not Backend Studio.
   const isProjectPayments = router.pathname === '/project/[ref]/payments'
   const isProjectMarketing = router.pathname === '/project/[ref]/marketing'
+  const isProjectAnalytics = router.pathname === '/project/[ref]/analytics'
   const isUngatedProjectSurface =
-    isProjectExperienceChooser || isProjectPayments || isProjectMarketing
+    isProjectExperienceChooser || isProjectPayments || isProjectMarketing || isProjectAnalytics
   const showProductMenu = !!ref && !isUngatedProjectSurface && !studioLocked
 
   const [lastVisitedOrganization] = useLocalStorageQuery(
