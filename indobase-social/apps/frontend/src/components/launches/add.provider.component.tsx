@@ -289,7 +289,7 @@ const ExtensionNotFound: FC = () => {
           className="flex-1"
           onClick={() => {
             window.open(
-              'https://chromewebstore.google.com/detail/postiz/cidhffagahknaeodkplfbcpfeielnkjl?hl=en',
+              'https://social.indobase.in',
               '_blank'
             );
             modals.closeCurrent();
@@ -466,14 +466,14 @@ export const AddProviderComponent: FC<{
         };
         const gotoIntegration = async (externalUrl?: string) => {
           // Mobile WebView: reuse the existing `externalUrl` param to
-          // carry the `postiz://` deep link so the backend redirects
+          // carry the `indobase-social://` deep link so the backend redirects
           // back to the iOS/Android app after OAuth completes, instead
           // of the default web redirect.
           const params = [
             `externalUrl=${encodeURIComponent(externalUrl)}`,
             onboardingParam,
             isMobile
-              ? `redirectUrl=${encodeURIComponent('postiz://integrations')}`
+              ? `redirectUrl=${encodeURIComponent('indobase-social://integrations')}`
               : '',
           ]
             .filter(Boolean)
@@ -511,7 +511,7 @@ export const AddProviderComponent: FC<{
             // `window.open`/`location.href` aren't reliable here because
             // RN WebView doesn't always route them through the native
             // navigation intercept. The backend redirects back to the
-            // app via `postiz://` once OAuth completes.
+            // app via `indobase-social://` once OAuth completes.
             const rn = (window as any).ReactNativeWebView;
             if (rn && typeof rn.postMessage === 'function') {
               rn.postMessage(JSON.stringify({ type: 'open-external', url }));

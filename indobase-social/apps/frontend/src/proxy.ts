@@ -116,7 +116,8 @@ export async function proxy(request: NextRequest) {
       ? ''
       : (url.indexOf('?') > -1 ? '&' : '?') +
         `provider=${(findIndex === 'settings'
-          ? process.env.POSTIZ_GENERIC_OAUTH
+          ? process.env.INDOBASE_GENERIC_OAUTH ||
+            process.env.POSTIZ_GENERIC_OAUTH
             ? 'generic'
             : 'github'
           : findIndex

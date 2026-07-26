@@ -33,14 +33,14 @@ export const startMcp = async (app: INestApplication) => {
   };
 
   const mastra = await mastraService.mastra();
-  const agent = mastra.getAgent('postiz');
+  const agent = mastra.getAgent('indobase-social');
   const tools = await agent.listTools();
 
   const serverConfig = {
-    name: 'Postiz MCP',
+    name: 'Indobase Social MCP',
     version: '1.0.0',
     tools,
-    agents: { postiz: agent },
+    agents: { 'indobase-social': agent },
   };
 
   const server = new MCPServer(serverConfig);

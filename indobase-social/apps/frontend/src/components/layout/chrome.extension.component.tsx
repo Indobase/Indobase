@@ -1,14 +1,18 @@
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+
+/** Chrome Web Store CTA — only when an Indobase Social listing URL is configured. */
 export const ChromeExtensionComponent = () => {
   const { billingEnabled } = useVariables();
-  if (!billingEnabled) {
+  const storeUrl = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL;
+  if (!billingEnabled || !storeUrl) {
     return null;
   }
   return (
     <a
-      href="https://chromewebstore.google.com/detail/postiz/cidhffagahknaeodkplfbcpfeielnkjl"
+      href={storeUrl}
       target="_blank"
       className="hover:text-newTextColor"
+      rel="noreferrer"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

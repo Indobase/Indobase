@@ -51,7 +51,7 @@ export const AgentChat: FC = () => {
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
-      agent="postiz"
+      agent="indobase-social"
       properties={{
         integrations: properties,
       }}

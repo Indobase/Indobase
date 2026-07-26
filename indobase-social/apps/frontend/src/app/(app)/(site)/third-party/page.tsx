@@ -2,11 +2,9 @@ import { ThirdPartyComponent } from '@gitroom/frontend/components/third-parties/
 
 export const dynamic = 'force-dynamic';
 import { Metadata } from 'next';
-import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.side';
+import { productNameServerSide } from '@gitroom/helpers/utils/product-name';
 export const metadata: Metadata = {
-  title: `${
-    isGeneralServerSide() ? 'Indobase Social Integrations' : 'Gitroom Integrations'
-  }`,
+  title: `${productNameServerSide()} Integrations`,
   description: '',
 };
 export default async function Index() {
