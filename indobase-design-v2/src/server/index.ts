@@ -501,6 +501,67 @@ app.get('/api/uploads', async (c) => {
   return c.json(rows)
 })
 
+// ── Stock (Openverse) ────────────────────────────────────────────────────────────────────────────
+
+app.get('/api/stock/search', async (c) => {
+  const q = (c.req.query('q') || '').trim()
+  if (!q) return c.json({ results: [], page: 1, pageCount: 0, resultCount: 0, provider: 'openverse' })
+  const page = Number(c.req.query('page') || 1)
+  const pageSize = Number(c.req.query('page_size') || 24)
+  try {
+    const { searchOpenverseImages } = await import('./openverse.js')
+    const data = await searchOpenverseImages({ q, page, pageSize })
+    return c.json({ ...data, provider: 'openverse' })
+  } catch (e) {
+    return c.json(
+      { error: e instanceof Error ? e.message : 'stock search failed', provider: 'openverse' },
+      502
+    )
+  }
+})
+
+app.post('/api/stock/import', async (c) => {
+  const s = c.get('session')
+  const body = (await c.req.json().catch(() => ({}))) as {
+    url?: string
+    title?: string
+    attribution?: string
+  }
+  const url = typeof body.url === 'string' ? body.url.trim() : ''
+  if (!url) return c.json({ error: 'url is required' }, 400)
+  try {
+    const { downloadStockImage } = await import('./openverse.js')
+    const { mime, bytes } = await downloadStockImage(url)
+    const dataUrl = `data:${mime};base64,${bytes.toString('base64')}`
+    const persistUrl = bytes.length <= 1_200_000 ? dataUrl : null
+    const label = typeof body.title === 'string' && body.title.trim() ? body.title.trim().slice(0, 80) : 'stock'
+    const row = await one(
+      `insert into design.uploads (gotrue_id, project_ref, mime_type, byte_size, storage_key, asset_url)
+       values ($1, $2, $3, $4, $5, $6)
+       returning id, mime_type, byte_size, created_at, asset_url`,
+      [
+        s.gotrueId,
+        s.projectRef,
+        mime,
+        bytes.length,
+        `openverse:${label}`,
+        persistUrl,
+      ]
+    )
+    return c.json(
+      {
+        ...(row as object),
+        url: dataUrl,
+        attribution: typeof body.attribution === 'string' ? body.attribution : null,
+        provider: 'openverse',
+      },
+      201
+    )
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : 'stock import failed' }, 400)
+  }
+})
+
 // ── Folders ──────────────────────────────────────────────────────────────────────────────────────
 
 app.get('/api/folders', async (c) => {

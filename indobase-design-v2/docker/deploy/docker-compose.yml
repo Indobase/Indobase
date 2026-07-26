@@ -51,6 +51,10 @@ services:
       DESIGN_DATABASE_URL: postgresql://${DB_USER:-design}:${DB_PASSWORD:?set DB_PASSWORD}@design-postgres:5432/${DB_NAME:-design}
       DESIGN_DB_POOL_MAX: ${DESIGN_DB_POOL_MAX:-10}
       DESIGN_VERSION: ${DESIGN_VERSION:-dev}
+      # Optional — anonymous Openverse search works without these.
+      OPENVERSE_CLIENT_ID: ${OPENVERSE_CLIENT_ID:-}
+      OPENVERSE_CLIENT_SECRET: ${OPENVERSE_CLIENT_SECRET:-}
+      OPENVERSE_API_BASE: ${OPENVERSE_API_BASE:-https://api.openverse.org/v1}
     networks:
       - indobase_design_v2_net
       - traefik_public

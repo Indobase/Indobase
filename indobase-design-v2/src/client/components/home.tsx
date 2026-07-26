@@ -21,6 +21,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   print: "Print",
   presentation: "Presentation",
   brand: "Brand",
+  docs: "Docs",
 };
 
 export function Home({

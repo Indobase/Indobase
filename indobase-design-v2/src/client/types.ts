@@ -13,7 +13,8 @@ export interface Page {
   id: string;
   design_id: string;
   title: string;
-  canvas_json: string;
+  /** Fabric JSON — may arrive as object from Postgres jsonb or string. */
+  canvas_json: string | Record<string, unknown>;
   sort_order: number;
   created_at: string;
 }

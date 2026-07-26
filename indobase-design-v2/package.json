@@ -10,7 +10,7 @@
     "build": "vite build",
     "start": "tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx test/auth.test.ts && tsx test/templates.test.ts && tsx test/data-merge.test.ts"
+    "test": "tsx test/auth.test.ts && tsx test/templates.test.ts && tsx test/data-merge.test.ts && tsx test/openverse.test.ts && tsx test/canvas-json.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",

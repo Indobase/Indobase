@@ -20,7 +20,7 @@ to Indobase Video, Social, Email, and Builder.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
-| Templates (volume + categories + search) | **Yes** | 40–80+ via seed + colorway expansion |
+| Templates (volume + categories + search) | **Yes** | Seed + colorways + SlidesCarnival-category deck pack |
 | Canvas size presets (social/print) | **Yes** | IG/FB/LI/TikTok/YT/WA/A4/Letter/card/poster |
 | Brand kit | **Yes** | Persist + apply colors/fonts/logo |
 | AI draft | **Yes** | Studio OpenRouter + `design_ai_used` quota |
@@ -37,7 +37,7 @@ to Indobase Video, Social, Email, and Builder.
 | Background remove | **No** | Phase 3 — no RemBG key |
 | Drawing (pen) | **Yes** | Fabric PencilBrush |
 | Elements / icons / frames | **Yes** | Built-in SVG paths |
-| Stock library | **No** | Needs Pexels/Unsplash key |
+| Stock library | **Yes** | [Openverse](https://api.openverse.org/v1/) commercial CC search + import |
 | QR codes | **Yes** | |
 | Charts (bar/pie) | **Yes** | Basic |
 | Magic resize | **Yes** | |
@@ -84,12 +84,19 @@ re-implement those products.
 
 ## Phase 3+ backlog
 
-- RemBG / Magic Studio photo depth, stock APIs, GIF
+- RemBG / Magic Studio photo depth, GIF
 - Real-time multiplayer + presence
-- Print fulfillment, PPTX
+- Print fulfillment, PPTX (SlidesCarnival Canva/PPTX packs remain external: [free Canva templates](https://www.slidescarnival.com/category/free-templates/canva-templates))
 - Enterprise Brand Hub enforcement / SCIM
 - Classroom / live presentations
 - Canva-scale template marketplace
+
+### Stock + presentation sources
+
+| Source | Role |
+|--------|------|
+| [Openverse API](https://api.openverse.org/v1/) | In-editor Photos stock search (`license_type=commercial`). Optional `OPENVERSE_CLIENT_ID` / `OPENVERSE_CLIENT_SECRET` for higher rate limits. |
+| [SlidesCarnival free Canva templates](https://www.slidescarnival.com/category/free-templates/canva-templates) | Category inspiration for native Fabric deck templates (pitch, SWOT, roadmap, education, portfolio…). Canva-format files are not imported; link out for PPTX/Canva downloads. |
 
 ## Deploy
 

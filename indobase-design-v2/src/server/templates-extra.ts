@@ -3,6 +3,7 @@
  * template volume without hand-authoring hundreds of files.
  */
 import { BUILTIN_TEMPLATES, type SeedTemplate } from './templates.js'
+import { DECK_TEMPLATES } from './templates-deck.js'
 
 type FabricObject = Record<string, unknown>
 
@@ -36,7 +37,7 @@ function recolor(objects: FabricObject[], accent: string, text: string): FabricO
 
 /** Build variants from the hand-authored seed set. */
 export function expandTemplateLibrary(): SeedTemplate[] {
-  const out: SeedTemplate[] = [...BUILTIN_TEMPLATES]
+  const out: SeedTemplate[] = [...BUILTIN_TEMPLATES, ...DECK_TEMPLATES]
   let sort = 200
 
   for (const base of BUILTIN_TEMPLATES) {
