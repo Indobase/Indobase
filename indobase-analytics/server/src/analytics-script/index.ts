@@ -10,8 +10,21 @@ import { RybbitAPI, WebVitalsData, ErrorProperties } from "./types.js";
 declare global {
   interface Window {
     __RYBBIT_OPTOUT__?: boolean;
+    /** Upstream default namespace — kept for tracking compatibility. */
     rybbit: RybbitAPI;
+    /** Indobase alias of the tracking API (same object as `rybbit` by default). */
+    indobase: RybbitAPI;
     [key: string]: any;
+  }
+}
+
+/** Expose `window.indobase` alongside the default `rybbit` namespace for docs/snippets. */
+function exposeIndobaseAlias(api: RybbitAPI, namespace: string) {
+  if (namespace === "rybbit" || namespace === "indobase") {
+    window.indobase = api;
+    if (namespace === "indobase" && !window.rybbit) {
+      window.rybbit = api;
+    }
   }
 }
 
@@ -29,7 +42,7 @@ declare global {
   // Check if user has opted out
   if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
     // Create no-op implementation
-    window[namespace] = {
+    const noopApi: RybbitAPI = {
       pageview: () => {},
       event: () => {},
       error: () => {},
@@ -47,6 +60,8 @@ declare global {
       stopSessionReplay: () => {},
       isSessionReplayActive: () => false,
     };
+    window[namespace] = noopApi;
+    exposeIndobaseAlias(noopApi, namespace);
     return;
   }
 
@@ -77,6 +92,7 @@ declare global {
     stopSessionReplay: queueMethod("stopSessionReplay"),
     isSessionReplayActive: () => false,
   };
+  exposeIndobaseAlias(window[namespace], namespace);
 
   // Parse configuration (now async to fetch from API)
   const config = await parseScriptConfig(scriptTag);
@@ -228,6 +244,7 @@ declare global {
 
   // Replay any calls made during initialization
   const api = window[config.namespace];
+  exposeIndobaseAlias(api, config.namespace);
   for (const [method, args] of earlyQueue) {
     (api[method] as Function)(...args);
   }

@@ -225,7 +225,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
       id: "firstPartyProxy",
       label: t("First-Party Proxy"),
       description: t(
-        "Enable if tracking requests reach Rybbit through your own proxy or CDN (Cloudflare Worker, CloudFront, nginx). Visitor IPs will be read from forwarded headers instead of the connecting IP."
+        "Enable if tracking requests reach Indobase Analytics through your own proxy or CDN (Cloudflare Worker, CloudFront, nginx). Visitor IPs will be read from forwarded headers instead of the connecting IP."
       ),
       value: toggleStates.firstPartyProxy,
       key: "firstPartyProxy",

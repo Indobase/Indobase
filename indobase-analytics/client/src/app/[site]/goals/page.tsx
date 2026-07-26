@@ -199,7 +199,7 @@ export default function GoalsPage() {
             description={
               <span>
                 {t("Create your first conversion goal to start tracking important user actions.")}{" "}
-                <ExternalLink href="https://rybbit.com/docs/goals">{t("Learn more")}</ExternalLink>
+                <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">{t("Learn more")}</ExternalLink>
               </span>
             }
             action={<CreateGoalButton siteId={Number(site)} />}

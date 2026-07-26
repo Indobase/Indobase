@@ -171,7 +171,7 @@ function SignupPageContent() {
       await authClient.organization.setActive({ organizationId: data.id });
 
       if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
-        window.rybbit?.identify(userStore.getState().user?.id || "", {
+        window.indobase?.identify(userStore.getState().user?.id || "", {
           source: referralSource,
         });
       }
@@ -318,7 +318,7 @@ function SignupPageContent() {
       <div className="w-full max-w-[550px] flex flex-col p-6 lg:p-10">
         {/* Logo */}
         <div className="mb-8">
-          <a href="https://rybbit.com" target="_blank" className="inline-block">
+          <a href="https://indobase.in" target="_blank" className="inline-block">
             <RybbitTextLogo />
           </a>
         </div>
@@ -326,7 +326,7 @@ function SignupPageContent() {
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-medium">
-              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Rybbit")}
+              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Indobase Analytics")}
             </h1>
             {IS_CLOUD && (
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-3">
@@ -385,12 +385,12 @@ function SignupPageContent() {
         {!IS_CLOUD && (
           <div className="text-xs text-muted-foreground mt-8">
             <a
-              href="https://rybbit.com"
+              href="https://indobase.in"
               target="_blank"
               rel="noopener"
-              title="Rybbit - Open Source Privacy-Focused Web Analytics"
+              title="Indobase Analytics"
             >
-              {t("Open source web analytics powered by Rybbit")}
+              {t("Privacy-focused web analytics by Indobase")}
             </a>
           </div>
         )}

@@ -75,15 +75,15 @@ function buildFlagSnippets(form: FlagFormState): { jsCode: string; tsCode: strin
 
   if (form.flagType === "boolean") {
     return {
-      jsCode: `window.rybbit.onReady((rybbit) => {
-  const enabled = rybbit.flag(${key}, false);
+      jsCode: `window.indobase.onReady((indobase) => {
+  const enabled = indobase.flag(${key}, false);
 
   if (enabled) {
     // Feature is on for this visitor.
   }
 });`,
-      tsCode: `window.rybbit.onReady((rybbit) => {
-  const enabled: boolean = rybbit.flag(${key}, false);
+      tsCode: `window.indobase.onReady((indobase) => {
+  const enabled: boolean = indobase.flag(${key}, false);
 
   if (enabled) {
     // Feature is on for this visitor.
@@ -99,8 +99,8 @@ function buildFlagSnippets(form: FlagFormState): { jsCode: string; tsCode: strin
     const variantUnion = variants.length ? variants.map(variant => JSON.stringify(variant)).join(" | ") : '"control"';
 
     return {
-      jsCode: `window.rybbit.onReady((rybbit) => {
-  const variant = rybbit.flag(${key}, ${JSON.stringify(fallbackVariant)});
+      jsCode: `window.indobase.onReady((indobase) => {
+  const variant = indobase.flag(${key}, ${JSON.stringify(fallbackVariant)});
 
   if (variant === ${JSON.stringify(alternateVariant)}) {
     // Render this variant.
@@ -110,8 +110,8 @@ function buildFlagSnippets(form: FlagFormState): { jsCode: string; tsCode: strin
 });`,
       tsCode: `type FlagVariant = ${variantUnion};
 
-window.rybbit.onReady((rybbit) => {
-  const variant = rybbit.flag(${key}, ${JSON.stringify(fallbackVariant)}) as FlagVariant;
+window.indobase.onReady((indobase) => {
+  const variant = indobase.flag(${key}, ${JSON.stringify(fallbackVariant)}) as FlagVariant;
 
   switch (variant) {
     case ${JSON.stringify(alternateVariant)}:
@@ -126,9 +126,9 @@ window.rybbit.onReady((rybbit) => {
   }
 
   return {
-    jsCode: `window.rybbit.onReady((rybbit) => {
-  const matched = rybbit.flag(${key}, false);
-  const config = rybbit.flagPayload(${key}, {});
+    jsCode: `window.indobase.onReady((indobase) => {
+  const matched = indobase.flag(${key}, false);
+  const config = indobase.flagPayload(${key}, {});
 
   if (matched) {
     // Use config to drive your UI.
@@ -139,8 +139,8 @@ window.rybbit.onReady((rybbit) => {
   [key: string]: unknown;
 }
 
-window.rybbit.onReady((rybbit) => {
-  const config = rybbit.flagPayload<FlagConfig>(${key}, {});
+window.indobase.onReady((indobase) => {
+  const config = indobase.flagPayload<FlagConfig>(${key}, {});
 
   // Use config to drive your UI.
 });`,

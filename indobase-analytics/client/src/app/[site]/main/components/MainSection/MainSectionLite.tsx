@@ -49,7 +49,7 @@ export function MainSectionLite() {
           <div className="flex items-center justify-between px-2 md:px-0">
             <div className="flex items-center space-x-4">
               {!isWhiteLabel && (
-                <Link href={session.data ? "/" : "https://rybbit.com"} className="opacity-75">
+                <Link href={session.data ? "/" : "https://indobase.in"} className="opacity-75">
                   <RybbitTextLogo width={80} height={0} />
                 </Link>
               )}

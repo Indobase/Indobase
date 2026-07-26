@@ -10,7 +10,7 @@ import { useEmbedablePage } from "../app/[site]/utils";
 import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
 import { useSignout } from "../hooks/useSignout";
 import { authClient } from "../lib/auth";
-import { DEPLOYMENT, IS_CLOUD } from "../lib/const";
+import { DEPLOYMENT, INDOBASE_ANALYTICS_DOCS_URL, INDOBASE_SUPPORT_EMAIL, IS_CLOUD } from "../lib/const";
 import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
 import { cn } from "../lib/utils";
 import { RybbitLogo } from "./RybbitLogo";
@@ -53,14 +53,14 @@ function AppSidebarContent() {
           <RybbitLogo width={24} height={18} />
         </Link>
         <RailLink
-          href="https://rybbit.com/docs"
+          href={INDOBASE_ANALYTICS_DOCS_URL}
           icon={<BookOpen className="w-5 h-5" />}
           label={t("Documentation")}
           target="_blank"
         />
         {IS_CLOUD && (subscription?.status === "active" || subscription?.status === "trialing") && (
           <RailLink
-            href="mailto:hello@rybbit.com"
+            href={INDOBASE_SUPPORT_EMAIL}
             icon={<HelpCircle className="w-5 h-5" />}
             label={t("Email Support")}
             target="_blank"

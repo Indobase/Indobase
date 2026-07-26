@@ -102,7 +102,7 @@ export function MainSection() {
             <div className="flex items-center space-x-4">
               {!isWhiteLabel && (
                 <Link
-                  href={session.data ? "/" : "https://rybbit.com"}
+                  href={session.data ? "/" : "https://indobase.in"}
                   className="opacity-75"
                 >
                   <RybbitTextLogo width={80} />

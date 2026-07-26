@@ -119,7 +119,7 @@ ${dataAttributes.map(([key, value]) => `    el.setAttribute("${key}", ${JSON.str
 
   const inlineScript = `<script src="${scriptUrl}" ${dataAttributes.map(formatAttr).join(" ")} defer></script>`;
 
-  const aiPrompt = `Install Rybbit analytics on this website.
+  const aiPrompt = `Install Indobase Analytics on this website.
 
 Add this script tag to the <head> of every page, using the root layout or base template if there is one:
 
@@ -128,9 +128,9 @@ ${inlineScript}
 
   const reactNativeInstall = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
   const reactNativeSnippet = `import AsyncStorage from "@react-native-async-storage/async-storage";
-import rybbit from "@rybbit/react-native";
+import indobase from "@rybbit/react-native";
 
-await rybbit.init({
+await indobase.init({
   analyticsHost: "${globalThis.location.origin}/api",
   siteId: "${siteId}",
   appIdentifier: "${appIdentifier || "com.example.app"}",
@@ -138,7 +138,7 @@ await rybbit.init({
   initialScreenName: "Home",
 });
 
-await rybbit.event("signup_started", { plan: "pro" });`;
+await indobase.event("signup_started", { plan: "pro" });`;
 
   if (siteType === "mobile") {
     return (
