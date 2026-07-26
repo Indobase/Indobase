@@ -49,6 +49,8 @@ services:
       - traefik.http.routers.indobase-video.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-video.tls=true
       - traefik.http.routers.indobase-video.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-video.tls.domains[0].main=video.indobase.in
+      - traefik.http.routers.indobase-video.tls.domains[0].sans=video.indobase.fun
       - traefik.http.routers.indobase-video.service=indobase-video
       - traefik.http.services.indobase-video.loadbalancer.server.port=8780
     logging: *logging

@@ -10,6 +10,10 @@ http:
       service: indobase-video
       tls:
         certResolver: letsencrypt
+        domains:
+          - main: video.indobase.in
+            sans:
+              - video.indobase.fun
       priority: 10
   services:
     indobase-video:
