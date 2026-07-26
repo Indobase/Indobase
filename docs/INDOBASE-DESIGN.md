@@ -12,6 +12,11 @@ Vyom `.249`.
 > The former Penpot fork (`indobase-design/`) is **decommissioned**. There is
 > **no** `.penpot` import path — Fabric.js JSON is the design format.
 
+**Honesty:** Indobase Design is a **Canva-class graphic editor** for Marketing
+(templates, brand kit, AI layout draft, data merge, layers, export) — **not**
+full Canva product parity (no Magic Studio photo suite, stock library,
+multiplayer, print fulfillment, PPTX, or website builder).
+
 ## Architecture
 
 ```
@@ -22,6 +27,9 @@ Studio (Open Design)
                  1. /sso/launch page posts fragment token to /sso/session
                     → verifies HMAC (DESIGN_HANDOFF_SECRET) → signed session cookie
                  2. SPA (Preact + Fabric.js) ⇄ /api/* ⇄ Postgres
+                 3. AI draft → Design proxies to Studio
+                    POST /api/platform/projects/[ref]/design/generate
+                    (OpenRouter + design_ai_used quota)
 ```
 
 - Handoff is verified **directly** in our Hono backend (no OIDC shim).
@@ -31,15 +39,46 @@ Studio (Open Design)
   owner, admin, developer, viewer.
 - Designs are multi-tenant: ownership is `(gotrue_id, project_ref)` from the
   verified session, never from request input.
-- Built-in templates are authored in-repo as Fabric JSON (India-first starter set).
+- Built-in templates are authored in-repo as Fabric JSON (India-first set,
+  categorized: social / story / ads / print / presentation / brand).
 
 ## Features (shipped)
 
-- Editor: text, shapes, images, multi-page, undo/redo, autosave
+- Editor: text, shapes, **image uploads** (`POST /api/uploads` → data-URL),
+  multi-page, undo/redo, debounced autosave, broad canvas size presets
 - **Layers** panel (z-order, visibility, lock) — Apache-2.0 Davronov attribution
-- Export: **PNG / JPG / SVG / PDF**
+- Export: **PNG / JPG / SVG / PDF** (browser-side)
 - Studio SSO with role gating
-- 8 built-in templates
+- **~20 built-in templates** with category filters
+- **Brand kit** — org/project colors, fonts, logo URL; save + apply to canvas
+- **AI drafting** — prompt → Fabric JSON via Studio OpenRouter
+  (`designAiLimit` plan entitlement / `design_ai_used`)
+- **Business-data merge** — `{{placeholders}}` in text; JSON or CSV paste
+
+### How to use
+
+| Feature | Where |
+|--------|--------|
+| Brand kit | Editor left rail → **Brand** → save colors/fonts/logo → **Apply to canvas** |
+| AI draft | Editor left rail → **AI** → describe the layout → **Generate draft** |
+| Data merge | Start from a template with `{{product_name}}` etc. → **Data** → paste JSON/CSV → **Merge** |
+| Templates | Home gallery (category chips) or editor **Templates** rail |
+| Export | Toolbar → **Export** → PNG / JPG / SVG / PDF |
+
+### Data merge format
+
+```json
+{ "product_name": "Paneer Tikka", "price": "₹220", "business_name": "Your Business" }
+```
+
+Or CSV (header + first row):
+
+```csv
+product_name,price,business_name
+Paneer Tikka,₹220,Your Business
+```
+
+Text objects containing `{{field}}` are replaced; missing keys are left as-is.
 
 ## Branding
 
@@ -52,7 +91,7 @@ Build on the VPS (do not `pnpm install` at monorepo root on exFAT). Pin the
 image tag to the git SHA:
 
 ```bash
-SHA=$(git rev-parse --short=12 HEAD)   # or full SHA
+SHA=$(git rev-parse HEAD)
 
 rsync -az --delete \
   --exclude node_modules --exclude dist --exclude .env --exclude '**/._*' \
@@ -62,6 +101,7 @@ ssh root@103.190.92.249
 cd /opt/indobase-design-v2/docker/deploy
 # .env: DESIGN_HANDOFF_SECRET (= Studio DESIGN_HANDOFF_SECRET), DB_PASSWORD,
 #       STUDIO_URL=https://studio.indobase.in, DESIGN_VERSION=$SHA
+# Optional: STUDIO_INTERNAL_URL=http://<studio-swarm-service>:8080 for AI proxy
 docker compose --env-file .env build
 docker compose --env-file .env up -d
 bash ../../docker/scripts/refresh-traefik-route.sh
@@ -78,35 +118,30 @@ Studio service env (Swarm `indobase-studio-*` on `.249` and Hostinger staging):
 INDOBASE_DESIGN_URL=https://design.indobase.in          # staging: design.indobase.fun
 NEXT_PUBLIC_INDOBASE_DESIGN_URL=https://design.indobase.in
 DESIGN_HANDOFF_SECRET=<same as design-v2 .env>
+# OPEN_ROUTER_API_KEY already used by Video — Design AI reuses it on Studio
 ```
 
 ## Smoke
 
 ```bash
-curl -sS https://design.indobase.in/sso/health   # {"ok":true,"service":"indobase-design",...}
+curl -sS https://design.indobase.in/sso/health   # ok + version SHA
 curl -sSI https://design.indobase.in/ | head -5  # 302 → Studio sign-in when logged out
-# On VPS:
-BASE=https://design.indobase.in bash /opt/indobase-design-v2/docker/scripts/smoke-staging.sh
-# Full flow: Studio → project → Marketing → Open Design → Layers + Export
+# Full flow: Studio → Marketing → Open Design → template → Brand → AI → Data merge
+#            → Export JPG/PNG/SVG/PDF → save/reload → Uploads image
 ```
 
-## Notes / gaps
+## Remaining gaps (intentionally not Canva parity)
 
-- **No `.penpot` import** — users with old Penpot work must re-create designs
-  (or had exported PNG/SVG before decommission).
-- Project ↔ Design team 1:1 mapping is not automated (`project_ref` is in the
-  handoff for a follow-up).
-- Canva-parity backlog (brand kit, more templates, AI drafting, business-data
-  merge, magic resize): see `indobase-design-v2/README.md`.
+- No Magic Studio / generative fill / photo suite
+- No stock photo / element marketplace
+- No multiplayer / comments
+- No print fulfillment or PPTX export
+- No video/audio timeline inside Design (use Indobase Video)
+- No website builder (Builder / Studio elsewhere)
+- Magic resize, group/align/snap, Social publish handoff — nice-to-haves next
 
 ## Rollback
 
-1. Restore Penpot volume tarball from `/var/backups/indobase-design-penpot-*.tgz`
-   (if kept) and bring up `/opt/indobase-design` compose.
-2. Restore `/etc/dokploy/traefik/dynamic/indobase-design.yml` pointing at Penpot
-   frontend + SSO shim; remove or lower-priority the v2 file-provider hosts.
-3. Point Studio `INDOBASE_DESIGN_URL` back if it was changed (prod default URL
-   stays `https://design.indobase.in` either way — Traefik is the switch).
-
-Prefer fixing forward on `indobase-design-v2` unless a critical outage requires
-the backup.
+1. Restore previous SHA-tagged `indobase-design-v2:<sha>` image and recreate.
+2. Prefer fixing forward on `indobase-design-v2` unless a critical outage requires
+   an older tag.

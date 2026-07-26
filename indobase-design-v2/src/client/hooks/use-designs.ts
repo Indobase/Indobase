@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import type { Design, DesignWithPages, Template, Page } from "../types";
 import { api } from "../api";
+import { showToast } from "../components/toast";
 
 export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -61,6 +62,7 @@ export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
       setActiveDesign(updated);
     } catch (e) {
       console.error("Failed to save:", e);
+      showToast(e instanceof Error ? e.message : "Autosave failed", "error");
     } finally {
       setSaving(false);
     }

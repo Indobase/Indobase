@@ -77,6 +77,30 @@ create table if not exists design.uploads (
 create index if not exists uploads_owner_idx
   on design.uploads (project_ref, gotrue_id, created_at desc);
 
+-- ── Brand kits (per user × project) ─────────────────────────────────────────────────────────────
+-- Colors, fonts, and optional logo applied onto canvas text / brand slots.
+create table if not exists design.brand_kits (
+  id               uuid primary key default gen_random_uuid(),
+  gotrue_id        uuid        not null,
+  project_ref      text        not null,
+  org_slug         text        null,
+  name             text        not null default 'Brand kit',
+  primary_color    text        not null default '#3B8FD6',
+  secondary_color  text        not null default '#F5A524',
+  accent_color     text        not null default '#E8618C',
+  background_color text        not null default '#FFFFFF',
+  text_color       text        not null default '#111827',
+  font_display     text        not null default 'Montserrat',
+  font_body        text        not null default 'Inter',
+  logo_url         text        null,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  unique (project_ref, gotrue_id)
+);
+
+create index if not exists brand_kits_owner_idx
+  on design.brand_kits (project_ref, gotrue_id);
+
 -- Keep updated_at honest without relying on the app layer.
 create or replace function design.touch_updated_at() returns trigger as $$
 begin

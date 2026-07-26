@@ -5,22 +5,41 @@ import {
   Circle,
   Triangle,
   Minus,
-  Image,
   Upload,
   Palette,
   LayoutGrid,
   Sparkles,
   Layers,
+  Paintbrush,
+  Bot,
+  Database,
 } from "lucide-preact";
 import { useEditor } from "../context";
 import { TemplateCard } from "./template-card";
 import { DesignList } from "./design-list";
 import { LayersPanel } from "./layers-panel";
+import { BrandKitPanel } from "./brand-kit-panel";
+import { AiDraftPanel } from "./ai-draft-panel";
+import { DataMergePanel } from "./data-merge-panel";
+import { showToast } from "./toast";
 
-type Section = "templates" | "text" | "shapes" | "images" | "background" | "layers" | "designs";
+type Section =
+  | "templates"
+  | "text"
+  | "shapes"
+  | "images"
+  | "background"
+  | "layers"
+  | "brand"
+  | "ai"
+  | "merge"
+  | "designs";
 
 const SECTIONS: { key: Section; icon: typeof LayoutGrid; label: string }[] = [
   { key: "templates", icon: Sparkles, label: "Templates" },
+  { key: "brand", icon: Paintbrush, label: "Brand" },
+  { key: "ai", icon: Bot, label: "AI" },
+  { key: "merge", icon: Database, label: "Data" },
   { key: "shapes", icon: Square, label: "Elements" },
   { key: "text", icon: Type, label: "Text" },
   { key: "images", icon: Upload, label: "Uploads" },
@@ -36,7 +55,19 @@ const SECTION_TITLES: Record<Section, string> = {
   images: "Uploads",
   layers: "Layers",
   background: "Background",
+  brand: "Brand kit",
+  ai: "AI draft",
+  merge: "Data merge",
   designs: "Designs",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  social: "Social",
+  story: "Stories & Reels",
+  ads: "Ads",
+  print: "Print",
+  presentation: "Presentation",
+  brand: "Brand",
 };
 
 const GRADIENT_PRESETS = [
@@ -56,8 +87,10 @@ const BG_COLORS = [
 ];
 
 export function LeftSidebar() {
-  const { addText, addShape, addImage, setBackground, templates, loadTemplate } = useEditor();
+  const { addText, addShape, addImage, setBackground, templates, loadTemplate, scheduleSave } =
+    useEditor();
   const [activeSection, setActiveSection] = useState<Section | null>("templates");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
@@ -76,15 +109,20 @@ export function LeftSidebar() {
           form.append("file", file);
           const resp = await fetch("/api/uploads", { method: "POST", body: form });
           const data = await resp.json();
-          if (data.url) addImage(data.url);
+          if (data.url) {
+            addImage(data.url);
+            scheduleSave?.();
+          } else {
+            showToast(data.error || "Upload failed", "error");
+          }
         }
       } catch (e) {
-        console.error("Upload failed:", e);
+        showToast(e instanceof Error ? e.message : "Upload failed", "error");
       } finally {
         setUploading(false);
       }
     },
-    [addImage]
+    [addImage, scheduleSave]
   );
 
   const handleBgUpload = useCallback(
@@ -95,12 +133,17 @@ export function LeftSidebar() {
       try {
         const resp = await fetch("/api/uploads", { method: "POST", body: form });
         const data = await resp.json();
-        if (data.url) setBackground("image", data.url);
+        if (data.url) {
+          setBackground("image", data.url);
+          scheduleSave?.();
+        } else {
+          showToast(data.error || "Background upload failed", "error");
+        }
       } catch (e) {
-        console.error("Bg upload failed:", e);
+        showToast(e instanceof Error ? e.message : "Background upload failed", "error");
       }
     },
-    [setBackground]
+    [setBackground, scheduleSave]
   );
 
   const handleDrop = useCallback(
@@ -112,23 +155,28 @@ export function LeftSidebar() {
   );
 
   const isOpen = activeSection !== null;
+  const categories = Array.from(new Set(templates.map((t) => t.category)));
+  const filteredTemplates =
+    categoryFilter === "all"
+      ? templates
+      : templates.filter((t) => t.category === categoryFilter);
 
   return (
-    <aside class="flex flex-row shrink-0">
+    <aside class="flex flex-row shrink-0 max-md:hidden">
       {/* Icon Rail */}
-      <div class="w-[70px] bg-white border-r border-zinc-200 flex flex-col items-center pt-2 gap-0.5 shrink-0">
+      <div class="w-[70px] bg-white border-r border-zinc-200 flex flex-col items-center pt-2 gap-0.5 shrink-0 overflow-y-auto">
         {SECTIONS.map((s) => (
           <button
             key={s.key}
-            class={`flex flex-col items-center justify-center gap-0.5 w-[56px] h-[56px] rounded-lg bg-transparent border-none cursor-pointer transition-all ${
+            class={`flex flex-col items-center justify-center gap-0.5 w-[56px] h-[52px] rounded-lg bg-transparent border-none cursor-pointer transition-all ${
               activeSection === s.key
                 ? "text-accent bg-accent/10"
                 : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50"
             }`}
             onClick={() => handleSectionClick(s.key)}
           >
-            <s.icon size={20} />
-            <span class="text-[10px] leading-tight">{s.label}</span>
+            <s.icon size={18} />
+            <span class="text-[9px] leading-tight">{s.label}</span>
           </button>
         ))}
       </div>
@@ -149,14 +197,54 @@ export function LeftSidebar() {
               <div class="flex-1 overflow-y-auto px-3 pb-3">
                 {activeSection === "templates" && (
                   <div>
-                    <p class="text-zinc-400 text-[11px] mb-3">Click a template to apply</p>
-                    <div class="grid grid-cols-2 gap-2">
-                      {templates.map((t) => (
-                        <TemplateCard key={t.id} template={t} onClick={() => loadTemplate(t)} />
+                    <div class="flex flex-wrap gap-1 mb-3">
+                      <button
+                        class={`px-2 py-0.5 rounded text-[10px] border cursor-pointer ${
+                          categoryFilter === "all"
+                            ? "bg-accent/10 border-accent text-accent"
+                            : "bg-white border-zinc-200 text-zinc-500"
+                        }`}
+                        onClick={() => setCategoryFilter("all")}
+                      >
+                        All
+                      </button>
+                      {categories.map((c) => (
+                        <button
+                          key={c}
+                          class={`px-2 py-0.5 rounded text-[10px] border cursor-pointer ${
+                            categoryFilter === c
+                              ? "bg-accent/10 border-accent text-accent"
+                              : "bg-white border-zinc-200 text-zinc-500"
+                          }`}
+                          onClick={() => setCategoryFilter(c)}
+                        >
+                          {CATEGORY_LABELS[c] || c}
+                        </button>
                       ))}
                     </div>
+                    <p class="text-zinc-400 text-[11px] mb-3">Click a template to apply</p>
+                    <div class="grid grid-cols-2 gap-2">
+                      {filteredTemplates.map((t) => (
+                        <TemplateCard
+                          key={t.id}
+                          template={t}
+                          onClick={() => {
+                            loadTemplate(t);
+                            scheduleSave?.();
+                            showToast(`Applied ${t.name}`, "success");
+                          }}
+                        />
+                      ))}
+                    </div>
+                    {filteredTemplates.length === 0 && (
+                      <p class="text-[11px] text-zinc-400">No templates in this category.</p>
+                    )}
                   </div>
                 )}
+
+                {activeSection === "brand" && <BrandKitPanel />}
+                {activeSection === "ai" && <AiDraftPanel />}
+                {activeSection === "merge" && <DataMergePanel />}
 
                 {activeSection === "text" && (
                   <div class="flex flex-col gap-2">

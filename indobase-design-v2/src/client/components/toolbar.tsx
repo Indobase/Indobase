@@ -11,6 +11,7 @@ import {
   Home,
 } from "lucide-preact";
 import { useEditor, CANVAS_SIZES } from "../context";
+import { showToast } from "./toast";
 
 export function Toolbar() {
   const {
@@ -58,7 +59,12 @@ export function Toolbar() {
   };
 
   const runExport = (format: "png" | "jpg" | "svg" | "pdf") => {
-    exportDesign(format, activeDesign?.name);
+    try {
+      exportDesign(format, activeDesign?.name);
+      showToast(`Exported ${format.toUpperCase()}`, "success");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Export failed", "error");
+    }
     setShowExportMenu(false);
   };
 

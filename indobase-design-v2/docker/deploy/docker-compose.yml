@@ -46,8 +46,11 @@ services:
       # start if this is missing or under 32 chars rather than serving unauthenticated.
       DESIGN_HANDOFF_SECRET: ${DESIGN_HANDOFF_SECRET:?set DESIGN_HANDOFF_SECRET}
       STUDIO_URL: ${STUDIO_URL:-https://studio.indobase.in}
+      # Swarm DNS preferred for AI draft proxy (avoids public DNS flaps).
+      STUDIO_INTERNAL_URL: ${STUDIO_INTERNAL_URL:-}
       DESIGN_DATABASE_URL: postgresql://${DB_USER:-design}:${DB_PASSWORD:?set DB_PASSWORD}@design-postgres:5432/${DB_NAME:-design}
       DESIGN_DB_POOL_MAX: ${DESIGN_DB_POOL_MAX:-10}
+      DESIGN_VERSION: ${DESIGN_VERSION:-dev}
     networks:
       - indobase_design_v2_net
       - traefik_public
