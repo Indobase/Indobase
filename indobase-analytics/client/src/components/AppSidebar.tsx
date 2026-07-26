@@ -13,7 +13,7 @@ import { authClient } from "../lib/auth";
 import { DEPLOYMENT, INDOBASE_ANALYTICS_DOCS_URL, INDOBASE_SUPPORT_EMAIL, IS_CLOUD } from "../lib/const";
 import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
 import { cn } from "../lib/utils";
-import { RybbitLogo } from "./RybbitLogo";
+import { IndobaseLogo } from "./IndobaseLogo";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -50,7 +50,7 @@ function AppSidebarContent() {
           aria-label="Indobase Analytics"
           className="mb-2 mt-1 flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
         >
-          <RybbitLogo width={24} height={18} />
+          <IndobaseLogo width={24} height={18} />
         </Link>
         <RailLink
           href={INDOBASE_ANALYTICS_DOCS_URL}

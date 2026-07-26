@@ -13,7 +13,7 @@ import { ChartTooltip } from "../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint, TimeSeriesChartSeries } from "../../../../components/charts/TimeSeriesChart";
 import { getChartTimeBounds } from "../../../../components/charts/timeSeriesChartUtils";
-import { RybbitTextLogo } from "../../../../components/RybbitLogo";
+import { IndobaseTextLogo } from "../../../../components/IndobaseLogo";
 import { ToggleChip } from "../../../../components/ToggleChip";
 import { useWhiteLabel } from "../../../../hooks/useIsWhiteLabel";
 import { authClient } from "../../../../lib/auth";
@@ -159,7 +159,7 @@ export function PerformanceChart() {
           <div className="flex items-center space-x-4">
             {!isWhiteLabel && (
               <Link href={session.data ? "/" : "https://indobase.in"} className="opacity-75">
-                <RybbitTextLogo width={80} />
+                <IndobaseTextLogo width={80} />
               </Link>
             )}
           </div>

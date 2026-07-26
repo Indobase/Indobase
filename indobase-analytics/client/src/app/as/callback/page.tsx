@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
 import { addSite } from "../../../api/admin/endpoints";
-import { RybbitTextLogo } from "../../../components/RybbitLogo";
+import { IndobaseTextLogo } from "../../../components/IndobaseLogo";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
 import { IS_CLOUD } from "../../../lib/const";
@@ -464,7 +464,7 @@ export default function AppSumoSignupPage() {
         {/* Logo and title above the card */}
         <div className="relative z-10 mb-6 text-center">
           <a href="https://indobase.in" target="_blank" className="inline-block mb-2">
-            <RybbitTextLogo />
+            <IndobaseTextLogo />
           </a>
           <h1 className="text-lg text-neutral-600 dark:text-neutral-300">AppSumo License Activation</h1>
         </div>

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { BucketSelection } from "../../../../../components/BucketSelection";
-import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
+import { IndobaseTextLogo } from "../../../../../components/IndobaseLogo";
 import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
 import { authClient } from "../../../../../lib/auth";
 import { getTimezone, useStore } from "../../../../../lib/store";
@@ -105,7 +105,7 @@ export function MainSection() {
                   href={session.data ? "/" : "https://indobase.in"}
                   className="opacity-75"
                 >
-                  <RybbitTextLogo width={80} />
+                  <IndobaseTextLogo width={80} />
                 </Link>
               )}
             </div>

@@ -9,7 +9,7 @@ function getTextLogoHeight(width: number, height?: number) {
   return height && height > 0 ? height : Math.round(width / HORIZONTAL_LOGO_ASPECT_RATIO);
 }
 
-export function RybbitLogo({ width = 32, height = 32 }: { width?: number; height?: number }) {
+export function IndobaseLogo({ width = 32, height = 32 }: { width?: number; height?: number }) {
   const { whiteLabelImage, isPending } = useWhiteLabel();
   const [mounted, setMounted] = useState(false);
   const imageStyle = { width, height, objectFit: "contain" as const };
@@ -37,7 +37,7 @@ export function RybbitLogo({ width = 32, height = 32 }: { width?: number; height
   );
 }
 
-export function RybbitTextLogo({ width = 150, height }: { width?: number; height?: number }) {
+export function IndobaseTextLogo({ width = 150, height }: { width?: number; height?: number }) {
   const { whiteLabelImage, isPending } = useWhiteLabel();
   const [mounted, setMounted] = useState(false);
   const resolvedHeight = getTextLogoHeight(width, height);

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import React, { Suspense, useEffect, useState } from "react";
 import { addSite } from "../../api/admin/endpoints";
-import { RybbitLogo, RybbitTextLogo } from "../../components/RybbitLogo";
+import { IndobaseLogo, IndobaseTextLogo } from "../../components/IndobaseLogo";
 
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
@@ -33,7 +33,7 @@ function StudioOnlySignupRedirect({ studioUrl }: { studioUrl: string }) {
     <div className="flex justify-center items-center h-dvh w-full">
       <Card className="w-full max-w-sm p-1">
         <CardHeader>
-          <RybbitLogo width={32} height={32} />
+          <IndobaseLogo width={32} height={32} />
           <CardTitle className="text-2xl flex justify-center">Indobase Analytics</CardTitle>
         </CardHeader>
         <CardContent>
@@ -319,7 +319,7 @@ function SignupPageContent() {
         {/* Logo */}
         <div className="mb-8">
           <a href="https://indobase.in" target="_blank" className="inline-block">
-            <RybbitTextLogo />
+            <IndobaseTextLogo />
           </a>
         </div>
 

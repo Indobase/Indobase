@@ -4,7 +4,7 @@ import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { BucketSelection } from "../../../../../components/BucketSelection";
-import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
+import { IndobaseTextLogo } from "../../../../../components/IndobaseLogo";
 import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
 import { authClient } from "../../../../../lib/auth";
 import { useStore } from "../../../../../lib/store";
@@ -50,7 +50,7 @@ export function MainSectionLite() {
             <div className="flex items-center space-x-4">
               {!isWhiteLabel && (
                 <Link href={session.data ? "/" : "https://indobase.in"} className="opacity-75">
-                  <RybbitTextLogo width={80} height={0} />
+                  <IndobaseTextLogo width={80} height={0} />
                 </Link>
               )}
             </div>

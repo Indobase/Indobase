@@ -9,7 +9,7 @@ import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { RybbitTextLogo } from "../../components/RybbitLogo";
+import { IndobaseTextLogo } from "../../components/IndobaseLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
@@ -43,7 +43,7 @@ export default function Page() {
     return (
       <div className="flex h-dvh w-full items-center justify-center p-6">
         <div className="max-w-sm text-center space-y-3">
-          <RybbitTextLogo />
+          <IndobaseTextLogo />
           <p className="text-sm text-muted-foreground">
             Indobase Analytics opens from Studio. Redirecting to sign in…
           </p>
@@ -107,7 +107,7 @@ export default function Page() {
         {/* Logo at top left */}
         <div className="mb-8">
           <a href="https://studio.indobase.in" className="inline-block">
-            <RybbitTextLogo />
+            <IndobaseTextLogo />
           </a>
         </div>
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
