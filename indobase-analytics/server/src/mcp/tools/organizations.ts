@@ -51,10 +51,10 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Add organization member",
       description:
-        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; only an owner key can grant the owner role.",
+        "Add an existing Indobase Analytics user to the organization by email. The user must already have an Indobase Analytics account. Requires an org admin/owner key; only an owner key can grant the owner role.",
       inputSchema: {
         organization_id: organizationIdInput,
-        email: z.string().email().describe("Email of an existing Rybbit user"),
+        email: z.string().email().describe("Email of an existing Indobase Analytics user"),
         role: memberRoleInput,
       },
       outputSchema: addMemberOutput,

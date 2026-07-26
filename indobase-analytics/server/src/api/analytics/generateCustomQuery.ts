@@ -94,7 +94,7 @@ export async function generateCustomQuery(
     {
       role: "system" as const,
       content: `
-You generate ClickHouse SQL for Rybbit custom analytics.
+You generate ClickHouse SQL for Indobase Analytics custom queries.
 Return exactly one SQL query and no Markdown, explanation, comments, or semicolon.
 The query must be a SELECT or WITH ... SELECT query.
 The only readable table is scoped_events. Never read from events or any other table.

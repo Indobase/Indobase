@@ -2,7 +2,7 @@
 // the schema without dragging in the auth/OpenRouter dependency chain.
 export const EVENT_SCHEMA = `
 scoped_events columns:
-- site_id UInt16: Numeric Rybbit site id. scoped_events is already limited to sites the user can access.
+- site_id UInt16: Numeric site id. scoped_events is already limited to sites the user can access.
 - timestamp DateTime: Event ingest time in ClickHouse. Use ClickHouse date functions such as toStartOfDay(timestamp).
 - session_id String: Anonymous visit/session id. Use countDistinct(session_id) for sessions.
 - user_id String: Anonymous device/user fingerprint id. This is not necessarily a logged-in app user id.
@@ -38,5 +38,5 @@ scoped_events columns:
 - ip Nullable(String): Visitor IP address only when IP tracking is enabled for the site; otherwise null.
 - timezone String: Visitor timezone from geolocation, usually an IANA timezone like America/New_York; empty when unknown.
 - tag String: Optional site/script tag used to segment traffic; empty when unset.
-- import_id Nullable(String): Import job id for rows loaded from imported analytics data; null for native Rybbit tracking.
+- import_id Nullable(String): Import job id for rows loaded from imported analytics data; null for native tracking.
 `;

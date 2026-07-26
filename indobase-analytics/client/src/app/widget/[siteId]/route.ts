@@ -33,7 +33,7 @@ function colors(theme: "dark" | "light") {
 
 function renderCardHTML(c: Config) {
   const col = colors(c.theme);
-  const logo = c.theme === "dark" ? "/rybbit/horizontal_white.svg" : "/rybbit/horizontal_black.svg";
+  const logo = "/indobase/logo.svg";
   return `
 <div class="w card">
   <div class="header">
@@ -113,7 +113,7 @@ function renderCardHTML(c: Config) {
 
 function renderInlineHTML(c: Config) {
   const col = colors(c.theme);
-  const logo = c.theme === "dark" ? "/rybbit/frog_white.svg" : "/rybbit/frog_black.svg";
+  const logo = "/indobase/logo.svg";
   return `
 <div class="w inline">
   <span class="pulse pulse-sm"></span>
@@ -184,10 +184,10 @@ function renderHTML(c: Config) {
     border-radius: 50%;
     background: ${accentColor};
   }
-  .pulse::before { opacity: 0.4; animation: rybbit-pulse 1.6s ease-out infinite; }
+  .pulse::before { opacity: 0.4; animation: ib-pulse 1.6s ease-out infinite; }
   .pulse-md::after { inset: 3px; }
   .pulse-sm::after { inset: 2px; }
-  @keyframes rybbit-pulse {
+  @keyframes ib-pulse {
     0%   { transform: scale(1); opacity: 0.5; }
     100% { transform: scale(2.2); opacity: 0; }
   }
