@@ -105,6 +105,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, _claims?: JwtP
       builds_per_day: e.buildsPerDay,
       database_bytes: e.databaseBytes,
       builder_prompt_limit: e.builderPromptLimit,
+      video_ai_limit: e.videoAiLimit,
       idle_sleep_days: e.idleSleepDays,
     },
   })

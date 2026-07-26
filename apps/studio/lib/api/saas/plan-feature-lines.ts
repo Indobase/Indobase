@@ -79,6 +79,11 @@ export function getPlanFeatureLines(plan: string, opts?: { inheritsFrom?: string
   }
 
   lines.push(e.buildsPerDay === null ? 'Fair-use builds' : `~${e.buildsPerDay} AI builds/day`)
+  if (e.videoAiLimit === null) {
+    lines.push('Unlimited Video AI credits')
+  } else {
+    lines.push(`${e.videoAiLimit} Video AI credits`)
+  }
   lines.push(`${formatBytesLabel(e.databaseBytes)} database`)
   lines.push(`${formatBytesLabel(e.storageBytes)} file storage`)
   lines.push(formatCount(e.mauLimit, 'MAU'))

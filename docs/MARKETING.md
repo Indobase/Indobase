@@ -22,9 +22,9 @@ and engineering docs only.
 OpenCut **rewrite** (`OpenCut-app/OpenCut`) is still scaffold-level. OpenCut
 **classic** is MIT and runnable but archived, and a full fork pulls Postgres /
 Redis / better-auth / marketing-site deps that fight Studio-SSO-only and
-balloon on this workspace’s exFAT volume. **v1** is a purpose-built Indobase
-editor (import, timeline trim/split, text, preview, MP4/WebM export, project-scoped
-IndexedDB autosave) inspired by classic OpenCut — see
+balloon on this workspace’s exFAT volume. **P0** is a purpose-built Indobase
+editor (multi-track timeline, AI draft + TTS via Studio APIs, cloud-persisted
+projects, quota-gated AI, MP4/WebM export) inspired by classic OpenCut — see
 [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
 
 ---
@@ -39,6 +39,8 @@ IndexedDB autosave) inspired by classic OpenCut — see
 | Social launch | `GET /api/platform/projects/[ref]/social/launch` |
 | Design launch | `GET /api/platform/projects/[ref]/design/launch` |
 | Video launch | `GET /api/platform/projects/[ref]/video/launch` |
+| Video projects | `GET/PUT /api/platform/projects/[ref]/video/projects` |
+| Video AI | `POST …/video/generate`, `POST …/video/tts`, `GET …/video/quota` |
 | Layout | Ungated like Payments (no Backend Studio sidebar / plan gate) |
 
 ### How to open Email
@@ -77,7 +79,9 @@ IndexedDB autosave) inspired by classic OpenCut — see
 3. Studio mints JWT (`aud=indobase-video`) →
    `https://video.<domain>/sso/launch?project_ref=…#token=…`.
 4. Video verifies the token, sets `ib_video_sso`, opens the editor for that
-   project. Details: [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
+   project. Editor mints a Video API bearer (`aud=indobase-video-api`) for
+   cloud save, AI generate/TTS, and quota against Studio. Details:
+   [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
 
 Org roles (same as Payments): **owner, admin, developer, viewer**.
 

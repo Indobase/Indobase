@@ -63,6 +63,8 @@ export type PlanEntitlements = {
   isolatedStack: boolean
   /** Builder chat prompts; null = unlimited */
   builderPromptLimit: number | null
+  /** Video AI generate + TTS credits; null = unlimited */
+  videoAiLimit: number | null
 }
 
 const GB = 1024 ** 3
@@ -112,6 +114,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: false,
       isolatedStack: false,
       builderPromptLimit: 5,
+      videoAiLimit: 5,
     },
     basic: {
       planId: 'basic',
@@ -142,6 +145,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: false,
       isolatedStack: false,
       builderPromptLimit: null,
+      videoAiLimit: 20,
     },
     pro: {
       planId: 'pro',
@@ -172,6 +176,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: false,
       isolatedStack: true,
       builderPromptLimit: null,
+      videoAiLimit: 100,
     },
     studio: {
       planId: 'studio',
@@ -198,6 +203,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: true,
       isolatedStack: true,
       builderPromptLimit: null,
+      videoAiLimit: 300,
     },
     enterprise: {
       planId: 'enterprise',
@@ -222,6 +228,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: true,
       isolatedStack: true,
       builderPromptLimit: null,
+      videoAiLimit: null,
     },
     platform: {
       planId: 'platform',
@@ -246,6 +253,7 @@ const ENTITLEMENTS: Record<'free' | 'basic' | 'pro' | 'studio' | 'enterprise' | 
       sharedBilling: true,
       isolatedStack: false,
       builderPromptLimit: null,
+      videoAiLimit: null,
     },
   }
 
