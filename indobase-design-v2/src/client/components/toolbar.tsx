@@ -11,6 +11,7 @@ import {
   Home,
 } from "lucide-preact";
 import { useEditor, CANVAS_SIZES } from "../context";
+import { showToast } from "./toast";
 
 export function Toolbar() {
   const {
@@ -57,8 +58,13 @@ export function Toolbar() {
     setEditingName(false);
   };
 
-  const runExport = (format: "png" | "jpg" | "svg" | "pdf") => {
-    exportDesign(format, activeDesign?.name);
+  const runExport = (format: "png" | "png-transparent" | "jpg" | "svg" | "pdf") => {
+    try {
+      exportDesign(format, activeDesign?.name);
+      showToast(`Exported ${format.replace("-", " ").toUpperCase()}`, "success");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Export failed", "error");
+    }
     setShowExportMenu(false);
   };
 
@@ -197,6 +203,7 @@ export function Toolbar() {
               {(
                 [
                   ["png", "PNG"],
+                  ["png-transparent", "PNG transparent"],
                   ["jpg", "JPG"],
                   ["svg", "SVG"],
                   ["pdf", "PDF"],

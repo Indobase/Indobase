@@ -10,10 +10,25 @@ export interface CanvasSize {
 }
 
 export const CANVAS_SIZES: CanvasSize[] = [
+  { label: "Instagram Post", width: 1080, height: 1080 },
+  { label: "Instagram Portrait", width: 1080, height: 1350 },
+  { label: "Instagram Story / Reel", width: 1080, height: 1920 },
+  { label: "TikTok", width: 1080, height: 1920 },
+  { label: "Facebook Post", width: 1200, height: 630 },
+  { label: "Facebook Cover", width: 820, height: 312 },
   { label: "LinkedIn Square", width: 1080, height: 1080 },
   { label: "LinkedIn Landscape", width: 1200, height: 627 },
   { label: "LinkedIn Portrait", width: 1200, height: 1500 },
-  { label: "Instagram Story", width: 1080, height: 1920 },
+  { label: "LinkedIn Cover", width: 1584, height: 396 },
+  { label: "YouTube Thumbnail", width: 1280, height: 720 },
+  { label: "Twitter / X Post", width: 1600, height: 900 },
+  { label: "WhatsApp Status", width: 1080, height: 1920 },
+  { label: "Presentation 16:9", width: 1920, height: 1080 },
+  { label: "A4 Portrait", width: 1240, height: 1754 },
+  { label: "US Letter", width: 1275, height: 1650 },
+  { label: "Poster", width: 1080, height: 1350 },
+  { label: "Business Card", width: 1050, height: 600 },
+  { label: "Custom Square", width: 800, height: 800 },
 ];
 
 export interface EditorContextValue {
@@ -47,7 +62,10 @@ export interface EditorContextValue {
   zoomIn: () => void;
   zoomOut: () => void;
   exportPNG: () => void;
-  exportDesign: (format: "png" | "jpg" | "svg" | "pdf", designName?: string | null) => void;
+  exportDesign: (
+    format: "png" | "png-transparent" | "jpg" | "svg" | "pdf",
+    designName?: string | null
+  ) => void;
   bringForward: (obj?: fabric.FabricObject | null) => void;
   sendBackward: (obj?: fabric.FabricObject | null) => void;
   setLayerVisible: (obj: fabric.FabricObject, visible: boolean) => void;
@@ -56,6 +74,8 @@ export interface EditorContextValue {
   getCanvasJSON: () => string;
   getCanvasJSONForPage: (pageId: string) => string;
   loadTemplate: (template: Template) => void;
+  loadCanvasDocument: (canvasJson: string) => void;
+  applyBrandKit: (kit: import("./types").BrandKit) => void;
 
   // Router
   navigate: (to: string) => void;
@@ -86,6 +106,9 @@ export interface EditorContextValue {
 
   // Templates
   templates: Template[];
+
+  // Autosave
+  scheduleSave: () => void;
 
   // State
   loading: boolean;

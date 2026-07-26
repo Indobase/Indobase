@@ -77,6 +77,33 @@ create table if not exists design.uploads (
 create index if not exists uploads_owner_idx
   on design.uploads (project_ref, gotrue_id, created_at desc);
 
+alter table design.uploads
+  add column if not exists asset_url text null;
+
+-- ── Brand kits (per user × project) ─────────────────────────────────────────────────────────────
+-- Colors, fonts, and optional logo applied onto canvas text / brand slots.
+create table if not exists design.brand_kits (
+  id               uuid primary key default gen_random_uuid(),
+  gotrue_id        uuid        not null,
+  project_ref      text        not null,
+  org_slug         text        null,
+  name             text        not null default 'Brand kit',
+  primary_color    text        not null default '#3B8FD6',
+  secondary_color  text        not null default '#F5A524',
+  accent_color     text        not null default '#E8618C',
+  background_color text        not null default '#FFFFFF',
+  text_color       text        not null default '#111827',
+  font_display     text        not null default 'Montserrat',
+  font_body        text        not null default 'Inter',
+  logo_url         text        null,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  unique (project_ref, gotrue_id)
+);
+
+create index if not exists brand_kits_owner_idx
+  on design.brand_kits (project_ref, gotrue_id);
+
 -- Keep updated_at honest without relying on the app layer.
 create or replace function design.touch_updated_at() returns trigger as $$
 begin
@@ -89,3 +116,65 @@ drop trigger if exists designs_touch_updated_at on design.designs;
 create trigger designs_touch_updated_at
   before update on design.designs
   for each row execute function design.touch_updated_at();
+
+-- ── Folders ──────────────────────────────────────────────────────────────────────────────────────
+create table if not exists design.folders (
+  id          uuid primary key default gen_random_uuid(),
+  gotrue_id   uuid        not null,
+  project_ref text        not null,
+  name        text        not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists folders_owner_idx
+  on design.folders (project_ref, gotrue_id, created_at desc);
+
+alter table design.designs
+  add column if not exists folder_id uuid null references design.folders (id) on delete set null;
+
+create index if not exists designs_folder_idx
+  on design.designs (folder_id)
+  where folder_id is not null;
+
+-- ── Version history (snapshots) ──────────────────────────────────────────────────────────────────
+create table if not exists design.versions (
+  id          uuid primary key default gen_random_uuid(),
+  design_id   uuid        not null references design.designs (id) on delete cascade,
+  label       text        not null default 'Snapshot',
+  canvas_json jsonb       not null,
+  width       integer     not null,
+  height      integer     not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists versions_design_idx
+  on design.versions (design_id, created_at desc);
+
+-- ── Share links (view/edit token) ────────────────────────────────────────────────────────────────
+create table if not exists design.share_links (
+  id          uuid primary key default gen_random_uuid(),
+  design_id   uuid        not null references design.designs (id) on delete cascade,
+  gotrue_id   uuid        not null,
+  project_ref text        not null,
+  token       text        not null unique,
+  can_edit    boolean     not null default false,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz null
+);
+
+create index if not exists share_links_token_idx on design.share_links (token);
+
+-- ── Comments (simple threads on a design) ────────────────────────────────────────────────────────
+create table if not exists design.comments (
+  id          uuid primary key default gen_random_uuid(),
+  design_id   uuid        not null references design.designs (id) on delete cascade,
+  gotrue_id   uuid        not null,
+  author_email text       not null default '',
+  body        text        not null,
+  x           double precision null,
+  y           double precision null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists comments_design_idx
+  on design.comments (design_id, created_at desc);

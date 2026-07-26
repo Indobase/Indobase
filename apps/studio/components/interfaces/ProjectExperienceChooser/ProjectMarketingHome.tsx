@@ -317,15 +317,15 @@ export const ProjectMarketingHome = () => {
 
               <MarketingToolTile
                 title="Visual designer"
-                description="Design landing pages, creatives, and brand assets in-browser — Indobase Design."
+                description="Design posts, ads, and brand assets in-browser — templates, brand kit, AI drafts, and data merge. Indobase Design."
                 icon={<Palette size={24} strokeWidth={1.75} className="text-[#7C5CD6]" />}
                 accentClassName="bg-[#7C5CD6]/10"
                 elevated
                 statusLabel="Available"
                 statusHint={
                   ref
-                    ? `Opens Indobase Design with your Studio account (project ${ref}). Studio SSO — no separate password.`
-                    : 'Studio SSO handoff — no separate password.'
+                    ? `Opens Indobase Design for project ${ref}: templates, brand kit, AI draft, {{data}} merge, Layers, Export PNG/JPG/SVG/PDF. Studio SSO — no separate password.`
+                    : 'Studio SSO handoff — templates, brand kit, AI draft, data merge, export.'
                 }
                 actions={
                   <>

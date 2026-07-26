@@ -1,112 +1,120 @@
-# Indobase Design — Canva-class visual editor + Studio SSO
+# Indobase Design — Canva-class → Design-core parity
 
-**Hosts:** `design.indobase.in` (production, canonical) · `design.indobase.fun`
-(same stack) · `studio-design.indobase.fun` (legacy staging alias) — Traefik on
-Vyom `.249`.  
-**Product:** **Indobase Design** (Marketing suite).  
-**Source:** `indobase-design-v2/` (Fabric.js + Preact SPA, Hono API, Postgres).  
-**Licences:** MIT (editor client from clawnify/open-design) + Apache-2.0
-(Davronov layers attribution) — see `indobase-design-v2/NOTICE.md`. UI says
-**Indobase Design** only.
+**Hosts:** `design.indobase.in` (prod) · `design.indobase.fun` · Traefik on Vyom `.249`  
+**Source:** `indobase-design-v2/` (Fabric.js + Preact, Hono, Postgres)  
+**Licences:** MIT (editor client) + Apache-2.0 (Davronov layers) — see `NOTICE.md`.
 
-> The former Penpot fork (`indobase-design/`) is **decommissioned**. There is
-> **no** `.penpot` import path — Fabric.js JSON is the design format.
+## Honest framing
 
-## Architecture
+Indobase Design targets **Canva Design-category parity** (graphic editor), not the
+entire Canva platform. Video / Social / Email / Websites are **suite handoffs**
+to Indobase Video, Social, Email, and Builder.
 
+| Layer | Status |
+|-------|--------|
+| Phase 1 — Design-core | Shipped (this doc) |
+| Phase 2 — Suite handoffs | Shipped (guidance + Marketing hub) |
+| Phase 3+ — Magic Studio depth, collab RT, print, enterprise Brand Hub | Backlog |
+
+## Canva-parity matrix (Design-core)
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Templates (volume + categories + search) | **Yes** | 40–80+ via seed + colorway expansion |
+| Canvas size presets (social/print) | **Yes** | IG/FB/LI/TikTok/YT/WA/A4/Letter/card/poster |
+| Brand kit | **Yes** | Persist + apply colors/fonts/logo |
+| AI draft | **Yes** | Studio OpenRouter + `design_ai_used` quota |
+| Data merge `{{fields}}` | **Yes** | JSON/CSV paste |
+| Bulk create / autofill | **Yes** | CSV/JSON → design variants |
+| Uploads + recent assets | **Yes** | `POST/GET /api/uploads` |
+| Layers / lock / z-order | **Yes** | |
+| Undo/redo + autosave | **Yes** | |
+| Group / ungroup / align / distribute | **Yes** | Tools rail |
+| Smart guides / snap | **Partial** | Center + edge snap while moving |
+| Effects (shadow, opacity) | **Yes** | Blur-as-filter via image filters |
+| Photo crop | **Partial** | Scale/flip/filters; dedicated crop UI later |
+| Photo filters | **Yes** | Brightness/contrast/saturation |
+| Background remove | **No** | Phase 3 — no RemBG key |
+| Drawing (pen) | **Yes** | Fabric PencilBrush |
+| Elements / icons / frames | **Yes** | Built-in SVG paths |
+| Stock library | **No** | Needs Pexels/Unsplash key |
+| QR codes | **Yes** | |
+| Charts (bar/pie) | **Yes** | Basic |
+| Magic resize | **Yes** | |
+| Pages + duplicate | **Yes** | |
+| Version history | **Yes** | Snapshots restore |
+| Folders | **Yes** | |
+| Share link | **Yes** | View token (project-scoped) |
+| Comments | **Yes** | Simple threads |
+| Real-time multiplayer | **No** | Phase 3 |
+| Export PNG/JPG/SVG/PDF | **Yes** | + transparent PNG |
+| GIF export | **No** | Documented gap |
+| PPTX / print fulfillment | **No** | Phase 3 |
+| Magic Studio / AI photo suite | **No** | Phase 3 |
+| Video / Social / Email inside Design | **Ecosystem** | Suite handoffs |
+| Websites | **Ecosystem** | Builder |
+
+**Design-core coverage estimate:** ~**75–85%** of Canva’s *graphic design* surface
+(not full Canva). Overall Canva platform still ~**partial** via Indobase suite.
+
+## How to use (Phase 1)
+
+| Feature | Where |
+|---------|--------|
+| Tools (arrange, draw, QR, charts, magic resize, bulk, versions, share, comments) | Left rail → **Tools** |
+| Brand kit | **Brand** |
+| AI draft | **AI** |
+| Data merge | **Data** |
+| Templates | Home or **Templates** (search + categories) |
+| Export | Toolbar → PNG / transparent PNG / JPG / SVG / PDF |
+
+### Data merge / bulk CSV
+
+```csv
+product_name,price
+Paneer Tikka,₹220
+Masala Chai,₹80
 ```
-Studio (Open Design)
-  └─ GET /api/platform/projects/[ref]/design/launch
-       → URL https://design.indobase.in/sso/launch#token=<HS256 JWT aud=indobase-design>
-            └─ design-app (indobase-design-v2)
-                 1. /sso/launch page posts fragment token to /sso/session
-                    → verifies HMAC (DESIGN_HANDOFF_SECRET) → signed session cookie
-                 2. SPA (Preact + Fabric.js) ⇄ /api/* ⇄ Postgres
-```
 
-- Handoff is verified **directly** in our Hono backend (no OIDC shim).
-- Without a verified Studio handoff cookie, unauthenticated visitors redirect to
-  Studio sign-in.
-- Org roles allowed to open Design (same as Email/Social/Payments):
-  owner, admin, developer, viewer.
-- Designs are multi-tenant: ownership is `(gotrue_id, project_ref)` from the
-  verified session, never from request input.
-- Built-in templates are authored in-repo as Fabric JSON (India-first starter set).
+## Phase 2 — Suite handoffs
 
-## Features (shipped)
+From Design **Tools → Suite handoffs**: open Studio Marketing, export asset first,
+then use **Open Video** / **Open Social** / Email from the hub. Design does **not**
+re-implement those products.
 
-- Editor: text, shapes, images, multi-page, undo/redo, autosave
-- **Layers** panel (z-order, visibility, lock) — Apache-2.0 Davronov attribution
-- Export: **PNG / JPG / SVG / PDF**
-- Studio SSO with role gating
-- 8 built-in templates
+## Phase 3+ backlog
 
-## Branding
+- RemBG / Magic Studio photo depth, stock APIs, GIF
+- Real-time multiplayer + presence
+- Print fulfillment, PPTX
+- Enterprise Brand Hub enforcement / SCIM
+- Classroom / live presentations
+- Canva-scale template marketplace
 
-Customer-facing UI/title/meta use **Indobase Design** only. Engineering
-attribution lives in `NOTICE.md` / licence files — not in the served SPA.
-
-## Deploy (Vyom .249)
-
-Build on the VPS (do not `pnpm install` at monorepo root on exFAT). Pin the
-image tag to the git SHA:
+## Deploy
 
 ```bash
-SHA=$(git rev-parse --short=12 HEAD)   # or full SHA
-
-rsync -az --delete \
-  --exclude node_modules --exclude dist --exclude .env --exclude '**/._*' \
+SHA=$(git rev-parse HEAD)
+rsync -az --delete --exclude node_modules --exclude dist --exclude .env --exclude '**/._*' \
   indobase-design-v2/ root@103.190.92.249:/opt/indobase-design-v2/
-
 ssh root@103.190.92.249
 cd /opt/indobase-design-v2/docker/deploy
-# .env: DESIGN_HANDOFF_SECRET (= Studio DESIGN_HANDOFF_SECRET), DB_PASSWORD,
-#       STUDIO_URL=https://studio.indobase.in, DESIGN_VERSION=$SHA
-docker compose --env-file .env build
-docker compose --env-file .env up -d
+# DESIGN_VERSION=$SHA in .env; optional STUDIO_INTERNAL_URL for AI
+docker compose --env-file .env build && docker compose --env-file .env up -d
 bash ../../docker/scripts/refresh-traefik-route.sh
 ```
 
-Traefik file provider uses **container DNS**
-(`http://indobase-design-v2-design-app-1:8080`) — see
-`indobase-design-v2/docker/deploy/traefik/indobase-design-v2.yml` and
-`refresh-traefik-route.sh`.
-
-Studio service env (Swarm `indobase-studio-*` on `.249` and Hostinger staging):
-
-```bash
-INDOBASE_DESIGN_URL=https://design.indobase.in          # staging: design.indobase.fun
-NEXT_PUBLIC_INDOBASE_DESIGN_URL=https://design.indobase.in
-DESIGN_HANDOFF_SECRET=<same as design-v2 .env>
-```
+Studio needs `OPEN_ROUTER_API_KEY` + `DESIGN_HANDOFF_SECRET` (already used by Video/Design SSO).
+Promote Studio image when Design AI quota APIs change.
 
 ## Smoke
 
+1. Studio → Marketing → Open Design  
+2. Template → Brand apply → AI draft → Data merge → Bulk create  
+3. Tools: group/align, draw, QR, chart, magic resize, snapshot, share, comment  
+4. Upload image → recent assets → Export transparent PNG + PDF  
+5. Save / reload  
+
 ```bash
-curl -sS https://design.indobase.in/sso/health   # {"ok":true,"service":"indobase-design",...}
-curl -sSI https://design.indobase.in/ | head -5  # 302 → Studio sign-in when logged out
-# On VPS:
-BASE=https://design.indobase.in bash /opt/indobase-design-v2/docker/scripts/smoke-staging.sh
-# Full flow: Studio → project → Marketing → Open Design → Layers + Export
+curl -sS https://design.indobase.in/sso/health
 ```
-
-## Notes / gaps
-
-- **No `.penpot` import** — users with old Penpot work must re-create designs
-  (or had exported PNG/SVG before decommission).
-- Project ↔ Design team 1:1 mapping is not automated (`project_ref` is in the
-  handoff for a follow-up).
-- Canva-parity backlog (brand kit, more templates, AI drafting, business-data
-  merge, magic resize): see `indobase-design-v2/README.md`.
-
-## Rollback
-
-1. Restore Penpot volume tarball from `/var/backups/indobase-design-penpot-*.tgz`
-   (if kept) and bring up `/opt/indobase-design` compose.
-2. Restore `/etc/dokploy/traefik/dynamic/indobase-design.yml` pointing at Penpot
-   frontend + SSO shim; remove or lower-priority the v2 file-provider hosts.
-3. Point Studio `INDOBASE_DESIGN_URL` back if it was changed (prod default URL
-   stays `https://design.indobase.in` either way — Traefik is the switch).
-
-Prefer fixing forward on `indobase-design-v2` unless a critical outage requires
-the backup.

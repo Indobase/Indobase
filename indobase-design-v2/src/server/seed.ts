@@ -6,13 +6,14 @@
  * touched — the WHERE clause only matches the global library.
  */
 import { getPool } from './db.js'
-import { BUILTIN_TEMPLATES } from './templates.js'
+import { expandTemplateLibrary } from './templates-extra.js'
 
 export async function seedTemplates(): Promise<number> {
   const pool = getPool()
   let count = 0
+  const templates = expandTemplateLibrary()
 
-  for (const t of BUILTIN_TEMPLATES) {
+  for (const t of templates) {
     await pool.query(
       `insert into design.templates
          (gotrue_id, slug, name, category, canvas_json, width, height, sort_order)

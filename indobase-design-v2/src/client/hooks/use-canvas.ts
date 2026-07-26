@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import * as fabric from "fabric";
-import type { Template } from "../types";
-import { exportCanvas } from "../utils/export";
+import type { BrandKit, Template } from "../types";
+import { attachSmartGuides } from "../utils/canvas-tools";
 
 const MAX_HISTORY = 50;
 
@@ -86,6 +86,8 @@ export function useCanvasState() {
   const registerCanvas = useCallback((pageId: string, canvas: fabric.Canvas) => {
     canvasMapRef.current.set(pageId, canvas);
 
+    const detachGuides = attachSmartGuides(canvas, canvasWidth, canvasHeight);
+
     // Selection events
     canvas.on("selection:created", (e) => {
       if (activeCanvasIdRef.current === pageId) {
@@ -124,9 +126,15 @@ export function useCanvasState() {
       updateUndoRedoState(pageId);
       if (activeCanvasIdRef.current === pageId) bumpLayers();
     }, 100);
-  }, [saveHistory, updateUndoRedoState, bumpLayers]);
+
+    ;(canvas as fabric.Canvas & { __detachGuides?: () => void }).__detachGuides = detachGuides;
+  }, [saveHistory, updateUndoRedoState, bumpLayers, canvasWidth, canvasHeight]);
 
   const unregisterCanvas = useCallback((pageId: string) => {
+    const canvas = canvasMapRef.current.get(pageId) as
+      | (fabric.Canvas & { __detachGuides?: () => void })
+      | undefined;
+    canvas?.__detachGuides?.();
     canvasMapRef.current.delete(pageId);
     historyMapRef.current.delete(pageId);
   }, []);
@@ -387,7 +395,10 @@ export function useCanvasState() {
   // ── Export ──────────────────────────────────────────────────────────
 
   const exportDesign = useCallback(
-    (format: "png" | "jpg" | "svg" | "pdf", designName?: string | null) => {
+    (
+      format: "png" | "png-transparent" | "jpg" | "svg" | "pdf",
+      designName?: string | null
+    ) => {
       const canvas = getActiveCanvas();
       if (!canvas) return;
       exportCanvas(canvas, format, designName);
@@ -496,7 +507,11 @@ export function useCanvasState() {
       const pageId = activeCanvasIdRef.current;
       if (canvas && pageId) {
         isRestoringRef.current.add(pageId);
-        canvas.loadFromJSON(JSON.parse(template.canvas_json)).then(() => {
+        const raw =
+          typeof template.canvas_json === "string"
+            ? JSON.parse(template.canvas_json)
+            : template.canvas_json;
+        canvas.loadFromJSON(raw).then(() => {
           canvas.requestRenderAll();
           isRestoringRef.current.delete(pageId);
           historyMapRef.current.set(pageId, {
@@ -504,10 +519,65 @@ export function useCanvasState() {
             index: 0,
           });
           updateUndoRedoState(pageId);
+          bumpLayers();
         });
       }
     },
-    [getActiveCanvas, updateUndoRedoState]
+    [getActiveCanvas, updateUndoRedoState, bumpLayers]
+  );
+
+  const loadCanvasDocument = useCallback(
+    (canvasJson: string) => {
+      const canvas = getActiveCanvas();
+      const pageId = activeCanvasIdRef.current;
+      if (!canvas || !pageId) return;
+      isRestoringRef.current.add(pageId);
+      canvas.loadFromJSON(JSON.parse(canvasJson)).then(() => {
+        canvas.requestRenderAll();
+        isRestoringRef.current.delete(pageId);
+        saveHistory(pageId);
+        bumpLayers();
+      });
+    },
+    [getActiveCanvas, saveHistory, bumpLayers]
+  );
+
+  const applyBrandKit = useCallback(
+    (kit: BrandKit) => {
+      const canvas = getActiveCanvas();
+      const pageId = activeCanvasIdRef.current;
+      if (!canvas || !pageId) return;
+
+      canvas.backgroundColor = kit.background_color;
+      const objects = canvas.getObjects();
+      let colorIndex = 0;
+      const brandColors = [kit.primary_color, kit.secondary_color, kit.accent_color];
+
+      for (const obj of objects) {
+        if (obj instanceof fabric.Textbox || obj instanceof fabric.IText || obj instanceof fabric.Text) {
+          const size = Number(obj.fontSize) || 18;
+          obj.set({
+            fontFamily: size >= 36 ? kit.font_display : kit.font_body,
+            fill: kit.text_color,
+          });
+        } else if (obj instanceof fabric.Rect || obj instanceof fabric.Circle || obj instanceof fabric.Triangle) {
+          const fill = obj.fill;
+          if (typeof fill === "string" && fill.toLowerCase() !== "#ffffff" && fill.toLowerCase() !== "#fff") {
+            obj.set({ fill: brandColors[colorIndex % brandColors.length] });
+            colorIndex += 1;
+          }
+        }
+      }
+
+      canvas.requestRenderAll();
+      saveHistory(pageId);
+      bumpLayers();
+
+      if (kit.logo_url) {
+        void addImage(kit.logo_url);
+      }
+    },
+    [getActiveCanvas, saveHistory, bumpLayers, addImage]
   );
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────
@@ -579,5 +649,7 @@ export function useCanvasState() {
     getCanvasJSON,
     getCanvasJSONForPage,
     loadTemplate,
+    loadCanvasDocument,
+    applyBrandKit,
   };
 }

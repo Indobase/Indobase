@@ -98,7 +98,12 @@ function jpegDataUrlToPdf(jpegDataUrl: string, widthPx: number, heightPx: number
   return new Blob([out], { type: 'application/pdf' })
 }
 
-export type ExportFormat = 'png' | 'jpg' | 'svg' | 'pdf'
+export type ExportFormat = 'png' | 'png-transparent' | 'jpg' | 'svg' | 'pdf'
+
+export type ExportOptions = {
+  quality?: number
+  multiplier?: number
+}
 
 export function exportCanvas(
   canvas: {
@@ -110,9 +115,11 @@ export function exportCanvas(
     toSVG: () => string
     getWidth: () => number
     getHeight: () => number
+    backgroundColor?: unknown
   },
   format: ExportFormat,
-  designName?: string | null
+  designName?: string | null,
+  options?: ExportOptions
 ) {
   const activeObj = canvas.getActiveObject()
   canvas.discardActiveObject()
@@ -121,6 +128,10 @@ export function exportCanvas(
   const name = baseName(designName)
   const width = canvas.getWidth()
   const height = canvas.getHeight()
+  const multiplier = options?.multiplier ?? 2
+  const quality = options?.quality ?? 0.92
+
+  const prevBg = canvas.backgroundColor
 
   try {
     if (format === 'svg') {
@@ -129,23 +140,30 @@ export function exportCanvas(
       return
     }
 
-    if (format === 'png') {
+    if (format === 'png' || format === 'png-transparent') {
+      if (format === 'png-transparent') {
+        canvas.backgroundColor = undefined
+        canvas.requestRenderAll()
+      }
       downloadDataUrl(
-        canvas.toDataURL({ format: 'png', multiplier: 2, quality: 1 }),
-        `${name}.png`
+        canvas.toDataURL({ format: 'png', multiplier, quality: 1 }),
+        `${name}${format === 'png-transparent' ? '-transparent' : ''}.png`
       )
       return
     }
 
-    // JPG + PDF share a JPEG render of the canvas.
-    const jpeg = canvas.toDataURL({ format: 'jpeg', multiplier: 2, quality: 0.92 })
+    const jpeg = canvas.toDataURL({ format: 'jpeg', multiplier, quality })
     if (format === 'jpg') {
       downloadDataUrl(jpeg, `${name}.jpg`)
       return
     }
 
-    downloadBlob(jpegDataUrlToPdf(jpeg, width * 2, height * 2), `${name}.pdf`)
+    downloadBlob(jpegDataUrlToPdf(jpeg, width * multiplier, height * multiplier), `${name}.pdf`)
   } finally {
+    if (format === 'png-transparent') {
+      canvas.backgroundColor = prevBg
+      canvas.requestRenderAll()
+    }
     if (activeObj) {
       canvas.setActiveObject(activeObj)
       canvas.requestRenderAll()

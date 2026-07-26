@@ -17,6 +17,12 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
     location.replace(signIn)
     throw new Error('unauthorized')
   }
-  if (!r.ok) throw new Error(data.error || "Request failed");
+  if (!r.ok) {
+    const msg =
+      data.error ||
+      (data as { message?: string }).message ||
+      "Request failed"
+    throw new Error(msg)
+  }
   return data as T;
 }
