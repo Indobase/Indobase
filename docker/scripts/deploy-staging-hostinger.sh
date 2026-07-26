@@ -104,6 +104,10 @@ upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
 upsert_env /opt/indobase-staging/env/studio.env INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
 upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
 upsert_env /opt/indobase-staging/env/studio.env ANALYTICS_HANDOFF_SECRET "$HANDOFF"
+# Canva-class Design editor (indobase-design-v2) — staging only. Prod Studio keeps Penpot at design.indobase.in.
+upsert_env /opt/indobase-staging/env/studio.env INDOBASE_DESIGN_URL "https://studio-design.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_DESIGN_URL "https://studio-design.indobase.fun"
+upsert_env /opt/indobase-staging/env/studio.env DESIGN_HANDOFF_SECRET "$HANDOFF"
 
 # Quoted heredocs so Traefik Host(`…`) backticks are not executed by the local shell.
 cat > /etc/dokploy/traefik/dynamic/studio-indobase-fun.yml <<EOF

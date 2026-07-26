@@ -1,0 +1,366 @@
+/**
+ * Indobase Design — API server.
+ *
+ * Written for Indobase; it does NOT reuse the upstream editor's server (that one targets Cloudflare
+ * Workers + D1 and depends on closed-source @clawnify/* packages). Only the editor client is ported.
+ *
+ * Two things differ from upstream by design:
+ *   1. Multi-tenant. Upstream is single-user: every row is global. Here EVERY query is scoped by
+ *      (gotrue_id, project_ref) from the verified session — never from user input — so one tenant
+ *      can never read or mutate another's designs.
+ *   2. Studio SSO instead of no auth.
+ */
+import { readFileSync } from 'node:fs'
+
+import { serve } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
+import { Hono } from 'hono'
+import type { Context, Next } from 'hono'
+
+import {
+  clearSessionCookie,
+  createSessionToken,
+  readCookie,
+  readSessionToken,
+  resolveHandoffSecret,
+  sessionCookie,
+  verifyStudioHandoff,
+  type Session,
+} from './auth.js'
+import { migrate, one, query } from './db.js'
+import { seedTemplates } from './seed.js'
+
+type Vars = { session: Session }
+const app = new Hono<{ Variables: Vars }>()
+
+const STUDIO_URL = (process.env.STUDIO_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
+
+// ── SSO ──────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Studio hands off here: /sso/launch#token=<jwt>. The token rides in the URL *fragment* so it is
+ * never sent to the server in a request line (and so never lands in access logs or Referer); the
+ * page below posts it to /sso/session instead.
+ */
+app.get('/sso/launch', (c) =>
+  c.html(`<!doctype html><meta charset="utf-8"><title>Opening Indobase Design…</title>
+<body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#4a4458">
+<p>Opening Indobase Design…</p>
+<script>
+(async () => {
+  var h = new URLSearchParams(location.hash.slice(1));
+  var t = h.get('token');
+  if (!t) { location.replace(${JSON.stringify(STUDIO_URL)} + '/sign-in'); return; }
+  history.replaceState(null, '', '/sso/launch');
+  var r = await fetch('/sso/session', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: t })
+  });
+  location.replace(r.ok ? '/' : ${JSON.stringify(STUDIO_URL)} + '/sign-in');
+})();
+</script></body>`)
+)
+
+app.post('/sso/session', async (c) => {
+  let token = ''
+  try {
+    token = ((await c.req.json()) as { token?: string }).token ?? ''
+  } catch {
+    return c.json({ error: 'invalid body' }, 400)
+  }
+  if (!token) return c.json({ error: 'missing token' }, 400)
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch (err) {
+    console.error('[sso] handoff secret misconfigured:', err)
+    return c.json({ error: 'sso not configured' }, 503)
+  }
+
+  const claims = verifyStudioHandoff(token, secret)
+  if (!claims) return c.json({ error: 'invalid or expired token' }, 401)
+
+  c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  return c.json({ ok: true })
+})
+
+app.post('/sso/logout', (c) => {
+  c.header('Set-Cookie', clearSessionCookie())
+  return c.json({ ok: true })
+})
+
+// ── Auth middleware ──────────────────────────────────────────────────────────────────────────────
+
+async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.json({ error: 'sso not configured' }, 503)
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  const session = raw ? readSessionToken(raw, secret) : null
+  if (!session) return c.json({ error: 'unauthorized', signInUrl: `${STUDIO_URL}/sign-in` }, 401)
+  c.set('session', session)
+  await next()
+}
+
+/** Viewers get read-only access; anything mutating requires an editor role. */
+async function requireEditor(c: Context<{ Variables: Vars }>, next: Next) {
+  if (!c.get('session').canEdit) {
+    return c.json({ error: 'Your role has view-only access to Design' }, 403)
+  }
+  await next()
+}
+
+app.use('/api/*', requireSession)
+app.on(['POST', 'PUT', 'PATCH', 'DELETE'], '/api/*', requireEditor)
+
+// ── Designs ──────────────────────────────────────────────────────────────────────────────────────
+
+const DESIGN_COLS = `id, name, canvas_json, width, height, thumbnail_url, created_at, updated_at`
+
+app.get('/api/designs', async (c) => {
+  const s = c.get('session')
+  const rows = await query(
+    `select ${DESIGN_COLS} from design.designs
+      where project_ref = $1 and gotrue_id = $2
+      order by updated_at desc limit 200`,
+    [s.projectRef, s.gotrueId]
+  )
+  return c.json(rows)
+})
+
+app.post('/api/designs', async (c) => {
+  const s = c.get('session')
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const row = await one(
+    `insert into design.designs (gotrue_id, project_ref, org_slug, name, canvas_json, width, height)
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning ${DESIGN_COLS}`,
+    [
+      s.gotrueId,
+      s.projectRef,
+      s.orgSlug || null,
+      typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'Untitled design',
+      JSON.stringify(body.canvas_json ?? {}),
+      Number(body.width) || 1080,
+      Number(body.height) || 1080,
+    ]
+  )
+  return c.json(row, 201)
+})
+
+app.get('/api/designs/:id', async (c) => {
+  const s = c.get('session')
+  // Ownership is in the WHERE clause, not checked after the fetch — a not-found and a
+  // not-yours are indistinguishable to the caller, which is what we want.
+  const design = await one(
+    `select ${DESIGN_COLS} from design.designs
+      where id = $1 and project_ref = $2 and gotrue_id = $3`,
+    [c.req.param('id'), s.projectRef, s.gotrueId]
+  )
+  if (!design) return c.json({ error: 'not found' }, 404)
+
+  const pages = await query(
+    `select id, design_id, title, canvas_json, sort_order, created_at
+       from design.pages where design_id = $1 order by sort_order`,
+    [c.req.param('id')]
+  )
+  return c.json({ ...(design as object), pages })
+})
+
+app.put('/api/designs/:id', async (c) => {
+  const s = c.get('session')
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const row = await one(
+    `update design.designs set
+       name          = coalesce($4, name),
+       canvas_json   = coalesce($5::jsonb, canvas_json),
+       width         = coalesce($6, width),
+       height        = coalesce($7, height),
+       thumbnail_url = coalesce($8, thumbnail_url)
+     where id = $1 and project_ref = $2 and gotrue_id = $3
+     returning ${DESIGN_COLS}`,
+    [
+      c.req.param('id'),
+      s.projectRef,
+      s.gotrueId,
+      typeof body.name === 'string' ? body.name : null,
+      body.canvas_json === undefined ? null : JSON.stringify(body.canvas_json),
+      body.width === undefined ? null : Number(body.width),
+      body.height === undefined ? null : Number(body.height),
+      typeof body.thumbnail_url === 'string' ? body.thumbnail_url : null,
+    ]
+  )
+  if (!row) return c.json({ error: 'not found' }, 404)
+  return c.json(row)
+})
+
+app.delete('/api/designs/:id', async (c) => {
+  const s = c.get('session')
+  const row = await one(
+    `delete from design.designs
+      where id = $1 and project_ref = $2 and gotrue_id = $3 returning id`,
+    [c.req.param('id'), s.projectRef, s.gotrueId]
+  )
+  if (!row) return c.json({ error: 'not found' }, 404)
+  return c.json({ ok: true })
+})
+
+// ── Pages ────────────────────────────────────────────────────────────────────────────────────────
+
+/** Confirm the parent design belongs to this session before touching any page. */
+async function ownsDesign(s: Session, designId: string): Promise<boolean> {
+  const row = await one(
+    `select 1 as ok from design.designs where id = $1 and project_ref = $2 and gotrue_id = $3`,
+    [designId, s.projectRef, s.gotrueId]
+  )
+  return Boolean(row)
+}
+
+app.post('/api/pages', async (c) => {
+  const s = c.get('session')
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const designId = String(body.design_id ?? '')
+  if (!designId || !(await ownsDesign(s, designId))) return c.json({ error: 'not found' }, 404)
+
+  const row = await one(
+    `insert into design.pages (design_id, title, canvas_json, sort_order)
+     values ($1, $2, $3, $4)
+     returning id, design_id, title, canvas_json, sort_order, created_at`,
+    [
+      designId,
+      typeof body.title === 'string' && body.title.trim() ? body.title.trim() : 'Page',
+      JSON.stringify(body.canvas_json ?? {}),
+      Number(body.sort_order) || 0,
+    ]
+  )
+  return c.json(row, 201)
+})
+
+app.put('/api/pages/:id', async (c) => {
+  const s = c.get('session')
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  // Join through designs so a page can only be updated by its owner.
+  const row = await one(
+    `update design.pages p set
+       title       = coalesce($3, p.title),
+       canvas_json = coalesce($4::jsonb, p.canvas_json),
+       sort_order  = coalesce($5, p.sort_order)
+     from design.designs d
+     where p.id = $1 and p.design_id = d.id and d.project_ref = $2 and d.gotrue_id = $6
+     returning p.id, p.design_id, p.title, p.canvas_json, p.sort_order, p.created_at`,
+    [
+      c.req.param('id'),
+      s.projectRef,
+      typeof body.title === 'string' ? body.title : null,
+      body.canvas_json === undefined ? null : JSON.stringify(body.canvas_json),
+      body.sort_order === undefined ? null : Number(body.sort_order),
+      s.gotrueId,
+    ]
+  )
+  if (!row) return c.json({ error: 'not found' }, 404)
+  return c.json(row)
+})
+
+app.delete('/api/pages/:id', async (c) => {
+  const s = c.get('session')
+  const row = await one(
+    `delete from design.pages p
+      using design.designs d
+      where p.id = $1 and p.design_id = d.id and d.project_ref = $2 and d.gotrue_id = $3
+      returning p.id`,
+    [c.req.param('id'), s.projectRef, s.gotrueId]
+  )
+  if (!row) return c.json({ error: 'not found' }, 404)
+  return c.json({ ok: true })
+})
+
+// ── Templates (global library — readable by every tenant) ────────────────────────────────────────
+
+app.get('/api/templates', async (c) => {
+  const rows = await query(
+    `select id, slug, name, category, canvas_json, width, height, thumbnail_url, sort_order
+       from design.templates
+      where gotrue_id is null
+      order by sort_order, name`
+  )
+  return c.json(rows)
+})
+
+// ── Health ───────────────────────────────────────────────────────────────────────────────────────
+
+app.get('/healthz', async (c) => {
+  try {
+    await query('select 1')
+    return c.json({ ok: true, service: 'indobase-design' })
+  } catch {
+    return c.json({ ok: false, service: 'indobase-design' }, 503)
+  }
+})
+
+app.get('/sso/health', (c) =>
+  c.json({
+    ok: true,
+    service: 'indobase-design',
+    studioUrl: STUDIO_URL,
+    handoffConfigured: (() => {
+      try {
+        resolveHandoffSecret()
+        return true
+      } catch {
+        return false
+      }
+    })(),
+  })
+)
+
+// ── Static SPA ───────────────────────────────────────────────────────────────────────────────────
+
+const spaIndexHtml = (() => {
+  try {
+    return readFileSync('./dist/index.html', 'utf8')
+  } catch {
+    return '<!doctype html><title>Indobase Design</title><p>Build missing — run vite build.</p>'
+  }
+})()
+
+app.use('/assets/*', serveStatic({ root: './dist' }))
+
+/** Gate the SPA: no public auth UI — unauthenticated browsers go to Studio sign-in. */
+app.get('*', (c) => {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.redirect(`${STUDIO_URL}/sign-in`)
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  const session = raw ? readSessionToken(raw, secret) : null
+  if (!session) {
+    return c.redirect(`${STUDIO_URL}/sign-in`)
+  }
+  return c.html(spaIndexHtml)
+})
+
+// ── Boot ─────────────────────────────────────────────────────────────────────────────────────────
+
+const port = Number(process.env.PORT || 8080)
+
+async function main() {
+  // Fail fast on misconfiguration rather than serving an unauthenticated app.
+  resolveHandoffSecret()
+  await migrate()
+  const seeded = await seedTemplates()
+  serve({ fetch: app.fetch, port })
+  console.log(`[indobase-design] listening on :${port} (${seeded} built-in templates)`)
+}
+
+main().catch((err) => {
+  console.error('[indobase-design] failed to start:', err)
+  process.exit(1)
+})
+
+export default app

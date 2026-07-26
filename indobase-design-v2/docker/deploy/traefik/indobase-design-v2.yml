@@ -1,0 +1,16 @@
+# Optional file-based Traefik route (labels on design-app are preferred).
+# Copy to /etc/dokploy/traefik/dynamic/indobase-design-v2.yml only if label discovery fails.
+http:
+  routers:
+    indobase-design-v2:
+      rule: Host(`studio-design.indobase.fun`)
+      entryPoints:
+        - websecure
+      service: indobase-design-v2
+      tls:
+        certResolver: letsencrypt
+  services:
+    indobase-design-v2:
+      loadBalancer:
+        servers:
+          - url: http://indobase-design-v2-design-app-1:8080
