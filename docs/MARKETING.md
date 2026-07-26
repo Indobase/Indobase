@@ -1,7 +1,6 @@
 # Indobase Marketing — hub launcher + Email + Social + Design + Video
 
-Status: **Email**, **Social**, and **Design** live (Studio SSO). **Indobase
-Video** is Coming soon (honest — see below).
+Status: **Email**, **Social**, **Design**, and **Video** live (Studio SSO).
 
 **Indobase Marketing** is a first-party **hub**, not one combined frankenstein app.
 From the project chooser, customers open Marketing and pick a tool:
@@ -11,22 +10,22 @@ From the project chooser, customers open Marketing and pick a tool:
 | Email marketing | **Indobase Email** (`indobase-email/`) | AGPL-3.0 | **Live** — Studio SSO |
 | Social media posting | **Indobase Social** (`indobase-social/`) | AGPL-3.0 | **Live** — Studio SSO |
 | Visual designer | **Indobase Design** (`indobase-design/`) | MPL-2.0 | **Live** — Studio SSO |
-| Video editor | **Indobase Video** (`indobase-video/` planned) | MIT (planned) | Coming soon |
+| Video editor | **Indobase Video** (`indobase-video/`) | MIT (NOTICE) | **Live** — Studio SSO |
 
 Brand surfaces always say **Indobase Marketing** / **Indobase Email** /
 **Indobase Social** / **Indobase Design** / **Indobase Video** — never upstream
 product names in customer-facing UI. Engine attribution stays in `NOTICE.md`
 and engineering docs only.
 
-### Why Indobase Video is still Coming soon
+### Indobase Video upstream choice
 
-The candidate open-source video editor is being rewritten from the ground up
-(Rust core, plugin-first); the rewrite is scaffold-level and not
-production-ready. The previous classic codebase is archived and unmaintained
-upstream. We will not ship a broken or dead-end editor as GA — the tile stays
-Coming soon with Indobase branding until the rewrite stabilizes, then it gets
-the same fork + rebrand + Studio SSO treatment (`indobase-video/`,
-`video.indobase.fun` / `video.indobase.in`, `VIDEO_HANDOFF_SECRET`).
+OpenCut **rewrite** (`OpenCut-app/OpenCut`) is still scaffold-level. OpenCut
+**classic** is MIT and runnable but archived, and a full fork pulls Postgres /
+Redis / better-auth / marketing-site deps that fight Studio-SSO-only and
+balloon on this workspace’s exFAT volume. **v1** is a purpose-built Indobase
+editor (import, timeline trim/split, text, preview, WebM export, project-scoped
+IndexedDB autosave) inspired by classic OpenCut — see
+[INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
 
 ---
 
@@ -35,11 +34,11 @@ the same fork + rebrand + Studio SSO treatment (`indobase-video/`,
 | Piece | Location |
 |---|---|
 | Chooser tile | `ProjectExperienceChooser` → `/project/[ref]/marketing` |
-| Hub page | `/project/[ref]/marketing` — Email + Social + Design **Open**; Video Coming soon |
+| Hub page | `/project/[ref]/marketing` — Email + Social + Design + Video **Open** |
 | Email launch | `GET /api/platform/projects/[ref]/email/launch` |
 | Social launch | `GET /api/platform/projects/[ref]/social/launch` |
 | Design launch | `GET /api/platform/projects/[ref]/design/launch` |
-| Video launch | `GET /api/platform/projects/[ref]/video/launch` (when shipped) |
+| Video launch | `GET /api/platform/projects/[ref]/video/launch` |
 | Layout | Ungated like Payments (no Backend Studio sidebar / plan gate) |
 
 ### How to open Email
@@ -71,6 +70,15 @@ the same fork + rebrand + Studio SSO treatment (`indobase-video/`,
    OIDC flow (shim is the OIDC provider) — user is created/logged in, lands on
    the Design dashboard. Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
 
+### How to open Video
+
+1. Same Studio project → **Marketing**.
+2. On **Video editor**, click **Open Video**.
+3. Studio mints JWT (`aud=indobase-video`) →
+   `https://video.<domain>/sso/launch?project_ref=…#token=…`.
+4. Video verifies the token, sets `ib_video_sso`, opens the editor for that
+   project. Details: [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
+
 Org roles (same as Payments): **owner, admin, developer, viewer**.
 
 ---
@@ -79,12 +87,12 @@ Org roles (same as Payments): **owner, admin, developer, viewer**.
 
 | Env | Email | Social | Design | Video | Studio | Control plane |
 |---|---|---|---|---|---|---|
-| Staging | `email.indobase.fun` | `social.indobase.fun` | `design.indobase.fun` | — (Coming soon) | `studio.indobase.fun` | Hostinger / Vyom |
-| Production | `email.indobase.in` | `social.indobase.in` | `design.indobase.in` | — (Coming soon) | `studio.indobase.in` | Vyom `103.190.92.249` |
+| Staging | `email.indobase.fun` | `social.indobase.fun` | `design.indobase.fun` | `video.indobase.fun` | `studio.indobase.fun` | Hostinger / Vyom |
+| Production | `email.indobase.in` | `social.indobase.in` | `design.indobase.in` | `video.indobase.in` | `studio.indobase.in` | Vyom `103.190.92.249` |
 
-DNS: A records for email/social/design hosts → deploy host (`.249` — not the
+DNS: A records for email/social/design/video hosts → deploy host (`.249` — not the
 `*.indobase.in` tenant wildcard on `.248`). Design's canonical public URI is
-`design.indobase.in`; the `.fun` host serves the same stack.
+`design.indobase.in`; the `.fun` host serves the same stack. Same for Video.
 
 ---
 
@@ -94,12 +102,15 @@ DNS: A records for email/social/design hosts → deploy host (`.249` — not the
 - Public magic-code / password UI on Email and Social hosts redirect to Studio.
 - Design: password login + registration disabled; the only entry is the
   Studio-driven OIDC flow through the `design-sso` shim.
+- Video: no public auth — unauthenticated requests redirect to Studio sign-in.
 - Email env: `STUDIO_HANDOFF_ONLY=true`, `STUDIO_HANDOFF_SECRET` (≥32 chars).
 - Social env: same + `SOCIAL_HANDOFF_SECRET` alias.
 - Design env: `DESIGN_HANDOFF_SECRET` (shim) — reuse the shared handoff secret.
+- Video env: `VIDEO_HANDOFF_SECRET` — reuse the shared handoff secret.
 - Studio: `EMAIL_HANDOFF_SECRET` / `SOCIAL_HANDOFF_SECRET` /
-  `DESIGN_HANDOFF_SECRET` (or shared `STUDIO_HANDOFF_SECRET`) +
-  `INDOBASE_EMAIL_URL` / `INDOBASE_SOCIAL_URL` / `INDOBASE_DESIGN_URL`.
+  `DESIGN_HANDOFF_SECRET` / `VIDEO_HANDOFF_SECRET` (or shared
+  `STUDIO_HANDOFF_SECRET`) + `INDOBASE_EMAIL_URL` / `INDOBASE_SOCIAL_URL` /
+  `INDOBASE_DESIGN_URL` / `INDOBASE_VIDEO_URL`.
 
 ---
 
@@ -124,8 +135,16 @@ the VPS with `docker compose build`). Traefik file provider (container DNS):
 `/etc/dokploy/traefik/dynamic/`.  
 Details: [INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md).
 
-CI builds `roshanraghavander/indobase-email:<git-sha>` and
-`roshanraghavander/indobase-social:<git-sha>` on push to `staging` / `main`.
+### Video
+
+Compose: `indobase-video/docker/deploy/docker-compose.yml`  
+CI image: `roshanraghavander/indobase-video:<git-sha>`  
+Traefik: `indobase-video/docker/deploy/traefik/indobase-video.yml`  
+Details: [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md).
+
+CI builds `roshanraghavander/indobase-email:<git-sha>`,
+`roshanraghavander/indobase-social:<git-sha>`, and
+`roshanraghavander/indobase-video:<git-sha>` on push to `staging` / `main`.
 
 ```bash
 # Social example (after CI for $SHA)
@@ -142,9 +161,11 @@ Studio env:
 INDOBASE_EMAIL_URL=https://email.indobase.fun   # or .in
 INDOBASE_SOCIAL_URL=https://social.indobase.fun # or .in
 INDOBASE_DESIGN_URL=https://design.indobase.in  # canonical public URI
+INDOBASE_VIDEO_URL=https://video.indobase.in
 EMAIL_HANDOFF_SECRET=<same-as-email-STUDIO_HANDOFF_SECRET>
 SOCIAL_HANDOFF_SECRET=<same-as-social-STUDIO_HANDOFF_SECRET>
 DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
+VIDEO_HANDOFF_SECRET=<same-as-video-.env-VIDEO_HANDOFF_SECRET>
 ```
 
 ---
@@ -158,6 +179,8 @@ DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
 - **MPL-2.0 (Design engine):** we deploy unmodified upstream images with a
   branding overlay + an original SSO shim — see `indobase-design/NOTICE.md`.
   File-level copyleft only applies if we ever modify MPL-covered source files.
+- **MIT (Video):** Indobase Video v1 + OpenCut classic attribution in
+  `indobase-video/NOTICE.md` / `LICENSE`.
 - Do not mix AGPL into proprietary Studio/Builder bundles without a deliberate
   boundary (same approach as `indobase-payments/`).
 - India DPDP applies to audience/contact and social account data.
@@ -166,6 +189,5 @@ DESIGN_HANDOFF_SECRET=<same-as-design-.env-DESIGN_HANDOFF_SECRET>
 
 ## Out of scope (this ship)
 
-- Indobase Video / `indobase-video/` (Coming soon — see
-  [INDOBASE-VIDEO.md](./INDOBASE-VIDEO.md))
 - Razorpay / Payments changes
+- MP4/FFmpeg WASM export (Video v1 ships WebM; see INDOBASE-VIDEO.md)

@@ -17,6 +17,7 @@ import { Admonition } from 'ui-patterns/admonition'
 import { useDesignLaunch } from './useDesignLaunch'
 import { useEmailLaunch } from './useEmailLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
+import { useVideoLaunch } from './useVideoLaunch'
 
 type MarketingToolTileProps = {
   title: string
@@ -82,9 +83,12 @@ export const ProjectMarketingHome = () => {
   const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
+  const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [launchDenied, setLaunchDenied] = useState(false)
-  const [launchTarget, setLaunchTarget] = useState<'email' | 'social' | 'design' | null>(null)
+  const [launchTarget, setLaunchTarget] = useState<'email' | 'social' | 'design' | 'video' | null>(
+    null
+  )
 
   const openEmail = async (mode: 'same-tab' | 'new-tab') => {
     setLaunchError(null)
@@ -149,7 +153,29 @@ export const ProjectMarketingHome = () => {
     window.location.assign(result.url)
   }
 
-  const isBusy = isLaunchingEmail || isLaunchingSocial || isLaunchingDesign
+  const openVideo = async (mode: 'same-tab' | 'new-tab') => {
+    setLaunchError(null)
+    setLaunchDenied(false)
+    setLaunchTarget('video')
+    const result = await launchVideo()
+    if (!result.ok) {
+      if (result.denied) {
+        setLaunchDenied(true)
+        setLaunchError(result.message)
+        return
+      }
+      setLaunchError(result.message || 'Could not start Indobase Video session')
+      return
+    }
+    if (mode === 'new-tab') {
+      window.open(result.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    window.location.assign(result.url)
+  }
+
+  const isBusy =
+    isLaunchingEmail || isLaunchingSocial || isLaunchingDesign || isLaunchingVideo
 
   return (
     <div className="relative isolate">
@@ -169,8 +195,8 @@ export const ProjectMarketingHome = () => {
                 </h1>
                 <p className="max-w-2xl text-base leading-relaxed text-foreground-light">
                   Marketing is a hub launcher, not a single frankenstein app. Choose email, social,
-                  visual design, or video when you are ready. Email, Social, and Design open with
-                  the same Studio login (SSO).
+                  visual design, or video when you are ready. All four open with the same Studio
+                  login (SSO).
                 </p>
               </div>
             </header>
@@ -186,7 +212,9 @@ export const ProjectMarketingHome = () => {
                       ? 'Social'
                       : launchTarget === 'design'
                         ? 'Design'
-                        : 'Email'
+                        : launchTarget === 'video'
+                          ? 'Video'
+                          : 'Email'
                   } for this project. Ask an owner or admin to add you as a member.`
                 }
               />
@@ -200,7 +228,9 @@ export const ProjectMarketingHome = () => {
                     ? 'Could not open Social'
                     : launchTarget === 'design'
                       ? 'Could not open Design'
-                      : 'Could not open Email'
+                      : launchTarget === 'video'
+                        ? 'Could not open Video'
+                        : 'Could not open Email'
                 }
                 description={launchError}
               />
@@ -329,8 +359,38 @@ export const ProjectMarketingHome = () => {
                 description="Cut and export product videos and ads without leaving Indobase — Indobase Video."
                 icon={<Clapperboard size={24} strokeWidth={1.75} className="text-[#E11D48]" />}
                 accentClassName="bg-[#E11D48]/10"
-                statusLabel="Coming soon"
-                statusHint="Indobase Video will open with Studio SSO like Email, Social, and Design. The editor engine is being rewritten upstream — we will ship when it is stable, not a half-working beta."
+                elevated
+                statusLabel="Available"
+                statusHint={
+                  ref
+                    ? `Opens Indobase Video for project ${ref} (timeline autosaved in-browser). Studio SSO — no separate password. Export is WebM.`
+                    : 'Studio SSO handoff — no separate password. Export is WebM.'
+                }
+                actions={
+                  <>
+                    <Button
+                      type="primary"
+                      icon={
+                        isLaunchingVideo ? (
+                          <Loader2 className="animate-spin" size={14} />
+                        ) : (
+                          <ExternalLink size={14} />
+                        )
+                      }
+                      disabled={isBusy || !ref}
+                      onClick={() => void openVideo('same-tab')}
+                    >
+                      Open Video
+                    </Button>
+                    <Button
+                      type="default"
+                      disabled={isBusy || !ref}
+                      onClick={() => void openVideo('new-tab')}
+                    >
+                      Open in new tab
+                    </Button>
+                  </>
+                }
               />
             </div>
 
@@ -340,8 +400,9 @@ export const ProjectMarketingHome = () => {
                 Email is AGPL-3.0 under <code className="text-foreground">indobase-email/</code>.
                 Social is AGPL-3.0 under <code className="text-foreground">indobase-social/</code>.
                 Design is MPL-2.0 under <code className="text-foreground">indobase-design/</code>.
-                Video (Coming soon) will live under <code className="text-foreground">indobase-video/</code>.
-                See <code className="text-foreground">docs/MARKETING.md</code>.
+                Video (MIT-inspired editor) lives under{' '}
+                <code className="text-foreground">indobase-video/</code>. See{' '}
+                <code className="text-foreground">docs/MARKETING.md</code>.
               </span>
             </p>
           </div>
