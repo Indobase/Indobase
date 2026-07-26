@@ -184,10 +184,8 @@ indobase-social/**/.next/
 indobase-social/**/.nx/
 indobase-social/docker/deploy/.env
 
-# Indobase Social (AGPL Postiz fork) — build artifacts only
-indobase-social/**/node_modules/
-indobase-social/**/dist/
-indobase-social/**/.next/
-indobase-social/**/.nx/
-indobase-social/docker/deploy/.env
+# Indobase Analytics (AGPL Rybbit fork) — build artifacts + local secrets
+indobase-analytics/**/node_modules/
+indobase-analytics/**/.next/
+indobase-analytics/docker/deploy/.env
 

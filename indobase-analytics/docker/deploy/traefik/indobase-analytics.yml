@@ -1,0 +1,23 @@
+# Traefik dynamic config for Indobase Analytics on Vyom .249
+# Copy to /etc/dokploy/traefik/dynamic/indobase-analytics.yml
+# Prefer container DNS over pinned overlay IPs.
+http:
+  routers:
+    indobase-analytics:
+      rule: Host(`analytics.indobase.fun`) || Host(`analytics.indobase.in`)
+      entryPoints:
+        - websecure
+      service: indobase-analytics
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: analytics.indobase.in
+            sans:
+              - analytics.indobase.fun
+      priority: 10
+  services:
+    indobase-analytics:
+      loadBalancer:
+        servers:
+          - url: "http://indobase-analytics-edge-1:80"
+        passHostHeader: true

@@ -168,7 +168,8 @@ export const ProjectExperienceChooser = () => {
                 description="Track signups, active users, and product events for your app — without wiring up a third-party pipeline."
                 icon={<BarChart3 size={24} strokeWidth={1.75} className="text-[#8B5CF6]" />}
                 accentClassName="bg-[#8B5CF6]/10"
-                comingSoon
+                href={`/project/${ref}/analytics`}
+                ctaLabel="Open Analytics"
               />
 
               {/*
