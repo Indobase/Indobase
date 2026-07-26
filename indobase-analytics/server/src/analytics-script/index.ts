@@ -5,24 +5,25 @@ import { ClickTrackingManager } from "./clickTracking.js";
 import { CopyTrackingManager } from "./copyTracking.js";
 import { FormTrackingManager } from "./formTracking.js";
 import { debounce, isOutboundLink } from "./utils.js";
+import { getCustomEventName, extractTrackingDataAttributes } from "./domAttrs.js";
 import { RybbitAPI, WebVitalsData, ErrorProperties } from "./types.js";
 
 declare global {
   interface Window {
     __RYBBIT_OPTOUT__?: boolean;
-    /** Upstream default namespace — kept for tracking compatibility. */
-    rybbit: RybbitAPI;
-    /** Indobase alias of the tracking API (same object as `rybbit` by default). */
+    /** Primary Indobase Analytics tracking API. */
     indobase: RybbitAPI;
+    /** Legacy compatibility alias for `window.indobase`. Prefer `indobase` in new code. */
+    rybbit: RybbitAPI;
     [key: string]: any;
   }
 }
 
-/** Expose `window.indobase` alongside the default `rybbit` namespace for docs/snippets. */
+/** Ensure both `window.indobase` and legacy `window.rybbit` point at the tracker API. */
 function exposeIndobaseAlias(api: any, namespace: string) {
   if (namespace === "rybbit" || namespace === "indobase") {
     window.indobase = api;
-    if (namespace === "indobase" && !window.rybbit) {
+    if (!window.rybbit) {
       window.rybbit = api;
     }
   }
@@ -36,11 +37,15 @@ function exposeIndobaseAlias(api: any, namespace: string) {
   }
 
   // Parse namespace early for opt-out check
-  const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+  const namespace = scriptTag.getAttribute("data-namespace") || "indobase";
   const optOutKey = `disable-${namespace}`;
 
-  // Check if user has opted out
-  if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
+  // Check if user has opted out (also honor legacy disable-rybbit when using default namespace)
+  const optedOut =
+    window.__RYBBIT_OPTOUT__ ||
+    localStorage.getItem(optOutKey) !== null ||
+    (namespace === "indobase" && localStorage.getItem("disable-rybbit") !== null);
+  if (optedOut) {
     // Create no-op implementation
     const noopApi = {
       pageview: () => {},
@@ -167,18 +172,9 @@ function exposeIndobaseAlias(api: any, namespace: string) {
 
       // Check for custom events via data attributes
       while (target && target !== document.documentElement) {
-        if (target.hasAttribute("data-rybbit-event")) {
-          const eventName = target.getAttribute("data-rybbit-event");
-          if (eventName) {
-            const properties: Record<string, string> = {};
-            for (const attr of target.attributes) {
-              if (attr.name.startsWith("data-rybbit-prop-")) {
-                const propName = attr.name.replace("data-rybbit-prop-", "");
-                properties[propName] = attr.value;
-              }
-            }
-            tracker.trackEvent(eventName, properties);
-          }
+        const eventName = getCustomEventName(target);
+        if (eventName) {
+          tracker.trackEvent(eventName, extractTrackingDataAttributes(target));
           break;
         }
         target = target.parentElement as HTMLElement;

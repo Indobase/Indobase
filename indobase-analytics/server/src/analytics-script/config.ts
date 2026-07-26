@@ -122,7 +122,7 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     return null;
   }
 
-  const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+  const namespace = scriptTag.getAttribute("data-namespace") || "indobase";
   const visitorId = getOrCreateVisitorId(namespace);
 
   // These can be overridden via data attributes for testing/debugging

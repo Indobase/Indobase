@@ -14,6 +14,7 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 import type { SiteReport, MetricData } from "../../../services/weekyReports/weeklyReportTypes.js";
+import { getEmailAppPath, getEmailLogoUrl } from "../branding.js";
 
 interface WeeklyReportEmailProps {
   userName: string;
@@ -271,7 +272,7 @@ export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyRe
         <Body className="bg-white font-sans">
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              src={getEmailLogoUrl()}
               alt="Indobase Analytics"
               width="120"
               height="28"
@@ -384,7 +385,7 @@ export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyRe
               </div>
 
               <Text className="text-darkText text-base leading-relaxed mb-4">
-                <Link href={`https://app.rybbit.io/${site.siteId}`} className="text-brand underline">
+                <Link href={getEmailAppPath(`/${site.siteId}`)} className="text-brand underline">
                   View full dashboard
                 </Link>
               </Text>
@@ -397,7 +398,7 @@ export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyRe
             <Hr className="border-borderColor my-8" />
 
             <Text className="text-mutedText text-xs mb-2">
-              <Link href="https://app.rybbit.io/settings/account" className="text-mutedText underline">
+              <Link href={getEmailAppPath("/settings/account")} className="text-mutedText underline">
                 Unsubscribe from weekly reports
               </Link>
             </Text>

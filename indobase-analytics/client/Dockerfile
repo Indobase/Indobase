@@ -66,6 +66,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/client/public ./public
+# PortableSSD / some syncs preserve mode 0700; nextjs user must read static assets.
+RUN chmod -R a+rX ./public && chown -R nextjs:nodejs ./public
 
 # Set the correct permission for prerender cache
 RUN mkdir .next

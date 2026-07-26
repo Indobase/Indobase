@@ -1,5 +1,6 @@
 import { ScriptConfig, FormSubmitProperties, InputChangeProperties } from "./types.js";
 import { Tracker } from "./tracking.js";
+import { extractTrackingDataAttributes } from "./domAttrs.js";
 
 export class FormTrackingManager {
   private tracker: Tracker;
@@ -83,13 +84,6 @@ export class FormTrackingManager {
   }
 
   private extractDataAttributes(element: HTMLElement): Record<string, string> {
-    const attrs: Record<string, string> = {};
-    for (const attr of element.attributes) {
-      if (attr.name.startsWith("data-rybbit-prop-")) {
-        const key = attr.name.replace("data-rybbit-prop-", "");
-        attrs[key] = attr.value;
-      }
-    }
-    return attrs;
+    return extractTrackingDataAttributes(element);
   }
 }

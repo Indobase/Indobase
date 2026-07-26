@@ -30,7 +30,7 @@ function buildMcpServer(
   handoffNonce: string | undefined,
   config: ToolRegistrationConfig
 ): McpServer {
-  const server = new McpServer({ name: "rybbit", version: "0.3.0" }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: "indobase-analytics", version: "0.3.0" }, { instructions: INSTRUCTIONS });
   registerTools(server, new RybbitApiClient(fastify, authorization, handoffNonce), config);
   return server;
 }

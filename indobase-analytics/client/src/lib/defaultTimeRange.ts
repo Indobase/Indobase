@@ -3,7 +3,8 @@ import type { Time } from "../components/DateSelector/types";
 
 export type DashboardDefaultTimeRange = NonNullable<Time["wellKnown"]>;
 
-export const DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY = "rybbit-default-time-range";
+export const DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY = "indobase-analytics-default-time-range";
+const LEGACY_DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY = "rybbit-default-time-range";
 
 export const DASHBOARD_DEFAULT_TIME_RANGES = [
   "today",
@@ -70,7 +71,18 @@ export function getStoredDashboardDefaultTimeRange(): DashboardDefaultTimeRange 
   if (typeof window === "undefined") return DEFAULT_DASHBOARD_TIME_RANGE;
 
   try {
-    return normalizeDashboardDefaultTimeRange(localStorage.getItem(DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY));
+    const current = localStorage.getItem(DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY);
+    if (current != null) {
+      return normalizeDashboardDefaultTimeRange(current);
+    }
+    const legacy = localStorage.getItem(LEGACY_DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY);
+    if (legacy != null) {
+      const normalized = normalizeDashboardDefaultTimeRange(legacy);
+      localStorage.setItem(DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY, normalized);
+      localStorage.removeItem(LEGACY_DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY);
+      return normalized;
+    }
+    return DEFAULT_DASHBOARD_TIME_RANGE;
   } catch {
     return DEFAULT_DASHBOARD_TIME_RANGE;
   }
@@ -81,6 +93,7 @@ export function setStoredDashboardDefaultTimeRange(value: string) {
 
   try {
     localStorage.setItem(DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY, normalizeDashboardDefaultTimeRange(value));
+    localStorage.removeItem(LEGACY_DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY);
   } catch {
     // Ignore storage failures in private browsing or locked-down embeds.
   }

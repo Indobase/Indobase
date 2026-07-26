@@ -313,7 +313,7 @@ describe("mcp endpoint", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
     const result = response.json().result;
-    expect(result.serverInfo.name).toBe("rybbit");
+    expect(result.serverInfo.name).toBe("indobase-analytics");
     expect(result.instructions).toContain("list_sites");
     expect(result.instructions).toContain("run_query");
   });

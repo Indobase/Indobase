@@ -95,7 +95,7 @@ export async function callOpenRouterWithMetadata(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://rybbit.com",
+      "HTTP-Referer": "https://indobase.in",
       "X-Title": "Indobase Analytics",
     },
     body: JSON.stringify({

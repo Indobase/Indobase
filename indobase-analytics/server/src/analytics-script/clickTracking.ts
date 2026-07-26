@@ -1,5 +1,6 @@
 import { ScriptConfig, ButtonClickProperties } from "./types.js";
 import { Tracker } from "./tracking.js";
+import { extractTrackingDataAttributes, hasCustomEventAttribute } from "./domAttrs.js";
 
 // Collapse rapid repeat clicks on the same element (spinners, configurator
 // toggles, double-clicks) into one event: cuts event-volume noise at the source
@@ -56,7 +57,7 @@ export class ClickTrackingManager {
     if (!buttonElement) return;
 
     // Skip if button has custom event tracking
-    if (buttonElement.hasAttribute("data-rybbit-event")) return;
+    if (hasCustomEventAttribute(buttonElement)) return;
 
     const now = Date.now();
     const lastAt = this.lastClickAt.get(buttonElement);
@@ -72,14 +73,7 @@ export class ClickTrackingManager {
   }
 
   private extractDataAttributes(element: HTMLElement): Record<string, string> {
-    const attrs: Record<string, string> = {};
-    for (const attr of element.attributes) {
-      if (attr.name.startsWith("data-rybbit-prop-")) {
-        const key = attr.name.replace("data-rybbit-prop-", "");
-        attrs[key] = attr.value;
-      }
-    }
-    return attrs;
+    return extractTrackingDataAttributes(element);
   }
 
   private findButton(element: HTMLElement): HTMLElement | null {

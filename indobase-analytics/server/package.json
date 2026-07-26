@@ -1,7 +1,7 @@
 {
   "name": "rybbit-backend",
   "version": "2.7.0",
-  "description": "Rybbit backend",
+  "description": "Indobase Analytics backend",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

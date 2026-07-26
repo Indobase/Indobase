@@ -164,7 +164,7 @@ export const sendLimitExceededEmail = async (
   eventCount: number,
   eventLimit: number
 ) => {
-  const upgradeLink = "https://app.rybbit.io/settings/subscription";
+  const upgradeLink = `${(process.env.BASE_URL || "https://analytics.indobase.in").replace(/\/$/, "")}/settings/subscription`;
 
   const html = await render(
     LimitExceededEmail({
@@ -184,7 +184,7 @@ export const sendApproachingLimitEmail = async (
   eventCount: number,
   eventLimit: number
 ) => {
-  const upgradeLink = "https://app.rybbit.io/settings/subscription";
+  const upgradeLink = `${(process.env.BASE_URL || "https://analytics.indobase.in").replace(/\/$/, "")}/settings/subscription`;
 
   const html = await render(
     ApproachingLimitEmail({
