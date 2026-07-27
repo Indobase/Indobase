@@ -1,7 +1,7 @@
 ## Learned User Preferences
 
 - Use Indobase branding everywhere (UI, docs, packages, Builder, marketing, and ecosystem apps); zero Supabase naming in the shipped bundle—including route paths, boltAction types, and filenames—not icons/logos or "fork/clone of Supabase" language. Same bar for forked products: zero user-visible Meteroid, Notifuse, Postiz/Gitroom, Rybbit, Penpot, or OpenCut naming (titles, footers, sponsor/social links, OAuth client names, swagger, emails, extension manifests). Keep LICENSE/NOTICE AGPL attribution; do not mass-rename Go import paths that break builds. Marketing sign-up/dashboard CTAs must land on `studio.indobase.in` (`apps/www` `getSignUpUrl`), never `indobase.in/dashboard`. Auth sign-in/sign-up primary CTAs use brand blue (~`#3B8FD6`), not cream/gold warning styling.
-- Studio/Builder default branch is `staging` → `indobase.fun` (Hostinger). Promote to `main` and Vyom (`indobase.in`) only after staging is OK / user asks for prod.
+- Through **2026-07-30** (inclusive): Studio/Builder/suite deploy default is **prod** — commit/push `main` → Vyom `indobase.in` (not staging-first to `indobase.fun`). From **2026-07-31**, resume normal staging-first (`staging` → `indobase.fun`; promote to `main`/Vyom only when asked).
 - Do not commit, push, or deploy unless the user explicitly asks.
 - User grants VPS SSH access for infra fixes and expects agents to work autonomously until issues are resolved.
 - Product goal is Supabase Cloud parity, including multi-tenant architecture with a dedicated database per new project; dedicated/isolated tenant stacks are for paid users—free remains project-based.

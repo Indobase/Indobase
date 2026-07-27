@@ -5,6 +5,18 @@ alwaysApply: true
 
 # Git: staging vs main
 
+## Temporary override (2026-07-28 through 2026-07-30 inclusive)
+
+**Prod-only window:** for Studio / Builder / platform control-plane, default working branch is **`main`** (not `staging`).
+
+- When asked to commit/push/deploy these changes: commit on `main`, `git fetch` + integrate if behind, then `git push origin main`.
+- Treat “deploy” as Vyom / `indobase.in` unless the user explicitly asks for staging/`indobase.fun`.
+- Do not force-push. Production rollout still uses SHA tags on `.249` (see `indobase-prod-redeploy.mdc`).
+
+From **2026-07-31**, ignore this override and follow the permanent rules below.
+
+---
+
 ## Studio / Builder / platform control-plane
 
 - Default working branch: **`staging`**.

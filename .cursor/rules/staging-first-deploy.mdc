@@ -5,6 +5,18 @@ alwaysApply: true
 
 # Staging-first Studio & Builder
 
+## Temporary override (2026-07-28 through 2026-07-30 inclusive)
+
+**No staging-first for this window.** Studio / Builder / suite deploy default is **prod only**:
+
+- Work and commit on **`main`**, push `origin main`, wait for CI SHA tags, roll out on Vyom **`.249`** (`indobase.in`) per `.cursor/rules/indobase-prod-redeploy.mdc`.
+- Do **not** default to `staging` → `indobase.fun` / Hostinger for these deploys.
+- Still: SHA image tags (not `:latest`), no force-push, explicit user ask before commit/push/deploy.
+
+From **2026-07-31**, delete or ignore this override and follow the permanent staging-first workflow below.
+
+---
+
 ## Branches
 
 | Branch | Environment | Hosts |
