@@ -38,7 +38,7 @@ for (const t of all) {
   }
 }
 
-const MIN_TOTAL = 1450
+const MIN_TOTAL = 2500
 if (all.length < MIN_TOTAL) {
   console.log(`      ! library too small: ${all.length} < ${MIN_TOTAL}`)
   fail++
@@ -57,9 +57,12 @@ const requiredCats = [
   'logo',
   'docs',
   'business-card',
+  'instagram',
+  'flyer',
+  'brand',
 ]
 for (const c of requiredCats) {
-  if (!byCategory[c] || byCategory[c] < 20) {
+  if (!byCategory[c] || byCategory[c] < 40) {
     console.log(`      ! category ${c} under-filled: ${byCategory[c] || 0}`)
     fail++
   }
@@ -72,7 +75,7 @@ const layoutHints = new Set(
     return m?.[1] || ''
   }).filter(Boolean)
 )
-if (layoutHints.size < 10) {
+if (layoutHints.size < 18) {
   console.log(`      ! too few layout variants in catalog: ${layoutHints.size}`)
   fail++
 }

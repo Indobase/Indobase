@@ -5,7 +5,7 @@
  * on redeploy, not silently keep the old one. User-saved templates (gotrue_id not null) are never
  * touched — the WHERE clause only matches the global library.
  *
- * Batched concurrency keeps ~1500 upserts fast without saturating the pool.
+ * Batched concurrency keeps ~2500 upserts fast without saturating the pool.
  */
 import { getPool } from './db.js'
 import { expandTemplateLibrary } from './templates-extra.js'

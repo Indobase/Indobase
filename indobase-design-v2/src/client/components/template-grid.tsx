@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * Windowed template grid — only mounts a growing slice so 1500 thumbs
+ * Windowed template grid — only mounts a growing slice so 2500 thumbs
  * don't all enqueue Fabric renders at once. Thumb queue still caps concurrency.
  */
 export function TemplateGrid({

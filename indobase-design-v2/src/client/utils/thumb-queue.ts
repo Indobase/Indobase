@@ -1,5 +1,5 @@
 /**
- * Limit concurrent Fabric StaticCanvas thumbnail renders so home with 1500+
+ * Limit concurrent Fabric StaticCanvas thumbnail renders so home with 2500+
  * templates doesn't freeze the main thread. Pair with TemplateGrid windowing
  * and TemplateCard IntersectionObserver lazy thumbs.
  */
