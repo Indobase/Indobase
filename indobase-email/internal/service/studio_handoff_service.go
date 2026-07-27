@@ -125,6 +125,14 @@ func (s *StudioHandoffService) Exchange(ctx context.Context, rawToken string) (*
 		return nil, "", err
 	}
 
+	// Fleet default: when system SMTP is a real transport (not console), ensure the
+	// project workspace has Marketing + Transactional providers so campaigns work
+	// without each operator pasting Integrations by hand.
+	if err := s.ensurePlatformSMTPProvider(ctx, workspaceID); err != nil {
+		s.logger.WithField("workspace_id", workspaceID).WithField("error", err.Error()).
+			Warn("failed to ensure platform SMTP provider (workspace still usable)")
+	}
+
 	expiresAt := time.Now().UTC().Add(s.sessionExpiry)
 	session := &domain.Session{
 		ID:        uuid.New().String(),
@@ -289,6 +297,98 @@ func readOnlyPermissions() domain.UserPermissions {
 		p[k] = domain.ResourcePermissions{Read: true, Write: false}
 	}
 	return p
+}
+
+// platformSMTPIntegrationID is a stable integration id so handoffs are idempotent.
+const platformSMTPIntegrationID = "indobase-platform-smtp"
+
+// ensurePlatformSMTPProvider attaches a workspace SMTP integration that mirrors
+// the system SMTP_* env (typically the Indobase Postfix relay on dokploy-network)
+// and sets it as Marketing + Transactional when those slots are empty.
+// No-op when SMTP is unset or SMTP_MAILER=console (log-only smoke).
+func (s *StudioHandoffService) ensurePlatformSMTPProvider(ctx context.Context, workspaceID string) error {
+	if s.cfg == nil {
+		return nil
+	}
+	if strings.EqualFold(strings.TrimSpace(s.cfg.SMTP.Mailer), "console") {
+		return nil
+	}
+	host := strings.TrimSpace(s.cfg.SMTP.Host)
+	fromEmail := strings.TrimSpace(s.cfg.SMTP.FromEmail)
+	port := s.cfg.SMTP.Port
+	if host == "" || fromEmail == "" || port <= 0 {
+		return nil
+	}
+
+	ws, err := s.workspaceRepo.GetByID(ctx, workspaceID)
+	if err != nil || ws == nil {
+		return fmt.Errorf("load workspace for SMTP ensure: %w", err)
+	}
+
+	fromName := strings.TrimSpace(s.cfg.SMTP.FromName)
+	if fromName == "" {
+		fromName = "Indobase Email"
+	}
+	ehlo := strings.TrimSpace(s.cfg.SMTP.EHLOHostname)
+	if ehlo == "" {
+		ehlo = host
+	}
+
+	needMarketing := strings.TrimSpace(ws.Settings.MarketingEmailProviderID) == ""
+	needTransactional := strings.TrimSpace(ws.Settings.TransactionalEmailProviderID) == ""
+	existing := ws.GetIntegrationByID(platformSMTPIntegrationID)
+	if existing != nil && !needMarketing && !needTransactional {
+		return nil
+	}
+
+	now := time.Now().UTC()
+	sender := domain.NewEmailSender(fromEmail, fromName)
+	integration := domain.Integration{
+		ID:   platformSMTPIntegrationID,
+		Name: "Indobase Platform SMTP",
+		Type: domain.IntegrationTypeEmail,
+		EmailProvider: domain.EmailProvider{
+			Kind: domain.EmailProviderKindSMTP,
+			SMTP: &domain.SMTPSettings{
+				Host:         host,
+				Port:         port,
+				Username:     strings.TrimSpace(s.cfg.SMTP.Username),
+				Password:     s.cfg.SMTP.Password,
+				UseTLS:       s.cfg.SMTP.UseTLS,
+				EHLOHostname: ehlo,
+				AuthType:     "basic",
+			},
+			Senders:            []domain.EmailSender{sender},
+			RateLimitPerMinute: 60,
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if existing != nil {
+		integration.CreatedAt = existing.CreatedAt
+		// Preserve operator-customized senders if they already configured this integration.
+		if len(existing.EmailProvider.Senders) > 0 {
+			integration.EmailProvider.Senders = existing.EmailProvider.Senders
+		}
+	}
+
+	if err := integration.Validate(s.cfg.Security.SecretKey); err != nil {
+		return fmt.Errorf("validate platform SMTP integration: %w", err)
+	}
+	ws.AddIntegration(integration)
+	if needMarketing {
+		ws.Settings.MarketingEmailProviderID = platformSMTPIntegrationID
+	}
+	if needTransactional {
+		ws.Settings.TransactionalEmailProviderID = platformSMTPIntegrationID
+	}
+	ws.UpdatedAt = now
+
+	if err := s.workspaceRepo.Update(ctx, ws); err != nil {
+		return fmt.Errorf("save platform SMTP integration: %w", err)
+	}
+	s.logger.WithField("workspace_id", workspaceID).Info("ensured platform SMTP marketing/transactional provider")
+	return nil
 }
 
 // WorkspaceIDForProjectRef maps an Indobase project ref to a Notifuse workspace id.

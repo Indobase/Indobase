@@ -16,25 +16,45 @@ Studio Marketing hub / SSO: see [MARKETING.md](./MARKETING.md).
 
 ---
 
-## Recommended default: Amazon SES (Mumbai)
+## Recommended paths
 
-India-focused / DPDP: use **Amazon SES in `ap-south-1` (Mumbai)** for both layers.
-
-| Use | Mechanism | Region endpoint |
+| Priority | Path | Notes |
 |---|---|---|
-| System SMTP | SES **SMTP interface** | `email-smtp.ap-south-1.amazonaws.com:587` (STARTTLS) |
-| Workspace campaigns | SES **API** integration in console | Region `ap-south-1` |
+| **1 (preferred)** | Amazon SES `ap-south-1` (Mumbai) | DPDP-friendly, DKIM/SPF, production volume |
+| **2 (fleet default on Vyom `.249`)** | `indobase-smtp-relay` (Postfix) | Same relay as Studio/GoTrue auth mail; no SES keys required; from-domain must be `indobase.in` |
 
-Other Notifuse-native providers work in the same Integrations UI: **SMTP,
-Mailgun, Postmark, SparkPost, Mailjet, SendGrid**.
+| Use | SES | Postfix relay |
+|---|---|---|
+| System SMTP | `email-smtp.ap-south-1.amazonaws.com:587` | `indobase-smtp-relay:587` (`SMTP_USE_TLS=false`, no auth) |
+| Workspace campaigns | SES **API** in Integrations UI, or auto-provisioned SMTP mirror of system env | Auto-provisioned on Studio SSO handoff (`indobase-platform-smtp`) |
+
+Other providers in Integrations UI: **SMTP, Mailgun, Postmark, SparkPost,
+Mailjet, SendGrid**.
 
 ---
 
 ## 1. System SMTP (go live checklist)
 
-### Secrets to put in host `.env` (never commit)
+### A) Fleet relay (works today on `.249` without SES)
 
 On the deploy host (`/opt/indobase-email/docker/deploy/.env`):
+
+```bash
+SMTP_MAILER=smtp
+SMTP_HOST=indobase-smtp-relay
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=noreply@indobase.in
+SMTP_FROM_NAME=Indobase Email
+SMTP_USE_TLS=false
+SMTP_EHLO_HOSTNAME=mail.indobase.in
+```
+
+`email-api` must share `dokploy-network` with `indobase-smtp-relay` (already
+true in `docker/deploy/docker-compose.yml`).
+
+### B) Amazon SES Mumbai (preferred when keys exist)
 
 ```bash
 SMTP_MAILER=smtp
@@ -57,9 +77,8 @@ SMTP_MAILER=console
 SMTP_FROM_EMAIL=noreply@indobase.in
 ```
 
-Then `curl -sS https://email.indobase.fun/api/setup.status` should show
-`"smtp_configured":true`. Switch back to `SMTP_MAILER=smtp` + real SES SMTP
-before production traffic.
+Then `curl -sS https://email.indobase.in/api/setup.status` should show
+`"smtp_configured":true` with real SMTP (not console).
 
 Redeploy after editing `.env`:
 
@@ -75,17 +94,21 @@ Compose already passes `SMTP_*` into `email-api` (see
 
 ## 2. Workspace sending (campaigns / transactional)
 
+**Automatic (fleet):** when system SMTP is a real transport (`SMTP_MAILER≠console`
++ host/port/from set), Studio SSO handoff ensures integration
+`indobase-platform-smtp` and fills empty Marketing / Transactional slots.
+
+**Manual override (SES recommended for volume):**
+
 1. Studio → project → **Marketing** → **Open Email** (SSO).
-2. **Settings → Integrations → Add** → **Amazon SES** (recommended).
+2. **Settings → Integrations → Add** → **Amazon SES**.
 3. Region: **`ap-south-1`** (Mumbai). Paste IAM access key + secret with
    `ses:SendEmail` / `ses:SendRawEmail` (and config-set permissions if used).
 4. Add at least one **sender** (verified identity in SES).
 5. Set the integration **Use for Marketing** and/or **Use for Transactional**.
 6. Use **Test** in the integration card before sending a campaign.
 
-Alternate: choose **SMTP** and point at the same SES SMTP host, or another ESP
-(Mailgun / Postmark / SparkPost / Mailjet / SendGrid).
-
+Alternate: choose **SMTP** / Mailgun / Postmark / SparkPost / Mailjet / SendGrid.
 ---
 
 ## 3. Domain / DNS (SPF, DKIM, DMARC)
