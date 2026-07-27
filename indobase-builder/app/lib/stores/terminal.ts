@@ -37,7 +37,9 @@ export class TerminalStore {
   async attachBoltTerminal(terminal: ITerminal, options?: { force?: boolean }) {
     if (options?.force) {
       this.#boltTerminal = newBoltShellProcess();
-      resetWebContainerBoot();
+      // Tear down the live singleton before re-boot — clearing the promise alone
+      // causes "Only a single WebContainer instance can be booted".
+      await resetWebContainerBoot();
     } else if (this.#attachInFlight) {
       return this.#attachInFlight;
     } else {
@@ -78,11 +80,8 @@ export class TerminalStore {
             coloredText.cyan(`Retrying Indobase Builder workspace (${attempt}/${SHELL_ATTACH_MAX_ATTEMPTS})...\n`),
           );
           this.#boltTerminal = newBoltShellProcess();
-          // Only reset the WebContainer when prior boot likely failed — shell-only hangs
-          // shouldn't tear down a healthy container.
-          if (attempt > 1) {
-            resetWebContainerBoot();
-          }
+          // Tear down before re-boot so StackBlitz releases the singleton lock.
+          await resetWebContainerBoot();
         }
 
         terminal.write(coloredText.dim('Booting WebContainer...\n'));
@@ -90,7 +89,8 @@ export class TerminalStore {
           terminal.write(coloredText.dim('Still booting WebContainer (StackBlitz)...\n'));
         }, 8_000);
 
-        const wc = await getWebcontainerWithRetry(attempt === 1 ? 2 : 2);
+        // Outer loop already teardowns between attempts — single coalesced get is enough.
+        const wc = await getWebcontainerWithRetry(1);
         clearInterval(progressTimer);
         progressTimer = undefined;
 
@@ -113,10 +113,17 @@ export class TerminalStore {
     }
 
     const message = lastError instanceof Error ? lastError.message : String(lastError);
+    const extensionHint = /Redirect Blocker|cross-origin isolated|Cannot reach the StackBlitz|SharedArrayBuffer/i.test(
+      message,
+    )
+      ? '\n\nIf Redirect Blocker / wallet extensions are enabled for this site, disable them and hard-refresh (Chrome or Edge).'
+      : '';
+
     terminal.write(
       coloredText.red('Failed to start Indobase Builder terminal\n\n') +
         message +
-        '\n\nClick the reset button above the terminal (↻) or hard-refresh the page to try again.',
+        '\n\nClick the reset button above the terminal (↻) or hard-refresh the page to try again.' +
+        extensionHint,
     );
   }
 
