@@ -40,12 +40,13 @@ export const Markdown = memo(
             const messageId = node?.properties.dataMessageId as string;
             const artifactId = node?.properties.dataArtifactId as string;
 
-            if (!messageId) {
-              logger.error(`Invalid message id ${messageId}`);
-            }
-
-            if (!artifactId) {
-              logger.error(`Invalid artifact id ${artifactId}`);
+            if (!messageId || !artifactId) {
+              logger.error(`Invalid artifact node messageId=${messageId} artifactId=${artifactId}`);
+              return (
+                <div className="my-2 rounded-lg border border-bolt-elements-borderColor px-3 py-2 text-xs text-bolt-elements-textSecondary">
+                  Project files unavailable for this message.
+                </div>
+              );
             }
 
             return <Artifact messageId={messageId} artifactId={artifactId} />;

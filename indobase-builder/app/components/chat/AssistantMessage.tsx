@@ -99,11 +99,21 @@ export const AssistantMessage = memo(
       (annotation) => annotation.type === 'agentPlan',
     )?.steps;
 
-    const usage: {
-      completionTokens: number;
-      promptTokens: number;
-      totalTokens: number;
-    } = filteredAnnotations.find((annotation) => annotation.type === 'usage')?.value;
+    const usageAnnotation = filteredAnnotations.find((annotation) => annotation.type === 'usage')?.value as
+      | {
+          completionTokens?: number;
+          promptTokens?: number;
+          totalTokens?: number;
+        }
+      | undefined;
+    const usage =
+      usageAnnotation && typeof usageAnnotation.totalTokens === 'number'
+        ? {
+            completionTokens: Number(usageAnnotation.completionTokens) || 0,
+            promptTokens: Number(usageAnnotation.promptTokens) || 0,
+            totalTokens: usageAnnotation.totalTokens,
+          }
+        : undefined;
 
     const toolInvocations = parts?.filter((part) => part.type === 'tool-invocation');
     const toolCallAnnotations = filteredAnnotations.filter(

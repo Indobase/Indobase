@@ -93,18 +93,25 @@ export function Chat() {
     workbenchStore.setReloadedMessages((initialMessages ?? []).map((m) => m.id));
   }, [initialMessages]);
 
+  if (!ready) {
+    return (
+      <div className="flex h-full min-h-[12rem] w-full items-center justify-center px-4">
+        <div className="flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm text-gray-600 shadow-sm ring-1 ring-black/5">
+          <span className="i-svg-spinners:90-ring-with-bg text-base text-gray-500" aria-hidden />
+          Loading chat…
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {ready && (
-        <ChatImpl
-          description={title}
-          initialMessages={initialMessages}
-          exportChat={exportChat}
-          storeMessageHistory={storeMessageHistory}
-          importChat={importChat}
-        />
-      )}
-    </>
+    <ChatImpl
+      description={title}
+      initialMessages={initialMessages}
+      exportChat={exportChat}
+      storeMessageHistory={storeMessageHistory}
+      importChat={importChat}
+    />
   );
 }
 
