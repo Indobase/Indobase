@@ -30,19 +30,26 @@ export const updateProfile = (updates: Partial<Profile>) => {
  */
 export function syncProfileFromStudioIdentity(identity: { email?: string | null; sub?: string | null }) {
   const email = identity.email?.trim();
+  const sub = identity.sub?.trim();
+  const label = email || (sub ? `studio-${sub.slice(0, 8)}` : '');
 
-  if (!email) {
+  if (!label) {
     return;
   }
 
   const current = profileStore.get();
 
-  if (current.username === email) {
+  if (current.username === label) {
+    return;
+  }
+
+  // Prefer a real email over a weaker sub-derived label.
+  if (!email && current.username.includes('@')) {
     return;
   }
 
   updateProfile({
-    username: email,
-    bio: current.bio.trim() || email,
+    username: label,
+    bio: current.bio.trim() || label,
   });
 }

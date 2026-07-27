@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { computed } from 'nanostores';
+import { atom, computed } from 'nanostores';
 import { memo, useEffect, useRef, useState } from 'react';
 import { createHighlighter, type BundledLanguage, type BundledTheme, type HighlighterGeneric } from 'shiki';
 import type { ActionState } from '~/lib/runtime/action-runner';
@@ -8,6 +8,9 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
+
+/** Stable empty map so hooks stay valid when an artifact id is missing from the store. */
+const EMPTY_ACTIONS = atom<Record<string, ActionState>>({});
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -36,7 +39,7 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
   const artifact = artifacts[artifactId];
 
   const actions = useStore(
-    computed(artifact.runner.actions, (actions) => {
+    computed(artifact?.runner.actions ?? EMPTY_ACTIONS, (actions) => {
       // Filter out Indobase backend actions; they are handled separately
       return Object.values(actions).filter((action) => {
         return action.type !== 'indobase';
@@ -50,6 +53,10 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
   };
 
   useEffect(() => {
+    if (!artifact) {
+      return;
+    }
+
     if (actions.length && !showActions && !userToggledActions.current) {
       setShowActions(true);
     }
@@ -67,7 +74,7 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
         setAllActionFinished(finished);
       }
     }
-  }, [actions, artifact.type, allActionFinished]);
+  }, [actions, artifact, allActionFinished, showActions]);
 
   useEffect(() => {
     if (artifact?.type !== 'bundled' || allActionFinished || actions.length === 0) {
@@ -103,6 +110,14 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
           ? 'Restoring Project...' // Title during restore
           : 'Creating Project...' // Title during initial creation
       : artifact?.title; // Fallback to original title for non-bundled or if artifact is missing
+
+  if (!artifact) {
+    return (
+      <div className="artifact border border-bolt-elements-borderColor rounded-lg w-full px-4 py-3 text-sm text-bolt-elements-textSecondary">
+        Project files unavailable — reopen this chat or refresh the page.
+      </div>
+    );
+  }
 
   return (
     <>

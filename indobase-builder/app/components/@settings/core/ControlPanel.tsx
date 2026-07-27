@@ -37,7 +37,7 @@ interface ControlPanelProps {
 
 // Beta status for experimental features
 const BETA_TABS = new Set<TabType>(['local-providers', 'mcp']);
-const LEGACY_HOSTING_TABS = new Set<TabType>(['netlify', 'vercel']);
+const LEGACY_HOSTING_TABS = new Set<TabType>(['netlify', 'vercel', 'github', 'gitlab']);
 /** Indobase routes LLMs server-side; hide provider/model pickers from Builder settings. */
 const HIDDEN_AI_PROVIDER_TABS = new Set<TabType>(['cloud-providers', 'local-providers']);
 

@@ -5,7 +5,6 @@ import { sanitizeFileAction, toWorkdirAbsolutePath } from '~/lib/indobase/saniti
 import type { ActionCallbackData, ArtifactCallbackData } from '~/lib/runtime/message-parser';
 import { webcontainer } from '~/lib/webcontainer';
 import type { ITerminal } from '~/types/terminal';
-import { unreachable } from '~/utils/unreachable';
 import { EditorStore } from './editor';
 import { FilesStore, type FileMap } from './files';
 import { PreviewsStore } from './previews';
@@ -570,7 +569,8 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(artifactId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      console.warn('[workbench] addAction skipped — artifact not found:', artifactId);
+      return;
     }
 
     return artifact.runner.addAction(payload);
@@ -590,7 +590,8 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(artifactId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      console.warn('[workbench] runAction skipped — artifact not found:', artifactId);
+      return;
     }
 
     const action = artifact.runner.actions.get()[payload.actionId];

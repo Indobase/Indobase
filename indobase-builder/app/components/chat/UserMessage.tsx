@@ -38,7 +38,7 @@ export function UserMessage({ content, parts }: UserMessageProps) {
     return (
       <div className="overflow-hidden flex flex-col gap-3 items-center ">
         <div className="flex flex-row items-start justify-center overflow-hidden shrink-0 self-start">
-          {profile?.avatar || profile?.username ? (
+          {profile?.avatar ? (
             <div className="flex items-end gap-2">
               <img
                 src={profile.avatar}
@@ -50,6 +50,13 @@ export function UserMessage({ content, parts }: UserMessageProps) {
               <span className="text-bolt-elements-textPrimary text-sm">
                 {profile?.username ? profile.username : ''}
               </span>
+            </div>
+          ) : profile?.username ? (
+            <div className="flex items-end gap-2">
+              <div className="flex h-[25px] w-[25px] items-center justify-center rounded-full bg-accent-500/15 text-xs font-semibold text-accent-700">
+                {profile.username.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-bolt-elements-textPrimary text-sm">{profile.username}</span>
             </div>
           ) : (
             <div className="i-ph:user-fill text-accent-500 text-2xl" />
