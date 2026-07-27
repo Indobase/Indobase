@@ -1,4 +1,4 @@
-# Integration Testing Makefile for Notifuse API
+# Integration Testing Makefile for Indobase Email API
 
 .PHONY: test-integration test-integration-setup test-integration-teardown test-integration-docker test-integration-full
 

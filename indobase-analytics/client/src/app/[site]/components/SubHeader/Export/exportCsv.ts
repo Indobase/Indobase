@@ -207,7 +207,7 @@ export async function exportCsv({ site, time, filters, timeZone }: ExportCsvPara
 
   // Generate ZIP filename
   const dateStr = formatDateForFilename();
-  const zipFilename = `rybbit-export-${site}-${dateStr}.zip`;
+  const zipFilename = `indobase-analytics-export-${site}-${dateStr}.zip`;
 
   // Download the ZIP
   await downloadZip(nonEmptyFiles, zipFilename);

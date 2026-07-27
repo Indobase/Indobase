@@ -49,6 +49,6 @@ func TestCheckBlockedPlatforms_Railway(t *testing.T) {
 
 	err := CheckBlockedPlatforms()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Railway.com has violated Notifuse's copyright")
+	assert.Contains(t, err.Error(), "Railway.com has violated upstream copyright")
 	assert.Contains(t, err.Error(), "no longer supported")
 }

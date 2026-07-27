@@ -189,7 +189,7 @@ func (t *TelemetryService) sendMetrics(ctx context.Context, metrics TelemetryMet
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Notifuse-Telemetry/1.0")
+	req.Header.Set("User-Agent", "Indobase-Email-Telemetry/1.0")
 
 	// Send request (will fail silently if endpoint is offline due to 5s timeout)
 	resp, err := t.httpClient.Do(req)

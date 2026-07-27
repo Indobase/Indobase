@@ -12,6 +12,7 @@ import {
   pixelBasedPreset,
 } from "@react-email/components";
 import * as React from "react";
+import { getEmailAppPath, getEmailDocsUrl, getEmailLogoUrl } from "../branding.js";
 
 interface ReengagementEmailProps {
   userName: string;
@@ -24,8 +25,6 @@ interface ReengagementEmailProps {
   unsubscribeUrl: string;
 }
 
-const DOCS_URL = "https://www.rybbit.io/docs";
-
 export const ReengagementEmail = ({
   userName,
   day,
@@ -37,7 +36,7 @@ export const ReengagementEmail = ({
   unsubscribeUrl,
 }: ReengagementEmailProps) => {
   const greeting = userName ? `Hi ${userName}` : "Hi there";
-  const dashboardUrl = `https://app.rybbit.io/${siteId}`;
+  const dashboardUrl = getEmailAppPath(`/${siteId}`);
   const messageWithDomain = message.replace("{domain}", domain);
 
   // Split message into paragraphs
@@ -65,7 +64,7 @@ export const ReengagementEmail = ({
         <Body className="bg-white font-sans">
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              src={getEmailLogoUrl()}
               alt="Indobase Analytics"
               width="120"
               height="28"
@@ -88,7 +87,7 @@ export const ReengagementEmail = ({
 
             <Text className="text-mutedText text-sm leading-relaxed mb-4">
               Need help?{" "}
-              <Link href={DOCS_URL} className="text-mutedText underline">
+              <Link href={getEmailDocsUrl()} className="text-mutedText underline">
                 View our setup guide
               </Link>
             </Text>

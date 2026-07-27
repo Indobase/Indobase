@@ -19,7 +19,7 @@ import (
 func syntheticReplyMessageID(reply *domain.InboundReply) string {
 	sum := sha256.Sum256([]byte(reply.FromEmail + "|" + reply.InReplyTo + "|" +
 		strings.Join(reply.References, ",") + "|" + reply.Subject))
-	return "synthetic-" + hex.EncodeToString(sum[:16]) + "@inbound.notifuse"
+	return "synthetic-" + hex.EncodeToString(sum[:16]) + "@inbound.indobase"
 }
 
 // parseReplyAddress returns the bare email address from a header value that may be

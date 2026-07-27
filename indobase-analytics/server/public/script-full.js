@@ -157,7 +157,7 @@
       console.error("Please provide a valid site ID using the data-site-id attribute");
       return null;
     }
-    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const namespace = scriptTag.getAttribute("data-namespace") || "indobase";
     const visitorId = getOrCreateVisitorId(namespace);
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
@@ -264,13 +264,17 @@
   }
 
   // sessionReplay.ts
-  var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  var SAMPLE_STORAGE_KEY = "indobase-analytics-replay-sampled";
+  var LEGACY_SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
   function shouldSampleSession(sampleRate) {
     if (sampleRate >= 100) return true;
     if (sampleRate <= 0) return false;
     try {
-      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
+      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY) ?? sessionStorage.getItem(LEGACY_SAMPLE_STORAGE_KEY);
       if (existingDecision !== null) {
+        if (sessionStorage.getItem(SAMPLE_STORAGE_KEY) === null) {
+          sessionStorage.setItem(SAMPLE_STORAGE_KEY, existingDecision);
+        }
         return existingDecision === "1";
       }
       const sampled = Math.random() * 100 < sampleRate;
@@ -492,7 +496,13 @@
   function getBotSignalMask() {
     return getBotSignals().mask;
   }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
   function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
     cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
     return cachedBotSignals;
   }
@@ -538,7 +548,7 @@
       if (navigator.webdriver === true || hasAutomationGlobal) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
       }
-      if (outerHeight === 0 || outerWidth === 0) {
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
       if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
@@ -1335,6 +1345,25 @@
     }
   };
 
+  // domAttrs.ts
+  function getCustomEventName(element) {
+    return element.getAttribute("data-indobase-event") || element.getAttribute("data-rybbit-event");
+  }
+  function hasCustomEventAttribute(element) {
+    return element.hasAttribute("data-indobase-event") || element.hasAttribute("data-rybbit-event");
+  }
+  function extractTrackingDataAttributes(element) {
+    const attrs = {};
+    for (const attr of element.attributes) {
+      if (attr.name.startsWith("data-indobase-prop-")) {
+        attrs[attr.name.replace("data-indobase-prop-", "")] = attr.value;
+      } else if (attr.name.startsWith("data-rybbit-prop-")) {
+        attrs[attr.name.replace("data-rybbit-prop-", "")] = attr.value;
+      }
+    }
+    return attrs;
+  }
+
   // clickTracking.ts
   var CLICK_THROTTLE_MS = 1e3;
   var ClickTrackingManager = class {
@@ -1372,7 +1401,7 @@
     trackButtonClick(element) {
       const buttonElement = this.findButton(element);
       if (!buttonElement) return;
-      if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      if (hasCustomEventAttribute(buttonElement)) return;
       const now = Date.now();
       const lastAt = this.lastClickAt.get(buttonElement);
       if (lastAt !== void 0 && now - lastAt < CLICK_THROTTLE_MS) return;
@@ -1384,14 +1413,7 @@
       this.tracker.trackButtonClick(properties);
     }
     extractDataAttributes(element) {
-      const attrs = {};
-      for (const attr of element.attributes) {
-        if (attr.name.startsWith("data-rybbit-prop-")) {
-          const key = attr.name.replace("data-rybbit-prop-", "");
-          attrs[key] = attr.value;
-        }
-      }
-      return attrs;
+      return extractTrackingDataAttributes(element);
     }
     findButton(element) {
       if (element.tagName === "BUTTON") return element;
@@ -1509,28 +1531,30 @@
       this.tracker.trackInputChange(properties);
     }
     extractDataAttributes(element) {
-      const attrs = {};
-      for (const attr of element.attributes) {
-        if (attr.name.startsWith("data-rybbit-prop-")) {
-          const key = attr.name.replace("data-rybbit-prop-", "");
-          attrs[key] = attr.value;
-        }
-      }
-      return attrs;
+      return extractTrackingDataAttributes(element);
     }
   };
 
   // index.ts
+  function exposeIndobaseAlias(api, namespace) {
+    if (namespace === "rybbit" || namespace === "indobase") {
+      window.indobase = api;
+      if (!window.rybbit) {
+        window.rybbit = api;
+      }
+    }
+  }
   (async function() {
     const scriptTag = document.currentScript;
     if (!scriptTag) {
       console.error("Could not find current script tag");
       return;
     }
-    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const namespace = scriptTag.getAttribute("data-namespace") || "indobase";
     const optOutKey = `disable-${namespace}`;
-    if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
-      window[namespace] = {
+    const optedOut = window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null || namespace === "indobase" && localStorage.getItem("disable-rybbit") !== null;
+    if (optedOut) {
+      const noopApi = {
         pageview: () => {
         },
         event: () => {
@@ -1558,10 +1582,8 @@
         },
         isSessionReplayActive: () => false
       };
-      if (namespace === "rybbit" || namespace === "indobase") {
-        window.indobase = window[namespace];
-        if (namespace === "indobase" && !window.rybbit) window.rybbit = window[namespace];
-      }
+      window[namespace] = noopApi;
+      exposeIndobaseAlias(noopApi, namespace);
       return;
     }
     const earlyQueue = [];
@@ -1586,10 +1608,7 @@
       stopSessionReplay: queueMethod("stopSessionReplay"),
       isSessionReplayActive: () => false
     };
-    if (namespace === "rybbit" || namespace === "indobase") {
-      window.indobase = window[namespace];
-      if (namespace === "indobase" && !window.rybbit) window.rybbit = window[namespace];
-    }
+    exposeIndobaseAlias(window[namespace], namespace);
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -1637,18 +1656,9 @@
       document.addEventListener("click", function(e2) {
         let target = e2.target;
         while (target && target !== document.documentElement) {
-          if (target.hasAttribute("data-rybbit-event")) {
-            const eventName = target.getAttribute("data-rybbit-event");
-            if (eventName) {
-              const properties = {};
-              for (const attr of target.attributes) {
-                if (attr.name.startsWith("data-rybbit-prop-")) {
-                  const propName = attr.name.replace("data-rybbit-prop-", "");
-                  properties[propName] = attr.value;
-                }
-              }
-              tracker.trackEvent(eventName, properties);
-            }
+          const eventName = getCustomEventName(target);
+          if (eventName) {
+            tracker.trackEvent(eventName, extractTrackingDataAttributes(target));
             break;
           }
           target = target.parentElement;
@@ -1701,11 +1711,8 @@
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
-    if (config.namespace === "rybbit" || config.namespace === "indobase") {
-      window.indobase = window[config.namespace];
-      if (config.namespace === "indobase" && !window.rybbit) window.rybbit = window[config.namespace];
-    }
     const api = window[config.namespace];
+    exposeIndobaseAlias(api, config.namespace);
     for (const [method, args] of earlyQueue) {
       api[method](...args);
     }

@@ -25,10 +25,11 @@ export class StripeController {
     );
 
     // Maybe it comes from another stripe webhook
+    // Accept legacy upstream metadata `gitroom` and Indobase Social `indobase-social`
+    const service = (event as any)?.data?.object?.metadata?.service;
     if (
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      event?.data?.object?.metadata?.service !== 'gitroom' &&
+      service !== 'indobase-social' &&
+      service !== 'gitroom' &&
       event.type !== 'invoice.payment_succeeded'
     ) {
       return { ok: true };

@@ -436,7 +436,7 @@ func buildTestPayload(eventType string) map[string]interface{} {
 	default:
 		// Fallback for unknown event types
 		return map[string]interface{}{
-			"message":    "This is a test webhook from Notifuse",
+			"message":    "This is a test webhook from Indobase Email",
 			"event_type": eventType,
 			"created_at": now,
 		}

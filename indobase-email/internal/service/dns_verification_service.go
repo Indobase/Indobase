@@ -14,7 +14,7 @@ import (
 // DNSVerificationService handles DNS verification for custom domains
 type DNSVerificationService struct {
 	logger         logger.Logger
-	expectedTarget string // The CNAME target (e.g., "notifuse.com" or your main domain)
+	expectedTarget string // The CNAME target (e.g., "email.indobase.in" or your main domain)
 }
 
 // NewDNSVerificationService creates a new DNS verification service
@@ -108,7 +108,7 @@ func (s *DNSVerificationService) VerifyDomainOwnership(ctx context.Context, doma
 
 // verifyARecord verifies domain ownership via A record by comparing IP addresses
 func (s *DNSVerificationService) verifyARecord(ctx context.Context, hostname, expectedTarget string) error {
-	// Extract hostname from expectedTarget (it might be a URL like https://preview.notifuse.com)
+	// Extract hostname from expectedTarget (it might be a URL like https://email.indobase.in)
 	expectedTargetHostname, err := extractHostname(expectedTarget)
 	if err != nil {
 		return domain.ValidationError{
@@ -193,7 +193,7 @@ func (s *DNSVerificationService) VerifyTXTRecord(ctx context.Context, domainURL,
 	}
 
 	// Look for verification token
-	expectedRecord := fmt.Sprintf("notifuse-verify=%s", expectedToken)
+	expectedRecord := fmt.Sprintf("indobase-email-verify=%s", expectedToken)
 	for _, record := range txtRecords {
 		if strings.TrimSpace(record) == expectedRecord {
 			s.logger.WithFields(map[string]interface{}{

@@ -15,7 +15,8 @@ export function isEmailRole(role: string | null | undefined): role is EmailRole 
   return !!role && ALLOWED_ROLE_SET.has(role)
 }
 
-/** Deterministic Notifuse workspace id from project ref (alphanumeric, max 32). */
+/** Deterministic Notifuse workspace id from project ref (alphanumeric, max 20).
+ *  Must match Email `WorkspaceIDForProjectRef` — DB column is VARCHAR(20). */
 export function emailWorkspaceIdForProjectRef(projectRef: string): string {
   const cleaned = projectRef
     .toLowerCase()
@@ -23,7 +24,7 @@ export function emailWorkspaceIdForProjectRef(projectRef: string): string {
     .filter((c) => /[a-z0-9]/.test(c))
     .join('')
   if (!cleaned) return 'workspace'
-  return cleaned.slice(0, 32)
+  return cleaned.slice(0, 20)
 }
 
 export function isEmailRoleDeniedMessage(message: string | null | undefined): boolean {

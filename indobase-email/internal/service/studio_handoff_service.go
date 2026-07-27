@@ -291,8 +291,9 @@ func readOnlyPermissions() domain.UserPermissions {
 	return p
 }
 
-// WorkspaceIDForProjectRef maps an Indobase project ref to a Notifuse workspace id
-// (alphanumeric, max 32 chars).
+// WorkspaceIDForProjectRef maps an Indobase project ref to a Notifuse workspace id.
+// Notifuse system schema uses VARCHAR(20) for workspaces.id — keep ≤20 or handoff
+// fails with "value too long for type character varying(20)".
 func WorkspaceIDForProjectRef(projectRef string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(projectRef) {
@@ -303,10 +304,10 @@ func WorkspaceIDForProjectRef(projectRef string) string {
 	s := b.String()
 	if s == "" {
 		sum := sha256.Sum256([]byte(projectRef))
-		s = hex.EncodeToString(sum[:])[:16]
+		return "ib" + hex.EncodeToString(sum[:])[:18]
 	}
-	if len(s) > 32 {
-		s = s[:32]
+	if len(s) > 20 {
+		s = s[:20]
 	}
 	return s
 }

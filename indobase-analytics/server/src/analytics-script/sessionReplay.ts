@@ -1,6 +1,7 @@
 import { ScriptConfig, SessionReplayEvent, SessionReplayBatch } from "./types.js";
 
-const SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+const SAMPLE_STORAGE_KEY = "indobase-analytics-replay-sampled";
+const LEGACY_SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
 
 /**
  * Determines if this session should have replay enabled based on sample rate.
@@ -13,8 +14,12 @@ function shouldSampleSession(sampleRate: number): boolean {
 
   // Check if we already made a decision for this session
   try {
-    const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
+    const existingDecision =
+      sessionStorage.getItem(SAMPLE_STORAGE_KEY) ?? sessionStorage.getItem(LEGACY_SAMPLE_STORAGE_KEY);
     if (existingDecision !== null) {
+      if (sessionStorage.getItem(SAMPLE_STORAGE_KEY) === null) {
+        sessionStorage.setItem(SAMPLE_STORAGE_KEY, existingDecision);
+      }
       return existingDecision === "1";
     }
 

@@ -1,9 +1,10 @@
 # Indobase Social
 
+**Indobase Social** schedules and publishes social media posts across many channels.
 Fork of [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0) for
 **Indobase Marketing → Social media posting**.
 
-- **Brand:** Indobase Social only (no Postiz product naming in shipped UI)
+- **Brand:** Indobase Social only (no Postiz/Gitroom product naming in shipped UI)
 - **Auth:** Studio SSO only (`/auth/launch` + `GET /auth/studio-handoff`)
 - **License:** keep `LICENSE` + `NOTICE.md`; source at
   `https://github.com/Indobase/Indobase/tree/main/indobase-social`

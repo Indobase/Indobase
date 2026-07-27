@@ -245,7 +245,7 @@ export const normalizeOrigin = (input: string): string => {
 // Cloudflare edge is present, and remains the building block for that decision.
 //
 // Header precedence is tuned for first-party proxies (Cloudflare Workers, AWS
-// CloudFront, Fastly, nginx, ...) that front Rybbit and forward the original
+// CloudFront, Fastly, nginx, ...) that front Indobase Analytics and forward the original
 // visitor IP. The hard constraint: when such a proxy sits in front of our
 // Cloudflare edge, `CF-Connecting-IP` is the *proxy's* egress IP, not the
 // visitor — so it must rank BELOW the forwarded headers, otherwise proxied

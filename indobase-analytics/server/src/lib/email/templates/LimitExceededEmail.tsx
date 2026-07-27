@@ -12,6 +12,7 @@ import {
   pixelBasedPreset,
 } from "@react-email/components";
 import * as React from "react";
+import { getEmailLogoUrl } from "../branding.js";
 
 interface LimitExceededEmailProps {
   organizationName: string;
@@ -50,7 +51,7 @@ export const LimitExceededEmail = ({
         <Body className="bg-white font-sans">
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              src={getEmailLogoUrl()}
               alt="Indobase Analytics"
               width="120"
               height="28"

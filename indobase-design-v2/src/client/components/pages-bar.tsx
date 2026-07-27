@@ -3,28 +3,45 @@ import * as fabric from "fabric";
 import { Plus, MoreHorizontal, Copy, Trash2, Pencil, ChevronUp, ChevronDown } from "lucide-preact";
 import { useEditor } from "../context";
 import type { Page } from "../types";
+import { parseCanvasJson, canvasJsonKey } from "../utils/canvas-json";
+import { enqueueThumbRender } from "../utils/thumb-queue";
 
 function PageThumb({ page, width, height }: { page: Page; width: number; height: number }) {
   const [src, setSrc] = useState<string | null>(null);
   const prevJsonRef = useRef<string>("");
+  const cancelled = useRef(false);
 
   useEffect(() => {
-    if (page.canvas_json === prevJsonRef.current) return;
-    prevJsonRef.current = page.canvas_json;
+    const key = canvasJsonKey(page.canvas_json);
+    if (key === prevJsonRef.current) return;
+    prevJsonRef.current = key;
+    cancelled.current = false;
 
-    const el = document.createElement("canvas");
-    const sc = new fabric.StaticCanvas(el, { width, height });
-    try {
-      const parsed = JSON.parse(page.canvas_json);
-      sc.loadFromJSON(parsed).then(() => {
-        sc.renderAll();
-        const multiplier = Math.min(200 / width, 200 / height, 1);
-        setSrc(sc.toDataURL({ format: "png", multiplier }));
+    const run = async () => {
+      const el = document.createElement("canvas");
+      const fit = Math.min(200 / width, 200 / height, 1);
+      const cw = Math.max(1, Math.round(width * fit));
+      const ch = Math.max(1, Math.round(height * fit));
+      const sc = new fabric.StaticCanvas(el, { width: cw, height: ch, renderOnAddRemove: false });
+      try {
+        const parsed = parseCanvasJson(page.canvas_json);
+        await sc.loadFromJSON(parsed);
+        sc.setViewportTransform([fit, 0, 0, fit, 0, 0]);
+        if (typeof parsed.background === "string") sc.backgroundColor = parsed.background;
+        sc.requestRenderAll();
+        const dataUrl = sc.toDataURL({ format: "png", multiplier: 1 });
+        if (!cancelled.current) setSrc(dataUrl);
+      } catch {
+        /* leave empty thumb */
+      } finally {
         sc.dispose();
-      });
-    } catch {
-      sc.dispose();
-    }
+      }
+    };
+
+    void enqueueThumbRender(run);
+    return () => {
+      cancelled.current = true;
+    };
   }, [page.canvas_json, width, height]);
 
   return src ? (

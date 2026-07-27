@@ -1,4 +1,4 @@
-# Rybbit Server Logging
+# Indobase Analytics Server Logging
 
 ## Runtime
 

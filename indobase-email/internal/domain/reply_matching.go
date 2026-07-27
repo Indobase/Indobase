@@ -10,7 +10,7 @@ import (
 // as message_history.smtp_message_id and what we match against a reply's parsed
 // In-Reply-To (also bracket-stripped), so both sides use the identical form.
 func RFCMessageIDValue(messageID, fromAddress string) string {
-	domain := "notifuse.local"
+	domain := "indobase.local"
 	if at := strings.LastIndex(fromAddress, "@"); at >= 0 && at+1 < len(fromAddress) {
 		domain = fromAddress[at+1:]
 	}

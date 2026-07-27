@@ -1,7 +1,7 @@
 import { Filter, FilterParameter, TimeBucket } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { Time } from "../components/DateSelector/types";
 import { LITE_DASHBOARD } from "./const";
 import { getDashboardTimeForRange, getStoredDashboardDefaultTime } from "./defaultTimeRange";
@@ -129,7 +129,26 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
       },
     }),
     {
-      name: "rybbit-store",
+      name: "indobase-analytics-store",
+      storage: createJSONStorage(() => ({
+        getItem: name => {
+          try {
+            const value = localStorage.getItem(name);
+            if (value != null) return value;
+            const legacy = localStorage.getItem("rybbit-store");
+            if (legacy != null) {
+              localStorage.setItem(name, legacy);
+              localStorage.removeItem("rybbit-store");
+              return legacy;
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => localStorage.setItem(name, value),
+        removeItem: name => localStorage.removeItem(name),
+      })),
       partialize: state => ({ timezone: state.timezone }),
     }
   )

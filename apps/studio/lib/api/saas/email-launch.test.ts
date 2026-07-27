@@ -23,10 +23,13 @@ describe('email-launch', () => {
     expect(isEmailRole('guest')).toBe(false)
   })
 
-  it('maps project ref to alphanumeric workspace id ≤32', () => {
+  it('maps project ref to alphanumeric workspace id ≤20 (Notifuse VARCHAR limit)', () => {
     expect(emailWorkspaceIdForProjectRef('AbCdEfGhIjKlMnOpQrSt')).toBe('abcdefghijklmnopqrst')
-    expect(emailWorkspaceIdForProjectRef('proj-123').length).toBeLessThanOrEqual(32)
     expect(emailWorkspaceIdForProjectRef('proj-123')).toBe('proj123')
+    expect(emailWorkspaceIdForProjectRef('a'.repeat(40))).toHaveLength(20)
+    expect(emailWorkspaceIdForProjectRef('proj-with-dashes-and-more-chars')).toBe(
+      'projwithdashesandmor'
+    )
   })
 
   it('detects role-denied messages', () => {

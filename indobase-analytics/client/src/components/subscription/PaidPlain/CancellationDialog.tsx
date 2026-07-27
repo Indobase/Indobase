@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Cal from "@calcom/embed-react";
 import {
   Dialog,
   DialogContent,
@@ -255,18 +254,12 @@ export function CancellationDialog({
             Book a free setup session
           </h4>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
-            We'd love to help you get the most out of Indobase Analytics. Book a free
-            30-minute call and our team will help you get set up.
+            We'd love to help you get the most out of Indobase Analytics. Email{" "}
+            <a className="underline" href="mailto:ops@indobase.in">
+              ops@indobase.in
+            </a>{" "}
+            and our team will help you get set up.
           </p>
-          <Cal
-            namespace="cancellation-setup"
-            calLink="rybbit/30min"
-            style={{ width: "100%", height: "400px", overflow: "auto" }}
-            config={{
-              layout: "month_view",
-              theme: "dark",
-            }}
-          />
           <Button
             variant="default"
             className="mt-3"

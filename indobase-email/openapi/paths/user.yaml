@@ -16,7 +16,7 @@
 
       **How to generate the signature:**
       ```bash
-      SECRET_KEY="your-notifuse-secret-key"
+      SECRET_KEY="your-indobase-email-secret-key"
       ROOT_EMAIL="admin@example.com"
       TIMESTAMP=$(date +%s)
       MESSAGE="${ROOT_EMAIL}:${TIMESTAMP}"

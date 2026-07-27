@@ -3902,7 +3902,7 @@
       "post": {
         "summary": "Root user programmatic signin",
         "security": [],
-        "description": "Authenticates the root user using HMAC signature for programmatic access.\nThis endpoint is designed for automation scenarios like Infrastructure-as-Code\ndeployments, CI/CD pipelines, and automated testing where magic link\nauthentication is impractical.\n\n**Security Features:**\n- HMAC-SHA256 signature verification using the application's secret key\n- 60-second timestamp window to prevent replay attacks\n- Rate limited to 5 attempts per 5 minutes per email\n- Only works for a configured root email address (ROOT_EMAIL may list several, comma/semicolon-separated)\n\n**How to generate the signature:**\n```bash\nSECRET_KEY=\"your-notifuse-secret-key\"\nROOT_EMAIL=\"admin@example.com\"\nTIMESTAMP=$(date +%s)\nMESSAGE=\"${ROOT_EMAIL}:${TIMESTAMP}\"\nSIGNATURE=$(echo -n \"$MESSAGE\" | openssl dgst -sha256 -hmac \"$SECRET_KEY\" | awk '{print $2}')\n```\n",
+        "description": "Authenticates the root user using HMAC signature for programmatic access.\nThis endpoint is designed for automation scenarios like Infrastructure-as-Code\ndeployments, CI/CD pipelines, and automated testing where magic link\nauthentication is impractical.\n\n**Security Features:**\n- HMAC-SHA256 signature verification using the application's secret key\n- 60-second timestamp window to prevent replay attacks\n- Rate limited to 5 attempts per 5 minutes per email\n- Only works for a configured root email address (ROOT_EMAIL may list several, comma/semicolon-separated)\n\n**How to generate the signature:**\n```bash\nSECRET_KEY=\"your-indobase-email-secret-key\"\nROOT_EMAIL=\"admin@example.com\"\nTIMESTAMP=$(date +%s)\nMESSAGE=\"${ROOT_EMAIL}:${TIMESTAMP}\"\nSIGNATURE=$(echo -n \"$MESSAGE\" | openssl dgst -sha256 -hmac \"$SECRET_KEY\" | awk '{print $2}')\n```\n",
         "operationId": "rootSignin",
         "tags": [
           "Authentication"
@@ -6932,7 +6932,7 @@
             "type": "string",
             "format": "uri",
             "description": "The HTTPS URL to receive webhook events",
-            "example": "https://api.example.com/webhooks/notifuse"
+            "example": "https://api.example.com/webhooks/indobase-email"
           },
           "secret": {
             "type": "string",
@@ -7182,7 +7182,7 @@
             "type": "string",
             "format": "uri",
             "description": "The HTTPS URL to receive webhook events",
-            "example": "https://api.example.com/webhooks/notifuse"
+            "example": "https://api.example.com/webhooks/indobase-email"
           },
           "event_types": {
             "type": "array",
@@ -7238,7 +7238,7 @@
             "type": "string",
             "format": "uri",
             "description": "Updated URL",
-            "example": "https://api.example.com/webhooks/notifuse/v2"
+            "example": "https://api.example.com/webhooks/indobase-email/v2"
           },
           "event_types": {
             "type": "array",

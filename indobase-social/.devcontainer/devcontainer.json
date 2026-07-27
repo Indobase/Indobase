@@ -1,6 +1,6 @@
 {
-	"name": "Postiz Dev Container",
-	"image": "localhost/postiz-devcontainer",
+	"name": "Indobase Social Dev Container",
+	"image": "localhost/indobase-social-devcontainer",
 	"features": {},
 	"customizations": {
 		"vscode": {

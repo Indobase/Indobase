@@ -14,6 +14,9 @@ import {
   Bot,
   Database,
   Wrench,
+  Image,
+  Search,
+  ExternalLink,
 } from "lucide-preact";
 import { useEditor } from "../context";
 import { TemplateCard } from "./template-card";
@@ -46,7 +49,7 @@ const SECTIONS: { key: Section; icon: typeof LayoutGrid; label: string }[] = [
   { key: "merge", icon: Database, label: "Data" },
   { key: "shapes", icon: Square, label: "Elements" },
   { key: "text", icon: Type, label: "Text" },
-  { key: "images", icon: Upload, label: "Uploads" },
+  { key: "images", icon: Image, label: "Photos" },
   { key: "layers", icon: Layers, label: "Layers" },
   { key: "background", icon: Palette, label: "Bg" },
   { key: "designs", icon: LayoutGrid, label: "Designs" },
@@ -56,7 +59,7 @@ const SECTION_TITLES: Record<Section, string> = {
   templates: "Templates",
   shapes: "Elements",
   text: "Text",
-  images: "Uploads",
+  images: "Photos & uploads",
   layers: "Layers",
   background: "Background",
   brand: "Brand kit",
@@ -100,6 +103,21 @@ export function LeftSidebar() {
   const [templateQuery, setTemplateQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [recentAssets, setRecentAssets] = useState<Array<{ id: string; url: string }>>([]);
+  const [stockQuery, setStockQuery] = useState("workspace");
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockImporting, setStockImporting] = useState<string | null>(null);
+  const [stockResults, setStockResults] = useState<
+    Array<{
+      id: string;
+      title: string;
+      url: string;
+      thumbnail: string;
+      attribution: string;
+      license: string;
+      foreignLandingUrl: string | null;
+    }>
+  >([]);
+  const [stockMeta, setStockMeta] = useState<{ resultCount: number; page: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
 
@@ -171,6 +189,71 @@ export function LeftSidebar() {
     return t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
   });
 
+  const searchStock = useCallback(async (q: string, page = 1) => {
+    const query = q.trim();
+    if (!query) return;
+    setStockLoading(true);
+    try {
+      const resp = await fetch(
+        `/api/stock/search?q=${encodeURIComponent(query)}&page=${page}&page_size=24`
+      );
+      const data = await resp.json();
+      if (!resp.ok) {
+        showToast(data.error || "Stock search failed", "error");
+        return;
+      }
+      setStockResults(Array.isArray(data.results) ? data.results : []);
+      setStockMeta({
+        resultCount: Number(data.resultCount) || 0,
+        page: Number(data.page) || page,
+      });
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Stock search failed", "error");
+    } finally {
+      setStockLoading(false);
+    }
+  }, []);
+
+  const importStock = useCallback(
+    async (item: {
+      id: string;
+      url: string;
+      title: string;
+      attribution: string;
+    }) => {
+      setStockImporting(item.id);
+      try {
+        const resp = await fetch("/api/stock/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: item.url,
+            title: item.title,
+            attribution: item.attribution,
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.url) {
+          showToast(data.error || "Could not add stock image", "error");
+          return;
+        }
+        addImage(data.url);
+        scheduleSave?.();
+        if (data.attribution) {
+          showToast("Added — keep license attribution when publishing", "success");
+        } else {
+          showToast("Stock image added", "success");
+        }
+        setRecentAssets((prev) => [{ id: String(data.id || item.id), url: data.url }, ...prev].slice(0, 12));
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Could not add stock image", "error");
+      } finally {
+        setStockImporting(null);
+      }
+    },
+    [addImage, scheduleSave]
+  );
+
   useEffect(() => {
     if (activeSection !== "images") return;
     void fetch("/api/uploads")
@@ -179,7 +262,10 @@ export function LeftSidebar() {
         if (Array.isArray(rows)) setRecentAssets(rows.filter((x: { url?: string }) => x.url));
       })
       .catch(() => undefined);
-  }, [activeSection]);
+    if (stockResults.length === 0) {
+      void searchStock(stockQuery || "workspace", 1);
+    }
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <aside class="flex flex-row shrink-0 max-md:hidden">
@@ -248,9 +334,18 @@ export function LeftSidebar() {
                         </button>
                       ))}
                     </div>
-                    <p class="text-zinc-400 text-[11px] mb-3">
+                    <p class="text-zinc-400 text-[11px] mb-2">
                       {filteredTemplates.length} templates — click to apply
                     </p>
+                    <a
+                      class="inline-flex items-center gap-1 text-[10px] text-accent mb-3 no-underline hover:underline"
+                      href="https://www.slidescarnival.com/category/free-templates/canva-templates"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Free Canva/PPT packs on SlidesCarnival
+                      <ExternalLink size={10} />
+                    </a>
                     <div class="grid grid-cols-2 gap-2">
                       {filteredTemplates.map((t) => (
                         <TemplateCard
@@ -340,16 +435,83 @@ export function LeftSidebar() {
 
                 {activeSection === "images" && (
                   <div>
-                    <p class="text-zinc-400 text-[11px] mb-2">Upload images to add to canvas</p>
+                    <p class="text-zinc-400 text-[11px] mb-2">
+                      Free CC stock via{" "}
+                      <a
+                        class="text-accent no-underline hover:underline"
+                        href="https://api.openverse.org/v1/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Openverse
+                      </a>
+                    </p>
+                    <div class="flex gap-1 mb-2">
+                      <input
+                        class="flex-1 bg-zinc-50 border border-zinc-200 rounded-md px-2 py-1.5 text-[11px] min-w-0"
+                        placeholder="Search stock photos…"
+                        value={stockQuery}
+                        onInput={(e) => setStockQuery((e.target as HTMLInputElement).value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void searchStock(stockQuery, 1);
+                        }}
+                      />
+                      <button
+                        class="shrink-0 px-2 rounded-md border border-zinc-200 bg-white cursor-pointer text-zinc-600 hover:border-accent hover:text-accent"
+                        onClick={() => void searchStock(stockQuery, 1)}
+                        title="Search"
+                      >
+                        <Search size={14} />
+                      </button>
+                    </div>
+                    {stockLoading && (
+                      <p class="text-[10px] text-zinc-400 mb-2">Searching Openverse…</p>
+                    )}
+                    {!stockLoading && stockMeta && (
+                      <p class="text-[10px] text-zinc-400 mb-2">
+                        {stockMeta.resultCount.toLocaleString()} commercial CC results
+                      </p>
+                    )}
+                    <div class="grid grid-cols-2 gap-1.5 mb-3">
+                      {stockResults.map((item) => (
+                        <button
+                          key={item.id}
+                          class="relative aspect-square rounded border border-zinc-200 overflow-hidden p-0 cursor-pointer bg-zinc-50 disabled:opacity-60"
+                          title={`${item.title}\n${item.attribution}`}
+                          disabled={stockImporting === item.id}
+                          onClick={() => void importStock(item)}
+                        >
+                          <img
+                            src={item.thumbnail || item.url}
+                            alt={item.title}
+                            class="w-full h-full object-cover"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                          {stockImporting === item.id && (
+                            <span class="absolute inset-0 bg-black/40 text-white text-[9px] flex items-center justify-center">
+                              Adding…
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {stockResults[0]?.attribution && (
+                      <p class="text-[9px] text-zinc-400 mb-3 m-0 leading-snug">
+                        Tap to add. Respect CC attribution (shown on hover).
+                      </p>
+                    )}
+
+                    <p class="text-zinc-400 text-[11px] mb-2">Your uploads</p>
                     <div
-                      class="border-2 border-dashed border-zinc-300 rounded-lg p-6 text-center cursor-pointer transition-all hover:border-accent/50 hover:bg-accent/5"
+                      class="border-2 border-dashed border-zinc-300 rounded-lg p-4 text-center cursor-pointer transition-all hover:border-accent/50 hover:bg-accent/5"
                       onClick={() => fileInputRef.current?.click()}
                       onDrop={handleDrop}
                       onDragOver={(e) => e.preventDefault()}
                     >
-                      <Upload size={24} class="text-zinc-400 mx-auto mb-2" />
+                      <Upload size={20} class="text-zinc-400 mx-auto mb-1" />
                       <p class="text-xs text-zinc-400">
-                        {uploading ? "Uploading..." : "Click or drag images here"}
+                        {uploading ? "Uploading..." : "Click or drag images"}
                       </p>
                       <p class="text-[10px] text-zinc-600 mt-1">PNG, JPG, SVG, WebP</p>
                     </div>
@@ -377,9 +539,6 @@ export function LeftSidebar() {
                         </div>
                       </div>
                     )}
-                    <p class="text-[10px] text-zinc-400 mt-3 m-0">
-                      Stock search (Pexels/Unsplash) needs an API key — not configured. Use uploads or templates.
-                    </p>
                   </div>
                 )}
 

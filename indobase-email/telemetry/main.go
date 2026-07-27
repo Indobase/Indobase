@@ -112,9 +112,9 @@ func receiveTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if user agent contains "Notifuse-Telemetry"
+	// check if user agent contains Indobase Email (or legacy upstream) telemetry marker
 	userAgent := r.Header.Get("User-Agent")
-	if !strings.Contains(userAgent, "Notifuse-Telemetry") {
+	if !strings.Contains(userAgent, "Indobase-Email-Telemetry") && !strings.Contains(userAgent, "Notifuse-Telemetry") {
 		// Fail silently - return success but don't process the request
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -148,7 +148,7 @@ func receiveTelemetry(w http.ResponseWriter, r *http.Request) {
 		UsersCount:         metrics.UsersCount,
 		BlogPostsCount:     metrics.BlogPostsCount,
 		APIEndpoint:        metrics.APIEndpoint,
-		Source:             "notifuse-platform",
+		Source:             "indobase-email",
 		EventType:          "telemetry_metrics",
 		Mailgun:            metrics.Mailgun,
 		AmazonSES:          metrics.AmazonSES,
@@ -166,7 +166,7 @@ func receiveTelemetry(w http.ResponseWriter, r *http.Request) {
 		Labels: map[string]string{
 			"workspace_id_sha1": metrics.WorkspaceIDSHA1,
 			"event_type":        "telemetry_metrics",
-			"source":            "notifuse-platform",
+			"source":            "indobase-email",
 		},
 	})
 

@@ -21,7 +21,7 @@ async function exchangeCodeForToken(code: string) {
   const params = new URLSearchParams({
     client_id: process.env.APPSUMO_CLIENT_ID!,
     client_secret: process.env.APPSUMO_CLIENT_SECRET!,
-    redirect_uri: "https://app.rybbit.io/as/callback",
+    redirect_uri: `${(process.env.BASE_URL || "https://analytics.indobase.in").replace(/\/$/, "")}/as/callback`,
     code: code,
     grant_type: "authorization_code",
   });

@@ -46,7 +46,7 @@ export default function LaunchPage() {
 
     const exchange = new URL('/api/auth/studio-handoff', window.location.origin);
     // Backend is under /api via nginx; Nest controller is /auth/studio-handoff
-    // Public path through Postiz nginx is typically /api → backend.
+    // Public path through Indobase Social nginx is typically /api → backend.
     exchange.searchParams.set('token', token);
     window.location.replace(exchange.toString());
   }, []);

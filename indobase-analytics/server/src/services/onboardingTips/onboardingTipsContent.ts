@@ -42,7 +42,7 @@ window.indobase.event("signup_clicked")
 
 Or use data attributes directly in your HTML:
 
-<button data-rybbit-event="signup_clicked">Sign Up</button>
+<button data-indobase-event="signup_clicked">Sign Up</button>
 
 Events show up in your dashboard and can be used as funnel steps or goal triggers.`,
     linkText: "Read the full guide",

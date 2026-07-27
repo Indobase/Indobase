@@ -1,11 +1,11 @@
-# Rybbit
+# Indobase Analytics
 
-Domain language for Rybbit's analytics product, documentation, and public tools.
+Domain language for Indobase Analytics product, documentation, and public tools.
 
 ## Language
 
 **Site**:
-A web domain or mobile application whose activity Rybbit measures for an Organization.
+A web domain or mobile application whose activity Indobase Analytics measures for an Organization.
 _Avoid_: Website, property
 
 **Site Configuration**:
@@ -17,7 +17,7 @@ The ordered determination that an ingestion request should not be recorded becau
 _Avoid_: Filter result, blocked event
 
 **Public Website Target**:
-A caller-supplied HTTP or HTTPS location that resolves only to public network addresses and can be inspected by Rybbit's free analytics tools.
+A caller-supplied HTTP or HTTPS location that resolves only to public network addresses and can be inspected by Indobase Analytics free tools.
 _Avoid_: External URL, safe URL, validated URL
 
 **Website Inspection**:

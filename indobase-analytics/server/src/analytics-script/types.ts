@@ -90,7 +90,7 @@ export interface TrackingPayload extends BasePayload {
 
 export interface ButtonClickProperties {
   text?: string;
-  [key: string]: string | undefined; // Additional data-rybbit-* attributes
+  [key: string]: string | undefined; // Additional data-indobase-prop-* (or legacy data-rybbit-prop-*) attributes
 }
 
 export interface CopyProperties {

@@ -121,7 +121,7 @@ func TestDataFeedFetcher_FetchGlobal_Success(t *testing.T) {
 	// Verify request
 	assert.Equal(t, "POST", receivedMethod)
 	assert.Equal(t, "application/json", receivedContentType)
-	assert.Contains(t, receivedUserAgent, "Notifuse")
+	assert.Contains(t, receivedUserAgent, "Indobase-Email")
 
 	// Verify payload was sent
 	require.NotNil(t, receivedBody)
@@ -710,7 +710,7 @@ func TestDataFeedFetcher_FetchRecipient_Success(t *testing.T) {
 	// Verify request
 	assert.Equal(t, "POST", receivedMethod)
 	assert.Equal(t, "application/json", receivedContentType)
-	assert.Contains(t, receivedUserAgent, "Notifuse")
+	assert.Contains(t, receivedUserAgent, "Indobase-Email")
 
 	// Verify payload was sent with contact data
 	require.NotNil(t, receivedBody)

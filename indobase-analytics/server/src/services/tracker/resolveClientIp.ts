@@ -11,7 +11,7 @@ import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
  *
  *   - Direct Cloudflare path  — `CF-Connecting-IP` is the real visitor and is
  *     non-spoofable; the forwarded headers are client-controllable noise.
- *   - First-party proxy path  — a customer fronts Rybbit with CloudFront / Fastly
+ *   - First-party proxy path  — a customer fronts Indobase Analytics with CloudFront / Fastly
  *     / nginx, so `CF-Connecting-IP` is the *proxy's* egress node and the visitor
  *     only survives in `X-Forwarded-For` / `X-Real-IP`.
  *

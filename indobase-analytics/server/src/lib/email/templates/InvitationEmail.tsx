@@ -12,6 +12,7 @@ import {
   pixelBasedPreset,
 } from "@react-email/components";
 import * as React from "react";
+import { getEmailLogoUrl } from "../branding.js";
 
 interface InvitationEmailProps {
   email: string;
@@ -45,7 +46,7 @@ export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink
         <Body className="bg-white font-sans">
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              src={getEmailLogoUrl()}
               alt="Indobase Analytics"
               width="120"
               height="28"
@@ -55,7 +56,7 @@ export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink
             <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
 
             <Text className="text-darkText text-base leading-relaxed mb-4">
-              {invitedBy} has invited you to join <span className="font-semibold">{organizationName}</span> on Indobase Analytics
+              {invitedBy} has invited you to join <span className="font-semibold">{organizationName}</span> on Indobase
               Analytics.
             </Text>
 

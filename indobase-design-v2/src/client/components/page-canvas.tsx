@@ -133,7 +133,11 @@ export function PageCanvas({ page, isActive, width, height, onActivate }: PageCa
     // Load page content
     if (page.canvas_json && page.canvas_json !== "{}") {
       try {
-        c.loadFromJSON(JSON.parse(page.canvas_json)).then(() => c.requestRenderAll());
+        const raw =
+          typeof page.canvas_json === "string"
+            ? JSON.parse(page.canvas_json)
+            : page.canvas_json;
+        c.loadFromJSON(raw).then(() => c.requestRenderAll());
       } catch {
         // ignore parse errors
       }

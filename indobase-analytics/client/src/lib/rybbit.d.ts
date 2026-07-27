@@ -1,4 +1,9 @@
-interface Rybbit {
+/**
+ * Browser tracking API for Indobase Analytics (`window.indobase`).
+ * The interface name `Rybbit` is retained only for TypeScript compatibility
+ * with upstream types; prefer referring to it as IndobaseAnalytics in docs.
+ */
+interface IndobaseAnalytics {
   /**
    * Tracks a page view
    */
@@ -72,17 +77,24 @@ interface Rybbit {
   /**
    * Runs a callback once the tracking script and feature flags are ready.
    * Use this before reading flags during page initialization.
-   * @param callback Receives the ready analytics instance (`window.indobase` / `window.rybbit`)
+   * @param callback Receives the ready analytics instance (`window.indobase`;
+   *   `window.rybbit` may also be present as a legacy compatibility alias)
    */
-  onReady: (callback: (api: Rybbit) => void) => void;
+  onReady: (callback: (api: IndobaseAnalytics) => void) => void;
 }
+
+/** @deprecated Prefer `IndobaseAnalytics`. Kept as a type alias for legacy call sites. */
+type Rybbit = IndobaseAnalytics;
 
 declare global {
   interface Window {
-    /** Upstream default namespace — kept for tracking compatibility. */
-    rybbit: Rybbit;
-    /** Indobase alias of the tracking API (same object as `rybbit` by default). */
-    indobase: Rybbit;
+    /** Primary Indobase Analytics tracking API. */
+    indobase: IndobaseAnalytics;
+    /**
+     * Legacy compatibility alias for the same tracking API as `window.indobase`.
+     * Prefer `window.indobase` in new code and docs.
+     */
+    rybbit: IndobaseAnalytics;
   }
 }
 

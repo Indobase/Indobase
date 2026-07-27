@@ -1,4 +1,4 @@
-# This docker-compose file is used for development purposes. It sets up the necessary services for the Postiz application.
+# This docker-compose file is used for development purposes. It sets up the necessary services for Indobase Social.
 # It is **not** intended for production use. For production, please refer to the official documentation.
 
 services:

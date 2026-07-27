@@ -1,6 +1,6 @@
 # GitHub Actions Workflows
 
-This directory contains GitHub Actions workflows for the Notifuse project.
+This directory contains GitHub Actions workflows for Indobase Email.
 
 ## Docker Workflows
 

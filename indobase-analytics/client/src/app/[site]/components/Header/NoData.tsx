@@ -149,20 +149,32 @@ export function NoData() {
 
   const aiPrompt = `Install Indobase Analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>\n`;
 
-  const rnInstallSnippet = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
+  const mobileSnippet = `<!-- Load Indobase Analytics in a WebView (or inject via your app bridge) -->
+<script
+  src="${scriptUrl}"
+  data-site-id="${siteId}"
+  defer
+></script>
 
-  const rnInitSnippet = `import AsyncStorage from "@react-native-async-storage/async-storage";
-import indobase from "@rybbit/react-native";
+<script>
+  window.indobase?.event("screen_view", { screen: "Home" });
+  window.indobase?.event("signup_started", { plan: "pro" });
+</script>`;
 
-await indobase.init({
-  analyticsHost: "${globalThis.location.origin}/api",
-  siteId: "${siteId}",
-  appIdentifier: "${siteMetadata?.domain || "com.example.app"}",
-  storage: AsyncStorage,
-  initialScreenName: "Home",
-});`;
+  const mobileAiPrompt = `Install Indobase Analytics in this mobile / React Native app.
 
-  const rnAiPrompt = `Install Indobase Analytics in this React Native app.\n\n1. Install the SDK:\n\nnpm install @rybbit/react-native @react-native-async-storage/async-storage\n\n2. Initialize it once in the app entry point:\n\n${rnInitSnippet}\n\n3. If the app uses React Navigation, track screens automatically:\n\nconst navigationTracker = rybbit.createNavigationTracker();\n\n<NavigationContainer\n  ref={navigationRef}\n  onReady={() => navigationTracker.onReady(navigationRef)}\n  onStateChange={() => navigationTracker.onStateChange(navigationRef)}\n>\n\nDocs: https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md`;
+Use the Indobase Analytics browser tracker (script tag + window.indobase) inside a WebView, or call the same API from your JS bridge after injecting the script.
+
+1. Load the tracking script:
+
+<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>
+
+2. Track screens and events:
+
+window.indobase.event("screen_view", { screen: "Home" });
+window.indobase.event("signup_started", { plan: "pro" });
+
+Docs: https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md`;
 
   return (
     <section className="mt-4 rounded-lg border border-neutral-100 bg-white p-4 dark:border-neutral-850 dark:bg-neutral-900">
@@ -190,7 +202,7 @@ await indobase.init({
           <Tabs defaultValue={isMobileSite ? "sdk" : "html"}>
             <TabsList>
               {isMobileSite ? (
-                <TabsTrigger value="sdk">React Native</TabsTrigger>
+                <TabsTrigger value="sdk">Mobile</TabsTrigger>
               ) : (
                 <TabsTrigger value="html">HTML</TabsTrigger>
               )}
@@ -198,12 +210,10 @@ await indobase.init({
             </TabsList>
             {isMobileSite && (
               <TabsContent value="sdk" className="flex flex-col gap-2">
-                <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("Install the SDK package:")}</p>
-                <CodeSnippet language="bash" code={rnInstallSnippet} className="text-xs" />
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                  {t("Initialize it once in your app entry point:")}
+                  {t("Use the Indobase Analytics script with window.indobase (WebView or JS bridge):")}
                 </p>
-                <CodeSnippet language="TypeScript" code={rnInitSnippet} className="text-xs" />
+                <CodeSnippet language="HTML" code={mobileSnippet} className="text-xs" />
               </TabsContent>
             )}
             {!isMobileSite && (
@@ -239,12 +249,14 @@ await indobase.init({
               <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 {t("Copy this prompt into Claude Code, Cursor, or another coding agent:")}
               </p>
-              <CodeSnippet code={isMobileSite ? rnAiPrompt : aiPrompt} className="text-xs" />
+              <CodeSnippet code={isMobileSite ? mobileAiPrompt : aiPrompt} className="text-xs" />
             </TabsContent>
           </Tabs>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {isMobileSite ? (
-              <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">{t("React Native SDK docs")}</ExternalLink>
+              <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">
+                {t("Indobase Analytics docs")}
+              </ExternalLink>
             ) : (
               <>
                 <ExternalLink href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md">{t("Installation docs")}</ExternalLink>

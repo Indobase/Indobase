@@ -95,7 +95,7 @@ export async function generatePdfReport(request: FastifyRequest<GeneratePdfRepor
 
     const formattedStart = DateTime.fromISO(start_date).toFormat("yyyy-MM-dd");
     const formattedEnd = DateTime.fromISO(end_date).toFormat("yyyy-MM-dd");
-    const filename = `rybbit-report-${siteId}-${formattedStart}-to-${formattedEnd}.pdf`;
+    const filename = `indobase-analytics-report-${siteId}-${formattedStart}-to-${formattedEnd}.pdf`;
 
     return reply
       .header("Content-Type", "application/pdf")

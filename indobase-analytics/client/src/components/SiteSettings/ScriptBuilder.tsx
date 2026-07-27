@@ -24,7 +24,7 @@ const FOCUS_RING =
 const formatAttr = ([key, value]: [string, string]) =>
   value.includes('"') ? `${key}='${value}'` : `${key}="${value}"`;
 
-export function ScriptBuilder({ siteId, siteType = "web", appIdentifier }: ScriptBuilderProps) {
+export function ScriptBuilder({ siteId, siteType = "web", appIdentifier: _appIdentifier }: ScriptBuilderProps) {
   const t = useExtracted();
   const [debounceValue, setDebounceValue] = useState(500);
   const [skipPatterns, setSkipPatterns] = useState<string[]>([]);
@@ -126,26 +126,54 @@ Add this script tag to the <head> of every page, using the root layout or base t
 ${inlineScript}
 `;
 
-  const reactNativeInstall = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
-  const reactNativeSnippet = `import AsyncStorage from "@react-native-async-storage/async-storage";
-import indobase from "@rybbit/react-native";
+  const mobileSnippet = `<!-- Load Indobase Analytics in a WebView (or inject via your app bridge) -->
+<script
+  src="${scriptUrl}"
+  data-site-id="${siteId}"
+  defer
+></script>
 
-await indobase.init({
-  analyticsHost: "${globalThis.location.origin}/api",
-  siteId: "${siteId}",
-  appIdentifier: "${appIdentifier || "com.example.app"}",
-  storage: AsyncStorage,
-  initialScreenName: "Home",
-});
+<script>
+  // After the script loads, track screens/events via window.indobase
+  window.indobase?.event("screen_view", { screen: "Home" });
+  window.indobase?.event("signup_started", { plan: "pro" });
+</script>`;
 
-await indobase.event("signup_started", { plan: "pro" });`;
+  const mobileAiPrompt = `Install Indobase Analytics in this mobile / React Native app.
+
+Use the Indobase Analytics browser tracker (script tag + window.indobase) inside a WebView, or call the same API from your JS bridge after injecting the script.
+
+1. Load the tracking script:
+
+<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>
+
+2. Track screens and events:
+
+window.indobase.event("screen_view", { screen: "Home" });
+window.indobase.event("signup_started", { plan: "pro" });
+
+Docs: https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md`;
 
   if (siteType === "mobile") {
     return (
       <SettingsSections>
-        <SettingsSection description={t("Install the React Native package and initialize it in your app entry point")}>
-          <CodeSnippet language="bash" code={reactNativeInstall} />
-          <CodeSnippet language="TypeScript" code={reactNativeSnippet} />
+        <SettingsSection
+          description={t(
+            "Use the Indobase Analytics script with window.indobase (WebView or JS bridge). See the docs for details."
+          )}
+        >
+          <CodeSnippet language="HTML" code={mobileSnippet} />
+          <p className="text-xs text-muted-foreground">
+            <a
+              href="https://github.com/Indobase/Indobase/blob/main/docs/INDOBASE-ANALYTICS.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              {t("Indobase Analytics docs")}
+            </a>
+          </p>
+          <CodeSnippet code={mobileAiPrompt} />
         </SettingsSection>
       </SettingsSections>
     );

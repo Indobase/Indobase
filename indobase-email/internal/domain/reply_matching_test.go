@@ -12,8 +12,8 @@ func TestRFCMessageIDValueAndHeader(t *testing.T) {
 	}{
 		{"normal", "abc-123", "hello@example.com", "abc-123@example.com", "<abc-123@example.com>"},
 		{"subdomain", "id1", "news@mg.example.com", "id1@mg.example.com", "<id1@mg.example.com>"},
-		{"no at sign falls back", "id2", "not-an-address", "id2@notifuse.local", "<id2@notifuse.local>"},
-		{"trailing at falls back", "id3", "x@", "id3@notifuse.local", "<id3@notifuse.local>"},
+		{"no at sign falls back", "id2", "not-an-address", "id2@indobase.local", "<id2@indobase.local>"},
+		{"trailing at falls back", "id3", "x@", "id3@indobase.local", "<id3@indobase.local>"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,5 +1,5 @@
 ---
-name: Rybbit
+name: Indobase Analytics
 description: Open-source, privacy-friendly web & product analytics. A flat, dark-mode-default instrument panel where the data is the interface.
 colors:
   # Surfaces (dark mode is the default theme; light values noted in prose)
@@ -95,13 +95,13 @@ components:
     padding: "2px 6px"
 ---
 
-# Design System: Rybbit
+# Design System: Indobase Analytics
 
 ## 1. Overview
 
 **Creative North Star: "The Instrument Panel"**
 
-Rybbit is a precise, legible cockpit for understanding a website. Every surface is flat; depth comes from tonal layering of a pure-grayscale ramp, not from shadows. The canvas recedes (near-black `#141414` in the default dark theme), panels lift one notch (`#1b1b1b`), interactive chrome lifts one more (`#242424`), and hairline 1px borders draw the seams. Onto that calm gray instrument, two signals are painted with intent: a single **emerald** for action and success, and a single **periwinkle** (`#b3bfff`) for the data lines themselves. The data is the instrument; the chrome stays out of the way.
+Indobase Analytics is a precise, legible cockpit for understanding a website. Every surface is flat; depth comes from tonal layering of a pure-grayscale ramp, not from shadows. The canvas recedes (near-black `#141414` in the default dark theme), panels lift one notch (`#1b1b1b`), interactive chrome lifts one more (`#242424`), and hairline 1px borders draw the seams. Onto that calm gray instrument, two signals are painted with intent: a single **emerald** for action and success, and a single **periwinkle** (`#b3bfff`) for the data lines themselves. The data is the instrument; the chrome stays out of the way.
 
 The personality is friendly, precise, and trustworthy: approachable without being toy-like (PRODUCT.md). Warmth lives at the edges (the frog, an empty state, a small touch), never on top of the numbers. Density is a feature here, not a flaw: this is a tool people open to answer a specific question, and the layout should put that answer in front of them in seconds with depth one layer down. Radii are deliberately tight (`0.3rem` / 4.8px max), so the UI reads as engineered and exact rather than soft or playful.
 

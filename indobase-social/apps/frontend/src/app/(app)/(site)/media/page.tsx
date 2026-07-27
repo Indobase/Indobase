@@ -1,9 +1,9 @@
 import { MediaLayoutComponent } from '@gitroom/frontend/components/new-layout/layout.media.component';
 import { Metadata } from 'next';
-import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.side';
+import { productNameServerSide } from '@gitroom/helpers/utils/product-name';
 
 export const metadata: Metadata = {
-  title: `${isGeneralServerSide() ? 'Indobase Social' : 'Gitroom'} Media`,
+  title: `${productNameServerSide()} Media`,
   description: '',
 };
 
