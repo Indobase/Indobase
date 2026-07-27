@@ -90,7 +90,7 @@ async function pauseIdlePlanProjects({
         p.ref,
         p.organization_slug,
         greatest(
-          coalesce(p.updated_at, p.inserted_at),
+          coalesce(p.data_plane_last_provisioned_at, p.inserted_at),
           coalesce(
             (select max(d.updated_at) from saas.project_deployments d where d.project_ref = p.ref),
             p.inserted_at
@@ -104,7 +104,7 @@ async function pauseIdlePlanProjects({
         -- Owner-pinned projects skip the sweep, but only on plans that grant pinning.
         and not ($4 and coalesce(p.keep_warm, false))
         and greatest(
-          coalesce(p.updated_at, p.inserted_at),
+          coalesce(p.data_plane_last_provisioned_at, p.inserted_at),
           coalesce(
             (select max(d.updated_at) from saas.project_deployments d where d.project_ref = p.ref),
             p.inserted_at
@@ -134,8 +134,7 @@ async function pauseIdlePlanProjects({
         set
           status = 'INACTIVE',
           paused_at = now(),
-          pause_reason = $2,
-          updated_at = now()
+          pause_reason = $2
         where ref = $1
           and coalesce(status, '') not in ('INACTIVE', 'REMOVED', 'DELETED')
       `,
