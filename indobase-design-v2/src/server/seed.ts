@@ -5,6 +5,9 @@
  * on redeploy, not silently keep the old one. User-saved templates (gotrue_id not null) are never
  * touched — the WHERE clause only matches the global library.
  *
+ * After upsert, prune global library rows whose slug is no longer in the seed set so catalog
+ * expansions don't leave obsolete variants around.
+ *
  * Batched concurrency keeps ~2500 upserts fast without saturating the pool.
  */
 import { getPool } from './db.js'
@@ -39,6 +42,14 @@ export async function seedTemplates(): Promise<number> {
     )
     count += slice.length
   }
+
+  const keep = templates.map((t) => t.slug)
+  await pool.query(
+    `delete from design.templates
+     where gotrue_id is null
+       and not (slug = any($1::text[]))`,
+    [keep]
+  )
 
   return count
 }
