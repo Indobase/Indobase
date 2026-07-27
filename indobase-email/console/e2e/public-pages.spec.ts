@@ -34,7 +34,7 @@ test.describe('Public Pages Load', () => {
         status: 200,
         contentType: 'application/javascript',
         body: `
-          window.API_URL = "https://localapi.notifuse.com:4000";
+          window.API_URL = "http://localhost:4000";
           window.ROOT_EMAIL = "test@example.com";
           window.IS_INSTALLED = true;
         `
@@ -42,7 +42,7 @@ test.describe('Public Pages Load', () => {
     )
 
     // Intercept all fetch/xhr requests to the API backend
-    await page.route('https://localapi.notifuse.com:4000/**', (route: Route) => {
+    await page.route('http://localhost:4000/**', (route: Route) => {
       const url = route.request().url()
       const resourceType = route.request().resourceType()
 

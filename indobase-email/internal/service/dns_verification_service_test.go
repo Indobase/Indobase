@@ -321,10 +321,10 @@ func TestDNSVerificationService_VerifyTXTRecord_ExpectedRecordFormat(t *testing.
 
 	// Test that the expected record format is correct
 	token := "test-verification-token-123"
-	expectedRecord := "notifuse-verify=" + token
+	expectedRecord := "indobase-email-verify=" + token
 
 	// Verify the format matches what the code expects
-	assert.Equal(t, "notifuse-verify=test-verification-token-123", expectedRecord)
+	assert.Equal(t, "indobase-email-verify=test-verification-token-123", expectedRecord)
 
 	// Test with different tokens
 	tokens := []string{
@@ -336,8 +336,8 @@ func TestDNSVerificationService_VerifyTXTRecord_ExpectedRecordFormat(t *testing.
 
 	for _, token := range tokens {
 		t.Run("Token format: "+token, func(t *testing.T) {
-			expected := "notifuse-verify=" + token
-			assert.Equal(t, expected, "notifuse-verify="+token)
+			expected := "indobase-email-verify=" + token
+			assert.Equal(t, expected, "indobase-email-verify="+token)
 		})
 	}
 }

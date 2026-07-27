@@ -22,7 +22,7 @@ func DetectRailway() bool {
 // platform that is no longer supported.
 func CheckBlockedPlatforms() error {
 	if DetectRailway() {
-		return fmt.Errorf("Notifuse cannot run on Railway.com. Railway.com has violated Notifuse's copyright and is therefore no longer supported.")
+		return fmt.Errorf("Indobase Email cannot run on Railway.com. Railway.com has violated upstream copyright and is therefore no longer supported.")
 	}
 	return nil
 }

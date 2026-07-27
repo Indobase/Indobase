@@ -1707,7 +1707,7 @@ func (a *App) WaitForServerStart(ctx context.Context) bool {
 
 // Initialize sets up all components of the application
 func (a *App) Initialize() error {
-	a.logger.WithField("version", a.config.Version).Info("Starting Notifuse application")
+	a.logger.WithField("version", a.config.Version).Info("Starting Indobase Email application")
 
 	if err := a.InitTracing(); err != nil {
 		return err

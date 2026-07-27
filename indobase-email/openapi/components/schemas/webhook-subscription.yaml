@@ -14,7 +14,7 @@ WebhookSubscription:
       type: string
       format: uri
       description: The HTTPS URL to receive webhook events
-      example: https://api.example.com/webhooks/notifuse
+      example: https://api.example.com/webhooks/indobase-email
     secret:
       type: string
       description: Secret key for signing webhook payloads (Standard Webhooks spec)
@@ -227,7 +227,7 @@ CreateWebhookSubscriptionRequest:
       type: string
       format: uri
       description: The HTTPS URL to receive webhook events
-      example: https://api.example.com/webhooks/notifuse
+      example: https://api.example.com/webhooks/indobase-email
     event_types:
       type: array
       description: List of event types to subscribe to
@@ -271,7 +271,7 @@ UpdateWebhookSubscriptionRequest:
       type: string
       format: uri
       description: Updated URL
-      example: https://api.example.com/webhooks/notifuse/v2
+      example: https://api.example.com/webhooks/indobase-email/v2
     event_types:
       type: array
       description: Updated list of event types

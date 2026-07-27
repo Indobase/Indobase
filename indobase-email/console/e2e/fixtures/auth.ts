@@ -67,16 +67,16 @@ async function setupApiMocks(page: Page, config: MockConfig = {}) {
       status: 200,
       contentType: 'application/javascript',
       body: `
-        window.API_URL = "https://localapi.notifuse.com:4000";
+        window.API_URL = "http://localhost:4000";
         window.ROOT_EMAIL = "test@example.com";
         window.IS_INSTALLED = true;
       `
     })
   )
 
-  // Intercept all requests to the API backend (localapi.notifuse.com:4000)
+  // Intercept all requests to the API backend (localhost:4000)
   // Only intercept XHR/fetch requests, not script/module requests
-  await page.route('https://localapi.notifuse.com:4000/**', async (route: Route) => {
+  await page.route('http://localhost:4000/**', async (route: Route) => {
     const url = route.request().url()
     const method = route.request().method()
     const resourceType = route.request().resourceType()

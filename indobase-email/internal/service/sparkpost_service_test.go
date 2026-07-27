@@ -256,7 +256,7 @@ func TestSparkPostService_GetWebhookStatus(t *testing.T) {
 			Results: []domain.SparkPostWebhook{
 				{
 					ID:     "webhook-123",
-					Name:   "Notifuse Webhook",
+					Name:   "Indobase Email Webhook",
 					Target: webhookTarget,
 					Events: []string{"delivery", "bounce"},
 					Active: true,
@@ -390,7 +390,7 @@ func TestSparkPostService_RegisterWebhooks(t *testing.T) {
 		createResponse := domain.SparkPostWebhookResponse{
 			Results: domain.SparkPostWebhook{
 				ID:     "webhook-123",
-				Name:   "Notifuse-integration-123",
+				Name:   "IndobaseEmail-integration-123",
 				Target: domain.GenerateWebhookCallbackURL(baseURL, domain.EmailProviderKindSparkPost, workspaceID, integrationID),
 				Events: []string{"delivery", "bounce"},
 				Active: true,
@@ -500,7 +500,7 @@ func TestSparkPostService_UnregisterWebhooks(t *testing.T) {
 			Results: []domain.SparkPostWebhook{
 				{
 					ID:     "webhook-123",
-					Name:   "Notifuse Webhook",
+					Name:   "Indobase Email Webhook",
 					Target: webhookTarget,
 					Events: []string{"delivery", "bounce"},
 					Active: true,
@@ -2947,7 +2947,7 @@ func TestSparkPostService_EdgeCases(t *testing.T) {
 					body, _ := io.ReadAll(req.Body)
 					var webhook domain.SparkPostWebhook
 					_ = json.Unmarshal(body, &webhook)
-					assert.Equal(t, "Notifuse-very-long-integration-id-that-exceeds-limit", webhook.Name)
+					assert.Equal(t, "IndobaseEmail-very-long-integration-id-that-exceeds-limit", webhook.Name)
 					return mockHTTPResponse(http.StatusOK, string(createResponseJSON)), nil
 				}),
 		)
@@ -2996,7 +2996,7 @@ func TestSparkPostService_EdgeCases(t *testing.T) {
 					body, _ := io.ReadAll(req.Body)
 					var webhook domain.SparkPostWebhook
 					_ = json.Unmarshal(body, &webhook)
-					assert.Equal(t, "Notifuse-integration", webhook.Name)
+					assert.Equal(t, "IndobaseEmail-integration", webhook.Name)
 					return mockHTTPResponse(http.StatusOK, string(createResponseJSON)), nil
 				}),
 		)

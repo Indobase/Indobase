@@ -250,7 +250,7 @@ func CreateSupabaseEmailChangeEmailStructure() (notifuse_mjml.EmailBlock, error)
                           "paddingLeft": "0px",
                           "rel": "noopener noreferrer",
                           "sizes": "",
-                          "src": "https://storage.googleapis.com/readonlydemo/supabase-notifuse.png",
+                          "src": "https://storage.googleapis.com/readonlydemo/indobase-email.png",
                           "srcset": "",
                           "target": "_blank",
                           "title": "",
@@ -480,7 +480,7 @@ func CreateSupabaseEmailChangeEmailStructure() (notifuse_mjml.EmailBlock, error)
                           "paddingLeft": "25px",
                           "backgroundColor": "transparent"
                         },
-                        "content": "<p>Please do not reply to this email.<br>Need help? visit help center or contact us.<br>12 Heaven Road | San Francisco CA<br>Powered by <a class=\"editor-link\" href=\"https://www.notifuse.com\">Notifuse</a></p>"
+                        "content": "<p>Please do not reply to this email.<br>Need help? visit help center or contact us.<br>Indobase · India<br>Powered by <a class=\"editor-link\" href=\"https://email.indobase.in\">Indobase Email</a></p>"
                       },
                       {
                         "id": "31cc03f4-74b6-4333-ad9f-0bb913ae93ee",
@@ -524,7 +524,7 @@ func CreateSupabaseEmailChangeEmailStructure() (notifuse_mjml.EmailBlock, error)
                               "textPadding": "4px 4px 4px 0",
                               "verticalAlign": "middle",
                               "name": "github",
-                              "href": "https://github.com/Notifuse/notifuse"
+                              "href": "https://indobase.in"
                             },
                             "children": []
                           },
@@ -533,7 +533,7 @@ func CreateSupabaseEmailChangeEmailStructure() (notifuse_mjml.EmailBlock, error)
                             "type": "mj-social-element",
                             "attributes": {
                               "name": "x",
-                              "href": "https://x.com/notifuse",
+                              "href": "https://indobase.in",
                               "backgroundColor": "#000000",
                               "borderRadius": "3px"
                             },

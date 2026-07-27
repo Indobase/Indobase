@@ -244,9 +244,9 @@ func (s *DemoService) createDemoWorkspace(ctx context.Context) error {
 		authenticatedCtx,
 		workspaceID,
 		"Demo Workspace",
-		"https://demo.notifuse.com",
-		"https://www.notifuse.com/apple-touch-icon.png",
-		"https://demo.notifuse.com/cover.png",
+		"https://email.indobase.in",
+		"https://indobase.in/favicon.ico",
+		"https://email.indobase.in/cover.png",
 		"UTC",
 		fileManagerSettings,
 		domain.DefaultLanguageCode, []string{"en", "fr", "es"},
@@ -390,7 +390,7 @@ func (s *DemoService) createDemoSMTPIntegration(ctx context.Context, workspaceID
 	smtpProvider := domain.EmailProvider{
 		Kind: domain.EmailProviderKindSMTP,
 		SMTP: &domain.SMTPSettings{
-			Host:     "mailpit.notifuse.com",
+			Host:     "localhost",
 			Port:     1025,
 			Username: "admin",
 			Password: "", // No password needed for demo Mailpit
@@ -399,8 +399,8 @@ func (s *DemoService) createDemoSMTPIntegration(ctx context.Context, workspaceID
 		Senders: []domain.EmailSender{
 			{
 				ID:        uuid.New().String(),
-				Email:     "demo@notifuse.com",
-				Name:      "Notifuse Demo",
+				Email:     "demo@indobase.in",
+				Name:      "Indobase Email Demo",
 				IsDefault: true,
 			},
 		},
@@ -776,7 +776,7 @@ func (s *DemoService) createSampleTemplates(ctx context.Context, workspaceID str
 			"last_name":  "Johnson",
 			"email":      "alex.johnson@example.com",
 		},
-		"reset_url": "https://demo.notifuse.com/reset-password?token=demo_token_123",
+		"reset_url": "https://email.indobase.in/reset-password?token=demo_token_123",
 	}
 	passwordResetHTML := s.compileTemplateToHTML(workspaceID, "password-reset-preview", passwordResetMJML, passwordResetTestData)
 
@@ -954,7 +954,7 @@ func getNewsletterContents() map[string]newsletterContent {
 			highlights: "📈 This Week's Highlights",
 			listItems:  "• New feature releases and improvements<br>• Industry insights and trends<br>• Community highlights and success stories",
 			buttonText: "Read Full Newsletter",
-			footerText: "You received this email because you're subscribed to our newsletter.<br><a href=\"{{unsubscribe_url}}\">Unsubscribe</a> | <a href=\"https://demo.notifuse.com\">Visit our website</a>",
+			footerText: "You received this email because you're subscribed to our newsletter.<br><a href=\"{{unsubscribe_url}}\">Unsubscribe</a> | <a href=\"https://email.indobase.in\">Visit our website</a>",
 		},
 		"fr": {
 			lang:       "fr",
@@ -965,7 +965,7 @@ func getNewsletterContents() map[string]newsletterContent {
 			highlights: "📈 Les Temps Forts de la Semaine",
 			listItems:  "• Nouvelles fonctionnalités et améliorations<br>• Analyses et tendances du secteur<br>• Moments forts de la communauté et succès",
 			buttonText: "Lire la Newsletter Complète",
-			footerText: "Vous recevez cet e-mail car vous êtes abonné(e) à notre newsletter.<br><a href=\"{{unsubscribe_url}}\">Se désabonner</a> | <a href=\"https://demo.notifuse.com\">Visiter notre site</a>",
+			footerText: "Vous recevez cet e-mail car vous êtes abonné(e) à notre newsletter.<br><a href=\"{{unsubscribe_url}}\">Se désabonner</a> | <a href=\"https://email.indobase.in\">Visiter notre site</a>",
 		},
 		"es": {
 			lang:       "es",
@@ -976,7 +976,7 @@ func getNewsletterContents() map[string]newsletterContent {
 			highlights: "📈 Destacados de la Semana",
 			listItems:  "• Nuevas funcionalidades y mejoras<br>• Análisis y tendencias del sector<br>• Momentos destacados de la comunidad y casos de éxito",
 			buttonText: "Leer el Boletín Completo",
-			footerText: "Recibes este correo porque estás suscrito/a a nuestro boletín.<br><a href=\"{{unsubscribe_url}}\">Cancelar suscripción</a> | <a href=\"https://demo.notifuse.com\">Visitar nuestro sitio</a>",
+			footerText: "Recibes este correo porque estás suscrito/a a nuestro boletín.<br><a href=\"{{unsubscribe_url}}\">Cancelar suscripción</a> | <a href=\"https://email.indobase.in\">Visitar nuestro sitio</a>",
 		},
 	}
 }
@@ -996,7 +996,7 @@ func getNewsletterV2Contents() map[string]newsletterV2Content {
 			feature3Title:   "🔥 Trending Now",
 			feature3Content: "The tools and strategies everyone's talking about this week. Don't miss out on the conversation.",
 			buttonText:      "Explore More",
-			footerText:      "You're receiving this because you subscribed to our weekly digest.<br><a href=\"{{unsubscribe_url}}\">Unsubscribe</a> | <a href=\"https://demo.notifuse.com/preferences\">Manage Preferences</a>",
+			footerText:      "You're receiving this because you subscribed to our weekly digest.<br><a href=\"{{unsubscribe_url}}\">Unsubscribe</a> | <a href=\"https://email.indobase.in/preferences\">Manage Preferences</a>",
 		},
 		"fr": {
 			lang:            "fr",
@@ -1011,7 +1011,7 @@ func getNewsletterV2Contents() map[string]newsletterV2Content {
 			feature3Title:   "🔥 Tendances du Moment",
 			feature3Content: "Les outils et stratégies dont tout le monde parle cette semaine. Ne manquez pas la conversation.",
 			buttonText:      "En Savoir Plus",
-			footerText:      "Vous recevez ceci car vous êtes abonné(e) à notre résumé hebdomadaire.<br><a href=\"{{unsubscribe_url}}\">Se désabonner</a> | <a href=\"https://demo.notifuse.com/preferences\">Gérer les préférences</a>",
+			footerText:      "Vous recevez ceci car vous êtes abonné(e) à notre résumé hebdomadaire.<br><a href=\"{{unsubscribe_url}}\">Se désabonner</a> | <a href=\"https://email.indobase.in/preferences\">Gérer les préférences</a>",
 		},
 		"es": {
 			lang:            "es",
@@ -1026,7 +1026,7 @@ func getNewsletterV2Contents() map[string]newsletterV2Content {
 			feature3Title:   "🔥 Tendencias del Momento",
 			feature3Content: "Las herramientas y estrategias de las que todos hablan esta semana. No te pierdas la conversación.",
 			buttonText:      "Explorar Más",
-			footerText:      "Recibes esto porque te suscribiste a nuestro resumen semanal.<br><a href=\"{{unsubscribe_url}}\">Cancelar suscripción</a> | <a href=\"https://demo.notifuse.com/preferences\">Gestionar preferencias</a>",
+			footerText:      "Recibes esto porque te suscribiste a nuestro resumen semanal.<br><a href=\"{{unsubscribe_url}}\">Cancelar suscripción</a> | <a href=\"https://email.indobase.in/preferences\">Gestionar preferencias</a>",
 		},
 	}
 }
@@ -1141,7 +1141,7 @@ func (s *DemoService) createNewsletterMJMLStructure(c newsletterContent) notifus
 	buttonBase.Attributes["font-size"] = "16px"
 	buttonBase.Attributes["padding"] = "12px 24px"
 	buttonBase.Attributes["border-radius"] = "6px"
-	buttonBase.Attributes["href"] = "https://demo.notifuse.com/newsletter?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
+	buttonBase.Attributes["href"] = "https://email.indobase.in/newsletter?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
 	buttonBase.Content = &buttonContent
 	button := &notifuse_mjml.MJButtonBlock{BaseBlock: buttonBase}
 
@@ -1273,7 +1273,7 @@ func (s *DemoService) createNewsletterV2MJMLStructure(c newsletterV2Content) not
 	buttonBase2.Attributes["font-weight"] = "bold"
 	buttonBase2.Attributes["padding"] = "15px 30px"
 	buttonBase2.Attributes["border-radius"] = "8px"
-	buttonBase2.Attributes["href"] = "https://demo.notifuse.com/weekly-digest?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
+	buttonBase2.Attributes["href"] = "https://email.indobase.in/weekly-digest?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
 	buttonBase2.Content = &buttonContent
 	button := &notifuse_mjml.MJButtonBlock{BaseBlock: buttonBase2}
 
@@ -1379,7 +1379,7 @@ func (s *DemoService) createWelcomeMJMLStructure(c welcomeContent) notifuse_mjml
 	buttonBase3.Attributes["font-size"] = "16px"
 	buttonBase3.Attributes["padding"] = "12px 24px"
 	buttonBase3.Attributes["border-radius"] = "6px"
-	buttonBase3.Attributes["href"] = "https://demo.notifuse.com/getting-started?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
+	buttonBase3.Attributes["href"] = "https://email.indobase.in/getting-started?utm_source={{utm_source}}&utm_medium={{utm_medium}}&utm_campaign={{utm_campaign}}"
 	buttonBase3.Content = &buttonContent
 	button := &notifuse_mjml.MJButtonBlock{BaseBlock: buttonBase3}
 
@@ -1475,7 +1475,7 @@ func (s *DemoService) createSampleBroadcasts(ctx context.Context, workspaceID st
 			},
 			TrackingEnabled: true,
 			UTMParameters: &domain.UTMParameters{
-				Source:   "demo.notifuse.com",
+				Source:   "email.indobase.in",
 				Medium:   "email",
 				Campaign: bc.campaign,
 				Term:     "",
@@ -1923,7 +1923,7 @@ func (s *DemoService) generateTransactionalMessageHistoryForContact(contact *dom
 
 	// Add specific data for password reset messages
 	if messageType == "password-reset" {
-		messageData.Data["reset_url"] = "https://demo.notifuse.com/reset-password?token=demo_token_123"
+		messageData.Data["reset_url"] = "https://email.indobase.in/reset-password?token=demo_token_123"
 	}
 
 	// Base transactional message with sent status
@@ -2001,7 +2001,7 @@ func (s *DemoService) generateMessageHistoryForContact(contact *domain.Contact, 
 				"first_name": getStringValue(contact.FirstName),
 				"last_name":  getStringValue(contact.LastName),
 			},
-			"utm_source":   "demo.notifuse.com",
+			"utm_source":   "email.indobase.in",
 			"utm_medium":   utmMedium,
 			"utm_campaign": broadcastID,
 		},
