@@ -41,6 +41,12 @@ type LayoutId =
   | 'corner'
   | 'stack'
   | 'bold-type'
+  | 'grid-2'
+  | 'ribbon'
+  | 'timeline'
+  | 'spotlight'
+  | 'asymmetric'
+  | 'footer-bar'
 
 const FONT_DISPLAY = 'Montserrat'
 const FONT_BODY = 'Inter'
@@ -59,6 +65,12 @@ const PALETTES: Palette[] = [
   { slug: 'coral', name: 'Coral', bg: '#7F1D1D', accent: '#FCA5A5', text: '#FEF2F2', muted: '#FECACA', surface: '#991B1B' },
   { slug: 'cream', name: 'Cream', bg: '#FFFBF2', accent: '#C2925A', text: '#1F2937', muted: '#6B7280', surface: '#FFFFFF' },
   { slug: 'paper', name: 'Paper', bg: '#F8FAFC', accent: '#3B8FD6', text: '#0F172A', muted: '#64748B', surface: '#FFFFFF' },
+  { slug: 'midnight', name: 'Midnight', bg: '#020617', accent: '#818CF8', text: '#F1F5F9', muted: '#94A3B8', surface: '#0F172A' },
+  { slug: 'mint', name: 'Mint', bg: '#ECFDF5', accent: '#059669', text: '#064E3B', muted: '#047857', surface: '#FFFFFF' },
+  { slug: 'terracotta', name: 'Terracotta', bg: '#7C2D12', accent: '#FDBA74', text: '#FFF7ED', muted: '#FED7AA', surface: '#9A3412' },
+  { slug: 'plum', name: 'Plum', bg: '#581C87', accent: '#E9D5FF', text: '#FAF5FF', muted: '#D8B4FE', surface: '#6B21A8' },
+  { slug: 'charcoal', name: 'Charcoal', bg: '#18181B', accent: '#F4F4F5', text: '#FAFAFA', muted: '#A1A1AA', surface: '#27272A' },
+  { slug: 'blush', name: 'Blush', bg: '#FFF1F2', accent: '#E11D48', text: '#881337', muted: '#9F1239', surface: '#FFFFFF' },
 ]
 
 function rect(o: {
@@ -737,6 +749,247 @@ function buildLayout(
       )
       break
     }
+    case 'grid-2': {
+      const gap = Math.round(m * 0.45)
+      const cellW = (w - m * 2 - gap) / 2
+      const cellH = h * 0.55
+      objects.push(
+        text({
+          text: theme.eyebrow.toUpperCase(),
+          left: m,
+          top: h * 0.08,
+          width: w - m * 2,
+          fontSize: fs(22),
+          fill: p.accent,
+          fontWeight: 700,
+          charSpacing: 80,
+        }),
+        text({
+          text: theme.headline,
+          left: m,
+          top: h * 0.14,
+          width: w - m * 2,
+          fontSize: fs(44),
+          fill: p.text,
+          fontFamily: FONT_DISPLAY,
+          fontWeight: 800,
+        }),
+        rect({ left: m, top: h * 0.32, width: cellW, height: cellH, fill: p.surface, rx: 18 }),
+        rect({ left: m + cellW + gap, top: h * 0.32, width: cellW, height: cellH, fill: p.accent, rx: 18 }),
+        text({
+          text: theme.sub,
+          left: m + 20,
+          top: h * 0.32 + cellH * 0.35,
+          width: cellW - 40,
+          fontSize: fs(26),
+          fill: p.text,
+          fontWeight: 600,
+          textAlign: 'center',
+        }),
+        text({
+          text: theme.cta,
+          left: m + cellW + gap + 20,
+          top: h * 0.32 + cellH * 0.4,
+          width: cellW - 40,
+          fontSize: fs(28),
+          fill: p.bg,
+          fontWeight: 800,
+          textAlign: 'center',
+        })
+      )
+      break
+    }
+    case 'ribbon': {
+      objects.push(
+        rect({ left: 0, top: h * 0.38, width: w, height: h * 0.24, fill: p.accent }),
+        text({
+          text: theme.eyebrow.toUpperCase(),
+          left: m,
+          top: h * 0.18,
+          width: w - m * 2,
+          fontSize: fs(22),
+          fill: p.muted,
+          fontWeight: 700,
+          charSpacing: 90,
+          textAlign: 'center',
+        }),
+        text({
+          text: theme.headline,
+          left: m,
+          top: h * 0.42,
+          width: w - m * 2,
+          fontSize: fs(52),
+          fill: p.bg,
+          fontFamily: FONT_DISPLAY,
+          fontWeight: 800,
+          textAlign: 'center',
+          lineHeight: 1.08,
+        }),
+        text({
+          text: `${theme.sub}  ·  ${theme.cta}`,
+          left: m,
+          top: h * 0.72,
+          width: w - m * 2,
+          fontSize: fs(24),
+          fill: p.muted,
+          textAlign: 'center',
+        })
+      )
+      break
+    }
+    case 'timeline': {
+      const steps = [theme.eyebrow, theme.headline, theme.cta]
+      const stepW = (w - m * 2) / 3
+      objects.push(
+        rect({ left: m, top: h * 0.48, width: w - m * 2, height: 4, fill: p.surface, rx: 2 }),
+        text({
+          text: theme.sub,
+          left: m,
+          top: h * 0.12,
+          width: w - m * 2,
+          fontSize: fs(28),
+          fill: p.muted,
+          textAlign: 'center',
+        })
+      )
+      for (let i = 0; i < 3; i++) {
+        const cx = m + stepW * i + stepW / 2
+        objects.push(
+          circle({ left: cx - fs(14), top: h * 0.48 - fs(12), radius: fs(14), fill: i === 1 ? p.accent : p.surface }),
+          text({
+            text: steps[i],
+            left: m + stepW * i + 8,
+            top: h * 0.58,
+            width: stepW - 16,
+            fontSize: fs(22),
+            fill: p.text,
+            fontFamily: i === 1 ? FONT_DISPLAY : FONT_BODY,
+            fontWeight: 700,
+            textAlign: 'center',
+            lineHeight: 1.2,
+          })
+        )
+      }
+      break
+    }
+    case 'spotlight': {
+      objects.push(
+        circle({ left: w * 0.5 - w * 0.22, top: h * 0.12, radius: w * 0.22, fill: p.surface, opacity: 0.9 }),
+        circle({ left: w * 0.5 - w * 0.14, top: h * 0.2, radius: w * 0.14, fill: p.accent, opacity: 0.55 }),
+        text({
+          text: theme.headline,
+          left: m,
+          top: h * 0.55,
+          width: w - m * 2,
+          fontSize: fs(52),
+          fill: p.text,
+          fontFamily: FONT_DISPLAY,
+          fontWeight: 800,
+          textAlign: 'center',
+          lineHeight: 1.1,
+        }),
+        text({
+          text: theme.sub,
+          left: m,
+          top: h * 0.72,
+          width: w - m * 2,
+          fontSize: fs(26),
+          fill: p.muted,
+          textAlign: 'center',
+        }),
+        text({
+          text: theme.cta,
+          left: m,
+          top: h * 0.84,
+          width: w - m * 2,
+          fontSize: fs(24),
+          fill: p.accent,
+          fontWeight: 700,
+          textAlign: 'center',
+        })
+      )
+      break
+    }
+    case 'asymmetric': {
+      objects.push(
+        rect({ left: 0, top: 0, width: w * 0.62, height: h * 0.7, fill: p.surface }),
+        rect({ left: w * 0.55, top: h * 0.45, width: w * 0.45, height: h * 0.55, fill: p.accent }),
+        text({
+          text: theme.eyebrow.toUpperCase(),
+          left: m,
+          top: h * 0.18,
+          width: w * 0.5,
+          fontSize: fs(20),
+          fill: p.accent,
+          fontWeight: 700,
+          charSpacing: 70,
+        }),
+        text({
+          text: theme.headline,
+          left: m,
+          top: h * 0.28,
+          width: w * 0.5,
+          fontSize: fs(48),
+          fill: p.text,
+          fontFamily: FONT_DISPLAY,
+          fontWeight: 800,
+          lineHeight: 1.08,
+        }),
+        text({
+          text: theme.sub,
+          left: w * 0.6,
+          top: h * 0.58,
+          width: w * 0.35,
+          fontSize: fs(24),
+          fill: p.bg,
+        }),
+        text({
+          text: theme.cta,
+          left: w * 0.6,
+          top: h * 0.78,
+          width: w * 0.35,
+          fontSize: fs(26),
+          fill: p.bg,
+          fontWeight: 800,
+        })
+      )
+      break
+    }
+    case 'footer-bar': {
+      objects.push(
+        text({
+          text: theme.headline,
+          left: m,
+          top: h * 0.22,
+          width: w - m * 2,
+          fontSize: fs(60),
+          fill: p.text,
+          fontFamily: FONT_DISPLAY,
+          fontWeight: 800,
+          lineHeight: 1.05,
+        }),
+        text({
+          text: theme.sub,
+          left: m,
+          top: h * 0.48,
+          width: w - m * 2,
+          fontSize: fs(28),
+          fill: p.muted,
+        }),
+        rect({ left: 0, top: h * 0.82, width: w, height: h * 0.18, fill: p.surface }),
+        text({
+          text: `${theme.eyebrow}  ·  ${theme.cta}`,
+          left: m,
+          top: h * 0.88,
+          width: w - m * 2,
+          fontSize: fs(24),
+          fill: p.accent,
+          fontWeight: 700,
+          textAlign: 'center',
+        })
+      )
+      break
+    }
   }
 
   return doc(p.bg, objects)
@@ -755,6 +1008,8 @@ const SOCIAL_THEMES: Theme[] = [
   { slug: 'festive', name: 'Festive greetings', eyebrow: 'Season’s greetings', headline: 'Happy celebrations', sub: 'Wishing you prosperity', cta: 'Share' },
   { slug: 'discount', name: 'Flash deal', eyebrow: 'Today only', headline: 'Flat 30% off', sub: 'Use code SAVE30', cta: 'Claim deal' },
   { slug: 'collab', name: 'Collab', eyebrow: 'Partnership', headline: 'Better together', sub: 'Co-branded collection', cta: 'Discover' },
+  { slug: 'unboxing', name: 'Unboxing', eyebrow: 'Unbox', headline: 'What’s inside', sub: 'First look at the kit', cta: 'Reveal' },
+  { slug: 'before-after', name: 'Before after', eyebrow: 'Glow-up', headline: 'Before → After', sub: 'Same brief, sharper result', cta: 'Compare' },
 ]
 
 const STORY_THEMES: Theme[] = [
@@ -768,6 +1023,8 @@ const STORY_THEMES: Theme[] = [
   { slug: 'quote-day', name: 'Quote of day', eyebrow: 'Motivation', headline: 'Start before you’re ready', sub: 'Daily design wisdom', cta: 'Share' },
   { slug: 'new', name: 'New in', eyebrow: 'Just in', headline: 'Fresh arrivals', sub: 'Link in bio', cta: 'Browse' },
   { slug: 'thanks', name: 'Thank you', eyebrow: 'Grateful', headline: '10K followers', sub: 'Thank you for the love', cta: 'Celebrate' },
+  { slug: 'streak', name: 'Streak', eyebrow: 'Day 7', headline: 'Keep the streak', sub: 'One tip every day', cta: 'Continue' },
+  { slug: 'link', name: 'Link highlight', eyebrow: 'Link in bio', headline: 'Everything here', sub: 'Shop · book · learn', cta: 'Tap link' },
 ]
 
 const DECK_THEMES: Theme[] = [
@@ -786,19 +1043,23 @@ const DECK_THEMES: Theme[] = [
   { slug: 'portfolio', name: 'Portfolio', eyebrow: 'Portfolio', headline: 'Selected work', sub: '2024–2026', cta: 'View' },
   { slug: 'marketing', name: 'Marketing plan', eyebrow: 'Go-to-market', headline: 'Channel mix', sub: 'Audience · message · KPI', cta: 'Plan' },
   { slug: 'profile', name: 'Company profile', eyebrow: 'About us', headline: 'Who we are', sub: 'Mission and vision', cta: 'Learn more' },
+  { slug: 'pricing', name: 'Pricing', eyebrow: 'Pricing', headline: 'Simple plans', sub: 'Start free · upgrade anytime', cta: 'Choose' },
+  { slug: 'competition', name: 'Competition', eyebrow: 'Landscape', headline: 'How we win', sub: 'Speed · suite · India-first', cta: 'Compare' },
 ]
 
 const PRINT_THEMES: Theme[] = [
   { slug: 'grand', name: 'Grand opening', eyebrow: 'Grand opening', headline: 'We’re open', sub: 'Visit this weekend', cta: 'Get directions' },
   { slug: 'sale-flyer', name: 'Sale flyer', eyebrow: 'Mega sale', headline: 'Everything 40% off', sub: 'In-store & online', cta: 'Visit us' },
   { slug: 'menu', name: 'Menu', eyebrow: 'Menu', headline: 'Seasonal plates', sub: 'GST inclusive', cta: 'Reserve' },
-  { slug: 'workshop', name: 'Workshop', eyebrow: 'Workshop', headline: 'Learn Canva-class design', sub: 'Saturday · 2 hours', cta: 'Register' },
+  { slug: 'workshop', name: 'Workshop', eyebrow: 'Workshop', headline: 'Learn Indobase Design', sub: 'Saturday · 2 hours', cta: 'Register' },
   { slug: 'realty', name: 'Real estate', eyebrow: 'For sale', headline: '3BHK ready', sub: 'Prime location', cta: 'Call now' },
   { slug: 'tuition', name: 'Tuition', eyebrow: 'Admissions open', headline: 'Batch starting', sub: 'Limited seats', cta: 'Enrol' },
   { slug: 'clinic', name: 'Clinic', eyebrow: 'Health camp', headline: 'Free check-up', sub: 'This Sunday', cta: 'Book slot' },
   { slug: 'cafe', name: 'Cafe promo', eyebrow: 'Cafe specials', headline: 'Brunch hours', sub: '10am – 2pm', cta: 'See menu' },
   { slug: 'price', name: 'Price list', eyebrow: 'Price list', headline: 'Transparent rates', sub: 'No hidden fees', cta: 'Enquire' },
   { slug: 'fest', name: 'Fest poster', eyebrow: 'Community fest', headline: 'Block party', sub: 'Music · food · fun', cta: 'Join' },
+  { slug: 'job-fair', name: 'Job fair', eyebrow: 'Hiring drive', headline: 'Walk-in interviews', sub: 'Bring your resume', cta: 'Attend' },
+  { slug: 'lost', name: 'Lost found', eyebrow: 'Notice', headline: 'Lost & found', sub: 'Contact reception', cta: 'Report' },
 ]
 
 const LOGO_THEMES: Theme[] = [
@@ -810,6 +1071,8 @@ const LOGO_THEMES: Theme[] = [
   { slug: 'food', name: 'Food brand', eyebrow: 'Kitchen', headline: 'Masala', sub: 'Cloud kitchen', cta: 'Brand' },
   { slug: 'fitness', name: 'Fitness', eyebrow: 'Studio', headline: 'Pulse', sub: 'Train daily', cta: 'Mark' },
   { slug: 'edu-logo', name: 'Education', eyebrow: 'Academy', headline: 'Scholar', sub: 'Learn better', cta: 'Logo' },
+  { slug: 'travel', name: 'Travel', eyebrow: 'Journeys', headline: 'Yatra', sub: 'Go further', cta: 'Mark' },
+  { slug: 'beauty', name: 'Beauty', eyebrow: 'Beauty', headline: 'Glow', sub: 'Skincare lab', cta: 'Brand' },
 ]
 
 const DOCS_THEMES: Theme[] = [
@@ -823,6 +1086,8 @@ const DOCS_THEMES: Theme[] = [
   { slug: 'agenda', name: 'Meeting agenda', eyebrow: 'Agenda', headline: 'Weekly sync', sub: 'Topics and owners', cta: 'Start' },
   { slug: 'brief', name: 'Creative brief', eyebrow: 'Brief', headline: 'Campaign brief', sub: 'Goals · audience · tone', cta: 'Share' },
   { slug: 'onepager', name: 'One-pager', eyebrow: 'Overview', headline: 'Product one-pager', sub: 'Features and pricing', cta: 'Download' },
+  { slug: 'nda', name: 'NDA cover', eyebrow: 'Confidential', headline: 'Non-disclosure', sub: 'Mutual agreement', cta: 'Sign' },
+  { slug: 'quote-doc', name: 'Quote', eyebrow: 'Quotation', headline: 'Project quote', sub: 'Valid for 14 days', cta: 'Accept' },
 ]
 
 const CARD_THEMES: Theme[] = [
@@ -834,6 +1099,8 @@ const CARD_THEMES: Theme[] = [
   { slug: 'qr-card', name: 'QR ready', eyebrow: 'Scan me', headline: 'Digital card', sub: 'Save contact', cta: 'QR' },
   { slug: 'bilingual', name: 'Bilingual', eyebrow: 'नमस्ते', headline: 'Your Name', sub: 'Founder · भारत', cta: 'Contact' },
   { slug: 'startup', name: 'Startup', eyebrow: 'Co-founder', headline: 'Building Indobase', sub: 'design.indobase.in', cta: 'Meet' },
+  { slug: 'doctor', name: 'Doctor card', eyebrow: 'Clinic', headline: 'Dr. Name', sub: 'MBBS · Appointments', cta: 'Book' },
+  { slug: 'realtor', name: 'Realtor', eyebrow: 'Realty', headline: 'Property advisor', sub: 'Buy · sell · rent', cta: 'Call' },
 ]
 
 const YT_THEMES: Theme[] = [
@@ -847,6 +1114,8 @@ const YT_THEMES: Theme[] = [
   { slug: 'challenge', name: 'Challenge', eyebrow: 'Challenge', headline: '7-day redesign', sub: 'Join along', cta: 'Join' },
   { slug: 'tips-yt', name: 'Tips', eyebrow: 'Quick tip', headline: 'One setting change', sub: 'Instant upgrade', cta: 'Try' },
   { slug: 'live', name: 'Live', eyebrow: 'Going live', headline: 'AMA session', sub: 'Ask anything', cta: 'Remind me' },
+  { slug: 'shorts', name: 'Shorts title', eyebrow: 'Shorts', headline: 'Wait for it…', sub: '15-second hook', cta: 'Watch' },
+  { slug: 'series', name: 'Series', eyebrow: 'Part 1', headline: 'Design series', sub: 'New every Monday', cta: 'Subscribe' },
 ]
 
 const LI_THEMES: Theme[] = [
@@ -858,6 +1127,8 @@ const LI_THEMES: Theme[] = [
   { slug: 'carousel', name: 'Carousel', eyebrow: 'Carousel', headline: 'Framework in 5 slides', sub: 'Save for later', cta: 'Swipe' },
   { slug: 'cover', name: 'Cover banner', eyebrow: 'Company', headline: 'Building for India', sub: 'Auth · data · design', cta: 'Follow' },
   { slug: 'quote-li', name: 'Quote post', eyebrow: 'Quote', headline: 'Clarity beats polish', sub: 'Weekly note', cta: 'Comment' },
+  { slug: 'launch-li', name: 'Product launch', eyebrow: 'Launch', headline: 'Now generally available', sub: 'What ships today', cta: 'Try' },
+  { slug: 'stats', name: 'Stats post', eyebrow: 'Data', headline: 'Numbers that matter', sub: 'Q2 snapshot', cta: 'See chart' },
 ]
 
 const ADS_THEMES: Theme[] = [
@@ -869,6 +1140,8 @@ const ADS_THEMES: Theme[] = [
   { slug: 'local', name: 'Local awareness', eyebrow: 'Near you', headline: 'Visit our store', sub: 'Open till 9pm', cta: 'Directions' },
   { slug: 'video-still', name: 'Video still', eyebrow: 'Watch', headline: 'See it in action', sub: '30-second demo', cta: 'Play' },
   { slug: 'offer-ad', name: 'Offer ad', eyebrow: 'Limited', headline: 'Weekend special', sub: 'Ends Sunday', cta: 'Claim' },
+  { slug: 'trial', name: 'Free trial', eyebrow: 'Try free', headline: '14 days free', sub: 'No card needed', cta: 'Start trial' },
+  { slug: 'webinar-ad', name: 'Webinar ad', eyebrow: 'Live', headline: 'Masterclass seats', sub: 'Limited spots', cta: 'Reserve' },
 ]
 
 const MARKETING_THEMES: Theme[] = [
@@ -882,6 +1155,8 @@ const MARKETING_THEMES: Theme[] = [
   { slug: 'referral', name: 'Referral', eyebrow: 'Refer', headline: 'Give ₹500, get ₹500', sub: 'Invite a founder', cta: 'Invite' },
   { slug: 'feature', name: 'Feature drop', eyebrow: 'New feature', headline: 'Brand kit sync', sub: 'One click apply', cta: 'Try it' },
   { slug: 'comparison', name: 'Comparison', eyebrow: 'Why us', headline: 'Less tool sprawl', sub: 'Design in the suite', cta: 'Compare' },
+  { slug: 'press', name: 'Press kit', eyebrow: 'Press', headline: 'Media assets', sub: 'Logos · screenshots', cta: 'Download' },
+  { slug: 'webinar-mkt', name: 'Webinar promo', eyebrow: 'Webinar', headline: 'Fill the room', sub: 'Promo pack ready', cta: 'Promote' },
 ]
 
 const EDU_THEMES: Theme[] = [
@@ -895,6 +1170,8 @@ const EDU_THEMES: Theme[] = [
   { slug: 'language', name: 'Language', eyebrow: 'Vocabulary', headline: 'Word of the day', sub: 'Use it thrice', cta: 'Learn' },
   { slug: 'math', name: 'Math', eyebrow: 'Problem set', headline: 'Fractions review', sub: 'Show your work', cta: 'Solve' },
   { slug: 'classroom', name: 'Classroom rules', eyebrow: 'Rules', headline: 'Respect & focus', sub: 'Our classroom norms', cta: 'Agree' },
+  { slug: 'lab', name: 'Lab safety', eyebrow: 'Lab', headline: 'Safety first', sub: 'Goggles on', cta: 'Read' },
+  { slug: 'project', name: 'Project brief', eyebrow: 'Project', headline: 'Term project', sub: 'Due next Friday', cta: 'Start' },
 ]
 
 const BRAND_THEMES: Theme[] = [
@@ -904,6 +1181,8 @@ const BRAND_THEMES: Theme[] = [
   { slug: 'social-kit', name: 'Social kit', eyebrow: 'Social', headline: 'Profile set', sub: 'Avatar · cover · posts', cta: 'Use' },
   { slug: 'voice', name: 'Voice', eyebrow: 'Tone of voice', headline: 'How we speak', sub: 'Friendly · clear · bold', cta: 'Write' },
   { slug: 'mock', name: 'Mockup board', eyebrow: 'Mockups', headline: 'In situ', sub: 'Card · phone · poster', cta: 'Present' },
+  { slug: 'iconography', name: 'Icons', eyebrow: 'Icons', headline: 'Icon system', sub: 'Line · filled · duo', cta: 'Browse' },
+  { slug: 'typography', name: 'Type ramp', eyebrow: 'Typography', headline: 'Type scale', sub: 'Display to caption', cta: 'Apply' },
 ]
 
 type CategorySpec = {
@@ -919,7 +1198,7 @@ const SPECS: CategorySpec[] = [
   {
     category: 'social',
     sizes: [{ w: 1080, h: 1080, label: 'IG' }],
-    layouts: ['hero', 'split-left', 'split-right', 'circles', 'framed', 'photo-slot', 'bold-type', 'corner', 'stack', 'banner-top'],
+    layouts: ['hero', 'split-left', 'split-right', 'circles', 'framed', 'photo-slot', 'bold-type', 'corner', 'stack', 'banner-top', 'grid-2', 'ribbon', 'spotlight'],
     themes: SOCIAL_THEMES,
     palettePasses: 1,
   },
@@ -929,77 +1208,80 @@ const SPECS: CategorySpec[] = [
       { w: 1080, h: 1080, label: 'Feed' },
       { w: 1080, h: 1350, label: 'Portrait' },
     ],
-    layouts: ['hero', 'photo-slot', 'framed', 'minimal', 'circles', 'bold-type'],
-    themes: SOCIAL_THEMES.slice(0, 8),
+    layouts: ['hero', 'photo-slot', 'framed', 'minimal', 'circles', 'bold-type', 'grid-2', 'ribbon', 'asymmetric'],
+    themes: SOCIAL_THEMES.slice(0, 10),
     palettePasses: 1,
   },
   {
     category: 'story',
     sizes: [{ w: 1080, h: 1920, label: 'Story' }],
-    layouts: ['hero', 'split-left', 'circles', 'bold-type', 'banner-bottom', 'stack', 'photo-slot', 'diagonal'],
+    layouts: ['hero', 'split-left', 'circles', 'bold-type', 'banner-bottom', 'stack', 'photo-slot', 'diagonal', 'spotlight', 'footer-bar', 'ribbon'],
     themes: STORY_THEMES,
     palettePasses: 1,
   },
   {
     category: 'presentation',
     sizes: [{ w: 1920, h: 1080, label: '16:9' }],
-    layouts: ['hero', 'split-left', 'split-right', 'metrics', 'quote', 'banner-top', 'framed', 'corner', 'minimal', 'stack'],
+    layouts: ['hero', 'split-left', 'split-right', 'metrics', 'quote', 'banner-top', 'framed', 'corner', 'minimal', 'stack', 'timeline', 'grid-2', 'asymmetric'],
     themes: DECK_THEMES,
     palettePasses: 1,
   },
   {
     category: 'poster',
     sizes: [{ w: 1080, h: 1350, label: 'Poster' }],
-    layouts: ['hero', 'bold-type', 'diagonal', 'banner-bottom', 'circles', 'framed', 'photo-slot', 'corner'],
+    layouts: ['hero', 'bold-type', 'diagonal', 'banner-bottom', 'circles', 'framed', 'photo-slot', 'corner', 'spotlight', 'ribbon', 'footer-bar'],
     themes: PRINT_THEMES,
     palettePasses: 1,
   },
   {
     category: 'flyer',
     sizes: [{ w: 1240, h: 1754, label: 'A4' }],
-    layouts: ['banner-top', 'split-left', 'photo-slot', 'framed', 'stack', 'corner'],
-    themes: PRINT_THEMES.slice(0, 8),
+    layouts: ['banner-top', 'split-left', 'photo-slot', 'framed', 'stack', 'corner', 'grid-2', 'footer-bar', 'asymmetric'],
+    themes: PRINT_THEMES.slice(0, 10),
     palettePasses: 1,
   },
   {
     category: 'print',
-    sizes: [{ w: 1080, h: 1350, label: 'Print' }],
-    layouts: ['hero', 'banner-bottom', 'metrics', 'framed'],
-    themes: PRINT_THEMES.slice(0, 6),
+    sizes: [
+      { w: 1080, h: 1350, label: 'Print' },
+      { w: 1240, h: 1754, label: 'A4' },
+    ],
+    layouts: ['hero', 'banner-bottom', 'metrics', 'framed', 'ribbon', 'timeline', 'footer-bar'],
+    themes: PRINT_THEMES.slice(0, 8),
     palettePasses: 1,
   },
   {
     category: 'logo',
     sizes: [{ w: 1080, h: 1080, label: 'Logo' }],
-    layouts: ['minimal', 'framed', 'circles', 'bold-type', 'corner', 'hero'],
+    layouts: ['minimal', 'framed', 'circles', 'bold-type', 'corner', 'hero', 'spotlight', 'ribbon'],
     themes: LOGO_THEMES,
     palettePasses: 2,
   },
   {
     category: 'docs',
     sizes: [{ w: 1275, h: 1650, label: 'Letter' }],
-    layouts: ['banner-top', 'corner', 'minimal', 'framed', 'split-left', 'stack'],
+    layouts: ['banner-top', 'corner', 'minimal', 'framed', 'split-left', 'stack', 'timeline', 'footer-bar', 'grid-2'],
     themes: DOCS_THEMES,
     palettePasses: 1,
   },
   {
     category: 'resume',
     sizes: [{ w: 1240, h: 1754, label: 'A4' }],
-    layouts: ['banner-top', 'split-left', 'corner', 'minimal', 'framed'],
-    themes: DOCS_THEMES.slice(0, 6),
+    layouts: ['banner-top', 'split-left', 'corner', 'minimal', 'framed', 'timeline', 'footer-bar'],
+    themes: DOCS_THEMES.slice(0, 8),
     palettePasses: 1,
   },
   {
     category: 'business-card',
     sizes: [{ w: 1050, h: 600, label: 'Card' }],
-    layouts: ['corner', 'split-left', 'minimal', 'banner-top', 'framed'],
+    layouts: ['corner', 'split-left', 'minimal', 'banner-top', 'framed', 'asymmetric', 'footer-bar', 'ribbon'],
     themes: CARD_THEMES,
     palettePasses: 1,
   },
   {
     category: 'youtube',
     sizes: [{ w: 1280, h: 720, label: 'Thumb' }],
-    layouts: ['split-left', 'split-right', 'bold-type', 'hero', 'diagonal', 'photo-slot'],
+    layouts: ['split-left', 'split-right', 'bold-type', 'hero', 'diagonal', 'photo-slot', 'spotlight', 'grid-2', 'asymmetric'],
     themes: YT_THEMES,
     palettePasses: 1,
   },
@@ -1009,7 +1291,7 @@ const SPECS: CategorySpec[] = [
       { w: 1080, h: 1080, label: 'Post' },
       { w: 1584, h: 396, label: 'Cover' },
     ],
-    layouts: ['banner-top', 'split-left', 'quote', 'metrics', 'hero', 'minimal'],
+    layouts: ['banner-top', 'split-left', 'quote', 'metrics', 'hero', 'minimal', 'timeline', 'grid-2', 'footer-bar'],
     themes: LI_THEMES,
     palettePasses: 1,
   },
@@ -1019,14 +1301,14 @@ const SPECS: CategorySpec[] = [
       { w: 1080, h: 1080, label: 'Square' },
       { w: 1200, h: 628, label: 'Landscape' },
     ],
-    layouts: ['hero', 'photo-slot', 'split-right', 'bold-type', 'banner-bottom', 'framed'],
+    layouts: ['hero', 'photo-slot', 'split-right', 'bold-type', 'banner-bottom', 'framed', 'spotlight', 'ribbon', 'asymmetric'],
     themes: ADS_THEMES,
     palettePasses: 1,
   },
   {
     category: 'marketing',
     sizes: [{ w: 1080, h: 1080, label: 'Square' }],
-    layouts: ['hero', 'metrics', 'stack', 'split-left', 'circles', 'photo-slot', 'framed', 'banner-top'],
+    layouts: ['hero', 'metrics', 'stack', 'split-left', 'circles', 'photo-slot', 'framed', 'banner-top', 'timeline', 'grid-2'],
     themes: MARKETING_THEMES,
     palettePasses: 1,
   },
@@ -1036,20 +1318,20 @@ const SPECS: CategorySpec[] = [
       { w: 1920, h: 1080, label: 'Slide' },
       { w: 1080, h: 1350, label: 'Poster' },
     ],
-    layouts: ['banner-top', 'split-left', 'framed', 'stack', 'quote', 'metrics'],
+    layouts: ['banner-top', 'split-left', 'framed', 'stack', 'quote', 'metrics', 'timeline', 'grid-2', 'footer-bar'],
     themes: EDU_THEMES,
     palettePasses: 1,
   },
   {
     category: 'brand',
     sizes: [{ w: 1080, h: 1080, label: 'Square' }],
-    layouts: ['framed', 'metrics', 'minimal', 'stack', 'photo-slot'],
+    layouts: ['framed', 'metrics', 'minimal', 'stack', 'photo-slot', 'grid-2', 'timeline', 'spotlight'],
     themes: BRAND_THEMES,
     palettePasses: 1,
   },
 ]
 
-/** Generate the large procedural catalog (~1500 with builtins/deck/colorways). */
+/** Generate the large procedural catalog (~2300+; plus builtins/decks → ~2500). */
 export function generateCatalogTemplates(startSort = 1000): SeedTemplate[] {
   const out: SeedTemplate[] = []
   let sort = startSort
