@@ -693,7 +693,7 @@ export async function repairUnhealthyTenantDataPlaneStacks({
         ${projectRef ? 'and p.ref = $1' : ''}
       order by
         case when (p.data_plane_last_provision_result->>'ok') = 'false' then 0 else 1 end,
-        p.updated_at desc nulls last
+        coalesce(p.data_plane_last_provisioned_at, p.inserted_at) desc nulls last
       limit $${projectRef ? 2 : 1}
     `,
     parameters: projectRef ? [projectRef, Math.min(Math.max(limit, 1), 100)] : [Math.min(Math.max(limit, 1), 100)],
