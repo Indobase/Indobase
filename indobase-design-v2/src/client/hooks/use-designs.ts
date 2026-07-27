@@ -68,20 +68,29 @@ export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
     }
   }, [getCanvasJSONForPage, pages]);
 
-  const createDesign = useCallback(async (): Promise<string | undefined> => {
-    try {
-      const d = await api<Design>("POST", "/api/designs", {
-        name: "Untitled Design",
-        canvas_json: "{}",
-      });
-      setDesigns((prev) => [d, ...prev]);
-      setActiveDesign(d);
-      activeIdRef.current = d.id;
-      return d.id;
-    } catch (e) {
-      console.error("Failed to create design:", e);
-    }
-  }, []);
+  const createDesign = useCallback(
+    async (opts?: {
+      width?: number;
+      height?: number;
+      name?: string;
+    }): Promise<string | undefined> => {
+      try {
+        const d = await api<Design>("POST", "/api/designs", {
+          name: opts?.name?.trim() || "Untitled Design",
+          canvas_json: "{}",
+          width: opts?.width || 1080,
+          height: opts?.height || 1080,
+        });
+        setDesigns((prev) => [d, ...prev]);
+        setActiveDesign(d);
+        activeIdRef.current = d.id;
+        return d.id;
+      } catch (e) {
+        console.error("Failed to create design:", e);
+      }
+    },
+    []
+  );
 
   const createFromTemplate = useCallback(async (template: Template): Promise<string | undefined> => {
     try {

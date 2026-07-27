@@ -1,10 +1,11 @@
 /**
- * Limit concurrent Fabric StaticCanvas thumbnail renders so home with 100+
- * templates doesn't freeze the main thread.
+ * Limit concurrent Fabric StaticCanvas thumbnail renders so home with 1500+
+ * templates doesn't freeze the main thread. Pair with TemplateGrid windowing
+ * and TemplateCard IntersectionObserver lazy thumbs.
  */
 let active = 0
 const queue: Array<() => void> = []
-const MAX = 3
+const MAX = 2
 
 function pump() {
   while (active < MAX && queue.length > 0) {

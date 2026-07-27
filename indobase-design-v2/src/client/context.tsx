@@ -83,7 +83,11 @@ export interface EditorContextValue {
   // Designs
   designs: Design[];
   activeDesign: Design | null;
-  createDesign: () => Promise<string | undefined>;
+  createDesign: (opts?: {
+    width?: number;
+    height?: number;
+    name?: string;
+  }) => Promise<string | undefined>;
   createFromTemplate: (template: Template) => Promise<string | undefined>;
   loadDesign: (id: string) => Promise<void>;
   saveDesign: () => Promise<void>;

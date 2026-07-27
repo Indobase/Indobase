@@ -19,7 +19,6 @@ import {
   ExternalLink,
 } from "lucide-preact";
 import { useEditor } from "../context";
-import { TemplateCard } from "./template-card";
 import { DesignList } from "./design-list";
 import { LayersPanel } from "./layers-panel";
 import { BrandKitPanel } from "./brand-kit-panel";
@@ -27,6 +26,8 @@ import { AiDraftPanel } from "./ai-draft-panel";
 import { DataMergePanel } from "./data-merge-panel";
 import { ParityToolsPanel } from "./parity-tools-panel";
 import { showToast } from "./toast";
+import { labelForCategory, sortCategories } from "../utils/categories";
+import { TemplateGrid } from "./template-grid";
 
 type Section =
   | "templates"
@@ -41,18 +42,19 @@ type Section =
   | "tools"
   | "designs";
 
+/** Canva-like rail order: create content first, then brand/AI, then management. */
 const SECTIONS: { key: Section; icon: typeof LayoutGrid; label: string }[] = [
   { key: "templates", icon: Sparkles, label: "Templates" },
-  { key: "tools", icon: Wrench, label: "Tools" },
-  { key: "brand", icon: Paintbrush, label: "Brand" },
-  { key: "ai", icon: Bot, label: "AI" },
-  { key: "merge", icon: Database, label: "Data" },
   { key: "shapes", icon: Square, label: "Elements" },
   { key: "text", icon: Type, label: "Text" },
-  { key: "images", icon: Image, label: "Photos" },
-  { key: "layers", icon: Layers, label: "Layers" },
+  { key: "images", icon: Image, label: "Uploads" },
+  { key: "brand", icon: Paintbrush, label: "Brand" },
   { key: "background", icon: Palette, label: "Bg" },
-  { key: "designs", icon: LayoutGrid, label: "Designs" },
+  { key: "layers", icon: Layers, label: "Layers" },
+  { key: "tools", icon: Wrench, label: "Tools" },
+  { key: "ai", icon: Bot, label: "AI" },
+  { key: "merge", icon: Database, label: "Data" },
+  { key: "designs", icon: LayoutGrid, label: "Projects" },
 ];
 
 const SECTION_TITLES: Record<Section, string> = {
@@ -66,17 +68,7 @@ const SECTION_TITLES: Record<Section, string> = {
   ai: "AI draft",
   merge: "Data merge",
   tools: "Design tools",
-  designs: "Designs",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  social: "Social",
-  story: "Stories & Reels",
-  ads: "Ads",
-  print: "Print",
-  presentation: "Presentation",
-  brand: "Brand",
-  docs: "Docs",
+  designs: "Projects",
 };
 
 const GRADIENT_PRESETS = [
@@ -181,12 +173,16 @@ export function LeftSidebar() {
   );
 
   const isOpen = activeSection !== null;
-  const categories = Array.from(new Set(templates.map((t) => t.category)));
+  const categories = sortCategories(Array.from(new Set(templates.map((t) => t.category))));
   const filteredTemplates = templates.filter((t) => {
     if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
     if (!templateQuery.trim()) return true;
     const q = templateQuery.trim().toLowerCase();
-    return t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q) ||
+      labelForCategory(t.category).toLowerCase().includes(q)
+    );
   });
 
   const searchStock = useCallback(async (q: string, page = 1) => {
@@ -330,7 +326,7 @@ export function LeftSidebar() {
                           }`}
                           onClick={() => setCategoryFilter(c)}
                         >
-                          {CATEGORY_LABELS[c] || c}
+                          {labelForCategory(c)}
                         </button>
                       ))}
                     </div>
@@ -346,19 +342,16 @@ export function LeftSidebar() {
                       Free Canva/PPT packs on SlidesCarnival
                       <ExternalLink size={10} />
                     </a>
-                    <div class="grid grid-cols-2 gap-2">
-                      {filteredTemplates.map((t) => (
-                        <TemplateCard
-                          key={t.id}
-                          template={t}
-                          onClick={() => {
-                            loadTemplate(t);
-                            scheduleSave?.();
-                            showToast(`Applied ${t.name}`, "success");
-                          }}
-                        />
-                      ))}
-                    </div>
+                    <TemplateGrid
+                      templates={filteredTemplates}
+                      pageSize={24}
+                      columnsClass="grid grid-cols-2 gap-2"
+                      onSelect={(t) => {
+                        loadTemplate(t);
+                        scheduleSave?.();
+                        showToast(`Applied ${t.name}`, "success");
+                      }}
+                    />
                     {filteredTemplates.length === 0 && (
                       <p class="text-[11px] text-zinc-400">No templates match.</p>
                     )}

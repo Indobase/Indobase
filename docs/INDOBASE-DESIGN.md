@@ -20,7 +20,7 @@ to Indobase Video, Social, Email, and Builder.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
-| Templates (volume + categories + search) | **Yes** | Seed + colorways + SlidesCarnival-category deck pack |
+| Templates (volume + categories + search) | **Yes** | ~1500 seeded (procedural catalog + decks + colorways); Canva-like home + rail |
 | Canvas size presets (social/print) | **Yes** | IG/FB/LI/TikTok/YT/WA/A4/Letter/card/poster |
 | Brand kit | **Yes** | Persist + apply colors/fonts/logo |
 | AI draft | **Yes** | Studio OpenRouter + `design_ai_used` quota |
@@ -65,7 +65,7 @@ to Indobase Video, Social, Email, and Builder.
 | Brand kit | **Brand** |
 | AI draft | **AI** |
 | Data merge | **Data** |
-| Templates | Home or **Templates** (search + categories) |
+| Templates | Home “Create” (categories, search, size presets, featured rows) or editor **Templates** |
 | Export | Toolbar → PNG / transparent PNG / JPG / SVG / PDF |
 
 ### Data merge / bulk CSV
@@ -90,6 +90,17 @@ re-implement those products.
 - Enterprise Brand Hub enforcement / SCIM
 - Classroom / live presentations
 - Canva-scale template marketplace
+
+### Template library (~1500)
+
+| Source | Role |
+|--------|------|
+| `templates.ts` | Hand-authored India-first seeds |
+| `templates-deck.ts` | SlidesCarnival-category presentation decks (original Fabric, not Canva imports) |
+| `templates-extra.ts` | Colorway variants + blank size starters |
+| `templates-catalog.ts` | Procedural layouts × themes × palettes across Canva-like categories |
+
+Seed upserts on boot (`seed.ts`, batched). Categories include presentations, social, Instagram, stories, YouTube, LinkedIn, ads, marketing, posters, flyers, logos, business cards, docs/resumes, education, brand.
 
 ### Stock + presentation sources
 

@@ -22,7 +22,11 @@ export function DesignList() {
     <div class="flex flex-col gap-2">
       <button
         class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border-none cursor-pointer bg-accent text-zinc-900 hover:bg-accent-hover transition-all"
-        onClick={createDesign}
+        onClick={() => {
+          void createDesign().then((id) => {
+            if (id) navigate(`/design/${id}`);
+          });
+        }}
       >
         <Plus size={14} />
         New Design
