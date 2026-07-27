@@ -19,7 +19,7 @@ import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
+import { getAuthCookieOptions } from '@gitroom/helpers/utils/auth-cookie';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -167,17 +167,7 @@ export class UsersController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    response.cookie('impersonate', id, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-    });
+    response.cookie('impersonate', id, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
     if (process.env.NOT_SECURED) {
       response.header('impersonate', id);
@@ -309,17 +299,7 @@ export class UsersController {
     @Body('id') id: string,
     @Res({ passthrough: true }) response: Response
   ) {
-    response.cookie('showorg', id, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-    });
+    response.cookie('showorg', id, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
     if (process.env.NOT_SECURED) {
       response.header('showorg', id);
@@ -331,44 +311,11 @@ export class UsersController {
   @Post('/logout')
   logout(@Res({ passthrough: true }) response: Response) {
     response.header('logout', 'true');
-    response.cookie('auth', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
+    response.cookie('auth', '', { ...getAuthCookieOptions({ maxAge: -1, expires: new Date(0) }) });
 
-    response.cookie('showorg', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
+    response.cookie('showorg', '', { ...getAuthCookieOptions({ maxAge: -1, expires: new Date(0) }) });
 
-    response.cookie('impersonate', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
+    response.cookie('impersonate', '', { ...getAuthCookieOptions({ maxAge: -1, expires: new Date(0) }) });
 
     response.status(200).send();
   }
@@ -395,17 +342,7 @@ export class UsersController {
       user
     );
     if (!req.cookies.track) {
-      res.cookie('track', uniqueId, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
+      res.cookie('track', uniqueId, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
     }
 
     res.status(200).json({

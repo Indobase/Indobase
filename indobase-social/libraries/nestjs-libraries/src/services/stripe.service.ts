@@ -12,7 +12,25 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
+function getStripe(): Stripe | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key || key === 'sk_nothing') {
+    return null;
+  }
+  return new Stripe(key);
+}
+
+/** Lazy Stripe client — never calls Stripe with the sk_nothing placeholder. */
+const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, prop, receiver) {
+    const client = getStripe();
+    if (!client) {
+      throw new Error('Stripe is not configured');
+    }
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+});
 
 @Injectable()
 export class StripeService {
@@ -213,6 +231,9 @@ export class StripeService {
   }
 
   async getPackages() {
+    if (!getStripe()) {
+      return { monthly: [], yearly: [] };
+    }
     const products = await stripe.prices.list({
       active: true,
       expand: ['data.tiers', 'data.product'],

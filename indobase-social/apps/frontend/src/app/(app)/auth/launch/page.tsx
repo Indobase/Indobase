@@ -29,12 +29,15 @@ export default function LaunchPage() {
       'https://studio.indobase.in';
 
     if (!token) {
-      const returnPath = projectRef
-        ? `/project/${encodeURIComponent(projectRef)}/marketing`
-        : '/';
-      window.location.replace(
-        `${studio}/sign-in?returnTo=${encodeURIComponent(returnPath)}`
-      );
+      if (projectRef) {
+        const returnPath = `/project/${encodeURIComponent(projectRef)}/marketing`;
+        window.location.replace(
+          `${studio}/sign-in?returnTo=${encodeURIComponent(returnPath)}`
+        );
+      } else {
+        // No handoff token and no project — show Social SSO landing (not Studio /).
+        window.location.replace('/auth');
+      }
       return;
     }
 
