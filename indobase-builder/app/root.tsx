@@ -96,12 +96,9 @@ export default function App() {
         logStore.logError('Failed to initialize debug logging', error);
       });
 
-    const startWorkspace = () => warmWebContainer();
-    const idleId =
-      typeof requestIdleCallback !== 'undefined'
-        ? requestIdleCallback(startWorkspace, { timeout: 2500 })
-        : undefined;
-    const timerId = idleId === undefined ? window.setTimeout(startWorkspace, 800) : undefined;
+    // Boot WebContainer immediately — delayed idle callbacks let chat/planner start
+    // before the workspace is warming, which makes slow boots look like extension blocks.
+    warmWebContainer();
 
     void (async () => {
       await restoreBuilderSessionOnLoad();
@@ -119,12 +116,6 @@ export default function App() {
 
     return () => {
       stopSessionKeeper();
-      if (idleId !== undefined) {
-        cancelIdleCallback(idleId);
-      }
-      if (timerId !== undefined) {
-        window.clearTimeout(timerId);
-      }
     };
   }, []);
 

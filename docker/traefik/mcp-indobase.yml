@@ -1,8 +1,8 @@
 # Traefik dynamic config: mcp.indobase.in → Studio /api/mcp
 # Copy to VPS: /etc/dokploy/traefik/dynamic/mcp-indobase.yml
 #
-# MCP clients POST to the host root (e.g. https://mcp.indobase.in?features=...).
-# replacePath forwards every request path to Studio's Next.js MCP handler.
+# Backend URL must match the live Studio Swarm service name on dokploy-network.
+# indobase-studio-attach-compose-network.sh keeps this aligned when the timer runs.
 
 http:
   middlewares:

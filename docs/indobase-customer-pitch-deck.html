@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indobase — Customer Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d12;
+    --grid:rgba(255,255,255,.035);
+    --chrome-edge:#252b34;
+    --paper:#fdfdfb;
+    --ink:#111;
+    --ink-soft:#3a3a3a;
+    --ink-faint:#8a8a8a;
+    --hair:#e2e2df;
+    --term:#0a0a0a;
+    --term-text:#7d8b7e;
+    --annot:#e9edf3;
+    --annot-soft:#8b94a3;
+    --brand:#3B8FD6;
+    --slide-content-max:900px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px,transparent 1px) 0 0/44px 44px,
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/44px 44px,
+      radial-gradient(120% 120% at 50% -10%,#12171f 0%,var(--bg) 55%);
+    color:var(--annot);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  .stage{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px 16px 12px;
+    position:relative;
+  }
+  .deck{width:min(760px,94vw);position:relative}
+
+  .nav{
+    position:absolute;top:190px;z-index:30;
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    color:#cdd4de;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:.2s;backdrop-filter:blur(4px);
+  }
+  .nav:hover{background:rgba(255,255,255,.14)}
+  .nav.prev{left:-52px}
+  .nav.next{right:-52px}
+  .nav svg{width:15px;height:15px}
+  @media(max-width:900px){.nav.prev{left:6px}.nav.next{right:6px}.nav{top:auto;bottom:calc(50% - 40px)}}
+
+  .window{
+    position:relative;
+    background:linear-gradient(180deg,#20262f,#171b22);
+    border:1px solid var(--chrome-edge);
+    border-radius:14px;
+    box-shadow:0 40px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.02) inset;
+    overflow:hidden;
+  }
+  .window::before,.window::after{
+    content:"";position:absolute;inset:0;border-radius:14px;z-index:-1;
+    background:#1a1f27;border:1px solid var(--chrome-edge);
+  }
+  .window::before{transform:translate(14px,10px) scale(.985);opacity:.7}
+  .window::after{transform:translate(26px,18px) scale(.97);opacity:.4}
+
+  .titlebar{
+    height:40px;display:flex;align-items:center;padding:0 16px;
+    color:#aeb6c1;font-size:12.5px;font-weight:500;letter-spacing:.02em;
+    border-bottom:1px solid rgba(255,255,255,.05);
+  }
+  .dots{margin-left:auto;display:flex;gap:7px}
+  .dots i{width:9px;height:9px;border-radius:50%;background:#3a4150;display:block}
+
+  .canvas{
+    position:relative;background:var(--paper);color:var(--ink);
+    aspect-ratio:16/10;overflow:hidden;
+    display:flex;flex-direction:column;
+    font-family:'Tinos',serif;
+  }
+  .term{
+    background:var(--term);color:var(--term-text);
+    font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.06em;
+    padding:5px 12px;white-space:nowrap;overflow:hidden;
+    border-radius:6px;margin:9px 10px 0;
+  }
+  .slidebody{
+    flex:1;position:relative;display:flex;flex-direction:column;
+    align-items:flex-start;justify-content:center;
+    text-align:left;
+    padding:48px 56px;
+    width:100%;min-height:0;box-sizing:border-box;
+  }
+  .slidebody--center{align-items:center;text-align:center}
+  .slidebody--center .head,
+  .slidebody--center .subhead,
+  .slidebody--center .predict,
+  .slidebody--center .s1-sub,
+  .slidebody--center .s1-tag,
+  .slidebody--center .cta-wrap,
+  .slidebody--center .cta-note{margin-left:auto;margin-right:auto}
+  .slidebody--center .head,
+  .slidebody--center .subhead{text-align:center}
+  .slidebody > *:not(.mascot){width:100%;max-width:var(--slide-content-max);flex-shrink:0}
+  .slide-inner{width:100%;max-width:var(--slide-content-max);display:flex;flex-direction:column;align-items:stretch}
+
+  .mascot{position:absolute;right:18px;bottom:14px;opacity:.85;z-index:2;pointer-events:none}
+  .mascot svg{width:34px;height:34px;display:block}
+
+  .s1-title{font-size:clamp(28px,6vw,52px);font-weight:700}
+  .s1-sub{font-size:clamp(11px,2.2vw,17px);color:var(--ink-soft);margin-top:8px;max-width:28ch;line-height:1.35}
+  .s1-tag{font-size:clamp(9px,1.8vw,13px);color:var(--ink-faint);margin-top:6px;letter-spacing:.02em;max-width:36ch}
+  .predict{font-size:clamp(14px,2.8vw,23px);font-weight:400;line-height:1.4;max-width:30ch}
+  .predict .sub-prob{font-size:clamp(10px,2vw,15px);color:var(--ink-soft);margin-top:10px;line-height:1.4;max-width:36ch}
+  .u{border-bottom:1px solid var(--ink);padding-bottom:1px}
+  .head{
+    font-size:clamp(15px,3vw,26px);font-weight:700;
+    margin-bottom:10px;text-align:left;
+  }
+  .subhead{
+    font-size:clamp(9px,1.8vw,13px);color:var(--ink-soft);letter-spacing:.01em;
+    margin-top:-4px;margin-bottom:12px;
+    line-height:1.35;text-align:left;
+  }
+
+  .hero-grid{display:grid;grid-template-columns:repeat(3,1fr);width:100%;
+    border-top:1px solid var(--hair);border-left:1px solid var(--hair);margin-bottom:6px}
+  .hero-grid.two-col{align-self:flex-start}
+  .hero-grid .cell{border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:11px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .hero-grid .cell.hero{background:rgba(59,143,214,.07)}
+  .hero-grid .gl{font-size:14px}
+  .hero-grid .cell span{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-soft);font-family:'Tinos',serif}
+  .hero-grid .cell.hero span{color:var(--ink);font-weight:700}
+  .hero-grid.four-col{grid-template-columns:repeat(4,1fr)}
+  .hero-grid.two-col{grid-template-columns:repeat(2,1fr);max-width:380px;margin-bottom:4px}
+  .hero-grid .cell.native{background:rgba(59,143,214,.12)}
+  .hero-grid .cell.native span{color:var(--ink);font-weight:700}
+  .hero-grid .cell .native-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(5px,1vw,6.5px);
+    color:var(--brand);letter-spacing:.04em;text-transform:uppercase;
+  }
+  .product-layers{width:100%;max-width:var(--slide-content-max);display:flex;flex-direction:column;align-items:stretch;gap:2px}
+  .layer-label{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(6px,1.2vw,7.5px);
+    color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;
+    text-align:left;width:100%;margin-bottom:3px;
+  }
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);width:100%;
+    border-top:1px solid var(--hair);border-left:1px solid var(--hair)}
+  .grid .cell{border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:9px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .grid .gl{font-size:13px}
+  .grid .cell span{font-size:clamp(7px,1.4vw,9.5px);color:var(--ink-soft);font-family:'Tinos',serif}
+  .grid.growth .cell{background:rgba(0,0,0,.02)}
+
+  .pill-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;max-width:var(--slide-content-max);width:100%;margin-top:4px}
+  .pill{
+    border:1px solid var(--hair);padding:6px 10px;font-size:clamp(8px,1.6vw,11px);
+    text-align:left;line-height:1.3;color:var(--ink-soft);
+  }
+  .pill strong{color:var(--ink);display:block;font-size:clamp(9px,1.8vw,12px);margin-bottom:2px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);width:100%;gap:16px;margin-top:8px}
+  .stat{border:1px solid var(--hair);padding:10px 8px;text-align:center}
+  .stat .num{font-size:clamp(13px,2.6vw,22px);font-weight:700;line-height:1.1}
+  .stat .lbl{font-size:clamp(7px,1.4vw,9px);color:var(--ink-soft);margin-top:4px;line-height:1.3}
+  .stat .src{font-family:'IBM Plex Mono',monospace;font-size:clamp(5.5px,1.1vw,7px);color:var(--ink-faint);margin-top:3px}
+
+  .comp-table{width:100%;max-width:var(--slide-content-max);margin-top:2px;text-align:left;font-size:clamp(7px,1.4vw,9.5px)}
+  .comp-table .row{
+    display:grid;grid-template-columns:1.1fr 1fr 1fr 1.15fr;gap:8px;
+    padding:5px 0;border-bottom:1px solid var(--hair);align-items:center;
+  }
+  .comp-table .row.head-row{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(5.5px,1.1vw,7px);
+    color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;
+    border-bottom:1.5px solid var(--ink);padding-bottom:4px;align-items:end;
+  }
+  .comp-table .row.us{background:rgba(59,143,214,.08);padding:5px 6px;border-radius:2px;font-weight:700}
+  .comp-table .yes{color:var(--ink)}
+  .comp-table .no{color:var(--ink-faint)}
+  .comp-table .partial{color:var(--ink-soft)}
+
+  .pricing{width:100%;max-width:var(--slide-content-max);margin-top:4px}
+  .pricing .row{
+    display:grid;grid-template-columns:minmax(72px,.9fr) minmax(64px,.65fr) 1.45fr;
+    align-items:baseline;gap:10px;padding:6px 0;
+    border-bottom:1px solid var(--hair);font-size:clamp(8px,1.6vw,11px);text-align:left;
+  }
+  .pricing .row:last-child{border-bottom:none}
+  .pricing .row.head-row{
+    font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--ink-faint);
+    letter-spacing:.06em;text-transform:uppercase;border-bottom:1.5px solid var(--ink);
+    padding-bottom:5px;margin-bottom:2px;align-items:end;
+  }
+  .pricing .plan{font-weight:700;font-size:clamp(9px,1.8vw,13px)}
+  .pricing .price{font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:clamp(8px,1.6vw,11px);white-space:nowrap}
+  .pricing .feat{color:var(--ink-soft);font-size:clamp(7.5px,1.5vw,10px);line-height:1.3}
+  .pricing .highlight{background:rgba(59,143,214,.1);padding:6px 8px;border-radius:3px;border:1.5px solid rgba(59,143,214,.35)}
+  .pricing .dim{opacity:.55;font-size:clamp(7px,1.4vw,9px)}
+  .pricing .badge{
+    font-family:'IBM Plex Mono',monospace;font-size:6px;background:var(--brand);color:#fff;
+    padding:1px 4px;border-radius:2px;margin-left:4px;vertical-align:middle;
+  }
+
+  .trac-head{font-size:clamp(13px,2.6vw,22px);font-weight:700}
+  .trac-sub{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-faint);letter-spacing:.04em;margin-top:-2px;margin-bottom:8px}
+  .checklist{margin-top:8px;width:100%;max-width:var(--slide-content-max);text-align:left}
+  .checklist .row{display:grid;grid-template-columns:16px 1fr;gap:8px;padding:4px 0;font-size:clamp(8px,1.6vw,11px);align-items:start}
+  .checklist .chk{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink);font-weight:500;line-height:1.35}
+  .checklist .lbl{color:var(--ink-soft);line-height:1.35}
+  .checklist .lbl strong{color:var(--ink);font-weight:700}
+  .tracking{
+    margin-top:10px;width:100%;max-width:var(--slide-content-max);
+    border:1px dashed var(--hair);padding:8px 10px;text-align:left;
+  }
+  .tracking .tl{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(6px,1.2vw,7.5px);
+    color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;
+  }
+  .tracking .items{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-soft);line-height:1.4}
+
+  .biz-model{width:100%;max-width:var(--slide-content-max);text-align:left;margin-top:2px}
+  .biz-model .ladder{
+    display:flex;align-items:stretch;gap:0;border:1px solid var(--ink);margin-bottom:8px;
+  }
+  .biz-model .tier{
+    flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--hair);
+    font-size:clamp(7.5px,1.5vw,10px);
+  }
+  .biz-model .tier:last-child{border-right:none}
+  .biz-model .tier.hero{background:rgba(59,143,214,.1)}
+  .biz-model .tier .name{font-weight:700;font-size:clamp(9px,1.8vw,12px)}
+  .biz-model .tier .amt{font-family:'IBM Plex Mono',monospace;font-size:clamp(8px,1.6vw,11px);margin-top:2px}
+  .biz-model .streams{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-soft);line-height:1.45}
+  .biz-model .streams li{margin:3px 0 3px 14px}
+
+  .steps{width:100%;max-width:var(--slide-content-max);text-align:left;margin-top:6px}
+  .steps--compact{margin-top:0}
+  .steps .li{display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--hair);align-items:baseline}
+  .steps .li:last-child{border-bottom:none}
+  .steps .no{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--ink-faint);width:16px;flex-shrink:0}
+  .steps .tx{font-size:clamp(8.5px,1.7vw,12px);color:var(--ink-soft);line-height:1.35}
+
+  .demo-flow{display:flex;align-items:center;gap:6px;width:100%;max-width:var(--slide-content-max);margin-top:6px}
+  .demo-frame{
+    flex:1;border:1.5px solid var(--ink);background:#f4f3f0;
+    min-height:120px;display:flex;flex-direction:column;overflow:hidden;text-align:left;
+  }
+  .demo-frame .bar{
+    background:var(--ink);color:#fff;font-family:'IBM Plex Mono',monospace;
+    font-size:clamp(5.5px,1.1vw,7px);padding:3px 6px;letter-spacing:.02em;
+  }
+  .demo-frame .body{padding:8px 6px;flex:1;font-size:clamp(6.5px,1.3vw,8.5px);color:var(--ink-soft);line-height:1.4}
+  .demo-frame .body .prompt{
+    background:#fff;border:1px solid var(--hair);padding:4px 6px;margin-bottom:6px;
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(5.5px,1.1vw,7px);color:var(--ink);
+  }
+  .demo-frame .body .chip{
+    display:inline-block;border:1px solid var(--hair);padding:2px 5px;margin:2px 2px 0 0;
+    font-size:clamp(5.5px,1.1vw,7px);background:#fff;
+  }
+  .demo-frame .body .chip.on{background:rgba(59,143,214,.15);border-color:var(--brand)}
+  .demo-arrow{font-size:clamp(14px,2.8vw,20px);color:var(--ink-faint);flex-shrink:0}
+  .demo-caption{font-size:clamp(7px,1.4vw,9px);color:var(--ink-faint);margin-top:6px;max-width:36ch;line-height:1.35}
+
+  .audience{display:grid;grid-template-columns:repeat(2,1fr);width:100%;max-width:var(--slide-content-max);gap:10px;margin-top:6px}
+  .audience .card{border:1px solid var(--hair);padding:12px 10px;text-align:left}
+  .audience .card .who{font-size:clamp(10px,2vw,14px);font-weight:700;margin-bottom:4px}
+  .audience .card .why{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-soft);line-height:1.35}
+
+  .team{width:100%;max-width:var(--slide-content-max);margin-top:2px}
+  .team-row{display:grid;gap:8px;margin-bottom:8px;justify-items:stretch}
+  .team-row.top{grid-template-columns:repeat(2,1fr);max-width:520px;margin-left:auto;margin-right:auto}
+  .team-row.bottom{grid-template-columns:repeat(3,1fr)}
+  .team .member{
+    border:1px solid var(--hair);padding:8px 6px 7px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;
+  }
+  .team .photo{
+    width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--hair);
+    background:#e7e2dc;flex-shrink:0;
+  }
+  .team .name{font-size:clamp(8px,1.6vw,11px);font-weight:700;line-height:1.15}
+  .team .role{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(6px,1.2vw,7.5px);
+    color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;
+  }
+  .team .bio{font-size:clamp(6.5px,1.3vw,8px);color:var(--ink-soft);line-height:1.3;max-width:22ch}
+
+  .ask-box{width:100%;max-width:var(--slide-content-max);text-align:left;margin-top:4px}
+  .ask-box .raise{
+    border:1.5px solid var(--ink);padding:10px 12px;margin-bottom:10px;
+    font-size:clamp(9px,1.8vw,13px);line-height:1.4;
+  }
+  .ask-box .raise em{font-style:normal;color:var(--ink-faint)}
+  .ask-box .milestones{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-soft)}
+  .ask-box .milestones .mh{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(6px,1.2vw,7.5px);
+    color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;
+  }
+  .ask-box .milestones .mi{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--hair)}
+  .ask-box .milestones .mi:last-child{border-bottom:none}
+  .ask-box .milestones .when{font-family:'IBM Plex Mono',monospace;font-size:clamp(6px,1.2vw,7px);color:var(--ink-faint);width:48px;flex-shrink:0;padding-top:1px}
+  .ask-box .milestones .what{flex:1;line-height:1.35}
+  .ask-box .raise .big{font-size:clamp(14px,2.8vw,22px);font-weight:700;display:block;margin-bottom:4px}
+  .ask-box .raise .val{font-family:'IBM Plex Mono',monospace;font-size:clamp(8px,1.6vw,11px);color:var(--ink-soft)}
+
+  .flywheel{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 6px;
+    width:100%;max-width:var(--slide-content-max);margin-top:4px;
+  }
+  .flywheel .node{
+    border:1px solid var(--ink);padding:6px 10px;font-size:clamp(7.5px,1.5vw,10px);
+    font-weight:700;background:#fff;min-width:64px;text-align:center;
+  }
+  .flywheel .node.hero{background:rgba(59,143,214,.12);border-color:var(--brand)}
+  .flywheel .arrow{font-size:clamp(10px,2vw,14px);color:var(--ink-faint);font-weight:400}
+  .flywheel-caption{font-size:clamp(7px,1.4vw,9px);color:var(--ink-faint);margin-top:8px;max-width:var(--slide-content-max);width:100%;line-height:1.35}
+
+  .funds{width:100%;max-width:var(--slide-content-max);text-align:left;margin-top:4px}
+  .funds .bar-row{
+    display:grid;grid-template-columns:40px 92px 1fr 72px;
+    align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--hair);
+  }
+  .funds .bar-row:last-child{border-bottom:none}
+  .funds .pct{font-family:'IBM Plex Mono',monospace;font-size:clamp(10px,2vw,14px);font-weight:700}
+  .funds .label{font-size:clamp(8px,1.6vw,11px);font-weight:700}
+  .funds .detail{font-size:clamp(7px,1.4vw,9px);color:var(--ink-soft);line-height:1.3}
+  .funds .track{height:4px;background:var(--hair);border-radius:2px;overflow:hidden}
+  .funds .track i{display:block;height:100%;background:var(--brand)}
+
+  .exit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:var(--slide-content-max);margin-top:4px;text-align:left}
+  .exit-grid .card{border:1px solid var(--hair);padding:10px 8px}
+  .exit-grid .card .et{font-size:clamp(9px,1.8vw,12px);font-weight:700;margin-bottom:4px}
+  .exit-grid .card .ed{font-size:clamp(7px,1.4vw,9px);color:var(--ink-soft);line-height:1.35}
+  .exit-comp{font-size:clamp(7px,1.4vw,9px);color:var(--ink-faint);margin-top:8px;max-width:var(--slide-content-max);width:100%;line-height:1.4}
+
+  .solution-cols{display:grid;grid-template-columns:repeat(3,1fr);width:100%;max-width:var(--slide-content-max);gap:8px;margin-top:6px}
+  .solution-cols .col{border:1px solid var(--hair);padding:10px 8px;text-align:left}
+  .solution-cols .col .ic{font-size:16px;margin-bottom:4px}
+  .solution-cols .col .tl{font-size:clamp(9px,1.8vw,12px);font-weight:700;margin-bottom:3px}
+  .solution-cols .col .ds{font-size:clamp(7px,1.4vw,9px);color:var(--ink-soft);line-height:1.35}
+
+  .vis{line-height:1.55}
+  .vis .l1{font-size:clamp(16px,3.4vw,28px);font-weight:700}
+  .vis .l2{font-size:clamp(15px,3.1vw,25px);font-weight:700;color:#4a4a4a}
+  .vis .l3{font-size:clamp(13px,2.6vw,20px);font-weight:700;color:#a9a9a9;margin-top:6px}
+
+  .cta-wrap{display:flex;flex-direction:column;gap:10px;margin-top:14px;width:100%;max-width:340px}
+  .cta{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:10px 16px;border:1.5px solid var(--ink);text-decoration:none;color:var(--ink);
+    transition:.15s;
+  }
+  .cta:hover{background:var(--ink);color:var(--paper)}
+  .cta .label{font-size:clamp(10px,2vw,14px);font-weight:700;font-family:'Tinos',serif}
+  .cta .url{font-family:'IBM Plex Mono',monospace;font-size:clamp(7.5px,1.5vw,10px);opacity:.75}
+  .cta.primary{background:var(--ink);color:var(--paper)}
+  .cta.primary:hover{background:#333}
+  .cta-note{font-size:clamp(7.5px,1.5vw,10px);color:var(--ink-faint);margin-top:8px;max-width:32ch;line-height:1.4}
+
+  .mailto{font-family:'IBM Plex Mono',monospace;font-size:clamp(9px,1.8vw,13px);
+    margin-top:16px;color:var(--ink);border-bottom:1px solid var(--ink);text-decoration:none;padding-bottom:1px}
+
+  .annot{width:min(760px,94vw);text-align:center;margin-top:30px;min-height:150px}
+  .annot .kicker{font-size:clamp(22px,4.4vw,34px);font-weight:800;letter-spacing:-.01em;color:#fff;line-height:1.1}
+  .annot .desc{font-size:clamp(13px,2.3vw,17px);line-height:1.55;color:var(--annot-soft);
+    max-width:52ch;margin:14px auto 0}
+
+  .progress{display:flex;gap:7px;justify-content:center;margin:22px 0 8px;flex-wrap:wrap}
+  .progress i{width:7px;height:7px;border-radius:50%;background:#2c333f;cursor:pointer;transition:.2s}
+  .progress i.on{background:#cdd4de;transform:scale(1.15)}
+
+  .foot{text-align:center;font-size:11px;color:#4a5361;padding:6px 0 20px;font-family:'IBM Plex Mono',monospace}
+
+  .slide{display:none}
+  .slide.active{display:block}
+
+  body.is-customer-view .design-layer{display:none!important}
+  body.is-customer-view{background:var(--paper)}
+  body.is-customer-view .stage{padding:24px 16px}
+  body.is-customer-view .window{background:none;border:none;box-shadow:none;border-radius:0}
+  body.is-customer-view .window::before,
+  body.is-customer-view .window::after{display:none}
+
+  body.is-customer-export{background:var(--paper)}
+  body.is-customer-export .design-layer{display:none!important}
+  body.is-customer-export .stage{padding:0;min-height:auto}
+  body.is-customer-export .deck{width:1280px;max-width:100%}
+  body.is-customer-export .window{background:none;border:none;box-shadow:none;border-radius:0}
+  body.is-customer-export .window::before,
+  body.is-customer-export .window::after{display:none}
+  body.is-customer-export .slide{
+    display:block!important;margin:0;padding:0;
+    page-break-after:always;break-after:page;
+  }
+  body.is-customer-export .slide:last-child{page-break-after:auto;break-after:auto}
+  body.is-customer-export .canvas{
+    width:1280px;height:800px;aspect-ratio:auto;
+    display:flex;flex-direction:column;
+    page-break-inside:avoid;break-inside:avoid;
+  }
+  body.is-customer-export .slidebody{
+    flex:1;height:100%;min-height:800px;
+    justify-content:center;align-items:flex-start;
+    padding:48px 64px;box-sizing:border-box;
+  }
+  body.is-customer-export .slidebody--center{align-items:center}
+  body.is-customer-export .slidebody > *:not(.mascot){max-width:var(--slide-content-max)}
+  body.is-customer-export .mascot{right:32px;bottom:28px}
+  body.is-customer-export .head{font-size:26px;margin-bottom:12px}
+  body.is-customer-export .subhead{font-size:13px;margin-bottom:14px}
+  body.is-customer-export .stat{padding:14px 12px}
+  body.is-customer-export .stat .num{font-size:22px}
+  body.is-customer-export .hero-grid .cell{padding:14px 10px 12px}
+  body.is-customer-export .comp-table{font-size:10px}
+  body.is-customer-export .comp-table .row{padding:7px 0}
+  body.is-customer-export .pricing .row{font-size:11px;padding:8px 0}
+  body.is-customer-export .funds .bar-row{grid-template-columns:48px 110px 1fr 80px;padding:8px 0}
+
+  @media print{
+    @page{size:1280px 800px;margin:0}
+    body{background:var(--paper)!important}
+    .design-layer{display:none!important}
+    .stage{padding:0}
+    .deck{width:100%}
+    .window{background:none!important;border:none!important;box-shadow:none!important}
+    .window::before,.window::after{display:none!important}
+    .slide{display:block!important;page-break-after:always;break-after:page}
+    .slide:last-child{page-break-after:auto;break-after:auto}
+    .canvas{width:1280px;height:800px;aspect-ratio:auto}
+    .slidebody{min-height:800px;justify-content:center;padding:48px 64px}
+  }
+
+  @media(max-width:520px){
+    .term{font-size:7px}
+    .slidebody{padding:32px 28px}
+    body.is-customer-export .slidebody{padding:48px 64px}
+    .hero-grid .cell,.grid .cell{padding:7px 3px}
+    .stats{grid-template-columns:1fr}
+    .comp-table .row{grid-template-columns:1fr 1fr;font-size:7px}
+    .comp-table .row.head-row{display:none}
+    .demo-flow{flex-direction:column}
+    .demo-arrow{transform:rotate(90deg)}
+    .pricing .row{grid-template-columns:1fr .8fr;gap:4px}
+    .pricing .feat{grid-column:1/-1;font-size:7px}
+    .audience{grid-template-columns:1fr}
+    .team-row.top,.team-row.bottom{grid-template-columns:1fr;max-width:220px;margin-left:auto;margin-right:auto}
+    .biz-model .ladder{flex-direction:column}
+    .biz-model .tier{border-right:none;border-bottom:1px solid var(--hair)}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="deck">
+    <div class="nav prev design-layer" onclick="go(-1)" aria-label="Previous">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="nav next design-layer" onclick="go(1)" aria-label="Next">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="window">
+      <div class="titlebar design-layer">Indobase — Customer Deck<span class="dots"><i></i><i></i><i></i></span></div>
+
+      <!-- 1 Opening -->
+      <div class="slide active" data-kicker="SLIDE 1: Opening"
+           data-desc="Design note: Agentic Business OS — not an app builder. Tagline for build/deploy/transact/measure/market. India-hosted, one SSO.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Initializing Indobase<span class="cur">...</span></div>
+          <div class="slidebody slidebody--center">
+            <div class="head">Indobase</div>
+            <div class="s1-sub">The Agentic Business OS — build, deploy, transact, measure, and market with agents.</div>
+            <div class="s1-tag">India-hosted · DPDP-ready · Rupee pricing · Vyom infra · One SSO</div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 Problem -->
+      <div class="slide" data-kicker="SLIDE 2: The Problem"
+           data-desc="Design note: Tool sprawl — no unified OS for Indian businesses. Agents need a runtime, not another point SaaS.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Analyzing your current stack...</div>
+          <div class="slidebody slidebody--center">
+            <div class="head">The Problem</div>
+            <div class="predict">Indian businesses run on<br><span class="u">ten disconnected tools</span> — not an operating system.</div>
+            <div class="predict sub-prob">Build, billing, analytics, email, and deploy each live in a different product. Agents have nowhere to run the whole business.</div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 Solution -->
+      <div class="slide" data-kicker="SLIDE 3: The Solution"
+           data-desc="Design note: Agentic OS overview — one platform runs the business. Three pillars: agents orchestrate, native products, India stack.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Booting Agentic Business OS...</div>
+          <div class="slidebody">
+            <div class="head">The Solution</div>
+            <div class="subhead">One platform runs the business — agents orchestrate across build, backend, billing, and growth.</div>
+            <div class="solution-cols">
+              <div class="col"><div class="ic">✦</div><div class="tl">Agentic runtime</div><div class="ds">Agents build apps, wire auth &amp; DB, deploy, and operate marketing — not just codegen.</div></div>
+              <div class="col"><div class="ic">₹</div><div class="tl">Native products</div><div class="ds">Owned Payments &amp; Analytics — first-class, not bundled third-party glue.</div></div>
+              <div class="col"><div class="ic">⚿</div><div class="tl">India stack</div><div class="ds">Vyom-hosted, DPDP-ready, rupee SaaS — one procurement decision for SMBs.</div></div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Product -->
+      <div class="slide" data-kicker="SLIDE 4: The Product"
+           data-desc="Design note: Full OS grid — Builder + Studio + deploy. Native Payments &amp; Analytics highlighted. Marketing suite + auth/DB foundation.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Loading the platform...</div>
+          <div class="slidebody">
+            <div class="head">The Product</div>
+            <div class="subhead">One OS: agents run build, backend, billing, analytics, and growth.</div>
+            <div class="product-layers">
+              <div class="layer-label">Agentic core</div>
+              <div class="hero-grid">
+                <div class="cell hero"><span class="gl">✦</span><span>Builder — agentic apps</span></div>
+                <div class="cell hero"><span class="gl">◨</span><span>Studio — backend &amp; auth</span></div>
+                <div class="cell hero"><span class="gl">⤴</span><span>Deploy — *.indobase.in</span></div>
+              </div>
+              <div class="layer-label">Native owned products</div>
+              <div class="hero-grid two-col">
+                <div class="cell native"><span class="gl">₹</span><span class="native-tag">native</span><span>Payments — payments.indobase.in</span></div>
+                <div class="cell native"><span class="gl">◔</span><span class="native-tag">native</span><span>Analytics — analytics.indobase.in</span></div>
+              </div>
+              <div class="layer-label">Marketing suite</div>
+              <div class="hero-grid four-col growth">
+                <div class="cell"><span class="gl">✉</span><span>Email</span></div>
+                <div class="cell"><span class="gl">◎</span><span>Social</span></div>
+                <div class="cell"><span class="gl">▣</span><span>Design</span></div>
+                <div class="cell"><span class="gl">▶</span><span>Video</span></div>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 Why Now -->
+      <div class="slide" data-kicker="SLIDE 5: Why Now"
+           data-desc="Design note: Agentic AI wave, India digital, DPDP window, rupee SaaS — timing pillars for investors.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Reading market signals...</div>
+          <div class="slidebody">
+            <div class="head">Why Now</div>
+            <div class="pill-row">
+              <div class="pill"><strong>Agentic AI wave</strong>Agents need an OS to act — orchestration beats point tools and codegen-only wedges.</div>
+              <div class="pill"><strong>India digital acceleration</strong>MSMEs digitizing fast; they need one rupee-priced stack, not ten USD subscriptions.</div>
+              <div class="pill"><strong>DPDP enforcement window</strong>Data residency and compliance are procurement gates — India-hosted becomes default.</div>
+              <div class="pill"><strong>Rupee SaaS appetite</strong>Founders and agencies want native billing, analytics, and deploy under one SSO.</div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 Market Opportunity -->
+      <div class="slide" data-kicker="SLIDE 6: Market Opportunity"
+           data-desc="Design note: TAM/SAM/SOM framing for India MSMEs. Target ARPU ₹2K–7K. Honest ranges, no invented precision.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Estimating addressable market...</div>
+          <div class="slidebody">
+            <div class="head">Market Opportunity</div>
+            <div class="stats">
+              <div class="stat">
+                <div class="num">60M+</div>
+                <div class="lbl">MSMEs in India — TAM for digitization &amp; SaaS adoption</div>
+                <div class="src">Govt / industry estimates</div>
+              </div>
+              <div class="stat">
+                <div class="num">$10–30B</div>
+                <div class="lbl">Global no-code / low-code + AI builder SAM, ~20% CAGR</div>
+                <div class="src">Analyst range</div>
+              </div>
+              <div class="stat">
+                <div class="num">₹2K–7K</div>
+                <div class="lbl">SOM target ARPU — founders, agencies &amp; SMBs on Pro / Studio</div>
+                <div class="src">Plan ladder</div>
+              </div>
+            </div>
+            <div class="subhead">India gap: local hosting, rupee billing, DPDP alignment vs US-priced point tools</div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7 Competition -->
+      <div class="slide" data-kicker="SLIDE 7: Competition"
+           data-desc="Design note: vs point tools, AI-only builders, backend-only, website builders. Indobase = agentic OS + native Pay/Analytics.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Mapping competitive landscape...</div>
+          <div class="slidebody">
+            <div class="head">Competition</div>
+            <div class="subhead">Agentic OS · Native Payments &amp; Analytics · India-hosted · One SSO</div>
+            <div class="comp-table">
+              <div class="row head-row"><span></span><span>Agents / build</span><span>Backend</span><span>Pay + Analytics</span></div>
+              <div class="row"><span>Point tools</span><span class="partial">~ One job</span><span class="no">✗ Separate</span><span class="no">✗ Third-party</span></div>
+              <div class="row"><span>AI-only builders</span><span class="yes">✓ Codegen</span><span class="no">✗ None</span><span class="no">✗ Integrations</span></div>
+              <div class="row"><span>Backend-only</span><span class="no">✗ Manual</span><span class="yes">✓ APIs/DB</span><span class="partial">~ Plugins</span></div>
+              <div class="row"><span>Website builders</span><span class="partial">~ Static</span><span class="no">✗ None</span><span class="no">✗ Add-ons</span></div>
+              <div class="row us"><span>Indobase</span><span class="yes">✓ Agentic OS</span><span class="yes">✓ Studio</span><span class="yes">✓ Native both</span></div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8 How It Works -->
+      <div class="slide" data-kicker="SLIDE 8: How It Works"
+           data-desc="Design note: Flywheel — Idea → Build → Launch → Transact → Measure → Grow. Shows OS loop, not a builder demo.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Running business flywheel...</div>
+          <div class="slidebody">
+            <div class="head">How It Works</div>
+            <div class="subhead">One flywheel — agents run the loop, data stays in the OS</div>
+            <div class="flywheel">
+              <span class="node">Idea</span><span class="arrow">→</span>
+              <span class="node hero">Build</span><span class="arrow">→</span>
+              <span class="node">Launch</span><span class="arrow">→</span>
+              <span class="node hero">Transact</span><span class="arrow">→</span>
+              <span class="node hero">Measure</span><span class="arrow">→</span>
+              <span class="node">Grow</span>
+            </div>
+            <div class="flywheel-caption">Builder + Studio → deploy on *.indobase.in → native Payments checkout → native Analytics → Email / Social / Design / Video — all under Studio SSO</div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9 Traction -->
+      <div class="slide" data-kicker="SLIDE 9: Traction"
+           data-desc="Design note: Honest early-stage — production live, no fake user counts. OS milestones incl. native Payments &amp; Analytics.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Checking live services...</div>
+          <div class="slidebody">
+            <div class="head">Traction</div>
+            <div class="trac-sub">EARLY STAGE · PRODUCTION LIVE · INDIA-HOSTED</div>
+            <div class="checklist">
+              <div class="row"><span class="chk">✓</span><span class="lbl"><strong>Agentic OS live</strong> — Builder, Studio, Email, Social, Design, Video on indobase.in</span></div>
+              <div class="row"><span class="chk">✓</span><span class="lbl"><strong>Native Payments</strong> — payments.indobase.in billing &amp; checkout in ecosystem SSO</span></div>
+              <div class="row"><span class="chk">✓</span><span class="lbl"><strong>Native Analytics</strong> — analytics.indobase.in product metrics wired to projects</span></div>
+              <div class="row"><span class="chk">✓</span><span class="lbl"><strong>Multi-tenant data plane</strong> — dedicated per-project databases on paid plans</span></div>
+              <div class="row"><span class="chk">✓</span><span class="lbl"><strong>Deploy pipeline</strong> — agent build → *.indobase.in or custom domain</span></div>
+            </div>
+            <div class="tracking">
+              <div class="tl">Measuring (not claiming)</div>
+              <div class="items">OS activation · Pro conversion · Payments attach rate · Analytics adoption · Agency pipeline</div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10 Business Model -->
+      <div class="slide" data-kicker="SLIDE 10: Business Model"
+           data-desc="Design note: Subscription ARPU ladder + future usage revenue. Pro as hero tier. Native product attach deepens ARPU.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Loading revenue model...</div>
+          <div class="slidebody">
+            <div class="head">Business Model</div>
+            <div class="biz-model">
+              <div class="ladder">
+                <div class="tier"><div class="name">Free</div><div class="amt">₹0</div>Builder · 5 prompts</div>
+                <div class="tier"><div class="name">Basic</div><div class="amt">₹499/mo</div>Domain &amp; badge</div>
+                <div class="tier hero"><div class="name">Pro</div><div class="amt">₹1,999/mo</div>Studio unlocked</div>
+                <div class="tier"><div class="name">Studio</div><div class="amt">₹6,999/mo</div>Teams &amp; agencies</div>
+              </div>
+              <ul class="streams">
+                <li><strong>Subscriptions</strong> — primary revenue; Pro unlocks OS backend, Studio adds team &amp; client workflows</li>
+                <li><strong>Native product attach</strong> — Payments checkout &amp; Analytics seats deepen ARPU within SSO</li>
+                <li><strong>Future usage revenue</strong> — LLM compute, transaction fees, enterprise infra — layered on core plans</li>
+                <li><strong>Enterprise</strong> — dedicated infra, SLA, DPDP compliance packages (custom pricing)</li>
+              </ul>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 11 Go-To-Market -->
+      <div class="slide" data-kicker="SLIDE 11: Go-To-Market"
+           data-desc="Design note: PLG, agencies, India SMB content, SSO ecosystem lock-in via native Payments/Analytics.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Planning distribution...</div>
+          <div class="slidebody">
+            <div class="head">Go-To-Market</div>
+            <div class="steps">
+              <div class="li"><span class="no">01</span><span class="tx"><strong>Product-led growth</strong> — free Builder → deploy → backend wall → Pro conversion. Self-serve upgrade at ₹1,999/mo.</span></div>
+              <div class="li"><span class="no">02</span><span class="tx"><strong>Agency channel</strong> — Studio plan for client projects; native Payments &amp; Analytics as upsell within SSO.</span></div>
+              <div class="li"><span class="no">03</span><span class="tx"><strong>India SMB motion</strong> — founder content, rupee pricing, DPDP-ready hosting as procurement wedge vs US tools.</span></div>
+              <div class="li"><span class="no">04</span><span class="tx"><strong>Ecosystem lock-in</strong> — one Studio identity across Builder, Payments, Analytics, Email, Social, Design, Video.</span></div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 12 Why Indobase -->
+      <div class="slide" data-kicker="SLIDE 12: Why Indobase"
+           data-desc="Design note: Moat — agentic OS runtime, native Payments &amp; Analytics, deploy graph, India compliance bundle.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Running checks...</div>
+          <div class="slidebody">
+            <div class="head">Why Indobase</div>
+            <div class="subhead">Moat: the OS agents run on — not another app builder</div>
+            <div class="steps">
+              <div class="li"><span class="no">01</span><span class="tx"><strong>Agentic Business OS</strong> — build, deploy, transact, measure, and market in one runtime. Agents orchestrate across products.</span></div>
+              <div class="li"><span class="no">02</span><span class="tx"><strong>Native Payments &amp; Analytics</strong> — owned billing (payments.indobase.in) and product analytics (analytics.indobase.in), not third-party glue.</span></div>
+              <div class="li"><span class="no">03</span><span class="tx"><strong>Deploy graph</strong> — every project on *.indobase.in with auth, DB, and marketing suite wired — switching cost grows with usage.</span></div>
+              <div class="li"><span class="no">04</span><span class="tx"><strong>India compliance bundle</strong> — Vyom-hosted data, DPDP-ready posture, rupee billing — one procurement decision.</span></div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 13 Pricing -->
+      <div class="slide" data-kicker="SLIDE 13: Pricing"
+           data-desc="Design note: Full plan ladder — Free/Basic/Pro/Studio/Enterprise. Pro highlighted as hero upgrade moment.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Loading plan ladder...</div>
+          <div class="slidebody">
+            <div class="head">Pricing</div>
+            <div class="subhead">Pro unlocks the OS backend — that's the upgrade moment</div>
+            <div class="pricing">
+              <div class="row head-row"><span>Plan</span><span>Price</span><span>What you get</span></div>
+              <div class="row"><span class="plan">Free</span><span class="price">₹0</span><span class="feat">Builder · 5 prompts · deploy to *.indobase.in</span></div>
+              <div class="row dim"><span class="plan">Basic</span><span class="price">₹499/mo</span><span class="feat">Vanity tier — custom domain &amp; badge only (no Studio backend)</span></div>
+              <div class="row highlight"><span class="plan">Pro<span class="badge">HERO</span></span><span class="price">₹1,999/mo</span><span class="feat">Studio unlocked — auth, DB, APIs, Payments &amp; Analytics SSO, dedicated project DB</span></div>
+              <div class="row"><span class="plan">Studio</span><span class="price">₹6,999/mo</span><span class="feat">Team seats · client projects · full marketing suite · higher limits</span></div>
+              <div class="row"><span class="plan">Enterprise</span><span class="price">Custom</span><span class="feat">Dedicated infra · SLA · DPDP compliance · custom integrations</span></div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 14 Who It's For -->
+      <div class="slide" data-kicker="SLIDE 14: Who It's For"
+           data-desc="Design note: Founders, agencies, SMBs, product teams — each card reframed for OS value, not builder-only.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Matching your use case...</div>
+          <div class="slidebody">
+            <div class="head">Who It's For</div>
+            <div class="audience">
+              <div class="card">
+                <div class="who">Founders</div>
+                <div class="why">Run the whole business on one OS — build, bill, and measure without tool sprawl.</div>
+              </div>
+              <div class="card">
+                <div class="who">Agencies</div>
+                <div class="why">Ship client apps with native Payments, Analytics, and marketing suite under Studio SSO.</div>
+              </div>
+              <div class="card">
+                <div class="who">SMBs</div>
+                <div class="why">Replace ten SaaS subscriptions with one India-hosted platform agents can operate.</div>
+              </div>
+              <div class="card">
+                <div class="who">Product teams</div>
+                <div class="why">Prototype in Builder, productionize in Studio — checkout and analytics already wired.</div>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 15 Team -->
+      <div class="slide" data-kicker="SLIDE 15: Team"
+           data-desc="Design note: 5 leaders with photos from pitch-deck-assets/team/. CEO/CTO top row, COO/CIO/CRO bottom.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Loading leadership profiles...</div>
+          <div class="slidebody">
+            <div class="head">Team</div>
+            <div class="team">
+              <div class="team-row top">
+                <div class="member">
+                  <img class="photo" src="pitch-deck-assets/team/siva.svg" alt="Siva">
+                  <div class="name">Siva</div>
+                  <div class="role">CEO</div>
+                  <div class="bio">Built &amp; scaled Peaq Technologies; product vision &amp; India GTM from Chennai.</div>
+                </div>
+                <div class="member">
+                  <img class="photo" src="pitch-deck-assets/team/roshan.jpg" alt="Roshan Raghavander">
+                  <div class="name">Roshan Raghavander</div>
+                  <div class="role">CTO</div>
+                  <div class="bio">Shipped full Indobase platform — multi-tenant infra, Builder, Studio, marketing suite. Ex-GARP ML.</div>
+                </div>
+              </div>
+              <div class="team-row bottom">
+                <div class="member">
+                  <img class="photo" src="pitch-deck-assets/team/fernando.jpg" alt="Fernando Cabal">
+                  <div class="name">Fernando Cabal</div>
+                  <div class="role">COO</div>
+                  <div class="bio">30+ yrs hybrid cloud &amp; K8s at scale. Splunk-certified ops leader, Montreal.</div>
+                </div>
+                <div class="member">
+                  <img class="photo" src="pitch-deck-assets/team/roman.svg" alt="Roman S.">
+                  <div class="name">Roman S.</div>
+                  <div class="role">CIO</div>
+                  <div class="bio">19+ yrs cybersecurity &amp; DevSecOps. Schneider Electric; founded Savka Technologies.</div>
+                </div>
+                <div class="member">
+                  <img class="photo" src="pitch-deck-assets/team/prabhu.jpg" alt="Prabhu Marimuthu">
+                  <div class="name">Prabhu Marimuthu</div>
+                  <div class="role">CRO</div>
+                  <div class="bio">18 yrs enterprise sales &amp; IoT GTM across India and North America.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 16 The Ask -->
+      <div class="slide" data-kicker="SLIDE 16: The Ask"
+           data-desc="Design note: Explicit raise — $3M for 20% equity, post-money $15M implied. No placeholder brackets.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Opening investment terms...</div>
+          <div class="slidebody">
+            <div class="head">The Ask</div>
+            <div class="ask-box">
+              <div class="raise">
+                <span class="big">Raising $3M for 20% equity</span>
+                <span class="val">Post-money valuation: $15M implied · Seed / Series A</span>
+              </div>
+              <div class="steps steps--compact">
+                <div class="li"><span class="no">→</span><span class="tx">Accelerate Agentic Business OS GTM — PLG, agency channel, India SMB motion</span></div>
+                <div class="li"><span class="no">→</span><span class="tx">Scale agent infra &amp; native Payments / Analytics attach across the ecosystem</span></div>
+                <div class="li"><span class="no">→</span><span class="tx">Enterprise sales &amp; DPDP compliance packages for India procurement cycles</span></div>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 17 Use of Funds -->
+      <div class="slide" data-kicker="SLIDE 17: Use of Funds"
+           data-desc="Design note: Engineering 40%, GTM 30%, infra/LLM 20%, ops 10%. Reasonable seed-stage split on $3M.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Allocating capital...</div>
+          <div class="slidebody">
+            <div class="head">Use of Funds</div>
+            <div class="subhead">$3M deployment over 18 months</div>
+            <div class="funds">
+              <div class="bar-row">
+                <span class="pct">40%</span><span class="label">Engineering</span><span class="detail">Agent runtime, Studio, native Payments &amp; Analytics, marketing suite GA</span>
+                <span class="track"><i style="width:40%"></i></span>
+              </div>
+              <div class="bar-row">
+                <span class="pct">30%</span><span class="label">Go-to-market</span><span class="detail">PLG funnel, agency partnerships, India founder content, sales hires</span>
+                <span class="track"><i style="width:30%"></i></span>
+              </div>
+              <div class="bar-row">
+                <span class="pct">20%</span><span class="label">Infra &amp; LLM</span><span class="detail">Vyom scaling, multi-tenant data plane, agent compute &amp; model costs</span>
+                <span class="track"><i style="width:20%"></i></span>
+              </div>
+              <div class="bar-row">
+                <span class="pct">10%</span><span class="label">Ops &amp; compliance</span><span class="detail">DPDP readiness, legal, finance, customer success</span>
+                <span class="track"><i style="width:10%"></i></span>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 18 Exit Strategy -->
+      <div class="slide" data-kicker="SLIDE 18: Exit Strategy"
+           data-desc="Design note: Strategic acquisition (vertical SaaS, cloud, fintech) or IPO path India/US. Comparables framing — no fake multiples.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Mapping exit paths...</div>
+          <div class="slidebody">
+            <div class="head">Exit Strategy</div>
+            <div class="exit-grid">
+              <div class="card">
+                <div class="et">Strategic acquisition</div>
+                <div class="ed">Vertical SaaS platforms, cloud providers, and fintech acquirers seeking India-native OS + payments + analytics stack under DPDP compliance.</div>
+              </div>
+              <div class="card">
+                <div class="et">Public markets</div>
+                <div class="ed">IPO path on India exchanges (BSE/NSE) or US listing as ARR scales — rupee SaaS + agentic platform category maturing globally.</div>
+              </div>
+            </div>
+            <div class="exit-comp">Comparable categories: vertical SaaS platforms, developer infra, and India fintech SaaS — businesses with embedded payments &amp; multi-product ecosystems command premium strategic value.</div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 19 Roadmap & Milestones -->
+      <div class="slide" data-kicker="SLIDE 19: Roadmap &amp; Milestones"
+           data-desc="Design note: 18-month goals — paying Pro users, enterprise pilots, marketing suite GA. Goals not fake metrics.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Preparing roadmap...</div>
+          <div class="slidebody">
+            <div class="head">Roadmap &amp; Milestones</div>
+            <div class="subhead">18-month goals — honest targets, not claimed metrics</div>
+            <div class="ask-box">
+              <div class="milestones">
+                <div class="mh">Key milestones</div>
+                <div class="mi"><span class="when">Q1–Q2</span><span class="what">Scale paying Pro users via PLG — Builder free → OS backend → Payments &amp; Analytics attach</span></div>
+                <div class="mi"><span class="when">Q2–Q3</span><span class="what">Agency &amp; Studio adoption — 10+ partners running client businesses on the OS</span></div>
+                <div class="mi"><span class="when">Q3–Q4</span><span class="what">Marketing suite GA — Email, Social, Design, Video fully agent-orchestrated in SSO</span></div>
+                <div class="mi"><span class="when">Y2</span><span class="what">Enterprise pilots — DPDP packages, dedicated infra, SLA, agent governance</span></div>
+              </div>
+            </div>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 20 Get Started -->
+      <div class="slide" data-kicker="SLIDE 20: Get Started"
+           data-desc="Design note: CTAs for Builder + Studio. hello@indobase.in contact. Last customer slide.">
+        <div class="canvas">
+          <div class="term design-layer">&gt; Opening launch URLs...</div>
+          <div class="slidebody slidebody--center">
+            <div class="head">Get Started</div>
+            <div class="subhead">Start free — run your business on the Agentic OS</div>
+            <div class="cta-wrap">
+              <a class="cta primary" href="https://builder.indobase.in" target="_blank" rel="noopener">
+                <span class="label">Open Builder</span>
+                <span class="url">builder.indobase.in</span>
+              </a>
+              <a class="cta" href="https://studio.indobase.in" target="_blank" rel="noopener">
+                <span class="label">Open Studio</span>
+                <span class="url">studio.indobase.in</span>
+              </a>
+            </div>
+            <div class="cta-note">Free plan includes Builder with 5 prompts. Studio unlocks at Pro (₹1,999/mo) with native Payments &amp; Analytics.</div>
+            <a class="mailto" href="mailto:hello@indobase.in">hello@indobase.in</a>
+            <div class="mascot">__MASCOT__</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="annot design-layer">
+    <div class="kicker" id="kicker"></div>
+    <div class="desc" id="desc"></div>
+  </div>
+
+  <div class="progress design-layer" id="progress"></div>
+</div>
+
+<div class="foot design-layer">← / →  to navigate &nbsp;·&nbsp; Add <code>?customer=1</code> for clean view &nbsp;·&nbsp; Indobase — hello@indobase.in</div>
+
+<script>
+  const MASCOT = `<svg viewBox="0 0 22 22" shape-rendering="crispEdges">
+    <g fill="#111">
+      <rect x="7" y="1" width="8" height="1"/>
+      <rect x="6" y="2" width="10" height="1"/>
+      <rect x="6" y="3" width="10" height="6"/>
+      <rect x="5" y="4" width="1" height="4"/><rect x="16" y="4" width="1" height="4"/>
+      <rect x="9" y="9" width="4" height="1"/>
+      <rect x="6" y="10" width="10" height="6"/>
+      <rect x="5" y="11" width="1" height="4"/><rect x="16" y="11" width="1" height="4"/>
+      <rect x="7" y="16" width="2" height="3"/><rect x="13" y="16" width="2" height="3"/>
+    </g>
+    <g fill="#fff"><rect x="8" y="5" width="2" height="2"/><rect x="12" y="5" width="2" height="2"/></g>
+    <g fill="#111"><rect x="8.6" y="5.6" width="1" height="1"/><rect x="12.6" y="5.6" width="1" height="1"/></g>
+  </svg>`;
+  document.querySelectorAll('.mascot').forEach(m=>m.innerHTML=MASCOT);
+
+  const params = new URLSearchParams(location.search);
+  const isCustomerView = params.has('customer') || params.get('export') === 'customer';
+  const isCustomerExport = params.get('export') === 'customer' && params.get('print') === 'all';
+
+  if (isCustomerExport) {
+    document.body.classList.add('is-customer-export');
+  } else if (isCustomerView) {
+    document.body.classList.add('is-customer-view');
+  }
+
+  const slides=[...document.querySelectorAll('.slide')];
+  const prog=document.getElementById('progress');
+  const kicker=document.getElementById('kicker');
+  const desc=document.getElementById('desc');
+  let i=0;
+
+  if (!isCustomerExport) {
+    slides.forEach((_,idx)=>{const d=document.createElement('i');d.onclick=()=>show(idx);prog.appendChild(d);});
+  }
+  const dots=[...prog.children];
+
+  function show(n){
+    i=(n+slides.length)%slides.length;
+    slides.forEach((s,idx)=>s.classList.toggle('active',idx===i));
+    dots.forEach((d,idx)=>d.classList.toggle('on',idx===i));
+    if (kicker) kicker.textContent=slides[i].dataset.kicker;
+    if (desc) desc.textContent=slides[i].dataset.desc;
+  }
+  function go(d){show(i+d);}
+  window.go=go;
+
+  if (!isCustomerExport) {
+    document.addEventListener('keydown',e=>{
+      if(e.key==='ArrowRight'||e.key===' ')go(1);
+      if(e.key==='ArrowLeft')go(-1);
+    });
+    show(0);
+  } else {
+    slides.forEach(s=>s.classList.add('active'));
+  }
+</script>
+</body>
+</html>

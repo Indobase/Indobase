@@ -24,5 +24,10 @@ describe('webcontainer boot helpers', () => {
       ),
     ).toBe(false);
     expect(shouldSuggestExtensionDisable('Only a single WebContainer instance can be booted')).toBe(false);
+    expect(
+      shouldSuggestExtensionDisable(
+        'Indobase Builder workspace failed to start (timed out). Hard-refresh the page (Chrome or Edge) or click the terminal reset button (↻) to retry.',
+      ),
+    ).toBe(false);
   });
 });

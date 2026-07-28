@@ -55,7 +55,7 @@ IMAGE_TAG=<sha-with-both-images> ./docker/scripts/deploy-staging-hostinger.sh
 The deploy script **upserts** env keys (does not wipe `OPEN_ROUTER_API_KEY`). It keeps:
 
 - Studio: `SITE_URL` / `NEXT_PUBLIC_SITE_URL` = `https://studio.indobase.fun`, `BUILDER_APP_URL` = Builder `.fun`
-- Builder: `STUDIO_INTERNAL_URL` / `INDOBASE_STUDIO_URL` = Studio `.fun`
+- Builder: `STUDIO_INTERNAL_URL` = Swarm DNS `http://indobase-studio-staging:8080`; `INDOBASE_STUDIO_URL` = public `https://studio.indobase.fun`
 
 ## After first boot
 
@@ -80,6 +80,7 @@ CI still bakes `NEXT_PUBLIC_SITE_URL=https://studio.indobase.in`. Staging works 
 
 ```bash
 curl -sS https://studio.indobase.fun/api/health
+curl -sS https://builder.indobase.fun/api/health/ready
 curl -sS https://builder.indobase.fun/api/health/live
 curl -sS https://studio.indobase.fun/api/platform/runtime-public-env
 # Expect siteUrl / builderAppUrl pointing at *.indobase.fun

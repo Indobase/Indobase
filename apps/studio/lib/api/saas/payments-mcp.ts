@@ -75,7 +75,6 @@ export async function mintPaymentsMcpBearer({
   projectRef: string
   role: PaymentsRole
 }> {
-  const apiKeyFallback = process.env.INDOBASE_PAYMENTS_API_KEY?.trim()
   const project = await getProject({ claims, ref: projectRef })
   if (!project) {
     throw new Error('Project not found')
@@ -90,16 +89,6 @@ export async function mintPaymentsMcpBearer({
   }
 
   const apiBaseUrl = resolvePaymentsApiBaseUrl()
-
-  if (apiKeyFallback) {
-    return {
-      apiBaseUrl,
-      bearerToken: apiKeyFallback,
-      organizationSlug: project.organization_slug,
-      projectRef: project.ref,
-      role,
-    }
-  }
 
   const now = Math.floor(Date.now() / 1000)
   const payload: PaymentsMcpTokenPayload = {

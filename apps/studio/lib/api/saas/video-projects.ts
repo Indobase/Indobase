@@ -59,7 +59,7 @@ async function ensureVideoSchema() {
   if (!schemaReady) {
     schemaReady = (async () => {
       await ensureSaasTables()
-      const result = await executeQuery({ query: VIDEO_SCHEMA_SQL, parameters: [] })
+      const result = await executeQuery({ query: VIDEO_SCHEMA_SQL })
       if (result.error) throw result.error
     })().catch((err) => {
       schemaReady = null

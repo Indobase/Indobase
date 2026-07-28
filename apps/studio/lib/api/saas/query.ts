@@ -78,7 +78,7 @@ export async function executeQuery<T = unknown>({
   }
 
   const requestBody: { query: string; parameters?: unknown[] } = { query: finalQuery }
-  if (finalParameters !== undefined) {
+  if (finalParameters !== undefined && finalParameters.length > 0) {
     requestBody.parameters = finalParameters
   }
 

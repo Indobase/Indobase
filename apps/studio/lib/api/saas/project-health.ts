@@ -68,6 +68,35 @@ function traefikUpstreamHost(): string {
   return process.env.TRAEFIK_UPSTREAM_HOST?.trim() || '172.17.0.1'
 }
 
+async function stackHealthyViaProvisioner(ref: string): Promise<boolean | null> {
+  const provisionerUrl = (process.env.DATA_PLANE_PROVISIONER_URL || '').trim().replace(/\/$/, '')
+  const provisionerToken = (process.env.DATA_PLANE_PROVISIONER_TOKEN || '').trim()
+  if (!provisionerUrl || !provisionerToken) return null
+
+  try {
+    const signal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(12_000)
+        : undefined
+    const response = await fetch(`${provisionerUrl}/stack-health`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${provisionerToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ project_ref: ref }),
+      signal,
+      cache: 'no-store',
+    })
+    if (response.status === 404) return null
+    if (!response.ok) return false
+    const body = (await response.json().catch(() => null)) as { ok?: boolean } | null
+    return body?.ok === true
+  } catch {
+    return null
+  }
+}
+
 async function loadProjectHealthRow({ claims, ref }: { claims: Claims; ref: string }) {
   const gotrueId = getGotrueUserId(claims)
   return executeQuery<{
@@ -188,6 +217,7 @@ async function probeCoreServices(restUrl: string): Promise<Record<CoreService, {
 }
 
 async function resolveCoreServiceProbes(opts: {
+  ref: string
   restUrl: string
   portBase: number | null | undefined
   hasDedicated: boolean
@@ -202,7 +232,20 @@ async function resolveCoreServiceProbes(opts: {
     opts.portBase >= 1024
 
   if (useInternal) {
-    return probeCoreServicesViaPortBase(opts.portBase!)
+    const internal = await probeCoreServicesViaPortBase(opts.portBase!)
+    const allInternalFailed = CORE_SERVICES.every((name) => !internal[name].ok)
+
+    if (!allInternalFailed) {
+      return internal
+    }
+
+    const provisionerHealthy = await stackHealthyViaProvisioner(opts.ref)
+    if (provisionerHealthy === false) {
+      return internal
+    }
+    if (provisionerHealthy === true) {
+      return probeCoreServices(opts.restUrl)
+    }
   }
   return probeCoreServices(opts.restUrl)
 }
@@ -245,6 +288,7 @@ export async function getSaaSProjectServiceHealth({
 
   if (awaitingDedicatedDataPlane || meta?.status === 'COMING_UP') {
     const probes = await resolveCoreServiceProbes({
+      ref,
       restUrl,
       portBase,
       hasDedicated,
@@ -270,6 +314,7 @@ export async function getSaaSProjectServiceHealth({
   }
 
   const probes = await resolveCoreServiceProbes({
+    ref,
     restUrl,
     portBase,
     hasDedicated,

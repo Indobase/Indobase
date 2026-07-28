@@ -1,8 +1,30 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { resolvePaymentsApiBaseUrl } from 'lib/api/saas/payments-mcp'
+import { mintPaymentsMcpBearer, resolvePaymentsApiBaseUrl } from 'lib/api/saas/payments-mcp'
+
+vi.mock('./platform', () => ({
+  getGotrueUserId: vi.fn(() => 'user-1'),
+  getPrimaryEmail: vi.fn(() => 'user@example.com'),
+  getProject: vi.fn(),
+}))
+
+vi.mock('./payments-launch', () => ({
+  getStudioOrigin: vi.fn(() => 'https://studio.indobase.in'),
+  makePaymentsHandoffToken: vi.fn(() => 'signed-token'),
+  resolvePaymentsBaseUrl: vi.fn(() => 'https://payments.indobase.in'),
+  resolvePaymentsHandoffSecret: vi.fn(() => 'super-secret-payments-handoff-key-123456'),
+  resolvePaymentsRole: vi.fn(),
+}))
+
+const { getProject } = await import('./platform')
+const { resolvePaymentsRole } = await import('./payments-launch')
 
 describe('payments-mcp helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    delete process.env.INDOBASE_PAYMENTS_API_KEY
+  })
+
   it('defaults api host from payments web host', () => {
     const prevApi = process.env.INDOBASE_PAYMENTS_API_URL
     const prevPublicApi = process.env.NEXT_PUBLIC_INDOBASE_PAYMENTS_API_URL
@@ -31,5 +53,24 @@ describe('payments-mcp helpers', () => {
     expect(resolvePaymentsApiBaseUrl()).toBe('https://api.payments.example.com')
     if (prev === undefined) delete process.env.INDOBASE_PAYMENTS_API_URL
     else process.env.INDOBASE_PAYMENTS_API_URL = prev
+  })
+
+  it('always returns a scoped JWT bearer instead of the global API key fallback', async () => {
+    process.env.INDOBASE_PAYMENTS_API_KEY = 'global-payments-key'
+    vi.mocked(getProject).mockResolvedValue({
+      ref: 'proj_123',
+      name: 'Demo Project',
+      organization_slug: 'demo-org',
+    } as any)
+    vi.mocked(resolvePaymentsRole).mockResolvedValue('developer')
+
+    const result = await mintPaymentsMcpBearer({
+      claims: { sub: 'user-1', email: 'user@example.com' } as any,
+      projectRef: 'proj_123',
+    })
+
+    expect(result.bearerToken).toBe('signed-token')
+    expect(result.organizationSlug).toBe('demo-org')
+    expect(result.projectRef).toBe('proj_123')
   })
 })

@@ -105,6 +105,56 @@ describe('project-health', () => {
     expect(fetch).toHaveBeenCalled()
   })
 
+  it('falls back to public probes when internal split-VPS probes fail but provisioner reports healthy', async () => {
+    process.env.DATA_PLANE_PROVISIONER_URL = 'https://provisioner.internal'
+    process.env.DATA_PLANE_PROVISIONER_TOKEN = 'redacted-token'
+
+    vi.mocked(getProject).mockResolvedValue({
+      restUrl: 'https://abc.indobase.in/rest/v1/',
+    } as any)
+    vi.mocked(executeQuery).mockResolvedValue({
+      data: [
+        {
+          data_plane_last_provisioned_at: '2026-01-01T00:00:00.000Z',
+          data_plane_port_base: 15432,
+          connection_string: 'postgres://tenant',
+          connection_string_enc: null,
+          status: 'ACTIVE_HEALTHY',
+        },
+      ],
+      error: null,
+    } as any)
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url === 'https://provisioner.internal/stack-health') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true }),
+          } as Response
+        }
+        if (url.startsWith('http://172.17.0.1:')) {
+          return { ok: false, status: 503 } as Response
+        }
+        return { ok: true, status: 200 } as Response
+      })
+    )
+
+    const health = await getSaaSProjectServiceHealth({
+      claims: { sub: 'user-1' } as any,
+      ref: 'abc',
+    })
+
+    expect(health?.every((s) => s.status === 'ACTIVE_HEALTHY')).toBe(true)
+    expect(fetch).toHaveBeenCalledWith(
+      'https://provisioner.internal/stack-health',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
+
   it('edge functions health probes tenant URL when data plane timestamp is missing', async () => {
     vi.mocked(getProject).mockResolvedValue({
       restUrl: 'https://abc.indobase.in/rest/v1/',

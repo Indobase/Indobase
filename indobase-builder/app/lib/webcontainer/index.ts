@@ -130,7 +130,7 @@ function bootWebContainerOnce(): Promise<WebContainer> {
       const container = await withTimeout(
         boot,
         WEBCONTAINER_BOOT_TIMEOUT_MS,
-        'Indobase Builder workspace failed to start (timed out). Disable Redirect Blocker and other extensions for this site, use Chrome or Edge, and hard-refresh.',
+        'Indobase Builder workspace failed to start (timed out). Hard-refresh the page (Chrome or Edge) or click the terminal reset button (↻) to retry.',
       );
       return rememberInstance(container);
     } catch (error) {
@@ -239,9 +239,6 @@ function bootWebContainer(): Promise<WebContainer> {
       } catch (error) {
         lastError = error;
         webcontainerContext.loaded = false;
-        webcontainerBootErrorAtom.set(
-          error instanceof Error ? error.message : 'Indobase Builder workspace failed to start.',
-        );
 
         if (isSingletonBootError(error) && activeInstance) {
           try {
@@ -260,6 +257,9 @@ function bootWebContainer(): Promise<WebContainer> {
     }
 
     console.error('WebContainer boot failed:', lastError);
+    webcontainerBootErrorAtom.set(
+      lastError instanceof Error ? lastError.message : 'Indobase Builder workspace failed to start.',
+    );
     throw lastError;
   })().then((container) => {
     webcontainerBootErrorAtom.set(null);
