@@ -20,7 +20,7 @@ import {
 import { OPENROUTER_FREE_CODING_MODELS } from '~/lib/indobase/openrouter-coding-models';
 import {
   isOpenRouterHighBudgetModelId,
-  OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS,
+  OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS,
   resolveOpenRouterModelForTask,
   type OpenRouterTask,
 } from '~/lib/indobase/openrouter-model-policy';
@@ -42,6 +42,7 @@ import {
   getCompactGenerationContractAppendix,
   getGenerationContractAppendix,
   inferBuilderProjectTarget,
+  isInitialScaffoldTurn,
   isSimpleFirstScaffoldTurn,
 } from '~/lib/indobase/generation-contract';
 import { getWebSkillsPromptAppendix } from '~/lib/skills/select-web-skills';
@@ -113,8 +114,9 @@ function resolveOpenRouterTask(
     return 'chat';
   }
 
-  if (chatMode === 'build' && isSimpleFirstScaffoldTurn(messages)) {
-    return 'scaffold';
+  // All Build turns use the fast codegen model (scaffold alias kept for callers/tests).
+  if (chatMode === 'build') {
+    return isSimpleFirstScaffoldTurn(messages) ? 'scaffold' : 'codegen';
   }
 
   return 'codegen';
@@ -344,14 +346,14 @@ export async function streamText(props: {
    * keep a real budget: clamping to 4k truncated one-shot builds mid-file (finishReason "length").
    */
   const openRouterTask = resolveOpenRouterTask(chatMode, processedMessages);
-  const scaffoldTokenCap =
-    openRouterTask === 'scaffold'
-      ? Math.min(dynamicMaxTokens, OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS)
+  const fastCodegenCap =
+    openRouterTask === 'scaffold' || openRouterTask === 'codegen'
+      ? Math.min(dynamicMaxTokens, OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS)
       : dynamicMaxTokens;
   const safeMaxTokens =
     provider.name === 'OpenRouter'
       ? isOpenRouterHighBudgetModelId(modelDetails.name)
-        ? scaffoldTokenCap
+        ? fastCodegenCap
         : Math.min(dynamicMaxTokens, 4096)
       : dynamicMaxTokens;
 
@@ -433,8 +435,10 @@ export async function streamText(props: {
   }
 
   const simpleScaffold = chatMode === 'build' && isSimpleFirstScaffoldTurn(processedMessages);
+  const initialScaffold = chatMode === 'build' && isInitialScaffoldTurn(processedMessages);
 
-  if (multiAgentMode && chatMode === 'build' && !simpleScaffold) {
+  // Skip long coder/skills appendices on first scaffolds — biggest prompt-latency win.
+  if (multiAgentMode && chatMode === 'build' && !initialScaffold) {
     systemPrompt = `${systemPrompt}${CODER_AGENT_APPENDIX}`;
   }
 
@@ -447,12 +451,7 @@ export async function streamText(props: {
         : getGenerationContractAppendix(projectTarget)
     }`;
 
-    /*
-     * Selective web-development skill injection (vendored MIT skills). Never dumps the
-     * full catalog — ranking picks a small stack-aware subset for this turn.
-     * Skip on simple first scaffolds to keep latency and output size down.
-     */
-    if (!simpleScaffold) {
+    if (!initialScaffold) {
       const skillsAppendix = getWebSkillsPromptAppendix({
         messages: processedMessages,
         files,

@@ -671,30 +671,26 @@ export const ChatImpl = memo(
           }
 
           while (true) {
+            // Start server draft in parallel with WebContainer finalize — draft is usually faster.
+            const draftPromise = publishDraftPreview(indobaseConnection.get());
+
             try {
               await finalizeCodegen();
               automaticPreviewRepairAttemptRef.current = 0;
-
-              // The preview is verified healthy: earlier repair/terminal alerts are stale now.
               setLlmErrorAlert(undefined);
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
               }
 
-              // Fire-and-forget: server build → Builder-hosted draft (does not stomp live subdomain).
-              void publishDraftPreview(indobaseConnection.get());
+              void draftPromise;
 
               return true;
             } catch (error) {
               logger.error('Post-codegen finalize failed', error);
 
-              /*
-               * Prefer a server draft preview over WebContainer repair when Studio is linked —
-               * WC boot timeouts are common; static draft uses the same path as Publish.
-               */
               try {
-                const draft = await publishDraftPreview(indobaseConnection.get());
+                const draft = await draftPromise;
 
                 if (draft.success && draft.previewUrl) {
                   automaticPreviewRepairAttemptRef.current = 0;

@@ -12,7 +12,7 @@ export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 export const MODIFICATIONS_TAG_NAME = 'bolt_file_modifications';
 export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
-/** Default discuss/chat model — OpenRouter free tier (codegen uses paid DeepSeek server-side). */
+/** Default discuss/chat model — OpenRouter free tier (Build codegen uses fast Flash server-side). */
 export const DEFAULT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 /** OpenRouter free vision model when the user attaches screenshots/images. */
 export const VISION_MODEL = OPENROUTER_FREE_VISION_MODEL.name;

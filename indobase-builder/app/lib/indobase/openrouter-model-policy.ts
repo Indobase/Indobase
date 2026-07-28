@@ -9,7 +9,7 @@ import {
   OPENROUTER_PROVIDER_NAME,
 } from '~/lib/indobase/openrouter-free-models';
 
-/** Paid OpenRouter model for Builder codegen and autonomous debugging. */
+/** Slow/paid model reserved for autonomous repair when a build already failed. */
 export const OPENROUTER_PAID_CODEGEN_MODEL = 'deepseek/deepseek-v4-pro';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
@@ -17,26 +17,27 @@ export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
   maxTokenAllowed: 1048576,
-
-  /*
-   * Output budget for one generation. Without this the provider default (OpenRouter: 8192) applies,
-   * which truncates multi-file app artifacts mid-file — the model supports 384k output tokens.
-   * Kept well under the ceiling so a runaway generation can't burn the whole budget in one call.
-   */
   maxCompletionTokens: 64000,
   tier: 'Paid' as const,
 };
 
 /**
- * Fast paid model for short first-scaffold Builds (landing pages / simple UI).
- * Prefer Flash for latency; coder is the named fallback if Flash leaves the curated list.
+ * Default Builder codegen model — optimized for wall-clock speed.
+ * DeepSeek Pro is reserved for debugging/repair only.
  */
-export const OPENROUTER_FAST_SCAFFOLD_MODEL =
+export const OPENROUTER_FAST_CODEGEN_MODEL =
   OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3.5-flash-02-23')?.name ??
   OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3-coder-30b-a3b-instruct')?.name ??
   DEFAULT_OPENROUTER_CODING_MODEL;
 
-export const OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS = 24576;
+/** @deprecated Use OPENROUTER_FAST_CODEGEN_MODEL — kept for existing imports/tests. */
+export const OPENROUTER_FAST_SCAFFOLD_MODEL = OPENROUTER_FAST_CODEGEN_MODEL;
+
+/** Completion budget for fast codegen (Flash supports up to 65k). */
+export const OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS = 49152;
+
+/** @deprecated Use OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS */
+export const OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS = OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS;
 
 /** General discuss chat — curated OpenRouter free tier. */
 export const DEFAULT_OPENROUTER_CHAT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
@@ -56,13 +57,18 @@ export function isOpenRouterPaidCodegenModelId(modelId: string): boolean {
   return modelId === OPENROUTER_PAID_CODEGEN_MODEL;
 }
 
+export function isOpenRouterFastCodegenModelId(modelId: string): boolean {
+  return modelId === OPENROUTER_FAST_CODEGEN_MODEL;
+}
+
+/** @deprecated Use isOpenRouterFastCodegenModelId */
 export function isOpenRouterFastScaffoldModelId(modelId: string): boolean {
-  return modelId === OPENROUTER_FAST_SCAFFOLD_MODEL;
+  return isOpenRouterFastCodegenModelId(modelId);
 }
 
 /** Models that must not be clamped to the tiny OpenRouter free-tier completion budget. */
 export function isOpenRouterHighBudgetModelId(modelId: string): boolean {
-  return isOpenRouterPaidCodegenModelId(modelId) || isOpenRouterFastScaffoldModelId(modelId);
+  return isOpenRouterPaidCodegenModelId(modelId) || isOpenRouterFastCodegenModelId(modelId);
 }
 
 export function resolveOpenRouterModelForTask(
@@ -70,17 +76,19 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
-  if (task === 'scaffold') {
-    return {
-      providerName: OPENROUTER_PROVIDER_NAME,
-      modelName: OPENROUTER_FAST_SCAFFOLD_MODEL,
-    };
-  }
-
-  if (task === 'codegen' || task === 'debugging') {
+  // Repair only — keep the strongest model when fixing a broken preview.
+  if (task === 'debugging') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
+    };
+  }
+
+  // All Build codegen (simple + complex) uses the fast model for Emergent-like latency.
+  if (task === 'codegen' || task === 'scaffold') {
+    return {
+      providerName: OPENROUTER_PROVIDER_NAME,
+      modelName: OPENROUTER_FAST_CODEGEN_MODEL,
     };
   }
 

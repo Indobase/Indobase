@@ -146,10 +146,10 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
    */
   const activePreviewBaseUrl = activePreview?.baseUrl;
   /*
-   * Prefer live WebContainer when available; fall back to Builder-hosted draft from server build
-   * so preview still works when WC times out.
+   * Prefer server draft when ready — usually beats cold WebContainer install for time-to-preview.
+   * Fall back to live WC when draft is not available yet.
    */
-  const effectivePreviewUrl = activePreviewBaseUrl || draftPreviewUrl;
+  const effectivePreviewUrl = draftPreviewUrl || activePreviewBaseUrl;
 
   useEffect(() => {
     if (!effectivePreviewUrl) {
@@ -755,7 +755,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
             setIsDropdownOpen={setIsPortDropdownOpen}
             previews={previews}
           />
-          {!activePreviewBaseUrl && draftPreviewUrl ? (
+          {!draftPreviewUrl && activePreviewBaseUrl ? null : draftPreviewUrl ? (
             <span
               className="shrink-0 rounded-full bg-accent-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-500"
               title="Server draft preview (does not replace your live subdomain)"
