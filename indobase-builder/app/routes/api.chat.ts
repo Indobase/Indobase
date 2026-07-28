@@ -29,7 +29,7 @@ import {
 import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
-import { inspectOneShotBuildResponse, isInitialScaffoldTurn } from '~/lib/indobase/generation-contract';
+import { inspectOneShotBuildResponse, isInitialScaffoldTurn, isSimpleFirstScaffoldTurn } from '~/lib/indobase/generation-contract';
 
 const logger = createScopedLogger('api.chat');
 
@@ -241,8 +241,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
          * still count as pre-scaffold, so we keep MCP off and enforce install+start one-shot.
          */
         const isFirstBuildTurn = isInitialScaffoldTurn(processedMessages);
+        const skipPlannerForSimpleScaffold = isSimpleFirstScaffoldTurn(processedMessages);
 
-        if (useMultiAgent && !isToolContinuationRound) {
+        if (useMultiAgent && !isToolContinuationRound && !skipPlannerForSimpleScaffold) {
           const plannerResult = await runPlannerPhase({
             messages: processedMessages,
             dataStream,
@@ -259,6 +260,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           orchestratedMessages = plannerResult.messages;
           progressCounter = progressOrder.value;
           streamRecovery.updateActivity();
+        } else if (skipPlannerForSimpleScaffold) {
+          logger.info('Skipping planner for simple first-scaffold Build');
+          dataStream.writeData({
+            type: 'progress',
+            label: 'coder',
+            status: 'in-progress',
+            order: progressCounter++,
+            message: 'Building (fast scaffold)',
+          } satisfies ProgressAnnotation);
         }
 
         if (processedMessages.length > 3) {

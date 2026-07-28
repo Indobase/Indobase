@@ -67,6 +67,24 @@ import { warmWebContainer } from './lib/webcontainer';
 import { WebContainerBootBanner } from './components/WebContainerBootBanner.client';
 import { PostHogAnalytics } from './components/analytics/PostHogAnalytics.client';
 
+async function hydrateBuilderPublicEnv(): Promise<void> {
+  try {
+    const response = await fetch('/api/runtime-public-env', { credentials: 'same-origin' });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = (await response.json()) as { webcontainerApiKey?: string };
+    window.__INDOBASE_BUILDER_PUBLIC__ = {
+      ...(window.__INDOBASE_BUILDER_PUBLIC__ || {}),
+      webcontainerApiKey: data.webcontainerApiKey || '',
+    };
+  } catch (error) {
+    console.warn('Failed to load Builder public runtime env', error);
+  }
+}
+
 export default function App() {
   useEffect(() => {
     hydrateClientPrefsFromStorage();
@@ -96,9 +114,10 @@ export default function App() {
         logStore.logError('Failed to initialize debug logging', error);
       });
 
-    // Boot WebContainer immediately — delayed idle callbacks let chat/planner start
-    // before the workspace is warming, which makes slow boots look like extension blocks.
-    warmWebContainer();
+    // Load StackBlitz client key before warming WebContainer (required on prod hosts).
+    void hydrateBuilderPublicEnv().finally(() => {
+      warmWebContainer();
+    });
 
     void (async () => {
       await restoreBuilderSessionOnLoad();

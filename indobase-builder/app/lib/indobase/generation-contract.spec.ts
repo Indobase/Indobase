@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getCompactGenerationContractAppendix,
   getGenerationContractAppendix,
   inferBuilderProjectTarget,
   inspectOneShotBuildResponse,
   isInitialScaffoldTurn,
+  isSimpleFirstScaffoldTurn,
   validateGeneratedProjectContract,
 } from './generation-contract';
 
@@ -34,6 +36,48 @@ describe('inferBuilderProjectTarget', () => {
         },
       }),
     ).toBe('mobile');
+  });
+});
+
+describe('isSimpleFirstScaffoldTurn', () => {
+  it('accepts a short UI-only first prompt', () => {
+    expect(
+      isSimpleFirstScaffoldTurn([
+        { role: 'user', content: 'Build a simple hello world landing page with a blue Get started button' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('rejects auth or payment prompts', () => {
+    expect(isSimpleFirstScaffoldTurn([{ role: 'user', content: 'Build a login page with OAuth auth' }])).toBe(
+      false,
+    );
+    expect(
+      isSimpleFirstScaffoldTurn([{ role: 'user', content: 'Build a checkout page with Razorpay payments' }]),
+    ).toBe(false);
+  });
+
+  it('rejects long prompts and follow-up turns after a scaffold', () => {
+    expect(
+      isSimpleFirstScaffoldTurn([
+        {
+          role: 'user',
+          content:
+            'Build a very long detailed multi-section marketing site with testimonials pricing FAQ blog careers about contact gallery portfolio case studies newsletter signup footer navigation and custom animations throughout the entire experience for desktop and tablet',
+        },
+      ]),
+    ).toBe(false);
+
+    expect(
+      isSimpleFirstScaffoldTurn([
+        { role: 'user', content: 'Build a hello world page' },
+        {
+          role: 'assistant',
+          content: '<boltArtifact id="x"><boltAction type="file" filePath="index.html">hi</boltAction></boltArtifact>',
+        },
+        { role: 'user', content: 'Make the button red' },
+      ]),
+    ).toBe(false);
   });
 });
 
@@ -82,6 +126,14 @@ describe('getGenerationContractAppendix', () => {
     expect(appendix).toContain('<boltAction type="start">');
     expect(appendix).toContain('<bolt-quick-actions>');
     expect(appendix).toContain('Never ask the user to choose a recommendation before building');
+  });
+
+  it('uses a compact contract for simple web scaffolds', () => {
+    const compact = getCompactGenerationContractAppendix('web');
+
+    expect(compact).toContain('mode="compact"');
+    expect(compact).toContain('as few files as possible');
+    expect(compact.length).toBeLessThan(getGenerationContractAppendix('web').length);
   });
 });
 

@@ -41,6 +41,7 @@ import {
   isIndobaseStudioManagedConnection,
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
+import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
@@ -681,9 +682,33 @@ export const ChatImpl = memo(
                 initialBuildLifecycle.set('preview-ready');
               }
 
+              // Fire-and-forget: server build → Builder-hosted draft (does not stomp live subdomain).
+              void publishDraftPreview(indobaseConnection.get());
+
               return true;
             } catch (error) {
               logger.error('Post-codegen finalize failed', error);
+
+              /*
+               * Prefer a server draft preview over WebContainer repair when Studio is linked —
+               * WC boot timeouts are common; static draft uses the same path as Publish.
+               */
+              try {
+                const draft = await publishDraftPreview(indobaseConnection.get());
+
+                if (draft.success && draft.previewUrl) {
+                  automaticPreviewRepairAttemptRef.current = 0;
+                  setLlmErrorAlert(undefined);
+
+                  if (isInitialBuild) {
+                    initialBuildLifecycle.set('preview-ready');
+                  }
+
+                  return true;
+                }
+              } catch (draftError) {
+                logger.warn('Draft preview recovery failed', draftError);
+              }
 
               const repair = decideAutomaticPreviewRepair({
                 error,
@@ -895,7 +920,7 @@ export const ChatImpl = memo(
           ) {
             void ensureBuilderSession({ retries: 2 }).then((restored) => {
               if (!restored && !getStoredBuilderMcpToken()) {
-                toast.error('Builder session expired. Reconnecting through Studio…');
+                toast.error('Connect via Studio to build. Opening Studio sign-in…');
                 redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
               } else if (!restored) {
                 toast.error('Could not refresh the builder session. Check your connection and try again.');

@@ -29,5 +29,15 @@ describe('webcontainer boot helpers', () => {
         'Indobase Builder workspace failed to start (timed out). Hard-refresh the page (Chrome or Edge) or click the terminal reset button (↻) to retry.',
       ),
     ).toBe(false);
+    expect(
+      shouldSuggestExtensionDisable(
+        'WebContainer API key is not configured for this host. Set WEBCONTAINER_API_KEY on the Builder service',
+      ),
+    ).toBe(false);
+    expect(
+      shouldSuggestExtensionDisable(
+        'StackBlitz rejected this Builder host (headless 404). In the StackBlitz API Console, enable the WebContainer API key',
+      ),
+    ).toBe(false);
   });
 });

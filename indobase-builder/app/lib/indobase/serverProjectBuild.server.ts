@@ -20,6 +20,15 @@ const INSTALL_TIMEOUT_MS = 120_000;
 /** Standard PATH for Node Docker images — deploy env must never strip this. */
 const SAFE_PATH = ['/usr/local/bin', '/usr/bin', '/bin'].join(path.delimiter);
 
+function packageBuildLooksLikeVite(packageJson: string): boolean {
+  try {
+    const scripts = (JSON.parse(packageJson) as { scripts?: Record<string, string> }).scripts ?? {};
+    return /\bvite\b/.test(scripts.build || '') || /\bvite\b/.test(scripts.dev || '');
+  } catch {
+    return false;
+  }
+}
+
 async function resolveNpmBinary(): Promise<string> {
   const candidates = [
     path.join(path.dirname(process.execPath), 'npm'),
@@ -82,6 +91,7 @@ async function readDistArtifacts(distDir: string, root = distDir): Promise<Recor
 export async function buildProjectArtifactsOnServer(
   projectFiles: Record<string, string>,
   env: Record<string, string>,
+  options: { assetBase?: string } = {},
 ): Promise<CollectBuildArtifactsResult> {
   if (!projectFiles['package.json']) {
     return {
@@ -126,8 +136,19 @@ export async function buildProjectArtifactsOnServer(
       },
     );
 
-    logger.info(`Server build: ${npmBin} run build in ${workDir}`);
-    await execFileAsync(npmBin, ['run', 'build'], {
+    const buildArgs = ['run', 'build'];
+
+    /*
+     * Draft previews are served under /draft-preview/:id/. Relative asset base keeps Vite
+     * chunk URLs working without post-hoc path rewriting for every hashed file.
+     */
+    if (options.assetBase && packageBuildLooksLikeVite(projectFiles['package.json'])) {
+      buildArgs.push('--', '--base', options.assetBase);
+      logger.info(`Server build: using Vite --base ${options.assetBase}`);
+    }
+
+    logger.info(`Server build: ${npmBin} ${buildArgs.join(' ')} in ${workDir}`);
+    await execFileAsync(npmBin, buildArgs, {
       cwd: workDir,
       timeout: BUILD_TIMEOUT_MS,
       env: childEnv,

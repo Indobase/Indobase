@@ -8,6 +8,7 @@ import { withSecurity } from '~/lib/security';
 import { WORK_DIR } from '~/utils/constants';
 
 type ServerBuildBody = {
+  assetBase?: string;
   credentials?: {
     anonKey?: string;
     apiUrl?: string;
@@ -73,7 +74,9 @@ async function serverBuildAction({ request, context }: ActionFunctionArgs) {
     },
   });
 
-  const result = await buildProjectArtifactsOnServer(projectFiles, buildEnv);
+  const result = await buildProjectArtifactsOnServer(projectFiles, buildEnv, {
+    assetBase: typeof body.assetBase === 'string' ? body.assetBase.trim() || undefined : undefined,
+  });
 
   return json(result, { status: result.success ? 200 : 500 });
 }

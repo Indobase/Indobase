@@ -3,8 +3,13 @@ import { atom } from 'nanostores';
 import { WORK_DIR_NAME } from '~/utils/constants';
 import { cleanStackTrace } from '~/utils/stacktrace';
 import { isSingletonBootError } from './boot-errors';
+import {
+  ensureWebContainerApiKeyConfigured,
+  resolveWebContainerApiKey,
+} from './configure-api-key';
 
 export { isSingletonBootError, shouldSuggestExtensionDisable } from './boot-errors';
+export { ensureWebContainerApiKeyConfigured, resolveWebContainerApiKey } from './configure-api-key';
 
 export const webcontainerBootErrorAtom = atom<string | null>(null);
 
@@ -48,22 +53,61 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
 }
 
 async function assertWebContainerRuntimeReady(): Promise<void> {
+  ensureWebContainerApiKeyConfigured();
+
   if (typeof crossOriginIsolated !== 'undefined' && !crossOriginIsolated) {
     throw new Error(
       'This browser tab is not cross-origin isolated (SharedArrayBuffer unavailable). Use Chrome or Edge, close other Builder tabs, and hard-refresh. Disable extensions that strip COOP/COEP headers (Redirect Blocker, privacy shields).',
     );
   }
 
-  // Fail fast when ad/redirect blockers prevent StackBlitz from loading.
+  /*
+   * Fail fast when StackBlitz rejects the host (missing/invalid API key → 404) or when
+   * ad/redirect blockers prevent the runtime from loading. Prefer a CORS-aware probe so we
+   * can distinguish 404 from opaque network failures (no-cors always "succeeds" on 404).
+   */
   const controller = new AbortController();
   const probeTimer = setTimeout(() => controller.abort(), STACKBLITZ_HEADLESS_PROBE_MS);
+  const apiKey = resolveWebContainerApiKey();
+  const probeUrl = new URL('https://stackblitz.com/headless');
+  probeUrl.searchParams.set('coep', 'credentialless');
+  probeUrl.searchParams.set('version', '1.6.1-internal.1');
+
+  if (apiKey) {
+    probeUrl.searchParams.set('client_id', apiKey);
+  }
 
   try {
-    await fetch('https://stackblitz.com/headless?coep=credentialless&version=1.6.1-internal.1', {
-      mode: 'no-cors',
+    const response = await fetch(probeUrl.toString(), {
+      method: 'GET',
+      credentials: 'omit',
+      redirect: 'manual',
       signal: controller.signal,
     });
-  } catch {
+
+    // Opaque / CORS-blocked responses still mean the network path works; StackBlitz may omit ACAO.
+    if (response.type === 'opaque' || response.type === 'opaqueredirect') {
+      return;
+    }
+
+    if (response.status === 404) {
+      throw new Error(
+        apiKey
+          ? 'StackBlitz rejected this Builder host (headless 404). In the StackBlitz API Console, enable the WebContainer API key and allowlist builder.indobase.in and builder.indobase.fun, then hard-refresh.'
+          : 'StackBlitz WebContainer is unavailable on this host without an API key (headless 404). Set WEBCONTAINER_API_KEY on the Builder service and allowlist this domain.',
+      );
+    }
+
+    if (!response.ok && response.status !== 0) {
+      throw new Error(
+        `Cannot reach the StackBlitz WebContainer runtime (HTTP ${response.status}). Disable Redirect Blocker / ad-block for builder.indobase.in, then hard-refresh (Chrome or Edge).`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && /StackBlitz|WebContainer API key/i.test(error.message)) {
+      throw error;
+    }
+
     throw new Error(
       'Cannot reach the StackBlitz WebContainer runtime. Disable Redirect Blocker / ad-block extensions for builder.indobase.in, then hard-refresh (Chrome or Edge).',
     );

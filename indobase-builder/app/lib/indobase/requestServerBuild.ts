@@ -6,6 +6,7 @@ import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 export async function collectBuildArtifactsViaServer(
   connection: IndobaseConnectionState,
   files: FileMap,
+  options: { assetBase?: string } = {},
 ): Promise<CollectBuildArtifactsResult> {
   try {
     const response = await fetch(
@@ -18,6 +19,7 @@ export async function collectBuildArtifactsViaServer(
           credentials: connection.credentials,
           projectRef: connection.indobase?.projectRef || connection.selectedProjectId,
           studioUrl: connection.indobase?.studioUrl,
+          assetBase: options.assetBase,
         }),
       }),
     );

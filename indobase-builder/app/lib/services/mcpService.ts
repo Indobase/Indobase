@@ -101,6 +101,29 @@ export type MCPServerUnavailable = {
 };
 export type MCPServer = MCPServerAvailable | MCPServerUnavailable;
 
+const loggedMcpInitFailures = new Set<string>();
+
+function logMcpInitFailure(serverName: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const isInfraNoise = /postgres-meta|ENOTFOUND indobase-meta|Cannot reach postgres-meta/i.test(message);
+  const key = `${serverName}:${isInfraNoise ? 'infra' : message.slice(0, 120)}`;
+
+  if (loggedMcpInitFailures.has(key)) {
+    return;
+  }
+
+  loggedMcpInitFailures.add(key);
+
+  if (isInfraNoise) {
+    logger.warn(
+      `MCP server "${serverName}" unavailable (Studio meta unreachable from this network). Payments/MCP tools disabled until Studio meta DNS is fixed.`,
+    );
+    return;
+  }
+
+  logger.error(`Failed to initialize MCP client for server: ${serverName}`, error);
+}
+
 export class MCPService {
   private static _instance: MCPService;
   private _tools: ToolSet = {};
@@ -266,7 +289,7 @@ export class MCPService {
           };
         }
       } catch (error) {
-        logger.error(`Failed to initialize MCP client for server: ${serverName}`, error);
+        logMcpInitFailure(serverName, error);
         this._mcpToolsPerServer[serverName] = {
           status: 'unavailable',
           error: (error as Error).message,

@@ -38,7 +38,26 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
     ? { status: 'ok' }
     : { status: 'error', message: 'No server LLM API key configured' };
 
-  const ready = Object.values(checks).every((check) => check.status === 'ok');
+  if (isProductionEnv(env)) {
+    const hasWebcontainerKey = Boolean(
+      process.env.WEBCONTAINER_API_KEY?.trim() ||
+        process.env.VITE_WEBCONTAINER_API_KEY?.trim() ||
+        env?.WEBCONTAINER_API_KEY?.trim() ||
+        env?.VITE_WEBCONTAINER_API_KEY?.trim(),
+    );
+
+    // Degraded (not ready=false) so deploy health gates still pass while preview is fixed.
+    checks.webcontainerApiKey = hasWebcontainerKey
+      ? { status: 'ok' }
+      : {
+          status: 'error',
+          message:
+            'WEBCONTAINER_API_KEY missing — production preview requires a StackBlitz WebContainer API key with builder.indobase.in allowlisted',
+        };
+  }
+
+  const blockingChecks = Object.entries(checks).filter(([name]) => name !== 'webcontainerApiKey');
+  const ready = blockingChecks.every(([, check]) => check.status === 'ok');
 
   return json(
     {

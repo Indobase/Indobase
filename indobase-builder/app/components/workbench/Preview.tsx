@@ -8,6 +8,7 @@ import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
 import type { ElementInfo } from './Inspector';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import { streamingState } from '~/lib/stores/streaming';
 
 type ResizeSide = 'left' | 'right' | null;
@@ -21,11 +22,22 @@ interface PreviewProps {
  * "starting" copy) from a resting workspace, so a cold start reads as progress instead of a blank
  * "No preview available" panel.
  */
-function PreviewEmptyState({ busy }: { busy: boolean }) {
+function PreviewEmptyState({ busy, draftBuilding }: { busy: boolean; draftBuilding?: boolean }) {
+  const title = draftBuilding
+    ? 'Building server preview…'
+    : busy
+      ? 'Starting your app…'
+      : 'Preview will appear here';
+  const detail = draftBuilding
+    ? 'Running a server build and hosting a draft preview. This usually beats a cold WebContainer install.'
+    : busy
+      ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
+      : 'Once the app is running, its live preview shows up in this panel.';
+
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1 px-6 text-center">
       <div className="relative flex h-14 w-14 items-center justify-center">
-        {busy ? (
+        {busy || draftBuilding ? (
           <>
             <span className="absolute inset-0 rounded-full border-2 border-accent-500/25" />
             <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-accent-500" />
@@ -36,14 +48,8 @@ function PreviewEmptyState({ busy }: { busy: boolean }) {
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-medium text-bolt-elements-textPrimary">
-          {busy ? 'Starting your app…' : 'Preview will appear here'}
-        </p>
-        <p className="max-w-xs text-xs leading-5 text-bolt-elements-textTertiary">
-          {busy
-            ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
-            : 'Once the app is running, its live preview shows up in this panel.'}
-        </p>
+        <p className="text-sm font-medium text-bolt-elements-textPrimary">{title}</p>
+        <p className="max-w-xs text-xs leading-5 text-bolt-elements-textTertiary">{detail}</p>
       </div>
     </div>
   );
@@ -97,10 +103,13 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const hasSelectedPreview = useRef(false);
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
+  const draftPreview = useStore(draftPreviewStore);
   const buildLifecycle = useStore(initialBuildLifecycle);
   const isStreaming = useStore(streamingState);
   // A dev server is expected soon while generating/finalizing or mid-stream — show "starting", not "empty".
   const previewStarting = isStreaming || buildLifecycle === 'generating' || buildLifecycle === 'finalizing';
+  const draftBuilding = draftPreview.status === 'building';
+  const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : undefined;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -136,18 +145,23 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
    * preview. Depend on the baseUrl STRING instead: it only changes on a real preview change.
    */
   const activePreviewBaseUrl = activePreview?.baseUrl;
+  /*
+   * Prefer live WebContainer when available; fall back to Builder-hosted draft from server build
+   * so preview still works when WC times out.
+   */
+  const effectivePreviewUrl = activePreviewBaseUrl || draftPreviewUrl;
 
   useEffect(() => {
-    if (!activePreviewBaseUrl) {
+    if (!effectivePreviewUrl) {
       setIframeUrl(undefined);
       setDisplayPath('/');
 
       return;
     }
 
-    setIframeUrl(activePreviewBaseUrl);
+    setIframeUrl(effectivePreviewUrl);
     setDisplayPath('/');
-  }, [activePreviewBaseUrl]);
+  }, [effectivePreviewUrl]);
 
   /*
    * A dev server shutting down removes its preview, but activePreviewIndex is local state that was
@@ -607,8 +621,8 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   };
 
   const openInNewTab = () => {
-    if (activePreview?.baseUrl) {
-      window.open(activePreview?.baseUrl, '_blank');
+    if (effectivePreviewUrl) {
+      window.open(effectivePreviewUrl, '_blank');
     }
   };
 
@@ -741,6 +755,14 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
             setIsDropdownOpen={setIsPortDropdownOpen}
             previews={previews}
           />
+          {!activePreviewBaseUrl && draftPreviewUrl ? (
+            <span
+              className="shrink-0 rounded-full bg-accent-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-500"
+              title="Server draft preview (does not replace your live subdomain)"
+            >
+              Draft
+            </span>
+          ) : null}
           <input
             title="URL Path"
             ref={inputRef}
@@ -751,14 +773,14 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               setDisplayPath(event.target.value);
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && activePreview) {
+              if (event.key === 'Enter' && effectivePreviewUrl) {
                 let targetPath = displayPath.trim();
 
                 if (!targetPath.startsWith('/')) {
                   targetPath = '/' + targetPath;
                 }
 
-                const fullUrl = activePreview.baseUrl + targetPath;
+                const fullUrl = `${effectivePreviewUrl.replace(/\/+$/, '')}${targetPath}`;
                 setIframeUrl(fullUrl);
                 setDisplayPath(targetPath);
 
@@ -767,7 +789,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
                 }
               }
             }}
-            disabled={!activePreview}
+            disabled={!effectivePreviewUrl}
           />
         </div>
 
@@ -967,7 +989,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
             alignItems: 'center',
           }}
         >
-          {activePreview ? (
+          {effectivePreviewUrl ? (
             <>
               {isDeviceModeOn && showDeviceFrameInPreview ? (
                 <div
@@ -1047,7 +1069,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
                       }}
                       src={iframeUrl}
                       onLoad={() => {
-                        if (activePreview.baseUrl === iframeUrl) {
+                        if (activePreview?.baseUrl && activePreview.baseUrl === iframeUrl) {
                           workbenchStore.markPreviewLoaded(activePreview.baseUrl);
                         }
                       }}
@@ -1063,7 +1085,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
                   className="border-none w-full h-full bg-bolt-elements-background-depth-1"
                   src={iframeUrl}
                   onLoad={() => {
-                    if (activePreview.baseUrl === iframeUrl) {
+                    if (activePreview?.baseUrl && activePreview.baseUrl === iframeUrl) {
                       workbenchStore.markPreviewLoaded(activePreview.baseUrl);
                     }
                   }}
@@ -1078,7 +1100,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               />
             </>
           ) : (
-            <PreviewEmptyState busy={previewStarting} />
+            <PreviewEmptyState busy={previewStarting} draftBuilding={draftBuilding} />
           )}
 
           {isDeviceModeOn && !showDeviceFrameInPreview && (

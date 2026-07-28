@@ -19,7 +19,8 @@ import {
 } from '~/utils/constants';
 import { OPENROUTER_FREE_CODING_MODELS } from '~/lib/indobase/openrouter-coding-models';
 import {
-  isOpenRouterPaidCodegenModelId,
+  isOpenRouterHighBudgetModelId,
+  OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS,
   resolveOpenRouterModelForTask,
   type OpenRouterTask,
 } from '~/lib/indobase/openrouter-model-policy';
@@ -37,7 +38,12 @@ import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-pro
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
-import { getGenerationContractAppendix, inferBuilderProjectTarget } from '~/lib/indobase/generation-contract';
+import {
+  getCompactGenerationContractAppendix,
+  getGenerationContractAppendix,
+  inferBuilderProjectTarget,
+  isSimpleFirstScaffoldTurn,
+} from '~/lib/indobase/generation-contract';
 import { getWebSkillsPromptAppendix } from '~/lib/skills/select-web-skills';
 import type { DesignScheme } from '~/types/design-scheme';
 
@@ -105,6 +111,10 @@ function resolveOpenRouterTask(
 
   if (chatMode === 'discuss') {
     return 'chat';
+  }
+
+  if (chatMode === 'build' && isSimpleFirstScaffoldTurn(messages)) {
+    return 'scaffold';
   }
 
   return 'codegen';
@@ -330,15 +340,18 @@ export async function streamText(props: {
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
   /*
-   * OpenRouter free tiers reject very large completion limits. Paid codegen must use its full
-   * configured budget (64k): clamping it to 16k truncated one-shot builds mid-file (finishReason
-   * "length"), and every continuation regenerated the project until the segment limit was hit,
-   * leaving no install/start actions and no preview.
+   * OpenRouter free tiers reject very large completion limits. Paid codegen / fast scaffold must
+   * keep a real budget: clamping to 4k truncated one-shot builds mid-file (finishReason "length").
    */
+  const openRouterTask = resolveOpenRouterTask(chatMode, processedMessages);
+  const scaffoldTokenCap =
+    openRouterTask === 'scaffold'
+      ? Math.min(dynamicMaxTokens, OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS)
+      : dynamicMaxTokens;
   const safeMaxTokens =
     provider.name === 'OpenRouter'
-      ? isOpenRouterPaidCodegenModelId(modelDetails.name)
-        ? dynamicMaxTokens
+      ? isOpenRouterHighBudgetModelId(modelDetails.name)
+        ? scaffoldTokenCap
         : Math.min(dynamicMaxTokens, 4096)
       : dynamicMaxTokens;
 
@@ -419,30 +432,39 @@ export async function streamText(props: {
     console.log('No locked files found from any source for prompt.');
   }
 
-  if (multiAgentMode && chatMode === 'build') {
+  const simpleScaffold = chatMode === 'build' && isSimpleFirstScaffoldTurn(processedMessages);
+
+  if (multiAgentMode && chatMode === 'build' && !simpleScaffold) {
     systemPrompt = `${systemPrompt}${CODER_AGENT_APPENDIX}`;
   }
 
   if (chatMode === 'build') {
     const projectTarget = inferBuilderProjectTarget(processedMessages, files);
 
-    systemPrompt = `${systemPrompt}${getGenerationContractAppendix(projectTarget)}`;
+    systemPrompt = `${systemPrompt}${
+      simpleScaffold
+        ? getCompactGenerationContractAppendix(projectTarget)
+        : getGenerationContractAppendix(projectTarget)
+    }`;
 
     /*
      * Selective web-development skill injection (vendored MIT skills). Never dumps the
      * full catalog — ranking picks a small stack-aware subset for this turn.
+     * Skip on simple first scaffolds to keep latency and output size down.
      */
-    const skillsAppendix = getWebSkillsPromptAppendix({
-      messages: processedMessages,
-      files,
-      target: projectTarget,
-    });
+    if (!simpleScaffold) {
+      const skillsAppendix = getWebSkillsPromptAppendix({
+        messages: processedMessages,
+        files,
+        target: projectTarget,
+      });
 
-    if (skillsAppendix) {
-      systemPrompt = `${systemPrompt}${skillsAppendix}`;
-      logger.info(
-        `Injected web-development skills for ${projectTarget} build (${skillsAppendix.length} chars)`,
-      );
+      if (skillsAppendix) {
+        systemPrompt = `${systemPrompt}${skillsAppendix}`;
+        logger.info(
+          `Injected web-development skills for ${projectTarget} build (${skillsAppendix.length} chars)`,
+        );
+      }
     }
   }
 
