@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Spin } from 'antd'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
-import { redirectToStudioSignIn } from '../lib/studioAuthRedirect'
+import { writeEmailLastProjectRef } from '../lib/emailSessionStorage'
 
 /**
  * Studio → Indobase Email SSO entry (mirrors Payments `/launch`).
@@ -14,13 +14,13 @@ import { redirectToStudioSignIn } from '../lib/studioAuthRedirect'
  */
 export function LaunchPage() {
   const navigate = useNavigate()
-  const { signin } = useAuth()
+  const { signin, isAuthenticated, loading } = useAuth()
   const search = useSearch({ from: '/console/launch' })
   const startedRef = useRef(false)
 
   useEffect(() => {
     if (startedRef.current) return
-    startedRef.current = true
+    if (loading) return
 
     const projectRef =
       typeof search.project_ref === 'string' ? search.project_ref : null
@@ -35,6 +35,7 @@ export function LaunchPage() {
 
     // Hop 2: session already minted by `/api/studio.handoff`
     if (sessionToken) {
+      startedRef.current = true
       const cleanUrl = new URL(window.location.href)
       cleanUrl.hash = ''
       window.history.replaceState({}, '', cleanUrl.toString())
@@ -42,6 +43,7 @@ export function LaunchPage() {
       void (async () => {
         try {
           await signin(sessionToken)
+          writeEmailLastProjectRef(projectRef)
           if (workspaceId) {
             navigate({
               to: '/console/workspace/$workspaceId',
@@ -52,7 +54,14 @@ export function LaunchPage() {
             navigate({ to: '/console/', replace: true })
           }
         } catch {
-          redirectToStudioSignIn({ projectRef })
+          navigate({
+            to: '/console/signin',
+            search: {
+              error: 'Your Email session could not be started. Open Email again from Studio.',
+              ...(projectRef ? { project_ref: projectRef } : {})
+            },
+            replace: true
+          })
         }
       })()
       return
@@ -60,6 +69,7 @@ export function LaunchPage() {
 
     // Hop 1: exchange Studio handoff JWT
     if (studioToken) {
+      startedRef.current = true
       const cleanUrl = new URL(window.location.href)
       cleanUrl.hash = ''
       cleanUrl.searchParams.delete('token')
@@ -72,8 +82,26 @@ export function LaunchPage() {
       return
     }
 
-    redirectToStudioSignIn({ projectRef })
-  }, [navigate, search, signin])
+    // No handoff token: resume an existing Email session when possible.
+    if (isAuthenticated) {
+      startedRef.current = true
+      navigate({ to: '/console/', replace: true })
+      return
+    }
+
+    const storedToken = localStorage.getItem('auth_token')
+    if (storedToken) {
+      // AuthContext is still validating or will clear invalid tokens — wait.
+      return
+    }
+
+    startedRef.current = true
+    navigate({
+      to: '/console/signin',
+      search: projectRef ? { project_ref: projectRef } : undefined,
+      replace: true
+    })
+  }, [navigate, search, signin, isAuthenticated, loading])
 
   return (
     <div

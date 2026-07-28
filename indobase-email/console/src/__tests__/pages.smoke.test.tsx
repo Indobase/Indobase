@@ -485,11 +485,11 @@ describe('Page Smoke Tests', () => {
   })
 
   describe('Page Content Verification', () => {
-    it('SignInPage shows sign in form', async () => {
+    it('SignInPage shows Studio handoff landing', async () => {
       const Wrapper = createWrapper()
       render(<SignInPage />, { wrapper: Wrapper })
       await waitFor(() => {
-        expect(screen.getByText(/Sign In/i)).toBeTruthy()
+        expect(screen.getByText(/Open from Indobase Studio/i)).toBeTruthy()
       })
     })
 
