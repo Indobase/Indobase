@@ -82,7 +82,7 @@ export const BillingPortal = ({
     <iframe
       ref={iframeRef}
       src={src}
-      title="Meteroid billing portal"
+      title="Indobase Payments billing portal"
       className={className}
       allow="payment"
       style={{ width: '100%', border: 'none', display: 'block', height }}

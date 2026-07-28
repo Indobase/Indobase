@@ -21,7 +21,7 @@ export type EmbedRadius = 'Sharp' | 'Modern' | 'Rounded'
 export interface BillingPortalOptions {
   /** Customer-scoped portal token (JWT). Required. Mint server-side. */
   token: string
-  /** Origin hosting the portal. Defaults to `https://app.meteroid.com`. */
+  /** Origin hosting the portal. Defaults to `https://payments.indobase.in`. */
   baseUrl?: string
   /** Which embedded view to render. Defaults to `portal`. */
   view?: EmbedView
@@ -49,7 +49,7 @@ export interface BillingPortalOptions {
   /** Subscription id for the single-subscription view (`view: 'subscription'`). */
   subscriptionId?: string
   /**
-   * Show the "Powered by Meteroid" attribution under the widget. Defaults to
+   * Show the "Powered by Indobase Payments" attribution under the widget. Defaults to
    * `true`; set `false` to hide it (maps to `?branding=false`). The tenant's
    * portal branding settings can also disable it.
    */

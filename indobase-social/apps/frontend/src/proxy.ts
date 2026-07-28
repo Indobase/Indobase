@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAuthCookieOptions } from '@gitroom/helpers/utils/auth-cookie';
+import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
+import { resolveStudioPublicUrl } from '@gitroom/helpers/utils/studio-public-url';
 import {
   cookieName,
   headerName,
   languages,
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
-
-function studioHandoffOnly() {
-  return (
-    process.env.STUDIO_HANDOFF_ONLY === 'true' ||
-    process.env.STUDIO_HANDOFF_ONLY === '1'
-  );
-}
 
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
@@ -69,10 +63,19 @@ export async function proxy(request: NextRequest) {
   // If the URL is logout, delete the cookie and redirect to login
   if (nextUrl.href.indexOf('/auth/logout') > -1) {
     const response = NextResponse.redirect(
-      new URL(studioHandoffOnly() ? '/auth' : '/auth/login', nextUrl.href)
+      new URL('/auth/login', nextUrl.href)
     );
     response.cookies.set('auth', '', {
-      ...getAuthCookieOptions({ maxAge: -1 }),
+      path: '/',
+      ...(!process.env.NOT_SECURED
+        ? {
+            secure: true,
+            httpOnly: true,
+            sameSite: false,
+          }
+        : {}),
+      maxAge: -1,
+      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
     });
     return response;
   }
@@ -81,21 +84,26 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/auth/register') &&
     process.env.DISABLE_REGISTRATION === 'true'
   ) {
-    return NextResponse.redirect(
-      new URL(studioHandoffOnly() ? '/auth' : '/auth/login', nextUrl.href)
-    );
+    return NextResponse.redirect(new URL('/auth/login', nextUrl.href));
   }
 
-  // Studio SSO only — allow /auth + /auth/launch; kill email/password routes.
-  if (studioHandoffOnly() && nextUrl.pathname.startsWith('/auth') && !authCookie) {
-    const allowed =
-      nextUrl.pathname === '/auth' ||
-      nextUrl.pathname === '/auth/' ||
-      nextUrl.pathname.startsWith('/auth/launch') ||
-      nextUrl.pathname.startsWith('/auth/logout');
-    if (!allowed) {
-      return NextResponse.redirect(new URL('/auth', nextUrl.href));
-    }
+  // Studio SSO only — kill public email/password UI on the Social host.
+  if (
+    (process.env.STUDIO_HANDOFF_ONLY === 'true' ||
+      process.env.STUDIO_HANDOFF_ONLY === '1') &&
+    nextUrl.pathname.startsWith('/auth') &&
+    !nextUrl.pathname.startsWith('/auth/launch') &&
+    !nextUrl.pathname.startsWith('/auth/logout') &&
+    !authCookie
+  ) {
+    const studio = resolveStudioPublicUrl(nextUrl.host);
+    const projectRef = nextUrl.searchParams.get('project_ref');
+    const returnPath = projectRef
+      ? `/project/${encodeURIComponent(projectRef)}/marketing`
+      : '/';
+    return NextResponse.redirect(
+      `${studio}/sign-in?returnTo=${encodeURIComponent(returnPath)}`
+    );
   }
 
   const org = nextUrl.searchParams.get('org');
@@ -126,9 +134,16 @@ export async function proxy(request: NextRequest) {
     if (org) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
       redirect.cookies.set('org', org, {
-        ...getAuthCookieOptions({
-          expires: new Date(Date.now() + 15 * 60 * 1000),
-        }),
+        ...(!process.env.NOT_SECURED
+          ? {
+              path: '/',
+              secure: true,
+              httpOnly: true,
+              sameSite: false,
+              domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+            }
+          : {}),
+        expires: new Date(Date.now() + 15 * 60 * 1000),
       });
       return redirect;
     }
@@ -149,9 +164,16 @@ export async function proxy(request: NextRequest) {
       );
       if (id) {
         redirect.cookies.set('showorg', id, {
-          ...getAuthCookieOptions({
-            expires: new Date(Date.now() + 15 * 60 * 1000),
-          }),
+          ...(!process.env.NOT_SECURED
+            ? {
+                path: '/',
+                secure: true,
+                httpOnly: true,
+                sameSite: false,
+                domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+              }
+            : {}),
+          expires: new Date(Date.now() + 15 * 60 * 1000),
         });
       }
       return redirect;

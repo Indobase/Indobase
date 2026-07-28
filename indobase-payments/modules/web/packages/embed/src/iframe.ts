@@ -36,7 +36,7 @@ export const mountBillingPortal = (
 
   const iframe = document.createElement('iframe')
   iframe.src = src
-  iframe.title = 'Meteroid billing portal'
+  iframe.title = 'Indobase Payments billing portal'
   iframe.style.width = '100%'
   iframe.style.border = 'none'
   iframe.style.display = 'block'

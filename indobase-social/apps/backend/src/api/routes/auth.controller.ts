@@ -17,12 +17,13 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { getAuthCookieOptions, studioSignInUrl } from '@gitroom/helpers/utils/auth-cookie';
+import { getAuthCookieOptions } from '@gitroom/helpers/utils/auth-cookie';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
+import { resolveStudioPublicUrl } from '@gitroom/helpers/utils/studio-public-url';
 
 @ApiTags('Auth')
 @Controller('/auth')
@@ -72,7 +73,11 @@ export class AuthController {
 
       return response.redirect(302, '/');
     } catch (e: any) {
-      return response.redirect(302, studioSignInUrl());
+      const studio = resolveStudioPublicUrl(req.headers.host);
+      return response.redirect(
+        302,
+        `${studio}/sign-in?returnTo=${encodeURIComponent('/')}`
+      );
     }
   }
 

@@ -12,14 +12,14 @@
 http:
   routers:
     indobase-payments-web-http:
-      rule: Host(`payments.indobase.in`)
+      rule: Host(`payments.indobase.in`) || Host(`payments.indobase.fun`)
       service: indobase-payments-web
       middlewares:
         - redirect-to-https
       entryPoints:
         - web
     indobase-payments-web-https:
-      rule: Host(`payments.indobase.in`)
+      rule: Host(`payments.indobase.in`) || Host(`payments.indobase.fun`)
       service: indobase-payments-web
       entryPoints:
         - websecure
@@ -28,7 +28,7 @@ http:
 
     # gRPC-Web / Connect — higher priority than the catch-all REST router
     indobase-payments-grpc-http:
-      rule: Host(`api.payments.indobase.in`) && PathPrefix(`/meteroid.`)
+      rule: (Host(`api.payments.indobase.in`) || Host(`api.payments.indobase.fun`)) && PathPrefix(`/meteroid.`)
       service: indobase-payments-grpc
       priority: 100
       middlewares:
@@ -36,7 +36,7 @@ http:
       entryPoints:
         - web
     indobase-payments-grpc-https:
-      rule: Host(`api.payments.indobase.in`) && PathPrefix(`/meteroid.`)
+      rule: (Host(`api.payments.indobase.in`) || Host(`api.payments.indobase.fun`)) && PathPrefix(`/meteroid.`)
       service: indobase-payments-grpc
       priority: 100
       entryPoints:
@@ -45,7 +45,7 @@ http:
         certResolver: letsencrypt
 
     indobase-payments-api-http:
-      rule: Host(`api.payments.indobase.in`)
+      rule: Host(`api.payments.indobase.in`) || Host(`api.payments.indobase.fun`)
       service: indobase-payments-api
       priority: 1
       middlewares:
@@ -53,7 +53,7 @@ http:
       entryPoints:
         - web
     indobase-payments-api-https:
-      rule: Host(`api.payments.indobase.in`)
+      rule: Host(`api.payments.indobase.in`) || Host(`api.payments.indobase.fun`)
       service: indobase-payments-api
       priority: 1
       entryPoints:

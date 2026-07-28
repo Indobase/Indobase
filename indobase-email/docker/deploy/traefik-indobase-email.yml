@@ -7,12 +7,16 @@
 http:
   routers:
     indobase-email:
-      rule: Host(`email.indobase.in`)
+      rule: Host(`email.indobase.in`) || Host(`email.indobase.fun`)
       entryPoints:
         - websecure
       service: indobase-email
       tls:
         certResolver: letsencrypt
+        domains:
+          - main: email.indobase.in
+            sans:
+              - email.indobase.fun
 
   services:
     indobase-email:
