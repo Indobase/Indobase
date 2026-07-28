@@ -94,6 +94,67 @@ export function isInitialScaffoldTurn(messages: BuildMessage[]): boolean {
   });
 }
 
+/** Complex intents that need planner + DeepSeek — keep the full multi-agent path. */
+const COMPLEX_SCAFFOLD_INTENT =
+  /\b(?:auth|oauth|login|sign[\s-]?up|payment|stripe|razorpay|checkout|dashboard|saas|admin|multi[\s-]?tenant|realtime|websocket|graphql|postgres|supabase|indobase backend|database|crm|marketplace|e-?commerce|shop|cart|mobile app|react native|expo|ios|android)\b/i;
+
+const SIMPLE_SCAFFOLD_MAX_WORDS = 40;
+
+export function latestUserMessageText(messages: BuildMessage[]): string {
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+
+  return latestUserMessage ? contentFromMessage(latestUserMessage).trim() : '';
+}
+
+/**
+ * Short, UI-only first Builds skip planner and use the fast scaffold model.
+ * Anything that smells like auth/payments/backend stays on the full path.
+ */
+export function isSimpleFirstScaffoldTurn(messages: BuildMessage[]): boolean {
+  if (!isInitialScaffoldTurn(messages)) {
+    return false;
+  }
+
+  const text = latestUserMessageText(messages);
+
+  if (!text) {
+    return false;
+  }
+
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+
+  if (wordCount === 0 || wordCount > SIMPLE_SCAFFOLD_MAX_WORDS) {
+    return false;
+  }
+
+  if (COMPLEX_SCAFFOLD_INTENT.test(text) || MOBILE_INTENT.test(text)) {
+    return false;
+  }
+
+  return true;
+}
+
+/** Compact one-shot contract for simple Vite landing/UI scaffolds. */
+export function getCompactGenerationContractAppendix(target: BuilderProjectTarget): string {
+  if (target === 'mobile') {
+    return getGenerationContractAppendix(target);
+  }
+
+  return `
+
+<indobase_runtime_contract target="web" mode="compact">
+Build a minimal root-level Vite + React (TypeScript) web app only — no auth, payments, databases, or backend SDKs unless the user explicitly asked.
+
+Emit as few files as possible (typically: package.json, index.html, vite.config.ts, src/main.tsx, src/App.tsx, one CSS file). Keep dependencies lean (react, react-dom, vite, @vitejs/plugin-react, typescript).
+
+package.json MUST include:
+- \`dev\`: \`vite --host 0.0.0.0\`
+- \`build\`: \`vite build\`
+
+In the same response emit complete file actions, then exactly one \`<boltAction type="shell">npm install</boltAction>\`, then \`<boltAction type="start">npm run dev</boltAction>\`. Do not ask clarifying questions. After the artifact, optionally add 1-2 short \`<bolt-quick-actions>\` refinement ideas.
+</indobase_runtime_contract>`;
+}
+
 export function getGenerationContractAppendix(target: BuilderProjectTarget): string {
   const oneShotContract = `
 

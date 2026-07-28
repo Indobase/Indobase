@@ -34,6 +34,8 @@ export default function handleRequest(
           // Must match WebContainer.boot({ coep: 'credentialless' }) in lib/webcontainer/index.ts
           responseHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
           responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+          // StackBlitz validates allowlisted hosts via Referer — do not use same-origin here.
+          responseHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
           resolve(
             new Response(createReadableStreamFromReadable(body), {

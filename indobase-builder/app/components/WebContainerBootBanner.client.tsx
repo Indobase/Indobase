@@ -17,9 +17,11 @@ export function WebContainerBootBanner() {
       <p className="mt-1">{error}</p>
       <p className="mt-2 text-xs text-amber-900/90">
         Click the terminal reset button (↻) to tear down and retry without a full reload.
-        {showExtensionHint
-          ? ' If Redirect Blocker, ad-block, or wallet extensions are enabled for this site, disable them for builder.indobase.in / builder.indobase.fun, then hard-refresh (Chrome or Edge).'
-          : ' If reset fails, hard-refresh the page (Chrome or Edge).'}
+        {/WEBCONTAINER_API_KEY|allowlist|headless 404/i.test(error)
+          ? ' An admin must set WEBCONTAINER_API_KEY on the Builder service and allowlist this domain in the StackBlitz WebContainer API Console.'
+          : showExtensionHint
+            ? ' If Redirect Blocker, ad-block, or wallet extensions are enabled for this site, disable them for builder.indobase.in / builder.indobase.fun, then hard-refresh (Chrome or Edge).'
+            : ' If reset fails, hard-refresh the page (Chrome or Edge).'}
       </p>
     </div>
   );

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_OPENROUTER_CHAT_MODEL,
+  OPENROUTER_FAST_SCAFFOLD_MODEL,
   OPENROUTER_PAID_CODEGEN_MODEL,
   resolveOpenRouterModelForTask,
 } from './openrouter-model-policy';
@@ -19,6 +20,14 @@ describe('openrouter-model-policy', () => {
     expect(resolved.providerName).toBe('OpenRouter');
     expect(resolved.modelName).toBe('openai/gpt-oss-120b');
     expect(resolved.modelName).not.toBe(OPENROUTER_PAID_CODEGEN_MODEL);
+  });
+
+  it('routes simple scaffolds to the fast Flash model', () => {
+    expect(resolveOpenRouterModelForTask('scaffold', 'OpenRouter', 'deepseek/deepseek-v4-pro')).toEqual({
+      providerName: 'OpenRouter',
+      modelName: OPENROUTER_FAST_SCAFFOLD_MODEL,
+    });
+    expect(OPENROUTER_FAST_SCAFFOLD_MODEL).toBe('qwen/qwen3.5-flash-02-23');
   });
 
   it('routes codegen and debugging to DeepSeek V4 Pro', () => {

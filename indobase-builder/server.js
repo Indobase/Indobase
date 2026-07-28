@@ -103,6 +103,11 @@ async function serveAsset(urlPath, assetsRoot) {
   }
 
   headers.set('Content-Length', String(stat.size));
+  // Match HTML document isolation so credentialless COEP stays consistent for subresources.
+  headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   return new Response(Readable.toWeb(createReadStream(normalizedAssetPath)), { headers });
 }

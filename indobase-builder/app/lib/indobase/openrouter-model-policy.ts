@@ -27,6 +27,17 @@ export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
   tier: 'Paid' as const,
 };
 
+/**
+ * Fast paid model for short first-scaffold Builds (landing pages / simple UI).
+ * Prefer Flash for latency; coder is the named fallback if Flash leaves the curated list.
+ */
+export const OPENROUTER_FAST_SCAFFOLD_MODEL =
+  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3.5-flash-02-23')?.name ??
+  OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3-coder-30b-a3b-instruct')?.name ??
+  DEFAULT_OPENROUTER_CODING_MODEL;
+
+export const OPENROUTER_FAST_SCAFFOLD_MAX_COMPLETION_TOKENS = 24576;
+
 /** General discuss chat — curated OpenRouter free tier. */
 export const DEFAULT_OPENROUTER_CHAT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 
@@ -39,10 +50,19 @@ export const DEFAULT_OPENROUTER_PLANNING_MODEL =
   OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'openai/gpt-oss-120b')?.name ??
   DEFAULT_OPENROUTER_CHAT_MODEL;
 
-export type OpenRouterTask = 'chat' | 'planning' | 'codegen' | 'debugging';
+export type OpenRouterTask = 'chat' | 'planning' | 'codegen' | 'debugging' | 'scaffold';
 
 export function isOpenRouterPaidCodegenModelId(modelId: string): boolean {
   return modelId === OPENROUTER_PAID_CODEGEN_MODEL;
+}
+
+export function isOpenRouterFastScaffoldModelId(modelId: string): boolean {
+  return modelId === OPENROUTER_FAST_SCAFFOLD_MODEL;
+}
+
+/** Models that must not be clamped to the tiny OpenRouter free-tier completion budget. */
+export function isOpenRouterHighBudgetModelId(modelId: string): boolean {
+  return isOpenRouterPaidCodegenModelId(modelId) || isOpenRouterFastScaffoldModelId(modelId);
 }
 
 export function resolveOpenRouterModelForTask(
@@ -50,6 +70,13 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
+  if (task === 'scaffold') {
+    return {
+      providerName: OPENROUTER_PROVIDER_NAME,
+      modelName: OPENROUTER_FAST_SCAFFOLD_MODEL,
+    };
+  }
+
   if (task === 'codegen' || task === 'debugging') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,

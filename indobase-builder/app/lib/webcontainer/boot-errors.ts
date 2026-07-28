@@ -6,6 +6,10 @@ export function isSingletonBootError(error: unknown): boolean {
 }
 
 export function shouldSuggestExtensionDisable(errorMessage: string): boolean {
+  if (/API key|allowlist|headless 404|WEBCONTAINER_API_KEY/i.test(errorMessage)) {
+    return false;
+  }
+
   return /Redirect Blocker|cross-origin isolated|Cannot reach the StackBlitz|SharedArrayBuffer|strip COOP|ad-block/i.test(
     errorMessage,
   );
