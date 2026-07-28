@@ -63,7 +63,6 @@ async function ensureSigningKeysSchema() {
         on saas.project_jwt_signing_keys (project_id)
         where status = 'in_use';
     `,
-    parameters: [],
   })
 }
 

@@ -79,12 +79,16 @@ async function resolveJwtSecretForProject({
 }: {
   claims: JwtPayload
   ref: string
-}): Promise<string> {
+}): Promise<string | null> {
   const loaded = await loadProjectJwtSecretEncForMember({ projectRef: ref, gotrueId: getGotrueUserId(claims) })
   if (loaded?.jwtSecretEnc?.trim()) {
     return resolveProjectJwtSecret(loaded.jwtSecretEnc)
   }
-  return process.env.AUTH_JWT_SECRET ?? 'super-secret-jwt-token-with-at-least-32-characters-long'
+  try {
+    return resolveProjectJwtSecret(null)
+  } catch {
+    return null
+  }
 }
 
 /** Reads exposed schemas from the tenant DB when a dedicated connection exists. */
@@ -129,6 +133,9 @@ export async function getProjectPostgrestConfig({
   const jwt_secret = row.jwt_secret_enc?.trim()
     ? resolveProjectJwtSecret(row.jwt_secret_enc)
     : await resolveJwtSecretForProject({ claims, ref })
+  if (!jwt_secret) {
+    throw new Error('Project JWT secret is not configured')
+  }
 
   let db_schema = stored.db_schema
   if (!db_schema) {
