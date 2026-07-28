@@ -1,0 +1,25 @@
+# Indobase Helpdesk — Traefik file provider (optional if compose labels suffice)
+#
+# DNS:
+#   helpdesk.indobase.fun → staging
+#   helpdesk.indobase.in  → Vyom 103.190.92.249
+
+http:
+  routers:
+    indobase-helpdesk:
+      rule: Host(`helpdesk.indobase.in`) || Host(`helpdesk.indobase.fun`)
+      entryPoints:
+        - websecure
+      service: indobase-helpdesk
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: helpdesk.indobase.in
+            sans:
+              - helpdesk.indobase.fun
+
+  services:
+    indobase-helpdesk:
+      loadBalancer:
+        servers:
+          - url: http://helpdesk-bridge:8095

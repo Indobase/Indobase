@@ -10,7 +10,7 @@ import { executeQuery } from './query'
 /**
  * One implementation of the Studio → product SSO handoff.
  *
- * Analytics, Design, Discuss, Email, Payments, Social, Suite, and Video share this
+ * Analytics, CRM, Design, Discuss, Email, Helpdesk, Payments, Social, Suite, and Video share this
  * implementation. Builder is deliberately NOT included — see `builder-launch.ts`.
  */
 
@@ -18,9 +18,11 @@ type Claims = JwtPayload & Record<string, unknown>
 
 export const HANDOFF_PRODUCTS = [
   'analytics',
+  'crm',
   'design',
   'discuss',
   'email',
+  'helpdesk',
   'payments',
   'social',
   'suite',
@@ -62,6 +64,12 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://analytics.indobase.in',
   },
+  crm: {
+    audience: 'indobase-crm',
+    label: 'CRM',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://crm.indobase.in',
+  },
   design: {
     audience: 'indobase-design',
     label: 'Design',
@@ -79,6 +87,12 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Email',
     launchPath: '/console/launch',
     defaultBaseUrl: 'https://email.indobase.in',
+  },
+  helpdesk: {
+    audience: 'indobase-helpdesk',
+    label: 'Helpdesk',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://helpdesk.indobase.in',
   },
   payments: {
     audience: 'indobase-payments',

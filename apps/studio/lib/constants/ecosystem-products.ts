@@ -36,6 +36,22 @@ export const ECOSYSTEM_PRODUCTS = {
     host: 'discuss.indobase.in',
     openLabel: 'Open Discuss',
   },
+  crm: {
+    id: 'crm',
+    name: 'CRM',
+    descriptor: 'Sales',
+    tagline: 'Leads, deals, and Kanban for your pipeline',
+    host: 'crm.indobase.in',
+    openLabel: 'Open CRM',
+  },
+  helpdesk: {
+    id: 'helpdesk',
+    name: 'Helpdesk',
+    descriptor: 'Support',
+    tagline: 'Tickets, SLAs, and knowledge base for customers',
+    host: 'helpdesk.indobase.in',
+    openLabel: 'Open Helpdesk',
+  },
   payments: {
     id: 'payments',
     name: 'Payments',

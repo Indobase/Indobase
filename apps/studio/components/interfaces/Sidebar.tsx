@@ -43,7 +43,9 @@ import {
 } from 'ui'
 
 import { BuilderSidebarNavItem } from './ProjectExperienceChooser/BuilderSidebarNavItem'
+import { CrmSidebarNavItem } from './ProjectExperienceChooser/CrmSidebarNavItem'
 import { DiscussSidebarNavItem } from './ProjectExperienceChooser/DiscussSidebarNavItem'
+import { HelpdeskSidebarNavItem } from './ProjectExperienceChooser/HelpdeskSidebarNavItem'
 import { WorkspaceSidebarNavItem } from './ProjectExperienceChooser/WorkspaceSidebarNavItem'
 import { Route } from '../ui/ui.types'
 import {
@@ -277,6 +279,8 @@ const ProjectLinks = () => {
         />
         <BuilderSidebarNavItem />
         <WorkspaceSidebarNavItem />
+        <CrmSidebarNavItem />
+        <HelpdeskSidebarNavItem />
         <DiscussSidebarNavItem />
         {toolRoutes.map((route, i) => (
           <SideBarNavLink

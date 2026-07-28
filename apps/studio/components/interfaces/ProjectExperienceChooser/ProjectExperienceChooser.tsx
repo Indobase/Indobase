@@ -13,6 +13,7 @@ import {
   Database,
   Image as ImageIcon,
   LayoutGrid,
+  LifeBuoy,
   Mail,
   Megaphone,
   MessageSquare,
@@ -20,6 +21,7 @@ import {
   Settings,
   Share2,
   Sparkles,
+  TrendingUp,
   Video as VideoIcon,
 } from 'lucide-react'
 import { Badge, Button, cn } from 'ui'
@@ -27,9 +29,11 @@ import { Badge, Button, cn } from 'ui'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
+import { useCrmLaunch } from './useCrmLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
 import { useDiscussLaunch } from './useDiscussLaunch'
 import { useEmailLaunch } from './useEmailLaunch'
+import { useHelpdeskLaunch } from './useHelpdeskLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -178,6 +182,8 @@ export const ProjectExperienceChooser = () => {
   const { data: project } = useSelectedProjectQuery()
   const { data: organization } = useSelectedOrganizationQuery()
 
+  const { launch: launchCrm, isLaunching: isLaunchingCrm } = useCrmLaunch()
+  const { launch: launchHelpdesk, isLaunching: isLaunchingHelpdesk } = useHelpdeskLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
   const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
   const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
@@ -223,6 +229,18 @@ export const ProjectExperienceChooser = () => {
           icon={<Briefcase size={18} />}
           label={ECOSYSTEM_PRODUCTS.workspace.name}
           href={`/project/${ref}/workspace`}
+        />
+        <RailLaunchItem
+          icon={<TrendingUp size={18} />}
+          label={ECOSYSTEM_PRODUCTS.crm.name}
+          loading={isLaunchingCrm}
+          onClick={() => void open(launchCrm)}
+        />
+        <RailLaunchItem
+          icon={<LifeBuoy size={18} />}
+          label={ECOSYSTEM_PRODUCTS.helpdesk.name}
+          loading={isLaunchingHelpdesk}
+          onClick={() => void open(launchHelpdesk)}
         />
         <RailLaunchItem
           icon={<MessageSquare size={18} />}
@@ -313,6 +331,22 @@ export const ProjectExperienceChooser = () => {
                   accentClassName="bg-[#EC4899]/10"
                   onClick={() => open(launchDesign)}
                   loading={isLaunchingDesign}
+                />
+                <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.crm.name}
+                  tagline={ECOSYSTEM_PRODUCTS.crm.tagline}
+                  icon={<TrendingUp size={18} className="text-[#059669]" />}
+                  accentClassName="bg-[#059669]/10"
+                  onClick={() => open(launchCrm)}
+                  loading={isLaunchingCrm}
+                />
+                <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.helpdesk.name}
+                  tagline={ECOSYSTEM_PRODUCTS.helpdesk.tagline}
+                  icon={<LifeBuoy size={18} className="text-[#0D9488]" />}
+                  accentClassName="bg-[#0D9488]/10"
+                  onClick={() => open(launchHelpdesk)}
+                  loading={isLaunchingHelpdesk}
                 />
                 <ProductTile
                   name={ECOSYSTEM_PRODUCTS.discuss.name}
