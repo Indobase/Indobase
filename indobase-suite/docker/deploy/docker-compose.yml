@@ -6,6 +6,10 @@
 #
 # First boot initializes Frappe bench + Suite (~10–15 min). Bridge serves SSO;
 # Traefik terminates TLS and routes to bridge (which proxies /s/* to Suite).
+#
+# Bench data lives on suite_bench_sites → /home/frappe/persist (full bench, not
+# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
+#   docker run --rm -v indobase-workspace_suite_bench_sites:/v alpine chown -R 1000:1000 /v
 
 x-default-logging: &logging
   driver: json-file
@@ -65,7 +69,7 @@ services:
       SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET:?set SUITE_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
     volumes:
-      - suite_bench_sites:/home/frappe/frappe-bench/sites
+      - suite_bench_sites:/home/frappe/persist
       - ../init-suite.sh:/workspace/init-suite.sh:ro
       - ../../frappe-app/indobase_suite:/workspace/indobase_suite:ro
     command: bash /workspace/init-suite.sh
@@ -95,7 +99,8 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`workspace.indobase.fun`)}
+      # Prod default is .indobase.in only — include .fun only when that DNS exists (avoids LE NXDOMAIN + rate limits).
+      - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`)}
       - traefik.http.routers.indobase-workspace.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-workspace.tls=true
       - traefik.http.routers.indobase-workspace.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}

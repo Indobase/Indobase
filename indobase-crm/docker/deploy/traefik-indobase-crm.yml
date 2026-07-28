@@ -1,13 +1,13 @@
 # Indobase CRM — Traefik file provider (optional if compose labels suffice)
 #
 # DNS:
-#   crm.indobase.fun → staging
+#   crm.indobase.fun → staging (add SAN only when DNS exists)
 #   crm.indobase.in  → Vyom 103.190.92.249
 
 http:
   routers:
     indobase-crm:
-      rule: Host(`crm.indobase.in`) || Host(`crm.indobase.fun`)
+      rule: Host(`crm.indobase.in`)
       entryPoints:
         - websecure
       service: indobase-crm
@@ -15,8 +15,6 @@ http:
         certResolver: letsencrypt
         domains:
           - main: crm.indobase.in
-            sans:
-              - crm.indobase.fun
 
   services:
     indobase-crm:

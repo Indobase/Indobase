@@ -1,25 +1,40 @@
 #!/usr/bin/env bash
 # Initialize Frappe bench with Suite + indobase_suite on first boot.
+# Persist volume must be mounted at /home/frappe/persist (uid 1000 writable).
 set -euo pipefail
 
 SITE="${SUITE_SITE_NAME:-workspace.localhost}"
 ROOT_PW="${MARIADB_ROOT_PASSWORD:-123}"
 ADMIN_PW="${SUITE_ADMIN_PASSWORD:-admin}"
 HANDOFF_SECRET="${SUITE_HANDOFF_SECRET:-}"
+PERSIST="${FRAPPE_PERSIST_DIR:-/home/frappe/persist}"
+LABEL="workspace"
 
-cd /home/frappe
+mkdir -p "${PERSIST}"
+cd "${PERSIST}"
 
-if [ -d "frappe-bench/apps/frappe" ]; then
-  echo "[workspace] bench exists — starting"
+bench_ready() {
+  [ -d "frappe-bench/apps/frappe" ] \
+    && [ -x "frappe-bench/env/bin/python" ] \
+    && frappe-bench/env/bin/python -c "import frappe" 2>/dev/null
+}
+
+if [ -d "frappe-bench" ] && ! bench_ready; then
+  echo "[${LABEL}] incomplete bench — removing for clean re-init"
+  rm -rf frappe-bench
+fi
+
+if bench_ready; then
+  echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
   bench set-config -g suite_handoff_secret "${HANDOFF_SECRET}" || true
   bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
   bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
-  bench start
-  exit 0
+  exec bench start
 fi
 
-echo "[workspace] creating bench…"
+echo "[${LABEL}] creating bench…"
+export CI="${CI:-1}"
 bench init --skip-redis-config-generation frappe-bench
 cd frappe-bench
 
@@ -50,5 +65,5 @@ bench --site "${SITE}" set-config studio_public_url "${STUDIO_PUBLIC_URL:-https:
 bench --site "${SITE}" clear-cache
 bench use "${SITE}"
 
-echo "[workspace] bench ready — starting (Meet SFU is a separate service in production)"
-bench start
+echo "[${LABEL}] bench ready — starting (Meet SFU is a separate service in production)"
+exec bench start

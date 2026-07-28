@@ -6,6 +6,10 @@
 #
 # First boot initializes Frappe bench + Frappe Helpdesk (~5–10 min). Bridge serves SSO;
 # Traefik terminates TLS and routes to bridge (which proxies /h/*, /portal/*, /helpdesk/* upstream).
+#
+# Bench data lives on helpdesk_bench_sites → /home/frappe/persist (full bench, not
+# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
+#   docker run --rm -v indobase-helpdesk_helpdesk_bench_sites:/v alpine chown -R 1000:1000 /v
 
 x-default-logging: &logging
   driver: json-file
@@ -66,7 +70,7 @@ services:
       HELPDESK_HANDOFF_SECRET: ${HELPDESK_HANDOFF_SECRET:?set HELPDESK_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
     volumes:
-      - helpdesk_bench_sites:/home/frappe/frappe-bench/sites
+      - helpdesk_bench_sites:/home/frappe/persist
       - ../init-helpdesk.sh:/workspace/init-helpdesk.sh:ro
       - ../../frappe-app/indobase_helpdesk:/workspace/indobase_helpdesk:ro
     command: bash /workspace/init-helpdesk.sh
@@ -94,7 +98,8 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      - traefik.http.routers.indobase-helpdesk.rule=${HELPDESK_TRAEFIK_RULE:-Host(`helpdesk.indobase.in`) || Host(`helpdesk.indobase.fun`)}
+      # Prod default is .indobase.in only — include .fun only when that DNS exists (avoids LE NXDOMAIN + rate limits).
+      - traefik.http.routers.indobase-helpdesk.rule=${HELPDESK_TRAEFIK_RULE:-Host(`helpdesk.indobase.in`)}
       - traefik.http.routers.indobase-helpdesk.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-helpdesk.tls=true
       - traefik.http.routers.indobase-helpdesk.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
