@@ -5,7 +5,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import Link from 'next/link';
 import { Button } from '@gitroom/react/form/button';
 import { Input } from '@gitroom/react/form/input';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import { GithubProvider } from '@gitroom/frontend/components/auth/providers/github.provider';
@@ -15,6 +15,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import WalletProvider from '@gitroom/frontend/components/auth/providers/wallet.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { resolveStudioPublicUrlFromBrowser } from '@gitroom/helpers/utils/studio-public-url';
 type Inputs = {
   email: string;
   password: string;
@@ -22,6 +23,30 @@ type Inputs = {
   provider: 'LOCAL';
 };
 export function Login() {
+  const studioHandoffOnly =
+    process.env.NEXT_PUBLIC_STUDIO_HANDOFF_ONLY === 'true' ||
+    process.env.NEXT_PUBLIC_STUDIO_HANDOFF_ONLY === '1';
+
+  if (studioHandoffOnly) {
+    return <StudioHandoffRedirect />;
+  }
+
+  return <LocalLoginForm />;
+}
+
+function StudioHandoffRedirect() {
+  useEffect(() => {
+    window.location.replace(`${resolveStudioPublicUrlFromBrowser()}/sign-in`);
+  }, []);
+
+  return (
+    <div className="flex flex-1 items-center justify-center py-12 text-sm opacity-80">
+      Redirecting to Indobase Studio…
+    </div>
+  );
+}
+
+function LocalLoginForm() {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [notActivated, setNotActivated] = useState(false);

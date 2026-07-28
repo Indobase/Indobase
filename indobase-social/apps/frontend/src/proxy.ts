@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
+import { resolveStudioPublicUrl } from '@gitroom/helpers/utils/studio-public-url';
 import {
   cookieName,
   headerName,
@@ -95,9 +96,7 @@ export async function proxy(request: NextRequest) {
     !nextUrl.pathname.startsWith('/auth/logout') &&
     !authCookie
   ) {
-    const studio =
-      process.env.STUDIO_PUBLIC_URL?.replace(/\/+$/, '') ||
-      'https://studio.indobase.in';
+    const studio = resolveStudioPublicUrl(nextUrl.host);
     const projectRef = nextUrl.searchParams.get('project_ref');
     const returnPath = projectRef
       ? `/project/${encodeURIComponent(projectRef)}/marketing`

@@ -1,6 +1,6 @@
 import type { BillingPortalOptions } from './types'
 
-export const DEFAULT_BASE_URL = 'https://app.meteroid.com'
+export const DEFAULT_BASE_URL = 'https://payments.indobase.in'
 
 /**
  * Build the iframe `src` URL for an embedded portal.

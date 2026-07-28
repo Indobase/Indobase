@@ -23,6 +23,7 @@ import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
+import { resolveStudioPublicUrl } from '@gitroom/helpers/utils/studio-public-url';
 
 @ApiTags('Auth')
 @Controller('/auth')
@@ -92,9 +93,7 @@ export class AuthController {
 
       return response.redirect(302, '/');
     } catch (e: any) {
-      const studio =
-        process.env.STUDIO_PUBLIC_URL?.replace(/\/+$/, '') ||
-        'https://studio.indobase.in';
+      const studio = resolveStudioPublicUrl(req.headers.host);
       return response.redirect(
         302,
         `${studio}/sign-in?returnTo=${encodeURIComponent('/')}`

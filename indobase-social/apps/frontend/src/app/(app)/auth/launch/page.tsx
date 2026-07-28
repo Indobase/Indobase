@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { resolveStudioPublicUrlFromBrowser } from '@gitroom/helpers/utils/studio-public-url';
 
 /**
  * Studio → Indobase Social SSO entry.
@@ -24,9 +25,7 @@ export default function LaunchPage() {
       searchParams.get('token') ||
       searchParams.get('handoff');
 
-    const studio =
-      process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL?.replace(/\/+$/, '') ||
-      'https://studio.indobase.in';
+    const studio = resolveStudioPublicUrlFromBrowser();
 
     if (!token) {
       const returnPath = projectRef
