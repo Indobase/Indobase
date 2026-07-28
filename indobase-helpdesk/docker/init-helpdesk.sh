@@ -36,9 +36,28 @@ apps_usable() {
     && frappe-bench/env/bin/python -c "import frappe" 2>/dev/null
 }
 
+refresh_indobase_app() {
+  if [ -d "${INDOBASE_SRC}" ]; then
+    rm -rf "apps/${INDOBASE_APP}"
+    cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+    find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+    if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+      echo >> sites/apps.txt
+    fi
+    if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+      echo "${INDOBASE_APP}" >> sites/apps.txt
+    fi
+    ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
+    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+      bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
+    fi
+  fi
+}
+
 start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
+  refresh_indobase_app
   bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
   bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
   bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
@@ -54,11 +73,31 @@ ensure_apps_and_site() {
   sed -i '/redis/d' ./Procfile || true
   sed -i '/watch/d' ./Procfile || true
 
+  # Helpdesk requires Frappe Telephony as a bench app (not a PyPI package).
+  if [ ! -d "apps/telephony" ]; then
+    bench get-app telephony https://github.com/frappe/telephony
+  fi
   if [ ! -d "apps/${APP_REPO_NAME}" ]; then
     bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}" --branch "${APP_GIT_BRANCH}"
   fi
   rm -rf "apps/${INDOBASE_APP}"
   cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
+  for _app in telephony "${APP_REPO_NAME}" "${INDOBASE_APP}"; do
+    if ! grep -qx "${_app}" sites/apps.txt 2>/dev/null; then
+      echo "${_app}" >> sites/apps.txt
+    fi
+  done
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
+
+  # Incomplete site (dir without currentsite / failed install) must be rebuilt.
+  if [ -d "sites/${SITE}" ] && [ ! -f "sites/currentsite.txt" ]; then
+    echo "[${LABEL}] incomplete site ${SITE} — dropping for clean recreate"
+    bench drop-site "${SITE}" --force --root-password "${ROOT_PW}" || rm -rf "sites/${SITE}"
+  fi
 
   if [ ! -d "sites/${SITE}" ]; then
     echo "[${LABEL}] creating site ${SITE}…"
@@ -69,7 +108,9 @@ ensure_apps_and_site() {
       --no-mariadb-socket
   fi
 
+  bench --site "${SITE}" install-app telephony || true
   bench --site "${SITE}" install-app "${APP_REPO_NAME}" || true
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
   bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
   bench --site "${SITE}" set-config developer_mode 0
   bench --site "${SITE}" set-config mute_emails 1
