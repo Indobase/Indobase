@@ -16,15 +16,29 @@ export function getActiveTargets(canvas: fabric.Canvas): fabric.FabricObject[] {
 export async function groupSelection(canvas: fabric.Canvas): Promise<void> {
   const active = canvas.getActiveObject()
   if (!(active instanceof fabric.ActiveSelection) || active.size() < 2) return
-  const group = await active.toGroup()
+
+  const objects = active.getObjects()
+  canvas.discardActiveObject()
+  for (const obj of objects) {
+    canvas.remove(obj)
+  }
+
+  const group = new fabric.Group(objects)
+  canvas.add(group)
   canvas.setActiveObject(group)
   canvas.requestRenderAll()
 }
 
 export async function ungroupSelection(canvas: fabric.Canvas): Promise<void> {
   const active = canvas.getActiveObject()
-  if (!(active instanceof fabric.Group)) return
-  const selection = await active.toActiveSelection()
+  if (!(active instanceof fabric.Group) || active instanceof fabric.ActiveSelection) return
+
+  canvas.discardActiveObject()
+  canvas.remove(active)
+  const items = active.removeAll()
+  canvas.add(...items)
+
+  const selection = new fabric.ActiveSelection(items, { canvas })
   canvas.setActiveObject(selection)
   canvas.requestRenderAll()
 }
