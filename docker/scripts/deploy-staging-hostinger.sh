@@ -33,6 +33,12 @@ echo "    Builder: ${BUILDER_IMAGE} @ ${BUILDER_URL}"
 echo "    API:     ${API_URL} (shared prod)"
 echo "    Host:    ${SSH_HOST} (srv1085730)"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-staging/lib"
+scp "${SSH_OPTS[@]}" \
+  "${SCRIPT_DIR}/lib/swarm-managed-env.sh" \
+  "${SSH_HOST}:/opt/indobase-staging/lib/swarm-managed-env.sh"
+
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
   env \
   STUDIO_IMAGE="$STUDIO_IMAGE" \
@@ -61,28 +67,19 @@ if [[ ! -f /opt/indobase-staging/env/handoff.secret ]]; then
 fi
 HANDOFF="$(cat /opt/indobase-staging/env/handoff.secret)"
 
-upsert_env() {
-  local file="$1" key="$2" value="$3"
-  touch "$file"
-  chmod 600 "$file"
-  if grep -q "^${key}=" "$file" 2>/dev/null; then
-    # Escape sed replacement specials in value
-    local escaped
-    escaped=$(printf '%s' "$value" | sed -e 's/[\\/&]/\\&/g')
-    sed -i "s|^${key}=.*|${key}=${escaped}|" "$file"
-  else
-    printf '%s=%s\n' "$key" "$value" >> "$file"
-  fi
-}
+# shellcheck source=/opt/indobase-staging/lib/swarm-managed-env.sh
+source /opt/indobase-staging/lib/swarm-managed-env.sh
+
+STUDIO_INTERNAL_URL="http://${STUDIO_SVC}:8080"
 
 # Builder: upsert required keys; preserve OPEN_ROUTER_API_KEY and other secrets.
-upsert_env /opt/indobase-staging/env/builder.env NODE_ENV production
-upsert_env /opt/indobase-staging/env/builder.env HOST 0.0.0.0
-upsert_env /opt/indobase-staging/env/builder.env PORT 5173
-upsert_env /opt/indobase-staging/env/builder.env BUILDER_HANDOFF_SECRET "$HANDOFF"
-upsert_env /opt/indobase-staging/env/builder.env STUDIO_INTERNAL_URL "$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/builder.env INDOBASE_STUDIO_URL "$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/builder.env NODE_OPTIONS '--dns-result-order=ipv4first'
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env NODE_ENV production
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env HOST 0.0.0.0
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env PORT 5173
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env BUILDER_HANDOFF_SECRET "$HANDOFF"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env STUDIO_INTERNAL_URL "$STUDIO_INTERNAL_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env INDOBASE_STUDIO_URL "$STUDIO_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env NODE_OPTIONS '--dns-result-order=ipv4first'
 
 # Studio: create skeleton once, then always upsert public URLs + handoff.
 if [[ ! -f /opt/indobase-staging/env/studio.env ]]; then
@@ -95,15 +92,15 @@ EOF
   chmod 600 /opt/indobase-staging/env/studio.env
 fi
 
-upsert_env /opt/indobase-staging/env/studio.env BUILDER_HANDOFF_SECRET "$HANDOFF"
-upsert_env /opt/indobase-staging/env/studio.env BUILDER_APP_URL "$BUILDER_URL"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_BUILDER_APP_URL "$BUILDER_URL"
-upsert_env /opt/indobase-staging/env/studio.env SITE_URL "$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_SITE_URL "$STUDIO_URL"
-upsert_env /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
-upsert_env /opt/indobase-staging/env/studio.env INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env ANALYTICS_HANDOFF_SECRET "$HANDOFF"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env BUILDER_HANDOFF_SECRET "$HANDOFF"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env BUILDER_APP_URL "$BUILDER_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env NEXT_PUBLIC_BUILDER_APP_URL "$BUILDER_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env SITE_URL "$STUDIO_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env NEXT_PUBLIC_SITE_URL "$STUDIO_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env SUPABASE_URL "$API_URL"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_ANALYTICS_URL "https://analytics.indobase.fun"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env ANALYTICS_HANDOFF_SECRET "$HANDOFF"
 # Indobase Design (Canva-class, indobase-design-v2) on Vyom .249.
 # Prefer design.indobase.fun; studio-design.indobase.fun remains a Traefik alias.
 # DESIGN_HANDOFF_SECRET must match the design stack on .249 (same as prod Studio).
@@ -112,9 +109,9 @@ DESIGN_HANDOFF="$HANDOFF"
 if [ -f /opt/indobase-staging/env/design.handoff.secret ]; then
   DESIGN_HANDOFF=$(tr -d '[:space:]' </opt/indobase-staging/env/design.handoff.secret)
 fi
-upsert_env /opt/indobase-staging/env/studio.env INDOBASE_DESIGN_URL "https://design.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_DESIGN_URL "https://design.indobase.fun"
-upsert_env /opt/indobase-staging/env/studio.env DESIGN_HANDOFF_SECRET "$DESIGN_HANDOFF"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env INDOBASE_DESIGN_URL "https://design.indobase.fun"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env NEXT_PUBLIC_INDOBASE_DESIGN_URL "https://design.indobase.fun"
+swarm_upsert_env_file_kv /opt/indobase-staging/env/studio.env DESIGN_HANDOFF_SECRET "$DESIGN_HANDOFF"
 
 # Quoted heredocs so Traefik Host(`…`) backticks are not executed by the local shell.
 cat > /etc/dokploy/traefik/dynamic/studio-indobase-fun.yml <<EOF
@@ -181,7 +178,9 @@ docker pull "${STUDIO_IMAGE}"
 docker pull "${BUILDER_IMAGE}"
 
 if docker service inspect "${STUDIO_SVC}" >/dev/null 2>&1; then
-  docker service update --image "${STUDIO_IMAGE}" --limit-memory 1100m "${STUDIO_SVC}"
+  echo "Updating ${STUDIO_SVC} (image + managed env)…"
+  swarm_apply_env_file "${STUDIO_SVC}" /opt/indobase-staging/env/studio.env \
+    --image "${STUDIO_IMAGE}" --limit-memory 1100m
 else
   docker service create \
     --name "${STUDIO_SVC}" \
@@ -195,10 +194,9 @@ else
 fi
 
 if docker service inspect "${BUILDER_SVC}" >/dev/null 2>&1; then
-  docker service update --image "${BUILDER_IMAGE}" --limit-memory 1100m \
-    --env-add "STUDIO_INTERNAL_URL=${STUDIO_URL}" \
-    --env-add "INDOBASE_STUDIO_URL=${STUDIO_URL}" \
-    "${BUILDER_SVC}"
+  echo "Updating ${BUILDER_SVC} (image + managed env)…"
+  swarm_apply_env_file "${BUILDER_SVC}" /opt/indobase-staging/env/builder.env \
+    --image "${BUILDER_IMAGE}" --limit-memory 1100m
 else
   docker service create \
     --name "${BUILDER_SVC}" \
@@ -216,9 +214,9 @@ echo "Handoff secret: /opt/indobase-staging/env/handoff.secret"
 REMOTE
 
 echo "==> Verifying public endpoints…"
+# shellcheck source=lib/deploy-health-gates.sh
+source "${SCRIPT_DIR}/lib/deploy-health-gates.sh"
 sleep 8
-curl -fsS "${STUDIO_URL}/api/health/live" | head -c 400 || echo "(studio not ready yet — check DNS/TLS)"
-echo
-curl -fsS "${BUILDER_URL}/api/health/live" | head -c 400 || curl -fsS "${BUILDER_URL}/api/health" | head -c 400 || echo "(builder not ready yet)"
-echo
+deploy_wait_for_studio_rollout "$STUDIO_URL" "$SHA" 12 || echo "(studio not ready yet — check DNS/TLS/meta env)"
+deploy_wait_for_builder_rollout "$BUILDER_URL" "$SHA" 12 || echo "(builder not ready yet — check OPEN_ROUTER_API_KEY / handoff secret)"
 echo "==> Staging deploy finished for ${SHA}"
