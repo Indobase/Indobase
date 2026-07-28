@@ -43,6 +43,8 @@ import {
 } from 'ui'
 
 import { BuilderSidebarNavItem } from './ProjectExperienceChooser/BuilderSidebarNavItem'
+import { DiscussSidebarNavItem } from './ProjectExperienceChooser/DiscussSidebarNavItem'
+import { WorkspaceSidebarNavItem } from './ProjectExperienceChooser/WorkspaceSidebarNavItem'
 import { Route } from '../ui/ui.types'
 import {
   useIsAPIDocsSidePanelEnabled,
@@ -274,6 +276,8 @@ const ProjectLinks = () => {
           }}
         />
         <BuilderSidebarNavItem />
+        <WorkspaceSidebarNavItem />
+        <DiscussSidebarNavItem />
         {toolRoutes.map((route, i) => (
           <SideBarNavLink
             key={`tools-routes-${i}`}

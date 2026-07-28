@@ -1,208 +1,454 @@
 import Link from 'next/link'
+import { useState } from 'react'
 
 import { useParams } from 'common'
-import { ScaffoldContainer, ScaffoldSection } from 'components/layouts/Scaffold'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
-import { ArrowRight, BarChart3, Blocks, CreditCard, Database, Megaphone } from 'lucide-react'
+import {
+  BarChart3,
+  Blocks,
+  Briefcase,
+  Check,
+  CreditCard,
+  Database,
+  Image as ImageIcon,
+  LayoutGrid,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  Rocket,
+  Settings,
+  Share2,
+  Sparkles,
+  Video as VideoIcon,
+} from 'lucide-react'
 import { Badge, Button, cn } from 'ui'
 
+import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
+
 import { BuilderLaunchButton } from './BuilderLaunchButton'
+import { useDesignLaunch } from './useDesignLaunch'
+import { useDiscussLaunch } from './useDiscussLaunch'
+import { useEmailLaunch } from './useEmailLaunch'
+import { useSocialLaunch } from './useSocialLaunch'
+import { useVideoLaunch } from './useVideoLaunch'
 
 /*
- * Project landing page — the Builder/Studio chooser.
+ * Project dashboard — the home surface for a project and the way into every Indobase product.
  *
- * Styling follows the marketing site rather than the plain Studio surface: the Indobase blue
- * (#3B8FD6) accent, the gradient brand wordmark, and a soft tinted backdrop. Colour is carried by
- * the icon tiles and the heading only — the cards themselves stay on Studio's own tokens so the
- * page still reads as product UI and keeps working in dark mode.
+ * Replaces the previous 2×2 card chooser. That layout implied Indobase is four things you pick
+ * between; the suite is now eight products, and the page a user lands on every day should behave
+ * like a workspace home rather than a menu: everything reachable at a glance, plus what changed and
+ * what still needs doing.
+ *
+ * Layout (left → right): a product rail, the product grid, then a context column carrying release
+ * notes and a setup checklist.
  */
 
-type ExperienceTileProps = {
-  title: string
-  description: string
-  eyebrow: string
+// ── Product grid ────────────────────────────────────────────────────────────────────────────────
+
+type ProductTileProps = {
+  name: string
+  tagline: string
   icon: React.ReactNode
-  /** Tailwind classes for the icon tile — each product gets its own accent. */
+  /** Accent classes for the icon chip — each product keeps its own colour for scannability. */
   accentClassName: string
   href?: string
-  ctaLabel?: string
+  onClick?: () => void
+  loading?: boolean
   comingSoon?: boolean
-  children?: React.ReactNode
 }
 
-const ExperienceTile = ({
-  title,
-  description,
-  eyebrow,
+const ProductTile = ({
+  name,
+  tagline,
   icon,
   accentClassName,
   href,
-  ctaLabel,
+  onClick,
+  loading = false,
   comingSoon = false,
-  children,
-}: ExperienceTileProps) => {
-  return (
-    <div
-      className={cn(
-        'group relative flex flex-col overflow-hidden rounded-2xl border bg-surface-100 p-6 transition-all duration-200 md:p-7',
-        // Unreleased tiles must not read as clickable: no lift, no pointer, muted.
-        comingSoon
-          ? 'border-dashed opacity-75'
-          : 'hover:-translate-y-0.5 hover:border-foreground-muted hover:shadow-lg'
-      )}
-    >
-      {!comingSoon && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#3B8FD6]/[0.07] via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-        />
-      )}
+}: ProductTileProps) => {
+  const className = cn(
+    'group relative flex flex-col gap-3 rounded-xl border bg-surface-100 p-4 text-left transition-all duration-150',
+    comingSoon
+      ? 'cursor-default border-dashed opacity-70'
+      : 'hover:-translate-y-0.5 hover:border-foreground-muted hover:shadow-md'
+  )
 
-      <div className="relative flex h-full flex-col gap-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className={cn('rounded-xl p-3', accentClassName)}>{icon}</div>
-          {comingSoon ? (
-            <Badge variant="warning">Coming soon</Badge>
-          ) : (
-            <Badge variant="default">{eyebrow}</Badge>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-xl font-medium tracking-tight md:text-2xl">{title}</h2>
-          <p className="text-sm leading-relaxed text-foreground-light">{description}</p>
-        </div>
-
-        <div className="mt-auto flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
-          {children}
-          {href && ctaLabel ? (
-            <Button asChild type="primary" size="small" className="w-full sm:w-auto">
-              <Link href={href}>
-                <span className="inline-flex items-center gap-2">
-                  {ctaLabel}
-                  <ArrowRight size={16} />
-                </span>
-              </Link>
-            </Button>
-          ) : null}
-        </div>
+  const body = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className={cn('rounded-lg p-2', accentClassName)}>{icon}</div>
+        {comingSoon ? (
+          <Badge variant="warning" className="text-[10px]">
+            Soon
+          </Badge>
+        ) : loading ? (
+          <span className="text-[10px] text-foreground-lighter">Opening…</span>
+        ) : null}
       </div>
-    </div>
+      <div className="space-y-0.5">
+        <h3 className="text-sm font-medium text-foreground">{name}</h3>
+        <p className="text-xs leading-snug text-foreground-light">{tagline}</p>
+      </div>
+    </>
+  )
+
+  if (comingSoon) {
+    return <div className={className}>{body}</div>
+  }
+
+  // Products behind an SSO handoff can't be plain links — they need a token first, so they render
+  // as buttons that call their launch hook.
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} disabled={loading} className={className}>
+        {body}
+      </button>
+    )
+  }
+
+  return (
+    <Link href={href ?? '#'} className={className}>
+      {body}
+    </Link>
   )
 }
+
+// ── Rail ────────────────────────────────────────────────────────────────────────────────────────
+
+const RailItem = ({
+  icon,
+  label,
+  href,
+  active = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  href: string
+  active?: boolean
+}) => (
+  <Link
+    href={href}
+    title={label}
+    aria-label={label}
+    className={cn(
+      'flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
+      active
+        ? 'bg-foreground/10 text-foreground'
+        : 'text-foreground-lighter hover:bg-surface-200 hover:text-foreground'
+    )}
+  >
+    {icon}
+  </Link>
+)
+
+const RailLaunchItem = ({
+  icon,
+  label,
+  onClick,
+  loading = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+  loading?: boolean
+}) => (
+  <button
+    type="button"
+    title={label}
+    aria-label={label}
+    disabled={loading}
+    onClick={onClick}
+    className={cn(
+      'flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
+      'text-foreground-lighter hover:bg-surface-200 hover:text-foreground',
+      loading && 'opacity-60'
+    )}
+  >
+    {icon}
+  </button>
+)
+
+// ── Page ────────────────────────────────────────────────────────────────────────────────────────
 
 export const ProjectExperienceChooser = () => {
   const { ref } = useParams()
   const { data: project } = useSelectedProjectQuery()
   const { data: organization } = useSelectedOrganizationQuery()
 
+  const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
+  const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
+  const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
+  const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
+  const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
+
+  const [launchError, setLaunchError] = useState<string | null>(null)
+
+  /** Shared handler: the hooks surface their own toasts, so only the inline banner is set here. */
+  const open = async (launch: () => Promise<{ ok: boolean; message?: string; url?: string }>) => {
+    setLaunchError(null)
+    const result = await launch()
+    if (!result.ok) {
+      setLaunchError(result.message ?? 'Could not open that product.')
+      return
+    }
+    if (result.url) window.location.assign(result.url)
+  }
+
+  /*
+   * Setup checklist derived from real project/organization state — not a static list. A step is only
+   * shown as done when the underlying thing is actually true, so this stays honest as the project
+   * changes.
+   */
+  const planName = organization?.plan?.name ?? 'Free'
+  const isPaidPlan = (organization?.plan?.id ?? 'free') !== 'free'
+  const setupSteps = [
+    { label: 'Project created', done: Boolean(project?.ref) },
+    { label: 'Backend provisioned', done: project?.status === 'ACTIVE_HEALTHY' },
+    { label: 'Upgrade for Payments & custom domains', done: isPaidPlan },
+  ]
+  const remaining = setupSteps.filter((s) => !s.done).length
+
   return (
-    <div className="relative isolate">
-      {/*
-        Soft brand wash behind the header, echoing the marketing hero. Kept low-opacity and faded
-        out by 60% so it frames the content without turning a product page into a landing page.
-      */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(59,143,214,0.16)_0%,transparent_60%)]"
-      />
+    <div className="flex h-full w-full">
+      {/* Rail — persistent product-level navigation, mirroring the dashboard wireframe. */}
+      <nav
+        aria-label="Project sections"
+        className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r bg-surface-100 py-4 md:flex"
+      >
+        <RailItem icon={<LayoutGrid size={18} />} label="Overview" href={`/project/${ref}`} active />
+        <RailItem
+          icon={<Briefcase size={18} />}
+          label={ECOSYSTEM_PRODUCTS.workspace.name}
+          href={`/project/${ref}/workspace`}
+        />
+        <RailLaunchItem
+          icon={<MessageSquare size={18} />}
+          label={ECOSYSTEM_PRODUCTS.discuss.name}
+          loading={isLaunchingDiscuss}
+          onClick={() => void open(launchDiscuss)}
+        />
+        <RailItem icon={<Database size={18} />} label="Backend" href={`/project/${ref}/backend`} />
+        <RailItem icon={<Megaphone size={18} />} label="Marketing" href={`/project/${ref}/marketing`} />
+        <RailItem icon={<CreditCard size={18} />} label="Payments" href={`/project/${ref}/payments`} />
+        <RailItem icon={<BarChart3 size={18} />} label="Analytics" href={`/project/${ref}/analytics`} />
+        <div className="mt-auto">
+          <RailItem
+            icon={<Settings size={18} />}
+            label="Settings"
+            href={`/project/${ref}/settings/general`}
+          />
+        </div>
+      </nav>
 
-      <ScaffoldContainer size="large">
-        <ScaffoldSection isFullWidth className="py-14 md:py-20">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
-            <div className="space-y-4">
-              <Badge variant="default">
-                {organization?.name || 'Organization'} / {project?.name || ref}
-              </Badge>
-              <div className="space-y-3">
-                <h1 className="max-w-3xl text-4xl font-medium leading-[1.1] tracking-tight md:text-5xl">
-                  Build, backend, payments, and{' '}
-                  <span className="bg-gradient-to-r from-[#3B8FD6] via-[#5AA0DE] to-[#6AABE0] bg-clip-text text-transparent">
-                    marketing
-                  </span>{' '}
-                  — one project
-                </h1>
-                <p className="max-w-2xl text-base leading-relaxed text-foreground-light">
-                  Start in Indobase Builder to ship your web app with AI and publish to Indobase
-                  hosting. Open Backend Studio for database, auth, and storage. Indobase Payments
-                  and Marketing round out the same project when you are ready to grow.
-                </p>
-              </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[1400px] px-6 py-8 lg:px-8">
+          {/* Header */}
+          <div className="mb-6 space-y-2">
+            <Badge variant="default">
+              {organization?.name || 'Organization'} / {project?.name || ref}
+            </Badge>
+            <h1 className="text-2xl font-medium tracking-tight">
+              Everything for {project?.name || 'your project'}
+            </h1>
+            <p className="max-w-2xl text-sm text-foreground-light">
+              Build, collaborate, get paid, and grow — one connected business OS for this project.
+            </p>
+          </div>
+
+          {launchError && (
+            <div className="mb-4 rounded-lg border border-destructive-400 bg-destructive-200 px-3 py-2 text-xs text-foreground">
+              {launchError}
             </div>
+          )}
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <ExperienceTile
-                eyebrow="Indobase Builder"
-                title="Web + mobile in Builder"
-                description="Use AI to build your web app, publish on Indobase hosting, and queue Android bundle builds without switching tools."
-                icon={<Blocks size={24} strokeWidth={1.75} className="text-[#3B8FD6]" />}
-                accentClassName="bg-[#3B8FD6]/10"
-              >
-                <BuilderLaunchButton
-                  type="primary"
-                  size="small"
-                  className="w-full sm:w-auto"
-                  nextPath="/?source=studio"
-                >
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            {/* Products */}
+            <section aria-label="Products">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground-light">
+                Products
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ProductTile
+                  name="Builder"
+                  tagline="Build your app with AI"
+                  icon={<Blocks size={18} className="text-[#3B8FD6]" />}
+                  accentClassName="bg-[#3B8FD6]/10"
+                  href={`/project/${ref}`}
+                />
+                <ProductTile
+                  name="Backend Studio"
+                  tagline="Database, auth, storage, functions"
+                  icon={<Database size={18} className="text-[#7C5CD6]" />}
+                  accentClassName="bg-[#7C5CD6]/10"
+                  href={`/project/${ref}/backend`}
+                />
+                <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.workspace.name}
+                  tagline={ECOSYSTEM_PRODUCTS.workspace.tagline}
+                  icon={<Briefcase size={18} className="text-[#3B8FD6]" />}
+                  accentClassName="bg-[#3B8FD6]/10"
+                  href={`/project/${ref}/workspace`}
+                />
+                <ProductTile
+                  name="Payments"
+                  tagline="Collect INR, invoices, payouts"
+                  icon={<CreditCard size={18} className="text-[#4F46E5]" />}
+                  accentClassName="bg-[#4F46E5]/10"
+                  href={`/project/${ref}/payments`}
+                />
+                <ProductTile
+                  name="Analytics"
+                  tagline="Traffic, signups, product events"
+                  icon={<BarChart3 size={18} className="text-[#8B5CF6]" />}
+                  accentClassName="bg-[#8B5CF6]/10"
+                  href={`/project/${ref}/analytics`}
+                />
+                <ProductTile
+                  name="Design"
+                  tagline="Posts, flyers, brand kit"
+                  icon={<ImageIcon size={18} className="text-[#EC4899]" />}
+                  accentClassName="bg-[#EC4899]/10"
+                  onClick={() => open(launchDesign)}
+                  loading={isLaunchingDesign}
+                />
+                <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.discuss.name}
+                  tagline={ECOSYSTEM_PRODUCTS.discuss.tagline}
+                  icon={<MessageSquare size={18} className="text-[#6366F1]" />}
+                  accentClassName="bg-[#6366F1]/10"
+                  onClick={() => open(launchDiscuss)}
+                  loading={isLaunchingDiscuss}
+                />
+                <ProductTile
+                  name="Email"
+                  tagline="Campaigns and transactional mail"
+                  icon={<Mail size={18} className="text-[#0EA5E9]" />}
+                  accentClassName="bg-[#0EA5E9]/10"
+                  onClick={() => open(launchEmail)}
+                  loading={isLaunchingEmail}
+                />
+                <ProductTile
+                  name="Social"
+                  tagline="Schedule posts across channels"
+                  icon={<Share2 size={18} className="text-[#10B981]" />}
+                  accentClassName="bg-[#10B981]/10"
+                  onClick={() => open(launchSocial)}
+                  loading={isLaunchingSocial}
+                />
+                <ProductTile
+                  name="Video"
+                  tagline="Edit and export video"
+                  icon={<VideoIcon size={18} className="text-[#F59E0B]" />}
+                  accentClassName="bg-[#F59E0B]/10"
+                  onClick={() => open(launchVideo)}
+                  loading={isLaunchingVideo}
+                />
+                <ProductTile
+                  name="WhatsApp"
+                  tagline="Order updates and support"
+                  icon={<Megaphone size={18} className="text-[#22C55E]" />}
+                  accentClassName="bg-[#22C55E]/10"
+                  comingSoon
+                />
+              </div>
+
+              <div className="mt-4">
+                <BuilderLaunchButton type="primary" size="small" nextPath="/?source=studio">
                   <span className="inline-flex items-center gap-2">
+                    <Sparkles size={14} />
                     Open Builder
-                    <ArrowRight size={16} />
                   </span>
                 </BuilderLaunchButton>
-              </ExperienceTile>
+              </div>
+            </section>
 
-              <ExperienceTile
-                eyebrow="Indobase Studio"
-                title="Backend Studio"
-                description="Manage your database, authentication, storage, and serverless functions. Studio access follows your organization's plan."
-                icon={<Database size={24} strokeWidth={1.75} className="text-[#7C5CD6]" />}
-                accentClassName="bg-[#7C5CD6]/10"
-                href={`/project/${ref}/backend`}
-                ctaLabel="Open Studio"
-              />
+            {/* Context column — what changed, and what still needs doing. */}
+            <aside className="flex flex-col gap-4">
+              <section
+                aria-label="What's new"
+                className="rounded-xl border bg-surface-100 p-4"
+              >
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground-light">
+                  What&apos;s new
+                </h2>
+                <ul className="space-y-3">
+                  {[
+                    {
+                      title: 'Workspace is connected',
+                      body: 'Files, docs, sheets, presentations, meetings, and calendar per project.',
+                    },
+                    {
+                      title: 'Discuss for team chat',
+                      body: 'Org and project spaces with Studio SSO — no separate login.',
+                    },
+                    {
+                      title: 'Design is now Canva-class',
+                      body: 'Templates, brand kit, layers and PDF/SVG export.',
+                    },
+                    {
+                      title: 'Analytics in every project',
+                      body: 'Traffic and product events without a third-party pipeline.',
+                    },
+                  ].map((item) => (
+                    <li key={item.title} className="flex gap-2">
+                      <Rocket size={14} className="mt-0.5 shrink-0 text-[#3B8FD6]" />
+                      <div>
+                        <p className="text-xs font-medium text-foreground">{item.title}</p>
+                        <p className="text-xs leading-snug text-foreground-light">{item.body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
 
-              <ExperienceTile
-                eyebrow="Indobase Analytics"
-                title="Analytics"
-                description="Track signups, active users, and product events for your app — without wiring up a third-party pipeline."
-                icon={<BarChart3 size={24} strokeWidth={1.75} className="text-[#8B5CF6]" />}
-                accentClassName="bg-[#8B5CF6]/10"
-                href={`/project/${ref}/analytics`}
-                ctaLabel="Open Analytics"
-              />
-
-              {/*
-                Indobase Payments — first-party product tile. Accent matches the marketing hero
-                Payments tile (#4F46E5). Opens the in-project Payments surface (same Studio session).
-              */}
-              <ExperienceTile
-                eyebrow="Indobase Payments"
-                title="Payments"
-                description="Collect INR from your customers — subscriptions, invoices, and payouts — in this project. Same Studio login; settles to your own merchant account."
-                icon={<CreditCard size={24} strokeWidth={1.75} className="text-[#4F46E5]" />}
-                accentClassName="bg-[#4F46E5]/10"
-                href={`/project/${ref}/payments`}
-                ctaLabel="Open Payments"
-              />
-
-              {/*
-                Indobase Marketing — hub launcher (email, social, design, video). Accent teal
-                matches the Marketing hub. Opens the in-project Marketing surface (same Studio session).
-              */}
-              <ExperienceTile
-                eyebrow="Indobase Marketing"
-                title="Marketing"
-                description="Email, social, design, and video tools for this project — pick one from the Marketing hub. Same Studio login; engines ship over time."
-                icon={<Megaphone size={24} strokeWidth={1.75} className="text-[#0D9488]" />}
-                accentClassName="bg-[#0D9488]/10"
-                href={`/project/${ref}/marketing`}
-                ctaLabel="Open Marketing"
-              />
-            </div>
+              <section aria-label="Setup" className="rounded-xl border bg-surface-100 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground-light">
+                    Setup
+                  </h2>
+                  <span className="text-[10px] text-foreground-lighter">
+                    {remaining === 0 ? 'All done' : `${remaining} left`}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {setupSteps.map((step) => (
+                    <li key={step.label} className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+                          step.done
+                            ? 'border-brand bg-brand text-background'
+                            : 'border-foreground-muted'
+                        )}
+                      >
+                        {step.done && <Check size={10} strokeWidth={3} />}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-xs',
+                          step.done ? 'text-foreground-light line-through' : 'text-foreground'
+                        )}
+                      >
+                        {step.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {!isPaidPlan && organization?.slug && (
+                  <Button asChild type="default" size="tiny" className="mt-3 w-full">
+                    <Link href={`/org/${organization.slug}/billing?panel=subscriptionPlan`}>
+                      Upgrade from {planName}
+                    </Link>
+                  </Button>
+                )}
+              </section>
+            </aside>
           </div>
-        </ScaffoldSection>
-      </ScaffoldContainer>
+        </div>
+      </div>
     </div>
   )
 }
