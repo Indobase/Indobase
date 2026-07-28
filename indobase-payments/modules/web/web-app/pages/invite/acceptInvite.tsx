@@ -6,11 +6,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader } from '@/features/auth/components/Loader'
 import { useSession } from '@/features/auth/session'
 import { useQuery } from '@/lib/connectrpc'
-import { env } from '@/lib/env'
 import { getInviteDetails } from '@/rpc/api/instance/v1/instance-InstanceService_connectquery'
 import { OrganizationUserRole } from '@/rpc/api/users/v1/models_pb'
 
 export const INVITE_TOKEN_KEY = 'pending_invite_token'
+
+const inviteReturnPath = '/invite-authenticated'
+
+function paymentsAuthHref(returnUrl: string): string {
+  return `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+}
 
 export const AcceptInvite = () => {
   const [searchParams] = useSearchParams()
@@ -62,6 +67,7 @@ export const AcceptInvite = () => {
   }
 
   const roleName = inviteData.role === OrganizationUserRole.ADMIN ? 'Owner' : 'Member'
+  const authHref = paymentsAuthHref(inviteReturnPath)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
@@ -76,12 +82,12 @@ export const AcceptInvite = () => {
         </div>
 
         <div className="space-y-3">
-          <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-in`} className="block">
+          <a href={authHref} className="block">
             <Button variant="primary" className="w-full">
               Sign in with Studio
             </Button>
           </a>
-          <a href={`${env.studioUrl.replace(/\/+$/, '')}/sign-up`} className="block">
+          <a href={authHref} className="block">
             <Button variant="secondary" className="w-full">
               Create Studio account
             </Button>
@@ -89,7 +95,7 @@ export const AcceptInvite = () => {
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          After Studio sign-in, open Payments from your project — invite acceptance uses your Studio session.
+          After Studio sign-in, you&apos;ll return here to accept the invite automatically.
         </p>
       </div>
     </div>

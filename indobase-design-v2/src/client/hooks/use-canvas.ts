@@ -595,11 +595,23 @@ export function useCanvasState() {
       } else if (meta && e.key === "g" && !e.shiftKey) {
         e.preventDefault();
         const canvas = getActiveCanvas();
-        if (canvas) void groupSelection(canvas);
+        const pageId = activeCanvasIdRef.current;
+        if (canvas) {
+          void groupSelection(canvas).then(() => {
+            if (pageId) saveHistory(pageId);
+            bumpLayers();
+          });
+        }
       } else if (meta && e.key === "g" && e.shiftKey) {
         e.preventDefault();
         const canvas = getActiveCanvas();
-        if (canvas) void ungroupSelection(canvas);
+        const pageId = activeCanvasIdRef.current;
+        if (canvas) {
+          void ungroupSelection(canvas).then(() => {
+            if (pageId) saveHistory(pageId);
+            bumpLayers();
+          });
+        }
       } else if (meta && e.key === "d") {
         e.preventDefault();
         const canvas = getActiveCanvas();
@@ -623,7 +635,7 @@ export function useCanvasState() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, deleteSelected, getActiveCanvas, bumpLayers]);
+  }, [undo, redo, deleteSelected, getActiveCanvas, bumpLayers, saveHistory]);
 
   function isTextEditing(): boolean {
     const canvas = getActiveCanvas();

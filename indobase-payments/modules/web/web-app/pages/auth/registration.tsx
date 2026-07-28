@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Loading } from '@/components/Loading'
 import { redirectToStudioSignIn } from '@/lib/studioAuthRedirect'
@@ -8,9 +9,12 @@ import { redirectToStudioSignIn } from '@/lib/studioAuthRedirect'
  * sign-in (not sign-up) so an existing session can complete the handoff.
  */
 export const Registration = (): JSX.Element => {
+  const [searchParams] = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl')
+
   useEffect(() => {
-    redirectToStudioSignIn()
-  }, [])
+    redirectToStudioSignIn({ returnUrl })
+  }, [returnUrl])
 
   return <Loading />
 }

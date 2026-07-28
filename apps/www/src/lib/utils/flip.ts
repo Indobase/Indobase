@@ -32,9 +32,16 @@ export function flip(
         easing = cubicOut,
         scale = true
     } = params;
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    let resolvedDuration: number
+    if (typeof duration === 'function') {
+        resolvedDuration = duration(distance)
+    } else {
+        resolvedDuration = duration
+    }
     return {
         delay,
-        duration: is_function(duration) ? duration(Math.sqrt(dx * dx + dy * dy)) : duration,
+        duration: resolvedDuration,
         easing,
         css: (t, u) => {
             const x = u * dx;

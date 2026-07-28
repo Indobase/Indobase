@@ -4,7 +4,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { Loading } from "@/components/Loading";
 import { useSession } from "@/features/auth";
+import { PAYMENTS_RETURN_URL_KEY } from '@/lib/studioAuthRedirect'
 import { LoginResponseSchema } from "@/rpc/api/users/v1/users_pb";
+import { INVITE_TOKEN_KEY } from '@/pages/invite/acceptInvite'
 
 export const OauthSuccess = () => {
 
@@ -18,9 +20,18 @@ export const OauthSuccess = () => {
   useEffect(() => {
     if (token) {
       setSession(create(LoginResponseSchema, { token: token }))
-      // Small delay to ensure session is persisted before navigation
+      const storedReturn = sessionStorage.getItem(PAYMENTS_RETURN_URL_KEY)
+      const invitePending = sessionStorage.getItem(INVITE_TOKEN_KEY)
+      const destination =
+        storedReturn ??
+        (invitePending ? '/invite-authenticated' : null)
+
+      if (storedReturn) {
+        sessionStorage.removeItem(PAYMENTS_RETURN_URL_KEY)
+      }
+
       setTimeout(() => {
-        navigate('/')
+        navigate(destination ?? '/')
       }, 50)
     }
   }, [token, navigate, setSession])

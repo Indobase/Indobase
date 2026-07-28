@@ -1,3 +1,5 @@
+import type * as fabric from 'fabric'
+
 /**
  * Client-side export helpers for Indobase Design.
  *
@@ -106,17 +108,7 @@ export type ExportOptions = {
 }
 
 export function exportCanvas(
-  canvas: {
-    discardActiveObject: () => unknown
-    requestRenderAll: () => unknown
-    setActiveObject: (obj: unknown) => unknown
-    getActiveObject: () => unknown
-    toDataURL: (opts: Record<string, unknown>) => string
-    toSVG: () => string
-    getWidth: () => number
-    getHeight: () => number
-    backgroundColor?: unknown
-  },
+  canvas: fabric.Canvas,
   format: ExportFormat,
   designName?: string | null,
   options?: ExportOptions
@@ -142,7 +134,7 @@ export function exportCanvas(
 
     if (format === 'png' || format === 'png-transparent') {
       if (format === 'png-transparent') {
-        canvas.backgroundColor = undefined
+        canvas.set('backgroundColor', '')
         canvas.requestRenderAll()
       }
       downloadDataUrl(
