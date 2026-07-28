@@ -10,9 +10,11 @@ interface Props {
   onClick: () => void;
   /** Defer Fabric thumb until near viewport (home / large lists). */
   lazy?: boolean;
+  /** Compact home-row cards (inspired / explore). */
+  compact?: boolean;
 }
 
-export function TemplateCard({ template, onClick, lazy = true }: Props) {
+export function TemplateCard({ template, onClick, lazy = true, compact = false }: Props) {
   const [preview, setPreview] = useState<string | null>(template.thumbnail_url);
   const [failed, setFailed] = useState(false);
   const [inView, setInView] = useState(!lazy);
@@ -88,19 +90,19 @@ export function TemplateCard({ template, onClick, lazy = true }: Props) {
     <button
       ref={rootRef}
       type="button"
-      class="group relative bg-white border border-zinc-200 rounded-lg overflow-hidden cursor-pointer transition-all hover:border-accent hover:shadow-lg hover:shadow-accent/10 p-0 text-left w-full"
+      class={`design-template-card group ${compact ? "design-template-card-compact" : ""}`}
       onClick={onClick}
       aria-label={`Use template ${template.name}`}
     >
       <div
-        class="w-full flex items-center justify-center bg-zinc-50 overflow-hidden relative"
+        class="design-template-card-thumb"
         style={{ aspectRatio: `${template.width} / ${template.height}` }}
       >
         {preview ? (
           <img
             src={preview}
             alt=""
-            class="w-full h-full object-contain"
+            class="design-template-card-img"
             loading="lazy"
           />
         ) : (
@@ -112,18 +114,23 @@ export function TemplateCard({ template, onClick, lazy = true }: Props) {
             {failed ? "Preview unavailable" : ""}
           </span>
         )}
-        <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/90 text-zinc-600 border border-zinc-200/80">
+        <span class="design-template-card-badge">
           {labelForCategory(template.category)}
         </span>
-      </div>
-      <div class="px-2 py-1.5 border-t border-zinc-200">
-        <span class="text-[10px] text-zinc-600 font-medium truncate block">
-          {template.name}
-        </span>
-        <span class="text-[9px] text-zinc-400">
-          {template.width}&times;{template.height}
+        <span class="design-template-card-overlay">
+          <span class="design-template-card-cta">Use template</span>
         </span>
       </div>
+      {!compact && (
+        <div class="px-2 py-1.5 border-t border-zinc-100">
+          <span class="text-[11px] text-zinc-700 font-medium truncate block">
+            {template.name}
+          </span>
+          <span class="text-[9px] text-zinc-400">
+            {template.width}&times;{template.height}
+          </span>
+        </div>
+      )}
     </button>
   );
 }

@@ -1,8 +1,10 @@
-import { useState } from 'preact/hooks'
+import { useState, useEffect } from 'preact/hooks'
 import { Sparkles } from 'lucide-preact'
 import { api } from '../api'
 import { useEditor } from '../context'
 import { showToast } from './toast'
+
+export const AI_PROMPT_STORAGE_KEY = 'indobase-design-ai-prompt'
 
 type DraftResponse = {
   name: string
@@ -17,6 +19,14 @@ export function AiDraftPanel() {
   const { loadCanvasDocument, setCanvasSize, canvasWidth, canvasHeight } = useEditor()
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(AI_PROMPT_STORAGE_KEY)
+    if (stored) {
+      setPrompt(stored)
+      sessionStorage.removeItem(AI_PROMPT_STORAGE_KEY)
+    }
+  }, [])
 
   const generate = async () => {
     const text = prompt.trim()

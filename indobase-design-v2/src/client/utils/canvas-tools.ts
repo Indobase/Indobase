@@ -1,5 +1,5 @@
 /**
- * Canvas object tools for Design-core Canva parity:
+ * Canvas object tools for Design editor parity:
  * group/ungroup, align, distribute, shadow, magic resize.
  */
 import * as fabric from 'fabric'
