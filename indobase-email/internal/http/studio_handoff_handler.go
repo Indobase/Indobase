@@ -58,10 +58,6 @@ func (h *StudioHandoffHandler) Handoff(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StudioHandoffHandler) redirectStudioError(w http.ResponseWriter, r *http.Request, msg string) {
-	base := "https://studio.indobase.in"
-	if h.service != nil {
-		base = h.service.StudioPublicURL()
-	}
-	target := strings.TrimRight(base, "/") + "/sign-in?error=" + url.QueryEscape(msg)
+	target := "/console/signin?error=" + url.QueryEscape(msg)
 	http.Redirect(w, r, target, http.StatusFound)
 }
