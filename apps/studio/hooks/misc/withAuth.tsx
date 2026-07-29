@@ -1,13 +1,16 @@
 import { useAuth } from 'common'
+import { gotrueClient } from 'common/gotrue'
 import { SessionTimeoutModal } from 'components/interfaces/SignIn/SessionTimeoutModal'
 import { usePermissionsQuery } from 'data/permissions/permissions-query'
 import { useAuthenticatorAssuranceLevelQuery } from 'data/profile/mfa-authenticator-assurance-level-query'
+import { shouldDeferAuthRedirect } from 'lib/auth-navigation'
 import { BASE_PATH } from 'lib/constants'
 import { buildPathWithParams } from 'lib/gotrue'
 import { useRouter } from 'next/router'
 import { ComponentType, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { isNextPageWithLayout, type NextPageWithLayout } from 'types'
+import { LogoLoader } from 'ui'
 
 const MAX_TIMEOUT = 10000 // 10 seconds
 
@@ -108,7 +111,35 @@ export function withAuth<T>(
       ? aalData?.currentLevel === aalData?.nextLevel
       : true
 
-    const shouldRedirect = isFinishedLoading && (!isLoggedIn || !isCorrectLevel)
+    const shouldRedirectToAuth = isFinishedLoading && (!isLoggedIn || !isCorrectLevel)
+    const [gotrueHasSession, setGotrueHasSession] = useState(false)
+
+    useEffect(() => {
+      if (!shouldRedirectToAuth || isLoggedIn) {
+        setGotrueHasSession(false)
+        return
+      }
+
+      let cancelled = false
+      void gotrueClient.getSession().then(({ data: { session } }) => {
+        if (!cancelled) {
+          setGotrueHasSession(Boolean(session?.user))
+        }
+      })
+
+      return () => {
+        cancelled = true
+      }
+    }, [shouldRedirectToAuth, isLoggedIn])
+
+    const deferAuthRedirect = shouldDeferAuthRedirect({
+      isLoggedIn,
+      shouldRedirectToAuth,
+      gotrueHasSession,
+    })
+
+    const shouldRedirect = shouldRedirectToAuth && !deferAuthRedirect
+    const showAuthGateLoader = !isFinishedLoading || deferAuthRedirect || shouldRedirect
 
     useEffect(() => {
       if (shouldRedirect) {
@@ -127,10 +158,10 @@ export function withAuth<T>(
 
     const InnerComponent = WrappedComponent as any
 
-    // Important: don't render the wrapped page while redirecting.
-    // Some pages (e.g. /new/*) kick off authenticated queries immediately and can throw
-    // before the redirect effect runs, which results in a client-side exception screen.
-    if (shouldRedirect) {
+    // Don't render the wrapped page while auth is resolving or redirecting — the page layout
+    // (e.g. PageLayout title on /organizations) still mounts, so an empty fragment looks like
+    // a blank white content area under "Your Organizations".
+    if (showAuthGateLoader) {
       return (
         <>
           <SessionTimeoutModal
@@ -138,6 +169,9 @@ export function withAuth<T>(
             onClose={() => setIsSessionTimeoutModalOpen(false)}
             redirectToSignIn={redirectToSignIn}
           />
+          <div className="flex min-h-[40vh] items-center justify-center p-8">
+            <LogoLoader />
+          </div>
         </>
       )
     }

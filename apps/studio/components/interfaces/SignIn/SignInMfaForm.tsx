@@ -14,6 +14,7 @@ import AlertError from 'components/ui/AlertError'
 import { useMfaChallengeAndVerifyMutation } from 'data/profile/mfa-challenge-and-verify-mutation'
 import { useMfaListFactorsQuery } from 'data/profile/mfa-list-factors-query'
 import { useSignOut } from 'lib/auth'
+import { flushAuthBeforeNavigation } from 'lib/auth-navigation'
 import { getReturnToPath } from 'lib/gotrue'
 import { markPasswordRecoverySession } from 'lib/password-recovery-session'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
@@ -54,6 +55,7 @@ export const SignInMfaForm = ({ context = 'sign-in' }: SignInMfaFormProps) => {
     isSuccess,
   } = useMfaChallengeAndVerifyMutation({
     onSuccess: async () => {
+      await flushAuthBeforeNavigation()
       await queryClient.resetQueries()
 
       if (context === 'forgot-password') {
@@ -83,7 +85,9 @@ export const SignInMfaForm = ({ context = 'sign-in' }: SignInMfaFormProps) => {
     if (isSuccessFactors) {
       // if the user wanders into this page and he has no MFA setup, send the user to the next screen
       if (factors.totp.length === 0) {
-        queryClient.resetQueries().then(() => router.push(getReturnToPath()))
+        void flushAuthBeforeNavigation().then(() =>
+          queryClient.resetQueries().then(() => router.push(getReturnToPath()))
+        )
       }
       if (factors.totp.length > 0) {
         setSelectedFactor(factors.totp[0])

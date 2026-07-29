@@ -8,6 +8,7 @@ import { getAccessToken, useFlag } from 'common'
 import { ensureRuntimePublicEnv } from 'common/public-env'
 import { DocsButton } from 'components/ui/DocsButton'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
+import { flushAuthBeforeNavigation } from 'lib/auth-navigation'
 import { BASE_PATH, DOCS_URL } from 'lib/constants'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
 
@@ -106,6 +107,7 @@ const SignInLayout = ({
             }
           }
 
+          await flushAuthBeforeNavigation()
           await queryClient.resetQueries()
           router.push(getReturnToPath())
         }

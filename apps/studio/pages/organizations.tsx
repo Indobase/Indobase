@@ -48,7 +48,7 @@ const OrganizationsPage: NextPageWithLayout = () => {
     // unless the user is on the not found page
     if (isAuthLoading) return
     if (isSuccess && organizations.length <= 0 && !orgNotFound) {
-      router.push('/new')
+      router.replace('/new')
     }
   }, [isAuthLoading, isSuccess, organizations, orgNotFound, router])
 
