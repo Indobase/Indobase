@@ -206,12 +206,9 @@ async function proxyCrm(c: Context) {
 app.all('/c/*', proxyCrm)
 app.all('/crm/*', proxyCrm)
 app.all('/assets/*', proxyCrm)
-<<<<<<< HEAD
-=======
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
->>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
 // ── Dev shell (no CRM upstream) ────────────────────────────────────────────────
 

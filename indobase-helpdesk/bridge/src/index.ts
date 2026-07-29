@@ -221,12 +221,9 @@ app.all('/h/*', (c) => proxyHelpdesk(c, false))
 app.all('/portal/*', (c) => proxyHelpdesk(c, true))
 app.all('/helpdesk/*', (c) => proxyHelpdesk(c, false))
 app.all('/assets/*', (c) => proxyHelpdesk(c, false))
-<<<<<<< HEAD
-=======
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
->>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
 // ── Dev shell (no Helpdesk upstream) ───────────────────────────────────────────
 

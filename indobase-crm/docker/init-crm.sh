@@ -98,8 +98,6 @@ ensure_apps_and_site() {
   fi
   rm -rf "apps/${INDOBASE_APP}"
   cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
-<<<<<<< HEAD
-=======
   find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
   if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
     echo >> sites/apps.txt
@@ -108,7 +106,6 @@ ensure_apps_and_site() {
     echo "${INDOBASE_APP}" >> sites/apps.txt
   fi
   ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
->>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
   if [ ! -d "sites/${SITE}" ]; then
     echo "[${LABEL}] creating site ${SITE}…"
