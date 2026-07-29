@@ -103,6 +103,10 @@ def _ensure_user(email: str, studio_role: str, full_name: str | None = None) -> 
 		}
 	)
 	user.insert(ignore_permissions=True)
+	if is_agent:
+		user.add_roles(HELPDESK_AGENT)
+	else:
+		user.add_roles(HELPDESK_CUSTOMER)
 	return email
 
 
@@ -148,9 +152,11 @@ def _ensure_queue_marker(queue_key: str, title: str, team_key: str, project_ref:
 
 def _ensure_membership(user: str, studio_role: str) -> None:
 	hd_role = _map_helpdesk_role(studio_role)
+	if hd_role in frappe.get_roles(user):
+		return
 	user_doc = frappe.get_doc("User", user)
-	if hd_role not in frappe.get_roles(user):
-		user_doc.add_roles(hd_role)
+	user_doc.flags.ignore_permissions = True
+	user_doc.add_roles(hd_role)
 
 
 @frappe.whitelist(allow_guest=True)
