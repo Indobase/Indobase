@@ -50,6 +50,7 @@ refresh_indobase_app() {
     ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
     if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
       bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
+      bench --site "${SITE}" execute "${INDOBASE_APP}.install.after_install" || true
     fi
   fi
 }

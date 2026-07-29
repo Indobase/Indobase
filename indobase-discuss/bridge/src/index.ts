@@ -19,7 +19,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
-import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
+import { buildDiscussSpaceMap } from './space-map.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
@@ -106,26 +106,14 @@ app.post('/sso/session', async (c) => {
       forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
       c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-      const map = buildDiscussSpaceMap({
-        orgSlug: claims.organization_slug,
-        projectRef: claims.project_ref,
-        projectName: claims.project_name,
-        organizationName: claims.organization_name,
-      })
-      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || gameplanSpacePath(map) })
+      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || '/' })
     } catch (err) {
       console.error('[discuss] frappe handoff failed:', err)
     }
   }
 
   c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  const map = buildDiscussSpaceMap({
-    orgSlug: claims.organization_slug,
-    projectRef: claims.project_ref,
-    projectName: claims.project_name,
-    organizationName: claims.organization_name,
-  })
-  return c.json({ ok: true, redirect: gameplanSpacePath(map) })
+  return c.json({ ok: true, redirect: '/' })
 })
 
 app.post('/sso/logout', (c) => {
@@ -186,7 +174,7 @@ app.get('/api/me', (c) => {
     canPost: s.canPost,
     studioUrl: s.studioUrl,
     space: map,
-    spacePath: gameplanSpacePath(map),
+    spacePath: null,
   })
 })
 
@@ -210,7 +198,11 @@ async function proxyGameplan(c: Context) {
 }
 
 app.all('/g/*', proxyGameplan)
+app.all('/community/*', proxyGameplan)
+app.all('/space/*', proxyGameplan)
 app.all('/assets/*', proxyGameplan)
+app.all('/api/method/*', proxyGameplan)
+app.all('/api/resource/*', proxyGameplan)
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
@@ -224,7 +216,7 @@ function renderShell(session: Session): string {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
-  const path = gameplanSpacePath(map)
+  const path = `/community/{team}/space/{space}`
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -280,13 +272,7 @@ app.get('/', (c) => {
   const session = raw ? readSessionToken(raw, secret) : null
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
   if (GAMEPLAN_UPSTREAM) {
-    const map = buildDiscussSpaceMap({
-      orgSlug: session.orgSlug,
-      projectRef: session.projectRef,
-      projectName: session.projectName,
-      organizationName: session.organizationName,
-    })
-    return c.redirect(gameplanSpacePath(map))
+    return c.redirect('/community')
   }
   return c.html(renderShell(session))
 })

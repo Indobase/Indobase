@@ -106,12 +106,17 @@ def _ensure_user(email: str, studio_role: str, full_name: str | None = None) -> 
 	return email
 
 
-def _ensure_hd_team(team_key: str, title: str, org_slug: str) -> str | None:
+def _ensure_hd_team(team_key: str, title: str, org_slug: str, user: str) -> str | None:
 	if not frappe.db.exists("DocType", "HD Team"):
 		return None
 
 	existing = frappe.db.get_value("HD Team", {"indobase_team_key": team_key}, "name")
 	if existing:
+		doc = frappe.get_doc("HD Team", existing)
+		member_users = {row.user for row in doc.users}
+		if user and user not in member_users:
+			doc.append("users", {"user": user})
+			doc.save(ignore_permissions=True)
 		return existing
 
 	doc = frappe.get_doc(
@@ -120,6 +125,7 @@ def _ensure_hd_team(team_key: str, title: str, org_slug: str) -> str | None:
 			"team_name": title,
 			"indobase_team_key": team_key,
 			"indobase_org_slug": org_slug,
+			"users": [{"user": user}],
 		}
 	)
 	doc.insert(ignore_permissions=True)
@@ -164,7 +170,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 	)
 
 	user = _ensure_user(email, studio_role)
-	_ensure_hd_team(scope_map["team_key"], scope_map["team_title"], scope_map["org_slug"])
+	_ensure_hd_team(scope_map["team_key"], scope_map["team_title"], scope_map["org_slug"], user)
 	_ensure_queue_marker(
 		scope_map["queue_key"],
 		scope_map["queue_title"],

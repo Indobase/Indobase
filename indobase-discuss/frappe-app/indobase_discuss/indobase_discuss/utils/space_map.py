@@ -50,5 +50,8 @@ def build_discuss_space_map(
 	}
 
 
-def gameplan_space_path(space_map: dict[str, str]) -> str:
-	return f"/g/{space_map['team_key']}/{space_map['space_key']}"
+def gameplan_space_path(team: str, space: str) -> str:
+	"""Gameplan SPA route uses GP Team / GP Project doc names, not indobase keys."""
+	from urllib.parse import quote
+
+	return f"/community/{quote(team, safe='')}/space/{quote(space, safe='')}"
