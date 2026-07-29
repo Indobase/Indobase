@@ -105,7 +105,7 @@ app.post('/sso/session', async (c) => {
       })
       forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+      c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
       const map = buildDiscussSpaceMap({
         orgSlug: claims.organization_slug,
         projectRef: claims.project_ref,
@@ -118,7 +118,7 @@ app.post('/sso/session', async (c) => {
     }
   }
 
-  c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
   const map = buildDiscussSpaceMap({
     orgSlug: claims.organization_slug,
     projectRef: claims.project_ref,

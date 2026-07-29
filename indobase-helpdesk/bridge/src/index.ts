@@ -141,7 +141,7 @@ app.post('/sso/session', async (c) => {
     }
   }
 
-  c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
   return c.json({ ok: true, redirect, scope: map, portal: !isAgent })
 })
 
