@@ -52,6 +52,4 @@ def build_discuss_space_map(
 
 def gameplan_space_path(team: str, space: str) -> str:
 	"""Gameplan SPA route uses GP Team / GP Project doc names, not indobase keys."""
-	team_name = str(team).strip()
-	space_name = str(space).strip()
-	return f"/community/{team_name}/space/{space_name}"
+	return "/community/" + str(team).strip() + "/space/" + str(space).strip()
