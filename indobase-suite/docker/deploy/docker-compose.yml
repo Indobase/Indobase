@@ -99,8 +99,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      # Prod default is .indobase.in only — include .fun only when that DNS exists (avoids LE NXDOMAIN + rate limits).
-      - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`)}
+      - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}
       - traefik.http.routers.indobase-workspace.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-workspace.tls=true
       - traefik.http.routers.indobase-workspace.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}

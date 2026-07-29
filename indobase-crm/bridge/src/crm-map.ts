@@ -76,15 +76,20 @@ export function crmPipelinePath(map: CrmScopeMap): string {
   return `/c/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.pipelineKey)}`
 }
 
+const CRM_SPA_ENTRY = '/app/crm'
+
 /** Upstream Frappe CRM SPA entry (production proxy target). */
 export function upstreamCrmPath(bridgePath: string): string {
   if (bridgePath.startsWith('/c/')) {
     const parts = bridgePath.split('/').filter(Boolean)
     if (parts.length >= 3) {
       const pipelineKey = decodeURIComponent(parts[2])
-      return `/crm?ib_pipeline=${encodeURIComponent(pipelineKey)}`
+      return `${CRM_SPA_ENTRY}?ib_pipeline=${encodeURIComponent(pipelineKey)}`
     }
   }
-  if (bridgePath.startsWith('/crm')) return bridgePath
-  return '/crm'
+  if (bridgePath.startsWith('/crm')) {
+    return `${CRM_SPA_ENTRY}${bridgePath.slice('/crm'.length)}`
+  }
+  if (bridgePath.startsWith('/app/crm')) return bridgePath
+  return CRM_SPA_ENTRY
 }
