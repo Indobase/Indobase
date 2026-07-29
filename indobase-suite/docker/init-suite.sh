@@ -53,13 +53,26 @@ refresh_indobase_app() {
   fi
 }
 
+sync_handoff_secrets() {
+  if [ -z "${HANDOFF_SECRET}" ]; then
+    echo "[${LABEL}] WARN: ${HANDOFF_KEY} unset — Studio SSO handoff will fail until env is set"
+    return 0
+  fi
+  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+    bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}" || true
+    bench --site "${SITE}" clear-cache || true
+  fi
+}
+
 start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
   refresh_indobase_app
-  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  sync_handoff_secrets
   exec bench start
 }
 

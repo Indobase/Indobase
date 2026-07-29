@@ -52,6 +52,13 @@ export const ECOSYSTEM_PRODUCTS = {
     host: 'helpdesk.indobase.in',
     openLabel: 'Open Helpdesk',
   },
+  domains: {
+    id: 'domains',
+    name: 'Domains',
+    tagline: 'Search, register, and manage domains',
+    host: 'domains.indobase.in',
+    openLabel: 'Open Domains',
+  },
   payments: {
     id: 'payments',
     name: 'Payments',

@@ -34,6 +34,20 @@ const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in
 const HELPDESK_UPSTREAM = (process.env.HELPDESK_UPSTREAM || '').replace(/\/+$/, '')
 const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
 
+/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
+function forwardUpstreamCookies(upstream: Response, c: Context) {
+  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
+  const cookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : upstream.headers.get('set-cookie')
+        ? [upstream.headers.get('set-cookie') as string]
+        : []
+  for (const cookie of cookies) {
+    c.header('Set-Cookie', cookie, { append: true })
+  }
+}
+
 function scopeFromSession(session: Session) {
   return buildHelpdeskScopeMap({
     orgSlug: session.orgSlug,
@@ -112,8 +126,7 @@ app.post('/sso/session', async (c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
-      const setCookie = upstream.headers.get('set-cookie')
-      if (setCookie) c.header('Set-Cookie', setCookie)
+      forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
       if (body.redirect) redirect = body.redirect
     } catch (err) {
