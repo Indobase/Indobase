@@ -1,4 +1,8 @@
 import Editor from '@monaco-editor/react'
+import { useEffect } from 'react'
+import { useTheme } from 'next-themes'
+
+import { configureMonacoLoader, ensureMonacoIndobaseTheme } from 'lib/monaco-loader'
 
 type MonacoEditorProps = {
   width?: string | number | undefined
@@ -19,6 +23,15 @@ export const MonacoEditor = ({
   onChange,
   onMount,
 }: MonacoEditorProps) => {
+  const { resolvedTheme } = useTheme()
+
+  useEffect(() => {
+    void configureMonacoLoader()
+    if (resolvedTheme) {
+      void ensureMonacoIndobaseTheme(resolvedTheme)
+    }
+  }, [resolvedTheme])
+
   function handleEditorOnMount(editor: any) {
     // add margin above first line
     editor.changeViewZones((accessor: any) => {

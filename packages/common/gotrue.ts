@@ -1,5 +1,10 @@
 import { AuthClient, navigatorLock, User } from '@indobaseinc/auth-js'
 
+import {
+  createHttpOnlyRefreshFetch,
+  createHttpOnlyRefreshStorage,
+  migrateLegacyAuthStorage,
+} from './auth-http-only-refresh'
 import { resolvePublicAnonKey, resolvePublicGotrueUrl } from './public-env'
 
 export const STORAGE_KEY = process.env.NEXT_PUBLIC_STORAGE_KEY || 'indobase.dashboard.auth.token'
@@ -180,6 +185,19 @@ async function debuggableNavigatorLock<R>(
   }
 }
 
+const useHttpOnlyRefreshStorage = isSaaS && 'sessionStorage' in globalThis
+
+if (useHttpOnlyRefreshStorage) {
+  migrateLegacyAuthStorage(STORAGE_KEY)
+}
+
+const authStorage =
+  useHttpOnlyRefreshStorage && 'sessionStorage' in globalThis
+    ? createHttpOnlyRefreshStorage(globalThis.sessionStorage, { storageKey: STORAGE_KEY })
+    : 'localStorage' in globalThis
+      ? globalThis.localStorage
+      : undefined
+
 export const gotrueClient = new AuthClient({
   get url() {
     return resolvePublicGotrueUrl()
@@ -193,10 +211,14 @@ export const gotrueClient = new AuthClient({
       return resolvePublicAnonKey()
     },
   },
+  fetch: useHttpOnlyRefreshStorage ? createHttpOnlyRefreshFetch() : undefined,
   debug: debug ? (persistedDebug ? logIndexedDB : true) : false,
   lock: navigatorLockEnabled ? debuggableNavigatorLock : undefined,
-  ...('localStorage' in globalThis
-    ? { storage: globalThis.localStorage, userStorage: globalThis.localStorage }
+  ...(authStorage
+    ? {
+        storage: authStorage,
+        userStorage: authStorage,
+      }
     : null),
 })
 

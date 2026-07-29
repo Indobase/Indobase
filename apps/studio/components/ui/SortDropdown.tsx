@@ -20,9 +20,10 @@ interface SortDropdownProps {
   options: SortOption[]
   value: string
   setValue: (value: string) => void
+  className?: string
 }
 
-export const SortDropdown = ({ options, value, setValue }: SortDropdownProps) => {
+export const SortDropdown = ({ options, value, setValue, className }: SortDropdownProps) => {
   const [sortColumn, sortOrder] = value.split('_')
   const columnLabel = options.find((x) => x.value === sortColumn)?.label
 
@@ -31,9 +32,13 @@ export const SortDropdown = ({ options, value, setValue }: SortDropdownProps) =>
       <DropdownMenuTrigger asChild>
         <Button
           type="default"
+          size="tiny"
+          className={className}
           icon={sortOrder === 'desc' ? <ArrowDownWideNarrow /> : <ArrowDownNarrowWide />}
         >
-          Sorted by {columnLabel ?? sortColumn}
+          <span className="truncate max-w-[7rem] sm:max-w-none">
+            Sorted by {columnLabel ?? sortColumn}
+          </span>
         </Button>
       </DropdownMenuTrigger>
 

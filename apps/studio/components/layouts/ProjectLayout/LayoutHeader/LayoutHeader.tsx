@@ -59,6 +59,7 @@ interface LayoutHeaderProps {
   headerTitle?: string
   showProductMenu?: boolean
   backToDashboardURL?: string
+  hideOnMobile?: boolean
 }
 
 export const LayoutHeader = ({
@@ -67,6 +68,7 @@ export const LayoutHeader = ({
   headerTitle,
   showProductMenu,
   backToDashboardURL,
+  hideOnMobile = false,
 }: LayoutHeaderProps) => {
   const router = useRouter()
   const { ref: projectRef, slug } = useParams()
@@ -99,7 +101,9 @@ export const LayoutHeader = ({
 
   return (
     <>
-      <header className={cn('flex h-12 items-center flex-shrink-0 border-b')}>
+      <header
+        className={cn('flex h-12 items-center flex-shrink-0 border-b', hideOnMobile && 'hidden md:flex')}
+      >
         {backToDashboardURL && isAccountPage && (
           <div className="flex items-center justify-center border-r flex-0 md:hidden h-full aspect-square">
             <Link
@@ -113,6 +117,8 @@ export const LayoutHeader = ({
         {(showProductMenu || isAccountPage) && (
           <div className="flex items-center justify-center border-r flex-0 md:hidden h-full aspect-square">
             <button
+              type="button"
+              aria-label="Open navigation menu"
               title="Menu dropdown button"
               className={cn(
                 'group/view-toggle ml-4 flex justify-center flex-col border-none space-x-0 items-start gap-1 !bg-transparent rounded-md min-w-[30px] w-[30px] h-[30px]'

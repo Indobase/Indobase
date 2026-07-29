@@ -40,7 +40,8 @@ export function UserDropdown() {
       <DropdownMenuTrigger asChild className="border flex-shrink-0 px-3">
         <Button
           type="default"
-          className="[&>span]:flex px-0 py-0 rounded-full overflow-hidden h-8 w-8"
+          aria-label="Account menu"
+          className="[&>span]:flex px-0 py-0 rounded-full overflow-hidden h-8 w-8 min-h-[44px] min-w-[44px] md:min-h-8 md:min-w-8"
         >
           {isLoading ? (
             <div className="w-full h-full flex items-center justify-center">

@@ -78,6 +78,7 @@ RUN set -e; \
 WORKDIR /workspace/apps/studio
 # Bust build-studio GHA cache when the commit changes (ARG does not carry across stages).
 ARG BUILD_SHA=unknown
+ARG BUILD_TIME=
 RUN pnpm run build
 
 # Final runtime: single Node server (Studio + marketing from public/)
@@ -87,9 +88,12 @@ ENV NODE_ENV=production
 ENV PORT=8080
 # Surfaced at /api/health as `version` so smoke tests can verify the running build matches the commit.
 ARG BUILD_SHA=unknown
+ARG BUILD_TIME=
 # Write to disk so GHA layer cache cannot serve a stale ENV from an older build.
 RUN printf '%s' "$BUILD_SHA" > /app/BUILD_SHA
+RUN if [ -n "$BUILD_TIME" ]; then printf '%s' "$BUILD_TIME" > /app/BUILD_TIME; fi
 ENV BUILD_SHA=${BUILD_SHA}
+ENV BUILD_TIME=${BUILD_TIME}
 
 # SaaS Studio: default folders so APIs start (override in Dokploy if using volumes)
 ENV EDGE_FUNCTIONS_MANAGEMENT_FOLDER=/app/edge-functions

@@ -18,6 +18,7 @@ import { captureCriticalError } from 'lib/error-reporting'
 import { BASE_PATH } from 'lib/constants'
 import { ensureRuntimePublicEnv } from 'common/public-env'
 import { auth, buildPathWithParams, getReturnToPath } from 'lib/gotrue'
+import { resolveHcaptchaSiteKey } from 'lib/hcaptcha-site-key'
 import { verifyOtpViaPlatform } from 'lib/password-recovery-api'
 import { resendSignupConfirmation } from 'lib/resend-confirmation-api'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
@@ -35,9 +36,6 @@ const schema = z.object({
 
 const formId = 'sign-in-form'
 
-const hcaptchaSiteKey =
-  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
-
 function isEmailNotConfirmedError(error: AuthError): boolean {
   const message = error.message?.toLowerCase() ?? ''
   return (
@@ -51,6 +49,9 @@ export const SignInForm = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [_, setLastSignIn] = useLastSignIn()
+  const [hcaptchaSiteKey, setHcaptchaSiteKey] = useState<string | undefined>(() =>
+    resolveHcaptchaSiteKey()
+  )
 
   const [passwordHidden, setPasswordHidden] = useState(true)
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
@@ -72,6 +73,16 @@ export const SignInForm = () => {
   useEffect(() => {
     setReturnTo(getReturnToPath())
   }, [])
+
+  useEffect(() => {
+    if (hcaptchaSiteKey) return
+    void ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`).then((env) => {
+      const runtimeKey = resolveHcaptchaSiteKey(
+        (env as { hcaptchaSiteKey?: string }).hcaptchaSiteKey
+      )
+      if (runtimeKey) setHcaptchaSiteKey(runtimeKey)
+    })
+  }, [hcaptchaSiteKey])
 
   useEffect(() => {
     if (!router.isReady) return

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Elements } from '@stripe/react-stripe-js'
 import type { PaymentIntentResult, PaymentMethod, StripeElementsOptions } from '@stripe/stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { getStripePromise } from 'lib/stripe-loader'
 import { groupBy } from 'lodash'
 import { HelpCircle } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -95,7 +95,7 @@ const formSchema = z.object({
 
 type FormState = z.infer<typeof formSchema>
 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY)
+const stripePromise = getStripePromise()
 
 const FORM_ID = 'new-org-form'
 

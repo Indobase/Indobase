@@ -47,13 +47,13 @@ export const FeedbackDropdown = ({ className }: { className?: string }) => {
     >
       <PopoverTrigger_Shadcn_ asChild>
         <Button
-          asChild
+          type="text"
+          aria-label="Send feedback"
           onClick={() => {
             setIsOpen((isOpen) => !isOpen)
             setStage('select')
           }}
-          type="text"
-          className="rounded-full h-[32px] text-foreground-light hover:text-foreground"
+          className="rounded-full h-[32px] min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 text-foreground-light hover:text-foreground"
         >
           <span className={className}>Feedback</span>
         </Button>

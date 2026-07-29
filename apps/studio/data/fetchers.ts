@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { DEFAULT_PLATFORM_APPLICATION_NAME } from '@indobaseinc/pg-meta/src/constants'
 import { IS_SAAS, getAccessToken } from 'common'
 import { API_URL } from 'lib/constants'
+import { getErrorMessage } from 'lib/get-error-message'
 import { uuidv4 } from 'lib/helpers'
 import createClient from 'openapi-fetch'
 import { ResponseError } from 'types'
@@ -16,9 +17,9 @@ const DEFAULT_HEADERS = { Accept: 'application/json' }
 export const fetchHandler: typeof fetch = async (input, init) => {
   try {
     return await fetch(input, init)
-  } catch (err: any) {
-    if (err instanceof TypeError && err.message === 'Failed to fetch') {
-      console.error(err)
+  } catch (err: unknown) {
+    if (err instanceof TypeError && err instanceof Error && err.message === 'Failed to fetch') {
+      console.error(getErrorMessage(err) ?? 'Failed to fetch')
       throw new Error('Unable to reach the server. Please check your network or try again later.')
     }
     throw err

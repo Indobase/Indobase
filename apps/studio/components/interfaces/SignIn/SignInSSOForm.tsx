@@ -10,6 +10,7 @@ import { useLastSignIn } from 'hooks/misc/useLastSignIn'
 import { BASE_PATH } from 'lib/constants'
 import { captureCriticalError } from 'lib/error-reporting'
 import { auth, buildPathWithParams } from 'lib/gotrue'
+import { resolveHcaptchaSiteKey } from 'lib/hcaptcha-site-key'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 
@@ -19,8 +20,7 @@ const schema = z.object({
 
 const formId = 'sso-sign-in-form'
 
-const hcaptchaSiteKey =
-  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+const hcaptchaSiteKey = resolveHcaptchaSiteKey()
 
 export const SignInSSOForm = () => {
   const queryClient = useQueryClient()

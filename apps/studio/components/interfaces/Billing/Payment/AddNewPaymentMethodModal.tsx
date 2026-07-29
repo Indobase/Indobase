@@ -1,6 +1,6 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { getStripePromise } from 'lib/stripe-loader'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ interface AddNewPaymentMethodModalProps {
   onConfirm: () => void
 }
 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY)
+const stripePromise = getStripePromise()
 
 const AddNewPaymentMethodModal = ({
   visible,
