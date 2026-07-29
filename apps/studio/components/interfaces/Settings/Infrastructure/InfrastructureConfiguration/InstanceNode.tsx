@@ -12,7 +12,7 @@ import dayjs from 'dayjs'
 import { useCustomContent } from 'hooks/custom-content/useCustomContent'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { BASE_PATH } from 'lib/constants'
+import { regionIconSrc } from 'lib/constants/region-icon'
 import { Database, DatabaseBackup, HelpCircle, Loader2, MoreVertical } from 'lucide-react'
 import Link from 'next/link'
 import { parseAsBoolean, useQueryState } from 'nuqs'
@@ -155,7 +155,7 @@ export const PrimaryNode = ({ data }: NodeProps<PrimaryNodeData>) => {
           <img
             alt="region icon"
             className="w-8 rounded-sm mt-0.5"
-            src={`${BASE_PATH}/img/regions/${region.region}.svg`}
+            src={regionIconSrc(region.region)}
           />
         </div>
         {numReplicas > 0 && (
@@ -416,7 +416,7 @@ export const RegionNode = ({ data }: any) => {
         <img
           alt="region icon"
           className="w-5 rounded-sm"
-          src={`${BASE_PATH}/img/regions/${region.region}.svg`}
+          src={regionIconSrc(region.region)}
         />
         <p className="text-sm">{region.name}</p>
       </div>

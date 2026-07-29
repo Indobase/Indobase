@@ -4,8 +4,9 @@
 #   prod:    discuss.indobase.in
 #   staging: discuss.indobase.fun
 #
-# First boot initializes Frappe bench + Gameplan (~5–10 min). Bridge serves SSO;
-# Traefik terminates TLS and routes to bridge (which proxies /g/* to Gameplan).
+# Bench data lives on discuss_bench_sites → /home/frappe/persist (full bench, not
+# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
+#   docker run --rm -v indobase-discuss_discuss_bench_sites:/v alpine chown -R 1000:1000 /v
 
 x-default-logging: &logging
   driver: json-file
@@ -65,7 +66,7 @@ services:
       DISCUSS_HANDOFF_SECRET: ${DISCUSS_HANDOFF_SECRET:?set DISCUSS_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
     volumes:
-      - discuss_bench_sites:/home/frappe/frappe-bench/sites
+      - discuss_bench_sites:/home/frappe/persist
       - ../init-gameplan.sh:/workspace/init-gameplan.sh:ro
       - ../../frappe-app/indobase_discuss:/workspace/indobase_discuss:ro
     command: bash /workspace/init-gameplan.sh

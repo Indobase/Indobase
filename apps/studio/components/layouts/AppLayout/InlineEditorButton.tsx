@@ -28,8 +28,9 @@ export const InlineEditorButton = () => {
       type="outline"
       size="tiny"
       id="editor-trigger"
+      aria-label="Open SQL editor panel"
       className={cn(
-        'rounded-full w-[32px] h-[32px] flex items-center justify-center p-0 text-foreground-light hover:text-foreground',
+        'rounded-full w-[32px] h-[32px] min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px] flex items-center justify-center p-0 text-foreground-light hover:text-foreground',
         isOpen && 'bg-foreground text-background hover:text-background'
       )}
       onClick={handleClick}

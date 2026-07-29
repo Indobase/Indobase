@@ -1,0 +1,23 @@
+# Indobase Workspace — Traefik file provider
+#
+# DNS: workspace.indobase.in → Vyom 103.190.92.249
+
+http:
+  routers:
+    indobase-workspace:
+      rule: Host(`workspace.indobase.in`) || Host(`suite.indobase.in`)
+      entryPoints:
+        - websecure
+      service: indobase-workspace
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: workspace.indobase.in
+            sans:
+              - suite.indobase.in
+
+  services:
+    indobase-workspace:
+      loadBalancer:
+        servers:
+          - url: http://suite-bridge:8093

@@ -21,7 +21,7 @@ import { Database, useReadReplicasQuery } from 'data/read-replicas/replicas-quer
 import { formatDatabaseID } from 'data/read-replicas/replicas.utils'
 import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
-import { BASE_PATH } from 'lib/constants'
+import { regionIconSrc } from 'lib/constants/region-icon'
 import type { AWS_REGIONS_KEYS } from 'shared-data'
 import { useDatabaseSelectorStateSnapshot } from 'state/database-selector'
 import {
@@ -220,7 +220,7 @@ const MapView = ({
                       <img
                         alt="region icon"
                         className="w-4 rounded-sm"
-                        src={`${BASE_PATH}/img/regions/${tooltip.region.region}.svg`}
+                        src={regionIconSrc(tooltip.region.region)}
                       />
                       <p className="text-[10px]">{tooltip.region.country}</p>
                     </div>
@@ -252,7 +252,7 @@ const MapView = ({
             <img
               alt="region icon"
               className="w-10 rounded-sm"
-              src={`${BASE_PATH}/img/regions/${selectedRegion.region}.svg`}
+              src={regionIconSrc(selectedRegion.region)}
             />
           </div>
 

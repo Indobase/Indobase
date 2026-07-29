@@ -120,8 +120,10 @@ export function FormLayout({
 
   const renderError = error && (
     <p
+      id={id ? `${id}-error` : undefined}
       data-state={error ? 'show' : 'hide'}
       className={[__styles.error.base, __styles.error.size[size]].join(' ')}
+      role="alert"
     >
       {error}
     </p>

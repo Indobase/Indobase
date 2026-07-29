@@ -2,7 +2,7 @@
  * @ts-nocheck
  * Preventing TS checks with files presented in the video for a better presentation.
  */
-import { MODEL_REGEX, PROVIDER_REGEX } from '~/utils/constants';
+import { MODEL_REGEX, PROVIDER_REGEX, STUDIO_CONTEXT_REGEX } from '~/utils/constants';
 import { Markdown } from './Markdown';
 import { useStore } from '@nanostores/react';
 import { profileStore } from '~/lib/stores/profile';
@@ -104,5 +104,9 @@ export function UserMessage({ content, parts }: UserMessageProps) {
 
 function stripMetadata(content: string) {
   const artifactRegex = /<boltArtifact\s+[^>]*>[\s\S]*?<\/boltArtifact>/gm;
-  return content.replace(MODEL_REGEX, '').replace(PROVIDER_REGEX, '').replace(artifactRegex, '');
+  return content
+    .replace(MODEL_REGEX, '')
+    .replace(PROVIDER_REGEX, '')
+    .replace(STUDIO_CONTEXT_REGEX, '')
+    .replace(artifactRegex, '');
 }

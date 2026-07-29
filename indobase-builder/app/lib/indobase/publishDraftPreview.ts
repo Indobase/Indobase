@@ -45,21 +45,26 @@ function collectWorkbenchSourceFiles(): Record<string, string> {
 export async function publishDraftPreview(
   connection?: IndobaseConnectionState | null,
 ): Promise<PublishDraftPreviewResult> {
+  /*
+   * These bailouts used to return silently, leaving the preview panel on its resting "Preview will
+   * appear here" copy — indistinguishable from "nothing has been built yet". Publish the reason to
+   * the store so the panel can explain itself.
+   */
   if (!canQueueIndobaseDeployment(connection) || !connection) {
-    return {
-      success: false,
-      error: 'Studio-linked session required for server draft preview',
-    };
+    const error = 'Studio-linked session required for server draft preview';
+    setDraftPreviewError(error);
+
+    return { success: false, error };
   }
 
   const sourceFiles = collectWorkbenchSourceFiles();
   const contract = validateGeneratedProjectContract(sourceFiles);
 
   if (!contract.valid) {
-    return {
-      success: false,
-      error: `Project incomplete for draft preview:\n${contract.issues.join('\n')}`,
-    };
+    const error = `Project incomplete for draft preview:\n${contract.issues.join('\n')}`;
+    setDraftPreviewError(error);
+
+    return { success: false, error };
   }
 
   setDraftPreviewBuilding();

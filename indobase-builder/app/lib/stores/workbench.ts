@@ -18,6 +18,7 @@ import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, IndobaseBackendAlert } from '~/types/actions';
+import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 
 export interface ArtifactState {
   id: string;
@@ -48,6 +49,13 @@ export class WorkbenchStore {
   artifacts: Artifacts = import.meta.hot?.data?.artifacts ?? map({});
 
   showWorkbench: WritableAtom<boolean> = import.meta.hot?.data?.showWorkbench ?? atom(false);
+  /*
+   * Stays 'code' deliberately. Defaulting to 'preview' was tried and is worse: the workbench opens
+   * on the first streamed artifact, long before any app is running, so the user would watch a bare
+   * spinner for the whole build. Files appearing is real, legible progress. The payoff is handled
+   * by the preview-ready subscription at the bottom of this file, which moves them to their running
+   * app the moment there is one.
+   */
   currentView: WritableAtom<WorkbenchViewType> = import.meta.hot?.data?.currentView ?? atom('code');
   unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data?.unsavedFiles ?? atom(new Set<string>());
   actionAlert: WritableAtom<ActionAlert | undefined> =
@@ -614,7 +622,12 @@ export class WorkbenchStore {
           this.setSelectedFile(fullPath);
         }
 
-        if (this.currentView.value !== 'code') {
+        /*
+         * Only pull focus to the source while the user has no running app to look at. Once a
+         * preview exists, a follow-up edit used to yank them out of their app and back into the
+         * editor on every file write — the opposite of watching a change take effect.
+         */
+        if (this.currentView.value === 'diff') {
           this.currentView.set('code');
         }
       } else if (!this.selectedFile.value) {
@@ -1004,3 +1017,32 @@ export class WorkbenchStore {
 }
 
 export const workbenchStore = new WorkbenchStore();
+
+/*
+ * The end of a build is the moment the user has been waiting for, so land them on their running
+ * app. Previously the workbench stayed wherever the last file write left it — almost always the
+ * code editor — so "I built you an app" resolved into a screen of source. Only the transition into
+ * preview-ready fires this, so a user who deliberately opens Code mid-build is not yanked away.
+ */
+initialBuildLifecycle.subscribe((state) => {
+  if (state === 'preview-ready') {
+    workbenchStore.currentView.set('preview');
+
+    /*
+     * The reveal. Nothing opens the workbench during a build any more, so this is where the app
+     * arrives — the user stays in the conversation while it is built, then their running app slides
+     * in. If they already opened it themselves, this is a no-op.
+     */
+    workbenchStore.showWorkbench.set(true);
+  }
+
+  /*
+   * A failed build must not leave the user in a chat with no way to see what happened — nothing
+   * opens the workbench during the build any more, so open it here and land on the source, which
+   * is where the answer is.
+   */
+  if (state === 'failed') {
+    workbenchStore.currentView.set('code');
+    workbenchStore.showWorkbench.set(true);
+  }
+});

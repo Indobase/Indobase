@@ -12,6 +12,12 @@ export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 export const MODIFICATIONS_TAG_NAME = 'bolt_file_modifications';
 export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
+/**
+ * Studio backend instructions + the project's live schema, injected into the user message for the
+ * model. Stripped before rendering so the transcript shows what the user typed — see
+ * `wrapStudioContext` in ~/lib/indobase/studio-database-prompt.
+ */
+export const STUDIO_CONTEXT_REGEX = /<indobase_studio_context>[\s\S]*?<\/indobase_studio_context>\n*/g;
 /** Default discuss/chat model — OpenRouter free tier (codegen uses paid DeepSeek server-side). */
 export const DEFAULT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 /** OpenRouter free vision model when the user attaches screenshots/images. */

@@ -10,6 +10,8 @@ import type { ElementInfo } from './Inspector';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import { streamingState } from '~/lib/stores/streaming';
+import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
+import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 
 type ResizeSide = 'left' | 'right' | null;
 
@@ -22,22 +24,42 @@ interface PreviewProps {
  * "starting" copy) from a resting workspace, so a cold start reads as progress instead of a blank
  * "No preview available" panel.
  */
-function PreviewEmptyState({ busy, draftBuilding }: { busy: boolean; draftBuilding?: boolean }) {
-  const title = draftBuilding
-    ? 'Building server preview…'
-    : busy
-      ? 'Starting your app…'
-      : 'Preview will appear here';
-  const detail = draftBuilding
-    ? 'Running a server build and hosting a draft preview. This usually beats a cold WebContainer install.'
-    : busy
-      ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
-      : 'Once the app is running, its live preview shows up in this panel.';
+function PreviewEmptyState({
+  busy,
+  draftBuilding,
+  bootError,
+}: {
+  busy: boolean;
+  draftBuilding?: boolean;
+  bootError?: string | null;
+}) {
+  /*
+   * A failed workspace boot is terminal until an admin fixes it, so the spinner must give way to
+   * the reason. Previously this panel kept promising "a few seconds" indefinitely while the
+   * terminal a pane away had already printed the fatal error.
+   */
+  const failed = !!bootError;
+  const title = failed
+    ? 'Preview unavailable'
+    : draftBuilding
+      ? 'Building server preview…'
+      : busy
+        ? 'Starting your app…'
+        : 'Preview will appear here';
+  const detail = failed
+    ? bootError
+    : draftBuilding
+      ? 'Building your app on the server and hosting the result. The first build takes the longest.'
+      : busy
+        ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
+        : 'Once the app is running, its live preview shows up in this panel.';
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1 px-6 text-center">
       <div className="relative flex h-14 w-14 items-center justify-center">
-        {busy || draftBuilding ? (
+        {failed ? (
+          <span className="i-ph:warning-circle text-3xl text-bolt-elements-icon-error" />
+        ) : busy || draftBuilding ? (
           <>
             <span className="absolute inset-0 rounded-full border-2 border-accent-500/25" />
             <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-accent-500" />
@@ -49,7 +71,9 @@ function PreviewEmptyState({ busy, draftBuilding }: { busy: boolean; draftBuildi
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium text-bolt-elements-textPrimary">{title}</p>
-        <p className="max-w-xs text-xs leading-5 text-bolt-elements-textTertiary">{detail}</p>
+        <p className={`text-xs leading-5 text-bolt-elements-textTertiary ${failed ? 'max-w-md' : 'max-w-xs'}`}>
+          {detail}
+        </p>
       </div>
     </div>
   );
@@ -106,6 +130,19 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const draftPreview = useStore(draftPreviewStore);
   const buildLifecycle = useStore(initialBuildLifecycle);
   const isStreaming = useStore(streamingState);
+  const bootError = useStore(webcontainerBootErrorAtom);
+
+  /*
+   * Which failure is worth showing depends on how this host renders previews. Under server preview
+   * WebContainer is never expected to boot, so its error is noise — the meaningful failure is the
+   * server build. Elsewhere the boot error is the whole story.
+   */
+  const previewFailure = isServerPreviewMode()
+    ? draftPreview.status === 'error'
+      ? draftPreview.error
+      : undefined
+    : bootError;
+
   // A dev server is expected soon while generating/finalizing or mid-stream — show "starting", not "empty".
   const previewStarting = isStreaming || buildLifecycle === 'generating' || buildLifecycle === 'finalizing';
   const draftBuilding = draftPreview.status === 'building';
@@ -1100,7 +1137,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               />
             </>
           ) : (
-            <PreviewEmptyState busy={previewStarting} draftBuilding={draftBuilding} />
+            <PreviewEmptyState busy={previewStarting} draftBuilding={draftBuilding} bootError={previewFailure} />
           )}
 
           {isDeviceModeOn && !showDeviceFrameInPreview && (

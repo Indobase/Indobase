@@ -1,11 +1,21 @@
 import { useStore } from '@nanostores/react';
 import { shouldSuggestExtensionDisable } from '~/lib/webcontainer/boot-errors';
 import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
+import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 
 export function WebContainerBootBanner() {
   const error = useStore(webcontainerBootErrorAtom);
 
   if (!error) {
+    return null;
+  }
+
+  /*
+   * On a keyless host WebContainer is not expected to boot — server preview is the intended mode,
+   * and previews still work. Shouting "workspace could not start" there tells the user the product
+   * is broken when it is running normally, so the banner stays out of the way.
+   */
+  if (isServerPreviewMode()) {
     return null;
   }
 

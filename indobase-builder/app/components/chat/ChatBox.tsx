@@ -52,9 +52,13 @@ interface ChatBoxProps {
 }
 
 export const ChatBox: React.FC<ChatBoxProps> = (props) => {
-  const agentStatus =
-    props.agentStatus ??
-    (props.isStreaming ? 'Agent is working…' : props.chatStarted ? 'Agent is waiting…' : undefined);
+  /*
+   * Only speak when there is something to say. While streaming, BuildPlan and ProgressCompilation
+   * already narrate the work in detail — a third "Agent is working…" bar above the composer just
+   * repeats them. And "Agent is waiting…" on an idle chat is pure chrome: the empty composer
+   * already communicates that it is the user's turn.
+   */
+  const agentStatus = props.agentStatus;
 
   const shell = (
     <>
@@ -190,6 +194,12 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                 : 'What would you like to discuss?'
               : 'Describe your idea — we will bring it to life...'
           }
+          /*
+           * Explicit name rather than relying on the placeholder: placeholder text disappears as
+           * soon as the user types, leaving the primary input of the product unnamed to a screen
+           * reader mid-edit.
+           */
+          aria-label={props.chatMode === 'build' ? 'Describe the app to build' : 'Message Indobase Builder'}
           translate="no"
         />
         <ClientOnly>

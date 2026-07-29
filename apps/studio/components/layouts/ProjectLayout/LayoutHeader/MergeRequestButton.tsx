@@ -69,9 +69,10 @@ export const MergeRequestButton = () => {
   return (
     <ButtonTooltip
       type="default"
-      className="rounded-full w-[26px] h-[26px]"
+      className="rounded-full w-[26px] h-[26px] min-h-[44px] min-w-[44px] md:min-h-[26px] md:min-w-[26px]"
       onClick={handleClick}
       loading={isUpdating}
+      aria-label={buttonLabel}
       tooltip={{
         content: {
           text: buttonLabel,

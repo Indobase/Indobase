@@ -2,6 +2,7 @@ import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { atom, type WritableAtom } from 'nanostores';
 import type { ITerminal } from '~/types/terminal';
 import { getWebcontainerWithRetry, resetWebContainerBoot } from '~/lib/webcontainer';
+import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 import { newBoltShellProcess, newShellProcess } from '~/utils/shell';
 import { coloredText } from '~/utils/terminal';
 
@@ -17,7 +18,12 @@ export class TerminalStore {
   #boltTerminal = newBoltShellProcess();
   #attachInFlight: Promise<void> | null = null;
 
-  showTerminal: WritableAtom<boolean> = import.meta.hot?.data?.showTerminal ?? atom(true);
+  /*
+   * Closed by default. The terminal is a debugging tool, not part of the build narrative — opening
+   * it on arrival greets a non-technical founder with boot logs and red error text before they have
+   * seen anything work. Still one click away on the Terminal button.
+   */
+  showTerminal: WritableAtom<boolean> = import.meta.hot?.data?.showTerminal ?? atom(false);
 
   constructor(webcontainerPromise: Promise<WebContainer>) {
     this.#webcontainer = webcontainerPromise;
@@ -66,6 +72,23 @@ export class TerminalStore {
   }
 
   async #attachBoltTerminalInternal(terminal: ITerminal) {
+    /*
+     * The interactive shell is a WebContainer feature. On a server-preview host there is nothing to
+     * attach to, so attempting it only produced a retry-then-fail sequence that read as a broken
+     * product. Say what this host does instead — previews still work, they are built server-side.
+     */
+    if (isServerPreviewMode()) {
+      terminal.write(coloredText.cyan('Server preview mode\n'));
+      terminal.write(
+        coloredText.dim(
+          'This host builds your app on the Indobase Builder server and hosts the result, so the\n' +
+            'in-browser terminal is unavailable. Previews still appear in the Preview tab.\n',
+        ),
+      );
+
+      return;
+    }
+
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= SHELL_ATTACH_MAX_ATTEMPTS; attempt++) {

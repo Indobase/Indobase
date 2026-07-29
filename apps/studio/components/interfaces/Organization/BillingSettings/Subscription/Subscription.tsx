@@ -55,7 +55,7 @@ const Subscription = () => {
             <div className="space-y-2 mb-4">
               <p className="text-foreground text-base m-0">Subscription Plan</p>
               <p className="text-sm text-foreground-light m-0">
-                Each organization has it's own subscription plan, billing cycle, payment methods and
+                Each organization has its own subscription plan, billing cycle, payment methods and
                 usage quotas.
               </p>
             </div>

@@ -20,8 +20,9 @@ export const AssistantButton = () => {
       type="outline"
       size="tiny"
       id="assistant-trigger"
+      aria-label="Open AI assistant"
       className={cn(
-        'rounded-full w-[32px] h-[32px] flex items-center justify-center p-0',
+        'rounded-full w-[32px] h-[32px] min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px] flex items-center justify-center p-0',
         isOpen && 'bg-foreground text-background'
       )}
       onClick={() => {

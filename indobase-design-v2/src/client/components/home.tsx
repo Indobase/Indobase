@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "preact/hooks";
-import { Plus, Trash2, Edit3, Sparkles, Search } from "lucide-preact";
+import { Plus, Sparkles, Search } from "lucide-preact";
 import type { Design, Template } from "../types";
+import { DesignRecentCard } from "./design-recent-card";
 import { TemplateCard } from "./template-card";
 import { TemplateGrid } from "./template-grid";
 import { showToast } from "./toast";
@@ -281,75 +282,21 @@ export function Home({
             <h2 class="text-sm font-semibold text-zinc-700 mb-3 m-0">Recent designs</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {designs.map((d) => (
-                <div
+                <DesignRecentCard
                   key={d.id}
-                  class="bg-white rounded-xl border border-zinc-200 overflow-hidden cursor-pointer transition-all hover:border-[#6366f1] hover:shadow-md group"
-                  onClick={() => navigate(`/design/${d.id}`)}
-                >
-                  <div class="aspect-[4/3] bg-zinc-100 flex items-center justify-center">
-                    {d.thumbnail_url ? (
-                      <img
-                        src={d.thumbnail_url}
-                        alt={d.name}
-                        class="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div class="text-zinc-300 text-[10px] font-medium">
-                        {d.width} x {d.height}
-                      </div>
-                    )}
-                  </div>
-
-                  <div class="p-3">
-                    {editingId === d.id ? (
-                      <input
-                        class="w-full bg-zinc-100 border border-[#6366f1] rounded text-zinc-800 text-xs px-2 py-1 outline-none"
-                        value={editName}
-                        onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
-                        onBlur={finishRename}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") finishRename();
-                          if (e.key === "Escape") setEditingId(null);
-                        }}
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <div class="flex items-start justify-between">
-                        <div class="min-w-0 flex-1">
-                          <p class="text-xs font-semibold text-zinc-700 truncate m-0">
-                            {d.name}
-                          </p>
-                          <p class="text-[10px] text-zinc-400 mt-0.5 m-0">
-                            {d.width} x {d.height} &middot;{" "}
-                            {new Date(d.updated_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div class="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
-                          <button
-                            class="p-1 rounded text-zinc-400 bg-transparent border-none cursor-pointer hover:text-zinc-700 transition-colors"
-                            onClick={(e) => startRename(d.id, d.name, e)}
-                            aria-label="Rename"
-                          >
-                            <Edit3 size={12} />
-                          </button>
-                          <button
-                            class="p-1 rounded text-zinc-400 bg-transparent border-none cursor-pointer hover:text-red-400 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void deleteDesign(d.id).then(() =>
-                                showToast("Design deleted", "info")
-                              );
-                            }}
-                            aria-label="Delete"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  design={d}
+                  onOpen={() => navigate(`/design/${d.id}`)}
+                  onRename={startRename}
+                  onDelete={(id, e) => {
+                    e.stopPropagation();
+                    void deleteDesign(id).then(() => showToast("Design deleted", "info"));
+                  }}
+                  editingId={editingId}
+                  editName={editName}
+                  setEditName={setEditName}
+                  finishRename={finishRename}
+                  setEditingId={setEditingId}
+                />
               ))}
             </div>
           </>

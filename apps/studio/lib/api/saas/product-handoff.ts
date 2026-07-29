@@ -18,9 +18,12 @@ type Claims = JwtPayload & Record<string, unknown>
 
 export const HANDOFF_PRODUCTS = [
   'analytics',
+  'crm',
   'design',
   'discuss',
+  'domains',
   'email',
+  'helpdesk',
   'payments',
   'social',
   'suite',
@@ -62,6 +65,12 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://analytics.indobase.in',
   },
+  crm: {
+    audience: 'indobase-crm',
+    label: 'CRM',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://crm.indobase.in',
+  },
   design: {
     audience: 'indobase-design',
     label: 'Design',
@@ -74,11 +83,23 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://discuss.indobase.in',
   },
+  domains: {
+    audience: 'indobase-domains',
+    label: 'Domains',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://domains.indobase.in',
+  },
   email: {
     audience: 'indobase-email',
     label: 'Email',
     launchPath: '/console/launch',
     defaultBaseUrl: 'https://email.indobase.in',
+  },
+  helpdesk: {
+    audience: 'indobase-helpdesk',
+    label: 'Helpdesk',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://helpdesk.indobase.in',
   },
   payments: {
     audience: 'indobase-payments',

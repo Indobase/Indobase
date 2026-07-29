@@ -191,6 +191,9 @@ async function proxyGameplan(c: Context) {
 
 app.all('/g/*', proxyGameplan)
 app.all('/assets/*', proxyGameplan)
+/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
+app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 
 // ── Dev shell (no Gameplan upstream) ─────────────────────────────────────────
 

@@ -1,0 +1,48 @@
+# Indobase Domains — production / staging Compose (Vyom .249)
+#
+# Hosts:
+#   prod:    domains.indobase.in
+#   staging: domains.indobase.fun
+
+x-default-logging: &logging
+  driver: json-file
+  options:
+    max-size: 5m
+    max-file: "2"
+
+x-restart: &restart
+  restart: unless-stopped
+
+networks:
+  domains_net:
+    name: indobase-domains
+  traefik_public:
+    name: ${TRAEFIK_NETWORK:-dokploy-network}
+    external: true
+
+name: indobase-domains
+
+services:
+  domains-bridge:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8094"
+      DOMAINS_HANDOFF_SECRET: ${DOMAINS_HANDOFF_SECRET:?set DOMAINS_HANDOFF_SECRET}
+      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      STUDIO_INTERNAL_URL: ${STUDIO_INTERNAL_URL:-http://indobase-studio:8080}
+      DOMAINS_VERSION: ${DOMAINS_VERSION:-dev}
+    networks:
+      - domains_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      - traefik.http.routers.indobase-domains.rule=${DOMAINS_TRAEFIK_RULE:-Host(`domains.indobase.in`) || Host(`domains.indobase.fun`)}
+      - traefik.http.routers.indobase-domains.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-domains.tls=true
+      - traefik.http.routers.indobase-domains.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.indobase-domains.loadbalancer.server.port=8094
+    logging: *logging

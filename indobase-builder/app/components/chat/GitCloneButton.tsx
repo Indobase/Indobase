@@ -167,7 +167,17 @@ ${escapeBoltTags(file.content)}
           setSelectedProvider(null);
           setIsDialogOpen(true);
         }}
-        title="Clone a repo"
+        /*
+         * The disabled state has a cause the user cannot otherwise see — cloning needs a running
+         * workspace, so a failed/booting WebContainer greys this out with no explanation.
+         */
+        title={
+          loading
+            ? 'Cloning…'
+            : !ready
+              ? 'Waiting for the Builder workspace to start — cloning needs a running workspace.'
+              : 'Clone a repo'
+        }
         variant="default"
         size="lg"
         className={classNames(

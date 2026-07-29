@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import type { Design, DesignWithPages, Template, Page } from "../types";
 import { api } from "../api";
 import { showToast } from "../components/toast";
+import { renderCanvasThumbnail } from "../utils/canvas-thumbnail";
 
 export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -55,8 +56,16 @@ export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
       }
       // Also update design's canvas_json with first page for backwards compat
       const firstPageJson = currentPages.length > 0 ? getCanvasJSONForPage(currentPages[0].id) : "{}";
+      const activeDesignMeta = activeDesign;
+      const thumbWidth = activeDesignMeta?.width ?? 1080;
+      const thumbHeight = activeDesignMeta?.height ?? 1080;
+      const thumbnail_url =
+        firstPageJson && firstPageJson !== "{}"
+          ? await renderCanvasThumbnail(firstPageJson, thumbWidth, thumbHeight)
+          : null;
       const updated = await api<Design>("PUT", `/api/designs/${activeIdRef.current}`, {
         canvas_json: firstPageJson,
+        ...(thumbnail_url ? { thumbnail_url } : {}),
       });
       setDesigns((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       setActiveDesign(updated);
@@ -66,7 +75,7 @@ export function useDesigns(getCanvasJSONForPage: (pageId: string) => string) {
     } finally {
       setSaving(false);
     }
-  }, [getCanvasJSONForPage, pages]);
+  }, [getCanvasJSONForPage, pages, activeDesign]);
 
   const createDesign = useCallback(
     async (opts?: {
