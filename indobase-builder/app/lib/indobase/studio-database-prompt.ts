@@ -41,3 +41,15 @@ export function getStudioBackendUserPreamble(): string {
 
 `;
 }
+
+/**
+ * Studio-injected context (backend instructions + the project's live schema) rides along in the
+ * user message so the model sees it, but it is machinery — not something the user typed. Wrapping
+ * it in a single tag gives the chat UI one exact thing to strip, so the transcript shows the user's
+ * own words instead of our prompt engineering and the tenant's table list.
+ *
+ * Keep this tag in sync with STUDIO_CONTEXT_REGEX in ~/utils/constants.
+ */
+export function wrapStudioContext(body: string): string {
+  return body.trim().length === 0 ? '' : `<indobase_studio_context>\n${body}</indobase_studio_context>\n\n`;
+}

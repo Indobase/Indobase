@@ -51,9 +51,9 @@ function redirectForSession(session: Session): string {
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
 app.get('/sso/launch', (c) =>
-  c.html(`<!doctype html><meta charset="utf-8"><title>Opening Helpdesk…</title>
+  c.html(`<!doctype html><meta charset="utf-8"><title>Opening Indobase Helpdesk…</title>
 <body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#1e293b;background:#f8fafc">
-<p>Opening Helpdesk…</p>
+<p>Opening Indobase Helpdesk…</p>
 <script>
 (async () => {
   var h = new URLSearchParams(location.hash.slice(1));
@@ -208,6 +208,12 @@ app.all('/h/*', (c) => proxyHelpdesk(c, false))
 app.all('/portal/*', (c) => proxyHelpdesk(c, true))
 app.all('/helpdesk/*', (c) => proxyHelpdesk(c, false))
 app.all('/assets/*', (c) => proxyHelpdesk(c, false))
+<<<<<<< HEAD
+=======
+/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
+app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+>>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
 // ── Dev shell (no Helpdesk upstream) ───────────────────────────────────────────
 

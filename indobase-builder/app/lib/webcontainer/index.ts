@@ -2,7 +2,7 @@ import { WebContainer } from '@webcontainer/api';
 import { atom } from 'nanostores';
 import { WORK_DIR_NAME } from '~/utils/constants';
 import { cleanStackTrace } from '~/utils/stacktrace';
-import { isSingletonBootError } from './boot-errors';
+import { isFatalBootConfigError, isSingletonBootError } from './boot-errors';
 import {
   ensureWebContainerApiKeyConfigured,
   resolveWebContainerApiKey,
@@ -119,6 +119,8 @@ async function assertWebContainerRuntimeReady(): Promise<void> {
 /** Live instance (or late-arriving boot after a client-side timeout). */
 let activeInstance: WebContainer | undefined;
 let bootPromise: Promise<WebContainer> | undefined;
+/** Set when boot fails for a reason only an admin can fix; short-circuits further boot attempts. */
+let fatalBootConfigError: Error | undefined;
 /** Serializes boot vs teardown so callers never race a second WebContainer.boot(). */
 let bootGate: Promise<void> = Promise.resolve();
 /** Coalesce concurrent getWebcontainerWithRetry callers into one retry loop. */
@@ -301,6 +303,12 @@ function bootWebContainer(): Promise<WebContainer> {
     }
 
     console.error('WebContainer boot failed:', lastError);
+
+    if (isFatalBootConfigError(lastError)) {
+      fatalBootConfigError =
+        lastError instanceof Error ? lastError : new Error('Indobase Builder workspace failed to start.');
+    }
+
     webcontainerBootErrorAtom.set(
       lastError instanceof Error ? lastError.message : 'Indobase Builder workspace failed to start.',
     );
@@ -328,6 +336,9 @@ export async function resetWebContainerBoot(): Promise<void> {
 
     const pending = bootPromise;
     bootPromise = undefined;
+
+    // Reset is the explicit "try again" — clear the latch so a now-fixed key can boot.
+    fatalBootConfigError = undefined;
 
     if (import.meta.hot?.data) {
       import.meta.hot.data.webcontainer = undefined;
@@ -357,6 +368,15 @@ export function getWebcontainer(): Promise<WebContainer> {
 
   if (activeInstance && webcontainerContext.loaded) {
     return Promise.resolve(activeInstance);
+  }
+
+  /*
+   * A missing/unallowlisted API key cannot be fixed by trying again, and every workbench action
+   * calls in here — without this latch one misconfigured host re-ran the full boot (attempts plus
+   * backoff sleeps) per file write, flooding the console with the same error. Reset clears it.
+   */
+  if (fatalBootConfigError) {
+    return Promise.reject(fatalBootConfigError);
   }
 
   if (import.meta.hot?.data?.webcontainer) {

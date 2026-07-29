@@ -17,8 +17,35 @@ export const GlobalErrorBoundaryState = ({ error, resetErrorBoundary }: Fallback
 
   const largeLogo = useIsFeatureEnabled('branding:large_logo')
 
-  const errorMessage = checkIsError ? error.message : ''
-  const urlMessage = checkIsError ? `Path name: ${router.pathname}\n\n${error?.stack}` : ''
+  /*
+   * Not everything thrown is an Error — minified bundles throw plain objects and undefined. Those
+   * previously fell through to '' here, which blanked the on-screen message *and* shipped an empty
+   * `error=` to the support form, so the user's bug report carried no diagnostic payload at all.
+   * Describe the value instead, and always include the path so the report locates the crash.
+   */
+  const describeThrown = (value: unknown): string => {
+    if (isError(value)) return value.message
+    if (value === undefined) return 'undefined was thrown'
+    if (value === null) return 'null was thrown'
+
+    if (typeof value === 'object') {
+      try {
+        const json = JSON.stringify(value)
+        if (json && json !== '{}') return `Non-Error thrown: ${json}`
+      } catch {
+        // circular / non-serialisable — fall through to the constructor name
+      }
+
+      return `Non-Error thrown: ${value.constructor?.name ?? 'object'}`
+    }
+
+    return `Non-Error thrown: ${String(value)}`
+  }
+
+  const errorMessage = describeThrown(error)
+  const urlMessage = `Path name: ${router.pathname}\n\n${
+    checkIsError && error.stack ? error.stack : errorMessage
+  }`
 
   const isRemoveChildError = checkIsError
     ? errorMessage.includes("Failed to execute 'removeChild' on 'Node'")

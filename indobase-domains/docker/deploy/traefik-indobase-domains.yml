@@ -1,0 +1,23 @@
+# Indobase Domains — Traefik file provider (optional if compose labels suffice)
+#
+# DNS:
+#   domains.indobase.fun → staging (add SAN only when DNS exists)
+#   domains.indobase.in  → Vyom 103.190.92.249
+
+http:
+  routers:
+    indobase-domains:
+      rule: Host(`domains.indobase.in`)
+      entryPoints:
+        - websecure
+      service: indobase-domains
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: domains.indobase.in
+
+  services:
+    indobase-domains:
+      loadBalancer:
+        servers:
+          - url: http://domains-bridge:8094

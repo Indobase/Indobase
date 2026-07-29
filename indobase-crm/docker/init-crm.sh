@@ -36,9 +36,28 @@ apps_usable() {
     && frappe-bench/env/bin/python -c "import frappe" 2>/dev/null
 }
 
+refresh_indobase_app() {
+  if [ -d "${INDOBASE_SRC}" ]; then
+    rm -rf "apps/${INDOBASE_APP}"
+    cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+    find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+    if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+      echo >> sites/apps.txt
+    fi
+    if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+      echo "${INDOBASE_APP}" >> sites/apps.txt
+    fi
+    ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
+    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+      bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
+    fi
+  fi
+}
+
 start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
+  refresh_indobase_app
   bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
   bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
   bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
@@ -66,6 +85,17 @@ ensure_apps_and_site() {
   fi
   rm -rf "apps/${INDOBASE_APP}"
   cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+<<<<<<< HEAD
+=======
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
+  if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+    echo "${INDOBASE_APP}" >> sites/apps.txt
+  fi
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
+>>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
   if [ ! -d "sites/${SITE}" ]; then
     echo "[${LABEL}] creating site ${SITE}…"

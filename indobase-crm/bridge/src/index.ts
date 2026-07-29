@@ -40,9 +40,9 @@ function scopeFromSession(session: Session) {
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
 app.get('/sso/launch', (c) =>
-  c.html(`<!doctype html><meta charset="utf-8"><title>Opening CRM…</title>
+  c.html(`<!doctype html><meta charset="utf-8"><title>Opening Indobase CRM…</title>
 <body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#1e293b;background:#f8fafc">
-<p>Opening CRM…</p>
+<p>Opening Indobase CRM…</p>
 <script>
 (async () => {
   var h = new URLSearchParams(location.hash.slice(1));
@@ -193,6 +193,12 @@ async function proxyCrm(c: Context) {
 app.all('/c/*', proxyCrm)
 app.all('/crm/*', proxyCrm)
 app.all('/assets/*', proxyCrm)
+<<<<<<< HEAD
+=======
+/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
+app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+>>>>>>> 25af6fd3 (feat(ecosystem): CRM, Domains, and Helpdesk with Studio launch and Builder preview hardening)
 
 // ── Dev shell (no CRM upstream) ────────────────────────────────────────────────
 

@@ -21,6 +21,7 @@ export const HANDOFF_PRODUCTS = [
   'crm',
   'design',
   'discuss',
+  'domains',
   'email',
   'helpdesk',
   'payments',
@@ -81,6 +82,12 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Discuss',
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://discuss.indobase.in',
+  },
+  domains: {
+    audience: 'indobase-domains',
+    label: 'Domains',
+    launchPath: '/sso/launch',
+    defaultBaseUrl: 'https://domains.indobase.in',
   },
   email: {
     audience: 'indobase-email',

@@ -11,7 +11,13 @@ const messageParser = new EnhancedStreamingMessageParser({
     onArtifactOpen: (data) => {
       logger.trace('onArtifactOpen', data);
 
-      workbenchStore.showWorkbench.set(true);
+      /*
+       * Deliberately does NOT open the workbench. The first artifact tag arrives seconds after the
+       * user describes an idea, and slamming a file tree + editor over the screen turns "describe
+       * what you want" into "here is an IDE" before anything has been built. The chat narrates the
+       * work (BuildPlan), the artifact card offers a way in, and the workbench opens on its own
+       * once there is a running app to show — see the preview-ready subscription in stores/workbench.
+       */
       workbenchStore.addArtifact(data);
     },
     onArtifactClose: (data) => {

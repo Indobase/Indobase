@@ -42,6 +42,7 @@ import {
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
+import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
@@ -52,7 +53,7 @@ import {
   prepareStudioLinkedChat,
   redirectToStudioBuilderConnect,
 } from '~/lib/indobase/builder-auth.client';
-import { getStudioBackendUserPreamble } from '~/lib/indobase/studio-database-prompt';
+import { getStudioBackendUserPreamble, wrapStudioContext } from '~/lib/indobase/studio-database-prompt';
 import { getStudioSchemaPreamble } from '~/lib/indobase/studioSchema';
 import { runStudioBackendPreflight } from '~/lib/indobase/studioPreflight';
 import { TOOL_EXECUTION_APPROVAL } from '~/utils/constants';
@@ -436,7 +437,7 @@ export const ChatImpl = memo(
           runAnimation();
 
           const preamble = hasIndobaseStudioHandoff(indobaseConn)
-            ? `${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`
+            ? wrapStudioContext(`${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`)
             : '';
 
           if (chatMode === 'build') {
@@ -667,6 +668,33 @@ export const ChatImpl = memo(
           await persistSampledHistory.flush();
 
           if (chatMode !== 'build') {
+            return true;
+          }
+
+          /*
+           * No WebContainer on this host (no API key) — finalizeCodegen boots it, so it can only
+           * fail here. Build on the server and host the result instead of burning a boot attempt
+           * and then recovering from the exception.
+           */
+          if (isServerPreviewMode()) {
+            const draft = await publishDraftPreview(indobaseConnection.get());
+
+            if (draft.success && draft.previewUrl) {
+              setLlmErrorAlert(undefined);
+
+              if (isInitialBuild) {
+                initialBuildLifecycle.set('preview-ready');
+              }
+
+              return true;
+            }
+
+            if (isInitialBuild) {
+              failInitialBuild();
+            }
+
+            logger.error('Server preview build failed', draft.error);
+
             return true;
           }
 
@@ -1210,7 +1238,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         !finalMessageContent.includes('INDOBASE BACKEND (Studio-linked')
       ) {
         const schemaBlock = await getStudioSchemaPreamble(indobaseConn);
-        finalMessageContent = `${getStudioBackendUserPreamble()}${schemaBlock}${finalMessageContent}`;
+        finalMessageContent = `${wrapStudioContext(`${getStudioBackendUserPreamble()}${schemaBlock}`)}${finalMessageContent}`;
       }
 
       if (selectedElement) {
