@@ -80,6 +80,9 @@ swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env BUILDER_HANDOFF_S
 swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env STUDIO_INTERNAL_URL "$STUDIO_INTERNAL_URL"
 swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env INDOBASE_STUDIO_URL "$STUDIO_URL"
 swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env NODE_OPTIONS '--dns-result-order=ipv4first'
+if [[ -n "${WEBCONTAINER_API_KEY:-}" ]]; then
+  swarm_upsert_env_file_kv /opt/indobase-staging/env/builder.env WEBCONTAINER_API_KEY "$WEBCONTAINER_API_KEY"
+fi
 
 # Studio: create skeleton once, then always upsert public URLs + handoff.
 if [[ ! -f /opt/indobase-staging/env/studio.env ]]; then

@@ -19,6 +19,7 @@ SERVICE_NAME="${BUILDER_SERVICE_NAME:-indobase-builder}"
 BUILDER_URL="${BUILDER_APP_URL:-https://builder.indobase.in}"
 STUDIO_PUBLIC_URL="${INDOBASE_STUDIO_URL:-https://studio.indobase.in}"
 STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
+WEBCONTAINER_API_KEY="${WEBCONTAINER_API_KEY:-}"
 
 echo "==> Deploy Builder image ${IMAGE} to ${SSH_HOST}…"
 
@@ -40,6 +41,7 @@ IMAGE="${IMAGE}"
 BUILDER_URL="${BUILDER_URL}"
 STUDIO_PUBLIC_URL="${STUDIO_PUBLIC_URL}"
 STUDIO_FILTER="${STUDIO_FILTER}"
+WEBCONTAINER_API_KEY="${WEBCONTAINER_API_KEY}"
 
 echo "Pulling \${IMAGE}…"
 docker pull "\${IMAGE}"
@@ -70,6 +72,15 @@ if [[ -n "\${STUDIO_PUBLIC_URL}" ]]; then
   swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_STUDIO_URL "\${STUDIO_PUBLIC_URL}"
   swarm_upsert_env_file_kv "\${ENV_FILE}" NEXT_PUBLIC_INDOBASE_STUDIO_URL "\${STUDIO_PUBLIC_URL}"
   swarm_upsert_env_file_kv "\${ENV_FILE}" VITE_INDOBASE_STUDIO_URL "\${STUDIO_PUBLIC_URL}"
+fi
+
+if [[ -n "\${WEBCONTAINER_API_KEY}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" WEBCONTAINER_API_KEY "\${WEBCONTAINER_API_KEY}"
+  echo "WebContainer client key synced to \${ENV_FILE}"
+fi
+
+if ! grep -q '^WEBCONTAINER_API_KEY=wc_api_' "\${ENV_FILE}" 2>/dev/null; then
+  echo "::warning::\${ENV_FILE} is missing WEBCONTAINER_API_KEY — production preview requires a StackBlitz WebContainer client key with builder.indobase.in allowlisted."
 fi
 
 if ! grep -q '^BUILDER_HANDOFF_SECRET=.\{32,\}' "\${ENV_FILE}" 2>/dev/null; then
