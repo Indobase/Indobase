@@ -3,6 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { ResponseError, ResponseFailure } from 'types'
 
 import { PgMetaDatabaseError } from './saas/types'
+import {
+  isSecretDecryptionError,
+  secretDecryptionClientMessage,
+} from './saas/secret-decryption-error'
 import { apiAuthenticate } from './apiAuthenticate'
 
 export function isResponseOk<T>(response: T | ResponseFailure | undefined): response is T {
@@ -54,10 +58,21 @@ export default async function apiWrapper(
 
     return await handler(req, res, claims)
   } catch (error) {
+    if (isSecretDecryptionError(error)) {
+      return res.status(500).json({
+        message: secretDecryptionClientMessage(error.correlationId),
+        correlationId: error.correlationId,
+        error: {
+          message: secretDecryptionClientMessage(error.correlationId),
+          correlationId: error.correlationId,
+        },
+      })
+    }
+
     if (error instanceof PgMetaDatabaseError) {
       const cryptoHint = /unauthorized/i.test(error.message)
-        ? 'PG_META_CRYPTO_KEY on Studio must match CRYPTO_KEY on the meta service (same value in both containers).'
-        : 'Check STUDIO_PG_META_URL (http://indobase-meta:8080), PG_META_CRYPTO_KEY, and POSTGRES_* — see docker/ENV-FOR-OWN-BACKEND.md'
+        ? 'Studio encryption settings must match the postgres-meta service. Restart both after fixing server configuration.'
+        : 'Check postgres-meta connectivity and database credentials — see docker/ENV-FOR-OWN-BACKEND.md'
       return res.status(502).json({
         message: `SaaS database error: ${error.message}`,
         hint: cryptoHint,
@@ -69,12 +84,16 @@ export default async function apiWrapper(
       })
     }
 
-    const message =
+    const rawMessage =
       error instanceof Error
         ? error.message
         : typeof error === 'string'
           ? error
           : 'Internal server error'
+
+    const message = /CRYPTO_KEY|PG_META_CRYPTO_KEY/i.test(rawMessage)
+      ? 'Unable to read encrypted project data. Contact support if this persists.'
+      : rawMessage
 
     const missingPgMeta =
       message.includes('STUDIO_PG_META_URL is not set') ||
@@ -86,10 +105,9 @@ export default async function apiWrapper(
       hint: message.includes('Cannot reach postgres-meta')
         ? 'Studio must reach postgres-meta on the Docker network (STUDIO_PG_META_URL=http://indobase-meta:8080). See docker/DOKPLOY-STUDIO-ENV.md'
         : undefined,
-      message,
       error:
         error instanceof Error
-          ? { name: error.name, message: error.message }
+          ? { name: error.name, message }
           : { message: String(error) },
     })
   }

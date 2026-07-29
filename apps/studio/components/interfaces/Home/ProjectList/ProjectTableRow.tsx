@@ -22,6 +22,7 @@ import {
 import { TimestampInfo } from 'ui-patterns'
 import { DataPlaneListBadge } from './DataPlaneListBadge'
 import { getProjectLocationLabel, inferProjectStatus } from './ProjectCard.utils'
+import { projectHasDataPlaneError } from './project-data-plane'
 import { ProjectCardStatus } from './ProjectCardStatus'
 import { DeleteProjectModal } from 'components/interfaces/Settings/General/DeleteProjectPanel/DeleteProjectModal'
 import { toast } from 'sonner'
@@ -47,6 +48,7 @@ export const ProjectTableRow = ({
   const router = useRouter()
   const { name, ref: projectRef } = project
   const projectStatus = inferProjectStatus(project.status)
+  const hideHealthyStatusBadge = projectHasDataPlaneError(project)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
 
@@ -128,7 +130,7 @@ export const ProjectTableRow = ({
         <TableCell>
           <div className="flex flex-wrap items-center gap-1.5">
             <ProjectCardStatus
-              projectStatus={projectStatus}
+              projectStatus={hideHealthyStatusBadge ? undefined : projectStatus}
               resourceWarnings={resourceWarnings}
               renderMode="badge"
             />

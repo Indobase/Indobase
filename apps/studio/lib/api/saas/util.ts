@@ -1,4 +1,5 @@
 import crypto from 'crypto-js'
+import { randomUUID } from 'crypto'
 import { IS_SAAS } from 'lib/constants'
 import {
   ENCRYPTION_KEY,
@@ -11,6 +12,7 @@ import {
   POSTGRES_USER_READ_ONLY,
 } from './constants'
 import { isSharedControlPlaneDatabaseFallbackAllowed } from './data-plane-mode'
+import { SecretDecryptionError } from './secret-decryption-error'
 
 /** No-op: hosted Supabase Platform mode is removed; Studio always uses the Indobase SaaS control plane. */
 export function assertSaaSBackend() {}
@@ -29,7 +31,12 @@ export function decryptString(encrypted: string): string {
       // Wrong key — CryptoJS throws "Malformed UTF-8 data" for some ciphertext.
     }
   }
-  throw new Error('Failed to decrypt value (check CRYPTO_KEY / PG_META_CRYPTO_KEY)')
+  const correlationId = randomUUID()
+  console.error('[saas] decryptString failed', {
+    correlationId,
+    keysConfigured: keys.length,
+  })
+  throw new SecretDecryptionError(correlationId)
 }
 
 /** Percent-encode user/password for PostgreSQL URIs (@ : / etc. must not break the URI). */

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { executeQuery } from 'lib/api/saas/query'
+import { decryptString, encryptString } from 'lib/api/saas/util'
 import { getLogflareBaseUrl } from 'lib/constants/api'
 
 type CheckResult = {
@@ -20,6 +21,8 @@ type HealthResponse = {
     env: CheckResult & { missing?: string[] }
     /** SaaS control plane: env vars + live postgres-meta query (skipped when NEXT_PUBLIC_INDOBASE_SAAS=false) */
     saasInfra: CheckResult & { missing?: string[] }
+    /** SaaS: verify AES keys can decrypt a stored project secret (skipped when SaaS disabled) */
+    cryptoCanary?: CheckResult
     gotrue: CheckResult
     rest: CheckResult
     /** Self-hosted Logflare (skipped when logs disabled or not configured) */
@@ -45,14 +48,14 @@ function checkSaaSInfraEnv(): { missing: string[]; message?: string } {
     process.env.PG_META_CRYPTO_KEY?.trim() || process.env.CRYPTO_KEY?.trim()
   )
   if (!cryptoConfigured) {
-    missing.push('PG_META_CRYPTO_KEY')
+    missing.push('encryption key')
   }
 
   if (missing.length > 0) {
     return {
       missing,
       message:
-        'SaaS platform APIs need postgres-meta (STUDIO_PG_META_URL), matching PG_META_CRYPTO_KEY, and POSTGRES_PASSWORD — see docker/ENV-FOR-OWN-BACKEND.md',
+        'SaaS platform APIs need postgres-meta (STUDIO_PG_META_URL), project encryption keys, and POSTGRES_PASSWORD — see docker/ENV-FOR-OWN-BACKEND.md',
     }
   }
 
@@ -93,7 +96,7 @@ async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> 
     const raw = probe.error.message
     const hint =
       /unauthorized/i.test(raw)
-        ? 'PG_META_CRYPTO_KEY on Studio must exactly match CRYPTO_KEY on the meta container (see docker-compose.yml). Restart studio + meta after fixing.'
+        ? 'Studio encryption settings must exactly match the postgres-meta service. Restart studio and meta after fixing.'
         : raw
     return {
       status: 'degraded',
@@ -102,6 +105,49 @@ async function checkSaaSInfra(): Promise<HealthResponse['checks']['saasInfra']> 
   }
 
   return { status: 'ok' }
+}
+
+async function checkCryptoCanary(): Promise<NonNullable<HealthResponse['checks']['cryptoCanary']>> {
+  if (!isSaaSMode()) {
+    return { status: 'ok' }
+  }
+
+  const envCheck = checkSaaSInfraEnv()
+  if (envCheck.missing.length > 0) {
+    return { status: 'degraded', message: 'encryption keys not configured' }
+  }
+
+  try {
+    const probe = 'indobase-crypto-canary'
+    if (decryptString(encryptString(probe)) !== probe) {
+      return { status: 'degraded', message: 'encryption round-trip failed' }
+    }
+
+    const sample = await executeQuery<{ anon_key_enc: string | null }>({
+      query: `select anon_key_enc from saas.projects where anon_key_enc is not null limit 1`,
+    })
+    if (sample.error) {
+      return { status: 'degraded', message: 'could not load encrypted project sample' }
+    }
+
+    const ciphertext = sample.data?.[0]?.anon_key_enc?.trim()
+    if (ciphertext) {
+      const plain = decryptString(ciphertext)
+      if (!plain) {
+        return {
+          status: 'degraded',
+          message: 'configured encryption keys cannot decrypt stored project secrets',
+        }
+      }
+    }
+
+    return { status: 'ok' }
+  } catch {
+    return {
+      status: 'degraded',
+      message: 'configured encryption keys cannot decrypt stored project secrets',
+    }
+  }
 }
 
 function isLogsEnabled(): boolean {
@@ -203,11 +249,13 @@ export async function computeHealth(): Promise<HealthResponse> {
     : { status: 'degraded', message: 'SUPABASE_URL is not configured' }
 
   const saasInfraCheck = await checkSaaSInfra()
+  const cryptoCanaryCheck = await checkCryptoCanary()
   const logflareCheck = await checkLogflare()
 
   const checks = {
     env: envCheck,
     saasInfra: saasInfraCheck,
+    cryptoCanary: cryptoCanaryCheck,
     gotrue: gotrueCheck,
     rest: restCheck,
     ...(logflareCheck ? { logflare: logflareCheck } : {}),

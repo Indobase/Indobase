@@ -60,7 +60,7 @@ describe('health api', () => {
     expect(result.status).toBe('degraded')
     expect(result.checks.saasInfra.status).toBe('degraded')
     expect(result.checks.saasInfra.missing).toEqual(
-      expect.arrayContaining(['STUDIO_PG_META_URL', 'POSTGRES_PASSWORD', 'PG_META_CRYPTO_KEY'])
+      expect.arrayContaining(['STUDIO_PG_META_URL', 'POSTGRES_PASSWORD', 'encryption key'])
     )
   })
 

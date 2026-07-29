@@ -23,6 +23,7 @@ import {
 
 import { DataPlaneListBadge } from './DataPlaneListBadge'
 import { getProjectLocationLabel, inferProjectStatus } from './ProjectCard.utils'
+import { projectHasDataPlaneError } from './project-data-plane'
 import { ProjectCardStatus } from './ProjectCardStatus'
 
 export interface ProjectCardProps {
@@ -56,6 +57,7 @@ export const ProjectCard = ({
   const isVercelIntegrated = vercelIntegration !== undefined
   const githubRepository = githubIntegration?.metadata.name ?? undefined
   const projectStatus = inferProjectStatus(project.status)
+  const hideHealthyStatusBadge = projectHasDataPlaneError(project)
 
   return (
     <>
@@ -113,7 +115,7 @@ export const ProjectCard = ({
               </div>
               <div className="flex items-center gap-x-1.5 relative overflow-hidden">
                 <ProjectCardStatus
-                  projectStatus={projectStatus}
+                  projectStatus={hideHealthyStatusBadge ? undefined : projectStatus}
                   resourceWarnings={resourceWarnings}
                   renderMode="badge"
                 />

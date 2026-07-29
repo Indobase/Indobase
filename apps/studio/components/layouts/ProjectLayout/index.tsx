@@ -29,6 +29,7 @@ import RestartingState from './RestartingState'
 import { RestoreFailedState } from './RestoreFailedState'
 import RestoringState from './RestoringState'
 import { UpgradingState } from './UpgradingState'
+import { ProjectLoadErrorState } from './ProjectLoadErrorState'
 import { CreateBranchModal } from '@/components/interfaces/BranchManagement/CreateBranchModal'
 import { ProjectAPIDocs } from '@/components/interfaces/ProjectAPIDocs/ProjectAPIDocs'
 import { ResourceExhaustionWarningBanner } from '@/components/ui/ResourceExhaustionWarningBanner/ResourceExhaustionWarningBanner'
@@ -277,7 +278,11 @@ const ContentWrapper = ({ isLoading, isBlocking = true, children }: ContentWrapp
   const router = useRouter()
   const { ref } = useParams()
   const state = useDatabaseSelectorStateSnapshot()
-  const { data: selectedProject } = useSelectedProjectQuery()
+  const {
+    data: selectedProject,
+    isError: isProjectDetailError,
+    isFetched: isProjectDetailFetched,
+  } = useSelectedProjectQuery()
   const isHomeNew = usePHFlag('homeNew') === 'new-home'
 
   const isBackupsPage = router.pathname.includes('/project/[ref]/database/backups')
@@ -318,6 +323,9 @@ const ContentWrapper = ({ isLoading, isBlocking = true, children }: ContentWrapp
   }, [ref])
 
   if (isBlocking && (isLoading || (requiresProjectDetails && selectedProject === undefined))) {
+    if (requiresProjectDetails && isProjectDetailFetched && isProjectDetailError) {
+      return <ProjectLoadErrorState />
+    }
     return router.pathname.endsWith('[ref]') ? <LoadingState /> : <LogoLoader />
   }
 
