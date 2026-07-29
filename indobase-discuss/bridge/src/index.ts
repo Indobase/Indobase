@@ -38,8 +38,15 @@ function forwardUpstreamCookies(upstream: Response, c: Context) {
         ? [upstream.headers.get('set-cookie') as string]
         : []
   for (const cookie of cookies) {
-    c.header('Set-Cookie', cookie, { append: true })
+    c.res.headers.append('Set-Cookie', cookie)
   }
+}
+
+function frappeHandoffRedirect(body: {
+  redirect?: string
+  message?: { redirect?: string }
+}): string | undefined {
+  return body.redirect ?? body.message?.redirect
 }
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -105,7 +112,7 @@ app.post('/sso/session', async (c) => {
         projectName: claims.project_name,
         organizationName: claims.organization_name,
       })
-      return c.json({ ok: true, redirect: body.redirect || gameplanSpacePath(map) })
+      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || gameplanSpacePath(map) })
     } catch (err) {
       console.error('[discuss] frappe handoff failed:', err)
     }

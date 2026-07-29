@@ -46,8 +46,15 @@ function forwardUpstreamCookies(upstream: Response, c: Context) {
         ? [upstream.headers.get('set-cookie') as string]
         : []
   for (const cookie of cookies) {
-    c.header('Set-Cookie', cookie, { append: true })
+    c.res.headers.append('Set-Cookie', cookie)
   }
+}
+
+function frappeHandoffRedirect(body: {
+  redirect?: string
+  message?: { redirect?: string }
+}): string | undefined {
+  return body.redirect ?? body.message?.redirect
 }
 
 function workspaceMapFromSession(session: Session) {
@@ -149,7 +156,7 @@ app.post('/sso/session', async (c) => {
       })
       forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      if (body.redirect) redirect = body.redirect
+      if (frappeHandoffRedirect(body)) redirect = frappeHandoffRedirect(body)!
     } catch (err) {
       console.error('[workspace] frappe handoff failed:', err)
     }
