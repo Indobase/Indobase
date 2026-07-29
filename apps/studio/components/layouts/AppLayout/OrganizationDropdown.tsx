@@ -53,7 +53,7 @@ export const OrganizationDropdown = () => {
         <Boxes size={14} strokeWidth={1.5} className="text-foreground-lighter" />
         <span
           className={cn(
-            'max-w-32 lg:max-w-none truncate hidden md:block',
+            'max-w-32 lg:max-w-none truncate',
             !!selectedOrganization ? 'text-foreground' : 'text-foreground-lighter'
           )}
         >
@@ -67,7 +67,8 @@ export const OrganizationDropdown = () => {
         <PopoverTrigger_Shadcn_ asChild>
           <Button
             type="text"
-            className={cn('px-1.5 py-4 [&_svg]:w-5 [&_svg]:h-5 ml-1')}
+            aria-label="Switch organization"
+            className={cn('px-1.5 py-4 [&_svg]:w-5 [&_svg]:h-5 ml-1 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0')}
             iconRight={<ChevronsUpDown strokeWidth={1.5} />}
           />
         </PopoverTrigger_Shadcn_>

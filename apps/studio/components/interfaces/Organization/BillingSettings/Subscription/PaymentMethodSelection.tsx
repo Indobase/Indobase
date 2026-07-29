@@ -1,6 +1,7 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe, PaymentMethod, StripeElementsOptions } from '@stripe/stripe-js'
+import { getStripePromise } from 'lib/stripe-loader'
 import { useParams } from 'common'
 import { getStripeElementsAppearanceOptions } from 'components/interfaces/Billing/Payment/Payment.utils'
 import {
@@ -29,7 +30,7 @@ import { toast } from 'sonner'
 import { Checkbox_Shadcn_, Listbox } from 'ui'
 import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY)
+const stripePromise = getStripePromise()
 
 export interface PaymentMethodSelectionProps {
   selectedPaymentMethod?: string

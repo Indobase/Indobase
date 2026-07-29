@@ -47,6 +47,7 @@ export const HelpDropdown = () => {
           id="help-dropdown-button"
           type="outline"
           size="tiny"
+          aria-label="Help"
           className={cn(
             'rounded-full w-[32px] h-[32px] flex items-center justify-center p-0 group',
             isOpen && 'bg-foreground text-background'

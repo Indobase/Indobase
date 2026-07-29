@@ -1,7 +1,8 @@
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Elements } from '@stripe/react-stripe-js'
-import { PaymentIntentResult, loadStripe } from '@stripe/stripe-js'
+import { PaymentIntentResult } from '@stripe/stripe-js'
+import { getStripePromise } from 'lib/stripe-loader'
 import { PermissionAction, SupportCategories } from '@indobaseinc/shared-types/out/constants'
 import { useQueryClient } from '@tanstack/react-query'
 import { getStripeElementsAppearanceOptions } from 'components/interfaces/Billing/Payment/Payment.utils'
@@ -42,7 +43,7 @@ import { z } from 'zod'
 import type { PaymentMethodElementRef } from '../../Billing/Payment/PaymentMethods/NewPaymentMethodElement'
 import PaymentMethodSelection from './Subscription/PaymentMethodSelection'
 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY)
+const stripePromise = getStripePromise()
 
 const FORM_ID = 'credit-top-up'
 

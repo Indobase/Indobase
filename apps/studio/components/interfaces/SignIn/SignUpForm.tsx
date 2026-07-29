@@ -14,6 +14,7 @@ import { useSignUpMutation } from 'data/misc/signup-mutation'
 import { BASE_PATH } from 'lib/constants'
 import { INDOBASE_DPDP_POLICY_URL, INDOBASE_TERMS_URL } from 'common'
 import { buildPathWithParams } from 'lib/gotrue'
+import { resolveHcaptchaSiteKey } from 'lib/hcaptcha-site-key'
 import { resendSignupConfirmation } from 'lib/resend-confirmation-api'
 import {
   AlertDescription_Shadcn_,
@@ -57,8 +58,7 @@ const schema = z.object({
 
 const formId = 'sign-up-form'
 
-const hcaptchaSiteKey =
-  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+const hcaptchaSiteKey = resolveHcaptchaSiteKey()
 
 export const SignUpForm = () => {
   const captchaRef = useRef<HCaptcha>(null)

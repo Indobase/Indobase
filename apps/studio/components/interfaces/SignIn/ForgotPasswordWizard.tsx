@@ -9,6 +9,7 @@ import * as z from 'zod'
 import { useResetPasswordMutation } from 'data/misc/reset-password-mutation'
 import { BASE_PATH, IS_SAAS } from 'lib/constants'
 import { auth } from 'lib/gotrue'
+import { resolveHcaptchaSiteKey } from 'lib/hcaptcha-site-key'
 import { verifyOtpViaPlatform } from 'lib/password-recovery-api'
 import { markPasswordRecoverySession } from 'lib/password-recovery-session'
 import { Button, Form_Shadcn_, FormControl_Shadcn_, FormField_Shadcn_, Input_Shadcn_ } from 'ui'
@@ -26,8 +27,7 @@ const codeSchema = z.object({
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 type CodeFormData = z.infer<typeof codeSchema>
 
-const hcaptchaSiteKey =
-  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY : undefined
+const hcaptchaSiteKey = resolveHcaptchaSiteKey()
 
 export const ForgotPasswordWizard = () => {
   const [email, setEmail] = useState('')

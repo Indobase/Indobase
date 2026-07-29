@@ -1,6 +1,7 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { type User } from 'common/auth'
 import { gotrueClient } from 'common/gotrue'
+import { getErrorMessage } from 'lib/get-error-message'
 
 export const auth = gotrueClient
 
@@ -69,7 +70,7 @@ export const getUserClaims = async (
         (projectUrl ? `${projectUrl.replace(/\/$/, '')}/auth/v1` : undefined)
 
       if (!anonKey || !gotrueBaseUrl) {
-        console.error(err)
+        console.error(getErrorMessage(err))
         return { claims: null, error: err }
       }
 
@@ -92,7 +93,7 @@ export const getUserClaims = async (
       const claims = json?.claims ?? json
       return { claims: (claims ?? null) as JwtPayload | null, error: null }
     } catch (fallbackErr) {
-      console.error(fallbackErr)
+      console.error(getErrorMessage(fallbackErr))
       return { claims: null, error: fallbackErr }
     }
   }

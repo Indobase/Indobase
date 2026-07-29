@@ -7,11 +7,9 @@ import 'styles/graphiql-base.scss'
 import 'styles/grid.scss'
 import 'styles/main.scss'
 import 'styles/markdown-preview.scss'
-import 'styles/monaco.scss'
 import 'styles/react-data-grid-logs.scss'
 import 'styles/reactflow.scss'
 import 'styles/storage.scss'
-import 'styles/stripe.scss'
 import 'styles/toast.scss'
 import 'styles/typography.scss'
 import 'styles/ui.scss'
@@ -19,7 +17,6 @@ import 'ui-patterns/ShimmeringLoader/index.css'
 import 'ui/build/css/themes/dark.css'
 import 'ui/build/css/themes/light.css'
 
-import { loader } from '@monaco-editor/react'
 import * as Sentry from '@sentry/nextjs'
 import { HydrationBoundary, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -38,7 +35,6 @@ import { StudioCommandMenu } from 'components/interfaces/App/CommandMenu'
 import { StudioCommandProvider as CommandProvider } from 'components/interfaces/App/CommandMenu/StudioCommandProvider'
 import { FeaturePreviewContextProvider } from 'components/interfaces/App/FeaturePreview/FeaturePreviewContext'
 import { FeaturePreviewModal } from 'components/interfaces/App/FeaturePreview/FeaturePreviewModal'
-import { MonacoThemeProvider } from 'components/interfaces/App/MonacoThemeProvider'
 import { RouteValidationWrapper } from 'components/interfaces/App/RouteValidationWrapper'
 import { MainScrollContainerProvider } from 'components/layouts/MainScrollContainerContext'
 import { GlobalErrorBoundaryState } from 'components/ui/ErrorBoundary/GlobalErrorBoundaryState'
@@ -87,13 +83,6 @@ const FeatureFlagProviderWithOrgContext = ({
     </FeatureFlagProvider>
   )
 }
-
-loader.config({
-  // Self-hosted Monaco avoids CSP blocks on cdnjs in production (see public/monaco-editor).
-  paths: {
-    vs: `${BASE_PATH}/monaco-editor`,
-  },
-})
 
 // [Joshen TODO] Once we settle on the new nav layout - we'll need a lot of clean up in terms of our layout components
 // a lot of them are unnecessary and introduce way too many cluttered CSS especially with the height styles that make
@@ -221,7 +210,6 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
                                 <FeaturePreviewModal />
                               </FeaturePreviewContextProvider>
                               <SonnerToaster position="top-right" />
-                              <MonacoThemeProvider />
                             </CommandProvider>
                           </AiAssistantStateContextProvider>
                           <DevToolbar />

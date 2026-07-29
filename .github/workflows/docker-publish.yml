@@ -73,6 +73,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             BUILD_SHA=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
             SKIP_ASSET_UPLOAD=${{ env.SKIP_ASSET_UPLOAD }}
             NEXT_PUBLIC_INDOBASE_SAAS=${{ env.NEXT_PUBLIC_INDOBASE_SAAS }}
             NEXT_PUBLIC_GOTRUE_URL=${{ env.NEXT_PUBLIC_GOTRUE_URL }}

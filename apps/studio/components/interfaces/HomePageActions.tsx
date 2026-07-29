@@ -109,7 +109,13 @@ export const HomePageActions = ({ slug: _slug, hideNewProject = false }: HomePag
           ]}
           value={sort}
           setValue={(val) => setSortStorage(val as ProjectListSort)}
+          className="hidden sm:inline-flex"
         />
+
+        <span className="text-xs text-foreground-light sm:hidden" aria-live="polite">
+          {sort.startsWith('created') ? 'By date' : 'By name'}
+          {sort.endsWith('_desc') ? ' ↓' : ' ↑'}
+        </span>
 
         {isFetchingProjects && <Loader2 className="animate-spin" size={14} />}
       </div>
@@ -121,11 +127,22 @@ export const HomePageActions = ({ slug: _slug, hideNewProject = false }: HomePag
             size="sm"
             value={viewMode}
             onValueChange={(value) => value && setViewMode(value as 'grid' | 'table')}
+            aria-label="Project list view"
           >
-            <ToggleGroupItem value="grid" size="sm" className="h-[26px] w-[26px] p-0">
+            <ToggleGroupItem
+              value="grid"
+              size="sm"
+              aria-label="Grid view"
+              className="h-[44px] w-[44px] sm:h-[26px] sm:w-[26px] p-0"
+            >
               <Grid size={14} strokeWidth={1.5} />
             </ToggleGroupItem>
-            <ToggleGroupItem value="table" size="sm" className="h-[26px] w-[26px] p-0">
+            <ToggleGroupItem
+              value="table"
+              size="sm"
+              aria-label="Table view"
+              className="h-[44px] w-[44px] sm:h-[26px] sm:w-[26px] p-0"
+            >
               <List size={14} strokeWidth={1.5} />
             </ToggleGroupItem>
           </ToggleGroup>

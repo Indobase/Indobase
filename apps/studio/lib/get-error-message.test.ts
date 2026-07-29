@@ -31,16 +31,16 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(123)).toBe('123')
     expect(getErrorMessage(true)).toBe('true')
     expect(getErrorMessage(false)).toBe('false')
-    expect(getErrorMessage({})).toBe('[object Object]')
-    expect(getErrorMessage([])).toBe('')
+    expect(getErrorMessage({})).toBe('{}')
+    expect(getErrorMessage([])).toBe('[]')
   })
 
   it('handles objects without message property', () => {
-    expect(getErrorMessage({ code: 500 })).toBe('[object Object]')
-    expect(getErrorMessage({ error: 'test' })).toBe('[object Object]')
+    expect(getErrorMessage({ code: 500 })).toBe('{"code":500}')
+    expect(getErrorMessage({ error: 'test' })).toBe('test')
   })
 
   it('handles nested error objects', () => {
-    expect(getErrorMessage({ message: { nested: 'error' } })).toBe('[object Object]')
+    expect(getErrorMessage({ message: { nested: 'error' } })).toBe('{"nested":"error"}')
   })
 })

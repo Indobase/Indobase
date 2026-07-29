@@ -168,7 +168,8 @@ export async function getAccessToken() {
   if (session?.access_token) return session.access_token
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw =
+      window.sessionStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return undefined
 
     const parsed = JSON.parse(raw)

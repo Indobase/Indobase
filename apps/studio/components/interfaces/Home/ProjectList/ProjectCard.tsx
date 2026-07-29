@@ -76,8 +76,9 @@ export const ProjectCard = ({
                       <DropdownMenuTrigger asChild>
                         <Button
                           type="text"
+                          aria-label={`Project actions for ${name}`}
                           icon={<MoreVertical size={14} />}
-                          className="w-6 h-6 px-0"
+                          className="w-11 h-11 sm:w-6 sm:h-6 px-0"
                           onClick={(e) => {
                             e.stopPropagation()
                             e.preventDefault()

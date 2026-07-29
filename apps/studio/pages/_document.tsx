@@ -76,13 +76,6 @@ class MyDocument extends Document {
           <meta property="twitter:title" content="Indobase Studio – Project Dashboard" />
           <meta property="twitter:description" content="Operate your Indobase projects, inspect databases, manage auth, and monitor infrastructure in one place." />
           <meta property="twitter:image" content="https://indobase.in/assets/og/indobase-studio.png" />
-          {/* Workaround for https://github.com/suren-atoyan/monaco-react/issues/272 */}
-          <link
-            rel="stylesheet"
-            type="text/css"
-            data-name="vs/editor/editor.main"
-            href={`${BASE_PATH}/monaco-editor/editor/editor.main.css`}
-          />
         </Head>
         <body>
           <Main />

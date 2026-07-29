@@ -12,6 +12,7 @@ import { ResizablePanel, ResizablePanelGroup, SidebarProvider } from 'ui'
 
 import { BannerStack } from '../ui/BannerStack/BannerStack'
 import { BannerStackProvider } from '../ui/BannerStack/BannerStackProvider'
+import { SkipToContent } from '../ui/SkipToContent'
 import { LayoutHeader } from './ProjectLayout/LayoutHeader/LayoutHeader'
 import { LayoutSidebar } from './ProjectLayout/LayoutSidebar'
 import { LayoutSidebarProvider } from './ProjectLayout/LayoutSidebar/LayoutSidebarProvider'
@@ -92,6 +93,8 @@ export const DefaultLayout = ({
     <BackendStudioUpgradeGate>{children}</BackendStudioUpgradeGate>
   )
 
+  const showMobileTopBar = showProjectSidebar
+
   // Resizable panels render at 50% before settling; show a stable shell on first paint.
   if (!isMounted) {
     return (
@@ -100,18 +103,25 @@ export const DefaultLayout = ({
           <ProjectContextProvider projectRef={ref}>
             <BannerStackProvider>
               <div className="flex flex-col h-screen w-screen">
+                <SkipToContent />
                 <AppBannerWrapper />
                 <div className="flex-shrink-0">
-                  <MobileNavigationBar hideMobileMenu={hideMobileMenu || studioLocked} />
+                  {showMobileTopBar && (
+                    <MobileNavigationBar
+                      hideMobileMenu={hideMobileMenu || studioLocked}
+                      showOrgContext={!!ref}
+                    />
+                  )}
                   <LayoutHeader
                     showProductMenu={showProductMenu}
                     headerTitle={headerTitle}
+                    hideOnMobile={showMobileTopBar}
                     backToDashboardURL={
                       router.pathname.startsWith('/account') ? backToDashboardURL : undefined
                     }
                   />
                 </div>
-                <div className="flex flex-1 w-full overflow-y-hidden">
+                <div id="main-content" className="flex flex-1 w-full overflow-y-hidden">
                   {showProjectSidebar && <Sidebar />}
                   <div className="h-full flex-1 overflow-y-auto">{content}</div>
                 </div>
@@ -130,18 +140,22 @@ export const DefaultLayout = ({
         <ProjectContextProvider projectRef={ref}>
           <BannerStackProvider>
             <div className="flex flex-col h-screen w-screen">
+              <SkipToContent />
               <AppBannerWrapper />
               <div className="flex-shrink-0">
-                <MobileNavigationBar hideMobileMenu={hideMobileMenu || studioLocked} />
+                {showMobileTopBar && (
+                  <MobileNavigationBar hideMobileMenu={hideMobileMenu || studioLocked} />
+                )}
                 <LayoutHeader
                   showProductMenu={showProductMenu}
                   headerTitle={headerTitle}
+                  hideOnMobile={showMobileTopBar}
                   backToDashboardURL={
                     router.pathname.startsWith('/account') ? backToDashboardURL : undefined
                   }
                 />
               </div>
-              <div className="flex flex-1 w-full overflow-y-hidden">
+              <div id="main-content" className="flex flex-1 w-full overflow-y-hidden">
                 {showProjectSidebar && <Sidebar />}
                 {studioLocked ? (
                   <div className="h-full flex-1 overflow-y-auto">{content}</div>

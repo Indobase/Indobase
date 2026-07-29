@@ -1,5 +1,6 @@
 import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe, PaymentIntentResult, StripeElementsOptions } from '@stripe/stripe-js'
+import { PaymentIntentResult, StripeElementsOptions } from '@stripe/stripe-js'
+import { getStripePromise } from 'lib/stripe-loader'
 import { getStripeElementsAppearanceOptions } from 'components/interfaces/Billing/Payment/Payment.utils'
 import { PaymentConfirmation } from 'components/interfaces/Billing/Payment/PaymentConfirmation'
 import type { PaymentMethodElementRef } from 'components/interfaces/Billing/Payment/PaymentMethods/NewPaymentMethodElement'
@@ -36,7 +37,7 @@ import { ShimmeringLoader } from 'ui-patterns/ShimmeringLoader'
 
 import PaymentMethodSelection from './PaymentMethodSelection'
 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY)
+const stripePromise = getStripePromise()
 
 const PLAN_HEADINGS = {
   tier_pro:
