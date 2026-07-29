@@ -1,7 +1,8 @@
-import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/router'
 
 export function useHideSidebar() {
-  const pathname = usePathname() ?? ''
+  const router = useRouter()
+  const pathname = router.pathname ?? ''
 
   const shouldHide =
     pathname.startsWith('/account') ||

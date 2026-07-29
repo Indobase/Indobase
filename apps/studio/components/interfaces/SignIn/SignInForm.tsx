@@ -13,6 +13,7 @@ import { useAddLoginEvent } from 'data/misc/audit-login-mutation'
 import { getMfaAuthenticatorAssuranceLevel } from 'data/profile/mfa-authenticator-assurance-level-query'
 import { useSendEventMutation } from 'data/telemetry/send-event-mutation'
 import { useLastSignIn } from 'hooks/misc/useLastSignIn'
+import { flushAuthBeforeNavigation } from 'lib/auth-navigation'
 import { captureCriticalError } from 'lib/error-reporting'
 import { BASE_PATH } from 'lib/constants'
 import { ensureRuntimePublicEnv } from 'common/public-env'
@@ -112,6 +113,7 @@ export const SignInForm = () => {
     })
     addLoginEvent({})
 
+    await flushAuthBeforeNavigation()
     await queryClient.resetQueries()
 
     let redirectPath = '/organizations'

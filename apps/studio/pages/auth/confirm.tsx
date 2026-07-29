@@ -7,6 +7,7 @@ import {
   readAuthConfirmType,
   resolveAuthConfirmNextPath,
 } from 'lib/auth-confirm-params'
+import { flushAuthBeforeNavigation } from 'lib/auth-navigation'
 import { auth } from 'lib/gotrue'
 import { verifyOtpViaPlatform } from 'lib/password-recovery-api'
 import { markPasswordRecoverySession } from 'lib/password-recovery-session'
@@ -59,7 +60,7 @@ const AuthConfirmPage: NextPageWithLayout = () => {
         await auth.refreshSession()
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await flushAuthBeforeNavigation()
       if (cancelled) return
 
       await router.replace(next)
