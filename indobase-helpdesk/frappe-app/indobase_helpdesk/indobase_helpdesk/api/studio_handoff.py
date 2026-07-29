@@ -104,9 +104,25 @@ def _ensure_user(email: str, studio_role: str, full_name: str | None = None) -> 
 	)
 	user.insert(ignore_permissions=True)
 	if is_agent:
-		user.add_roles(HELPDESK_AGENT)
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": email,
+				"parenttype": "User",
+				"parentfield": "roles",
+				"role": HELPDESK_AGENT,
+			}
+		).insert(ignore_permissions=True)
 	else:
-		user.add_roles(HELPDESK_CUSTOMER)
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": email,
+				"parenttype": "User",
+				"parentfield": "roles",
+				"role": HELPDESK_CUSTOMER,
+			}
+		).insert(ignore_permissions=True)
 	return email
 
 
@@ -154,9 +170,15 @@ def _ensure_membership(user: str, studio_role: str) -> None:
 	hd_role = _map_helpdesk_role(studio_role)
 	if hd_role in frappe.get_roles(user):
 		return
-	user_doc = frappe.get_doc("User", user)
-	user_doc.flags.ignore_permissions = True
-	user_doc.add_roles(hd_role)
+	frappe.get_doc(
+		{
+			"doctype": "Has Role",
+			"parent": user,
+			"parenttype": "User",
+			"parentfield": "roles",
+			"role": hd_role,
+		}
+	).insert(ignore_permissions=True)
 
 
 @frappe.whitelist(allow_guest=True)
