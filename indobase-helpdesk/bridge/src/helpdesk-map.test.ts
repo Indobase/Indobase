@@ -3,8 +3,10 @@ import test from 'node:test'
 
 import {
   buildHelpdeskScopeMap,
+  helpdeskAgentPath,
   helpdeskQueueKeyForProjectRef,
   helpdeskTeamKeyForOrgSlug,
+  upstreamHelpdeskPath,
 } from './helpdesk-map.js'
 
 test('helpdeskTeamKeyForOrgSlug is stable and sanitized', () => {
@@ -28,4 +30,17 @@ test('buildHelpdeskScopeMap includes titles', () => {
   assert.equal(map.queueTitle, 'My App')
   assert.equal(map.teamKey, 'ib-hd-org-acme')
   assert.equal(map.queueKey, 'ib-hd-proj-xyz123')
+})
+
+test('upstreamHelpdeskPath maps bridge routes and passes static assets through', () => {
+  const map = buildHelpdeskScopeMap({ orgSlug: 'acme', projectRef: 'xyz123' })
+  assert.equal(
+    upstreamHelpdeskPath(helpdeskAgentPath(map)),
+    '/helpdesk?ib_queue=ib-hd-proj-xyz123'
+  )
+  assert.equal(
+    upstreamHelpdeskPath('/assets/helpdesk/desk/assets/index.js'),
+    '/assets/helpdesk/desk/assets/index.js'
+  )
+  assert.equal(upstreamHelpdeskPath('/api/method/ping'), '/api/method/ping')
 })

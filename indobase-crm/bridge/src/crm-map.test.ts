@@ -39,4 +39,8 @@ test('upstreamCrmPath maps bridge routes to Frappe CRM SPA entry', () => {
   assert.equal(upstreamCrmPath('/crm/leads'), '/app/crm/leads')
   assert.equal(upstreamCrmPath('/app/crm'), '/app/crm')
   assert.equal(upstreamCrmPath('/'), '/app/crm')
+  assert.equal(
+    upstreamCrmPath('/assets/frappe/dist/js/libs.bundle.js'),
+    '/assets/frappe/dist/js/libs.bundle.js'
+  )
 })

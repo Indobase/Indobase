@@ -81,8 +81,24 @@ export function helpdeskPortalPath(map: HelpdeskScopeMap): string {
   return `/portal/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.queueKey)}`
 }
 
+/** Static/API paths must reach Frappe unchanged — do not rewrite to the SPA shell. */
+function passthroughUpstreamPath(bridgePath: string): string | null {
+  if (
+    bridgePath.startsWith('/assets/') ||
+    bridgePath.startsWith('/files/') ||
+    bridgePath.startsWith('/api/') ||
+    bridgePath.startsWith('/app/')
+  ) {
+    return bridgePath
+  }
+  return null
+}
+
 /** Upstream Frappe Helpdesk SPA entry (production proxy target). */
 export function upstreamHelpdeskPath(bridgePath: string, portal = false): string {
+  const passthrough = passthroughUpstreamPath(bridgePath)
+  if (passthrough) return passthrough
+
   if (bridgePath.startsWith('/h/')) {
     const parts = bridgePath.split('/').filter(Boolean)
     if (parts.length >= 3) {

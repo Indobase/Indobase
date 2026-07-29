@@ -78,8 +78,24 @@ export function crmPipelinePath(map: CrmScopeMap): string {
 
 const CRM_SPA_ENTRY = '/app/crm'
 
+/** Static/API paths must reach Frappe unchanged — do not rewrite to the SPA shell. */
+function passthroughUpstreamPath(bridgePath: string): string | null {
+  if (
+    bridgePath.startsWith('/assets/') ||
+    bridgePath.startsWith('/files/') ||
+    bridgePath.startsWith('/api/') ||
+    bridgePath.startsWith('/app/')
+  ) {
+    return bridgePath
+  }
+  return null
+}
+
 /** Upstream Frappe CRM SPA entry (production proxy target). */
 export function upstreamCrmPath(bridgePath: string): string {
+  const passthrough = passthroughUpstreamPath(bridgePath)
+  if (passthrough) return passthrough
+
   if (bridgePath.startsWith('/c/')) {
     const parts = bridgePath.split('/').filter(Boolean)
     if (parts.length >= 3) {
