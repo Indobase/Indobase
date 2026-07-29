@@ -49,7 +49,7 @@ export const HelpDropdown = () => {
           size="tiny"
           aria-label="Help"
           className={cn(
-            'rounded-full w-[32px] h-[32px] flex items-center justify-center p-0 group',
+            'rounded-full w-[32px] h-[32px] min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center p-0 group',
             isOpen && 'bg-foreground text-background'
           )}
           onClick={() => {

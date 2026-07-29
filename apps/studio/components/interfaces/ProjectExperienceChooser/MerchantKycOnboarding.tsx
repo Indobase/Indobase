@@ -22,6 +22,14 @@ import {
   cn,
 } from 'ui'
 
+import {
+  KYC_FIELD_ATTRS,
+  type KycFieldErrors,
+  type KycFieldKey,
+  kycErrorId,
+  validateKycFields,
+} from './merchant-kyc-validation'
+
 const STEPS = [
   { id: 'business', label: 'Business' },
   { id: 'bank', label: 'Bank account' },
@@ -108,9 +116,73 @@ export function MerchantKycOnboarding({
   const [form, setForm] = useState<FormState>(() => formFromProfile(merchant))
   const [docKind, setDocKind] = useState('pan_card')
   const [docFileName, setDocFileName] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<KycFieldErrors>({})
 
   const updateMutation = useMerchantProfileUpdateMutation()
   const submitMutation = useMerchantProfileSubmitMutation()
+
+  const panRequired = !merchant.pan_masked
+  const bankAccountRequired = !merchant.bank_account_masked
+
+  const validationInput = {
+    business_legal_name: form.business_legal_name,
+    business_type: form.business_type,
+    pan: form.pan,
+    gstin: form.gstin,
+    business_address_line1: form.business_address_line1,
+    business_city: form.business_city,
+    business_state: form.business_state,
+    business_postal_code: form.business_postal_code,
+    contact_email: form.contact_email,
+    contact_phone: form.contact_phone,
+    bank_account_holder_name: form.bank_account_holder_name,
+    bank_account_number: form.bank_account_number,
+    bank_ifsc: form.bank_ifsc,
+    panRequired,
+    bankAccountRequired,
+  }
+
+  const validateStep = (stepId: StepId): boolean => {
+    const all = validateKycFields(validationInput)
+    const keysForStep: Record<StepId, KycFieldKey[]> = {
+      business: [
+        'business_legal_name',
+        'business_type',
+        'pan',
+        'gstin',
+        'business_address_line1',
+        'business_city',
+        'business_state',
+        'business_postal_code',
+        'contact_email',
+        'contact_phone',
+      ],
+      bank: ['bank_account_holder_name', 'bank_account_number', 'bank_ifsc', 'bank_name'],
+      documents: [],
+      review: [],
+    }
+    const nextErrors: KycFieldErrors = {}
+    for (const key of keysForStep[stepId]) {
+      if (all[key]) nextErrors[key] = all[key]
+    }
+    setFieldErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
+
+  const clearFieldError = (key: KycFieldKey) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  const kycInputProps = (field: KycFieldKey) => ({
+    id: field,
+    error: fieldErrors[field],
+    ...KYC_FIELD_ATTRS[field],
+  })
 
   useEffect(() => {
     setForm(formFromProfile(merchant))
@@ -122,6 +194,7 @@ export function MerchantKycOnboarding({
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+    if (key in fieldErrors) clearFieldError(key as KycFieldKey)
   }
 
   const saveBusiness = async () => {
@@ -175,6 +248,7 @@ export function MerchantKycOnboarding({
 
   const goNext = async () => {
     try {
+      if (editable && !validateStep(step.id)) return
       if (editable) {
         if (step.id === 'business') await saveBusiness()
         if (step.id === 'bank') await saveBank()
@@ -226,6 +300,12 @@ export function MerchantKycOnboarding({
   const submit = async () => {
     try {
       if (editable) {
+        const businessOk = validateStep('business')
+        const bankOk = validateStep('bank')
+        if (!businessOk || !bankOk) {
+          setStepIndex(!businessOk ? 0 : 1)
+          return
+        }
         await saveBusiness()
         await saveBank()
         if (form.documents.length) {
@@ -261,9 +341,11 @@ export function MerchantKycOnboarding({
               <button
                 type="button"
                 disabled={saving}
+                aria-label={`Go to step ${index + 1}: ${s.label}`}
+                aria-current={active ? 'step' : undefined}
                 onClick={() => setStepIndex(index)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition',
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 min-h-[44px] text-xs transition',
                   active && 'border-brand bg-brand/10 text-foreground',
                   done && !active && 'border-foreground-muted text-foreground-light',
                   !active && !done && 'border-border text-foreground-lighter'
@@ -290,21 +372,31 @@ export function MerchantKycOnboarding({
             value={form.business_legal_name}
             disabled={!editable || saving}
             onChange={(e) => setField('business_legal_name', e.target.value)}
+            {...kycInputProps('business_legal_name')}
           />
           <Input
             label="Trade name (optional)"
             value={form.business_trade_name}
             disabled={!editable || saving}
             onChange={(e) => setField('business_trade_name', e.target.value)}
+            id="business_trade_name"
           />
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-foreground-light">Business type</label>
+            <label className="text-sm text-foreground-light" htmlFor="business_type">
+              Business type
+            </label>
             <Select_Shadcn_
               value={form.business_type || undefined}
               disabled={!editable || saving}
               onValueChange={(value) => setField('business_type', value as MerchantBusinessType)}
             >
-              <SelectTrigger_Shadcn_>
+              <SelectTrigger_Shadcn_
+                id="business_type"
+                aria-invalid={fieldErrors.business_type ? true : undefined}
+                aria-describedby={
+                  fieldErrors.business_type ? kycErrorId('business_type') : undefined
+                }
+              >
                 <SelectValue_Shadcn_ placeholder="Select type" />
               </SelectTrigger_Shadcn_>
               <SelectContent_Shadcn_>
@@ -315,6 +407,11 @@ export function MerchantKycOnboarding({
                 ))}
               </SelectContent_Shadcn_>
             </Select_Shadcn_>
+            {fieldErrors.business_type ? (
+              <p id={kycErrorId('business_type')} className="text-xs text-destructive" role="alert">
+                {fieldErrors.business_type}
+              </p>
+            ) : null}
           </div>
           <Input
             label={merchant.pan_masked ? `PAN (saved ${merchant.pan_masked})` : 'PAN'}
@@ -322,12 +419,14 @@ export function MerchantKycOnboarding({
             value={form.pan}
             disabled={!editable || saving}
             onChange={(e) => setField('pan', e.target.value.toUpperCase())}
+            {...kycInputProps('pan')}
           />
           <Input
             label="GSTIN (optional)"
             value={form.gstin}
             disabled={!editable || saving}
             onChange={(e) => setField('gstin', e.target.value.toUpperCase())}
+            {...kycInputProps('gstin')}
           />
           <Input
             label="Contact email"
@@ -335,6 +434,7 @@ export function MerchantKycOnboarding({
             value={form.contact_email}
             disabled={!editable || saving}
             onChange={(e) => setField('contact_email', e.target.value)}
+            {...kycInputProps('contact_email')}
           />
           <Input
             label="Contact phone"
@@ -342,6 +442,7 @@ export function MerchantKycOnboarding({
             disabled={!editable || saving}
             onChange={(e) => setField('contact_phone', e.target.value)}
             className="sm:col-span-2"
+            {...kycInputProps('contact_phone')}
           />
           <Input
             label="Address line 1"
@@ -349,6 +450,7 @@ export function MerchantKycOnboarding({
             disabled={!editable || saving}
             onChange={(e) => setField('business_address_line1', e.target.value)}
             className="sm:col-span-2"
+            {...kycInputProps('business_address_line1')}
           />
           <Input
             label="Address line 2"
@@ -356,24 +458,29 @@ export function MerchantKycOnboarding({
             disabled={!editable || saving}
             onChange={(e) => setField('business_address_line2', e.target.value)}
             className="sm:col-span-2"
+            id="business_address_line2"
+            autoComplete="address-line2"
           />
           <Input
             label="City"
             value={form.business_city}
             disabled={!editable || saving}
             onChange={(e) => setField('business_city', e.target.value)}
+            {...kycInputProps('business_city')}
           />
           <Input
             label="State"
             value={form.business_state}
             disabled={!editable || saving}
             onChange={(e) => setField('business_state', e.target.value)}
+            {...kycInputProps('business_state')}
           />
           <Input
             label="Postal code"
             value={form.business_postal_code}
             disabled={!editable || saving}
             onChange={(e) => setField('business_postal_code', e.target.value)}
+            {...kycInputProps('business_postal_code')}
           />
         </div>
       ) : null}
@@ -391,6 +498,7 @@ export function MerchantKycOnboarding({
               disabled={!editable || saving}
               onChange={(e) => setField('bank_account_holder_name', e.target.value)}
               className="sm:col-span-2"
+              {...kycInputProps('bank_account_holder_name')}
             />
             <Input
               label={
@@ -402,6 +510,7 @@ export function MerchantKycOnboarding({
               disabled={!editable || saving}
               onChange={(e) => setField('bank_account_number', e.target.value)}
               placeholder={merchant.bank_account_last4 ? 'Leave blank to keep saved account' : ''}
+              {...kycInputProps('bank_account_number')}
             />
             <Input
               label="IFSC"
@@ -409,6 +518,7 @@ export function MerchantKycOnboarding({
               disabled={!editable || saving}
               onChange={(e) => setField('bank_ifsc', e.target.value.toUpperCase())}
               placeholder="ABCD0123456"
+              {...kycInputProps('bank_ifsc')}
             />
             <Input
               label="Bank name"
@@ -416,6 +526,7 @@ export function MerchantKycOnboarding({
               disabled={!editable || saving}
               onChange={(e) => setField('bank_name', e.target.value)}
               className="sm:col-span-2"
+              id="bank_name"
             />
           </div>
         </div>

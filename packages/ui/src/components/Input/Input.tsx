@@ -169,6 +169,8 @@ function Input({
           type={type}
           value={reveal && hidden ? HIDDEN_PLACEHOLDER : value}
           className={cn(inputClasses)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error && id ? `${id}-error` : undefined}
           {...props}
         />
         {icon && <InputIconContainer size={size} icon={icon} className={iconContainerClassName} />}

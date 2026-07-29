@@ -1,11 +1,10 @@
+import dynamic from 'next/dynamic'
 import { PermissionAction } from '@indobaseinc/shared-types/out/constants'
 import { IS_SAAS, useParams } from 'common'
 import {
   ApiKeysCreateCallout,
   ApiKeysFeedbackBanner,
 } from 'components/interfaces/APIKeys/ApiKeysIllustrations'
-import { PublishableAPIKeys } from 'components/interfaces/APIKeys/PublishableAPIKeys'
-import { SecretAPIKeys } from 'components/interfaces/APIKeys/SecretAPIKeys'
 import ApiKeysLayout from 'components/layouts/APIKeys/APIKeysLayout'
 import { DefaultLayout } from 'components/layouts/DefaultLayout'
 import SettingsLayout from 'components/layouts/ProjectSettingsLayout/SettingsLayout'
@@ -15,6 +14,22 @@ import { useAsyncCheckPermissions } from 'hooks/misc/useCheckPermissions'
 import { useMemo } from 'react'
 import type { NextPageWithLayout } from 'types'
 import { Separator } from 'ui'
+import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
+
+const PublishableAPIKeys = dynamic(
+  () =>
+    import('components/interfaces/APIKeys/PublishableAPIKeys').then((m) => ({
+      default: m.PublishableAPIKeys,
+    })),
+  { loading: () => <GenericSkeletonLoader /> }
+)
+const SecretAPIKeys = dynamic(
+  () =>
+    import('components/interfaces/APIKeys/SecretAPIKeys').then((m) => ({
+      default: m.SecretAPIKeys,
+    })),
+  { loading: () => <GenericSkeletonLoader /> }
+)
 
 const ApiKeysNewPage: NextPageWithLayout = () => {
   const { ref: projectRef } = useParams()

@@ -1,8 +1,18 @@
-import { ProjectBackendHome } from 'components/interfaces/ProjectExperienceChooser/ProjectBackendHome'
+import dynamic from 'next/dynamic'
+
 import { ProjectExperienceHeaderActions } from 'components/interfaces/ProjectExperienceChooser/ProjectExperienceHeaderActions'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import { ProjectLayoutWithAuth } from 'components/layouts/ProjectLayout'
+import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
 import type { NextPageWithLayout } from 'types'
+
+const ProjectBackendHome = dynamic(
+  () =>
+    import('components/interfaces/ProjectExperienceChooser/ProjectBackendHome').then((m) => ({
+      default: m.ProjectBackendHome,
+    })),
+  { loading: () => <GenericSkeletonLoader /> }
+)
 
 const ProjectBackendPage: NextPageWithLayout = () => {
   return <ProjectBackendHome />

@@ -1,7 +1,7 @@
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
 
 import { useParams } from 'common'
-import { BillingSettings } from 'components/interfaces/Organization/BillingSettings/BillingSettings'
 import DefaultLayout from 'components/layouts/DefaultLayout'
 import OrganizationLayout from 'components/layouts/OrganizationLayout'
 import { UnknownInterface } from 'components/ui/UnknownInterface'
@@ -12,6 +12,15 @@ import {
 } from 'state/organization-settings'
 import { IS_SAAS } from 'lib/constants'
 import type { NextPageWithLayout } from 'types'
+import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
+
+const BillingSettings = dynamic(
+  () =>
+    import('components/interfaces/Organization/BillingSettings/BillingSettings').then((m) => ({
+      default: m.BillingSettings,
+    })),
+  { loading: () => <GenericSkeletonLoader /> }
+)
 
 const OrgBillingSettings: NextPageWithLayout = () => {
   const { panel, slug } = useParams()

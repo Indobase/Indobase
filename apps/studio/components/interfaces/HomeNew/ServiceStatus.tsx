@@ -13,11 +13,14 @@ import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { DOCS_URL } from 'lib/constants'
 import { InfoIcon, PopoverContent_Shadcn_, PopoverTrigger_Shadcn_, Popover_Shadcn_, cn } from 'ui'
 import {
+  extractDbSchema,
   ProjectServiceStatus,
   StatusIcon,
   StatusMessage,
-  extractDbSchema,
 } from '../Home/ServiceStatus'
+import {
+  formatOverallServiceStatusLabel,
+} from '../Home/service-status-label'
 
 const SERVICE_STATUS_THRESHOLD = 5 // minutes
 
@@ -224,17 +227,9 @@ export const ServiceStatus = () => {
         currentBranch?.status === 'RUNNING_MIGRATIONS' ||
         isMigrationLoading))
 
-  const anyUnhealthy = services.some((service) => service.status === 'UNHEALTHY')
-  const anyComingUp = services.some((service) => service.status === 'COMING_UP')
-  // Spinner only while the overall project is in COMING_UP; otherwise show 6-dot grid
   const showSpinnerIcon = project?.status === 'COMING_UP'
 
-  const getOverallStatusLabel = (): string => {
-    if (isLoadingChecks) return 'Checking...'
-    if (anyComingUp) return 'Coming up...'
-    if (anyUnhealthy) return 'Unhealthy'
-    return 'Healthy'
-  }
+  const getOverallStatusLabel = (): string => formatOverallServiceStatusLabel(services)
 
   const overallStatusLabel = getOverallStatusLabel()
 
@@ -289,6 +284,7 @@ export const ServiceStatus = () => {
                     isLoading={service.isLoading}
                     isProjectNew={isProjectNew}
                     status={service.status}
+                    error={service.error}
                   />
                 </p>
               </div>

@@ -16,6 +16,10 @@ import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import { DOCS_URL } from 'lib/constants'
 import {
+  formatOverallServiceStatusLabel,
+  formatServiceStatusMessage,
+} from 'components/interfaces/Home/service-status-label'
+import {
   Button,
   InfoIcon,
   PopoverContent_Shadcn_,
@@ -31,21 +35,13 @@ export const StatusMessage = ({
   status,
   isLoading,
   isProjectNew,
+  error,
 }: {
   isLoading: boolean
   isProjectNew: boolean
   status?: ProjectServiceStatus
-}) => {
-  if (isLoading) return 'Checking status'
-  if (status === 'DISABLED') return 'Disabled'
-  if (status === 'UNHEALTHY') return 'Unhealthy'
-  if (status === 'COMING_UP') return 'Coming up...'
-  if (status === 'ACTIVE_HEALTHY') return 'Healthy'
-  // isProjectNew has to be after all other statuses
-  if (isProjectNew) return 'Coming up...'
-  if (status) return status
-  return 'Unable to connect'
-}
+  error?: string
+}) => formatServiceStatusMessage(status, { isLoading, isProjectNew, error })
 
 const iconProps = {
   size: 18,
@@ -345,6 +341,7 @@ export const ServiceStatus = () => {
                     isLoading={service.isLoading}
                     isProjectNew={isProjectNew}
                     status={service.status}
+                    error={service.error}
                   />
                 </p>
               </div>

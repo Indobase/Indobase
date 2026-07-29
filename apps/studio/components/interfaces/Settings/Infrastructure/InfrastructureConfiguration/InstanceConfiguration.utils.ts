@@ -4,6 +4,7 @@ import { Edge, Node, Position } from 'reactflow'
 
 import type { LoadBalancer } from 'data/read-replicas/load-balancers-query'
 import type { Database } from 'data/read-replicas/replicas-query'
+import { resolveRegionDisplay } from 'lib/constants/region-icon'
 import { AWS_REGIONS, AWS_REGIONS_KEYS } from 'shared-data'
 import {
   AVAILABLE_REPLICA_REGIONS,
@@ -79,8 +80,8 @@ export const generateNodes = ({
       id: primary.identifier,
       region:
         primary.cloud_provider === 'FLY'
-          ? { name: 'Singapore (sin)', key: 'SOUTHEAST_ASIA' }
-          : primaryRegion ?? { name: primary.region },
+          ? { name: 'Singapore (sin)', region: 'ap-southeast-1', key: 'SOUTHEAST_ASIA' }
+          : primaryRegion ?? resolveRegionDisplay(primary.region),
       provider: primary.cloud_provider,
       inserted_at: primary.inserted_at,
       computeSize: primary.size,

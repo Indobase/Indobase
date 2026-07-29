@@ -1,18 +1,33 @@
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { useEffect } from 'react'
 
 import { useParams } from 'common'
 import { buildTableEditorUrl } from 'components/grid/SupabaseGrid.utils'
-import { SidePanelEditor } from 'components/interfaces/TableGridEditor/SidePanelEditor/SidePanelEditor'
 import { DefaultLayout } from 'components/layouts/DefaultLayout'
 import { EditorBaseLayout } from 'components/layouts/editors/EditorBaseLayout'
 import { TableEditorLayout } from 'components/layouts/TableEditorLayout/TableEditorLayout'
-import { TableEditorMenu } from 'components/layouts/TableEditorLayout/TableEditorMenu'
 import { NewTab } from 'components/layouts/Tabs/NewTab'
 import { useDashboardHistory } from 'hooks/misc/useDashboardHistory'
 import { useQuerySchemaState } from 'hooks/misc/useSchemaQueryState'
 import { editorEntityTypes, useTabsStateSnapshot } from 'state/tabs'
 import type { NextPageWithLayout } from 'types'
+import { GenericSkeletonLoader } from 'ui-patterns/ShimmeringLoader'
+
+const TableEditorMenu = dynamic(
+  () =>
+    import('components/layouts/TableEditorLayout/TableEditorMenu').then((m) => ({
+      default: m.TableEditorMenu,
+    })),
+  { loading: () => <GenericSkeletonLoader /> }
+)
+const SidePanelEditor = dynamic(
+  () =>
+    import('components/interfaces/TableGridEditor/SidePanelEditor/SidePanelEditor').then((m) => ({
+      default: m.SidePanelEditor,
+    })),
+  { ssr: false, loading: () => <GenericSkeletonLoader /> }
+)
 
 const TableEditorPage: NextPageWithLayout = () => {
   const router = useRouter()

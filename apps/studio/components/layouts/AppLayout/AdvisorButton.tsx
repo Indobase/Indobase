@@ -36,8 +36,9 @@ export const AdvisorButton = ({ projectRef }: { projectRef?: string }) => {
         type="outline"
         size="tiny"
         id="advisor-center-trigger"
+        aria-label="Open advisor center"
         className={cn(
-          'rounded-full w-[32px] h-[32px] flex items-center justify-center p-0 group',
+          'rounded-full w-[32px] h-[32px] min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px] flex items-center justify-center p-0 group',
           isOpen && 'bg-foreground text-background'
         )}
         onClick={handleClick}

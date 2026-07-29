@@ -108,7 +108,8 @@ export const LayoutHeader = ({
           <div className="flex items-center justify-center border-r flex-0 md:hidden h-full aspect-square">
             <Link
               href={backToDashboardURL}
-              className="flex items-center justify-center border-none !bg-transparent rounded-md min-w-[30px] w-[30px] h-[30px] text-foreground-lighter hover:text-foreground transition-colors"
+              aria-label="Back to dashboard"
+              className="flex items-center justify-center border-none !bg-transparent rounded-md min-w-[44px] w-[44px] h-[44px] md:min-w-[30px] md:w-[30px] md:h-[30px] text-foreground-lighter hover:text-foreground transition-colors"
             >
               <ChevronLeft strokeWidth={1.5} size={16} />
             </Link>
@@ -121,7 +122,7 @@ export const LayoutHeader = ({
               aria-label="Open navigation menu"
               title="Menu dropdown button"
               className={cn(
-                'group/view-toggle ml-4 flex justify-center flex-col border-none space-x-0 items-start gap-1 !bg-transparent rounded-md min-w-[30px] w-[30px] h-[30px]'
+                'group/view-toggle ml-4 flex justify-center flex-col border-none space-x-0 items-start gap-1 !bg-transparent rounded-md min-w-[44px] w-[44px] h-[44px] md:min-w-[30px] md:w-[30px] md:h-[30px]'
               )}
               onClick={() => setMobileMenuOpen(true)}
             >
@@ -225,6 +226,7 @@ export const LayoutHeader = ({
                 <CommandMenuTriggerInput
                   showShortcut={commandMenuEnabled}
                   placeholder="Search..."
+                  aria-label="Search Studio"
                   className={cn(
                     'hidden md:flex md:min-w-32 xl:min-w-32 rounded-full bg-transparent',
                     '[&_.command-shortcut>div]:border-none',

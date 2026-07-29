@@ -31,7 +31,7 @@ export const HomeIcon = () => {
   const href = getDefaultOrgRedirect()
 
   return (
-    <Link href={href} className="items-center justify-center flex-shrink-0 hidden md:flex">
+    <Link href={href} className="items-center justify-center flex-shrink-0 hidden md:flex" aria-label="Indobase home">
       <img
         alt="Indobase Logo"
         src={
