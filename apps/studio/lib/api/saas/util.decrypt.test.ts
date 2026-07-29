@@ -26,4 +26,20 @@ describe('api/saas/util decryptString', () => {
     const { decryptString } = await import('./util')
     expect(decryptString(ciphertext)).toBe('postgresql://u:p@tenant:5432/db')
   })
+
+  it('throws SecretDecryptionError without leaking env var names', async () => {
+    vi.stubEnv('PG_META_CRYPTO_KEY', 'wrong-key')
+    vi.stubEnv('CRYPTO_KEY', 'also-wrong')
+
+    const { decryptString } = await import('./util')
+    const { SecretDecryptionError } = await import('./secret-decryption-error')
+
+    expect(() => decryptString('U2FsdGVkX1+invalid')).toThrow(SecretDecryptionError)
+    try {
+      decryptString('U2FsdGVkX1+invalid')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SecretDecryptionError)
+      expect((error as Error).message).not.toMatch(/CRYPTO_KEY|PG_META_CRYPTO_KEY/)
+    }
+  })
 })
