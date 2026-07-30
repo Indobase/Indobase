@@ -2,17 +2,50 @@ import type { Context, Next } from 'hono'
 
 /**
  * Baseline transport / framing protections for public product bridges.
- * frame-ancestors 'none' — Workspace is top-level; the document editor iframes
- * the engine into our page (we are the parent), so this does not block editing.
+ * frame-ancestors 'none' — Workspace chrome is top-level. Document engine paths
+ * must NOT get X-Frame-Options DENY: the editor iframes `/ds` (and native
+ * `/web-apps` / `/sdkjs` …) same-origin into our page.
  */
+export function isDocumentEnginePath(pathname: string): boolean {
+  if (pathname === '/ds' || pathname.startsWith('/ds/')) return true
+  return (
+    pathname.startsWith('/web-apps') ||
+    pathname.startsWith('/sdkjs') ||
+    pathname.startsWith('/sdkjs-plugins') ||
+    pathname.startsWith('/fonts') ||
+    pathname.startsWith('/coauthoring') ||
+    pathname.startsWith('/cache') ||
+    pathname.startsWith('/doceditor') ||
+    pathname.startsWith('/dictionaries') ||
+    pathname.startsWith('/converter') ||
+    pathname.startsWith('/downloadas') ||
+    pathname.startsWith('/common/') ||
+    pathname === '/healthcheck' ||
+    pathname.startsWith('/welcome')
+  )
+}
+
 export async function securityHeaders(c: Context, next: Next) {
   await next()
+  const pathname = new URL(c.req.url).pathname
+  const enginePath = isDocumentEnginePath(pathname)
+
   c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
-  c.res.headers.set('X-Frame-Options', 'DENY')
   c.res.headers.set('X-Content-Type-Options', 'nosniff')
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  c.res.headers.set('Content-Security-Policy', "frame-ancestors 'none'")
   c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+
+  if (enginePath) {
+    // Allow same-origin iframe embedding of the document engine.
+    c.res.headers.delete('X-Frame-Options')
+    c.res.headers.set(
+      'Content-Security-Policy',
+      "frame-ancestors 'self' https://workspace.indobase.in https://workspace.indobase.fun https://suite.indobase.in"
+    )
+  } else {
+    c.res.headers.set('X-Frame-Options', 'DENY')
+    c.res.headers.set('Content-Security-Policy', "frame-ancestors 'none'")
+  }
 }
 
 /** Public health payload — never include upstream hostnames or internal topology. */

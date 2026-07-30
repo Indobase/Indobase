@@ -41,6 +41,8 @@ import {
   documentServerUpstreamPath,
   isDocumentServerConfigured,
   isDocumentServerProxyPath,
+  PROXY_SKIP_RESPONSE_HEADERS,
+  rewriteDocumentServerLocation,
 } from './onlyoffice.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderEditorPage, renderLaunchHtml, renderWorkspaceShell } from './shell.js'
@@ -408,17 +410,53 @@ async function proxyDocumentServer(c: Context) {
   const url = new URL(c.req.url)
   const upstreamPath = documentServerUpstreamPath(url.pathname)
   const target = `${upstream}${upstreamPath}${url.search}`
-  const headers = new Headers(c.req.raw.headers)
-  headers.delete('host')
-  const res = await fetch(target, {
-    method: c.req.method,
-    headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
-    redirect: 'manual',
+
+  // Forward a minimal header set. Force identity encoding so Node/undici does not
+  // auto-decompress while leaving mismatched Content-Length / Transfer-Encoding —
+  // that was truncating /ds/web-apps assets through Traefik (HTTP/2 INTERNAL_ERROR).
+  const headers = new Headers()
+  const incoming = c.req.raw.headers
+  for (const name of [
+    'accept',
+    'accept-language',
+    'authorization',
+    'content-type',
+    'cookie',
+    'if-none-match',
+    'if-modified-since',
+    'range',
+    'user-agent',
+  ]) {
+    const value = incoming.get(name)
+    if (value) headers.set(name, value)
+  }
+  headers.set('accept-encoding', 'identity')
+
+  let res: Response
+  try {
+    res = await fetch(target, {
+      method: c.req.method,
+      headers,
+      body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+      redirect: 'manual',
+    })
+  } catch (err) {
+    console.error('[workspace] document proxy upstream error:', err)
+    return c.text('document service unavailable', 502)
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer())
+  const out = new Headers()
+  res.headers.forEach((value, key) => {
+    if (PROXY_SKIP_RESPONSE_HEADERS.has(key.toLowerCase())) return
+    out.set(key, value)
   })
-  const out = new Headers(res.headers)
-  out.delete('server')
-  return new Response(res.body, { status: res.status, headers: out })
+  const location = res.headers.get('location')
+  if (location) {
+    out.set('location', rewriteDocumentServerLocation(location, url.pathname))
+  }
+  out.set('content-length', String(buf.byteLength))
+  return new Response(buf, { status: res.status, headers: out })
 }
 
 app.all('/ds', (c) => proxyDocumentServer(c))

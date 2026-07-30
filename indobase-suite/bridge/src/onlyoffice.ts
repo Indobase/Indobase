@@ -172,6 +172,7 @@ export const DOCUMENT_SERVER_PROXY_PREFIXES = [
   '/downloadas',
   '/converter',
   '/healthcheck',
+  '/welcome',
 ] as const
 
 export function isDocumentServerProxyPath(pathname: string): boolean {
@@ -187,3 +188,49 @@ export function documentServerUpstreamPath(pathname: string): string {
   if (pathname.startsWith('/ds/')) return pathname.slice(3) || '/'
   return pathname
 }
+
+/**
+ * Rewrite DocumentServer redirect Location so `/welcome` (etc.) stay under `/ds`
+ * when the browser requested a `/ds…` path.
+ */
+export function rewriteDocumentServerLocation(location: string, requestPathname: string): string {
+  const viaDs = requestPathname === '/ds' || requestPathname.startsWith('/ds/')
+  if (!viaDs) return location
+
+  try {
+    const publicBase = documentServerPublicUrl() // e.g. https://workspace.indobase.in/ds
+    const workspace = workspacePublicUrl()
+    const abs = new URL(location, `${workspace}/`)
+    // Already under /ds
+    if (abs.pathname === '/ds' || abs.pathname.startsWith('/ds/')) {
+      return abs.toString()
+    }
+    // Same-host absolute or root-relative engine path → prefix /ds
+    if (abs.origin === new URL(workspace).origin || location.startsWith('/')) {
+      const prefixed = `${publicBase}${abs.pathname === '/' ? '/' : abs.pathname}${abs.search}${abs.hash}`
+      return prefixed
+    }
+    return location
+  } catch {
+    if (location.startsWith('/') && !location.startsWith('/ds')) {
+      return `/ds${location}`
+    }
+    return location
+  }
+}
+
+/** Hop-by-hop / framing headers must not be forwarded from DocumentServer. */
+export const PROXY_SKIP_RESPONSE_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade',
+  'content-encoding',
+  'content-length',
+  'server',
+  'alt-svc',
+])
