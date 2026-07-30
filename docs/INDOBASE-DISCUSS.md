@@ -154,6 +154,8 @@ docker compose up -d --build
 8. Studio → **Discuss** → lands on project channel; no Mattermost/Gameplan/Frappe in title chrome we control.
 9. Optional CI: build `roshanraghavander/indobase-discuss:<sha>` for the bridge image.
 
+**Branding:** SiteName / support links / open-signup off via compose env; bridge rewrites HTML `<title>` + favicon and strips upstream `Server` headers. See `NOTICE.md` for Team Edition leftovers.
+
 **Data migration:** Gameplan → Mattermost is **not** supported. Fresh Discuss; treat prior Gameplan data as abandoned unless a one-off export is requested later.
 
 ---

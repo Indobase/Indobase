@@ -121,17 +121,31 @@ export function buildEditorConfig(opts: {
         autosave: true,
         forcesave: true,
         compactHeader: true,
+        compactToolbar: true,
         feedback: false,
+        help: false,
+        // CE may ignore about:false — still set so EE/whitelabel builds hide it
+        about: false,
         goback: {
           blank: false,
           text: 'Back to Workspace',
           url: '/',
         },
-        // Hide upstream about/logo chrome where supported
+        // Logo / customer fields are honored on commercial builds; CE often
+        // still shows upstream strings in About — see NOTICE.md.
         logo: {
           image: `${workspacePublicUrl()}/brand/indobase-logo-mark.svg`,
           imageDark: `${workspacePublicUrl()}/brand/indobase-logo-mark.svg`,
+          imageEmbedded: `${workspacePublicUrl()}/brand/indobase-logo-mark.svg`,
           url: workspacePublicUrl(),
+        },
+        customer: {
+          name: 'Indobase',
+          www: 'https://indobase.in',
+          mail: 'support@indobase.in',
+          info: 'Indobase Workspace',
+          logo: `${workspacePublicUrl()}/brand/indobase-logo-mark.svg`,
+          logoDark: `${workspacePublicUrl()}/brand/indobase-logo-mark.svg`,
         },
       },
     },
@@ -172,6 +186,8 @@ export const DOCUMENT_SERVER_PROXY_PREFIXES = [
   '/downloadas',
   '/converter',
   '/healthcheck',
+  // `/welcome` is intercepted by the bridge (Indobase page) — listed so
+  // isDocumentServerProxyPath still recognizes the path for routing guards.
   '/welcome',
 ] as const
 

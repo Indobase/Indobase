@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { URL } from 'node:url'
 
 import { getRequestListener } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
 
@@ -28,6 +29,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
+import { brandDiscussHtml, shouldBrandDiscussResponse } from './brand-html.js'
 import {
   exchangeStudioClaimsForMattermost,
   isMattermostConfigured,
@@ -44,14 +46,26 @@ app.use('*', securityHeaders)
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const MATTERMOST_URL = (process.env.MATTERMOST_URL || '').replace(/\/+$/, '')
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const PUBLIC_ROOT = path.resolve(__dirname, '../public')
+
 function isBridgeOwnedPath(pathname: string): boolean {
   return (
     pathname === '/healthz' ||
     pathname === '/api/me' ||
     pathname.startsWith('/sso/') ||
-    pathname === '/sso'
+    pathname === '/sso' ||
+    pathname.startsWith('/brand/')
   )
 }
+
+// Brand assets (copied from packages/common/assets/brand)
+app.use(
+  '/brand/*',
+  serveStatic({
+    root: PUBLIC_ROOT,
+  })
+)
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
@@ -235,6 +249,7 @@ function renderShell(session: Session): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Indobase Discuss</title>
+  <link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" />
   <style>
     :root { --brand: #3B8FD6; --ink: #0f172a; --muted: #64748b; --surface: #fff; --border: #e2e8f0; }
     * { box-sizing: border-box; }
@@ -327,6 +342,12 @@ async function proxyMattermost(c: Context) {
   })
   // Clone via sanitize — res.headers is immutable; securityHeaders must .set().
   const outHeaders = sanitizeProxiedResponseHeaders(res.headers)
+  const contentType = res.headers.get('content-type')
+  if (shouldBrandDiscussResponse(contentType) && c.req.method !== 'HEAD') {
+    const html = brandDiscussHtml(await res.text())
+    outHeaders.delete('content-length')
+    return new Response(html, { status: res.status, headers: outHeaders })
+  }
   return new Response(res.body, { status: res.status, headers: outHeaders })
 }
 

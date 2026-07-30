@@ -21,6 +21,7 @@ test('isDocumentServerProxyPath recognizes editor paths', () => {
   assert.equal(isDocumentServerProxyPath('/ds/web-apps/x'), true)
   assert.equal(isDocumentServerProxyPath('/web-apps/x'), true)
   assert.equal(isDocumentServerProxyPath('/welcome/'), true)
+  assert.equal(isDocumentServerProxyPath('/ds/welcome/'), true)
   assert.equal(isDocumentServerProxyPath('/api/files'), false)
 })
 

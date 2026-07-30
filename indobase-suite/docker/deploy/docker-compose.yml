@@ -62,7 +62,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      # Prefer DocumentServer for /ds (WebSocket-safe) over the bridge HTTP proxy.
+      # Prefer DocumentServer for /ds editor assets (WebSocket-safe) over the bridge HTTP proxy.
+      # Bridge owns /ds, /ds/welcome*, and /welcome* (priority 300) so the Community Edition
+      # landing page is never public — see suite-bridge labels.
       - traefik.http.middlewares.indobase-workspace-ds-strip.stripprefix.prefixes=/ds
       - traefik.http.routers.indobase-workspace-ds.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && PathPrefix(`/ds`)
       - traefik.http.routers.indobase-workspace-ds.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
@@ -73,6 +75,7 @@ services:
       - traefik.http.routers.indobase-workspace-ds.service=indobase-workspace-ds
       - traefik.http.services.indobase-workspace-ds.loadbalancer.server.port=80
       # Native engine paths when DocsAPI omits the /ds prefix.
+      # Deliberately omit /welcome — bridge owns that path (Indobase page).
       - traefik.http.routers.indobase-workspace-ds-native.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && (PathPrefix(`/web-apps`) || PathPrefix(`/sdkjs`) || PathPrefix(`/sdkjs-plugins`) || PathPrefix(`/fonts`) || PathPrefix(`/coauthoring`) || PathPrefix(`/cache`) || PathPrefix(`/doceditor`) || PathPrefix(`/dictionaries`) || PathPrefix(`/converter`) || PathPrefix(`/downloadas`))
       - traefik.http.routers.indobase-workspace-ds-native.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-workspace-ds-native.tls=true
@@ -113,6 +116,13 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      # Block DocumentServer Community Edition landing before the /ds PathPrefix router (prio 200).
+      - traefik.http.routers.indobase-workspace-no-welcome.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && (Path(`/ds`) || Path(`/ds/`) || PathPrefix(`/ds/welcome`) || PathPrefix(`/welcome`))
+      - traefik.http.routers.indobase-workspace-no-welcome.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-workspace-no-welcome.tls=true
+      - traefik.http.routers.indobase-workspace-no-welcome.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-workspace-no-welcome.priority=300
+      - traefik.http.routers.indobase-workspace-no-welcome.service=indobase-workspace
       - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}
       - traefik.http.routers.indobase-workspace.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-workspace.tls=true

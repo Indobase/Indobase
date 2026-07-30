@@ -83,3 +83,5 @@ Staging-first (from 2026-07-31): validate on `workspace.indobase.fun` before pro
 
 - Customer chrome: **Workspace**, **Files**, **Docs**, **Sheets**, **Presentations**
 - Never show: ONLYOFFICE, DocumentServer, Frappe, Suite, Drive, Writer, Slides, Meet
+- `/ds/welcome` and `/welcome` are blocked (Traefik priority 300 → bridge Indobase page).
+  DocumentServer Community Edition cannot fully white-label About/logo — see `NOTICE.md`.

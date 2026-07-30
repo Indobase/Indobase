@@ -7,7 +7,18 @@ import type { Context, Next } from 'hono'
  * `/web-apps` / `/sdkjs` …) same-origin into our page.
  */
 export function isDocumentEnginePath(pathname: string): boolean {
-  if (pathname === '/ds' || pathname.startsWith('/ds/')) return true
+  if (pathname === '/ds' || pathname.startsWith('/ds/')) {
+    // Welcome landing is Indobase HTML (not the editor iframe target).
+    if (
+      pathname === '/ds' ||
+      pathname === '/ds/' ||
+      pathname === '/ds/welcome' ||
+      pathname.startsWith('/ds/welcome/')
+    ) {
+      return false
+    }
+    return true
+  }
   return (
     pathname.startsWith('/web-apps') ||
     pathname.startsWith('/sdkjs') ||
@@ -20,8 +31,7 @@ export function isDocumentEnginePath(pathname: string): boolean {
     pathname.startsWith('/converter') ||
     pathname.startsWith('/downloadas') ||
     pathname.startsWith('/common/') ||
-    pathname === '/healthcheck' ||
-    pathname.startsWith('/welcome')
+    pathname === '/healthcheck'
   )
 }
 

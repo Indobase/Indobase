@@ -46,6 +46,7 @@ import {
 } from './onlyoffice.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderEditorPage, renderLaunchHtml, renderWorkspaceShell } from './shell.js'
+import { isDocumentWelcomePath, renderWorkspaceWelcomeHtml } from './welcome.js'
 import { buildWorkspaceMap, workspaceHomePath } from './workspace-map.js'
 
 type Vars = { session: Session }
@@ -215,6 +216,23 @@ app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-workspace' }))
 
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+
+/** Never expose DocumentServer’s Community Edition landing page. */
+function blockDocumentWelcome(c: Context) {
+  const session = sessionFromRequest(c)
+  if (session) {
+    const map = workspaceMapFromSession(session)
+    return c.redirect(workspaceHomePath(map), 302)
+  }
+  return c.html(renderWorkspaceWelcomeHtml({ studioUrl: STUDIO_URL }), 200)
+}
+
+app.all('/welcome', (c) => blockDocumentWelcome(c))
+app.all('/welcome/*', (c) => blockDocumentWelcome(c))
+app.all('/ds/welcome', (c) => blockDocumentWelcome(c))
+app.all('/ds/welcome/*', (c) => blockDocumentWelcome(c))
+app.get('/ds', (c) => blockDocumentWelcome(c))
+app.get('/ds/', (c) => blockDocumentWelcome(c))
 
 // ── File API ─────────────────────────────────────────────────────────────────
 
@@ -405,9 +423,12 @@ app.get('/s/:team/:project/:module', (c) => {
 // ── Document engine reverse proxy (same-origin /ds + native paths) ───────────
 
 async function proxyDocumentServer(c: Context) {
+  const url = new URL(c.req.url)
+  if (isDocumentWelcomePath(url.pathname)) {
+    return blockDocumentWelcome(c)
+  }
   const upstream = documentServerUpstream()
   if (!upstream) return c.notFound()
-  const url = new URL(c.req.url)
   const upstreamPath = documentServerUpstreamPath(url.pathname)
   const target = `${upstream}${upstreamPath}${url.search}`
 
