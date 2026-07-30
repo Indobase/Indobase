@@ -8,8 +8,20 @@ Customer-facing product name is **Indobase Discuss**. Do not expose "Mattermost"
 
 ## Branding controls we set
 
-- `TeamSettings.SiteName` = Indobase Discuss; CustomBrand image disabled (avoids oversized login marks).
-- Support / About / Help / Privacy / Terms links point at Indobase / Studio — not upstream.
+- `TeamSettings.SiteName` = Indobase Discuss; `CustomDescriptionText` / `CustomBrandText` describe Indobase Discuss.
+- `EnableCustomBrand` = true with a **compact PNG** wordmark (~211×40, `bridge/public/brand/indobase-custom-brand.png`) uploaded by bootstrap — never a giant SVG that blows out login layout.
+- Support / About / Help / Privacy / Terms links point at Indobase / Studio — not upstream (`PrivacyPolicyLink` env key is `MM_SUPPORTSETTINGS_PRIVACYPOLICYLINK`).
 - Native app download links cleared; open signup and email signup disabled (Studio SSO only).
-- Bridge HTML proxy rewrites document `<title>` / favicon and strips `Server` / `X-Version-Id` headers.
-- Some in-app About strings remain upstream-hardcoded in Team Edition; we do not fork the webapp to erase every occurrence.
+- Bridge HTML proxy (text/html only):
+  - Rewrites `<title>`, application-name / apple-mobile-web-app-title, favicons → `/brand/*`.
+  - Replaces `#initialPageLoadingScreen` (Mattermost SVG pills / compass) with Indobase mark + “Opening Indobase Discuss…”.
+  - Injects CSS to hide/replace sidebar and About logos; injects JS MutationObserver to rewrite safe visible “Mattermost” text nodes.
+  - Strips upstream `Server` / `X-Version-Id` and undici `Content-Encoding` / stale `Content-Length` (gzip proxy fix).
+
+## Honest Team Edition limits
+
+Mattermost **Team Edition** does not include Enterprise white-label. Compiled webapp JS still contains the string “Mattermost” (source maps, i18n keys, some About modal copy paths). We do **not** fork or recompile the webapp to erase every occurrence.
+
+What customers should not see in chrome we control: document title, favicon, loading screen, sidebar/header logos, noscript banner, SiteName-driven labels, About/Help/Privacy/Terms destinations, app-download promos.
+
+Residual risk: rare TE About / licensing strings or in-bundle literals that render before our MutationObserver runs, or inside shadow DOM / canvas we cannot rewrite without an Enterprise license or a webapp fork.

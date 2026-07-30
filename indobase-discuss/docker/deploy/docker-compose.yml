@@ -77,9 +77,10 @@ services:
       MM_SERVICESETTINGS_ENABLEDEVELOPER: "false"
       MM_SERVICESETTINGS_FORWARDS80TO443: "false"
       MM_TEAMSETTINGS_SITENAME: Indobase Discuss
-      # SiteName only — CustomBrand image/text can leave a broken/oversized mark on
-      # the login surface; Studio SSO owns branding chrome.
-      MM_TEAMSETTINGS_ENABLECUSTOMBRAND: "false"
+      # CustomBrand uses a compact PNG (211×40 wordmark) uploaded by bootstrap —
+      # never a giant SVG. Studio SSO still owns /login chrome.
+      MM_TEAMSETTINGS_ENABLECUSTOMBRAND: "true"
+      MM_TEAMSETTINGS_CUSTOMBRANDTEXT: "Indobase Discuss — team chat for your organization and project"
       MM_TEAMSETTINGS_CUSTOMDESCRIPTIONTEXT: "Team chat for your Indobase organization and project"
       MM_TEAMSETTINGS_MAXUSERSPERTEAM: "5000"
       MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
@@ -96,7 +97,8 @@ services:
       MM_SUPPORTSETTINGS_SUPPORTEMAIL: ${DISCUSS_SUPPORT_EMAIL:-support@indobase.in}
       MM_SUPPORTSETTINGS_ABOUTLINK: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       MM_SUPPORTSETTINGS_HELPLINK: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-      MM_SUPPORTSETTINGS_PRIVACYLINK: https://indobase.in/privacy
+      # Key is PrivacyPolicyLink (not PrivacyLink) — wrong env name left mattermost.com live.
+      MM_SUPPORTSETTINGS_PRIVACYPOLICYLINK: https://indobase.in/privacy
       MM_SUPPORTSETTINGS_TERMSOFSERVICELINK: https://indobase.in/terms
       MM_PLUGINSETTINGS_ENABLEUPLOADS: "false"
       MM_LOGSETTINGS_CONSOLELEVEL: ${MM_LOG_LEVEL:-INFO}
@@ -128,8 +130,10 @@ services:
       MATTERMOST_ADMIN_EMAIL: ${MATTERMOST_ADMIN_EMAIL:-discuss-admin@indobase.local}
       MATTERMOST_ADMIN_PASSWORD: ${MATTERMOST_ADMIN_PASSWORD:?set MATTERMOST_ADMIN_PASSWORD}
       MATTERMOST_ADMIN_USERNAME: ${MATTERMOST_ADMIN_USERNAME:-ibdiscuss}
+      INDOBASE_CUSTOM_BRAND_IMAGE: /brand/indobase-custom-brand.png
     volumes:
       - ../bootstrap-mattermost.sh:/scripts/bootstrap-mattermost.sh:ro
+      - ../../bridge/public/brand:/brand:ro
       - discuss_mm_secrets:/secrets
     entrypoint: ["/bin/sh", "/scripts/bootstrap-mattermost.sh"]
     networks:

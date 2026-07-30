@@ -131,4 +131,53 @@ fi
 umask 077
 printf '%s' "$pat" >"$TOKEN_FILE"
 log "wrote admin token to $TOKEN_FILE"
+
+# ── Brand: compact CustomBrand PNG + patch support links in persisted config ──
+# Env overrides cover most settings at runtime; PrivacyPolicyLink historically
+# missed because of a wrong MM_* key. Use /config/patch (partial) — never sed the
+# full config blob.
+BRAND_IMG="${INDOBASE_CUSTOM_BRAND_IMAGE:-/brand/indobase-custom-brand.png}"
+if [ -f "$BRAND_IMG" ]; then
+  code=$(curl -sS -o /tmp/mm-brand.out -w "%{http_code}" -X POST "$MM_URL/api/v4/brand/image" \
+    -H "Authorization: Bearer $pat" \
+    -F "image=@${BRAND_IMG};type=image/png" || true)
+  if [ "$code" = "201" ] || [ "$code" = "200" ]; then
+    log "uploaded Indobase CustomBrand image ($code)"
+  else
+    log "CustomBrand upload skipped/failed (HTTP ${code:-?}): $(cat /tmp/mm-brand.out 2>/dev/null | head -c 200)"
+  fi
+else
+  log "no CustomBrand image at $BRAND_IMG — CSS injection still covers chrome"
+fi
+
+patch_body='{
+  "TeamSettings": {
+    "SiteName": "Indobase Discuss",
+    "EnableCustomBrand": true,
+    "CustomBrandText": "Indobase Discuss — team chat for your organization and project",
+    "CustomDescriptionText": "Team chat for your Indobase organization and project"
+  },
+  "SupportSettings": {
+    "AboutLink": "https://studio.indobase.in",
+    "HelpLink": "https://studio.indobase.in",
+    "PrivacyPolicyLink": "https://indobase.in/privacy",
+    "TermsOfServiceLink": "https://indobase.in/terms",
+    "SupportEmail": "support@indobase.in"
+  },
+  "NativeAppSettings": {
+    "AppDownloadLink": "",
+    "AndroidAppDownloadLink": "",
+    "IosAppDownloadLink": ""
+  }
+}'
+put=$(curl -sS -o /tmp/mm-cfg.out -w "%{http_code}" -X PUT "$MM_URL/api/v4/config/patch" \
+  -H "Authorization: Bearer $pat" \
+  -H "Content-Type: application/json" \
+  -d "$patch_body" || true)
+if [ "$put" = "200" ]; then
+  log "patched SiteName / support links / CustomBrand via config/patch"
+else
+  log "config/patch HTTP ${put:-?} (env overrides still apply): $(head -c 240 /tmp/mm-cfg.out 2>/dev/null)"
+fi
+
 exec sleep infinity

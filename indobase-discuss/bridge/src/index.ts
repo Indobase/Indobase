@@ -70,9 +70,14 @@ app.use(
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
 app.get('/sso/launch', (c) =>
-  c.html(`<!doctype html><meta charset="utf-8"><title>Opening Indobase Discuss…</title>
-<body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#1e293b;background:#f8fafc">
-<p>Opening Indobase Discuss…</p>
+  c.html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Opening Indobase Discuss…</title>
+<link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" />
+</head>
+<body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#0f172a;background:#f8fafc">
+<div style="text-align:center">
+  <img src="/brand/indobase-logo-mark-80.png" alt="" width="48" height="48" style="display:block;margin:0 auto 16px" />
+  <p style="margin:0;font-weight:600;font-size:15px">Opening Indobase Discuss…</p>
+</div>
 <script>
 (async () => {
   var h = new URLSearchParams(location.hash.slice(1));
@@ -103,7 +108,7 @@ app.get('/sso/launch', (c) =>
   } catch (_) {}
   location.replace(dest);
 })();
-</script></body>`)
+</script></body></html>`)
 )
 
 app.post('/sso/session', async (c) => {
@@ -322,6 +327,7 @@ export function sanitizeProxiedResponseHeaders(headers: Headers): Headers {
   // Mattermost LoadingScreen SVG pills fill the viewport as giant black shapes.
   out.delete('content-encoding')
   out.delete('content-length')
+  out.delete('transfer-encoding')
   return out
 }
 
@@ -345,7 +351,10 @@ async function proxyMattermost(c: Context) {
   const contentType = res.headers.get('content-type')
   if (shouldBrandDiscussResponse(contentType) && c.req.method !== 'HEAD') {
     const html = brandDiscussHtml(await res.text())
+    // Branded body length differs from upstream — never forward a stale length.
     outHeaders.delete('content-length')
+    outHeaders.delete('content-encoding')
+    outHeaders.delete('transfer-encoding')
     return new Response(html, { status: res.status, headers: outHeaders })
   }
   return new Response(res.body, { status: res.status, headers: outHeaders })
