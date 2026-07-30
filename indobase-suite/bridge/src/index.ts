@@ -19,7 +19,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
-import { isSuiteModuleId, listModulesForApi, modulePath, upstreamSuitePath } from './modules.js'
+import { isSuiteModuleId, listModulesForApi, modulePath, SUITE_UPSTREAM_PREFIXES, upstreamSuitePath } from './modules.js'
 import { buildWorkspaceMap, workspaceHomePath } from './workspace-map.js'
 
 type Vars = { session: Session }
@@ -36,27 +36,6 @@ const DESIGN_PUBLIC_URL = (
   process.env.INDOBASE_DESIGN_URL || 'https://design.indobase.in'
 ).replace(/\/+$/, '')
 
-/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
-function forwardUpstreamCookies(upstream: Response, c: Context) {
-  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
-  const cookies =
-    typeof headers.getSetCookie === 'function'
-      ? headers.getSetCookie()
-      : upstream.headers.get('set-cookie')
-        ? [upstream.headers.get('set-cookie') as string]
-        : []
-  for (const cookie of cookies) {
-    c.res.headers.append('Set-Cookie', cookie)
-  }
-}
-
-function frappeHandoffRedirect(body: {
-  redirect?: string
-  message?: { redirect?: string }
-}): string | undefined {
-  return body.redirect ?? body.message?.redirect
-}
-
 function workspaceMapFromSession(session: Session) {
   return buildWorkspaceMap({
     orgSlug: session.orgSlug,
@@ -64,6 +43,11 @@ function workspaceMapFromSession(session: Session) {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
+}
+
+function suiteLaunchPath(pathname: string): string {
+  if (!SUITE_UPSTREAM) return pathname
+  return upstreamSuitePath(pathname)
 }
 
 function resolveRedirectFromQuery(search: string, session: Session): string {
@@ -75,10 +59,10 @@ function resolveRedirectFromQuery(search: string, session: Session): string {
     if (moduleParam === 'mail') {
       return `${STUDIO_URL}/project/${encodeURIComponent(session.projectRef)}/workspace?open=mail`
     }
-    return modulePath(map, moduleParam)
+    return suiteLaunchPath(modulePath(map, moduleParam))
   }
 
-  return workspaceHomePath(map)
+  return suiteLaunchPath(workspaceHomePath(map))
 }
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -154,15 +138,16 @@ app.post('/sso/session', async (c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
-      forwardUpstreamCookies(upstream, c)
+      const setCookie = upstream.headers.get('set-cookie')
+      if (setCookie) c.header('Set-Cookie', setCookie)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      if (frappeHandoffRedirect(body)) redirect = frappeHandoffRedirect(body)!
+      if (body.redirect) redirect = body.redirect
     } catch (err) {
       console.error('[workspace] frappe handoff failed:', err)
     }
   }
 
-  c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
   return c.json({ ok: true, redirect, workspace: map })
 })
 
@@ -191,7 +176,44 @@ app.get('/sso/health', (c) =>
   })
 )
 
-// ── Auth middleware ──────────────────────────────────────────────────────────
+// ── Suite upstream proxy (production path) ─────────────────────────────────────
+
+async function proxySuite(c: Context) {
+  if (!SUITE_UPSTREAM) return c.notFound()
+  const url = new URL(c.req.url)
+  const upstreamPath = upstreamSuitePath(url.pathname)
+  const target = `${SUITE_UPSTREAM}${upstreamPath}${url.search}`
+  const headers = new Headers(c.req.raw.headers)
+  headers.delete('host')
+  const res = await fetch(target, {
+    method: c.req.method,
+    headers,
+    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+    redirect: 'manual',
+  })
+  return new Response(res.body, { status: res.status, headers: res.headers })
+}
+
+function redirectSuiteDeepLink(c: Context) {
+  const upstream = upstreamSuitePath(new URL(c.req.url).pathname)
+  return c.redirect(upstream, 302)
+}
+
+/** Frappe API + SPA routes — registered before bridge `/api/me` auth. */
+if (SUITE_UPSTREAM) {
+  app.all('/api/method/*', proxySuite)
+  app.all('/api/resource/*', proxySuite)
+  app.all('/assets/*', proxySuite)
+  app.all('/files/*', proxySuite)
+  app.all('/private/*', proxySuite)
+  app.all('/socket.io/*', proxySuite)
+  for (const prefix of SUITE_UPSTREAM_PREFIXES) {
+    app.all(prefix, proxySuite)
+    app.all(`${prefix}/*`, proxySuite)
+  }
+}
+
+// ── Auth middleware (bridge API only) ────────────────────────────────────────
 
 async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   let secret: string
@@ -207,9 +229,7 @@ async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   await next()
 }
 
-app.use('/api/*', requireSession)
-
-app.get('/api/me', (c) => {
+app.get('/api/me', requireSession, (c) => {
   const s = c.get('session')
   const map = workspaceMapFromSession(s)
   return c.json({
@@ -234,26 +254,9 @@ app.get('/api/me', (c) => {
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-workspace' }))
 
-// ── Suite upstream proxy (production path) ─────────────────────────────────────
+/** Indobase-branded deep links → flat Suite SPA routes (Vue router expects `/drive`, not `/s/...`). */
+app.all('/s/*', (c) => (SUITE_UPSTREAM ? redirectSuiteDeepLink(c) : proxySuite(c)))
 
-async function proxySuite(c: Context) {
-  if (!SUITE_UPSTREAM) return c.notFound()
-  const url = new URL(c.req.url)
-  const upstreamPath = upstreamSuitePath(url.pathname)
-  const target = `${SUITE_UPSTREAM}${upstreamPath}${url.search}`
-  const headers = new Headers(c.req.raw.headers)
-  headers.delete('host')
-  const res = await fetch(target, {
-    method: c.req.method,
-    headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
-    redirect: 'manual',
-  })
-  return new Response(res.body, { status: res.status, headers: res.headers })
-}
-
-app.all('/s/*', proxySuite)
-app.all('/assets/*', proxySuite)
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
@@ -333,14 +336,13 @@ app.get('/', (c) => {
   const session = raw ? readSessionToken(raw, secret) : null
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
   if (SUITE_UPSTREAM) {
-    const map = workspaceMapFromSession(session)
-    return c.redirect(workspaceHomePath(map))
+    return c.redirect('/suite')
   }
   return c.html(renderShell(session))
 })
 
 app.get('/s/:team/:project', (c) => {
-  if (SUITE_UPSTREAM) return proxySuite(c)
+  if (SUITE_UPSTREAM) return redirectSuiteDeepLink(c)
   let secret: string
   try {
     secret = resolveHandoffSecret()
@@ -354,7 +356,7 @@ app.get('/s/:team/:project', (c) => {
 })
 
 app.get('/s/:team/:project/:module', (c) => {
-  if (SUITE_UPSTREAM) return proxySuite(c)
+  if (SUITE_UPSTREAM) return redirectSuiteDeepLink(c)
   let secret: string
   try {
     secret = resolveHandoffSecret()
