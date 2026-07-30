@@ -1,13 +1,15 @@
 # Indobase Discuss — Traefik file provider (optional if compose labels suffice)
 #
 # DNS:
-#   discuss.indobase.fun → staging (add SAN only when DNS exists)
+#   discuss.indobase.fun → staging Hostinger / staging Swarm
 #   discuss.indobase.in  → Vyom 103.190.92.249
+#
+# Public edge is the SSO bridge (:8092), which proxies Mattermost.
 
 http:
   routers:
     indobase-discuss:
-      rule: Host(`discuss.indobase.in`)
+      rule: Host(`discuss.indobase.in`) || Host(`discuss.indobase.fun`)
       entryPoints:
         - websecure
       service: indobase-discuss
@@ -15,6 +17,8 @@ http:
         certResolver: letsencrypt
         domains:
           - main: discuss.indobase.in
+            sans:
+              - discuss.indobase.fun
 
   services:
     indobase-discuss:

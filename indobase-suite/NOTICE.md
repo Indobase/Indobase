@@ -1,11 +1,17 @@
 # Third-party attribution
 
-Indobase Workspace is built on [Frappe Suite](https://github.com/frappe/suite) by Frappe Technologies Pvt Ltd, licensed under **AGPL-3.0**.
+Indobase Workspace embeds [ONLYOFFICE Document Server](https://github.com/ONLYOFFICE/DocumentServer)
+(AGPL-3.0) via the official Docker image (`onlyoffice/documentserver`). Source and license terms
+are published by Ascensio System SIA. This repository does **not** vendor the full DocumentServer
+tree; runtime pulls the container image.
 
-Upstream source is vendored at `vendor/suite/` (git submodule) or fetched during Docker init. See `license.txt` in that tree.
+Customer-facing product name is **Indobase Workspace** (Files, Docs, Sheets, Presentations).
+Do **not** expose "ONLYOFFICE", "DocumentServer", "Frappe", "Suite", "Drive", "Writer", "Slides",
+"Meet", or competitor product names in user-visible UI, routes, OAuth client names, or email footers.
 
-Customer-facing product name is **Indobase Workspace** (suite of Files, Docs, Sheets, Presentations, Meetings, Calendar). Do not expose "Frappe", "Suite", "Drive", "Writer", "Sheets", "Slides", "Meet", or competitor product names in user-visible UI, routes, OAuth client names, or email footers.
+AGPL obligations for the DocumentServer binary/container remain with the deployed image and its
+upstream NOTICE/LICENSE. Keep this file when distributing Indobase Workspace wrappers.
 
-Mail in Workspace launches **Indobase Email** (Notifuse fork) — not upstream Suite Mail.
-
-Presentations can open **Indobase Design** for visual canvas work; deck-focused editing uses upstream Slides when the Frappe stack is deployed.
+Mail in Workspace launches **Indobase Email** — not a mail client inside Workspace.
+Presentations use Workspace slide editing by default; Studio may deep-link **Design** when
+`NEXT_PUBLIC_WORKSPACE_SLIDES_VIA_DESIGN=true`.

@@ -2,7 +2,8 @@ import type { Context, Next } from 'hono'
 
 /**
  * Baseline transport / framing protections for public product bridges.
- * Intentionally light CSP (`frame-ancestors`) so Frappe SPAs keep working.
+ * frame-ancestors 'none' — Workspace is top-level; the document editor iframes
+ * the engine into our page (we are the parent), so this does not block editing.
  */
 export async function securityHeaders(c: Context, next: Next) {
   await next()

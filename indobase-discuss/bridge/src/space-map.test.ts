@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildDiscussSpaceMap, discussSpaceKeyForProjectRef, discussTeamKeyForOrgSlug } from './space-map.js'
+import {
+  buildDiscussSpaceMap,
+  discussChannelPath,
+  discussSpaceKeyForProjectRef,
+  discussTeamKeyForOrgSlug,
+} from './space-map.js'
 
 test('discussTeamKeyForOrgSlug is stable and sanitized', () => {
   assert.equal(discussTeamKeyForOrgSlug('Acme-Co'), 'ib-org-acme-co')
@@ -24,4 +29,5 @@ test('buildDiscussSpaceMap includes titles', () => {
   assert.equal(map.spaceTitle, 'My App')
   assert.equal(map.teamKey, 'ib-org-acme')
   assert.equal(map.spaceKey, 'ib-proj-xyz123')
+  assert.equal(discussChannelPath(map), '/ib-org-acme/channels/ib-proj-xyz123')
 })

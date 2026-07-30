@@ -2,7 +2,7 @@
  * Customer-facing Indobase OS product names — single source for chooser, launchers, and docs.
  *
  * Internal code may keep upstream ids (`suite`, `discuss`, `indobase-suite` JWT aud, etc.).
- * Never show Gameplan, Frappe, Suite, Drive, Writer, Notifuse, or other fork names in UI.
+ * Never show Mattermost, Gameplan, Frappe, Suite, Drive, Writer, Notifuse, or other fork names in UI.
  */
 
 export const ECOSYSTEM_PRODUCTS = {
@@ -20,9 +20,9 @@ export const ECOSYSTEM_PRODUCTS = {
   workspace: {
     id: 'workspace',
     name: 'Workspace',
-    tagline: 'Files, docs, sheets, meetings, calendar',
+    tagline: 'Files, docs, sheets, presentations',
     description:
-      'Files, docs, sheets, presentations, meetings, and calendar for this project — one connected workspace.',
+      'Files, docs, sheets, and presentations for this project — one connected workspace.',
     host: 'workspace.indobase.in',
     openLabel: 'Open Workspace',
     openHomeLabel: 'Open Workspace home',
@@ -35,29 +35,6 @@ export const ECOSYSTEM_PRODUCTS = {
     tagline: 'Team chat for your org and project',
     host: 'discuss.indobase.in',
     openLabel: 'Open Discuss',
-  },
-  crm: {
-    id: 'crm',
-    name: 'CRM',
-    descriptor: 'Sales',
-    tagline: 'Leads, deals, and Kanban for your pipeline',
-    host: 'crm.indobase.in',
-    openLabel: 'Open CRM',
-  },
-  helpdesk: {
-    id: 'helpdesk',
-    name: 'Helpdesk',
-    descriptor: 'Support',
-    tagline: 'Tickets, SLAs, and knowledge base for customers',
-    host: 'helpdesk.indobase.in',
-    openLabel: 'Open Helpdesk',
-  },
-  domains: {
-    id: 'domains',
-    name: 'Domains',
-    tagline: 'Search, register, and manage domains',
-    host: 'domains.indobase.in',
-    openLabel: 'Open Domains',
   },
   payments: {
     id: 'payments',

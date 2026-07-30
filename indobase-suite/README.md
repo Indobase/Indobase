@@ -1,19 +1,22 @@
 # Indobase Workspace
 
-Collaboration workspace for Indobase organizations and projects — **Workspace**: Files, Docs, Sheets, Presentations, Meetings, and Calendar. Upstream engine is AGPL; customer UI is Indobase-branded only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md).
+Collaboration workspace for Indobase organizations and projects — **Files**, **Docs**, **Sheets**,
+and **Presentations**, with Studio SSO. Document editing uses an AGPL document engine behind an
+Indobase-branded bridge; customer UI never names upstream products. See
+[docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md).
 
 | Host (prod) | Host (staging) |
 |---|---|
-| `workspace.indobase.in` | `workspace.indobase.fun` |
+| `workspace.indobase.in` (+ `suite.indobase.in` redirect alias) | `workspace.indobase.fun` |
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `bridge/` | Node SSO bridge + dev shell (mirrors Discuss `/sso/launch`) |
-| `frappe-app/indobase_suite/` | Frappe custom app: Studio handoff, org/project → workspace provisioning, rebrand hooks |
+| `bridge/` | Node SSO bridge, file store API, Workspace shell, editor JWT + DocumentServer proxy |
+| `bridge/templates/` | Blank docx / xlsx / pptx seeds |
+| `bridge/public/brand/` | Indobase mark / wordmark / favicon |
 | `docker/deploy/` | Compose + Traefik for Vyom `.249` |
-| `vendor/suite/` | Upstream Frappe Suite (submodule — run `git submodule update --init`) |
 
 ## Local dev (bridge only)
 
@@ -24,34 +27,36 @@ SUITE_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm dev
 # open http://localhost:8093/sso/health
 ```
 
-Studio mints `aud=indobase-suite` JWTs; bridge verifies and sets `indobase_suite_session`.
+Without `DOCUMENT_SERVER_URL`, the shell and file API work; opening `/editor/:id` shows
+“Editor unavailable”.
 
-Optional module deep-link from Studio:
+Studio mints `aud=indobase-suite` JWTs; bridge verifies and sets `indobase_suite_session`.
 
 ```http
 GET /api/platform/projects/{ref}/suite/launch?module=docs
 ```
 
-## Full stack (Frappe Suite + bridge)
+## Full stack (DocumentServer + bridge)
 
 ```bash
 cd docker/deploy
-cp .env.example .env   # set secrets
+cp .env.example .env   # set SUITE_HANDOFF_SECRET + DOCUMENT_JWT_SECRET (≥32 chars)
 docker compose up -d
 ```
 
-First boot runs Frappe bench init (~10–15 min). Traefik serves `workspace.*` → bridge; bridge proxies `/s/*` to Suite when configured.
+First DocumentServer boot may take 1–2 minutes (`/healthcheck`). Traefik serves `workspace.*` →
+bridge; bridge proxies editor assets under `/ds`.
 
 See [docs/INDOBASE-SUITE.md](../docs/INDOBASE-SUITE.md).
 
 ## Module routing
 
-| Customer name | Internal id | Route |
+| Customer name | Internal id | Behavior |
 |---|---|---|
-| Files | `files` | Workspace → Files |
-| Docs | `docs` | Workspace → Docs |
-| Sheets | `sheets` | Workspace → Sheets |
-| Presentations | `presentations` | Workspace → Presentations (or Design handoff) |
-| Meetings | `meetings` | Workspace → Meetings |
+| Files | `files` | File list / open editor |
+| Docs | `docs` | Create/open documents |
+| Sheets | `sheets` | Create/open spreadsheets |
+| Presentations | `presentations` | Create/open slide decks (or Design handoff from Studio) |
+| Meetings | `meetings` | Stub (not in MVP) |
 | Mail | `mail` | Opens **Email** (SSO) |
-| Calendar | `calendar` | Workspace → Calendar |
+| Calendar | `calendar` | Stub (not in MVP) |

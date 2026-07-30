@@ -56,7 +56,7 @@ export function isSuiteModuleId(value: string | null | undefined): value is Suit
   return !!value && MODULE_SET.has(value)
 }
 
-/** Deterministic workspace team key from org slug — mirrors bridge + Frappe workspace_map. */
+/** Deterministic workspace team key from org slug — mirrors bridge workspace-map. */
 export function suiteTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = orgSlug
     .toLowerCase()

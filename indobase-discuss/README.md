@@ -1,6 +1,6 @@
 # Indobase Discuss
 
-Async team discussions for Indobase organizations and projects — **Discuss** (team chat): spaces, threads, and pages. Upstream engine is AGPL; customer UI is Indobase-branded only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md).
+Async team chat for Indobase organizations and projects. Upstream engine is [Mattermost](https://github.com/mattermost/mattermost) (AGPL-3.0); customer UI is **Indobase Discuss** only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md) and [docs/INDOBASE-DISCUSS.md](../docs/INDOBASE-DISCUSS.md).
 
 | Host (prod) | Host (staging) |
 |---|---|
@@ -10,10 +10,10 @@ Async team discussions for Indobase organizations and projects — **Discuss** (
 
 | Path | Purpose |
 |---|---|
-| `bridge/` | Node SSO bridge + dev shell (mirrors Design `/sso/launch`) |
-| `frappe-app/indobase_discuss/` | Frappe custom app: Studio handoff, org/project → Space provisioning, rebrand hooks |
-| `docker/deploy/` | Compose + Traefik for Vyom `.249` |
-| `vendor/gameplan/` | Upstream Gameplan (submodule — run `git submodule update --init`) |
+| `bridge/` | Node Studio SSO bridge + Mattermost reverse proxy (Traefik edge `:8092`) |
+| `docker/deploy/` | Compose + Traefik labels for Vyom `.249` |
+| `docker/bootstrap-mattermost.sh` | First-boot admin PAT for the bridge |
+| `NOTICE.md` | AGPL attribution |
 
 ## Local dev (bridge only)
 
@@ -24,16 +24,14 @@ DISCUSS_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm dev
 # open http://localhost:8092/sso/health
 ```
 
-Studio mints `aud=indobase-discuss` JWTs; bridge verifies and sets `indobase_discuss_session`.
+Studio mints `aud=indobase-discuss` JWTs; bridge verifies, provisions team/channel, sets session cookies, and redirects.
 
-## Full stack (Gameplan + bridge)
+## Full stack (Mattermost + bridge)
 
 ```bash
 cd docker/deploy
-cp .env.example .env   # set secrets
-docker compose up -d
+cp .env.example .env   # set DISCUSS_HANDOFF_SECRET, POSTGRES_PASSWORD, MATTERMOST_ADMIN_PASSWORD
+docker compose up -d --build
 ```
 
-First boot runs Frappe bench init (~5–10 min). Traefik serves `discuss.*` → bridge; bridge proxies `/g/*` to Gameplan when configured.
-
-See [docs/INDOBASE-DISCUSS.md](../docs/INDOBASE-DISCUSS.md).
+Traefik serves `discuss.*` → bridge; bridge proxies the Mattermost app (including websockets).

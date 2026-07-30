@@ -1,7 +1,7 @@
 /**
- * Deterministic org/project → Gameplan Team (community) / Project (space) keys.
+ * Deterministic org/project → Mattermost team / channel keys.
  *
- * Must stay in sync with `frappe-app/indobase_discuss/indobase_discuss/utils/space_map.py`.
+ * Must stay in sync with `apps/studio/lib/api/saas/discuss-launch-shared.ts`.
  */
 
 export type DiscussSpaceMap = {
@@ -33,14 +33,14 @@ function cleanProjectRef(input: string): string {
     .slice(0, 40)
 }
 
-/** Stable team key for an Indobase organization slug. */
+/** Stable Mattermost team `name` for an Indobase organization slug. */
 export function discussTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = cleanSlug(orgSlug)
   if (!cleaned) return 'ib-org-default'
   return `ib-org-${cleaned}`.slice(0, MAX_KEY_LEN)
 }
 
-/** Stable space (GP Project) key for an Indobase project ref. */
+/** Stable Mattermost channel `name` for an Indobase project ref. */
 export function discussSpaceKeyForProjectRef(projectRef: string): string {
   const cleaned = cleanProjectRef(projectRef)
   if (!cleaned) return 'ib-proj-default'
@@ -57,8 +57,8 @@ export function buildDiscussSpaceMap(opts: {
   const projectRef = opts.projectRef.trim()
   const teamKey = discussTeamKeyForOrgSlug(orgSlug)
   const spaceKey = discussSpaceKeyForProjectRef(projectRef)
-  const teamTitle = (opts.organizationName || orgSlug || 'Organization').slice(0, 140)
-  const spaceTitle = (opts.projectName || projectRef || 'Project').slice(0, 140)
+  const teamTitle = (opts.organizationName || orgSlug || 'Organization').slice(0, 64)
+  const spaceTitle = (opts.projectName || projectRef || 'Project').slice(0, 64)
 
   return {
     orgSlug,
@@ -70,7 +70,7 @@ export function buildDiscussSpaceMap(opts: {
   }
 }
 
-/** Gameplan SPA deep link after SSO — upstream serves `/g/{team_key}/{space_key}`. */
-export function gameplanSpacePath(map: DiscussSpaceMap): string {
-  return `/g/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.spaceKey)}`
+/** Deep link after SSO — Mattermost team/channel path. */
+export function discussChannelPath(map: DiscussSpaceMap): string {
+  return `/${encodeURIComponent(map.teamKey)}/channels/${encodeURIComponent(map.spaceKey)}`
 }

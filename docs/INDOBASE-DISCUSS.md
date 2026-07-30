@@ -1,6 +1,6 @@
 # Indobase Discuss — team / org / project async chat
 
-Indobase Discuss (`indobase-discuss/`) gives every organization and project **team chat**: spaces, threads, and pages. The engine is [Gameplan](https://github.com/frappe/gameplan) (AGPL-3.0); customer-facing branding is **Discuss** only — see [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md).
+Indobase Discuss (`indobase-discuss/`) gives every organization and project **team chat**: channels and threads. The engine is [Mattermost](https://github.com/mattermost/mattermost) Team Edition (AGPL-3.0); customer-facing branding is **Discuss** only — see [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md).
 
 | Host (prod) | Host (staging) |
 |---|---|
@@ -12,7 +12,7 @@ Indobase Discuss (`indobase-discuss/`) gives every organization and project **te
 |---|---|
 | Product (chooser, launch, titles) | **Discuss** |
 | Descriptor only | Team chat |
-| Never in UI | Gameplan, Frappe, GP Team/Project labels |
+| Never in UI | Mattermost, Gameplan, Frappe |
 
 Control plane: Vyom **103.190.92.249** (same pattern as Email, Social, Design).
 
@@ -25,50 +25,43 @@ flowchart LR
   Studio["Studio project chooser"]
   Launch["GET /api/platform/projects/:ref/discuss/launch"]
   Bridge["indobase-discuss bridge :8092"]
-  Frappe["Frappe + Gameplan"]
+  MM["Mattermost team-edition"]
   Studio -->|"HS256 JWT in URL fragment"| Launch
   Launch --> Bridge
-  Bridge -->|"/sso/session"| Frappe
-  Frappe -->|"GP Team + GP Project"| Bridge
+  Bridge -->|"Admin API + /users/login"| MM
+  Bridge -->|"HTTP/WS proxy"| MM
 ```
 
 | Layer | Role |
 |---|---|
 | **Studio** | Mints `aud=indobase-discuss` handoff JWT; org role gate (owner/admin/developer/viewer) |
-| **Bridge** | `/sso/launch` fragment exchange, session cookie, optional `/g/*` proxy |
-| **Frappe app** `indobase_discuss` | Verifies JWT, provisions Team/Space, logs user into Gameplan |
-| **Gameplan** | Discussions, threads, tasks, pages (upstream UI at `/g/…`) |
+| **Bridge** | `/sso/launch` fragment exchange, Mattermost session cookies, reverse proxy to upstream |
+| **Mattermost** | Teams, channels, messages (official Docker image — not vendored) |
 
-We deliberately **do not** expose a separate email/password login — Studio session SSO only (same as Email, Social, Design).
+We deliberately **do not** expose a separate email/password login — Studio session SSO only (same as Email, Social, Design). Bridge redirects `/login` and signup routes to Studio.
 
 ---
 
-## Org / project → Space mapping
+## Org / project → team / channel mapping
 
-| Indobase | Gameplan | Stable key |
+| Indobase | Discuss (Mattermost) | Stable key |
 |---|---|---|
-| Organization slug | **GP Team** (community) | `ib-org-{sanitized_org_slug}` |
-| Project ref | **GP Project** (space) | `ib-proj-{sanitized_project_ref}` |
+| Organization slug | **Team** (`name`) | `ib-org-{sanitized_org_slug}` |
+| Project ref | **Channel** (`name`, private) | `ib-proj-{sanitized_project_ref}` |
 
-Implementation is duplicated in three places (must stay in sync):
+Implementation (must stay in sync):
 
 - `indobase-discuss/bridge/src/space-map.ts`
-- `indobase-discuss/frappe-app/.../utils/space_map.py`
 - `apps/studio/lib/api/saas/discuss-launch-shared.ts`
 
-Custom fields on install (`indobase_discuss.install`):
-
-- `GP Team.indobase_team_key`, `indobase_org_slug`
-- `GP Project.indobase_space_key`, `indobase_project_ref`
-
-Deep link after SSO: `/g/{team_key}/{space_key}`.
+Deep link after SSO: `/{team_key}/channels/{space_key}`.
 
 **Role mapping**
 
-| Studio org role | Gameplan role |
+| Studio org role | Team membership |
 |---|---|
-| owner, admin, developer | Gameplan Member (can post) |
-| viewer | Gameplan Guest (read-focused) |
+| owner, admin, developer | `team_user team_admin` (can post) |
+| viewer | `team_user` |
 
 ---
 
@@ -88,7 +81,7 @@ Same shape as other ecosystem products (`product-handoff.ts`):
 | `role` | owner \| admin \| developer \| viewer |
 | `exp` | ~5 minutes |
 
-**Secrets:** `DISCUSS_HANDOFF_SECRET` on Discuss + `STUDIO_HANDOFF_SECRET` (or product-specific) on Studio — minimum 32 chars.
+**Secrets:** `DISCUSS_HANDOFF_SECRET` on Discuss + `STUDIO_HANDOFF_SECRET` (or `DISCUSS_HANDOFF_SECRET`) on Studio — minimum 32 chars.
 
 **Launch URL**
 
@@ -99,9 +92,11 @@ https://discuss.indobase.in/sso/launch?project_ref={ref}&from=studio#token={jwt}
 Flow:
 
 1. Browser loads `/sso/launch` (token in fragment).
-2. Bridge POST `/sso/session` with token.
-3. Bridge calls Frappe `indobase_discuss.api.studio_handoff.exchange` when configured.
-4. Session cookie `indobase_discuss_session` set; redirect to project space.
+2. Bridge `POST /sso/session` with token; verifies HS256 JWT.
+3. Bridge (admin PAT) ensures user + org team + project channel; sets password; calls `/api/v4/users/login`.
+4. Sets `MMAUTHTOKEN` / `MMUSERID` (+ bridge `indobase_discuss_session`); redirects to channel path.
+
+`/sso/health` returns `{ ok, service, audience, version, handoffConfigured, upstreamReady }` — no internal hostnames.
 
 ---
 
@@ -109,19 +104,20 @@ Flow:
 
 ```
 indobase-discuss/
-├── bridge/                 # Node SSO + dev shell + Gameplan proxy
-├── frappe-app/indobase_discuss/  # Handoff + provisioning + rebrand hooks
-├── docker/deploy/          # Compose + Traefik for .249
-└── NOTICE.md               # AGPL attribution
+├── bridge/                      # Node SSO + Mattermost proxy
+│   └── src/mattermost.ts        # Admin API exchange
+├── docker/
+│   ├── bootstrap-mattermost.sh  # First-boot admin PAT → /secrets/admin_token
+│   └── deploy/                  # Compose + Traefik for .249
+└── NOTICE.md                    # AGPL attribution
 ```
 
-Studio integration:
+Studio integration (unchanged contract):
 
 - `apps/studio/lib/api/saas/product-handoff.ts` — `discuss` product entry
 - `apps/studio/lib/api/saas/discuss-launch.ts` — launch helper
 - `apps/studio/pages/api/platform/projects/[ref]/discuss/launch.ts`
-- `ProjectExperienceChooser` — **Discuss** tile (descriptor: team chat)
-- `DiscussSidebarNavItem` — project sidebar SSO entry
+- `ProjectExperienceChooser` / `useDiscussLaunch` / `DiscussSidebarNavItem`
 
 ---
 
@@ -140,25 +136,28 @@ curl -sS http://localhost:8092/sso/health
 
 ```bash
 cd indobase-discuss/docker/deploy
-cp .env.example .env   # set DISCUSS_HANDOFF_SECRET, MARIADB_ROOT_PASSWORD
-docker compose up -d
+cp .env.example .env   # set DISCUSS_HANDOFF_SECRET, POSTGRES_PASSWORD, MATTERMOST_ADMIN_PASSWORD
+docker compose up -d --build
 ```
-
-First Gameplan boot can take several minutes (bench init).
 
 ---
 
-## Deploy checklist for Vyom `.249` (not done in this change)
+## Deploy checklist for Vyom `.249` (manual — not run unless asked)
 
-1. Add DNS: `discuss.indobase.in` / `.fun` → `.249`.
-2. Set `DISCUSS_HANDOFF_SECRET` on Studio Swarm env + Discuss compose (match `STUDIO_HANDOFF_SECRET`).
-3. Deploy compose stack; confirm Traefik router `indobase-discuss`.
-4. Smoke: Studio → **Discuss** → lands on project space; no Gameplan/Frappe strings in title/footer.
-5. Optional CI: add `roshanraghavander/indobase-discuss:<sha>` image build to `docker-publish.yml`.
-6. Gameplan frontend rebrand pass (replace visible "Gameplan" strings in built assets / fixtures) — tracked as follow-up; hooks set `app_icon_title = Discuss`.
+1. DNS: `discuss.indobase.in` / `.fun` → `.249` (not tenant `.248`).
+2. Stop/remove the old Gameplan/Frappe Discuss compose stack and volumes if present (`discuss_bench_sites`, MariaDB).
+3. Set `DISCUSS_HANDOFF_SECRET` on Studio Swarm env + Discuss compose (match `STUDIO_HANDOFF_SECRET`).
+4. `cd /opt/indobase-discuss/docker/deploy` (or sync this tree), `cp .env.example .env`, fill secrets.
+5. `docker compose up -d --build`
+6. Confirm Traefik router `indobase-discuss` → bridge `:8092`.
+7. Smoke: `curl -sS https://discuss.indobase.in/sso/health` → `handoffConfigured` + `upstreamReady`.
+8. Studio → **Discuss** → lands on project channel; no Mattermost/Gameplan/Frappe in title chrome we control.
+9. Optional CI: build `roshanraghavander/indobase-discuss:<sha>` for the bridge image.
+
+**Data migration:** Gameplan → Mattermost is **not** supported. Fresh Discuss; treat prior Gameplan data as abandoned unless a one-off export is requested later.
 
 ---
 
 ## AGPL
 
-Gameplan is AGPL-3.0. We keep upstream LICENSE/NOTICE and ship source access per license. Customer UI must not say "Gameplan" or "Frappe".
+Mattermost is AGPL-3.0. Keep `NOTICE.md` and upstream LICENSE compliance. Customer UI must not say "Mattermost".

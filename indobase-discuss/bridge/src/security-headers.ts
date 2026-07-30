@@ -2,7 +2,7 @@ import type { Context, Next } from 'hono'
 
 /**
  * Baseline transport / framing protections for public product bridges.
- * Intentionally light CSP (`frame-ancestors`) so Frappe SPAs keep working.
+ * Intentionally light CSP (`frame-ancestors`) so the Discuss SPA keeps working.
  */
 export async function securityHeaders(c: Context, next: Next) {
   await next()

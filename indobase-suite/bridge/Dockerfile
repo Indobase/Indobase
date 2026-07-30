@@ -15,5 +15,8 @@ ENV SUITE_VERSION=$GIT_SHA
 COPY package.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
+COPY public ./public
+COPY templates ./templates
+RUN mkdir -p /data/workspace
 EXPOSE 8093
 CMD ["node", "dist/index.js"]

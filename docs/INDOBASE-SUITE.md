@@ -2,150 +2,84 @@
 
 **Product:** **Workspace** — collaboration inside Studio  
 **Customer host:** `workspace.indobase.in` (prod) · `workspace.indobase.fun` (staging)  
-**Upstream:** [Frappe Suite](https://github.com/frappe/suite) (AGPL-3.0), vendored at `indobase-suite/vendor/suite/`  
-**Naming dictionary:** [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md)
+**Upstream editor:** [ONLYOFFICE DocumentServer](https://github.com/ONLYOFFICE/DocumentServer) (AGPL-3.0) via official Docker image — not vendored in-tree. Attribution: `indobase-suite/NOTICE.md`.
 
-Workspace brings Files, Docs, Sheets, Presentations, Meetings, and Calendar into one connected surface per project. It does **not** replace Discuss (team chat) or Design (visual marketing editor).
+Workspace brings Files, Docs, Sheets, and Presentations into one Indobase-branded surface per
+project. Meetings and Calendar are deferred stubs in Phase A. It does **not** replace Discuss
+(team chat) or Design (visual marketing editor).
 
----
-
-## Architecture choice
+## Architecture
 
 | Layer | Location | Role |
 |---|---|---|
 | **Studio control plane** | `apps/studio` | Mint HS256 handoff JWT (`aud=indobase-suite`), org role gate, project chooser + `/project/{ref}/workspace` launcher |
-| **SSO bridge** | `indobase-suite/bridge/` | Verify JWT, session cookie, dev shell, proxy `/s/*` → Frappe Suite when deployed |
-| **Frappe data plane** | `indobase-suite/docker/` | Bench + upstream `suite` app + `indobase_suite` custom app (provisioning + rebrand hooks) |
-| **Edge** | Traefik on Vyom `.249` | TLS + route `workspace.*` → bridge `:8093` |
+| **SSO bridge** | `indobase-suite/bridge/` | Verify JWT, session cookie, file store API, Workspace shell, editor config JWT, proxy `/ds` → DocumentServer |
+| **Document engine** | `onlyoffice/documentserver` container | Collaborative editing (docs / sheets / slides) |
+| **File store** | Docker volume `workspace_files` | Per-project blobs + JSON index on the bridge |
+| **Edge** | Traefik on Vyom `.249` | TLS + route `workspace.*` / `suite.*` → bridge `:8093` |
 
-We mirror the proven **Discuss** pattern (bridge + Frappe custom app + shared handoff contract) rather than embedding Suite inside Studio Next.js — Frappe needs MariaDB, Redis, bench, and a separate Vite frontend build.
-
----
-
-## Module mapping (upstream → customer-facing)
-
-| Upstream (internal only) | Customer name | Studio module id | Deep link (bridge) |
-|---|---|---|---|
-| Drive | **Files** | `files` | `/s/{team}/{project}/files` |
-| Writer | **Docs** | `docs` | `/s/{team}/{project}/docs` |
-| Sheets | **Sheets** | `sheets` | `/s/{team}/{project}/sheets` |
-| Slides | **Presentations** | `presentations` | `/s/{team}/{project}/presentations` |
-| Meet | **Meetings** | `meetings` | `/s/{team}/{project}/meetings` |
-| Mail | **Mail** → **Email** | `mail` | Email SSO, not Suite Mail |
-| Calendar | **Calendar** | `calendar` | `/s/{team}/{project}/calendar` |
-
-Bridge maps Indobase paths to upstream SPA segments when proxying (e.g. `files` → `drive`, `docs` → `writer`).
-
----
-
-## Org / project scoping contract
-
-Deterministic keys (shared by Studio, bridge, Frappe):
-
-| Indobase entity | Key function | Example |
-|---|---|---|
-| `saas.organizations.slug` | `suiteTeamKeyForOrgSlug()` → `ib-ws-org-{slug}` | `ib-ws-org-acme` |
-| `saas.projects.ref` | `suiteProjectKeyForProjectRef()` → `ib-ws-proj-{ref}` | `ib-ws-proj-abc123` |
-
-**Permissions:** same org membership roles as other ecosystem apps — `owner`, `admin`, `developer`, `viewer` (via `saas.organization_members`).
-
-**Provisioning (production):** Frappe `indobase_suite.api.studio_handoff.exchange` creates/links Suite workspace context on first SSO; follow-up work will add DocTypes/custom fields for team/project membership sync (mirroring Discuss Gameplan provisioning).
-
----
-
-## SSO contract
+## Studio SSO contract (unchanged)
 
 | Field | Value |
 |---|---|
-| Algorithm | HS256 HMAC JWT |
 | Audience | `indobase-suite` |
-| TTL | 5 minutes (`HANDOFF_TTL_SECONDS`) |
-| Secret env | `SUITE_HANDOFF_SECRET` (bridge/Frappe) · minted via `STUDIO_HANDOFF_SECRET` fallback in Studio |
+| Secret env | `SUITE_HANDOFF_SECRET` (bridge) · minted via `STUDIO_HANDOFF_SECRET` fallback in Studio |
 | Launch URL | `https://workspace.indobase.in/sso/launch?project_ref=…&from=studio#token=…` |
 | Session | Bridge cookie `indobase_suite_session` (12h) after `/sso/session` POST |
 | Studio API | `GET /api/platform/projects/{ref}/suite/launch?module={optional}` |
 
-Optional `module` query on launch API:
+Module query: `files|docs|sheets|presentations|meetings|calendar` → Workspace deep link;
+`mail` → Email SSO from Studio.
 
-- `mail` → redirects to **Indobase Email** handoff (`aud=indobase-email`)
-- `files|docs|sheets|presentations|meetings|calendar` → appended as `?module=` on Workspace launch URL
+Org/project keys remain `ib-ws-org-{slug}` / `ib-ws-proj-{ref}` for deep links and storage prefixes.
 
----
+## Document editor flow
 
-## Relationship to Email, Design, Discuss
+1. User opens Workspace from Studio → bridge session cookie.
+2. Shell lists files under the project; **New Doc/Sheet/Presentation** seeds a blank OOXML file.
+3. `/editor/:id` builds DocumentServer config (document URL + callback URL with HMAC access tokens)
+   and signs it with `DOCUMENT_JWT_SECRET` (must match DocumentServer `JWT_SECRET`).
+4. Browser loads DocsAPI from `{WORKSPACE_PUBLIC_URL}/ds/...` (bridge reverse-proxy).
+5. DocumentServer fetches content from `BRIDGE_INTERNAL_URL` and posts saves to the callback.
 
-| Product | Relationship |
+## Module map
+
+| Customer name | Behavior |
 |---|---|
-| **Discuss** (`discuss.indobase.in`) | Owns async team chat (Gameplan). Workspace does not include chat. |
-| **Email** (`email.indobase.in`) | Workspace **Mail** tile SSOs to Email — campaigns/transactional mail already covered. Suite Mail is **not** deployed for Indobase customers. |
-| **Design** (`design.indobase.in`) | Canva-class visual editor for posts/brand. **Presentations** default to Workspace Slides for decks; set `NEXT_PUBLIC_WORKSPACE_SLIDES_VIA_DESIGN=true` to open Design instead. No duplicate slide editor in Design for deck-first workflows unless explicitly enabled. |
+| Files / Docs / Sheets / Presentations | Bridge shell + document editor |
+| Mail | Studio → **Email** SSO |
+| Meetings / Calendar | Placeholder copy in shell (MVP) |
 
----
-
-## Local development
-
-### Bridge only (fast path)
+## Local
 
 ```bash
 cd indobase-suite/bridge
-pnpm install
-SUITE_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm dev
-curl -s http://localhost:8093/sso/health | jq
-pnpm test
+SUITE_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm install && pnpm dev
 ```
 
-Studio (with matching secret):
+## Deploy (Vyom `.249`)
 
-```bash
-export SUITE_HANDOFF_SECRET=…   # same value
-export INDOBASE_SUITE_URL=http://localhost:8093
-```
+1. **DNS:** `workspace.indobase.in` / `workspace.indobase.fun` → `.249` (keep `suite.indobase.in` alias if used).
+2. **Secrets:** Align `SUITE_HANDOFF_SECRET` on Studio Swarm + workspace compose (≥32 chars).
+   Set a separate `DOCUMENT_JWT_SECRET` (≥32) shared only by bridge + DocumentServer.
+3. **Compose:** `indobase-suite/docker/deploy/` — `cp .env.example .env`, then `docker compose up -d`.
+4. **Studio env:** `INDOBASE_SUITE_URL=https://workspace.indobase.in` (unchanged).
+5. **Smoke:** `curl -sS https://workspace.indobase.in/sso/health` → `handoffConfigured`, `editorReady`.
+6. **Teardown (one-time):** Stop old Frappe/MariaDB/Redis suite stack and remove volumes
+   `suite_mariadb_data` / `suite_bench_sites` if present — **no Drive data migration**.
 
-Open project → **Workspace** → module tile → SSO redirect.
+Staging-first (from 2026-07-31): validate on `workspace.indobase.fun` before promoting compose/env to prod hosts.
 
-### Full Frappe stack
+## Repo map
 
-```bash
-cd indobase-suite/docker/deploy
-cp .env.example .env
-docker compose up -d
-```
-
-First boot ~10–15 min (`bench get-app suite`, site install). Meet requires a separate mediasoup SFU in production (see upstream `suite/meet/sfu-server/README.md`).
-
----
-
-## Production deploy checklist (Vyom `.249`) — not executed in this task
-
-1. **DNS:** `workspace.indobase.in` / `workspace.indobase.fun` → `.249`
-2. **Secrets:** `SUITE_HANDOFF_SECRET` aligned on Studio Swarm + workspace compose (≥32 chars)
-3. **Compose:** `indobase-suite/docker/deploy/docker-compose.yml` on `.249`; Traefik labels on `suite-bridge`
-4. **Studio env:** `INDOBASE_SUITE_URL=https://workspace.indobase.in`
-5. **CI image (optional):** publish `roshanraghavander/indobase-workspace-bridge:<sha>` from `indobase-suite/bridge/Dockerfile`
-6. **Smoke:** Studio launch → bridge health → module deep link → Files/Docs shell or upstream UI
-7. **Meet SFU:** deploy mediasoup sidecar when Meetings is required in prod
-8. **AGPL:** keep `NOTICE.md` + upstream `license.txt` in deploy artifact
-
----
-
-## Files (this integration)
-
-| Path | Purpose |
+| Path | Notes |
 |---|---|
-| `indobase-suite/` | Bridge, Frappe app stub, Docker, NOTICE |
+| `indobase-suite/bridge/` | SSO + files + shell + `/ds` proxy |
+| `indobase-suite/docker/deploy/` | DocumentServer + bridge Compose |
 | `docs/INDOBASE-SUITE.md` | This document |
-| `apps/studio/lib/api/saas/suite-launch*.ts` | Launch + client-safe module metadata |
-| `apps/studio/lib/api/saas/product-handoff.ts` | Added `suite` product |
-| `apps/studio/pages/api/platform/projects/[ref]/suite/launch.ts` | Launch API |
-| `apps/studio/pages/project/[ref]/workspace.tsx` | Workspace module chooser |
-| `apps/studio/components/.../WorkspaceLauncher.tsx` | UI |
-| `apps/studio/components/.../useSuiteLaunch.ts` | Client hook |
-| `apps/studio/components/.../ProjectExperienceChooser.tsx` | Workspace tile + rail |
+| `apps/studio/.../suite/launch*` | Unchanged handoff contract |
 
----
+## Branding
 
-## Rebrand rules
-
-- Customer chrome: **Workspace**, module names (**Files**, **Docs**, …)
-- Never show: Frappe, Suite, Drive, Writer, Slides, Meet, Mail (upstream), or upstream Calendar product chrome
-- AGPL attribution in repo only (`NOTICE.md`, LICENSE)
+- Customer chrome: **Workspace**, **Files**, **Docs**, **Sheets**, **Presentations**
+- Never show: ONLYOFFICE, DocumentServer, Frappe, Suite, Drive, Writer, Slides, Meet

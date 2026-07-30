@@ -1,15 +1,12 @@
-# Indobase Workspace — production / staging Compose (Vyom .249)
+# Indobase Workspace — DocumentServer + SSO bridge (Vyom .249)
 #
 # Hosts:
-#   prod:    workspace.indobase.in
+#   prod:    workspace.indobase.in  (+ alias suite.indobase.in)
 #   staging: workspace.indobase.fun
 #
-# First boot initializes Frappe bench + Suite (~10–15 min). Bridge serves SSO;
-# Traefik terminates TLS and routes to bridge (which proxies /s/* to Suite).
-#
-# Bench data lives on suite_bench_sites → /home/frappe/persist (full bench, not
-# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
-#   docker run --rm -v indobase-workspace_suite_bench_sites:/v alpine chown -R 1000:1000 /v
+# Traefik → bridge (:8093). Bridge serves Studio SSO, file shell, and proxies
+# the document editor under /ds. Upstream engine is AGPL; customer UI is
+# Indobase Workspace only.
 
 x-default-logging: &logging
   driver: json-file
@@ -21,11 +18,13 @@ x-restart: &restart
   restart: unless-stopped
 
 volumes:
-  suite_mariadb_data:
-  suite_bench_sites:
+  workspace_files:
+  workspace_documentserver_data:
+  workspace_documentserver_logs:
+  workspace_documentserver_db:
 
 networks:
-  suite_net:
+  workspace_net:
     name: indobase-workspace
   traefik_public:
     name: ${TRAEFIK_NETWORK:-dokploy-network}
@@ -34,47 +33,29 @@ networks:
 name: indobase-workspace
 
 services:
-  suite-mariadb:
+  workspace-documentserver:
     <<: *restart
-    image: mariadb:10.6
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
+    image: onlyoffice/documentserver:${DOCUMENT_SERVER_IMAGE_TAG:-8.3.1}
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD}
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${DOCUMENT_JWT_SECRET:?set DOCUMENT_JWT_SECRET}
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: "true"
+      # Allow bridge + public workspace origin to embed / call the editor
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+      USE_UNAUTHORIZED_STORAGE: "true"
     volumes:
-      - suite_mariadb_data:/var/lib/mysql
+      - workspace_documentserver_data:/var/www/onlyoffice/Data
+      - workspace_documentserver_logs:/var/log/onlyoffice
+      - workspace_documentserver_db:/var/lib/postgresql
     networks:
-      - suite_net
-    logging: *logging
-
-  suite-redis:
-    <<: *restart
-    image: redis:7.2-alpine
-    networks:
-      - suite_net
-    logging: *logging
-
-  suite-frappe:
-    <<: *restart
-    image: frappe/bench:latest
-    depends_on:
-      - suite-mariadb
-      - suite-redis
-    environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      SUITE_SITE_NAME: ${SUITE_SITE_NAME:-workspace.localhost}
-      SUITE_ADMIN_PASSWORD: ${SUITE_ADMIN_PASSWORD:-changeme}
-      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET:?set SUITE_HANDOFF_SECRET}
-      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-    volumes:
-      - suite_bench_sites:/home/frappe/persist
-      - ../init-suite.sh:/workspace/init-suite.sh:ro
-      - ../../frappe-app/indobase_suite:/workspace/indobase_suite:ro
-    command: bash /workspace/init-suite.sh
-    networks:
-      - suite_net
+      - workspace_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
     logging: *logging
 
   suite-bridge:
@@ -85,19 +66,26 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
-      - suite-frappe
+      workspace-documentserver:
+        condition: service_healthy
     environment:
       PORT: "8093"
-      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET}
+      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET:?set SUITE_HANDOFF_SECRET}
+      DOCUMENT_JWT_SECRET: ${DOCUMENT_JWT_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-      SUITE_UPSTREAM: http://suite-frappe:8000
-      FRAPPE_STUDIO_HANDOFF_URL: http://suite-frappe:8000/api/method/indobase_suite.api.studio_handoff.exchange
+      WORKSPACE_PUBLIC_URL: ${WORKSPACE_PUBLIC_URL:-https://workspace.indobase.in}
+      BRIDGE_INTERNAL_URL: ${BRIDGE_INTERNAL_URL:-http://suite-bridge:8093}
+      DOCUMENT_SERVER_URL: http://workspace-documentserver
+      DOCUMENT_SERVER_PUBLIC_URL: ${DOCUMENT_SERVER_PUBLIC_URL:-https://workspace.indobase.in/ds}
+      WORKSPACE_DATA_DIR: /data/workspace
       INDOBASE_EMAIL_URL: ${INDOBASE_EMAIL_URL:-https://email.indobase.in}
       INDOBASE_DESIGN_URL: ${INDOBASE_DESIGN_URL:-https://design.indobase.in}
       SUITE_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+    volumes:
+      - workspace_files:/data/workspace
     networks:
-      - suite_net
+      - workspace_net
       - traefik_public
     labels:
       - traefik.enable=true

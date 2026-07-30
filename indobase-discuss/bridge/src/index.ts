@@ -1,10 +1,19 @@
 /**
- * Indobase Discuss — SSO bridge and optional Gameplan proxy.
+ * Indobase Discuss — Studio SSO bridge + Mattermost reverse proxy.
  *
- * Studio hands off to `/sso/launch#token=…`. When `GAMEPLAN_UPSTREAM` is set, authenticated
- * `/g/*` requests proxy to the Frappe Gameplan frontend; otherwise a lightweight dev shell renders.
+ * Studio hands off to `/sso/launch#token=…`. Bridge exchanges the JWT for a
+ * Mattermost browser session (MMAUTHTOKEN) and proxies the app. Customer UI is
+ * branded Indobase Discuss only — no upstream product names in chrome we control.
  */
-import { serve } from '@hono/node-server'
+import { createServer } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { URL } from 'node:url'
+
+import { getRequestListener } from '@hono/node-server'
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
 
@@ -19,7 +28,13 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
-import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
+import {
+  exchangeStudioClaimsForMattermost,
+  isMattermostConfigured,
+  mattermostPing,
+  mattermostSessionCookies,
+} from './mattermost.js'
+import { buildDiscussSpaceMap, discussChannelPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
 type Vars = { session: Session }
@@ -27,28 +42,15 @@ const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
-const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
-const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
+const MATTERMOST_URL = (process.env.MATTERMOST_URL || '').replace(/\/+$/, '')
 
-/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
-function forwardUpstreamCookies(upstream: Response, c: Context) {
-  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
-  const cookies =
-    typeof headers.getSetCookie === 'function'
-      ? headers.getSetCookie()
-      : upstream.headers.get('set-cookie')
-        ? [upstream.headers.get('set-cookie') as string]
-        : []
-  for (const cookie of cookies) {
-    c.res.headers.append('Set-Cookie', cookie)
-  }
-}
-
-function frappeHandoffRedirect(body: {
-  redirect?: string
-  message?: { redirect?: string }
-}): string | undefined {
-  return body.redirect ?? body.message?.redirect
+function isBridgeOwnedPath(pathname: string): boolean {
+  return (
+    pathname === '/healthz' ||
+    pathname === '/api/me' ||
+    pathname.startsWith('/sso/') ||
+    pathname === '/sso'
+  )
 }
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -110,32 +112,48 @@ app.post('/sso/session', async (c) => {
   const claims = verifyStudioHandoff(token, secret)
   if (!claims) return c.json({ error: 'invalid or expired token' }, 401)
 
-  if (FRAPPE_HANDOFF_URL) {
+  const map = buildDiscussSpaceMap({
+    orgSlug: claims.organization_slug,
+    projectRef: claims.project_ref,
+    projectName: claims.project_name,
+    organizationName: claims.organization_name,
+  })
+
+  let redirect = discussChannelPath(map)
+
+  if (isMattermostConfigured()) {
     try {
-      const upstream = await fetch(FRAPPE_HANDOFF_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      })
-      forwardUpstreamCookies(upstream, c)
-      const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || '/' })
+      const mm = await exchangeStudioClaimsForMattermost(claims, map, secret)
+      for (const cookie of mattermostSessionCookies(mm)) {
+        c.res.headers.append('Set-Cookie', cookie)
+      }
+      redirect = mm.redirect
     } catch (err) {
-      console.error('[discuss] frappe handoff failed:', err)
+      console.error('[discuss] upstream handoff failed:', err)
+      return c.json(
+        {
+          error:
+            err instanceof Error && err.message
+              ? err.message
+              : 'Could not open Discuss. Try again from Studio.',
+        },
+        502
+      )
     }
   }
 
   c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  return c.json({ ok: true, redirect: '/' })
+  return c.json({ ok: true, redirect, space: map })
 })
 
 app.post('/sso/logout', (c) => {
   c.header('Set-Cookie', clearSessionCookie())
+  c.res.headers.append('Set-Cookie', 'MMAUTHTOKEN=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0')
+  c.res.headers.append('Set-Cookie', 'MMUSERID=; Path=/; Secure; SameSite=Lax; Max-Age=0')
   return c.json({ ok: true })
 })
 
-app.get('/sso/health', (c) => {
+app.get('/sso/health', async (c) => {
   const body = publicSsoHealth({
     service: 'indobase-discuss',
     audience: AUDIENCE,
@@ -147,10 +165,14 @@ app.get('/sso/health', (c) => {
   } catch {
     body.handoffConfigured = false
   }
+  // Do not leak upstream hostnames — only a boolean readiness bit.
+  ;(body as { upstreamReady?: boolean }).upstreamReady = isMattermostConfigured()
+    ? await mattermostPing()
+    : false
   return c.json(body)
 })
 
-// ── Auth middleware ──────────────────────────────────────────────────────────
+// ── Auth helpers (bridge-owned API only) ─────────────────────────────────────
 
 async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   let secret: string
@@ -166,9 +188,7 @@ async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   await next()
 }
 
-app.use('/api/*', requireSession)
-
-app.get('/api/me', (c) => {
+app.get('/api/me', requireSession, (c) => {
   const s = c.get('session')
   const map = buildDiscussSpaceMap({
     orgSlug: s.orgSlug,
@@ -184,58 +204,22 @@ app.get('/api/me', (c) => {
     canPost: s.canPost,
     studioUrl: s.studioUrl,
     space: map,
-    spacePath: null,
+    channelPath: discussChannelPath(map),
   })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-discuss' }))
 
-// ── Gameplan proxy (production path) ─────────────────────────────────────────
-
-async function proxyGameplan(c: Context) {
-  if (!GAMEPLAN_UPSTREAM) return c.notFound()
-  const url = new URL(c.req.url)
-  const target = `${GAMEPLAN_UPSTREAM}${url.pathname}${url.search}`
-  const headers = new Headers(c.req.raw.headers)
-  headers.delete('host')
-  const res = await fetch(target, {
-    method: c.req.method,
-    headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
-    redirect: 'manual',
-  })
-  return new Response(res.body, { status: res.status, headers: res.headers })
+function isNativeAuthPath(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname === '/signup_user_complete' ||
+    pathname === '/signup_email' ||
+    pathname.startsWith('/signup_')
+  )
 }
 
-app.all('/g/*', proxyGameplan)
-/** Legacy handoff used Gameplan doc-name paths; upstream only serves `/g/{team_key}/{space_key}`. */
-app.all('/community/*', (c) => {
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
-  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
-  const map = buildDiscussSpaceMap({
-    orgSlug: session.orgSlug,
-    projectRef: session.projectRef,
-    projectName: session.projectName,
-    organizationName: session.organizationName,
-  })
-  return c.redirect(gameplanSpacePath(map))
-})
-app.all('/space/*', proxyGameplan)
-app.all('/assets/*', proxyGameplan)
-app.all('/api/method/*', proxyGameplan)
-app.all('/api/resource/*', proxyGameplan)
-/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
-app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
-app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
-
-// ── Dev shell (no Gameplan upstream) ─────────────────────────────────────────
+// ── Dev shell (no Mattermost upstream) ───────────────────────────────────────
 
 function renderShell(session: Session): string {
   const map = buildDiscussSpaceMap({
@@ -244,7 +228,7 @@ function renderShell(session: Session): string {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
-  const path = `/community/{team}/space/{space}`
+  const path = discussChannelPath(map)
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -275,7 +259,7 @@ function renderShell(session: Session): string {
       <hr style="border:none;border-top:1px solid var(--border);margin:20px 0" />
       <dl>
         <dt>Organization</dt><dd><code>${map.orgSlug}</code> → team <code>${map.teamKey}</code></dd>
-        <dt>Project</dt><dd><code>${map.projectRef}</code> → space <code>${map.spaceKey}</code></dd>
+        <dt>Project</dt><dd><code>${map.projectRef}</code> → channel <code>${map.spaceKey}</code></dd>
         <dt>Deep link</dt><dd><code>${path}</code></dd>
         <dt>Role</dt><dd>${session.role}${session.canPost ? '' : ' (view only)'}</dd>
       </dl>
@@ -299,18 +283,125 @@ app.get('/', (c) => {
   const raw = readCookie(c.req.header('cookie'))
   const session = raw ? readSessionToken(raw, secret) : null
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
-  if (GAMEPLAN_UPSTREAM) {
-    return c.redirect('/community')
+  if (MATTERMOST_URL) {
+    const map = buildDiscussSpaceMap({
+      orgSlug: session.orgSlug,
+      projectRef: session.projectRef,
+      projectName: session.projectName,
+      organizationName: session.organizationName,
+    })
+    return c.redirect(discussChannelPath(map))
   }
   return c.html(renderShell(session))
 })
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
+// ── Mattermost HTTP proxy (non-bridge paths) ─────────────────────────────────
 
-const port = Number(process.env.PORT || 8092)
+async function proxyMattermost(c: Context) {
+  if (!MATTERMOST_URL) return c.notFound()
+  const url = new URL(c.req.url)
+  const target = `${MATTERMOST_URL}${url.pathname}${url.search}`
+  const headers = new Headers(c.req.raw.headers)
+  headers.delete('host')
+  const res = await fetch(target, {
+    method: c.req.method,
+    headers,
+    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+    redirect: 'manual',
+  })
+  const outHeaders = new Headers(res.headers)
+  // Avoid leaking upstream server banner where easy.
+  outHeaders.delete('server')
+  outHeaders.delete('x-version-id')
+  return new Response(res.body, { status: res.status, headers: outHeaders })
+}
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`[indobase-discuss] listening on :${port}`)
+app.all('*', async (c, next) => {
+  const path = new URL(c.req.url).pathname
+  if (isBridgeOwnedPath(path)) return next()
+  if (isNativeAuthPath(path)) return c.redirect(`${STUDIO_URL}/sign-in`)
+  if (!MATTERMOST_URL) {
+    if (path === '/') return next()
+    return c.redirect(`${STUDIO_URL}/sign-in`)
+  }
+  return proxyMattermost(c)
 })
+
+// ── Boot (HTTP + WebSocket upgrade to Mattermost) ────────────────────────────
+
+export function startDiscussBridge(listenPort = Number(process.env.PORT || 8092)) {
+  const listener = getRequestListener(app.fetch)
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => listener(req, res))
+
+  server.on('upgrade', (req, socket, head) => {
+    if (!MATTERMOST_URL) {
+      socket.destroy()
+      return
+    }
+    let target: URL
+    try {
+      target = new URL(MATTERMOST_URL)
+    } catch {
+      socket.destroy()
+      return
+    }
+    const isTls = target.protocol === 'https:'
+    const transport = isTls ? httpsRequest : httpRequest
+    const headers = { ...req.headers, host: target.host }
+    const proxyReq = transport({
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port || (isTls ? 443 : 80),
+      path: req.url,
+      method: req.method,
+      headers,
+    })
+    proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
+      const lines = [`HTTP/1.1 101 Switching Protocols`]
+      for (const [k, v] of Object.entries(proxyRes.headers)) {
+        if (v === undefined) continue
+        if (Array.isArray(v)) {
+          for (const item of v) lines.push(`${k}: ${item}`)
+        } else {
+          lines.push(`${k}: ${v}`)
+        }
+      }
+      lines.push('', '')
+      socket.write(lines.join('\r\n'))
+      if (proxyHead.length) socket.write(proxyHead)
+      if (head.length) proxySocket.write(head)
+      proxySocket.pipe(socket)
+      socket.pipe(proxySocket)
+    })
+    proxyReq.on('error', () => {
+      try {
+        socket.destroy()
+      } catch {
+        /* ignore */
+      }
+    })
+    socket.on('error', () => {
+      try {
+        proxyReq.destroy()
+      } catch {
+        /* ignore */
+      }
+    })
+    proxyReq.end()
+  })
+
+  server.listen(listenPort, () => {
+    console.log(`[indobase-discuss] listening on :${listenPort}`)
+  })
+  return server
+}
+
+const isDirectRun =
+  typeof process.argv[1] === 'string' &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+
+if (isDirectRun) {
+  startDiscussBridge()
+}
 
 export default app

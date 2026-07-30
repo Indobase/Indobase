@@ -1,11 +1,11 @@
-# Indobase Workspace — Traefik file provider
+# Indobase Workspace — Traefik file provider (optional; Compose labels cover Swarm/Dokploy)
 #
 # DNS: workspace.indobase.in → Vyom 103.190.92.249
 
 http:
   routers:
     indobase-workspace:
-      rule: Host(`workspace.indobase.in`) || Host(`suite.indobase.in`)
+      rule: Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)
       entryPoints:
         - websecure
       service: indobase-workspace
@@ -15,6 +15,7 @@ http:
           - main: workspace.indobase.in
             sans:
               - suite.indobase.in
+              - workspace.indobase.fun
 
   services:
     indobase-workspace:

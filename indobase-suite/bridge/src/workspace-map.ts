@@ -1,7 +1,7 @@
 /**
  * Deterministic org/project → Workspace team / project keys.
  *
- * Must stay in sync with `frappe-app/indobase_suite/indobase_suite/utils/workspace_map.py`.
+ * Must stay in sync with `apps/studio/lib/api/saas/suite-launch-shared.ts`.
  */
 
 export type WorkspaceMap = {
@@ -70,7 +70,7 @@ export function buildWorkspaceMap(opts: {
   }
 }
 
-/** Workspace home deep link (bridge path; upstream proxy maps /s/*). */
+/** Workspace home deep link (bridge shell). */
 export function workspaceHomePath(map: WorkspaceMap): string {
   return `/s/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.projectKey)}`
 }
