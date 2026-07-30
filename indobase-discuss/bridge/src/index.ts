@@ -19,7 +19,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
-import { buildDiscussSpaceMap } from './space-map.js'
+import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
@@ -198,7 +198,25 @@ async function proxyGameplan(c: Context) {
 }
 
 app.all('/g/*', proxyGameplan)
-app.all('/community/*', proxyGameplan)
+/** Legacy handoff used Gameplan doc-name paths; upstream only serves `/g/{team_key}/{space_key}`. */
+app.all('/community/*', (c) => {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.redirect(`${STUDIO_URL}/sign-in`)
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  const session = raw ? readSessionToken(raw, secret) : null
+  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
+  const map = buildDiscussSpaceMap({
+    orgSlug: session.orgSlug,
+    projectRef: session.projectRef,
+    projectName: session.projectName,
+    organizationName: session.organizationName,
+  })
+  return c.redirect(gameplanSpacePath(map))
+})
 app.all('/space/*', proxyGameplan)
 app.all('/assets/*', proxyGameplan)
 app.all('/api/method/*', proxyGameplan)

@@ -132,9 +132,25 @@ def _ensure_pipeline_marker(pipeline_key: str, title: str, team_key: str, projec
 
 def _ensure_membership(user: str, studio_role: str) -> None:
 	crm_role = _map_crm_role(studio_role)
-	user_doc = frappe.get_doc("User", user)
-	if crm_role not in frappe.get_roles(user):
-		user_doc.add_roles(crm_role)
+	if crm_role in frappe.get_roles(user):
+		return
+	frappe.get_doc(
+		{
+			"doctype": "Has Role",
+			"parent": user,
+			"parenttype": "User",
+			"parentfield": "roles",
+			"role": crm_role,
+		}
+	).insert(ignore_permissions=True)
+
+
+def _ensure_setup_complete() -> None:
+	try:
+		if not frappe.db.get_single_value("System Settings", "setup_complete"):
+			frappe.db.set_single_value("System Settings", "setup_complete", 1)
+	except Exception:
+		pass
 
 
 @frappe.whitelist(allow_guest=True)
@@ -162,6 +178,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 		scope_map["project_ref"],
 	)
 	_ensure_membership(user, studio_role)
+	_ensure_setup_complete()
 
 	frappe.local.login_manager.login_as(user)
 	redirect = crm_pipeline_path(scope_map)

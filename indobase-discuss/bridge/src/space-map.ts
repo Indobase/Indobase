@@ -70,7 +70,7 @@ export function buildDiscussSpaceMap(opts: {
   }
 }
 
-/** Gameplan SPA deep link after SSO (community + space doc names from Frappe). */
-export function gameplanSpacePath(team: string, space: string): string {
-  return `/community/${encodeURIComponent(team)}/space/${encodeURIComponent(space)}`
+/** Gameplan SPA deep link after SSO — upstream serves `/g/{team_key}/{space_key}`. */
+export function gameplanSpacePath(map: DiscussSpaceMap): string {
+  return `/g/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.spaceKey)}`
 }

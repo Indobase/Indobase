@@ -8,6 +8,7 @@ import frappe
 def after_install() -> None:
 	_add_custom_fields()
 	_set_system_branding()
+	_mark_setup_complete()
 
 
 def _add_custom_fields() -> None:
@@ -82,5 +83,13 @@ def _set_system_branding() -> None:
 	try:
 		if frappe.db.exists("DocType", "FCRM Settings"):
 			frappe.db.set_single_value("FCRM Settings", "company_name", "Indobase CRM")
+	except Exception:
+		pass
+
+
+def _mark_setup_complete() -> None:
+	"""Skip Frappe CRM setup wizard — Studio SSO users land on the sales desk."""
+	try:
+		frappe.db.set_single_value("System Settings", "setup_complete", 1)
 	except Exception:
 		pass

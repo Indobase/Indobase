@@ -50,6 +50,6 @@ def build_discuss_space_map(
 	}
 
 
-def gameplan_space_path(team: str, space: str) -> str:
-	"""Gameplan SPA route uses GP Team / GP Project doc names, not indobase keys."""
-	return "/community/" + str(team).strip() + "/space/" + str(space).strip()
+def gameplan_space_path(space_map: dict[str, str]) -> str:
+	"""Gameplan upstream serves scoped deep links at `/g/{team_key}/{space_key}`."""
+	return f"/g/{space_map['team_key']}/{space_map['space_key']}"
