@@ -62,55 +62,50 @@ async function assertWebContainerRuntimeReady(): Promise<void> {
   }
 
   /*
-   * Fail fast when StackBlitz rejects the host (missing/invalid API key → 404) or when
-   * ad/redirect blockers prevent the runtime from loading. Prefer a CORS-aware probe so we
-   * can distinguish 404 from opaque network failures (no-cors always "succeeds" on 404).
+   * NOTE: the network probe that used to run here has been moved to `probeStackBlitzReachability`
+   * and no longer gates the boot. It was reporting "Cannot reach the StackBlitz WebContainer
+   * runtime" on hosts where WebContainer boots perfectly well, because:
+   *
+   *   - `stackblitz.com/headless` is loaded by the SDK as a worker/iframe, not via `fetch`, and does
+   *     not answer CORS preflight for arbitrary origins — so a `mode: 'cors'` fetch rejects with a
+   *     TypeError that is indistinguishable from a real outage.
+   *   - the pinned internal version string made the probe 404 whenever StackBlitz moved it, which
+   *     this code then misreported as "your host was rejected / your key is invalid".
+   *
+   * `WebContainer.boot()` is the only authority on whether the runtime works. Local, deterministic
+   * preconditions (API key present, cross-origin isolation) stay above as hard failures.
    */
+}
+
+/**
+ * Best-effort classification of a boot failure. Never throws and never gates the boot — it only
+ * turns an opaque WebContainer error into something actionable. A 404 here is the one signal that
+ * is genuinely meaningful: StackBlitz answers `/headless` but rejects this host, which means the
+ * key is missing/invalid or the domain is not allowlisted.
+ */
+async function probeStackBlitzReachability(): Promise<string | null> {
   const controller = new AbortController();
   const probeTimer = setTimeout(() => controller.abort(), STACKBLITZ_HEADLESS_PROBE_MS);
-  const apiKey = resolveWebContainerApiKey();
-  const probeUrl = new URL('https://stackblitz.com/headless');
-  probeUrl.searchParams.set('coep', 'credentialless');
-  probeUrl.searchParams.set('version', '1.6.1-internal.1');
-
-  if (apiKey) {
-    probeUrl.searchParams.set('client_id', apiKey);
-  }
 
   try {
-    const response = await fetch(probeUrl.toString(), {
+    // no-cors: we only care whether the host answers at all. The API key is deliberately NOT sent
+    // as a query param — it would put a credential in a cross-origin URL for no diagnostic gain.
+    const response = await fetch('https://stackblitz.com/headless', {
       method: 'GET',
+      mode: 'no-cors',
       credentials: 'omit',
       redirect: 'manual',
       signal: controller.signal,
     });
 
-    // Opaque / CORS-blocked responses still mean the network path works; StackBlitz may omit ACAO.
-    if (response.type === 'opaque' || response.type === 'opaqueredirect') {
-      return;
-    }
-
     if (response.status === 404) {
-      throw new Error(
-        apiKey
-          ? 'StackBlitz rejected this Builder host (headless 404). In the StackBlitz API Console, enable the WebContainer API key and allowlist builder.indobase.in and builder.indobase.fun, then hard-refresh.'
-          : 'StackBlitz WebContainer is unavailable on this host without an API key (headless 404). Set WEBCONTAINER_API_KEY on the Builder service and allowlist this domain.',
-      );
+      return 'StackBlitz rejected this Builder host (404). In the StackBlitz API Console, confirm the WebContainer API key is enabled and that builder.indobase.in / builder.indobase.fun are allowlisted.';
     }
 
-    if (!response.ok && response.status !== 0) {
-      throw new Error(
-        `Cannot reach the StackBlitz WebContainer runtime (HTTP ${response.status}). Disable Redirect Blocker / ad-block for builder.indobase.in, then hard-refresh (Chrome or Edge).`,
-      );
-    }
-  } catch (error) {
-    if (error instanceof Error && /StackBlitz|WebContainer API key/i.test(error.message)) {
-      throw error;
-    }
-
-    throw new Error(
-      'Cannot reach the StackBlitz WebContainer runtime. Disable Redirect Blocker / ad-block extensions for builder.indobase.in, then hard-refresh (Chrome or Edge).',
-    );
+    return null;
+  } catch {
+    // Opaque/blocked responses are expected here and prove nothing. Stay silent.
+    return null;
   } finally {
     clearTimeout(probeTimer);
   }
@@ -303,6 +298,17 @@ function bootWebContainer(): Promise<WebContainer> {
     }
 
     console.error('WebContainer boot failed:', lastError);
+
+    /*
+     * Boot has genuinely failed, so now it is worth asking StackBlitz whether it is rejecting this
+     * host. Advisory only — a null result means "no useful signal", never "everything is fine".
+     */
+    const hostHint = await probeStackBlitzReachability();
+
+    if (hostHint) {
+      webcontainerBootErrorAtom.set(hostHint);
+      throw new Error(hostHint);
+    }
 
     if (isFatalBootConfigError(lastError)) {
       fatalBootConfigError =

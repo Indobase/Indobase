@@ -64,7 +64,6 @@ import { logStore } from './lib/stores/logs';
 import { hydrateClientPrefsFromStorage } from './lib/stores/hydrateClientPrefs';
 import { restoreBuilderSessionOnLoad, startBuilderSessionKeeper } from './lib/indobase/builder-auth.client';
 import { warmWebContainer } from './lib/webcontainer';
-import { WebContainerBootBanner } from './components/WebContainerBootBanner.client';
 import { PostHogAnalytics } from './components/analytics/PostHogAnalytics.client';
 
 async function hydrateBuilderPublicEnv(): Promise<void> {
@@ -159,7 +158,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body suppressHydrationWarning>
         <ClientOnly fallback={null}>{() => <PostHogAnalytics />}</ClientOnly>
-        <ClientOnly fallback={null}>{() => <WebContainerBootBanner />}</ClientOnly>
+        {/*
+          The full-width WebContainer boot banner was removed deliberately. It covered the top of
+          every page with a wall of admin remediation text — API keys, domain allowlists, disabling
+          browser extensions — which is operator detail a founder cannot act on, shown before they
+          had seen anything work. The same failure is still surfaced where it is actionable and in
+          context: the Preview panel names the reason instead of spinning, and the terminal prints
+          it. Do not reintroduce a global banner for this; put boot errors next to the thing that
+          failed.
+        */}
         <ClientOnly fallback={<>{children}</>}>
           {() => <DndProvider backend={HTML5Backend}>{children}</DndProvider>}
         </ClientOnly>
