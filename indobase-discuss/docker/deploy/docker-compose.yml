@@ -77,8 +77,9 @@ services:
       MM_SERVICESETTINGS_ENABLEDEVELOPER: "false"
       MM_SERVICESETTINGS_FORWARDS80TO443: "false"
       MM_TEAMSETTINGS_SITENAME: Indobase Discuss
-      MM_TEAMSETTINGS_ENABLECUSTOMBRAND: "true"
-      MM_TEAMSETTINGS_CUSTOMBRANDTEXT: "Open Discuss from Indobase Studio — Studio is the only sign-in."
+      # SiteName only — CustomBrand image/text can leave a broken/oversized mark on
+      # the login surface; Studio SSO owns branding chrome.
+      MM_TEAMSETTINGS_ENABLECUSTOMBRAND: "false"
       MM_TEAMSETTINGS_CUSTOMDESCRIPTIONTEXT: "Team chat for your Indobase organization and project"
       MM_TEAMSETTINGS_MAXUSERSPERTEAM: "5000"
       MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
@@ -118,7 +119,6 @@ services:
 
   discuss-bootstrap:
     <<: *restart
-    user: "0:0"
     image: mattermost/${MATTERMOST_IMAGE:-mattermost-team-edition}:${MATTERMOST_IMAGE_TAG:-10.5.2}
     depends_on:
       discuss-mattermost:

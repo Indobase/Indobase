@@ -297,22 +297,36 @@ app.get('/', (c) => {
 
 // ── Mattermost HTTP proxy (non-bridge paths) ─────────────────────────────────
 
+/** Strip hop/encoding headers undici has already resolved on the decoded body. */
+export function sanitizeProxiedResponseHeaders(headers: Headers): Headers {
+  const out = new Headers(headers)
+  out.delete('server')
+  out.delete('x-version-id')
+  // undici already decoded gzip/br. Keeping Content-Encoding (and the compressed
+  // Content-Length) makes browsers gunzip plaintext CSS/JS → assets fail → the
+  // Mattermost LoadingScreen SVG pills fill the viewport as giant black shapes.
+  out.delete('content-encoding')
+  out.delete('content-length')
+  return out
+}
+
 async function proxyMattermost(c: Context) {
   if (!MATTERMOST_URL) return c.notFound()
   const url = new URL(c.req.url)
   const target = `${MATTERMOST_URL}${url.pathname}${url.search}`
   const headers = new Headers(c.req.raw.headers)
   headers.delete('host')
+  // Node fetch/undici decompresses responses; do not advertise encodings we
+  // cannot faithfully re-encode when streaming the decoded body.
+  headers.delete('accept-encoding')
   const res = await fetch(target, {
     method: c.req.method,
     headers,
     body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
     redirect: 'manual',
   })
-  const outHeaders = new Headers(res.headers)
-  // Avoid leaking upstream server banner where easy.
-  outHeaders.delete('server')
-  outHeaders.delete('x-version-id')
+  // Clone via sanitize — res.headers is immutable; securityHeaders must .set().
+  const outHeaders = sanitizeProxiedResponseHeaders(res.headers)
   return new Response(res.body, { status: res.status, headers: outHeaders })
 }
 
