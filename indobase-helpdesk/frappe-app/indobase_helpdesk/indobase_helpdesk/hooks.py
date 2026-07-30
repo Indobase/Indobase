@@ -10,3 +10,5 @@ app_license = "AGPLv3"
 app_icon_title = "Helpdesk"
 
 after_install = "indobase_helpdesk.install.after_install"
+
+extend_bootinfo = "indobase_helpdesk.boot.extend_bootinfo"

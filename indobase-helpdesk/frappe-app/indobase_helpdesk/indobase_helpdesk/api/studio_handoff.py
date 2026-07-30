@@ -104,25 +104,9 @@ def _ensure_user(email: str, studio_role: str, full_name: str | None = None) -> 
 	)
 	user.insert(ignore_permissions=True)
 	if is_agent:
-		frappe.get_doc(
-			{
-				"doctype": "Has Role",
-				"parent": email,
-				"parenttype": "User",
-				"parentfield": "roles",
-				"role": HELPDESK_AGENT,
-			}
-		).insert(ignore_permissions=True)
+		frappe.get_doc("User", email).add_roles(HELPDESK_AGENT)
 	else:
-		frappe.get_doc(
-			{
-				"doctype": "Has Role",
-				"parent": email,
-				"parenttype": "User",
-				"parentfield": "roles",
-				"role": HELPDESK_CUSTOMER,
-			}
-		).insert(ignore_permissions=True)
+		frappe.get_doc("User", email).add_roles(HELPDESK_CUSTOMER)
 	return email
 
 
@@ -170,15 +154,7 @@ def _ensure_membership(user: str, studio_role: str) -> None:
 	hd_role = _map_helpdesk_role(studio_role)
 	if hd_role in frappe.get_roles(user):
 		return
-	frappe.get_doc(
-		{
-			"doctype": "Has Role",
-			"parent": user,
-			"parenttype": "User",
-			"parentfield": "roles",
-			"role": hd_role,
-		}
-	).insert(ignore_permissions=True)
+	frappe.get_doc("User", user).add_roles(hd_role)
 
 
 def _ensure_setup_complete() -> None:
@@ -217,6 +193,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 	_ensure_membership(user, studio_role)
 	_ensure_setup_complete()
 
+	frappe.clear_cache(user=user)
 	frappe.local.login_manager.login_as(user)
 	is_agent = studio_role in {"owner", "admin", "developer"}
 	redirect = helpdesk_agent_path(scope_map) if is_agent else helpdesk_portal_path(scope_map)

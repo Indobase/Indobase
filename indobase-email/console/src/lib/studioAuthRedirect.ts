@@ -26,7 +26,10 @@ export function studioMarketingUrl(projectRef?: string | null): string {
   const base = String(studio).replace(/\/+$/, '')
   const ref = projectRef && projectRef.trim() ? projectRef.trim() : null
   if (ref) {
-    return `${base}/project/${encodeURIComponent(ref)}/marketing`
+    // Land on the project page, not /marketing. The Marketing hub route exists but is not
+    // surfaced in the product grid, so sending users there dropped them somewhere they had
+    // no way to navigate to themselves. The project page is where the Email tile actually is.
+    return `${base}/project/${encodeURIComponent(ref)}`
   }
   return `${base}/organizations`
 }

@@ -37,36 +37,26 @@ apps_usable() {
 }
 
 refresh_indobase_app() {
-  if [ -d "${INDOBASE_SRC}" ]; then
-    rm -rf "apps/${INDOBASE_APP}"
-    cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
-    find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
-    if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
-      echo >> sites/apps.txt
-    fi
-    if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
-      echo "${INDOBASE_APP}" >> sites/apps.txt
-    fi
-    ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
-    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
-      bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
-      bench --site "${SITE}" execute "${INDOBASE_APP}.install.after_install" || true
-    fi
-  fi
-}
-
-sync_handoff_secrets() {
-  if [ -z "${HANDOFF_SECRET}" ]; then
-    echo "[${LABEL}] WARN: ${HANDOFF_KEY} unset — Studio SSO handoff will fail until env is set"
+  # Host mounts may be unreadable to uid 1000; never abort bench start on refresh failure.
+  if [ ! -d "${INDOBASE_SRC}" ] || [ ! -r "${INDOBASE_SRC}" ]; then
+    echo "[${LABEL}] warn: ${INDOBASE_SRC} not readable — skipping app refresh"
     return 0
   fi
-  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  mkdir -p "apps/${INDOBASE_APP}"
+  if ! cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"; then
+    echo "[${LABEL}] warn: could not copy ${INDOBASE_APP} — using existing app tree"
+    return 0
+  fi
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
+  if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+    echo "${INDOBASE_APP}" >> sites/apps.txt
+  fi
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
   if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
-    bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-    bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}" || true
-    bench --site "${SITE}" clear-cache || true
+    bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
   fi
 }
 
@@ -74,7 +64,9 @@ start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
   refresh_indobase_app
-  sync_handoff_secrets
+  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
   exec bench start
 }
 
@@ -94,8 +86,8 @@ ensure_apps_and_site() {
   if [ ! -d "apps/${APP_REPO_NAME}" ]; then
     bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}" --branch "${APP_GIT_BRANCH}"
   fi
-  rm -rf "apps/${INDOBASE_APP}"
-  cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+  mkdir -p "apps/${INDOBASE_APP}"
+  cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"
   find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
   if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
     echo >> sites/apps.txt
@@ -107,10 +99,11 @@ ensure_apps_and_site() {
   done
   ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
 
-  # Incomplete site (dir without currentsite / failed install) must be rebuilt.
+  # Never drop an existing site just because currentsite.txt is missing —
+  # that wiped production Helpdesk DBs. Restore the pointer instead.
   if [ -d "sites/${SITE}" ] && [ ! -f "sites/currentsite.txt" ]; then
-    echo "[${LABEL}] incomplete site ${SITE} — dropping for clean recreate"
-    bench drop-site "${SITE}" --force --root-password "${ROOT_PW}" || rm -rf "sites/${SITE}"
+    echo "[${LABEL}] restoring currentsite.txt → ${SITE}"
+    echo "${SITE}" > sites/currentsite.txt
   fi
 
   if [ ! -d "sites/${SITE}" ]; then

@@ -10,3 +10,10 @@ app_license = "AGPLv3"
 app_icon_title = "CRM"
 
 after_install = "indobase_crm.install.after_install"
+
+extend_bootinfo = "indobase_crm.boot.extend_bootinfo"
+
+# Frappe CRM only registers `/crm/<path>` — bare `/crm` 404s without this rule.
+website_route_rules = [
+	{"from_route": "/crm", "to_route": "crm"},
+]

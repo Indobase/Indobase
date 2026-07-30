@@ -8,6 +8,7 @@ import frappe
 def after_install() -> None:
 	_add_custom_fields()
 	_set_system_branding()
+	_mark_setup_complete()
 
 
 def _add_custom_fields() -> None:
@@ -65,5 +66,14 @@ def _set_system_branding() -> None:
 	try:
 		if frappe.db.exists("DocType", "HD Settings"):
 			frappe.db.set_single_value("HD Settings", "brand_name", "Helpdesk")
+	except Exception:
+		pass
+
+
+def _mark_setup_complete() -> None:
+	"""Skip Frappe Helpdesk setup wizard — Studio SSO users land on the agent desk."""
+	try:
+		frappe.db.set_single_value("System Settings", "setup_complete", 1)
+		frappe.db.set_default("setup_complete", "1")
 	except Exception:
 		pass

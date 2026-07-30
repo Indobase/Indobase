@@ -36,37 +36,42 @@ apps_usable() {
     && frappe-bench/env/bin/python -c "import frappe" 2>/dev/null
 }
 
-refresh_indobase_app() {
-  if [ -d "${INDOBASE_SRC}" ]; then
-    rm -rf "apps/${INDOBASE_APP}"
-    cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
-    find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
-    if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
-      echo >> sites/apps.txt
-    fi
-    if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
-      echo "${INDOBASE_APP}" >> sites/apps.txt
-    fi
-    ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
-    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
-      bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
-      bench --site "${SITE}" execute "${INDOBASE_APP}.install.after_install" || true
-    fi
+ensure_crm_frontend_built() {
+  if [ ! -d "apps/${APP_REPO_NAME}/frontend" ]; then
+    return 0
+  fi
+  if [ -f "apps/${APP_REPO_NAME}/crm/public/frontend/index.html" ]; then
+    return 0
+  fi
+  echo "[${LABEL}] building CRM frontend (first boot)…"
+  (cd "apps/${APP_REPO_NAME}" && yarn build) || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" build --app "${APP_REPO_NAME}" || true
+    bench --site "${SITE}" clear-cache || true
   fi
 }
 
-sync_handoff_secrets() {
-  if [ -z "${HANDOFF_SECRET}" ]; then
-    echo "[${LABEL}] WARN: ${HANDOFF_KEY} unset — Studio SSO handoff will fail until env is set"
+refresh_indobase_app() {
+  # Host mounts may be unreadable to uid 1000; never abort bench start on refresh failure.
+  if [ ! -d "${INDOBASE_SRC}" ] || [ ! -r "${INDOBASE_SRC}" ]; then
+    echo "[${LABEL}] warn: ${INDOBASE_SRC} not readable — skipping app refresh"
     return 0
   fi
-  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  mkdir -p "apps/${INDOBASE_APP}"
+  if ! cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"; then
+    echo "[${LABEL}] warn: could not copy ${INDOBASE_APP} — using existing app tree"
+    return 0
+  fi
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
+  if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+    echo "${INDOBASE_APP}" >> sites/apps.txt
+  fi
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
   if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
-    bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-    bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}" || true
-    bench --site "${SITE}" clear-cache || true
+    bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
   fi
 }
 
@@ -74,7 +79,10 @@ start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
   refresh_indobase_app
-  sync_handoff_secrets
+  ensure_crm_frontend_built
+  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+  bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
   exec bench start
 }
 
@@ -97,8 +105,8 @@ ensure_apps_and_site() {
     (cd "apps/${APP_REPO_NAME}" && yarn install --check-files) || \
       bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}" --branch "${APP_GIT_BRANCH}" || true
   fi
-  rm -rf "apps/${INDOBASE_APP}"
-  cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+  mkdir -p "apps/${INDOBASE_APP}"
+  cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"
   find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
   if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
     echo >> sites/apps.txt
@@ -126,6 +134,7 @@ ensure_apps_and_site() {
   bench --site "${SITE}" set-config studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}"
   bench --site "${SITE}" clear-cache
   bench use "${SITE}"
+  ensure_crm_frontend_built
   echo "[${LABEL}] bench ready — starting"
   exec bench start
 }

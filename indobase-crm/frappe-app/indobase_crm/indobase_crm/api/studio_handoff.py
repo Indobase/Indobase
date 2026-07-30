@@ -134,22 +134,19 @@ def _ensure_membership(user: str, studio_role: str) -> None:
 	crm_role = _map_crm_role(studio_role)
 	if crm_role in frappe.get_roles(user):
 		return
-	frappe.get_doc(
-		{
-			"doctype": "Has Role",
-			"parent": user,
-			"parenttype": "User",
-			"parentfield": "roles",
-			"role": crm_role,
-		}
-	).insert(ignore_permissions=True)
+	# `Has Role` is a child table of User. Inserting one standalone does not attach the role —
+	# the row is orphaned and frappe.get_roles() never sees it, so the user reached the app with
+	# no role and got "Access Denied". add_roles() is the supported API (and is what Discuss,
+	# the one product that worked, already used). clear_cache is required because the role cache
+	# is populated for this request before login_as runs below.
+	frappe.get_doc("User", user).add_roles(crm_role)
+	frappe.clear_cache(user=user)
 
 
 def _ensure_setup_complete() -> None:
 	try:
-		if not frappe.db.get_single_value("System Settings", "setup_complete"):
-			frappe.db.set_single_value("System Settings", "setup_complete", 1)
-			frappe.db.set_default("setup_complete", "1")
+		frappe.db.set_single_value("System Settings", "setup_complete", 1)
+		frappe.db.set_default("setup_complete", "1")
 		if frappe.db.exists("DocType", "FCRM Settings"):
 			frappe.db.set_single_value("FCRM Settings", "persona_captured", 1)
 		frappe.db.set_default("crm_demo_data_created", "1")

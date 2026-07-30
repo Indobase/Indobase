@@ -19,6 +19,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
+import { isHtmlContentType, rewriteBrandedHtml } from './brand-html.js'
 import { buildCrmScopeMap, crmPipelinePath, upstreamCrmPath } from './crm-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
@@ -215,7 +216,31 @@ async function proxyCrm(c: Context) {
     body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
     redirect: 'manual',
   })
-  return new Response(res.body, { status: res.status, headers: res.headers })
+
+  // Everything that is not an HTML document streams through untouched: buffering or
+  // editing a JS bundle, stylesheet or binary asset would break the SPA.
+  //
+  // `new Headers(...)` is load-bearing, not tidying. `serve()` swaps in @hono/node-server's
+  // lazy Response, which keeps the exact `headers` object it was handed — passing `res.headers`
+  // straight through hands `securityHeaders` fetch's immutable Headers, and its first
+  // `.set()` throws `TypeError: immutable`, turning every proxied asset into a 500.
+  const rewritable =
+    c.req.method !== 'HEAD' && res.body !== null && isHtmlContentType(res.headers.get('content-type'))
+  if (!rewritable) {
+    return new Response(res.body, { status: res.status, headers: new Headers(res.headers) })
+  }
+
+  const rewritten = rewriteBrandedHtml(await res.text())
+  const outHeaders = new Headers(res.headers)
+  // `res.headers` still describes the bytes on the wire, but undici already decoded the
+  // body and the rewrite changed its length — keeping either header truncates the page.
+  outHeaders.delete('content-encoding')
+  outHeaders.delete('content-length')
+  // Upstream validators describe the upstream entity, not the rebranded one; leaving them
+  // lets a conditional request 304 back to a cached copy that still says "Frappe CRM".
+  outHeaders.delete('etag')
+  outHeaders.delete('last-modified')
+  return new Response(rewritten, { status: res.status, headers: outHeaders })
 }
 
 app.all('/c/*', proxyCrm)

@@ -76,7 +76,8 @@ export function crmPipelinePath(map: CrmScopeMap): string {
   return `/c/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.pipelineKey)}`
 }
 
-const CRM_SPA_ENTRY = '/app/crm'
+/** Frappe CRM website rule requires a path segment; `/crm/leads` is the desk entry. */
+const CRM_SPA_ENTRY = '/crm/leads'
 
 /** Static/API paths must reach Frappe unchanged — do not rewrite to the SPA shell. */
 function passthroughUpstreamPath(bridgePath: string): string | null {
@@ -100,9 +101,12 @@ export function upstreamCrmPath(bridgePath: string): string {
     // Frappe CRM SPA has no client route for ib_pipeline — land on desk entry.
     return CRM_SPA_ENTRY
   }
+  if (bridgePath.startsWith('/app/setup-wizard')) {
+    return CRM_SPA_ENTRY
+  }
   if (bridgePath.startsWith('/crm')) {
     return `${CRM_SPA_ENTRY}${bridgePath.slice('/crm'.length)}`
   }
-  if (bridgePath.startsWith('/app/crm')) return bridgePath
+  if (bridgePath.startsWith('/app/crm')) return CRM_SPA_ENTRY
   return CRM_SPA_ENTRY
 }
