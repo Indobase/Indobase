@@ -72,7 +72,17 @@ if [ -z "$session" ]; then
   code=$(printf '%s\n' "$create" | tail -n1)
   if [ "$code" != "201" ] && [ "$code" != "200" ]; then
     log "create user failed (HTTP $code): $(printf '%s\n' "$create" | sed '$d')"
-    # Retry login in case another replica created the user.
+    SOCKET="${MM_LOCAL_SOCKET:-/shared/mattermost_local.socket}"
+    if [ -S "$SOCKET" ] && [ -x /mattermost/bin/mmctl ]; then
+      log "creating admin via mmctl --local (signup disabled)"
+      /mattermost/bin/mmctl --local --local-socket-path "$SOCKET" user create \
+        --email "$ADMIN_EMAIL" \
+        --username "$ADMIN_USER" \
+        --password "$ADMIN_PASS" \
+        --system-admin \
+        --email-verified >/dev/null || true
+    fi
+    # Retry login in case create succeeded (API or mmctl).
     curl -sS -X POST "$MM_URL/api/v4/users/login" \
       -H "Content-Type: application/json" \
       -D /tmp/mm-login.hdr \
