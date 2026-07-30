@@ -91,5 +91,6 @@ def _mark_setup_complete() -> None:
 	"""Skip Frappe CRM setup wizard — Studio SSO users land on the sales desk."""
 	try:
 		frappe.db.set_single_value("System Settings", "setup_complete", 1)
+		frappe.db.set_default("setup_complete", "1")
 	except Exception:
 		pass

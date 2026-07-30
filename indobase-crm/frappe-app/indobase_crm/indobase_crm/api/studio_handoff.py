@@ -149,6 +149,7 @@ def _ensure_setup_complete() -> None:
 	try:
 		if not frappe.db.get_single_value("System Settings", "setup_complete"):
 			frappe.db.set_single_value("System Settings", "setup_complete", 1)
+			frappe.db.set_default("setup_complete", "1")
 	except Exception:
 		pass
 

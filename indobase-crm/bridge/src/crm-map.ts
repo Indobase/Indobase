@@ -97,11 +97,8 @@ export function upstreamCrmPath(bridgePath: string): string {
   if (passthrough) return passthrough
 
   if (bridgePath.startsWith('/c/')) {
-    const parts = bridgePath.split('/').filter(Boolean)
-    if (parts.length >= 3) {
-      const pipelineKey = decodeURIComponent(parts[2])
-      return `${CRM_SPA_ENTRY}?ib_pipeline=${encodeURIComponent(pipelineKey)}`
-    }
+    // Frappe CRM SPA has no client route for ib_pipeline — land on desk entry.
+    return CRM_SPA_ENTRY
   }
   if (bridgePath.startsWith('/crm')) {
     return `${CRM_SPA_ENTRY}${bridgePath.slice('/crm'.length)}`

@@ -32,10 +32,7 @@ test('buildCrmScopeMap includes titles', () => {
 })
 
 test('upstreamCrmPath maps bridge routes to Frappe CRM SPA entry', () => {
-  assert.equal(
-    upstreamCrmPath('/c/ib-crm-org-acme/ib-crm-proj-xyz123'),
-    '/app/crm?ib_pipeline=ib-crm-proj-xyz123'
-  )
+  assert.equal(upstreamCrmPath('/c/ib-crm-org-acme/ib-crm-proj-xyz123'), '/app/crm')
   assert.equal(upstreamCrmPath('/crm/leads'), '/app/crm/leads')
   assert.equal(upstreamCrmPath('/app/crm'), '/app/crm')
   assert.equal(upstreamCrmPath('/'), '/app/crm')

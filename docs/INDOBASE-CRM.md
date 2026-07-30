@@ -62,7 +62,7 @@ Custom fields on install (`indobase_crm.install`):
 - `CRM Lead.indobase_team_key`, `indobase_pipeline_key`
 - `CRM Deal.indobase_team_key`, `indobase_pipeline_key`
 
-Deep link after SSO: `/c/{team_key}/{pipeline_key}` (bridge proxies to `/crm?ib_pipeline=…` upstream).
+Deep link after SSO: `/c/{team_key}/{pipeline_key}` (bridge proxies to `/app/crm` upstream — no query params).
 
 **Role mapping**
 
