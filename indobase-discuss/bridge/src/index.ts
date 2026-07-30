@@ -28,6 +28,27 @@ const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in
 const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
 const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
 
+/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
+function forwardUpstreamCookies(upstream: Response, c: Context) {
+  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
+  const cookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : upstream.headers.get('set-cookie')
+        ? [upstream.headers.get('set-cookie') as string]
+        : []
+  for (const cookie of cookies) {
+    c.res.headers.append('Set-Cookie', cookie)
+  }
+}
+
+function frappeHandoffRedirect(body: {
+  redirect?: string
+  message?: { redirect?: string }
+}): string | undefined {
+  return body.redirect ?? body.message?.redirect
+}
+
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
 app.get('/sso/launch', (c) =>
@@ -44,7 +65,19 @@ app.get('/sso/launch', (c) =>
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: t })
   });
-  if (!r.ok) { location.replace(${JSON.stringify(STUDIO_URL)} + '/sign-in'); return; }
+  if (!r.ok) {
+    var reason = '';
+    try { reason = ((await r.json()) || {}).error || ''; } catch (_) {}
+    document.body.innerHTML =
+      '<div style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;padding:24px;text-align:center;color:#1e293b">' +
+      '<div style="max-width:34rem"><p style="font-weight:600;margin:0 0 8px">Could not open this workspace</p>' +
+      '<p style="margin:0 0 8px;color:#475569;font-size:14px">' + (reason || ('The handoff was rejected (HTTP ' + r.status + ').')) + '</p>' +
+      (r.status === 401
+        ? '<p style="margin:0 0 16px;color:#64748b;font-size:13px">This usually means the handoff secret does not match between Studio and this service.</p>'
+        : '') +
+      '<a href="' + ${JSON.stringify(STUDIO_URL)} + '" style="font-size:14px;color:#2563eb">Back to Indobase Studio</a></div></div>';
+    return;
+  }
   var dest = '/';
   try {
     var body = await r.json();
@@ -82,30 +115,17 @@ app.post('/sso/session', async (c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
-      const setCookie = upstream.headers.get('set-cookie')
-      if (setCookie) c.header('Set-Cookie', setCookie)
+      forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-      const map = buildDiscussSpaceMap({
-        orgSlug: claims.organization_slug,
-        projectRef: claims.project_ref,
-        projectName: claims.project_name,
-        organizationName: claims.organization_name,
-      })
-      return c.json({ ok: true, redirect: body.redirect || gameplanSpacePath(map) })
+      c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || '/' })
     } catch (err) {
       console.error('[discuss] frappe handoff failed:', err)
     }
   }
 
-  c.header('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  const map = buildDiscussSpaceMap({
-    orgSlug: claims.organization_slug,
-    projectRef: claims.project_ref,
-    projectName: claims.project_name,
-    organizationName: claims.organization_name,
-  })
-  return c.json({ ok: true, redirect: gameplanSpacePath(map) })
+  c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  return c.json({ ok: true, redirect: '/' })
 })
 
 app.post('/sso/logout', (c) => {
@@ -166,7 +186,7 @@ app.get('/api/me', (c) => {
     canPost: s.canPost,
     studioUrl: s.studioUrl,
     space: map,
-    spacePath: gameplanSpacePath(map),
+    spacePath: null,
   })
 })
 
@@ -190,7 +210,29 @@ async function proxyGameplan(c: Context) {
 }
 
 app.all('/g/*', proxyGameplan)
+/** Legacy handoff used Gameplan doc-name paths; upstream only serves `/g/{team_key}/{space_key}`. */
+app.all('/community/*', (c) => {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.redirect(`${STUDIO_URL}/sign-in`)
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  const session = raw ? readSessionToken(raw, secret) : null
+  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
+  const map = buildDiscussSpaceMap({
+    orgSlug: session.orgSlug,
+    projectRef: session.projectRef,
+    projectName: session.projectName,
+    organizationName: session.organizationName,
+  })
+  return c.redirect(gameplanSpacePath(map))
+})
+app.all('/space/*', proxyGameplan)
 app.all('/assets/*', proxyGameplan)
+app.all('/api/method/*', proxyGameplan)
+app.all('/api/resource/*', proxyGameplan)
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
@@ -204,7 +246,7 @@ function renderShell(session: Session): string {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
-  const path = gameplanSpacePath(map)
+  const path = `/community/{team}/space/{space}`
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -260,13 +302,7 @@ app.get('/', (c) => {
   const session = raw ? readSessionToken(raw, secret) : null
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
   if (GAMEPLAN_UPSTREAM) {
-    const map = buildDiscussSpaceMap({
-      orgSlug: session.orgSlug,
-      projectRef: session.projectRef,
-      projectName: session.projectName,
-      organizationName: session.organizationName,
-    })
-    return c.redirect(gameplanSpacePath(map))
+    return c.redirect('/community')
   }
   return c.html(renderShell(session))
 })

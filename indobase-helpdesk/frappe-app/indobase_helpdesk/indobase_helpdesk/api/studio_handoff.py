@@ -103,15 +103,40 @@ def _ensure_user(email: str, studio_role: str, full_name: str | None = None) -> 
 		}
 	)
 	user.insert(ignore_permissions=True)
+	if is_agent:
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": email,
+				"parenttype": "User",
+				"parentfield": "roles",
+				"role": HELPDESK_AGENT,
+			}
+		).insert(ignore_permissions=True)
+	else:
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": email,
+				"parenttype": "User",
+				"parentfield": "roles",
+				"role": HELPDESK_CUSTOMER,
+			}
+		).insert(ignore_permissions=True)
 	return email
 
 
-def _ensure_hd_team(team_key: str, title: str, org_slug: str) -> str | None:
+def _ensure_hd_team(team_key: str, title: str, org_slug: str, user: str) -> str | None:
 	if not frappe.db.exists("DocType", "HD Team"):
 		return None
 
 	existing = frappe.db.get_value("HD Team", {"indobase_team_key": team_key}, "name")
 	if existing:
+		doc = frappe.get_doc("HD Team", existing)
+		member_users = {row.user for row in doc.users}
+		if user and user not in member_users:
+			doc.append("users", {"user": user})
+			doc.save(ignore_permissions=True)
 		return existing
 
 	doc = frappe.get_doc(
@@ -120,6 +145,7 @@ def _ensure_hd_team(team_key: str, title: str, org_slug: str) -> str | None:
 			"team_name": title,
 			"indobase_team_key": team_key,
 			"indobase_org_slug": org_slug,
+			"users": [{"user": user}],
 		}
 	)
 	doc.insert(ignore_permissions=True)
@@ -142,9 +168,26 @@ def _ensure_queue_marker(queue_key: str, title: str, team_key: str, project_ref:
 
 def _ensure_membership(user: str, studio_role: str) -> None:
 	hd_role = _map_helpdesk_role(studio_role)
-	user_doc = frappe.get_doc("User", user)
-	if hd_role not in frappe.get_roles(user):
-		user_doc.add_roles(hd_role)
+	if hd_role in frappe.get_roles(user):
+		return
+	frappe.get_doc(
+		{
+			"doctype": "Has Role",
+			"parent": user,
+			"parenttype": "User",
+			"parentfield": "roles",
+			"role": hd_role,
+		}
+	).insert(ignore_permissions=True)
+
+
+def _ensure_setup_complete() -> None:
+	try:
+		if not frappe.db.get_single_value("System Settings", "setup_complete"):
+			frappe.db.set_single_value("System Settings", "setup_complete", 1)
+			frappe.db.set_default("setup_complete", "1")
+	except Exception:
+		pass
 
 
 @frappe.whitelist(allow_guest=True)
@@ -164,7 +207,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 	)
 
 	user = _ensure_user(email, studio_role)
-	_ensure_hd_team(scope_map["team_key"], scope_map["team_title"], scope_map["org_slug"])
+	_ensure_hd_team(scope_map["team_key"], scope_map["team_title"], scope_map["org_slug"], user)
 	_ensure_queue_marker(
 		scope_map["queue_key"],
 		scope_map["queue_title"],
@@ -172,6 +215,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 		scope_map["project_ref"],
 	)
 	_ensure_membership(user, studio_role)
+	_ensure_setup_complete()
 
 	frappe.local.login_manager.login_as(user)
 	is_agent = studio_role in {"owner", "admin", "developer"}

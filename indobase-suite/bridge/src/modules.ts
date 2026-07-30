@@ -90,32 +90,41 @@ export function modulePath(map: WorkspaceMap, moduleId: SuiteModuleId): string {
   return `${home}/${mod.segment}`
 }
 
-/** Map bridge paths to upstream Frappe Suite SPA routes when proxying. */
+/** Upstream Frappe Suite SPA prefixes (flat routes — no org/project in URL). */
+export const SUITE_UPSTREAM_PREFIXES = [
+  '/suite',
+  '/drive',
+  '/writer',
+  '/sheets',
+  '/slides',
+  '/meet',
+  '/calendar',
+] as const
+
+const UPSTREAM_BY_MODULE: Record<string, string> = {
+  files: '/drive',
+  docs: '/writer',
+  sheets: '/sheets',
+  presentations: '/slides',
+  meetings: '/meet',
+  calendar: '/calendar',
+}
+
+/** Map bridge `/s/*` deep links to upstream Frappe Suite SPA routes when proxying. */
 export function upstreamSuitePath(bridgePath: string): string {
   const prefix = '/s/'
   if (!bridgePath.startsWith(prefix)) return bridgePath
 
   const rest = bridgePath.slice(prefix.length)
-  const [teamKey, projectKey, ...segments] = rest.split('/').map(decodeURIComponent)
+  const segments = rest.split('/').map(decodeURIComponent)
+  const moduleSegment = segments[2] || ''
 
-  if (!teamKey || !projectKey) return '/'
-
-  const segment = segments[0] || ''
-  const upstreamSegment: Record<string, string> = {
-    '': '',
-    files: 'drive',
-    docs: 'writer',
-    sheets: 'sheets',
-    presentations: 'slides',
-    meetings: 'meet',
-    calendar: 'calendar',
+  if (moduleSegment && UPSTREAM_BY_MODULE[moduleSegment]) {
+    return UPSTREAM_BY_MODULE[moduleSegment]
   }
 
-  const mapped = upstreamSegment[segment] ?? segment
-  if (!mapped) {
-    return `/suite/${teamKey}/${projectKey}`
-  }
-  return `/suite/${teamKey}/${projectKey}/${mapped}`
+  // Suite SPA launcher — `/suite/{team}/{project}` is not a valid client route.
+  return '/suite'
 }
 
 export function listModulesForApi(): Array<{

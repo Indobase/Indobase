@@ -121,6 +121,16 @@ def _ensure_team(team_key: str, title: str, org_slug: str) -> str:
 def _ensure_space(space_key: str, title: str, team: str, project_ref: str) -> str:
 	existing = frappe.db.get_value("GP Project", {"indobase_space_key": space_key}, "name")
 	if existing:
+		doc = frappe.get_doc("GP Project", existing)
+		changed = False
+		if doc.team != team:
+			doc.team = team
+			changed = True
+		if project_ref and doc.get("indobase_project_ref") != project_ref:
+			doc.indobase_project_ref = project_ref
+			changed = True
+		if changed:
+			doc.save(ignore_permissions=True)
 		return existing
 
 	doc = frappe.get_doc(
@@ -177,4 +187,9 @@ def exchange(token: str | None = None) -> dict[str, str]:
 
 	frappe.local.login_manager.login_as(user)
 	redirect = gameplan_space_path(space_map)
-	return {"redirect": redirect, "email": email, "space_key": space_map["space_key"]}
+	return {
+		"redirect": redirect,
+		"email": email,
+		"space_key": space_map["space_key"],
+		"team_key": space_map["team_key"],
+	}
