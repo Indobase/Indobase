@@ -148,25 +148,30 @@ export function resolveProductBaseUrl(product: HandoffProduct): string {
 /**
  * Shared HMAC secret with the product.
  *
- * Order matters and is deliberate: the product-specific secret wins, then the shared Studio secret,
- * then the platform JWT secrets as a last resort. Previously each product had its own ad-hoc chain
- * that also listed *other products'* secrets (e.g. Design fell back to `EMAIL_HANDOFF_SECRET`),
- * which could hand two products the same key or pick an unrelated one. Cross-product fallbacks are
- * intentionally not carried over.
+ * This chain MUST stay identical to the one every product bridge uses to verify:
  *
- * Throws rather than returning a weak secret — a short key must never silently downgrade signing.
+ *     {PRODUCT}_HANDOFF_SECRET  →  STUDIO_HANDOFF_SECRET
+ *
+ * It previously also fell back to `AUTH_JWT_SECRET` and then `JWT_SECRET`. Those are Studio's own
+ * platform secrets and are always set in production, while no bridge has them in its chain — so
+ * whenever both handoff secrets were unset, Studio silently signed with a key the product could
+ * never verify. Both sides then reported themselves correctly configured, every token failed
+ * verification with a bare 401, and the user was bounced to the sign-in page with no explanation.
+ * A handoff secret is a *shared* secret; falling back to a value only one side can know is never
+ * correct, so an unset secret must fail loudly here instead.
+ *
+ * Also throws on a short key — a weak secret must never silently downgrade signing.
  */
 export function resolveProductHandoffSecret(product: HandoffProduct): string {
   const upper = product.toUpperCase()
   const secret =
-    process.env[`${upper}_HANDOFF_SECRET`]?.trim() ||
-    process.env.STUDIO_HANDOFF_SECRET?.trim() ||
-    process.env.AUTH_JWT_SECRET?.trim() ||
-    process.env.JWT_SECRET?.trim() ||
-    ''
+    process.env[`${upper}_HANDOFF_SECRET`]?.trim() || process.env.STUDIO_HANDOFF_SECRET?.trim() || ''
 
   if (secret.length < 32) {
-    throw new Error(`Missing/invalid ${product} handoff secret (must be >= 32 chars)`)
+    throw new Error(
+      `Missing/invalid ${product} handoff secret. Set ${upper}_HANDOFF_SECRET (or STUDIO_HANDOFF_SECRET) ` +
+        `to the same >=32 char value on both Studio and the ${product} service.`
+    )
   }
 
   return secret

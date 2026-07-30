@@ -65,7 +65,19 @@ app.get('/sso/launch', (c) =>
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: t })
   });
-  if (!r.ok) { location.replace(${JSON.stringify(STUDIO_URL)} + '/sign-in'); return; }
+  if (!r.ok) {
+    var reason = '';
+    try { reason = ((await r.json()) || {}).error || ''; } catch (_) {}
+    document.body.innerHTML =
+      '<div style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;padding:24px;text-align:center;color:#1e293b">' +
+      '<div style="max-width:34rem"><p style="font-weight:600;margin:0 0 8px">Could not open this workspace</p>' +
+      '<p style="margin:0 0 8px;color:#475569;font-size:14px">' + (reason || ('The handoff was rejected (HTTP ' + r.status + ').')) + '</p>' +
+      (r.status === 401
+        ? '<p style="margin:0 0 16px;color:#64748b;font-size:13px">This usually means the handoff secret does not match between Studio and this service.</p>'
+        : '') +
+      '<a href="' + ${JSON.stringify(STUDIO_URL)} + '" style="font-size:14px;color:#2563eb">Back to Indobase Studio</a></div></div>';
+    return;
+  }
   var dest = '/';
   try {
     var body = await r.json();

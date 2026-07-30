@@ -181,6 +181,15 @@ def _ensure_membership(user: str, studio_role: str) -> None:
 	).insert(ignore_permissions=True)
 
 
+def _ensure_setup_complete() -> None:
+	try:
+		if not frappe.db.get_single_value("System Settings", "setup_complete"):
+			frappe.db.set_single_value("System Settings", "setup_complete", 1)
+			frappe.db.set_default("setup_complete", "1")
+	except Exception:
+		pass
+
+
 @frappe.whitelist(allow_guest=True)
 def exchange(token: str | None = None) -> dict[str, str]:
 	"""Verify Studio JWT, provision team/queue scope, log user in, return redirect path."""
@@ -206,6 +215,7 @@ def exchange(token: str | None = None) -> dict[str, str]:
 		scope_map["project_ref"],
 	)
 	_ensure_membership(user, studio_role)
+	_ensure_setup_complete()
 
 	frappe.local.login_manager.login_as(user)
 	is_agent = studio_role in {"owner", "admin", "developer"}

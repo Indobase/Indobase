@@ -71,6 +71,25 @@ function redirectForSession(session: Session): string {
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Frappe login sets multiple cookies (sid, system_user, …) and `headers.get('set-cookie')` returns
+ * only the first. Forward all of them, and append rather than assign — `c.header()` replaces, so
+ * setting the bridge's own cookie afterwards used to discard Frappe's `sid` entirely. The SPA then
+ * booted with no Frappe session and rendered a blank page.
+ */
+function forwardUpstreamCookies(upstream: Response, c: Context) {
+  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
+  const cookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : upstream.headers.get('set-cookie')
+        ? [upstream.headers.get('set-cookie') as string]
+        : []
+  for (const cookie of cookies) {
+    c.res.headers.append('Set-Cookie', cookie)
+  }
+}
+
 app.get('/sso/launch', (c) =>
   c.html(`<!doctype html><meta charset="utf-8"><title>Opening Indobase Helpdesk…</title>
 <body style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#1e293b;background:#f8fafc">
@@ -85,7 +104,19 @@ app.get('/sso/launch', (c) =>
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: t })
   });
-  if (!r.ok) { location.replace(${JSON.stringify(STUDIO_URL)} + '/sign-in'); return; }
+  if (!r.ok) {
+    var reason = '';
+    try { reason = ((await r.json()) || {}).error || ''; } catch (_) {}
+    document.body.innerHTML =
+      '<div style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;padding:24px;text-align:center;color:#1e293b">' +
+      '<div style="max-width:34rem"><p style="font-weight:600;margin:0 0 8px">Could not open this workspace</p>' +
+      '<p style="margin:0 0 8px;color:#475569;font-size:14px">' + (reason || ('The handoff was rejected (HTTP ' + r.status + ').')) + '</p>' +
+      (r.status === 401
+        ? '<p style="margin:0 0 16px;color:#64748b;font-size:13px">This usually means the handoff secret does not match between Studio and this service.</p>'
+        : '') +
+      '<a href="' + ${JSON.stringify(STUDIO_URL)} + '" style="font-size:14px;color:#2563eb">Back to Indobase Studio</a></div></div>';
+    return;
+  }
   var dest = '/';
   try {
     var body = await r.json();

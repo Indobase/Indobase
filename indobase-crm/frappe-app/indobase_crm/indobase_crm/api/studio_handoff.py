@@ -150,6 +150,9 @@ def _ensure_setup_complete() -> None:
 		if not frappe.db.get_single_value("System Settings", "setup_complete"):
 			frappe.db.set_single_value("System Settings", "setup_complete", 1)
 			frappe.db.set_default("setup_complete", "1")
+		if frappe.db.exists("DocType", "FCRM Settings"):
+			frappe.db.set_single_value("FCRM Settings", "persona_captured", 1)
+		frappe.db.set_default("crm_demo_data_created", "1")
 	except Exception:
 		pass
 
