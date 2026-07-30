@@ -20,34 +20,15 @@ import {
   type Session,
 } from './auth.js'
 import { buildCrmScopeMap, crmPipelinePath, upstreamCrmPath } from './crm-map.js'
+import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const CRM_UPSTREAM = (process.env.CRM_UPSTREAM || '').replace(/\/+$/, '')
 const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
-
-/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
-function forwardUpstreamCookies(upstream: Response, c: Context) {
-  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
-  const cookies =
-    typeof headers.getSetCookie === 'function'
-      ? headers.getSetCookie()
-      : upstream.headers.get('set-cookie')
-        ? [upstream.headers.get('set-cookie') as string]
-        : []
-  for (const cookie of cookies) {
-    c.res.headers.append('Set-Cookie', cookie)
-  }
-}
-
-function frappeHandoffRedirect(body: {
-  redirect?: string
-  message?: { redirect?: string }
-}): string | undefined {
-  return body.redirect ?? body.message?.redirect
-}
 
 function scopeFromSession(session: Session) {
   return buildCrmScopeMap({
@@ -154,7 +135,7 @@ app.post('/sso/session', async (c) => {
       })
       forwardUpstreamCookies(upstream, c)
       const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      if (frappeHandoffRedirect(body)) redirect = frappeHandoffRedirect(body)!
+      if (body.redirect) redirect = body.redirect
     } catch (err) {
       console.error('[crm] frappe handoff failed:', err)
     }
@@ -169,24 +150,20 @@ app.post('/sso/logout', (c) => {
   return c.json({ ok: true })
 })
 
-app.get('/sso/health', (c) =>
-  c.json({
-    ok: true,
+app.get('/sso/health', (c) => {
+  const body = publicSsoHealth({
     service: 'indobase-crm',
     audience: AUDIENCE,
-    version: process.env.CRM_VERSION || process.env.GIT_SHA || 'dev',
-    studioUrl: STUDIO_URL,
-    crmUpstream: CRM_UPSTREAM || null,
-    handoffConfigured: (() => {
-      try {
-        resolveHandoffSecret()
-        return true
-      } catch {
-        return false
-      }
-    })(),
+    versionEnvKeys: ['CRM_VERSION', 'GIT_SHA'],
   })
-)
+  try {
+    resolveHandoffSecret()
+    body.handoffConfigured = true
+  } catch {
+    body.handoffConfigured = false
+  }
+  return c.json(body)
+})
 
 // ── Auth middleware ──────────────────────────────────────────────────────────
 

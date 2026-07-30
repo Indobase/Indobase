@@ -83,6 +83,8 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - crm-frappe
     environment:
@@ -91,7 +93,8 @@ services:
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       CRM_UPSTREAM: http://crm-frappe:8000
       FRAPPE_STUDIO_HANDOFF_URL: http://crm-frappe:8000/api/method/indobase_crm.api.studio_handoff.exchange
-      CRM_VERSION: ${CRM_VERSION:-dev}
+      CRM_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
     networks:
       - crm_net
       - traefik_public

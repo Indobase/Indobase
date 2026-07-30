@@ -141,8 +141,13 @@ export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
 
   if (!runtimePublicEnvBootstrap) {
     runtimePublicEnvBootstrap = (async () => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 8_000)
       try {
-        const response = await fetch(configUrl, { credentials: 'same-origin' })
+        const response = await fetch(configUrl, {
+          credentials: 'same-origin',
+          signal: controller.signal,
+        })
         if (!response.ok) return
 
         const json = (await response.json()) as {
@@ -164,6 +169,8 @@ export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
         }
       } catch {
         // Best-effort; auth may still work when build-time public env is correct.
+      } finally {
+        clearTimeout(timer)
       }
     })()
   }

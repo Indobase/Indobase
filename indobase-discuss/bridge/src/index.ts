@@ -20,9 +20,11 @@ import {
   type Session,
 } from './auth.js'
 import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
+import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
@@ -133,24 +135,20 @@ app.post('/sso/logout', (c) => {
   return c.json({ ok: true })
 })
 
-app.get('/sso/health', (c) =>
-  c.json({
-    ok: true,
+app.get('/sso/health', (c) => {
+  const body = publicSsoHealth({
     service: 'indobase-discuss',
     audience: AUDIENCE,
-    version: process.env.DISCUSS_VERSION || process.env.GIT_SHA || 'dev',
-    studioUrl: STUDIO_URL,
-    gameplanUpstream: GAMEPLAN_UPSTREAM || null,
-    handoffConfigured: (() => {
-      try {
-        resolveHandoffSecret()
-        return true
-      } catch {
-        return false
-      }
-    })(),
+    versionEnvKeys: ['DISCUSS_VERSION', 'GIT_SHA'],
   })
-)
+  try {
+    resolveHandoffSecret()
+    body.handoffConfigured = true
+  } catch {
+    body.handoffConfigured = false
+  }
+  return c.json(body)
+})
 
 // ── Auth middleware ──────────────────────────────────────────────────────────
 

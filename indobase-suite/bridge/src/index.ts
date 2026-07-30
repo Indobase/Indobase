@@ -20,10 +20,12 @@ import {
   type Session,
 } from './auth.js'
 import { isSuiteModuleId, listModulesForApi, modulePath, SUITE_UPSTREAM_PREFIXES, upstreamSuitePath } from './modules.js'
+import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { buildWorkspaceMap, workspaceHomePath } from './workspace-map.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const SUITE_UPSTREAM = (process.env.SUITE_UPSTREAM || '').replace(/\/+$/, '')
@@ -186,25 +188,21 @@ app.post('/sso/logout', (c) => {
   return c.json({ ok: true })
 })
 
-app.get('/sso/health', (c) =>
-  c.json({
-    ok: true,
+app.get('/sso/health', (c) => {
+  const body = publicSsoHealth({
     service: 'indobase-workspace',
     audience: AUDIENCE,
-    version: process.env.SUITE_VERSION || process.env.GIT_SHA || 'dev',
-    studioUrl: STUDIO_URL,
-    suiteUpstream: SUITE_UPSTREAM || null,
-    handoffConfigured: (() => {
-      try {
-        resolveHandoffSecret()
-        return true
-      } catch {
-        return false
-      }
-    })(),
-    modules: listModulesForApi(),
+    versionEnvKeys: ['SUITE_VERSION', 'GIT_SHA'],
+    extra: { modules: listModulesForApi() },
   })
-)
+  try {
+    resolveHandoffSecret()
+    body.handoffConfigured = true
+  } catch {
+    body.handoffConfigured = false
+  }
+  return c.json(body)
+})
 
 // ── Suite upstream proxy (production path) ─────────────────────────────────────
 

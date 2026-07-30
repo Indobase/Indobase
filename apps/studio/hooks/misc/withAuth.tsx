@@ -88,9 +88,11 @@ export function withAuth<T>(
 
     useEffect(() => {
       // Only warn when GoTrue session restore stalls — not when MFA/AAL is slow.
+      // After the timeout, force sign-in so founders are not stuck on an infinite LogoLoader.
       if (!isAuthReady) {
         timeoutIdRef.current = setTimeout(() => {
           setIsSessionTimeoutModalOpen(true)
+          redirectToSignIn()
         }, MAX_TIMEOUT)
       } else {
         if (timeoutIdRef.current) {
@@ -105,7 +107,7 @@ export function withAuth<T>(
           clearTimeout(timeoutIdRef.current)
         }
       }
-    }, [isAuthReady, router, redirectToSignIn])
+    }, [isAuthReady, redirectToSignIn])
 
     const isCorrectLevel = options.useHighestAAL
       ? aalData?.currentLevel === aalData?.nextLevel

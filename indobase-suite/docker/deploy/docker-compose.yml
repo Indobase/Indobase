@@ -82,6 +82,8 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - suite-frappe
     environment:
@@ -92,7 +94,8 @@ services:
       FRAPPE_STUDIO_HANDOFF_URL: http://suite-frappe:8000/api/method/indobase_suite.api.studio_handoff.exchange
       INDOBASE_EMAIL_URL: ${INDOBASE_EMAIL_URL:-https://email.indobase.in}
       INDOBASE_DESIGN_URL: ${INDOBASE_DESIGN_URL:-https://design.indobase.in}
-      SUITE_VERSION: ${SUITE_VERSION:-dev}
+      SUITE_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
     networks:
       - suite_net
       - traefik_public

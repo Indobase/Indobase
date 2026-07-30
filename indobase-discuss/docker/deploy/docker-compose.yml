@@ -4,9 +4,6 @@
 #   prod:    discuss.indobase.in
 #   staging: discuss.indobase.fun
 #
-# First boot initializes Frappe bench + Gameplan (~5–10 min). Bridge serves SSO;
-# Traefik terminates TLS and routes to bridge (which proxies /g/* to Gameplan).
-#
 # Bench data lives on discuss_bench_sites → /home/frappe/persist (full bench, not
 # sites-only). Host must chown the volume to uid/gid 1000 before first boot:
 #   docker run --rm -v indobase-discuss_discuss_bench_sites:/v alpine chown -R 1000:1000 /v
@@ -82,6 +79,8 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - discuss-gameplan
     environment:
@@ -90,15 +89,15 @@ services:
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       GAMEPLAN_UPSTREAM: http://discuss-gameplan:8000
       FRAPPE_STUDIO_HANDOFF_URL: http://discuss-gameplan:8000/api/method/indobase_discuss.api.studio_handoff.exchange
-      DISCUSS_VERSION: ${DISCUSS_VERSION:-dev}
+      DISCUSS_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
     networks:
       - discuss_net
       - traefik_public
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      # Prod default is .indobase.in only — include .fun only when that DNS exists (avoids LE NXDOMAIN + rate limits).
-      - traefik.http.routers.indobase-discuss.rule=${DISCUSS_TRAEFIK_RULE:-Host(`discuss.indobase.in`)}
+      - traefik.http.routers.indobase-discuss.rule=${DISCUSS_TRAEFIK_RULE:-Host(`discuss.indobase.in`) || Host(`discuss.indobase.fun`)}
       - traefik.http.routers.indobase-discuss.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-discuss.tls=true
       - traefik.http.routers.indobase-discuss.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}

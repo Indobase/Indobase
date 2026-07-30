@@ -83,6 +83,8 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - helpdesk-frappe
     environment:
@@ -91,7 +93,8 @@ services:
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       HELPDESK_UPSTREAM: http://helpdesk-frappe:8000
       FRAPPE_STUDIO_HANDOFF_URL: http://helpdesk-frappe:8000/api/method/indobase_helpdesk.api.studio_handoff.exchange
-      HELPDESK_VERSION: ${HELPDESK_VERSION:-dev}
+      HELPDESK_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
     networks:
       - helpdesk_net
       - traefik_public

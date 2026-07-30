@@ -12,7 +12,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from indobase_discuss.utils.space_map import build_discuss_space_map, gameplan_space_path
+from indobase_discuss.utils.space_map import build_discuss_space_map
 
 AUDIENCE = "indobase-discuss"
 ALLOWED_ROLES = frozenset({"owner", "admin", "developer", "viewer"})
@@ -186,10 +186,21 @@ def exchange(token: str | None = None) -> dict[str, str]:
 	_ensure_membership(user, team, space, studio_role)
 
 	frappe.local.login_manager.login_as(user)
-	redirect = gameplan_space_path(space_map)
+
+	# Gameplan's router resolves /g/:team/:space by Frappe *document name*, not by our
+	# `indobase_team_key` / `indobase_space_key` custom fields. Building the link from those keys
+	# pointed at records that do not exist under that identifier, so every handoff landed on
+	# /g/404 ("The link is invalid or you no longer have access to this page") even though the
+	# user was signed in and the team/space had just been provisioned above. _ensure_team and
+	# _ensure_space already return the document names — use them.
+	redirect = f"/g/{team}/{space}"
+
 	return {
 		"redirect": redirect,
 		"email": email,
 		"space_key": space_map["space_key"],
 		"team_key": space_map["team_key"],
+		# Document names, so the bridge can build correct links without re-deriving them.
+		"team": team,
+		"space": space,
 	}

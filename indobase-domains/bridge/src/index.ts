@@ -22,9 +22,11 @@ import {
   type Session,
 } from './auth.js'
 import { proxyStudioDomainsApi } from './studio-proxy.js'
+import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const bridgeDir = dirname(fileURLToPath(import.meta.url))
@@ -86,23 +88,20 @@ app.post('/sso/logout', (c) => {
   return c.json({ ok: true })
 })
 
-app.get('/sso/health', (c) =>
-  c.json({
-    ok: true,
+app.get('/sso/health', (c) => {
+  const body = publicSsoHealth({
     service: 'indobase-domains',
     audience: AUDIENCE,
-    version: process.env.DOMAINS_VERSION || process.env.GIT_SHA || 'dev',
-    studioUrl: STUDIO_URL,
-    handoffConfigured: (() => {
-      try {
-        resolveHandoffSecret()
-        return true
-      } catch {
-        return false
-      }
-    })(),
+    versionEnvKeys: ['DOMAINS_VERSION', 'GIT_SHA'],
   })
-)
+  try {
+    resolveHandoffSecret()
+    body.handoffConfigured = true
+  } catch {
+    body.handoffConfigured = false
+  }
+  return c.json(body)
+})
 
 // ── Auth middleware ──────────────────────────────────────────────────────────
 
