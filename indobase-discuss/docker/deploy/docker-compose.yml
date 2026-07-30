@@ -26,7 +26,6 @@ volumes:
   discuss_mattermost_client_plugins:
   discuss_mattermost_bleve:
   discuss_mm_secrets:
-  discuss_mm_shared:
 
 networks:
   discuss_net:
@@ -74,7 +73,6 @@ services:
       MM_SERVICESETTINGS_SITEURL: ${DISCUSS_SITE_URL:-https://discuss.indobase.in}
       MM_SERVICESETTINGS_LISTENADDRESS: ":8065"
       MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
-      MM_SERVICESETTINGS_LOCALMODESOCKETLOCATION: /shared/mattermost_local.socket
       MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS: "true"
       MM_SERVICESETTINGS_ENABLEDEVELOPER: "false"
       MM_SERVICESETTINGS_FORWARDS80TO443: "false"
@@ -108,7 +106,6 @@ services:
       - discuss_mattermost_plugins:/mattermost/plugins
       - discuss_mattermost_client_plugins:/mattermost/client/plugins
       - discuss_mattermost_bleve:/mattermost/bleve-indexes
-      - discuss_mm_shared:/shared
     networks:
       - discuss_net
     healthcheck:
@@ -134,7 +131,6 @@ services:
     volumes:
       - ../bootstrap-mattermost.sh:/scripts/bootstrap-mattermost.sh:ro
       - discuss_mm_secrets:/secrets
-      - discuss_mm_shared:/shared
     entrypoint: ["/bin/sh", "/scripts/bootstrap-mattermost.sh"]
     networks:
       - discuss_net
