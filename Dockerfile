@@ -59,8 +59,8 @@ ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 ENV NEXT_PUBLIC_POSTHOG_UI_HOST=${NEXT_PUBLIC_POSTHOG_UI_HOST}
-# Next.js build can be memory-heavy; increase Node heap if Docker has enough RAM
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Next.js build is memory-heavy; keep heap under GHA's ~7Gi so buildkit+node coexist.
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 # shared-types `out/` is gitignored; compile workspace package before Studio bundles it.
 WORKDIR /workspace
 RUN pnpm --filter @indobaseinc/shared-types build

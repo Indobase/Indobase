@@ -65,6 +65,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Free runner disk before Studio image
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          docker builder prune -af || true
+          df -h /
+
       - name: Build and push (linux/amd64 for Dokploy)
         uses: docker/build-push-action@v5
         with:
@@ -95,8 +102,8 @@ jobs:
             ${{ env.DOCKERHUB_REPO }}:latest
             ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
           # v3 scope: avoid reusing a poisoned build-studio layer from older cache entries
-          cache-from: type=gha,scope=ind-repo-v5
-          cache-to: type=gha,mode=max,scope=ind-repo-v5
+          cache-from: type=gha,scope=ind-repo-v6
+          cache-to: type=gha,mode=max,scope=ind-repo-v6
 
       - name: Build and push data-plane provisioner (linux/amd64)
         uses: docker/build-push-action@v5
