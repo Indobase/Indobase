@@ -1,7 +1,7 @@
 # Indobase Calendar
 
 Scheduling and availability for Indobase organizations and projects. Upstream engine is
-self-hosted scheduling (official `calcom/cal.diy` Docker image, MIT); customer UI is
+self-hosted scheduling (official `calcom/cal.com` Docker image (MIT community/self-host engine; Hub publishes here, not calcom/cal.diy), MIT); customer UI is
 **Indobase Calendar** only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md)
 and [docs/INDOBASE-CALENDAR.md](../docs/INDOBASE-CALENDAR.md).
 

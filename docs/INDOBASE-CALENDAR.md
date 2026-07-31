@@ -1,6 +1,6 @@
 # Indobase Calendar — scheduling for org / project
 
-Indobase Calendar (`indobase-calendar/`) is the first-class scheduling product for every organization and project. The engine is self-hosted scheduling (official `calcom/cal.diy` Docker image, MIT); customer-facing branding is **Calendar** / **Indobase Calendar** only — never name the engine in UI. See [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md).
+Indobase Calendar (`indobase-calendar/`) is the first-class scheduling product for every organization and project. The engine is self-hosted scheduling (official `calcom/cal.com` Docker image (MIT community/self-host engine; Hub publishes here, not calcom/cal.diy), MIT); customer-facing branding is **Calendar** / **Indobase Calendar** only — never name the engine in UI. See [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md).
 
 | Host (prod) | Host (staging) |
 |---|---|
@@ -37,7 +37,7 @@ flowchart LR
 |---|---|
 | **Studio** | Mints `aud=indobase-calendar` handoff JWT; org role gate (owner/admin/developer/viewer) |
 | **Bridge** | `/sso/launch` fragment exchange, session cookie, auto-provision engine user, brand HTML proxy, `/events` `/team` `/settings` aliases |
-| **Engine** | Official `calcom/cal.diy` image — not vendored; Traefik routes only to the bridge |
+| **Engine** | Official `calcom/cal.com` image — not vendored; Traefik routes only to the bridge |
 
 Studio session SSO only. Bridge redirects native engine auth/register/password/signup routes to Studio sign-in.
 

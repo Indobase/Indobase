@@ -1,7 +1,7 @@
 # Third-party attribution
 
 Indobase Calendar runs self-hosted scheduling via the official community Docker image
-(`calcom/cal.diy`, MIT). Upstream project: https://github.com/calcom/cal.diy — this repository
+(`calcom/cal.com` Docker Hub images for the MIT cal.diy/community engine). Upstream project: https://github.com/calcom/cal.diy — this repository
 does **not** vendor that monorepo; see `docker/deploy/docker-compose.yml`. Keep MIT attribution
 when distributing the wrapper.
 

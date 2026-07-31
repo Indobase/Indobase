@@ -75,7 +75,7 @@ services:
   calendar-app:
     <<: *restart
     # Official community self-host image (MIT). Pin a tag in production.
-    image: ${CALENDAR_IMAGE:-calcom/cal.diy:latest}
+    image: ${CALENDAR_IMAGE:-calcom/cal.com:v6.2.0}
     depends_on:
       calendar-db:
         condition: service_healthy
