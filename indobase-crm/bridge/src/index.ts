@@ -22,6 +22,7 @@ import {
 import { isHtmlContentType, rewriteBrandedHtml } from './brand-html.js'
 import { buildCrmScopeMap, crmPipelinePath, upstreamCrmPath } from './crm-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
+import { renderCrmWelcomeHtml } from './welcome.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
@@ -38,6 +39,37 @@ function scopeFromSession(session: Session) {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
+}
+
+function sessionFromRequest(c: Context): Session | null {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return null
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  return raw ? readSessionToken(raw, secret) : null
+}
+
+/** Cold visits must never reach upstream engine login / "Not Permitted" pages. */
+function respondUnauthenticatedCrm(c: Context) {
+  const path = new URL(c.req.url).pathname
+  const method = c.req.method
+  const prefersHtml =
+    !path.startsWith('/api/') &&
+    (method === 'GET' || method === 'HEAD') &&
+    !/\.(js|css|map|woff2?|png|jpe?g|gif|svg|ico|webp|json)$/i.test(path)
+  if (prefersHtml) {
+    if (method === 'HEAD') {
+      return new Response(null, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      })
+    }
+    return c.html(renderCrmWelcomeHtml({ studioUrl: STUDIO_URL }))
+  }
+  return c.json({ error: 'unauthorized', signInUrl: `${STUDIO_URL}/sign-in` }, 401)
 }
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -182,9 +214,7 @@ async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   await next()
 }
 
-app.use('/api/*', requireSession)
-
-app.get('/api/me', (c) => {
+app.get('/api/me', requireSession, (c) => {
   const s = c.get('session')
   const map = scopeFromSession(s)
   return c.json({
@@ -202,6 +232,11 @@ app.get('/api/me', (c) => {
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-crm' }))
 
 // ── CRM upstream proxy (production path) ─────────────────────────────────────
+
+async function proxyCrmAuthenticated(c: Context) {
+  if (!sessionFromRequest(c)) return respondUnauthenticatedCrm(c)
+  return proxyCrm(c)
+}
 
 async function proxyCrm(c: Context) {
   if (!CRM_UPSTREAM) return c.notFound()
@@ -243,9 +278,12 @@ async function proxyCrm(c: Context) {
   return new Response(rewritten, { status: res.status, headers: outHeaders })
 }
 
-app.all('/c/*', proxyCrm)
-app.all('/crm/*', proxyCrm)
-app.all('/assets/*', proxyCrm)
+app.all('/c/*', proxyCrmAuthenticated)
+app.all('/crm/*', proxyCrmAuthenticated)
+app.all('/assets/*', proxyCrmAuthenticated)
+app.all('/app/*', proxyCrmAuthenticated)
+app.all('/files/*', proxyCrmAuthenticated)
+app.all('/api/*', proxyCrmAuthenticated)
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
@@ -326,16 +364,9 @@ app.get('/', (c) => {
 })
 
 app.get('/c/:team/:pipeline', (c) => {
-  if (CRM_UPSTREAM) return proxyCrm(c)
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
-  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
+  if (CRM_UPSTREAM) return proxyCrmAuthenticated(c)
+  const session = sessionFromRequest(c)
+  if (!session) return respondUnauthenticatedCrm(c)
   return c.html(renderShell(session))
 })
 
