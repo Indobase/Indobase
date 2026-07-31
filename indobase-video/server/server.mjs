@@ -264,6 +264,67 @@ function studioRedirect(projectRef) {
   return `${STUDIO_PUBLIC_URL}/sign-in?returnTo=${encodeURIComponent(ret)}`
 }
 
+const WELCOME_PAGE = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Indobase Video</title>
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root { --brand: #3B8FD6; --ink: #0f172a; --muted: #64748b; --bg: #f1f5f9; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--ink); padding: 24px;
+  }
+  .card {
+    max-width: 28rem; width: 100%; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 28px 24px; text-align: center;
+  }
+  img.mark { width: 48px; height: 48px; margin: 0 auto 12px; display: block; }
+  h1 { margin: 0 0 8px; font-size: 1.25rem; letter-spacing: -0.02em; }
+  h1 span { color: var(--brand); }
+  p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .actions { display: flex; flex-direction: column; gap: 10px; }
+  a {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    text-decoration: none;
+  }
+  a.primary { background: var(--brand); color: #fff; }
+  a.ghost { background: #eff6ff; color: #1e5f9a; }
+  .hint { margin-top: 16px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="mark" src="/indobase-logo.svg" alt="" width="48" height="48" />
+    <h1><span>Indobase</span> Video</h1>
+    <p id="copy">Edit and export short-form video for your Indobase project. Open Video from Studio to continue — there is no separate Video password.</p>
+    <div class="actions">
+      <a class="primary" id="open-studio" href="${STUDIO_PUBLIC_URL}">Open Studio</a>
+      <a class="ghost" id="sign-in" href="${STUDIO_PUBLIC_URL}/sign-in">Sign in with Studio</a>
+    </div>
+    <p class="hint">Studio → Project → Marketing → Video</p>
+  </div>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var ref = params.get('project_ref') || '';
+  var studio = ${JSON.stringify(STUDIO_PUBLIC_URL)};
+  if (ref) {
+    document.getElementById('open-studio').textContent = 'Open your project in Studio';
+    document.getElementById('open-studio').href = studio + '/project/' + encodeURIComponent(ref) + '/marketing';
+    document.getElementById('sign-in').href = studio + '/sign-in?returnTo=' + encodeURIComponent('/project/' + encodeURIComponent(ref) + '/marketing');
+  }
+})();
+</script>
+</body>
+</html>`
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', PUBLIC_ORIGIN)
   const pathname = url.pathname
@@ -279,6 +340,10 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/sso/launch') {
       return sendHtml(res, 200, LAUNCH_PAGE)
+    }
+
+    if (req.method === 'GET' && pathname === '/welcome') {
+      return sendHtml(res, 200, WELCOME_PAGE)
     }
 
     if (req.method === 'POST' && pathname === '/sso/session') {
@@ -359,7 +424,14 @@ const server = http.createServer(async (req, res) => {
       const session = getSession(req)
       if (!session) {
         const projectRef = url.searchParams.get('project_ref') || ''
-        res.writeHead(302, { Location: studioRedirect(projectRef) })
+        if (pathname === '/' || pathname === '/editor') {
+          const welcomePath = projectRef
+            ? `/welcome?project_ref=${encodeURIComponent(projectRef)}`
+            : '/welcome'
+          res.writeHead(302, { Location: welcomePath })
+          return res.end()
+        }
+        res.writeHead(302, { Location: projectRef ? `/welcome?project_ref=${encodeURIComponent(projectRef)}` : '/welcome' })
         return res.end()
       }
       return serveStatic(req, res, pathname)

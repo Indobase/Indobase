@@ -23,6 +23,7 @@ import {
 } from './auth.js'
 import { proxyStudioDomainsApi } from './studio-proxy.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
+import { renderDomainsWelcomeHtml } from './welcome.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
@@ -177,35 +178,48 @@ app.get('/api/pricing', (c) => {
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-domains' }))
 
+function renderWelcomePage(c: Context) {
+  return c.html(
+    renderDomainsWelcomeHtml({
+      studioUrl: STUDIO_URL,
+      projectRef: c.req.query('project_ref'),
+    })
+  )
+}
+
+app.get('/welcome', renderWelcomePage)
+
+function sessionOrNull(c: Context): Session | null {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return null
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  return raw ? readSessionToken(raw, secret) : null
+}
+
+function unauthenticatedWelcomeRedirect(c: Context) {
+  const projectRef = c.req.query('project_ref')
+  return c.redirect(projectRef ? `/welcome?project_ref=${encodeURIComponent(projectRef)}` : '/welcome')
+}
+
 // ── Console SPA ──────────────────────────────────────────────────────────────
 
 if (existsSync(consoleDist)) {
   app.use('/assets/*', serveStatic({ root: consoleDist }))
 
   app.get('/', async (c) => {
-    let secret: string
-    try {
-      secret = resolveHandoffSecret()
-    } catch {
-      return c.redirect(`${STUDIO_URL}/sign-in`)
-    }
-    const raw = readCookie(c.req.header('cookie'))
-    const session = raw ? readSessionToken(raw, secret) : null
-    if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
+    const session = sessionOrNull(c)
+    if (!session) return unauthenticatedWelcomeRedirect(c)
     const indexPath = join(consoleDist, 'index.html')
     return c.html(readFileSync(indexPath, 'utf8'))
   })
 } else {
   app.get('/', (c) => {
-    let secret: string
-    try {
-      secret = resolveHandoffSecret()
-    } catch {
-      return c.redirect(`${STUDIO_URL}/sign-in`)
-    }
-    const raw = readCookie(c.req.header('cookie'))
-    const session = raw ? readSessionToken(raw, secret) : null
-    if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
+    const session = sessionOrNull(c)
+    if (!session) return unauthenticatedWelcomeRedirect(c)
     return c.html(
       `<!doctype html><title>Indobase Domains</title><p>Console build missing — run <code>npm run build</code> in console/</p>`
     )

@@ -15,7 +15,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import WalletProvider from '@gitroom/frontend/components/auth/providers/wallet.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { resolveStudioPublicUrlFromBrowser } from '@gitroom/helpers/utils/studio-public-url';
+import { StudioSsoLanding } from '@gitroom/frontend/components/auth/studio-sso-landing';
 type Inputs = {
   email: string;
   password: string;
@@ -35,15 +35,7 @@ export function Login() {
 }
 
 function StudioHandoffRedirect() {
-  useEffect(() => {
-    window.location.replace(`${resolveStudioPublicUrlFromBrowser()}/sign-in`);
-  }, []);
-
-  return (
-    <div className="flex flex-1 items-center justify-center py-12 text-sm opacity-80">
-      Redirecting to Indobase Studio…
-    </div>
-  );
+  return <StudioSsoLanding />;
 }
 
 function LocalLoginForm() {

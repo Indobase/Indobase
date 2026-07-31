@@ -30,6 +30,7 @@ import {
 } from './auth.js'
 import { migrate, one, query } from './db.js'
 import { seedTemplates } from './seed.js'
+import { renderDesignWelcomeHtml } from './welcome.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
@@ -799,18 +800,29 @@ const spaIndexHtml = (() => {
 
 app.use('/assets/*', serveStatic({ root: './dist' }))
 
-/** Gate the SPA: no public auth UI — unauthenticated browsers go to Studio sign-in. */
+/** Cold landing — unauthenticated visitors see Indobase branding, not a blind Studio bounce. */
+app.get('/welcome', (c) =>
+  c.html(
+    renderDesignWelcomeHtml({
+      studioUrl: STUDIO_URL,
+      projectRef: c.req.query('project_ref'),
+    })
+  )
+)
+
+/** Gate the SPA: no public auth UI — unauthenticated browsers go to /welcome. */
 app.get('*', (c) => {
   let secret: string
   try {
     secret = resolveHandoffSecret()
   } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
+    return c.redirect('/welcome')
   }
   const raw = readCookie(c.req.header('cookie'))
   const session = raw ? readSessionToken(raw, secret) : null
   if (!session) {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
+    const projectRef = c.req.query('project_ref')
+    return c.redirect(projectRef ? `/welcome?project_ref=${encodeURIComponent(projectRef)}` : '/welcome')
   }
   return c.html(spaIndexHtml)
 })
