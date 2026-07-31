@@ -59,8 +59,10 @@ ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 ENV NEXT_PUBLIC_POSTHOG_UI_HOST=${NEXT_PUBLIC_POSTHOG_UI_HOST}
-# Next.js build is memory-heavy; keep heap under GHA's ~7Gi so buildkit+node coexist.
-ENV NODE_OPTIONS="--max-old-space-size=3072"
+# Next.js Studio builds need a large V8 heap. Default 6144 fits Vyom builds;
+# GHA can override via build-arg. Too low (4096) OOMs; webpack was worse.
+ARG NODE_MAX_OLD_SPACE_SIZE=6144
+ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
 # shared-types `out/` is gitignored; compile workspace package before Studio bundles it.
 WORKDIR /workspace
 RUN pnpm --filter @indobaseinc/shared-types build

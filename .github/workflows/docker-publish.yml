@@ -72,6 +72,15 @@ jobs:
           docker builder prune -af || true
           df -h /
 
+      - name: Add swap for Studio Next build
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - name: Build and push (linux/amd64 for Dokploy)
         uses: docker/build-push-action@v5
         with:
@@ -82,6 +91,7 @@ jobs:
             BUILD_SHA=${{ github.sha }}
             BUILD_TIME=${{ github.event.head_commit.timestamp }}
             SKIP_ASSET_UPLOAD=${{ env.SKIP_ASSET_UPLOAD }}
+            NODE_MAX_OLD_SPACE_SIZE=5120
             NEXT_PUBLIC_INDOBASE_SAAS=${{ env.NEXT_PUBLIC_INDOBASE_SAAS }}
             NEXT_PUBLIC_GOTRUE_URL=${{ env.NEXT_PUBLIC_GOTRUE_URL }}
             NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
