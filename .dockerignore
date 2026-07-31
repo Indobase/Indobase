@@ -68,3 +68,21 @@ yarn.lock
 # Studio needs packages/ui/build (theme CSS) at build time — do not exclude
 !packages/ui/build
 
+# Ecosystem product stacks are deployed separately — keep them out of the Studio
+# Docker context so GHA runners do not pack multi-GB bridge trees into buildx.
+indobase-meet/
+indobase-calendar/
+indobase-suite/
+indobase-discuss/
+indobase-crm/
+indobase-helpdesk/
+indobase-domains/
+indobase-payments/
+indobase-email/
+indobase-social/
+indobase-design/
+indobase-design-v2/
+indobase-video/
+indobase-analytics/
+indobase-builder/
+

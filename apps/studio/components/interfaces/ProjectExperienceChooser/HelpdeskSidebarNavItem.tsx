@@ -1,4 +1,4 @@
-import { ICON_SIZE, ICON_STROKE_WIDTH } from 'components/interfaces/Sidebar'
+import { ICON_SIZE, ICON_STROKE_WIDTH } from 'components/interfaces/sidebar-icon'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { LifeBuoy } from 'lucide-react'
 import { SidebarMenuButton, SidebarMenuItem } from 'ui'

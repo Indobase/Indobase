@@ -56,8 +56,9 @@ import {
 } from './App/FeaturePreview/FeaturePreviewContext'
 import { IS_SAAS } from 'lib/constants'
 
-export const ICON_SIZE = 32
-export const ICON_STROKE_WIDTH = 1.5
+import { ICON_SIZE, ICON_STROKE_WIDTH } from './sidebar-icon'
+
+export { ICON_SIZE, ICON_STROKE_WIDTH }
 export type SidebarBehaviourType = 'expandable' | 'open' | 'closed'
 export const DEFAULT_SIDEBAR_BEHAVIOR = 'expandable'
 
