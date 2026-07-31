@@ -214,3 +214,18 @@ export function verifyFileAccessToken(
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
   return { projectRef, fileId }
 }
+
+/** True MIME per extension. DocumentServer keys off document.fileType, but sending
+ *  application/octet-stream for a .docx is a lie that confuses proxies and sniffers. */
+export function contentTypeForExt(ext: string): string {
+  switch ((ext || '').toLowerCase()) {
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    case 'pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    default:
+      return 'application/octet-stream'
+  }
+}

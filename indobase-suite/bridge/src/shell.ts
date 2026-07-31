@@ -96,6 +96,34 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .placeholder-card h2 { margin: 0 0 8px; font-size: 18px; }
 .placeholder-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.meetings-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 640px;
+}
+.meetings-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; }
+.meetings-card .lede { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.meetings-card .room {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; margin: 0 0 16px; word-break: break-all;
+}
+.meetings-card .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+#meet-embed {
+  margin-top: 16px; background: #0f172a; border-radius: 12px; overflow: hidden;
+  min-height: 0; height: 0; transition: min-height 0.2s ease;
+}
+#meet-embed.active { min-height: min(70vh, 720px); height: min(70vh, 720px); }
+#meet-embed iframe { border: 0; width: 100%; height: 100%; }
+.calendar-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 100%;
+}
+.calendar-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; }
+.calendar-card .lede { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 640px; }
+.calendar-card .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+#calendar-embed {
+  margin-top: 8px; background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  min-height: min(72vh, 780px); height: min(72vh, 780px);
+}
+#calendar-embed iframe { border: 0; width: 100%; height: 100%; }
 .err { color: #b91c1c; font-size: 13px; margin-top: 8px; }
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
@@ -123,16 +151,35 @@ export function renderWorkspaceShell(opts: {
     })
     .join('')
 
-  const isPlaceholder = active === 'meetings' || active === 'calendar'
+  const isCalendar = active === 'calendar'
+  const isMeetings = active === 'meetings'
   const createKind =
     active === 'docs' ? 'doc' : active === 'sheets' ? 'sheet' : active === 'presentations' ? 'slide' : ''
 
-  const body = isPlaceholder
-    ? `<div class="placeholder-card">
-        <h2>${esc(active === 'meetings' ? 'Meetings' : 'Calendar')}</h2>
-        <p>This module is not in the Workspace MVP yet. Use Docs, Sheets, Presentations, and Files for collaborative documents. Team chat stays in Discuss.</p>
+  let body: string
+  if (isCalendar) {
+    body = `<div class="calendar-card">
+        <h1>Calendar</h1>
+        <p class="lede">Open Indobase Calendar for this project — events, availability, and booking links. Signed in via Studio.</p>
+        <div class="actions">
+          <a class="btn primary" id="btn-open-calendar" href="#" rel="noopener">Open Calendar</a>
+          <button type="button" id="btn-copy-calendar" disabled>Copy booking link</button>
+        </div>
+        <p class="err" id="err" hidden></p>
       </div>`
-    : `<div class="toolbar">
+  } else if (isMeetings) {
+    body = `<div class="meetings-card">
+        <h1>Meetings</h1>
+        <p class="lede">Start a project video call in Indobase Meet. Everyone with access to this project joins the same room — signed in via Studio.</p>
+        <div class="room" id="meet-room">Loading…</div>
+        <div class="actions">
+          <a class="btn primary" id="btn-open-meet" href="#" rel="noopener">Open Meet</a>
+          <button type="button" id="btn-copy-invite" disabled>Copy invite link</button>
+        </div>
+        <p class="err" id="err" hidden></p>
+      </div>`
+  } else {
+    body = `<div class="toolbar">
         <h1>${esc(modules.find((m) => m.id === active)?.label || 'Files')}</h1>
         ${
           createKind
@@ -146,33 +193,108 @@ export function renderWorkspaceShell(opts: {
       </div>
       <div class="table"><div id="file-list" class="empty">Loading…</div></div>
       <p class="err" id="err" hidden></p>`
+  }
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Workspace</title>
-  <link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" />
-  <style>${STYLES}</style>
-</head>
-<body>
-  <header class="appbar">
-    <img class="mark" src="/brand/indobase-logo-mark.svg" alt="" width="28" height="28" />
-    <div class="title"><span>Indobase</span> Workspace</div>
-    <span class="pill">${esc(opts.map.projectTitle)}</span>
-    <div class="spacer"></div>
-    <span class="meta">${esc(opts.session.email)}</span>
-    <a class="studio" href="${esc(opts.studioUrl)}/project/${esc(opts.session.projectRef)}">Studio</a>
-  </header>
-  <div class="layout">
-    <nav class="rail">${rail}</nav>
-    <main class="panel" data-home="${esc(home)}" data-module="${esc(active)}" data-filter="${esc(
-      createKind || ''
-    )}">
-      ${body}
-    </main>
-  </div>
+  const meetingsScript = isMeetings
+    ? `
+  <script>
+  (function () {
+    var errEl = document.getElementById('err');
+    var roomEl = document.getElementById('meet-room');
+    var openBtn = document.getElementById('btn-open-meet');
+    var copyBtn = document.getElementById('btn-copy-invite');
+    var cfg = null;
+    function showErr(msg) {
+      if (!errEl) return;
+      errEl.hidden = !msg;
+      errEl.textContent = msg || '';
+    }
+    async function bootstrap() {
+      var r = await fetch('/api/meetings/config', { credentials: 'same-origin' });
+      if (!r.ok) {
+        showErr('Could not load meeting settings');
+        if (roomEl) roomEl.textContent = 'Unavailable';
+        return;
+      }
+      cfg = await r.json();
+      if (roomEl) roomEl.textContent = 'Meeting · ' + (cfg.meetingId || cfg.roomName || '');
+      if (!cfg.ready || !cfg.launchUrl) {
+        showErr('Meet is not configured on this deployment yet. Ask your operator to set MEET_PUBLIC_URL and MEET_HANDOFF_SECRET.');
+        if (openBtn) openBtn.setAttribute('aria-disabled', 'true');
+        return;
+      }
+      if (openBtn) {
+        openBtn.href = cfg.launchUrl;
+        openBtn.removeAttribute('aria-disabled');
+      }
+      if (copyBtn) copyBtn.disabled = !cfg.inviteUrl;
+    }
+    if (copyBtn) copyBtn.addEventListener('click', async function () {
+      if (!cfg || !cfg.inviteUrl) return;
+      try {
+        await navigator.clipboard.writeText(cfg.inviteUrl);
+        copyBtn.textContent = 'Copied';
+        setTimeout(function () { copyBtn.textContent = 'Copy invite link'; }, 1600);
+      } catch (_) {
+        showErr('Could not copy invite link');
+      }
+    });
+    bootstrap();
+  })();
+  </script>`
+    : ''
+
+  const calendarScript = isCalendar
+    ? `
+  <script>
+  (function () {
+    var errEl = document.getElementById('err');
+    var openBtn = document.getElementById('btn-open-calendar');
+    var copyBtn = document.getElementById('btn-copy-calendar');
+    var cfg = null;
+    function showErr(msg) {
+      if (!errEl) return;
+      errEl.hidden = !msg;
+      errEl.textContent = msg || '';
+    }
+    async function bootstrap() {
+      var r = await fetch('/api/calendar/config', { credentials: 'same-origin' });
+      if (!r.ok) {
+        showErr('Could not load calendar settings');
+        return;
+      }
+      cfg = await r.json();
+      if (!cfg.ready || !cfg.launchUrl) {
+        showErr('Calendar is not configured on this deployment yet. Ask your operator to set CALENDAR_PUBLIC_URL and CALENDAR_HANDOFF_SECRET.');
+        if (openBtn) openBtn.setAttribute('aria-disabled', 'true');
+        return;
+      }
+      if (openBtn) {
+        openBtn.href = cfg.launchUrl;
+        openBtn.removeAttribute('aria-disabled');
+      }
+      if (copyBtn) copyBtn.disabled = !(cfg.bookingUrl || cfg.openUrl);
+    }
+    if (copyBtn) copyBtn.addEventListener('click', async function () {
+      var link = (cfg && (cfg.bookingUrl || cfg.openUrl)) || '';
+      if (!link) return;
+      try {
+        await navigator.clipboard.writeText(link);
+        copyBtn.textContent = 'Copied';
+        setTimeout(function () { copyBtn.textContent = 'Copy booking link'; }, 1600);
+      } catch (_) {
+        showErr('Could not copy booking link');
+      }
+    });
+    bootstrap();
+  })();
+  </script>`
+    : ''
+
+  const filesScript =
+    isCalendar || isMeetings
+      ? ''
+      : `
   <script>
   (function () {
     var panel = document.querySelector('main.panel');
@@ -246,7 +368,37 @@ export function renderWorkspaceShell(opts: {
     });
     loadFiles();
   })();
-  </script>
+  </script>`
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Indobase Workspace</title>
+  <link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" />
+  <style>${STYLES}</style>
+</head>
+<body>
+  <header class="appbar">
+    <img class="mark" src="/brand/indobase-logo-mark.svg" alt="" width="28" height="28" />
+    <div class="title"><span>Indobase</span> Workspace</div>
+    <span class="pill">${esc(opts.map.projectTitle)}</span>
+    <div class="spacer"></div>
+    <span class="meta">${esc(opts.session.email)}</span>
+    <a class="studio" href="${esc(opts.studioUrl)}/project/${esc(opts.session.projectRef)}">Studio</a>
+  </header>
+  <div class="layout">
+    <nav class="rail">${rail}</nav>
+    <main class="panel" data-home="${esc(home)}" data-module="${esc(active)}" data-filter="${esc(
+      createKind || ''
+    )}">
+      ${body}
+    </main>
+  </div>
+  ${meetingsScript}
+  ${calendarScript}
+  ${filesScript}
 </body>
 </html>`
 }

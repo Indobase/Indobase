@@ -2,7 +2,8 @@
  * Indobase Workspace modules — customer-facing names and deep-link segments.
  *
  * Mail routes to Email. Docs/Sheets/Presentations open the document editor.
- * Meetings / Calendar are soft placeholders in the MVP shell.
+ * Meetings launches Indobase Meet (SSO) — never embeds a raw engine iframe.
+ * Calendar launches Indobase Calendar (SSO) — never embeds a raw engine iframe.
  */
 
 import type { WorkspaceMap } from './workspace-map.js'
@@ -64,9 +65,8 @@ export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
   meetings: {
     id: 'meetings',
     label: 'Meetings',
-    description: 'Video meetings for your team',
+    description: 'Opens Meet — video meetings for your team',
     segment: 'meetings',
-    placeholder: true,
   },
   mail: {
     id: 'mail',
@@ -78,9 +78,8 @@ export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
   calendar: {
     id: 'calendar',
     label: 'Calendar',
-    description: 'Events and schedules',
+    description: 'Opens Calendar — events and scheduling',
     segment: 'calendar',
-    placeholder: true,
   },
 }
 

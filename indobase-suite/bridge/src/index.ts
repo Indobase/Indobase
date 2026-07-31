@@ -1,9 +1,10 @@
 /**
- * Indobase Workspace — Studio SSO bridge + document editor + file shell.
+ * Indobase Workspace — Studio SSO bridge + document editor + file shell + Meetings.
  *
  * Studio hands off to `/sso/launch#token=…`. Bridge verifies `aud=indobase-suite`,
- * sets `indobase_suite_session`, serves the Indobase file/workspace UI, and embeds
- * the document editor (JWT + callback). Customer chrome never names upstream engines.
+ * sets `indobase_suite_session`, serves the Indobase file/workspace UI, embeds the
+ * document editor (JWT + callback), and embeds Indobase Meetings via IFrame API.
+ * Customer chrome never names upstream engines.
  */
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
@@ -24,6 +25,8 @@ import {
   type Session,
 } from './auth.js'
 import {
+  mintFileAccessToken,
+  contentTypeForExt,
   createFile,
   deleteFile,
   getFile,
@@ -35,6 +38,8 @@ import {
 } from './files.js'
 import { isSuiteModuleId, listModulesForApi, modulePath } from './modules.js'
 import {
+  bridgeInternalUrl,
+  resolveDocumentJwtSecret,
   buildEditorConfig,
   documentServerHealth,
   documentServerUpstream,
@@ -44,6 +49,15 @@ import {
   PROXY_SKIP_RESPONSE_HEADERS,
   rewriteDocumentServerLocation,
 } from './onlyoffice.js'
+import {
+  buildCalendarEmbedConfig,
+  isCalendarConfigured,
+} from './calendar.js'
+import {
+  buildMeetingsLaunchConfig,
+  isMeetingsConfigured,
+  meetingsJwtConfigured,
+} from './meetings.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderEditorPage, renderLaunchHtml, renderWorkspaceShell } from './shell.js'
 import { isDocumentWelcomePath, renderWorkspaceWelcomeHtml } from './welcome.js'
@@ -185,6 +199,9 @@ app.get('/sso/health', async (c) => {
   ;(body as { editorReady?: boolean }).editorReady = isDocumentServerConfigured()
     ? await documentServerHealth()
     : false
+  ;(body as { meetingsReady?: boolean; meetingsJwt?: boolean }).meetingsReady = isMeetingsConfigured()
+  ;(body as { meetingsJwt?: boolean }).meetingsJwt = meetingsJwtConfigured()
+  ;(body as { calendarReady?: boolean }).calendarReady = isCalendarConfigured()
   return c.json(body)
 })
 
@@ -209,7 +226,19 @@ app.get('/api/me', requireSession, (c) => {
       design: DESIGN_PUBLIC_URL,
     },
     editorReady: isDocumentServerConfigured(),
+    meetingsReady: isMeetingsConfigured(),
+    calendarReady: isCalendarConfigured(),
   })
+})
+
+app.get('/api/meetings/config', requireSession, (c) => {
+  const session = c.get('session')
+  return c.json(buildMeetingsLaunchConfig(session))
+})
+
+app.get('/api/calendar/config', requireSession, (c) => {
+  const session = c.get('session')
+  return c.json(buildCalendarEmbedConfig(session))
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-workspace' }))
@@ -289,17 +318,116 @@ app.get('/api/files/:id/content', async (c) => {
   if (!claims || claims.fileId !== fileId) {
     return c.json({ error: 'unauthorized' }, 401)
   }
+  /*
+   * DocumentServer surfaces every failure here as a bare "Download failed" dialog, so a silent 404
+   * was indistinguishable from a bad token, a missing blob, or an unreachable bridge. Log the
+   * actual cause and return a distinguishable body — this endpoint is only reachable with a valid
+   * HMAC access token, so the detail is not exposed to anonymous callers.
+   */
   const meta = await getFile(claims.projectRef, claims.fileId)
+  if (!meta) {
+    console.error('[suite] content: no index entry', {
+      projectRef: claims.projectRef,
+      fileId: claims.fileId,
+    })
+    return c.json({ error: 'not found', reason: 'no-index-entry' }, 404)
+  }
+
   const bytes = await readFileBytes(claims.projectRef, claims.fileId)
-  if (!meta || !bytes) return c.json({ error: 'not found' }, 404)
+  if (!bytes || bytes.length === 0) {
+    console.error('[suite] content: blob missing or empty', {
+      projectRef: claims.projectRef,
+      fileId: claims.fileId,
+      name: meta.name,
+      indexSize: meta.size,
+      bytes: bytes ? bytes.length : null,
+    })
+    return c.json({ error: 'not found', reason: bytes ? 'empty-blob' : 'no-blob' }, 404)
+  }
   return new Response(new Uint8Array(bytes), {
     status: 200,
     headers: {
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': contentTypeForExt(meta.ext),
       'Content-Disposition': `attachment; filename="${meta.name.replace(/"/g, '')}"`,
       'Cache-Control': 'no-store',
     },
   })
+})
+
+/*
+ * Reproduces exactly what DocumentServer does when it opens a file, from inside the bridge:
+ * mint the access token, then fetch our own BRIDGE_INTERNAL_URL content endpoint. If DS shows
+ * "Download failed" this says which hop broke — token, storage, or the internal network path.
+ * Session-gated: it reveals internal URLs.
+ */
+app.get('/api/documents/diagnose/:id', requireSession, async (c) => {
+  const session = c.get('session')
+  const fileId = c.req.param('id') || ''
+  const out: Record<string, unknown> = {
+    fileId,
+    bridgeInternalUrl: bridgeInternalUrl(),
+    documentServerConfigured: isDocumentServerConfigured(),
+  }
+
+  try {
+    out.documentServerHealthy = await documentServerHealth()
+  } catch (err) {
+    out.documentServerHealthy = false
+    out.documentServerHealthError = String(err).slice(0, 200)
+  }
+
+  let secret = ''
+  try {
+    secret = resolveHandoffSecret()
+    out.handoffSecretConfigured = true
+  } catch {
+    out.handoffSecretConfigured = false
+    return c.json({ ...out, verdict: 'handoff secret missing — cannot mint access token' }, 200)
+  }
+
+  try {
+    resolveDocumentJwtSecret()
+    out.documentJwtSecretConfigured = true
+  } catch (err) {
+    out.documentJwtSecretConfigured = false
+    out.documentJwtSecretError = String(err).slice(0, 160)
+  }
+
+  const meta = await getFile(session.projectRef, fileId)
+  out.indexEntry = meta ? { name: meta.name, ext: meta.ext, size: meta.size } : null
+
+  const bytes = meta ? await readFileBytes(session.projectRef, fileId) : null
+  out.blobBytes = bytes ? bytes.length : null
+
+  // The hop that actually fails in production: DS -> BRIDGE_INTERNAL_URL.
+  if (meta) {
+    const access = mintFileAccessToken(secret, session.projectRef, fileId)
+    const url = `${bridgeInternalUrl()}/api/files/${encodeURIComponent(fileId)}/content?access=${encodeURIComponent(access)}`
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+      out.selfFetch = {
+        status: res.status,
+        contentType: res.headers.get('content-type'),
+        contentLength: res.headers.get('content-length'),
+        body: res.ok ? undefined : (await res.text()).slice(0, 200),
+      }
+    } catch (err) {
+      out.selfFetch = { failed: String(err).slice(0, 200) }
+    }
+  }
+
+  const self = out.selfFetch as { status?: number; failed?: string } | undefined
+  out.verdict = !meta
+    ? 'no index entry for this id'
+    : !bytes
+      ? 'index entry exists but blob is missing on disk'
+      : self?.failed
+        ? 'bridge cannot reach its own BRIDGE_INTERNAL_URL — DocumentServer cannot either'
+        : self?.status === 200
+          ? 'download path is healthy from inside the bridge'
+          : `internal content fetch returned ${self?.status}`
+
+  return c.json(out)
 })
 
 /** Document engine save callback. */
@@ -495,7 +623,7 @@ export function startWorkspaceBridge(listenPort = Number(process.env.PORT || 809
   return serve({ fetch: app.fetch, port: listenPort }, () => {
     console.log(`[indobase-workspace] listening on :${listenPort}`)
     console.log(
-      `[indobase-workspace] editor=${isDocumentServerConfigured() ? 'configured' : 'dev-shell-only'}`
+      `[indobase-workspace] editor=${isDocumentServerConfigured() ? 'configured' : 'dev-shell-only'} meetings=${isMeetingsConfigured() ? 'configured' : 'off'} calendar=${isCalendarConfigured() ? 'configured' : 'off'}`
     )
   })
 }

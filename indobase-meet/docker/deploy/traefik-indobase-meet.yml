@@ -1,0 +1,18 @@
+# Optional Traefik file-provider snippet for Indobase Meet (when not using compose labels).
+# Prefer docker-compose labels on meet-bridge; this file documents the Host rule.
+
+http:
+  routers:
+    indobase-meet:
+      rule: Host(`meet.indobase.in`) || Host(`meet.indobase.fun`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: indobase-meet
+      priority: 100
+  services:
+    indobase-meet:
+      loadBalancer:
+        servers:
+          - url: http://meet-bridge:8094

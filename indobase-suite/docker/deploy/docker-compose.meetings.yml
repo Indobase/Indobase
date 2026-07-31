@@ -1,0 +1,177 @@
+# Indobase Meetings — LEGACY thin engine stack (superseded by indobase-meet/)
+#
+# Prefer: indobase-meet/docker/deploy/docker-compose.yml
+#   - Studio SSO bridge (aud=indobase-meet)
+#   - Traefik → bridge → engine
+#   - /meeting/{id} URLs + Indobase rebrand
+#
+# This file remains for operators mid-migration. Do not point Traefik at raw
+# meetings-web once indobase-meet bridge is live (would leak engine chrome).
+#
+# CRITICAL: expose UDP 10000 on the host firewall for the video bridge (JVB).
+#
+# Usage (from this directory, after filling .env):
+#   docker compose -f docker-compose.meetings.yml up -d
+#
+# Pair with Workspace: MEET_PUBLIC_URL + MEET_HANDOFF_SECRET for SSO launch.
+
+x-default-logging: &logging
+  driver: json-file
+  options:
+    max-size: 5m
+    max-file: "2"
+
+x-restart: &restart
+  restart: unless-stopped
+
+networks:
+  meet_net:
+    name: indobase-meetings
+  traefik_public:
+    name: ${TRAEFIK_NETWORK:-dokploy-network}
+    external: true
+
+name: indobase-meetings
+
+volumes:
+  meetings_web_config:
+  meetings_web_storage:
+  meetings_prosody_config:
+  meetings_prosody_data:
+  meetings_prosody_plugins:
+  meetings_jicofo_config:
+  meetings_jvb_config:
+
+services:
+  meetings-web:
+    <<: *restart
+    image: jitsi/web:${MEETINGS_IMAGE_VERSION:-stable-10078}
+    depends_on:
+      - meetings-jvb
+    volumes:
+      - meetings_web_config:/config
+      - meetings_web_storage:/usr/share/jitsi-meet/transcripts
+    environment:
+      PUBLIC_URL: ${MEETINGS_PUBLIC_URL:-https://meet.indobase.in}
+      TZ: ${TZ:-UTC}
+      DISABLE_HTTPS: "1"
+      ENABLE_HTTP_REDIRECT: "0"
+      ENABLE_LETSENCRYPT: "0"
+      ENABLE_XMPP_WEBSOCKET: "1"
+      ENABLE_WELCOME_PAGE: "0"
+      ENABLE_CLOSE_PAGE: "0"
+      ENABLE_PREJOIN_PAGE: "1"
+      ENABLE_AUTH: ${MEETINGS_ENABLE_AUTH:-1}
+      AUTH_TYPE: ${MEETINGS_AUTH_TYPE:-jwt}
+      JWT_APP_ID: ${JWT_APP_ID:-}
+      JWT_APP_SECRET: ${JWT_APP_SECRET:-}
+      JWT_ACCEPTED_ISSUERS: ${JWT_APP_ID:-}
+      JWT_ACCEPTED_AUDIENCES: ${JWT_APP_ID:-}
+      JWT_ALLOW_EMPTY: ${JWT_ALLOW_EMPTY:-0}
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_BOSH_URL_BASE: http://meetings-prosody:5280
+      XMPP_MUC_DOMAIN: muc.meet.jitsi
+      XMPP_GUEST_DOMAIN: guest.meet.jitsi
+      XMPP_HIDDEN_DOMAIN: hidden.meet.jitsi
+      # Indobase product naming where the CE image honors env-driven UI strings
+      TOOLBAR_BUTTONS: microphone,camera,desktop,chat,raisehand,participants-pane,tileview,toggle-camera,hangup,settings,fullscreen
+    networks:
+      - meet_net
+      - traefik_public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      - traefik.http.routers.indobase-meetings.rule=${MEETINGS_TRAEFIK_RULE:-Host(`meet.indobase.in`) || Host(`meet.indobase.fun`)}
+      - traefik.http.routers.indobase-meetings.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-meetings.tls=true
+      - traefik.http.routers.indobase-meetings.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-meetings.priority=100
+      - traefik.http.services.indobase-meetings.loadbalancer.server.port=8000
+    logging: *logging
+
+  meetings-prosody:
+    <<: *restart
+    image: jitsi/prosody:${MEETINGS_IMAGE_VERSION:-stable-10078}
+    volumes:
+      - meetings_prosody_config:/config
+      - meetings_prosody_plugins:/prosody-plugins-custom
+      - meetings_prosody_data:/var/lib/prosody
+    environment:
+      TZ: ${TZ:-UTC}
+      AUTH_TYPE: ${MEETINGS_AUTH_TYPE:-jwt}
+      ENABLE_AUTH: ${MEETINGS_ENABLE_AUTH:-1}
+      ENABLE_GUESTS: ${MEETINGS_ENABLE_GUESTS:-0}
+      ENABLE_XMPP_WEBSOCKET: "1"
+      JWT_APP_ID: ${JWT_APP_ID:-}
+      JWT_APP_SECRET: ${JWT_APP_SECRET:-}
+      JWT_ACCEPTED_ISSUERS: ${JWT_APP_ID:-}
+      JWT_ACCEPTED_AUDIENCES: ${JWT_APP_ID:-}
+      JWT_ALLOW_EMPTY: ${JWT_ALLOW_EMPTY:-0}
+      JICOFO_AUTH_PASSWORD: ${JICOFO_AUTH_PASSWORD:?set JICOFO_AUTH_PASSWORD}
+      JVB_AUTH_PASSWORD: ${JVB_AUTH_PASSWORD:?set JVB_AUTH_PASSWORD}
+      JIGASI_XMPP_PASSWORD: ${JIGASI_XMPP_PASSWORD:-unused-jigasi}
+      JIGASI_TRANSCRIBER_PASSWORD: ${JIGASI_TRANSCRIBER_PASSWORD:-unused-transcriber}
+      JIBRI_RECORDER_PASSWORD: ${JIBRI_RECORDER_PASSWORD:-unused-recorder}
+      JIBRI_XMPP_PASSWORD: ${JIBRI_XMPP_PASSWORD:-unused-jibri}
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_MUC_DOMAIN: muc.meet.jitsi
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.meet.jitsi
+      XMPP_GUEST_DOMAIN: guest.meet.jitsi
+      XMPP_HIDDEN_DOMAIN: hidden.meet.jitsi
+      XMPP_RECORDER_DOMAIN: recorder.meet.jitsi
+      JVB_AUTH_USER: jvb
+      PUBLIC_URL: ${MEETINGS_PUBLIC_URL:-https://meet.indobase.in}
+    networks:
+      meet_net:
+        aliases:
+          - xmpp.meet.jitsi
+    logging: *logging
+
+  meetings-jicofo:
+    <<: *restart
+    image: jitsi/jicofo:${MEETINGS_IMAGE_VERSION:-stable-10078}
+    depends_on:
+      - meetings-prosody
+    volumes:
+      - meetings_jicofo_config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      AUTH_TYPE: ${MEETINGS_AUTH_TYPE:-jwt}
+      ENABLE_AUTH: ${MEETINGS_ENABLE_AUTH:-1}
+      JICOFO_AUTH_PASSWORD: ${JICOFO_AUTH_PASSWORD}
+      JVB_BREWERY_MUC: jvbbrewery
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.meet.jitsi
+      XMPP_MUC_DOMAIN: muc.meet.jitsi
+      XMPP_SERVER: xmpp.meet.jitsi
+    networks:
+      - meet_net
+    logging: *logging
+
+  meetings-jvb:
+    <<: *restart
+    image: jitsi/jvb:${MEETINGS_IMAGE_VERSION:-stable-10078}
+    depends_on:
+      - meetings-prosody
+    ports:
+      # Media plane — must be reachable from the public internet
+      - "${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp"
+    volumes:
+      - meetings_jvb_config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      JVB_AUTH_PASSWORD: ${JVB_AUTH_PASSWORD}
+      JVB_AUTH_USER: jvb
+      JVB_BREWERY_MUC: jvbbrewery
+      JVB_PORT: ${JVB_PORT:-10000}
+      # Public IPv4 of Vyom .249 (or staging host) so ICE candidates work behind NAT
+      JVB_ADVERTISE_IPS: ${JVB_ADVERTISE_IPS:-103.190.92.249}
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.meet.jitsi
+      XMPP_SERVER: xmpp.meet.jitsi
+    networks:
+      - meet_net
+    logging: *logging

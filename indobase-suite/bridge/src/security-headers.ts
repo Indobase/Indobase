@@ -1,5 +1,8 @@
 import type { Context, Next } from 'hono'
 
+import { calendarFrameOrigins } from './calendar.js'
+import { meetingsPermissionOrigins } from './meetings.js'
+
 /**
  * Baseline transport / framing protections for public product bridges.
  * frame-ancestors 'none' — Workspace chrome is top-level. Document engine paths
@@ -35,6 +38,14 @@ export function isDocumentEnginePath(pathname: string): boolean {
   )
 }
 
+function permissionsPolicy(): string {
+  const meet = meetingsPermissionOrigins()
+    .map((o) => `"${o}"`)
+    .join(' ')
+  // Allow Meet iframe to use camera/mic; Workspace itself does not capture A/V.
+  return `camera=(self ${meet}), microphone=(self ${meet}), geolocation=()`
+}
+
 export async function securityHeaders(c: Context, next: Next) {
   await next()
   const pathname = new URL(c.req.url).pathname
@@ -43,7 +54,7 @@ export async function securityHeaders(c: Context, next: Next) {
   c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   c.res.headers.set('X-Content-Type-Options', 'nosniff')
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  c.res.headers.set('Permissions-Policy', permissionsPolicy())
 
   if (enginePath) {
     // Allow same-origin iframe embedding of the document engine.
@@ -54,7 +65,11 @@ export async function securityHeaders(c: Context, next: Next) {
     )
   } else {
     c.res.headers.set('X-Frame-Options', 'DENY')
-    c.res.headers.set('Content-Security-Policy', "frame-ancestors 'none'")
+    const frameOrigins = [...meetingsPermissionOrigins(), ...calendarFrameOrigins()].join(' ')
+    c.res.headers.set(
+      'Content-Security-Policy',
+      `frame-ancestors 'none'; frame-src 'self' ${frameOrigins} blob:`
+    )
   }
 }
 

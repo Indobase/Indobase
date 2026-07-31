@@ -36,6 +36,20 @@ export const ECOSYSTEM_PRODUCTS = {
     host: 'discuss.indobase.in',
     openLabel: 'Open Discuss',
   },
+  meet: {
+    id: 'meet',
+    name: 'Meet',
+    tagline: 'Video meetings for your org and project',
+    host: 'meet.indobase.in',
+    openLabel: 'Open Meet',
+  },
+  calendar: {
+    id: 'calendar',
+    name: 'Calendar',
+    tagline: 'Events, availability, and scheduling',
+    host: 'calendar.indobase.in',
+    openLabel: 'Open Calendar',
+  },
   payments: {
     id: 'payments',
     name: 'Payments',
@@ -76,14 +90,24 @@ export const WORKSPACE_MODULES = [
   { id: 'docs', label: 'Docs', description: 'Write and collaborate on documents' },
   { id: 'sheets', label: 'Sheets', description: 'Spreadsheets with realtime collaboration' },
   { id: 'presentations', label: 'Presentations', description: 'Slide decks for your project' },
-  { id: 'meetings', label: 'Meetings', description: 'Video meetings for your team' },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    description: 'Opens Meet — video meetings for your team',
+    externalProduct: 'meet' as const,
+  },
   {
     id: 'mail',
     label: 'Mail',
     description: 'Opens Email — campaigns and transactional mail',
     externalProduct: 'email' as const,
   },
-  { id: 'calendar', label: 'Calendar', description: 'Events and schedules' },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    description: 'Opens Calendar — events and scheduling',
+    externalProduct: 'calendar' as const,
+  },
 ] as const
 
 export type WorkspaceModuleId = (typeof WORKSPACE_MODULES)[number]['id']

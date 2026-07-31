@@ -106,6 +106,15 @@ services:
       WORKSPACE_DATA_DIR: /data/workspace
       INDOBASE_EMAIL_URL: ${INDOBASE_EMAIL_URL:-https://email.indobase.in}
       INDOBASE_DESIGN_URL: ${INDOBASE_DESIGN_URL:-https://design.indobase.in}
+      # Indobase Meet SSO launch (Workspace Meetings module). Prefer MEET_PUBLIC_URL.
+      MEET_PUBLIC_URL: ${MEET_PUBLIC_URL:-}
+      MEETINGS_PUBLIC_URL: ${MEETINGS_PUBLIC_URL:-}
+      MEET_HANDOFF_SECRET: ${MEET_HANDOFF_SECRET:-}
+      JWT_APP_ID: ${JWT_APP_ID:-}
+      JWT_APP_SECRET: ${JWT_APP_SECRET:-}
+      # Indobase Calendar SSO launch (Workspace Calendar module). Prefer indobase-calendar/.
+      CALENDAR_PUBLIC_URL: ${CALENDAR_PUBLIC_URL:-}
+      CALENDAR_HANDOFF_SECRET: ${CALENDAR_HANDOFF_SECRET:-}
       SUITE_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
     volumes:

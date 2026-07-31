@@ -15,9 +15,9 @@ test('isSuiteModuleId rejects unknown', () => {
   assert.equal(isSuiteModuleId('drive'), false)
 })
 
-test('listModulesForApi marks meetings/calendar placeholders', () => {
+test('listModulesForApi: meetings and calendar live', () => {
   const mods = listModulesForApi()
-  assert.equal(mods.find((m) => m.id === 'meetings')?.placeholder, true)
-  assert.equal(mods.find((m) => m.id === 'calendar')?.placeholder, true)
+  assert.equal(mods.find((m) => m.id === 'meetings')?.placeholder, undefined)
+  assert.equal(mods.find((m) => m.id === 'calendar')?.placeholder, undefined)
   assert.equal(mods.find((m) => m.id === 'docs')?.placeholder, undefined)
 })

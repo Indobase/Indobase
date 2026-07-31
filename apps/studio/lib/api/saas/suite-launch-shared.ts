@@ -42,7 +42,7 @@ export const SUITE_MODULES: SuiteModuleMeta[] = [
     description: 'Opens Email — campaigns and transactional mail',
     externalProduct: 'email',
   },
-  { id: 'calendar', label: 'Calendar', description: 'Events and schedules' },
+  { id: 'calendar', label: 'Calendar', description: 'Opens Calendar — events and scheduling' },
 ]
 
 const ALLOWED_ROLE_SET = new Set<string>(SUITE_ALLOWED_ROLES)
