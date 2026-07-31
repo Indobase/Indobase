@@ -21,7 +21,7 @@ export function publicSsoHealth(input: {
   versionEnvKeys?: string[]
   extra?: Record<string, unknown>
 }) {
-  const versionKeys = input.versionEnvKeys ?? ['GIT_SHA', 'SUITE_VERSION', 'DISCUSS_VERSION', 'CRM_VERSION', 'HELPDESK_VERSION']
+  const versionKeys = input.versionEnvKeys ?? ['GIT_SHA', 'SUITE_VERSION', 'DISCUSS_VERSION', 'CRM_VERSION']
   let version = 'dev'
   for (const key of versionKeys) {
     const value = process.env[key]?.trim()

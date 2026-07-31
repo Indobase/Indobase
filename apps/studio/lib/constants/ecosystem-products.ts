@@ -20,9 +20,9 @@ export const ECOSYSTEM_PRODUCTS = {
   workspace: {
     id: 'workspace',
     name: 'Workspace',
-    tagline: 'Files, docs, sheets, presentations',
+    tagline: 'Files, docs, sheets, presentations, meetings, and calendar',
     description:
-      'Files, docs, sheets, and presentations for this project — one connected workspace.',
+      'Files, docs, sheets, presentations, meetings, and calendar for this project — one connected workspace.',
     host: 'workspace.indobase.in',
     openLabel: 'Open Workspace',
     openHomeLabel: 'Open Workspace home',

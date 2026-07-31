@@ -1,12 +1,13 @@
 import { ScaffoldContainer, ScaffoldSection } from 'components/layouts/Scaffold'
 import { BarChart3, ExternalLink, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useParams } from 'common'
 
 import { Badge, Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 
 import { useAnalyticsLaunch, type AnalyticsMapping } from './useAnalyticsLaunch'
+import { resetAutoLaunch, useAutoLaunchProduct } from './useAutoLaunchProduct'
 
 /**
  * Indobase Analytics hub — project ↔ site mapping + Open Analytics (Studio SSO).
@@ -18,7 +19,9 @@ export const ProjectAnalyticsHome = () => {
   const [launchDenied, setLaunchDenied] = useState(false)
   const [mapping, setMapping] = useState<AnalyticsMapping | null>(null)
 
-  const openAnalytics = async (mode: 'same-tab' | 'new-tab') => {
+  const openAnalytics = useCallback(async (mode: 'same-tab' | 'new-tab') => {
+    // Manual open: clear the per-tab opt-out so a later visit auto-opens again.
+    resetAutoLaunch('analytics', ref)
     setLaunchError(null)
     setLaunchDenied(false)
     const result = await launch()
@@ -37,7 +40,17 @@ export const ProjectAnalyticsHome = () => {
       return
     }
     window.location.assign(result.url)
-  }
+  }, [launch, ref])
+
+  /*
+   * Skip the interstitial: most opens are "take me to the product". The hook records the launch
+   * per tab, so pressing Back lands here and shows setup instead of bouncing straight out again.
+   */
+  const { isAutoLaunching } = useAutoLaunchProduct({
+    product: 'analytics',
+    projectRef: ref,
+    launch: () => openAnalytics('same-tab'),
+  })
 
   const previewMapping: AnalyticsMapping = mapping || {
     project_ref: ref || '',
@@ -49,6 +62,26 @@ export const ProjectAnalyticsHome = () => {
         : 'https://analytics.indobase.in',
     snippet: `<script src="https://analytics.indobase.in/api/script.js" data-site-id="SITE_ID" defer></script>`,
     note: 'SITE_ID is created on first Open Analytics.',
+  }
+
+  /*
+   * While the automatic open is in flight, show a minimal opening state rather than the full
+   * setup page. Rendering the whole interstitial for a few hundred milliseconds before navigating
+   * away is exactly the flash of unwanted content this change exists to remove.
+   */
+  if (isAutoLaunching) {
+    return (
+      <ScaffoldContainer size="large">
+        <ScaffoldSection isFullWidth className="py-10 md:py-14">
+          <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-3 py-16 text-center">
+            <p className="text-sm text-foreground">Opening Indobase Analytics…</p>
+            <p className="text-xs text-foreground-light">
+              Signing you in with your Studio session.
+            </p>
+          </div>
+        </ScaffoldSection>
+      </ScaffoldContainer>
+    )
   }
 
   return (

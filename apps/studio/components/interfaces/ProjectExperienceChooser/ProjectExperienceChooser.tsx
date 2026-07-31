@@ -16,7 +16,6 @@ import {
   Mail,
   Megaphone,
   MessageSquare,
-  Calendar as CalendarIcon,
   Rocket,
   Settings,
   Share2,
@@ -29,12 +28,11 @@ import { Badge, Button, cn } from 'ui'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
+import { useBuilderLaunch } from './useBuilderLaunch'
 import { useCrmLaunch } from './useCrmLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
 import { useDiscussLaunch } from './useDiscussLaunch'
 import { useEmailLaunch } from './useEmailLaunch'
-import { useMeetLaunch } from './useMeetLaunch'
-import { useCalendarLaunch } from './useCalendarLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -183,11 +181,12 @@ export const ProjectExperienceChooser = () => {
   const { data: project } = useSelectedProjectQuery()
   const { data: organization } = useSelectedOrganizationQuery()
 
+  const { launch: launchBuilder, isLaunching: isLaunchingBuilder } = useBuilderLaunch({
+    nextPath: '/?source=studio',
+  })
   const { launch: launchCrm, isLaunching: isLaunchingCrm } = useCrmLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
   const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
-  const { launch: launchMeet, isLaunching: isLaunchingMeet } = useMeetLaunch()
-  const { launch: launchCalendar, isLaunching: isLaunchingCalendar } = useCalendarLaunch()
   const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
@@ -244,18 +243,6 @@ export const ProjectExperienceChooser = () => {
           loading={isLaunchingDiscuss}
           onClick={() => void open(launchDiscuss)}
         />
-        <RailLaunchItem
-          icon={<VideoIcon size={18} />}
-          label={ECOSYSTEM_PRODUCTS.meet.name}
-          loading={isLaunchingMeet}
-          onClick={() => void open(launchMeet)}
-        />
-        <RailLaunchItem
-          icon={<CalendarIcon size={18} />}
-          label={ECOSYSTEM_PRODUCTS.calendar.name}
-          loading={isLaunchingCalendar}
-          onClick={() => void open(launchCalendar)}
-        />
         <RailItem icon={<Database size={18} />} label="Backend" href={`/project/${ref}/backend`} />
         <RailItem icon={<Megaphone size={18} />} label="Marketing" href={`/project/${ref}/marketing`} />
         <RailItem icon={<CreditCard size={18} />} label="Payments" href={`/project/${ref}/payments`} />
@@ -302,7 +289,8 @@ export const ProjectExperienceChooser = () => {
                   tagline="Build your app with AI"
                   icon={<Blocks size={18} className="text-[#3B8FD6]" />}
                   accentClassName="bg-[#3B8FD6]/10"
-                  href={`/project/${ref}`}
+                  onClick={() => void launchBuilder()}
+                  loading={isLaunchingBuilder}
                 />
                 <ProductTile
                   name="Backend Studio"
@@ -357,22 +345,6 @@ export const ProjectExperienceChooser = () => {
                   loading={isLaunchingDiscuss}
                 />
                 <ProductTile
-                  name={ECOSYSTEM_PRODUCTS.meet.name}
-                  tagline={ECOSYSTEM_PRODUCTS.meet.tagline}
-                  icon={<VideoIcon size={18} className="text-[#3B8FD6]" />}
-                  accentClassName="bg-[#3B8FD6]/10"
-                  onClick={() => open(launchMeet)}
-                  loading={isLaunchingMeet}
-                />
-                <ProductTile
-                  name={ECOSYSTEM_PRODUCTS.calendar.name}
-                  tagline={ECOSYSTEM_PRODUCTS.calendar.tagline}
-                  icon={<CalendarIcon size={18} className="text-[#0EA5E9]" />}
-                  accentClassName="bg-[#0EA5E9]/10"
-                  onClick={() => open(launchCalendar)}
-                  loading={isLaunchingCalendar}
-                />
-                <ProductTile
                   name="Email"
                   tagline="Campaigns and transactional mail"
                   icon={<Mail size={18} className="text-[#0EA5E9]" />}
@@ -395,13 +367,6 @@ export const ProjectExperienceChooser = () => {
                   accentClassName="bg-[#F59E0B]/10"
                   onClick={() => open(launchVideo)}
                   loading={isLaunchingVideo}
-                />
-                <ProductTile
-                  name="WhatsApp"
-                  tagline="Order updates and support"
-                  icon={<Megaphone size={18} className="text-[#22C55E]" />}
-                  accentClassName="bg-[#22C55E]/10"
-                  comingSoon
                 />
               </div>
 
