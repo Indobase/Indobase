@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -39,10 +40,20 @@ test('file store create/list/save round-trip', async () => {
       'word/document.xml',
       'word/_rels/document.xml.rels',
       'word/styles.xml',
+      'word/settings.xml',
+      'word/fontTable.xml',
       'docProps/core.xml',
     ]) {
       assert.ok(asText.includes(part), `missing OOXML part ${part}`)
     }
+    // Relationship targets live inside compressed entries — unzip to assert.
+    const docxPath = path.join(dir, 'check.docx')
+    const extractDir = path.join(dir, 'extracted')
+    await writeFile(docxPath, bytes!)
+    execFileSync('unzip', ['-oq', docxPath, '-d', extractDir])
+    const rels = await readFile(path.join(extractDir, 'word/_rels/document.xml.rels'), 'utf8')
+    assert.match(rels, /officeDocument\/2006\/relationships\/styles/)
+    assert.match(rels, /officeDocument\/2006\/relationships\/settings/)
     await saveFileBytes('abc123', meta.id, Buffer.from('updated'))
     const again = await readFileBytes('abc123', meta.id)
     assert.equal(again?.toString(), 'updated')
