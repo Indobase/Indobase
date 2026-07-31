@@ -13,7 +13,6 @@ import {
   Database,
   Image as ImageIcon,
   LayoutGrid,
-  LifeBuoy,
   Mail,
   Megaphone,
   MessageSquare,
@@ -34,7 +33,6 @@ import { useCrmLaunch } from './useCrmLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
 import { useDiscussLaunch } from './useDiscussLaunch'
 import { useEmailLaunch } from './useEmailLaunch'
-import { useHelpdeskLaunch } from './useHelpdeskLaunch'
 import { useMeetLaunch } from './useMeetLaunch'
 import { useCalendarLaunch } from './useCalendarLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
@@ -186,7 +184,6 @@ export const ProjectExperienceChooser = () => {
   const { data: organization } = useSelectedOrganizationQuery()
 
   const { launch: launchCrm, isLaunching: isLaunchingCrm } = useCrmLaunch()
-  const { launch: launchHelpdesk, isLaunching: isLaunchingHelpdesk } = useHelpdeskLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
   const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
   const { launch: launchMeet, isLaunching: isLaunchingMeet } = useMeetLaunch()
@@ -240,12 +237,6 @@ export const ProjectExperienceChooser = () => {
           label={ECOSYSTEM_PRODUCTS.crm.name}
           loading={isLaunchingCrm}
           onClick={() => void open(launchCrm)}
-        />
-        <RailLaunchItem
-          icon={<LifeBuoy size={18} />}
-          label={ECOSYSTEM_PRODUCTS.helpdesk.name}
-          loading={isLaunchingHelpdesk}
-          onClick={() => void open(launchHelpdesk)}
         />
         <RailLaunchItem
           icon={<MessageSquare size={18} />}
@@ -356,14 +347,6 @@ export const ProjectExperienceChooser = () => {
                   accentClassName="bg-[#059669]/10"
                   onClick={() => open(launchCrm)}
                   loading={isLaunchingCrm}
-                />
-                <ProductTile
-                  name={ECOSYSTEM_PRODUCTS.helpdesk.name}
-                  tagline={ECOSYSTEM_PRODUCTS.helpdesk.tagline}
-                  icon={<LifeBuoy size={18} className="text-[#0D9488]" />}
-                  accentClassName="bg-[#0D9488]/10"
-                  onClick={() => open(launchHelpdesk)}
-                  loading={isLaunchingHelpdesk}
                 />
                 <ProductTile
                   name={ECOSYSTEM_PRODUCTS.discuss.name}

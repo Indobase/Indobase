@@ -58,14 +58,6 @@ export const ECOSYSTEM_PRODUCTS = {
     host: 'crm.indobase.in',
     openLabel: 'Open CRM',
   },
-  helpdesk: {
-    id: 'helpdesk',
-    name: 'Helpdesk',
-    descriptor: 'Support',
-    tagline: 'Tickets, SLAs, and knowledge base for customers',
-    host: 'helpdesk.indobase.in',
-    openLabel: 'Open Helpdesk',
-  },
   domains: {
     id: 'domains',
     name: 'Domains',

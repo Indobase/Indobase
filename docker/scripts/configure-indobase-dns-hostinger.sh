@@ -45,7 +45,7 @@ CONTROL_PLANE_VPS_IP="${CONTROL_PLANE_VPS_IP:-103.190.92.249}"
 # Explicit A records on control plane (override wildcard * → data plane .248)
 CONTROL_PLANE_A_NAMES=(
   api studio builder status mail
-  discuss workspace crm helpdesk domains
+  discuss workspace crm domains
   email social design video analytics payments
 )
 
@@ -223,7 +223,7 @@ apply_control_plane_hostinger() {
 import json, os
 names = [
   "api", "studio", "builder", "status", "mail",
-  "discuss", "workspace", "crm", "helpdesk", "domains",
+  "discuss", "workspace", "crm", "domains",
   "email", "social", "design", "video", "analytics", "payments",
 ]
 ip = os.environ["CONTROL_PLANE_VPS_IP"]

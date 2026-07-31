@@ -10,7 +10,7 @@ import { executeQuery } from './query'
 /**
  * One implementation of the Studio → product SSO handoff.
  *
- * Analytics, Calendar, CRM, Design, Discuss, Email, Helpdesk, Meet, Payments, Social, Suite, and Video share this
+ * Analytics, Calendar, CRM, Design, Discuss, Email, Meet, Payments, Social, Suite, and Video share this
  * implementation. Builder is deliberately NOT included — see `builder-launch.ts`.
  */
 
@@ -24,7 +24,6 @@ export const HANDOFF_PRODUCTS = [
   'discuss',
   'domains',
   'email',
-  'helpdesk',
   'meet',
   'payments',
   'social',
@@ -102,12 +101,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Email',
     launchPath: '/console/launch',
     defaultBaseUrl: 'https://email.indobase.in',
-  },
-  helpdesk: {
-    audience: 'indobase-helpdesk',
-    label: 'Helpdesk',
-    launchPath: '/sso/launch',
-    defaultBaseUrl: 'https://helpdesk.indobase.in',
   },
   meet: {
     audience: 'indobase-meet',

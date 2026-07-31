@@ -45,7 +45,6 @@ import {
 import { BuilderSidebarNavItem } from './ProjectExperienceChooser/BuilderSidebarNavItem'
 import { CrmSidebarNavItem } from './ProjectExperienceChooser/CrmSidebarNavItem'
 import { DiscussSidebarNavItem } from './ProjectExperienceChooser/DiscussSidebarNavItem'
-import { HelpdeskSidebarNavItem } from './ProjectExperienceChooser/HelpdeskSidebarNavItem'
 import { MeetSidebarNavItem } from './ProjectExperienceChooser/MeetSidebarNavItem'
 import { CalendarSidebarNavItem } from './ProjectExperienceChooser/CalendarSidebarNavItem'
 import { WorkspaceSidebarNavItem } from './ProjectExperienceChooser/WorkspaceSidebarNavItem'
@@ -283,7 +282,6 @@ const ProjectLinks = () => {
         <BuilderSidebarNavItem />
         <WorkspaceSidebarNavItem />
         <CrmSidebarNavItem />
-        <HelpdeskSidebarNavItem />
         <DiscussSidebarNavItem />
         <MeetSidebarNavItem />
         <CalendarSidebarNavItem />

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Ensure Frappe persist volumes are writable by uid 1000 (frappe/bench image).
-# Used by CRM / Helpdesk only — Workspace no longer uses a Frappe bench volume.
+# Used by CRM only — Workspace no longer uses a Frappe bench volume.
 # Run on the compose host before first boot / after recreating empty volumes.
 set -euo pipefail
 
 VOLUMES=(
   indobase-crm_crm_bench_sites
-  indobase-helpdesk_helpdesk_bench_sites
 )
 
 for v in "${VOLUMES[@]}"; do
