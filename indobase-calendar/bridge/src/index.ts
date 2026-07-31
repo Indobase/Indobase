@@ -35,7 +35,10 @@ import {
   isCalendarEngineConfigured,
   calendarEnginePing,
 } from './engine.js'
-import { buildMeetAttachStub } from './meet-stub.js'
+import {
+  buildMeetAttach,
+  notifyMeetRoomLinked,
+} from './meet-attach.js'
 import { rewriteProductPath } from './routes.js'
 import { buildCalendarSpaceMap, calendarEventsPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
@@ -58,6 +61,8 @@ function isBridgeOwnedPath(pathname: string): boolean {
   return (
     pathname === '/healthz' ||
     pathname === '/api/me' ||
+    pathname === '/api/meet' ||
+    pathname.startsWith('/api/meet/') ||
     pathname.startsWith('/sso/') ||
     pathname === '/sso' ||
     pathname.startsWith('/brand/')
@@ -165,12 +170,16 @@ app.post('/sso/session', async (c) => {
     }
   }
 
-  c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+  const sessionTok = createSessionToken(claims, secret)
+  c.res.headers.append('Set-Cookie', sessionCookie(sessionTok))
+  const session = readSessionToken(sessionTok, secret)!
+  const meet = buildMeetAttach({ projectRef: claims.project_ref, session })
+  void notifyMeetRoomLinked(meet, session)
   return c.json({
     ok: true,
     redirect,
     space: map,
-    meet: buildMeetAttachStub(claims.project_ref),
+    meet,
   })
 })
 
@@ -231,8 +240,39 @@ app.get('/api/me', requireSession, (c) => {
     studioUrl: s.studioUrl,
     space: map,
     eventsPath: calendarEventsPath(),
-    meet: buildMeetAttachStub(s.projectRef),
+    meet: buildMeetAttach({ projectRef: s.projectRef, session: s }),
   })
+})
+
+/** Current project's linked Meet room (invite + optional SSO launch). */
+app.get('/api/meet', requireSession, (c) => {
+  const s = c.get('session')
+  const eventKey = c.req.query('event') || c.req.query('eventKey') || ''
+  return c.json({
+    ok: true,
+    meet: buildMeetAttach({
+      projectRef: s.projectRef,
+      eventKey,
+      session: s,
+    }),
+  })
+})
+
+/**
+ * Mint / refresh a Meet room link for this project (or event key) and notify Meet.
+ */
+app.post('/api/meet/attach', requireSession, async (c) => {
+  const s = c.get('session')
+  let eventKey = ''
+  try {
+    const body = (await c.req.json()) as { eventKey?: string; event?: string }
+    eventKey = (body.eventKey || body.event || '').trim()
+  } catch {
+    eventKey = ''
+  }
+  const meet = buildMeetAttach({ projectRef: s.projectRef, eventKey, session: s })
+  const { notified } = await notifyMeetRoomLinked(meet, s)
+  return c.json({ ok: true, meet, notified })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-calendar' }))
@@ -257,7 +297,8 @@ function renderShell(session: Session): string {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
-  const meet = buildMeetAttachStub(session.projectRef)
+  const meet = buildMeetAttach({ projectRef: session.projectRef, session })
+  const openHref = meet.launchUrl || meet.meetLink
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -279,6 +320,7 @@ function renderShell(session: Session): string {
     code { background: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .pill { display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
     nav a { color: var(--brand); margin-right: 16px; font-size: 14px; text-decoration: none; }
+    a.btn { display: inline-block; margin-top: 12px; background: var(--brand); color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -297,8 +339,10 @@ function renderShell(session: Session): string {
         <dt>Organization</dt><dd><code>${map.orgSlug}</code> → <code>${map.orgKey}</code></dd>
         <dt>Project</dt><dd><code>${map.projectRef}</code> → booking <code>${map.projectUsername}</code></dd>
         <dt>Role</dt><dd>${session.calendarRole}${session.canEdit ? '' : ' (view only)'}</dd>
-        <dt>Meet link</dt><dd><code>${meet.meetLink}</code></dd>
+        <dt>Meet room</dt><dd><code>${meet.meetingId}</code></dd>
+        <dt>Meet invite</dt><dd><code>${meet.meetLink}</code></dd>
       </dl>
+      <a class="btn" href="${openHref}">Open Meet</a>
       <p class="meta" style="margin-top:20px">
         Dev shell — production serves the full Calendar experience behind this SSO bridge.
       </p>

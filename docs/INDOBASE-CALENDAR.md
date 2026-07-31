@@ -108,7 +108,11 @@ Flow:
 
 Workspace rail **Calendar** does **not** embed a raw engine iframe or password wizard. It SSO-launches Indobase Calendar (same `aud=indobase-calendar` contract) when `CALENDAR_HANDOFF_SECRET` is shared with the Workspace bridge. Booking URLs remain shareable at `calendar.*/{ib-cal-{ref}}`.
 
-Meet stays a separate product (`indobase-meet/`); Calendar Phase 1 only stubs a Meet link field (`meet.*/meeting/ib-meet-proj-{ref}`).
+Meet stays a separate product (`indobase-meet/`). Phase 2 links Calendar ↔ Meet:
+
+- `GET /api/meet` / `POST /api/meet/attach` — stable `ib-meet-proj-{ref}` or event-scoped `ib-meet-evt-{ref}-{key}` rooms, invite URL, optional SSO `launchUrl` when `MEET_HANDOFF_SECRET` is shared with Meet.
+- Branded Calendar HTML shows a **Meet room linked** chip (copy invite / Open Meet).
+- Meet `POST /api/rooms/link` acknowledges attaches from Calendar.
 
 ---
 
@@ -129,22 +133,23 @@ Meet stays a separate product (`indobase-meet/`); Calendar Phase 1 only stubs a 
 | `/team` | Team / org calendar (alias) |
 | `/settings` | Account / product settings (alias) |
 | `/{ib-cal-{ref}}` | Public booking page |
+| `/api/meet` | Linked Meet room for session project |
 
 ---
 
-## Phase 2+ roadmap (document only)
+## Phase 2+ roadmap
 
-| Capability | Notes |
+| Capability | Status |
 |---|---|
-| Meet room auto-attach | Live create/link Meet rooms on event types (Phase 1 = stub URL field) |
-| Discuss reminders | Channel pings before events |
-| CRM demos | Attach Calendar bookings to CRM deals |
-| AI scheduling | Agent finds slots across calendars |
-| Drive / Docs | Attach Workspace files to events |
-| Analytics | Booking conversion metrics |
-| Event bus | `calendar.event.*` for Builder / workflows |
-| Google / Outlook sync | Bidirectional free/busy |
-| Full design-system React rewrite | Replace engine SPA chrome entirely |
+| Meet room auto-attach | **Shipped** — see above |
+| Discuss reminders | **Stub only** — no Discuss/email pings yet; event bus ready for a future worker |
+| CRM demos | Documented — not built |
+| AI scheduling | Documented — not built |
+| Drive / Docs | Documented — not built |
+| Analytics | Documented — not built |
+| Event bus | Partial — Calendar notifies Meet `/api/rooms/link` |
+| Google / Outlook sync | Documented — not built |
+| Full design-system React rewrite | Documented — not built |
 
 ---
 
@@ -156,6 +161,7 @@ cd /opt/indobase-calendar/docker/deploy   # or sync from monorepo indobase-calen
 cp .env.example .env
 # set CALENDAR_HANDOFF_SECRET (>=32), CALENDAR_POSTGRES_PASSWORD,
 #     CALENDAR_NEXTAUTH_SECRET, CALENDAR_ENCRYPTION_KEY
+# optional: MEET_HANDOFF_SECRET (= Meet bridge) for one-click Open Meet
 docker compose up -d --build
 curl -sS https://calendar.indobase.in/sso/health
 ```
@@ -165,7 +171,6 @@ DNS A: `calendar.indobase.in` → `103.190.92.249` (not tenant `.248`).
 Studio Swarm env must include `CALENDAR_HANDOFF_SECRET` (or shared `STUDIO_HANDOFF_SECRET`) matching the bridge. Workspace compose needs `CALENDAR_PUBLIC_URL` + `CALENDAR_HANDOFF_SECRET` for the Calendar module launcher.
 
 **Legacy note:** `indobase-suite/docker/deploy/docker-compose.calendar.yml` was the thin Traefik→engine MVP. Prefer `indobase-calendar/` (bridge on `:8095`); keep the suite file only as a migration pointer until removed.
-
 ---
 
 ## Local bridge

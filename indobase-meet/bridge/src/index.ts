@@ -31,7 +31,13 @@ import {
   type Session,
 } from './auth.js'
 import { brandMeetHtml, shouldBrandMeetResponse } from './brand-html.js'
-import { acceptMeetEvent, isMeetEventEnvelope } from './events.js'
+import {
+  acceptMeetEvent,
+  acceptRoomLinkEvent,
+  getLinkedRoom,
+  isMeetEventEnvelope,
+  linkMeetRoom,
+} from './events.js'
 import {
   engineJwtConfigured,
   meetConfigOverwrite,
@@ -58,11 +64,18 @@ function isBridgeOwnedPath(pathname: string): boolean {
     pathname === '/healthz' ||
     pathname === '/api/me' ||
     pathname === '/api/events' ||
+    pathname.startsWith('/api/rooms') ||
     pathname.startsWith('/sso/') ||
     pathname === '/sso' ||
     pathname.startsWith('/brand/') ||
     pathname.startsWith('/meeting/')
   )
+}
+
+function safeMeetingId(raw: string | undefined | null): string | null {
+  const id = (raw || '').trim()
+  if (!id || !/^ib-meet-[a-z0-9-]{1,56}$/i.test(id)) return null
+  return id.slice(0, 64)
 }
 
 function isNativeAuthPath(pathname: string): boolean {
@@ -155,8 +168,26 @@ app.post('/sso/session', async (c) => {
     organizationName: claims.organization_name,
   })
 
+  const meetingOverride =
+    safeMeetingId(claims.meeting_id) ||
+    safeMeetingId(c.req.query('meeting')) ||
+    null
+  const redirect = meetingOverride
+    ? `/meeting/${encodeURIComponent(meetingOverride)}`
+    : meetMeetingPath(map)
+
+  if (meetingOverride) {
+    linkMeetRoom({
+      meetingId: meetingOverride,
+      projectRef: claims.project_ref,
+      orgSlug: claims.organization_slug,
+      source: 'sso',
+      inviteUrl: `${PUBLIC_ORIGIN}/meeting/${encodeURIComponent(meetingOverride)}`,
+    })
+  }
+
   c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  return c.json({ ok: true, redirect: meetMeetingPath(map), space: map })
+  return c.json({ ok: true, redirect, space: map, meetingId: meetingOverride || map.meetingId })
 })
 
 app.post('/sso/logout', (c) => {
@@ -226,7 +257,97 @@ app.post('/api/events', requireSession, async (c) => {
   if (!isMeetEventEnvelope(body)) {
     return c.json({ error: 'type required' }, 400)
   }
+  if (
+    body.type === 'calendar.meet.linked' ||
+    body.type === 'discuss.call.started' ||
+    body.type === 'meet.room.linked'
+  ) {
+    try {
+      return c.json(acceptRoomLinkEvent(body))
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'invalid room link' }, 400)
+    }
+  }
   return c.json(acceptMeetEvent(body))
+})
+
+/**
+ * Bridge-to-bridge room link (Calendar / Discuss). Accepts a short Meet handoff
+ * JWT so callers do not need a browser session cookie.
+ */
+app.post('/api/rooms/link', async (c) => {
+  let body: {
+    token?: string
+    meetingId?: string
+    source?: string
+    scope?: string
+    inviteUrl?: string
+  }
+  try {
+    body = (await c.req.json()) as typeof body
+  } catch {
+    return c.json({ error: 'invalid body' }, 400)
+  }
+  const token = (body.token || '').trim()
+  if (!token) return c.json({ error: 'token required' }, 400)
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.json({ error: 'sso not configured' }, 503)
+  }
+  const claims = verifyStudioHandoff(token, secret)
+  if (!claims) return c.json({ error: 'invalid or expired token' }, 401)
+
+  const meetingId =
+    safeMeetingId(body.meetingId) ||
+    safeMeetingId(claims.meeting_id) ||
+    buildMeetSpaceMap({
+      orgSlug: claims.organization_slug,
+      projectRef: claims.project_ref,
+    }).meetingId
+
+  const inviteUrl =
+    (typeof body.inviteUrl === 'string' && body.inviteUrl.trim()) ||
+    `${PUBLIC_ORIGIN}/meeting/${encodeURIComponent(meetingId)}`
+
+  const room = linkMeetRoom({
+    meetingId,
+    projectRef: claims.project_ref,
+    orgSlug: claims.organization_slug,
+    source: (body.source || 'bridge').slice(0, 32),
+    scope: typeof body.scope === 'string' ? body.scope.slice(0, 32) : undefined,
+    inviteUrl,
+  })
+
+  acceptMeetEvent({
+    type: 'meet.room.linked',
+    meetingId: room.meetingId,
+    projectRef: room.projectRef,
+    orgSlug: room.orgSlug,
+    payload: { source: room.source, scope: room.scope, inviteUrl: room.inviteUrl },
+    ts: room.linkedAt,
+  })
+
+  return c.json({
+    ok: true,
+    room,
+    meetingPath: `/meeting/${encodeURIComponent(meetingId)}`,
+  })
+})
+
+app.get('/api/rooms/:meetingId', requireSession, (c) => {
+  const meetingId = safeMeetingId(c.req.param('meetingId'))
+  if (!meetingId) return c.json({ error: 'invalid meeting id' }, 400)
+  const linked = getLinkedRoom(meetingId)
+  return c.json({
+    ok: true,
+    meetingId,
+    meetingPath: `/meeting/${encodeURIComponent(meetingId)}`,
+    inviteUrl: `${PUBLIC_ORIGIN}/meeting/${encodeURIComponent(meetingId)}`,
+    linked: linked || null,
+  })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-meet' }))

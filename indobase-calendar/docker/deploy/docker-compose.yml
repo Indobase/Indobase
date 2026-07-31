@@ -108,6 +108,9 @@ services:
       CALENDAR_PUBLIC_URL: ${CALENDAR_PUBLIC_URL:-https://calendar.indobase.in}
       MEET_PUBLIC_URL: ${MEET_PUBLIC_URL:-https://meet.indobase.in}
       CALENDAR_MEET_AUTO_ATTACH: ${CALENDAR_MEET_AUTO_ATTACH:-1}
+      # Same secret as Meet/Studio so Calendar can mint Meet SSO launch URLs.
+      MEET_HANDOFF_SECRET: ${MEET_HANDOFF_SECRET:-}
+      STUDIO_HANDOFF_SECRET: ${STUDIO_HANDOFF_SECRET:-}
       CALENDAR_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
     networks:

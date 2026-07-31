@@ -114,8 +114,8 @@ before promoting compose/env to prod hosts.
 | Email invites / SMTP | Configure mail on the Calendar stack; not wired to Indobase Email yet |
 | Google / Outlook sync | Optional OAuth apps on the Calendar host; credentials stay out of Studio |
 | Multi-tenant isolation | Single Calendar instance today; project scoping is username/`ib-cal-*` convention only — not hard RLS across Indobase orgs |
-| Meet auto-attach | Phase 1 stubs Meet link field; live room create is Phase 2 |
-| Full design-system rewrite | Engine SPA chrome residual strings — Phase 2+ |
+| Meet auto-attach | **Shipped (Phase 2)** — Calendar links stable Meet rooms + SSO open; Workspace Meetings still launches Meet |
+| Full design-system rewrite | Engine SPA chrome residual strings — later |
 
 ## Repo map
 

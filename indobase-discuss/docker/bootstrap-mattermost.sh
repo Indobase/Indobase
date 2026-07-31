@@ -77,14 +77,58 @@ apply_indobase_brand() {
     "HelpLink": "https://studio.indobase.in",
     "PrivacyPolicyLink": "https://indobase.in/privacy",
     "TermsOfServiceLink": "https://indobase.in/terms",
-    "SupportEmail": "support@indobase.in"
+    "SupportEmail": "support@indobase.in",
+    "ReportAProblemLink": "",
+    "EnableAskCommunityLink": false
   },
   "NativeAppSettings": {
     "AppDownloadLink": "",
     "AndroidAppDownloadLink": "",
     "IosAppDownloadLink": ""
+  },
+  "EmailSettings": {
+    "EnablePreviewModeBanner": false
+  },
+  "ServiceSettings": {
+    "EnableDesktopLandingPage": false,
+    "EnableOnboardingFlow": false,
+    "EnableTutorial": false
+  },
+  "AnnouncementSettings": {
+    "UserNoticesEnabled": false,
+    "AdminNoticesEnabled": false
+  },
+  "LogSettings": {
+    "EnableDiagnostics": false
+  },
+  "PluginSettings": {
+    "EnableMarketplace": false,
+    "EnableRemoteMarketplace": false,
+    "PluginStates": {
+      "com.mattermost.nps": { "Enable": false },
+      "playbooks": { "Enable": false },
+      "com.mattermost.calls": { "Enable": true }
+    }
   }
 }'
+  # Why each of the above (debranding + infra banners, spec §1/§2):
+  #   ReportAProblemLink ""        — default points at mattermost.com/pl/report-a-bug.
+  #   EnableAskCommunityLink       — Help menu link to the Mattermost community.
+  #   EnablePreviewModeBanner      — "Preview Mode: Email notifications have not been
+  #                                  configured" bar (we ship SENDEMAILNOTIFICATIONS=false
+  #                                  on purpose). Config, not CSS: blanket-hiding
+  #                                  .announcement-bar would also kill legitimate bars.
+  #   EnableDesktopLandingPage     — /landing interstitial ("Opening link in Mattermost…")
+  #                                  whose download CTA is dead (AppDownloadLink is empty).
+  #   EnableOnboardingFlow/Tutorial— "Welcome to Mattermost" tour + task list.
+  #   User/AdminNoticesEnabled     — "Notice from Mattermost" modals fetched upstream.
+  #   EnableDiagnostics            — RudderStack telemetry + the NPS survey bot that DMs
+  #                                  users asking how likely they are to recommend
+  #                                  Mattermost. No user-facing feature is lost.
+  #   PluginStates                 — NPS off, Playbooks off (a second Mattermost-branded
+  #                                  product in the switcher). Calls stays ON: disabling
+  #                                  it would remove a user-facing button.
+  #   EnableMarketplace/Remote     — the Mattermost plugin store.
   put=$(curl -sS -o /tmp/mm-cfg.out -w "%{http_code}" -X PUT "$MM_URL/api/v4/config/patch" \
     -H "Authorization: Bearer $pat" \
     -H "Content-Type: application/json" \
@@ -96,11 +140,140 @@ apply_indobase_brand() {
   fi
 }
 
+# ── Project-first channels ───────────────────────────────────────────────────
+# Every new team is seeded upstream with "Town Square" and "Off-Topic". Both read
+# as the upstream product, so each team is reshaped into a real workspace:
+# General / Announcements / Support / Development / Design / Marketing.
+#
+# Slugs are deep links. `town-square` keeps its slug forever (the server hardcodes
+# it as the team default channel for join/leave/permission logic) — only its
+# display_name moves. Off-Topic is archived while it is still empty, and merely
+# relabelled once it holds messages, so no conversation is ever hidden.
+#
+# The bridge applies the same plan to teams it creates
+# (bridge/src/channel-plan.ts); this pass retrofits teams that already exist.
+# bridge/src/channel-plan.test.ts asserts the two lists stay identical — keep the
+# `slug|Display Name|Purpose` format and single quotes if you edit them.
+INDOBASE_GENERAL_DISPLAY='General'
+INDOBASE_OFF_TOPIC_DISPLAY='Random'
+INDOBASE_TEAM_CHANNELS='announcements|Announcements|Product and company announcements
+support|Support|Questions, requests and help
+development|Development|Engineering work, builds and releases
+design|Design|Product, brand and interface design
+marketing|Marketing|Campaigns, content and growth'
+
+HTTP_CODE=''
+
+# Prints the body, sets HTTP_CODE. Never fails the script (curl errors → 000).
+mm_api() {
+  _pat="$1"
+  _method="$2"
+  _path="$3"
+  if [ "$#" -ge 4 ]; then
+    HTTP_CODE=$(curl -sS -o /tmp/mm-api.out -w '%{http_code}' -X "$_method" "$MM_URL$_path" \
+      -H "Authorization: Bearer $_pat" -H 'Content-Type: application/json' -d "$4" || echo 000)
+  else
+    HTTP_CODE=$(curl -sS -o /tmp/mm-api.out -w '%{http_code}' -X "$_method" "$MM_URL$_path" \
+      -H "Authorization: Bearer $_pat" -H 'Content-Type: application/json' || echo 000)
+  fi
+  cat /tmp/mm-api.out 2>/dev/null || true
+}
+
+# Field readers. `"id":"…"` is unambiguous because every other id field is
+# suffixed (team_id, scheme_id) — the leading quote only matches the real key.
+json_str() { printf '%s' "$1" | sed -n "s/.*[,{]\"$2\":\"\([^\"]*\)\".*/\1/p" | head -1; }
+json_num() { printf '%s' "$1" | sed -n "s/.*[,{]\"$2\":\([0-9][0-9]*\).*/\1/p" | head -1; }
+
+ensure_team_channels() {
+  pat="$1"
+  team_id="$2"
+
+  # town-square → General. display_name only; the slug is load-bearing.
+  ts=$(mm_api "$pat" GET "/api/v4/teams/$team_id/channels/name/town-square")
+  if [ "$HTTP_CODE" = "200" ]; then
+    ts_id=$(json_str "$ts" id)
+    ts_name=$(json_str "$ts" display_name)
+    # Only replace the upstream label — an admin's own rename wins.
+    if [ -n "$ts_id" ] && { [ "$ts_name" = "Town Square" ] || [ -z "$ts_name" ]; }; then
+      mm_api "$pat" PUT "/api/v4/channels/$ts_id/patch" \
+        "{\"display_name\":\"$INDOBASE_GENERAL_DISPLAY\"}" >/dev/null
+      log "team $team_id: town-square labelled '$INDOBASE_GENERAL_DISPLAY' (HTTP $HTTP_CODE)"
+    fi
+  fi
+
+  # off-topic → archived while empty, relabelled once it holds messages.
+  ot=$(mm_api "$pat" GET "/api/v4/teams/$team_id/channels/name/off-topic")
+  if [ "$HTTP_CODE" = "200" ]; then
+    ot_id=$(json_str "$ot" id)
+    ot_name=$(json_str "$ot" display_name)
+    ot_msgs=$(json_num "$ot" total_msg_count)
+    [ -n "$ot_msgs" ] || ot_msgs=1
+    if [ -n "$ot_id" ] && { [ "$ot_name" = "Off-Topic" ] || [ -z "$ot_name" ]; }; then
+      if [ "$ot_msgs" = "0" ]; then
+        mm_api "$pat" DELETE "/api/v4/channels/$ot_id" >/dev/null
+        log "team $team_id: archived empty off-topic (HTTP $HTTP_CODE)"
+      else
+        mm_api "$pat" PUT "/api/v4/channels/$ot_id/patch" \
+          "{\"display_name\":\"$INDOBASE_OFF_TOPIC_DISPLAY\"}" >/dev/null
+        log "team $team_id: off-topic labelled '$INDOBASE_OFF_TOPIC_DISPLAY' (HTTP $HTTP_CODE)"
+      fi
+    fi
+  fi
+
+  # The rest of the workspace. Public (type O) so members can find them.
+  printf '%s\n' "$INDOBASE_TEAM_CHANNELS" | while IFS='|' read -r slug display purpose; do
+    if [ -z "$slug" ]; then
+      continue
+    fi
+    mm_api "$pat" GET "/api/v4/teams/$team_id/channels/name/$slug" >/dev/null
+    if [ "$HTTP_CODE" = "200" ]; then
+      continue
+    fi
+    mm_api "$pat" POST "/api/v4/channels" \
+      "{\"team_id\":\"$team_id\",\"name\":\"$slug\",\"display_name\":\"$display\",\"purpose\":\"$purpose\",\"type\":\"O\"}" >/dev/null
+    case "$HTTP_CODE" in
+      200 | 201) log "team $team_id: created #$slug ($display)" ;;
+      *) log "team $team_id: could not create #$slug (HTTP $HTTP_CODE)" ;;
+    esac
+  done
+}
+
+apply_channel_plan() {
+  pat="$1"
+
+  # Add every member of a team to the workspace channels on join. Channels that
+  # do not exist are ignored server-side, so this is safe before they are created.
+  join_list=$(printf '%s\n' "$INDOBASE_TEAM_CHANNELS" |
+    awk -F'|' 'NF>0 && $1 != "" {printf "%s\"%s\"", sep, $1; sep=","}')
+  mm_api "$pat" PUT "/api/v4/config/patch" \
+    "{\"TeamSettings\":{\"ExperimentalDefaultChannels\":[$join_list]}}" >/dev/null
+  log "default join channels patched (HTTP $HTTP_CODE)"
+
+  page=0
+  while [ "$page" -lt 20 ]; do
+    teams=$(mm_api "$pat" GET "/api/v4/teams?page=$page&per_page=100")
+    if [ "$HTTP_CODE" != "200" ]; then
+      log "team list unavailable (HTTP $HTTP_CODE) — channel plan skipped"
+      return 0
+    fi
+    ids=$(printf '%s' "$teams" | tr '}' '\n' |
+      sed -n 's/.*[,{]"id":"\([a-z0-9]\{26\}\)".*/\1/p')
+    if [ -z "$ids" ]; then
+      break
+    fi
+    for tid in $ids; do
+      ensure_team_channels "$pat" "$tid"
+    done
+    page=$((page + 1))
+  done
+}
+
 if [ -f "$TOKEN_FILE" ]; then
   existing=$(tr -d '[:space:]' <"$TOKEN_FILE" || true)
   if token_ok "$existing"; then
     log "existing admin token is valid"
     apply_indobase_brand "$existing"
+    apply_channel_plan "$existing"
     # Keep container alive so depends_on service_started is stable; sleep forever.
     exec sleep infinity
   fi
@@ -184,5 +357,6 @@ printf '%s' "$pat" >"$TOKEN_FILE"
 log "wrote admin token to $TOKEN_FILE"
 
 apply_indobase_brand "$pat"
+apply_channel_plan "$pat"
 
 exec sleep infinity

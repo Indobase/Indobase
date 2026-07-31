@@ -15,6 +15,8 @@ export type StudioClaims = {
   project_name?: string
   role: StudioOrgRole
   studio_url?: string
+  /** Optional deep-link room from Calendar / Discuss launchers. */
+  meeting_id?: string
   exp: number
   iat: number
   aud: string
@@ -91,6 +93,12 @@ export function verifyStudioHandoff(token: string, secret: string): StudioClaims
   if (!sub || !email || !projectRef) return null
   if (!['owner', 'admin', 'developer', 'viewer'].includes(role)) return null
 
+  const meetingIdRaw = typeof payload.meeting_id === 'string' ? payload.meeting_id.trim() : ''
+  const meetingId =
+    meetingIdRaw && /^ib-meet-[a-z0-9-]{1,56}$/i.test(meetingIdRaw)
+      ? meetingIdRaw.slice(0, 64)
+      : undefined
+
   return {
     sub,
     email,
@@ -102,6 +110,7 @@ export function verifyStudioHandoff(token: string, secret: string): StudioClaims
     project_name: typeof payload.project_name === 'string' ? payload.project_name : undefined,
     role: role as StudioOrgRole,
     studio_url: typeof payload.studio_url === 'string' ? payload.studio_url : undefined,
+    meeting_id: meetingId,
     exp,
     iat: typeof payload.iat === 'number' ? payload.iat : now,
     aud: AUDIENCE,

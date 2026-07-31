@@ -7,6 +7,9 @@
  * visible text nodes. See NOTICE.md for residual TE limits.
  */
 
+import { applyDiscussDebranding } from './debrand.js'
+import { injectVisualSystem } from './visual-system.js'
+
 const PRODUCT = 'Indobase Discuss'
 const TITLE_TAG = `<title>${PRODUCT}</title>`
 
@@ -250,7 +253,12 @@ export function brandDiscussHtml(html: string): string {
     out += BRAND_JS
   }
 
-  return out
+  // Debranding lane (edition badges, upstream marks, OG/manifest metadata, AGPL
+  // §13 notices link) lives in debrand.ts — see that module for selectors.
+  // Visual system (tokens, typography, controls, states) lives in
+  // visual-system.ts and is injected last so its <style> is the final child of
+  // <head>, ahead of the stylesheets Mattermost appends at runtime.
+  return injectVisualSystem(applyDiscussDebranding(out))
 }
 
 export function shouldBrandDiscussResponse(contentType: string | null): boolean {

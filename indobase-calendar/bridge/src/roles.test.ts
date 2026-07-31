@@ -4,7 +4,7 @@ import test from 'node:test'
 import { calendarRoleFromStudio } from './roles.js'
 import { buildCalendarSpaceMap, calendarOrgKey, calendarProjectUsername } from './space-map.js'
 import { rewriteProductPath, canonicalProductPath } from './routes.js'
-import { buildMeetAttachStub, defaultMeetLinkForProject } from './meet-stub.js'
+import { buildMeetAttach, defaultMeetLinkForProject, meetMeetingIdForEvent } from './meet-attach.js'
 import { brandCalendarHtml, shouldBrandCalendarResponse } from './brand-html.js'
 import { createSessionToken, readSessionToken, verifyStudioHandoff, AUDIENCE } from './auth.js'
 import { createHmac } from 'node:crypto'
@@ -62,10 +62,16 @@ test('product path aliases', () => {
   assert.equal(canonicalProductPath('/teams'), '/team')
 })
 
-test('meet attach stub never names engine', () => {
-  const stub = buildMeetAttachStub('AbCd1234')
+test('meet attach links stable project + event rooms', () => {
+  const stub = buildMeetAttach({ projectRef: 'AbCd1234' })
   assert.match(stub.meetLink, /meet\.indobase\.in\/meeting\/ib-meet-proj-abcd1234/)
+  assert.equal(stub.meetingId, 'ib-meet-proj-abcd1234')
+  assert.equal(stub.mode, 'linked')
   assert.equal(defaultMeetLinkForProject('x'), 'https://meet.indobase.in/meeting/ib-meet-proj-x')
+  const evt = buildMeetAttach({ projectRef: 'AbCd1234', eventKey: 'Demo Call!' })
+  assert.equal(evt.scope, 'event')
+  assert.equal(evt.meetingId, meetMeetingIdForEvent('AbCd1234', 'Demo Call!'))
+  assert.match(evt.meetingId, /^ib-meet-evt-abcd1234-demo-call$/)
   assert.doesNotMatch(JSON.stringify(stub), /Jitsi|Cal\.com|cal\.diy/i)
 })
 

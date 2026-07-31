@@ -2,7 +2,11 @@
  * Deterministic org/project → Mattermost team / channel keys.
  *
  * Must stay in sync with `apps/studio/lib/api/saas/discuss-launch-shared.ts`.
+ *
+ * Keys (`teamKey` / `spaceKey`) are slugs: stable, URL-visible, never rewritten.
+ * Titles are human labels shown in the sidebar and must never be an internal key.
  */
+import { humanizeTitle } from './channel-plan.js'
 
 export type DiscussSpaceMap = {
   orgSlug: string
@@ -57,8 +61,10 @@ export function buildDiscussSpaceMap(opts: {
   const projectRef = opts.projectRef.trim()
   const teamKey = discussTeamKeyForOrgSlug(orgSlug)
   const spaceKey = discussSpaceKeyForProjectRef(projectRef)
-  const teamTitle = (opts.organizationName || orgSlug || 'Organization').slice(0, 64)
-  const spaceTitle = (opts.projectName || projectRef || 'Project').slice(0, 64)
+  // Display names derive from the org/project NAME. The ref is only a fallback,
+  // and `ib-org-…` / `ib-proj-…` keys are stripped so a key can never surface.
+  const teamTitle = humanizeTitle(opts.organizationName || orgSlug, 'Organization')
+  const spaceTitle = humanizeTitle(opts.projectName || projectRef, 'Project')
 
   return {
     orgSlug,

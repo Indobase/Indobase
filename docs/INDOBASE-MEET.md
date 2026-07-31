@@ -122,9 +122,18 @@ Honest CE limits: compiled engine JS may still contain residual upstream strings
 
 ---
 
-## Event bus stub (Phase 1)
+## Event bus (Phase 2)
 
-`POST /api/events` accepts analytics / automation envelopes and no-ops (200). Phase 2+ wires Calendar, Discuss, Drive, AI, Analytics, notifications, search, and automation consumers.
+`POST /api/events` accepts analytics / automation envelopes.
+
+| Type | Behavior |
+|---|---|
+| `meet.joined` (and other) | Accepted, deferred (no durable store yet) |
+| `calendar.meet.linked` / `discuss.call.started` / `meet.room.linked` | In-memory room registry via `acceptRoomLinkEvent` |
+
+`POST /api/rooms/link` accepts a short Meet handoff JWT from Calendar / Discuss bridges and registers the room without a browser session cookie.
+
+`GET /api/rooms/:meetingId` (session) returns invite path + any linked metadata.
 
 ---
 
@@ -140,20 +149,24 @@ Staging-first for Studio/Builder control-plane; Meet host follows the same `.fun
 
 ---
 
-## Phase 2+ roadmap (documented, not faked in Phase 1)
+## Phase 2 status
 
-| Area | Intent |
+| Area | Status |
 |---|---|
-| Calendar sync | Create/join Meet from Calendar events; deep links |
-| Discuss start-call | One-click call from a Discuss channel |
-| Drive / Files recordings | Persist recordings into Workspace Files |
-| AI summary | Post-call summary (transcription out of Phase 1) |
-| Analytics | Emit Meet join/leave/duration to Analytics |
-| Notifications | Studio / Discuss / email meeting reminders |
-| Search | Index meeting titles/metadata in Universal Search |
-| Automation / event bus | Real consumers of `POST /api/events` |
+| Calendar sync | **Shipped** — Calendar `/api/meet` + `/api/meet/attach` mint stable `ib-meet-proj-*` / `ib-meet-evt-*` rooms + SSO launch; Meet `/api/rooms/link` |
+| Discuss start-call | **Shipped** — channel header **Start call** → `/api/meet/start` → Meet SSO (`ib-meet-ch-*`) |
+| Drive / Files recordings | Documented — not built |
+| AI summary | Documented — not built |
+| Analytics | Documented — join events accepted, no Analytics sink yet |
+| Notifications / reminders | **Stub only** — see Phase 2C note below |
+| Search | Documented — not built |
+| Automation / event bus | Partial — room-link types register in-memory |
 
-**Explicitly out of Phase 1:** live transcription, AI Q&A, CRM auto-update, full React redesign of the engine webapp, Universal Search indexing, workflow engine — unless trivial stubs.
+### Phase 2C — reminders (stub)
+
+Lightweight pre-meeting reminders (Discuss DM / email / Studio bell) are **not** implemented. Calendar and Meet accept event envelopes so a future worker can subscribe; until then operators should treat reminders as out of scope.
+
+**Explicitly out of Phase 2:** live transcription, AI Q&A, CRM auto-update, full React redesign of the engine webapp, Universal Search indexing, Google/Outlook sync.
 
 ---
 
@@ -161,5 +174,6 @@ Staging-first for Studio/Builder control-plane; Meet host follows the same `.fun
 
 - [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md)
 - [INDOBASE-DISCUSS.md](./INDOBASE-DISCUSS.md) (SSO / bridge template)
+- [INDOBASE-CALENDAR.md](./INDOBASE-CALENDAR.md)
 - [INDOBASE-SUITE.md](./INDOBASE-SUITE.md) (Workspace Meetings → Meet launch)
 - `indobase-meet/NOTICE.md` (AGPL attribution)

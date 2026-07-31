@@ -159,6 +159,10 @@ services:
       MATTERMOST_URL: http://discuss-mattermost:8065
       MATTERMOST_ADMIN_TOKEN_FILE: /secrets/admin_token
       MATTERMOST_ADMIN_TOKEN: ${MATTERMOST_ADMIN_TOKEN:-}
+      MEET_PUBLIC_URL: ${MEET_PUBLIC_URL:-https://meet.indobase.in}
+      # Same secret as Meet/Studio so Start call can mint Meet SSO launch URLs.
+      MEET_HANDOFF_SECRET: ${MEET_HANDOFF_SECRET:-}
+      STUDIO_HANDOFF_SECRET: ${STUDIO_HANDOFF_SECRET:-}
       DISCUSS_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
     volumes:

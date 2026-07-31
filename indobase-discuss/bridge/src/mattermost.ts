@@ -6,6 +6,11 @@ import { createHmac, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import type { DiscussRole, StudioClaims } from './auth.js'
+import {
+  applyTeamChannelPlan,
+  shouldRelabelChannel,
+  type MmApiCall,
+} from './channel-plan.js'
 import type { DiscussSpaceMap } from './space-map.js'
 
 export type MattermostSession = {
@@ -158,6 +163,18 @@ async function ensureUser(
   return user
 }
 
+/** Admin-scoped adapter handed to the channel plan (keeps that module fetch-free). */
+function adminApi(adminToken: string): MmApiCall {
+  return async (path, init) => {
+    const res = await mmFetch(path, {
+      method: init?.method ?? 'GET',
+      token: adminToken,
+      body: init?.body,
+    })
+    return { status: res.status, json: res.json }
+  }
+}
+
 async function ensureTeam(adminToken: string, map: DiscussSpaceMap): Promise<MmTeam> {
   const byName = await mmFetch(`/api/v4/teams/name/${encodeURIComponent(map.teamKey)}`, {
     token: adminToken,
@@ -184,7 +201,17 @@ async function ensureTeam(adminToken: string, map: DiscussSpaceMap): Promise<MmT
     console.error('[discuss] create team failed', created.status, created.json)
     throw new Error('Could not provision Discuss team')
   }
-  return created.json as MmTeam
+  const team = created.json as MmTeam
+  // Only on create: reshape the auto-seeded Town Square / Off-Topic into the
+  // Indobase workspace. Best effort — never block SSO on it. Existing teams are
+  // retrofitted by docker/bootstrap-mattermost.sh instead of on every login.
+  try {
+    const plan = await applyTeamChannelPlan(adminApi(adminToken), team.id)
+    if (plan.failed.length) console.warn('[discuss] channel plan partial', plan)
+  } catch (err) {
+    console.warn('[discuss] channel plan skipped', err)
+  }
+  return team
 }
 
 async function ensureChannel(
@@ -196,7 +223,20 @@ async function ensureChannel(
     `/api/v4/teams/${team.id}/channels/name/${encodeURIComponent(map.spaceKey)}`,
     { token: adminToken }
   )
-  if (byName.status === 200) return byName.json as MmChannel
+  if (byName.status === 200) {
+    const existing = byName.json as MmChannel & { display_name?: string }
+    // Heal a channel whose label is still the internal key (or blank) — the slug
+    // is a deep link and never moves, only the human label does. An admin's own
+    // rename is left alone (see shouldRelabelChannel).
+    if (shouldRelabelChannel(map.spaceKey, existing.display_name, map.spaceTitle)) {
+      await mmFetch(`/api/v4/channels/${existing.id}/patch`, {
+        method: 'PUT',
+        token: adminToken,
+        body: { display_name: map.spaceTitle.slice(0, 64) },
+      }).catch(() => null)
+    }
+    return existing
+  }
 
   const created = await mmFetch('/api/v4/channels', {
     method: 'POST',

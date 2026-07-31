@@ -16,6 +16,8 @@ Indobase Discuss (`indobase-discuss/`) gives every organization and project **te
 
 Control plane: Vyom **103.190.92.249** (same pattern as Email, Social, Design).
 
+**Meet Start call (Phase 2):** channel header **Start call** button → `GET /api/meet/start` → Indobase Meet SSO (`ib-meet-ch-*` room). Requires `MEET_HANDOFF_SECRET` (or shared Studio secret) on the Discuss bridge matching Meet.
+
 ---
 
 ## Architecture (vertical slice)

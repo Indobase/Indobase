@@ -31,11 +31,19 @@ import {
 } from './auth.js'
 import { brandDiscussHtml, shouldBrandDiscussResponse } from './brand-html.js'
 import {
+  DEBRAND_JS,
+  DEBRAND_SCRIPT_PATH,
+  NOTICES_PATH,
+  loadNoticeMarkdown,
+  renderNoticesPage,
+} from './debrand.js'
+import {
   exchangeStudioClaimsForMattermost,
   isMattermostConfigured,
   mattermostPing,
   mattermostSessionCookies,
 } from './mattermost.js'
+import { buildMeetStartCall, notifyMeetCallStarted } from './meet-launch.js'
 import { buildDiscussSpaceMap, discussChannelPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 
@@ -53,11 +61,26 @@ function isBridgeOwnedPath(pathname: string): boolean {
   return (
     pathname === '/healthz' ||
     pathname === '/api/me' ||
+    pathname === '/api/meet/start' ||
     pathname.startsWith('/sso/') ||
     pathname === '/sso' ||
     pathname.startsWith('/brand/')
   )
 }
+
+// AGPL §13: open source notices + source offer. Public on purpose — network
+// users must be able to reach it without signing in. Registered before the
+// static handler so it always wins.
+app.get(NOTICES_PATH, (c) => c.html(renderNoticesPage(loadNoticeMarkdown())))
+
+// Debrand script. Mattermost's document CSP is `script-src 'self' …`, so brand
+// JS has to be same-origin and external — inline blocks are refused.
+app.get(DEBRAND_SCRIPT_PATH, (c) =>
+  c.body(DEBRAND_JS, 200, {
+    'Content-Type': 'application/javascript; charset=utf-8',
+    'Cache-Control': 'public, max-age=300',
+  })
+)
 
 // Brand assets (copied from packages/common/assets/brand)
 app.use(
@@ -225,6 +248,17 @@ app.get('/api/me', requireSession, (c) => {
     space: map,
     channelPath: discussChannelPath(map),
   })
+})
+
+/** One-click Start call → Indobase Meet (channel-scoped when channel_id given). */
+app.get('/api/meet/start', requireSession, async (c) => {
+  const s = c.get('session')
+  const channelId = c.req.query('channel_id') || c.req.query('channelId') || ''
+  const call = buildMeetStartCall(s, { channelId })
+  if (call.ready) {
+    void notifyMeetCallStarted(call, s)
+  }
+  return c.json({ ok: true, ...call })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-discuss' }))
