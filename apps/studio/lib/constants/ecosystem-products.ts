@@ -5,6 +5,8 @@
  * Never show Mattermost, Gameplan, Frappe, Suite, Drive, Writer, Notifuse, or other fork names in UI.
  */
 
+import { SUITE_MODULES as STUDIO_SUITE_MODULES } from 'lib/api/saas/suite-launch-shared'
+
 export const ECOSYSTEM_PRODUCTS = {
   builder: {
     id: 'builder',
@@ -25,7 +27,7 @@ export const ECOSYSTEM_PRODUCTS = {
       'Files, docs, sheets, presentations, meetings, and calendar for this project — one connected workspace.',
     host: 'workspace.indobase.in',
     openLabel: 'Open Workspace',
-    openHomeLabel: 'Open Workspace home',
+    openHomeLabel: 'Open Files in Workspace',
   },
   discuss: {
     id: 'discuss',
@@ -99,30 +101,19 @@ export const ECOSYSTEM_PRODUCTS = {
   },
 } as const
 
-/** Workspace modules — customer-facing labels only */
-export const WORKSPACE_MODULES = [
-  { id: 'files', label: 'Files', description: 'Store, organize, and share project files' },
-  { id: 'docs', label: 'Docs', description: 'Write and collaborate on documents' },
-  { id: 'sheets', label: 'Sheets', description: 'Spreadsheets with realtime collaboration' },
-  { id: 'presentations', label: 'Presentations', description: 'Slide decks for your project' },
-  {
-    id: 'meetings',
-    label: 'Meetings',
-    description: 'Opens Meet — video meetings for your team',
-    externalProduct: 'meet' as const,
-  },
-  {
-    id: 'mail',
-    label: 'Mail',
-    description: 'Opens Email — campaigns and transactional mail',
-    externalProduct: 'email' as const,
-  },
-  {
-    id: 'calendar',
-    label: 'Calendar',
-    description: 'Opens Calendar — events and scheduling',
-    externalProduct: 'calendar' as const,
-  },
-] as const
+/**
+ * Workspace modules — derived from suite-launch-shared so labels/descriptions cannot drift.
+ * externalProduct marks Studio handoffs (Meet / Email / Calendar).
+ */
+const WORKSPACE_EXTERNAL = {
+  meetings: 'meet',
+  mail: 'email',
+  calendar: 'calendar',
+} as const
+
+export const WORKSPACE_MODULES = STUDIO_SUITE_MODULES.map((m) => {
+  const external = WORKSPACE_EXTERNAL[m.id as keyof typeof WORKSPACE_EXTERNAL]
+  return external ? { ...m, externalProduct: external } : { ...m }
+})
 
 export type WorkspaceModuleId = (typeof WORKSPACE_MODULES)[number]['id']

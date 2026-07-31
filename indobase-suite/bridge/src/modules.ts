@@ -35,10 +35,11 @@ export type SuiteModule = {
 }
 
 export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
+  // Customer-facing copy — keep in sync with apps/studio suite-launch-shared SUITE_MODULES
   files: {
     id: 'files',
     label: 'Files',
-    description: 'Store, organize, and open project files',
+    description: 'Store, organize, and share project files',
     segment: 'files',
   },
   docs: {

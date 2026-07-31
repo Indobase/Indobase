@@ -18,6 +18,22 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
+/** Tiny inline SVGs — color matches Studio WorkspaceLauncher accents. */
+const RAIL_ICONS: Record<SuiteModuleId, string> = {
+  files:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>',
+  docs: '<svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>',
+  sheets:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+  presentations:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  meetings:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" aria-hidden="true"><path d="M15 10l4.5-2.5v9L15 14M5 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>',
+  calendar:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+}
+
 const STYLES = `
 :root {
   --brand: #3B8FD6;
@@ -27,6 +43,7 @@ const STYLES = `
   --surface: #ffffff;
   --bg: #f1f5f9;
   --border: #e2e8f0;
+  --danger: #b91c1c;
   --ok: #059669;
 }
 * { box-sizing: border-box; }
@@ -65,14 +82,27 @@ nav.rail {
   gap: 4px;
 }
 nav.rail a {
-  display: block; padding: 10px 12px; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
   text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 500;
 }
+nav.rail a .ico {
+  width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0;
+}
+nav.rail a .ico svg { width: 16px; height: 16px; }
+nav.rail a[data-mod="files"] .ico { background: #0D948810; }
+nav.rail a[data-mod="docs"] .ico { background: #2563EB10; }
+nav.rail a[data-mod="sheets"] .ico { background: #16A34A10; }
+nav.rail a[data-mod="presentations"] .ico { background: #9333EA10; }
+nav.rail a[data-mod="meetings"] .ico { background: #DC262610; }
+nav.rail a[data-mod="mail"] .ico { background: #0EA5E910; }
+nav.rail a[data-mod="calendar"] .ico { background: #F9731610; }
 nav.rail a:hover { background: #f8fafc; }
 nav.rail a.active { background: #eff6ff; color: var(--brand-ink); }
 main.panel { padding: 24px 28px; max-width: 1100px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
 .toolbar h1 { margin: 0; font-size: 22px; letter-spacing: -0.02em; flex: 1; min-width: 160px; }
+.toolbar .create-group { display: flex; align-items: center; gap: 8px; }
 button, .btn {
   appearance: none; border: 1px solid var(--border); background: var(--surface);
   color: var(--ink); padding: 8px 14px; border-radius: 8px; font-size: 13px;
@@ -82,6 +112,23 @@ button.primary, .btn.primary {
   background: var(--brand); border-color: var(--brand); color: #fff;
 }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
+.create-more { position: relative; }
+.create-more summary {
+  list-style: none; cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 550; color: var(--muted);
+}
+.create-more summary::-webkit-details-marker { display: none; }
+.create-more[open] summary { color: var(--ink); }
+.create-more .menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5;
+  min-width: 180px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.create-more .menu button {
+  width: 100%; border: none; background: transparent; justify-content: flex-start;
+  border-radius: 6px; font-weight: 500;
+}
+.create-more .menu button:hover { background: #f8fafc; }
 .table {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
 }
@@ -90,46 +137,71 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: #f8fafc; }
 .table tr:last-child td { border-bottom: none; }
 .table tr:hover td { background: #fafbfc; }
+.table a.file-link {
+  color: var(--ink); font-weight: 550; text-decoration: none;
+}
+.table a.file-link:hover { color: var(--brand); text-decoration: underline; }
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 550;
+  background: #f1f5f9; color: #334155;
+}
+.chip.doc { background: #2563EB14; color: #1d4ed8; }
+.chip.sheet { background: #16A34A14; color: #15803d; }
+.chip.slide { background: #9333EA14; color: #7e22ce; }
+button.danger-link {
+  border: none; background: transparent; color: var(--danger);
+  padding: 4px 6px; font-size: 13px; font-weight: 500; opacity: 0.85;
+}
+button.danger-link:hover { opacity: 1; text-decoration: underline; }
 .empty { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 14px; }
-.placeholder-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 520px;
+.launch-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 28px; max-width: 640px; box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
 }
-.placeholder-card h2 { margin: 0 0 8px; font-size: 18px; }
-.placeholder-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.meetings-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 640px;
+.launch-card .eyebrow {
+  display: inline-block; font-size: 11px; font-weight: 650; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--brand-ink); margin-bottom: 10px;
 }
-.meetings-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; }
-.meetings-card .lede { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.meetings-card .room {
+.launch-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; }
+.launch-card .lede { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.launch-card .room {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px; background: #f8fafc; border: 1px solid var(--border);
   border-radius: 8px; padding: 10px 12px; margin: 0 0 16px; word-break: break-all;
 }
-.meetings-card .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-#meet-embed {
-  margin-top: 16px; background: #0f172a; border-radius: 12px; overflow: hidden;
-  min-height: 0; height: 0; transition: min-height 0.2s ease;
+.launch-card .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
+.launch-card .actions .btn.primary { padding: 10px 18px; font-size: 14px; }
+.dialog-backdrop {
+  border: none; padding: 0; margin: 0; background: rgba(15, 23, 42, 0.35);
+  max-width: none; max-height: none; width: 100%; height: 100%;
 }
-#meet-embed.active { min-height: min(70vh, 720px); height: min(70vh, 720px); }
-#meet-embed iframe { border: 0; width: 100%; height: 100%; }
-.calendar-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 100%;
+.dialog-backdrop::backdrop { background: rgba(15, 23, 42, 0.35); }
+.dialog-card {
+  background: var(--surface); border-radius: 14px; border: 1px solid var(--border);
+  padding: 20px; width: min(400px, calc(100vw - 32px));
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
-.calendar-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; }
-.calendar-card .lede { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 640px; }
-.calendar-card .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-#calendar-embed {
-  margin-top: 8px; background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
-  min-height: min(72vh, 780px); height: min(72vh, 780px);
+.dialog-card h2 { margin: 0 0 6px; font-size: 16px; }
+.dialog-card p { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.dialog-card label { display: block; font-size: 12px; font-weight: 550; color: var(--muted); margin-bottom: 6px; }
+.dialog-card input[type="text"] {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; margin-bottom: 16px;
 }
-#calendar-embed iframe { border: 0; width: 100%; height: 100%; }
+.dialog-card input[type="text"]:focus { outline: 2px solid #bfdbfe; border-color: var(--brand); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .err { color: #b91c1c; font-size: 13px; margin-top: 8px; }
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
   nav.rail { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
 }
 `
+
+function studioWorkspaceHref(studioUrl: string, projectRef: string): string {
+  return `${studioUrl}/project/${encodeURIComponent(projectRef)}/workspace`
+}
 
 export function renderWorkspaceShell(opts: {
   session: Session
@@ -140,6 +212,7 @@ export function renderWorkspaceShell(opts: {
   const home = workspaceHomePath(opts.map)
   const modules = listModulesForApi()
   const active = opts.activeModule || 'files'
+  const studioBack = studioWorkspaceHref(opts.studioUrl, opts.session.projectRef)
   const rail = modules
     .map((m) => {
       const href =
@@ -147,7 +220,8 @@ export function renderWorkspaceShell(opts: {
           ? `${opts.studioUrl}/project/${encodeURIComponent(opts.session.projectRef)}/workspace?open=mail`
           : modulePath(opts.map, m.id)
       const cls = active === m.id ? 'active' : ''
-      return `<a class="${cls}" href="${esc(href)}">${esc(m.label)}</a>`
+      const icon = RAIL_ICONS[m.id] || ''
+      return `<a class="${cls}" data-mod="${esc(m.id)}" href="${esc(href)}"><span class="ico">${icon}</span><span>${esc(m.label)}</span></a>`
     })
     .join('')
 
@@ -156,11 +230,14 @@ export function renderWorkspaceShell(opts: {
   const createKind =
     active === 'docs' ? 'doc' : active === 'sheets' ? 'sheet' : active === 'presentations' ? 'slide' : ''
 
+  const projectLabel = esc(opts.map.projectTitle)
+
   let body: string
   if (isCalendar) {
-    body = `<div class="calendar-card">
+    body = `<div class="launch-card">
+        <div class="eyebrow">${projectLabel}</div>
         <h1>Calendar</h1>
-        <p class="lede">Open Indobase Calendar for this project — events, availability, and booking links. Signed in via Studio.</p>
+        <p class="lede">Open Indobase Calendar for this project — events, availability, and booking links. Signed in with your Studio session.</p>
         <div class="actions">
           <a class="btn primary" id="btn-open-calendar" href="#" rel="noopener">Open Calendar</a>
           <button type="button" id="btn-copy-calendar" disabled>Copy booking link</button>
@@ -168,7 +245,8 @@ export function renderWorkspaceShell(opts: {
         <p class="err" id="err" hidden></p>
       </div>`
   } else if (isMeetings) {
-    body = `<div class="meetings-card">
+    body = `<div class="launch-card">
+        <div class="eyebrow">${projectLabel}</div>
         <h1>Meetings</h1>
         <p class="lede">Start a project video call in Indobase Meet. Everyone with access to this project joins the same room — signed in via Studio.</p>
         <div class="room" id="meet-room">Loading…</div>
@@ -179,20 +257,39 @@ export function renderWorkspaceShell(opts: {
         <p class="err" id="err" hidden></p>
       </div>`
   } else {
+    const createControls = createKind
+      ? `<button class="primary" type="button" id="btn-create" data-kind="${createKind}">New ${esc(
+          active === 'docs' ? 'Doc' : active === 'sheets' ? 'Sheet' : 'Presentation'
+        )}</button>`
+      : `<div class="create-group">
+           <button class="primary" type="button" id="btn-create" data-kind="doc">New Doc</button>
+           <details class="create-more">
+             <summary>More</summary>
+             <div class="menu">
+               <button type="button" data-kind="sheet">New Sheet</button>
+               <button type="button" data-kind="slide">New Presentation</button>
+             </div>
+           </details>
+         </div>`
+
     body = `<div class="toolbar">
         <h1>${esc(modules.find((m) => m.id === active)?.label || 'Files')}</h1>
-        ${
-          createKind
-            ? `<button class="primary" type="button" id="btn-create" data-kind="${createKind}">New ${esc(
-                active === 'docs' ? 'Doc' : active === 'sheets' ? 'Sheet' : 'Presentation'
-              )}</button>`
-            : `<button class="primary" type="button" id="btn-create" data-kind="doc">New Doc</button>
-               <button type="button" id="btn-create-sheet" data-kind="sheet">New Sheet</button>
-               <button type="button" id="btn-create-slide" data-kind="slide">New Presentation</button>`
-        }
+        ${createControls}
       </div>
       <div class="table"><div id="file-list" class="empty">Loading…</div></div>
-      <p class="err" id="err" hidden></p>`
+      <p class="err" id="err" hidden></p>
+      <dialog class="dialog-backdrop" id="create-dialog">
+        <form class="dialog-card" method="dialog" id="create-form">
+          <h2 id="create-title">New file</h2>
+          <p id="create-hint">Choose a name for this file.</p>
+          <label for="create-name">Name</label>
+          <input id="create-name" name="name" type="text" maxlength="120" autocomplete="off" required />
+          <div class="dialog-actions">
+            <button type="submit" value="cancel">Cancel</button>
+            <button class="primary" type="submit" value="create">Create</button>
+          </div>
+        </form>
+      </dialog>`
   }
 
   const meetingsScript = isMeetings
@@ -301,12 +398,35 @@ export function renderWorkspaceShell(opts: {
     if (!panel) return;
     var filter = panel.getAttribute('data-filter') || '';
     var errEl = document.getElementById('err');
+    var dialog = document.getElementById('create-dialog');
+    var form = document.getElementById('create-form');
+    var nameInput = document.getElementById('create-name');
+    var titleEl = document.getElementById('create-title');
+    var hintEl = document.getElementById('create-hint');
+    var pendingKind = 'doc';
     function showErr(msg) {
       if (!errEl) return;
       errEl.hidden = !msg;
       errEl.textContent = msg || '';
     }
+    function kindLabel(kind) {
+      if (kind === 'sheet') return 'Sheet';
+      if (kind === 'slide') return 'Presentation';
+      return 'Doc';
+    }
     function fmtDate(iso) {
+      try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        var now = new Date();
+        var sameDay = d.toDateString() === now.toDateString();
+        if (sameDay) {
+          return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (_) { return iso; }
+    }
+    function fmtDateFull(iso) {
       try { return new Date(iso).toLocaleString(); } catch (_) { return iso; }
     }
     async function loadFiles() {
@@ -322,11 +442,13 @@ export function renderWorkspaceShell(opts: {
         return;
       }
       var rows = files.map(function (f) {
+        var label = kindLabel(f.kind);
+        var chipClass = 'chip ' + (f.kind === 'sheet' || f.kind === 'slide' ? f.kind : 'doc');
         return '<tr>' +
-          '<td><a href="/editor/' + encodeURIComponent(f.id) + '">' + escapeHtml(f.name) + '</a></td>' +
-          '<td>' + escapeHtml(f.kind) + '</td>' +
-          '<td>' + fmtDate(f.updatedAt) + '</td>' +
-          '<td><button type="button" data-del="' + escapeHtml(f.id) + '">Delete</button></td>' +
+          '<td><a class="file-link" href="/editor/' + encodeURIComponent(f.id) + '">' + escapeHtml(f.name) + '</a></td>' +
+          '<td><span class="' + chipClass + '">' + escapeHtml(label) + '</span></td>' +
+          '<td><span title="' + escapeHtml(fmtDateFull(f.updatedAt)) + '">' + escapeHtml(fmtDate(f.updatedAt)) + '</span></td>' +
+          '<td><button type="button" class="danger-link" data-del="' + escapeHtml(f.id) + '">Delete</button></td>' +
           '</tr>';
       }).join('');
       list.innerHTML = '<table><thead><tr><th>Name</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
@@ -343,15 +465,29 @@ export function renderWorkspaceShell(opts: {
     function escapeHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    async function create(kind) {
+    function openCreate(kind) {
+      pendingKind = kind || 'doc';
+      var label = kindLabel(pendingKind);
+      if (titleEl) titleEl.textContent = 'New ' + label;
+      if (hintEl) hintEl.textContent = 'Name this ' + label.toLowerCase() + '.';
+      if (nameInput) {
+        nameInput.value = 'Untitled';
+        nameInput.select();
+      }
       showErr('');
-      var name = prompt(kind === 'sheet' ? 'Sheet name' : kind === 'slide' ? 'Presentation name' : 'Document name', 'Untitled');
-      if (!name) return;
+      if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+      else {
+        var fallback = prompt(label + ' name', 'Untitled');
+        if (fallback) void submitCreate(fallback);
+      }
+    }
+    async function submitCreate(name) {
+      showErr('');
       var r = await fetch('/api/files', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, kind: kind })
+        body: JSON.stringify({ name: name, kind: pendingKind })
       });
       if (!r.ok) {
         var body = {};
@@ -363,8 +499,24 @@ export function renderWorkspaceShell(opts: {
       if (created && created.id) location.href = '/editor/' + encodeURIComponent(created.id);
       else loadFiles();
     }
+    if (form) {
+      form.addEventListener('submit', function (ev) {
+        var submitter = ev.submitter;
+        var value = submitter && submitter.value;
+        if (value === 'cancel') return;
+        ev.preventDefault();
+        var name = (nameInput && nameInput.value || '').trim();
+        if (!name) return;
+        if (dialog) dialog.close();
+        void submitCreate(name);
+      });
+    }
     document.querySelectorAll('[data-kind]').forEach(function (btn) {
-      btn.addEventListener('click', function () { create(btn.getAttribute('data-kind')); });
+      btn.addEventListener('click', function () {
+        var details = btn.closest('details');
+        if (details) details.open = false;
+        openCreate(btn.getAttribute('data-kind'));
+      });
     });
     loadFiles();
   })();
@@ -386,7 +538,7 @@ export function renderWorkspaceShell(opts: {
     <span class="pill">${esc(opts.map.projectTitle)}</span>
     <div class="spacer"></div>
     <span class="meta">${esc(opts.session.email)}</span>
-    <a class="studio" href="${esc(opts.studioUrl)}/project/${esc(opts.session.projectRef)}">Studio</a>
+    <a class="studio" href="${esc(studioBack)}">Studio</a>
   </header>
   <div class="layout">
     <nav class="rail">${rail}</nav>
@@ -415,6 +567,7 @@ export function renderEditorPage(opts: {
     ...opts.editor.config,
     token: opts.editor.token,
   })
+  const studioBack = studioWorkspaceHref(opts.studioUrl, opts.session.projectRef)
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -440,7 +593,7 @@ export function renderEditorPage(opts: {
     <span class="pill">${esc(opts.fileName)}</span>
     <div class="spacer"></div>
     <a class="studio" href="/">← Files</a>
-    <a class="studio" href="${esc(opts.studioUrl)}/project/${esc(opts.session.projectRef)}">Studio</a>
+    <a class="studio" href="${esc(studioBack)}">Studio</a>
   </header>
   <div id="editor"><p class="boot">Opening editor…</p></div>
   <script>

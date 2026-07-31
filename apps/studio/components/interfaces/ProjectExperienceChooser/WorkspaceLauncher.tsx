@@ -176,12 +176,12 @@ export const WorkspaceLauncher = () => {
         </div>
       )}
 
-      <section aria-label="Workspace home" className="mb-8">
+      <section aria-label="Open files" className="mb-6">
         <button
           type="button"
           onClick={() => void openHome()}
           disabled={isLaunchingHome || isLaunchingDesign}
-          className="inline-flex items-center gap-2 rounded-lg border bg-surface-100 px-4 py-2 text-sm font-medium transition hover:border-foreground-muted hover:shadow-sm"
+          className="text-sm font-medium text-[#3B8FD6] hover:underline disabled:opacity-60"
         >
           {isLaunchingHome
             ? `Opening ${ECOSYSTEM_PRODUCTS.workspace.name}…`

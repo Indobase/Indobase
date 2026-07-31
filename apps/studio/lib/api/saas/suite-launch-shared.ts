@@ -26,6 +26,7 @@ export type SuiteModuleMeta = {
   externalProduct?: 'email' | 'design'
 }
 
+/** Customer-facing copy — keep in sync with indobase-suite/bridge/src/modules.ts */
 export const SUITE_MODULES: SuiteModuleMeta[] = [
   { id: 'files', label: 'Files', description: 'Store, organize, and share project files' },
   { id: 'docs', label: 'Docs', description: 'Write and collaborate on documents' },
@@ -34,7 +35,7 @@ export const SUITE_MODULES: SuiteModuleMeta[] = [
   {
     id: 'meetings',
     label: 'Meetings',
-    description: 'Video meetings for your team',
+    description: 'Opens Meet — video meetings for your team',
   },
   {
     id: 'mail',

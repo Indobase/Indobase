@@ -20,4 +20,12 @@ test('listModulesForApi: meetings and calendar live', () => {
   assert.equal(mods.find((m) => m.id === 'meetings')?.placeholder, undefined)
   assert.equal(mods.find((m) => m.id === 'calendar')?.placeholder, undefined)
   assert.equal(mods.find((m) => m.id === 'docs')?.placeholder, undefined)
+  assert.equal(
+    mods.find((m) => m.id === 'meetings')?.description,
+    'Opens Meet — video meetings for your team'
+  )
+  assert.equal(
+    mods.find((m) => m.id === 'files')?.description,
+    'Store, organize, and share project files'
+  )
 })
