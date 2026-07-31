@@ -77,7 +77,14 @@ export function documentServerUpstream(): string {
 }
 
 export type EditorConfigBundle = {
+  /** Absolute DocsAPI script URL (under /ds). */
   documentServerApiJs: string
+  /**
+   * DocumentServer origin for DocsAPI when the editor is mounted under a path
+   * prefix (`/ds`). Without this, some builds mis-resolve coauthoring/cache URLs
+   * and the editor UI can load while document open fails with "Download failed".
+   */
+  documentServerUrl: string
   config: Record<string, unknown>
   token: string
 }
@@ -152,8 +159,11 @@ export function buildEditorConfig(opts: {
   }
 
   const token = signDocumentJwt(config, jwtSecret)
+  const dsPublic = documentServerPublicUrl()
   return {
-    documentServerApiJs: `${documentServerPublicUrl()}/web-apps/apps/api/documents/api.js`,
+    documentServerApiJs: `${dsPublic}/web-apps/apps/api/documents/api.js`,
+    // Trailing slash required by DocsAPI path joining.
+    documentServerUrl: `${dsPublic}/`,
     config,
     token,
   }

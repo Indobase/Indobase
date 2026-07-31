@@ -29,6 +29,20 @@ test('file store create/list/save round-trip', async () => {
     assert.equal(listed.length, 1)
     const bytes = await readFileBytes('abc123', meta.id)
     assert.ok(bytes && bytes.length > 0)
+    // Blank Word template must be a real OOXML package — a 3-entry stub causes
+    // DocumentServer to surface "Download failed" after the editor chrome loads.
+    assert.equal(bytes![0], 0x50)
+    assert.equal(bytes![1], 0x4b)
+    assert.ok(bytes!.length > 1500)
+    const asText = bytes!.toString('binary')
+    for (const part of [
+      'word/document.xml',
+      'word/_rels/document.xml.rels',
+      'word/styles.xml',
+      'docProps/core.xml',
+    ]) {
+      assert.ok(asText.includes(part), `missing OOXML part ${part}`)
+    }
     await saveFileBytes('abc123', meta.id, Buffer.from('updated'))
     const again = await readFileBytes('abc123', meta.id)
     assert.equal(again?.toString(), 'updated')

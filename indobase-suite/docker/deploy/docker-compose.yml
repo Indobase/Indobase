@@ -43,8 +43,11 @@ services:
       JWT_SECRET: ${DOCUMENT_JWT_SECRET:?set DOCUMENT_JWT_SECRET}
       JWT_HEADER: Authorization
       JWT_IN_BODY: "true"
-      # Allow bridge + public workspace origin to embed / call the editor
+      # Allow bridge + public workspace origin to embed / call the editor.
+      # Internal compose DNS resolves to RFC1918 (and occasionally link-local);
+      # without both flags DocumentServer SSRF filter surfaces as "Download failed".
       ALLOW_PRIVATE_IP_ADDRESS: "true"
+      ALLOW_META_IP_ADDRESS: "true"
       USE_UNAUTHORIZED_STORAGE: "true"
     volumes:
       - workspace_documentserver_data:/var/www/onlyoffice/Data

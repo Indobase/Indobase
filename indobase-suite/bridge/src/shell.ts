@@ -410,7 +410,11 @@ export function renderEditorPage(opts: {
   editor: EditorConfigBundle
   studioUrl: string
 }): string {
-  const configJson = JSON.stringify({ ...opts.editor.config, token: opts.editor.token })
+  const configJson = JSON.stringify({
+    documentServerUrl: opts.editor.documentServerUrl,
+    ...opts.editor.config,
+    token: opts.editor.token,
+  })
   return `<!doctype html>
 <html lang="en">
 <head>
