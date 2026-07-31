@@ -229,11 +229,13 @@ async function proxyHelpdesk(c: Context, portal = false) {
     body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
     redirect: 'manual',
   })
-  return new Response(res.body, { status: res.status, headers: res.headers })
+  // Copy headers — undici Response headers are immutable; securityHeaders must .set().
+  return new Response(res.body, { status: res.status, headers: new Headers(res.headers) })
 }
 
 app.all('/h/*', (c) => proxyHelpdesk(c, false))
 app.all('/portal/*', (c) => proxyHelpdesk(c, true))
+app.all('/helpdesk', (c) => proxyHelpdesk(c, false))
 app.all('/helpdesk/*', (c) => proxyHelpdesk(c, false))
 app.all('/assets/*', (c) => proxyHelpdesk(c, false))
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */

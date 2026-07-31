@@ -171,7 +171,7 @@ services:
       MEET_HANDOFF_SECRET: ${MEET_HANDOFF_SECRET:?set MEET_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       MEET_PUBLIC_URL: ${MEET_PUBLIC_URL:-https://meet.indobase.in}
-      MEET_ENGINE_URL: http://meet-web:8000
+      MEET_ENGINE_URL: http://meet-web:80
       JWT_APP_ID: ${JWT_APP_ID:-}
       JWT_APP_SECRET: ${JWT_APP_SECRET:-}
       MEET_VERSION: ${GIT_SHA:-dev}
