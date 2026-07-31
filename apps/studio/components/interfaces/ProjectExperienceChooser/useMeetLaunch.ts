@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 
-import { useParams } from 'common'
-import { getAccessToken } from 'common/gotrue'
+import { getAccessToken, useParams } from 'common'
 import {
   MEET_ROLE_DENIED_CODE,
   isMeetRoleDeniedMessage,

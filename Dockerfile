@@ -59,9 +59,9 @@ ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 ENV NEXT_PUBLIC_POSTHOG_UI_HOST=${NEXT_PUBLIC_POSTHOG_UI_HOST}
-# Next.js Studio builds need a large V8 heap. Default 6144 fits Vyom builds;
-# GHA can override via build-arg. Too low (4096) OOMs; webpack was worse.
-ARG NODE_MAX_OLD_SPACE_SIZE=6144
+# Next.js Studio builds need a large V8 heap. Default 7168; GHA overrides via build-arg.
+# Re-declare ARG immediately before the build RUN so BuildKit cannot drop NODE_OPTIONS.
+ARG NODE_MAX_OLD_SPACE_SIZE=7168
 ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
 # shared-types `out/` is gitignored; compile workspace package before Studio bundles it.
 WORKDIR /workspace
@@ -81,7 +81,10 @@ WORKDIR /workspace/apps/studio
 # Bust build-studio GHA cache when the commit changes (ARG does not carry across stages).
 ARG BUILD_SHA=unknown
 ARG BUILD_TIME=
-RUN pnpm run build
+ARG NODE_MAX_OLD_SPACE_SIZE=7168
+RUN export NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}" && \
+    echo "Studio next build NODE_OPTIONS=$NODE_OPTIONS" && \
+    pnpm run build
 
 # Final runtime: single Node server (Studio + marketing from public/)
 FROM node:22-alpine AS runner
