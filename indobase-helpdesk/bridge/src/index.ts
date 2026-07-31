@@ -20,6 +20,7 @@ import {
   verifyStudioHandoff,
   type Session,
 } from './auth.js'
+import { isHtmlContentType, rewriteBrandedHtml } from './brand-html.js'
 import {
   buildHelpdeskScopeMap,
   helpdeskAgentPath,
@@ -48,6 +49,49 @@ function scopeFromSession(session: Session) {
 function redirectForSession(session: Session): string {
   const map = scopeFromSession(session)
   return session.isAgent ? helpdeskAgentPath(map) : helpdeskPortalPath(map)
+}
+
+function readBridgeSession(c: Context): Session | null {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return null
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  return raw ? readSessionToken(raw, secret) : null
+}
+
+/** Cold visit landing — never proxy the upstream Guest SPA for unauthenticated users. */
+function renderColdLanding(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="application-name" content="Indobase Helpdesk" />
+  <title>Indobase Helpdesk</title>
+  <style>
+    :root { --brand: #3B8FD6; --ink: #0f172a; --muted: #64748b; --surface: #fff; --border: #e2e8f0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f1f5f9; color: var(--ink); min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 28rem; text-align: center; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 20px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+    a.btn { display: inline-block; background: var(--brand); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+    a.btn:hover { filter: brightness(1.05); }
+    .brand { color: var(--brand); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="brand" style="margin-bottom:12px">Indobase Helpdesk</p>
+    <h1>Open from Studio</h1>
+    <p>Support tickets, SLAs, and the customer portal are available from your Indobase project. Sign in to Studio to open Helpdesk for your workspace.</p>
+    <a class="btn" href="${STUDIO_URL}/sign-in">Open Indobase Studio</a>
+  </div>
+</body>
+</html>`
 }
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -229,14 +273,37 @@ async function proxyHelpdesk(c: Context, portal = false) {
     body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
     redirect: 'manual',
   })
-  // Copy headers — undici Response headers are immutable; securityHeaders must .set().
-  return new Response(res.body, { status: res.status, headers: new Headers(res.headers) })
+
+  const rewritable =
+    c.req.method !== 'HEAD' && res.body !== null && isHtmlContentType(res.headers.get('content-type'))
+  if (!rewritable) {
+    return new Response(res.body, { status: res.status, headers: new Headers(res.headers) })
+  }
+
+  const rewritten = rewriteBrandedHtml(await res.text())
+  const outHeaders = new Headers(res.headers)
+  outHeaders.delete('content-encoding')
+  outHeaders.delete('content-length')
+  outHeaders.delete('etag')
+  outHeaders.delete('last-modified')
+  return new Response(rewritten, { status: res.status, headers: outHeaders })
 }
 
-app.all('/h/*', (c) => proxyHelpdesk(c, false))
-app.all('/portal/*', (c) => proxyHelpdesk(c, true))
-app.all('/helpdesk', (c) => proxyHelpdesk(c, false))
-app.all('/helpdesk/*', (c) => proxyHelpdesk(c, false))
+async function handleDeskRoute(c: Context, portal = false) {
+  const session = readBridgeSession(c)
+  if (!session) {
+    return c.html(renderColdLanding(), 200)
+  }
+  if (!HELPDESK_UPSTREAM) {
+    return c.html(renderShell(session))
+  }
+  return proxyHelpdesk(c, portal)
+}
+
+app.all('/h/*', (c) => handleDeskRoute(c, false))
+app.all('/portal/*', (c) => handleDeskRoute(c, true))
+app.all('/helpdesk', (c) => handleDeskRoute(c, false))
+app.all('/helpdesk/*', (c) => handleDeskRoute(c, false))
 app.all('/assets/*', (c) => proxyHelpdesk(c, false))
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
@@ -319,29 +386,6 @@ app.get('/', (c) => {
   }
   return c.html(renderShell(session))
 })
-
-app.get('/h/:team/:queue', (c) => {
-  if (HELPDESK_UPSTREAM) return proxyHelpdesk(c, false)
-  return renderAuthenticatedShell(c)
-})
-
-app.get('/portal/:team/:queue', (c) => {
-  if (HELPDESK_UPSTREAM) return proxyHelpdesk(c, true)
-  return renderAuthenticatedShell(c)
-})
-
-function renderAuthenticatedShell(c: Context) {
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
-  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
-  return c.html(renderShell(session))
-}
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
