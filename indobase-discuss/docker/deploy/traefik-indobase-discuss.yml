@@ -1,15 +1,16 @@
 # Indobase Discuss — Traefik file provider (optional if compose labels suffice)
 #
 # DNS:
-#   discuss.indobase.fun → staging Hostinger / staging Swarm
 #   discuss.indobase.in  → Vyom 103.190.92.249
+#   discuss.indobase.fun → add Host() + SAN only after A/AAAA exist (ACME NXDOMAIN
+#   on missing SANs has flapped the docker router TLS).
 #
 # Public edge is the SSO bridge (:8092), which proxies Gameplan / Frappe.
 
 http:
   routers:
     indobase-discuss:
-      rule: Host(`discuss.indobase.in`) || Host(`discuss.indobase.fun`)
+      rule: Host(`discuss.indobase.in`)
       entryPoints:
         - websecure
       service: indobase-discuss
@@ -17,8 +18,6 @@ http:
         certResolver: letsencrypt
         domains:
           - main: discuss.indobase.in
-            sans:
-              - discuss.indobase.fun
 
   services:
     indobase-discuss:

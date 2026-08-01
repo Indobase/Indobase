@@ -37,7 +37,23 @@ const FAVICON_LINKS = [
   '<link rel="icon" type="image/png" sizes="32x32" href="/brand/indobase-favicon-32.png" />',
   '<link rel="icon" type="image/png" sizes="16x16" href="/brand/indobase-favicon-16.png" />',
   '<link rel="apple-touch-icon" href="/brand/indobase-apple-touch.png" />',
+  '<link rel="manifest" href="/brand/manifest.json" />',
+  '<meta name="mobile-web-app-capable" content="yes" />',
+  `<meta name="application-name" content="${DISCUSS_BRAND_NAME}" />`,
+  `<meta name="apple-mobile-web-app-title" content="${DISCUSS_BRAND_NAME}" />`,
 ].join('')
+
+/** Drop upstream engine chrome that would flash Gameplan naming / icons. */
+function stripUpstreamBrandLinks(html: string): string {
+  let out = html
+  out = out.replace(/<link\b[^>]*\brel=["'](?:icon|shortcut icon|apple-touch-icon|manifest)["'][^>]*>/gi, '')
+  // Prefer standard mobile-web-app-capable; drop deprecated apple-only duplicate.
+  out = out.replace(/<meta\b[^>]*\bname=["']apple-mobile-web-app-capable["'][^>]*>/gi, '')
+  out = out.replace(/<meta\b[^>]*\bname=["']application-name["'][^>]*>/gi, '')
+  out = out.replace(/<meta\b[^>]*\bname=["']apple-mobile-web-app-title["'][^>]*>/gi, '')
+  out = out.replace(/<meta\b[^>]*\bname=["']mobile-web-app-capable["'][^>]*>/gi, '')
+  return out
+}
 
 export function isHtmlContentType(contentType: string | null | undefined): boolean {
   if (!contentType) return false
@@ -118,6 +134,7 @@ function rewriteMetaTag(tag: string): string {
  */
 export function rewriteBrandedHtml(html: string): string {
   if (!html) return html
+  html = stripUpstreamBrandLinks(html)
 
   const out: string[] = []
   let headInsertAt = -1

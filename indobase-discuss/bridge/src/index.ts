@@ -26,7 +26,10 @@ import {
   type Session,
 } from './auth.js'
 import { brandDiscussHtml, shouldBrandDiscussResponse } from './brand-html.js'
-import { sanitizeProxiedResponseHeaders } from './proxy-headers.js'
+import {
+  buildUpstreamProxyHeaders,
+  sanitizeProxiedResponseHeaders,
+} from './proxy-headers.js'
 import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderDiscussWelcomeHtml } from './welcome.js'
@@ -295,27 +298,41 @@ async function proxyGameplan(c: Context) {
   if (!GAMEPLAN_UPSTREAM) return c.notFound()
   const url = new URL(c.req.url)
   const target = `${GAMEPLAN_UPSTREAM}${url.pathname}${url.search}`
-  const headers = new Headers(c.req.raw.headers)
-  headers.delete('host')
-  headers.delete('accept-encoding')
-  const res = await fetch(target, {
-    method: c.req.method,
-    headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
-    redirect: 'manual',
-  })
+  const headers = buildUpstreamProxyHeaders(c.req.raw.headers)
+
+  let res: Response
+  try {
+    res = await fetch(target, {
+      method: c.req.method,
+      headers,
+      body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+      redirect: 'manual',
+      // Avoid undici streaming crashes (`assert(!this.paused)`) that became Traefik 502s.
+      // Buffering keeps Content-Length honest for JS/CSS/manifest assets.
+    })
+  } catch (err) {
+    console.error('[discuss] upstream proxy error:', url.pathname, err)
+    return c.text('Discuss upstream unavailable', 502)
+  }
 
   const outHeaders = sanitizeProxiedResponseHeaders(res.headers)
   const contentType = res.headers.get('content-type')
-  if (shouldBrandDiscussResponse(contentType) && c.req.method !== 'HEAD' && res.body) {
+
+  if (c.req.method === 'HEAD') {
+    return new Response(null, { status: res.status, headers: outHeaders })
+  }
+
+  if (shouldBrandDiscussResponse(contentType)) {
     const html = brandDiscussHtml(await res.text())
-    outHeaders.delete('content-length')
-    outHeaders.delete('content-encoding')
     outHeaders.delete('etag')
     outHeaders.delete('last-modified')
+    outHeaders.set('content-length', String(Buffer.byteLength(html)))
     return new Response(html, { status: res.status, headers: outHeaders })
   }
-  return new Response(res.body, { status: res.status, headers: outHeaders })
+
+  const buf = Buffer.from(await res.arrayBuffer())
+  outHeaders.set('content-length', String(buf.byteLength))
+  return new Response(buf, { status: res.status, headers: outHeaders })
 }
 
 async function proxyGameplanAuthenticated(c: Context) {
