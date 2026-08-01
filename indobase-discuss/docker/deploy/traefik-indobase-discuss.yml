@@ -4,7 +4,7 @@
 #   discuss.indobase.fun → staging Hostinger / staging Swarm
 #   discuss.indobase.in  → Vyom 103.190.92.249
 #
-# Public edge is the SSO bridge (:8092), which proxies Mattermost.
+# Public edge is the SSO bridge (:8092), which proxies Gameplan / Frappe.
 
 http:
   routers:

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { sanitizeProxiedResponseHeaders } from './index.js'
+import { sanitizeProxiedResponseHeaders } from './proxy-headers.js'
 
 describe('sanitizeProxiedResponseHeaders', () => {
   it('strips content-encoding and content-length after undici decode', () => {
@@ -11,8 +11,7 @@ describe('sanitizeProxiedResponseHeaders', () => {
       'content-length': '1824',
       'transfer-encoding': 'chunked',
       'cache-control': 'max-age=31556926, public',
-      server: 'Mattermost',
-      'x-version-id': '10.5.2',
+      server: 'nginx',
     })
     const out = sanitizeProxiedResponseHeaders(headers)
     assert.equal(out.get('content-type'), 'text/css; charset=utf-8')
@@ -21,6 +20,5 @@ describe('sanitizeProxiedResponseHeaders', () => {
     assert.equal(out.get('content-length'), null)
     assert.equal(out.get('transfer-encoding'), null)
     assert.equal(out.get('server'), null)
-    assert.equal(out.get('x-version-id'), null)
   })
 })

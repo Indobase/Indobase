@@ -13,7 +13,7 @@ export function isDiscussRole(role: string | null | undefined): role is DiscussR
   return !!role && ALLOWED_ROLE_SET.has(role)
 }
 
-/** Deterministic Discuss team key from org slug — mirrors bridge space-map (Mattermost team name). */
+/** Deterministic Discuss team key from org slug — mirrors bridge space-map (GP Team key). */
 export function discussTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = orgSlug
     .toLowerCase()
@@ -25,7 +25,7 @@ export function discussTeamKeyForOrgSlug(orgSlug: string): string {
   return `ib-org-${cleaned}`.slice(0, 64)
 }
 
-/** Deterministic Discuss channel key from project ref (Mattermost channel name). */
+/** Deterministic Discuss space key from project ref (GP Project key). */
 export function discussSpaceKeyForProjectRef(projectRef: string): string {
   const cleaned = projectRef
     .toLowerCase()

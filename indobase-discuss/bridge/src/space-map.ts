@@ -1,12 +1,13 @@
 /**
- * Deterministic org/project → Mattermost team / channel keys.
+ * Deterministic org/project → Gameplan Team (community) / Project (space) keys.
  *
- * Must stay in sync with `apps/studio/lib/api/saas/discuss-launch-shared.ts`.
+ * Must stay in sync with:
+ * - `frappe-app/indobase_discuss/indobase_discuss/utils/space_map.py`
+ * - `apps/studio/lib/api/saas/discuss-launch-shared.ts`
  *
- * Keys (`teamKey` / `spaceKey`) are slugs: stable, URL-visible, never rewritten.
- * Titles are human labels shown in the sidebar and must never be an internal key.
+ * Keys (`teamKey` / `spaceKey`) are slugs: stable, never rewritten.
+ * Titles are human labels and must never be an internal key.
  */
-import { humanizeTitle } from './channel-plan.js'
 
 export type DiscussSpaceMap = {
   orgSlug: string
@@ -18,6 +19,7 @@ export type DiscussSpaceMap = {
 }
 
 const MAX_KEY_LEN = 64
+const INTERNAL_KEY_PREFIX = /^ib-(?:proj|org)-/i
 
 function cleanSlug(input: string): string {
   return input
@@ -37,14 +39,34 @@ function cleanProjectRef(input: string): string {
     .slice(0, 40)
 }
 
-/** Stable Mattermost team `name` for an Indobase organization slug. */
+function titleCase(words: string): string {
+  return words
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+/** Turn slug/key-ish input into a human label for sidebar titles. */
+export function humanizeTitle(raw: string | null | undefined, fallback: string): string {
+  const collapsed = (raw ?? '').replace(/\s+/g, ' ').trim()
+  if (!collapsed) return fallback
+  const stripped = collapsed.replace(INTERNAL_KEY_PREFIX, '').trim()
+  if (!stripped) return fallback
+  if (!/\s/.test(stripped) && /[-_]/.test(stripped)) {
+    return titleCase(stripped.split(/[-_]+/).join(' ')).slice(0, 64)
+  }
+  return stripped.slice(0, 64)
+}
+
+/** Stable team key for an Indobase organization slug. */
 export function discussTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = cleanSlug(orgSlug)
   if (!cleaned) return 'ib-org-default'
   return `ib-org-${cleaned}`.slice(0, MAX_KEY_LEN)
 }
 
-/** Stable Mattermost channel `name` for an Indobase project ref. */
+/** Stable space (GP Project) key for an Indobase project ref. */
 export function discussSpaceKeyForProjectRef(projectRef: string): string {
   const cleaned = cleanProjectRef(projectRef)
   if (!cleaned) return 'ib-proj-default'
@@ -61,8 +83,6 @@ export function buildDiscussSpaceMap(opts: {
   const projectRef = opts.projectRef.trim()
   const teamKey = discussTeamKeyForOrgSlug(orgSlug)
   const spaceKey = discussSpaceKeyForProjectRef(projectRef)
-  // Display names derive from the org/project NAME. The ref is only a fallback,
-  // and `ib-org-…` / `ib-proj-…` keys are stripped so a key can never surface.
   const teamTitle = humanizeTitle(opts.organizationName || orgSlug, 'Organization')
   const spaceTitle = humanizeTitle(opts.projectName || projectRef, 'Project')
 
@@ -76,7 +96,11 @@ export function buildDiscussSpaceMap(opts: {
   }
 }
 
-/** Deep link after SSO — Mattermost team/channel path. */
-export function discussChannelPath(map: DiscussSpaceMap): string {
-  return `/${encodeURIComponent(map.teamKey)}/channels/${encodeURIComponent(map.spaceKey)}`
+/**
+ * Preferred Gameplan SPA deep link when we only have deterministic keys.
+ * After SSO exchange, prefer Frappe document names from the handoff response
+ * (`/g/{team_doc}/{space_doc}`) — keys alone can 404 when names differ.
+ */
+export function gameplanSpacePath(map: DiscussSpaceMap): string {
+  return `/g/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.spaceKey)}`
 }

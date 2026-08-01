@@ -38,7 +38,7 @@ Studio source of truth for chooser copy: `apps/studio/lib/constants/ecosystem-pr
 | Bridge / HTML title | Indobase Discuss |
 | Upstream SiteName (config) | Indobase Discuss |
 
-Discuss owns async org/project chat (Mattermost-backed). It does **not** include files, docs, or mail.
+Discuss owns async org/project chat (Gameplan-backed). It does **not** include files, docs, or mail.
 
 ---
 

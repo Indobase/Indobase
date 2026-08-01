@@ -1,19 +1,15 @@
 /**
- * Indobase Discuss — Studio SSO bridge + Mattermost reverse proxy.
+ * Indobase Discuss — Studio SSO bridge + Gameplan reverse proxy.
  *
- * Studio hands off to `/sso/launch#token=…`. Bridge exchanges the JWT for a
- * Mattermost browser session (MMAUTHTOKEN) and proxies the app. Customer UI is
- * branded Indobase Discuss only — no upstream product names in chrome we control.
+ * Studio hands off to `/sso/launch#token=…`. Bridge exchanges the JWT via
+ * Frappe `indobase_discuss.api.studio_handoff.exchange`, sets session cookies,
+ * and proxies `/g/*` (+ assets / Frappe API) to the Gameplan upstream.
+ * Customer UI is branded Indobase Discuss only.
  */
-import { createServer } from 'node:http'
-import type { IncomingMessage, ServerResponse } from 'node:http'
-import { request as httpRequest } from 'node:http'
-import { request as httpsRequest } from 'node:https'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { URL } from 'node:url'
 
-import { getRequestListener } from '@hono/node-server'
+import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
@@ -30,29 +26,18 @@ import {
   type Session,
 } from './auth.js'
 import { brandDiscussHtml, shouldBrandDiscussResponse } from './brand-html.js'
-import {
-  DEBRAND_JS,
-  DEBRAND_SCRIPT_PATH,
-  NOTICES_PATH,
-  loadNoticeMarkdown,
-  renderNoticesPage,
-} from './debrand.js'
-import {
-  exchangeStudioClaimsForMattermost,
-  isMattermostConfigured,
-  mattermostPing,
-  mattermostSessionCookies,
-} from './mattermost.js'
-import { buildMeetStartCall, notifyMeetCallStarted } from './meet-launch.js'
-import { buildDiscussSpaceMap, discussChannelPath } from './space-map.js'
+import { sanitizeProxiedResponseHeaders } from './proxy-headers.js'
+import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
+import { renderDiscussWelcomeHtml } from './welcome.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
-const MATTERMOST_URL = (process.env.MATTERMOST_URL || '').replace(/\/+$/, '')
+const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
+const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_ROOT = path.resolve(__dirname, '../public')
@@ -61,33 +46,86 @@ function isBridgeOwnedPath(pathname: string): boolean {
   return (
     pathname === '/healthz' ||
     pathname === '/api/me' ||
-    pathname === '/api/meet/start' ||
     pathname.startsWith('/sso/') ||
     pathname === '/sso' ||
-    pathname.startsWith('/brand/')
+    pathname.startsWith('/brand/') ||
+    pathname === '/notices'
   )
 }
 
-// AGPL §13: open source notices + source offer. Public on purpose — network
-// users must be able to reach it without signing in. Registered before the
-// static handler so it always wins.
-app.get(NOTICES_PATH, (c) => c.html(renderNoticesPage(loadNoticeMarkdown())))
+function isNativeAuthPath(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname === '/logout' ||
+    pathname.startsWith('/login/') ||
+    pathname.startsWith('/api/method/login') ||
+    pathname.startsWith('/api/method/logout')
+  )
+}
 
-// Debrand script. Mattermost's document CSP is `script-src 'self' …`, so brand
-// JS has to be same-origin and external — inline blocks are refused.
-app.get(DEBRAND_SCRIPT_PATH, (c) =>
-  c.body(DEBRAND_JS, 200, {
-    'Content-Type': 'application/javascript; charset=utf-8',
-    'Cache-Control': 'public, max-age=300',
-  })
-)
+/** Frappe login sets multiple cookies (sid, system_user, …) — forward all of them. */
+function forwardUpstreamCookies(upstream: Response, c: Context) {
+  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
+  const cookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : upstream.headers.get('set-cookie')
+        ? [upstream.headers.get('set-cookie') as string]
+        : []
+  for (const cookie of cookies) {
+    c.res.headers.append('Set-Cookie', cookie)
+  }
+}
 
-// Brand assets (copied from packages/common/assets/brand)
+function frappeHandoffRedirect(body: {
+  redirect?: string
+  message?: { redirect?: string }
+}): string | undefined {
+  return body.redirect ?? body.message?.redirect
+}
+
+function sessionFromRequest(c: Context): Session | null {
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return null
+  }
+  const raw = readCookie(c.req.header('cookie'))
+  return raw ? readSessionToken(raw, secret) : null
+}
+
+async function pingUpstream(): Promise<boolean> {
+  if (!GAMEPLAN_UPSTREAM) return false
+  try {
+    const res = await fetch(`${GAMEPLAN_UPSTREAM}/api/method/ping`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(2500),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+// Brand assets
 app.use(
   '/brand/*',
   serveStatic({
     root: PUBLIC_ROOT,
   })
+)
+
+// AGPL notices (network users must reach without signing in)
+app.get('/notices', (c) =>
+  c.html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Open source notices — Indobase Discuss</title>
+<link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" /></head>
+<body style="font-family:system-ui;max-width:40rem;margin:40px auto;padding:0 16px;color:#0f172a;line-height:1.5">
+<h1>Open source notices</h1>
+<p>Indobase Discuss includes <a href="https://github.com/frappe/gameplan">Gameplan</a> (AGPL-3.0) by Frappe Technologies.
+See <code>NOTICE.md</code> and upstream <code>LICENSE</code> in the Indobase repository under <code>indobase-discuss/</code>.</p>
+<p><a href="/">Back</a></p>
+</body></html>`)
 )
 
 // ── SSO ──────────────────────────────────────────────────────────────────────
@@ -121,7 +159,7 @@ app.get('/sso/launch', (c) =>
       (r.status === 401
         ? '<p style="margin:0 0 16px;color:#64748b;font-size:13px">This usually means the handoff secret does not match between Studio and this service.</p>'
         : '') +
-      '<a href="' + ${JSON.stringify(STUDIO_URL)} + '" style="font-size:14px;color:#2563eb">Back to Indobase Studio</a></div></div>';
+      '<a href="' + ${JSON.stringify(STUDIO_URL)} + '" style="font-size:14px;color:#3B8FD6">Back to Indobase Studio</a></div></div>';
     return;
   }
   var dest = '/';
@@ -160,38 +198,47 @@ app.post('/sso/session', async (c) => {
     projectName: claims.project_name,
     organizationName: claims.organization_name,
   })
+  const fallbackRedirect = gameplanSpacePath(map)
 
-  let redirect = discussChannelPath(map)
-
-  if (isMattermostConfigured()) {
+  if (FRAPPE_HANDOFF_URL) {
     try {
-      const mm = await exchangeStudioClaimsForMattermost(claims, map, secret)
-      for (const cookie of mattermostSessionCookies(mm)) {
-        c.res.headers.append('Set-Cookie', cookie)
+      const upstream = await fetch(FRAPPE_HANDOFF_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      if (!upstream.ok) {
+        const detail = await upstream.text().catch(() => '')
+        console.error('[discuss] frappe handoff HTTP', upstream.status, detail.slice(0, 400))
+        return c.json(
+          {
+            error:
+              upstream.status === 401
+                ? 'handoff rejected by Discuss backend (secret mismatch or expired token)'
+                : 'Discuss backend is not ready yet — try again in a minute',
+          },
+          upstream.status === 401 ? 401 : 503
+        )
       }
-      redirect = mm.redirect
+      forwardUpstreamCookies(upstream, c)
+      const body = (await upstream.json().catch(() => ({}))) as {
+        redirect?: string
+        message?: { redirect?: string }
+      }
+      c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
+      return c.json({ ok: true, redirect: frappeHandoffRedirect(body) || fallbackRedirect })
     } catch (err) {
-      console.error('[discuss] upstream handoff failed:', err)
-      return c.json(
-        {
-          error:
-            err instanceof Error && err.message
-              ? err.message
-              : 'Could not open Discuss. Try again from Studio.',
-        },
-        502
-      )
+      console.error('[discuss] frappe handoff failed:', err)
+      return c.json({ error: 'Discuss backend is unreachable' }, 503)
     }
   }
 
   c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  return c.json({ ok: true, redirect, space: map })
+  return c.json({ ok: true, redirect: fallbackRedirect })
 })
 
 app.post('/sso/logout', (c) => {
   c.header('Set-Cookie', clearSessionCookie())
-  c.res.headers.append('Set-Cookie', 'MMAUTHTOKEN=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0')
-  c.res.headers.append('Set-Cookie', 'MMUSERID=; Path=/; Secure; SameSite=Lax; Max-Age=0')
   return c.json({ ok: true })
 })
 
@@ -207,24 +254,14 @@ app.get('/sso/health', async (c) => {
   } catch {
     body.handoffConfigured = false
   }
-  // Do not leak upstream hostnames — only a boolean readiness bit.
-  ;(body as { upstreamReady?: boolean }).upstreamReady = isMattermostConfigured()
-    ? await mattermostPing()
-    : false
+  ;(body as { upstreamReady?: boolean }).upstreamReady = await pingUpstream()
   return c.json(body)
 })
 
-// ── Auth helpers (bridge-owned API only) ─────────────────────────────────────
+// ── Auth middleware ──────────────────────────────────────────────────────────
 
 async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.json({ error: 'sso not configured' }, 503)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
+  const session = sessionFromRequest(c)
   if (!session) return c.json({ error: 'unauthorized', signInUrl: `${STUDIO_URL}/sign-in` }, 401)
   c.set('session', session)
   await next()
@@ -246,33 +283,86 @@ app.get('/api/me', requireSession, (c) => {
     canPost: s.canPost,
     studioUrl: s.studioUrl,
     space: map,
-    channelPath: discussChannelPath(map),
+    spacePath: gameplanSpacePath(map),
   })
-})
-
-/** One-click Start call → Indobase Meet (channel-scoped when channel_id given). */
-app.get('/api/meet/start', requireSession, async (c) => {
-  const s = c.get('session')
-  const channelId = c.req.query('channel_id') || c.req.query('channelId') || ''
-  const call = buildMeetStartCall(s, { channelId })
-  if (call.ready) {
-    void notifyMeetCallStarted(call, s)
-  }
-  return c.json({ ok: true, ...call })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-discuss' }))
 
-function isNativeAuthPath(pathname: string): boolean {
-  return (
-    pathname === '/login' ||
-    pathname === '/signup_user_complete' ||
-    pathname === '/signup_email' ||
-    pathname.startsWith('/signup_')
-  )
+// ── Gameplan proxy ───────────────────────────────────────────────────────────
+
+async function proxyGameplan(c: Context) {
+  if (!GAMEPLAN_UPSTREAM) return c.notFound()
+  const url = new URL(c.req.url)
+  const target = `${GAMEPLAN_UPSTREAM}${url.pathname}${url.search}`
+  const headers = new Headers(c.req.raw.headers)
+  headers.delete('host')
+  headers.delete('accept-encoding')
+  const res = await fetch(target, {
+    method: c.req.method,
+    headers,
+    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+    redirect: 'manual',
+  })
+
+  const outHeaders = sanitizeProxiedResponseHeaders(res.headers)
+  const contentType = res.headers.get('content-type')
+  if (shouldBrandDiscussResponse(contentType) && c.req.method !== 'HEAD' && res.body) {
+    const html = brandDiscussHtml(await res.text())
+    outHeaders.delete('content-length')
+    outHeaders.delete('content-encoding')
+    outHeaders.delete('etag')
+    outHeaders.delete('last-modified')
+    return new Response(html, { status: res.status, headers: outHeaders })
+  }
+  return new Response(res.body, { status: res.status, headers: outHeaders })
 }
 
-// ── Dev shell (no Mattermost upstream) ───────────────────────────────────────
+async function proxyGameplanAuthenticated(c: Context) {
+  if (!sessionFromRequest(c)) {
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
+  }
+  return proxyGameplan(c)
+}
+
+app.all('/g/*', proxyGameplanAuthenticated)
+/** Legacy handoff used Gameplan doc-name paths; redirect to keyed path when session exists. */
+app.all('/community/*', (c) => {
+  const session = sessionFromRequest(c)
+  if (!session) return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  const map = buildDiscussSpaceMap({
+    orgSlug: session.orgSlug,
+    projectRef: session.projectRef,
+    projectName: session.projectName,
+    organizationName: session.organizationName,
+  })
+  return c.redirect(gameplanSpacePath(map))
+})
+app.all('/space/*', proxyGameplanAuthenticated)
+app.all('/assets/*', proxyGameplan)
+app.all('/files/*', proxyGameplanAuthenticated)
+app.all('/api/method/*', async (c) => {
+  const path = new URL(c.req.url).pathname
+  if (isNativeAuthPath(path)) return c.redirect(`${STUDIO_URL}/sign-in`)
+  // Handoff exchange is called server-side from /sso/session — still allow proxied methods
+  // for the signed-in SPA (needs session cookie from Frappe).
+  if (!sessionFromRequest(c) && !path.includes('indobase_discuss.api.studio_handoff')) {
+    return c.json({ error: 'unauthorized' }, 401)
+  }
+  return proxyGameplan(c)
+})
+app.all('/api/resource/*', proxyGameplanAuthenticated)
+app.all('/api/frappe/*', proxyGameplanAuthenticated)
+app.all('/socket.io/*', proxyGameplanAuthenticated)
+
+/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
+app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/logout', (c) => {
+  c.header('Set-Cookie', clearSessionCookie())
+  return c.redirect(`${STUDIO_URL}/sign-in`)
+})
+
+// ── Dev shell / cold landing ─────────────────────────────────────────────────
 
 function renderShell(session: Session): string {
   const map = buildDiscussSpaceMap({
@@ -281,7 +371,7 @@ function renderShell(session: Session): string {
     projectName: session.projectName,
     organizationName: session.organizationName,
   })
-  const path = discussChannelPath(map)
+  const path = gameplanSpacePath(map)
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -313,7 +403,7 @@ function renderShell(session: Session): string {
       <hr style="border:none;border-top:1px solid var(--border);margin:20px 0" />
       <dl>
         <dt>Organization</dt><dd><code>${map.orgSlug}</code> → team <code>${map.teamKey}</code></dd>
-        <dt>Project</dt><dd><code>${map.projectRef}</code> → channel <code>${map.spaceKey}</code></dd>
+        <dt>Project</dt><dd><code>${map.projectRef}</code> → space <code>${map.spaceKey}</code></dd>
         <dt>Deep link</dt><dd><code>${path}</code></dd>
         <dt>Role</dt><dd>${session.role}${session.canPost ? '' : ' (view only)'}</dd>
       </dl>
@@ -328,158 +418,50 @@ function renderShell(session: Session): string {
 }
 
 app.get('/', (c) => {
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
-  if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
-  if (MATTERMOST_URL) {
+  const session = sessionFromRequest(c)
+  if (!session) return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  if (GAMEPLAN_UPSTREAM) {
     const map = buildDiscussSpaceMap({
       orgSlug: session.orgSlug,
       projectRef: session.projectRef,
       projectName: session.projectName,
       organizationName: session.organizationName,
     })
-    return c.redirect(discussChannelPath(map))
+    return c.redirect(gameplanSpacePath(map))
   }
   return c.html(renderShell(session))
 })
 
-// ── Mattermost HTTP proxy (non-bridge paths) ─────────────────────────────────
-
-/** Strip hop/encoding headers undici has already resolved on the decoded body. */
-export function sanitizeProxiedResponseHeaders(headers: Headers): Headers {
-  const out = new Headers(headers)
-  out.delete('server')
-  out.delete('x-version-id')
-  // undici already decoded gzip/br. Keeping Content-Encoding (and the compressed
-  // Content-Length) makes browsers gunzip plaintext CSS/JS → assets fail → the
-  // Mattermost LoadingScreen SVG pills fill the viewport as giant black shapes.
-  out.delete('content-encoding')
-  out.delete('content-length')
-  out.delete('transfer-encoding')
-  return out
-}
-
-async function proxyMattermost(c: Context) {
-  if (!MATTERMOST_URL) return c.notFound()
-  const url = new URL(c.req.url)
-  const target = `${MATTERMOST_URL}${url.pathname}${url.search}`
-  const headers = new Headers(c.req.raw.headers)
-  headers.delete('host')
-  // Node fetch/undici decompresses responses; do not advertise encodings we
-  // cannot faithfully re-encode when streaming the decoded body.
-  headers.delete('accept-encoding')
-  const res = await fetch(target, {
-    method: c.req.method,
-    headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
-    redirect: 'manual',
-  })
-  // Clone via sanitize — res.headers is immutable; securityHeaders must .set().
-  const outHeaders = sanitizeProxiedResponseHeaders(res.headers)
-  const contentType = res.headers.get('content-type')
-  if (shouldBrandDiscussResponse(contentType) && c.req.method !== 'HEAD') {
-    const html = brandDiscussHtml(await res.text())
-    // Branded body length differs from upstream — never forward a stale length.
-    outHeaders.delete('content-length')
-    outHeaders.delete('content-encoding')
-    outHeaders.delete('transfer-encoding')
-    return new Response(html, { status: res.status, headers: outHeaders })
-  }
-  return new Response(res.body, { status: res.status, headers: outHeaders })
-}
-
 app.all('*', async (c, next) => {
-  const path = new URL(c.req.url).pathname
-  if (isBridgeOwnedPath(path)) return next()
-  if (isNativeAuthPath(path)) return c.redirect(`${STUDIO_URL}/sign-in`)
-  if (!MATTERMOST_URL) {
-    if (path === '/') return next()
-    return c.redirect(`${STUDIO_URL}/sign-in`)
+  const pathname = new URL(c.req.url).pathname
+  if (isBridgeOwnedPath(pathname)) return next()
+  if (isNativeAuthPath(pathname)) return c.redirect(`${STUDIO_URL}/sign-in`)
+  if (!GAMEPLAN_UPSTREAM) {
+    if (pathname === '/') return next()
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
   }
-  return proxyMattermost(c)
+  if (!sessionFromRequest(c)) {
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  }
+  return proxyGameplan(c)
 })
 
-// ── Boot (HTTP + WebSocket upgrade to Mattermost) ────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────────
 
 export function startDiscussBridge(listenPort = Number(process.env.PORT || 8092)) {
-  const listener = getRequestListener(app.fetch)
-  const server = createServer((req: IncomingMessage, res: ServerResponse) => listener(req, res))
-
-  server.on('upgrade', (req, socket, head) => {
-    if (!MATTERMOST_URL) {
-      socket.destroy()
-      return
-    }
-    let target: URL
-    try {
-      target = new URL(MATTERMOST_URL)
-    } catch {
-      socket.destroy()
-      return
-    }
-    const isTls = target.protocol === 'https:'
-    const transport = isTls ? httpsRequest : httpRequest
-    const headers = { ...req.headers, host: target.host }
-    const proxyReq = transport({
-      protocol: target.protocol,
-      hostname: target.hostname,
-      port: target.port || (isTls ? 443 : 80),
-      path: req.url,
-      method: req.method,
-      headers,
-    })
-    proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
-      const lines = [`HTTP/1.1 101 Switching Protocols`]
-      for (const [k, v] of Object.entries(proxyRes.headers)) {
-        if (v === undefined) continue
-        if (Array.isArray(v)) {
-          for (const item of v) lines.push(`${k}: ${item}`)
-        } else {
-          lines.push(`${k}: ${v}`)
-        }
-      }
-      lines.push('', '')
-      socket.write(lines.join('\r\n'))
-      if (proxyHead.length) socket.write(proxyHead)
-      if (head.length) proxySocket.write(head)
-      proxySocket.pipe(socket)
-      socket.pipe(proxySocket)
-    })
-    proxyReq.on('error', () => {
-      try {
-        socket.destroy()
-      } catch {
-        /* ignore */
-      }
-    })
-    socket.on('error', () => {
-      try {
-        proxyReq.destroy()
-      } catch {
-        /* ignore */
-      }
-    })
-    proxyReq.end()
-  })
-
-  server.listen(listenPort, () => {
+  serve({ fetch: app.fetch, port: listenPort }, () => {
     console.log(`[indobase-discuss] listening on :${listenPort}`)
   })
-  return server
 }
 
-const isDirectRun =
-  typeof process.argv[1] === 'string' &&
-  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+const isMain =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))
 
-if (isDirectRun) {
+if (isMain) {
   startDiscussBridge()
 }
 
+export { sanitizeProxiedResponseHeaders }
 export default app
