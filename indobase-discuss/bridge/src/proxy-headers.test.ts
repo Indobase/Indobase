@@ -33,11 +33,20 @@ describe('buildUpstreamProxyHeaders', () => {
       'accept-encoding': 'gzip, deflate, br',
       cookie: 'sid=abc',
       connection: 'keep-alive',
+      upgrade: 'websocket',
     })
     const out = buildUpstreamProxyHeaders(incoming)
     assert.equal(out.get('accept-encoding'), 'identity')
     assert.equal(out.get('cookie'), 'sid=abc')
     assert.equal(out.get('host'), null)
     assert.equal(out.get('connection'), null)
+    assert.equal(out.get('upgrade'), null)
+  })
+
+  it('sets Frappe site Host when siteHost is provided', () => {
+    const incoming = new Headers({ host: 'discuss.indobase.in', cookie: 'sid=abc' })
+    const out = buildUpstreamProxyHeaders(incoming, { siteHost: 'discuss.localhost' })
+    assert.equal(out.get('host'), 'discuss.localhost')
+    assert.equal(out.get('X-Frappe-Site-Name'), 'discuss.localhost')
   })
 })

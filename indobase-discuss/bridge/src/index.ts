@@ -6,10 +6,14 @@
  * and proxies `/g/*` (+ assets / Frappe API) to the Gameplan upstream.
  * Customer UI is branded Indobase Discuss only.
  */
+import { createServer } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { serve } from '@hono/node-server'
+import { getRequestListener } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
@@ -18,6 +22,7 @@ import {
   AUDIENCE,
   clearSessionCookie,
   createSessionToken,
+  hasFrappeSessionCookies,
   readCookie,
   readSessionToken,
   resolveHandoffSecret,
@@ -41,6 +46,8 @@ app.use('*', securityHeaders)
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
 const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
+/** Frappe multi-site name — must match DISCUSS_SITE_NAME on the gameplan container. */
+const DISCUSS_SITE_NAME = (process.env.DISCUSS_SITE_NAME || 'discuss.localhost').trim() || 'discuss.localhost'
 
 /** Realtime listens on :9000; HTTP bench is :8000. */
 function deriveSocketUpstream(httpUpstream: string): string {
@@ -313,7 +320,7 @@ async function proxyToUpstream(c: Context, upstreamBase: string) {
   if (!upstreamBase) return c.notFound()
   const url = new URL(c.req.url)
   const target = `${upstreamBase}${url.pathname}${url.search}`
-  const headers = buildUpstreamProxyHeaders(c.req.raw.headers)
+  const headers = buildUpstreamProxyHeaders(c.req.raw.headers, { siteHost: DISCUSS_SITE_NAME })
 
   let res: Response
   try {
@@ -354,10 +361,24 @@ async function proxyGameplan(c: Context) {
   return proxyToUpstream(c, GAMEPLAN_UPSTREAM)
 }
 
-async function proxyGameplanAuthenticated(c: Context) {
+/**
+ * Bridge JWT alone is not enough: Gameplan boots from Frappe `user_id`/`sid`.
+ * Without those cookies the SPA route matches but App.vue renders an empty shell.
+ */
+function requireDiscussSessions(c: Context): Response | null {
   if (!sessionFromRequest(c)) {
     return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
   }
+  if (!hasFrappeSessionCookies(c.req.header('cookie'))) {
+    c.header('Set-Cookie', clearSessionCookie())
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
+  }
+  return null
+}
+
+async function proxyGameplanAuthenticated(c: Context) {
+  const denied = requireDiscussSessions(c)
+  if (denied) return denied
   const url = new URL(c.req.url)
   const rewritten = rewriteLegacyGameplanPath(url.pathname)
   if (rewritten && rewritten !== url.pathname) {
@@ -369,8 +390,9 @@ async function proxyGameplanAuthenticated(c: Context) {
 app.all('/g/*', proxyGameplanAuthenticated)
 /** Legacy handoff used Gameplan doc-name paths; redirect to keyed path when session exists. */
 app.all('/community/*', (c) => {
-  const session = sessionFromRequest(c)
-  if (!session) return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  const denied = requireDiscussSessions(c)
+  if (denied) return denied
+  const session = sessionFromRequest(c)!
   const map = buildDiscussSpaceMap({
     orgSlug: session.orgSlug,
     projectRef: session.projectRef,
@@ -387,17 +409,24 @@ app.all('/api/method/*', async (c) => {
   if (isNativeAuthPath(path)) return c.redirect(`${STUDIO_URL}/sign-in`)
   // Handoff exchange is called server-side from /sso/session — still allow proxied methods
   // for the signed-in SPA (needs session cookie from Frappe).
-  if (!sessionFromRequest(c) && !path.includes('indobase_discuss.api.studio_handoff')) {
-    return c.json({ error: 'unauthorized' }, 401)
+  if (path.includes('indobase_discuss.api.studio_handoff')) {
+    return proxyGameplan(c)
   }
+  const denied = requireDiscussSessions(c)
+  if (denied) return c.json({ error: 'unauthorized' }, 401)
+  return proxyGameplan(c)
+})
+/** Gameplan Vite client uses Frappe RPC v2 for boot (users, resources). */
+app.all('/api/v2/*', async (c) => {
+  const denied = requireDiscussSessions(c)
+  if (denied) return c.json({ error: 'unauthorized' }, 401)
   return proxyGameplan(c)
 })
 app.all('/api/resource/*', proxyGameplanAuthenticated)
 app.all('/api/frappe/*', proxyGameplanAuthenticated)
 app.all('/socket.io/*', async (c) => {
-  if (!sessionFromRequest(c)) {
-    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
-  }
+  const denied = requireDiscussSessions(c)
+  if (denied) return denied
   return proxyToUpstream(c, SOCKET_UPSTREAM || GAMEPLAN_UPSTREAM)
 })
 
@@ -465,7 +494,12 @@ function renderShell(session: Session): string {
 
 app.get('/', (c) => {
   const session = sessionFromRequest(c)
-  if (!session) return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  if (!session || !hasFrappeSessionCookies(c.req.header('cookie'))) {
+    if (session && !hasFrappeSessionCookies(c.req.header('cookie'))) {
+      c.header('Set-Cookie', clearSessionCookie())
+    }
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
+  }
   if (GAMEPLAN_UPSTREAM) {
     const map = buildDiscussSpaceMap({
       orgSlug: session.orgSlug,
@@ -486,18 +520,104 @@ app.all('*', async (c, next) => {
     if (pathname === '/') return next()
     return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
   }
-  if (!sessionFromRequest(c)) {
-    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }))
-  }
+  const denied = requireDiscussSessions(c)
+  if (denied) return denied
   return proxyGameplan(c)
 })
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
+function proxySocketUpgrade(req: IncomingMessage, socket: import('node:stream').Duplex, head: Buffer) {
+  const upstreamBase = SOCKET_UPSTREAM || GAMEPLAN_UPSTREAM
+  if (!upstreamBase) {
+    socket.destroy()
+    return
+  }
+  let target: URL
+  try {
+    target = new URL(upstreamBase)
+  } catch {
+    socket.destroy()
+    return
+  }
+  const cookie = typeof req.headers.cookie === 'string' ? req.headers.cookie : ''
+  let secret = ''
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    socket.destroy()
+    return
+  }
+  const session = readSessionToken(readCookie(cookie) || '', secret)
+  if (!session || !hasFrappeSessionCookies(cookie)) {
+    socket.destroy()
+    return
+  }
+
+  const isTls = target.protocol === 'https:'
+  const transport = isTls ? httpsRequest : httpRequest
+  const headers = {
+    ...req.headers,
+    host: DISCUSS_SITE_NAME,
+    'x-frappe-site-name': DISCUSS_SITE_NAME,
+  }
+  const proxyReq = transport({
+    protocol: target.protocol,
+    hostname: target.hostname,
+    port: target.port || (isTls ? 443 : 80),
+    path: req.url || '/',
+    method: req.method,
+    headers,
+  })
+  proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
+    const lines = [`HTTP/1.1 101 Switching Protocols`]
+    for (const [k, v] of Object.entries(proxyRes.headers)) {
+      if (v === undefined) continue
+      if (Array.isArray(v)) {
+        for (const item of v) lines.push(`${k}: ${item}`)
+      } else {
+        lines.push(`${k}: ${v}`)
+      }
+    }
+    lines.push('', '')
+    socket.write(lines.join('\r\n'))
+    if (proxyHead.length) socket.write(proxyHead)
+    if (head.length) proxySocket.write(head)
+    proxySocket.pipe(socket)
+    socket.pipe(proxySocket)
+  })
+  proxyReq.on('error', () => {
+    try {
+      socket.destroy()
+    } catch {
+      /* ignore */
+    }
+  })
+  socket.on('error', () => {
+    try {
+      proxyReq.destroy()
+    } catch {
+      /* ignore */
+    }
+  })
+  proxyReq.end()
+}
+
 export function startDiscussBridge(listenPort = Number(process.env.PORT || 8092)) {
-  serve({ fetch: app.fetch, port: listenPort }, () => {
+  const listener = getRequestListener(app.fetch)
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => listener(req, res))
+  server.on('upgrade', (req, socket, head) => {
+    const url = req.url || '/'
+    if (!url.startsWith('/socket.io')) {
+      socket.destroy()
+      return
+    }
+    proxySocketUpgrade(req, socket, head)
+  })
+  server.listen(listenPort, () => {
     console.log(`[indobase-discuss] listening on :${listenPort}`)
   })
+  return server
 }
 
 const isMain =

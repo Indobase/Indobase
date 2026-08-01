@@ -43,6 +43,13 @@ const FAVICON_LINKS = [
   `<meta name="apple-mobile-web-app-title" content="${DISCUSS_BRAND_NAME}" />`,
 ].join('')
 
+/**
+ * Runtime brand layer — external script on purpose.
+ * Upstream shells may ship CSP `script-src 'self'`; inline scripts fail silently
+ * and leave "Gameplan" in the mounted Vue chrome (exact Calendar lesson).
+ */
+const BRAND_JS = '<script src="/brand/discuss-brand.js" defer></script>'
+
 /** Drop upstream engine chrome that would flash Gameplan naming / icons. */
 function stripUpstreamBrandLinks(html: string): string {
   let out = html
@@ -212,7 +219,17 @@ export function rewriteBrandedHtml(html: string): string {
     out.splice(headInsertAt, 0, `<title>${DISCUSS_BRAND_NAME}</title>`)
   }
 
-  return out.join('')
+  let htmlOut = out.join('')
+  if (!htmlOut.includes('/brand/discuss-brand.js')) {
+    if (htmlOut.includes('</head>')) {
+      htmlOut = htmlOut.replace('</head>', `${BRAND_JS}</head>`)
+    } else if (htmlOut.includes('</body>')) {
+      htmlOut = htmlOut.replace('</body>', `${BRAND_JS}</body>`)
+    } else {
+      htmlOut += BRAND_JS
+    }
+  }
+  return htmlOut
 }
 
 /** Alias used by the proxy path. */

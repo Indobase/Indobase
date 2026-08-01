@@ -23,14 +23,29 @@ export function sanitizeProxiedResponseHeaders(headers: Headers): Headers {
 /**
  * Build upstream request headers. Force identity encoding so Node never
  * auto-decompresses while leaving mismatched Content-Encoding / Length.
+ *
+ * `siteHost` is the Frappe site name (e.g. discuss.localhost). Without a
+ * matching Host / X-Frappe-Site-Name, multi-site benches can serve the wrong
+ * site or guest shells that leave the Vue app blank.
  */
-export function buildUpstreamProxyHeaders(incoming: Headers): Headers {
+export function buildUpstreamProxyHeaders(
+  incoming: Headers,
+  opts?: { siteHost?: string }
+): Headers {
   const headers = new Headers(incoming)
   headers.delete('host')
   headers.delete('connection')
   headers.delete('keep-alive')
   headers.delete('transfer-encoding')
   headers.delete('content-length')
+  // fetch()/undici cannot perform HTTP upgrades — strip so polling stays on the
+  // buffered proxy path. Real WebSocket upgrades are handled on the Node server.
+  headers.delete('upgrade')
   headers.set('accept-encoding', 'identity')
+  const siteHost = (opts?.siteHost || '').trim()
+  if (siteHost) {
+    headers.set('host', siteHost)
+    headers.set('X-Frappe-Site-Name', siteHost)
+  }
   return headers
 }

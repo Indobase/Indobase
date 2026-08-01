@@ -11,6 +11,7 @@ describe('brandDiscussHtml', () => {
     assert.match(out, /Welcome to Discuss/)
     assert.match(out, /var x="Gameplan"/)
     assert.match(out, /indobase-favicon\.svg/)
+    assert.match(out, /\/brand\/discuss-brand\.js/)
   })
 
   it('replaces engine manifest and apple icons with Indobase brand assets', () => {

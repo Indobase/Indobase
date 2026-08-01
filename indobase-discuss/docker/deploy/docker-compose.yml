@@ -108,7 +108,9 @@ services:
       PORT: "8092"
       DISCUSS_HANDOFF_SECRET: ${DISCUSS_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      DISCUSS_SITE_NAME: ${DISCUSS_SITE_NAME:-discuss.localhost}
       GAMEPLAN_UPSTREAM: http://discuss-gameplan:8000
+      SOCKET_UPSTREAM: http://discuss-gameplan:9000
       FRAPPE_STUDIO_HANDOFF_URL: http://discuss-gameplan:8000/api/method/indobase_discuss.api.studio_handoff.exchange
       DISCUSS_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}

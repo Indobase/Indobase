@@ -174,3 +174,16 @@ export function readCookie(header: string | undefined | null, name = SESSION_COO
   }
   return null
 }
+
+/**
+ * Gameplan's Vue app treats `user_id` as the login signal. Serving `/g/*` with only
+ * the Indobase bridge cookie (no Frappe `sid` / `user_id`) mounts an empty `#app`
+ * shell — not Login, not Layout — until `/login` happens to bounce away.
+ */
+export function hasFrappeSessionCookies(header: string | undefined | null): boolean {
+  const sid = readCookie(header, 'sid')
+  if (!sid) return false
+  const userId = readCookie(header, 'user_id')
+  if (!userId || userId === 'Guest') return false
+  return true
+}
