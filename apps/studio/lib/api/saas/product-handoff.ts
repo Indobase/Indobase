@@ -10,7 +10,7 @@ import { executeQuery } from './query'
 /**
  * One implementation of the Studio → product SSO handoff.
  *
- * Analytics, Calendar, CRM, Design, Discuss, Email, Meet, Payments, Social, Suite, and Video share this
+ * Analytics, CRM, Design, Discuss, Payments, Social, Suite, and Video share this
  * implementation. Builder is deliberately NOT included — see `builder-launch.ts`.
  */
 
@@ -18,13 +18,10 @@ type Claims = JwtPayload & Record<string, unknown>
 
 export const HANDOFF_PRODUCTS = [
   'analytics',
-  'calendar',
   'crm',
   'design',
   'discuss',
   'domains',
-  'email',
-  'meet',
   'payments',
   'social',
   'suite',
@@ -66,12 +63,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://analytics.indobase.in',
   },
-  calendar: {
-    audience: 'indobase-calendar',
-    label: 'Calendar',
-    launchPath: '/sso/launch',
-    defaultBaseUrl: 'https://calendar.indobase.in',
-  },
   crm: {
     audience: 'indobase-crm',
     label: 'CRM',
@@ -95,18 +86,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Domains',
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://domains.indobase.in',
-  },
-  email: {
-    audience: 'indobase-email',
-    label: 'Email',
-    launchPath: '/console/launch',
-    defaultBaseUrl: 'https://email.indobase.in',
-  },
-  meet: {
-    audience: 'indobase-meet',
-    label: 'Meet',
-    launchPath: '/sso/launch',
-    defaultBaseUrl: 'https://meet.indobase.in',
   },
   payments: {
     audience: 'indobase-payments',

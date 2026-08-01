@@ -36,17 +36,6 @@ export async function getSuiteLaunchRedirect({
   ref: string
   module?: string | null
 }) {
-  // Mail opens Email — complementary to Workspace, not upstream Suite Mail.
-  if (module === 'mail') {
-    const email = await getProductLaunchRedirect('email', { claims, ref })
-    return {
-      ...email,
-      externalProduct: 'email' as const,
-      suiteTeamKey: suiteTeamKeyForOrgSlug(email.project.organization_slug),
-      suiteProjectKey: suiteProjectKeyForProjectRef(email.project.ref),
-    }
-  }
-
   const response = await getProductLaunchRedirect('suite', { claims, ref })
 
   let url = response.url

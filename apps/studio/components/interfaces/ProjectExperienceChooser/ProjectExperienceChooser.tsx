@@ -32,7 +32,6 @@ import { useBuilderLaunch } from './useBuilderLaunch'
 import { useCrmLaunch } from './useCrmLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
 import { useDiscussLaunch } from './useDiscussLaunch'
-import { useEmailLaunch } from './useEmailLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -187,7 +186,6 @@ export const ProjectExperienceChooser = () => {
   const { launch: launchCrm, isLaunching: isLaunchingCrm } = useCrmLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
   const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
-  const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
 
@@ -343,14 +341,6 @@ export const ProjectExperienceChooser = () => {
                   accentClassName="bg-[#6366F1]/10"
                   onClick={() => open(launchDiscuss)}
                   loading={isLaunchingDiscuss}
-                />
-                <ProductTile
-                  name="Email"
-                  tagline="Campaigns and transactional mail"
-                  icon={<Mail size={18} className="text-[#0EA5E9]" />}
-                  accentClassName="bg-[#0EA5E9]/10"
-                  onClick={() => open(launchEmail)}
-                  loading={isLaunchingEmail}
                 />
                 <ProductTile
                   name="Social"

@@ -1,0 +1,213 @@
+CustomEvent:
+  type: object
+  required:
+    - event_name
+    - external_id
+    - email
+  properties:
+    event_name:
+      type: string
+      description: Event type name (lowercase letters, numbers, underscores, dots, and slashes only)
+      example: orders/fulfilled
+      maxLength: 100
+      pattern: ^[a-z0-9_./-]+$
+    external_id:
+      type: string
+      description: External system identifier for this event
+      example: shopify_order_12345
+      maxLength: 255
+    email:
+      type: string
+      format: email
+      description: Contact email address
+      example: customer@example.com
+    properties:
+      type: object
+      additionalProperties: true
+      description: JSONB event data with arbitrary structure
+      example:
+        order_total: 129.99
+        product_name: Premium Subscription
+        quantity: 1
+    occurred_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: When the event occurred (allows backdating)
+      example: '2023-05-15T14:30:00Z'
+    source:
+      type: string
+      enum:
+        - api
+        - integration
+        - import
+      description: Origin of the event (set automatically by server)
+      example: api
+      default: api
+    integration_id:
+      type: string
+      nullable: true
+      description: Optional reference to integration that created the event
+      example: shopify_integration_123
+    goal_type:
+      type: string
+      enum:
+        - purchase
+        - subscription
+        - lead
+        - signup
+        - booking
+        - trial
+        - other
+      nullable: true
+      description: Type of goal for conversion tracking. Required for goal_value to have meaning.
+      example: purchase
+    goal_name:
+      type: string
+      nullable: true
+      maxLength: 100
+      description: Optional goal name for categorization (e.g., 'first_purchase', 'monthly_subscription')
+      example: first_purchase
+    goal_value:
+      type: number
+      format: double
+      nullable: true
+      description: Monetary value of the goal. Required for 'purchase' and 'subscription' goal types. Can be negative for refunds/chargebacks.
+      example: 99.99
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: Soft delete timestamp. Set to delete an event, set to null to restore.
+      example: null
+    created_at:
+      type: string
+      format: date-time
+      description: When the event was created in the system
+      example: '2023-05-15T14:30:00Z'
+    updated_at:
+      type: string
+      format: date-time
+      description: When the event was last updated
+      example: '2023-05-15T14:30:00Z'
+
+ImportCustomEventsRequest:
+  type: object
+  required:
+    - workspace_id
+    - events
+  properties:
+    workspace_id:
+      type: string
+      description: The ID of the workspace
+      example: ws_1234567890
+    events:
+      type: array
+      description: Array of custom events to import (1-50 events)
+      minItems: 1
+      maxItems: 50
+      items:
+        type: object
+        required:
+          - event_name
+          - external_id
+          - email
+        properties:
+          event_name:
+            type: string
+            description: Event type name
+            example: orders/fulfilled
+            maxLength: 100
+            pattern: ^[a-z0-9_./-]+$
+          external_id:
+            type: string
+            description: External system identifier
+            example: shopify_order_12345
+            maxLength: 255
+          email:
+            type: string
+            format: email
+            description: Contact email address
+            example: customer@example.com
+          properties:
+            type: object
+            additionalProperties: true
+            description: Event data
+            example:
+              order_total: 129.99
+              product_name: Premium Subscription
+          occurred_at:
+            type: string
+            format: date-time
+            description: When the event occurred
+            example: '2023-05-15T14:30:00Z'
+          source:
+            type: string
+            enum:
+              - api
+              - integration
+              - import
+            description: Origin of the event
+            example: api
+          integration_id:
+            type: string
+            description: Integration reference
+            example: shopify_integration_123
+          goal_type:
+            type: string
+            enum:
+              - purchase
+              - subscription
+              - lead
+              - signup
+              - booking
+              - trial
+              - other
+            description: Type of goal for conversion tracking
+            example: purchase
+          goal_name:
+            type: string
+            maxLength: 100
+            description: Optional goal name for categorization
+            example: first_purchase
+          goal_value:
+            type: number
+            format: double
+            description: Monetary value (required for purchase/subscription, can be negative for refunds)
+            example: 99.99
+          deleted_at:
+            type: string
+            format: date-time
+            description: Soft delete timestamp
+            example: null
+      example:
+        - event_name: orders/fulfilled
+          external_id: shopify_order_12345
+          email: customer@example.com
+          properties:
+            order_total: 129.99
+            product_name: Premium Subscription
+          occurred_at: '2023-05-15T14:30:00Z'
+        - event_name: payment/succeeded
+          external_id: stripe_payment_67890
+          email: customer@example.com
+          properties:
+            amount: 129.99
+            currency: USD
+          occurred_at: '2023-05-15T14:29:00Z'
+
+ImportCustomEventsResponse:
+  type: object
+  properties:
+    event_ids:
+      type: array
+      description: External IDs of successfully imported events
+      items:
+        type: string
+      example:
+        - shopify_order_12345
+        - stripe_payment_67890
+    count:
+      type: integer
+      description: Number of events created
+      example: 2
