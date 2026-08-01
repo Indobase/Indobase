@@ -309,7 +309,7 @@ app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-discuss' }))
 
 // ── Gameplan proxy ───────────────────────────────────────────────────────────
 
-async function proxyGameplan(c: Context, upstreamBase = GAMEPLAN_UPSTREAM) {
+async function proxyToUpstream(c: Context, upstreamBase: string) {
   if (!upstreamBase) return c.notFound()
   const url = new URL(c.req.url)
   const target = `${upstreamBase}${url.pathname}${url.search}`
@@ -348,6 +348,10 @@ async function proxyGameplan(c: Context, upstreamBase = GAMEPLAN_UPSTREAM) {
   const buf = Buffer.from(await res.arrayBuffer())
   outHeaders.set('content-length', String(buf.byteLength))
   return new Response(buf, { status: res.status, headers: outHeaders })
+}
+
+async function proxyGameplan(c: Context) {
+  return proxyToUpstream(c, GAMEPLAN_UPSTREAM)
 }
 
 async function proxyGameplanAuthenticated(c: Context) {
@@ -394,7 +398,7 @@ app.all('/socket.io/*', async (c) => {
   if (!sessionFromRequest(c)) {
     return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
   }
-  return proxyGameplan(c, SOCKET_UPSTREAM || GAMEPLAN_UPSTREAM)
+  return proxyToUpstream(c, SOCKET_UPSTREAM || GAMEPLAN_UPSTREAM)
 })
 
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
