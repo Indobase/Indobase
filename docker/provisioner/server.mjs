@@ -18,7 +18,15 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import { fixAllTenantTraefikFromDocker, fixTenantTraefikForRef, getDockerPsLines, hostPortFor } from './tenant-traefik.mjs'
+import {
+  fixAllTenantTraefikFromDocker,
+  fixTenantTraefikForRef,
+  getDockerPsLines,
+  hostPortFor,
+  refreshDockerPsLines,
+  resolveHostPort,
+  startDockerPsPoller,
+} from './tenant-traefik.mjs'
 import { TENANT_SITE_NGINX_CONF, ensureSiteNginxConfFile, ensureTenantSiteFleet, ensureTenantSiteService, publishTenantSiteFiles } from './site-hosting.mjs'
 import {
   portsFromPortBase,
@@ -120,8 +128,10 @@ $2`
   }
   const publishHost = (process.env.PROVISIONER_PUBLISH_HOST || traefikUpstreamHost).trim()
   // Expose tenant API ports on the docker bridge for Traefik — never publish Postgres (5432).
+  // Studio may have written the VPS public IP (TRAEFIK_UPSTREAM_HOST=103.x); normalize to the
+  // bridge address Traefik actually uses, otherwise health checks and routing look "down".
   text = text.replace(
-    /127\.0\.0\.1:(\d+):(3000|9999|5000|4000|9000|6543|8080)\b/g,
+    /(?:127\.0\.0\.1|\d{1,3}(?:\.\d{1,3}){3}):(\d+):(3000|9999|5000|4000|9000|6543|8080)\b/g,
     `${publishHost}:$1:$2`
   )
   const remotePgHost = (process.env.PROVISIONER_PG_HOST || '').trim()
@@ -401,7 +411,7 @@ function dockerVolumeRm(volumeName) {
 async function readPublishedPort(ref, serviceSuffix) {
   try {
     const dockerPs = getDockerPsLines()
-    return hostPortFor(dockerPs, ref, serviceSuffix)
+    return resolveHostPort(dockerPs, ref, serviceSuffix)
   } catch {
     return null
   }
@@ -540,6 +550,8 @@ async function repairTenantStackRef(ref, reason) {
 
   await seedTenantFunctionsMain(ref)
   await runCompose(composePath)
+  // Publish ports can bind to the VPS public IP; refresh before Traefik rewrite.
+  await refreshDockerPsLines()
 
   const traefikPath = path.join(traefikDir, `tenant-${ref}.yml`)
   const isSharedGateway = !fs.existsSync(traefikPath)
@@ -551,7 +563,9 @@ async function repairTenantStackRef(ref, reason) {
       registerSharedGatewayTenant(ref, ports)
     }
   } else {
-    const normalized = fixTenantTraefikForRef(ref, traefikDir)
+    const normalized = fixTenantTraefikForRef(ref, traefikDir, {
+      dockerPs: getDockerPsLines({ fresh: true }),
+    })
     if (!normalized.ok) {
       return { ref, ok: false, reason: normalized.reason || 'traefik_normalize_failed', repair_reason: reason }
     }
@@ -1130,6 +1144,40 @@ const server = http.createServer(async (req, res) => {
     return json(res, 500, { message: e?.message || 'Internal error' })
   }
 })
+
+startDockerPsPoller()
+
+/** Ensure Traefik can resolve `indobase-wake` referenced by every tenant HTTPS router. */
+function ensureIndobaseWakeMiddlewareFile() {
+  const wakePath = path.join(traefikDir, 'indobase-wake.yml')
+  if (fs.existsSync(wakePath)) return
+  const upstream = traefikUpstreamHost
+  const siteProxyPort = Number(process.env.SITE_STATIC_PROXY_PORT || 8790)
+  const yaml = `# Auto-written by data-plane-provisioner — wake-on-traffic for sleeping stacks.
+http:
+  middlewares:
+    indobase-wake:
+      errors:
+        status:
+          - "502-504"
+        service: indobase-wake-gate-svc
+        query: "/__indobase_wake"
+  services:
+    indobase-wake-gate-svc:
+      loadBalancer:
+        servers:
+          - url: http://${upstream}:${siteProxyPort}
+        passHostHeader: true
+`
+  try {
+    fs.writeFileSync(wakePath, yaml, 'utf8')
+    console.log(`wrote missing Traefik middleware ${wakePath}`)
+  } catch (error) {
+    console.warn('failed to write indobase-wake.yml', error)
+  }
+}
+
+ensureIndobaseWakeMiddlewareFile()
 
 if (process.env.SITE_STATIC_PROXY_ENABLED === 'true') {
   startSiteStaticProxy({ traefikDir, upstream: traefikUpstreamHost, wakeTenant: wakeTenantStack })
