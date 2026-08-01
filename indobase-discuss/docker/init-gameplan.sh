@@ -86,9 +86,21 @@ start_existing() {
   cd frappe-bench
   refresh_indobase_app
   ensure_gameplan_frontend_built
-  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+  # Keep global + site configs in lockstep. Site-level keys win over -g in frappe.conf;
+  # updating only -g leaves a stale discuss_handoff_secret and SSO fails with
+  # "Invalid or expired handoff token" after secret rotation.
+  if [ -n "${HANDOFF_SECRET}" ]; then
+    bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+    bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+      bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+      bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}" || true
+    fi
+  fi
   bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" set-config studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  fi
   exec bench start
 }
 
