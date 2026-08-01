@@ -12,7 +12,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from indobase_discuss.utils.space_map import build_discuss_space_map
+from indobase_discuss.utils.space_map import build_discuss_space_map, gameplan_space_path_for_docs
 
 AUDIENCE = "indobase-discuss"
 ALLOWED_ROLES = frozenset({"owner", "admin", "developer", "viewer"})
@@ -195,9 +195,9 @@ def exchange(token: str | None = None) -> dict[str, str]:
 
 	frappe.local.login_manager.login_as(user)
 
-	# Gameplan's router resolves /g/:team/:space by Frappe *document name*, not by our
-	# custom field keys alone. _ensure_team / _ensure_space return document names.
-	redirect = f"/g/{team}/{space}"
+	# Gameplan Vue base is `/g/`; canonical space routes are
+	# `/g/community/:team/space/:space` (doc names, not indobase_* keys).
+	redirect = gameplan_space_path_for_docs(team, space)
 
 	return {
 		"redirect": redirect,

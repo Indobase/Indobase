@@ -50,6 +50,14 @@ def build_discuss_space_map(
 	}
 
 
+def gameplan_space_path_for_docs(team_doc: str, space_doc: str) -> str:
+	"""Canonical Gameplan SPA URL for Frappe document names (Vue base `/g/`)."""
+	return f"/g/community/{team_doc}/space/{space_doc}"
+
+
 def gameplan_space_path(space_map: dict[str, str]) -> str:
-	"""Gameplan upstream serves scoped deep links at `/g/{team_key}/{space_key}`."""
-	return f"/g/{space_map['team_key']}/{space_map['space_key']}"
+	"""Fallback community shell when only deterministic keys are known.
+
+	GP Project names are autoname integers — ``space_key`` is not routable.
+	"""
+	return f"/g/community/{space_map['team_key']}"

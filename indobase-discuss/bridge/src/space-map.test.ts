@@ -6,7 +6,9 @@ import {
   discussSpaceKeyForProjectRef,
   discussTeamKeyForOrgSlug,
   gameplanSpacePath,
+  gameplanSpacePathForDocs,
   humanizeTitle,
+  rewriteLegacyGameplanPath,
 } from './space-map.js'
 
 test('discussTeamKeyForOrgSlug is stable and sanitized', () => {
@@ -30,7 +32,18 @@ test('buildDiscussSpaceMap includes titles', () => {
   assert.equal(map.spaceTitle, 'My App')
   assert.equal(map.teamKey, 'ib-org-acme')
   assert.equal(map.spaceKey, 'ib-proj-xyz123')
-  assert.equal(gameplanSpacePath(map), '/g/ib-org-acme/ib-proj-xyz123')
+  assert.equal(gameplanSpacePath(map), '/g/community/ib-org-acme')
+  assert.equal(gameplanSpacePathForDocs('ib-org-acme', '6'), '/g/community/ib-org-acme/space/6')
+})
+
+test('rewriteLegacyGameplanPath upgrades obsolete /g/:team/:space bookmarks', () => {
+  assert.equal(
+    rewriteLegacyGameplanPath('/g/ib-org-adral-dudmvimg/4'),
+    '/g/community/ib-org-adral-dudmvimg/space/4'
+  )
+  assert.equal(rewriteLegacyGameplanPath('/g/community/ib-org-adral/space/6'), null)
+  assert.equal(rewriteLegacyGameplanPath('/g/ib-org-adral/projects/6'), null)
+  assert.equal(rewriteLegacyGameplanPath('/g/ib-org-adral'), null)
 })
 
 test('buildDiscussSpaceMap titles stay human while keys stay stable', () => {

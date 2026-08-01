@@ -97,10 +97,63 @@ export function buildDiscussSpaceMap(opts: {
 }
 
 /**
- * Preferred Gameplan SPA deep link when we only have deterministic keys.
- * After SSO exchange, prefer Frappe document names from the handoff response
- * (`/g/{team_doc}/{space_doc}`) — keys alone can 404 when names differ.
+ * Canonical Gameplan SPA deep link for Frappe document names.
+ * Vue router base is `/g/`; spaces live at `/community/:communityId/space/:spaceId`.
+ * The old `/g/:team/:space` shape does not match any route and leaves App.vue blank
+ * (not Login, not Layout).
+ */
+export function gameplanSpacePathForDocs(teamDoc: string, spaceDoc: string): string {
+  return `/g/community/${encodeURIComponent(teamDoc)}/space/${encodeURIComponent(spaceDoc)}`
+}
+
+/**
+ * Fallback when we only have deterministic keys (no SSO doc names yet).
+ * GP Project names are autoname integers — `spaceKey` is not a routable id.
+ * Land on the community shell (team name is set to `teamKey` on provision).
  */
 export function gameplanSpacePath(map: DiscussSpaceMap): string {
-  return `/g/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.spaceKey)}`
+  return `/g/community/${encodeURIComponent(map.teamKey)}`
+}
+
+/** Reserved first segments under `/g/` that are not team document names. */
+const RESERVED_G_FIRST = new Set([
+  'community',
+  'settings',
+  'people',
+  'search',
+  'onboarding',
+  'notifications',
+  'list',
+  'spaces',
+  'more',
+  'login',
+  'profile',
+  'home',
+  'new-discussion',
+  'no-communities',
+  '404',
+])
+
+/** Reserved second segments for legacy `/g/:team/...` trees. */
+const RESERVED_G_SECOND = new Set([
+  'projects',
+  'discussions',
+  'pages',
+  'tasks',
+  'space',
+  'members',
+  'overview',
+])
+
+/**
+ * Rewrite obsolete `/g/:team/:space` bookmarks to the canonical community/space URL.
+ * Returns null when the path is already canonical or not a two-segment deep link.
+ */
+export function rewriteLegacyGameplanPath(pathname: string): string | null {
+  const m = /^\/g\/([^/]+)\/([^/]+)\/?$/.exec(pathname)
+  if (!m) return null
+  const team = m[1]!
+  const space = m[2]!
+  if (RESERVED_G_FIRST.has(team) || RESERVED_G_SECOND.has(space)) return null
+  return gameplanSpacePathForDocs(decodeURIComponent(team), decodeURIComponent(space))
 }

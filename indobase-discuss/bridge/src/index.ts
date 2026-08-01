@@ -30,7 +30,7 @@ import {
   buildUpstreamProxyHeaders,
   sanitizeProxiedResponseHeaders,
 } from './proxy-headers.js'
-import { buildDiscussSpaceMap, gameplanSpacePath } from './space-map.js'
+import { buildDiscussSpaceMap, gameplanSpacePath, rewriteLegacyGameplanPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderDiscussWelcomeHtml } from './welcome.js'
 
@@ -41,6 +41,21 @@ app.use('*', securityHeaders)
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')
 const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
+
+/** Realtime listens on :9000; HTTP bench is :8000. */
+function deriveSocketUpstream(httpUpstream: string): string {
+  const explicit = (process.env.SOCKET_UPSTREAM || '').replace(/\/+$/, '')
+  if (explicit) return explicit
+  if (!httpUpstream) return ''
+  try {
+    const u = new URL(httpUpstream)
+    u.port = (process.env.SOCKET_PORT || '9000').trim() || '9000'
+    return u.origin
+  } catch {
+    return httpUpstream
+  }
+}
+const SOCKET_UPSTREAM = deriveSocketUpstream(GAMEPLAN_UPSTREAM)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_ROOT = path.resolve(__dirname, '../public')
@@ -294,10 +309,10 @@ app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-discuss' }))
 
 // ── Gameplan proxy ───────────────────────────────────────────────────────────
 
-async function proxyGameplan(c: Context) {
-  if (!GAMEPLAN_UPSTREAM) return c.notFound()
+async function proxyGameplan(c: Context, upstreamBase = GAMEPLAN_UPSTREAM) {
+  if (!upstreamBase) return c.notFound()
   const url = new URL(c.req.url)
-  const target = `${GAMEPLAN_UPSTREAM}${url.pathname}${url.search}`
+  const target = `${upstreamBase}${url.pathname}${url.search}`
   const headers = buildUpstreamProxyHeaders(c.req.raw.headers)
 
   let res: Response
@@ -339,6 +354,11 @@ async function proxyGameplanAuthenticated(c: Context) {
   if (!sessionFromRequest(c)) {
     return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
   }
+  const url = new URL(c.req.url)
+  const rewritten = rewriteLegacyGameplanPath(url.pathname)
+  if (rewritten && rewritten !== url.pathname) {
+    return c.redirect(`${rewritten}${url.search}`)
+  }
   return proxyGameplan(c)
 }
 
@@ -370,7 +390,12 @@ app.all('/api/method/*', async (c) => {
 })
 app.all('/api/resource/*', proxyGameplanAuthenticated)
 app.all('/api/frappe/*', proxyGameplanAuthenticated)
-app.all('/socket.io/*', proxyGameplanAuthenticated)
+app.all('/socket.io/*', async (c) => {
+  if (!sessionFromRequest(c)) {
+    return c.html(renderDiscussWelcomeHtml({ studioUrl: STUDIO_URL }), 401)
+  }
+  return proxyGameplan(c, SOCKET_UPSTREAM || GAMEPLAN_UPSTREAM)
+})
 
 /** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
