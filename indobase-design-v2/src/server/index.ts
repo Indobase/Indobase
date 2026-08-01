@@ -31,9 +31,17 @@ import {
 import { migrate, one, query } from './db.js'
 import { seedTemplates } from './seed.js'
 import { renderDesignWelcomeHtml } from './welcome.js'
+import { securityHeaders } from './security-headers.js'
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+
+/*
+ * Registered before every other middleware and route so it covers all responses — auth failures,
+ * static assets, and errors alike. Design was shipping with none of these headers, which left the
+ * editor framable (clickjacking) on a surface that holds a customer's brand assets.
+ */
+app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 
@@ -134,10 +142,37 @@ app.get('/api/designs', async (c) => {
   return c.json(rows)
 })
 
+/**
+ * Canvas payloads arrive either as a pre-serialised string (the editor) or as an object (API
+ * clients). Return a valid JSON string for the jsonb column in both cases, and fall back to an
+ * empty object rather than storing something Fabric cannot parse.
+ */
+function normaliseCanvasJson(value: unknown): string {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return '{}'
+    try {
+      // Re-serialise so malformed input is rejected here rather than at load time.
+      return JSON.stringify(JSON.parse(trimmed))
+    } catch {
+      return '{}'
+    }
+  }
+  if (value && typeof value === 'object') return JSON.stringify(value)
+  return '{}'
+}
+
 app.post('/api/designs', async (c) => {
   const s = c.get('session')
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const canvasJson = JSON.stringify(body.canvas_json ?? {})
+  /*
+   * The client sends canvas_json as an already-serialised STRING (createDesign sends "{}",
+   * createFromTemplate sends the template's stored JSON). Running JSON.stringify over a string
+   * double-encodes it: "{}" becomes "\"{}\"", so what lands in the column is a JSON *string*
+   * rather than a canvas object. Fabric then cannot load it and the canvas is left in whatever
+   * state it was already in. Accept both shapes and normalise.
+   */
+  const canvasJson = normaliseCanvasJson(body.canvas_json)
   const row = await one(
     `insert into design.designs (gotrue_id, project_ref, org_slug, name, canvas_json, width, height)
      values ($1, $2, $3, $4, $5, $6, $7)
@@ -199,7 +234,7 @@ app.put('/api/designs/:id', async (c) => {
       s.projectRef,
       s.gotrueId,
       typeof body.name === 'string' ? body.name : null,
-      body.canvas_json === undefined ? null : JSON.stringify(body.canvas_json),
+      body.canvas_json === undefined ? null : normaliseCanvasJson(body.canvas_json),
       body.width === undefined ? null : Number(body.width),
       body.height === undefined ? null : Number(body.height),
       typeof body.thumbnail_url === 'string' ? body.thumbnail_url : null,
@@ -244,7 +279,7 @@ app.post('/api/pages', async (c) => {
     [
       designId,
       typeof body.title === 'string' && body.title.trim() ? body.title.trim() : 'Page',
-      JSON.stringify(body.canvas_json ?? {}),
+      normaliseCanvasJson(body.canvas_json),
       Number(body.sort_order) || 0,
     ]
   )
@@ -267,7 +302,7 @@ app.put('/api/pages/:id', async (c) => {
       c.req.param('id'),
       s.projectRef,
       typeof body.title === 'string' ? body.title : null,
-      body.canvas_json === undefined ? null : JSON.stringify(body.canvas_json),
+      body.canvas_json === undefined ? null : normaliseCanvasJson(body.canvas_json),
       body.sort_order === undefined ? null : Number(body.sort_order),
       s.gotrueId,
     ]
@@ -634,7 +669,7 @@ app.post('/api/designs/:id/versions', async (c) => {
     [
       designId,
       typeof body.label === 'string' && body.label.trim() ? body.label.trim().slice(0, 80) : 'Snapshot',
-      JSON.stringify(body.canvas_json ?? {}),
+      normaliseCanvasJson(body.canvas_json),
       Number(body.width) || 1080,
       Number(body.height) || 1080,
     ]

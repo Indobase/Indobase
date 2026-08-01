@@ -1,6 +1,8 @@
 # Indobase CRM
 
-Leads, deals, Kanban, and sales pipelines for Indobase organizations and projects — **CRM**. Upstream engine is AGPL; customer UI is Indobase-branded only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md).
+Leads, deals, opportunities, and sales pipelines for Indobase organizations — **CRM**.
+
+Upstream engine is [Twenty](https://github.com/twentyhq/twenty) (AGPL-3.0); customer-facing branding is Indobase CRM only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md) and [NOTICE.md](./NOTICE.md).
 
 | Host (prod) | Host (staging) |
 |---|---|
@@ -10,29 +12,28 @@ Leads, deals, Kanban, and sales pipelines for Indobase organizations and project
 
 | Path | Purpose |
 |---|---|
-| `bridge/` | Node SSO bridge + dev shell (mirrors Discuss `/sso/launch`) |
-| `frappe-app/indobase_crm/` | Frappe custom app: Studio handoff, org/project → team/pipeline provisioning |
-| `docker/deploy/` | Compose + Traefik for Vyom `.249` |
+| `bridge/` | Node Studio SSO bridge + branded reverse proxy + **org → workspace map** |
+| `docker/deploy/` | Compose + Traefik for Vyom `.249` (Twenty + Postgres + Redis + bridge) |
 
-## Local dev (bridge only)
+## Multi-tenant SSO
 
-```bash
-cd bridge
-npm install
-CRM_HANDOFF_SECRET="$(openssl rand -hex 32)" npm run dev
-# open http://localhost:8094/sso/health
-```
+1. Studio mints `aud=indobase-crm` JWT (`CRM_HANDOFF_SECRET`) with `organization_slug` + `project_ref`.
+2. Bridge `/sso/launch` → `/sso/session` verifies the token.
+3. Bridge ensures a **Twenty workspace for that organization** (create on first open, or join via stored invite hash), then redirects to `/verify?loginToken=…`.
+4. Project ref becomes soft scope (`ib_pipeline` query) — not hard RLS.
+5. Engine login/sign-up URLs are blocked; cold visits show an Indobase welcome page.
 
-Studio mints `aud=indobase-crm` JWTs; bridge verifies and sets `indobase_crm_session`.
+Workspace mappings persist on the bridge volume (`CRM_WORKSPACE_MAP_PATH`). Do not rely on a single global `TWENTY_WORKSPACE_INVITE_HASH` for production multi-tenant (optional legacy claim only when the map is empty).
 
-## Full stack (Frappe CRM + bridge)
+## Local / deploy
 
 ```bash
 cd docker/deploy
-cp .env.example .env   # set secrets
-docker compose up -d
+cp .env.example .env   # set PG password, TWENTY_APP_SECRET, TWENTY_ENCRYPTION_KEY, CRM_HANDOFF_SECRET
+# TWENTY_ENCRYPTION_KEY=$(openssl rand -base64 32)
+docker compose up -d --build
+# First boot: entrypoint runs DB init + upgrade + cron before :3000 listens (~5–10m).
+curl -sS https://crm.indobase.in/sso/health
 ```
-
-First boot runs Frappe bench init (~5–10 min). Traefik serves `crm.*` → bridge; bridge proxies `/c/*` and `/crm/*` to upstream when configured.
 
 See [docs/INDOBASE-CRM.md](../docs/INDOBASE-CRM.md).

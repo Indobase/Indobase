@@ -136,7 +136,13 @@ export const LayoutHeader = ({
             'flex items-center justify-between h-full pr-3 flex-1 overflow-x-auto gap-x-8 pl-4'
           )}
         >
-          <div className="flex items-center text-sm">
+          {/*
+            min-w-0 is load-bearing: without it this flex child keeps min-width:auto, refuses to
+            shrink below its content width, and overlaps the actions group on the right (Connect
+            was rendering on top of Feedback by ~60px). Pairing it with the shrink-0 on the actions
+            group means the breadcrumbs give way first, which is the correct priority.
+          */}
+          <div className="flex items-center text-sm min-w-0 overflow-hidden">
             <HomeIcon />
             <div className="flex items-center md:pl-2">
               {showOrgSelection && (
@@ -216,7 +222,7 @@ export const LayoutHeader = ({
             </AnimatePresence>
             <BreadcrumbsView defaultValue={breadcrumbs} />
           </div>
-          <div className="flex items-center gap-x-2">
+          <div className="flex items-center gap-x-2 shrink-0">
             {customHeaderComponents && customHeaderComponents}
             <>
               <DevToolbarTrigger />

@@ -1,7 +1,9 @@
 # Third-party attribution
 
-Indobase CRM is built on [Frappe CRM](https://github.com/frappe/crm) by Frappe Technologies Pvt Ltd, licensed under **AGPL-3.0**.
+Indobase CRM is built on [Twenty](https://github.com/twentyhq/twenty) (Twenty CRM), licensed under **AGPL-3.0**.
 
-Upstream source is fetched during Docker init (`bench get-app crm`). See `LICENSE` in that tree.
+Upstream images: `twentycrm/twenty` (see `docker/deploy/docker-compose.yml`).
 
-Customer-facing product name is **CRM** (Indobase CRM in bridge titles). Do not expose "Frappe CRM" or "Frappe" in user-visible UI, routes, OAuth client names, or email footers.
+Customer-facing product name is **CRM** (Indobase CRM in bridge titles). Do not expose "Twenty", "Twenty CRM", or upstream branding in user-visible UI, routes, OAuth client names, or email footers.
+
+Keep this NOTICE and upstream LICENSE attribution in the repository.

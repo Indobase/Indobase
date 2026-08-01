@@ -25,3 +25,21 @@ Mattermost **Team Edition** does not include Enterprise white-label. Compiled we
 What customers should not see in chrome we control: document title, favicon, loading screen, sidebar/header logos, noscript banner, SiteName-driven labels, About/Help/Privacy/Terms destinations, app-download promos.
 
 Residual risk: rare TE About / licensing strings or in-bundle literals that render before our MutationObserver runs, or inside shadow DOM / canvas we cannot rewrite without an Enterprise license or a webapp fork.
+
+### Known-unfixable at the bridge — do not re-investigate
+
+These were audited and confirmed unfixable without forking the webapp. They are recorded here so
+nobody spends time rediscovering them:
+
+- **`GET /api/v4/config/client?format=old` is unauthenticated and fingerprints the deployment.**
+  It returns `Version` (e.g. `10.5.2`), `BuildNumber`, `BuildHash`, `BuildDate`, `DiagnosticId`,
+  `AsymmetricSigningPublicKey` and every `Enable*` flag. Anyone can `curl` it. Rewriting the JSON is
+  not an option — the webapp requires the real values and a malformed client config takes the SPA
+  down. **Accepted as residual.**
+- **Protocol-level fingerprints.** Cookies `MMAUTHTOKEN` / `MMUSERID` / `MMCSRF`, the `/api/v4/*`
+  namespace, `/static/*` assets, and the WebSocket at `/api/v4/websocket`. The webapp reads those
+  cookie names directly, so renaming them breaks authentication. **Accepted as residual.**
+
+Practical consequence: anyone with DevTools open can identify the upstream engine. Branding hides it
+from ordinary product surfaces, not from inspection — and it is not intended to.
+

@@ -29,7 +29,16 @@ describe('brandDiscussHtml', () => {
     // Original animation node gone (CSS may still mention the id as a hide selector).
     assert.equal(/id=["']initialPageLoadingAnimation["']/.test(out), false)
     assert.match(out, /indobase-discuss-brand-css/)
-    assert.match(out, /indobase-discuss-brand-js/)
+    // Must not pin the splash with display:!important — that traps the SPA forever.
+    assert.equal(/#initialPageLoadingScreen[\s\S]*?display:\s*flex\s*!important/.test(out), false)
+    /*
+     * The brand script is injected as an EXTERNAL src, not inline. Mattermost's shell ships
+     * `script-src 'self' cdn.rudderlabs.com/`, which refuses an inline <script> with no nonce —
+     * the inline version silently never ran in production. Asserting the external tag here is
+     * what stops someone "simplifying" it back to inline and re-breaking every text rewrite.
+     */
+    assert.match(out, /<script src="\/brand\/discuss-brand\.js" defer><\/script>/)
+    assert.equal(/<script id=["']indobase-discuss-brand-js["']/.test(out), false)
   })
 
   it('rewrites noscript Mattermost copy', () => {

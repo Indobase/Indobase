@@ -23,21 +23,29 @@ test('isHtmlContentType only accepts HTML documents', () => {
 test('document title is replaced with the Indobase brand', () => {
   const out = rewriteBrandedHtml('<!doctype html><html><head><title>Frappe CRM</title></head><body></body></html>')
   assert.match(out, /<title>Indobase CRM<\/title>/)
-  assert.equal(out.includes('Frappe'), false)
   assert.match(out, /^<!doctype html>/)
+  assert.match(out, /data-indobase-brand-scrub/)
+  // Visible title text is branded; scrub script may still mention the upstream phrase as a match pattern.
+  assert.equal(/<title>[^<]*Frappe/.test(out), false)
 })
 
 test('title is replaced even when it does not mention the upstream name', () => {
   const out = rewriteBrandedHtml('<head><title data-x="1">Leads</title></head>')
-  assert.equal(out, '<head><title data-x="1">Indobase CRM</title></head>')
+  assert.match(out, /<title data-x="1">Indobase CRM<\/title>/)
+  assert.match(out, /data-indobase-brand-scrub/)
 })
 
 test('a title is injected when the shell has none', () => {
   const out = rewriteBrandedHtml('<html><head><meta charset="utf-8"></head><body>hi</body></html>')
-  assert.equal(
-    out,
-    '<html><head><title>Indobase CRM</title><meta charset="utf-8"></head><body>hi</body></html>'
-  )
+  assert.match(out, /<head><script data-indobase-brand-scrub>/)
+  assert.match(out, /<title>Indobase CRM<\/title>/)
+  assert.match(out, /<meta charset="utf-8"><\/head><body>hi<\/body>/)
+})
+
+test('SPA brand scrub script is injected into head for Access Denied copy', () => {
+  const out = rewriteBrandedHtml('<html><head></head><body><p>Frappe CRM</p></body></html>')
+  assert.match(out, /data-indobase-brand-scrub/)
+  assert.match(out, /Indobase CRM/)
 })
 
 test('visible body copy is rebranded', () => {
@@ -81,7 +89,8 @@ test('inline svg titles are treated as icon labels, not the document title', () 
   const out = rewriteBrandedHtml(
     '<head><title>Frappe CRM</title></head><body><svg><title>Close</title></svg></body>'
   )
-  assert.match(out, /<head><title>Indobase CRM<\/title><\/head>/)
+  assert.match(out, /<title>Indobase CRM<\/title>/)
+  assert.match(out, /data-indobase-brand-scrub/)
   assert.match(out, /<svg><title>Close<\/title><\/svg>/)
 })
 
@@ -89,7 +98,8 @@ test('tags whose attributes contain > survive intact', () => {
   const html = '<head><title>Frappe CRM</title><div data-q="a > b">Frappe CRM</div></head>'
   const out = rewriteBrandedHtml(html)
   assert.match(out, /data-q="a > b"/)
-  assert.equal(out.includes('Frappe'), false)
+  assert.match(out, />Indobase CRM<\/div>/)
+  assert.equal(/<div[^>]*>Frappe/.test(out), false)
 })
 
 test('comments and bare angle brackets are preserved', () => {

@@ -26,9 +26,18 @@ export type SuiteModuleMeta = {
   externalProduct?: 'email' | 'design'
 }
 
-/** Customer-facing copy — keep in sync with indobase-suite/bridge/src/modules.ts */
+/**
+ * Tiles shown in Studio's "Open a module" grid.
+ *
+ * `files` and `mail` are deliberately absent: Files is already the primary action above the grid
+ * ("Open Files in Workspace") and is Workspace's landing surface, so a tile duplicated it; Mail
+ * opens Email, a separate product, so it did not belong in a Workspace module grid.
+ *
+ * They remain in SUITE_MODULE_IDS on purpose — that array validates the launch API's `?module=`
+ * param, and dropping them there would break existing deep links and the Files primary action.
+ * Not shown in the grid is not the same as not routable.
+ */
 export const SUITE_MODULES: SuiteModuleMeta[] = [
-  { id: 'files', label: 'Files', description: 'Store, organize, and share project files' },
   { id: 'docs', label: 'Docs', description: 'Write and collaborate on documents' },
   { id: 'sheets', label: 'Sheets', description: 'Spreadsheets with realtime collaboration' },
   { id: 'presentations', label: 'Presentations', description: 'Slide decks for your project' },
@@ -36,12 +45,6 @@ export const SUITE_MODULES: SuiteModuleMeta[] = [
     id: 'meetings',
     label: 'Meetings',
     description: 'Opens Meet — video meetings for your team',
-  },
-  {
-    id: 'mail',
-    label: 'Mail',
-    description: 'Opens Email — campaigns and transactional mail',
-    externalProduct: 'email',
   },
   { id: 'calendar', label: 'Calendar', description: 'Opens Calendar — events and scheduling' },
 ]

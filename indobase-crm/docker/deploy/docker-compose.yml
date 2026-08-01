@@ -4,12 +4,14 @@
 #   prod:    crm.indobase.in
 #   staging: crm.indobase.fun
 #
-# First boot initializes Frappe bench + Frappe CRM (~5–10 min). Bridge serves SSO;
-# Traefik terminates TLS and routes to bridge (which proxies /c/* and /crm/* to upstream).
+# Stack: SSO bridge + Twenty CRM (AGPL). Customer UI is Indobase-branded only.
 #
-# Bench data lives on crm_bench_sites → /home/frappe/persist (full bench, not
-# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
-#   docker run --rm -v indobase-crm_crm_bench_sites:/v alpine chown -R 1000:1000 /v
+# Multi-tenant: one Twenty workspace per Indobase organization. The bridge
+# creates workspaces on first SSO and stores invite hashes in a volume-backed
+# map (CRM_WORKSPACE_MAP_PATH). Project scope is soft (ib_pipeline query only).
+#
+# Requires IS_MULTIWORKSPACE_ENABLED=true. Users stay on crm.indobase.in; the
+# bridge rewrites GraphQL `origin` to the org workspace subdomain.
 
 x-default-logging: &logging
   driver: json-file
@@ -21,8 +23,9 @@ x-restart: &restart
   restart: unless-stopped
 
 volumes:
-  crm_mariadb_data:
-  crm_bench_sites:
+  crm_pg_data:
+  crm_twenty_data:
+  crm_bridge_data:
 
 networks:
   crm_net:
@@ -34,46 +37,98 @@ networks:
 name: indobase-crm
 
 services:
-  crm-mariadb:
+  crm-db:
     <<: *restart
-    image: mariadb:10.8
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
-      - --skip-innodb-read-only-compressed
+    image: postgres:16
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE_NAME:-default}
+      POSTGRES_USER: ${PG_DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_DATABASE_PASSWORD:?set PG_DATABASE_PASSWORD}
     volumes:
-      - crm_mariadb_data:/var/lib/mysql
+      - crm_pg_data:/var/lib/postgresql/data
     networks:
       - crm_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_DATABASE_USER:-postgres} -h localhost -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     logging: *logging
 
   crm-redis:
     <<: *restart
     image: redis:7.2-alpine
+    command: ["--maxmemory-policy", "noeviction"]
     networks:
       - crm_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     logging: *logging
 
-  crm-frappe:
+  crm-twenty:
     <<: *restart
-    image: frappe/bench:latest
+    image: twentycrm/twenty:${TWENTY_TAG:-latest}
     depends_on:
-      - crm-mariadb
-      - crm-redis
+      crm-db:
+        condition: service_healthy
+      crm-redis:
+        condition: service_healthy
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      CRM_SITE_NAME: ${CRM_SITE_NAME:-crm.localhost}
-      CRM_ADMIN_PASSWORD: ${CRM_ADMIN_PASSWORD:-changeme}
-      CRM_HANDOFF_SECRET: ${CRM_HANDOFF_SECRET:?set CRM_HANDOFF_SECRET}
-      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      NODE_PORT: "3000"
+      SERVER_URL: ${CRM_PUBLIC_URL:-https://crm.indobase.in}
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER:-postgres}:${PG_DATABASE_PASSWORD}@crm-db:5432/${PG_DATABASE_NAME:-default}
+      REDIS_URL: redis://crm-redis:6379
+      # Official Twenty self-host: ENCRYPTION_KEY for at-rest secrets; APP_SECRET for JWTs.
+      ENCRYPTION_KEY: ${TWENTY_ENCRYPTION_KEY:?set TWENTY_ENCRYPTION_KEY}
+      APP_SECRET: ${TWENTY_APP_SECRET:?set TWENTY_APP_SECRET}
+      STORAGE_TYPE: local
+      # One workspace per Indobase org (Discuss-style isolation).
+      IS_MULTIWORKSPACE_ENABLED: "true"
+      DEFAULT_SUBDOMAIN: ${TWENTY_DEFAULT_SUBDOMAIN:-app}
+      IS_EMAIL_VERIFICATION_REQUIRED: "false"
+      # Sign-in is via Studio SSO bridge — keep password auth for bridge-derived credentials only.
+      AUTH_PASSWORD_ENABLED: "true"
     volumes:
-      - crm_bench_sites:/home/frappe/persist
-      - ../init-crm.sh:/workspace/init-crm.sh:ro
-      - ../../frappe-app/indobase_crm:/workspace/indobase_crm:ro
-    command: bash /workspace/init-crm.sh
+      - crm_twenty_data:/app/packages/twenty-server/.local-storage
+    networks:
+      - crm_net
+    healthcheck:
+      # First boot runs database:init + upgrade + cron register before listening.
+      test: ["CMD-SHELL", "curl --fail http://localhost:3000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 600s
+    logging: *logging
+
+  crm-twenty-worker:
+    <<: *restart
+    image: twentycrm/twenty:${TWENTY_TAG:-latest}
+    command: ["yarn", "worker:prod"]
+    depends_on:
+      crm-db:
+        condition: service_healthy
+      crm-redis:
+        condition: service_healthy
+      crm-twenty:
+        condition: service_healthy
+    environment:
+      SERVER_URL: ${CRM_PUBLIC_URL:-https://crm.indobase.in}
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER:-postgres}:${PG_DATABASE_PASSWORD}@crm-db:5432/${PG_DATABASE_NAME:-default}
+      REDIS_URL: redis://crm-redis:6379
+      ENCRYPTION_KEY: ${TWENTY_ENCRYPTION_KEY:?set TWENTY_ENCRYPTION_KEY}
+      APP_SECRET: ${TWENTY_APP_SECRET:?set TWENTY_APP_SECRET}
+      STORAGE_TYPE: local
+      IS_MULTIWORKSPACE_ENABLED: "true"
+      DEFAULT_SUBDOMAIN: ${TWENTY_DEFAULT_SUBDOMAIN:-app}
+      IS_EMAIL_VERIFICATION_REQUIRED: "false"
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+    volumes:
+      - crm_twenty_data:/app/packages/twenty-server/.local-storage
     networks:
       - crm_net
     logging: *logging
@@ -86,22 +141,29 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
-      - crm-frappe
+      crm-twenty:
+        condition: service_healthy
     environment:
       PORT: "8094"
-      CRM_HANDOFF_SECRET: ${CRM_HANDOFF_SECRET}
+      CRM_HANDOFF_SECRET: ${CRM_HANDOFF_SECRET:?set CRM_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-      CRM_UPSTREAM: http://crm-frappe:8000
-      FRAPPE_STUDIO_HANDOFF_URL: http://crm-frappe:8000/api/method/indobase_crm.api.studio_handoff.exchange
+      CRM_PUBLIC_URL: ${CRM_PUBLIC_URL:-https://crm.indobase.in}
+      CRM_UPSTREAM: http://crm-twenty:3000
+      CRM_WORKSPACE_MAP_PATH: /var/lib/indobase-crm/workspace-map.json
+      # Optional legacy single-workspace invite — claimed by the first org only when the map is empty.
+      TWENTY_WORKSPACE_INVITE_HASH: ${TWENTY_WORKSPACE_INVITE_HASH:-}
+      # Per-org workspace create on SSO (default true). Set false only for break-glass.
+      TWENTY_ALLOW_BOOTSTRAP_WORKSPACE: ${TWENTY_ALLOW_BOOTSTRAP_WORKSPACE:-true}
       CRM_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+    volumes:
+      - crm_bridge_data:/var/lib/indobase-crm
     networks:
       - crm_net
       - traefik_public
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      # Prod default is .indobase.in only — include .fun only when that DNS exists (avoids LE NXDOMAIN + rate limits).
       - traefik.http.routers.indobase-crm.rule=${CRM_TRAEFIK_RULE:-Host(`crm.indobase.in`)}
       - traefik.http.routers.indobase-crm.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-crm.tls=true

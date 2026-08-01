@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
-    "hono": "^4.8.5"
+    "@types/pg": "^8.20.3",
+    "hono": "^4.8.5",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

@@ -175,6 +175,54 @@ function adminApi(adminToken: string): MmApiCall {
   }
 }
 
+/**
+ * Mattermost auto-creates "Town Square" and "Off-Topic" on every team create. Both are upstream
+ * vocabulary that means nothing to an Indobase user, and neither can be deleted — Town Square is
+ * the team's default channel, so removing it breaks joining. Rename the DISPLAY names instead and
+ * leave the slugs (`town-square`, `off-topic`) untouched so existing permalinks keep resolving.
+ *
+ * Best-effort: a failure here must never block the handoff. A user with an oddly named channel is
+ * a cosmetic problem; a user who cannot open Discuss is not.
+ */
+/**
+ * Teams already checked for default-channel relabelling, so the backfill costs two API calls once
+ * per team per process rather than on every launch. Cleared on restart, which is harmless — the
+ * relabel is idempotent and skips immediately when the names are already correct.
+ */
+const relabelledTeams = new Set<string>()
+
+const DEFAULT_CHANNEL_RELABELS: ReadonlyArray<{ slug: string; display: string; purpose: string }> = [
+  { slug: 'town-square', display: 'General', purpose: 'Project-wide discussion' },
+  { slug: 'off-topic', display: 'Announcements', purpose: 'Updates and announcements' },
+]
+
+async function relabelDefaultChannels(adminToken: string, teamId: string): Promise<void> {
+  if (relabelledTeams.has(teamId)) return
+  relabelledTeams.add(teamId)
+
+  for (const target of DEFAULT_CHANNEL_RELABELS) {
+    try {
+      const found = await mmFetch(
+        `/api/v4/teams/${encodeURIComponent(teamId)}/channels/name/${target.slug}`,
+        { token: adminToken }
+      )
+      if (found.status !== 200) continue
+
+      const ch = found.json as MmChannel & { display_name?: string }
+      // Only rename while it still carries the upstream default — never stomp a user's own rename.
+      if (ch.display_name !== 'Town Square' && ch.display_name !== 'Off-Topic') continue
+
+      await mmFetch(`/api/v4/channels/${encodeURIComponent(ch.id)}`, {
+        method: 'PUT',
+        token: adminToken,
+        body: { id: ch.id, display_name: target.display, purpose: target.purpose },
+      })
+    } catch (err) {
+      console.warn('[discuss] default channel relabel failed:', target.slug, err)
+    }
+  }
+}
+
 async function ensureTeam(adminToken: string, map: DiscussSpaceMap): Promise<MmTeam> {
   const byName = await mmFetch(`/api/v4/teams/name/${encodeURIComponent(map.teamKey)}`, {
     token: adminToken,
@@ -192,6 +240,13 @@ async function ensureTeam(adminToken: string, map: DiscussSpaceMap): Promise<MmT
       allow_open_invite: false,
     },
   })
+  if (created.status === 201 || created.status === 200) {
+    const createdTeam = created.json as MmTeam
+    // Only reachable on first create — the one moment the upstream defaults exist untouched.
+    await relabelDefaultChannels(adminToken, createdTeam.id)
+    return createdTeam
+  }
+
   if (created.status !== 201 && created.status !== 200) {
     // Race: another request created it
     const retry = await mmFetch(`/api/v4/teams/name/${encodeURIComponent(map.teamKey)}`, {
@@ -317,6 +372,15 @@ export async function exchangeStudioClaimsForMattermost(
   const password = derivedPassword(claims, handoffSecret)
   const user = await ensureUser(adminToken, claims, password)
   const team = await ensureTeam(adminToken, map)
+
+  /*
+   * Backfill for teams created before the relabel existed. ensureTeam only relabels on first
+   * create, so without this an existing project keeps "Town Square"/"Off-Topic" forever. Guarded
+   * by relabelledTeams, and awaited-but-non-fatal: a relabel failure must not block the launch.
+   */
+  await relabelDefaultChannels(adminToken, team.id).catch((err) => {
+    console.warn('[discuss] default channel backfill failed:', err)
+  })
   await addUserToTeam(adminToken, team.id, user.id, claims.role)
   const channel = await ensureChannel(adminToken, team, map)
   await addUserToChannel(adminToken, channel.id, user.id)

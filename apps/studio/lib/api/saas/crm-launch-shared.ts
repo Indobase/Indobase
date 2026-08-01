@@ -13,7 +13,7 @@ export function isCrmRole(role: string | null | undefined): role is CrmRole {
   return !!role && ALLOWED_ROLE_SET.has(role)
 }
 
-/** Deterministic CRM team key from org slug — mirrors bridge + Frappe crm_map. */
+/** Deterministic CRM team key from org slug — mirrors bridge crm_map. */
 export function crmTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = orgSlug
     .toLowerCase()

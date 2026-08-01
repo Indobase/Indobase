@@ -68,7 +68,14 @@ describe('brandCalendarHtml', () => {
   it('injects brand CSS and JS hooks', () => {
     const out = brandCalendarHtml(SAMPLE_SHELL)
     assert.match(out, /indobase-calendar-brand-css/)
-    assert.match(out, /indobase-calendar-brand-js/)
+    /*
+     * The brand script is injected as an EXTERNAL src, not inline. An upstream
+     * `script-src 'self'` CSP meta refuses inline <script> silently — the rebrand just
+     * never applies. Asserting the external tag (and the absence of the inline one) is
+     * what stops someone inlining it again and quietly breaking every rewrite.
+     */
+    assert.match(out, /<script src="\/brand\/calendar-brand\.js" defer><\/script>/)
+    assert.equal(/<script id=["']indobase-calendar-brand-js["']/.test(out), false)
     assert.match(out, /go\.cal\.com/)
   })
 })

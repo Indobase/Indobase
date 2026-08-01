@@ -100,7 +100,12 @@ services:
         GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - calendar-app
+      # The bridge now connects to Postgres directly to propagate Studio's email verification.
+      - calendar-db
     environment:
+      # Lets the bridge mark Studio-provisioned users email-verified. Without this the
+      # engine parks every SSO user on a "Check your email" screen that never clears.
+      CALENDAR_DATABASE_URL: postgresql://${CALENDAR_POSTGRES_USER:-indobase_calendar}:${CALENDAR_POSTGRES_PASSWORD}@calendar-db:5432/${CALENDAR_POSTGRES_DB:-indobase_calendar}
       PORT: "8095"
       CALENDAR_HANDOFF_SECRET: ${CALENDAR_HANDOFF_SECRET:?set CALENDAR_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}

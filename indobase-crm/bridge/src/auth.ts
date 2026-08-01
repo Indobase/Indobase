@@ -128,6 +128,39 @@ export function createSessionToken(claims: StudioClaims, secret: string): string
   return `${payloadB64}.${b64urlEncode(sig)}`
 }
 
+/**
+ * Mint a short-lived Studio-shaped handoff JWT from an existing bridge session.
+ * Used to re-establish the upstream engine session when `sid` is missing/expired
+ * but the Indobase CRM cookie is still valid (stale `user_id` → Access Denied).
+ */
+export function mintStudioHandoffToken(session: Session, secret: string, ttlSeconds = 60): string {
+  const now = Math.floor(Date.now() / 1000)
+  const header = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = b64urlEncode(
+    JSON.stringify({
+      sub: session.gotrueId,
+      email: session.email,
+      project_ref: session.projectRef,
+      organization_slug: session.orgSlug,
+      organization_name: session.organizationName,
+      project_name: session.projectName,
+      role: session.role,
+      studio_url: session.studioUrl,
+      aud: AUDIENCE,
+      iat: now,
+      exp: now + ttlSeconds,
+    })
+  )
+  const sig = createHmac('sha256', secret).update(`${header}.${payload}`).digest()
+  return `${header}.${payload}.${b64urlEncode(sig)}`
+}
+
+/** True when the request still carries a usable upstream `sid` cookie. */
+export function hasFrappeSid(cookieHeader: string | undefined | null): boolean {
+  const sid = readCookie(cookieHeader, 'sid')
+  return !!sid && sid !== 'Guest'
+}
+
 export function readSessionToken(value: string, secret: string): Session | null {
   const parts = value.split('.')
   if (parts.length !== 2) return null

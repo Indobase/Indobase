@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "preact/hooks";
+import { useState, useCallback, useMemo, useEffect } from "preact/hooks";
 import { Plus, Sparkles, Search } from "lucide-preact";
 import type { Design, Template } from "../types";
 import { DesignRecentCard } from "./design-recent-card";
@@ -6,6 +6,33 @@ import { TemplateCard } from "./template-card";
 import { TemplateGrid } from "./template-grid";
 import { showToast } from "./toast";
 import { labelForCategory, sortCategories } from "../utils/categories";
+
+/**
+ * Studio origin + project, used for the "Back to Indobase" link.
+ *
+ * Design had no link back to Studio anywhere — once a user opened it they were stranded with only
+ * the browser back button. The link must point at Studio's project route rather than another
+ * product host directly: only Studio can mint an SSO handoff token, so a direct product link would
+ * arrive without one and bounce the user to sign-in.
+ */
+function useStudioLink(): string | null {
+  const [href, setHref] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => {
+        if (cancelled || !me?.studioUrl) return;
+        const base = String(me.studioUrl).replace(/\/+$/, "");
+        setHref(me.projectRef ? `${base}/project/${encodeURIComponent(me.projectRef)}` : base);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return href;
+}
 
 interface HomeProps {
   designs: Design[];
@@ -72,6 +99,8 @@ export function Home({
       items: templates.filter((t) => t.category === cat).slice(0, 12),
     })).filter((row) => row.items.length > 0);
   }, [templates, category, query]);
+
+  const studioHref = useStudioLink();
 
   const handleCreate = useCallback(async () => {
     setCreating(true);
@@ -143,6 +172,15 @@ export function Home({
               {designs.length !== 1 ? "s" : ""}
             </p>
           </div>
+          <div class="flex items-center gap-2">
+          {studioHref && (
+            <a
+              href={studioHref}
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-all no-underline"
+            >
+              ← Back to Indobase
+            </a>
+          )}
           <button
             class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold border-none cursor-pointer bg-[#6366f1] text-white hover:bg-[#5558e6] transition-all shadow-sm disabled:opacity-60"
             onClick={handleCreate}
@@ -151,6 +189,7 @@ export function Home({
             <Plus size={15} />
             {creating ? "Creating…" : "Blank design"}
           </button>
+          </div>
         </div>
       </div>
 

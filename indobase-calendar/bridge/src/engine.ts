@@ -8,6 +8,7 @@ import type { StudioClaims } from './auth.js'
 import type { CalendarSpaceMap } from './space-map.js'
 import { calendarEventsPath } from './space-map.js'
 import { calendarRoleFromStudio } from './roles.js'
+import { markCalendarUserVerified } from './verify-user.js'
 
 export type EngineSession = {
   cookies: string[]
@@ -154,6 +155,16 @@ export async function exchangeStudioClaimsForCalendar(
   const username = usernameFromClaims(claims, map)
 
   await trySignup(base, claims.email, password, username)
+
+  /*
+   * Propagate Studio's email verification. trySignup goes through the engine's public signup path,
+   * which leaves emailVerified null and parks the user on a "Check your email" screen that never
+   * clears — no verification mail is sent for SSO users. Studio already verified this address.
+   *
+   * Runs before login so the session is established against an already-verified row. Awaited but
+   * non-fatal: a nag screen is recoverable, a thrown launch is not.
+   */
+  await markCalendarUserVerified(claims.email)
 
   const csrf = await fetchCsrf(base)
   if (!csrf.token) {

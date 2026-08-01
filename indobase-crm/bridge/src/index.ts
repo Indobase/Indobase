@@ -1,8 +1,9 @@
 /**
- * Indobase CRM — SSO bridge and optional Frappe CRM proxy.
+ * Indobase CRM — Studio SSO bridge + reverse proxy to Twenty CRM.
  *
- * Studio hands off to `/sso/launch#token=…`. When `CRM_UPSTREAM` is set, authenticated
- * `/c/*` and `/crm/*` requests proxy to the Frappe CRM frontend; otherwise a dev shell renders.
+ * Studio → `/sso/launch#token=…` → bridge verifies JWT, provisions/signs into the
+ * org's Twenty workspace, redirects to `/verify?loginToken=…`.
+ * Customer UI is Indobase CRM only (never name the engine).
  */
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
@@ -20,8 +21,19 @@ import {
   type Session,
 } from './auth.js'
 import { isHtmlContentType, rewriteBrandedHtml } from './brand-html.js'
-import { buildCrmScopeMap, crmPipelinePath, upstreamCrmPath } from './crm-map.js'
+import {
+  buildCrmScopeMap,
+  crmPipelinePath,
+  crmWorkspaceOrigin,
+  upstreamCrmPath,
+} from './crm-map.js'
+import { rewriteGraphqlOriginBody, rewriteUpstreamLocation } from './graphql-origin.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
+import {
+  exchangeStudioUserForTwentyLoginToken,
+  twentyVerifyPath,
+} from './twenty-exchange.js'
+import { countMappedWorkspaces, getOrgWorkspace } from './workspace-map.js'
 import { renderCrmWelcomeHtml } from './welcome.js'
 
 type Vars = { session: Session }
@@ -29,8 +41,16 @@ const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
+const CRM_PUBLIC_URL = (process.env.CRM_PUBLIC_URL || 'https://crm.indobase.in').replace(/\/+$/, '')
 const CRM_UPSTREAM = (process.env.CRM_UPSTREAM || '').replace(/\/+$/, '')
-const FRAPPE_HANDOFF_URL = (process.env.FRAPPE_STUDIO_HANDOFF_URL || '').replace(/\/+$/, '')
+/** Legacy single-workspace invite — claimed by the first org when the map is empty. */
+const LEGACY_WORKSPACE_INVITE_HASH = (process.env.TWENTY_WORKSPACE_INVITE_HASH || '').trim()
+/**
+ * When true (default), SSO creates a Twenty workspace for orgs with no mapping.
+ * Set false only for break-glass / read-only incident response.
+ */
+const ALLOW_CREATE_WORKSPACE =
+  (process.env.TWENTY_ALLOW_BOOTSTRAP_WORKSPACE || 'true').toLowerCase() !== 'false'
 
 function scopeFromSession(session: Session) {
   return buildCrmScopeMap({
@@ -52,12 +72,21 @@ function sessionFromRequest(c: Context): Session | null {
   return raw ? readSessionToken(raw, secret) : null
 }
 
-/** Cold visits must never reach upstream engine login / "Not Permitted" pages. */
+function workspaceOriginForSession(session: Session | null): string | undefined {
+  if (!session?.orgSlug) return undefined
+  const map = scopeFromSession(session)
+  const record = getOrgWorkspace(map.teamKey)
+  if (!record?.subdomain) return undefined
+  return crmWorkspaceOrigin(CRM_PUBLIC_URL, record.subdomain)
+}
+
+/** Cold visits must never reach upstream engine login UI. */
 function respondUnauthenticatedCrm(c: Context) {
   const path = new URL(c.req.url).pathname
   const method = c.req.method
   const prefersHtml =
     !path.startsWith('/api/') &&
+    !path.startsWith('/graphql') &&
     (method === 'GET' || method === 'HEAD') &&
     !/\.(js|css|map|woff2?|png|jpe?g|gif|svg|ico|webp|json)$/i.test(path)
   if (prefersHtml) {
@@ -70,27 +99,6 @@ function respondUnauthenticatedCrm(c: Context) {
     return c.html(renderCrmWelcomeHtml({ studioUrl: STUDIO_URL }))
   }
   return c.json({ error: 'unauthorized', signInUrl: `${STUDIO_URL}/sign-in` }, 401)
-}
-
-// ── SSO ──────────────────────────────────────────────────────────────────────
-
-/**
- * Frappe login sets multiple cookies (sid, system_user, …) and `headers.get('set-cookie')` returns
- * only the first. Forward all of them, and append rather than assign — `c.header()` replaces, so
- * setting the bridge's own cookie afterwards used to discard Frappe's `sid` entirely. The SPA then
- * booted with no Frappe session and rendered a blank page.
- */
-function forwardUpstreamCookies(upstream: Response, c: Context) {
-  const headers = upstream.headers as Headers & { getSetCookie?: () => string[] }
-  const cookies =
-    typeof headers.getSetCookie === 'function'
-      ? headers.getSetCookie()
-      : upstream.headers.get('set-cookie')
-        ? [upstream.headers.get('set-cookie') as string]
-        : []
-  for (const cookie of cookies) {
-    c.res.headers.append('Set-Cookie', cookie)
-  }
 }
 
 app.get('/sso/launch', (c) =>
@@ -112,7 +120,7 @@ app.get('/sso/launch', (c) =>
     try { reason = ((await r.json()) || {}).error || ''; } catch (_) {}
     document.body.innerHTML =
       '<div style="font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;padding:24px;text-align:center;color:#1e293b">' +
-      '<div style="max-width:34rem"><p style="font-weight:600;margin:0 0 8px">Could not open this workspace</p>' +
+      '<div style="max-width:34rem"><p style="font-weight:600;margin:0 0 8px">Could not open CRM</p>' +
       '<p style="margin:0 0 8px;color:#475569;font-size:14px">' + (reason || ('The handoff was rejected (HTTP ' + r.status + ').')) + '</p>' +
       (r.status === 401
         ? '<p style="margin:0 0 16px;color:#64748b;font-size:13px">This usually means the handoff secret does not match between Studio and this service.</p>'
@@ -158,24 +166,42 @@ app.post('/sso/session', async (c) => {
   })
 
   let redirect = crmPipelinePath(map)
+  let workspaceMeta: { workspaceId?: string; subdomain?: string } = {}
 
-  if (FRAPPE_HANDOFF_URL) {
+  if (CRM_UPSTREAM) {
     try {
-      const upstream = await fetch(FRAPPE_HANDOFF_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+      const exchanged = await exchangeStudioUserForTwentyLoginToken({
+        upstream: CRM_UPSTREAM,
+        email: claims.email,
+        handoffSecret: secret,
+        orgSlug: claims.organization_slug,
+        teamKey: map.teamKey,
+        teamTitle: map.teamTitle,
+        publicBaseUrl: CRM_PUBLIC_URL,
+        legacyWorkspaceInviteHash: LEGACY_WORKSPACE_INVITE_HASH || undefined,
+        allowCreateWorkspace: ALLOW_CREATE_WORKSPACE,
       })
-      forwardUpstreamCookies(upstream, c)
-      const body = (await upstream.json().catch(() => ({}))) as { redirect?: string }
-      if (body.redirect) redirect = body.redirect
+      redirect = twentyVerifyPath(exchanged.loginToken, crmPipelinePath(map))
+      workspaceMeta = {
+        workspaceId: exchanged.workspaceId,
+        subdomain: exchanged.subdomain,
+      }
     } catch (err) {
-      console.error('[crm] frappe handoff failed:', err)
+      console.error('[crm] twenty handoff failed:', err)
+      return c.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : 'Could not establish the CRM workspace session. Try opening CRM from Studio again.',
+        },
+        502,
+      )
     }
   }
 
   c.res.headers.append('Set-Cookie', sessionCookie(createSessionToken(claims, secret)))
-  return c.json({ ok: true, redirect, scope: map })
+  return c.json({ ok: true, redirect, scope: map, workspace: workspaceMeta })
 })
 
 app.post('/sso/logout', (c) => {
@@ -184,21 +210,28 @@ app.post('/sso/logout', (c) => {
 })
 
 app.get('/sso/health', (c) => {
+  const mapped = countMappedWorkspaces()
   const body = publicSsoHealth({
     service: 'indobase-crm',
     audience: AUDIENCE,
     versionEnvKeys: ['CRM_VERSION', 'GIT_SHA'],
-  })
+    extra: {
+      workspaceMapping: 'per-org',
+      mappedWorkspaces: mapped,
+      /** True when at least one org workspace is mapped, or a legacy invite exists for first claim. */
+      inviteConfigured: mapped > 0 || Boolean(LEGACY_WORKSPACE_INVITE_HASH),
+      createWorkspaceEnabled: ALLOW_CREATE_WORKSPACE,
+    },
+  }) as Record<string, unknown>
   try {
     resolveHandoffSecret()
     body.handoffConfigured = true
   } catch {
     body.handoffConfigured = false
   }
+  body.upstreamConfigured = Boolean(CRM_UPSTREAM)
   return c.json(body)
 })
-
-// ── Auth middleware ──────────────────────────────────────────────────────────
 
 async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
   let secret: string
@@ -217,6 +250,7 @@ async function requireSession(c: Context<{ Variables: Vars }>, next: Next) {
 app.get('/api/me', requireSession, (c) => {
   const s = c.get('session')
   const map = scopeFromSession(s)
+  const record = getOrgWorkspace(map.teamKey)
   return c.json({
     email: s.email,
     projectRef: s.projectRef,
@@ -226,12 +260,17 @@ app.get('/api/me', requireSession, (c) => {
     studioUrl: s.studioUrl,
     scope: map,
     pipelinePath: crmPipelinePath(map),
+    workspace: record
+      ? {
+          workspaceId: record.workspaceId,
+          subdomain: record.subdomain,
+          displayName: record.displayName,
+        }
+      : null,
   })
 })
 
 app.get('/healthz', (c) => c.json({ ok: true, service: 'indobase-crm' }))
-
-// ── CRM upstream proxy (production path) ─────────────────────────────────────
 
 async function proxyCrmAuthenticated(c: Context) {
   if (!sessionFromRequest(c)) return respondUnauthenticatedCrm(c)
@@ -245,132 +284,73 @@ async function proxyCrm(c: Context) {
   const target = `${CRM_UPSTREAM}${upstreamPath}${url.search}`
   const headers = new Headers(c.req.raw.headers)
   headers.delete('host')
+
+  const session = sessionFromRequest(c)
+  const isGraphql =
+    upstreamPath === '/graphql' ||
+    upstreamPath.startsWith('/graphql') ||
+    upstreamPath === '/metadata' ||
+    upstreamPath.startsWith('/metadata')
+  const method = c.req.method
+  let body: ArrayBuffer | string | undefined
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (isGraphql && session) {
+      const text = await c.req.text()
+      body = rewriteGraphqlOriginBody(text, {
+        publicBaseUrl: CRM_PUBLIC_URL,
+        orgSlug: session.orgSlug,
+        workspaceOrigin: workspaceOriginForSession(session),
+      })
+      headers.delete('content-length')
+    } else {
+      body = await c.req.arrayBuffer()
+    }
+  }
+
   const res = await fetch(target, {
-    method: c.req.method,
+    method,
     headers,
-    body: c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+    body,
     redirect: 'manual',
   })
 
-  // Everything that is not an HTML document streams through untouched: buffering or
-  // editing a JS bundle, stylesheet or binary asset would break the SPA.
-  //
-  // `new Headers(...)` is load-bearing, not tidying. `serve()` swaps in @hono/node-server's
-  // lazy Response, which keeps the exact `headers` object it was handed — passing `res.headers`
-  // straight through hands `securityHeaders` fetch's immutable Headers, and its first
-  // `.set()` throws `TypeError: immutable`, turning every proxied asset into a 500.
+  const outHeaders = new Headers(res.headers)
+  const location = rewriteUpstreamLocation(outHeaders.get('location'), CRM_PUBLIC_URL)
+  if (location) outHeaders.set('location', location)
+
   const rewritable =
-    c.req.method !== 'HEAD' && res.body !== null && isHtmlContentType(res.headers.get('content-type'))
+    method !== 'HEAD' && res.body !== null && isHtmlContentType(res.headers.get('content-type'))
   if (!rewritable) {
-    return new Response(res.body, { status: res.status, headers: new Headers(res.headers) })
+    return new Response(res.body, { status: res.status, headers: outHeaders })
   }
 
   const rewritten = rewriteBrandedHtml(await res.text())
-  const outHeaders = new Headers(res.headers)
-  // `res.headers` still describes the bytes on the wire, but undici already decoded the
-  // body and the rewrite changed its length — keeping either header truncates the page.
   outHeaders.delete('content-encoding')
   outHeaders.delete('content-length')
-  // Upstream validators describe the upstream entity, not the rebranded one; leaving them
-  // lets a conditional request 304 back to a cached copy that still says "Frappe CRM".
   outHeaders.delete('etag')
   outHeaders.delete('last-modified')
   return new Response(rewritten, { status: res.status, headers: outHeaders })
 }
 
-app.all('/c/*', proxyCrmAuthenticated)
-app.all('/crm/*', proxyCrmAuthenticated)
-app.all('/assets/*', proxyCrmAuthenticated)
-app.all('/app/*', proxyCrmAuthenticated)
-app.all('/files/*', proxyCrmAuthenticated)
-app.all('/api/*', proxyCrmAuthenticated)
-/** Frappe native login is disabled — Studio SSO is the only sign-in surface. */
+// Engine auth surfaces → Studio only
+app.all('/welcome', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/sign-in', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
+app.all('/sign-up', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/login', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 app.all('/logout', (c) => c.redirect(`${STUDIO_URL}/sign-in`))
 
-// ── Dev shell (no CRM upstream) ────────────────────────────────────────────────
-
-function renderShell(session: Session): string {
-  const map = scopeFromSession(session)
-  const path = crmPipelinePath(map)
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase CRM</title>
-  <style>
-    :root { --brand: #3B8FD6; --ink: #0f172a; --muted: #64748b; --surface: #fff; --border: #e2e8f0; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #f1f5f9; color: var(--ink); }
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
-    header strong { color: var(--brand); }
-    main { max-width: 960px; margin: 32px auto; padding: 0 16px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-    .meta { color: var(--muted); font-size: 14px; margin-top: 8px; }
-    dl { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; font-size: 14px; }
-    dt { color: var(--muted); }
-    code { background: #f8fafc; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-    .pill { display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
-    .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 16px; }
-    .feat { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
-    .feat strong { display: block; margin-bottom: 4px; }
-  </style>
-</head>
-<body>
-  <header><strong>Indobase CRM</strong><span class="pill">Sales</span></header>
-  <main>
-    <div class="card">
-      <h1 style="margin:0 0 8px;font-size:22px">${map.pipelineTitle}</h1>
-      <p class="meta">${map.teamTitle} · signed in as ${session.email}</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0" />
-      <dl>
-        <dt>Organization</dt><dd><code>${map.orgSlug}</code> → team <code>${map.teamKey}</code></dd>
-        <dt>Project</dt><dd><code>${map.projectRef}</code> → pipeline <code>${map.pipelineKey}</code></dd>
-        <dt>Deep link</dt><dd><code>${path}</code></dd>
-        <dt>Role</dt><dd>${session.role}${session.canEdit ? '' : ' (view only)'}</dd>
-      </dl>
-      <div class="features">
-        <div class="feat"><strong>Leads</strong>Capture and qualify inbound interest</div>
-        <div class="feat"><strong>Deals</strong>Track pipeline stages and revenue</div>
-        <div class="feat"><strong>Kanban</strong>Drag-and-drop deal boards</div>
-        <div class="feat"><strong>Views</strong>Custom filters and saved layouts</div>
-      </div>
-      <p class="meta" style="margin-top:20px">
-        Dev shell — production serves the full CRM experience.
-        SSO bridge is live; Studio handoff contract verified.
-      </p>
-    </div>
-  </main>
-</body>
-</html>`
-}
-
 app.get('/', (c) => {
-  let secret: string
-  try {
-    secret = resolveHandoffSecret()
-  } catch {
-    return c.redirect(`${STUDIO_URL}/sign-in`)
-  }
-  const raw = readCookie(c.req.header('cookie'))
-  const session = raw ? readSessionToken(raw, secret) : null
+  const session = sessionFromRequest(c)
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
   if (CRM_UPSTREAM) {
     const map = scopeFromSession(session)
     return c.redirect(crmPipelinePath(map))
   }
-  return c.html(renderShell(session))
+  return c.html(renderCrmWelcomeHtml({ studioUrl: STUDIO_URL }))
 })
 
-app.get('/c/:team/:pipeline', (c) => {
-  if (CRM_UPSTREAM) return proxyCrmAuthenticated(c)
-  const session = sessionFromRequest(c)
-  if (!session) return respondUnauthenticatedCrm(c)
-  return c.html(renderShell(session))
-})
-
-// ── Boot ─────────────────────────────────────────────────────────────────────
+/** Everything else requires a Studio bridge session, then proxies to Twenty. */
+app.all('*', proxyCrmAuthenticated)
 
 const port = Number(process.env.PORT || 8094)
 

@@ -23,6 +23,8 @@ export const CRM_BRAND_NAME = 'Indobase CRM'
  */
 const BRAND_PHRASES: ReadonlyArray<readonly [RegExp, string]> = [
   [/Frappe\s+CRM/gi, CRM_BRAND_NAME],
+  [/\bTwenty\b/g, CRM_BRAND_NAME],
+  [/twentycrm/gi, 'indobase-crm'],
 ]
 
 /** Element bodies that are not markup — never rewritten, never parsed. */
@@ -118,6 +120,12 @@ function rewriteMetaTag(tag: string): string {
 }
 
 /**
+ * Scrubs upstream product naming that only appears after the SPA mounts.
+ * Text-node only — never touches attributes or script contents.
+ */
+const SPA_BRAND_SCRUB_SCRIPT = `<script data-indobase-brand-scrub>(function(){function scrub(){if(!document.body)return;var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);var n;while((n=w.nextNode())){if(n.nodeValue&&(/Frappe\\s+CRM|\\bTwenty\\b/i.test(n.nodeValue)))n.nodeValue=n.nodeValue.replace(/Frappe\\s+CRM/gi,${JSON.stringify(CRM_BRAND_NAME)}).replace(/\\bTwenty\\b/g,${JSON.stringify(CRM_BRAND_NAME)});}}new MutationObserver(scrub).observe(document.documentElement,{childList:true,subtree:true,characterData:true});if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",scrub);else scrub();})();</script>`
+
+/**
  * Rebrands one HTML document: forces the document title to `CRM_BRAND_NAME` and replaces
  * the upstream product name wherever it appears as visible text.
  *
@@ -197,6 +205,12 @@ export function rewriteBrandedHtml(html: string): string {
   // Shell with no title at all would fall back to the URL in the tab — give it a name.
   if (!titleDone && headInsertAt !== -1) {
     out.splice(headInsertAt, 0, `<title>${CRM_BRAND_NAME}</title>`)
+  }
+
+  // Vue SPA copy (e.g. Access Denied) lives in JS bundles we must not rewrite. Inject a
+  // tiny observer so user-visible text still says Indobase CRM after hydration.
+  if (headInsertAt !== -1) {
+    out.splice(headInsertAt, 0, SPA_BRAND_SCRUB_SCRIPT)
   }
 
   return out.join('')

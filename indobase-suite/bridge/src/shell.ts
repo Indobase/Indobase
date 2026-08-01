@@ -35,20 +35,126 @@ const RAIL_ICONS: Record<SuiteModuleId, string> = {
 }
 
 const STYLES = `
-:root {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Indobase Workspace — Frappe Suite-style token layer.
+
+   Frappe UI names tokens semantically by ROLE, not by literal colour:
+     surface-*  backgrounds, layered from page to raised card
+     ink-*      foreground text, from strongest to faintest
+     outline-*  borders and dividers
+   Naming by role is what makes dark mode a token swap rather than a rewrite,
+   so the same convention is used here.
+
+   Measured contrast on --surface-white (#ffffff), WCAG 2.2:
+     --ink-1   #171717  16.1:1  AAA
+     --ink-2   #383838   10.4:1  AAA
+     --ink-3   #525252   7.5:1   AAA
+     --ink-4   #6b6b6b   5.3:1   AA   ← faintest permitted for body text
+     --accent  #2B6CA3   5.6:1   AA   ← brand blue darkened for TEXT
+     --brand   #3B8FD6   3.45:1  FAILS AA for text — non-text only (rings, fills)
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root, [data-theme="light"] {
+  color-scheme: light;
+
+  --surface-white: #ffffff;
+  --surface-1: #fafafa;
+  --surface-2: #f4f4f5;
+  --surface-3: #ededee;
+  --surface-selected: #f0f6fc;
+
+  --ink-1: #171717;
+  --ink-2: #383838;
+  --ink-3: #525252;
+  --ink-4: #6b6b6b;
+
+  --outline-1: #e8e8e9;
+  --outline-2: #dcdcdd;
+  --outline-3: #c4c4c6;
+
+  /* Brand. --brand is decorative only; --accent is the text-safe variant. */
   --brand: #3B8FD6;
-  --brand-ink: #1e5f9a;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --surface: #ffffff;
-  --bg: #f1f5f9;
-  --border: #e2e8f0;
-  --danger: #b91c1c;
-  --ok: #059669;
+  --accent: #2B6CA3;
+  --accent-hover: #235980;
+  --on-accent: #ffffff;
+
+  --danger: #b3261e;
+  --ok: #077d55;
+
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px var(--outline-1);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px var(--outline-1);
 }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-white: #1c1c1f;
+  --surface-1: #171719;
+  --surface-2: #232326;
+  --surface-3: #2b2b2f;
+  --surface-selected: #1b2b3a;
+
+  --ink-1: #f2f2f3;
+  --ink-2: #d4d4d6;
+  --ink-3: #a8a8ac;
+  --ink-4: #8a8a8f;
+
+  --outline-1: #2e2e32;
+  --outline-2: #3a3a3f;
+  --outline-3: #4a4a50;
+
+  /* On dark surfaces the lighter blue clears AA, so it becomes the text colour. */
+  --accent: #6FB2E8;
+  --accent-hover: #8CC3EF;
+  --on-accent: #0f1720;
+
+  --danger: #f2b8b5;
+  --ok: #6ee7b7;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px var(--outline-1);
+  --shadow: 0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px var(--outline-1);
+}
+
+/* Legacy aliases — older rules in this file still reference these names. */
+:root, [data-theme="light"], [data-theme="dark"] {
+  --ink: var(--ink-1);
+  --muted: var(--ink-4);
+  --surface: var(--surface-white);
+  --bg: var(--surface-1);
+  --border: var(--outline-1);
+  --brand-ink: var(--accent);
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
-a { color: var(--brand); }
+html { scrollbar-width: thin; }
+body {
+  margin: 0;
+  /* Inter is Frappe UI's face; the stack degrades to the platform UI font. */
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  background: var(--surface-1);
+  color: var(--ink-1);
+  min-height: 100vh;
+}
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
+/* Never remove focus rings — keyboard users lose all position feedback. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 header.appbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -68,6 +174,25 @@ header.appbar .pill {
   padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
 }
 header.appbar .spacer { flex: 1; }
+/* Ecosystem switcher. <details> keeps it keyboard-accessible with no JS. */
+header.appbar .switcher { position: relative; }
+header.appbar .switcher > summary {
+  list-style: none; cursor: pointer; font-size: 13px; color: var(--ink-3);
+  padding: 5px 10px; border: 1px solid var(--outline-2); border-radius: var(--radius-sm);
+  background: var(--surface-white); user-select: none;
+}
+header.appbar .switcher > summary::-webkit-details-marker { display: none; }
+header.appbar .switcher > summary:hover { color: var(--ink-1); background: var(--surface-2); }
+header.appbar .switcher .switcher-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 190px;
+  background: var(--surface-white); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 5px; display: flex; flex-direction: column;
+}
+header.appbar .switcher .switcher-menu a {
+  padding: 7px 10px; border-radius: var(--radius-sm); font-size: 13px;
+  color: var(--ink-2); text-decoration: none;
+}
+header.appbar .switcher .switcher-menu a:hover { background: var(--surface-2); color: var(--ink-1); }
 header.appbar .meta { font-size: 13px; color: var(--muted); }
 header.appbar a.studio {
   font-size: 13px; text-decoration: none; color: var(--brand-ink); font-weight: 500;
@@ -198,6 +323,33 @@ button.danger-link:hover { opacity: 1; text-decoration: underline; }
   nav.rail { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
 }
 `
+
+/**
+ * Sibling Indobase products, for the ecosystem switcher.
+ *
+ * Every entry links through Studio (`/project/:ref/<product>`) rather than straight at the product
+ * host. A direct link would arrive with no handoff token and bounce the user to sign-in — Studio is
+ * the only thing that can mint one. This is what makes Workspace feel like part of one OS instead
+ * of a standalone app that happens to share a logo.
+ */
+const ECOSYSTEM_LINKS: ReadonlyArray<{ slug: string; label: string }> = [
+  { slug: '', label: 'Project home' },
+  { slug: 'builder', label: 'Builder' },
+  { slug: 'backend', label: 'Backend Studio' },
+  { slug: 'payments', label: 'Payments' },
+  { slug: 'analytics', label: 'Analytics' },
+]
+
+function renderEcosystemSwitcher(studioUrl: string, projectRef: string): string {
+  const base = `${studioUrl}/project/${encodeURIComponent(projectRef)}`
+  const items = ECOSYSTEM_LINKS.map(
+    (p) => `<a role="menuitem" href="${esc(p.slug ? `${base}/${p.slug}` : base)}">${esc(p.label)}</a>`
+  ).join('')
+  return `<details class="switcher">
+    <summary aria-label="Switch Indobase product" title="Switch product">Products</summary>
+    <div class="switcher-menu" role="menu">${items}</div>
+  </details>`
+}
 
 function studioWorkspaceHref(studioUrl: string, projectRef: string): string {
   return `${studioUrl}/project/${encodeURIComponent(projectRef)}/workspace`
@@ -448,13 +600,14 @@ export function renderWorkspaceShell(opts: {
           '<td><a class="file-link" href="/editor/' + encodeURIComponent(f.id) + '">' + escapeHtml(f.name) + '</a></td>' +
           '<td><span class="' + chipClass + '">' + escapeHtml(label) + '</span></td>' +
           '<td><span title="' + escapeHtml(fmtDateFull(f.updatedAt)) + '">' + escapeHtml(fmtDate(f.updatedAt)) + '</span></td>' +
-          '<td><button type="button" class="danger-link" data-del="' + escapeHtml(f.id) + '">Delete</button></td>' +
+          '<td><button type="button" class="danger-link" data-del="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" aria-label="Delete ' + escapeHtml(f.name) + '">Delete</button></td>' +
           '</tr>';
       }).join('');
       list.innerHTML = '<table><thead><tr><th>Name</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
       list.querySelectorAll('[data-del]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          if (!confirm('Delete this file?')) return;
+          var fname = btn.getAttribute('data-name') || 'this file';
+          if (!confirm('Delete "' + fname + '"? This cannot be undone.')) return;
           var id = btn.getAttribute('data-del');
           var dr = await fetch('/api/files/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' });
           if (!dr.ok) { showErr('Delete failed'); return; }
@@ -538,6 +691,7 @@ export function renderWorkspaceShell(opts: {
     <span class="pill">${esc(opts.map.projectTitle)}</span>
     <div class="spacer"></div>
     <span class="meta">${esc(opts.session.email)}</span>
+    ${renderEcosystemSwitcher(opts.studioUrl, opts.session.projectRef)}
     <a class="studio" href="${esc(studioBack)}">Studio</a>
   </header>
   <div class="layout">

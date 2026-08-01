@@ -17,5 +17,12 @@ test('brandMeetHtml sets Indobase Meet title and favicon', () => {
   assert.match(out, /Indobase Meet/)
   assert.doesNotMatch(out, /<title>Jitsi Meet<\/title>/)
   assert.match(out, /indobase-meet-brand-css/)
-  assert.match(out, /indobase-meet-brand-js/)
+  /*
+   * The brand script is injected as an EXTERNAL src, not inline. An upstream
+   * `script-src 'self'` CSP meta refuses inline <script> silently — the rebrand just
+   * never applies. Asserting the external tag (and the absence of the inline one) is
+   * what stops someone inlining it again and quietly breaking every rewrite.
+   */
+  assert.match(out, /<script src="\/brand\/meet-brand\.js" defer><\/script>/)
+  assert.equal(/<script id=["']indobase-meet-brand-js["']/.test(out), false)
 })

@@ -1,8 +1,8 @@
 /**
  * Deterministic org/project → CRM team / pipeline keys.
  *
- * Must stay in sync with `frappe-app/indobase_crm/indobase_crm/utils/crm_map.py`
- * and `apps/studio/lib/api/saas/crm-launch-shared.ts`.
+ * Must stay in sync with `apps/studio/lib/api/saas/crm-launch-shared.ts`.
+ * Deep links land on the CRM home; keys remain available for future workspace filters.
  */
 
 export type CrmScopeMap = {
@@ -71,42 +71,74 @@ export function buildCrmScopeMap(opts: {
   }
 }
 
-/** Bridge deep link after SSO — proxies to upstream CRM SPA. */
-export function crmPipelinePath(map: CrmScopeMap): string {
-  return `/c/${encodeURIComponent(map.teamKey)}/${encodeURIComponent(map.pipelineKey)}`
+/**
+ * Twenty multi-workspace subdomain for an org team key.
+ * Kept short/alnum so Twenty accepts it; stable across handoffs.
+ */
+export function crmWorkspaceSubdomainForTeamKey(teamKey: string): string {
+  const cleaned = teamKey
+    .toLowerCase()
+    .replace(/^ib-crm-org-/, 'o-')
+    .split('')
+    .filter((c) => /[a-z0-9-]/.test(c))
+    .join('')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30)
+  if (!cleaned || cleaned === 'o') return 'o-default'
+  return cleaned
 }
 
-/** Frappe CRM website rule requires a path segment; `/crm/leads` is the desk entry. */
-const CRM_SPA_ENTRY = '/crm/leads'
+/** Synthetic workspace origin used for Twenty GraphQL `origin` checks (apex stays public). */
+export function crmWorkspaceOrigin(publicBaseUrl: string, subdomain: string): string {
+  const base = publicBaseUrl.replace(/\/+$/, '')
+  let host: string
+  try {
+    host = new URL(base).host
+  } catch {
+    host = 'crm.indobase.in'
+  }
+  const proto = base.startsWith('http://') ? 'http' : 'https'
+  const sub = subdomain.replace(/[^a-z0-9-]/gi, '').toLowerCase() || 'o-default'
+  return `${proto}://${sub}.${host}`
+}
 
-/** Static/API paths must reach Frappe unchanged — do not rewrite to the SPA shell. */
+/** Post-SSO landing — CRM opportunities board (engine-agnostic path via bridge). */
+export function crmPipelinePath(map: CrmScopeMap): string {
+  const q = new URLSearchParams({
+    ib_team: map.teamKey,
+    ib_pipeline: map.pipelineKey,
+  })
+  return `/objects/opportunities?${q.toString()}`
+}
+
+/** Static/API paths must reach upstream unchanged. */
 function passthroughUpstreamPath(bridgePath: string): string | null {
   if (
     bridgePath.startsWith('/assets/') ||
     bridgePath.startsWith('/files/') ||
-    bridgePath.startsWith('/api/') ||
-    bridgePath.startsWith('/app/')
+    bridgePath.startsWith('/graphql') ||
+    bridgePath.startsWith('/rest/') ||
+    bridgePath.startsWith('/verify') ||
+    bridgePath.startsWith('/objects/') ||
+    bridgePath.startsWith('/settings/')
   ) {
     return bridgePath
   }
   return null
 }
 
-/** Upstream Frappe CRM SPA entry (production proxy target). */
+/** Upstream CRM SPA entry (production proxy target). */
 export function upstreamCrmPath(bridgePath: string): string {
   const passthrough = passthroughUpstreamPath(bridgePath)
   if (passthrough) return passthrough
 
   if (bridgePath.startsWith('/c/')) {
-    // Frappe CRM SPA has no client route for ib_pipeline — land on desk entry.
-    return CRM_SPA_ENTRY
-  }
-  if (bridgePath.startsWith('/app/setup-wizard')) {
-    return CRM_SPA_ENTRY
+    return '/objects/opportunities'
   }
   if (bridgePath.startsWith('/crm')) {
-    return `${CRM_SPA_ENTRY}${bridgePath.slice('/crm'.length)}`
+    if (bridgePath === '/crm' || bridgePath === '/crm/') return '/objects/opportunities'
+    return bridgePath.replace(/^\/crm/, '') || '/objects/opportunities'
   }
-  if (bridgePath.startsWith('/app/crm')) return CRM_SPA_ENTRY
-  return CRM_SPA_ENTRY
+  return bridgePath || '/'
 }
