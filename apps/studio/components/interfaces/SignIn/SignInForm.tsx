@@ -76,10 +76,10 @@ export const SignInForm = () => {
 
   useEffect(() => {
     if (hcaptchaSiteKey) return
-    void ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`).then((env) => {
-      const runtimeKey = resolveHcaptchaSiteKey(
-        (env as { hcaptchaSiteKey?: string }).hcaptchaSiteKey
-      )
+    // ensureRuntimePublicEnv returns Promise<void> and hydrates
+    // window.__INDOBASE_PUBLIC_ENV__; do not treat its resolve value as env.
+    void ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`).then(() => {
+      const runtimeKey = resolveHcaptchaSiteKey()
       if (runtimeKey) setHcaptchaSiteKey(runtimeKey)
     })
   }, [hcaptchaSiteKey])

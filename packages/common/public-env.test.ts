@@ -93,3 +93,37 @@ describe('resolvePublicSiteUrl', () => {
     expect(resolveServerPublicSiteUrl()).toBe('https://studio.indobase.fun')
   })
 })
+
+describe('ensureRuntimePublicEnv hcaptcha merge', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.resetModules()
+    delete (globalThis as typeof globalThis & { window?: Window }).window
+  })
+
+  it('merges hcaptchaSiteKey from the runtime API response', async () => {
+    vi.resetModules()
+    ;(globalThis as typeof globalThis & { window: Window }).window = {
+      __INDOBASE_PUBLIC_ENV__: {},
+    } as Window
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          anonKey: 'runtime-anon-key',
+          siteUrl: 'https://studio.indobase.in',
+          hcaptchaSiteKey: ' runtime-hcaptcha ',
+        }),
+      })
+    )
+
+    const { ensureRuntimePublicEnv } = await import('./public-env')
+    await ensureRuntimePublicEnv('/api/platform/runtime-public-env')
+
+    expect(window.__INDOBASE_PUBLIC_ENV__?.hcaptchaSiteKey).toBe('runtime-hcaptcha')
+    expect(window.__INDOBASE_PUBLIC_ENV__?.anonKey).toBe('runtime-anon-key')
+  })
+})

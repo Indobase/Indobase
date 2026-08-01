@@ -7,6 +7,8 @@ declare global {
       siteUrl?: string
       /** Runtime Builder public origin (overrides bake-time NEXT_PUBLIC_BUILDER_APP_URL). */
       builderAppUrl?: string
+      /** Runtime hCaptcha site key (overrides bake-time NEXT_PUBLIC_HCAPTCHA_SITE_KEY). */
+      hcaptchaSiteKey?: string
     }
   }
 }
@@ -155,6 +157,7 @@ export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
           gotrueUrl?: string
           siteUrl?: string
           builderAppUrl?: string
+          hcaptchaSiteKey?: string
         }
         window.__INDOBASE_PUBLIC_ENV__ = {
           ...window.__INDOBASE_PUBLIC_ENV__,
@@ -165,6 +168,9 @@ export function ensureRuntimePublicEnv(configUrl: string): Promise<void> {
             : {}),
           ...(normalizePublicOrigin(json.builderAppUrl)
             ? { builderAppUrl: normalizePublicOrigin(json.builderAppUrl) }
+            : {}),
+          ...(json.hcaptchaSiteKey?.trim()
+            ? { hcaptchaSiteKey: json.hcaptchaSiteKey.trim() }
             : {}),
         }
       } catch {
