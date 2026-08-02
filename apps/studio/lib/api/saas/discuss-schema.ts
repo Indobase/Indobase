@@ -89,6 +89,38 @@ export async function ensureDiscussSchema({
         if to_regprocedure('discuss.ensure_project_setup(text,uuid,text,text,text)') is null then
           return;
         end if;
+        -- Sidebar unread RPC (from 002). Skipped on re-open when schema already present, so
+        -- recreate here if missing — otherwise PostgREST 404s and Discuss stays on Opening….
+        if to_regprocedure('discuss.unread_counts()') is null then
+          execute $fn$
+            create function discuss.unread_counts()
+            returns table (channel_id uuid, unread bigint, last_message_at timestamptz)
+            language sql
+            stable
+            as $body$
+              select
+                c.id,
+                count(m.id) filter (
+                  where m.created_at > coalesce(rs.last_read_at, '-infinity'::timestamptz)
+                    and m.author_id is distinct from cm.member_id
+                ) as unread,
+                max(m.created_at) as last_message_at
+              from discuss.channels c
+              join discuss.channel_members cm
+                on cm.channel_id = c.id
+               and cm.member_id in (select discuss.current_member_ids())
+              left join discuss.read_state rs
+                on rs.channel_id = c.id and rs.member_id = cm.member_id
+              left join discuss.messages m
+                on m.channel_id = c.id
+               and m.deleted_at is null
+               and m.parent_id is null
+              where c.archived_at is null
+              group by c.id, cm.member_id, rs.last_read_at
+            $body$
+          $fn$;
+        end if;
+        grant execute on function discuss.unread_counts() to authenticated, service_role;
         if exists (select 1 from pg_roles where rolname = 'service_role') then
           alter function discuss.ensure_project_setup(text, uuid, text, text, text) owner to service_role;
           alter function discuss.current_project_ref() owner to service_role;
