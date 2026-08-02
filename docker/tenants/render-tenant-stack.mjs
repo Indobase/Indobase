@@ -61,7 +61,7 @@ function parseEnvInt(name, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
-/** Non-negative int; empty env → fallback (used for PGRST_DB_MAX_ROWS where 0 is valid). */
+/** Non-negative int; empty env → fallback. (Do not emit PGRST_DB_MAX_ROWS=0 — PostgREST returns zero rows.) */
 function parseEnvNonNegInt(name, fallback) {
   const raw = process.env[name]
   if (raw === undefined || String(raw).trim() === '') return fallback
