@@ -38,7 +38,7 @@ export async function getOrganizationMembers(
   const invitedMembers =
     orgInvitesError || !orgInvites
       ? []
-      : orgInvites.invitations.map((invite) => {
+      : (orgInvites.invitations ?? []).map((invite) => {
           const member = {
             invited_at: invite.invited_at,
             invited_id: invite.id,
@@ -49,7 +49,14 @@ export async function getOrganizationMembers(
           return { ...member, role_ids: [invite.role_id] }
         })
 
-  return [...orgMembers, ...invitedMembers] as OrganizationMember[]
+  // Platform handler returns `{ members: [...] }`; older paths may return a bare array.
+  const memberRows = Array.isArray(orgMembers)
+    ? orgMembers
+    : Array.isArray((orgMembers as { members?: unknown })?.members)
+      ? (orgMembers as { members: OrganizationMember[] }).members
+      : []
+
+  return [...memberRows, ...invitedMembers] as OrganizationMember[]
 }
 
 export type OrganizationMembersData = Awaited<ReturnType<typeof getOrganizationMembers>>
