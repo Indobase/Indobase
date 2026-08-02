@@ -88,11 +88,6 @@ function workspaceMapFromSession(session: Session) {
   })
 }
 
-function suiteLaunchPath(pathname: string): string {
-  if (!SUITE_UPSTREAM) return pathname
-  return upstreamSuitePath(pathname)
-}
-
 function resolveRedirectFromQuery(search: string, session: Session): string {
   const params = new URLSearchParams(search)
   const moduleParam = params.get('module')
@@ -102,10 +97,10 @@ function resolveRedirectFromQuery(search: string, session: Session): string {
     if (moduleParam === 'mail') {
       return `${STUDIO_URL}/project/${encodeURIComponent(session.projectRef)}/workspace?open=mail`
     }
-    return suiteLaunchPath(modulePath(map, moduleParam))
+    return modulePath(map, moduleParam)
   }
 
-  return suiteLaunchPath(workspaceHomePath(map))
+  return workspaceHomePath(map)
 }
 
 function sessionFromRequest(c: Context): Session | null {
