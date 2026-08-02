@@ -76,12 +76,17 @@ export function useCrmCallerRole(projectRef?: string): {
 }
 
 async function ensureCrmInstalled(projectRef: string) {
+  const { getAccessToken } = await import('common')
+  const accessToken = await getAccessToken()
   const response = await fetch(
     `/api/platform/projects/${encodeURIComponent(projectRef)}/crm/ensure`,
     {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
     }
   )
   if (!response.ok) {

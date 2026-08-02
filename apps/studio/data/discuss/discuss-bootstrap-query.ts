@@ -74,12 +74,17 @@ export function useDiscussCallerRole(projectRef?: string): {
 }
 
 async function ensureDiscussInstalled(projectRef: string) {
+  const { getAccessToken } = await import('common')
+  const accessToken = await getAccessToken()
   const response = await fetch(
     `/api/platform/projects/${encodeURIComponent(projectRef)}/discuss/ensure`,
     {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
     }
   )
   if (!response.ok) {
