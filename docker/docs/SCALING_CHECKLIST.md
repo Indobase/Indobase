@@ -16,7 +16,7 @@ Use this when traffic, connection counts, or latency grow. Tuning lives in Studi
 - **`SAAS_TENANT_POSTGREST_DB_POOL`** — primary lever for concurrent REST queries; keep under the DB budget above.
 - **`SAAS_TENANT_POSTGREST_POOL_ACQUISITION_TIMEOUT`** — fail fast when the pool is saturated instead of hanging (seconds).
 - **`SAAS_TENANT_POSTGREST_POOL_MAX_IDLETIME`** — shrink idle connections during quiet periods (seconds).
-- **`SAAS_TENANT_POSTGREST_DB_MAX_ROWS`** — optional cap on large `SELECT` responses (`0` = unlimited); useful for abuse protection on public APIs.
+- **`SAAS_TENANT_POSTGREST_DB_MAX_ROWS`** — optional positive cap on large `SELECT` responses (omit / unset = unlimited). **Never set `0`** — PostgREST treats that as “return zero rows”.
 - **`SAAS_TENANT_POSTGREST_MEM_LIMIT`** — Docker `mem_limit` for large JSON payloads / spikes.
 
 ## 3. Edge and Realtime
