@@ -96,5 +96,28 @@ end;
 $$;
 
 revoke all on function crm.ensure_project_setup(text, uuid, text, text, text) from public;
+revoke all on function crm.ensure_project_setup(text, uuid, text, text, text) from authenticated, anon;
+
+-- SET row_security=off requires a BYPASSRLS owner. Reassign to service_role; grant EXECUTE to
+-- the installer (Studio SQL), not authenticated/anon.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant usage, create on schema crm to service_role;
+    grant all on all tables in schema crm to service_role;
+    grant all on all sequences in schema crm to service_role;
+    alter function crm.ensure_project_setup(text, uuid, text, text, text) owner to service_role;
+    alter function crm.current_project_ref() owner to service_role;
+    alter function crm.current_member_ids() owner to service_role;
+  end if;
+  execute format(
+    'grant execute on function crm.ensure_project_setup(text, uuid, text, text, text) to %I',
+    current_user
+  );
+exception
+  when insufficient_privilege then null;
+  when undefined_object then null;
+end
+$$;
 
 commit;

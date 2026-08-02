@@ -56,6 +56,13 @@ export async function ensureDiscussSchema({
   // Expose discuss to PostgREST without requiring a stack recreate. Kong/PostgREST may still need
   // a reload for PGRST_DB_SCHEMAS env changes on older stacks; USAGE grants help discovery.
   // 006 also ALTERs authenticator's pgrst.db_schemas (best-effort) and NOTIFYs reload.
+  //
+  // Bootstrap helpers use SET row_security=off under FORCE RLS. That GUC only works for
+  // BYPASSRLS/superuser owners — otherwise Postgres errors with "query would be affected by
+  // row-level security…". Fresh CREATE as the tenant DB role leaves helpers tenant-owned;
+  // reassign to service_role (tenant is a member; has BYPASSRLS). Grant EXECUTE to CURRENT_USER
+  // so Studio's pg-meta SQL path can call ensure_project_setup (still revoked from
+  // authenticated/anon/public so PostgREST cannot).
   const grants = await executeQuery({
     query: `
       do $$
@@ -69,8 +76,50 @@ export async function ensureDiscussSchema({
         if exists (select 1 from pg_roles where rolname = 'authenticated') then
           execute 'grant usage on schema discuss to authenticated';
         end if;
+        if exists (select 1 from pg_roles where rolname = 'service_role') then
+          execute 'grant usage, create on schema discuss to service_role';
+          execute 'grant all on all tables in schema discuss to service_role';
+          execute 'grant all on all sequences in schema discuss to service_role';
+        end if;
       end
       $$;
+
+      do $$
+      begin
+        if to_regprocedure('discuss.ensure_project_setup(text,uuid,text,text,text)') is null then
+          return;
+        end if;
+        if exists (select 1 from pg_roles where rolname = 'service_role') then
+          alter function discuss.ensure_project_setup(text, uuid, text, text, text) owner to service_role;
+          alter function discuss.current_project_ref() owner to service_role;
+          alter function discuss.current_member_ids() owner to service_role;
+          alter function discuss.my_channel_ids() owner to service_role;
+          alter function discuss.my_project_refs() owner to service_role;
+          if to_regprocedure('discuss.channel_membership_count(uuid)') is not null then
+            alter function discuss.channel_membership_count(uuid) owner to service_role;
+          end if;
+        end if;
+        revoke all on function discuss.ensure_project_setup(text, uuid, text, text, text) from public;
+        revoke all on function discuss.ensure_project_setup(text, uuid, text, text, text) from authenticated, anon;
+        execute format(
+          'grant execute on function discuss.ensure_project_setup(text, uuid, text, text, text) to %I',
+          current_user
+        );
+        if to_regprocedure('discuss.channel_membership_count(uuid)') is not null then
+          revoke all on function discuss.channel_membership_count(uuid) from public;
+          revoke all on function discuss.channel_membership_count(uuid) from authenticated, anon;
+          execute format(
+            'grant execute on function discuss.channel_membership_count(uuid) to %I',
+            current_user
+          );
+        end if;
+      exception
+        when insufficient_privilege then null;
+        when undefined_function then null;
+        when undefined_object then null;
+      end
+      $$;
+
       notify pgrst, 'reload config';
       notify pgrst, 'reload schema';
     `,

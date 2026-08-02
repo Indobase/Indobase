@@ -173,5 +173,52 @@ end;
 $$;
 
 revoke all on function discuss.ensure_project_setup(text, uuid, text, text, text) from public;
+revoke all on function discuss.ensure_project_setup(text, uuid, text, text, text) from authenticated, anon;
+
+-- Studio SQL asserts memberships after ensure; FORCE RLS hides channel_members from the
+-- tenant role without a JWT, so count through a DEFINER helper instead of a direct SELECT.
+create or replace function discuss.channel_membership_count(p_member_id uuid)
+returns int
+language sql
+stable
+security definer
+set search_path = discuss, pg_catalog
+set row_security = off
+as $$
+  select count(*)::int from discuss.channel_members where member_id = p_member_id;
+$$;
+
+revoke all on function discuss.channel_membership_count(uuid) from public;
+revoke all on function discuss.channel_membership_count(uuid) from authenticated, anon;
+
+-- SET row_security=off only works for BYPASSRLS/superuser owners. Tenant CREATE leaves the
+-- functions owned by the DB role; reassign to service_role (tenant is a member) and grant
+-- EXECUTE to the installer so Studio's SQL path can bootstrap without exposing the RPC on PostgREST.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant usage, create on schema discuss to service_role;
+    grant all on all tables in schema discuss to service_role;
+    grant all on all sequences in schema discuss to service_role;
+    alter function discuss.ensure_project_setup(text, uuid, text, text, text) owner to service_role;
+    alter function discuss.channel_membership_count(uuid) owner to service_role;
+    alter function discuss.current_project_ref() owner to service_role;
+    alter function discuss.current_member_ids() owner to service_role;
+    alter function discuss.my_channel_ids() owner to service_role;
+    alter function discuss.my_project_refs() owner to service_role;
+  end if;
+  execute format(
+    'grant execute on function discuss.ensure_project_setup(text, uuid, text, text, text) to %I',
+    current_user
+  );
+  execute format(
+    'grant execute on function discuss.channel_membership_count(uuid) to %I',
+    current_user
+  );
+exception
+  when insufficient_privilege then null;
+  when undefined_object then null;
+end
+$$;
 
 commit;
