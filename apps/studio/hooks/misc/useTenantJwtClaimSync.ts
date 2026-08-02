@@ -63,9 +63,9 @@ export function useTenantJwtClaimSync() {
         }
 
         failSlugRef.current = null
-        const session = await refreshSession()
+        const refreshed = await refreshSession()
         // Dead refresh cookie / 401 must not keep scheduling sync retries.
-        if (!session) {
+        if (!refreshed) {
           failSlugRef.current = org.slug
         }
       })()
