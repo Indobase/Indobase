@@ -46,11 +46,16 @@ export async function ensureDiscussSchema({
   // Do NOT pass actorId here. executeQuery injects a WITH set_config CTE when actorId is set,
   // which is invalid before DDL (`begin;` / `create` / `do $$`) and surfaces as
   // `syntax error at or near "begin"`. Schema install is a service-role connection, not RLS.
-  // Each pg-meta call is typically a fresh session, so prepend SET on every batch. FORCE RLS
-  // still applies to the table owner otherwise.
-  for (const sql of DISCUSS_SCHEMA_SQL_FILES) {
+  // Do NOT `set row_security = off` here either — that GUC means "error if RLS would apply",
+  // which produces `query would be affected by row-level security policy`.
+  // When the schema already exists, only re-apply the latest repair packs (008+) so we do not
+  // re-hit non-idempotent CREATE POLICY from early files on every Discuss open.
+  const sqlFiles = alreadyPresent
+    ? DISCUSS_SCHEMA_SQL_FILES.filter((_, i) => i >= DISCUSS_SCHEMA_SQL_FILES.length - 1)
+    : [...DISCUSS_SCHEMA_SQL_FILES]
+  for (const sql of sqlFiles) {
     const result = await executeQuery({
-      query: `set row_security = off;\n${sql}`,
+      query: sql,
       headers: { 'x-connection-encrypted': connectionEncrypted },
     })
     if (result.error) throw result.error
@@ -61,7 +66,6 @@ export async function ensureDiscussSchema({
   // 006 also ALTERs authenticator's pgrst.db_schemas (best-effort) and NOTIFYs reload.
   await executeQuery({
     query: `
-      set row_security = off;
       do $$
       begin
         if exists (select 1 from pg_roles where rolname = 'authenticator') then
