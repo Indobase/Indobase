@@ -32,14 +32,16 @@ export function tenantPostgrestPoolMaxIdletime(): string {
 }
 
 /**
- * Cap very large SELECT responses (`PGRST_DB_MAX_ROWS`). `0` = unlimited (default).
- * Set e.g. `100000` for abuse protection on public APIs.
+ * Cap very large SELECT responses (`PGRST_DB_MAX_ROWS`).
+ *
+ * PostgREST treats `0` as "return at most zero rows" — not unlimited. Leave unset / empty for
+ * unlimited (PostgREST default). Set a positive integer (e.g. `100000`) for abuse protection.
  */
-export function tenantPostgrestDbMaxRows(): string {
+export function tenantPostgrestDbMaxRows(): string | undefined {
   const raw = process.env.SAAS_TENANT_POSTGREST_DB_MAX_ROWS?.trim()
-  if (raw === undefined || raw === '') return '0'
+  if (raw === undefined || raw === '' || raw === '0') return undefined
   const n = parseInt(raw, 10)
-  if (!Number.isFinite(n) || n < 0) return '0'
+  if (!Number.isFinite(n) || n < 1) return undefined
   return String(n)
 }
 

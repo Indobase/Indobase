@@ -139,7 +139,11 @@ const tenantSmtpSenderName =
   process.env.SMTP_SENDER_NAME ||
   'Indobase'
 const tenantMailerTemplatesBase = resolveTenantMailerTemplatesBase()
-const pgrstMaxRows = parseEnvNonNegInt('SAAS_TENANT_POSTGREST_DB_MAX_ROWS', 0)
+// PostgREST treats MAX_ROWS=0 as "return zero rows", not unlimited. Omit when unset/0.
+const pgrstMaxRowsRaw = process.env.SAAS_TENANT_POSTGREST_DB_MAX_ROWS?.trim()
+const pgrstMaxRows =
+  pgrstMaxRowsRaw && pgrstMaxRowsRaw !== '0' ? parseEnvNonNegInt('SAAS_TENANT_POSTGREST_DB_MAX_ROWS', 0) : null
+const pgrstMaxRowsEnv = pgrstMaxRows ? `\n      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"` : ''
 
 function safeRef(ref) {
   if (!/^[a-z0-9-]+$/i.test(ref)) {
@@ -198,8 +202,7 @@ services:
       PGRST_JWT_SECRET: ${jwtSecret}
       PGRST_DB_POOL: "${pgrstPool}"
       PGRST_DB_POOL_ACQUISITION_TIMEOUT: "${pgrstPoolAcquire}"
-      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"
-      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"
+      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"${pgrstMaxRowsEnv}
     ports:
       - "127.0.0.1:${ports.rest}:3000"
 

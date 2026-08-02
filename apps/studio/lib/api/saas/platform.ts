@@ -3163,7 +3163,9 @@ function buildSlimTenantDockerCompose(opts: {
   const pgrstPool = tenantPostgrestDbPool()
   const pgrstPoolAcquire = tenantPostgrestPoolAcquisitionTimeout()
   const pgrstPoolIdle = tenantPostgrestPoolMaxIdletime()
+  // undefined = unlimited. Do not emit PGRST_DB_MAX_ROWS: "0" — PostgREST treats 0 as zero rows.
   const pgrstMaxRows = tenantPostgrestDbMaxRows()
+  const pgrstMaxRowsEnv = pgrstMaxRows ? `\n      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"` : ''
   const rtNofile = tenantRealtimeRlimitNofile()
   const rtDbPool = tenantRealtimeDbPoolSize()
   const storageFileLimit = tenantStorageFileSizeLimitBytes()
@@ -3302,8 +3304,7 @@ services:
       PGRST_JWT_SECRET: ${jwt}
       PGRST_DB_POOL: "${pgrstPool}"
       PGRST_DB_POOL_ACQUISITION_TIMEOUT: "${pgrstPoolAcquire}"
-      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"
-      PGRST_DB_MAX_ROWS: "${pgrstMaxRows}"
+      PGRST_DB_POOL_MAX_IDLETIME: "${pgrstPoolIdle}"${pgrstMaxRowsEnv}
     ports:
       - ${composePortBinding(opts.ports.rest, 3000)}
 

@@ -71,6 +71,12 @@ export function getCrmClient(vars: CrmClientVariables): CrmClient {
 
   const client = createClient<CrmDatabase, 'crm'>(endpoint, apiKey, {
     db: { schema: 'crm' },
+    global: {
+      headers: {
+        'Accept-Profile': 'crm',
+        'Content-Profile': 'crm',
+      },
+    },
     // Supplying `accessToken` puts the client in "bring your own auth" mode: it never reads or
     // writes a GoTrue session of its own, and it uses this token for every PostgREST request.
     accessToken: async () => {

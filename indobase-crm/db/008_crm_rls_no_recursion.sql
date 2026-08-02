@@ -2,6 +2,8 @@
 
 begin;
 
+-- PostgREST on PostgreSQL 14+ exposes JWT as request.jwt.claims (JSON). Legacy
+-- request.jwt.claim.* GUCs are not set — prefer the JSON bag, fall back for older stacks.
 create or replace function crm.current_project_ref()
 returns text
 language sql
@@ -10,7 +12,10 @@ security definer
 set search_path = crm, pg_catalog
 set row_security = off
 as $$
-  select nullif(current_setting('request.jwt.claim.project_ref', true), '');
+  select coalesce(
+    nullif(current_setting('request.jwt.claims', true), '')::json->>'project_ref',
+    nullif(current_setting('request.jwt.claim.project_ref', true), '')
+  );
 $$;
 
 create or replace function crm.current_member_ids()
@@ -24,7 +29,10 @@ as $$
   select m.id
   from crm.members m
   where crm.current_project_ref() is not null
-    and m.gotrue_id = nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+    and m.gotrue_id = coalesce(
+      nullif(current_setting('request.jwt.claims', true), '')::json->>'sub',
+      nullif(current_setting('request.jwt.claim.sub', true), '')
+    )::uuid
     and m.project_ref = crm.current_project_ref();
 $$;
 
