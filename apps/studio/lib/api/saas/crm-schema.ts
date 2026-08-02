@@ -34,28 +34,25 @@ export async function ensureCrmSchema({
   const existing = await executeQuery<{ present: boolean }>({
     query: `select to_regnamespace('crm') is not null as present`,
     headers: { 'x-connection-encrypted': connectionEncrypted },
-    actorId: gotrueId,
   })
   if (existing.error) throw existing.error
 
   const alreadyPresent = Boolean(existing.data?.[0]?.present)
 
-  // Do NOT pass actorId: executeQuery wraps queries in a WITH set_config CTE, which breaks DDL
-  // (`syntax error at or near "begin"`). Schema install uses the service connection, not RLS.
-  // Do NOT `set row_security = off` — that GUC errors when RLS would apply.
-  // Re-open path: only latest repair pack when schema already present.
-  const sqlFiles = alreadyPresent
-    ? CRM_SCHEMA_SQL_FILES.filter((_, i) => i >= CRM_SCHEMA_SQL_FILES.length - 1)
-    : [...CRM_SCHEMA_SQL_FILES]
-  for (const sql of sqlFiles) {
-    const result = await executeQuery({
-      query: sql,
-      headers: { 'x-connection-encrypted': connectionEncrypted },
-    })
-    if (result.error) throw result.error
+  // Do NOT pass actorId: executeQuery wraps queries in a WITH set_config CTE, which breaks DDL.
+  // Fresh install: apply full pack. Re-open: schema already installed (repairs applied out-of-band
+  // or on first open); skip re-apply to avoid ownership / FORCE RLS fights with pg-meta role.
+  if (!alreadyPresent) {
+    for (const sql of CRM_SCHEMA_SQL_FILES) {
+      const result = await executeQuery({
+        query: sql,
+        headers: { 'x-connection-encrypted': connectionEncrypted },
+      })
+      if (result.error) throw result.error
+    }
   }
 
-  await executeQuery({
+  const grants = await executeQuery({
     query: `
       do $$
       begin
@@ -75,6 +72,7 @@ export async function ensureCrmSchema({
     `,
     headers: { 'x-connection-encrypted': connectionEncrypted },
   })
+  if (grants.error) throw grants.error
 
   return { installed: true, alreadyPresent }
 }
