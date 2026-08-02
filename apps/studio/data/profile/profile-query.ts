@@ -35,6 +35,11 @@ export const useProfileQuery = <TData = ProfileData>({
     queryKey: profileKeys.profile(),
     queryFn: ({ signal }) => getProfile(signal),
     staleTime: 1000 * 60 * 30,
+    // Auth recovery is handled once in ProfileProvider — don't thrash retries on 401.
+    retry: (failureCount, error) => {
+      if (error?.code === 401) return false
+      return failureCount < 3
+    },
     ...options,
     enabled,
   })

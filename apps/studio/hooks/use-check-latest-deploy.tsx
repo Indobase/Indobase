@@ -1,12 +1,14 @@
 import dayjs from 'dayjs'
 import { useRouter } from 'next/router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { IS_SAAS, useFlag } from 'common'
 import { useDeploymentCommitQuery } from 'data/utils/deployment-commit-query'
 import { scheduleIdleWork } from 'lib/scheduleIdleWork'
 import { Button, StatusIcon } from 'ui'
+
+let hasLoggedStudioCommit = false
 
 const DeployCheckToast = ({ id }: { id: string | number }) => {
   const router = useRouter()
@@ -50,18 +52,15 @@ export function useCheckLatestDeploy() {
     staleTime: 1000 * 60 * 10, // 10 minutes
   })
 
-  const commitLoggedRef = useRef(false)
+  // Module-level once-flag: remount loops create new refs and would otherwise spam the console.
   useEffect(() => {
-    if (commit && !commitLoggedRef.current) {
-      const commitTime =
-        commit.commitTime === 'unknown'
-          ? 'unknown time'
-          : dayjs(commit.commitTime).format('YYYY-MM-DD HH:mm:ss Z')
-      console.log(
-        `Indobase Studio is running commit ${commit.commitSha} deployed at ${commitTime}.`
-      )
-      commitLoggedRef.current = true
-    }
+    if (!commit || hasLoggedStudioCommit) return
+    hasLoggedStudioCommit = true
+    const commitTime =
+      commit.commitTime === 'unknown'
+        ? 'unknown time'
+        : dayjs(commit.commitTime).format('YYYY-MM-DD HH:mm:ss Z')
+    console.log(`Indobase Studio is running commit ${commit.commitSha} deployed at ${commitTime}.`)
   }, [commit])
 
   useEffect(() => {

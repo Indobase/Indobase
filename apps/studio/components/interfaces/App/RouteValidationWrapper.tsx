@@ -8,7 +8,7 @@ import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization
 import { UNAUTH_ROUTES } from 'lib/auth'
 import { BASE_PATH } from 'lib/constants'
 import { useRouter } from 'next/router'
-import { PropsWithChildren, useEffect } from 'react'
+import { PropsWithChildren, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { ResponseError } from 'types'
 
@@ -66,10 +66,17 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     }
   }, [isAuthReady, isLoggedIn, orgsInitialized, slug, router, DEFAULT_HOME, organizationsRef])
 
+  const unauthRedirectStartedRef = useRef(false)
+
   useEffect(() => {
+    if (isLoggedIn) {
+      unauthRedirectStartedRef.current = false
+      return
+    }
     if (isAuthLoading) return
-    if (isLoggedIn) return
     if (isExceptUrl()) return
+    if (unauthRedirectStartedRef.current) return
+    unauthRedirectStartedRef.current = true
 
     const asPath = router.asPath ?? ''
     const dashboardPrefix = asPath.startsWith('/dashboard') ? '/dashboard' : ''
@@ -79,8 +86,8 @@ export const RouteValidationWrapper = ({ children }: PropsWithChildren<{}>) => {
     const searchParams = new URLSearchParams(location.search)
     const returnTo = `${pathname}${location.search}${location.hash}`
     searchParams.set('returnTo', returnTo)
-    router.push(`${dashboardPrefix}/sign-in?${searchParams.toString()}`)
-  }, [isAuthLoading, isLoggedIn, router, router.asPath])
+    void router.replace(`${dashboardPrefix}/sign-in?${searchParams.toString()}`)
+  }, [isAuthLoading, isLoggedIn, router])
 
   useEffect(() => {
     if (!router.isReady || !isAuthReady) return

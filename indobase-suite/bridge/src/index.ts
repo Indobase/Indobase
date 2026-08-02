@@ -516,18 +516,31 @@ app.get('/editor/:id', async (c) => {
 
 // ── Workspace shell routes ───────────────────────────────────────────────────
 
-function renderModulePage(c: Context, moduleId?: string) {
+async function renderModulePage(c: Context, moduleId?: string) {
   const session = sessionFromRequest(c)
   if (!session) return c.redirect(`${STUDIO_URL}/sign-in`)
   const map = workspaceMapFromSession(session)
   const active =
     moduleId && isSuiteModuleId(moduleId) && moduleId !== 'mail' ? moduleId : 'files'
+  const kindFilter: WorkspaceFileKind | undefined =
+    active === 'docs'
+      ? 'doc'
+      : active === 'sheets'
+        ? 'sheet'
+        : active === 'presentations'
+          ? 'slide'
+          : undefined
+  const initialFiles =
+    active === 'calendar' || active === 'meetings'
+      ? undefined
+      : await listFiles(session.projectRef, kindFilter).catch(() => [] as Awaited<ReturnType<typeof listFiles>>)
   return c.html(
     renderWorkspaceShell({
       session,
       map,
       activeModule: active,
       studioUrl: session.studioUrl || STUDIO_URL,
+      initialFiles,
     })
   )
 }

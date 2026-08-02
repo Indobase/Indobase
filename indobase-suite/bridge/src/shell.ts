@@ -5,6 +5,7 @@
 
 import type { Session } from './auth.js'
 import type { EditorConfigBundle } from './onlyoffice.js'
+import type { WorkspaceFileMeta } from './files.js'
 import { listModulesForApi, type SuiteModuleId } from './modules.js'
 import type { WorkspaceMap } from './workspace-map.js'
 import { workspaceHomePath } from './workspace-map.js'
@@ -355,11 +356,53 @@ function studioWorkspaceHref(studioUrl: string, projectRef: string): string {
   return `${studioUrl}/project/${encodeURIComponent(projectRef)}/workspace`
 }
 
+function kindLabelServer(kind: string): string {
+  if (kind === 'sheet') return 'Sheet'
+  if (kind === 'slide') return 'Presentation'
+  return 'Doc'
+}
+
+function fmtDateServer(iso: string): string {
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    const now = new Date()
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    }
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+  } catch {
+    return iso
+  }
+}
+
+/** Server-rendered file table so module navigations skip the Loading… flash. */
+export function renderFileListHtml(files: WorkspaceFileMeta[]): string {
+  if (!files.length) {
+    return `<div class="empty" data-ssr="1">No files yet — create a Doc, Sheet, or Presentation to get started.</div>`
+  }
+  const rows = files
+    .map((f) => {
+      const label = kindLabelServer(f.kind)
+      const chipClass = `chip ${f.kind === 'sheet' || f.kind === 'slide' ? f.kind : 'doc'}`
+      return `<tr>
+          <td><a class="file-link" href="/editor/${encodeURIComponent(f.id)}">${esc(f.name)}</a></td>
+          <td><span class="${chipClass}">${esc(label)}</span></td>
+          <td><span title="${esc(f.updatedAt)}">${esc(fmtDateServer(f.updatedAt))}</span></td>
+          <td><button type="button" class="danger-link" data-del="${esc(f.id)}" data-name="${esc(f.name)}" aria-label="Delete ${esc(f.name)}">Delete</button></td>
+        </tr>`
+    })
+    .join('')
+  return `<div data-ssr="1"><table><thead><tr><th>Name</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+}
+
 export function renderWorkspaceShell(opts: {
   session: Session
   map: WorkspaceMap
   activeModule?: SuiteModuleId
   studioUrl: string
+  /** When set, Files/Docs/Sheets/Presentations render this list instead of "Loading…". */
+  initialFiles?: WorkspaceFileMeta[]
 }): string {
   const home = workspaceHomePath(opts.map)
   const modules = listModulesForApi()
@@ -428,7 +471,11 @@ export function renderWorkspaceShell(opts: {
         <h1>${esc(modules.find((m) => m.id === active)?.label || 'Files')}</h1>
         ${createControls}
       </div>
-      <div class="table"><div id="file-list" class="empty">Loading…</div></div>
+      <div class="table"><div id="file-list">${
+        opts.initialFiles
+          ? renderFileListHtml(opts.initialFiles)
+          : '<div class="empty">Loading…</div>'
+      }</div></div>
       <p class="err" id="err" hidden></p>
       <dialog class="dialog-backdrop" id="create-dialog">
         <form class="dialog-card" method="dialog" id="create-form">
@@ -603,8 +650,13 @@ export function renderWorkspaceShell(opts: {
           '<td><button type="button" class="danger-link" data-del="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" aria-label="Delete ' + escapeHtml(f.name) + '">Delete</button></td>' +
           '</tr>';
       }).join('');
-      list.innerHTML = '<table><thead><tr><th>Name</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
-      list.querySelectorAll('[data-del]').forEach(function (btn) {
+      list.innerHTML = '<div><table><thead><tr><th>Name</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      bindDeletes(list);
+    }
+    function bindDeletes(root) {
+      (root || document).querySelectorAll('[data-del]').forEach(function (btn) {
+        if (btn.getAttribute('data-bound') === '1') return;
+        btn.setAttribute('data-bound', '1');
         btn.addEventListener('click', async function () {
           var fname = btn.getAttribute('data-name') || 'this file';
           if (!confirm('Delete "' + fname + '"? This cannot be undone.')) return;
@@ -671,7 +723,13 @@ export function renderWorkspaceShell(opts: {
         openCreate(btn.getAttribute('data-kind'));
       });
     });
-    loadFiles();
+    var listEl = document.getElementById('file-list');
+    // SSR already painted the table — bind deletes and skip the Loading… remount flash.
+    if (listEl && listEl.querySelector('[data-ssr="1"]')) {
+      bindDeletes(listEl);
+    } else {
+      loadFiles();
+    }
   })();
   </script>`
 
@@ -731,14 +789,11 @@ export function renderEditorPage(opts: {
   <link rel="icon" href="/brand/indobase-favicon.svg" type="image/svg+xml" />
   <style>
     ${STYLES}
-    body { background: #0f172a; }
-    header.appbar { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }
-    header.appbar .meta, header.appbar a.studio { color: #94a3b8; }
-    header.appbar .pill { background: #1e3a5f; color: #93c5fd; }
-    #editor { position: absolute; inset: 52px 0 0 0; }
-    .boot { color: #94a3b8; padding: 24px; font-size: 14px; }
+    #editor { position: absolute; inset: 52px 0 0 0; background: #fff; }
+    .boot { color: var(--muted); padding: 24px; font-size: 14px; }
   </style>
-  <script src="${esc(opts.editor.documentServerApiJs)}"></script>
+  <script src="${esc(opts.editor.documentServerApiJs)}"
+    onerror="window.__ibDocsApiFailed=true"></script>
 </head>
 <body>
   <header class="appbar">
@@ -753,17 +808,42 @@ export function renderEditorPage(opts: {
   <script>
   (function () {
     var cfg = ${configJson};
-    function start() {
-      if (!window.DocsAPI || !window.DocsAPI.DocEditor) {
-        document.getElementById('editor').innerHTML =
-          '<p class="boot">Editor is starting up. Refresh in a few seconds if this persists.</p>';
+    function fail(msg) {
+      var el = document.getElementById('editor');
+      if (el) el.innerHTML = '<p class="boot">' + msg + '</p>';
+    }
+    function start(attempt) {
+      attempt = attempt || 0;
+      if (window.__ibDocsApiFailed) {
+        fail('Could not load the document editor. Check your connection and try again.');
         return;
       }
-      document.getElementById('editor').innerHTML = '';
-      new window.DocsAPI.DocEditor('editor', cfg);
+      if (!window.DocsAPI || !window.DocsAPI.DocEditor) {
+        if (attempt < 12) {
+          setTimeout(function () { start(attempt + 1); }, 350);
+          return;
+        }
+        fail('Editor is starting up. Refresh in a few seconds if this persists.');
+        return;
+      }
+      var el = document.getElementById('editor');
+      if (!el) return;
+      el.innerHTML = '';
+      try {
+        var events = Object.assign({}, cfg.events || {}, {
+          onError: function (event) {
+            console.error('[workspace] editor error', event);
+            fail('The editor reported an error. Go back to Files and open the document again.');
+          }
+        });
+        new window.DocsAPI.DocEditor('editor', Object.assign({}, cfg, { events: events }));
+      } catch (err) {
+        console.error('[workspace] editor boot failed', err);
+        fail('Could not start the editor. Go back to Files and try again.');
+      }
     }
-    if (window.DocsAPI) start();
-    else window.addEventListener('load', start);
+    if (window.DocsAPI) start(0);
+    else window.addEventListener('load', function () { start(0); });
   })();
   </script>
 </body>

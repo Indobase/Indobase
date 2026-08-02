@@ -1,6 +1,5 @@
 import { getAccessToken, useParams } from 'common'
 import { useCallback, useState } from 'react'
-import { toast } from 'sonner'
 
 import {
   isSuiteRoleDeniedMessage,
@@ -33,7 +32,6 @@ export function useSuiteLaunch(options?: UseSuiteLaunchOptions) {
     async (module?: SuiteModuleId): Promise<SuiteLaunchResult> => {
       if (!ref) {
         const message = 'Project ref is required to open Workspace'
-        toast.error(message)
         return { ok: false, denied: false, message }
       }
 
@@ -83,8 +81,8 @@ export function useSuiteLaunch(options?: UseSuiteLaunchOptions) {
             payload.external_product === 'email' ? ('email' as const) : undefined,
         }
       } catch (error) {
+        // Caller (WorkspaceLauncher) owns the inline error banner — avoid toast+banner double flash.
         const message = error instanceof Error ? error.message : 'Failed to open Workspace'
-        toast.error(message)
         setIsLaunching(false)
         return { ok: false, denied: false, message }
       }

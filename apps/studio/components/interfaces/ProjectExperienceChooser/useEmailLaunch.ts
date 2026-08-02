@@ -1,6 +1,5 @@
 import { getAccessToken, useParams } from 'common'
 import { useCallback, useState } from 'react'
-import { toast } from 'sonner'
 
 import {
   EMAIL_ROLE_DENIED_CODE,
@@ -24,7 +23,6 @@ export function useEmailLaunch(options?: UseEmailLaunchOptions) {
   const launch = useCallback(async (): Promise<EmailLaunchResult> => {
     if (!ref) {
       const message = 'Project ref is required to open Email'
-      toast.error(message)
       return { ok: false, denied: false, message }
     }
 
@@ -71,8 +69,8 @@ export function useEmailLaunch(options?: UseEmailLaunchOptions) {
         role: typeof payload.role === 'string' ? payload.role : undefined,
       }
     } catch (error) {
+      // Caller (WorkspaceLauncher) owns the inline error banner — avoid toast+banner double flash.
       const message = error instanceof Error ? error.message : 'Failed to open Email'
-      toast.error(message)
       setIsLaunching(false)
       return { ok: false, denied: false, message }
     }
