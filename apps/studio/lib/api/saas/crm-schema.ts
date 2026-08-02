@@ -42,9 +42,10 @@ export async function ensureCrmSchema({
 
   // Do NOT pass actorId: executeQuery wraps queries in a WITH set_config CTE, which breaks DDL
   // (`syntax error at or near "begin"`). Schema install uses the service connection, not RLS.
+  // Each pg-meta call is typically a fresh session, so prepend SET on every batch.
   for (const sql of CRM_SCHEMA_SQL_FILES) {
     const result = await executeQuery({
-      query: sql,
+      query: `set row_security = off;\n${sql}`,
       headers: { 'x-connection-encrypted': connectionEncrypted },
     })
     if (result.error) throw result.error
