@@ -40,11 +40,12 @@ export async function ensureCrmSchema({
 
   const alreadyPresent = Boolean(existing.data?.[0]?.present)
 
+  // Do NOT pass actorId: executeQuery wraps queries in a WITH set_config CTE, which breaks DDL
+  // (`syntax error at or near "begin"`). Schema install uses the service connection, not RLS.
   for (const sql of CRM_SCHEMA_SQL_FILES) {
     const result = await executeQuery({
       query: sql,
       headers: { 'x-connection-encrypted': connectionEncrypted },
-      actorId: gotrueId,
     })
     if (result.error) throw result.error
   }
@@ -68,7 +69,6 @@ export async function ensureCrmSchema({
       notify pgrst, 'reload schema';
     `,
     headers: { 'x-connection-encrypted': connectionEncrypted },
-    actorId: gotrueId,
   })
 
   return { installed: true, alreadyPresent }

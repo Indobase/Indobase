@@ -43,11 +43,13 @@ export async function ensureDiscussSchema({
   const alreadyPresent = Boolean(existing.data?.[0]?.present)
   // Always re-apply: CREATE IF NOT EXISTS / OR REPLACE / grants are idempotent, and grants may
   // have been missing on an earlier partial install.
+  // Do NOT pass actorId here. executeQuery injects a WITH set_config CTE when actorId is set,
+  // which is invalid before DDL (`begin;` / `create` / `do $$`) and surfaces as
+  // `syntax error at or near "begin"`. Schema install is a service-role connection, not RLS.
   for (const sql of DISCUSS_SCHEMA_SQL_FILES) {
     const result = await executeQuery({
       query: sql,
       headers: { 'x-connection-encrypted': connectionEncrypted },
-      actorId: gotrueId,
     })
     if (result.error) throw result.error
   }
@@ -74,7 +76,6 @@ export async function ensureDiscussSchema({
       notify pgrst, 'reload schema';
     `,
     headers: { 'x-connection-encrypted': connectionEncrypted },
-    actorId: gotrueId,
   })
 
   return { installed: true, alreadyPresent }

@@ -1,6 +1,9 @@
 ._*
 **/._*
 
+# Agent-local secrets (never commit)
+.cursor/secrets/
+
 # Local tenant stack secrets (render-tenant-stack.mjs)
 docker/tenants/**/.tenant-db-password
 
