@@ -193,7 +193,7 @@ services:
       - tenant-db
     environment:
       PGRST_DB_URI: ${tenantDbUrl}
-      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_SCHEMAS: public,storage,graphql_public,discuss,crm
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${jwtSecret}
       PGRST_DB_POOL: "${pgrstPool}"

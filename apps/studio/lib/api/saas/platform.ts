@@ -3297,7 +3297,7 @@ services:
       - tenant_data_plane
     environment:
       PGRST_DB_URI: ${restUri}
-      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_SCHEMAS: public,storage,graphql_public,discuss,crm
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${jwt}
       PGRST_DB_POOL: "${pgrstPool}"

@@ -6,7 +6,7 @@ import { resolveEncryptedPgMetaConnectionForProject } from './project-connection
 import { loadProjectJwtSecretEncForMember, resolveProjectJwtSecret } from './project-jwt'
 import { getGotrueUserId } from './platform'
 
-export const DEFAULT_POSTGREST_DB_SCHEMA = 'public, storage, graphql_public'
+export const DEFAULT_POSTGREST_DB_SCHEMA = 'public, storage, graphql_public, discuss, crm'
 
 export type StoredPostgrestConfig = {
   db_schema?: string

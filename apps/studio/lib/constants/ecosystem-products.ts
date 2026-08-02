@@ -35,7 +35,6 @@ export const ECOSYSTEM_PRODUCTS = {
     /** Secondary descriptor — use in subtitles, not as the product tile title */
     descriptor: 'Team chat',
     tagline: 'Team chat for your org and project',
-    host: 'discuss.indobase.in',
     openLabel: 'Open Discuss',
   },
   meet: {
@@ -56,8 +55,7 @@ export const ECOSYSTEM_PRODUCTS = {
     id: 'crm',
     name: 'CRM',
     descriptor: 'Sales',
-    tagline: 'Leads, deals, and Kanban for your pipeline',
-    host: 'crm.indobase.in',
+    tagline: 'Leads, accounts, deals, and activities in Studio',
     openLabel: 'Open CRM',
   },
   domains: {

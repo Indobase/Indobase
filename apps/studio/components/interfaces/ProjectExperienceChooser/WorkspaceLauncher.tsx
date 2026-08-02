@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 import { useParams } from 'common'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
@@ -19,7 +20,6 @@ import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { SUITE_MODULES, type SuiteModuleId } from 'lib/api/saas/suite-launch-shared'
 
 import { useDesignLaunch } from './useDesignLaunch'
-import { useDiscussLaunch } from './useDiscussLaunch'
 import { useSuiteLaunch } from './useSuiteLaunch'
 
 const MODULE_ICONS: Record<SuiteModuleId, React.ReactNode> = {
@@ -78,9 +78,8 @@ export const WorkspaceLauncher = () => {
 
   const { launch: launchWorkspace, isLaunching: isLaunchingHome } = useSuiteLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
-  const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
   const [launchError, setLaunchError] = useState<string | null>(null)
-  const [activeModule, setActiveModule] = useState<SuiteModuleId | 'home' | 'discuss' | null>(null)
+  const [activeModule, setActiveModule] = useState<SuiteModuleId | 'home' | null>(null)
 
   const openModule = async (moduleId: SuiteModuleId) => {
     setLaunchError(null)
@@ -134,18 +133,6 @@ export const WorkspaceLauncher = () => {
     setActiveModule(null)
     if (!result.ok) {
       setLaunchError(result.message ?? 'Could not open Workspace.')
-      return
-    }
-    if (result.url) window.location.assign(result.url)
-  }
-
-  const openDiscuss = async () => {
-    setLaunchError(null)
-    setActiveModule('discuss')
-    const result = await launchDiscuss()
-    setActiveModule(null)
-    if (!result.ok) {
-      setLaunchError(result.message ?? `Could not open ${ECOSYSTEM_PRODUCTS.discuss.name}.`)
       return
     }
     if (result.url) window.location.assign(result.url)
@@ -218,14 +205,13 @@ export const WorkspaceLauncher = () => {
           {ECOSYSTEM_PRODUCTS.design.name}
         </button>{' '}
         from the project home. {ECOSYSTEM_PRODUCTS.discuss.descriptor} for this project lives in{' '}
-        <button
-          type="button"
-          className="text-[#3B8FD6] underline"
-          onClick={() => void openDiscuss()}
-          disabled={isLaunchingDiscuss}
-        >
-          {ECOSYSTEM_PRODUCTS.discuss.name}
-        </button>
+        {ref ? (
+          <Link href={`/project/${ref}/discuss`} className="text-[#3B8FD6] underline">
+            {ECOSYSTEM_PRODUCTS.discuss.name}
+          </Link>
+        ) : (
+          ECOSYSTEM_PRODUCTS.discuss.name
+        )}
         .
       </p>
     </div>

@@ -1,9 +1,9 @@
 # Third-party attribution
 
-Indobase CRM is built on [Twenty](https://github.com/twentyhq/twenty) (Twenty CRM), licensed under **AGPL-3.0**.
+Indobase CRM is a **native** Studio product. Conversation/sales data lives in each project's
+tenant Postgres (`crm` schema) with FORCE RLS.
 
-Upstream images: `twentycrm/twenty` (see `docker/deploy/docker-compose.yml`).
-
-Customer-facing product name is **CRM** (Indobase CRM in bridge titles). Do not expose "Twenty", "Twenty CRM", or upstream branding in user-visible UI, routes, OAuth client names, or email footers.
-
-Keep this NOTICE and upstream LICENSE attribution in the repository.
+Earlier Indobase CRM builds temporarily ran on [Twenty](https://github.com/twentyhq/twenty)
+(AGPL-3.0). That stack has been removed from the product path. Keep historical AGPL attribution
+for any retained upstream NOTICE fragments if present in git history; do not ship Twenty images
+or branding.

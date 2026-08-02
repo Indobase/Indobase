@@ -5,6 +5,7 @@ const {
   mockExecuteQuery,
   mockGetGotrueUserId,
   mockGetProjectHostingForRef,
+  mockPublishDiscussEvent,
   mockRecordAuditLog,
   mockResolveBuilderHandoffSecret,
 } = vi.hoisted(() => ({
@@ -12,12 +13,23 @@ const {
   mockExecuteQuery: vi.fn(),
   mockGetGotrueUserId: vi.fn(),
   mockGetProjectHostingForRef: vi.fn(),
+  mockPublishDiscussEvent: vi.fn(async () => ({
+    published: false,
+    messageId: null,
+    reason: 'no_activity_channel' as const,
+  })),
   mockRecordAuditLog: vi.fn(),
   mockResolveBuilderHandoffSecret: vi.fn(() => 'runtime-secret'),
 }))
 
 vi.mock('./audit', () => ({
   recordAuditLog: mockRecordAuditLog,
+}))
+
+// Best-effort side effect like recordAuditLog: mocked out so the Activity-channel publish does
+// not consume responses from this suite's scripted executeQuery queue.
+vi.mock('./discuss-events', () => ({
+  publishDiscussEvent: mockPublishDiscussEvent,
 }))
 
 vi.mock('./builder-launch', () => ({

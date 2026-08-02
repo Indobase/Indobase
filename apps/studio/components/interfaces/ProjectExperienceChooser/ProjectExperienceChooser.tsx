@@ -29,9 +29,7 @@ import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
 import { useBuilderLaunch } from './useBuilderLaunch'
-import { useCrmLaunch } from './useCrmLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
-import { useDiscussLaunch } from './useDiscussLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -183,9 +181,8 @@ export const ProjectExperienceChooser = () => {
   const { launch: launchBuilder, isLaunching: isLaunchingBuilder } = useBuilderLaunch({
     nextPath: '/?source=studio',
   })
-  const { launch: launchCrm, isLaunching: isLaunchingCrm } = useCrmLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
-  const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
+  // Discuss and CRM are Studio routes now — no launch hook, no handoff.
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
 
@@ -229,17 +226,15 @@ export const ProjectExperienceChooser = () => {
           label={ECOSYSTEM_PRODUCTS.workspace.name}
           href={`/project/${ref}/workspace`}
         />
-        <RailLaunchItem
+        <RailItem
           icon={<TrendingUp size={18} />}
           label={ECOSYSTEM_PRODUCTS.crm.name}
-          loading={isLaunchingCrm}
-          onClick={() => void open(launchCrm)}
+          href={`/project/${ref}/crm`}
         />
-        <RailLaunchItem
+        <RailItem
           icon={<MessageSquare size={18} />}
           label={ECOSYSTEM_PRODUCTS.discuss.name}
-          loading={isLaunchingDiscuss}
-          onClick={() => void open(launchDiscuss)}
+          href={`/project/${ref}/discuss`}
         />
         <RailItem icon={<Database size={18} />} label="Backend" href={`/project/${ref}/backend`} />
         <RailItem icon={<Megaphone size={18} />} label="Marketing" href={`/project/${ref}/marketing`} />
@@ -331,16 +326,14 @@ export const ProjectExperienceChooser = () => {
                   tagline={ECOSYSTEM_PRODUCTS.crm.tagline}
                   icon={<TrendingUp size={18} className="text-[#059669]" />}
                   accentClassName="bg-[#059669]/10"
-                  onClick={() => open(launchCrm)}
-                  loading={isLaunchingCrm}
+                  href={`/project/${ref}/crm`}
                 />
                 <ProductTile
                   name={ECOSYSTEM_PRODUCTS.discuss.name}
                   tagline={ECOSYSTEM_PRODUCTS.discuss.tagline}
                   icon={<MessageSquare size={18} className="text-[#6366F1]" />}
                   accentClassName="bg-[#6366F1]/10"
-                  onClick={() => open(launchDiscuss)}
-                  loading={isLaunchingDiscuss}
+                  href={`/project/${ref}/discuss`}
                 />
                 <ProductTile
                   name="Social"

@@ -1,6 +1,7 @@
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { randomUUID } from 'node:crypto'
 
+import { publishDiscussEvent } from './discuss-events'
 import { getMerchantOnboardingProvider, resolveSettlementAdapter } from './merchant-kyc-provider'
 import type {
   MerchantBusinessType,
@@ -551,6 +552,38 @@ function assertReadyToSubmit(row: MerchantRow) {
   }
 }
 
+/**
+ * Publishes a KYC transition into the project's Discuss Activity channel.
+ *
+ * Best-effort by contract (publishDiscussEvent never throws): a merchant must never fail to get
+ * verified because Discuss is unreachable. Silent when the state did not actually move.
+ */
+async function publishMerchantKycEvent({
+  previousStatus,
+  provider,
+  reason,
+  row,
+}: {
+  previousStatus: MerchantKycStatus
+  provider: string | null
+  reason: string | null
+  row: MerchantRow
+}): Promise<void> {
+  if (row.kyc_status === previousStatus) return
+
+  await publishDiscussEvent({
+    projectRef: row.project_ref,
+    type: 'merchant_kyc.changed',
+    data: {
+      status: row.kyc_status,
+      previous_status: previousStatus,
+      reason: reason?.trim() || row.kyc_rejection_reason || null,
+      provider: provider?.trim() || null,
+      changed_at: new Date().toISOString(),
+    },
+  })
+}
+
 export async function submitMerchantProfile({
   claims,
   ref,
@@ -636,6 +669,14 @@ export async function submitMerchantProfile({
   if (updated.error) throw updated.error
   const row = updated.data?.[0]
   if (!row) throw new Error('Merchant profile not found')
+
+  await publishMerchantKycEvent({
+    previousStatus: current.kyc_status,
+    provider: linked.provider,
+    reason: linked.message,
+    row,
+  })
+
   return withAccessMeta(toPublic(row), {
     organizationSlug: project.organization_slug,
     role,
@@ -730,6 +771,14 @@ export async function reviewMerchantProfile({
     if (updated.error) throw updated.error
     const row = updated.data?.[0]
     if (!row) throw new Error('Merchant profile not found')
+
+    await publishMerchantKycEvent({
+      previousStatus: current.kyc_status,
+      provider: settlementAdapter,
+      reason: rejection,
+      row,
+    })
+
     return withAccessMeta(toPublic(row), {
       organizationSlug: project.organization_slug,
       role,
@@ -780,6 +829,14 @@ export async function reviewMerchantProfile({
   if (updated.error) throw updated.error
   const row = updated.data?.[0]
   if (!row) throw new Error('Merchant profile not found')
+
+  await publishMerchantKycEvent({
+    previousStatus: current.kyc_status,
+    provider: settlementAdapter,
+    reason: null,
+    row,
+  })
+
   return withAccessMeta(toPublic(row), {
     organizationSlug: project.organization_slug,
     role,
