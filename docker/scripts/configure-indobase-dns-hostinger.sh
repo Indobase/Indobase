@@ -41,6 +41,15 @@ PROBE_WILDCARD="${PROBE_WILDCARD:-test-wildcard}"
 REQUIRED_NAMES=( "*" status )
 OPTIONAL_NAMES=( mail )
 
+CONTROL_PLANE_VPS_IP="${CONTROL_PLANE_VPS_IP:-103.190.92.249}"
+# Explicit A records on control plane (override wildcard * → data plane .248)
+CONTROL_PLANE_A_NAMES=(
+  api studio builder status mail
+  discuss workspace crm domains
+  email social design video analytics payments
+)
+
+
 print_required_records() {
   cat <<EOF
 
@@ -206,6 +215,33 @@ apply_cloudflare() {
   echo ""
 }
 
+
+apply_control_plane_hostinger() {
+  echo "Applying control-plane A records (${#CONTROL_PLANE_A_NAMES[@]} hosts) → ${CONTROL_PLANE_VPS_IP}..."
+  local zone_json
+  zone_json=$(CONTROL_PLANE_VPS_IP="${CONTROL_PLANE_VPS_IP}" python3 <<'EOF'
+import json, os
+names = [
+  "api", "studio", "builder", "status", "mail",
+  "discuss", "workspace", "crm", "domains",
+  "email", "social", "design", "video", "analytics", "payments",
+]
+ip = os.environ["CONTROL_PLANE_VPS_IP"]
+records = [{"name": n, "type": "A", "ttl": 300, "records": [{"content": ip}]} for n in names]
+print(json.dumps({"overwrite": False, "zone": records}))
+EOF
+)
+  curl -sS -X PUT "https://developers.hostinger.com/api/dns/v1/zones/${ZONE}" \
+    -H "Authorization: Bearer ${HOSTINGER_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    --data "$zone_json" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(d.get('message', d))
+"
+  echo ""
+}
+
 apply_hostinger() {
   echo "Applying records via Hostinger API (zone=${ZONE})..."
   local zone_json
@@ -245,6 +281,7 @@ main() {
 
   if [[ -n "${HOSTINGER_API_TOKEN:-}" ]]; then
     if [[ "$APPLY" == "1" ]]; then
+      if [[ "${CONTROL_PLANE_APPLY:-0}" == "1" ]]; then apply_control_plane_hostinger; fi
       apply_hostinger
     else
       echo "HOSTINGER_API_TOKEN set. Re-run with APPLY=1 to upsert A records via Hostinger API."

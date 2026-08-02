@@ -12,6 +12,7 @@ type RuntimePublicEnv = {
   gotrueUrl?: string
   siteUrl?: string
   builderAppUrl?: string
+  hcaptchaSiteKey?: string
 }
 
 function readRuntimePublicEnv(): RuntimePublicEnv {
@@ -19,12 +20,17 @@ function readRuntimePublicEnv(): RuntimePublicEnv {
   const gotrueUrl = resolvePublicGotrueUrlForBrowser() ?? ''
   const siteUrl = resolveServerPublicSiteUrl() ?? ''
   const builderAppUrl = resolveServerPublicBuilderAppUrl() ?? ''
+  const hcaptchaSiteKey =
+    process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY?.trim() ||
+    process.env.HCAPTCHA_SITE_KEY?.trim() ||
+    ''
 
   return {
     ...(anonKey ? { anonKey } : {}),
     ...(gotrueUrl ? { gotrueUrl } : {}),
     ...(siteUrl ? { siteUrl } : {}),
     ...(builderAppUrl ? { builderAppUrl } : {}),
+    ...(hcaptchaSiteKey ? { hcaptchaSiteKey } : {}),
   }
 }
 

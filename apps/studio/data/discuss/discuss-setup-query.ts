@@ -47,6 +47,9 @@ export async function ensureDiscussProjectSetup(
   if (!displayName) throw new Error('A profile display name is required to open Discuss')
   if (!role) throw new Error('A role is required to open Discuss')
 
+  // Channel membership assertion must not SELECT discuss.channel_members as the tenant SQL
+  // role: FORCE RLS + no PostgREST JWT → count is always 0 even when DEFINER setup wrote
+  // rows. Count via a SECURITY DEFINER helper (same owner/BYPASS pattern as ensure).
   const sql = `
 with setup as (
   select discuss.ensure_project_setup(
@@ -59,11 +62,7 @@ with setup as (
 )
 select
   setup.member_id,
-  (
-    select count(*)::int
-    from discuss.channel_members cm
-    where cm.member_id = setup.member_id
-  ) as channel_count
+  discuss.channel_membership_count(setup.member_id) as channel_count
 from setup;
 `.trim()
 

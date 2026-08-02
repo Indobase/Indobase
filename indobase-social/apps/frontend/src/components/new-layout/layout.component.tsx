@@ -59,7 +59,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const load = useCallback(async (path: string) => {
     return await (await fetch(path)).json();
   }, []);
-  const { data: user, mutate } = useSWR('/user/self', load, {
+  const { data: user, mutate, isLoading, error } = useSWR('/user/self', load, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -67,15 +67,33 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     refreshWhenHidden: false,
   });
 
-  if (!user) return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-newTextColor text-sm opacity-80">
+        Loading Indobase Social…
+      </div>
+    );
+  }
 
-  return (
+  if (error || !user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-newTextColor px-6 text-center">
+        <p className="text-sm opacity-80">
+          Your session expired or could not be loaded. Sign in again via Indobase Studio.
+        </p>
+        <a
+          href="/auth"
+          className="inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium text-white"
+          style={{ backgroundColor: '#3B8FD6' }}
+        >
+          Continue with Studio
+        </a>
+      </div>
+    );
+  }
+
+  const shell = (
     <ContextWrapper user={user}>
-      <CopilotKit
-        credentials="include"
-        runtimeUrl={backendUrl + '/copilot/chat'}
-        showDevConsole={false}
-      >
         <MantineWrapper>
           <ToolTip />
           <Toaster />
@@ -144,7 +162,21 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
             </div>
           </CheckPayment>
         </MantineWrapper>
-      </CopilotKit>
     </ContextWrapper>
+  );
+
+  // CopilotKit polls /copilot/chat even when OpenAI is unset — skip when billing/AI off.
+  if (!billingEnabled) {
+    return shell;
+  }
+
+  return (
+    <CopilotKit
+      credentials="include"
+      runtimeUrl={backendUrl + '/copilot/chat'}
+      showDevConsole={false}
+    >
+      {shell}
+    </CopilotKit>
   );
 };

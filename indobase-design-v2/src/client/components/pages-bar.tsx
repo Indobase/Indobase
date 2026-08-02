@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect } from "preact/hooks";
 import * as fabric from "fabric";
-import { Plus, MoreHorizontal, Copy, Trash2, Pencil, ChevronUp, ChevronDown } from "lucide-preact";
+import {
+  Plus,
+  MoreHorizontal,
+  Copy,
+  Trash2,
+  Pencil,
+  StickyNote,
+  Timer,
+  Maximize,
+  LayoutGrid,
+} from "lucide-preact";
 import { useEditor } from "../context";
 import type { Page } from "../types";
 import { parseCanvasJson, canvasJsonKey } from "../utils/canvas-json";
@@ -47,23 +57,86 @@ function PageThumb({ page, width, height }: { page: Page; width: number; height:
   return src ? (
     <img src={src} class="rounded w-full h-full object-cover" alt={page.title} />
   ) : (
-    <div class="rounded w-full h-full bg-zinc-100" />
+    <div class="rounded w-full h-full bg-[#f1f3f4]" />
   );
+}
+
+function notesKey(designId: string) {
+  return `indobase-design-notes:${designId}`;
+}
+
+function formatTimer(totalSec: number) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export function PagesBar() {
   const {
-    pages, activePageId, addPage, duplicatePage, deletePage, renamePage,
-    switchToPage, setActiveCanvas, canvasWidth, canvasHeight,
+    pages,
+    activePageId,
+    addPage,
+    duplicatePage,
+    deletePage,
+    renamePage,
+    switchToPage,
+    setActiveCanvas,
+    canvasWidth,
+    canvasHeight,
+    zoom,
+    fitScale,
+    setZoomRaw,
+    zoomToFit,
+    activeDesign,
   } = useEditor();
-  const [expanded, setExpanded] = useState(false);
+  const [showPages, setShowPages] = useState(true);
   const [menuPageId, setMenuPageId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerSec, setTimerSec] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
-  // Close menu on outside click
+  const zoomPct = Math.round((zoom / (fitScale || 1)) * 100);
+
+  useEffect(() => {
+    if (!activeDesign?.id) {
+      setNotes("");
+      return;
+    }
+    try {
+      setNotes(localStorage.getItem(notesKey(activeDesign.id)) || "");
+    } catch {
+      setNotes("");
+    }
+  }, [activeDesign?.id]);
+
+  useEffect(() => {
+    if (!showNotes) return;
+    notesRef.current?.focus();
+  }, [showNotes]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = window.setInterval(() => setTimerSec((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [timerRunning]);
+
+  const persistNotes = (value: string) => {
+    setNotes(value);
+    if (!activeDesign?.id) return;
+    try {
+      localStorage.setItem(notesKey(activeDesign.id), value);
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
     if (!menuPageId) return;
     const handler = (e: MouseEvent) => {
@@ -75,7 +148,6 @@ export function PagesBar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuPageId]);
 
-  // Auto-focus rename input
   useEffect(() => {
     if (renamingId && renameRef.current) {
       renameRef.current.focus();
@@ -106,25 +178,9 @@ export function PagesBar() {
   if (pages.length === 0) return null;
 
   return (
-    <div class="bg-white border-t border-zinc-200 shrink-0">
-      {/* Collapsed bar — always visible */}
-      <button
-        class="w-full flex items-center justify-between px-4 py-1.5 bg-transparent border-none cursor-pointer hover:bg-zinc-50 transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <span class="text-[11px] text-zinc-400 font-medium">
-          Pages ({pages.length})
-        </span>
-        {expanded ? (
-          <ChevronDown size={14} class="text-zinc-400" />
-        ) : (
-          <ChevronUp size={14} class="text-zinc-400" />
-        )}
-      </button>
-
-      {/* Expanded thumbnail strip */}
-      {expanded && (
-        <div class="flex items-center gap-2 px-4 py-2 border-t border-zinc-100 overflow-x-auto">
+    <div class="bg-white border-t border-[#e5e7eb] shrink-0">
+      {showPages && (
+        <div class="flex items-center gap-2 px-4 py-2.5 overflow-x-auto border-b border-[#f1f3f4]">
           {pages.map((page) => {
             const isActive = page.id === activePageId;
             return (
@@ -132,8 +188,8 @@ export function PagesBar() {
                 <div
                   class={`relative flex flex-col items-center gap-1 cursor-pointer border-2 rounded-lg p-1 transition-all bg-white ${
                     isActive
-                      ? "border-[#6366f1] shadow-sm"
-                      : "border-zinc-200 hover:border-zinc-300"
+                      ? "border-[#8b3dff] shadow-sm"
+                      : "border-[#e5e7eb] hover:border-[#c4b5fd]"
                   }`}
                   onClick={() => handlePageClick(page.id)}
                   style={{ width: 88 }}
@@ -142,20 +198,21 @@ export function PagesBar() {
                     <PageThumb page={page} width={canvasWidth} height={canvasHeight} />
                   </div>
                   <button
-                    class="absolute top-0.5 right-0.5 p-0.5 rounded bg-white/80 border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-zinc-100"
+                    type="button"
+                    class="absolute top-0.5 right-0.5 p-0.5 rounded bg-white/80 border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#f1f3f4]"
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuPageId(menuPageId === page.id ? null : page.id);
                     }}
                   >
-                    <MoreHorizontal size={12} class="text-zinc-400" />
+                    <MoreHorizontal size={12} class="text-[#5f6368]" />
                   </button>
                 </div>
                 <div class="mt-0.5 text-center" style={{ width: 88 }}>
                   {renamingId === page.id ? (
                     <input
                       ref={renameRef}
-                      class="w-full text-center text-[10px] text-zinc-700 bg-zinc-100 border border-[#6366f1] rounded px-1 py-0 outline-none"
+                      class="w-full text-center text-[10px] text-[#202124] bg-[#f1f3f4] border border-[#8b3dff] rounded px-1 py-0 outline-none"
                       value={renameValue}
                       onInput={(e) => setRenameValue((e.target as HTMLInputElement).value)}
                       onBlur={finishRename}
@@ -167,7 +224,7 @@ export function PagesBar() {
                   ) : (
                     <span
                       class={`text-[10px] truncate block ${
-                        isActive ? "text-zinc-800 font-medium" : "text-zinc-500"
+                        isActive ? "text-[#202124] font-semibold" : "text-[#5f6368]"
                       }`}
                     >
                       {page.title}
@@ -178,17 +235,19 @@ export function PagesBar() {
                 {menuPageId === page.id && (
                   <div
                     ref={menuRef}
-                    class="absolute bottom-full left-0 mb-1 bg-white border border-zinc-200 rounded-lg shadow-lg z-30 min-w-[130px] py-1"
+                    class="absolute bottom-full left-0 mb-1 bg-white border border-[#e5e7eb] rounded-xl shadow-lg z-30 min-w-[130px] py-1"
                   >
                     <button
-                      class="w-full text-left px-3 py-1.5 text-xs text-zinc-600 bg-transparent border-none cursor-pointer hover:bg-zinc-100 flex items-center gap-2"
+                      type="button"
+                      class="w-full text-left px-3 py-1.5 text-xs text-[#3c4043] bg-transparent border-none cursor-pointer hover:bg-[#f1f3f4] flex items-center gap-2"
                       onClick={() => startRename(page.id, page.title)}
                     >
                       <Pencil size={12} />
                       Rename
                     </button>
                     <button
-                      class="w-full text-left px-3 py-1.5 text-xs text-zinc-600 bg-transparent border-none cursor-pointer hover:bg-zinc-100 flex items-center gap-2"
+                      type="button"
+                      class="w-full text-left px-3 py-1.5 text-xs text-[#3c4043] bg-transparent border-none cursor-pointer hover:bg-[#f1f3f4] flex items-center gap-2"
                       onClick={() => {
                         setMenuPageId(null);
                         duplicatePage(page.id);
@@ -199,6 +258,7 @@ export function PagesBar() {
                     </button>
                     {pages.length > 1 && (
                       <button
+                        type="button"
                         class="w-full text-left px-3 py-1.5 text-xs text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 flex items-center gap-2"
                         onClick={() => {
                           setMenuPageId(null);
@@ -216,14 +276,138 @@ export function PagesBar() {
           })}
 
           <button
-            class="flex-shrink-0 flex items-center justify-center w-10 h-[62px] rounded-lg border-2 border-dashed border-zinc-300 bg-transparent cursor-pointer transition-all hover:border-[#6366f1] hover:bg-[#6366f1]/5"
+            type="button"
+            class="flex-shrink-0 flex items-center justify-center gap-1.5 h-[62px] px-4 rounded-lg border border-[#e5e7eb] bg-[#f8f9fa] cursor-pointer transition-all hover:border-[#8b3dff] hover:bg-[#eee5ff] text-[12px] font-semibold text-[#3c4043]"
             onClick={() => addPage()}
             title="Add page"
           >
-            <Plus size={16} class="text-zinc-400" />
+            <Plus size={14} />
+            Add page
           </button>
         </div>
       )}
+
+      <div class="design-bottom-bar">
+        <div class="flex items-center gap-1 relative">
+          <button
+            type="button"
+            class={`design-editor-top-btn text-[12px] ${showNotes ? "bg-[#eee5ff] text-[#8b3dff]" : ""}`}
+            onClick={() => {
+              setShowNotes((v) => !v);
+              setShowTimer(false);
+            }}
+          >
+            <StickyNote size={14} />
+            Notes
+          </button>
+          <button
+            type="button"
+            class={`design-editor-top-btn text-[12px] ${showTimer ? "bg-[#eee5ff] text-[#8b3dff]" : ""}`}
+            onClick={() => {
+              setShowTimer((v) => !v);
+              setShowNotes(false);
+            }}
+          >
+            <Timer size={14} />
+            {timerRunning || timerSec > 0 ? formatTimer(timerSec) : "Timer"}
+          </button>
+
+          {showNotes && (
+            <>
+              <div class="fixed inset-0 z-20" onClick={() => setShowNotes(false)} />
+              <div class="design-notes-popover z-30">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[12px] font-semibold text-[#202124]">Design notes</span>
+                  <span class="text-[10px] text-[#9aa0a6]">Saved locally</span>
+                </div>
+                <textarea
+                  ref={notesRef}
+                  class="design-notes-textarea"
+                  placeholder="Jot ideas for this design…"
+                  value={notes}
+                  onInput={(e) => persistNotes((e.target as HTMLTextAreaElement).value)}
+                  rows={5}
+                />
+              </div>
+            </>
+          )}
+
+          {showTimer && (
+            <>
+              <div class="fixed inset-0 z-20" onClick={() => setShowTimer(false)} />
+              <div class="design-timer-popover z-30">
+                <div class="text-[28px] font-semibold tabular-nums text-[#202124] tracking-tight">
+                  {formatTimer(timerSec)}
+                </div>
+                <div class="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    class="design-timer-action"
+                    onClick={() => setTimerRunning((v) => !v)}
+                  >
+                    {timerRunning ? "Pause" : "Start"}
+                  </button>
+                  <button
+                    type="button"
+                    class="design-timer-action design-timer-action-muted"
+                    onClick={() => {
+                      setTimerRunning(false);
+                      setTimerSec(0);
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="text-[12px] text-[#5f6368] bg-transparent border-none cursor-pointer px-1"
+              onClick={() => setZoomRaw(Math.max(0.05, zoom * 0.9))}
+            >
+              −
+            </button>
+            <input
+              type="range"
+              min={10}
+              max={200}
+              value={zoomPct}
+              class="w-24 accent-[#8b3dff]"
+              onInput={(e) => {
+                const pct = Number((e.target as HTMLInputElement).value);
+                setZoomRaw((fitScale || 1) * (pct / 100));
+              }}
+              aria-label="Zoom"
+            />
+            <span class="text-[12px] font-medium text-[#3c4043] tabular-nums w-10">{zoomPct}%</span>
+            <button
+              type="button"
+              class="text-[12px] text-[#5f6368] bg-transparent border-none cursor-pointer px-1"
+              onClick={() => setZoomRaw(Math.min(3, zoom * 1.1))}
+            >
+              +
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="design-editor-top-btn text-[12px]"
+            onClick={() => setShowPages((v) => !v)}
+          >
+            <LayoutGrid size={14} />
+            Pages {(pages.findIndex((p) => p.id === activePageId) + 1) || 1} / {pages.length}
+          </button>
+
+          <button type="button" class="design-editor-top-btn" onClick={zoomToFit} title="Fit">
+            <Maximize size={15} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

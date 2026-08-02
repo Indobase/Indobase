@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { Injectable } from '@nestjs/common';
 import { XProvider } from '@gitroom/nestjs-libraries/integrations/social/x.provider';
 import { SocialProvider } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { isSocialProviderConfigured } from '@gitroom/nestjs-libraries/integrations/social/provider-configured';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import { RedditProvider } from '@gitroom/nestjs-libraries/integrations/social/reddit.provider';
 import { DevToProvider } from '@gitroom/nestjs-libraries/integrations/social/dev.to.provider';
@@ -79,9 +80,16 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
 @Injectable()
 export class IntegrationManager {
   async getAllIntegrations() {
+    const configured = socialIntegrationList.filter(
+      (p) =>
+        !!p.customFields ||
+        !!p.externalUrl ||
+        !!p.isChromeExtension ||
+        isSocialProviderConfigured(p.identifier)
+    );
     return {
       social: await Promise.all(
-        socialIntegrationList.map(async (p) => ({
+        configured.map(async (p) => ({
           name: p.name,
           identifier: p.identifier,
           toolTip: p.toolTip,

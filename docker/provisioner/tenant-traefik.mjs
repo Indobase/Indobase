@@ -4,11 +4,99 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import { readSiteRoutes } from './site-routes.mjs'
 
-export function getDockerPsLines() {
-  return execSync('docker ps --format "{{.Names}}\t{{.Ports}}"', { encoding: 'utf8' })
+/** In-memory docker-ps snapshot so HTTP handlers never block on sync docker CLI. */
+let dockerPsSnapshot = ''
+let dockerPsUpdatedAt = 0
+let dockerPsPollerStarted = false
+let dockerPsRefreshInflight = null
+
+const DOCKER_PS_CACHE_MS = 2000
+const DOCKER_PS_SYNC_TIMEOUT_MS = 60_000
+
+function applyDockerPsSnapshot(lines) {
+  dockerPsSnapshot = String(lines || '')
+  dockerPsUpdatedAt = Date.now()
+  return dockerPsSnapshot
+}
+
+/**
+ * Async refresh used by the background poller and post-compose repair paths.
+ * Concurrent callers share one in-flight `docker ps`.
+ */
+export function refreshDockerPsLines() {
+  if (dockerPsRefreshInflight) return dockerPsRefreshInflight
+  dockerPsRefreshInflight = new Promise((resolve) => {
+    let out = ''
+    const p = spawn('docker', ['ps', '--format', '{{.Names}}\t{{.Ports}}'], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    const timer = setTimeout(() => {
+      try {
+        p.kill('SIGKILL')
+      } catch {
+        /* ignore */
+      }
+    }, DOCKER_PS_SYNC_TIMEOUT_MS)
+    p.stdout.on('data', (chunk) => {
+      out += chunk
+    })
+    p.on('error', () => {
+      clearTimeout(timer)
+      dockerPsRefreshInflight = null
+      // Keep the last good snapshot — never replace with empty/partial on failure.
+      resolve(dockerPsSnapshot)
+    })
+    p.on('close', (code) => {
+      clearTimeout(timer)
+      dockerPsRefreshInflight = null
+      if (code === 0 && out.trim()) {
+        resolve(applyDockerPsSnapshot(out))
+        return
+      }
+      resolve(dockerPsSnapshot)
+    })
+  })
+  return dockerPsRefreshInflight
+}
+
+/** Start a background poller so request paths can read a warm snapshot without execSync. */
+export function startDockerPsPoller(intervalMs = DOCKER_PS_CACHE_MS) {
+  if (dockerPsPollerStarted) return
+  dockerPsPollerStarted = true
+  void refreshDockerPsLines()
+  setInterval(() => {
+    void refreshDockerPsLines()
+  }, Math.max(1000, Number(intervalMs) || DOCKER_PS_CACHE_MS)).unref?.()
+}
+
+/**
+ * Return docker ps lines. Prefer the warm async snapshot; only fall back to a timed
+ * execSync when `fresh: true` (repair after compose) or the snapshot is empty.
+ */
+export function getDockerPsLines(opts = {}) {
+  const fresh = Boolean(opts?.fresh)
+  const age = Date.now() - dockerPsUpdatedAt
+  if (!fresh && dockerPsSnapshot && age <= DOCKER_PS_CACHE_MS) {
+    return dockerPsSnapshot
+  }
+  if (!fresh && dockerPsSnapshot) {
+    // Stale-but-present snapshot: never block the event loop on the request path.
+    if (!dockerPsRefreshInflight) void refreshDockerPsLines()
+    return dockerPsSnapshot
+  }
+  try {
+    const lines = execSync('docker ps --format "{{.Names}}\t{{.Ports}}"', {
+      encoding: 'utf8',
+      timeout: DOCKER_PS_SYNC_TIMEOUT_MS,
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    return applyDockerPsSnapshot(lines)
+  } catch {
+    return dockerPsSnapshot
+  }
 }
 
 export function hostPortFor(dockerPs, ref, svc) {
@@ -20,8 +108,52 @@ export function hostPortFor(dockerPs, ref, svc) {
         : [`${ref}-tenant-${svc}`, `indobase-tenant-${ref}-tenant-${svc}`]
   const line = dockerPs.split('\n').find((l) => needles.some((n) => l.includes(n)))
   if (!line) return null
-  const m = line.match(/(?:0\.0\.0\.0|127\.0\.0\.1|172\.17\.0\.1):(\d+)->/)
+  // Match any published host IP (0.0.0.0, 127.0.0.1, 172.17.0.1, or VPS public IP).
+  // Docker may bind only to the machine's primary address, which previously looked like
+  // "stack_not_running" even when containers were healthy.
+  const m = line.match(/(?:\d{1,3}(?:\.\d{1,3}){3}|\[::\]):(\d+)->/)
   return m ? Number(m[1]) : null
+}
+
+const CONTAINER_PORT_BY_SVC = {
+  rest: 3000,
+  auth: 9999,
+  storage: 5000,
+  realtime: 4000,
+  functions: 9000,
+  site: 8080,
+}
+
+/** When `docker ps` omits the Ports column (common under load), fall back to inspect. */
+export function hostPortFromInspect(ref, svc) {
+  const containerPort = CONTAINER_PORT_BY_SVC[svc]
+  if (!containerPort) return null
+  const names =
+    svc === 'realtime'
+      ? [`${ref}.indobase-realtime`, `indobase-tenant-${ref}-tenant-realtime-1`]
+      : [`indobase-tenant-${ref}-tenant-${svc}-1`, `${ref}-tenant-${svc}-1`]
+  for (const name of names) {
+    try {
+      const raw = execSync(`docker inspect ${name}`, {
+        encoding: 'utf8',
+        timeout: 10_000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+      const data = JSON.parse(raw)[0]
+      const key = `${containerPort}/tcp`
+      const live = data?.NetworkSettings?.Ports?.[key]
+      if (Array.isArray(live) && live[0]?.HostPort) return Number(live[0].HostPort)
+      const bound = data?.HostConfig?.PortBindings?.[key]
+      if (Array.isArray(bound) && bound[0]?.HostPort) return Number(bound[0].HostPort)
+    } catch {
+      /* try next name */
+    }
+  }
+  return null
+}
+
+export function resolveHostPort(dockerPs, ref, svc) {
+  return hostPortFor(dockerPs, ref, svc) ?? hostPortFromInspect(ref, svc)
 }
 
 export function buildTenantTraefikYaml(ref, hostRule, upstream, ports, opts = {}) {
@@ -129,6 +261,10 @@ ${apiRouter('rest', '/rest/v1')}${apiRouter('auth', '/auth/v1')}${apiRouter('sto
       loadBalancer:
         servers: [{ url: "http://${upstream}:${ports.storage}" }]
         passHostHeader: true
+    tenant-${ref}-s3:
+      loadBalancer:
+        servers: [{ url: "http://${upstream}:${ports.storage}" }]
+        passHostHeader: true
     tenant-${ref}-realtime:
       loadBalancer:
         servers: [{ url: "http://${upstream}:${ports.realtime}" }]
@@ -148,12 +284,12 @@ export function fixTenantTraefikForRef(ref, traefikDir, opts = {}) {
   const domain = opts.domain || process.env.PUBLIC_DOMAIN?.trim() || 'indobase.in'
   const dockerPs = opts.dockerPs || getDockerPsLines()
   const ports = {
-    rest: hostPortFor(dockerPs, ref, 'rest'),
-    auth: hostPortFor(dockerPs, ref, 'auth'),
-    storage: hostPortFor(dockerPs, ref, 'storage'),
-    realtime: hostPortFor(dockerPs, ref, 'realtime'),
-    functions: hostPortFor(dockerPs, ref, 'functions'),
-    site: hostPortFor(dockerPs, ref, 'site'),
+    rest: resolveHostPort(dockerPs, ref, 'rest'),
+    auth: resolveHostPort(dockerPs, ref, 'auth'),
+    storage: resolveHostPort(dockerPs, ref, 'storage'),
+    realtime: resolveHostPort(dockerPs, ref, 'realtime'),
+    functions: resolveHostPort(dockerPs, ref, 'functions'),
+    site: resolveHostPort(dockerPs, ref, 'site'),
   }
   const requiredPorts = ['rest', 'auth', 'storage', 'realtime', 'functions']
   if (requiredPorts.some((key) => ports[key] == null)) {

@@ -6,7 +6,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useParams } from 'common'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { useMerchantProfileQuery } from 'data/payments/merchant-profile-query'
 import { useMerchantProfileReviewMutation } from 'data/payments/merchant-profile-mutation'
@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 
 import { MerchantKycOnboarding } from './MerchantKycOnboarding'
 import { usePaymentsLaunch } from './usePaymentsLaunch'
+import { resetAutoLaunch, useAutoLaunchProduct } from './useAutoLaunchProduct'
 
 function statusLabel(status: MerchantKycStatus): string {
   switch (status) {
@@ -71,7 +72,9 @@ export const ProjectPaymentsHome = () => {
     }
   }
 
-  const openPayments = async (mode: 'same-tab' | 'new-tab') => {
+  const openPayments = useCallback(async (mode: 'same-tab' | 'new-tab') => {
+    // Manual open: clear the per-tab opt-out so a later visit auto-opens again.
+    resetAutoLaunch('payments', ref)
     setLaunchError(null)
     setLaunchDenied(false)
     const result = await launch()
@@ -89,6 +92,25 @@ export const ProjectPaymentsHome = () => {
       return
     }
     window.location.assign(result.url)
+  }, [launch, ref])
+
+  /*
+   * Skip the interstitial and go straight to Payments. Recorded per tab, so Back lands here and
+   * shows the setup page rather than bouncing the user straight back out.
+   */
+  const { isAutoLaunching } = useAutoLaunchProduct({
+    product: 'payments',
+    projectRef: ref,
+    launch: () => openPayments('same-tab'),
+  })
+
+  if (isAutoLaunching) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 text-center">
+        <p className="text-sm text-foreground">Opening Indobase Payments…</p>
+        <p className="text-xs text-foreground-light">Signing you in with your Studio session.</p>
+      </div>
+    )
   }
 
   if (!ref) {

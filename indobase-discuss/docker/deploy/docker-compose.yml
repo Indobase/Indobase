@@ -1,11 +1,15 @@
-# Indobase Discuss — production / staging Compose (Vyom .249)
+# Indobase Discuss — Frappe + Gameplan + SSO bridge (Vyom .249)
 #
 # Hosts:
 #   prod:    discuss.indobase.in
 #   staging: discuss.indobase.fun
 #
-# Bench data lives on discuss_bench_sites → /home/frappe/persist (full bench, not
-# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
+# Traefik hits the bridge (:8092). Bridge handles Studio SSO and proxies
+# Gameplan (`/g/*`, assets, Frappe API). Upstream engine is Gameplan (AGPL);
+# customer UI is branded Indobase Discuss only.
+#
+# Bench data lives on discuss_bench_sites → /home/frappe/persist (full bench).
+# Host must chown the volume to uid/gid 1000 before first boot:
 #   docker run --rm -v indobase-discuss_discuss_bench_sites:/v alpine chown -R 1000:1000 /v
 
 x-default-logging: &logging
@@ -38,12 +42,19 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
     environment:
       MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD}
     volumes:
       - discuss_mariadb_data:/var/lib/mysql
     networks:
       - discuss_net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     logging: *logging
 
   discuss-redis:
@@ -51,20 +62,30 @@ services:
     image: redis:7.2-alpine
     networks:
       - discuss_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
     logging: *logging
 
   discuss-gameplan:
     <<: *restart
     image: frappe/bench:latest
     depends_on:
-      - discuss-mariadb
-      - discuss-redis
+      discuss-mariadb:
+        condition: service_healthy
+      discuss-redis:
+        condition: service_healthy
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       DISCUSS_SITE_NAME: ${DISCUSS_SITE_NAME:-discuss.localhost}
       DISCUSS_ADMIN_PASSWORD: ${DISCUSS_ADMIN_PASSWORD:-changeme}
       DISCUSS_HANDOFF_SECRET: ${DISCUSS_HANDOFF_SECRET:?set DISCUSS_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      # Gameplan develop requires Frappe v16+.
+      FRAPPE_BRANCH: ${FRAPPE_BRANCH:-version-16}
+      GAMEPLAN_BRANCH: ${GAMEPLAN_BRANCH:-develop}
     volumes:
       - discuss_bench_sites:/home/frappe/persist
       - ../init-gameplan.sh:/workspace/init-gameplan.sh:ro
@@ -79,22 +100,29 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
       - discuss-gameplan
     environment:
       PORT: "8092"
       DISCUSS_HANDOFF_SECRET: ${DISCUSS_HANDOFF_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
+      DISCUSS_SITE_NAME: ${DISCUSS_SITE_NAME:-discuss.localhost}
       GAMEPLAN_UPSTREAM: http://discuss-gameplan:8000
+      SOCKET_UPSTREAM: http://discuss-gameplan:9000
       FRAPPE_STUDIO_HANDOFF_URL: http://discuss-gameplan:8000/api/method/indobase_discuss.api.studio_handoff.exchange
-      DISCUSS_VERSION: ${DISCUSS_VERSION:-dev}
+      DISCUSS_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
     networks:
       - discuss_net
       - traefik_public
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
-      - traefik.http.routers.indobase-discuss.rule=${DISCUSS_TRAEFIK_RULE:-Host(`discuss.indobase.in`) || Host(`discuss.indobase.fun`)}
+      # Only hosts with live DNS — adding discuss.indobase.fun before A/AAAA exist
+      # makes Let's Encrypt fail for the docker router and can flap TLS/502s.
+      - traefik.http.routers.indobase-discuss.rule=${DISCUSS_TRAEFIK_RULE:-Host(`discuss.indobase.in`)}
       - traefik.http.routers.indobase-discuss.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-discuss.tls=true
       - traefik.http.routers.indobase-discuss.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}

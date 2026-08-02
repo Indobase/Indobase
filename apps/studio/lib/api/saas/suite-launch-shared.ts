@@ -26,23 +26,27 @@ export type SuiteModuleMeta = {
   externalProduct?: 'email' | 'design'
 }
 
+/**
+ * Tiles shown in Studio's "Open a module" grid.
+ *
+ * `files` and `mail` are deliberately absent: Files is already the primary action above the grid
+ * ("Open Files in Workspace") and is Workspace's landing surface, so a tile duplicated it; Mail
+ * opens Email, a separate product, so it did not belong in a Workspace module grid.
+ *
+ * They remain in SUITE_MODULE_IDS on purpose — that array validates the launch API's `?module=`
+ * param, and dropping them there would break existing deep links and the Files primary action.
+ * Not shown in the grid is not the same as not routable.
+ */
 export const SUITE_MODULES: SuiteModuleMeta[] = [
-  { id: 'files', label: 'Files', description: 'Store, organize, and share project files' },
   { id: 'docs', label: 'Docs', description: 'Write and collaborate on documents' },
   { id: 'sheets', label: 'Sheets', description: 'Spreadsheets with realtime collaboration' },
   { id: 'presentations', label: 'Presentations', description: 'Slide decks for your project' },
   {
     id: 'meetings',
     label: 'Meetings',
-    description: 'Video meetings for your team',
+    description: 'Opens Meet — video meetings for your team',
   },
-  {
-    id: 'mail',
-    label: 'Mail',
-    description: 'Opens Email — campaigns and transactional mail',
-    externalProduct: 'email',
-  },
-  { id: 'calendar', label: 'Calendar', description: 'Events and schedules' },
+  { id: 'calendar', label: 'Calendar', description: 'Opens Calendar — events and scheduling' },
 ]
 
 const ALLOWED_ROLE_SET = new Set<string>(SUITE_ALLOWED_ROLES)
@@ -56,7 +60,7 @@ export function isSuiteModuleId(value: string | null | undefined): value is Suit
   return !!value && MODULE_SET.has(value)
 }
 
-/** Deterministic workspace team key from org slug — mirrors bridge + Frappe workspace_map. */
+/** Deterministic workspace team key from org slug — mirrors bridge workspace-map. */
 export function suiteTeamKeyForOrgSlug(orgSlug: string): string {
   const cleaned = orgSlug
     .toLowerCase()

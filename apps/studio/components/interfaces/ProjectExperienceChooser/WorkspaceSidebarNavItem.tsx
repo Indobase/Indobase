@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { ICON_SIZE, ICON_STROKE_WIDTH } from 'components/interfaces/Sidebar'
+import { ICON_SIZE, ICON_STROKE_WIDTH } from 'components/interfaces/sidebar-icon'
 import { useParams } from 'common'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { Briefcase } from 'lucide-react'

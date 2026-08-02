@@ -47,3 +47,9 @@ test('getStoragePortForRef falls back to docker ps', () => {
   const dockerPs = 'indobase-tenant-demo-tenant-storage\t172.17.0.1:5999->5000/tcp\n'
   assert.equal(getStoragePortForRef('demo', dockerPs, {}, '/tmp/none'), 5999)
 })
+
+test('getStoragePortForRef accepts public IP docker bindings', () => {
+  const dockerPs =
+    'indobase-tenant-demo-tenant-storage\t103.190.92.248:48644->5000/tcp\n'
+  assert.equal(getStoragePortForRef('demo', dockerPs, {}, '/tmp/none'), 48644)
+})

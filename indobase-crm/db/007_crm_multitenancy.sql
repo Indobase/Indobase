@@ -11,6 +11,7 @@ language sql
 stable
 security definer
 set search_path = crm, pg_catalog
+set row_security = off
 as $$
   select nullif(current_setting('request.jwt.claim.project_ref', true), '');
 $$;
@@ -19,12 +20,14 @@ revoke all on function crm.current_project_ref() from public;
 grant execute on function crm.current_project_ref() to authenticated, service_role, anon;
 
 -- Fail closed: no project_ref claim → no membership rows → RLS returns nothing.
+-- row_security=off: FORCE RLS would otherwise re-enter this function via members policies.
 create or replace function crm.current_member_ids()
 returns setof uuid
 language sql
 stable
 security definer
 set search_path = crm, pg_catalog
+set row_security = off
 as $$
   select m.id
   from crm.members m
@@ -36,17 +39,13 @@ $$;
 revoke all on function crm.current_member_ids() from public;
 grant execute on function crm.current_member_ids() to authenticated, service_role;
 
--- Members: JWT project only (no coalesce fallback to all memberships).
+-- Members: JWT project only (no self-select on members — that recurses under FORCE RLS).
 drop policy if exists crm_members_select on crm.members;
 create policy crm_members_select on crm.members
   for select using (
     crm.current_project_ref() is not null
     and project_ref = crm.current_project_ref()
-    and exists (
-      select 1 from crm.members me
-      where me.id in (select crm.current_member_ids())
-        and me.project_ref = crm.members.project_ref
-    )
+    and exists (select 1 from crm.current_member_ids())
   );
 
 -- Core tables: require row.project_ref to match JWT claim as well as membership.

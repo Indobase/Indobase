@@ -48,7 +48,8 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
     nextUrl.pathname.startsWith('/provider/') ||
-    nextUrl.pathname.startsWith('/icons/')
+    nextUrl.pathname.startsWith('/icons/') ||
+    nextUrl.pathname === '/welcome'
   ) {
     return topResponse;
   }
@@ -87,23 +88,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', nextUrl.href));
   }
 
-  // Studio SSO only — kill public email/password UI on the Social host.
+  // Studio SSO only — legacy password auth UI → branded welcome (not a blind Studio bounce).
   if (
     (process.env.STUDIO_HANDOFF_ONLY === 'true' ||
       process.env.STUDIO_HANDOFF_ONLY === '1') &&
-    nextUrl.pathname.startsWith('/auth') &&
-    !nextUrl.pathname.startsWith('/auth/launch') &&
-    !nextUrl.pathname.startsWith('/auth/logout') &&
-    !authCookie
+    !authCookie &&
+    (nextUrl.pathname.startsWith('/auth/login') ||
+      nextUrl.pathname.startsWith('/auth/register') ||
+      nextUrl.pathname.startsWith('/auth/forgot'))
   ) {
-    const studio = resolveStudioPublicUrl(nextUrl.host);
+    const welcomeUrl = new URL('/welcome', nextUrl.href);
     const projectRef = nextUrl.searchParams.get('project_ref');
-    const returnPath = projectRef
-      ? `/project/${encodeURIComponent(projectRef)}/marketing`
-      : '/';
-    return NextResponse.redirect(
-      `${studio}/sign-in?returnTo=${encodeURIComponent(returnPath)}`
-    );
+    if (projectRef) welcomeUrl.searchParams.set('project_ref', projectRef);
+    return NextResponse.redirect(welcomeUrl);
   }
 
   const org = nextUrl.searchParams.get('org');
@@ -122,7 +119,7 @@ export async function proxy(request: NextRequest) {
           : findIndex
         ).toUpperCase()}`;
     return NextResponse.redirect(
-      new URL(`/auth${url}${additional}`, nextUrl.href)
+      new URL(`/welcome${url}${additional}`, nextUrl.href)
     );
   }
 

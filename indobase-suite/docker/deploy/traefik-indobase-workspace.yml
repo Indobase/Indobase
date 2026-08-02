@@ -1,11 +1,12 @@
-# Indobase Workspace — Traefik file provider
+# Indobase Workspace — Traefik file provider (optional; Compose labels cover Swarm/Dokploy)
 #
 # DNS: workspace.indobase.in → Vyom 103.190.92.249
+# DNS: meet.indobase.in → same (.249). UDP 10000 must also reach the Meetings JVB host.
 
 http:
   routers:
     indobase-workspace:
-      rule: Host(`workspace.indobase.in`) || Host(`suite.indobase.in`)
+      rule: Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)
       entryPoints:
         - websecure
       service: indobase-workspace
@@ -15,9 +16,27 @@ http:
           - main: workspace.indobase.in
             sans:
               - suite.indobase.in
+              - workspace.indobase.fun
+
+    indobase-meetings:
+      rule: Host(`meet.indobase.in`) || Host(`meet.indobase.fun`)
+      entryPoints:
+        - websecure
+      service: indobase-meetings
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: meet.indobase.in
+            sans:
+              - meet.indobase.fun
 
   services:
     indobase-workspace:
       loadBalancer:
         servers:
           - url: http://suite-bridge:8093
+
+    indobase-meetings:
+      loadBalancer:
+        servers:
+          - url: http://meetings-web:8000

@@ -61,6 +61,11 @@ export type ActionStateUpdate =
 
 type ActionsMap = MapStore<Record<string, ActionState>>;
 
+/** Relative path → file contents from the workbench (in-memory), used to heal a lagging WebContainer FS. */
+export type ProjectFilesProvider = () => Record<string, string>;
+
+const INSTALL_COMMAND_RE = /\b(npm|pnpm|yarn|bun)\s+(i|install|add)\b/;
+
 class ActionCommandError extends Error {
   readonly _output: string;
   readonly _header: string;
@@ -96,6 +101,7 @@ export class ActionRunner {
   #shellTerminal: () => BoltShell;
   #activeBuildProcess?: WebContainerProcess;
   #fileActionCount = 0;
+  #getProjectFiles?: ProjectFilesProvider;
   runnerId = atom<string>(`${Date.now()}`);
   actions: ActionsMap = map({});
   onAlert?: (alert: ActionAlert) => void;
@@ -110,12 +116,14 @@ export class ActionRunner {
     onAlert?: (alert: ActionAlert) => void,
     onIndobaseBackendAlert?: (alert: IndobaseBackendAlert) => void,
     onDeployAlert?: (alert: DeployAlert) => void,
+    getProjectFiles?: ProjectFilesProvider,
   ) {
     this.#webcontainer = webcontainerPromise;
     this.#shellTerminal = getShellTerminal;
     this.onAlert = onAlert;
     this.onIndobaseBackendAlert = onIndobaseBackendAlert;
     this.onDeployAlert = onDeployAlert;
+    this.#getProjectFiles = getProjectFiles;
   }
 
   addAction(data: ActionCallbackData) {
@@ -276,15 +284,48 @@ export class ActionRunner {
       unreachable('Expected shell action');
     }
 
+    const isInstall = INSTALL_COMMAND_RE.test(action.content ?? '');
+
+    if (isInstall) {
+      const hydrated = await this.#hydrateWebContainerFromWorkbench();
+
+      if (!hydrated) {
+        /*
+         * No usable WebContainer FS — do not fail the build phase. Server draft preview installs
+         * from workbench files in finalizeBuildAndMaybeRepair.
+         */
+        logger.warn('Skipping WebContainer npm install; will use server draft preview');
+        this.lastShellOutput = {
+          exitCode: 0,
+          output: '[skipped] WebContainer unavailable — server draft preview will install packages',
+        };
+        return;
+      }
+    }
+
     const shell = this.#shellTerminal();
-    await Promise.race([
-      shell.ready(),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Terminal is not ready yet. Open the terminal panel and try again.'));
-        }, 30_000);
-      }),
-    ]);
+
+    try {
+      await Promise.race([
+        shell.ready(),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Terminal is not ready yet. Open the terminal panel and try again.'));
+          }, 30_000);
+        }),
+      ]);
+    } catch (error) {
+      if (isInstall) {
+        logger.warn('Skipping WebContainer npm install; terminal not ready', error);
+        this.lastShellOutput = {
+          exitCode: 0,
+          output: '[skipped] Terminal not ready — server draft preview will install packages',
+        };
+        return;
+      }
+
+      throw error;
+    }
 
     if (!shell || !shell.terminal || !shell.process) {
       unreachable('Shell terminal not found');
@@ -329,6 +370,17 @@ export class ActionRunner {
 
     if (!this.#shellTerminal) {
       unreachable('Shell terminal not found');
+    }
+
+    const hydrated = await this.#hydrateWebContainerFromWorkbench();
+
+    if (!hydrated) {
+      logger.warn('Skipping WebContainer dev server; will use server draft preview');
+      this.lastShellOutput = {
+        exitCode: 0,
+        output: '[skipped] WebContainer unavailable — server draft preview will start the app',
+      };
+      return;
     }
 
     const shell = this.#shellTerminal();
@@ -447,30 +499,78 @@ export class ActionRunner {
       unreachable('Expected file action');
     }
 
-    const webcontainer = await this.#awaitWebContainer();
     const sanitized = resolveGeneratedFileArtifact(action.filePath, action.content);
-    const relativePath = toWorkdirRelativePath(webcontainer.workdir, sanitized.filePath);
 
-    let folder = nodePath.dirname(relativePath);
+    /*
+     * Workbench already upserts this file in memory before we run. WebContainer sync is
+     * best-effort: a Brave/extension/COOP glitch must not mark the action failed or the UI
+     * shows "Some files could not be created" while the editor and server draft still have
+     * the content. Hydrate from workbench before install/start instead.
+     */
+    try {
+      const webcontainer = await this.#awaitWebContainer();
+      const relativePath = toWorkdirRelativePath(webcontainer.workdir, sanitized.filePath);
 
-    // remove trailing slashes
-    folder = folder.replace(/\/+$/g, '');
+      let folder = nodePath.dirname(relativePath);
 
-    if (folder !== '.') {
-      await webcontainer.fs.mkdir(folder, { recursive: true });
-      logger.debug('Created folder', folder);
+      // remove trailing slashes
+      folder = folder.replace(/\/+$/g, '');
+
+      if (folder !== '.') {
+        await webcontainer.fs.mkdir(folder, { recursive: true });
+        logger.debug('Created folder', folder);
+      }
+
+      await webcontainer.fs.writeFile(relativePath, sanitized.content);
+      logger.debug(`File written ${relativePath}`);
+
+      const connection = indobaseConnection.get();
+
+      if (hasIndobaseStudioHandoff(connection)) {
+        await this.#ensureProjectEnvFile(webcontainer, connection);
+      }
+    } catch (error) {
+      logger.warn(
+        `WebContainer write failed for ${sanitized.filePath}; keeping in-memory workbench copy`,
+        error,
+      );
     }
-
-    await webcontainer.fs.writeFile(relativePath, sanitized.content);
-    logger.debug(`File written ${relativePath}`);
 
     this.#fileActionCount += 1;
     await yieldAfterBatch(this.#fileActionCount, 4);
+  }
 
-    const connection = indobaseConnection.get();
+  /**
+   * Push in-memory workbench sources into the WebContainer FS before npm install / dev.
+   * Returns false when the runtime is unusable — callers should skip WC shell work and rely
+   * on server draft preview.
+   */
+  async #hydrateWebContainerFromWorkbench(): Promise<boolean> {
+    const files = this.#getProjectFiles?.() ?? {};
+    const entries = Object.entries(files);
 
-    if (hasIndobaseStudioHandoff(connection)) {
-      await this.#ensureProjectEnvFile(webcontainer, connection);
+    if (entries.length === 0) {
+      return false;
+    }
+
+    try {
+      const webcontainer = await this.#awaitWebContainer();
+
+      for (const [relativePath, content] of entries) {
+        const folder = nodePath.dirname(relativePath).replace(/\/+$/g, '');
+
+        if (folder && folder !== '.') {
+          await webcontainer.fs.mkdir(folder, { recursive: true });
+        }
+
+        await webcontainer.fs.writeFile(relativePath, content);
+      }
+
+      logger.info(`Hydrated WebContainer with ${entries.length} workbench file(s)`);
+      return true;
+    } catch (error) {
+      logger.warn('WebContainer hydrate from workbench failed', error);
+      return false;
     }
   }
 

@@ -1,15 +1,14 @@
-# Indobase Workspace — production / staging Compose (Vyom .249)
+# Indobase Workspace — DocumentServer + SSO bridge (Vyom .249)
 #
 # Hosts:
-#   prod:    workspace.indobase.in
+#   prod:    workspace.indobase.in  (+ alias suite.indobase.in)
 #   staging: workspace.indobase.fun
 #
-# First boot initializes Frappe bench + Suite (~10–15 min). Bridge serves SSO;
-# Traefik terminates TLS and routes to bridge (which proxies /s/* to Suite).
-#
-# Bench data lives on suite_bench_sites → /home/frappe/persist (full bench, not
-# sites-only). Host must chown the volume to uid/gid 1000 before first boot:
-#   docker run --rm -v indobase-workspace_suite_bench_sites:/v alpine chown -R 1000:1000 /v
+# Traefik → bridge (:8093) for SSO / file shell / APIs.
+# Traefik also routes `/ds` (+ native editor asset prefixes) straight to
+# DocumentServer so WebSockets work; the bridge still proxies those paths as a
+# fallback when Traefik labels are unavailable.
+# Upstream engine is AGPL; customer UI is Indobase Workspace only.
 
 x-default-logging: &logging
   driver: json-file
@@ -21,11 +20,13 @@ x-restart: &restart
   restart: unless-stopped
 
 volumes:
-  suite_mariadb_data:
-  suite_bench_sites:
+  workspace_files:
+  workspace_documentserver_data:
+  workspace_documentserver_logs:
+  workspace_documentserver_db:
 
 networks:
-  suite_net:
+  workspace_net:
     name: indobase-workspace
   traefik_public:
     name: ${TRAEFIK_NETWORK:-dokploy-network}
@@ -34,47 +35,56 @@ networks:
 name: indobase-workspace
 
 services:
-  suite-mariadb:
+  workspace-documentserver:
     <<: *restart
-    image: mariadb:10.6
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
+    image: onlyoffice/documentserver:${DOCUMENT_SERVER_IMAGE_TAG:-8.3.1}
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD}
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${DOCUMENT_JWT_SECRET:?set DOCUMENT_JWT_SECRET}
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: "true"
+      # Allow bridge + public workspace origin to embed / call the editor.
+      # Internal compose DNS resolves to RFC1918 (and occasionally link-local);
+      # without both flags DocumentServer SSRF filter surfaces as "Download failed".
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+      ALLOW_META_IP_ADDRESS: "true"
+      USE_UNAUTHORIZED_STORAGE: "true"
     volumes:
-      - suite_mariadb_data:/var/lib/mysql
+      - workspace_documentserver_data:/var/www/onlyoffice/Data
+      - workspace_documentserver_logs:/var/log/onlyoffice
+      - workspace_documentserver_db:/var/lib/postgresql
     networks:
-      - suite_net
-    logging: *logging
-
-  suite-redis:
-    <<: *restart
-    image: redis:7.2-alpine
-    networks:
-      - suite_net
-    logging: *logging
-
-  suite-frappe:
-    <<: *restart
-    image: frappe/bench:latest
-    depends_on:
-      - suite-mariadb
-      - suite-redis
-    environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      SUITE_SITE_NAME: ${SUITE_SITE_NAME:-workspace.localhost}
-      SUITE_ADMIN_PASSWORD: ${SUITE_ADMIN_PASSWORD:-changeme}
-      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET:?set SUITE_HANDOFF_SECRET}
-      STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-    volumes:
-      - suite_bench_sites:/home/frappe/persist
-      - ../init-suite.sh:/workspace/init-suite.sh:ro
-      - ../../frappe-app/indobase_suite:/workspace/indobase_suite:ro
-    command: bash /workspace/init-suite.sh
-    networks:
-      - suite_net
+      - workspace_net
+      - traefik_public
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      # Prefer DocumentServer for /ds editor assets (WebSocket-safe) over the bridge HTTP proxy.
+      # Bridge owns /ds, /ds/welcome*, and /welcome* (priority 300) so the Community Edition
+      # landing page is never public — see suite-bridge labels.
+      - traefik.http.middlewares.indobase-workspace-ds-strip.stripprefix.prefixes=/ds
+      - traefik.http.routers.indobase-workspace-ds.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && PathPrefix(`/ds`)
+      - traefik.http.routers.indobase-workspace-ds.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-workspace-ds.tls=true
+      - traefik.http.routers.indobase-workspace-ds.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-workspace-ds.priority=200
+      - traefik.http.routers.indobase-workspace-ds.middlewares=indobase-workspace-ds-strip
+      - traefik.http.routers.indobase-workspace-ds.service=indobase-workspace-ds
+      - traefik.http.services.indobase-workspace-ds.loadbalancer.server.port=80
+      # Native engine paths when DocsAPI omits the /ds prefix.
+      # Deliberately omit /welcome — bridge owns that path (Indobase page).
+      - traefik.http.routers.indobase-workspace-ds-native.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && (PathPrefix(`/web-apps`) || PathPrefix(`/sdkjs`) || PathPrefix(`/sdkjs-plugins`) || PathPrefix(`/fonts`) || PathPrefix(`/coauthoring`) || PathPrefix(`/cache`) || PathPrefix(`/doceditor`) || PathPrefix(`/dictionaries`) || PathPrefix(`/converter`) || PathPrefix(`/downloadas`))
+      - traefik.http.routers.indobase-workspace-ds-native.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-workspace-ds-native.tls=true
+      - traefik.http.routers.indobase-workspace-ds-native.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-workspace-ds-native.priority=190
+      - traefik.http.routers.indobase-workspace-ds-native.service=indobase-workspace-ds
     logging: *logging
 
   suite-bridge:
@@ -82,26 +92,53 @@ services:
     build:
       context: ../../bridge
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     depends_on:
-      - suite-frappe
+      workspace-documentserver:
+        condition: service_healthy
     environment:
       PORT: "8093"
-      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET}
+      SUITE_HANDOFF_SECRET: ${SUITE_HANDOFF_SECRET:?set SUITE_HANDOFF_SECRET}
+      DOCUMENT_JWT_SECRET: ${DOCUMENT_JWT_SECRET}
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
-      SUITE_UPSTREAM: http://suite-frappe:8000
-      FRAPPE_STUDIO_HANDOFF_URL: http://suite-frappe:8000/api/method/indobase_suite.api.studio_handoff.exchange
+      WORKSPACE_PUBLIC_URL: ${WORKSPACE_PUBLIC_URL:-https://workspace.indobase.in}
+      BRIDGE_INTERNAL_URL: ${BRIDGE_INTERNAL_URL:-http://suite-bridge:8093}
+      DOCUMENT_SERVER_URL: http://workspace-documentserver
+      DOCUMENT_SERVER_PUBLIC_URL: ${DOCUMENT_SERVER_PUBLIC_URL:-https://workspace.indobase.in/ds}
+      WORKSPACE_DATA_DIR: /data/workspace
       INDOBASE_EMAIL_URL: ${INDOBASE_EMAIL_URL:-https://email.indobase.in}
       INDOBASE_DESIGN_URL: ${INDOBASE_DESIGN_URL:-https://design.indobase.in}
-      SUITE_VERSION: ${SUITE_VERSION:-dev}
+      # Indobase Meet SSO launch (Workspace Meetings module). Prefer MEET_PUBLIC_URL.
+      MEET_PUBLIC_URL: ${MEET_PUBLIC_URL:-}
+      MEETINGS_PUBLIC_URL: ${MEETINGS_PUBLIC_URL:-}
+      MEET_HANDOFF_SECRET: ${MEET_HANDOFF_SECRET:-}
+      JWT_APP_ID: ${JWT_APP_ID:-}
+      JWT_APP_SECRET: ${JWT_APP_SECRET:-}
+      # Indobase Calendar SSO launch (Workspace Calendar module). Prefer indobase-calendar/.
+      CALENDAR_PUBLIC_URL: ${CALENDAR_PUBLIC_URL:-}
+      CALENDAR_HANDOFF_SECRET: ${CALENDAR_HANDOFF_SECRET:-}
+      SUITE_VERSION: ${GIT_SHA:-dev}
+      GIT_SHA: ${GIT_SHA:-dev}
+    volumes:
+      - workspace_files:/data/workspace
     networks:
-      - suite_net
+      - workspace_net
       - traefik_public
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-dokploy-network}
+      # Block DocumentServer Community Edition landing before the /ds PathPrefix router (prio 200).
+      - traefik.http.routers.indobase-workspace-no-welcome.rule=(${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}) && (Path(`/ds`) || Path(`/ds/`) || PathPrefix(`/ds/welcome`) || PathPrefix(`/welcome`))
+      - traefik.http.routers.indobase-workspace-no-welcome.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.indobase-workspace-no-welcome.tls=true
+      - traefik.http.routers.indobase-workspace-no-welcome.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-workspace-no-welcome.priority=300
+      - traefik.http.routers.indobase-workspace-no-welcome.service=indobase-workspace
       - traefik.http.routers.indobase-workspace.rule=${SUITE_TRAEFIK_RULE:-Host(`workspace.indobase.in`) || Host(`suite.indobase.in`) || Host(`workspace.indobase.fun`)}
       - traefik.http.routers.indobase-workspace.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.indobase-workspace.tls=true
       - traefik.http.routers.indobase-workspace.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.indobase-workspace.priority=100
       - traefik.http.services.indobase-workspace.loadbalancer.server.port=8093
     logging: *logging

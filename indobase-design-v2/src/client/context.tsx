@@ -49,7 +49,7 @@ export interface EditorContextValue {
   // Canvas actions
   addText: (preset: "heading" | "subheading" | "body") => void;
   addShape: (type: "rect" | "circle" | "line" | "triangle") => void;
-  addImage: (url: string) => void;
+  addImage: (url: string) => Promise<boolean>;
   setBackground: (type: "color" | "gradient" | "image", value: string) => void;
   updateSelectedObject: (props: Record<string, unknown>) => void;
   deleteSelected: () => void;

@@ -72,9 +72,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [bootstrapped, setBootstrapped] = useState(false)
 
   useEffect(() => {
-    ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`).finally(() =>
-      setBootstrapped(true)
-    )
+    const RUNTIME_ENV_TIMEOUT_MS = 8_000
+    const bootstrap = ensureRuntimePublicEnv(`${BASE_PATH}/api/platform/runtime-public-env`)
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(resolve, RUNTIME_ENV_TIMEOUT_MS)
+    })
+    void Promise.race([bootstrap, timeout]).finally(() => setBootstrapped(true))
   }, [])
 
   if (!bootstrapped) {

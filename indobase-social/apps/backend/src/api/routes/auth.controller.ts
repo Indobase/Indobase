@@ -17,7 +17,7 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
+import { getAuthCookieOptions } from '@gitroom/helpers/utils/auth-cookie';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -62,29 +62,9 @@ export class AuthController {
         userAgent
       );
 
-      response.cookie('auth', jwt, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
+      response.cookie('auth', jwt, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
-      response.cookie('showorg', organizationId, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
+      response.cookie('showorg', organizationId, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
@@ -131,34 +111,14 @@ export class AuthController {
         return;
       }
 
-      response.cookie('auth', jwt, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
+      response.cookie('auth', jwt, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
-        response.cookie('showorg', addedOrg.organizationId, {
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-          ...(!process.env.NOT_SECURED
-            ? {
-                secure: true,
-                httpOnly: true,
-                sameSite: 'none',
-              }
-            : {}),
-          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-        });
+        response.cookie('showorg', addedOrg.organizationId, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -196,34 +156,14 @@ export class AuthController {
         getOrgFromCookie
       );
 
-      response.cookie('auth', jwt, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
+      response.cookie('auth', jwt, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
-        response.cookie('showorg', addedOrg.organizationId, {
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-          ...(!process.env.NOT_SECURED
-            ? {
-                secure: true,
-                httpOnly: true,
-                sameSite: 'none',
-              }
-            : {}),
-          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-        });
+        response.cookie('showorg', addedOrg.organizationId, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -293,17 +233,7 @@ export class AuthController {
       return response.status(200).json({ can: false });
     }
 
-    response.cookie('auth', activate, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-    });
+    response.cookie('auth', activate, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
     if (process.env.NOT_SECURED) {
       response.header('auth', activate);
@@ -346,17 +276,7 @@ export class AuthController {
       return response.json({ token });
     }
 
-    response.cookie('auth', jwt, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-    });
+    response.cookie('auth', jwt, { ...getAuthCookieOptions({ expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), }) });
 
     if (process.env.NOT_SECURED) {
       response.header('auth', jwt);

@@ -94,8 +94,8 @@ export function isInitialScaffoldTurn(messages: BuildMessage[]): boolean {
   });
 }
 
-/** Complex intents that need planner + DeepSeek — keep the full multi-agent path. */
-const COMPLEX_SCAFFOLD_INTENT =
+/** Complex intents that still get a richer (but local, zero-latency) instant plan. */
+export const COMPLEX_BUILD_INTENT =
   /\b(?:auth|oauth|login|sign[\s-]?up|payment|stripe|razorpay|checkout|dashboard|saas|admin|multi[\s-]?tenant|realtime|websocket|graphql|postgres|supabase|indobase backend|database|crm|marketplace|e-?commerce|shop|cart|mobile app|react native|expo|ios|android)\b/i;
 
 const SIMPLE_SCAFFOLD_MAX_WORDS = 40;
@@ -106,9 +106,14 @@ export function latestUserMessageText(messages: BuildMessage[]): string {
   return latestUserMessage ? contentFromMessage(latestUserMessage).trim() : '';
 }
 
+export function isComplexBuildIntent(messages: BuildMessage[]): boolean {
+  const text = latestUserMessageText(messages);
+
+  return Boolean(text && (COMPLEX_BUILD_INTENT.test(text) || MOBILE_INTENT.test(text)));
+}
+
 /**
- * Short, UI-only first Builds skip planner and use the fast scaffold model.
- * Anything that smells like auth/payments/backend stays on the full path.
+ * Short, UI-only first Builds — compact contract, minimal files.
  */
 export function isSimpleFirstScaffoldTurn(messages: BuildMessage[]): boolean {
   if (!isInitialScaffoldTurn(messages)) {
@@ -127,11 +132,62 @@ export function isSimpleFirstScaffoldTurn(messages: BuildMessage[]): boolean {
     return false;
   }
 
-  if (COMPLEX_SCAFFOLD_INTENT.test(text) || MOBILE_INTENT.test(text)) {
+  if (isComplexBuildIntent(messages)) {
     return false;
   }
 
   return true;
+}
+
+/**
+ * Zero-latency plan injected instead of an LLM planner round (~30–90s).
+ * Complex prompts get domain-specific steps; simple prompts get a minimal Vite checklist.
+ */
+export function getInstantBuildPlan(messages: BuildMessage[]): string {
+  const text = latestUserMessageText(messages) || 'the requested app';
+  const complex = isComplexBuildIntent(messages);
+  const mobile = MOBILE_INTENT.test(text);
+
+  if (mobile) {
+    return `## Build steps
+1. Scaffold a root-level Expo web app (package.json, app.json, entry)
+2. Implement the UI and flows described: ${text.slice(0, 240)}
+3. Wire Indobase Auth/DB only if the prompt requires it
+4. npm install, then start Expo web for preview`;
+  }
+
+  if (complex) {
+    const wantsAuth = /\b(?:auth|oauth|login|sign[\s-]?up)\b/i.test(text);
+    const wantsPay = /\b(?:payment|stripe|razorpay|checkout|cart)\b/i.test(text);
+    const wantsDb = /\b(?:database|postgres|crm|dashboard|saas|admin)\b/i.test(text);
+    const steps = [
+      'Scaffold a Vite + React + TypeScript app with lean dependencies',
+      `Implement core UI for: ${text.slice(0, 240)}`,
+    ];
+
+    if (wantsAuth) {
+      steps.push('Add Indobase Auth (sign-in/sign-up) using the linked project credentials');
+    }
+
+    if (wantsDb) {
+      steps.push('Model data with the Indobase client/tables as needed');
+    }
+
+    if (wantsPay) {
+      steps.push('Integrate Indobase Payments checkout where relevant');
+    }
+
+    steps.push('Emit npm install + npm run dev in the same response');
+
+    return `## Build steps
+${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+Prefer shipping a working vertical slice over perfect architecture.`;
+  }
+
+  return `## Build steps
+1. Create a minimal Vite + React + TypeScript app
+2. Implement: ${text.slice(0, 200)}
+3. Keep files few; npm install then npm run dev in the same response`;
 }
 
 /** Compact one-shot contract for simple Vite landing/UI scaffolds. */

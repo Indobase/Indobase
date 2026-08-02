@@ -9,7 +9,7 @@ For capacity planning and ordering of changes, see `docker/docs/SCALING_CHECKLIS
 | `SAAS_TENANT_POSTGREST_DB_POOL` | `40` | `tenant-rest` | PostgREST ↔ Postgres pool size (`PGRST_DB_POOL`). |
 | `SAAS_TENANT_POSTGREST_POOL_ACQUISITION_TIMEOUT` | `15` | `tenant-rest` | Seconds to wait for a free pool connection (`PGRST_DB_POOL_ACQUISITION_TIMEOUT`). |
 | `SAAS_TENANT_POSTGREST_POOL_MAX_IDLETIME` | `120` | `tenant-rest` | Seconds before idle pool connections are closed (`PGRST_DB_POOL_MAX_IDLETIME`). |
-| `SAAS_TENANT_POSTGREST_DB_MAX_ROWS` | `0` (unlimited) | `tenant-rest` | Max rows per response (`PGRST_DB_MAX_ROWS`); `0` means no cap. |
+| `SAAS_TENANT_POSTGREST_DB_MAX_ROWS` | unset (unlimited) | `tenant-rest` | Max rows per response (`PGRST_DB_MAX_ROWS`). **Do not set `0`** — PostgREST treats `0` as “return zero rows”, not unlimited. Omit the env var for no cap, or set a positive integer (e.g. `1000`). |
 | `SAAS_TENANT_POSTGREST_MEM_LIMIT` | `512m` | `tenant-rest` | Docker `mem_limit` for PostgREST. |
 | `SAAS_TENANT_EDGE_RUNTIME_MEM_LIMIT` | `512m` | `tenant-functions` | Docker `mem_limit` for Deno edge-runtime (reduces OOM under concurrent invocations). |
 | `SAAS_TENANT_REALTIME_RLIMIT_NOFILE` | `50000` | `tenant-realtime` | Raises OS fd limit for WebSocket-heavy workloads. |

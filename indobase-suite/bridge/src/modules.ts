@@ -1,12 +1,14 @@
 /**
  * Indobase Workspace modules — customer-facing names and deep-link segments.
  *
- * Mail routes to Email, not upstream Suite Mail.
- * Presentations can optionally open Design for canvas work.
+ * Mail routes to Email. Docs/Sheets/Presentations open the document editor.
+ * Meetings launches Indobase Meet (SSO) — never embeds a raw engine iframe.
+ * Calendar launches Indobase Calendar (SSO) — never embeds a raw engine iframe.
  */
 
 import type { WorkspaceMap } from './workspace-map.js'
 import { workspaceHomePath } from './workspace-map.js'
+import type { WorkspaceFileKind } from './files.js'
 
 export const SUITE_MODULE_IDS = [
   'files',
@@ -22,16 +24,18 @@ export type SuiteModuleId = (typeof SUITE_MODULE_IDS)[number]
 
 export type SuiteModule = {
   id: SuiteModuleId
-  /** Customer-facing label */
   label: string
   description: string
-  /** Route segment under workspace home (Indobase-branded paths) */
   segment: string
-  /** When set, Studio should SSO to this product instead of Workspace */
   externalProduct?: 'email' | 'design'
+  /** File kinds shown / created in this module */
+  fileKind?: WorkspaceFileKind
+  /** Soft placeholder — no editor yet */
+  placeholder?: boolean
 }
 
 export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
+  // Customer-facing copy — keep in sync with apps/studio suite-launch-shared SUITE_MODULES
   files: {
     id: 'files',
     label: 'Files',
@@ -43,23 +47,26 @@ export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
     label: 'Docs',
     description: 'Write and collaborate on documents',
     segment: 'docs',
+    fileKind: 'doc',
   },
   sheets: {
     id: 'sheets',
     label: 'Sheets',
     description: 'Spreadsheets with realtime collaboration',
     segment: 'sheets',
+    fileKind: 'sheet',
   },
   presentations: {
     id: 'presentations',
     label: 'Presentations',
     description: 'Slide decks for your project',
     segment: 'presentations',
+    fileKind: 'slide',
   },
   meetings: {
     id: 'meetings',
     label: 'Meetings',
-    description: 'Video meetings for your team',
+    description: 'Opens Meet — video meetings for your team',
     segment: 'meetings',
   },
   mail: {
@@ -72,7 +79,7 @@ export const SUITE_MODULES: Record<SuiteModuleId, SuiteModule> = {
   calendar: {
     id: 'calendar',
     label: 'Calendar',
-    description: 'Events and schedules',
+    description: 'Opens Calendar — events and scheduling',
     segment: 'calendar',
   },
 }
@@ -90,48 +97,12 @@ export function modulePath(map: WorkspaceMap, moduleId: SuiteModuleId): string {
   return `${home}/${mod.segment}`
 }
 
-/** Upstream Frappe Suite SPA prefixes (flat routes — no org/project in URL). */
-export const SUITE_UPSTREAM_PREFIXES = [
-  '/suite',
-  '/drive',
-  '/writer',
-  '/sheets',
-  '/slides',
-  '/meet',
-  '/calendar',
-] as const
-
-const UPSTREAM_BY_MODULE: Record<string, string> = {
-  files: '/drive',
-  docs: '/writer',
-  sheets: '/sheets',
-  presentations: '/slides',
-  meetings: '/meet',
-  calendar: '/calendar',
-}
-
-/** Map bridge `/s/*` deep links to upstream Frappe Suite SPA routes when proxying. */
-export function upstreamSuitePath(bridgePath: string): string {
-  const prefix = '/s/'
-  if (!bridgePath.startsWith(prefix)) return bridgePath
-
-  const rest = bridgePath.slice(prefix.length)
-  const segments = rest.split('/').map(decodeURIComponent)
-  const moduleSegment = segments[2] || ''
-
-  if (moduleSegment && UPSTREAM_BY_MODULE[moduleSegment]) {
-    return UPSTREAM_BY_MODULE[moduleSegment]
-  }
-
-  // Suite SPA launcher — `/suite/{team}/{project}` is not a valid client route.
-  return '/suite'
-}
-
 export function listModulesForApi(): Array<{
   id: SuiteModuleId
   label: string
   description: string
   externalProduct?: string
+  placeholder?: boolean
 }> {
   return SUITE_MODULE_IDS.map((id) => {
     const m = SUITE_MODULES[id]
@@ -140,6 +111,7 @@ export function listModulesForApi(): Array<{
       label: m.label,
       description: m.description,
       externalProduct: m.externalProduct,
+      placeholder: m.placeholder,
     }
   })
 }

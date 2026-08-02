@@ -18,7 +18,7 @@ import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
-  runPlannerPhase,
+  injectPlannerPlan,
 } from '~/lib/.server/orchestration/orchestrate-chat';
 import {
   buildStudioBillingUrl,
@@ -29,7 +29,7 @@ import {
 import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
-import { inspectOneShotBuildResponse, isInitialScaffoldTurn, isSimpleFirstScaffoldTurn } from '~/lib/indobase/generation-contract';
+import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan } from '~/lib/indobase/generation-contract';
 
 const logger = createScopedLogger('api.chat');
 
@@ -241,34 +241,32 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
          * still count as pre-scaffold, so we keep MCP off and enforce install+start one-shot.
          */
         const isFirstBuildTurn = isInitialScaffoldTurn(processedMessages);
-        const skipPlannerForSimpleScaffold = isSimpleFirstScaffoldTurn(processedMessages);
 
-        if (useMultiAgent && !isToolContinuationRound && !skipPlannerForSimpleScaffold) {
-          const plannerResult = await runPlannerPhase({
-            messages: processedMessages,
-            dataStream,
-            progressOrder,
-            env: context.cloudflare?.env,
-            apiKeys,
-            providerSettings,
-            onUsage(usage) {
-              cumulativeUsage.completionTokens += usage.completionTokens || 0;
-              cumulativeUsage.promptTokens += usage.promptTokens || 0;
-              cumulativeUsage.totalTokens += usage.totalTokens || 0;
-            },
-          });
-          orchestratedMessages = plannerResult.messages;
-          progressCounter = progressOrder.value;
-          streamRecovery.updateActivity();
-        } else if (skipPlannerForSimpleScaffold) {
-          logger.info('Skipping planner for simple first-scaffold Build');
+        /*
+         * Emergent-fast path: never wait on an LLM planner round. Inject a local instant plan
+         * (domain-aware for auth/payments/DB) and go straight to codegen.
+         */
+        if (useMultiAgent && !isToolContinuationRound) {
+          const instantPlan = getInstantBuildPlan(processedMessages);
+          orchestratedMessages = injectPlannerPlan(processedMessages, instantPlan);
+          logger.info('Using instant build plan (LLM planner skipped)');
           dataStream.writeData({
             type: 'progress',
             label: 'coder',
             status: 'in-progress',
             order: progressCounter++,
-            message: 'Building (fast scaffold)',
+            message: 'Building',
           } satisfies ProgressAnnotation);
+          dataStream.writeMessageAnnotation({
+            type: 'agentPlan',
+            agent: 'planner',
+            plan: instantPlan,
+            steps: instantPlan
+              .split('\n')
+              .map((line) => line.replace(/^\d+[.)]\s+/, '').trim())
+              .filter((line) => line && !line.startsWith('#')),
+          });
+          streamRecovery.updateActivity();
         }
 
         if (processedMessages.length > 3) {

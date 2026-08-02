@@ -13,7 +13,7 @@ const TEXT_PRESETS = {
 } as const;
 
 const SHAPE_DEFAULTS = {
-  fill: "#6366f1",
+  fill: "#8b3dff",
   stroke: "",
   strokeWidth: 0,
   opacity: 1,
@@ -225,7 +225,7 @@ export function useCanvasState() {
           break;
         case "line":
           obj = new fabric.Line([cx - 100, cy, cx + 100, cy], {
-            stroke: "#6366f1",
+            stroke: "#8b3dff",
             strokeWidth: 3,
             fill: "",
           });
@@ -243,9 +243,9 @@ export function useCanvasState() {
   // ── Images ──────────────────────────────────────────────────────────
 
   const addImage = useCallback(
-    async (url: string) => {
+    async (url: string): Promise<boolean> => {
       const canvas = getActiveCanvas();
-      if (!canvas) return;
+      if (!canvas) return false;
       try {
         const img = await fabric.FabricImage.fromURL(url, { crossOrigin: "anonymous" });
         const scale = Math.min(
@@ -262,8 +262,10 @@ export function useCanvasState() {
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.requestRenderAll();
+        return true;
       } catch (e) {
         console.error("Failed to load image:", e);
+        return false;
       }
     },
     [getActiveCanvas, canvasWidth, canvasHeight]

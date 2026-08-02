@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Initialize Frappe bench with Gameplan + indobase_discuss on first boot.
 # Persist volume must be mounted at /home/frappe/persist (uid 1000 writable).
+# Gameplan develop requires Frappe v16+ (see upstream README).
 set -euo pipefail
 
 SITE="${DISCUSS_SITE_NAME:-discuss.localhost}"
@@ -11,6 +12,8 @@ PERSIST="${FRAPPE_PERSIST_DIR:-/home/frappe/persist}"
 LABEL="discuss"
 APP_REPO_NAME="gameplan"
 APP_GIT_URL="https://github.com/frappe/gameplan"
+APP_GIT_BRANCH="${GAMEPLAN_BRANCH:-develop}"
+FRAPPE_BRANCH="${FRAPPE_BRANCH:-version-16}"
 INDOBASE_APP="indobase_discuss"
 INDOBASE_SRC="/workspace/indobase_discuss"
 HANDOFF_KEY="discuss_handoff_secret"
@@ -37,22 +40,44 @@ apps_usable() {
     && frappe-bench/env/bin/python -c "import frappe" 2>/dev/null
 }
 
+ensure_gameplan_frontend_built() {
+  if [ ! -d "apps/${APP_REPO_NAME}/frontend" ]; then
+    return 0
+  fi
+  if [ -f "apps/${APP_REPO_NAME}/gameplan/public/frontend/index.html" ] \
+    || [ -d "apps/${APP_REPO_NAME}/gameplan/public/frontend" ]; then
+    return 0
+  fi
+  echo "[${LABEL}] building Gameplan frontend (first boot)…"
+  (cd "apps/${APP_REPO_NAME}" && yarn install --frozen-lockfile && yarn build) || \
+    (cd "apps/${APP_REPO_NAME}" && yarn install && yarn build) || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" build --app "${APP_REPO_NAME}" || true
+    bench --site "${SITE}" clear-cache || true
+  fi
+}
+
 refresh_indobase_app() {
-  # Copy + editable-install so SSO modules import after restarts / volume reuse.
-  if [ -d "${INDOBASE_SRC}" ]; then
-    rm -rf "apps/${INDOBASE_APP}"
-    cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
-    find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
-    if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
-      echo >> sites/apps.txt
-    fi
-    if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
-      echo "${INDOBASE_APP}" >> sites/apps.txt
-    fi
-    ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
-    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
-      bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
-    fi
+  # Host mounts may be unreadable to uid 1000; never abort bench start on refresh failure.
+  if [ ! -d "${INDOBASE_SRC}" ] || [ ! -r "${INDOBASE_SRC}" ]; then
+    echo "[${LABEL}] warn: ${INDOBASE_SRC} not readable — skipping app refresh"
+    return 0
+  fi
+  mkdir -p "apps/${INDOBASE_APP}"
+  if ! cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"; then
+    echo "[${LABEL}] warn: could not copy ${INDOBASE_APP} — using existing app tree"
+    return 0
+  fi
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
+  if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
+    echo "${INDOBASE_APP}" >> sites/apps.txt
+  fi
+  ./env/bin/pip install -e "apps/${INDOBASE_APP}" --quiet || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" install-app "${INDOBASE_APP}" || true
   fi
 }
 
@@ -60,9 +85,22 @@ start_existing() {
   echo "[${LABEL}] bench exists — starting"
   cd frappe-bench
   refresh_indobase_app
-  bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
-  bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+  ensure_gameplan_frontend_built
+  # Keep global + site configs in lockstep. Site-level keys win over -g in frappe.conf;
+  # updating only -g leaves a stale discuss_handoff_secret and SSO fails with
+  # "Invalid or expired handoff token" after secret rotation.
+  if [ -n "${HANDOFF_SECRET}" ]; then
+    bench set-config -g "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+    bench set-config -g studio_handoff_secret "${HANDOFF_SECRET}" || true
+    if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+      bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}" || true
+      bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}" || true
+    fi
+  fi
   bench set-config -g studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  if [ -n "${SITE:-}" ] && [ -d "sites/${SITE}" ]; then
+    bench --site "${SITE}" set-config studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}" || true
+  fi
   exec bench start
 }
 
@@ -75,11 +113,24 @@ ensure_apps_and_site() {
   sed -i '/redis/d' ./Procfile || true
   sed -i '/watch/d' ./Procfile || true
 
-  if [ ! -d "apps/${APP_REPO_NAME}" ]; then
-    bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}"
+  if [ ! -d "apps/${APP_REPO_NAME}/gameplan" ] \
+    && [ ! -f "apps/${APP_REPO_NAME}/pyproject.toml" ] \
+    && [ ! -f "apps/${APP_REPO_NAME}/setup.py" ]; then
+    rm -rf "apps/${APP_REPO_NAME}"
   fi
-  rm -rf "apps/${INDOBASE_APP}"
-  cp -r "${INDOBASE_SRC}" "apps/${INDOBASE_APP}"
+  if [ ! -d "apps/${APP_REPO_NAME}" ]; then
+    bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}" --branch "${APP_GIT_BRANCH}"
+  else
+    # Retry yarn if previous get-app timed out mid-install.
+    (cd "apps/${APP_REPO_NAME}" && yarn install --check-files) || \
+      bench get-app "${APP_REPO_NAME}" "${APP_GIT_URL}" --branch "${APP_GIT_BRANCH}" || true
+  fi
+  mkdir -p "apps/${INDOBASE_APP}"
+  cp -a "${INDOBASE_SRC}/." "apps/${INDOBASE_APP}/"
+  find "apps/${INDOBASE_APP}" -name "._*" -delete 2>/dev/null || true
+  if [ -f sites/apps.txt ] && [ -s sites/apps.txt ] && [ "$(tail -c1 sites/apps.txt | wc -l)" -eq 0 ]; then
+    echo >> sites/apps.txt
+  fi
   if ! grep -qx "${INDOBASE_APP}" sites/apps.txt 2>/dev/null; then
     echo "${INDOBASE_APP}" >> sites/apps.txt
   fi
@@ -101,8 +152,11 @@ ensure_apps_and_site() {
   bench --site "${SITE}" set-config "${HANDOFF_KEY}" "${HANDOFF_SECRET}"
   bench --site "${SITE}" set-config studio_handoff_secret "${HANDOFF_SECRET}"
   bench --site "${SITE}" set-config studio_public_url "${STUDIO_PUBLIC_URL:-https://studio.indobase.in}"
+  # Skip Frappe desk setup wizard for SSO operators.
+  bench --site "${SITE}" set-config setup_complete 1 || true
   bench --site "${SITE}" clear-cache
   bench use "${SITE}"
+  ensure_gameplan_frontend_built
   echo "[${LABEL}] bench ready — starting"
   exec bench start
 }
@@ -121,6 +175,6 @@ if [ -d "frappe-bench" ]; then
   rm -rf frappe-bench
 fi
 
-echo "[${LABEL}] creating bench…"
-bench init --skip-redis-config-generation frappe-bench
+echo "[${LABEL}] creating bench (Frappe ${FRAPPE_BRANCH})…"
+bench init --skip-redis-config-generation --frappe-branch "${FRAPPE_BRANCH}" frappe-bench
 ensure_apps_and_site

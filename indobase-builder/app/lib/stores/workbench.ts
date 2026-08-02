@@ -548,6 +548,23 @@ export class WorkbenchStore {
 
           this.deployAlert.set(alert);
         },
+        () => {
+          const projectFiles: Record<string, string> = {};
+
+          for (const [filePath, dirent] of Object.entries(this.#filesStore.files.get())) {
+            if (dirent?.type !== 'file' || dirent.isBinary) {
+              continue;
+            }
+
+            const relativePath = extractRelativePath(filePath);
+
+            if (relativePath && !relativePath.startsWith('node_modules/')) {
+              projectFiles[relativePath] = dirent.content;
+            }
+          }
+
+          return projectFiles;
+        },
       ),
     });
   }

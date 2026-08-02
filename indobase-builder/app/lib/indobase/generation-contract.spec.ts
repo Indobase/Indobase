@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   getCompactGenerationContractAppendix,
   getGenerationContractAppendix,
+  getInstantBuildPlan,
   inferBuilderProjectTarget,
   inspectOneShotBuildResponse,
+  isComplexBuildIntent,
   isInitialScaffoldTurn,
   isSimpleFirstScaffoldTurn,
   validateGeneratedProjectContract,
@@ -78,6 +80,23 @@ describe('isSimpleFirstScaffoldTurn', () => {
         { role: 'user', content: 'Make the button red' },
       ]),
     ).toBe(false);
+  });
+});
+
+describe('getInstantBuildPlan', () => {
+  it('includes auth steps for login prompts without calling an LLM', () => {
+    const plan = getInstantBuildPlan([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }]);
+
+    expect(isComplexBuildIntent([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }])).toBe(true);
+    expect(plan).toContain('## Build steps');
+    expect(plan).toMatch(/Auth/i);
+  });
+
+  it('keeps a minimal plan for simple UI prompts', () => {
+    const plan = getInstantBuildPlan([{ role: 'user', content: 'Build a hello world landing page' }]);
+
+    expect(plan).toContain('minimal Vite');
+    expect(plan).not.toMatch(/Payments/i);
   });
 });
 

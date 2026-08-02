@@ -86,6 +86,7 @@ language sql
 stable
 security definer
 set search_path = crm, pg_catalog
+set row_security = off
 as $$
   select nullif(current_setting('request.jwt.claim.project_ref', true), '');
 $$;
@@ -96,6 +97,7 @@ language sql
 stable
 security definer
 set search_path = crm, pg_catalog
+set row_security = off
 as $$
   -- Fail closed without JWT project_ref (see 007_crm_multitenancy.sql).
   select m.id
@@ -122,11 +124,7 @@ create policy crm_members_select on crm.members
   for select using (
     crm.current_project_ref() is not null
     and project_ref = crm.current_project_ref()
-    and exists (
-      select 1 from crm.members me
-      where me.id in (select crm.current_member_ids())
-        and me.project_ref = crm.members.project_ref
-    )
+    and exists (select 1 from crm.current_member_ids())
   );
 
 drop policy if exists crm_companies_all on crm.companies;

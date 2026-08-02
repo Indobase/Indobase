@@ -88,38 +88,56 @@ export class IntegrationsController {
   @Get('/list')
   async getIntegrationList(@GetOrgFromRequest() org: Organization) {
     return {
-      integrations: await Promise.all(
-        (
-          await this._integrationService.getIntegrationsList(org.id)
-        ).map(async (p) => {
-          const findIntegration = this._integrationManager.getSocialIntegration(
-            p.providerIdentifier
-          );
-          return {
-            name: p.name,
-            id: p.id,
-            internalId: p.internalId,
-            disabled: p.disabled,
-            editor: findIntegration.editor,
-            stripLinks: !!findIntegration?.stripLinks?.(),
-            picture: p.picture || '/no-picture.jpg',
-            identifier: p.providerIdentifier,
-            inBetweenSteps: p.inBetweenSteps,
-            refreshNeeded: p.refreshNeeded,
-            isCustomFields: !!findIntegration.customFields,
-            ...(findIntegration.customFields
-              ? { customFields: await findIntegration.customFields() }
-              : {}),
-            display: p.profile,
-            type: p.type,
-            time: JSON.parse(p.postingTimes),
-            changeProfilePicture: !!findIntegration?.changeProfilePicture,
-            changeNickName: !!findIntegration?.changeNickname,
-            customer: p.customer,
-            additionalSettings: p.additionalSettings || '[]',
-          };
-        })
-      ),
+      integrations: (
+        await Promise.all(
+          (
+            await this._integrationService.getIntegrationsList(org.id)
+          ).map(async (p) => {
+            try {
+              const findIntegration =
+                this._integrationManager.getSocialIntegration(
+                  p.providerIdentifier
+                );
+              if (!findIntegration) {
+                return null;
+              }
+              let time: unknown = [{ time: 0 }];
+              try {
+                time = p.postingTimes
+                  ? JSON.parse(p.postingTimes)
+                  : [{ time: 0 }];
+              } catch {
+                time = [{ time: 0 }];
+              }
+              return {
+                name: p.name,
+                id: p.id,
+                internalId: p.internalId,
+                disabled: p.disabled,
+                editor: findIntegration.editor,
+                stripLinks: !!findIntegration?.stripLinks?.(),
+                picture: p.picture || '/no-picture.jpg',
+                identifier: p.providerIdentifier,
+                inBetweenSteps: p.inBetweenSteps,
+                refreshNeeded: p.refreshNeeded,
+                isCustomFields: !!findIntegration.customFields,
+                ...(findIntegration.customFields
+                  ? { customFields: await findIntegration.customFields() }
+                  : {}),
+                display: p.profile,
+                type: p.type,
+                time,
+                changeProfilePicture: !!findIntegration?.changeProfilePicture,
+                changeNickName: !!findIntegration?.changeNickname,
+                customer: p.customer,
+                additionalSettings: p.additionalSettings || '[]',
+              };
+            } catch {
+              return null;
+            }
+          })
+        )
+      ).filter(Boolean),
     };
   }
 
@@ -249,7 +267,13 @@ export class IntegrationsController {
 
       return { url };
     } catch (err) {
-      return { err: true };
+      return {
+        err: true,
+        message:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Provider is not configured on this Indobase Social instance',
+      };
     }
   }
 

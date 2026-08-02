@@ -47,34 +47,46 @@ export function useCrmCallerRole(projectRef?: string): {
   const { data: members, error: membersError, isSuccess: membersReady } = useOrganizationMembersQuery({
     slug: organization?.slug,
   })
-  const { data: roles, error: rolesError, isSuccess: rolesReady } = useOrganizationRolesV2Query({
+  const { data: roles, isSuccess: rolesReady } = useOrganizationRolesV2Query({
     slug: organization?.slug,
   })
 
   if (!projectRef || !profile?.gotrue_id) {
     return { role: undefined, isReady: false, error: null }
   }
-  if (membersError || rolesError) {
-    return { role: undefined, isReady: false, error: (membersError ?? rolesError) as Error }
+  if (membersError) {
+    return { role: undefined, isReady: false, error: membersError as Error }
   }
-  if (!membersReady || !rolesReady) {
+  if (!membersReady) {
     return { role: undefined, isReady: false, error: null }
   }
 
-  const me = members?.find((member) => member.gotrue_id === profile.gotrue_id)
-  const roleId = me?.role_ids?.[0]
-  const allRoles = [...(roles?.org_scoped_roles ?? []), ...(roles?.project_scoped_roles ?? [])]
-  const roleName = allRoles.find((role) => role.id === roleId)?.name
-  return { role: toCrmRole(roleName), isReady: true, error: null }
+  const me = members?.find((member) => member.gotrue_id === profile.gotrue_id) as
+    | { gotrue_id?: string; role_ids?: number[]; role?: string }
+    | undefined
+
+  if (rolesReady && roles) {
+    const roleId = me?.role_ids?.[0]
+    const allRoles = [...(roles?.org_scoped_roles ?? []), ...(roles?.project_scoped_roles ?? [])]
+    const roleName = allRoles.find((role) => role.id === roleId)?.name ?? me?.role
+    return { role: toCrmRole(roleName), isReady: true, error: null }
+  }
+
+  return { role: toCrmRole(me?.role), isReady: true, error: null }
 }
 
 async function ensureCrmInstalled(projectRef: string) {
+  const { getAccessToken } = await import('common')
+  const accessToken = await getAccessToken()
   const response = await fetch(
     `/api/platform/projects/${encodeURIComponent(projectRef)}/crm/ensure`,
     {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
     }
   )
   if (!response.ok) {

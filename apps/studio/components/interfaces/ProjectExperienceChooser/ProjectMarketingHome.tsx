@@ -15,7 +15,6 @@ import { Badge, Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 
 import { useDesignLaunch } from './useDesignLaunch'
-import { useEmailLaunch } from './useEmailLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -80,36 +79,15 @@ const MarketingToolTile = ({
  */
 export const ProjectMarketingHome = () => {
   const { ref } = useParams()
-  const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
   const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [launchDenied, setLaunchDenied] = useState(false)
-  const [launchTarget, setLaunchTarget] = useState<'email' | 'social' | 'design' | 'video' | null>(
+  const [launchTarget, setLaunchTarget] = useState<'social' | 'design' | 'video' | null>(
     null
   )
 
-  const openEmail = async (mode: 'same-tab' | 'new-tab') => {
-    setLaunchError(null)
-    setLaunchDenied(false)
-    setLaunchTarget('email')
-    const result = await launchEmail()
-    if (!result.ok) {
-      if (result.denied) {
-        setLaunchDenied(true)
-        setLaunchError(result.message)
-        return
-      }
-      setLaunchError(result.message || 'Could not start Indobase Email session')
-      return
-    }
-    if (mode === 'new-tab') {
-      window.open(result.url, '_blank', 'noopener,noreferrer')
-      return
-    }
-    window.location.assign(result.url)
-  }
 
   const openSocial = async (mode: 'same-tab' | 'new-tab') => {
     setLaunchError(null)
@@ -175,7 +153,7 @@ export const ProjectMarketingHome = () => {
   }
 
   const isBusy =
-    isLaunchingEmail || isLaunchingSocial || isLaunchingDesign || isLaunchingVideo
+    isLaunchingSocial || isLaunchingDesign || isLaunchingVideo
 
   return (
     <div className="relative isolate">
@@ -237,45 +215,6 @@ export const ProjectMarketingHome = () => {
             ) : null}
 
             <div className="grid gap-5 md:grid-cols-2">
-              <MarketingToolTile
-                title="Email marketing"
-                description="Campaigns, audiences, and transactional email for this project — Indobase Email."
-                icon={<Mail size={24} strokeWidth={1.75} className="text-[#0D9488]" />}
-                accentClassName="bg-[#0D9488]/10"
-                elevated
-                statusLabel="Available"
-                statusHint={
-                  ref
-                    ? `Opens Indobase Email for project ${ref} (workspace mapped 1:1). After open: Settings → Integrations → Amazon SES (ap-south-1) to send.`
-                    : 'Studio SSO handoff — no separate password. Configure Amazon SES (Mumbai) under Email Settings → Integrations to send.'
-                }
-                actions={
-                  <>
-                    <Button
-                      type="primary"
-                      icon={
-                        isLaunchingEmail ? (
-                          <Loader2 className="animate-spin" size={14} />
-                        ) : (
-                          <ExternalLink size={14} />
-                        )
-                      }
-                      disabled={isBusy || !ref}
-                      onClick={() => void openEmail('same-tab')}
-                    >
-                      Open Email
-                    </Button>
-                    <Button
-                      type="default"
-                      disabled={isBusy || !ref}
-                      onClick={() => void openEmail('new-tab')}
-                    >
-                      Open in new tab
-                    </Button>
-                  </>
-                }
-              />
-
               <MarketingToolTile
                 title="Social media posting"
                 description="Schedule and publish to social channels from the same Indobase project — Indobase Social."

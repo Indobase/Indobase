@@ -11,6 +11,7 @@ language sql
 stable
 security definer
 set search_path = discuss, pg_catalog
+set row_security = off
 as $$
   select nullif(current_setting('request.jwt.claim.project_ref', true), '');
 $$;
@@ -19,12 +20,14 @@ revoke all on function discuss.current_project_ref() from public;
 grant execute on function discuss.current_project_ref() to authenticated, service_role, anon;
 
 -- Fail closed: require JWT project_ref (same bar as CRM 007). No claim → no membership.
+-- row_security=off: FORCE RLS would otherwise re-enter this function via members policies.
 create or replace function discuss.current_member_ids()
 returns setof uuid
 language sql
 stable
 security definer
 set search_path = discuss, pg_catalog
+set row_security = off
 as $$
   select m.id
   from discuss.members m
@@ -33,17 +36,13 @@ as $$
     and m.project_ref = discuss.current_project_ref();
 $$;
 
--- Members of *this* project only.
+-- Members of *this* project only (no self-select on members — that recurses under FORCE RLS).
 drop policy if exists members_self_project on discuss.members;
 create policy members_self_project on discuss.members
   for select using (
     discuss.current_project_ref() is not null
     and project_ref = discuss.current_project_ref()
-    and exists (
-      select 1 from discuss.members me
-      where me.id in (select discuss.current_member_ids())
-        and me.project_ref = discuss.members.project_ref
-    )
+    and exists (select 1 from discuss.current_member_ids())
   );
 
 -- Public channels: membership of the JWT project only.
@@ -52,19 +51,11 @@ create policy channels_visible on discuss.channels
   for select using (
     discuss.current_project_ref() is not null
     and (
-      exists (
-        select 1 from discuss.channel_members cm
-        where cm.channel_id = channels.id
-          and cm.member_id in (select discuss.current_member_ids())
-      )
+      id in (select discuss.my_channel_ids())
       or (
         not is_private
         and project_ref = discuss.current_project_ref()
-        and project_ref in (
-          select m.project_ref
-          from discuss.members m
-          where m.id in (select discuss.current_member_ids())
-        )
+        and exists (select 1 from discuss.current_member_ids())
       )
     )
   );

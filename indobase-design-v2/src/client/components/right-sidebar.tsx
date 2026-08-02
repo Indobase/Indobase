@@ -28,7 +28,7 @@ const FONT_FAMILIES = [
 ];
 
 export function RightSidebar() {
-  const { selectedObject, updateSelectedObject, deleteSelected, canvas, setBackground, canvasWidth, canvasHeight } =
+  const { selectedObject, updateSelectedObject, deleteSelected, canvas } =
     useEditor();
 
   const isText = selectedObject instanceof fabric.Textbox || selectedObject instanceof fabric.IText;
@@ -36,37 +36,19 @@ export function RightSidebar() {
   const isShape = selectedObject && !isText && !isImage;
 
   if (!selectedObject) {
-    return (
-      <aside class="w-[280px] bg-white border-l border-zinc-200 flex flex-col shrink-0">
-        <div class="p-4 border-b border-zinc-200">
-          <h2 class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Canvas</h2>
-        </div>
-        <div class="p-4 flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] text-zinc-400">Dimensions</span>
-            <span class="text-[11px] text-zinc-600 font-mono">{canvasWidth} x {canvasHeight}</span>
-          </div>
-          <label class="text-[11px] text-zinc-400">Background color</label>
-          <input
-            type="color"
-            class="w-full h-8 rounded-md border border-zinc-300 cursor-pointer bg-transparent"
-            onChange={(e) => setBackground("color", (e.target as HTMLInputElement).value)}
-          />
-        </div>
-      </aside>
-    );
+    return null;
   }
 
   return (
-    <aside class="w-[280px] bg-white border-l border-zinc-200 flex flex-col shrink-0 overflow-y-auto">
+    <aside class="w-[300px] bg-white border-l border-[#e5e7eb] flex flex-col shrink-0 overflow-y-auto shadow-[-4px_0_24px_rgba(139,61,255,0.06)]">
       {/* Header */}
-      <div class="p-4 border-b border-zinc-200 flex items-center justify-between">
-        <h2 class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+      <div class="p-4 border-b border-[#e5e7eb] flex items-center justify-between">
+        <h2 class="text-[13px] font-bold text-[#202124] m-0 tracking-tight">
           {isText ? "Text" : isImage ? "Image" : "Shape"}
         </h2>
         <div class="flex gap-1">
           <button
-            class="p-1 rounded text-zinc-400 bg-transparent border-none cursor-pointer hover:text-zinc-800 hover:bg-zinc-100 transition-all"
+            class="p-1.5 rounded-md text-[#5f6368] bg-transparent border-none cursor-pointer hover:text-[#8b3dff] hover:bg-[#eee5ff] transition-all"
             onClick={async () => {
               if (!canvas || !selectedObject) return;
               const clone = await selectedObject.clone();
@@ -79,7 +61,7 @@ export function RightSidebar() {
             <Copy size={14} />
           </button>
           <button
-            class="p-1 rounded text-zinc-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-all"
+            class="p-1.5 rounded-md text-[#5f6368] bg-transparent border-none cursor-pointer hover:text-red-500 hover:bg-red-50 transition-all"
             onClick={deleteSelected}
             title="Delete"
           >
@@ -132,8 +114,8 @@ export function RightSidebar() {
                 <button
                   class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                     (selectedObject as any).fontWeight === "700" || (selectedObject as any).fontWeight === "bold"
-                      ? "bg-accent/20 border-accent text-accent"
-                      : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                      ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                      : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                   }`}
                   onClick={() =>
                     updateSelectedObject({
@@ -149,8 +131,8 @@ export function RightSidebar() {
                 <button
                   class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                     (selectedObject as any).fontStyle === "italic"
-                      ? "bg-accent/20 border-accent text-accent"
-                      : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                      ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                      : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                   }`}
                   onClick={() =>
                     updateSelectedObject({
@@ -163,8 +145,8 @@ export function RightSidebar() {
                 <button
                   class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                     (selectedObject as any).underline
-                      ? "bg-accent/20 border-accent text-accent"
-                      : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                      ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                      : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                   }`}
                   onClick={() =>
                     updateSelectedObject({ underline: !(selectedObject as any).underline })
@@ -188,8 +170,8 @@ export function RightSidebar() {
                     key={align}
                     class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                       (selectedObject as any).textAlign === align
-                        ? "bg-accent/20 border-accent text-accent"
-                        : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                        ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                        : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                     }`}
                     onClick={() => updateSelectedObject({ textAlign: align })}
                   >
@@ -276,15 +258,15 @@ export function RightSidebar() {
                 <input
                   type="color"
                   class="w-8 h-8 rounded border border-zinc-300 cursor-pointer bg-transparent shrink-0"
-                  value={(selectedObject.fill as string) || "#6366f1"}
+                  value={(selectedObject.fill as string) || "#8b3dff"}
                   onInput={(e) =>
                     updateSelectedObject({ fill: (e.target as HTMLInputElement).value })
                   }
                 />
                 <input
                   type="text"
-                  class="flex-1 bg-white border border-zinc-300 rounded-md text-xs text-zinc-700 px-2 py-1.5 outline-none focus:border-accent font-mono"
-                  value={(selectedObject.fill as string) || "#6366f1"}
+                  class="flex-1 bg-white border border-[#e5e7eb] rounded-md text-xs text-zinc-700 px-2 py-1.5 outline-none focus:border-[#8b3dff] font-mono"
+                  value={(selectedObject.fill as string) || "#8b3dff"}
                   onInput={(e) =>
                     updateSelectedObject({ fill: (e.target as HTMLInputElement).value })
                   }
@@ -351,8 +333,8 @@ export function RightSidebar() {
                 <button
                   class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                     selectedObject.flipX
-                      ? "bg-accent/20 border-accent text-accent"
-                      : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                      ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                      : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                   }`}
                   onClick={() => updateSelectedObject({ flipX: !selectedObject.flipX })}
                 >
@@ -361,8 +343,8 @@ export function RightSidebar() {
                 <button
                   class={`p-1.5 rounded-md border cursor-pointer transition-all ${
                     selectedObject.flipY
-                      ? "bg-accent/20 border-accent text-accent"
-                      : "bg-transparent border-zinc-300 text-zinc-400 hover:text-zinc-900"
+                      ? "bg-[#eee5ff] border-[#8b3dff] text-[#8b3dff]"
+                      : "bg-transparent border-[#e5e7eb] text-[#5f6368] hover:text-[#202124] hover:border-[#8b3dff]"
                   }`}
                   onClick={() => updateSelectedObject({ flipY: !selectedObject.flipY })}
                 >

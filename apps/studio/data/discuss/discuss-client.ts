@@ -75,6 +75,15 @@ export function getDiscussClient(vars: DiscussClientVariables): DiscussClient {
 
   const client = createClient<DiscussDatabase, 'discuss'>(endpoint, apiKey, {
     db: { schema: 'discuss' },
+    // PostgREST schema switching relies on Accept-Profile / Content-Profile. Some tenant
+    // gateways and older client paths drop the schema from db options alone, which makes
+    // `.from('channels')` hit public and fail with PGRST205. Pin the headers explicitly.
+    global: {
+      headers: {
+        'Accept-Profile': 'discuss',
+        'Content-Profile': 'discuss',
+      },
+    },
     // Supplying `accessToken` puts the client in "bring your own auth" mode: it never reads or
     // writes a GoTrue session of its own, and it uses this token for both PostgREST and Realtime.
     accessToken: async () => {

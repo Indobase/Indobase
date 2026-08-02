@@ -33,21 +33,30 @@ export async function getOrganizationMembers(
   const { data: orgInvites, error: orgInvitesError } = invites
 
   if (orgMembersError) handleError(orgMembersError)
-  if (orgInvitesError) handleError(orgInvitesError)
+  // Invitations are optional — some SaaS orgs only expose /members (with a role string).
+  // A missing invitations route must not block Discuss/CRM bootstrap.
+  const invitedMembers =
+    orgInvitesError || !orgInvites
+      ? []
+      : (orgInvites.invitations ?? []).map((invite) => {
+          const member = {
+            invited_at: invite.invited_at,
+            invited_id: invite.id,
+            mfa_enabled: false,
+            username: invite.invited_email.slice(0, 1),
+            primary_email: invite.invited_email,
+          }
+          return { ...member, role_ids: [invite.role_id] }
+        })
 
-  // Remap invite data to look like existing members data
-  const invitedMembers = orgInvites.invitations.map((invite) => {
-    const member = {
-      invited_at: invite.invited_at,
-      invited_id: invite.id,
-      mfa_enabled: false,
-      username: invite.invited_email.slice(0, 1),
-      primary_email: invite.invited_email,
-    }
-    return { ...member, role_ids: [invite.role_id] }
-  })
+  // Platform handler returns `{ members: [...] }`; older paths may return a bare array.
+  const memberRows = Array.isArray(orgMembers)
+    ? orgMembers
+    : Array.isArray((orgMembers as { members?: unknown })?.members)
+      ? (orgMembers as { members: OrganizationMember[] }).members
+      : []
 
-  return [...orgMembers, ...invitedMembers] as OrganizationMember[]
+  return [...memberRows, ...invitedMembers] as OrganizationMember[]
 }
 
 export type OrganizationMembersData = Awaited<ReturnType<typeof getOrganizationMembers>>

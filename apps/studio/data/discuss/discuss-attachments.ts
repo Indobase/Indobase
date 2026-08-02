@@ -126,18 +126,30 @@ export async function sendDiscussMessageWithFiles({
 
   const message = data as DiscussMessage
 
-  for (const file of files) {
-    const upload = await uploadDiscussFile({
-      ...vars,
-      gotrueId: vars.gotrueId,
-      messageId: message.id,
-      file,
-    })
-    await insertDiscussAttachment({
-      ...vars,
-      messageId: message.id,
-      upload,
-    })
+  try {
+    for (const file of files) {
+      const upload = await uploadDiscussFile({
+        ...vars,
+        gotrueId: vars.gotrueId,
+        messageId: message.id,
+        file,
+      })
+      await insertDiscussAttachment({
+        ...vars,
+        messageId: message.id,
+        upload,
+      })
+    }
+  } catch (uploadError) {
+    // Avoid orphan caption-only rows when Storage/attachment write fails after insert.
+    const { error: softDeleteError } = await client
+      .from('messages')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', message.id)
+    if (softDeleteError) {
+      console.error('Discuss: failed to soft-delete message after upload error', softDeleteError)
+    }
+    throw uploadError
   }
 
   return message

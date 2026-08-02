@@ -47,8 +47,8 @@ export function SignInPage() {
           Open from Indobase Studio
         </Title>
         <Paragraph type="secondary" style={{ textAlign: 'center', marginBottom: 24 }}>
-          Indobase Email uses your Studio account. Open Email from your project&apos;s Marketing
-          hub — there is no separate Email password.
+          Indobase Email uses your Studio account — there is no separate Email password. Open it
+          from the Email tile on your project page in Studio.
         </Paragraph>
         {error ? (
           <Paragraph
@@ -73,7 +73,7 @@ export function SignInPage() {
             window.location.assign(studioMarketingUrl(projectRef))
           }}
         >
-          {projectRef ? 'Open Marketing in Studio' : 'Open Studio'}
+          {projectRef ? 'Open your project in Studio' : 'Open Studio'}
         </Button>
         <Button
           block
@@ -88,7 +88,8 @@ export function SignInPage() {
           type="secondary"
           style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 12 }}
         >
-          Already signed in to Studio? Use Marketing → Email for your project.
+          Already signed in to Studio? Then opening Email did not complete — use the button above
+          and, if it happens again, contact support.
         </Text>
       </div>
     </div>

@@ -102,8 +102,8 @@ export function CanvasArea() {
   return (
     <div
       ref={wrapperRef}
-      class="flex-1 overflow-auto"
-      style={{ background: "#E8EAEF" }}
+      class="flex-1 overflow-auto design-editor-workspace"
+      style={{ background: "#edeff1" }}
     >
       {/* Spacer div — its dimensions match the visual (scaled) size so overflow scrollbars work */}
       <div
@@ -152,7 +152,7 @@ export function CanvasArea() {
                 {renamingId === page.id ? (
                   <input
                     ref={renameRef}
-                    class="text-[11px] text-zinc-700 bg-white border border-[#6366f1] rounded px-1.5 py-0.5 outline-none font-medium"
+                    class="text-[11px] text-zinc-700 bg-white border border-[#8b3dff] rounded px-1.5 py-0.5 outline-none font-medium"
                     style={{ width: 140 }}
                     value={renameValue}
                     onInput={(e) => setRenameValue((e.target as HTMLInputElement).value)}
@@ -175,14 +175,14 @@ export function CanvasArea() {
               {/* Action icons — visible on hover */}
               <div class="flex items-center gap-0.5">
                 <button
-                  class="p-1 rounded bg-transparent border-none cursor-pointer text-zinc-400 hover:text-[#6366f1] hover:bg-[#6366f1]/10 transition-all"
+                  class="p-1 rounded bg-transparent border-none cursor-pointer text-zinc-400 hover:text-[#8b3dff] hover:bg-[#8b3dff]/10 transition-all"
                   onClick={() => addPage(page.id)}
                   title="Add page below"
                 >
                   <Plus size={14} />
                 </button>
                 <button
-                  class="p-1 rounded bg-transparent border-none cursor-pointer text-zinc-400 hover:text-[#6366f1] hover:bg-[#6366f1]/10 transition-all"
+                  class="p-1 rounded bg-transparent border-none cursor-pointer text-zinc-400 hover:text-[#8b3dff] hover:bg-[#8b3dff]/10 transition-all"
                   onClick={() => duplicatePage(page.id)}
                   title="Duplicate page"
                 >
@@ -222,7 +222,7 @@ export function CanvasArea() {
             }}
           >
             <button
-              class="flex items-center gap-1.5 px-4 py-2 rounded-lg border-2 border-dashed border-zinc-300 bg-transparent cursor-pointer text-xs text-zinc-400 font-medium transition-all hover:border-[#6366f1] hover:text-[#6366f1] hover:bg-[#6366f1]/5"
+              class="flex items-center justify-center gap-1.5 min-w-[200px] px-6 py-2.5 rounded-lg border border-[#e5e7eb] bg-white cursor-pointer text-[13px] text-[#3c4043] font-semibold transition-all hover:border-[#8b3dff] hover:text-[#8b3dff] hover:bg-[#eee5ff] shadow-sm"
               onClick={() => addPage()}
             >
               <Plus size={14} />
