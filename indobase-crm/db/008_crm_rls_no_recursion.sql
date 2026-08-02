@@ -1,7 +1,49 @@
--- Indobase CRM — provisioning + realtime.
+-- Indobase CRM — break FORCE RLS recursion on crm.members and helpers.
 
 begin;
 
+create or replace function crm.current_project_ref()
+returns text
+language sql
+stable
+security definer
+set search_path = crm, pg_catalog
+set row_security = off
+as $$
+  select nullif(current_setting('request.jwt.claim.project_ref', true), '');
+$$;
+
+create or replace function crm.current_member_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = crm, pg_catalog
+set row_security = off
+as $$
+  select m.id
+  from crm.members m
+  where crm.current_project_ref() is not null
+    and m.gotrue_id = nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+    and m.project_ref = crm.current_project_ref();
+$$;
+
+revoke all on function crm.current_project_ref() from public;
+revoke all on function crm.current_member_ids() from public;
+grant execute on function crm.current_project_ref() to authenticated, service_role, anon;
+grant execute on function crm.current_member_ids() to authenticated, service_role;
+
+-- No self-select on crm.members (that recursed under FORCE RLS).
+drop policy if exists crm_members_select on crm.members;
+create policy crm_members_select on crm.members
+  for select using (
+    crm.current_project_ref() is not null
+    and project_ref = crm.current_project_ref()
+    and exists (select 1 from crm.current_member_ids())
+  );
+
+-- ensure_project_setup inserts as SECURITY DEFINER but FORCE RLS still applies to the
+-- function owner unless row_security is off for the session of that function.
 create or replace function crm.ensure_project_setup(
   p_project_ref  text,
   p_gotrue_id    uuid,
@@ -35,7 +77,6 @@ begin
         last_seen_at = now()
   returning id into v_member_id;
 
-  -- Default pipeline for sales MVP.
   for v_stage in
     select * from (values
       ('Lead', 0, false, false),
@@ -55,14 +96,5 @@ end;
 $$;
 
 revoke all on function crm.ensure_project_setup(text, uuid, text, text, text) from public;
-
-do $$
-begin
-  alter publication supabase_realtime add table crm.deals;
-exception
-  when duplicate_object then null;
-  when undefined_object then null;
-end
-$$;
 
 commit;

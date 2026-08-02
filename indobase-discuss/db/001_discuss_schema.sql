@@ -177,62 +177,80 @@ alter table discuss.attachments     force row level security;
 
 -- The caller's membership rows, derived from the JWT. Marked stable so Postgres can cache it
 -- within a statement rather than re-evaluating per row.
+-- row_security=off: FORCE RLS on members would otherwise re-enter this function via policies.
 create or replace function discuss.current_member_ids()
 returns setof uuid
 language sql
 stable
 security definer
 set search_path = discuss, pg_catalog
+set row_security = off
 as $$
   select m.id
   from discuss.members m
   where m.gotrue_id = nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 
+create or replace function discuss.my_channel_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = discuss, pg_catalog
+set row_security = off
+as $$
+  select cm.channel_id
+  from discuss.channel_members cm
+  where cm.member_id in (select discuss.current_member_ids());
+$$;
+
+create or replace function discuss.my_project_refs()
+returns setof text
+language sql
+stable
+security definer
+set search_path = discuss, pg_catalog
+set row_security = off
+as $$
+  select distinct m.project_ref
+  from discuss.members m
+  where m.id in (select discuss.current_member_ids());
+$$;
+
 -- Membership of the CHANNEL is the boundary, not membership of the project. A private channel must
 -- stay private to project peers too.
+drop policy if exists members_self_project on discuss.members;
 create policy members_self_project on discuss.members
   for select using (
-    project_ref in (select m.project_ref from discuss.members m where m.id in (select discuss.current_member_ids()))
+    project_ref in (select discuss.my_project_refs())
   );
 
+drop policy if exists channels_visible on discuss.channels;
 create policy channels_visible on discuss.channels
   for select using (
-    exists (
-      select 1 from discuss.channel_members cm
-      where cm.channel_id = channels.id
-        and cm.member_id in (select discuss.current_member_ids())
-    )
-    or (not is_private and project_ref in (
-      select m.project_ref from discuss.members m where m.id in (select discuss.current_member_ids())
-    ))
+    id in (select discuss.my_channel_ids())
+    or (not is_private and project_ref in (select discuss.my_project_refs()))
   );
 
+drop policy if exists channel_members_visible on discuss.channel_members;
 create policy channel_members_visible on discuss.channel_members
   for select using (
-    channel_id in (
-      select cm.channel_id from discuss.channel_members cm
-      where cm.member_id in (select discuss.current_member_ids())
-    )
+    channel_id in (select discuss.my_channel_ids())
   );
 
+drop policy if exists messages_read on discuss.messages;
 create policy messages_read on discuss.messages
   for select using (
     deleted_at is null
-    and channel_id in (
-      select cm.channel_id from discuss.channel_members cm
-      where cm.member_id in (select discuss.current_member_ids())
-    )
+    and channel_id in (select discuss.my_channel_ids())
   );
 
 -- Viewers are read-only across the ecosystem; that must hold here too.
+drop policy if exists messages_write on discuss.messages;
 create policy messages_write on discuss.messages
   for insert with check (
     author_id in (select discuss.current_member_ids())
-    and channel_id in (
-      select cm.channel_id from discuss.channel_members cm
-      where cm.member_id in (select discuss.current_member_ids())
-    )
+    and channel_id in (select discuss.my_channel_ids())
     and exists (
       select 1 from discuss.members m
       where m.id = author_id and m.role <> 'viewer'
@@ -240,14 +258,17 @@ create policy messages_write on discuss.messages
   );
 
 -- Authors edit their own words. Nobody edits anyone else's.
+drop policy if exists messages_update_own on discuss.messages;
 create policy messages_update_own on discuss.messages
   for update using (author_id in (select discuss.current_member_ids()))
   with check (author_id in (select discuss.current_member_ids()));
 
+drop policy if exists read_state_own on discuss.read_state;
 create policy read_state_own on discuss.read_state
   for all using (member_id in (select discuss.current_member_ids()))
   with check (member_id in (select discuss.current_member_ids()));
 
+drop policy if exists attachments_follow_message on discuss.attachments;
 create policy attachments_follow_message on discuss.attachments
   for select using (
     message_id in (select id from discuss.messages)

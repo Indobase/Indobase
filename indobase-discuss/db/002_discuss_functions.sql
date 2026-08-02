@@ -30,6 +30,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = discuss, pg_catalog
+set row_security = off
 as $$
 declare
   v_member_id uuid;
