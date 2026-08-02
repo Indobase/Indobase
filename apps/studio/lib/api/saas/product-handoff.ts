@@ -80,12 +80,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://domains.indobase.in',
   },
-  helpdesk: {
-    audience: 'indobase-helpdesk',
-    label: 'Helpdesk',
-    launchPath: '/sso/launch',
-    defaultBaseUrl: 'https://helpdesk.indobase.in',
-  },
   payments: {
     audience: 'indobase-payments',
     label: 'Payments',
