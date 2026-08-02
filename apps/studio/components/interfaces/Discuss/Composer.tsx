@@ -11,6 +11,7 @@ import {
 
 import type { DiscussMember } from 'data/discuss/discuss.types'
 import { DISCUSS_MAX_UPLOAD_BYTES, DISCUSS_MAX_UPLOAD_FILES } from 'data/discuss/discuss-upload'
+import { toast } from 'sonner'
 import { Button, ExpandingTextArea, cn } from 'ui'
 
 import { PendingFiles } from './AttachmentViews'
@@ -159,15 +160,31 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       const picked = Array.from(event.target.files ?? [])
       event.target.value = ''
       if (picked.length === 0) return
-      setFiles((prev) => {
-        const next = [...prev]
-        for (const file of picked) {
-          if (next.length >= DISCUSS_MAX_UPLOAD_FILES) break
-          if (file.size > DISCUSS_MAX_UPLOAD_BYTES) continue
-          next.push(file)
+
+      const next = [...files]
+      const oversized: string[] = []
+      let rejectedForCap = 0
+      for (const file of picked) {
+        if (next.length >= DISCUSS_MAX_UPLOAD_FILES) {
+          rejectedForCap += 1
+          continue
         }
-        return next
-      })
+        if (file.size > DISCUSS_MAX_UPLOAD_BYTES) {
+          oversized.push(file.name)
+          continue
+        }
+        next.push(file)
+      }
+      setFiles(next)
+      if (oversized.length > 0) {
+        toast.error(
+          oversized.length === 1
+            ? `"${oversized[0]}" is larger than 25 MB`
+            : `${oversized.length} files are larger than 25 MB`
+        )
+      } else if (rejectedForCap > 0) {
+        toast.error(`You can attach at most ${DISCUSS_MAX_UPLOAD_FILES} files`)
+      }
     }
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

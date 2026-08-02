@@ -84,6 +84,98 @@ export async function ensureDiscussSchema({
       end
       $$;
 
+      -- Discuss uploads: 005 is skipped on re-open when the schema already exists. Always repair
+      -- attachment write policies/grants and the Storage bucket so attach does not 404/403.
+      do $$
+      begin
+        if to_regclass('discuss.attachments') is null then
+          return;
+        end if;
+        drop policy if exists attachments_insert on discuss.attachments;
+        create policy attachments_insert on discuss.attachments
+          for insert with check (
+            message_id in (
+              select m.id from discuss.messages m
+              where m.author_id in (select discuss.current_member_ids())
+            )
+          );
+        drop policy if exists attachments_delete_own on discuss.attachments;
+        create policy attachments_delete_own on discuss.attachments
+          for delete using (
+            message_id in (
+              select m.id from discuss.messages m
+              where m.author_id in (select discuss.current_member_ids())
+            )
+          );
+        grant select, insert, delete on discuss.attachments to authenticated, service_role;
+      exception
+        when undefined_table then null;
+        when undefined_function then null;
+        when insufficient_privilege then null;
+      end
+      $$;
+
+      do $$
+      begin
+        if to_regclass('storage.buckets') is null then
+          return;
+        end if;
+        insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+        values (
+          'discuss',
+          'discuss',
+          false,
+          26214400,
+          array[
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+            'application/pdf',
+            'text/plain', 'text/csv',
+            'application/zip',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          ]
+        )
+        on conflict (id) do update
+          set file_size_limit = excluded.file_size_limit,
+              allowed_mime_types = excluded.allowed_mime_types;
+
+        drop policy if exists discuss_storage_select on storage.objects;
+        create policy discuss_storage_select on storage.objects
+          for select to authenticated
+          using (bucket_id = 'discuss');
+
+        drop policy if exists discuss_storage_insert on storage.objects;
+        create policy discuss_storage_insert on storage.objects
+          for insert to authenticated
+          with check (
+            bucket_id = 'discuss'
+            and (storage.foldername(name))[1] = auth.uid()::text
+          );
+
+        drop policy if exists discuss_storage_update on storage.objects;
+        create policy discuss_storage_update on storage.objects
+          for update to authenticated
+          using (
+            bucket_id = 'discuss'
+            and (storage.foldername(name))[1] = auth.uid()::text
+          );
+
+        drop policy if exists discuss_storage_delete on storage.objects;
+        create policy discuss_storage_delete on storage.objects
+          for delete to authenticated
+          using (
+            bucket_id = 'discuss'
+            and (storage.foldername(name))[1] = auth.uid()::text
+          );
+      exception
+        when undefined_table then null;
+        when undefined_function then null;
+        when insufficient_privilege then null;
+      end
+      $$;
+
       do $$
       begin
         if to_regprocedure('discuss.ensure_project_setup(text,uuid,text,text,text)') is null then
