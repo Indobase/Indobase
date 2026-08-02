@@ -58,7 +58,21 @@ export async function ensureDiscussSchema({
       query: sql,
       headers: { 'x-connection-encrypted': connectionEncrypted },
     })
-    if (result.error) throw result.error
+    if (result.error) {
+      const message =
+        result.error instanceof Error ? result.error.message : String(result.error)
+      // Repair packs may try CREATE OR REPLACE on helpers owned by a different role than the
+      // pg-meta connection (e.g. after a manual postgres apply). Schema is already present.
+      if (
+        alreadyPresent &&
+        (/must be owner of function/i.test(message) ||
+          /query would be affected by row-level security/i.test(message) ||
+          /already exists/i.test(message))
+      ) {
+        continue
+      }
+      throw result.error
+    }
   }
 
   // Expose discuss to PostgREST without requiring a stack recreate. Kong/PostgREST may still need

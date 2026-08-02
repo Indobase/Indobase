@@ -43,7 +43,11 @@ export async function ensureCrmSchema({
   // Do NOT pass actorId: executeQuery wraps queries in a WITH set_config CTE, which breaks DDL
   // (`syntax error at or near "begin"`). Schema install uses the service connection, not RLS.
   // Do NOT `set row_security = off` — that GUC errors when RLS would apply.
-  for (const sql of CRM_SCHEMA_SQL_FILES) {
+  // Re-open path: only latest repair pack when schema already present.
+  const sqlFiles = alreadyPresent
+    ? CRM_SCHEMA_SQL_FILES.filter((_, i) => i >= CRM_SCHEMA_SQL_FILES.length - 1)
+    : [...CRM_SCHEMA_SQL_FILES]
+  for (const sql of sqlFiles) {
     const result = await executeQuery({
       query: sql,
       headers: { 'x-connection-encrypted': connectionEncrypted },
