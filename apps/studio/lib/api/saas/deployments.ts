@@ -2,6 +2,7 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { recordAuditLog } from './audit'
 import { resolveBuilderHandoffSecret } from './builder-launch'
+import { publishDiscussEvent } from './discuss-events'
 import { getProjectHostingForRef } from './hosting'
 import { ensureSaasTables, getGotrueUserId } from './platform'
 import { executeQuery } from './query'
@@ -579,6 +580,20 @@ async function recoverNextStaleBuildingProjectDeployment({
         targetType: 'deployment',
       })
 
+      // Stale recovery bypasses updateProjectDeployment, so the Activity card is emitted here too.
+      // The row moved building -> failed, which is a terminal transition like any other.
+      await publishDiscussEvent({
+        projectRef: deployment.project_ref,
+        type: 'deployment.failed',
+        data: {
+          deployment_id: deployment.id,
+          target_url: deployment.target_url || null,
+          requested_via: deployment.requested_via ?? null,
+          completed_at: deployment.completed_at,
+          error: deployment.last_error ?? staleMessage,
+        },
+      })
+
       return deployment
     }
   }
@@ -975,6 +990,25 @@ export async function updateProjectDeployment({
     targetDescription: deployment.id,
     targetType: 'deployment',
   })
+
+  // Activity channel card. Only on the transition into a terminal state, so a retried status
+  // write does not produce a duplicate card. Best-effort by contract: publishDiscussEvent never
+  // throws, so a Discuss outage cannot fail a deployment.
+  if (current.status !== deployment.status) {
+    if (deployment.status === 'ready' || deployment.status === 'failed') {
+      await publishDiscussEvent({
+        projectRef: deployment.project_ref,
+        type: deployment.status === 'ready' ? 'deployment.ready' : 'deployment.failed',
+        data: {
+          deployment_id: deployment.id,
+          target_url: deployment.target_url || null,
+          requested_via: deployment.requested_via ?? null,
+          completed_at: deployment.completed_at,
+          error: deployment.status === 'failed' ? deployment.last_error : null,
+        },
+      })
+    }
+  }
 
   return deployment
 }

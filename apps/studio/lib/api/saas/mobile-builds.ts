@@ -2,6 +2,7 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import { recordAuditLog, type AuditAction, type AuditTargetType } from './audit'
 import { resolveBuilderHandoffSecret } from './builder-launch'
+import { publishDiscussEvent } from './discuss-events'
 import { ensureSaasTables, getGotrueUserId } from './platform'
 import { executeQuery } from './query'
 
@@ -1573,6 +1574,27 @@ export async function updateProjectMobileBuild({
     targetDescription: build.id,
     targetType: PROJECT_MOBILE_BUILD_AUDIT_TARGET_TYPE,
   })
+
+  // Activity channel card, only on the transition into a terminal state so repeated status
+  // writes cannot duplicate it. publishDiscussEvent never throws — a build must not fail
+  // because Discuss is unreachable.
+  if (current.status !== build.status) {
+    if (build.status === 'ready' || build.status === 'failed') {
+      await publishDiscussEvent({
+        projectRef: build.project_ref,
+        type: build.status === 'ready' ? 'mobile_build.ready' : 'mobile_build.failed',
+        data: {
+          build_id: build.id,
+          target: build.target,
+          profile: build.profile,
+          framework: build.framework,
+          artifact_count: build.artifacts.length,
+          completed_at: build.completed_at,
+          error: build.status === 'failed' ? build.last_error : null,
+        },
+      })
+    }
+  }
 
   return build
 }

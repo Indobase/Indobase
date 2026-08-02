@@ -5,6 +5,7 @@ import { recordAuditLog } from './audit'
 import {
   isValidProjectApiKey,
   loadProjectJwtSecretEncForMember,
+  makeProjectAccessJwt,
   makeProjectJwt,
   normalizeProjectApiKey,
   resolveProjectJwtSecret,
@@ -600,4 +601,95 @@ export async function setLegacyApiKeysEnabled({
 export function parseRevealQuery(value: unknown) {
   if (typeof value === 'string') return value === 'true'
   return false
+}
+
+const TEMP_KEY_MAX_EXPIRY_SECONDS = 3600
+const TEMP_KEY_DEFAULT_EXPIRY_SECONDS = 300
+const TEMP_KEY_ALLOWED_ROLES = new Set(['anon', 'authenticated', 'service_role'])
+
+/**
+ * Mint a short-lived project JWT for Studio tooling (Realtime inspector, Storage, Discuss).
+ *
+ * Discuss REQUIRES `role=authenticated` and `sub=<caller gotrue id>` so tenant RLS can resolve
+ * `discuss.current_member_ids()`. The handler forces `sub` to the caller for authenticated tokens
+ * — a client cannot mint a token for someone else.
+ */
+export async function createTemporaryProjectApiKey({
+  claims,
+  ref,
+  authorizationExp,
+  requestedClaims,
+}: {
+  claims: Claims
+  ref: string
+  authorizationExp?: number
+  requestedClaims?: Record<string, unknown>
+}): Promise<{ api_key: string }> {
+  const { id: gotrueId } = getActor(claims)
+  await assertProjectMembership(ref, gotrueId)
+
+  const expSeconds = Math.min(
+    TEMP_KEY_MAX_EXPIRY_SECONDS,
+    Math.max(
+      1,
+      Number.isFinite(authorizationExp) && authorizationExp
+        ? Math.floor(authorizationExp)
+        : TEMP_KEY_DEFAULT_EXPIRY_SECONDS
+    )
+  )
+
+  const requestedRole =
+    typeof requestedClaims?.role === 'string' && requestedClaims.role.trim()
+      ? requestedClaims.role.trim()
+      : 'service_role'
+
+  if (!TEMP_KEY_ALLOWED_ROLES.has(requestedRole)) {
+    throw new Error(
+      `Temporary API key role must be one of: ${Array.from(TEMP_KEY_ALLOWED_ROLES).join(', ')}`
+    )
+  }
+
+  // service_role bypasses RLS — keep it available for existing Studio tooling, but never mint
+  // authenticated tokens that pretend to be a different user.
+  if (requestedRole === 'service_role') {
+    await assertProjectMembership(ref, gotrueId, ['owner', 'admin', 'developer'])
+  }
+
+  const encRow = await loadProjectJwtSecretEncForMember({ projectRef: ref, gotrueId })
+  if (!encRow) throw new Error('Project not found')
+  const jwtSecret = resolveProjectJwtSecret(encRow.jwtSecretEnc)
+
+  const tokenClaims: {
+    role: string
+    project_ref: string
+    expSeconds: number
+    sub?: string
+    aud?: string
+    email?: string
+  } = {
+    role: requestedRole,
+    project_ref: ref,
+    expSeconds,
+  }
+
+  if (requestedRole === 'authenticated') {
+    tokenClaims.aud =
+      typeof requestedClaims?.aud === 'string' && requestedClaims.aud.trim()
+        ? requestedClaims.aud.trim()
+        : 'authenticated'
+    tokenClaims.sub = gotrueId
+    const email =
+      typeof requestedClaims?.email === 'string'
+        ? requestedClaims.email
+        : typeof (claims as { email?: unknown }).email === 'string'
+          ? (claims as { email: string }).email
+          : undefined
+    if (email) tokenClaims.email = email
+  } else if (requestedRole === 'anon') {
+    tokenClaims.aud = 'anon'
+  } else {
+    tokenClaims.aud = 'authenticated'
+  }
+
+  return { api_key: makeProjectAccessJwt(jwtSecret, tokenClaims) }
 }

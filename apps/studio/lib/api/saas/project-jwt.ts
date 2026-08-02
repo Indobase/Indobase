@@ -33,16 +33,42 @@ export function makeProjectJwt(
   projectRef: string,
   extraClaims?: Record<string, unknown>
 ): string {
+  return makeProjectAccessJwt(jwtSecret, {
+    role,
+    project_ref: projectRef,
+    expSeconds: 60 * 60 * 24 * 365 * 10,
+    ...(extraClaims ?? {}),
+  })
+}
+
+/**
+ * Short-lived (or long-lived) HS256 JWT for a tenant's PostgREST / Realtime.
+ *
+ * `makeProjectJwt` is the permanent anon/service_role form. Discuss and other
+ * "bring your own auth" surfaces need an `authenticated` token whose `sub` is the
+ * Studio user's gotrue id so RLS (`request.jwt.claim.sub`) resolves the member.
+ */
+export function makeProjectAccessJwt(
+  jwtSecret: string,
+  claims: {
+    role: string
+    project_ref: string
+    expSeconds: number
+    sub?: string
+    aud?: string
+    email?: string
+    [key: string]: unknown
+  }
+): string {
   const headerB64 = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const now = Math.floor(Date.now() / 1000)
+  const { expSeconds, ...rest } = claims
   const payloadB64 = base64Url(
     JSON.stringify({
-      role,
       iss: 'indobase',
-      project_ref: projectRef,
       iat: now,
-      exp: now + 60 * 60 * 24 * 365 * 10,
-      ...(extraClaims ?? {}),
+      exp: now + Math.max(1, Math.floor(expSeconds)),
+      ...rest,
     })
   )
 

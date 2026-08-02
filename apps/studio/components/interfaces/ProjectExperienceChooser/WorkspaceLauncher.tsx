@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 import { useParams } from 'common'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
@@ -19,7 +20,6 @@ import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { SUITE_MODULES, type SuiteModuleId } from 'lib/api/saas/suite-launch-shared'
 
 import { useDesignLaunch } from './useDesignLaunch'
-import { useDiscussLaunch } from './useDiscussLaunch'
 import { useSuiteLaunch } from './useSuiteLaunch'
 
 const MODULE_ICONS: Record<SuiteModuleId, React.ReactNode> = {
@@ -78,9 +78,8 @@ export const WorkspaceLauncher = () => {
 
   const { launch: launchWorkspace, isLaunching: isLaunchingHome } = useSuiteLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
-  const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
   const [launchError, setLaunchError] = useState<string | null>(null)
-  const [activeModule, setActiveModule] = useState<SuiteModuleId | 'home' | 'discuss' | null>(null)
+  const [activeModule, setActiveModule] = useState<SuiteModuleId | 'home' | null>(null)
 
   const openModule = async (moduleId: SuiteModuleId) => {
     setLaunchError(null)
@@ -139,18 +138,6 @@ export const WorkspaceLauncher = () => {
     if (result.url) window.location.assign(result.url)
   }
 
-  const openDiscuss = async () => {
-    setLaunchError(null)
-    setActiveModule('discuss')
-    const result = await launchDiscuss()
-    setActiveModule(null)
-    if (!result.ok) {
-      setLaunchError(result.message ?? `Could not open ${ECOSYSTEM_PRODUCTS.discuss.name}.`)
-      return
-    }
-    if (result.url) window.location.assign(result.url)
-  }
-
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 py-8 lg:px-8">
       <div className="mb-6 space-y-2">
@@ -176,12 +163,12 @@ export const WorkspaceLauncher = () => {
         </div>
       )}
 
-      <section aria-label="Workspace home" className="mb-8">
+      <section aria-label="Open files" className="mb-6">
         <button
           type="button"
           onClick={() => void openHome()}
           disabled={isLaunchingHome || isLaunchingDesign}
-          className="inline-flex items-center gap-2 rounded-lg border bg-surface-100 px-4 py-2 text-sm font-medium transition hover:border-foreground-muted hover:shadow-sm"
+          className="text-sm font-medium text-[#3B8FD6] hover:underline disabled:opacity-60"
         >
           {isLaunchingHome
             ? `Opening ${ECOSYSTEM_PRODUCTS.workspace.name}…`
@@ -218,14 +205,13 @@ export const WorkspaceLauncher = () => {
           {ECOSYSTEM_PRODUCTS.design.name}
         </button>{' '}
         from the project home. {ECOSYSTEM_PRODUCTS.discuss.descriptor} for this project lives in{' '}
-        <button
-          type="button"
-          className="text-[#3B8FD6] underline"
-          onClick={() => void openDiscuss()}
-          disabled={isLaunchingDiscuss}
-        >
-          {ECOSYSTEM_PRODUCTS.discuss.name}
-        </button>
+        {ref ? (
+          <Link href={`/project/${ref}/discuss`} className="text-[#3B8FD6] underline">
+            {ECOSYSTEM_PRODUCTS.discuss.name}
+          </Link>
+        ) : (
+          ECOSYSTEM_PRODUCTS.discuss.name
+        )}
         .
       </p>
     </div>

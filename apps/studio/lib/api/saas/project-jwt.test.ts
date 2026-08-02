@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   generateProjectJwtSecret,
+  makeProjectAccessJwt,
   makeProjectJwt,
   normalizeProjectApiKey,
   resolveProjectJwtSecret,
@@ -65,11 +66,24 @@ describe('project-jwt', () => {
     expect(repaired).toBe(full)
   })
 
-  it('resolveProjectJwtSecret falls back to env when no per-project secret', () => {
-    vi.stubEnv('AUTH_JWT_SECRET', 'super-secret-jwt-token-with-at-least-32-characters-long')
-    expect(resolveProjectJwtSecret(null)).toBe(
-      'super-secret-jwt-token-with-at-least-32-characters-long'
-    )
-    vi.unstubAllEnvs()
+  it('makeProjectAccessJwt mints authenticated tokens with forced expiry and sub', () => {
+    const secret = 'super-secret-jwt-token-with-at-least-32-characters-long'
+    const token = makeProjectAccessJwt(secret, {
+      role: 'authenticated',
+      project_ref: 'test-ref',
+      expSeconds: 900,
+      sub: '11111111-1111-1111-1111-111111111111',
+      aud: 'authenticated',
+    })
+    const [, payload] = token.split('.')
+    const padded = payload.replace(/-/g, '+').replace(/_/g, '/') + '=='
+    const claims = JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as Record<
+      string,
+      unknown
+    >
+    expect(claims.role).toBe('authenticated')
+    expect(claims.sub).toBe('11111111-1111-1111-1111-111111111111')
+    expect(claims.aud).toBe('authenticated')
+    expect(signatureVerifies(token, secret)).toBe(true)
   })
 })

@@ -1,164 +1,129 @@
-# Indobase Discuss — team / org / project async chat
+# Indobase Discuss — native team chat inside Studio
 
-Indobase Discuss (`indobase-discuss/`) gives every organization and project **team chat**: spaces, threads, and pages. The engine is [Gameplan](https://github.com/frappe/gameplan) (AGPL-3.0); customer-facing branding is **Discuss** only — see [INDOBASE-ECOSYSTEM-NAMING.md](./INDOBASE-ECOSYSTEM-NAMING.md).
+Indobase Discuss is a **Studio surface** at `/project/[ref]/discuss`. Conversation lives in each
+project's **tenant Postgres** under the `discuss` schema, isolated by **FORCE RLS**. There is no
+separate Discuss login, no SSO handoff, and no third-party chat process to keep in sync.
 
-| Host (prod) | Host (staging) |
+| Surface | URL |
 |---|---|
-| `discuss.indobase.in` | `discuss.indobase.fun` |
-
-## Customer naming
-
-| Use | Name |
-|---|---|
-| Product (chooser, launch, titles) | **Discuss** |
-| Descriptor only | Team chat |
-| Never in UI | Gameplan, Frappe, GP Team/Project labels |
-
-Control plane: Vyom **103.190.92.249** (same pattern as Email, Social, Design).
+| Studio route | `https://studio.indobase.in/project/{ref}/discuss` |
+| Product name | **Discuss** (never Mattermost / Gameplan / Frappe in UI) |
 
 ---
 
-## Architecture (vertical slice)
+## Why native
+
+Previous Mattermost and Gameplan forks failed on handoff secrets, blank SPAs, and silent channel
+provisioning. Building Discuss inside Studio removes that class of bug: the Studio session is the
+auth, and Postgres RLS is the tenancy boundary.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart LR
-  Studio["Studio project chooser"]
-  Launch["GET /api/platform/projects/:ref/discuss/launch"]
-  Bridge["indobase-discuss bridge :8092"]
-  Frappe["Frappe + Gameplan"]
-  Studio -->|"HS256 JWT in URL fragment"| Launch
-  Launch --> Bridge
-  Bridge -->|"/sso/session"| Frappe
-  Frappe -->|"GP Team + GP Project"| Bridge
+  StudioUI["Studio /project/ref/discuss"]
+  Ensure["POST …/discuss/ensure"]
+  Setup["discuss.ensure_project_setup"]
+  PostgREST["Tenant PostgREST schema=discuss"]
+  TenantDB["Tenant Postgres + RLS"]
+  StudioUI --> Ensure
+  Ensure --> TenantDB
+  StudioUI --> Setup
+  Setup --> TenantDB
+  StudioUI --> PostgREST
+  PostgREST --> TenantDB
 ```
 
 | Layer | Role |
 |---|---|
-| **Studio** | Mints `aud=indobase-discuss` handoff JWT; org role gate (owner/admin/developer/viewer) |
-| **Bridge** | `/sso/launch` fragment exchange, session cookie, optional `/g/*` proxy |
-| **Frappe app** `indobase_discuss` | Verifies JWT, provisions Team/Space, logs user into Gameplan |
-| **Gameplan** | Discussions, threads, tasks, pages (upstream UI at `/g/…`) |
-
-We deliberately **do not** expose a separate email/password login — Studio session SSO only (same as Email, Social, Design).
+| **Studio UI** | Channels, transcript, threads, activity cards |
+| **Temporary API key** | Short-lived `authenticated` JWT (`sub` = Studio gotrue id, `project_ref` = project) |
+| **`discuss` schema** | members, channels, messages, … — FORCE RLS, membership scoped by JWT `project_ref` |
+| **Platform publishers** | Deploys, builds, payments, KYC → Activity channel via `discuss.publish_event` |
 
 ---
 
-## Org / project → Space mapping
+## Slack-parity features (in progress)
 
-| Indobase | Gameplan | Stable key |
-|---|---|---|
-| Organization slug | **GP Team** (community) | `ib-org-{sanitized_org_slug}` |
-| Project ref | **GP Project** (space) | `ib-proj-{sanitized_project_ref}` |
-
-Implementation is duplicated in three places (must stay in sync):
-
-- `indobase-discuss/bridge/src/space-map.ts`
-- `indobase-discuss/frappe-app/.../utils/space_map.py`
-- `apps/studio/lib/api/saas/discuss-launch-shared.ts`
-
-Custom fields on install (`indobase_discuss.install`):
-
-- `GP Team.indobase_team_key`, `indobase_org_slug`
-- `GP Project.indobase_space_key`, `indobase_project_ref`
-
-Deep link after SSO: `/g/{team_key}/{space_key}`.
-
-**Role mapping**
-
-| Studio org role | Gameplan role |
+| Feature | Status |
 |---|---|
-| owner, admin, developer | Gameplan Member (can post) |
-| viewer | Gameplan Guest (read-focused) |
-
----
-
-## SSO contract
-
-Same shape as other ecosystem products (`product-handoff.ts`):
-
-| Claim | Value |
-|---|---|
-| `aud` | `indobase-discuss` |
-| `iss` | Studio origin |
-| `sub` | GoTrue user id |
-| `email` | Primary email |
-| `organization_slug` | SaaS org slug |
-| `project_ref` | Project ref |
-| `project_name` | Display name |
-| `role` | owner \| admin \| developer \| viewer |
-| `exp` | ~5 minutes |
-
-**Secrets:** `DISCUSS_HANDOFF_SECRET` on Discuss + `STUDIO_HANDOFF_SECRET` (or product-specific) on Studio — minimum 32 chars.
-
-**Launch URL**
-
-```
-https://discuss.indobase.in/sso/launch?project_ref={ref}&from=studio#token={jwt}
-```
-
-Flow:
-
-1. Browser loads `/sso/launch` (token in fragment).
-2. Bridge POST `/sso/session` with token.
-3. Bridge calls Frappe `indobase_discuss.api.studio_handoff.exchange` when configured.
-4. Session cookie `indobase_discuss_session` set; redirect to project space.
+| Channels + Activity feed | Done |
+| 1:1 DMs | Done |
+| Create channel (public/private) | Done |
+| Threads (one level) | Done |
+| Edit / soft-delete own messages | Done |
+| Emoji reactions | Done |
+| @mentions (autocomplete + highlight) | Done |
+| Full-text search UI | Done |
+| Unread + realtime | Done |
+| File / image uploads (Storage + attachments) | Done |
+| In-app notifications (mentions, DMs, replies) | Done |
+| Presence + typing indicators | Done |
+| Group DMs | Done |
+| Channel archive / unarchive UX | Done |
+| Mobile layout | Out of scope for now |
 
 ---
 
 ## Repo layout
 
 ```
-indobase-discuss/
-├── bridge/                 # Node SSO + dev shell + Gameplan proxy
-├── frappe-app/indobase_discuss/  # Handoff + provisioning + rebrand hooks
-├── docker/deploy/          # Compose + Traefik for .249
-└── NOTICE.md               # AGPL attribution
+indobase-discuss/db/          # Tenant DDL (001–006; ensure re-applies all)
+apps/studio/
+  pages/project/[ref]/discuss.tsx
+  pages/api/platform/projects/[ref]/discuss/ensure.ts
+  pages/api/platform/projects/[ref]/api-keys/temporary.ts
+  components/interfaces/Discuss/
+  data/discuss/
+  lib/api/saas/discuss-events.ts
+  lib/api/saas/discuss-schema.ts
 ```
 
-Studio integration:
-
-- `apps/studio/lib/api/saas/product-handoff.ts` — `discuss` product entry
-- `apps/studio/lib/api/saas/discuss-launch.ts` — launch helper
-- `apps/studio/pages/api/platform/projects/[ref]/discuss/launch.ts`
-- `ProjectExperienceChooser` — **Discuss** tile (descriptor: team chat)
-- `DiscussSidebarNavItem` — project sidebar SSO entry
+Legacy Gameplan bridge code under `indobase-discuss/bridge/` is superseded for product UX; do not
+route Studio "Open Discuss" through SSO.
 
 ---
 
-## Local development
+## Tenant requirements
 
-**Bridge only (fast path):**
-
-```bash
-cd indobase-discuss/bridge
-pnpm install
-DISCUSS_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm dev
-curl -sS http://localhost:8092/sso/health
-```
-
-**Full stack:**
-
-```bash
-cd indobase-discuss/docker/deploy
-cp .env.example .env   # set DISCUSS_HANDOFF_SECRET, MARIADB_ROOT_PASSWORD
-docker compose up -d
-```
-
-First Gameplan boot can take several minutes (bench init).
+1. Dedicated tenant database preferred (one project ↔ one DB). On a shared DB, JWT `project_ref`
+   scopes `discuss.current_member_ids()` so projects stay isolated.
+2. `discuss` schema installed (Studio calls `/discuss/ensure` on open — applies 001–006).
+3. PostgREST exposes `discuss`: new stacks set `PGRST_DB_SCHEMAS`; ensure also best-effort
+   `ALTER ROLE authenticator … pgrst.db_schemas` + `NOTIFY pgrst` reload. Older stacks may still
+   need a compose repair if in-DB config is disabled.
+4. Temporary API keys mint project-scoped JWTs with `role=authenticated`, `sub=<gotrue id>`, and
+   `project_ref=<ref>` (not a global service key).
 
 ---
 
-## Deploy checklist for Vyom `.249` (not done in this change)
+## Multitenancy
 
-1. Add DNS: `discuss.indobase.in` / `.fun` → `.249`.
-2. Set `DISCUSS_HANDOFF_SECRET` on Studio Swarm env + Discuss compose (match `STUDIO_HANDOFF_SECRET`).
-3. Deploy compose stack; confirm Traefik router `indobase-discuss`.
-4. Smoke: Studio → **Discuss** → lands on project space; no Gameplan/Frappe strings in title/footer.
-5. Optional CI: add `roshanraghavander/indobase-discuss:<sha>` image build to `docker-publish.yml`.
-6. Gameplan frontend rebrand pass (replace visible "Gameplan" strings in built assets / fixtures) — tracked as follow-up; hooks set `app_icon_title = Discuss`.
+Isolation is **per project**, enforced in Postgres:
+
+1. Studio mints a temporary JWT with `project_ref` for that project.
+2. `discuss.current_member_ids()` only returns the caller's member row(s) for that `project_ref`.
+3. Channel / message policies hang off that membership set (plus private-channel membership).
+
+Dedicated tenant DBs are still preferred; shared DBs stay safe as long as Discuss tokens carry
+`project_ref` (asserted client-side before use).
 
 ---
 
-## AGPL
+## Role mapping
 
-Gameplan is AGPL-3.0. We keep upstream LICENSE/NOTICE and ship source access per license. Customer UI must not say "Gameplan" or "Frappe".
+| Studio org role | Discuss role |
+|---|---|
+| Owner | owner |
+| Administrator | admin |
+| Developer | developer |
+| Read-only | viewer (read-only; `messages_write` rejects inserts) |
+
+---
+
+## Platform events
+
+`publishDiscussEvent({ type, projectRef, data })` is best-effort and never throws. Event types and
+payload shapes live in `discuss-events-shared.ts` and render as Activity cards.

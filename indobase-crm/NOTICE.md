@@ -1,7 +1,9 @@
 # Third-party attribution
 
-Indobase CRM is built on [Frappe CRM](https://github.com/frappe/crm) by Frappe Technologies Pvt Ltd, licensed under **AGPL-3.0**.
+Indobase CRM is a **native** Studio product. Conversation/sales data lives in each project's
+tenant Postgres (`crm` schema) with FORCE RLS.
 
-Upstream source is fetched during Docker init (`bench get-app crm`). See `LICENSE` in that tree.
-
-Customer-facing product name is **CRM** (Indobase CRM in bridge titles). Do not expose "Frappe CRM" or "Frappe" in user-visible UI, routes, OAuth client names, or email footers.
+Earlier Indobase CRM builds temporarily ran on [Twenty](https://github.com/twentyhq/twenty)
+(AGPL-3.0). That stack has been removed from the product path. Keep historical AGPL attribution
+for any retained upstream NOTICE fragments if present in git history; do not ship Twenty images
+or branding.

@@ -20,6 +20,7 @@ import {
   Settings,
   Share2,
   Sparkles,
+  TrendingUp,
   Video as VideoIcon,
 } from 'lucide-react'
 import { Badge, Button, cn } from 'ui'
@@ -27,9 +28,8 @@ import { Badge, Button, cn } from 'ui'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
+import { useBuilderLaunch } from './useBuilderLaunch'
 import { useDesignLaunch } from './useDesignLaunch'
-import { useDiscussLaunch } from './useDiscussLaunch'
-import { useEmailLaunch } from './useEmailLaunch'
 import { useSocialLaunch } from './useSocialLaunch'
 import { useVideoLaunch } from './useVideoLaunch'
 
@@ -178,9 +178,11 @@ export const ProjectExperienceChooser = () => {
   const { data: project } = useSelectedProjectQuery()
   const { data: organization } = useSelectedOrganizationQuery()
 
+  const { launch: launchBuilder, isLaunching: isLaunchingBuilder } = useBuilderLaunch({
+    nextPath: '/?source=studio',
+  })
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
-  const { launch: launchDiscuss, isLaunching: isLaunchingDiscuss } = useDiscussLaunch()
-  const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
+  // Discuss and CRM are Studio routes now — no launch hook, no handoff.
   const { launch: launchSocial, isLaunching: isLaunchingSocial } = useSocialLaunch()
   const { launch: launchVideo, isLaunching: isLaunchingVideo } = useVideoLaunch()
 
@@ -224,11 +226,15 @@ export const ProjectExperienceChooser = () => {
           label={ECOSYSTEM_PRODUCTS.workspace.name}
           href={`/project/${ref}/workspace`}
         />
-        <RailLaunchItem
+        <RailItem
+          icon={<TrendingUp size={18} />}
+          label={ECOSYSTEM_PRODUCTS.crm.name}
+          href={`/project/${ref}/crm`}
+        />
+        <RailItem
           icon={<MessageSquare size={18} />}
           label={ECOSYSTEM_PRODUCTS.discuss.name}
-          loading={isLaunchingDiscuss}
-          onClick={() => void open(launchDiscuss)}
+          href={`/project/${ref}/discuss`}
         />
         <RailItem icon={<Database size={18} />} label="Backend" href={`/project/${ref}/backend`} />
         <RailItem icon={<Megaphone size={18} />} label="Marketing" href={`/project/${ref}/marketing`} />
@@ -276,7 +282,8 @@ export const ProjectExperienceChooser = () => {
                   tagline="Build your app with AI"
                   icon={<Blocks size={18} className="text-[#3B8FD6]" />}
                   accentClassName="bg-[#3B8FD6]/10"
-                  href={`/project/${ref}`}
+                  onClick={() => void launchBuilder()}
+                  loading={isLaunchingBuilder}
                 />
                 <ProductTile
                   name="Backend Studio"
@@ -315,20 +322,18 @@ export const ProjectExperienceChooser = () => {
                   loading={isLaunchingDesign}
                 />
                 <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.crm.name}
+                  tagline={ECOSYSTEM_PRODUCTS.crm.tagline}
+                  icon={<TrendingUp size={18} className="text-[#059669]" />}
+                  accentClassName="bg-[#059669]/10"
+                  href={`/project/${ref}/crm`}
+                />
+                <ProductTile
                   name={ECOSYSTEM_PRODUCTS.discuss.name}
                   tagline={ECOSYSTEM_PRODUCTS.discuss.tagline}
                   icon={<MessageSquare size={18} className="text-[#6366F1]" />}
                   accentClassName="bg-[#6366F1]/10"
-                  onClick={() => open(launchDiscuss)}
-                  loading={isLaunchingDiscuss}
-                />
-                <ProductTile
-                  name="Email"
-                  tagline="Campaigns and transactional mail"
-                  icon={<Mail size={18} className="text-[#0EA5E9]" />}
-                  accentClassName="bg-[#0EA5E9]/10"
-                  onClick={() => open(launchEmail)}
-                  loading={isLaunchingEmail}
+                  href={`/project/${ref}/discuss`}
                 />
                 <ProductTile
                   name="Social"
@@ -345,13 +350,6 @@ export const ProjectExperienceChooser = () => {
                   accentClassName="bg-[#F59E0B]/10"
                   onClick={() => open(launchVideo)}
                   loading={isLaunchingVideo}
-                />
-                <ProductTile
-                  name="WhatsApp"
-                  tagline="Order updates and support"
-                  icon={<Megaphone size={18} className="text-[#22C55E]" />}
-                  accentClassName="bg-[#22C55E]/10"
-                  comingSoon
                 />
               </div>
 

@@ -1,39 +1,28 @@
 # Indobase Discuss
 
-Async team discussions for Indobase organizations and projects — **Discuss** (team chat): spaces, threads, and pages. Upstream engine is AGPL; customer UI is Indobase-branded only. See [docs/INDOBASE-ECOSYSTEM-NAMING.md](../docs/INDOBASE-ECOSYSTEM-NAMING.md).
+Native team chat for Indobase projects. Conversation lives in each project's **tenant
+Postgres** (`discuss` schema, FORCE RLS) and the UI is a Studio route at
+`/project/[ref]/discuss`. See [docs/INDOBASE-DISCUSS.md](../docs/INDOBASE-DISCUSS.md).
 
-| Host (prod) | Host (staging) |
+| Surface | URL |
 |---|---|
-| `discuss.indobase.in` | `discuss.indobase.fun` |
+| Studio | `https://studio.indobase.in/project/{ref}/discuss` |
+| Product name | **Discuss** only (never Mattermost / Gameplan / Frappe in UI) |
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `bridge/` | Node SSO bridge + dev shell (mirrors Design `/sso/launch`) |
-| `frappe-app/indobase_discuss/` | Frappe custom app: Studio handoff, org/project → Space provisioning, rebrand hooks |
-| `docker/deploy/` | Compose + Traefik for Vyom `.249` |
-| `vendor/gameplan/` | Upstream Gameplan (submodule — run `git submodule update --init`) |
+| `db/` | Tenant DDL — schema, functions, grants (installed via Studio `/discuss/ensure`) |
+| `bridge/` | **Legacy** Gameplan SSO bridge (superseded for product UX) |
+| `NOTICE.md` | Attribution for any retained upstream engines |
 
-## Local dev (bridge only)
+## Studio integration
 
-```bash
-cd bridge
-pnpm install
-DISCUSS_HANDOFF_SECRET="$(openssl rand -hex 32)" pnpm dev
-# open http://localhost:8092/sso/health
-```
+- UI: `apps/studio/components/interfaces/Discuss/`
+- Data layer: `apps/studio/data/discuss/`
+- Schema install: `POST /api/platform/projects/{ref}/discuss/ensure`
+- Activity publishers: `apps/studio/lib/api/saas/discuss-events.ts`
 
-Studio mints `aud=indobase-discuss` JWTs; bridge verifies and sets `indobase_discuss_session`.
-
-## Full stack (Gameplan + bridge)
-
-```bash
-cd docker/deploy
-cp .env.example .env   # set secrets
-docker compose up -d
-```
-
-First boot runs Frappe bench init (~5–10 min). Traefik serves `discuss.*` → bridge; bridge proxies `/g/*` to Gameplan when configured.
-
-See [docs/INDOBASE-DISCUSS.md](../docs/INDOBASE-DISCUSS.md).
+New tenant stacks expose `discuss` in `PGRST_DB_SCHEMAS`. After deploying Studio, open
+Discuss once per project to install the schema.

@@ -9,6 +9,7 @@ import {
   searchDomainsForProject,
   type DomainRegistrationRow,
 } from './domains-service'
+import { publishDiscussEvent } from './discuss-events'
 import { executeQuery } from './query'
 
 type Claims = JwtPayload & Record<string, unknown>
@@ -314,8 +315,29 @@ export async function confirmDomainPurchase({
     actorId: gotrueId,
   })
   if (paid.error) throw paid.error
-  if (!paid.data?.[0]) {
+  const paidRow = paid.data[0]
+  if (!paidRow) {
     throw new Error('Payment could not be matched to a pending domain registration')
+  }
+
+  // The money has landed; registration is a separate step that may still fail. Publish here so
+  // the Activity card reflects the payment itself. Org-scoped purchases have no project_ref and
+  // therefore no Activity channel to publish into.
+  if (paidRow.project_ref) {
+    await publishDiscussEvent({
+      projectRef: paidRow.project_ref,
+      type: 'payment.received',
+      data: {
+        kind: 'domain_registration',
+        reference_id: paidRow.id,
+        description: `${paidRow.domain_name} (${paidRow.years} year${paidRow.years === 1 ? '' : 's'})`,
+        amount_minor: paidRow.customer_price_inr_paise,
+        currency: 'INR',
+        provider: 'razorpay',
+        provider_payment_id: paidRow.razorpay_payment_id,
+        received_at: new Date().toISOString(),
+      },
+    })
   }
 
   return registerDomainAfterPayment({ claims, registrationId })

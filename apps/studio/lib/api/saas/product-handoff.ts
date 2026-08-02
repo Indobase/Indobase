@@ -18,7 +18,6 @@ type Claims = JwtPayload & Record<string, unknown>
 
 export const HANDOFF_PRODUCTS = [
   'analytics',
-  'crm',
   'design',
   'discuss',
   'domains',
@@ -64,12 +63,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Analytics',
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://analytics.indobase.in',
-  },
-  crm: {
-    audience: 'indobase-crm',
-    label: 'CRM',
-    launchPath: '/sso/launch',
-    defaultBaseUrl: 'https://crm.indobase.in',
   },
   design: {
     audience: 'indobase-design',
