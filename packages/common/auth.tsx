@@ -93,8 +93,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const refreshSession = useCallback(async () => {
     const {
       data: { session },
+      error,
     } = await gotrueClient.refreshSession()
 
+    // Always surface refresh failures as null — callers historically only checked session.
+    // Without this, a 401 refresh can still look like "success" and retry forever.
+    if (error) return null
     return session
   }, [])
 

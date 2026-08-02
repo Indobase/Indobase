@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { useRouter } from 'next/router'
-import { PropsWithChildren, createContext, useContext, useEffect, useMemo } from 'react'
+import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 
 import { useAuth, useIsLoggedIn, useUser } from 'common'
@@ -79,9 +79,14 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     isPending: isLoadingProfile,
     isError,
     isSuccess,
+    refetch: refetchProfile,
   } = useProfileQuery({
     enabled: isLoggedIn && !isPasswordRecoveryRoute,
   })
+
+  // Prevent concurrent refresh/signOut loops when profile stays 401 (dead HttpOnly refresh cookie).
+  const authRecoveryInFlightRef = useRef(false)
+  const authRecoveryAttemptedRef = useRef(false)
 
   useEffect(() => {
     if (isAuthLoading || !isError) return
@@ -97,22 +102,40 @@ export const ProfileProvider = ({ children }: PropsWithChildren<{}>) => {
     // and will think the user is authenticated. Since fetching the profile happens
     // on every page load, we can check for a 401 here and sign the user out if
     // they have a bad token.
-    if (error?.code === 401 && !isCreatingProfile) {
-      void (async () => {
-        const session = await refreshSession()
-        if (session) return
-        await signOut()
-        await router.push('/sign-in')
-      })()
+    if (error?.code !== 401 || isCreatingProfile) {
+      if (error?.code !== 401) {
+        authRecoveryAttemptedRef.current = false
+      }
+      return
     }
+
+    if (authRecoveryInFlightRef.current || authRecoveryAttemptedRef.current) return
+    authRecoveryInFlightRef.current = true
+    authRecoveryAttemptedRef.current = true
+
+    void (async () => {
+      try {
+        const session = await refreshSession()
+        if (session) {
+          const result = await refetchProfile()
+          if (result.error?.code !== 401) return
+        }
+        await signOut()
+        await router.replace('/sign-in')
+      } finally {
+        authRecoveryInFlightRef.current = false
+      }
+    })()
   }, [
-    error,
+    error?.code,
+    error?.message,
     signOut,
     router,
     createProfile,
     isError,
     isCreatingProfile,
     refreshSession,
+    refetchProfile,
     isAuthLoading,
   ])
 

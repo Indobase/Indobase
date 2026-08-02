@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
 
 import { useParams } from 'common'
@@ -10,6 +10,7 @@ import {
   FileText,
   FolderOpen,
   LayoutGrid,
+  Loader2,
   Mail,
   Presentation,
   Video,
@@ -19,7 +20,9 @@ import { Badge, cn } from 'ui'
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { SUITE_MODULES, type SuiteModuleId } from 'lib/api/saas/suite-launch-shared'
 
+import { useAutoLaunchProduct } from './useAutoLaunchProduct'
 import { useDesignLaunch } from './useDesignLaunch'
+import { useEmailLaunch } from './useEmailLaunch'
 import { useSuiteLaunch } from './useSuiteLaunch'
 
 const MODULE_ICONS: Record<SuiteModuleId, React.ReactNode> = {
@@ -78,12 +81,46 @@ export const WorkspaceLauncher = () => {
 
   const { launch: launchWorkspace, isLaunching: isLaunchingHome } = useSuiteLaunch()
   const { launch: launchDesign, isLaunching: isLaunchingDesign } = useDesignLaunch()
+  const { launch: launchEmail, isLaunching: isLaunchingEmail } = useEmailLaunch()
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [activeModule, setActiveModule] = useState<SuiteModuleId | 'home' | null>(null)
+  const [openMail] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('open') === 'mail'
+  })
+
+  const autoOpenMail = useCallback(async () => {
+    setActiveModule('mail')
+    const result = await launchEmail()
+    setActiveModule(null)
+    if (!result.ok) {
+      setLaunchError(result.message ?? 'Could not open Mail.')
+      throw new Error(result.message ?? 'Could not open Mail.')
+    }
+    if (result.url) window.location.assign(result.url)
+  }, [launchEmail])
+
+  const { isAutoLaunching } = useAutoLaunchProduct({
+    product: 'workspace-open-mail',
+    projectRef: ref,
+    enabled: openMail,
+    launch: autoOpenMail,
+  })
 
   const openModule = async (moduleId: SuiteModuleId) => {
     setLaunchError(null)
     setActiveModule(moduleId)
+
+    if (moduleId === 'mail') {
+      const email = await launchEmail()
+      setActiveModule(null)
+      if (!email.ok) {
+        setLaunchError(email.message ?? 'Could not open Mail.')
+        return
+      }
+      if (email.url) window.location.assign(email.url)
+      return
+    }
 
     if (
       moduleId === 'presentations' &&
@@ -109,23 +146,6 @@ export const WorkspaceLauncher = () => {
     if (result.url) window.location.assign(result.url)
   }
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('open') !== 'mail') return
-
-    void (async () => {
-      setActiveModule('mail')
-      const result = await launchWorkspace('mail')
-      setActiveModule(null)
-      if (result.ok && result.url) {
-        window.location.assign(result.url)
-      } else if (!result.ok) {
-        setLaunchError(result.message ?? 'Could not open Mail.')
-      }
-    })()
-  }, [launchWorkspace])
-
   const openHome = async () => {
     setLaunchError(null)
     setActiveModule('home')
@@ -136,6 +156,16 @@ export const WorkspaceLauncher = () => {
       return
     }
     if (result.url) window.location.assign(result.url)
+  }
+
+  if (isAutoLaunching) {
+    return (
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-3 px-6 py-24 text-center">
+        <Loader2 size={20} className="animate-spin text-[#3B8FD6]" aria-hidden />
+        <p className="text-sm text-foreground">Opening {ECOSYSTEM_PRODUCTS.email.name}…</p>
+        <p className="text-xs text-foreground-light">Signing you in with your Studio session.</p>
+      </div>
+    )
   }
 
   return (
@@ -167,7 +197,7 @@ export const WorkspaceLauncher = () => {
         <button
           type="button"
           onClick={() => void openHome()}
-          disabled={isLaunchingHome || isLaunchingDesign}
+          disabled={isLaunchingHome || isLaunchingDesign || isLaunchingEmail}
           className="text-sm font-medium text-[#3B8FD6] hover:underline disabled:opacity-60"
         >
           {isLaunchingHome
