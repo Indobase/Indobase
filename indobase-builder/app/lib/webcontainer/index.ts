@@ -7,6 +7,7 @@ import {
   ensureWebContainerApiKeyConfigured,
   resolveWebContainerApiKey,
 } from './configure-api-key';
+import { whenBuilderPublicEnvReady } from './public-env';
 
 export { isSingletonBootError, shouldSuggestExtensionDisable } from './boot-errors';
 export { ensureWebContainerApiKeyConfigured, resolveWebContainerApiKey } from './configure-api-key';
@@ -53,6 +54,8 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
 }
 
 async function assertWebContainerRuntimeReady(): Promise<void> {
+  // FilesStore / warm boot can race ahead of root's async env fetch — wait for sync or async bootstrap.
+  await whenBuilderPublicEnvReady();
   ensureWebContainerApiKeyConfigured();
 
   if (typeof crossOriginIsolated !== 'undefined' && !crossOriginIsolated) {

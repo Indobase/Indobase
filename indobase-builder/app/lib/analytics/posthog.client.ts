@@ -21,17 +21,21 @@ export function initPostHog(): void {
     return;
   }
 
-  posthog.init(apiKey, {
-    api_host: apiHost,
-    ui_host: uiHost,
-    autocapture: false,
-    capture_pageview: false,
-    capture_pageleave: true,
-    capture_exceptions: POSTHOG_CAPTURE_EXCEPTIONS,
-    persistence: 'localStorage+cookie',
-  });
+  try {
+    posthog.init(apiKey, {
+      api_host: apiHost,
+      ui_host: uiHost,
+      autocapture: false,
+      capture_pageview: false,
+      capture_pageleave: true,
+      capture_exceptions: POSTHOG_CAPTURE_EXCEPTIONS,
+      persistence: 'localStorage+cookie',
+    });
 
-  initialized = true;
+    initialized = true;
+  } catch (error) {
+    console.warn('[posthog] init failed (non-fatal)', error);
+  }
 }
 
 export function capturePostHogPageview(pathname?: string): void {

@@ -1,12 +1,5 @@
 import { configureAPIKey } from '@webcontainer/api';
-
-declare global {
-  interface Window {
-    __INDOBASE_BUILDER_PUBLIC__?: {
-      webcontainerApiKey?: string;
-    };
-  }
-}
+import { getBuilderPublicEnv } from './public-env';
 
 let configuredKey: string | null = null;
 
@@ -20,11 +13,9 @@ function isLocalHostname(hostname: string): boolean {
 }
 
 export function resolveWebContainerApiKey(): string {
-  if (typeof window !== 'undefined') {
-    const fromWindow = window.__INDOBASE_BUILDER_PUBLIC__?.webcontainerApiKey?.trim();
-    if (fromWindow) {
-      return fromWindow;
-    }
+  const fromWindow = getBuilderPublicEnv().webcontainerApiKey;
+  if (fromWindow) {
+    return fromWindow;
   }
 
   const fromVite = (import.meta.env.VITE_WEBCONTAINER_API_KEY as string | undefined)?.trim();
@@ -35,6 +26,10 @@ export function resolveWebContainerApiKey(): string {
  * Production hosts (builder.indobase.in / .fun) require a StackBlitz WebContainer API key
  * with the domain allowlisted. Without it, stackblitz.com/headless returns 404 and preview dies.
  * Localhost is exempt.
+ *
+ * Prefer calling after `whenBuilderPublicEnvReady()` so the sync/async bootstrap can populate
+ * `window.__INDOBASE_BUILDER_PUBLIC__` (health `webcontainerApiKey: ok` only means the *server*
+ * has the env var — not that the browser has it yet).
  */
 export function ensureWebContainerApiKeyConfigured(): void {
   const key = resolveWebContainerApiKey();
@@ -55,6 +50,11 @@ export function ensureWebContainerApiKeyConfigured(): void {
 
   configureAPIKey(key);
   configuredKey = key;
+}
+
+export function isMissingWebContainerApiKeyError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /WebContainer API key is not configured/i.test(message);
 }
 
 export function isMissingWebContainerApiKeyError(error: unknown): boolean {

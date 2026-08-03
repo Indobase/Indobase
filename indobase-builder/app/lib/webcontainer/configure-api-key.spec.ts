@@ -34,3 +34,19 @@ describe('ensureWebContainerApiKeyConfigured', () => {
     expect(configureAPIKey).not.toHaveBeenCalled();
   });
 });
+
+describe('builder public env bootstrap', () => {
+  beforeEach(() => {
+    delete (window as any).__INDOBASE_BUILDER_PUBLIC__;
+    vi.resetModules();
+  });
+
+  it('applyBuilderPublicEnv stores the key and unblocks whenBuilderPublicEnvReady', async () => {
+    const { applyBuilderPublicEnv, whenBuilderPublicEnvReady } = await import('./public-env');
+
+    applyBuilderPublicEnv({ webcontainerApiKey: 'wc_api_from_bootstrap' });
+
+    await expect(whenBuilderPublicEnvReady(100)).resolves.toBeUndefined();
+    expect(window.__INDOBASE_BUILDER_PUBLIC__?.webcontainerApiKey).toBe('wc_api_from_bootstrap');
+  });
+});

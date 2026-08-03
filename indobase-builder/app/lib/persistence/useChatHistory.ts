@@ -71,7 +71,42 @@ function closeDanglingToolInvocations(messages: Message[]): Message[] {
   });
 }
 
-export const db = persistenceEnabled ? await openDatabase() : undefined;
+/*
+ * Do NOT top-level-await openDatabase(): it blocks the Chat route module graph during hydrate.
+ * A hung/blocked IndexedDB open left production ClientOnly stuck on "Loading Indobase Builder…".
+ */
+let dbInstance: IDBDatabase | undefined;
+let dbOpenPromise: Promise<IDBDatabase | undefined> | undefined;
+let dbOpenSettled = !persistenceEnabled;
+
+function ensureDbOpen(): Promise<IDBDatabase | undefined> {
+  if (!persistenceEnabled) {
+    dbOpenSettled = true;
+    return Promise.resolve(undefined);
+  }
+
+  if (!dbOpenPromise) {
+    dbOpenPromise = openDatabase()
+      .then((database) => {
+        dbInstance = database;
+        db = database;
+        return database;
+      })
+      .finally(() => {
+        dbOpenSettled = true;
+      });
+  }
+
+  return dbOpenPromise;
+}
+
+/** Assigned once IndexedDB finishes opening; undefined while opening or if unavailable. */
+export let db: IDBDatabase | undefined = undefined;
+
+// Start opening immediately on the client without blocking module evaluation.
+if (typeof window !== 'undefined' && persistenceEnabled) {
+  void ensureDbOpen();
+}
 
 export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
@@ -85,9 +120,33 @@ export function useChatHistory() {
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [ready, setReady] = useState<boolean>(false);
   const [urlId, setUrlId] = useState<string | undefined>();
+  const [dbState, setDbState] = useState<IDBDatabase | undefined>(dbInstance);
+  const [dbReady, setDbReady] = useState(dbOpenSettled);
 
   useEffect(() => {
-    if (!db) {
+    let cancelled = false;
+
+    void ensureDbOpen().then((database) => {
+      if (!cancelled) {
+        setDbState(database);
+        setDbReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeDb = dbState;
+
+    if (!activeDb) {
+      // Still opening — wait unless persistence is disabled or open finished without a DB.
+      if (persistenceEnabled && !dbReady) {
+        return;
+      }
+
       setReady(true);
 
       if (persistenceEnabled) {
@@ -101,8 +160,8 @@ export function useChatHistory() {
 
     if (mixedId) {
       Promise.all([
-        getMessages(db, mixedId),
-        getSnapshot(db, mixedId), // Fetch snapshot from DB
+        getMessages(activeDb, mixedId),
+        getSnapshot(activeDb, mixedId), // Fetch snapshot from DB
       ])
         .then(async ([storedMessages, snapshot]) => {
           if (storedMessages && storedMessages.messages.length > 0) {
@@ -232,13 +291,14 @@ ${value.content}
       // Handle case where there is no mixedId (e.g., new chat)
       setReady(true);
     }
-  }, [mixedId, db, navigate, searchParams]); // Added db, navigate, searchParams dependencies
+  }, [mixedId, dbState, dbReady, navigate, searchParams]);
 
   const takeSnapshot = useCallback(
     async (chatIdx: string, files: FileMap, _chatId?: string | undefined, chatSummary?: string) => {
       const id = chatId.get();
+      const activeDb = dbState ?? (await ensureDbOpen());
 
-      if (!id || !db) {
+      if (!id || !activeDb) {
         return;
       }
 
@@ -250,53 +310,58 @@ ${value.content}
 
       // localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot)); // Remove localStorage usage
       try {
-        await setSnapshot(db, id, snapshot);
+        await setSnapshot(activeDb, id, snapshot);
       } catch (error) {
         console.error('Failed to save snapshot:', error);
         toast.error('Failed to save chat snapshot.');
       }
     },
-    [db],
+    [dbState],
   );
 
   const restoreSnapshot = useCallback(async (id: string, snapshot?: Snapshot) => {
-    const container = await webcontainer;
-    const validSnapshot = snapshot || { chatIndex: '', files: {} };
-    const files = validSnapshot.files ?? {};
+    // Snapshot restore needs WebContainer — never throw into chat load if WC is unavailable.
+    try {
+      const container = await webcontainer;
+      const validSnapshot = snapshot || { chatIndex: '', files: {} };
+      const files = validSnapshot.files ?? {};
 
-    if (Object.keys(files).length === 0) {
-      return;
-    }
-
-    const normalizePath = (filePath: string) =>
-      filePath.startsWith(container.workdir) ? filePath.slice(container.workdir.length) : filePath;
-
-    for (const [key, value] of Object.entries(files)) {
-      if (value?.type !== 'folder') {
-        continue;
+      if (Object.keys(files).length === 0) {
+        return;
       }
 
-      const relativePath = normalizePath(key);
+      const normalizePath = (filePath: string) =>
+        filePath.startsWith(container.workdir) ? filePath.slice(container.workdir.length) : filePath;
 
-      if (relativePath) {
-        await container.fs.mkdir(relativePath, { recursive: true });
-      }
-    }
+      for (const [key, value] of Object.entries(files)) {
+        if (value?.type !== 'folder') {
+          continue;
+        }
 
-    for (const [key, value] of Object.entries(files)) {
-      if (value?.type !== 'file') {
-        continue;
-      }
+        const relativePath = normalizePath(key);
 
-      const relativePath = normalizePath(key);
-
-      if (!relativePath) {
-        continue;
+        if (relativePath) {
+          await container.fs.mkdir(relativePath, { recursive: true });
+        }
       }
 
-      await container.fs.writeFile(relativePath, value.content, {
-        encoding: value.isBinary ? undefined : 'utf8',
-      });
+      for (const [key, value] of Object.entries(files)) {
+        if (value?.type !== 'file') {
+          continue;
+        }
+
+        const relativePath = normalizePath(key);
+
+        if (!relativePath) {
+          continue;
+        }
+
+        await container.fs.writeFile(relativePath, value.content, {
+          encoding: value.isBinary ? undefined : 'utf8',
+        });
+      }
+    } catch (error) {
+      console.warn('Snapshot restore skipped (workspace not ready):', error);
     }
   }, []);
 
@@ -305,13 +370,14 @@ ${value.content}
     initialMessages,
     updateChatMestaData: async (metadata: IChatMetadata) => {
       const id = chatId.get();
+      const activeDb = dbState ?? (await ensureDbOpen());
 
-      if (!db || !id) {
+      if (!activeDb || !id) {
         return;
       }
 
       try {
-        await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
+        await setMessages(activeDb, id, initialMessages, urlId, description.get(), undefined, metadata);
         chatMetadata.set(metadata);
       } catch (error) {
         toast.error('Failed to update chat metadata');
@@ -319,7 +385,9 @@ ${value.content}
       }
     },
     storeMessageHistory: async (messages: Message[]) => {
-      if (!db || messages.length === 0) {
+      const activeDb = dbState ?? (await ensureDbOpen());
+
+      if (!activeDb || messages.length === 0) {
         return;
       }
 
@@ -329,7 +397,7 @@ ${value.content}
       let _urlId = urlId;
 
       if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
+        const urlId = await getUrlId(activeDb, firstArtifact.id);
         _urlId = urlId;
         navigateChat(urlId);
         setUrlId(urlId);
@@ -358,7 +426,7 @@ ${value.content}
 
       // Ensure chatId.get() is used here as well
       if (initialMessages.length === 0 && !chatId.get()) {
-        const nextId = await getNextId(db);
+        const nextId = await getNextId(activeDb);
 
         chatId.set(nextId);
 
@@ -380,7 +448,7 @@ ${value.content}
       // Persist the resolved urlId (_urlId), not the stale closure — otherwise the URL
       // updates but IndexedDB never gets urlId, so /chat/:id restore fails.
       await setMessages(
-        db,
+        activeDb,
         finalChatId, // Use the potentially updated chatId
         [...archivedMessages, ...messages],
         _urlId,
@@ -390,12 +458,14 @@ ${value.content}
       );
     },
     duplicateCurrentChat: async (listItemId: string) => {
-      if (!db || (!mixedId && !listItemId)) {
+      const activeDb = dbState ?? (await ensureDbOpen());
+
+      if (!activeDb || (!mixedId && !listItemId)) {
         return;
       }
 
       try {
-        const newId = await duplicateChat(db, mixedId || listItemId);
+        const newId = await duplicateChat(activeDb, mixedId || listItemId);
         navigate(`/chat/${newId}`);
         toast.success('Chat duplicated successfully');
       } catch (error) {
@@ -404,12 +474,14 @@ ${value.content}
       }
     },
     importChat: async (description: string, messages: Message[], metadata?: IChatMetadata) => {
-      if (!db) {
+      const activeDb = dbState ?? (await ensureDbOpen());
+
+      if (!activeDb) {
         return;
       }
 
       try {
-        const newId = await createChatFromMessages(db, description, messages, metadata);
+        const newId = await createChatFromMessages(activeDb, description, messages, metadata);
         window.location.href = `/chat/${newId}`;
         toast.success('Chat imported successfully');
       } catch (error) {
@@ -421,11 +493,13 @@ ${value.content}
       }
     },
     exportChat: async (id = urlId) => {
-      if (!db || !id) {
+      const activeDb = dbState ?? (await ensureDbOpen());
+
+      if (!activeDb || !id) {
         return;
       }
 
-      const chat = await getMessages(db, id);
+      const chat = await getMessages(activeDb, id);
       const chatData = {
         messages: chat.messages,
         description: chat.description,
