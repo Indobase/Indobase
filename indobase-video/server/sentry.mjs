@@ -1,13 +1,11 @@
 /**
- * Shared Sentry bootstrap for Indobase SSO bridges (Node + Hono).
- * Copy lives in each bridge package so deps stay local.
+ * Indobase Video — Sentry bootstrap for the SSO/static server.
  */
 import * as Sentry from '@sentry/node'
-import type { ErrorHandler } from 'hono'
 
 let initialized = false
 
-export function initBridgeSentry(service: string): boolean {
+export function initVideoSentry() {
   if (initialized) return true
 
   const dsn = (process.env.SENTRY_DSN || '').trim()
@@ -19,30 +17,22 @@ export function initBridgeSentry(service: string): boolean {
     tracesSampleRate: 0.001,
     enableLogs: true,
     integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
-    initialScope: { tags: { service } },
+    initialScope: { tags: { service: 'video' } },
   })
 
   process.on('uncaughtException', (err) => {
-    console.error(`[${service}] uncaughtException`, err)
+    console.error('[video] uncaughtException', err)
     Sentry.captureException(err)
     void Sentry.flush(2000).finally(() => process.exit(1))
   })
 
   process.on('unhandledRejection', (reason) => {
-    console.error(`[${service}] unhandledRejection`, reason)
+    console.error('[video] unhandledRejection', reason)
     Sentry.captureException(reason)
   })
 
   initialized = true
   return true
-}
-
-export function bridgeSentryOnError(service: string): ErrorHandler {
-  return (err, c) => {
-    console.error(`[${service}]`, err)
-    Sentry.captureException(err)
-    return c.json({ error: 'internal_error' }, 500)
-  }
 }
 
 export { Sentry }

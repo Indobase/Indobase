@@ -1,5 +1,6 @@
 /**
- * Indobase Video — Studio SSO + static SPA host (zero npm deps at runtime).
+ * Indobase Video — Studio SSO + static SPA host.
+ * Optional runtime dep: @sentry/node (env-gated via SENTRY_DSN).
  *
  * GET  /sso/launch#token=<HS256 aud=indobase-video>
  * POST /sso/session          → verify handoff, set ib_video_sso cookie
@@ -14,6 +15,8 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { initVideoSentry, Sentry } from './sentry.mjs'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT || 8780)
 const STATIC_ROOT = process.env.STATIC_ROOT || path.join(__dirname, '../web/dist')
@@ -27,6 +30,8 @@ if (HANDOFF_SECRET.length < 32) {
   console.error('FATAL: VIDEO_HANDOFF_SECRET / STUDIO_HANDOFF_SECRET must be >= 32 chars')
   process.exit(1)
 }
+
+initVideoSentry()
 
 const STUDIO_PUBLIC_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(
   /\/+$/,
@@ -441,6 +446,7 @@ const server = http.createServer(async (req, res) => {
     res.end('method not allowed')
   } catch (err) {
     console.error(err)
+    Sentry.captureException(err)
     sendJson(res, 500, { message: 'internal error' })
   }
 })

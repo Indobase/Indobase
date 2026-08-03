@@ -200,6 +200,11 @@ services:
       DRIBBBLE_CLIENT_ID: ${DRIBBBLE_CLIENT_ID:-}
       DRIBBBLE_CLIENT_SECRET: ${DRIBBBLE_CLIENT_SECRET:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Optional Sentry (leave empty to disable)
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-${SENTRY_ENVIRONMENT:-production}}
     volumes:
       - social_uploads:/uploads
       - social_config:/config

@@ -38,7 +38,8 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       sendDefaultPii: true,
       ...extension,
       debug: environment === 'development',
-      tracesSampleRate: 1.0,
+      tracesSampleRate: 0.001,
+      enableLogs: true,
 
       beforeSend(event, hint) {
         if (event.exception && event.exception.values) {

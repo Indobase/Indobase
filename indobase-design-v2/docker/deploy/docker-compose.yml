@@ -55,6 +55,9 @@ services:
       OPENVERSE_CLIENT_ID: ${OPENVERSE_CLIENT_ID:-}
       OPENVERSE_CLIENT_SECRET: ${OPENVERSE_CLIENT_SECRET:-}
       OPENVERSE_API_BASE: ${OPENVERSE_API_BASE:-https://api.openverse.org/v1}
+      # Optional Sentry (leave empty to disable)
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     networks:
       - indobase_design_v2_net
       - traefik_public

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Notifuse/notifuse/config"
 	"github.com/Notifuse/notifuse/internal/app"
+	emailsentry "github.com/Notifuse/notifuse/internal/sentry"
 	"github.com/Notifuse/notifuse/pkg/logger"
 )
 
@@ -27,6 +28,8 @@ type NewAppFunc func(cfg *config.Config, opts ...app.AppOption) app.AppInterface
 
 // runServer contains the core server logic, extracted for testability
 func runServer(cfg *config.Config, appLogger logger.Logger) error {
+	defer emailsentry.Recover()
+
 	// Create app instance
 	appInstance := app.NewApp(cfg, app.WithLogger(appLogger))
 
@@ -53,6 +56,7 @@ func runServer(cfg *config.Config, appLogger logger.Logger) error {
 		if err != nil {
 			appLogger.WithField("error", err.Error()).Error("Server error")
 		}
+		emailsentry.Flush()
 		return err
 	case sig := <-shutdown:
 		appLogger.WithField("signal", sig.String()).Info("Shutdown signal received - starting graceful shutdown")
@@ -84,6 +88,7 @@ func runServer(cfg *config.Config, appLogger logger.Logger) error {
 		// Wait for either graceful shutdown completion or forced shutdown signal
 		select {
 		case err := <-shutdownDone:
+			emailsentry.Flush()
 			if err != nil {
 				appLogger.WithField("error", err.Error()).Error("Error during graceful shutdown")
 				return err
@@ -100,10 +105,12 @@ func runServer(cfg *config.Config, appLogger logger.Logger) error {
 			// Wait a brief moment for the shutdown to acknowledge the cancellation
 			select {
 			case err := <-shutdownDone:
+				emailsentry.Flush()
 				if err != nil {
 					appLogger.WithField("error", err.Error()).Error("Error during forced shutdown")
 				}
 			case <-time.After(2 * time.Second):
+				emailsentry.Flush()
 				appLogger.Warn("Forced shutdown timeout - exiting immediately")
 			}
 
@@ -116,6 +123,8 @@ func main() {
 	if err := config.CheckBlockedPlatforms(); err != nil {
 		log.Fatalf("%v", err)
 	}
+
+	emailsentry.Init()
 
 	// Load configuration
 	cfg, err := config.Load()

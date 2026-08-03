@@ -17,6 +17,8 @@ export function initBridgeSentry(service: string): boolean {
     dsn,
     environment: (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production').trim(),
     tracesSampleRate: 0.001,
+    enableLogs: true,
+    integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
     initialScope: { tags: { service } },
   })
 

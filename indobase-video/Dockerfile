@@ -13,7 +13,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8780
 ENV STATIC_ROOT=/app/web/dist
+COPY server/package.json /app/server/package.json
+WORKDIR /app/server
+RUN npm install --omit=dev --no-fund --no-audit
+WORKDIR /app
 COPY server/server.mjs /app/server/server.mjs
+COPY server/sentry.mjs /app/server/sentry.mjs
 COPY --from=web-build /src/web/dist /app/web/dist
 # Ensure brand assets exist even if Vite public copy missed them
 COPY web/public/ /app/web/dist/

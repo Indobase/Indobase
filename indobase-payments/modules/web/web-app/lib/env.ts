@@ -16,6 +16,8 @@ const _env = parseEnv(window._env, {
   VITE_DX: z.boolean().default(false),
   // todo move to feature flag service
   VITE_ENTITLEMENTS_ENABLED: z.boolean().default(false),
+  VITE_SENTRY_DSN: z.string().optional(),
+  VITE_SENTRY_ENVIRONMENT: z.string().optional(),
 })
 
 export const env = {
@@ -24,4 +26,6 @@ export const env = {
   studioUrl: _env.VITE_STUDIO_URL,
   dx: _env.VITE_DX,
   entitlementsEnabled: _env.VITE_ENTITLEMENTS_ENABLED,
+  sentryDsn: (_env.VITE_SENTRY_DSN || '').trim(),
+  sentryEnvironment: (_env.VITE_SENTRY_ENVIRONMENT || '').trim() || 'production',
 }
