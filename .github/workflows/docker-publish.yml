@@ -40,6 +40,12 @@ env:
   NEXT_PUBLIC_RAZORPAY_BILLING: "true"
   NEXT_PUBLIC_POSTHOG_HOST: "https://us.i.posthog.com"
   NEXT_PUBLIC_POSTHOG_UI_HOST: "https://us.posthog.com"
+  # Public browser DSN (Indobase org / studio). Safe in client bundles.
+  NEXT_PUBLIC_SENTRY_DSN: "https://5e95fe101ad06f3ca3b01808f9c76bae@o4511846637240320.ingest.us.sentry.io/4511846642745344"
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: "production"
+  PUBLIC_SENTRY_DSN: "https://d3f99d6a5d06ce5b38b91f63585fe93a@o4511846637240320.ingest.us.sentry.io/4511846714048513"
+  PUBLIC_SENTRY_ENVIRONMENT: "production"
+  VITE_SENTRY_DSN: "https://4ae0d2d42c0ec4bdd71f78058194e665@o4511846637240320.ingest.us.sentry.io/4511846713982976"
 
 jobs:
   build:
@@ -111,8 +117,8 @@ jobs:
             NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.POSTHOG_PROJECT_KEY }}
             NEXT_PUBLIC_POSTHOG_HOST=${{ env.NEXT_PUBLIC_POSTHOG_HOST }}
             NEXT_PUBLIC_POSTHOG_UI_HOST=${{ env.NEXT_PUBLIC_POSTHOG_UI_HOST }}
-            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN_STUDIO }}
-            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+            NEXT_PUBLIC_SENTRY_DSN=${{ env.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ env.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
           push: true
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest
