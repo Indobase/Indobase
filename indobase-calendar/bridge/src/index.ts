@@ -42,10 +42,14 @@ import {
 import { rewriteProductPath } from './routes.js'
 import { buildCalendarSpaceMap, calendarEventsPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
+import { bridgeSentryOnError, initBridgeSentry } from './sentry.js'
+
+initBridgeSentry('calendar-bridge')
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('calendar-bridge'))
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const CALENDAR_APP_URL = (

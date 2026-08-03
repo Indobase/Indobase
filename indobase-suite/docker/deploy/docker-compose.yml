@@ -120,6 +120,8 @@ services:
       CALENDAR_HANDOFF_SECRET: ${CALENDAR_HANDOFF_SECRET:-}
       SUITE_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - workspace_files:/data/workspace
     networks:

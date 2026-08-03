@@ -90,6 +90,8 @@ describe('getInstantBuildPlan', () => {
     expect(isComplexBuildIntent([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }])).toBe(true);
     expect(plan).toContain('## Build steps');
     expect(plan).toMatch(/Auth/i);
+    expect(plan).toContain('Autonomy checklist');
+    expect(plan).toContain('Design polish');
   });
 
   it('keeps a minimal plan for simple UI prompts', () => {
@@ -97,6 +99,7 @@ describe('getInstantBuildPlan', () => {
 
     expect(plan).toContain('minimal Vite');
     expect(plan).not.toMatch(/Payments/i);
+    expect(plan).toMatch(/non-purple|industry-fit/i);
   });
 });
 

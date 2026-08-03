@@ -122,4 +122,50 @@ describe('automatic preview repair decisions', () => {
       reason: 'exhausted',
     });
   });
+
+  it('uses a design polish prompt for visual-quality diagnostics', () => {
+    const designError = new GeneratedCodeValidationError(
+      [
+        {
+          filePath: 'src/index.css',
+          message: 'Banned AI-template purple/indigo color #9E7FFF',
+          source: 'design',
+        },
+      ],
+      'Generated code validation failed',
+    );
+    const decision = decideAutomaticPreviewRepair({
+      error: designError,
+      completedAttempts: 0,
+      files: {
+        '/home/project/src/index.css': {
+          type: 'file' as const,
+          content: ':root { --color-primary: #9E7FFF; }',
+        },
+      },
+    });
+
+    expect(decision).toMatchObject({ shouldRepair: true, nextAttempt: 1, implicatedFiles: ['src/index.css'] });
+
+    if (decision.shouldRepair) {
+      expect(decision.prompt).toContain('DESIGN polish');
+      expect(decision.prompt).toContain('#9E7FFF');
+      expect(decision.prompt).toContain('do not regenerate the whole project');
+    }
+  });
+
+  it('limits design-only polish to a single repair attempt', () => {
+    const designError = new GeneratedCodeValidationError(
+      [{ filePath: 'src/App.tsx', message: 'Banned Tailwind purple', source: 'design' }],
+      'Visual quality check failed',
+    );
+
+    expect(
+      decideAutomaticPreviewRepair({
+        error: designError,
+        completedAttempts: 1,
+        files: {},
+      }),
+    ).toEqual({ shouldRepair: false, nextAttempt: 1, reason: 'exhausted' });
+  });
 });

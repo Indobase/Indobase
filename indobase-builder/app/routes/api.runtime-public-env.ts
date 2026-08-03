@@ -15,9 +15,17 @@ async function runtimePublicEnvLoader({ context }: LoaderFunctionArgs) {
     process.env.VITE_WEBCONTAINER_API_KEY?.trim() ||
     '';
 
+  const sentryDsn =
+    env?.SENTRY_DSN?.trim() ||
+    env?.VITE_SENTRY_DSN?.trim() ||
+    process.env.SENTRY_DSN?.trim() ||
+    process.env.VITE_SENTRY_DSN?.trim() ||
+    '';
+
   return json(
     {
       webcontainerApiKey,
+      sentryDsn,
     },
     {
       headers: {

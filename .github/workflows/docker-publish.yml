@@ -111,6 +111,8 @@ jobs:
             NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.POSTHOG_PROJECT_KEY }}
             NEXT_PUBLIC_POSTHOG_HOST=${{ env.NEXT_PUBLIC_POSTHOG_HOST }}
             NEXT_PUBLIC_POSTHOG_UI_HOST=${{ env.NEXT_PUBLIC_POSTHOG_UI_HOST }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN_STUDIO }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
           push: true
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest

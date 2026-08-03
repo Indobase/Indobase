@@ -5,6 +5,7 @@ import { useParams } from 'common'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
 import { useSelectedProjectQuery } from 'hooks/misc/useSelectedProject'
 import {
+  Briefcase,
   Calendar,
   FileSpreadsheet,
   FileText,
@@ -74,7 +75,38 @@ const ModuleTile = ({ id, label, description, onClick, loading = false }: Module
   </button>
 )
 
-export const WorkspaceLauncher = () => {
+const WorkspaceComingSoon = () => {
+  const { ref } = useParams()
+  const { data: project } = useSelectedProjectQuery()
+  const { data: organization } = useSelectedOrganizationQuery()
+
+  return (
+    <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-4 px-6 py-24 text-center">
+      <div className="rounded-xl bg-[#3B8FD6]/10 p-3">
+        <Briefcase size={28} className="text-[#3B8FD6]" aria-hidden />
+      </div>
+      <Badge variant="warning">Coming soon</Badge>
+      <h1 className="text-2xl font-medium tracking-tight">
+        {ECOSYSTEM_PRODUCTS.workspace.name}
+      </h1>
+      <p className="max-w-md text-sm text-foreground-light">
+        Files, docs, sheets, presentations, meetings, and calendar for{' '}
+        {project?.name || organization?.name || 'your project'} are on the way. Use{' '}
+        {ECOSYSTEM_PRODUCTS.discuss.name} for team chat in the meantime.
+      </p>
+      {ref ? (
+        <Link
+          href={`/project/${ref}/discuss`}
+          className="text-sm font-medium text-[#3B8FD6] hover:underline"
+        >
+          Open {ECOSYSTEM_PRODUCTS.discuss.name}
+        </Link>
+      ) : null}
+    </div>
+  )
+}
+
+const WorkspaceLauncherActive = () => {
   const { ref } = useParams()
   const { data: project } = useSelectedProjectQuery()
   const { data: organization } = useSelectedOrganizationQuery()
@@ -246,4 +278,11 @@ export const WorkspaceLauncher = () => {
       </p>
     </div>
   )
+}
+
+export const WorkspaceLauncher = () => {
+  if (ECOSYSTEM_PRODUCTS.workspace.comingSoon) {
+    return <WorkspaceComingSoon />
+  }
+  return <WorkspaceLauncherActive />
 }

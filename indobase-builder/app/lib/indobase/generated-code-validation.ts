@@ -5,10 +5,11 @@ export type GeneratedCodeDiagnostic = {
   message: string;
   line?: number;
   column?: number;
-  source: 'syntax' | 'preview' | 'structure';
+  source: 'syntax' | 'preview' | 'structure' | 'design';
 };
 
 const GENERATED_SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?)$/i;
+const GENERATED_STYLE_EXTENSION = /\.(?:css|scss|sass|less)$/i;
 const IGNORED_DIRECTORIES = new Set(['.git', '.history', 'build', 'dist', 'node_modules']);
 const LEAKED_ARTIFACT_MARKUP = /<\/?(?:boltArtifact|boltAction|bolt-quick-actions)\b/i;
 
@@ -252,6 +253,24 @@ export async function collectGeneratedSources(
   root = '.',
   maxFiles = 400,
 ): Promise<Record<string, string>> {
+  return collectGeneratedProjectFiles(fs, root, maxFiles, 'source');
+}
+
+/** JS/TS sources plus stylesheets — used by visual-quality lint. */
+export async function collectGeneratedSourcesAndStyles(
+  fs: GeneratedFs,
+  root = '.',
+  maxFiles = 400,
+): Promise<Record<string, string>> {
+  return collectGeneratedProjectFiles(fs, root, maxFiles, 'source+style');
+}
+
+async function collectGeneratedProjectFiles(
+  fs: GeneratedFs,
+  root: string,
+  maxFiles: number,
+  mode: 'source' | 'source+style',
+): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
 
   async function visit(directory: string): Promise<void> {
@@ -276,7 +295,11 @@ export async function collectGeneratedSources(
         continue;
       }
 
-      if (!GENERATED_SOURCE_EXTENSION.test(filePath)) {
+      const include =
+        GENERATED_SOURCE_EXTENSION.test(filePath) ||
+        (mode === 'source+style' && GENERATED_STYLE_EXTENSION.test(filePath));
+
+      if (!include) {
         if (typeof entry === 'string') {
           try {
             await visit(filePath);

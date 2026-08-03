@@ -297,7 +297,12 @@ export const ProjectExperienceChooser = () => {
                   tagline={ECOSYSTEM_PRODUCTS.workspace.tagline}
                   icon={<Briefcase size={18} className="text-[#3B8FD6]" />}
                   accentClassName="bg-[#3B8FD6]/10"
-                  href={`/project/${ref}/workspace`}
+                  comingSoon={ECOSYSTEM_PRODUCTS.workspace.comingSoon}
+                  href={
+                    ECOSYSTEM_PRODUCTS.workspace.comingSoon
+                      ? undefined
+                      : `/project/${ref}/workspace`
+                  }
                 />
                 <ProductTile
                   name="Payments"
@@ -375,10 +380,6 @@ export const ProjectExperienceChooser = () => {
                 <ul className="space-y-3">
                   {[
                     {
-                      title: 'Workspace is connected',
-                      body: 'Files, docs, sheets, presentations, meetings, and calendar per project.',
-                    },
-                    {
                       title: 'Discuss for team chat',
                       body: 'Org and project spaces with Studio SSO — no separate login.',
                     },
@@ -389,6 +390,10 @@ export const ProjectExperienceChooser = () => {
                     {
                       title: 'Analytics in every project',
                       body: 'Traffic and product events without a third-party pipeline.',
+                    },
+                    {
+                      title: 'Workspace coming soon',
+                      body: 'Files, docs, sheets, presentations, meetings, and calendar per project.',
                     },
                   ].map((item) => (
                     <li key={item.title} className="flex gap-2">

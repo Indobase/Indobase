@@ -105,6 +105,22 @@ Sentry.init({
   // Enable performance monitoring - Next.js routes and API calls are automatically instrumented
   tracesSampleRate: 0.001, // Capture 0.1% of transactions for performance monitoring
 
+  /*
+   * Session Replay (browser only): buffer sessions and upload on error.
+   * Continuous session sampling stays off to protect quota + privacy; error replays are 100%.
+   * beforeErrorSampling respects cookie consent and SaaS-only (same gates as beforeSend).
+   */
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [
+    Sentry.replayIntegration({
+      maskAllText: true,
+      maskAllInputs: true,
+      blockAllMedia: true,
+      beforeErrorSampling: () => hasConsented() && IS_SAAS,
+    }),
+  ],
+
   // [Ali] Filter out browser extensions and user scripts (FE-2094)
   // Using denyUrls to block known third-party script patterns
   denyUrls: [/userscript/i],

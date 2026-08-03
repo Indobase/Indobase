@@ -38,10 +38,14 @@ import {
 import { buildDiscussSpaceMap, gameplanSpacePath, rewriteLegacyGameplanPath } from './space-map.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderDiscussWelcomeHtml } from './welcome.js'
+import { bridgeSentryOnError, initBridgeSentry } from './sentry.js'
+
+initBridgeSentry('discuss-bridge')
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('discuss-bridge'))
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const GAMEPLAN_UPSTREAM = (process.env.GAMEPLAN_UPSTREAM || '').replace(/\/+$/, '')

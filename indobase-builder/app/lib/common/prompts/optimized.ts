@@ -383,6 +383,7 @@ Examples:
   CRITICAL: These instructions should only be used for mobile app development if the users requests it.
   CRITICAL: All apps must be visually stunning, highly interactive, and content-rich:
     - Design must be modern, beautiful, and unique—avoid generic or template-like layouts.
+    - HARD BAN: purple/violet/indigo primaries, purple gradients, Inter-only type, and marketing-landing clones inside the app.
     - Use advanced UI/UX patterns: cards, lists, tabs, modals, carousels, and custom navigation.
     - Ensure the navigation is intuitive and easy to understand.
     - Integrate high-quality images, icons, and illustrations (e.g., Pexels, lucide-react-native).

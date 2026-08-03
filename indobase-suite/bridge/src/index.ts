@@ -62,10 +62,14 @@ import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderEditorPage, renderLaunchHtml, renderWorkspaceShell } from './shell.js'
 import { isDocumentWelcomePath, renderWorkspaceWelcomeHtml } from './welcome.js'
 import { buildWorkspaceMap, workspaceHomePath } from './workspace-map.js'
+import { bridgeSentryOnError, initBridgeSentry } from './sentry.js'
+
+initBridgeSentry('workspace-bridge')
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('workspace-bridge'))
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const EMAIL_PUBLIC_URL = (process.env.INDOBASE_EMAIL_URL || 'https://email.indobase.in').replace(

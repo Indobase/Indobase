@@ -1,5 +1,6 @@
 import { ORCHESTRATOR_REPAIR_USER_PREFIX } from '~/lib/orchestration/prompts';
 import { isTransientPreviewError, type GeneratedCodeDiagnostic } from './generated-code-validation';
+import { hasDesignDiagnostics } from './visual-quality-lint';
 
 export const MAX_AUTOMATIC_PREVIEW_REPAIRS = 3;
 
@@ -31,6 +32,40 @@ function findFile(files: RepairFiles, filePath: string): RepairFile | undefined 
   return entry?.type === 'file' ? entry : undefined;
 }
 
+function buildRepairPrompt(options: {
+  errorText: string;
+  nextAttempt: number;
+  maxAttempts: number;
+  fileContext: string;
+  diagnostics: GeneratedCodeDiagnostic[];
+}): string {
+  const designOnly =
+    options.diagnostics.length > 0 &&
+    options.diagnostics.every((d) => d.source === 'design') &&
+    hasDesignDiagnostics(options.diagnostics);
+
+  if (designOnly) {
+    return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
+
+Automatic visual-quality repair attempt ${options.nextAttempt} of ${options.maxAttempts}.
+${options.fileContext}
+
+This is a DESIGN polish pass — the app already compiles. Fix ONLY the implicated style/UI file(s):
+- Replace every purple/violet/indigo primary, gradient, or Tailwind utility with an industry-fit palette
+- Remove Unsplash URLs; use Pexels, local assets, or CSS/SVG atmosphere
+- Replace Inter-only stacks with a purposeful font pairing
+- Keep layout structure and interactions; do not regenerate the whole project
+Keep the project's existing JSX/TSX authoring style. Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`;
+  }
+
+  return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
+
+Automatic focused repair attempt ${options.nextAttempt} of ${options.maxAttempts}.
+${options.fileContext}
+
+Fix ONLY the implicated file(s) listed above and any directly required import. Every other project file already exists on disk and is correct — do not touch, re-emit, or recreate them, and NEVER regenerate the whole project. Keep the project's existing JSX/TSX authoring style (do not switch to React.createElement). Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`;
+}
+
 export function decideAutomaticPreviewRepair(options: {
   error: unknown;
   completedAttempts: number;
@@ -57,6 +92,14 @@ export function decideAutomaticPreviewRepair(options: {
   }
 
   const diagnostics = diagnosticsFromError(options.error);
+
+  // Design-only polish: one attempt max so we don't burn the full syntax repair budget on style.
+  const designOnly =
+    diagnostics.length > 0 && diagnostics.every((d) => d.source === 'design') && hasDesignDiagnostics(diagnostics);
+
+  if (designOnly && options.completedAttempts >= 1) {
+    return { shouldRepair: false, nextAttempt: options.completedAttempts, reason: 'exhausted' };
+  }
   const implicatedFiles = [...new Set(diagnostics.map((diagnostic) => diagnostic.filePath).filter(Boolean))].slice(
     0,
     4,
@@ -77,11 +120,12 @@ export function decideAutomaticPreviewRepair(options: {
     shouldRepair: true,
     nextAttempt,
     implicatedFiles,
-    prompt: `${ORCHESTRATOR_REPAIR_USER_PREFIX}${errorText}
-
-Automatic focused repair attempt ${nextAttempt} of ${maxAttempts}.
-${fileContext}
-
-Fix ONLY the implicated file(s) listed above and any directly required import. Every other project file already exists on disk and is correct — do not touch, re-emit, or recreate them, and NEVER regenerate the whole project. Keep the project's existing JSX/TSX authoring style (do not switch to React.createElement). Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`,
+    prompt: buildRepairPrompt({
+      errorText,
+      nextAttempt,
+      maxAttempts,
+      fileContext,
+      diagnostics,
+    }),
   };
 }

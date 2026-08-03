@@ -6,11 +6,14 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { createScopedLogger } from '~/utils/logger';
 import {
   collectGeneratedSources,
+  collectGeneratedSourcesAndStyles,
   findMissingLocalImportDiagnostics,
   GeneratedCodeValidationError,
   validateGeneratedSources,
   verifyViteSourceTransforms,
 } from './generated-code-validation';
+import { assertPreviewSmokeHealthy } from './preview-smoke';
+import { lintGeneratedVisualQuality } from './visual-quality-lint';
 
 const logger = createScopedLogger('finalizeCodegen');
 
@@ -103,6 +106,7 @@ async function ensureDevServerIfNeeded(): Promise<void> {
 
   try {
     const container = await webcontainer;
+    // Shared process-wide lock with ActionRunner early-start (no double npm install).
     const installResult = await ensureNpmDependencies(container);
 
     if (!installResult.success) {
@@ -127,17 +131,26 @@ async function ensureDevServerIfNeeded(): Promise<void> {
 export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewUrl: string }> {
   await workbenchStore.flushPendingActions();
 
+  // Let early Vite finish (or fail) before we force another start/install.
+  const earlyAwait = workbenchStore.firstArtifact?.runner.awaitEarlyDev?.();
+
+  if (earlyAwait) {
+    await earlyAwait.catch(() => undefined);
+  }
+
   const scaffolded = await ensureProjectScaffold();
   const container = await webcontainer;
   const generatedSources = await collectGeneratedSources(container.fs as Parameters<typeof collectGeneratedSources>[0]);
+  const sourcesAndStyles = await collectGeneratedSourcesAndStyles(
+    container.fs as Parameters<typeof collectGeneratedSourcesAndStyles>[0],
+  );
 
   /*
-   * Syntax errors (truncated files) and missing referenced modules (incomplete scaffolds) both
-   * mean the build is not healthy. Boot install+dev FIRST regardless — a Vite server with the
-   * error overlay is strictly better than "No preview available", and the repair turn's fixes
-   * HMR-reload into it — then fail with the diagnostics so the bounded repair loop fires.
+   * Hard failures (syntax / missing imports) throw before preview wait when present.
+   * Design lint runs only after a healthy preview so we don't burn the repair budget on style
+   * before the user can see a compiling app — and draft-first can stay honest.
    */
-  const diagnostics = [
+  const hardDiagnostics = [
     ...validateGeneratedSources(generatedSources),
     ...findMissingLocalImportDiagnostics(generatedSources),
   ];
@@ -146,14 +159,22 @@ export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewU
 
   workbenchStore.refreshAllPreviews();
 
-  if (diagnostics.length > 0) {
-    throw new GeneratedCodeValidationError(diagnostics);
+  if (hardDiagnostics.length > 0) {
+    throw new GeneratedCodeValidationError(hardDiagnostics);
   }
 
   const preview = await workbenchStore.waitForPreviewLoaded();
 
   if (await packageUsesVite()) {
     await verifyViteSourceTransforms(preview.baseUrl, Object.keys(generatedSources));
+  }
+
+  await assertPreviewSmokeHealthy(preview.baseUrl);
+
+  const designDiagnostics = lintGeneratedVisualQuality(sourcesAndStyles);
+
+  if (designDiagnostics.length > 0) {
+    throw new GeneratedCodeValidationError(designDiagnostics, 'Visual quality check failed');
   }
 
   /*

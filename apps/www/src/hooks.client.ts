@@ -1,10 +1,16 @@
 import { handleErrorWithSentry } from '@sentry/sveltekit';
 import * as Sentry from '@sentry/sveltekit';
+import { env as publicEnv } from '$env/dynamic/public';
 
-Sentry.init({
-    dsn: 'https://27d41dc8bb67b596f137924ab8599e59@o1063647.ingest.us.sentry.io/4507497727000576',
-    tracesSampleRate: 1.0
-});
+const dsn = publicEnv.PUBLIC_SENTRY_DSN?.trim() || '';
+
+if (dsn) {
+    Sentry.init({
+        dsn,
+        environment: publicEnv.PUBLIC_SENTRY_ENVIRONMENT?.trim() || 'production',
+        tracesSampleRate: 0.001
+    });
+}
 
 export function init() {}
 export const handleError = handleErrorWithSentry();

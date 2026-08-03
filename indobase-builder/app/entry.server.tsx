@@ -4,6 +4,9 @@ import { RemixServer } from '@remix-run/react';
 import { isbot } from 'isbot';
 import { PassThrough } from 'node:stream';
 import { renderToPipeableStream } from 'react-dom/server';
+import { initBuilderSentry, Sentry } from '~/lib/sentry.server';
+
+initBuilderSentry({ service: 'builder' });
 
 const ABORT_DELAY = 5_000;
 
@@ -53,6 +56,7 @@ export default function handleRequest(
           didError = true;
           responseStatusCode = 500;
           console.error(error);
+          Sentry.captureException(error);
         },
       },
     );

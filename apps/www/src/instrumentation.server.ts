@@ -1,6 +1,11 @@
 import * as Sentry from '@sentry/sveltekit';
 
-Sentry.init({
-    dsn: 'https://27d41dc8bb67b596f137924ab8599e59@o1063647.ingest.us.sentry.io/4507497727000576',
-    tracesSampleRate: 1.0
-});
+const dsn = (process.env.SENTRY_DSN || process.env.PUBLIC_SENTRY_DSN || '').trim();
+
+if (dsn) {
+    Sentry.init({
+        dsn,
+        environment: (process.env.SENTRY_ENVIRONMENT || process.env.PUBLIC_SENTRY_ENVIRONMENT || 'production').trim(),
+        tracesSampleRate: 0.001
+    });
+}

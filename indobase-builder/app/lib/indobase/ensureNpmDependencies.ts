@@ -66,11 +66,25 @@ export type EnsureNpmDependenciesResult = {
   success: boolean;
 };
 
+/** Process-wide lock so ActionRunner early-start and finalizeCodegen never double-install. */
+let sharedEnsurePromise: Promise<EnsureNpmDependenciesResult> | null = null;
+
 /**
  * Ensure package.json projects have an installed toolchain before start/build.
+ * Concurrent callers share one in-flight install.
  * Pass the ActionRunner WebContainer when available so tests and the shell share state.
  */
 export async function ensureNpmDependencies(container?: ContainerFs): Promise<EnsureNpmDependenciesResult> {
+  if (!sharedEnsurePromise) {
+    sharedEnsurePromise = ensureNpmDependenciesUnlocked(container).finally(() => {
+      sharedEnsurePromise = null;
+    });
+  }
+
+  return sharedEnsurePromise;
+}
+
+async function ensureNpmDependenciesUnlocked(container?: ContainerFs): Promise<EnsureNpmDependenciesResult> {
   const wc = await resolveContainer(container);
 
   if (!(await hasPackageJson(wc))) {

@@ -4,22 +4,24 @@ export interface DesignScheme {
   font: string[];
 }
 
+/** Light-first Indobase-leaning defaults — never purple/AI-template palettes. */
 export const defaultDesignScheme: DesignScheme = {
   palette: {
-    primary: '#9E7FFF',
-    secondary: '#38bdf8',
-    accent: '#f472b6',
-    background: '#171717',
-    surface: '#262626',
-    text: '#FFFFFF',
-    textSecondary: '#A3A3A3',
-    border: '#2F2F2F',
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
+    primary: '#3B8FD6',
+    secondary: '#1E3A5F',
+    accent: '#C9A227',
+    background: '#FAFBFC',
+    surface: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    border: '#E2E8F0',
+    success: '#059669',
+    warning: '#D97706',
+    error: '#DC2626',
   },
-  features: ['rounded'],
-  font: ['sans-serif'],
+  features: ['rounded', 'border'],
+  /** Prefer purposeful pairings over generic Inter/system stacks. */
+  font: ['sans-serif', 'serif'],
 };
 
 export const paletteRoles = [
@@ -79,15 +81,13 @@ export const paletteRoles = [
 export const designFeatures = [
   { key: 'rounded', label: 'Rounded Corners' },
   { key: 'border', label: 'Subtle Border' },
-  { key: 'gradient', label: 'Gradient Accent' },
   { key: 'shadow', label: 'Soft Shadow' },
-  { key: 'frosted-glass', label: 'Frosted Glass' },
+  /** Soft single-hue wash only — never purple/indigo glow stacks. */
+  { key: 'subtle-atmosphere', label: 'Subtle Atmosphere' },
 ];
 
 export const designFonts = [
-  { key: 'sans-serif', label: 'Sans Serif', preview: 'Aa' },
-  { key: 'serif', label: 'Serif', preview: 'Aa' },
+  { key: 'sans-serif', label: 'Geometric Sans', preview: 'Aa' },
+  { key: 'serif', label: 'Editorial Serif', preview: 'Aa' },
   { key: 'monospace', label: 'Monospace', preview: 'Aa' },
-  { key: 'cursive', label: 'Cursive', preview: 'Aa' },
-  { key: 'fantasy', label: 'Fantasy', preview: 'Aa' },
 ];

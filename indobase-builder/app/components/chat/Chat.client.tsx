@@ -699,7 +699,11 @@ export const ChatImpl = memo(
           }
 
           while (true) {
-            // Start server draft in parallel with WebContainer finalize — draft is usually faster.
+            /*
+             * Draft runs in parallel for a faster iframe, but do NOT mark the build lifecycle
+             * preview-ready until finalize succeeds (or draft recovers a non-repairable failure).
+             * setDraftPreviewReady still paints the draft URL as soon as the server build finishes.
+             */
             const draftPromise = publishDraftPreview(indobaseConnection.get());
 
             try {
@@ -717,10 +721,21 @@ export const ChatImpl = memo(
             } catch (error) {
               logger.error('Post-codegen finalize failed', error);
 
+              const repair = decideAutomaticPreviewRepair({
+                error,
+                completedAttempts: automaticPreviewRepairAttemptRef.current,
+                files: workbenchStore.files.get(),
+                maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+              });
+
               try {
                 const draft = await draftPromise;
 
-                if (draft.success && draft.previewUrl) {
+                /*
+                 * Draft iframe may already be visible. Only treat the build as lifecycle-ready when
+                 * finalize does not need a model repair turn (syntax/design still repair).
+                 */
+                if (draft.success && draft.previewUrl && !repair.shouldRepair) {
                   automaticPreviewRepairAttemptRef.current = 0;
                   setLlmErrorAlert(undefined);
 
@@ -733,13 +748,6 @@ export const ChatImpl = memo(
               } catch (draftError) {
                 logger.warn('Draft preview recovery failed', draftError);
               }
-
-              const repair = decideAutomaticPreviewRepair({
-                error,
-                completedAttempts: automaticPreviewRepairAttemptRef.current,
-                files: workbenchStore.files.get(),
-                maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
-              });
 
               /*
                * Transient preview/network flakiness is not model-repairable and does not consume
