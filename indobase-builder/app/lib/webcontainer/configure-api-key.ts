@@ -56,8 +56,3 @@ export function isMissingWebContainerApiKeyError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /WebContainer API key is not configured/i.test(message);
 }
-
-export function isMissingWebContainerApiKeyError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /WebContainer API key is not configured/i.test(message);
-}
