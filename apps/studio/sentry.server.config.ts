@@ -15,6 +15,11 @@ Sentry.init({
 
   // Enable performance monitoring
   tracesSampleRate: 0.001, // Capture 0.1% of transactions for performance monitoring
+
+  // Sentry Logs (SDK >= 9.41)
+  enableLogs: true,
+  integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
+
   ignoreErrors: [
     // Used exclusively in Monaco Editor.
     'ResizeObserver',

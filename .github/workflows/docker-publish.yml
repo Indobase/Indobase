@@ -160,6 +160,7 @@ jobs:
             VITE_APP_VERSION=${{ github.sha }}
             VITE_GIT_BRANCH=${{ github.ref_name }}
             VITE_GIT_COMMIT=${{ github.sha }}
+            VITE_SENTRY_DSN=${{ env.VITE_SENTRY_DSN }}
           push: true
           tags: |
             ${{ env.DOCKERHUB_BUILDER_REPO }}:latest

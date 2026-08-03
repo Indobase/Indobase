@@ -105,6 +105,9 @@ Sentry.init({
   // Enable performance monitoring - Next.js routes and API calls are automatically instrumented
   tracesSampleRate: 0.001, // Capture 0.1% of transactions for performance monitoring
 
+  // Sentry Logs (SDK >= 9.41): structured logs + console warn/error (not info — noisy/PII-prone)
+  enableLogs: true,
+
   /*
    * Session Replay (browser only): buffer sessions and upload on error.
    * Continuous session sampling stays off to protect quota + privacy; error replays are 100%.
@@ -113,6 +116,7 @@ Sentry.init({
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 1.0,
   integrations: [
+    Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
     Sentry.replayIntegration({
       maskAllText: true,
       maskAllInputs: true,

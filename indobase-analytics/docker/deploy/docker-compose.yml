@@ -167,6 +167,8 @@ services:
       ANALYTICS_SITE_DOMAIN_SUFFIX: ${ANALYTICS_SITE_DOMAIN_SUFFIX:-indobase.in}
       MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
       CLUSTER_WORKERS: ${CLUSTER_WORKERS:-2}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -194,6 +196,8 @@ services:
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-true}
         NEXT_PUBLIC_STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
         NEXT_PUBLIC_LITE_DASHBOARD: ${LITE_DASHBOARD:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-${SENTRY_DSN:-}}
+        NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}
     image: ${CLIENT_IMAGE:-indobase-analytics-client:local}
     environment:
       NODE_ENV: production
@@ -201,6 +205,10 @@ services:
       NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-true}
       NEXT_PUBLIC_STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       NEXT_PUBLIC_LITE_DASHBOARD: ${LITE_DASHBOARD:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-${SENTRY_DSN:-}}
+      NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     depends_on:
       - backend
     networks:

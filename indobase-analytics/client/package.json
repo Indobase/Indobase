@@ -46,6 +46,7 @@
     "@radix-ui/react-tooltip": "1.2.6",
     "@radix-ui/react-visually-hidden": "1.2.4",
     "@rybbit/shared": "file:../shared",
+    "@sentry/nextjs": "^10.28.0",
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.8.0",
     "@tailwindcss/postcss": "^4.1.17",
