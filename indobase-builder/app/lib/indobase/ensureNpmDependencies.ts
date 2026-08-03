@@ -108,8 +108,35 @@ async function ensureNpmDependenciesUnlocked(container?: ContainerFs): Promise<E
     }),
   );
 
-  const exitCode = await installProcess.exit;
+  const INSTALL_TIMEOUT_MS = 180_000;
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+
+    try {
+      installProcess.kill();
+    } catch {
+      // ignore — process may already have exited
+    }
+  }, INSTALL_TIMEOUT_MS);
+
+  let exitCode: number;
+
+  try {
+    exitCode = await installProcess.exit;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   await outputPromise.catch(() => undefined);
+
+  if (timedOut) {
+    return {
+      success: false,
+      output,
+      error: `npm install timed out after ${INSTALL_TIMEOUT_MS / 1000}s`,
+    };
+  }
 
   if (exitCode !== 0) {
     return {

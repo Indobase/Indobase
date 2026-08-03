@@ -632,6 +632,9 @@ export const ChatImpl = memo(
       stop();
       setFakeLoading(false);
       streamingState.set(false);
+
+      // stop() often leaves useChat isLoading=true; unlock Working/Stop immediately.
+      setStreamStalled(true);
       failInitialBuild();
       void workbenchStore.abortAllActions();
 
@@ -860,22 +863,24 @@ export const ChatImpl = memo(
         stop();
         void workbenchStore.abortAllActions();
 
+        /*
+         * stop() often leaves useChat isLoading=true on a dead SSE. Always unlock Working/Stop
+         * here — including when build-mode finalize later recovers — otherwise the composer stays
+         * locked forever after a successful salvage.
+         */
+        setFakeLoading(false);
+        streamingState.set(false);
+        setStreamStalled(true);
+
         if (chatMode === 'build') {
           const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
           logger.warn('Build stream stalled; attempting finalize + bounded automatic repair');
           chatStore.setKey('aborted', false);
-          void finalizeBuildAndMaybeRepair(isInitialBuild).then((recovered) => {
-            if (!recovered) {
-              setStreamStalled(true);
-            }
-          });
+          void finalizeBuildAndMaybeRepair(isInitialBuild);
 
           return;
         }
 
-        setFakeLoading(false);
-        streamingState.set(false);
-        setStreamStalled(true);
         chatStore.setKey('aborted', true);
         setLlmErrorAlert({
           type: 'error',
@@ -1409,7 +1414,12 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         input={input}
         showChat={showChat}
         chatStarted={chatStarted}
-        isStreaming={(isLoading || fakeLoading) && !streamStalled}
+        /*
+         * Stop / Working… track the live SSE only. Post-stream finalize (fakeLoading) used to
+         * keep both latched; if finalize hung or stop() left isLoading=true after a dead stream,
+         * the composer stayed stuck with a red Stop forever.
+         */
+        isStreaming={isLoading && !streamStalled}
         onStreamingChange={(streaming) => {
           streamingState.set(streaming);
         }}
