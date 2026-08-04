@@ -10,13 +10,13 @@ import {
 } from '~/lib/indobase/openrouter-free-models';
 
 /**
- * Default Build codegen model — Emergent-like quality (user asked to move off Qwen Flash).
+ * Default Build codegen model — Thinking Machines Inkling via OpenRouter.
  * Discuss/planning stay on cheaper free/paid models; UI never exposes this id.
  */
-export const OPENROUTER_PAID_CODEGEN_MODEL = 'deepseek/deepseek-v4-pro';
+export const OPENROUTER_PAID_CODEGEN_MODEL = 'thinkingmachines/inkling';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
-  label: 'DeepSeek V4 Pro',
+  label: 'Inkling',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
   maxTokenAllowed: 1048576,
@@ -79,7 +79,7 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
-  // Repair + all Build codegen use DeepSeek V4 Pro (quality over Flash latency).
+  // Repair + all Build codegen use Inkling (quality over Flash latency).
   if (task === 'debugging' || task === 'codegen' || task === 'scaffold') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,

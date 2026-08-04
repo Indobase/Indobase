@@ -115,7 +115,7 @@ function resolveOpenRouterTask(
     return 'chat';
   }
 
-  // All Build turns use DeepSeek V4 Pro (scaffold alias kept for callers/tests).
+  // All Build turns use Inkling (scaffold alias kept for callers/tests).
   if (chatMode === 'build') {
     return isSimpleFirstScaffoldTurn(messages) ? 'scaffold' : 'codegen';
   }
@@ -343,7 +343,7 @@ export async function streamText(props: {
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
   /*
-   * OpenRouter free tiers reject very large completion limits. Paid DeepSeek codegen keeps its
+   * OpenRouter free tiers reject very large completion limits. Paid Inkling codegen keeps its
    * full budget; flash-tier ids (legacy) stay under the Flash cap.
    */
   const openRouterTask = resolveOpenRouterTask(chatMode, processedMessages);

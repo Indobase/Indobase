@@ -27,6 +27,7 @@ export function scrubPlanStepInternals(text: string): string {
   return stripInternalRoutingAnnotations(text)
     .replace(/\bqwen\/[^\s\]`'"]+/gi, '')
     .replace(/\bdeepseek\/[^\s\]`'"]+/gi, '')
+    .replace(/\bthinkingmachines\/[^\s\]`'"]+/gi, '')
     .replace(/\bopenai\/gpt-[^\s\]`'"]+/gi, '')
     .replace(/\bopenrouter\b/gi, '')
     .replace(/\s+/g, ' ')
