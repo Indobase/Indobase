@@ -27,6 +27,7 @@ import type { ElementInfo } from './Inspector';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
 import { useChatHistory } from '~/lib/persistence';
 import { streamingState } from '~/lib/stores/streaming';
+import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const DeployButton = lazy(() =>
@@ -304,6 +305,8 @@ export const Workbench = memo(
       [],
     );
     const hasPreview = useStore(hasPreviewStore);
+    const draftPreview = useStore(draftPreviewStore);
+    const draftReady = draftPreview.status === 'ready' || draftPreview.status === 'building';
     const showWorkbench = useStore(workbenchStore.showWorkbench);
     const selectedFile = useStore(workbenchStore.selectedFile);
     const currentDocument = useStore(workbenchStore.currentDocument);
@@ -345,11 +348,12 @@ export const Workbench = memo(
     const hasAutoOpenedPreview = useRef(false);
 
     useEffect(() => {
-      if (hasPreview && !hasAutoOpenedPreview.current) {
+      if ((hasPreview || draftReady) && !hasAutoOpenedPreview.current) {
         hasAutoOpenedPreview.current = true;
         setSelectedView('preview');
+        workbenchStore.showWorkbench.set(true);
       }
-    }, [hasPreview]);
+    }, [hasPreview, draftReady]);
 
     useEffect(() => {
       /*

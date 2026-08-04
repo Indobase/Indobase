@@ -10,21 +10,21 @@ import {
 } from '~/lib/indobase/openrouter-free-models';
 
 /**
- * Default Build codegen model — Thinking Machines Inkling Small via OpenRouter.
- * https://openrouter.ai/thinkingmachines/inkling-small
+ * Default Build codegen model — OpenAI GPT-5.6 Luna via OpenRouter.
+ * https://openrouter.ai/openai/gpt-5.6-luna
  * Override with OPENROUTER_BUILD_CODEGEN_MODEL if needed. UI never exposes this id.
  */
-const OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT = 'thinkingmachines/inkling-small';
+const OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT = 'openai/gpt-5.6-luna';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL = (
   typeof process !== 'undefined' && process.env.OPENROUTER_BUILD_CODEGEN_MODEL?.trim()
 ) || OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT;
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
-  label: 'Inkling Small',
+  label: 'GPT-5.6 Luna',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
-  maxTokenAllowed: 524288,
+  maxTokenAllowed: 1048576,
   maxCompletionTokens: 64000,
   tier: 'Paid' as const,
 };
@@ -84,7 +84,7 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
-  // Repair + all Build codegen use Inkling Small (OpenRouter).
+  // Repair + all Build codegen use GPT-5.6 Luna (OpenRouter).
   if (task === 'debugging' || task === 'codegen' || task === 'scaffold') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,

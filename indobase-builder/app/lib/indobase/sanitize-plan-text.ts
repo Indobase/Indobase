@@ -29,6 +29,7 @@ export function scrubPlanStepInternals(text: string): string {
     .replace(/\bdeepseek\/[^\s\]`'"]+/gi, '')
     .replace(/\bthinkingmachines\/[^\s\]`'"]+/gi, '')
     .replace(/\bopenai\/gpt-[^\s\]`'"]+/gi, '')
+    .replace(/\bopenai\/[^\s\]`'"]+/gi, '')
     .replace(/\bopenrouter\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();

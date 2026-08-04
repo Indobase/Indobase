@@ -36,9 +36,9 @@ type Phase = {
 const PHASE_ORDER: PhaseId[] = ['scaffold', 'dependencies', 'backend', 'verify', 'run'];
 
 const PHASE_META: Record<PhaseId, { agent: string; label: string; icon: string }> = {
-  scaffold: { agent: 'Builder', label: 'Building the app', icon: 'i-ph:code-block' },
+  scaffold: { agent: 'Builder', label: 'Delegated to Builder', icon: 'i-ph:code-block' },
   dependencies: { agent: 'Builder', label: 'Installing packages', icon: 'i-ph:package' },
-  backend: { agent: 'Backend', label: 'Setting up the backend', icon: 'i-ph:database' },
+  backend: { agent: 'Backend', label: 'Delegated to Backend', icon: 'i-ph:database' },
   verify: { agent: 'Quality', label: 'Checking it builds', icon: 'i-ph:check-circle' },
   run: { agent: 'Preview', label: 'Starting preview', icon: 'i-ph:play-circle' },
 };

@@ -34,6 +34,7 @@ import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { MyAppsList } from '~/components/chat/MyAppsList.client';
 import { ChatPaneErrorBoundary } from './ChatPaneErrorBoundary';
+import { AgentWorkingBanner } from './AgentWorkingBanner';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -663,6 +664,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   })}
                 >
                   {alertStack}
+                  <AgentWorkingBanner />
                   {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                   {promptComposer()}
                 </div>

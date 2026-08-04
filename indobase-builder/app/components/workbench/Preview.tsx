@@ -49,10 +49,10 @@ function PreviewEmptyState({
   const detail = failed
     ? bootError
     : draftBuilding
-      ? 'Preparing a fast server preview of your app. Live editor preview may follow.'
+      ? 'Preparing a fast server preview of your app.'
       : busy
         ? 'Installing packages if needed, then starting the app. Edits hot-reload once it is up.'
-        : 'Once the app is running, its live preview shows up in this panel.';
+        : 'Answer any questions on the left — your live app will show up here when the first build finishes.';
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1 px-6 text-center">

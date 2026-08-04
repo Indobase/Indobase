@@ -62,7 +62,8 @@ import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
-import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { beginInitialBuild, beginScoping, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/instant-clarifying';
 import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
 import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
 import { BUILDER_EVENTS } from '~/lib/analytics/events';
@@ -323,8 +324,33 @@ export const ChatImpl = memo(
       },
       onFinish: (message, response) => {
         const usage = response.usage;
-        const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
+        const annotations = Array.isArray(message.annotations) ? message.annotations : [];
+        const hasClarifying = annotations.some(
+          (entry) =>
+            entry &&
+            typeof entry === 'object' &&
+            (entry as { type?: string }).type === 'clarifyingQuestions',
+        );
+
         setData(undefined);
+
+        /*
+         * Intake turn: keep the Emergent questions card open; do not finalize or show the
+         * "agent working" generating banner as if codegen had started.
+         */
+        if (hasClarifying) {
+          initialBuildLifecycle.set('scoping');
+          setFakeLoading(false);
+          streamingState.set(false);
+          generationStartedAtRef.current = null;
+          void refreshBuilderPromptQuota();
+          orchestratorChatRetryRef.current = 0;
+
+          return;
+        }
+
+        const life = initialBuildLifecycle.get();
+        const isInitialBuild = life === 'generating' || life === 'finalizing' || life === 'scoping';
 
         if (isInitialBuild) {
           initialBuildLifecycle.set('finalizing');
@@ -373,6 +399,30 @@ export const ChatImpl = memo(
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
     });
+
+    /*
+     * First turn may start in `scoping`. When the server starts codegen (coder progress / plan),
+     * flip to generating so the Emergent working banner and finalize path engage.
+     */
+    useEffect(() => {
+      if (!Array.isArray(chatData) || initialBuildLifecycle.get() !== 'scoping') {
+        return;
+      }
+
+      const building = chatData.some((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return false;
+        }
+
+        const item = entry as { type?: string; label?: string };
+
+        return item.type === 'progress' && item.label === 'coder';
+      });
+
+      if (building) {
+        beginInitialBuild();
+      }
+    }, [chatData]);
 
     useEffect(() => {
       if (provider.name !== HIDDEN_CHAT_PROVIDER.name) {
@@ -452,7 +502,9 @@ export const ChatImpl = memo(
           if (chatMode === 'build') {
             automaticPreviewRepairAttemptRef.current = 0;
             workbenchStore.clearWorkspace();
-            beginInitialBuild();
+            workbenchStore.currentView.set('preview');
+            workbenchStore.showWorkbench.set(true);
+            beginScoping();
           }
 
           append({
@@ -1292,7 +1344,9 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         if (chatMode === 'build') {
           // Fresh chat must not inherit prior project's workbench files into LLM context / WC.
           workbenchStore.clearWorkspace();
-          beginInitialBuild();
+          workbenchStore.currentView.set('preview');
+          workbenchStore.showWorkbench.set(true);
+          beginScoping();
         }
 
         try {
@@ -1329,6 +1383,13 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
 
       if (error != null) {
         setMessages(messages.slice(0, -1));
+      }
+
+      if (
+        chatMode === 'build' &&
+        (finalMessageContent.includes(CLARIFYING_ANSWERS_MARKER) || initialBuildLifecycle.get() === 'scoping')
+      ) {
+        beginInitialBuild();
       }
 
       const modifiedFiles = workbenchStore.getModifiedFiles();

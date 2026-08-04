@@ -18,6 +18,7 @@ import type {
 import { ToolInvocations } from './ToolInvocations';
 import type { ToolCallAnnotation } from '~/types/context';
 import { sanitizePlanSteps } from '~/lib/indobase/sanitize-plan-text';
+import { ClarifyingQuestionsCard, type ClarifyingQuestionView } from './ClarifyingQuestionsCard';
 
 interface AssistantMessageProps {
   content: string;
@@ -108,6 +109,36 @@ export const AssistantMessage = memo(
       return cleaned.length > 0 ? cleaned : undefined;
     })();
 
+    const clarifyingQuestions: ClarifyingQuestionView[] | undefined = (() => {
+      const raw = filteredAnnotations.find((annotation) => annotation.type === 'clarifyingQuestions')?.questions;
+
+      if (!Array.isArray(raw) || raw.length === 0) {
+        return undefined;
+      }
+
+      return raw
+        .map((item) => {
+          if (!item || typeof item !== 'object') {
+            return null;
+          }
+
+          const q = item as ClarifyingQuestionView;
+
+          if (typeof q.question !== 'string' || !q.question.trim()) {
+            return null;
+          }
+
+          return {
+            question: q.question,
+            why: typeof q.why === 'string' ? q.why : undefined,
+            suggestions: Array.isArray(q.suggestions)
+              ? q.suggestions.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+              : undefined,
+          };
+        })
+        .filter((item): item is ClarifyingQuestionView => item !== null);
+    })();
+
     const usageAnnotation = filteredAnnotations.find((annotation) => annotation.type === 'usage')?.value as
       | {
           completionTokens?: number;
@@ -190,7 +221,16 @@ export const AssistantMessage = memo(
             )}
           </div>
 
-          {planSteps && planSteps.length > 0 && (
+          {clarifyingQuestions && clarifyingQuestions.length > 0 && (
+            <ClarifyingQuestionsCard
+              questions={clarifyingQuestions}
+              append={append}
+              model={model}
+              providerName={provider?.name}
+            />
+          )}
+
+          {planSteps && planSteps.length > 0 && !clarifyingQuestions?.length && (
             <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
               <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <span className="i-ph:list-checks text-sm" />
@@ -209,9 +249,17 @@ export const AssistantMessage = memo(
             </div>
           )}
 
-          <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
-            {content}
-          </Markdown>
+          {!(clarifyingQuestions && clarifyingQuestions.length > 0) && (
+            <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
+              {content}
+            </Markdown>
+          )}
+
+          {clarifyingQuestions && clarifyingQuestions.length > 0 && content.trim() && (
+            <p className="mb-3 text-sm text-gray-700">
+              I&apos;ll set up the core structure once you answer a few quick questions.
+            </p>
+          )}
 
           {toolInvocations && toolInvocations.length > 0 && (
             <ToolInvocations

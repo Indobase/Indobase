@@ -1101,14 +1101,17 @@ export const workbenchStore = new WorkbenchStore();
  * preview-ready fires this, so a user who deliberately opens Code mid-build is not yanked away.
  */
 initialBuildLifecycle.subscribe((state) => {
+  if (state === 'scoping' || state === 'generating') {
+    /*
+     * Emergent split: open Preview as soon as intake or codegen starts — not only when the
+     * iframe is ready — so the right pane never stays chat-only.
+     */
+    workbenchStore.currentView.set('preview');
+    workbenchStore.showWorkbench.set(true);
+  }
+
   if (state === 'preview-ready') {
     workbenchStore.currentView.set('preview');
-
-    /*
-     * The reveal. Nothing opens the workbench during a build any more, so this is where the app
-     * arrives — the user stays in the conversation while it is built, then their running app slides
-     * in. If they already opened it themselves, this is a no-op.
-     */
     workbenchStore.showWorkbench.set(true);
   }
 
