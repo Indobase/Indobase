@@ -22,7 +22,7 @@ describe('openrouter-model-policy', () => {
     expect(resolved.modelName).not.toBe(OPENROUTER_PAID_CODEGEN_MODEL);
   });
 
-  it('routes all Build codegen (simple + complex) to Inkling Small', () => {
+  it('routes all Build codegen (simple + complex) to Inkling', () => {
     expect(resolveOpenRouterModelForTask('scaffold', 'OpenRouter', 'qwen/qwen3.5-flash-02-23')).toEqual({
       providerName: 'OpenRouter',
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
@@ -31,12 +31,12 @@ describe('openrouter-model-policy', () => {
       providerName: 'OpenRouter',
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
     });
-    expect(OPENROUTER_PAID_CODEGEN_MODEL).toBe('thinkingmachines/inkling-small');
+    expect(OPENROUTER_PAID_CODEGEN_MODEL).toBe('thinkingmachines/inkling');
     // Flash remains defined for legacy imports but is not the Build route.
     expect(OPENROUTER_FAST_CODEGEN_MODEL).toBe('qwen/qwen3.5-flash-02-23');
   });
 
-  it('reserves Inkling Small for debugging/repair as well', () => {
+  it('reserves Inkling for debugging/repair as well', () => {
     expect(resolveOpenRouterModelForTask('debugging', 'OpenRouter', 'qwen/qwen3-coder:free')).toEqual({
       providerName: 'OpenRouter',
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
