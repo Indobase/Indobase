@@ -2,6 +2,7 @@
 
 **Hosts:** `design.indobase.in` (prod) · `design.indobase.fun` · Traefik on Vyom `.249`  
 **Source:** `indobase-design-v2/` (Fabric.js + Preact, Hono, Postgres)  
+**Architecture (Gen 2+):** [INDOBASE-DESIGN-ARCHITECTURE.md](./INDOBASE-DESIGN-ARCHITECTURE.md) — binding eng spec  
 **Licences:** MIT (editor client) + Apache-2.0 (Davronov layers) — see `NOTICE.md`.
 
 ## Honest framing
