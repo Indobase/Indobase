@@ -132,21 +132,25 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const isStreaming = useStore(streamingState);
   const bootError = useStore(webcontainerBootErrorAtom);
 
-  /*
-   * Which failure is worth showing depends on how this host renders previews. Under server preview
-   * WebContainer is never expected to boot, so its error is noise — the meaningful failure is the
-   * server build. Elsewhere the boot error is the whole story.
-   */
-  const previewFailure = isServerPreviewMode()
-    ? draftPreview.status === 'error'
-      ? draftPreview.error
-      : undefined
-    : bootError;
-
   // A dev server is expected soon while generating/finalizing or mid-stream — show "starting", not "empty".
   const previewStarting = isStreaming || buildLifecycle === 'generating' || buildLifecycle === 'finalizing';
   const draftBuilding = draftPreview.status === 'building';
   const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : undefined;
+
+  /*
+   * Prefer draft path over WC boot noise. Under server-preview hosts (no key) WC is never expected.
+   * After a latched WC failure, keep showing draft progress / ready iframe — only surface the boot
+   * message when there is nothing else to show.
+   */
+  const previewFailure = draftBuilding || draftPreviewUrl
+    ? undefined
+    : isServerPreviewMode()
+      ? draftPreview.status === 'error'
+        ? draftPreview.error
+        : undefined
+      : draftPreview.status === 'error'
+        ? draftPreview.error || bootError
+        : bootError;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);

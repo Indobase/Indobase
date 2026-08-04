@@ -1,10 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { isSingletonBootError, shouldSuggestExtensionDisable } from './boot-errors';
+import {
+  isFatalBootConfigError,
+  isSingletonBootError,
+  shouldSuggestExtensionDisable,
+  toUserFacingBootError,
+} from './boot-errors';
+import { shouldSkipWebContainerRuntime } from './preview-mode';
 
 describe('webcontainer boot helpers', () => {
   it('detects the StackBlitz singleton boot error', () => {
     expect(isSingletonBootError(new Error('Only a single WebContainer instance can be booted'))).toBe(true);
     expect(isSingletonBootError(new Error('Indobase Builder workspace failed to start (timed out).'))).toBe(false);
+  });
+
+  it('classifies missing-key / allowlist failures as fatal config errors', () => {
+    expect(isFatalBootConfigError(new Error('WebContainer API key is not configured for this host'))).toBe(true);
+    expect(isFatalBootConfigError(new Error('StackBlitz rejected this Builder host (404)'))).toBe(true);
+    expect(isFatalBootConfigError(new Error('Indobase Builder workspace failed to start (timed out).'))).toBe(false);
+  });
+
+  it('points timeout failures at server draft preview', () => {
+    const message = toUserFacingBootError(
+      new Error('WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).'),
+    );
+    expect(message).toMatch(/server draft/i);
+    expect(message).toMatch(/Reset Terminal/);
+  });
+
+  it('does not duplicate draft guidance when already present', () => {
+    const original =
+      'Indobase Builder workspace failed to start (timed out). Preview will use the server draft build instead.';
+    expect(toUserFacingBootError(new Error(original))).toBe(original);
   });
 
   it('gates extension advice to COOP / StackBlitz reachability failures', () => {
@@ -39,5 +65,14 @@ describe('webcontainer boot helpers', () => {
         'StackBlitz rejected this Builder host (headless 404). In the StackBlitz API Console, enable the WebContainer API key',
       ),
     ).toBe(false);
+    expect(
+      shouldSuggestExtensionDisable(
+        'Preview will use the server draft build instead. Click Reset Terminal (↻) to retry WebContainer.',
+      ),
+    ).toBe(false);
+  });
+
+  it('skips WebContainer runtime when boot already failed', () => {
+    expect(shouldSkipWebContainerRuntime(true)).toBe(true);
   });
 });

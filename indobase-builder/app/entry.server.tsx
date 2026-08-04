@@ -34,6 +34,8 @@ export default function handleRequest(
 
           const body = new PassThrough();
           responseHeaders.set('Content-Type', 'text/html');
+          // Avoid stale document → hashed /assets/index-*.js 404s after Swarm rolls.
+          responseHeaders.set('Cache-Control', 'no-store');
           // Must match WebContainer.boot({ coep: 'credentialless' }) in lib/webcontainer/index.ts
           responseHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
           responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');

@@ -14,7 +14,8 @@ import {
   isDevStartCommand,
   isToolchainReady,
 } from '~/lib/indobase/ensureNpmDependencies';
-import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
+import { hasWebContainerBootFailed } from '~/lib/webcontainer';
+import { shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { yieldAfterBatch } from '~/utils/yieldToMain';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
@@ -660,7 +661,7 @@ export class ActionRunner {
    * waiting for the model's trailing start action after every file is written.
    */
   async #kickEarlyDevIfReady(): Promise<void> {
-    if (this.#earlyDevStarted || this.#earlyDevPromise || isServerPreviewMode()) {
+    if (this.#earlyDevStarted || this.#earlyDevPromise || shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
       return;
     }
 
@@ -800,14 +801,22 @@ export class ActionRunner {
   }
 
   async #awaitWebContainer(): Promise<WebContainer> {
+    if (hasWebContainerBootFailed()) {
+      throw new Error(
+        'WebContainer did not become ready in time. Preview will use the server draft build instead. Click Reset Terminal or hard-refresh (Chrome/Edge).',
+      );
+    }
+
     return Promise.race([
       this.#webcontainer,
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(
-            new Error('WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).'),
+            new Error(
+              'WebContainer did not become ready in time. Preview will use the server draft build instead. Click Reset Terminal or hard-refresh (Chrome/Edge).',
+            ),
           );
-        }, 150_000);
+        }, 95_000);
       }),
     ]);
   }

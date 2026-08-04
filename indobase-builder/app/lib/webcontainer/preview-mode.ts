@@ -11,6 +11,10 @@ import { resolveWebContainerApiKey } from './configure-api-key';
  * When no key is configured on a deployed host, WebContainer can never boot — so rather than
  * booting, failing, and recovering from the error, treat server preview as the intended mode and
  * go straight to it.
+ *
+ * After a latched boot failure (timeout / StackBlitz outage), callers should also prefer the
+ * server draft path — use `hasWebContainerBootFailed()` from `~/lib/webcontainer` for that check
+ * (kept out of this module to avoid a circular import with the boot singleton).
  */
 export function isServerPreviewMode(): boolean {
   if (typeof window === 'undefined') {
@@ -23,4 +27,12 @@ export function isServerPreviewMode(): boolean {
 
   // Localhost boots WebContainer keylessly, so it keeps the richer path.
   return !isLocal && !resolveWebContainerApiKey();
+}
+
+/**
+ * Prefer server draft install/dev when WC cannot run (no key) or already failed this session.
+ * Pass `bootFailed` from `hasWebContainerBootFailed()` / the boot error atom.
+ */
+export function shouldSkipWebContainerRuntime(bootFailed = false): boolean {
+  return isServerPreviewMode() || bootFailed;
 }

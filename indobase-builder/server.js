@@ -123,6 +123,10 @@ async function serveAsset(urlPath, assetsRoot) {
   }
 
   headers.set('Content-Length', String(stat.size));
+  // Hashed Vite assets are immutable; HTML entry is no-store via entry.server.tsx.
+  if (urlPath.includes('/assets/') && /-[A-Za-z0-9_-]{6,}\.(js|css)$/.test(urlPath)) {
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
   // Match HTML document isolation so credentialless COEP stays consistent for subresources.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');

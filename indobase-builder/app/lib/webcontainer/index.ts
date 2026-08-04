@@ -2,14 +2,16 @@ import { WebContainer } from '@webcontainer/api';
 import { atom } from 'nanostores';
 import { WORK_DIR_NAME } from '~/utils/constants';
 import { cleanStackTrace } from '~/utils/stacktrace';
-import { isFatalBootConfigError, isSingletonBootError } from './boot-errors';
-import {
-  ensureWebContainerApiKeyConfigured,
-  resolveWebContainerApiKey,
-} from './configure-api-key';
+import { isSingletonBootError, toUserFacingBootError } from './boot-errors';
+import { ensureWebContainerApiKeyConfigured } from './configure-api-key';
 import { whenBuilderPublicEnvReady } from './public-env';
 
-export { isSingletonBootError, shouldSuggestExtensionDisable } from './boot-errors';
+export {
+  isFatalBootConfigError,
+  isSingletonBootError,
+  shouldSuggestExtensionDisable,
+  toUserFacingBootError,
+} from './boot-errors';
 export { ensureWebContainerApiKeyConfigured, resolveWebContainerApiKey } from './configure-api-key';
 
 export const webcontainerBootErrorAtom = atom<string | null>(null);
@@ -26,10 +28,13 @@ if (import.meta.hot?.data) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
-const WEBCONTAINER_BOOT_TIMEOUT_MS = 120_000;
+const WEBCONTAINER_BOOT_TIMEOUT_MS = 90_000;
 const WEBCONTAINER_CONFIGURE_TIMEOUT_MS = 25_000;
-const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 3;
-const STACKBLITZ_HEADLESS_PROBE_MS = 8_000;
+/**
+ * One attempt only. Retries call WebContainer.boot() again after teardown and thrash StackBlitz
+ * when the runtime is blocked by network/extensions/outage. Reset Terminal clears the latch.
+ */
+const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 1;
 const TEARDOWN_SETTLE_MS = 250;
 
 function sleep(ms: number) {
@@ -54,7 +59,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
 }
 
 async function assertWebContainerRuntimeReady(): Promise<void> {
-  // FilesStore / warm boot can race ahead of root's async env fetch — wait for sync or async bootstrap.
   await whenBuilderPublicEnvReady();
   ensureWebContainerApiKeyConfigured();
 
@@ -65,69 +69,39 @@ async function assertWebContainerRuntimeReady(): Promise<void> {
   }
 
   /*
-   * NOTE: the network probe that used to run here has been moved to `probeStackBlitzReachability`
-   * and no longer gates the boot. It was reporting "Cannot reach the StackBlitz WebContainer
-   * runtime" on hosts where WebContainer boots perfectly well, because:
-   *
-   *   - `stackblitz.com/headless` is loaded by the SDK as a worker/iframe, not via `fetch`, and does
-   *     not answer CORS preflight for arbitrary origins — so a `mode: 'cors'` fetch rejects with a
-   *     TypeError that is indistinguishable from a real outage.
-   *   - the pinned internal version string made the probe 404 whenever StackBlitz moved it, which
-   *     this code then misreported as "your host was rejected / your key is invalid".
-   *
-   * `WebContainer.boot()` is the only authority on whether the runtime works. Local, deterministic
-   * preconditions (API key present, cross-origin isolation) stay above as hard failures.
+   * Do NOT probe https://stackblitz.com/headless with fetch(). That URL is loaded by the SDK as a
+   * worker/iframe, not CORS for arbitrary origins. A prior advisory probe used
+   * mode:"no-cors" + redirect:"manual", which Chrome rejects with:
+   *   Fetch API cannot load … Request mode is "no-cors" but the redirect mode is not "follow".
+   * WebContainer.boot() is the only authority on whether the runtime works.
    */
-}
-
-/**
- * Best-effort classification of a boot failure. Never throws and never gates the boot — it only
- * turns an opaque WebContainer error into something actionable. A 404 here is the one signal that
- * is genuinely meaningful: StackBlitz answers `/headless` but rejects this host, which means the
- * key is missing/invalid or the domain is not allowlisted.
- */
-async function probeStackBlitzReachability(): Promise<string | null> {
-  const controller = new AbortController();
-  const probeTimer = setTimeout(() => controller.abort(), STACKBLITZ_HEADLESS_PROBE_MS);
-
-  try {
-    // no-cors: we only care whether the host answers at all. The API key is deliberately NOT sent
-    // as a query param — it would put a credential in a cross-origin URL for no diagnostic gain.
-    const response = await fetch('https://stackblitz.com/headless', {
-      method: 'GET',
-      mode: 'no-cors',
-      credentials: 'omit',
-      redirect: 'manual',
-      signal: controller.signal,
-    });
-
-    if (response.status === 404) {
-      return 'StackBlitz rejected this Builder host (404). In the StackBlitz API Console, confirm the WebContainer API key is enabled and that builder.indobase.in / builder.indobase.fun are allowlisted.';
-    }
-
-    return null;
-  } catch {
-    // Opaque/blocked responses are expected here and prove nothing. Stay silent.
-    return null;
-  } finally {
-    clearTimeout(probeTimer);
-  }
 }
 
 /** Live instance (or late-arriving boot after a client-side timeout). */
 let activeInstance: WebContainer | undefined;
 let bootPromise: Promise<WebContainer> | undefined;
-/** Set when boot fails for a reason only an admin can fix; short-circuits further boot attempts. */
-let fatalBootConfigError: Error | undefined;
-/** Serializes boot vs teardown so callers never race a second WebContainer.boot(). */
-let bootGate: Promise<void> = Promise.resolve();
+/**
+ * Latches after an exhausted boot so file writes / warm boots / ActionRunner cannot re-enter the
+ * full StackBlitz boot loop. Reset Terminal clears it.
+ */
+let bootFailureLatch: Error | undefined;
 /** Coalesce concurrent getWebcontainerWithRetry callers into one retry loop. */
 let sharedRetryPromise: Promise<WebContainer> | undefined;
 let previewListenerAttached = false;
+/** Serializes boot vs teardown so callers never race a second WebContainer.boot(). */
+let bootGate: Promise<void> = Promise.resolve();
 
 function rememberInstance(container: WebContainer): WebContainer {
   activeInstance = container;
   return container;
+}
+
+function latchBootFailure(error: unknown): Error {
+  const message = toUserFacingBootError(error);
+  const latched = error instanceof Error ? Object.assign(error, { message }) : new Error(message);
+  bootFailureLatch = latched;
+  webcontainerBootErrorAtom.set(message);
+  return latched;
 }
 
 async function teardownActiveInstance(): Promise<void> {
@@ -146,7 +120,6 @@ async function teardownActiveInstance(): Promise<void> {
     console.warn('WebContainer teardown failed:', error);
   }
 
-  // Give StackBlitz a beat to clear the process-wide singleton lock.
   await sleep(TEARDOWN_SETTLE_MS);
 }
 
@@ -164,17 +137,13 @@ function bootWebContainerOnce(): Promise<WebContainer> {
       forwardPreviewErrors: true,
     });
 
-    /*
-     * If the client-side timeout rejects first, StackBlitz may still finish booting.
-     * Remember that instance so retries can reuse or teardown instead of calling boot() again.
-     */
     void boot.then(rememberInstance, () => undefined);
 
     try {
       const container = await withTimeout(
         boot,
         WEBCONTAINER_BOOT_TIMEOUT_MS,
-        'Indobase Builder workspace failed to start (timed out). Hard-refresh the page (Chrome or Edge) or click the terminal reset button (↻) to retry.',
+        'Indobase Builder workspace failed to start (timed out). Preview will use the server draft build instead. Click Reset Terminal (↻) to retry WebContainer, or hard-refresh (Chrome/Edge).',
       );
       return rememberInstance(container);
     } catch (error) {
@@ -212,7 +181,6 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
       'Indobase Builder workspace configured too slowly while loading the preview inspector. Hard-refresh and try again.',
     );
   } catch (error) {
-    // Preview inspector is optional — do not block the shell/files if it hangs.
     console.warn('WebContainer preview inspector setup skipped:', error);
   }
 
@@ -222,15 +190,6 @@ async function configureWebContainer(container: WebContainer): Promise<WebContai
       console.log('WebContainer preview message:', message);
 
       if (message.type === 'PREVIEW_UNCAUGHT_EXCEPTION' || message.type === 'PREVIEW_UNHANDLED_REJECTION') {
-        /*
-         * Suppress transient errors thrown while the AI is still writing files — a half-built app
-         * throws mid-generation. A persistent error re-fires on the post-generation preview reload
-         * (streaming is false by then), so real failures still surface.
-         *
-         * Import workbench lazily here — never during boot — to avoid a circular
-         * webcontainer ↔ workbench import deadlock that leaves the terminal stuck on
-         * "Starting Indobase Builder workspace...".
-         */
         void (async () => {
           const { streamingState } = await import('~/lib/stores/streaming');
 
@@ -273,8 +232,6 @@ function bootWebContainer(): Promise<WebContainer> {
         }
 
         const container = await bootWebContainerOnce();
-        // Hard ceiling for post-boot setup so a circular import / hung API cannot
-        // leave callers waiting on the shared bootPromise forever.
         return await withTimeout(
           configureWebContainer(container),
           WEBCONTAINER_CONFIGURE_TIMEOUT_MS + 5_000,
@@ -301,28 +258,9 @@ function bootWebContainer(): Promise<WebContainer> {
     }
 
     console.error('WebContainer boot failed:', lastError);
-
-    /*
-     * Boot has genuinely failed, so now it is worth asking StackBlitz whether it is rejecting this
-     * host. Advisory only — a null result means "no useful signal", never "everything is fine".
-     */
-    const hostHint = await probeStackBlitzReachability();
-
-    if (hostHint) {
-      webcontainerBootErrorAtom.set(hostHint);
-      throw new Error(hostHint);
-    }
-
-    if (isFatalBootConfigError(lastError)) {
-      fatalBootConfigError =
-        lastError instanceof Error ? lastError : new Error('Indobase Builder workspace failed to start.');
-    }
-
-    webcontainerBootErrorAtom.set(
-      lastError instanceof Error ? lastError.message : 'Indobase Builder workspace failed to start.',
-    );
-    throw lastError;
+    throw latchBootFailure(lastError);
   })().then((container) => {
+    bootFailureLatch = undefined;
     webcontainerBootErrorAtom.set(null);
     return rememberInstance(container);
   });
@@ -345,9 +283,7 @@ export async function resetWebContainerBoot(): Promise<void> {
 
     const pending = bootPromise;
     bootPromise = undefined;
-
-    // Reset is the explicit "try again" — clear the latch so a now-fixed key can boot.
-    fatalBootConfigError = undefined;
+    bootFailureLatch = undefined;
 
     if (import.meta.hot?.data) {
       import.meta.hot.data.webcontainer = undefined;
@@ -368,6 +304,11 @@ export async function resetWebContainerBoot(): Promise<void> {
   }
 }
 
+/** True when boot already failed this session (until Reset Terminal). */
+export function hasWebContainerBootFailed(): boolean {
+  return !!bootFailureLatch || !!webcontainerBootErrorAtom.get();
+}
+
 export function getWebcontainer(): Promise<WebContainer> {
   if (import.meta.env.SSR) {
     return new Promise(() => {
@@ -379,13 +320,8 @@ export function getWebcontainer(): Promise<WebContainer> {
     return Promise.resolve(activeInstance);
   }
 
-  /*
-   * A missing/unallowlisted API key cannot be fixed by trying again, and every workbench action
-   * calls in here — without this latch one misconfigured host re-ran the full boot (attempts plus
-   * backoff sleeps) per file write, flooding the console with the same error. Reset clears it.
-   */
-  if (fatalBootConfigError) {
-    return Promise.reject(fatalBootConfigError);
+  if (bootFailureLatch) {
+    return Promise.reject(bootFailureLatch);
   }
 
   if (import.meta.hot?.data?.webcontainer) {
@@ -400,6 +336,10 @@ export function getWebcontainer(): Promise<WebContainer> {
         return activeInstance;
       }
 
+      if (bootFailureLatch) {
+        throw bootFailureLatch;
+      }
+
       if (activeInstance) {
         return configureWebContainer(activeInstance);
       }
@@ -408,11 +348,6 @@ export function getWebcontainer(): Promise<WebContainer> {
     })()
       .then((container) => rememberInstance(container))
       .catch((error) => {
-        /*
-         * Clear the shared slot on failure so a later getWebcontainer() (after reset
-         * or when a late-arriving instance was remembered) can try again instead of
-         * forever returning this rejected promise.
-         */
         if (bootPromise === pending) {
           bootPromise = undefined;
         }
@@ -421,7 +356,11 @@ export function getWebcontainer(): Promise<WebContainer> {
           import.meta.hot.data.webcontainer = undefined;
         }
 
-        throw error;
+        if (!bootFailureLatch) {
+          latchBootFailure(error);
+        }
+
+        throw bootFailureLatch || error;
       });
 
     bootPromise = pending;
@@ -434,7 +373,11 @@ export function getWebcontainer(): Promise<WebContainer> {
   return bootPromise;
 }
 
-export async function getWebcontainerWithRetry(maxAttempts = 3): Promise<WebContainer> {
+export async function getWebcontainerWithRetry(maxAttempts = 1): Promise<WebContainer> {
+  if (bootFailureLatch) {
+    return Promise.reject(bootFailureLatch);
+  }
+
   if (sharedRetryPromise) {
     return sharedRetryPromise;
   }
@@ -453,10 +396,6 @@ export async function getWebcontainerWithRetry(maxAttempts = 3): Promise<WebCont
       } catch (error) {
         lastError = error;
 
-        /*
-         * Singleton errors mean an instance already exists — reuse it instead of
-         * clearing the promise and calling boot() again.
-         */
         if (activeInstance) {
           if (webcontainerContext.loaded) {
             return activeInstance;
@@ -469,15 +408,14 @@ export async function getWebcontainerWithRetry(maxAttempts = 3): Promise<WebCont
           }
         }
 
-        await resetWebContainerBoot();
-
         if (attempt < maxAttempts) {
+          await resetWebContainerBoot();
           await sleep(1500 * attempt);
         }
       }
     }
 
-    throw lastError;
+    throw latchBootFailure(lastError);
   })().finally(() => {
     sharedRetryPromise = undefined;
   });
@@ -491,8 +429,12 @@ export function warmWebContainer(): void {
     return;
   }
 
+  if (bootFailureLatch) {
+    return;
+  }
+
   void getWebcontainer().catch(() => {
-    // Terminal attach will retry; avoid unhandled rejection noise on slow boots.
+    // Terminal attach will surface the latched error; avoid unhandled rejection noise.
   });
 }
 
