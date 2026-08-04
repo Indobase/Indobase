@@ -6,6 +6,7 @@ import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { toggleSidebar } from '~/lib/stores/sidebar';
 import { profileStore } from '~/lib/stores/profile';
 import { resolveDefaultStudioUrl } from '~/lib/indobase/studio-origin';
+import { classNames } from '~/utils/classNames';
 
 export function Header() {
   const chat = useStore(chatStore);
@@ -16,7 +17,12 @@ export function Header() {
   const upgradeHref = `${studioUrl}/`;
 
   return (
-    <header className="relative z-20 h-[var(--header-height)] px-3 md:px-4">
+    <header
+      className={classNames(
+        'relative z-20 h-[var(--header-height)] px-3 md:px-4',
+        chat.started ? 'border-b border-black/5 bg-white' : 'bg-transparent',
+      )}
+    >
       <div className="mx-auto flex h-full w-full items-center gap-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <a

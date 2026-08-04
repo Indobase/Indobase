@@ -1,9 +1,12 @@
 import { json, type MetaFunction } from '@remix-run/cloudflare';
 import { ClientOnly } from 'remix-utils/client-only';
+import { useStore } from '@nanostores/react';
 import { Chat } from '~/components/chat/Chat.client';
 import { BuilderErrorBoundary } from '~/components/BuilderErrorBoundary';
 import { Header } from '~/components/header/Header';
 import { AtmosphereBackground } from '~/components/ui/AtmosphereBackground';
+import { chatStore } from '~/lib/stores/chat';
+import { classNames } from '~/utils/classNames';
 
 export const meta: MetaFunction = () => {
   return [
@@ -21,9 +24,17 @@ export const loader = () => json({});
  * to keep the UI clean and consistent with the design system.
  */
 export default function Index() {
+  const chat = useStore(chatStore);
+  const workspaceMode = chat.started;
+
   return (
-    <div className="relative flex h-full w-full flex-col bg-[#E8F2FB]">
-      <AtmosphereBackground />
+    <div
+      className={classNames(
+        'relative flex h-full w-full flex-col',
+        workspaceMode ? 'bg-[#F7F8FA]' : 'bg-[#E8F2FB]',
+      )}
+    >
+      {!workspaceMode && <AtmosphereBackground />}
       <div className="relative z-10 flex h-full w-full flex-col">
         <Header />
         <ClientOnly
