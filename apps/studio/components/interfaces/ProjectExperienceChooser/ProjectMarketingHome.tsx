@@ -338,7 +338,7 @@ export const ProjectMarketingHome = () => {
               <span>
                 Email is AGPL-3.0 under <code className="text-foreground">indobase-email/</code>.
                 Social is AGPL-3.0 under <code className="text-foreground">indobase-social/</code>.
-                Design is MPL-2.0 under <code className="text-foreground">indobase-design/</code>.
+                Design is MIT + Apache-2.0 under <code className="text-foreground">indobase-design-v2/</code>.
                 Video (MIT-inspired editor) lives under{' '}
                 <code className="text-foreground">indobase-video/</code>. See{' '}
                 <code className="text-foreground">docs/MARKETING.md</code>.

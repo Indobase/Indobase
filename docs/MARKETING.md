@@ -182,8 +182,8 @@ VIDEO_HANDOFF_SECRET=<same-as-video-.env-VIDEO_HANDOFF_SECRET>
 - **MIT + Apache-2.0 (Design):** Canva-class editor in `indobase-design-v2/` —
   MIT client (clawnify/open-design), Apache-2.0 Davronov layers attribution,
   original Hono/Postgres/SSO server — see `indobase-design-v2/NOTICE.md`.
-  The former Penpot fork (`indobase-design/`) is decommissioned and not
-  deployed.
+  The former Penpot fork (`indobase-design/`) has been removed from the monorepo;
+  live Design is only `indobase-design-v2/`.
 - **MIT (Video):** Indobase Video v1 + OpenCut classic attribution in
   `indobase-video/NOTICE.md` / `LICENSE`.
 - Do not mix AGPL into proprietary Studio/Builder bundles without a deliberate

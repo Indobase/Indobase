@@ -4,8 +4,8 @@ Canonical docs: **[INDOBASE-DESIGN.md](./INDOBASE-DESIGN.md)**.
 
 The Canva-class editor lives in `indobase-design-v2/`. Production hosts
 `design.indobase.in` / `design.indobase.fun` (alias `studio-design.indobase.fun`)
-on Vyom `.249`. The Penpot stack under `indobase-design/` is decommissioned —
-do not deploy it.
+on Vyom `.249`. The old Penpot tree `indobase-design/` was removed from the
+monorepo — do not resurrect or deploy it.
 
 ## Image pin
 
