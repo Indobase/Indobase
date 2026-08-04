@@ -2,6 +2,8 @@ import { RemixBrowser } from '@remix-run/react';
 import * as Sentry from '@sentry/remix';
 import { startTransition, StrictMode } from 'react';
 import { hydrateRoot } from 'react-dom/client';
+import { installStaleChunkReloadHandlers, isBrowserExtensionNoise, isStaleChunkLoadError } from '~/lib/client-noise';
+import { isExpectedWebContainerFallbackError } from '~/lib/webcontainer/boot-errors';
 
 /**
  * Sentry must never block or break hydrate. Calling `browserTracingIntegration()` with no Remix
@@ -21,6 +23,37 @@ function initClientSentry(dsn: string) {
       // No browserTracingIntegration here — requires Remix useEffect/useLocation/useMatches and
       // must not run before hydrate. Error monitoring still works without performance tracing.
       integrations: [],
+      ignoreErrors: [
+        /Failed to fetch dynamically imported module/i,
+        /Importing a module script failed/i,
+        /error loading dynamically imported module/i,
+        /workspace failed to start \(timed out\)/i,
+        /contentscript/i,
+        /ObjectMultiplex/i,
+      ],
+      beforeSend(event, hint) {
+        const original = hint?.originalException;
+
+        if (
+          isExpectedWebContainerFallbackError(original) ||
+          isStaleChunkLoadError(original) ||
+          isBrowserExtensionNoise(original)
+        ) {
+          return null;
+        }
+
+        const message = event.exception?.values?.[0]?.value || event.message || '';
+
+        if (
+          isExpectedWebContainerFallbackError(message) ||
+          isStaleChunkLoadError(message) ||
+          isBrowserExtensionNoise(message)
+        ) {
+          return null;
+        }
+
+        return event;
+      },
     });
   } catch (error) {
     console.warn('[sentry] client init failed (non-fatal)', error);
@@ -36,6 +69,10 @@ startTransition(() => {
     </StrictMode>,
   );
 });
+
+if (typeof window !== 'undefined') {
+  installStaleChunkReloadHandlers();
+}
 
 function bootClientSentry() {
   try {

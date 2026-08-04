@@ -543,14 +543,18 @@ export const ChatImpl = memo(
         return;
       }
 
-      void import('~/lib/webcontainer').then(async ({ getWebcontainer }) => {
-        const container = await getWebcontainer();
-        await seedProjectEnvIfMissing(
-          (filePath, content) => container.fs.writeFile(filePath, content),
-          (filePath) => container.fs.readFile(filePath, 'utf-8'),
-          indobaseConn,
-        );
-      });
+      void import('~/lib/webcontainer')
+        .then(async ({ getWebcontainer }) => {
+          const container = await getWebcontainer();
+          await seedProjectEnvIfMissing(
+            (filePath, content) => container.fs.writeFile(filePath, content),
+            (filePath) => container.fs.readFile(filePath, 'utf-8'),
+            indobaseConn,
+          );
+        })
+        .catch(() => {
+          // WC timeout / draft-preview fallback is expected; never leave an unhandled rejection (BUILDER-1).
+        });
     }, [
       indobaseConn.connectionSource,
       indobaseConn.credentials?.anonKey,
@@ -1022,8 +1026,10 @@ export const ChatImpl = memo(
           orchestratorChatRetryRef.current += 1;
           setLlmErrorAlert(undefined);
 
+          // `description` here is the ChatProps string (from useStore), not the nanostore atom —
+          // calling `.get()` throws TypeError and aborts orchestrator retry (BUILDER-3).
           const projectGoal =
-            description.get()?.trim() ||
+            description?.trim() ||
             messages
               .find(
                 (entry) =>

@@ -53,3 +53,15 @@ export function shouldSuggestExtensionDisable(errorMessage: string): boolean {
     errorMessage,
   );
 }
+
+/**
+ * Expected soft-failure when WC boot times out and Builder falls back to server draft preview.
+ * Safe to drop from Sentry — Preview still works; Reset Terminal retries WC.
+ */
+export function isExpectedWebContainerFallbackError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /workspace failed to start \(timed out\)/i.test(message) ||
+    (/timed out|did not become ready/i.test(message) && /server draft|Reset Terminal/i.test(message))
+  );
+}

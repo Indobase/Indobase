@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isExpectedWebContainerFallbackError,
   isFatalBootConfigError,
   isSingletonBootError,
   shouldSuggestExtensionDisable,
@@ -74,5 +75,18 @@ describe('webcontainer boot helpers', () => {
 
   it('skips WebContainer runtime when boot already failed', () => {
     expect(shouldSkipWebContainerRuntime(true)).toBe(true);
+  });
+
+  it('classifies expected WC timeout → draft-preview soft failures', () => {
+    expect(
+      isExpectedWebContainerFallbackError(
+        new Error(
+          'Indobase Builder workspace failed to start (timed out). Preview will use the server draft build instead. Click Reset Terminal (↻) to retry WebContainer, or hard-refresh (Chrome/Edge).',
+        ),
+      ),
+    ).toBe(true);
+    expect(isExpectedWebContainerFallbackError(new Error('Only a single WebContainer instance can be booted'))).toBe(
+      false,
+    );
   });
 });
