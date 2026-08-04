@@ -36,5 +36,6 @@ describe('sanitize-plan-text', () => {
   it('scrubs bare model ids from plan step text', () => {
     expect(scrubPlanStepInternals('Use qwen/qwen3.5-flash-02-23 via OpenRouter')).toBe('Use via');
     expect(scrubPlanStepInternals('Build with thinkingmachines/inkling')).toBe('Build with');
+    expect(scrubPlanStepInternals('Build with thinkingmachines/inkling-small')).toBe('Build with');
   });
 });
