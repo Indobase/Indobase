@@ -10,18 +10,20 @@ import {
 } from '~/lib/indobase/openrouter-free-models';
 
 /**
- * Default Build codegen model — Thinking Machines Inkling Small via OpenRouter.
- * https://openrouter.ai/thinkingmachines/inkling-small
+ * Default Build codegen model — Thinking Machines Inkling via OpenRouter.
+ * OpenRouter slug: thinkingmachines/inkling
+ * https://openrouter.ai/thinkingmachines/inkling
+ *
+ * NOT thinkingmachines/inkling-small (separate cheaper SKU).
  * Discuss/planning stay on cheaper free/paid models; UI never exposes this id.
- * User explicitly requested inkling-small (not thinkingmachines/inkling).
  */
-export const OPENROUTER_PAID_CODEGEN_MODEL = 'thinkingmachines/inkling-small';
+export const OPENROUTER_PAID_CODEGEN_MODEL = 'thinkingmachines/inkling';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
-  label: 'Inkling Small',
+  label: 'Inkling',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
-  maxTokenAllowed: 524288,
+  maxTokenAllowed: 1048576,
   maxCompletionTokens: 64000,
   tier: 'Paid' as const,
 };
@@ -81,7 +83,7 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
-  // Repair + all Build codegen use Inkling Small.
+  // Repair + all Build codegen use full Inkling (not inkling-small).
   if (task === 'debugging' || task === 'codegen' || task === 'scaffold') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,
