@@ -11,6 +11,7 @@ import {
   Check,
   CreditCard,
   Database,
+  Globe,
   Image as ImageIcon,
   LayoutGrid,
   Mail,
@@ -240,6 +241,11 @@ export const ProjectExperienceChooser = () => {
         <RailItem icon={<Megaphone size={18} />} label="Marketing" href={`/project/${ref}/marketing`} />
         <RailItem icon={<CreditCard size={18} />} label="Payments" href={`/project/${ref}/payments`} />
         <RailItem icon={<BarChart3 size={18} />} label="Analytics" href={`/project/${ref}/analytics`} />
+        <RailItem
+          icon={<Globe size={18} />}
+          label={ECOSYSTEM_PRODUCTS.domains.name}
+          href={`/project/${ref}/domains`}
+        />
         <div className="mt-auto">
           <RailItem
             icon={<Settings size={18} />}
@@ -305,6 +311,13 @@ export const ProjectExperienceChooser = () => {
                   icon={<CreditCard size={18} className="text-[#4F46E5]" />}
                   accentClassName="bg-[#4F46E5]/10"
                   href={`/project/${ref}/payments`}
+                />
+                <ProductTile
+                  name={ECOSYSTEM_PRODUCTS.domains.name}
+                  tagline={ECOSYSTEM_PRODUCTS.domains.tagline}
+                  icon={<Globe size={18} className="text-[#0D9488]" />}
+                  accentClassName="bg-[#0D9488]/10"
+                  href={`/project/${ref}/domains`}
                 />
                 <ProductTile
                   name="Analytics"
@@ -389,6 +402,10 @@ export const ProjectExperienceChooser = () => {
                     {
                       title: 'Analytics in every project',
                       body: 'Traffic and product events without a third-party pipeline.',
+                    },
+                    {
+                      title: 'Buy a domain in Domains',
+                      body: 'Search and register domains for this project — Open Domains from the product grid.',
                     },
                   ].map((item) => (
                     <li key={item.title} className="flex gap-2">

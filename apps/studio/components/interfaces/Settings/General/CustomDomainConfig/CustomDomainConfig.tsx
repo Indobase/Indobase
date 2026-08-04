@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { AlertCircle } from 'lucide-react'
 
 import { SupportCategories } from '@indobaseinc/shared-types/out/constants'
@@ -11,6 +12,7 @@ import {
 } from 'data/custom-domains/custom-domains-query'
 import { useProjectAddonsQuery } from 'data/subscriptions/project-addons-query'
 import { useSelectedOrganizationQuery } from 'hooks/misc/useSelectedOrganization'
+import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
 import { Card, CardContent } from 'ui'
 import {
   PageSection,
@@ -66,7 +68,11 @@ export const CustomDomainConfig = () => {
         <PageSectionSummary>
           <PageSectionTitle>Custom Domains</PageSectionTitle>
           <PageSectionDescription>
-            Present a branded experience to your users.
+            Present a branded experience to your users. Need a new domain first?{' '}
+            <Link href={`/project/${ref}/domains`} className={InlineLinkClassName}>
+              {ECOSYSTEM_PRODUCTS.domains.buyLabel}
+            </Link>{' '}
+            in {ECOSYSTEM_PRODUCTS.domains.name}.
           </PageSectionDescription>
         </PageSectionSummary>
       </PageSectionMeta>
