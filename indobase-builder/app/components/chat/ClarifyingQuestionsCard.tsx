@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import type { Message } from 'ai';
 import { classNames } from '~/utils/classNames';
-import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/instant-clarifying';
+import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/clarifying-answers';
 import { beginInitialBuild } from '~/lib/stores/build-lifecycle';
 
 export type ClarifyingQuestionView = {

@@ -63,7 +63,7 @@ import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
 import { beginInitialBuild, beginScoping, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
-import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/instant-clarifying';
+import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/clarifying-answers';
 import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
 import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
 import { BUILDER_EVENTS } from '~/lib/analytics/events';

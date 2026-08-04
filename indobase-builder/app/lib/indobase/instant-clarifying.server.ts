@@ -1,10 +1,10 @@
 import type { Message } from 'ai';
-import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import type { ClarifyingQuestion } from '~/lib/.server/orchestration/planner';
+import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import { isInitialScaffoldTurn } from '~/lib/indobase/generation-contract';
+import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/clarifying-answers';
 
-/** Marker the clarifying-questions card prefixes when the user submits answers. */
-export const CLARIFYING_ANSWERS_MARKER = '## Clarifying answers';
+export { CLARIFYING_ANSWERS_MARKER };
 
 /**
  * Emergent-style default intake for vague first Build prompts.
@@ -82,6 +82,7 @@ export function userProvidedClarifyingAnswers(messages: Message[]): boolean {
 
 /**
  * Returns intake questions for the first vague Build turn, or null when we should build now.
+ * Server-only — imported from api.chat / orchestration.
  */
 export function getInstantClarifyingQuestions(messages: Message[]): ClarifyingQuestion[] | null {
   if (!isInitialScaffoldTurn(messages)) {

@@ -32,7 +32,7 @@ import {
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan } from '~/lib/indobase/generation-contract';
-import { getInstantClarifyingQuestions } from '~/lib/indobase/instant-clarifying';
+import { getInstantClarifyingQuestions } from '~/lib/indobase/instant-clarifying.server';
 
 const logger = createScopedLogger('api.chat');
 
