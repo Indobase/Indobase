@@ -20,6 +20,7 @@ import {
 import { OPENROUTER_FREE_CODING_MODELS } from '~/lib/indobase/openrouter-coding-models';
 import {
   isOpenRouterHighBudgetModelId,
+  isOpenRouterPaidCodegenModelId,
   OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS,
   resolveOpenRouterModelForTask,
   type OpenRouterTask,
@@ -114,7 +115,7 @@ function resolveOpenRouterTask(
     return 'chat';
   }
 
-  // All Build turns use the fast codegen model (scaffold alias kept for callers/tests).
+  // All Build turns use DeepSeek V4 Pro (scaffold alias kept for callers/tests).
   if (chatMode === 'build') {
     return isSimpleFirstScaffoldTurn(messages) ? 'scaffold' : 'codegen';
   }
@@ -342,19 +343,19 @@ export async function streamText(props: {
   const dynamicMaxTokens = modelDetails ? getCompletionTokenLimit(modelDetails) : Math.min(MAX_TOKENS, 16384);
 
   /*
-   * OpenRouter free tiers reject very large completion limits. Paid codegen / fast scaffold must
-   * keep a real budget: clamping to 4k truncated one-shot builds mid-file (finishReason "length").
+   * OpenRouter free tiers reject very large completion limits. Paid DeepSeek codegen keeps its
+   * full budget; flash-tier ids (legacy) stay under the Flash cap.
    */
   const openRouterTask = resolveOpenRouterTask(chatMode, processedMessages);
-  const fastCodegenCap =
-    openRouterTask === 'scaffold' || openRouterTask === 'codegen'
-      ? Math.min(dynamicMaxTokens, OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS)
-      : dynamicMaxTokens;
   const safeMaxTokens =
     provider.name === 'OpenRouter'
-      ? isOpenRouterHighBudgetModelId(modelDetails.name)
-        ? fastCodegenCap
-        : Math.min(dynamicMaxTokens, 4096)
+      ? isOpenRouterPaidCodegenModelId(modelDetails.name)
+        ? dynamicMaxTokens
+        : isOpenRouterHighBudgetModelId(modelDetails.name)
+          ? openRouterTask === 'scaffold' || openRouterTask === 'codegen'
+            ? Math.min(dynamicMaxTokens, OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS)
+            : dynamicMaxTokens
+          : Math.min(dynamicMaxTokens, 4096)
       : dynamicMaxTokens;
 
   logger.info(

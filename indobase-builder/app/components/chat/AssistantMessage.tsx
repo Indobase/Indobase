@@ -17,6 +17,7 @@ import type {
 } from '@ai-sdk/ui-utils';
 import { ToolInvocations } from './ToolInvocations';
 import type { ToolCallAnnotation } from '~/types/context';
+import { sanitizePlanSteps } from '~/lib/indobase/sanitize-plan-text';
 
 interface AssistantMessageProps {
   content: string;
@@ -95,9 +96,17 @@ export const AssistantMessage = memo(
      * Build steps from the planner, shown as a checklist so the user can see the shape of the
      * build before/while it happens rather than watching an opaque "coder" phase.
      */
-    const planSteps: string[] | undefined = filteredAnnotations.find(
-      (annotation) => annotation.type === 'agentPlan',
-    )?.steps;
+    const planSteps: string[] | undefined = (() => {
+      const raw = filteredAnnotations.find((annotation) => annotation.type === 'agentPlan')?.steps;
+
+      if (!Array.isArray(raw) || raw.length === 0) {
+        return undefined;
+      }
+
+      const cleaned = sanitizePlanSteps(raw.map((step) => String(step ?? '')));
+
+      return cleaned.length > 0 ? cleaned : undefined;
+    })();
 
     const usageAnnotation = filteredAnnotations.find((annotation) => annotation.type === 'usage')?.value as
       | {

@@ -612,9 +612,14 @@ export class FilesStore {
 
     try {
       const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof filePath !== 'string') {
+        return;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid file path, write '${relativePath}'`);
       }
 
@@ -857,9 +862,14 @@ export class FilesStore {
 
     try {
       const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof filePath !== 'string') {
+        return true;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid file path, create '${relativePath}'`);
       }
 
@@ -889,9 +899,14 @@ export class FilesStore {
 
     try {
       const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof folderPath !== 'string') {
+        return true;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, folderPath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid folder path, create '${relativePath}'`);
       }
 

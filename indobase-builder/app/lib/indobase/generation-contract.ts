@@ -1,6 +1,7 @@
 import type { Message } from 'ai';
 import type { FileMap } from '~/lib/.server/llm/constants';
 import { getAutonomyPhaseChecklist } from '~/lib/indobase/autonomy-phases';
+import { cleanUserPromptForPlan, stripInternalRoutingAnnotations } from '~/lib/indobase/sanitize-plan-text';
 
 export type BuilderProjectTarget = 'web' | 'mobile';
 
@@ -104,7 +105,11 @@ const SIMPLE_SCAFFOLD_MAX_WORDS = 40;
 export function latestUserMessageText(messages: BuildMessage[]): string {
   const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
 
-  return latestUserMessage ? contentFromMessage(latestUserMessage).trim() : '';
+  if (!latestUserMessage) {
+    return '';
+  }
+
+  return stripInternalRoutingAnnotations(contentFromMessage(latestUserMessage));
 }
 
 export function isComplexBuildIntent(messages: BuildMessage[]): boolean {
@@ -145,14 +150,14 @@ export function isSimpleFirstScaffoldTurn(messages: BuildMessage[]): boolean {
  * Complex prompts get domain-specific steps; simple prompts get a minimal Vite checklist.
  */
 export function getInstantBuildPlan(messages: BuildMessage[]): string {
-  const text = latestUserMessageText(messages) || 'the requested app';
+  const text = cleanUserPromptForPlan(latestUserMessageText(messages), 240) || 'the requested app';
   const complex = isComplexBuildIntent(messages);
   const mobile = MOBILE_INTENT.test(text);
 
   if (mobile) {
     return `## Build steps
 1. Scaffold a root-level Expo web app (package.json, app.json, entry)
-2. Implement the UI and flows described: ${text.slice(0, 240)}
+2. Implement the UI and flows described: ${text}
 3. Wire Indobase Auth/DB only if the prompt requires it
 4. npm install, then start Expo web for preview
 
@@ -170,7 +175,7 @@ ${getAutonomyPhaseChecklist({
     const wantsDb = /\b(?:database|postgres|crm|dashboard|saas|admin)\b/i.test(text);
     const steps = [
       'Scaffold a Vite + React + TypeScript app with lean dependencies',
-      `Implement core UI for: ${text.slice(0, 240)}`,
+      `Implement core UI for: ${text}`,
     ];
 
     if (wantsAuth) {
@@ -200,7 +205,7 @@ ${getAutonomyPhaseChecklist({ wantsAuth, wantsPay, wantsDb })}`;
 
   return `## Build steps
 1. Create a minimal Vite + React + TypeScript app
-2. Implement: ${text.slice(0, 200)}
+2. Implement: ${text}
 3. Keep files few; apply a non-purple industry-fit palette and real hover/focus states
 4. npm install then npm run dev in the same response`;
 }

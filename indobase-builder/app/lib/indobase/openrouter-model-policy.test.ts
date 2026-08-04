@@ -22,19 +22,21 @@ describe('openrouter-model-policy', () => {
     expect(resolved.modelName).not.toBe(OPENROUTER_PAID_CODEGEN_MODEL);
   });
 
-  it('routes all Build codegen (simple + complex) to the fast Flash model', () => {
-    expect(resolveOpenRouterModelForTask('scaffold', 'OpenRouter', 'deepseek/deepseek-v4-pro')).toEqual({
+  it('routes all Build codegen (simple + complex) to DeepSeek V4 Pro', () => {
+    expect(resolveOpenRouterModelForTask('scaffold', 'OpenRouter', 'qwen/qwen3.5-flash-02-23')).toEqual({
       providerName: 'OpenRouter',
-      modelName: OPENROUTER_FAST_CODEGEN_MODEL,
+      modelName: OPENROUTER_PAID_CODEGEN_MODEL,
     });
     expect(resolveOpenRouterModelForTask('codegen', 'OpenRouter', 'qwen/qwen3-coder:free')).toEqual({
       providerName: 'OpenRouter',
-      modelName: OPENROUTER_FAST_CODEGEN_MODEL,
+      modelName: OPENROUTER_PAID_CODEGEN_MODEL,
     });
+    expect(OPENROUTER_PAID_CODEGEN_MODEL).toBe('deepseek/deepseek-v4-pro');
+    // Flash remains defined for legacy imports but is not the Build route.
     expect(OPENROUTER_FAST_CODEGEN_MODEL).toBe('qwen/qwen3.5-flash-02-23');
   });
 
-  it('reserves DeepSeek V4 Pro for debugging/repair only', () => {
+  it('reserves DeepSeek V4 Pro for debugging/repair as well', () => {
     expect(resolveOpenRouterModelForTask('debugging', 'OpenRouter', 'qwen/qwen3-coder:free')).toEqual({
       providerName: 'OpenRouter',
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,

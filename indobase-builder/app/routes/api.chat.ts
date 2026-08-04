@@ -18,6 +18,7 @@ import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
+  extractPlanSteps,
   injectPlannerPlan,
 } from '~/lib/.server/orchestration/orchestrate-chat';
 import {
@@ -25,8 +26,8 @@ import {
   consumeBuilderPromptFromStudio,
   resolveBuilderMcpClaims,
   shouldConsumeBuilderPrompt,
+  isAutonomousRepairChat,
 } from '~/lib/indobase/builder-prompt-quota.server';
-import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan } from '~/lib/indobase/generation-contract';
@@ -261,10 +262,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             type: 'agentPlan',
             agent: 'planner',
             plan: instantPlan,
-            steps: instantPlan
-              .split('\n')
-              .map((line) => line.replace(/^\d+[.)]\s+/, '').trim())
-              .filter((line) => line && !line.startsWith('#')),
+            steps: extractPlanSteps(instantPlan),
           });
           streamRecovery.updateActivity();
         }

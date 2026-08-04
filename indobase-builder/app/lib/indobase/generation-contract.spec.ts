@@ -101,6 +101,21 @@ describe('getInstantBuildPlan', () => {
     expect(plan).not.toMatch(/Payments/i);
     expect(plan).toMatch(/non-purple|industry-fit/i);
   });
+
+  it('does not leak Model/Provider annotations into the plan', () => {
+    const plan = getInstantBuildPlan([
+      {
+        role: 'user',
+        content:
+          '[Model: qwen/qwen3.5-flash-02-23]\n\n[Provider: OpenRouter]\n\nBuild a hello world landing page',
+      },
+    ]);
+
+    expect(plan).not.toMatch(/\[Model:/i);
+    expect(plan).not.toMatch(/\[Provider:/i);
+    expect(plan).not.toMatch(/qwen\//i);
+    expect(plan).toContain('hello world landing page');
+  });
 });
 
 describe('validateGeneratedProjectContract', () => {

@@ -90,8 +90,12 @@ export function shouldRejectGeneratedPath(filePath?: string): boolean {
 }
 
 /** Map a generated path to a WebContainer workdir-relative path for fs writes. */
-export function toWorkdirRelativePath(workdir: string, filePath: string): string {
+export function toWorkdirRelativePath(workdir: string | undefined | null, filePath: string): string {
   const normalized = normalizeGeneratedFilePath(filePath);
+
+  if (!workdir || typeof workdir !== 'string' || typeof filePath !== 'string') {
+    return normalized;
+  }
 
   if (filePath.startsWith(workdir)) {
     return nodePath.relative(workdir, filePath).replace(/\\/g, '/');
@@ -101,9 +105,10 @@ export function toWorkdirRelativePath(workdir: string, filePath: string): string
 }
 
 /** Absolute path under the WebContainer workdir for editor/files-store keys. */
-export function toWorkdirAbsolutePath(workdir: string, filePath: string): string {
+export function toWorkdirAbsolutePath(workdir: string | undefined | null, filePath: string): string {
   const relativePath = toWorkdirRelativePath(workdir, filePath);
-  return `${workdir}/${relativePath}`.replace(/\/{2,}/g, '/');
+  const root = typeof workdir === 'string' && workdir.trim() ? workdir : '/home/project';
+  return `${root}/${relativePath}`.replace(/\/{2,}/g, '/');
 }
 
 export function resolveGeneratedFileArtifact(filePath: string, content: string) {

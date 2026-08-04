@@ -42,7 +42,8 @@ import {
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
-import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
+import { hasWebContainerBootFailed } from '~/lib/webcontainer';
+import { isServerPreviewMode, shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
@@ -688,11 +689,10 @@ export const ChatImpl = memo(
           }
 
           /*
-           * No WebContainer on this host (no API key) — finalizeCodegen boots it, so it can only
-           * fail here. Build on the server and host the result instead of burning a boot attempt
-           * and then recovering from the exception.
+           * No WebContainer on this host (no API key) — or WC already latched failed this session.
+           * Prefer server draft instead of burning another boot/finalize attempt.
            */
-          if (isServerPreviewMode()) {
+          if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed()) || isServerPreviewMode()) {
             const draft = await publishDraftPreview(indobaseConnection.get());
 
             if (draft.success && draft.previewUrl) {

@@ -104,7 +104,11 @@ export async function buildProjectArtifactsOnServer(
 
   try {
     for (const [relativePath, content] of Object.entries(projectFiles)) {
-      if (!relativePath || relativePath.includes('..')) {
+      if (typeof relativePath !== 'string' || !relativePath || relativePath.includes('..')) {
+        continue;
+      }
+
+      if (typeof content !== 'string') {
         continue;
       }
 

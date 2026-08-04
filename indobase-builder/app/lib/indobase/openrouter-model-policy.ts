@@ -9,7 +9,10 @@ import {
   OPENROUTER_PROVIDER_NAME,
 } from '~/lib/indobase/openrouter-free-models';
 
-/** Slow/paid model reserved for autonomous repair when a build already failed. */
+/**
+ * Default Build codegen model — Emergent-like quality (user asked to move off Qwen Flash).
+ * Discuss/planning stay on cheaper free/paid models; UI never exposes this id.
+ */
 export const OPENROUTER_PAID_CODEGEN_MODEL = 'deepseek/deepseek-v4-pro';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
@@ -22,8 +25,8 @@ export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
 };
 
 /**
- * Default Builder codegen model — optimized for wall-clock speed.
- * DeepSeek Pro is reserved for debugging/repair only.
+ * Legacy fast Flash id — kept for tests/imports. Build codegen no longer routes here.
+ * Prefer OPENROUTER_PAID_CODEGEN_MODEL for all Build turns.
  */
 export const OPENROUTER_FAST_CODEGEN_MODEL =
   OPENROUTER_FREE_CODING_MODELS.find((model) => model.name === 'qwen/qwen3.5-flash-02-23')?.name ??
@@ -33,7 +36,7 @@ export const OPENROUTER_FAST_CODEGEN_MODEL =
 /** @deprecated Use OPENROUTER_FAST_CODEGEN_MODEL — kept for existing imports/tests. */
 export const OPENROUTER_FAST_SCAFFOLD_MODEL = OPENROUTER_FAST_CODEGEN_MODEL;
 
-/** Completion budget for fast codegen (Flash supports up to 65k). */
+/** Completion budget for flash-tier models (Flash supports up to 65k). */
 export const OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS = 49152;
 
 /** @deprecated Use OPENROUTER_FAST_CODEGEN_MAX_COMPLETION_TOKENS */
@@ -76,19 +79,11 @@ export function resolveOpenRouterModelForTask(
   providerName: string,
   modelName: string,
 ): { providerName: string; modelName: string } {
-  // Repair only — keep the strongest model when fixing a broken preview.
-  if (task === 'debugging') {
+  // Repair + all Build codegen use DeepSeek V4 Pro (quality over Flash latency).
+  if (task === 'debugging' || task === 'codegen' || task === 'scaffold') {
     return {
       providerName: OPENROUTER_PROVIDER_NAME,
       modelName: OPENROUTER_PAID_CODEGEN_MODEL,
-    };
-  }
-
-  // All Build codegen (simple + complex) uses the fast model for Emergent-like latency.
-  if (task === 'codegen' || task === 'scaffold') {
-    return {
-      providerName: OPENROUTER_PROVIDER_NAME,
-      modelName: OPENROUTER_FAST_CODEGEN_MODEL,
     };
   }
 

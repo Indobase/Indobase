@@ -1,6 +1,7 @@
 import type { Message } from 'ai';
 import type { ProgressAnnotation } from '~/types/context';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
+import { sanitizePlanSteps } from '~/lib/indobase/sanitize-plan-text';
 import { runPlannerAgent, runScopingAgent, type ClarifyingQuestion } from './planner';
 
 type DataStreamWriter = {
@@ -41,7 +42,7 @@ export function extractPlanSteps(plan: string): string[] {
     }
   }
 
-  return steps.slice(0, 7);
+  return sanitizePlanSteps(steps);
 }
 
 /**

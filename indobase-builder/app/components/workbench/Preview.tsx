@@ -42,16 +42,16 @@ function PreviewEmptyState({
   const title = failed
     ? 'Preview unavailable'
     : draftBuilding
-      ? 'Building fast preview…'
+      ? 'Building preview…'
       : busy
-        ? 'Starting live preview…'
+        ? 'Starting preview…'
         : 'Preview will appear here';
   const detail = failed
     ? bootError
     : draftBuilding
-      ? 'Server draft usually appears first. The live editor preview keeps installing in the background.'
+      ? 'Preparing a fast server preview of your app. Live editor preview may follow.'
       : busy
-        ? 'Installing only if needed, then starting Vite. Follow-up edits hot-reload without a full reinstall.'
+        ? 'Installing packages if needed, then starting the app. Edits hot-reload once it is up.'
         : 'Once the app is running, its live preview shows up in this panel.';
 
   return (
