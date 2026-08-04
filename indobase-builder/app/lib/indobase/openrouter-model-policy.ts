@@ -10,22 +10,22 @@ import {
 } from '~/lib/indobase/openrouter-free-models';
 
 /**
- * Default Build codegen model — Thinking Machines Inkling Small via OpenRouter.
- * https://openrouter.ai/thinkingmachines/inkling-small
+ * Default Build codegen model — Thinking Machines Inkling via OpenRouter.
+ * https://openrouter.ai/thinkingmachines/inkling
  * Override with OPENROUTER_BUILD_CODEGEN_MODEL if needed. UI never exposes this id.
- * User request (2026-08-04): inkling-small — do not silently switch to thinkingmachines/inkling.
+ * Full Inkling (not inkling-small). Env override can pin inkling-small if desired.
  */
-const OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT = 'thinkingmachines/inkling-small';
+const OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT = 'thinkingmachines/inkling';
 
 export const OPENROUTER_PAID_CODEGEN_MODEL = (
   typeof process !== 'undefined' && process.env.OPENROUTER_BUILD_CODEGEN_MODEL?.trim()
 ) || OPENROUTER_PAID_CODEGEN_MODEL_DEFAULT;
 
 export const OPENROUTER_PAID_CODEGEN_MODEL_META = {
-  label: 'Inkling Small',
+  label: 'Inkling',
   name: OPENROUTER_PAID_CODEGEN_MODEL,
   originalName: OPENROUTER_PAID_CODEGEN_MODEL,
-  maxTokenAllowed: 524288,
+  maxTokenAllowed: 1048576,
   maxCompletionTokens: 64000,
   tier: 'Paid' as const,
 };
