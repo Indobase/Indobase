@@ -66,6 +66,7 @@ export const ECOSYSTEM_PRODUCTS = {
     tagline: 'Search, register, and manage domains',
     host: 'domains.indobase.in',
     openLabel: 'Open Domains',
+    buyLabel: 'Buy a domain',
   },
   payments: {
     id: 'payments',

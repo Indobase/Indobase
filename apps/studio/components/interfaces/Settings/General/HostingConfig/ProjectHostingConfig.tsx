@@ -156,6 +156,9 @@ export const ProjectHostingConfig = () => {
                     <Link href={`/project/${project.ref}/settings/general#custom-domains`} className="text-brand">
                       Configure or verify custom domain
                     </Link>
+                    <Link href={`/project/${project.ref}/domains`} className="text-brand">
+                      Buy a domain
+                    </Link>
                     <Link href={data?.studio.project_url ?? `/project/${project.ref}`} className="text-brand">
                       Open project overview
                     </Link>
