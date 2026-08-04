@@ -148,6 +148,16 @@ describe('validateGeneratedProjectContract', () => {
       issues: ['Missing root package.json.'],
     });
   });
+
+  it('accepts a nested Vite scaffold by treating the nested folder as root', () => {
+    expect(
+      validateGeneratedProjectContract({
+        'my-app/package.json': JSON.stringify({ scripts: { dev: 'vite --host 0.0.0.0', build: 'vite build' } }),
+        'my-app/index.html': '<div id="root"></div>',
+        'my-app/src/main.tsx': 'export {};',
+      }),
+    ).toEqual({ target: 'web', issues: [], valid: true });
+  });
 });
 
 describe('getGenerationContractAppendix', () => {
@@ -236,5 +246,30 @@ describe('inspectOneShotBuildResponse', () => {
 Would you like me to add a dark mode toggle or product pages?`;
 
     expect(inspectOneShotBuildResponse(runnable)).toEqual({ complete: true, issues: [] });
+  });
+
+  it('reports missing package.json even when install and start are present', () => {
+    expect(
+      inspectOneShotBuildResponse(`
+<boltArtifact id="app" title="App">
+  <boltAction type="file" filePath="src/App.tsx">export default function App() { return null; }</boltAction>
+  <boltAction type="shell">npm install</boltAction>
+  <boltAction type="start">npm run dev</boltAction>
+</boltArtifact>`),
+    ).toEqual({
+      complete: false,
+      issues: ['missing package.json file action'],
+    });
+  });
+
+  it('accepts a nested package.json file path', () => {
+    expect(
+      inspectOneShotBuildResponse(`
+<boltArtifact id="app" title="App">
+  <boltAction type="file" filePath="web/package.json">{}</boltAction>
+  <boltAction type="shell">npm install</boltAction>
+  <boltAction type="start">npm run dev</boltAction>
+</boltArtifact>`),
+    ).toEqual({ complete: true, issues: [] });
   });
 });

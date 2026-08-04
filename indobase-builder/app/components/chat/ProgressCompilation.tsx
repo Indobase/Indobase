@@ -1,22 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import type { ProgressAnnotation } from '~/types/context';
-import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 
-// User-facing phase names — plain language, not the internal agent identifiers.
 const AGENT_PROGRESS_LABELS: Record<string, string> = {
-  scoping: 'Understanding',
-  planner: 'Planning',
-  summary: 'Reviewing',
-  context: 'Reading files',
-  coder: 'Building',
-  response: 'Building',
+  scoping: 'Understanding your request',
+  planner: 'Delegated to Planning Agent',
+  summary: 'Reviewing progress',
+  context: 'Reading project files',
+  coder: 'Delegated to Builder',
+  response: 'Delegated to Design Agent',
 };
 
 function labelFor(label: unknown) {
   if (typeof label !== 'string' || !label.trim()) {
-    return 'Working';
+    return 'Agent is working';
   }
 
   return AGENT_PROGRESS_LABELS[label] ?? label.charAt(0).toUpperCase() + label.slice(1);
@@ -44,7 +42,6 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
       return [];
     }
 
-    // Keep the latest annotation per label; once a step is complete it stays complete.
     const map = new Map<string, ProgressAnnotation>();
 
     data.forEach((raw, index) => {
@@ -80,40 +77,47 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
     return null;
   }
 
-  return (
-    <div className="w-full max-w-chat mx-auto z-prompt">
-      <div className="overflow-hidden rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 shadow-sm">
-        {/* Summary row — always visible, click to expand the full step list */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-theme hover:bg-bolt-elements-background-depth-3"
-          aria-expanded={expanded}
-        >
-          <StatusIcon status={allDone ? 'complete' : 'in-progress'} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-2">
-              <span className="shrink-0 text-sm font-medium text-bolt-elements-textPrimary">
-                {allDone ? 'Build steps complete' : labelFor(current.label)}
-              </span>
-              <span className="truncate text-sm text-bolt-elements-textSecondary">
-                {allDone ? `${progressList.length} steps` : current.message || 'In progress'}
-              </span>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-bolt-elements-background-depth-1 px-2 py-0.5 text-xs font-medium tabular-nums text-bolt-elements-textSecondary">
-            {doneCount}/{progressList.length}
-          </span>
-          <div
-            className={classNames(
-              'shrink-0 text-lg text-bolt-elements-textSecondary transition-transform',
-              expanded ? 'i-ph:caret-up' : 'i-ph:caret-down',
-            )}
-            aria-hidden
-          />
-        </button>
+  const completed = progressList.filter((p) => p.status === 'complete');
 
-        {/* Expanded step list */}
+  return (
+    <div className="z-prompt mx-auto w-full max-w-chat">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-0.5 p-1.5">
+          {completed.slice(-2).map((item, index) => (
+            <div key={`done-${item.label}-${index}`} className="flex items-center gap-2.5 rounded-xl px-2.5 py-2">
+              <div className="i-ph:check-circle-fill shrink-0 text-base text-emerald-500" />
+              <span className="truncate text-sm font-medium text-gray-800">{labelFor(item.label)}</span>
+            </div>
+          ))}
+
+          {!allDone && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex w-full items-center gap-2.5 rounded-xl bg-[#EAF2FF] px-2.5 py-2.5 text-left transition hover:brightness-[0.98]"
+              aria-expanded={expanded}
+            >
+              <StatusIcon status="in-progress" />
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-gray-900">{labelFor(current.label)}</span>
+                {current.message ? (
+                  <span className="block truncate text-xs text-gray-500">{current.message}</span>
+                ) : null}
+              </div>
+              <span className="shrink-0 text-xs tabular-nums text-gray-400">
+                {doneCount}/{progressList.length}
+              </span>
+            </button>
+          )}
+
+          {allDone && (
+            <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-2">
+              <div className="i-ph:check-circle-fill shrink-0 text-base text-emerald-500" />
+              <span className="text-sm font-medium text-gray-800">All steps complete</span>
+            </div>
+          )}
+        </div>
+
         <AnimatePresence initial={false}>
           {expanded && (
             <motion.div
@@ -121,7 +125,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: cubicEasingFn }}
-              className="overflow-hidden border-t border-bolt-elements-borderColor"
+              className="overflow-hidden border-t border-gray-100"
             >
               <div className="flex flex-col gap-0.5 p-2">
                 {progressList.map((item, index) => (
@@ -142,14 +146,14 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
 
 function StatusIcon({ status }: { status: ProgressAnnotation['status'] }) {
   if (status === 'in-progress') {
-    return <div className="i-svg-spinners:90-ring-with-bg shrink-0 text-lg text-bolt-elements-item-contentAccent" />;
+    return <div className="i-svg-spinners:90-ring-with-bg shrink-0 text-lg text-[#2F6FED]" />;
   }
 
   if (status === 'complete') {
-    return <div className="i-ph:check-circle-fill shrink-0 text-lg text-green-500" />;
+    return <div className="i-ph:check-circle-fill shrink-0 text-lg text-emerald-500" />;
   }
 
-  return <div className="i-ph:circle-dashed shrink-0 text-lg text-bolt-elements-textTertiary" />;
+  return <div className="i-ph:circle-dashed shrink-0 text-lg text-gray-300" />;
 }
 
 const ProgressItem = ({ progress }: { progress: ProgressAnnotation; isLast?: boolean }) => {
@@ -164,10 +168,8 @@ const ProgressItem = ({ progress }: { progress: ProgressAnnotation; isLast?: boo
         <StatusIcon status={progress.status} />
       </div>
       <div className="min-w-0 flex-1 text-sm leading-relaxed">
-        <span className="font-medium text-bolt-elements-textPrimary">{labelFor(progress.label)}</span>
-        {progress.message ? (
-          <span className="ml-1.5 break-words text-bolt-elements-textSecondary">{progress.message}</span>
-        ) : null}
+        <span className="font-medium text-gray-900">{labelFor(progress.label)}</span>
+        {progress.message ? <span className="ml-1.5 break-words text-gray-500">{progress.message}</span> : null}
       </div>
     </motion.div>
   );

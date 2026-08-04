@@ -58,6 +58,22 @@ This is a DESIGN polish pass — the app already compiles. Fix ONLY the implicat
 Keep the project's existing JSX/TSX authoring style. Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`;
   }
 
+  const incompleteScaffold =
+    /missing root package\.json|missing package\.json|project incomplete/i.test(options.errorText);
+
+  if (incompleteScaffold) {
+    return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
+
+Automatic scaffold repair attempt ${options.nextAttempt} of ${options.maxAttempts}.
+${options.fileContext}
+
+The project is missing a runnable root scaffold. In this response you MUST:
+1. Write a complete root \`package.json\` with filePath="package.json" (NOT nested under a subdirectory)
+2. Write \`index.html\`, the app entry (\`src/main.tsx\` / \`src/App.tsx\`), and any other files needed for a Vite + React + TypeScript preview
+3. Emit \`<boltAction type="shell">npm install</boltAction>\` then \`<boltAction type="start">npm run dev</boltAction>\`
+Do not ask clarifying questions. Do not claim you cannot start the project this turn. Do not run a planner and do not emit quick actions.`;
+  }
+
   return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
 
 Automatic focused repair attempt ${options.nextAttempt} of ${options.maxAttempts}.

@@ -1,13 +1,11 @@
 import { useStore } from '@nanostores/react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { atom, computed } from 'nanostores';
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ActionState } from '~/lib/runtime/action-runner';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { BuildPlan } from './BuildPlan';
 import { classNames } from '~/utils/classNames';
-import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
+import { atom, computed } from 'nanostores';
 
 /** Stable empty map so hooks stay valid when an artifact id is missing from the store. */
 const EMPTY_ACTIONS = atom<Record<string, ActionState>>({});
@@ -19,7 +17,7 @@ interface ArtifactProps {
 
 export const Artifact = memo(({ artifactId }: ArtifactProps) => {
   const userToggledActions = useRef(false);
-  const [showActions, setShowActions] = useState(false);
+  const [showActions, setShowActions] = useState(true);
   const [allActionFinished, setAllActionFinished] = useState(false);
   const [stalledImport, setStalledImport] = useState(false);
 
@@ -28,7 +26,6 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
 
   const actions = useStore(
     computed(artifact?.runner.actions ?? EMPTY_ACTIONS, (actions) => {
-      // Filter out Indobase backend actions; they are handled separately
       return Object.values(actions).filter((action) => {
         return action.type !== 'indobase';
       });
@@ -87,114 +84,74 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
     return () => window.clearTimeout(timeout);
   }, [actions, allActionFinished, artifact?.type]);
 
-  // Determine the dynamic title based on state for bundled artifacts
-  const dynamicTitle =
-    artifact?.type === 'bundled'
-      ? allActionFinished
-        ? artifact.id === 'restored-project-setup'
-          ? 'Project Restored' // Title when restore is complete
-          : 'Project Created' // Title when initial creation is complete
-        : artifact.id === 'restored-project-setup'
-          ? 'Restoring Project...' // Title during restore
-          : 'Creating Project...' // Title during initial creation
-      : artifact?.title; // Fallback to original title for non-bundled or if artifact is missing
-
   if (!artifact) {
     return (
-      <div className="artifact border border-bolt-elements-borderColor rounded-lg w-full px-4 py-3 text-sm text-bolt-elements-textSecondary">
+      <div className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
         Project files unavailable — reopen this chat or refresh the page.
       </div>
     );
   }
 
-  return (
-    <>
-      <div className="artifact border border-bolt-elements-borderColor flex flex-col overflow-hidden rounded-lg w-full transition-border duration-150">
-        <div className="flex">
-          <button
-            className="flex items-stretch bg-bolt-elements-artifacts-background hover:bg-bolt-elements-artifacts-backgroundHover w-full overflow-hidden"
-            onClick={() => {
-              const showWorkbench = workbenchStore.showWorkbench.get();
-              workbenchStore.showWorkbench.set(!showWorkbench);
-            }}
-          >
-            <div className="px-5 p-3.5 w-full text-left">
-              <div className="w-full text-bolt-elements-textPrimary font-medium leading-5 text-sm">
-                {/* Use the dynamic title here */}
-                {dynamicTitle}
-              </div>
-              <div className="w-full w-full text-bolt-elements-textSecondary text-xs mt-0.5">
-                Click to open Workbench
-              </div>
-            </div>
-          </button>
-          {artifact.type !== 'bundled' && <div className="bg-bolt-elements-artifacts-borderColor w-[1px]" />}
-          <AnimatePresence>
-            {actions.length && artifact.type !== 'bundled' && (
-              <motion.button
-                initial={{ width: 0 }}
-                animate={{ width: 'auto' }}
-                exit={{ width: 0 }}
-                transition={{ duration: 0.15, ease: cubicEasingFn }}
-                className="bg-bolt-elements-artifacts-background hover:bg-bolt-elements-artifacts-backgroundHover"
-                onClick={toggleActions}
-              >
-                <div className="p-4">
-                  <div className={showActions ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold'}></div>
-                </div>
-              </motion.button>
+  if (artifact.type === 'bundled') {
+    return (
+      <div className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex items-center gap-2.5 px-4 py-3">
+          <div className={classNames('text-lg', getIconColor(allActionFinished ? 'complete' : 'running'))}>
+            {allActionFinished ? (
+              <div className="i-ph:check-circle-fill" />
+            ) : (
+              <div className="i-svg-spinners:90-ring-with-bg" />
             )}
-          </AnimatePresence>
-        </div>
-        {artifact.type === 'bundled' && (
-          <div className="flex items-center gap-1.5 p-5 bg-bolt-elements-actions-background border-t border-bolt-elements-artifacts-borderColor">
-            <div className={classNames('text-lg', getIconColor(allActionFinished ? 'complete' : 'running'))}>
-              {allActionFinished ? (
-                <div className="i-ph:check"></div>
-              ) : (
-                <div className="i-svg-spinners:90-ring-with-bg"></div>
-              )}
-            </div>
-            <div className="text-bolt-elements-textPrimary font-medium leading-5 text-sm">
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900">
               {allActionFinished
                 ? stalledImport
-                  ? 'File import timed out — open Workbench or hard-refresh (Chrome/Edge)'
+                  ? 'Import timed out — open Manage or refresh'
                   : actions.some((action) => action.status === 'failed')
-                    ? 'Some files could not be created — open Workbench to retry'
+                    ? 'Some files could not be created'
                     : artifact.id === 'restored-project-setup'
-                      ? 'Restore files from snapshot'
-                      : 'Initial files created'
-                : 'Creating initial files'}
+                      ? 'Project restored'
+                      : 'Project files ready'
+                : artifact.id === 'restored-project-setup'
+                  ? 'Restoring project…'
+                  : 'Creating project files…'}
             </div>
           </div>
-        )}
-        <AnimatePresence>
-          {artifact.type !== 'bundled' && showActions && actions.length > 0 && (
-            <motion.div
-              className="actions"
-              initial={{ height: 0 }}
-              animate={{ height: 'auto' }}
-              exit={{ height: '0px' }}
-              transition={{ duration: 0.15 }}
-            >
-              <div className="bg-bolt-elements-artifacts-borderColor h-[1px]" />
-
-              {/*
-                Agent-phase view instead of the raw action log. Same data, told as delegated
-                progress ("Building the app · Builder · 12 files written") rather than a
-                keystroke-level transcript. Raw steps stay one click away inside each phase.
-              */}
-              <div className="text-left bg-bolt-elements-actions-background">
-                <BuildPlan actions={actions} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <button
+            type="button"
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-[#2F6FED] hover:bg-[#EAF2FF]"
+            onClick={() => workbenchStore.showWorkbench.set(true)}
+          >
+            Open preview
+          </button>
+        </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      {actions.length > 0 ? (
+        <div>
+          <button
+            type="button"
+            onClick={toggleActions}
+            className="mb-1.5 flex w-full items-center gap-2 px-1 text-left text-xs font-medium text-gray-500 hover:text-gray-700"
+          >
+            <span>{showActions ? 'Hide details' : 'Show progress'}</span>
+            <span className={showActions ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold'} />
+          </button>
+          {showActions && <BuildPlan actions={actions} />}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
+          {artifact.title || 'Working on your project'}
+        </div>
+      )}
+    </div>
   );
 });
-
 
 export function openArtifactInWorkbench(filePath: any) {
   if (workbenchStore.currentView.get() !== 'code') {
@@ -204,23 +161,22 @@ export function openArtifactInWorkbench(filePath: any) {
   workbenchStore.setSelectedFile(`${WORK_DIR}/${filePath}`);
 }
 
-
 function getIconColor(status: ActionState['status']) {
   switch (status) {
     case 'pending': {
-      return 'text-bolt-elements-textTertiary';
+      return 'text-gray-400';
     }
     case 'running': {
-      return 'text-bolt-elements-loader-progress';
+      return 'text-[#2F6FED]';
     }
     case 'complete': {
-      return 'text-bolt-elements-icon-success';
+      return 'text-emerald-500';
     }
     case 'aborted': {
-      return 'text-bolt-elements-textSecondary';
+      return 'text-gray-500';
     }
     case 'failed': {
-      return 'text-bolt-elements-icon-error';
+      return 'text-rose-500';
     }
     default: {
       return undefined;

@@ -9,6 +9,7 @@ import {
   ensureIndexHtmlInArtifacts,
   findFirstExistingBuildOutputDir,
 } from '~/lib/indobase/buildOutputDirs';
+import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { createScopedLogger } from '~/utils/logger';
 
 const execFileAsync = promisify(execFile);
@@ -93,7 +94,9 @@ export async function buildProjectArtifactsOnServer(
   env: Record<string, string>,
   options: { assetBase?: string } = {},
 ): Promise<CollectBuildArtifactsResult> {
-  if (!projectFiles['package.json']) {
+  const normalized = normalizeProjectFilesRoot(projectFiles).files;
+
+  if (!normalized['package.json']) {
     return {
       success: false,
       error: 'Missing package.json — cannot run server build.',
@@ -103,7 +106,7 @@ export async function buildProjectArtifactsOnServer(
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'indobase-builder-'));
 
   try {
-    for (const [relativePath, content] of Object.entries(projectFiles)) {
+    for (const [relativePath, content] of Object.entries(normalized)) {
       if (typeof relativePath !== 'string' || !relativePath || relativePath.includes('..')) {
         continue;
       }
@@ -146,7 +149,7 @@ export async function buildProjectArtifactsOnServer(
      * Draft previews are served under /draft-preview/:id/. Relative asset base keeps Vite
      * chunk URLs working without post-hoc path rewriting for every hashed file.
      */
-    if (options.assetBase && packageBuildLooksLikeVite(projectFiles['package.json'])) {
+    if (options.assetBase && packageBuildLooksLikeVite(normalized['package.json'])) {
       buildArgs.push('--', '--base', options.assetBase);
       logger.info(`Server build: using Vite --base ${options.assetBase}`);
     }

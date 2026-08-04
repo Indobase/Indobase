@@ -100,10 +100,12 @@ export const ClarifyingQuestionsCard = memo(
       <div className="mb-3 overflow-hidden rounded-2xl border border-[#BFD9FF] bg-[#F3F8FF] shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-[#D6E7FF] px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <span className="i-ph:info text-base text-[#2F6FED]" />
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2F6FED]/text-white">
+              <span className="i-ph:chat-circle-dots text-sm" />
+            </span>
             Agent has questions for you
           </div>
-          <span className="text-xs font-medium text-gray-500">
+          <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-semibold text-[#2F6FED]">
             Question {index + 1} of {safeQuestions.length}
           </span>
         </div>
@@ -172,7 +174,7 @@ export const ClarifyingQuestionsCard = memo(
             <button
               type="button"
               onClick={autoAnswer}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Auto-answer
             </button>
@@ -180,7 +182,7 @@ export const ClarifyingQuestionsCard = memo(
               type="button"
               onClick={goNext}
               disabled={!canAdvance}
-              className="rounded-lg bg-[#2F6FED] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+              className="rounded-xl bg-[#2F6FED] px-4 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-40"
             >
               {isLast ? 'Build' : 'Next'}
             </button>

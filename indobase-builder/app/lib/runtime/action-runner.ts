@@ -14,6 +14,7 @@ import {
   isDevStartCommand,
   isToolchainReady,
 } from '~/lib/indobase/ensureNpmDependencies';
+import { hasRunnablePackageJson, normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { hasWebContainerBootFailed } from '~/lib/webcontainer';
 import { shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { yieldAfterBatch } from '~/utils/yieldToMain';
@@ -345,9 +346,17 @@ export class ActionRunner {
 
       if (!hydrated) {
         /*
-         * No usable WebContainer FS — do not fail the build phase. Server draft preview installs
-         * from workbench files in finalizeBuildAndMaybeRepair.
+         * No usable WebContainer FS — do not fail the build phase when a runnable package.json
+         * exists; server draft preview installs from workbench files in finalizeBuildAndMaybeRepair.
+         * Without package.json, marking install "complete" lied to BuildPlan ("Packages installed").
          */
+        if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+          throw new ActionCommandError(
+            'Project Incomplete',
+            'Missing root package.json — cannot install packages or start a draft preview. Write package.json at the project root (not a nested folder), then npm install.',
+          );
+        }
+
         logger.warn('Skipping WebContainer npm install; will use server draft preview');
         this.lastShellOutput = {
           exitCode: 0,
@@ -472,6 +481,13 @@ export class ActionRunner {
     const hydrated = await this.#hydrateWebContainerFromWorkbench();
 
     if (!hydrated) {
+      if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+        throw new ActionCommandError(
+          'Project Incomplete',
+          'Missing root package.json — cannot start the preview. Write a complete root-level Vite/Expo package.json with a dev script, then npm install and npm run dev.',
+        );
+      }
+
       logger.warn('Skipping WebContainer dev server; will use server draft preview');
       this.lastShellOutput = {
         exitCode: 0,
@@ -665,7 +681,7 @@ export class ActionRunner {
       return;
     }
 
-    const files = this.#getProjectFiles?.() ?? {};
+    const files = normalizeProjectFilesRoot(this.#getProjectFiles?.() ?? {}).files;
     const pkg = files['package.json'];
 
     if (!pkg || !/\bvite\b/i.test(pkg)) {

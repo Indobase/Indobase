@@ -5,7 +5,7 @@ import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 const DISMISS_KEY = 'indobase.builder.agentWorkingBannerDismissed';
 
 /**
- * Emergent-style wait cue while the first preview is being produced.
+ * Wait cue above the composer while the first preview is being produced.
  */
 export const AgentWorkingBanner = memo(function AgentWorkingBanner() {
   const lifecycle = useStore(initialBuildLifecycle);
@@ -36,15 +36,15 @@ export const AgentWorkingBanner = memo(function AgentWorkingBanner() {
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#BFD9FF] bg-[#EAF2FF] px-3 py-2.5 text-sm text-gray-800 shadow-sm">
+    <div className="flex items-center gap-3 rounded-2xl border border-[#BFD9FF] bg-[#EAF2FF] px-3.5 py-3 text-sm text-gray-800 shadow-sm">
       <span className="i-svg-spinners:90-ring-with-bg shrink-0 text-base text-[#2F6FED]" />
-      <p className="min-w-0 flex-1 leading-snug">
-        Agent is working — first preview usually takes a few minutes.
+      <p className="min-w-0 flex-1 leading-snug text-gray-800">
+        Agent is working, it generally takes 5-10 mins for first preview
       </p>
       <button
         type="button"
         onClick={dismiss}
-        className="shrink-0 rounded-lg border border-white/80 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+        className="shrink-0 rounded-xl border border-white/90 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
       >
         Got it
       </button>
@@ -52,7 +52,7 @@ export const AgentWorkingBanner = memo(function AgentWorkingBanner() {
         type="button"
         aria-label="Dismiss"
         onClick={dismiss}
-        className="i-ph:x shrink-0 text-sm text-gray-500 hover:text-gray-800"
+        className="i-ph:x shrink-0 text-sm text-gray-400 hover:text-gray-700"
       />
     </div>
   );

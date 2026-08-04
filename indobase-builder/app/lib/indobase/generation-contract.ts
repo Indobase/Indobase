@@ -1,6 +1,7 @@
 import type { Message } from 'ai';
 import type { FileMap } from '~/lib/.server/llm/constants';
 import { getAutonomyPhaseChecklist } from '~/lib/indobase/autonomy-phases';
+import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { cleanUserPromptForPlan, stripInternalRoutingAnnotations } from '~/lib/indobase/sanitize-plan-text';
 
 export type BuilderProjectTarget = 'web' | 'mobile';
@@ -272,11 +273,18 @@ ${oneShotContract}
 
 export function inspectOneShotBuildResponse(response: string): OneShotBuildResponseInspection {
   const issues: string[] = [];
+  const hasPackageJsonFile =
+    /<boltAction\b[^>]*\btype\s*=\s*["']file["'][^>]*\bfilePath\s*=\s*["'][^"']*package\.json["']/i.test(response) ||
+    /<boltAction\b[^>]*\bfilePath\s*=\s*["'][^"']*package\.json["'][^>]*\btype\s*=\s*["']file["']/i.test(response);
   const hasInstallAction =
     /<boltAction\b[^>]*\btype\s*=\s*["']shell["'][^>]*>[\s\S]*?\bnpm\s+(?:install|i)\b[\s\S]*?<\/boltAction>/i.test(
       response,
     );
   const hasStartAction = /<boltAction\b[^>]*\btype\s*=\s*["']start["'][^>]*>[\s\S]*?<\/boltAction>/i.test(response);
+
+  if (!hasPackageJsonFile) {
+    issues.push('missing package.json file action');
+  }
 
   if (!hasInstallAction) {
     issues.push('missing npm install shell action');
@@ -299,9 +307,16 @@ function hasFile(files: Record<string, string>, ...candidates: string[]) {
 }
 
 export function validateGeneratedProjectContract(files: Record<string, string>): GenerationContractValidation {
-  const packageJson = files['package.json'];
+  /*
+   * Accept nested scaffolds (`my-app/package.json`) by flattening to a synthetic root before
+   * checking the contract — callers that build/preview should use normalizeProjectFilesRoot too.
+   */
+  const projectFiles = normalizeProjectFilesRoot(files).files;
+  const packageJson = projectFiles['package.json'];
   const target: BuilderProjectTarget =
-    packageUsesExpo(packageJson) || hasFile(files, 'app.json', 'app.config.ts', 'app.config.js') ? 'mobile' : 'web';
+    packageUsesExpo(packageJson) || hasFile(projectFiles, 'app.json', 'app.config.ts', 'app.config.js')
+      ? 'mobile'
+      : 'web';
   const issues: string[] = [];
 
   if (!packageJson) {
@@ -326,11 +341,11 @@ export function validateGeneratedProjectContract(files: Record<string, string>):
       issues.push('Mobile projects must declare Expo in package.json.');
     }
 
-    if (!hasFile(files, 'app.json', 'app.config.ts', 'app.config.js')) {
+    if (!hasFile(projectFiles, 'app.json', 'app.config.ts', 'app.config.js')) {
       issues.push('Missing Expo app configuration.');
     }
 
-    if (!hasFile(files, 'App.tsx', 'App.jsx', 'app/index.tsx', 'app/index.jsx')) {
+    if (!hasFile(projectFiles, 'App.tsx', 'App.jsx', 'app/index.tsx', 'app/index.jsx')) {
       issues.push('Missing a mobile application entry point.');
     }
 
@@ -338,11 +353,11 @@ export function validateGeneratedProjectContract(files: Record<string, string>):
       issues.push('Mobile build script must export Expo for web.');
     }
   } else {
-    if (!hasFile(files, 'index.html')) {
+    if (!hasFile(projectFiles, 'index.html')) {
       issues.push('Missing root index.html.');
     }
 
-    if (!hasFile(files, 'src/main.tsx', 'src/main.jsx', 'src/main.ts', 'src/main.js', 'index.html')) {
+    if (!hasFile(projectFiles, 'src/main.tsx', 'src/main.jsx', 'src/main.ts', 'src/main.js', 'index.html')) {
       issues.push('Missing a web application entry point.');
     }
   }

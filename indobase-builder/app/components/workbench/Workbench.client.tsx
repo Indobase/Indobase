@@ -347,6 +347,13 @@ export const Workbench = memo(
      */
     const hasAutoOpenedPreview = useRef(false);
 
+    // Right pane stays visible for the whole chat session on desktop (split chat + preview).
+    useEffect(() => {
+      if (chatStarted && !isSmallViewport) {
+        workbenchStore.showWorkbench.set(true);
+      }
+    }, [chatStarted, isSmallViewport, showWorkbench]);
+
     useEffect(() => {
       if ((hasPreview || draftReady) && !hasAutoOpenedPreview.current) {
         hasAutoOpenedPreview.current = true;
@@ -452,9 +459,9 @@ export const Workbench = memo(
                       type="button"
                       onClick={() => setWorkspacePane('preview')}
                       className={classNames(
-                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        'rounded-full px-3.5 py-1.5 text-sm font-semibold transition',
                         workspacePane === 'preview'
-                          ? 'bg-white text-gray-900 shadow-sm'
+                          ? 'bg-gray-900 text-white shadow-sm'
                           : 'text-gray-500 hover:text-gray-800',
                       )}
                     >
@@ -464,9 +471,9 @@ export const Workbench = memo(
                       type="button"
                       onClick={() => setWorkspacePane('manage')}
                       className={classNames(
-                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        'rounded-full px-3.5 py-1.5 text-sm font-semibold transition',
                         workspacePane === 'manage'
-                          ? 'bg-white text-gray-900 shadow-sm'
+                          ? 'bg-gray-900 text-white shadow-sm'
                           : 'text-gray-500 hover:text-gray-800',
                       )}
                     >
@@ -536,16 +543,20 @@ export const Workbench = memo(
                       </>
                     )}
 
-                    {/* Keep close away from Publish — adjacent destructive/primary actions misfire. */}
-                    <span className="mx-1 h-5 w-px shrink-0 bg-gray-200" aria-hidden />
-                    <IconButton
-                      icon="i-ph:x-circle"
-                      className="-mr-1 text-gray-400"
-                      size="xl"
-                      onClick={() => {
-                        workbenchStore.showWorkbench.set(false);
-                      }}
-                    />
+                    {/* Preview pane stays open on desktop; close only on small viewports. */}
+                    {isSmallViewport && (
+                      <>
+                        <span className="mx-1 h-5 w-px shrink-0 bg-gray-200" aria-hidden />
+                        <IconButton
+                          icon="i-ph:x-circle"
+                          className="-mr-1 text-gray-400"
+                          size="xl"
+                          onClick={() => {
+                            workbenchStore.showWorkbench.set(false);
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="relative flex-1 overflow-hidden bg-gray-50/40">

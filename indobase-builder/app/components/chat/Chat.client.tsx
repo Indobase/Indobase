@@ -749,10 +749,35 @@ export const ChatImpl = memo(
 
             if (draft.success && draft.previewUrl) {
               setLlmErrorAlert(undefined);
+              automaticPreviewRepairAttemptRef.current = 0;
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
               }
+
+              return true;
+            }
+
+            const repair = decideAutomaticPreviewRepair({
+              error: new Error(
+                draft.error ||
+                  'Server draft preview failed. Write a complete root-level package.json (filePath="package.json"), index.html, app entry, then npm install and npm run dev.',
+              ),
+              completedAttempts: automaticPreviewRepairAttemptRef.current,
+              files: workbenchStore.files.get(),
+              maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+            });
+
+            if (repair.shouldRepair) {
+              automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
+              setLlmErrorAlert(undefined);
+              chatStore.setKey('aborted', false);
+              setStreamStalled(false);
+              initialBuildLifecycle.set('finalizing');
+              append({
+                role: 'user',
+                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
+              });
 
               return true;
             }

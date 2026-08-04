@@ -13,6 +13,9 @@ describe('injectPlannerPlan', () => {
     expect(updated[0].content).toContain('<agent_plan>');
     expect(updated[0].content).toContain('Create Vite app');
     expect(updated[0].content).toContain('Build a todo app');
+    expect(updated[0].content).toContain('obsolete');
+    expect(updated[0].content).toContain('Do NOT write any code');
+    expect(updated[0].content).toContain('filePath="package.json"');
   });
 });
 

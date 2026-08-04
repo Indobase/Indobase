@@ -164,22 +164,21 @@ export const AssistantMessage = memo(
 
     return (
       <div className="flex w-full gap-3">
-        {/* Assistant avatar — gives each turn a clear visual anchor */}
-        <div className="mt-0.5 shrink-0">
-          <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50">
-            <img src="/logo.svg" alt="Indobase" className="h-4 w-4" />
+        <div className="mt-1 shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-[#D6E7FF] bg-[#EAF2FF]">
+            <img src="/icons/indobase-logo-mark.svg" alt="Indobase" className="h-4 w-4" />
           </div>
         </div>
 
         <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="mb-1 flex items-center gap-2">
+          <div className="mb-1.5 flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-900">Indobase</span>
             {(codeContext || chatSummary) && (
               <Popover
                 side="right"
                 align="start"
                 trigger={
-                  <div className="i-ph:info cursor-pointer text-bolt-elements-textTertiary transition-colors hover:text-bolt-elements-textSecondary" />
+                  <div className="i-ph:info cursor-pointer text-gray-400 transition-colors hover:text-gray-600" />
                 }
               >
                 {chatSummary && (
@@ -231,46 +230,50 @@ export const AssistantMessage = memo(
           )}
 
           {planSteps && planSteps.length > 0 && !clarifyingQuestions?.length && (
-            <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <span className="i-ph:list-checks text-sm" />
-                Build plan
-              </div>
-              <ol className="flex flex-col gap-1.5">
-                {planSteps.map((step, index) => (
-                  <li key={step} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-600">
-                      {index + 1}
-                    </span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
+            <div className="mb-3 space-y-1.5">
+              {planSteps.map((step, index) => (
+                <div
+                  key={step}
+                  className="flex items-center gap-2.5 rounded-xl bg-[#EAF2FF]/px-3 py-2 text-sm text-gray-800"
+                >
+                  <span className="i-ph:check-circle-fill shrink-0 text-base text-[#2F6FED]" />
+                  <span className="min-w-0 flex-1">{step}</span>
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                    {index === 0 ? 'Design' : index === planSteps.length - 1 ? 'Preview' : 'Builder'}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
-          {!(clarifyingQuestions && clarifyingQuestions.length > 0) && (
-            <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
-              {content}
-            </Markdown>
+          {!(clarifyingQuestions && clarifyingQuestions.length > 0) && content.trim() && (
+            <div className="rounded-2xl bg-[#EAF2FF] px-4 py-3 text-gray-900 shadow-sm">
+              <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
+                {content}
+              </Markdown>
+            </div>
           )}
 
           {clarifyingQuestions && clarifyingQuestions.length > 0 && content.trim() && (
-            <p className="mb-3 text-sm text-gray-700">
-              I&apos;ll set up the core structure once you answer a few quick questions.
+            <p className="mb-3 rounded-2xl bg-[#EAF2FF] px-4 py-3 text-sm text-gray-800">
+              Answer below and I&apos;ll build the full project next — root{' '}
+              <code className="rounded bg-white/80 px-1 text-xs">package.json</code> and a live preview
+              included.
             </p>
           )}
 
           {toolInvocations && toolInvocations.length > 0 && (
-            <ToolInvocations
-              toolInvocations={toolInvocations}
-              toolCallAnnotations={toolCallAnnotations}
-              addToolResult={addToolResult}
-            />
+            <div className="mt-3">
+              <ToolInvocations
+                toolInvocations={toolInvocations}
+                toolCallAnnotations={toolCallAnnotations}
+                addToolResult={addToolResult}
+              />
+            </div>
           )}
 
           {(usage || hasActions) && (
-            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+            <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
               {usage && (
                 <span title={`prompt ${usage.promptTokens} · completion ${usage.completionTokens}`}>
                   {usage.totalTokens.toLocaleString()} tokens
@@ -282,7 +285,7 @@ export const AssistantMessage = memo(
                     <WithTooltip tooltip="Revert to this message">
                       <button
                         onClick={() => onRewind(messageId!)}
-                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-gray-900"
+                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-gray-700"
                       />
                     </WithTooltip>
                   )}
@@ -290,7 +293,7 @@ export const AssistantMessage = memo(
                     <WithTooltip tooltip="Fork chat from this message">
                       <button
                         onClick={() => onFork(messageId!)}
-                        className="i-ph:git-fork text-sm transition-colors hover:text-gray-900"
+                        className="i-ph:git-fork text-sm transition-colors hover:text-gray-700"
                       />
                     </WithTooltip>
                   )}

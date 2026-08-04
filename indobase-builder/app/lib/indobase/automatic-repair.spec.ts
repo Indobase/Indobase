@@ -168,4 +168,21 @@ describe('automatic preview repair decisions', () => {
       }),
     ).toEqual({ shouldRepair: false, nextAttempt: 1, reason: 'exhausted' });
   });
+
+  it('asks for a full root scaffold when package.json is missing', () => {
+    const decision = decideAutomaticPreviewRepair({
+      error: new Error('Project incomplete for draft preview:\nMissing root package.json.'),
+      completedAttempts: 0,
+      files: {},
+    });
+
+    expect(decision).toMatchObject({ shouldRepair: true, nextAttempt: 1 });
+
+    if (decision.shouldRepair) {
+      expect(decision.prompt).toContain('scaffold repair');
+      expect(decision.prompt).toContain('filePath="package.json"');
+      expect(decision.prompt).toContain('npm install');
+      expect(decision.prompt).toContain('cannot start the project this turn');
+    }
+  });
 });
