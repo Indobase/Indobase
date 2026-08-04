@@ -164,11 +164,19 @@ export const ChatImpl = memo(
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
     useEffect(() => {
+      // Keep landing vs workbench in sync when a chat is loaded (My Apps / hard nav remount).
+      const started = initialMessages.length > 0;
+      setChatStarted(started);
+      chatStore.setKey('started', started);
+    }, [initialMessages]);
+
+    useEffect(() => {
       if (!chatStarted) {
         return;
       }
 
-      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer());
+      // Warm WC in background — never block chat UI / My Apps navigation on boot.
+      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer().catch(() => undefined));
     }, [chatStarted]);
 
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -442,6 +450,7 @@ export const ChatImpl = memo(
 
           if (chatMode === 'build') {
             automaticPreviewRepairAttemptRef.current = 0;
+            workbenchStore.clearWorkspace();
             beginInitialBuild();
           }
 
@@ -494,7 +503,7 @@ export const ChatImpl = memo(
 
     useEffect(() => {
       chatStore.setKey('started', initialMessages.length > 0);
-    }, []);
+    }, [initialMessages]);
 
     useEffect(() => {
       processSampledMessages({
@@ -1275,6 +1284,8 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         setFakeLoading(true);
 
         if (chatMode === 'build') {
+          // Fresh chat must not inherit prior project's workbench files into LLM context / WC.
+          workbenchStore.clearWorkspace();
           beginInitialBuild();
         }
 

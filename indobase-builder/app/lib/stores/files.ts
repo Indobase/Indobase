@@ -582,6 +582,12 @@ export class FilesStore {
     this.#modifiedFiles.clear();
   }
 
+  /** Clear the in-memory file map (chat switch / fresh build). Does not touch WebContainer. */
+  clearFiles() {
+    this.#modifiedFiles.clear();
+    this.files.set({});
+  }
+
   async saveFile(filePath: string, content: string) {
     const webcontainer = await this.#webcontainer;
 

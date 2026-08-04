@@ -26,11 +26,11 @@ if (import.meta.hot?.data) {
   import.meta.hot.data.webcontainerContext = webcontainerContext;
 }
 
-const WEBCONTAINER_BOOT_TIMEOUT_MS = 90_000;
-const WEBCONTAINER_CONFIGURE_TIMEOUT_MS = 20_000;
-const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 2;
+const WEBCONTAINER_BOOT_TIMEOUT_MS = 120_000;
+const WEBCONTAINER_CONFIGURE_TIMEOUT_MS = 25_000;
+const WEBCONTAINER_BOOT_MAX_ATTEMPTS = 3;
 const STACKBLITZ_HEADLESS_PROBE_MS = 8_000;
-const TEARDOWN_SETTLE_MS = 150;
+const TEARDOWN_SETTLE_MS = 250;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

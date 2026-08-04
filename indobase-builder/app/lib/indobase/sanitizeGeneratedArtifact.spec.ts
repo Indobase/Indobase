@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveGeneratedFileArtifact, sanitizeGeneratedArtifact } from './sanitizeGeneratedArtifact';
+import {
+  normalizeGeneratedFilePath,
+  resolveGeneratedFileArtifact,
+  sanitizeFileAction,
+  sanitizeGeneratedArtifact,
+  shouldRejectGeneratedPath,
+} from './sanitizeGeneratedArtifact';
 
 describe('sanitizeGeneratedArtifact', () => {
   it('rewrites supabase SDK, paths, and env vars in generated files', () => {
@@ -16,7 +22,7 @@ export const supabase = createClient(
 
     const result = sanitizeGeneratedArtifact(input.filePath, input.content);
 
-    expect(result.filePath).toBe('/home/project/src/lib/indobase.ts');
+    expect(result.filePath).toBe('src/lib/indobase.ts');
     expect(result.content).toContain('@indobaseinc/indobase-js');
     expect(result.content).toContain('VITE_INDOBASE_URL');
     expect(result.content).toContain('export const indobase =');
@@ -44,14 +50,17 @@ await supabase.from('users').select('*');`,
   });
 
   it('extracts embedded filePath metadata and strips contentType wrappers', () => {
-    const result = resolveGeneratedFileArtifact('/untitled-1782682832716.txt', `<filePath>/home/project/src/pages/Register.jsx</filePath>
+    const result = resolveGeneratedFileArtifact(
+      '/untitled-1782682832716.txt',
+      `<filePath>/home/project/src/pages/Register.jsx</filePath>
 <contentType>application/javascript</contentType>
 import React from 'react';
 
 export default function Register() {
   return null;
 }
-`);
+`,
+    );
 
     expect(result.filePath).toBe('src/pages/Register.jsx');
     expect(result.content).not.toContain('<filePath>');
@@ -60,13 +69,16 @@ export default function Register() {
   });
 
   it('infers package.json when placeholder path contains manifest content', () => {
-    const result = resolveGeneratedFileArtifact('/untitled-123.txt', `{
+    const result = resolveGeneratedFileArtifact(
+      '/untitled-123.txt',
+      `{
   "name": "demo",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   }
-}`);
+}`,
+    );
 
     expect(result.filePath).toBe('package.json');
   });
@@ -140,5 +152,41 @@ import { motion } from 'framer-motion';
     expect(result.content).not.toContain('<boltAction');
     expect(result.content).toContain('viewport={{ once: true }}');
     expect(result.content.trim().endsWith('}')).toBe(true);
+  });
+
+  it('resolves .. segments inside the project instead of emitting .._ corruption', () => {
+    expect(normalizeGeneratedFilePath('/home/project/src/../main.tsx')).toBe('main.tsx');
+    expect(normalizeGeneratedFilePath('src/../App.tsx')).toBe('App.tsx');
+    expect(normalizeGeneratedFilePath('../outside.tsx')).toBe('outside.tsx');
+  });
+
+  it('rejects AppleDouble, .._ corruption, and PDF import leakage', () => {
+    expect(shouldRejectGeneratedPath('src/._main.tsx')).toBe(true);
+    expect(shouldRejectGeneratedPath('._package-lock.json')).toBe(true);
+    expect(shouldRejectGeneratedPath('src/.._main.tsx')).toBe(true);
+    expect(
+      shouldRejectGeneratedPath(
+        'src/imports/GreenFuturz__AI-Driven_Web_Application_Development_proposal_02_02_2026.pdf',
+      ),
+    ).toBe(true);
+    expect(shouldRejectGeneratedPath('src/App.tsx')).toBe(false);
+  });
+
+  it('sanitizeFileAction returns null for rejected paths', () => {
+    expect(
+      sanitizeFileAction({
+        type: 'file',
+        filePath: 'src/imports/proposal.pdf',
+        content: '%PDF-1.4',
+      }),
+    ).toBeNull();
+
+    expect(
+      sanitizeFileAction({
+        type: 'file',
+        filePath: 'src/App.tsx',
+        content: 'export default function App() { return null }',
+      }),
+    ).toMatchObject({ filePath: 'src/App.tsx' });
   });
 });

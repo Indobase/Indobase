@@ -22,6 +22,7 @@ import type { Snapshot } from './types';
 import { webcontainer } from '~/lib/webcontainer';
 import { detectProjectCommands, createCommandActionsString } from '~/utils/projectCommands';
 import type { ContextAnnotation } from '~/types/context';
+import { shouldRejectGeneratedPath, normalizeGeneratedFilePath } from '~/lib/indobase/sanitizeGeneratedArtifact';
 
 export interface ChatHistoryItem {
   id: string;
@@ -203,9 +204,15 @@ export function useChatHistory() {
                     return null;
                   }
 
+                  const relativePath = normalizeGeneratedFilePath(key);
+
+                  if (shouldRejectGeneratedPath(relativePath)) {
+                    return null;
+                  }
+
                   return {
                     content: value.content,
-                    path: key,
+                    path: relativePath || key,
                   };
                 })
                 .filter((x): x is { content: string; path: string } => !!x); // Type assertion
@@ -230,15 +237,21 @@ export function useChatHistory() {
                   <boltArtifact id="restored-project-setup" title="Restored Project & Setup" type="bundled">
                   ${Object.entries(snapshot?.files || {})
                     .map(([key, value]) => {
-                      if (value?.type === 'file') {
-                        return `
-                      <boltAction type="file" filePath="${key}">
+                      if (value?.type !== 'file') {
+                        return ``;
+                      }
+
+                      const relativePath = normalizeGeneratedFilePath(key);
+
+                      if (shouldRejectGeneratedPath(relativePath)) {
+                        return ``;
+                      }
+
+                      return `
+                      <boltAction type="file" filePath="${relativePath}">
 ${value.content}
                       </boltAction>
                       `;
-                      } else {
-                        return ``;
-                      }
                     })
                     .join('\n')}
                   ${commandActionsString} 
@@ -304,7 +317,15 @@ ${value.content}
 
       const snapshot: Snapshot = {
         chatIndex: chatIdx,
-        files,
+        files: Object.fromEntries(
+          Object.entries(files).filter(([path, dirent]) => {
+            if (!dirent) {
+              return false;
+            }
+
+            return !shouldRejectGeneratedPath(path);
+          }),
+        ),
         summary: chatSummary,
       };
 
@@ -330,8 +351,12 @@ ${value.content}
         return;
       }
 
-      const normalizePath = (filePath: string) =>
-        filePath.startsWith(container.workdir) ? filePath.slice(container.workdir.length) : filePath;
+      const normalizePath = (filePath: string) => {
+        const stripped = filePath.startsWith(container.workdir)
+          ? filePath.slice(container.workdir.length)
+          : filePath;
+        return normalizeGeneratedFilePath(stripped);
+      };
 
       for (const [key, value] of Object.entries(files)) {
         if (value?.type !== 'folder') {
@@ -340,7 +365,7 @@ ${value.content}
 
         const relativePath = normalizePath(key);
 
-        if (relativePath) {
+        if (relativePath && !shouldRejectGeneratedPath(relativePath)) {
           await container.fs.mkdir(relativePath, { recursive: true });
         }
       }
@@ -352,7 +377,7 @@ ${value.content}
 
         const relativePath = normalizePath(key);
 
-        if (!relativePath) {
+        if (!relativePath || shouldRejectGeneratedPath(relativePath)) {
           continue;
         }
 

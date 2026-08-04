@@ -27,7 +27,7 @@ export function Header() {
             title="Home"
             aria-label="Home"
           >
-            <img src="/logo.svg" alt="Indobase" className="h-6 w-6" />
+            <img src="/icons/indobase-logo-mark.svg" alt="Indobase" className="h-7 w-7" />
           </a>
 
           {chat.started ? (

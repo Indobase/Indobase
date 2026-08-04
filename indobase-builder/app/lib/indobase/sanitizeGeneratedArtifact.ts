@@ -36,8 +36,57 @@ export function normalizeGeneratedFilePath(filePath: string): string {
   const trimmed = filePath.trim().replace(/\\/g, '/');
   const withoutWorkdir = trimmed.replace(/^\/home\/project\/?/, '');
   const withoutLeadingSlash = withoutWorkdir.replace(/^\/+/, '');
+  const collapsed = withoutLeadingSlash.replace(/\/{2,}/g, '/');
 
-  return withoutLeadingSlash.replace(/\/{2,}/g, '/');
+  // Resolve . / .. inside the project root — never escape workdir (avoids ../foo and .._foo junk).
+  const resolved: string[] = [];
+
+  for (const segment of collapsed.split('/')) {
+    if (!segment || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      resolved.pop();
+      continue;
+    }
+
+    resolved.push(segment);
+  }
+
+  return resolved.join('/');
+}
+
+/**
+ * Paths that must never land in the workbench (cross-chat leakage, macOS AppleDouble, binary docs).
+ * Callers should skip writing these file actions entirely.
+ */
+export function shouldRejectGeneratedPath(filePath?: string): boolean {
+  if (!filePath?.trim()) {
+    return true;
+  }
+
+  const normalized = normalizeGeneratedFilePath(filePath);
+
+  if (!normalized) {
+    return true;
+  }
+
+  const segments = normalized.split('/');
+
+  for (const segment of segments) {
+    // AppleDouble resource forks (._foo) and corrupted .._foo names from path bugs / SSD copies.
+    if (segment.startsWith('._') || segment.startsWith('.._')) {
+      return true;
+    }
+  }
+
+  // Non-source documents — models sometimes re-emit prior-chat PDFs under src/imports/.
+  if (/\.(pdf|docx?|xlsx?|pptx?|zip|dmg|ics)$/i.test(normalized)) {
+    return true;
+  }
+
+  return false;
 }
 
 /** Map a generated path to a WebContainer workdir-relative path for fs writes. */
@@ -258,7 +307,8 @@ function balanceTrailingDelimiters(source: string): string {
 }
 
 export function sanitizeGeneratedArtifact(filePath: string, content: string) {
-  const sanitizedPath = sanitizeGeneratedArtifactPath(filePath);
+  const normalizedPath = normalizeGeneratedFilePath(filePath);
+  const sanitizedPath = sanitizeGeneratedArtifactPath(normalizedPath);
   let sanitizedContent = sanitizeGeneratedArtifactContent(stripLeakedBoltMarkup(content));
 
   if (/\.css$/i.test(sanitizedPath)) {
@@ -271,12 +321,16 @@ export function sanitizeGeneratedArtifact(filePath: string, content: string) {
   };
 }
 
-export function sanitizeFileAction<T extends BoltAction>(action: T): T {
+export function sanitizeFileAction<T extends BoltAction>(action: T): T | null {
   if (action.type !== 'file') {
     return action;
   }
 
   const sanitized = resolveGeneratedFileArtifact(action.filePath, action.content);
+
+  if (shouldRejectGeneratedPath(sanitized.filePath)) {
+    return null;
+  }
 
   return {
     ...action,

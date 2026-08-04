@@ -138,7 +138,19 @@ export class ActionRunner {
 
   addAction(data: ActionCallbackData) {
     const { actionId } = data;
-    const action = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[action-runner] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      data = { ...data, action: sanitized };
+    }
+
+    const action = data.action;
 
     const actions = this.actions.get();
     const existingAction = actions[actionId];
@@ -164,7 +176,19 @@ export class ActionRunner {
 
   async runAction(data: ActionCallbackData, isStreaming: boolean = false) {
     const { actionId } = data;
-    const incomingAction = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[action-runner] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      data = { ...data, action: sanitized };
+    }
+
+    const incomingAction = data.action;
     const action = this.actions.get()[actionId];
 
     if (!action) {
@@ -783,7 +807,7 @@ export class ActionRunner {
           reject(
             new Error('WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).'),
           );
-        }, 120_000);
+        }, 150_000);
       }),
     ]);
   }

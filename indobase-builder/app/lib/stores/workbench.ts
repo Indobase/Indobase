@@ -327,6 +327,41 @@ export class WorkbenchStore {
   }
 
   /**
+   * Drop in-memory workbench state so a new/switched chat cannot inherit prior-project files
+   * (those were leaking into /api/chat `files` context and reappearing as GreenFuturz PDFs, etc.).
+   * WebContainer wipe is best-effort and never blocks navigation.
+   */
+  clearWorkspace() {
+    this.artifacts.set({});
+    this.artifactIdList = [];
+    this.#reloadedMessages.clear();
+    this.unsavedFiles.set(new Set());
+    this.showWorkbench.set(false);
+    this.currentView.set('code');
+    this.clearAlert();
+    this.clearIndobaseBackendAlert();
+    this.clearDeployAlert();
+    this.#filesStore.clearFiles();
+    this.#editorStore.setDocuments({});
+
+    void webcontainer
+      .then(async (container) => {
+        try {
+          const entries = await container.fs.readdir('.');
+
+          await Promise.all(
+            entries
+              .filter((name) => name !== '.' && name !== '..')
+              .map((name) => container.fs.rm(name, { recursive: true, force: true }).catch(() => undefined)),
+          );
+        } catch {
+          // WC may be booting or unavailable — in-memory clear is enough for LLM context.
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  /**
    * Lock a file to prevent edits
    * @param filePath Path to the file to lock
    * @returns True if the file was successfully locked
@@ -588,7 +623,19 @@ export class WorkbenchStore {
     this.addToExecutionQueue(() => this._addAction(data));
   }
   async _addAction(data: ActionCallbackData) {
-    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    let payload = data;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[workbench] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      payload = { ...data, action: sanitized };
+    }
+
     const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);
@@ -609,7 +656,19 @@ export class WorkbenchStore {
     }
   }
   async _runAction(data: ActionCallbackData, isStreaming: boolean = false) {
-    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    let payload = data;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[workbench] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      payload = { ...data, action: sanitized };
+    }
+
     const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);

@@ -82,7 +82,7 @@ export function getBuilderPublicEnv(): BuilderPublicEnv {
  * Wait until sync/async bootstrap has had a chance to populate the window key.
  * Always resolves (never rejects) so boot can proceed to a clear missing-key error.
  */
-export function whenBuilderPublicEnvReady(timeoutMs = 5_000): Promise<void> {
+export function whenBuilderPublicEnvReady(timeoutMs = 8_000): Promise<void> {
   if (typeof window === 'undefined') {
     return Promise.resolve();
   }
