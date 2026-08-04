@@ -4,13 +4,13 @@ import {
   CLARIFYING_ANSWERS_MARKER,
   getInstantClarifyingQuestions,
   userProvidedClarifyingAnswers,
-} from './instant-clarifying';
+} from './instant-clarifying.server';
 
 function userMessage(content: string): Message {
   return { id: '1', role: 'user', content };
 }
 
-describe('instant-clarifying', () => {
+describe('instant-clarifying.server', () => {
   it('asks Emergent-style questions for a vague first Build prompt', () => {
     const questions = getInstantClarifyingQuestions([userMessage('create a website for my investment company')]);
     expect(questions?.length).toBeGreaterThanOrEqual(4);
