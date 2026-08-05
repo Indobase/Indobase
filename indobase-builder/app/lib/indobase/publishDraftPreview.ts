@@ -98,7 +98,7 @@ export async function publishDraftPreview(
     logger.info(`Flattened nested project root "${rootPrefix}" for draft preview`);
   }
 
-  setDraftPreviewBuilding();
+  setDraftPreviewBuilding('draft');
 
   const snapshotId = workspaceService.headSnapshotId.get();
   const buildId = buildService.startBuild(snapshotId);
@@ -167,7 +167,11 @@ export async function publishDraftPreview(
     }
 
     buildService.finishBuild(buildId, { status: 'succeeded', outputRef: payload.previewUrl });
-    setDraftPreviewReady(payload.previewUrl, payload.expiresAt, { snapshotId, buildId });
+    setDraftPreviewReady(payload.previewUrl, payload.expiresAt, {
+      snapshotId,
+      buildId,
+      backend: 'draft',
+    });
     logger.info(`Draft preview ready at ${payload.previewUrl}`);
 
     return {

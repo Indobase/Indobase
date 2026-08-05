@@ -56,8 +56,8 @@ async function revealWorkbenchPreview(opts?: { markLifecycleReady?: boolean }) {
   }
 }
 
-export function setDraftPreviewBuilding() {
-  previewBuilding({ backend: 'draft' });
+export function setDraftPreviewBuilding(backend: 'draft' | 'sandbox' = 'sandbox') {
+  previewBuilding({ backend });
   syncLegacyStore();
   void revealWorkbenchPreview();
 }
@@ -65,11 +65,11 @@ export function setDraftPreviewBuilding() {
 export function setDraftPreviewReady(
   previewUrl: string,
   expiresAt?: number,
-  meta?: { snapshotId?: SnapshotId; buildId?: BuildId },
+  meta?: { snapshotId?: SnapshotId; buildId?: BuildId; backend?: 'draft' | 'sandbox' },
 ) {
   previewReady({
     previewUrl,
-    backend: 'draft',
+    backend: meta?.backend ?? 'sandbox',
     expiresAt,
     snapshotId: meta?.snapshotId,
     buildId: meta?.buildId,

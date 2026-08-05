@@ -41,7 +41,7 @@ import {
   isIndobaseStudioManagedConnection,
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
-import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
+import { publishSandboxPreview } from '~/lib/indobase/publishSandboxPreview';
 import { toFriendlyPreviewError } from '~/lib/indobase/sanitize-user-facing-chat';
 import {
   beginCodegenCommand,
@@ -760,11 +760,10 @@ export const ChatImpl = memo(
           }
 
           /*
-           * No WebContainer on this host (no API key) — or WC already latched failed this session.
-           * Prefer server draft instead of burning another boot/finalize attempt.
+           * Deployed Builder: self-hosted sandbox (+ draft fallback). No StackBlitz WebContainer.
            */
           if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed()) || isServerPreviewMode()) {
-            const draft = await publishDraftPreview(indobaseConnection.get());
+            const draft = await publishSandboxPreview(indobaseConnection.get());
 
             if (draft.success && draft.previewUrl) {
               const wasRepair = automaticPreviewRepairAttemptRef.current > 0;
@@ -840,7 +839,7 @@ export const ChatImpl = memo(
              * preview-ready until finalize succeeds (or draft recovers a non-repairable failure).
              * setDraftPreviewReady still paints the draft URL as soon as the server build finishes.
              */
-            const draftPromise = publishDraftPreview(indobaseConnection.get());
+            const draftPromise = publishSandboxPreview(indobaseConnection.get());
 
             try {
               await finalizeCodegen({

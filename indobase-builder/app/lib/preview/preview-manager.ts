@@ -4,7 +4,7 @@ import type { BuildId, SnapshotId } from '~/lib/workspace/ids';
 /** Preview lifecycle — UI reads this, not backend-specific flags. */
 export type PreviewLifecycle = 'idle' | 'preparing' | 'building' | 'ready' | 'error' | 'restarting';
 
-export type PreviewBackend = 'none' | 'webcontainer' | 'draft' | 'static';
+export type PreviewBackend = 'none' | 'webcontainer' | 'draft' | 'static' | 'sandbox';
 
 export type PreviewManagerState = {
   lifecycle: PreviewLifecycle;
@@ -25,9 +25,12 @@ function patch(next: Partial<PreviewManagerState>) {
   previewManagerState.set({ ...previewManagerState.get(), ...next });
 }
 
-/** Draft preview wins when already building or ready — WC finalize must not clobber it. */
+/** Draft/sandbox preview wins when already building or ready — WC finalize must not clobber it. */
 function isDraftAuthoritative(state: PreviewManagerState = previewManagerState.get()): boolean {
-  return state.backend === 'draft' && (state.lifecycle === 'ready' || state.lifecycle === 'building');
+  return (
+    (state.backend === 'draft' || state.backend === 'sandbox') &&
+    (state.lifecycle === 'ready' || state.lifecycle === 'building')
+  );
 }
 
 export function previewIdle() {
@@ -71,7 +74,7 @@ export function previewReady(options: {
 }) {
   const current = previewManagerState.get();
 
-  if (options.backend === 'webcontainer' && current.backend === 'draft' && current.lifecycle === 'ready') {
+  if (options.backend === 'webcontainer' && (current.backend === 'draft' || current.backend === 'sandbox') && current.lifecycle === 'ready') {
     return;
   }
 

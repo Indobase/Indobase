@@ -907,7 +907,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
           {!draftPreviewUrl && activePreviewBaseUrl ? null : draftPreviewUrl ? (
             <span
               className="shrink-0 rounded-full bg-accent-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-500"
-              title="Server draft preview (does not replace your live subdomain)"
+              title="Self-hosted sandbox preview (does not replace your live subdomain)"
             >
               Draft
             </span>

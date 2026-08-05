@@ -9,6 +9,8 @@ import {
   ensureIndexHtmlInArtifacts,
   findFirstExistingBuildOutputDir,
 } from '~/lib/indobase/buildOutputDirs';
+import { buildHostedBuildChildEnv } from '~/lib/indobase/hosted-build-env.server';
+import { withHostedBuildSlot } from '~/lib/indobase/hosted-build-queue.server';
 import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { createScopedLogger } from '~/utils/logger';
 
@@ -17,9 +19,6 @@ const logger = createScopedLogger('server-project-build');
 
 const BUILD_TIMEOUT_MS = 180_000;
 const INSTALL_TIMEOUT_MS = 120_000;
-
-/** Standard PATH for Node Docker images — deploy env must never strip this. */
-const SAFE_PATH = ['/usr/local/bin', '/usr/bin', '/bin'].join(path.delimiter);
 
 function packageBuildLooksLikeVite(packageJson: string): boolean {
   try {
@@ -30,12 +29,6 @@ function packageBuildLooksLikeVite(packageJson: string): boolean {
   }
 }
 
-/**
- * Resolve an absolute npm binary. Do **not** use `process.execPath` here — the Remix/Vite
- * server bundle replaces `process` with `vite-plugin-node-polyfills/shims/process`, where
- * `execPath` is undefined and `path.dirname(undefined)` throws ERR_INVALID_ARG_TYPE
- * ("The \"path\" argument must be of type string. Received undefined").
- */
 async function resolveNpmBinary(): Promise<string> {
   const candidates = ['/usr/local/bin/npm', '/usr/bin/npm', '/bin/npm'];
 
@@ -48,36 +41,19 @@ async function resolveNpmBinary(): Promise<string> {
     }
   }
 
-  // Last resort: rely on PATH lookup (may still fail — caller surfaces ENOENT).
   return 'npm';
 }
 
-/** Read PATH without touching the Vite process shim's missing execPath. */
-function readHostPathEnv(): string {
-  const fromGlobal = (globalThis as { process?: { env?: { PATH?: string } } }).process?.env?.PATH;
-
-  if (typeof fromGlobal === 'string' && fromGlobal.trim()) {
-    return fromGlobal;
-  }
-
-  return SAFE_PATH;
+function npmCacheDir(): string {
+  return path.join(os.tmpdir(), 'indobase-hosted-npm-cache');
 }
 
-function buildChildEnv(env: Record<string, string>): NodeJS.ProcessEnv {
-  const basePath = readHostPathEnv();
-  const hostEnv = (globalThis as { process?: { env?: NodeJS.ProcessEnv } }).process?.env ?? {};
-
-  // Do not let deploy/project env override PATH or strip Node binaries.
-  const { PATH: _ignoredPath, path: _ignoredPathLower, ...safeProjectEnv } = env;
-
-  return {
-    ...hostEnv,
-    ...safeProjectEnv,
-    PATH: basePath.includes('/usr/local/bin') ? basePath : `${SAFE_PATH}${path.delimiter}${basePath}`,
-    CI: 'true',
-    // Builder runs with NODE_ENV=production; Vite templates need devDependencies.
-    NODE_ENV: 'development',
-  };
+function buildChildEnv(workDir: string): NodeJS.ProcessEnv {
+  return buildHostedBuildChildEnv({
+    workDir,
+    npmCacheDir: npmCacheDir(),
+    tmpDir: workDir,
+  });
 }
 
 const MAX_BUILD_LOG_CHARS = 6_000;
@@ -133,6 +109,14 @@ export async function buildProjectArtifactsOnServer(
   env: Record<string, string>,
   options: { assetBase?: string } = {},
 ): Promise<CollectBuildArtifactsResult> {
+  return withHostedBuildSlot(() => runServerProjectBuild(projectFiles, env, options));
+}
+
+async function runServerProjectBuild(
+  projectFiles: Record<string, string>,
+  env: Record<string, string>,
+  options: { assetBase?: string },
+): Promise<CollectBuildArtifactsResult> {
   const normalized = normalizeProjectFilesRoot(projectFiles).files;
 
   if (!normalized['package.json']) {
@@ -141,6 +125,8 @@ export async function buildProjectArtifactsOnServer(
       error: 'Missing package.json — cannot run server build.',
     };
   }
+
+  await fs.mkdir(npmCacheDir(), { recursive: true }).catch(() => undefined);
 
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'indobase-builder-'));
 
@@ -159,15 +145,17 @@ export async function buildProjectArtifactsOnServer(
       await fs.writeFile(dest, content, 'utf8');
     }
 
-    const envFile = Object.entries(env)
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n');
+    // Only public Vite client vars — never hand Builder/Studio secrets to the build tree.
+    const publicEnvEntries = Object.entries(env).filter(
+      ([key]) => key.startsWith('VITE_') || key.startsWith('NEXT_PUBLIC_') || key.startsWith('PUBLIC_'),
+    );
+    const envFile = publicEnvEntries.map(([key, value]) => `${key}=${value}`).join('\n');
 
     if (envFile) {
       await fs.writeFile(path.join(workDir, '.env'), envFile, 'utf8');
     }
 
-    const childEnv = buildChildEnv(env);
+    const childEnv = buildChildEnv(workDir);
     const npmBin = await resolveNpmBinary();
 
     logger.info(`Server build: ${npmBin} install in ${workDir}`);
