@@ -71,13 +71,8 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
               }
 
               return (
-                <div
-                  key={index}
-                  className={classNames('flex gap-4 w-full px-1 py-4', {
-                    'border-t border-gray-100': !isFirst,
-                  })}
-                >
-                  <div className="grid grid-col-1 w-full min-w-0">
+                <div key={index} className={classNames('flex w-full gap-4 px-1 py-3', { 'pt-5': !isFirst })}>
+                  <div className="grid w-full min-w-0 grid-col-1">
                     {isUserMessage ? (
                       <UserMessage content={content} parts={parts} />
                     ) : (
@@ -102,9 +97,9 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
             })
           : null}
         {isStreaming && (
-          <div className="flex items-center gap-2 px-1 py-3 text-sm text-gray-500">
-            <div className="i-svg-spinners:3-dots-fade text-lg text-gray-400" />
-            <span>Working…</span>
+          <div className="flex items-center gap-2.5 px-1 py-3 text-sm text-gray-500">
+            <div className="i-svg-spinners:90-ring-with-bg text-base text-[#2F6FED]" />
+            <span>Agent is working…</span>
           </div>
         )}
       </div>

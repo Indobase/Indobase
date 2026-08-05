@@ -1,9 +1,10 @@
 import { extractRelativePath } from '~/utils/diff';
+import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { workbenchStore } from '~/lib/stores/workbench';
 
 /**
  * Project source files from the workbench (excludes node_modules and binaries).
- * Used for framework detection on Vercel and similar hosts.
+ * Nested scaffolds are flattened so callers always see a root package.json when one exists.
  */
 export function collectWorkbenchSourceFiles(): Record<string, string> {
   const files = workbenchStore.files.get();
@@ -23,5 +24,5 @@ export function collectWorkbenchSourceFiles(): Record<string, string> {
     sourceFiles[relativePath] = dirent.content;
   }
 
-  return sourceFiles;
+  return normalizeProjectFilesRoot(sourceFiles).files;
 }

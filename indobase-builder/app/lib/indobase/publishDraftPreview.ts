@@ -1,15 +1,19 @@
 import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 import { collectBuildArtifactsViaServer } from '~/lib/indobase/requestServerBuild';
 import { validateGeneratedProjectContract } from '~/lib/indobase/generation-contract';
+import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import {
   setDraftPreviewBuilding,
   setDraftPreviewError,
   setDraftPreviewReady,
 } from '~/lib/stores/draft-preview';
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
+import type { FileMap } from '~/lib/stores/files';
 import { workbenchStore } from '~/lib/stores/workbench';
+import { buildService, workspaceService } from '~/lib/workspace';
 import { canQueueIndobaseDeployment } from '~/lib/indobase/studioApi';
 import { extractRelativePath } from '~/utils/diff';
+import { WORK_DIR } from '~/utils/constants';
 import { createScopedLogger } from '~/utils/logger';
 
 const logger = createScopedLogger('publishDraftPreview');
@@ -38,6 +42,25 @@ function collectWorkbenchSourceFiles(): Record<string, string> {
   return projectFiles;
 }
 
+/** Relative project files → FileMap keys under WORK_DIR for the server-build API. */
+function relativeFilesToFileMap(files: Record<string, string>): FileMap {
+  const map: FileMap = {};
+
+  for (const [relativePath, content] of Object.entries(files)) {
+    if (!relativePath || relativePath.includes('..')) {
+      continue;
+    }
+
+    map[`${WORK_DIR}/${relativePath}`] = {
+      type: 'file',
+      content,
+      isBinary: false,
+    };
+  }
+
+  return map;
+}
+
 /**
  * Server-build the current workbench and host a short-lived draft preview on Builder.
  * Does not publish to the project's live subdomain (avoids stomping production).
@@ -57,7 +80,8 @@ export async function publishDraftPreview(
     return { success: false, error };
   }
 
-  const sourceFiles = collectWorkbenchSourceFiles();
+  const rawFiles = collectWorkbenchSourceFiles();
+  const { files: sourceFiles, flattened, rootPrefix } = normalizeProjectFilesRoot(rawFiles);
   const contract = validateGeneratedProjectContract(sourceFiles);
 
   if (!contract.valid) {
@@ -67,16 +91,24 @@ export async function publishDraftPreview(
     return { success: false, error };
   }
 
+  if (flattened) {
+    logger.info(`Flattened nested project root "${rootPrefix}" for draft preview`);
+  }
+
   setDraftPreviewBuilding();
 
+  const snapshotId = workspaceService.headSnapshotId.get();
+  const buildId = buildService.startBuild(snapshotId);
+
   try {
-    const buildResult = await collectBuildArtifactsViaServer(connection, workbenchStore.files.get(), {
+    const buildResult = await collectBuildArtifactsViaServer(connection, relativeFilesToFileMap(sourceFiles), {
       // Relative base so draft iframe under /draft-preview/:id/ resolves assets.
       assetBase: './',
     });
 
     if (!buildResult.success || !buildResult.files) {
       const error = buildResult.error || 'Server build failed for draft preview';
+      buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
 
       return { success: false, error };
@@ -100,17 +132,20 @@ export async function publishDraftPreview(
 
     if (!response.ok || !payload.success || !payload.previewUrl) {
       const error = payload.error || `Draft preview store failed (${response.status})`;
+      buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
 
       return { success: false, error };
     }
 
-    setDraftPreviewReady(payload.previewUrl, payload.expiresAt);
+    buildService.finishBuild(buildId, { status: 'succeeded', outputRef: payload.previewUrl });
+    setDraftPreviewReady(payload.previewUrl, payload.expiresAt, { snapshotId, buildId });
     logger.info(`Draft preview ready at ${payload.previewUrl}`);
 
     return { success: true, previewUrl: payload.previewUrl };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Draft preview failed';
+    buildService.finishBuild(buildId, { status: 'failed', error: message });
     setDraftPreviewError(message);
     logger.error('Draft preview failed', error);
 

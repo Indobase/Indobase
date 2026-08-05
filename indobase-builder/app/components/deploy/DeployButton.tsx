@@ -196,10 +196,10 @@ export const DeployButton = () => {
             <div className="i-ph:android-logo w-5 h-5 text-[#34A853]" />
             <span className="mx-auto">
               {canQueueIndobaseMobileBuild(backendConnection)
-                ? 'Build Android bundle (web + mobile)'
+                ? 'Queue Play-ready Android AAB in Studio'
                 : mobileBuildsUrl
-                  ? 'Build Android bundle'
-                  : 'Open Studio for Android builds'}
+                  ? 'Open Studio Android / Play builds'
+                  : 'Open Studio for Android / Play builds'}
             </span>
           </DropdownMenu.Item>
 

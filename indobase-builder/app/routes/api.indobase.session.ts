@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@remix-run/node';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { parseCookies } from '~/lib/api/cookies';
 import { readBearerToken, resolveValidBuilderMcpToken } from '~/lib/indobase/builder-auth.server';
 import { verifyIndobaseBuilderMcpToken } from '~/lib/indobase/handoff.server';
@@ -11,23 +11,15 @@ type SessionBody = {
   mcpToken?: string;
 };
 
-export const action = async ({ request, context }: ActionFunctionArgs) => {
-  if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, { status: 405 });
-  }
-
-  let body: SessionBody = {};
-
-  try {
-    body = (await request.json()) as SessionBody;
-  } catch {
-    body = {};
-  }
-
+async function buildSessionResponse(
+  request: Request,
+  context: ActionFunctionArgs['context'] | LoaderFunctionArgs['context'],
+  bodyToken?: string,
+) {
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
   const cookies = parseCookies(request.headers.get('Cookie'));
   const validToken = await resolveValidBuilderMcpToken(
-    [body.mcpToken, readBearerToken(request), cookies[BUILDER_MCP_COOKIE]],
+    [bodyToken, readBearerToken(request), cookies[BUILDER_MCP_COOKIE]],
     env,
   );
 
@@ -63,4 +55,47 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
       },
     },
   );
+}
+
+/** GET: read session from cookie/bearer (no body). Avoids Remix "Unexpected Server Error" on probe GETs. */
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+  try {
+    return await buildSessionResponse(request, context);
+  } catch (error) {
+    console.error('[indobase/session] GET failed', error);
+    return json(
+      {
+        error: 'Invalid or expired Builder session token',
+        statusCode: 401,
+      },
+      { status: 401 },
+    );
+  }
+};
+
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+  if (request.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, { status: 405 });
+  }
+
+  let body: SessionBody = {};
+
+  try {
+    body = (await request.json()) as SessionBody;
+  } catch {
+    body = {};
+  }
+
+  try {
+    return await buildSessionResponse(request, context, body.mcpToken);
+  } catch (error) {
+    console.error('[indobase/session] POST failed', error);
+    return json(
+      {
+        error: 'Invalid or expired Builder session token',
+        statusCode: 401,
+      },
+      { status: 401 },
+    );
+  }
 };

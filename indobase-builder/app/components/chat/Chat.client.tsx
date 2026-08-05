@@ -42,7 +42,14 @@ import {
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
-import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
+import {
+  beginCodegenCommand,
+  commitWorkbenchFiles,
+  inferCodegenCommandMeta,
+  inferRepairCommandMeta,
+} from '~/lib/workspace';
+import { hasWebContainerBootFailed } from '~/lib/webcontainer';
+import { isServerPreviewMode, shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
 import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
@@ -61,7 +68,8 @@ import type { ToolCallAnnotation } from '~/types/context';
 import type { TextUIPart, FileUIPart, Attachment } from '@ai-sdk/ui-utils';
 import type { LlmErrorAlertType } from '~/types/actions';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
-import { beginInitialBuild, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { beginInitialBuild, beginScoping, failInitialBuild, initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/clarifying-answers';
 import { decideAutomaticPreviewRepair, MAX_AUTOMATIC_PREVIEW_REPAIRS } from '~/lib/indobase/automatic-repair';
 import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
 import { BUILDER_EVENTS } from '~/lib/analytics/events';
@@ -164,11 +172,19 @@ export const ChatImpl = memo(
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
     useEffect(() => {
+      // Keep landing vs workbench in sync when a chat is loaded (My Apps / hard nav remount).
+      const started = initialMessages.length > 0;
+      setChatStarted(started);
+      chatStore.setKey('started', started);
+    }, [initialMessages]);
+
+    useEffect(() => {
       if (!chatStarted) {
         return;
       }
 
-      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer());
+      // Warm WC in background — never block chat UI / My Apps navigation on boot.
+      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer().catch(() => undefined));
     }, [chatStarted]);
 
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -314,8 +330,33 @@ export const ChatImpl = memo(
       },
       onFinish: (message, response) => {
         const usage = response.usage;
-        const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
+        const annotations = Array.isArray(message.annotations) ? message.annotations : [];
+        const hasClarifying = annotations.some(
+          (entry) =>
+            entry &&
+            typeof entry === 'object' &&
+            (entry as { type?: string }).type === 'clarifyingQuestions',
+        );
+
         setData(undefined);
+
+        /*
+         * Intake turn: keep the Emergent questions card open; do not finalize or show the
+         * "agent working" generating banner as if codegen had started.
+         */
+        if (hasClarifying) {
+          initialBuildLifecycle.set('scoping');
+          setFakeLoading(false);
+          streamingState.set(false);
+          generationStartedAtRef.current = null;
+          void refreshBuilderPromptQuota();
+          orchestratorChatRetryRef.current = 0;
+
+          return;
+        }
+
+        const life = initialBuildLifecycle.get();
+        const isInitialBuild = life === 'generating' || life === 'finalizing' || life === 'scoping';
 
         if (isInitialBuild) {
           initialBuildLifecycle.set('finalizing');
@@ -364,6 +405,33 @@ export const ChatImpl = memo(
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
     });
+
+    /*
+     * First turn may start in `scoping`. When the server starts codegen (coder progress / plan),
+     * flip to generating so the Emergent working banner and finalize path engage.
+     */
+    useEffect(() => {
+      if (!Array.isArray(chatData) || initialBuildLifecycle.get() !== 'scoping') {
+        return;
+      }
+
+      const building = chatData.some((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return false;
+        }
+
+        const item = entry as { type?: string; label?: string };
+
+        return item.type === 'progress' && item.label === 'coder';
+      });
+
+      if (building) {
+        beginInitialBuild();
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+        });
+      }
+    }, [chatData]);
 
     useEffect(() => {
       if (provider.name !== HIDDEN_CHAT_PROVIDER.name) {
@@ -442,7 +510,10 @@ export const ChatImpl = memo(
 
           if (chatMode === 'build') {
             automaticPreviewRepairAttemptRef.current = 0;
-            beginInitialBuild();
+            workbenchStore.clearWorkspace();
+            workbenchStore.currentView.set('preview');
+            workbenchStore.showWorkbench.set(true);
+            beginScoping();
           }
 
           append({
@@ -494,7 +565,7 @@ export const ChatImpl = memo(
 
     useEffect(() => {
       chatStore.setKey('started', initialMessages.length > 0);
-    }, []);
+    }, [initialMessages]);
 
     useEffect(() => {
       processSampledMessages({
@@ -534,14 +605,18 @@ export const ChatImpl = memo(
         return;
       }
 
-      void import('~/lib/webcontainer').then(async ({ getWebcontainer }) => {
-        const container = await getWebcontainer();
-        await seedProjectEnvIfMissing(
-          (filePath, content) => container.fs.writeFile(filePath, content),
-          (filePath) => container.fs.readFile(filePath, 'utf-8'),
-          indobaseConn,
-        );
-      });
+      void import('~/lib/webcontainer')
+        .then(async ({ getWebcontainer }) => {
+          const container = await getWebcontainer();
+          await seedProjectEnvIfMissing(
+            (filePath, content) => container.fs.writeFile(filePath, content),
+            (filePath) => container.fs.readFile(filePath, 'utf-8'),
+            indobaseConn,
+          );
+        })
+        .catch(() => {
+          // WC timeout / draft-preview fallback is expected; never leave an unhandled rejection (BUILDER-1).
+        });
     }, [
       indobaseConn.connectionSource,
       indobaseConn.credentials?.anonKey,
@@ -632,6 +707,9 @@ export const ChatImpl = memo(
       stop();
       setFakeLoading(false);
       streamingState.set(false);
+
+      // stop() often leaves useChat isLoading=true; unlock Working/Stop immediately.
+      setStreamStalled(true);
       failInitialBuild();
       void workbenchStore.abortAllActions();
 
@@ -672,19 +750,54 @@ export const ChatImpl = memo(
           }
 
           /*
-           * No WebContainer on this host (no API key) — finalizeCodegen boots it, so it can only
-           * fail here. Build on the server and host the result instead of burning a boot attempt
-           * and then recovering from the exception.
+           * No WebContainer on this host (no API key) — or WC already latched failed this session.
+           * Prefer server draft instead of burning another boot/finalize attempt.
            */
-          if (isServerPreviewMode()) {
+          if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed()) || isServerPreviewMode()) {
             const draft = await publishDraftPreview(indobaseConnection.get());
 
             if (draft.success && draft.previewUrl) {
+              const wasRepair = automaticPreviewRepairAttemptRef.current > 0;
               setLlmErrorAlert(undefined);
+              automaticPreviewRepairAttemptRef.current = 0;
+
+              const meta = wasRepair
+                ? inferRepairCommandMeta()
+                : inferCodegenCommandMeta({ isInitialBuild, scaffolded: isInitialBuild });
+
+              void commitWorkbenchFiles({
+                files: workbenchStore.files.get(),
+                ...meta,
+              });
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
               }
+
+              return true;
+            }
+
+            const repair = decideAutomaticPreviewRepair({
+              error: new Error(
+                draft.error ||
+                  'Server draft preview failed. Write a complete root-level package.json (filePath="package.json"), index.html, app entry, then npm install and npm run dev.',
+              ),
+              completedAttempts: automaticPreviewRepairAttemptRef.current,
+              files: workbenchStore.files.get(),
+              maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+            });
+
+            if (repair.shouldRepair) {
+              automaticPreviewRepairAttemptRef.current = repair.nextAttempt;
+              setLlmErrorAlert(undefined);
+              chatStore.setKey('aborted', false);
+              setStreamStalled(false);
+              initialBuildLifecycle.set('finalizing');
+              beginCodegenCommand({ ...inferRepairCommandMeta() });
+              append({
+                role: 'user',
+                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
+              });
 
               return true;
             }
@@ -699,11 +812,18 @@ export const ChatImpl = memo(
           }
 
           while (true) {
-            // Start server draft in parallel with WebContainer finalize — draft is usually faster.
+            /*
+             * Draft runs in parallel for a faster iframe, but do NOT mark the build lifecycle
+             * preview-ready until finalize succeeds (or draft recovers a non-repairable failure).
+             * setDraftPreviewReady still paints the draft URL as soon as the server build finishes.
+             */
             const draftPromise = publishDraftPreview(indobaseConnection.get());
 
             try {
-              await finalizeCodegen();
+              await finalizeCodegen({
+                isInitialBuild,
+                isRepair: automaticPreviewRepairAttemptRef.current > 0,
+              });
               automaticPreviewRepairAttemptRef.current = 0;
               setLlmErrorAlert(undefined);
 
@@ -717,10 +837,21 @@ export const ChatImpl = memo(
             } catch (error) {
               logger.error('Post-codegen finalize failed', error);
 
+              const repair = decideAutomaticPreviewRepair({
+                error,
+                completedAttempts: automaticPreviewRepairAttemptRef.current,
+                files: workbenchStore.files.get(),
+                maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
+              });
+
               try {
                 const draft = await draftPromise;
 
-                if (draft.success && draft.previewUrl) {
+                /*
+                 * Draft iframe may already be visible. Only treat the build as lifecycle-ready when
+                 * finalize does not need a model repair turn (syntax/design still repair).
+                 */
+                if (draft.success && draft.previewUrl && !repair.shouldRepair) {
                   automaticPreviewRepairAttemptRef.current = 0;
                   setLlmErrorAlert(undefined);
 
@@ -733,13 +864,6 @@ export const ChatImpl = memo(
               } catch (draftError) {
                 logger.warn('Draft preview recovery failed', draftError);
               }
-
-              const repair = decideAutomaticPreviewRepair({
-                error,
-                completedAttempts: automaticPreviewRepairAttemptRef.current,
-                files: workbenchStore.files.get(),
-                maxAttempts: MAX_AUTOMATIC_PREVIEW_REPAIRS,
-              });
 
               /*
                * Transient preview/network flakiness is not model-repairable and does not consume
@@ -782,6 +906,7 @@ export const ChatImpl = memo(
                 chatStore.setKey('aborted', false);
                 setStreamStalled(false);
                 initialBuildLifecycle.set('finalizing');
+                beginCodegenCommand({ ...inferRepairCommandMeta() });
                 append({
                   role: 'user',
                   content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
@@ -852,22 +977,24 @@ export const ChatImpl = memo(
         stop();
         void workbenchStore.abortAllActions();
 
+        /*
+         * stop() often leaves useChat isLoading=true on a dead SSE. Always unlock Working/Stop
+         * here — including when build-mode finalize later recovers — otherwise the composer stays
+         * locked forever after a successful salvage.
+         */
+        setFakeLoading(false);
+        streamingState.set(false);
+        setStreamStalled(true);
+
         if (chatMode === 'build') {
           const isInitialBuild = ['generating', 'finalizing'].includes(initialBuildLifecycle.get());
           logger.warn('Build stream stalled; attempting finalize + bounded automatic repair');
           chatStore.setKey('aborted', false);
-          void finalizeBuildAndMaybeRepair(isInitialBuild).then((recovered) => {
-            if (!recovered) {
-              setStreamStalled(true);
-            }
-          });
+          void finalizeBuildAndMaybeRepair(isInitialBuild);
 
           return;
         }
 
-        setFakeLoading(false);
-        streamingState.set(false);
-        setStreamStalled(true);
         chatStore.setKey('aborted', true);
         setLlmErrorAlert({
           type: 'error',
@@ -1000,8 +1127,10 @@ export const ChatImpl = memo(
           orchestratorChatRetryRef.current += 1;
           setLlmErrorAlert(undefined);
 
+          // `description` here is the ChatProps string (from useStore), not the nanostore atom —
+          // calling `.get()` throws TypeError and aborts orchestrator retry (BUILDER-3).
           const projectGoal =
-            description.get()?.trim() ||
+            description?.trim() ||
             messages
               .find(
                 (entry) =>
@@ -1262,7 +1391,11 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         setFakeLoading(true);
 
         if (chatMode === 'build') {
-          beginInitialBuild();
+          // Fresh chat must not inherit prior project's workbench files into LLM context / WC.
+          workbenchStore.clearWorkspace();
+          workbenchStore.currentView.set('preview');
+          workbenchStore.showWorkbench.set(true);
+          beginScoping();
         }
 
         try {
@@ -1299,6 +1432,22 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
 
       if (error != null) {
         setMessages(messages.slice(0, -1));
+      }
+
+      if (chatMode === 'build' && chatStarted) {
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: false, scaffolded: false }),
+        });
+      }
+
+      if (
+        chatMode === 'build' &&
+        (finalMessageContent.includes(CLARIFYING_ANSWERS_MARKER) || initialBuildLifecycle.get() === 'scoping')
+      ) {
+        beginInitialBuild();
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+        });
       }
 
       const modifiedFiles = workbenchStore.getModifiedFiles();
@@ -1401,7 +1550,12 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         input={input}
         showChat={showChat}
         chatStarted={chatStarted}
-        isStreaming={(isLoading || fakeLoading) && !streamStalled}
+        /*
+         * Stop / Working… track the live SSE only. Post-stream finalize (fakeLoading) used to
+         * keep both latched; if finalize hung or stop() left isLoading=true after a dead stream,
+         * the composer stayed stuck with a red Stop forever.
+         */
+        isStreaming={isLoading && !streamStalled}
         onStreamingChange={(streaming) => {
           streamingState.set(streaming);
         }}

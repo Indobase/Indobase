@@ -7,10 +7,30 @@ import http from 'node:http';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
+import * as Sentry from '@sentry/remix';
 
 // Vite SSR bundles can ship stream polyfills without Node's Buffer global.
 globalThis.Buffer = Buffer;
 globalThis.process = process;
+
+const sentryDsn = (process.env.SENTRY_DSN || process.env.VITE_SENTRY_DSN || '').trim();
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production').trim(),
+    tracesSampleRate: 0.001,
+    initialScope: { tags: { service: 'builder' } },
+  });
+  process.on('uncaughtException', (err) => {
+    console.error(err);
+    Sentry.captureException(err);
+    void Sentry.flush(2000).finally(() => process.exit(1));
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error(reason);
+    Sentry.captureException(reason);
+  });
+}
 
 function validateProductionEnv() {
   if (process.env.NODE_ENV !== 'production') {
@@ -103,6 +123,10 @@ async function serveAsset(urlPath, assetsRoot) {
   }
 
   headers.set('Content-Length', String(stat.size));
+  // Hashed Vite assets are immutable; HTML entry is no-store via entry.server.tsx.
+  if (urlPath.includes('/assets/') && /-[A-Za-z0-9_-]{6,}\.(js|css)$/.test(urlPath)) {
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
   // Match HTML document isolation so credentialless COEP stays consistent for subresources.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');

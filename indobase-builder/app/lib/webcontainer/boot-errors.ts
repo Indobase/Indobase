@@ -12,15 +12,56 @@ export function isSingletonBootError(error: unknown): boolean {
  */
 export function isFatalBootConfigError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /WEBCONTAINER_API_KEY|API key is not configured|not allowlisted|allowlist this domain/i.test(message);
+  return /WEBCONTAINER_API_KEY|API key is not configured|not allowlisted|allowlist this domain|headless 404|rejected this Builder host/i.test(
+    message,
+  );
+}
+
+/**
+ * Normalize opaque / timeout boot failures into copy that points founders at server draft preview
+ * instead of implying the whole Builder is broken.
+ */
+export function toUserFacingBootError(error: unknown): string {
+  const message =
+    error instanceof Error ? error.message : String(error || 'Indobase Builder workspace failed to start.');
+
+  if (/timed out|did not become ready/i.test(message)) {
+    if (/server draft/i.test(message)) {
+      return message;
+    }
+
+    return `${message.replace(/\s+$/, '')} Preview will use the server draft build instead. Click Reset Terminal (↻) to retry WebContainer.`;
+  }
+
+  if (isFatalBootConfigError(error)) {
+    return message;
+  }
+
+  if (/cross-origin isolated|SharedArrayBuffer|Redirect Blocker|strip COOP/i.test(message)) {
+    return message;
+  }
+
+  return `${message} Preview will use the server draft build when WebContainer is unavailable.`;
 }
 
 export function shouldSuggestExtensionDisable(errorMessage: string): boolean {
-  if (/API key|allowlist|headless 404|WEBCONTAINER_API_KEY/i.test(errorMessage)) {
+  if (/API key|allowlist|headless 404|WEBCONTAINER_API_KEY|server draft/i.test(errorMessage)) {
     return false;
   }
 
   return /Redirect Blocker|cross-origin isolated|Cannot reach the StackBlitz|SharedArrayBuffer|strip COOP|ad-block/i.test(
     errorMessage,
+  );
+}
+
+/**
+ * Expected soft-failure when WC boot times out and Builder falls back to server draft preview.
+ * Safe to drop from Sentry — Preview still works; Reset Terminal retries WC.
+ */
+export function isExpectedWebContainerFallbackError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /workspace failed to start \(timed out\)/i.test(message) ||
+    (/timed out|did not become ready/i.test(message) && /server draft|Reset Terminal/i.test(message))
   );
 }

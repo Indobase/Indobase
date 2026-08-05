@@ -582,50 +582,67 @@ export class FilesStore {
     this.#modifiedFiles.clear();
   }
 
+  /** Clear the in-memory file map (chat switch / fresh build). Does not touch WebContainer. */
+  clearFiles() {
+    this.#modifiedFiles.clear();
+    this.files.set({});
+  }
+
   async saveFile(filePath: string, content: string) {
-    const webcontainer = await this.#webcontainer;
+    const oldContent = this.getFile(filePath)?.content;
+
+    if (!oldContent && oldContent !== '') {
+      unreachable('Expected content to be defined');
+    }
+
+    if (!this.#modifiedFiles.has(filePath)) {
+      this.#modifiedFiles.set(filePath, oldContent);
+    }
+
+    const currentFile = this.files.get()[filePath];
+    const isLocked = currentFile?.type === 'file' ? currentFile.isLocked : false;
+
+    // Keep the in-memory workbench authoritative — server draft preview reads from here.
+    this.files.setKey(filePath, {
+      type: 'file',
+      content,
+      isBinary: false,
+      isLocked,
+    });
 
     try {
+      const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof filePath !== 'string') {
+        return;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid file path, write '${relativePath}'`);
       }
 
-      const oldContent = this.getFile(filePath)?.content;
-
-      if (!oldContent && oldContent !== '') {
-        unreachable('Expected content to be defined');
-      }
-
       await webcontainer.fs.writeFile(relativePath, content);
-
-      if (!this.#modifiedFiles.has(filePath)) {
-        this.#modifiedFiles.set(filePath, oldContent);
-      }
-
-      // Get the current lock state before updating
-      const currentFile = this.files.get()[filePath];
-      const isLocked = currentFile?.type === 'file' ? currentFile.isLocked : false;
-
-      // we immediately update the file and don't rely on the `change` event coming from the watcher
-      this.files.setKey(filePath, {
-        type: 'file',
-        content,
-        isBinary: false,
-        isLocked,
-      });
-
       logger.info('File updated');
     } catch (error) {
-      logger.error('Failed to update file content\n\n', error);
-
-      throw error;
+      logger.warn('WebContainer save skipped; kept in-memory workbench copy', error);
     }
   }
 
   async #init() {
-    const webcontainer = await this.#webcontainer;
+    let webcontainer: WebContainer;
+
+    try {
+      webcontainer = await this.#webcontainer;
+    } catch (error) {
+      /*
+       * WC boot can fail (StackBlitz outage, extensions, network). Keep the in-memory map usable
+       * for chat/codegen/server draft — do not leave an uncaught rejection storm on every idle boot.
+       */
+      logger.warn('FilesStore WebContainer init skipped; using in-memory workbench only', error);
+      return;
+    }
 
     // Clean up any files that were previously deleted
     this.#cleanupDeletedFiles();
@@ -822,12 +839,37 @@ export class FilesStore {
   }
 
   async createFile(filePath: string, content: string | Uint8Array = '') {
-    const webcontainer = await this.#webcontainer;
+    const isBinary = content instanceof Uint8Array;
+
+    if (isBinary) {
+      const base64Content = Buffer.from(content).toString('base64');
+      this.files.setKey(filePath, {
+        type: 'file',
+        content: base64Content,
+        isBinary: true,
+        isLocked: false,
+      });
+      this.#modifiedFiles.set(filePath, base64Content);
+    } else {
+      this.files.setKey(filePath, {
+        type: 'file',
+        content: content as string,
+        isBinary: false,
+        isLocked: false,
+      });
+      this.#modifiedFiles.set(filePath, content as string);
+    }
 
     try {
+      const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof filePath !== 'string') {
+        return true;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid file path, create '${relativePath}'`);
       }
 
@@ -837,70 +879,58 @@ export class FilesStore {
         await webcontainer.fs.mkdir(dirPath, { recursive: true });
       }
 
-      const isBinary = content instanceof Uint8Array;
-
       if (isBinary) {
         await webcontainer.fs.writeFile(relativePath, Buffer.from(content));
-
-        const base64Content = Buffer.from(content).toString('base64');
-        this.files.setKey(filePath, {
-          type: 'file',
-          content: base64Content,
-          isBinary: true,
-          isLocked: false,
-        });
-
-        this.#modifiedFiles.set(filePath, base64Content);
       } else {
         const contentToWrite = (content as string).length === 0 ? ' ' : content;
         await webcontainer.fs.writeFile(relativePath, contentToWrite);
-
-        this.files.setKey(filePath, {
-          type: 'file',
-          content: content as string,
-          isBinary: false,
-          isLocked: false,
-        });
-
-        this.#modifiedFiles.set(filePath, content as string);
       }
 
       logger.info(`File created: ${filePath}`);
-
       return true;
     } catch (error) {
-      logger.error('Failed to create file\n\n', error);
-      throw error;
+      logger.warn(`WebContainer create skipped for ${filePath}; kept in-memory copy`, error);
+      return true;
     }
   }
 
   async createFolder(folderPath: string) {
-    const webcontainer = await this.#webcontainer;
+    this.files.setKey(folderPath, { type: 'folder' });
 
     try {
+      const webcontainer = await this.#webcontainer;
+
+      if (!webcontainer.workdir || typeof folderPath !== 'string') {
+        return true;
+      }
+
       const relativePath = path.relative(webcontainer.workdir, folderPath);
 
-      if (!relativePath) {
+      if (!relativePath || typeof relativePath !== 'string') {
         throw new Error(`EINVAL: invalid folder path, create '${relativePath}'`);
       }
 
       await webcontainer.fs.mkdir(relativePath, { recursive: true });
-
-      this.files.setKey(folderPath, { type: 'folder' });
-
       logger.info(`Folder created: ${folderPath}`);
-
       return true;
     } catch (error) {
-      logger.error('Failed to create folder\n\n', error);
-      throw error;
+      logger.warn(`WebContainer mkdir skipped for ${folderPath}; kept in-memory folder`, error);
+      return true;
     }
   }
 
   async deleteFile(filePath: string) {
-    const webcontainer = await this.#webcontainer;
+    this.#deletedPaths.add(filePath);
+    this.files.setKey(filePath, undefined);
+
+    if (this.#modifiedFiles.has(filePath)) {
+      this.#modifiedFiles.delete(filePath);
+    }
+
+    this.#persistDeletedPaths();
 
     try {
+      const webcontainer = await this.#webcontainer;
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
       if (!relativePath) {
@@ -908,30 +938,35 @@ export class FilesStore {
       }
 
       await webcontainer.fs.rm(relativePath);
-
-      this.#deletedPaths.add(filePath);
-
-      this.files.setKey(filePath, undefined);
-
-      if (this.#modifiedFiles.has(filePath)) {
-        this.#modifiedFiles.delete(filePath);
-      }
-
-      this.#persistDeletedPaths();
-
       logger.info(`File deleted: ${filePath}`);
-
       return true;
     } catch (error) {
-      logger.error('Failed to delete file\n\n', error);
-      throw error;
+      logger.warn(`WebContainer delete skipped for ${filePath}; removed from in-memory map`, error);
+      return true;
     }
   }
 
   async deleteFolder(folderPath: string) {
-    const webcontainer = await this.#webcontainer;
+    this.#deletedPaths.add(folderPath);
+    this.files.setKey(folderPath, undefined);
+
+    const allFiles = this.files.get();
+
+    for (const [childPath, dirent] of Object.entries(allFiles)) {
+      if (childPath.startsWith(folderPath + '/')) {
+        this.files.setKey(childPath, undefined);
+        this.#deletedPaths.add(childPath);
+
+        if (dirent?.type === 'file' && this.#modifiedFiles.has(childPath)) {
+          this.#modifiedFiles.delete(childPath);
+        }
+      }
+    }
+
+    this.#persistDeletedPaths();
 
     try {
+      const webcontainer = await this.#webcontainer;
       const relativePath = path.relative(webcontainer.workdir, folderPath);
 
       if (!relativePath) {
@@ -939,33 +974,11 @@ export class FilesStore {
       }
 
       await webcontainer.fs.rm(relativePath, { recursive: true });
-
-      this.#deletedPaths.add(folderPath);
-
-      this.files.setKey(folderPath, undefined);
-
-      const allFiles = this.files.get();
-
-      for (const [path, dirent] of Object.entries(allFiles)) {
-        if (path.startsWith(folderPath + '/')) {
-          this.files.setKey(path, undefined);
-
-          this.#deletedPaths.add(path);
-
-          if (dirent?.type === 'file' && this.#modifiedFiles.has(path)) {
-            this.#modifiedFiles.delete(path);
-          }
-        }
-      }
-
-      this.#persistDeletedPaths();
-
       logger.info(`Folder deleted: ${folderPath}`);
-
       return true;
     } catch (error) {
-      logger.error('Failed to delete folder\n\n', error);
-      throw error;
+      logger.warn(`WebContainer rmdir skipped for ${folderPath}; removed from in-memory map`, error);
+      return true;
     }
   }
 

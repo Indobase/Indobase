@@ -13,6 +13,9 @@ describe('injectPlannerPlan', () => {
     expect(updated[0].content).toContain('<agent_plan>');
     expect(updated[0].content).toContain('Create Vite app');
     expect(updated[0].content).toContain('Build a todo app');
+    expect(updated[0].content).toContain('obsolete');
+    expect(updated[0].content).toContain('Do NOT write any code');
+    expect(updated[0].content).toContain('filePath="package.json"');
   });
 });
 
@@ -36,9 +39,22 @@ describe('extractPlanSteps', () => {
     expect(extractPlanSteps(plan)).toHaveLength(7);
   });
 
-  it('returns nothing for an empty or prose-only plan', () => {
-    expect(extractPlanSteps('')).toEqual([]);
-    expect(extractPlanSteps('Just some prose with no list.')).toEqual([]);
+  it('filters Model/Provider lines that naive splits would have promoted to steps', () => {
+    const contaminated = [
+      '## Build steps',
+      '1. Create a minimal Vite + React + TypeScript app',
+      '2. Implement: [Model: qwen/qwen3.5-flash-02-23]',
+      '[Provider: OpenRouter]',
+      'The "path" argument must be of type string.',
+      '3. Keep files few; apply a non-purple industry-fit palette',
+      '4. npm install then npm run dev in the same response',
+    ].join('\n');
+
+    expect(extractPlanSteps(contaminated)).toEqual([
+      'Create a minimal Vite + React + TypeScript app',
+      'Keep files few; apply a non-purple industry-fit palette',
+      'npm install then npm run dev in the same response',
+    ]);
   });
 });
 

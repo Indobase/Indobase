@@ -1,14 +1,8 @@
-import { configureAPIKey } from '@webcontainer/api';
-
-declare global {
-  interface Window {
-    __INDOBASE_BUILDER_PUBLIC__?: {
-      webcontainerApiKey?: string;
-    };
-  }
-}
+import { auth, configureAPIKey } from '@webcontainer/api';
+import { getBuilderPublicEnv } from './public-env';
 
 let configuredKey: string | null = null;
+let configuredAuthKey: string | null = null;
 
 function isLocalHostname(hostname: string): boolean {
   return (
@@ -20,21 +14,47 @@ function isLocalHostname(hostname: string): boolean {
 }
 
 export function resolveWebContainerApiKey(): string {
-  if (typeof window !== 'undefined') {
-    const fromWindow = window.__INDOBASE_BUILDER_PUBLIC__?.webcontainerApiKey?.trim();
-    if (fromWindow) {
-      return fromWindow;
-    }
+  const fromWindow = getBuilderPublicEnv().webcontainerApiKey;
+  if (fromWindow) {
+    return fromWindow;
   }
 
   const fromVite = (import.meta.env.VITE_WEBCONTAINER_API_KEY as string | undefined)?.trim();
   return fromVite || '';
 }
 
+function resolveWebContainerAuthScope(): string {
+  const fromVite = (import.meta.env.VITE_WEBCONTAINER_AUTH_SCOPE as string | undefined)?.trim();
+  return fromVite ?? '';
+}
+
+function ensureWebContainerAuthInitialized(clientId: string): void {
+  if (configuredAuthKey === clientId) {
+    return;
+  }
+
+  const result = auth.init({
+    clientId,
+    scope: resolveWebContainerAuthScope(),
+  });
+
+  if (result && typeof result === 'object' && 'status' in result && result.status === 'auth-failed') {
+    console.warn('[webcontainer] auth.init failed', result.error, result.description);
+  }
+
+  configuredAuthKey = clientId;
+}
+
 /**
  * Production hosts (builder.indobase.in / .fun) require a StackBlitz WebContainer API key
  * with the domain allowlisted. Without it, stackblitz.com/headless returns 404 and preview dies.
  * Localhost is exempt.
+ *
+ * StackBlitz requires both configureAPIKey and auth.init before WebContainer.boot.
+ *
+ * Prefer calling after `whenBuilderPublicEnvReady()` so the sync/async bootstrap can populate
+ * `window.__INDOBASE_BUILDER_PUBLIC__` (health `webcontainerApiKey: ok` only means the *server*
+ * has the env var — not that the browser has it yet).
  */
 export function ensureWebContainerApiKeyConfigured(): void {
   const key = resolveWebContainerApiKey();
@@ -49,12 +69,12 @@ export function ensureWebContainerApiKeyConfigured(): void {
     return;
   }
 
-  if (configuredKey === key) {
-    return;
+  if (configuredKey !== key) {
+    configureAPIKey(key);
+    configuredKey = key;
   }
 
-  configureAPIKey(key);
-  configuredKey = key;
+  ensureWebContainerAuthInitialized(key);
 }
 
 export function isMissingWebContainerApiKeyError(error: unknown): boolean {

@@ -64,25 +64,11 @@ import { logStore } from './lib/stores/logs';
 import { hydrateClientPrefsFromStorage } from './lib/stores/hydrateClientPrefs';
 import { restoreBuilderSessionOnLoad, startBuilderSessionKeeper } from './lib/indobase/builder-auth.client';
 import { warmWebContainer } from './lib/webcontainer';
+import {
+  BUILDER_PUBLIC_ENV_SYNC_BOOTSTRAP,
+  fetchBuilderPublicEnv,
+} from './lib/webcontainer/public-env';
 import { PostHogAnalytics } from './components/analytics/PostHogAnalytics.client';
-
-async function hydrateBuilderPublicEnv(): Promise<void> {
-  try {
-    const response = await fetch('/api/runtime-public-env', { credentials: 'same-origin' });
-
-    if (!response.ok) {
-      return;
-    }
-
-    const data = (await response.json()) as { webcontainerApiKey?: string };
-    window.__INDOBASE_BUILDER_PUBLIC__ = {
-      ...(window.__INDOBASE_BUILDER_PUBLIC__ || {}),
-      webcontainerApiKey: data.webcontainerApiKey || '',
-    };
-  } catch (error) {
-    console.warn('Failed to load Builder public runtime env', error);
-  }
-}
 
 export default function App() {
   useEffect(() => {
@@ -113,8 +99,8 @@ export default function App() {
         logStore.logError('Failed to initialize debug logging', error);
       });
 
-    // Load StackBlitz client key before warming WebContainer (required on prod hosts).
-    void hydrateBuilderPublicEnv().finally(() => {
+    // Refresh public env (sync <head> bootstrap usually already set the WebContainer key).
+    void fetchBuilderPublicEnv().finally(() => {
       warmWebContainer();
     });
 
@@ -155,6 +141,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
         <script dangerouslySetInnerHTML={{ __html: inlineThemeCode }} />
+        {/* Sync WebContainer client key before route modules boot StackBlitz (health≠browser). */}
+        <script dangerouslySetInnerHTML={{ __html: BUILDER_PUBLIC_ENV_SYNC_BOOTSTRAP }} />
       </head>
       <body suppressHydrationWarning>
         <ClientOnly fallback={null}>{() => <PostHogAnalytics />}</ClientOnly>

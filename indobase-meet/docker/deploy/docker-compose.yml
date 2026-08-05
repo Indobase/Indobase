@@ -176,6 +176,8 @@ services:
       JWT_APP_SECRET: ${JWT_APP_SECRET:-}
       MEET_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     networks:
       - meet_net
       - traefik_public

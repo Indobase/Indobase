@@ -24,10 +24,14 @@ import {
 import { proxyStudioDomainsApi } from './studio-proxy.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { renderDomainsWelcomeHtml } from './welcome.js'
+import { bridgeSentryOnError, initBridgeSentry } from './sentry.js'
+
+initBridgeSentry('domains-bridge')
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('domains-bridge'))
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const bridgeDir = dirname(fileURLToPath(import.meta.url))

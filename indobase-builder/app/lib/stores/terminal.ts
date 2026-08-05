@@ -1,8 +1,8 @@
 import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { atom, type WritableAtom } from 'nanostores';
 import type { ITerminal } from '~/types/terminal';
-import { getWebcontainerWithRetry, resetWebContainerBoot } from '~/lib/webcontainer';
-import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
+import { getWebcontainerWithRetry, hasWebContainerBootFailed, resetWebContainerBoot } from '~/lib/webcontainer';
+import { shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { newBoltShellProcess, newShellProcess } from '~/utils/shell';
 import { coloredText } from '~/utils/terminal';
 
@@ -77,12 +77,13 @@ export class TerminalStore {
      * attach to, so attempting it only produced a retry-then-fail sequence that read as a broken
      * product. Say what this host does instead — previews still work, they are built server-side.
      */
-    if (isServerPreviewMode()) {
-      terminal.write(coloredText.cyan('Server preview mode\n'));
+    if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
+      terminal.write(coloredText.cyan('Server draft preview mode\n'));
       terminal.write(
         coloredText.dim(
-          'This host builds your app on the Indobase Builder server and hosts the result, so the\n' +
-            'in-browser terminal is unavailable. Previews still appear in the Preview tab.\n',
+          'WebContainer is unavailable in this tab, so Indobase Builder uses the server draft\n' +
+            'preview instead. Previews still appear in the Preview tab. Click Reset Terminal (↻)\n' +
+            'to retry the in-browser workspace.\n',
         ),
       );
 

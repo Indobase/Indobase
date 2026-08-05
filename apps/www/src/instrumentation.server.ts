@@ -1,6 +1,16 @@
 import * as Sentry from '@sentry/sveltekit';
 
-Sentry.init({
-    dsn: 'https://27d41dc8bb67b596f137924ab8599e59@o1063647.ingest.us.sentry.io/4507497727000576',
-    tracesSampleRate: 1.0
-});
+// Server process covers both marketing and /docs; tag as website.
+// Docs-route client events use PUBLIC_SENTRY_DSN_DOCS (see hooks.client.ts).
+const dsn = (process.env.SENTRY_DSN || process.env.PUBLIC_SENTRY_DSN || '').trim();
+
+if (dsn) {
+    Sentry.init({
+        dsn,
+        environment: (process.env.SENTRY_ENVIRONMENT || process.env.PUBLIC_SENTRY_ENVIRONMENT || 'production').trim(),
+        tracesSampleRate: 0.001,
+        enableLogs: true,
+        integrations: [Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] })],
+        initialScope: { tags: { service: 'website' } }
+    });
+}

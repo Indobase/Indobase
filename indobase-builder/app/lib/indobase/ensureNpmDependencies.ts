@@ -66,11 +66,25 @@ export type EnsureNpmDependenciesResult = {
   success: boolean;
 };
 
+/** Process-wide lock so ActionRunner early-start and finalizeCodegen never double-install. */
+let sharedEnsurePromise: Promise<EnsureNpmDependenciesResult> | null = null;
+
 /**
  * Ensure package.json projects have an installed toolchain before start/build.
+ * Concurrent callers share one in-flight install.
  * Pass the ActionRunner WebContainer when available so tests and the shell share state.
  */
 export async function ensureNpmDependencies(container?: ContainerFs): Promise<EnsureNpmDependenciesResult> {
+  if (!sharedEnsurePromise) {
+    sharedEnsurePromise = ensureNpmDependenciesUnlocked(container).finally(() => {
+      sharedEnsurePromise = null;
+    });
+  }
+
+  return sharedEnsurePromise;
+}
+
+async function ensureNpmDependenciesUnlocked(container?: ContainerFs): Promise<EnsureNpmDependenciesResult> {
   const wc = await resolveContainer(container);
 
   if (!(await hasPackageJson(wc))) {
@@ -94,8 +108,35 @@ export async function ensureNpmDependencies(container?: ContainerFs): Promise<En
     }),
   );
 
-  const exitCode = await installProcess.exit;
+  const INSTALL_TIMEOUT_MS = 180_000;
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+
+    try {
+      installProcess.kill();
+    } catch {
+      // ignore — process may already have exited
+    }
+  }, INSTALL_TIMEOUT_MS);
+
+  let exitCode: number;
+
+  try {
+    exitCode = await installProcess.exit;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   await outputPromise.catch(() => undefined);
+
+  if (timedOut) {
+    return {
+      success: false,
+      output,
+      error: `npm install timed out after ${INSTALL_TIMEOUT_MS / 1000}s`,
+    };
+  }
 
   if (exitCode !== 0) {
     return {

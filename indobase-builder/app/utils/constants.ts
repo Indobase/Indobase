@@ -18,7 +18,7 @@ export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
  * `wrapStudioContext` in ~/lib/indobase/studio-database-prompt.
  */
 export const STUDIO_CONTEXT_REGEX = /<indobase_studio_context>[\s\S]*?<\/indobase_studio_context>\n*/g;
-/** Default discuss/chat model — OpenRouter free tier (Build codegen uses fast Flash server-side). */
+/** Default discuss/chat model — OpenRouter free tier (Build codegen uses Inkling server-side). */
 export const DEFAULT_MODEL = DEFAULT_OPENROUTER_CODING_MODEL;
 /** OpenRouter free vision model when the user attaches screenshots/images. */
 export const VISION_MODEL = OPENROUTER_FREE_VISION_MODEL.name;

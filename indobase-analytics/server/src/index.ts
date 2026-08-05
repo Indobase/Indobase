@@ -2,9 +2,17 @@ import cluster from "node:cluster";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, {
+  type FastifyError,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from "fastify";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { initAnalyticsServerSentry, Sentry } from "./sentry.js";
+
+initAnalyticsServerSentry();
 import {
   adminMoveSite,
   collectTelemetry,
@@ -271,6 +279,16 @@ const server = Fastify({
   maxParamLength: 1500,
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024, // 10MB limit for session replay data
+});
+
+server.setErrorHandler((error: FastifyError, request, reply) => {
+  Sentry.captureException(error);
+  request.log.error({ err: error }, "Unhandled request error");
+  if (reply.sent) return;
+  const statusCode = typeof error.statusCode === "number" ? error.statusCode : 500;
+  reply.status(statusCode).send({
+    error: statusCode >= 500 ? "Internal Server Error" : error.message || "Request error",
+  });
 });
 
 registerRequestLogging(server);

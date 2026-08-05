@@ -34,6 +34,7 @@ import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
 import { MyAppsList } from '~/components/chat/MyAppsList.client';
 import { ChatPaneErrorBoundary } from './ChatPaneErrorBoundary';
+import { AgentWorkingBanner } from './AgentWorkingBanner';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -607,7 +608,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <div
           className={classNames('flex h-full w-full flex-col overflow-y-auto lg:flex-row', {
             'bg-transparent': !chatStarted,
-            'bg-[#F4F7FA] p-2 md:p-3': chatStarted,
+            'bg-[#EEF1F5] p-2 md:p-3': chatStarted,
           })}
         >
           <div
@@ -615,7 +616,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               styles.Chat,
               'flex h-full flex-grow flex-col lg:min-w-[var(--chat-min-width)]',
               chatStarted
-                ? 'overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5'
+                ? 'overflow-hidden rounded-2xl bg-[#F7F8FA] shadow-sm ring-1 ring-black/5'
                 : '',
             )}
           >
@@ -658,11 +659,12 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <ScrollToBottom />
                 </StickToBottom.Content>
                 <div
-                  className={classNames('z-prompt mx-auto mb-4 flex w-full max-w-chat flex-col gap-2', {
+                  className={classNames('z-prompt mx-auto mb-4 flex w-full max-w-chat flex-col gap-2.5', {
                     'sticky bottom-2': chatStarted,
                   })}
                 >
                   {alertStack}
+                  <AgentWorkingBanner />
                   {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                   {promptComposer()}
                 </div>

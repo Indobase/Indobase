@@ -98,6 +98,9 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Indobase Email}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-}
       SMTP_EHLO_HOSTNAME: ${SMTP_EHLO_HOSTNAME:-}
+      # Optional Sentry (leave empty to disable)
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-${ENVIRONMENT:-production}}
     volumes:
       - email_app_data:/app/data
     healthcheck:

@@ -9,9 +9,11 @@ import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
 import type { ElementInfo } from './Inspector';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { draftPreviewStore } from '~/lib/stores/draft-preview';
+import { isPreviewBusy, previewManagerState, previewUrlFromManager } from '~/lib/preview/preview-manager';
 import { streamingState } from '~/lib/stores/streaming';
 import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
 import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
+import { classNames } from '~/utils/classNames';
 
 type ResizeSide = 'left' | 'right' | null;
 
@@ -19,61 +21,131 @@ interface PreviewProps {
   setSelectedElement?: (element: ElementInfo | null) => void;
 }
 
+const PREVIEW_FEATURE_SLIDES = [
+  {
+    title: 'Live preview beside chat',
+    detail: 'Watch your app appear here as the agent builds — no separate deploy step for first look.',
+    icon: 'i-ph:app-window',
+  },
+  {
+    title: 'Edit and iterate in Manage',
+    detail: 'Open code, diffs, and terminal when you want control. Chat stays the primary way to change the product.',
+    icon: 'i-ph:code',
+  },
+  {
+    title: 'Publish when you are ready',
+    detail: 'Ship to your Indobase subdomain or custom domain from the workbench — Studio stays linked.',
+    icon: 'i-ph:rocket-launch',
+  },
+];
+
+/** Avoid `}` inside JSX attribute expressions (TSX parses it as end of expression). */
+const SLIDE_DOT_ACTIVE = 'w-5 bg-[#2F6FED]';
+const SLIDE_DOT_IDLE = 'w-1.5 bg-gray-300 hover:bg-gray-400';
+
 /**
- * Placeholder shown when no dev server is bound yet. Distinguishes an active build (spinner +
- * "starting" copy) from a resting workspace, so a cold start reads as progress instead of a blank
- * "No preview available" panel.
+ * Friendly placeholder while there is no preview URL yet.
+ * Hard errors only after a failed build — never a harsh red panel as the first thing.
  */
 function PreviewEmptyState({
   busy,
   draftBuilding,
   bootError,
+  hardFailed,
 }: {
   busy: boolean;
   draftBuilding?: boolean;
   bootError?: string | null;
+  hardFailed?: boolean;
 }) {
-  /*
-   * A failed workspace boot is terminal until an admin fixes it, so the spinner must give way to
-   * the reason. Previously this panel kept promising "a few seconds" indefinitely while the
-   * terminal a pane away had already printed the fatal error.
-   */
-  const failed = !!bootError;
-  const title = failed
-    ? 'Preview unavailable'
-    : draftBuilding
-      ? 'Building server preview…'
-      : busy
-        ? 'Starting your app…'
-        : 'Preview will appear here';
-  const detail = failed
-    ? bootError
-    : draftBuilding
-      ? 'Building your app on the server and hosting the result. The first build takes the longest.'
-      : busy
-        ? 'Installing dependencies and booting the dev server. This can take a few seconds on the first run.'
-        : 'Once the app is running, its live preview shows up in this panel.';
+  const [slide, setSlide] = useState(0);
+  const building = busy || Boolean(draftBuilding);
+  const showHardError = Boolean(hardFailed && !building);
+  const errorDetail =
+    bootError || 'Something went wrong while preparing the preview. Try sending another message or refresh.';
+
+  useEffect(() => {
+    if (showHardError) {
+      return;
+    }
+
+    const id = window.setInterval(() => {
+      setSlide((value) => (value + 1) % PREVIEW_FEATURE_SLIDES.length);
+    }, 4500);
+
+    return () => window.clearInterval(id);
+  }, [showHardError]);
+
+  if (showHardError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[#F7F8FA] px-8 text-center">
+        <span className="i-ph:warning-circle text-3xl text-rose-500" />
+        <div className="max-w-md space-y-1.5">
+          <p className="text-sm font-semibold text-gray-900">Preview could not start</p>
+          <p className="text-xs leading-5 text-gray-500">{errorDetail}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const feature = PREVIEW_FEATURE_SLIDES[slide];
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1 px-6 text-center">
-      <div className="relative flex h-14 w-14 items-center justify-center">
-        {failed ? (
-          <span className="i-ph:warning-circle text-3xl text-bolt-elements-icon-error" />
-        ) : busy || draftBuilding ? (
-          <>
-            <span className="absolute inset-0 rounded-full border-2 border-accent-500/25" />
-            <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-accent-500" />
-            <span className="i-ph:app-window text-xl text-accent-500" />
-          </>
-        ) : (
-          <span className="i-ph:app-window text-3xl text-bolt-elements-textTertiary" />
+    <div className="flex h-full w-full flex-col bg-[#F7F8FA]">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
+        <div className="relative flex h-16 w-16 items-center justify-center">
+          {building ? (
+            <>
+              <span className="absolute inset-0 rounded-full border-2 border-[#BFD9FF]" />
+              <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#2F6FED]" />
+              <span className="i-ph:sparkle text-2xl text-[#2F6FED]" />
+            </>
+          ) : (
+            <span className={`${feature.icon} text-3xl text-[#2F6FED]`} />
+          )}
+        </div>
+
+        <div className="max-w-sm space-y-2">
+          <p className="text-base font-semibold text-gray-900">
+            {building ? (draftBuilding ? 'Building your preview…' : 'Agent is preparing your app…') : feature.title}
+          </p>
+          <p className="text-sm leading-6 text-gray-500">
+            {building
+              ? 'First preview usually takes a few minutes. You can keep chatting — this pane updates when ready.'
+              : feature.detail}
+          </p>
+        </div>
+
+        {!building && (
+          <div className="flex items-center gap-1.5">
+            {PREVIEW_FEATURE_SLIDES.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Show tip ${index + 1}`}
+                onClick={() => setSlide(index)}
+                className={classNames(
+                  'h-1.5 rounded-full transition-all',
+                  index === slide ? SLIDE_DOT_ACTIVE : SLIDE_DOT_IDLE,
+                )}
+              />
+            ))}
+          </div>
         )}
       </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-bolt-elements-textPrimary">{title}</p>
-        <p className={`text-xs leading-5 text-bolt-elements-textTertiary ${failed ? 'max-w-md' : 'max-w-xs'}`}>
-          {detail}
-        </p>
+
+      <div className="border-t border-gray-100 bg-white px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EAF2FF]">
+            <span className="i-ph:images text-base text-[#2F6FED]" />
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-sm font-medium text-gray-900">Assets & preview</p>
+            <p className="mt-0.5 text-xs leading-5 text-gray-500">
+              Screenshots and generated assets will land here after the first successful build.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -128,25 +200,40 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
   const draftPreview = useStore(draftPreviewStore);
+  const previewMgr = useStore(previewManagerState);
   const buildLifecycle = useStore(initialBuildLifecycle);
   const isStreaming = useStore(streamingState);
   const bootError = useStore(webcontainerBootErrorAtom);
 
-  /*
-   * Which failure is worth showing depends on how this host renders previews. Under server preview
-   * WebContainer is never expected to boot, so its error is noise — the meaningful failure is the
-   * server build. Elsewhere the boot error is the whole story.
-   */
-  const previewFailure = isServerPreviewMode()
-    ? draftPreview.status === 'error'
-      ? draftPreview.error
-      : undefined
-    : bootError;
+  const managerPreviewUrl = previewUrlFromManager(previewMgr);
+  const managerBusy = isPreviewBusy(previewMgr);
 
-  // A dev server is expected soon while generating/finalizing or mid-stream — show "starting", not "empty".
-  const previewStarting = isStreaming || buildLifecycle === 'generating' || buildLifecycle === 'finalizing';
-  const draftBuilding = draftPreview.status === 'building';
-  const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : undefined;
+  // Friendly building state while scoping/generating/streaming — never flash a harsh error first.
+  const previewStarting =
+    isStreaming ||
+    buildLifecycle === 'scoping' ||
+    buildLifecycle === 'generating' ||
+    buildLifecycle === 'finalizing';
+  const draftBuilding = draftPreview.status === 'building' || managerBusy;
+  const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : managerPreviewUrl;
+  const hardFailed =
+    buildLifecycle === 'failed' || draftPreview.status === 'error' || previewMgr.lifecycle === 'error';
+
+  /*
+   * Prefer draft path over WC boot noise. Under server-preview hosts (no key) WC is never expected.
+   * Soften early "Missing package.json" style failures until the build actually fails hard.
+   */
+  const previewFailure = draftBuilding || draftPreviewUrl || previewStarting
+    ? undefined
+    : isServerPreviewMode()
+      ? previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+        ? previewMgr.error || draftPreview.error
+        : undefined
+      : previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+        ? previewMgr.error || draftPreview.error || bootError
+        : hardFailed
+          ? bootError || previewMgr.error || draftPreview.error
+          : undefined;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -1137,7 +1224,12 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               />
             </>
           ) : (
-            <PreviewEmptyState busy={previewStarting} draftBuilding={draftBuilding} bootError={previewFailure} />
+            <PreviewEmptyState
+              busy={previewStarting}
+              draftBuilding={draftBuilding}
+              bootError={previewFailure}
+              hardFailed={hardFailed && !previewStarting}
+            />
           )}
 
           {isDeviceModeOn && !showDeviceFrameInPreview && (

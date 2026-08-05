@@ -303,7 +303,12 @@ export const ProjectExperienceChooser = () => {
                   tagline={ECOSYSTEM_PRODUCTS.workspace.tagline}
                   icon={<Briefcase size={18} className="text-[#3B8FD6]" />}
                   accentClassName="bg-[#3B8FD6]/10"
-                  href={`/project/${ref}/workspace`}
+                  comingSoon={ECOSYSTEM_PRODUCTS.workspace.comingSoon}
+                  href={
+                    ECOSYSTEM_PRODUCTS.workspace.comingSoon
+                      ? undefined
+                      : `/project/${ref}/workspace`
+                  }
                 />
                 <ProductTile
                   name="Payments"
@@ -387,10 +392,6 @@ export const ProjectExperienceChooser = () => {
                 </h2>
                 <ul className="space-y-3">
                   {[
-                    {
-                      title: 'Workspace is connected',
-                      body: 'Files, docs, sheets, presentations, meetings, and calendar per project.',
-                    },
                     {
                       title: 'Discuss for team chat',
                       body: 'Org and project spaces with Studio SSO — no separate login.',

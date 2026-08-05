@@ -90,6 +90,8 @@ describe('getInstantBuildPlan', () => {
     expect(isComplexBuildIntent([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }])).toBe(true);
     expect(plan).toContain('## Build steps');
     expect(plan).toMatch(/Auth/i);
+    expect(plan).toContain('Autonomy checklist');
+    expect(plan).toContain('Design polish');
   });
 
   it('keeps a minimal plan for simple UI prompts', () => {
@@ -97,6 +99,22 @@ describe('getInstantBuildPlan', () => {
 
     expect(plan).toContain('minimal Vite');
     expect(plan).not.toMatch(/Payments/i);
+    expect(plan).toMatch(/non-purple|industry-fit/i);
+  });
+
+  it('does not leak Model/Provider annotations into the plan', () => {
+    const plan = getInstantBuildPlan([
+      {
+        role: 'user',
+        content:
+          '[Model: qwen/qwen3.5-flash-02-23]\n\n[Provider: OpenRouter]\n\nBuild a hello world landing page',
+      },
+    ]);
+
+    expect(plan).not.toMatch(/\[Model:/i);
+    expect(plan).not.toMatch(/\[Provider:/i);
+    expect(plan).not.toMatch(/qwen\//i);
+    expect(plan).toContain('hello world landing page');
   });
 });
 
@@ -129,6 +147,16 @@ describe('validateGeneratedProjectContract', () => {
       valid: false,
       issues: ['Missing root package.json.'],
     });
+  });
+
+  it('accepts a nested Vite scaffold by treating the nested folder as root', () => {
+    expect(
+      validateGeneratedProjectContract({
+        'my-app/package.json': JSON.stringify({ scripts: { dev: 'vite --host 0.0.0.0', build: 'vite build' } }),
+        'my-app/index.html': '<div id="root"></div>',
+        'my-app/src/main.tsx': 'export {};',
+      }),
+    ).toEqual({ target: 'web', issues: [], valid: true });
   });
 });
 
@@ -218,5 +246,30 @@ describe('inspectOneShotBuildResponse', () => {
 Would you like me to add a dark mode toggle or product pages?`;
 
     expect(inspectOneShotBuildResponse(runnable)).toEqual({ complete: true, issues: [] });
+  });
+
+  it('reports missing package.json even when install and start are present', () => {
+    expect(
+      inspectOneShotBuildResponse(`
+<boltArtifact id="app" title="App">
+  <boltAction type="file" filePath="src/App.tsx">export default function App() { return null; }</boltAction>
+  <boltAction type="shell">npm install</boltAction>
+  <boltAction type="start">npm run dev</boltAction>
+</boltArtifact>`),
+    ).toEqual({
+      complete: false,
+      issues: ['missing package.json file action'],
+    });
+  });
+
+  it('accepts a nested package.json file path', () => {
+    expect(
+      inspectOneShotBuildResponse(`
+<boltArtifact id="app" title="App">
+  <boltAction type="file" filePath="web/package.json">{}</boltAction>
+  <boltAction type="shell">npm install</boltAction>
+  <boltAction type="start">npm run dev</boltAction>
+</boltArtifact>`),
+    ).toEqual({ complete: true, issues: [] });
   });
 });

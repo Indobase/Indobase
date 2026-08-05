@@ -157,6 +157,8 @@ services:
       SAAS_DATA_PLANE_AUX_ROLE_PASSWORD: ${SAAS_DATA_PLANE_AUX_ROLE_PASSWORD:-}
       TRAEFIK_UPSTREAM_HOST: ${TRAEFIK_UPSTREAM_HOST:-172.17.0.1}
       PROVISIONER_SHARED_GATEWAY_ROUTES_FILE: /mnt/traefik/shared-gateway-routes.json
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - tenants-data:/mnt/tenants
       - ${TRAEFIK_DYNAMIC_DIR:-/etc/dokploy/traefik/dynamic}:/mnt/traefik:Z

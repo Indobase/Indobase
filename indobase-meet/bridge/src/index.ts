@@ -47,10 +47,14 @@ import {
 } from './jitsi-jwt.js'
 import { publicSsoHealth, securityHeaders } from './security-headers.js'
 import { buildMeetSpaceMap, meetMeetingPath } from './space-map.js'
+import { bridgeSentryOnError, initBridgeSentry } from './sentry.js'
+
+initBridgeSentry('meet-bridge')
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('meet-bridge'))
 
 const STUDIO_URL = (process.env.STUDIO_PUBLIC_URL || 'https://studio.indobase.in').replace(/\/+$/, '')
 const ENGINE_URL = (process.env.MEET_ENGINE_URL || process.env.JITSI_WEB_URL || '').replace(/\/+$/, '')

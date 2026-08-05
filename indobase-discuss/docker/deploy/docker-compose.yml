@@ -114,6 +114,8 @@ services:
       FRAPPE_STUDIO_HANDOFF_URL: http://discuss-gameplan:8000/api/method/indobase_discuss.api.studio_handoff.exchange
       DISCUSS_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     networks:
       - discuss_net
       - traefik_public

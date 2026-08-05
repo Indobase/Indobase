@@ -32,9 +32,14 @@ import { migrate, one, query } from './db.js'
 import { seedTemplates } from './seed.js'
 import { renderDesignWelcomeHtml } from './welcome.js'
 import { securityHeaders } from './security-headers.js'
+import { designSentryOnError, initDesignSentry } from './sentry.js'
+
+initDesignSentry()
 
 type Vars = { session: Session }
 const app = new Hono<{ Variables: Vars }>()
+
+app.onError(designSentryOnError())
 
 /*
  * Registered before every other middleware and route so it covers all responses — auth failures,

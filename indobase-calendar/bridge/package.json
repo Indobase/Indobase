@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
+    "@sentry/node": "^10.28.0",
     "@types/pg": "^8.20.3",
     "hono": "^4.8.5",
     "pg": "^8.22.0"

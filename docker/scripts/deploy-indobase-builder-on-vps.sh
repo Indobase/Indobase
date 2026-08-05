@@ -79,6 +79,10 @@ if [[ -n "\${WEBCONTAINER_API_KEY}" ]]; then
   echo "WebContainer client key synced to \${ENV_FILE}"
 fi
 
+if [[ -n "\${BUILDER_URL}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_APP_URL "\${BUILDER_URL}"
+fi
+
 if ! grep -q '^WEBCONTAINER_API_KEY=wc_api_' "\${ENV_FILE}" 2>/dev/null; then
   echo "::warning::\${ENV_FILE} is missing WEBCONTAINER_API_KEY — production preview requires a StackBlitz WebContainer client key with builder.indobase.in allowlisted."
 fi

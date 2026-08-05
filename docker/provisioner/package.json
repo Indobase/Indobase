@@ -1,0 +1,8 @@
+{
+  "name": "@indobase/provisioner",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@sentry/node": "^10.28.0"
+  }
+}

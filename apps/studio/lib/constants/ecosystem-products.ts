@@ -28,6 +28,8 @@ export const ECOSYSTEM_PRODUCTS = {
     host: 'workspace.indobase.in',
     openLabel: 'Open Workspace',
     openHomeLabel: 'Open Files in Workspace',
+    /** Hide launch until Workspace is ready for customers again. */
+    comingSoon: true,
   },
   discuss: {
     id: 'discuss',

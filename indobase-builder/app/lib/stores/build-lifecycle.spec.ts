@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   beginInitialBuild,
+  beginScoping,
   buildRecommendationsReady,
   failInitialBuild,
   initialBuildLifecycle,
@@ -20,6 +21,12 @@ describe('initial build lifecycle', () => {
 
     initialBuildLifecycle.set('preview-ready');
     expect(buildRecommendationsReady.get()).toBe(true);
+  });
+
+  it('hides recommendations while scoping clarifying questions', () => {
+    beginScoping();
+    expect(initialBuildLifecycle.get()).toBe('scoping');
+    expect(buildRecommendationsReady.get()).toBe(false);
   });
 
   it('shows recommendations again after a failed initial build so the user can continue', () => {

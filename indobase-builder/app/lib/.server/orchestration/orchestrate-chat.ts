@@ -1,6 +1,7 @@
 import type { Message } from 'ai';
 import type { ProgressAnnotation } from '~/types/context';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
+import { sanitizePlanSteps } from '~/lib/indobase/sanitize-plan-text';
 import { runPlannerAgent, runScopingAgent, type ClarifyingQuestion } from './planner';
 
 type DataStreamWriter = {
@@ -41,7 +42,7 @@ export function extractPlanSteps(plan: string): string[] {
     }
   }
 
-  return steps.slice(0, 7);
+  return sanitizePlanSteps(steps);
 }
 
 /**
@@ -106,7 +107,7 @@ export function injectPlannerPlan(messages: Message[], plan: string): Message[] 
 ${plan}
 </agent_plan>
 
-Execute this plan as the Coder agent using bolt artifacts.`;
+Execute this plan as the Coder agent using bolt artifacts. Write a complete root-level project — package.json MUST use filePath="package.json" at the workbench root (never nest under my-app/ or similar). If any earlier turn said "Do NOT write any code, files, or bolt artifacts", that instruction is obsolete: the user answered (or the request is clear) and you MUST build now in this same response.`;
 
   const updated = [...messages];
   updated[index] = { ...lastUser, content: updatedContent };

@@ -19,6 +19,7 @@ import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, IndobaseBackendAlert } from '~/types/actions';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { proposeWorkbenchFileWrite, resetBuilderSession } from '~/lib/workspace';
 
 export interface ArtifactState {
   id: string;
@@ -327,6 +328,42 @@ export class WorkbenchStore {
   }
 
   /**
+   * Drop in-memory workbench state so a new/switched chat cannot inherit prior-project files
+   * (those were leaking into /api/chat `files` context and reappearing as GreenFuturz PDFs, etc.).
+   * WebContainer wipe is best-effort and never blocks navigation.
+   */
+  clearWorkspace() {
+    resetBuilderSession();
+    this.artifacts.set({});
+    this.artifactIdList = [];
+    this.#reloadedMessages.clear();
+    this.unsavedFiles.set(new Set());
+    this.showWorkbench.set(false);
+    this.currentView.set('code');
+    this.clearAlert();
+    this.clearIndobaseBackendAlert();
+    this.clearDeployAlert();
+    this.#filesStore.clearFiles();
+    this.#editorStore.setDocuments({});
+
+    void webcontainer
+      .then(async (container) => {
+        try {
+          const entries = await container.fs.readdir('.');
+
+          await Promise.all(
+            entries
+              .filter((name) => name !== '.' && name !== '..')
+              .map((name) => container.fs.rm(name, { recursive: true, force: true }).catch(() => undefined)),
+          );
+        } catch {
+          // WC may be booting or unavailable — in-memory clear is enough for LLM context.
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  /**
    * Lock a file to prevent edits
    * @param filePath Path to the file to lock
    * @returns True if the file was successfully locked
@@ -588,7 +625,19 @@ export class WorkbenchStore {
     this.addToExecutionQueue(() => this._addAction(data));
   }
   async _addAction(data: ActionCallbackData) {
-    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    let payload = data;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[workbench] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      payload = { ...data, action: sanitized };
+    }
+
     const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);
@@ -609,7 +658,19 @@ export class WorkbenchStore {
     }
   }
   async _runAction(data: ActionCallbackData, isStreaming: boolean = false) {
-    const payload = data.action.type === 'file' ? { ...data, action: sanitizeFileAction(data.action) } : data;
+    let payload = data;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[workbench] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      payload = { ...data, action: sanitized };
+    }
+
     const { artifactId } = payload;
 
     const artifact = this.#getArtifact(artifactId);
@@ -689,6 +750,13 @@ export class WorkbenchStore {
       filePath: fullPath,
       isBinary: false,
     });
+
+    // Durable workspace path: propose into the active command (lazy-opens if needed).
+    const proposal = proposeWorkbenchFileWrite(relativePath || fullPath, content);
+
+    if (!proposal.ok) {
+      console.warn('[workbench] workspace proposal rejected:', proposal.error);
+    }
   }
 
   actionStreamSampler = createSampler(async (data: ActionCallbackData, isStreaming: boolean = false) => {
@@ -1042,14 +1110,17 @@ export const workbenchStore = new WorkbenchStore();
  * preview-ready fires this, so a user who deliberately opens Code mid-build is not yanked away.
  */
 initialBuildLifecycle.subscribe((state) => {
+  if (state === 'scoping' || state === 'generating') {
+    /*
+     * Emergent split: open Preview as soon as intake or codegen starts — not only when the
+     * iframe is ready — so the right pane never stays chat-only.
+     */
+    workbenchStore.currentView.set('preview');
+    workbenchStore.showWorkbench.set(true);
+  }
+
   if (state === 'preview-ready') {
     workbenchStore.currentView.set('preview');
-
-    /*
-     * The reveal. Nothing opens the workbench during a build any more, so this is where the app
-     * arrives — the user stays in the conversation while it is built, then their running app slides
-     * in. If they already opened it themselves, this is a no-op.
-     */
     workbenchStore.showWorkbench.set(true);
   }
 

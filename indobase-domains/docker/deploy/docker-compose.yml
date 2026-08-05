@@ -34,6 +34,8 @@ services:
       STUDIO_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.indobase.in}
       STUDIO_INTERNAL_URL: ${STUDIO_INTERNAL_URL:-http://indobase-studio:8080}
       DOMAINS_VERSION: ${DOMAINS_VERSION:-dev}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     networks:
       - domains_net
       - traefik_public

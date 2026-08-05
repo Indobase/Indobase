@@ -36,6 +36,9 @@ import {
 } from './shared-gateway-routes.mjs'
 import { registerSiteRoute, removeSiteRoute } from './site-routes.mjs'
 import { startSiteStaticProxy } from './site-static-proxy.mjs'
+import { captureProvisionerException, initProvisionerSentry } from './sentry.mjs'
+
+initProvisionerSentry()
 
 const token = process.env.PROVISIONER_TOKEN || ''
 const tenantsDir = process.env.PROVISIONER_TENANTS_DIR || '/mnt/tenants'
@@ -1141,6 +1144,7 @@ const server = http.createServer(async (req, res) => {
       traefik_normalized: false,
     })
   } catch (e) {
+    captureProvisionerException(e)
     return json(res, 500, { message: e?.message || 'Internal error' })
   }
 })

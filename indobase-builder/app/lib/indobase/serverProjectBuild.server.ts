@@ -9,6 +9,7 @@ import {
   ensureIndexHtmlInArtifacts,
   findFirstExistingBuildOutputDir,
 } from '~/lib/indobase/buildOutputDirs';
+import { normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
 import { createScopedLogger } from '~/utils/logger';
 
 const execFileAsync = promisify(execFile);
@@ -29,12 +30,14 @@ function packageBuildLooksLikeVite(packageJson: string): boolean {
   }
 }
 
+/**
+ * Resolve an absolute npm binary. Do **not** use `process.execPath` here — the Remix/Vite
+ * server bundle replaces `process` with `vite-plugin-node-polyfills/shims/process`, where
+ * `execPath` is undefined and `path.dirname(undefined)` throws ERR_INVALID_ARG_TYPE
+ * ("The \"path\" argument must be of type string. Received undefined").
+ */
 async function resolveNpmBinary(): Promise<string> {
-  const candidates = [
-    path.join(path.dirname(process.execPath), 'npm'),
-    '/usr/local/bin/npm',
-    '/usr/bin/npm',
-  ];
+  const candidates = ['/usr/local/bin/npm', '/usr/bin/npm', '/bin/npm'];
 
   for (const candidate of candidates) {
     try {
@@ -49,14 +52,26 @@ async function resolveNpmBinary(): Promise<string> {
   return 'npm';
 }
 
+/** Read PATH without touching the Vite process shim's missing execPath. */
+function readHostPathEnv(): string {
+  const fromGlobal = (globalThis as { process?: { env?: { PATH?: string } } }).process?.env?.PATH;
+
+  if (typeof fromGlobal === 'string' && fromGlobal.trim()) {
+    return fromGlobal;
+  }
+
+  return SAFE_PATH;
+}
+
 function buildChildEnv(env: Record<string, string>): NodeJS.ProcessEnv {
-  const basePath = typeof process.env.PATH === 'string' && process.env.PATH.trim() ? process.env.PATH : SAFE_PATH;
+  const basePath = readHostPathEnv();
+  const hostEnv = (globalThis as { process?: { env?: NodeJS.ProcessEnv } }).process?.env ?? {};
 
   // Do not let deploy/project env override PATH or strip Node binaries.
   const { PATH: _ignoredPath, path: _ignoredPathLower, ...safeProjectEnv } = env;
 
   return {
-    ...process.env,
+    ...hostEnv,
     ...safeProjectEnv,
     PATH: basePath.includes('/usr/local/bin') ? basePath : `${SAFE_PATH}${path.delimiter}${basePath}`,
     CI: 'true',
@@ -93,7 +108,9 @@ export async function buildProjectArtifactsOnServer(
   env: Record<string, string>,
   options: { assetBase?: string } = {},
 ): Promise<CollectBuildArtifactsResult> {
-  if (!projectFiles['package.json']) {
+  const normalized = normalizeProjectFilesRoot(projectFiles).files;
+
+  if (!normalized['package.json']) {
     return {
       success: false,
       error: 'Missing package.json — cannot run server build.',
@@ -103,8 +120,12 @@ export async function buildProjectArtifactsOnServer(
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'indobase-builder-'));
 
   try {
-    for (const [relativePath, content] of Object.entries(projectFiles)) {
-      if (!relativePath || relativePath.includes('..')) {
+    for (const [relativePath, content] of Object.entries(normalized)) {
+      if (typeof relativePath !== 'string' || !relativePath || relativePath.includes('..')) {
+        continue;
+      }
+
+      if (typeof content !== 'string') {
         continue;
       }
 
@@ -142,7 +163,7 @@ export async function buildProjectArtifactsOnServer(
      * Draft previews are served under /draft-preview/:id/. Relative asset base keeps Vite
      * chunk URLs working without post-hoc path rewriting for every hashed file.
      */
-    if (options.assetBase && packageBuildLooksLikeVite(projectFiles['package.json'])) {
+    if (options.assetBase && packageBuildLooksLikeVite(normalized['package.json'])) {
       buildArgs.push('--', '--base', options.assetBase);
       logger.info(`Server build: using Vite --base ${options.assetBase}`);
     }

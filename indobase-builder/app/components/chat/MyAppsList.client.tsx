@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from '@remix-run/react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { toast } from 'react-toastify';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { db, deleteById, getAll, type ChatHistoryItem } from '~/lib/persistence';
@@ -37,8 +36,22 @@ function formatRelativeUpdated(timestamp: string): string {
   return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-function appHref(item: ChatHistoryItem): string {
+/** Prefer urlId (pretty) then internal id — matches sidebar HistoryItem + getMessages lookup. */
+export function appHref(item: Pick<ChatHistoryItem, 'id' | 'urlId'>): string {
   return `/chat/${item.urlId || item.id}`;
+}
+
+/**
+ * Hard navigation — Remix <Link> soft-nav leaves ChatImpl mounted with stale chatStarted /
+ * useChat state (see navigateChat FIXME). Plain anchors match sidebar history and remount cleanly.
+ */
+function openApp(href: string, event?: MouseEvent) {
+  if (event?.metaKey || event?.ctrlKey || event?.shiftKey || event?.altKey || event?.button === 1) {
+    return;
+  }
+
+  event?.preventDefault();
+  window.location.assign(href);
 }
 
 export function MyAppsList() {
@@ -140,59 +153,65 @@ export function MyAppsList() {
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {visible.map((item) => (
-            <li key={item.id}>
-              <div className="group flex items-center gap-3 rounded-2xl bg-white/80 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur-md transition hover:bg-white hover:shadow-md">
-                <Link
-                  to={appHref(item)}
-                  className="flex min-w-0 flex-1 items-center gap-3"
-                >
-                  <div className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-sky-50 to-slate-100 ring-1 ring-black/5">
-                    <span className="i-ph:app-window text-base text-slate-400" />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <div className="truncate text-sm font-semibold text-gray-900">
-                      {item.description || 'Untitled app'}
-                    </div>
-                    <div className="mt-0.5 text-xs text-gray-500">
-                      {formatRelativeUpdated(item.timestamp)}
-                    </div>
-                  </div>
-                </Link>
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger asChild>
-                    <button
-                      type="button"
-                      aria-label="App options"
-                      className="rounded-lg p-2 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
-                    >
-                      <span className="i-ph:dots-three-bold text-lg" />
-                    </button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Content
-                    className="z-[200] min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                    sideOffset={4}
-                    align="end"
+          {visible.map((item) => {
+            const href = appHref(item);
+
+            return (
+              <li key={item.id}>
+                <div className="group flex items-center gap-3 rounded-2xl bg-white/80 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur-md transition hover:bg-white hover:shadow-md">
+                  <a
+                    href={href}
+                    onClick={(event) => openApp(href, event)}
+                    className="flex min-w-0 flex-1 items-center gap-3"
                   >
-                    <DropdownMenu.Item asChild>
-                      <Link
-                        to={appHref(item)}
-                        className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-gray-700 outline-none hover:bg-gray-50"
+                    <div className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-sky-50 to-slate-100 ring-1 ring-black/5">
+                      <span className="i-ph:app-window text-base text-slate-400" />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="truncate text-sm font-semibold text-gray-900">
+                        {item.description || 'Untitled app'}
+                      </div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        {formatRelativeUpdated(item.timestamp)}
+                      </div>
+                    </div>
+                  </a>
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                      <button
+                        type="button"
+                        aria-label="App options"
+                        className="rounded-lg p-2 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
                       >
-                        Open
-                      </Link>
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                      className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-600 outline-none hover:bg-red-50"
-                      onSelect={() => setPendingDelete(item)}
+                        <span className="i-ph:dots-three-bold text-lg" />
+                      </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Content
+                      className="z-[200] min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                      sideOffset={4}
+                      align="end"
                     >
-                      Delete
-                    </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Root>
-              </div>
-            </li>
-          ))}
+                      <DropdownMenu.Item asChild>
+                        <a
+                          href={href}
+                          onClick={(event) => openApp(href, event)}
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-gray-700 outline-none hover:bg-gray-50"
+                        >
+                          Open
+                        </a>
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-600 outline-none hover:bg-red-50"
+                        onSelect={() => setPendingDelete(item)}
+                      >
+                        Delete
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 

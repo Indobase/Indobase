@@ -3,13 +3,20 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
-import { IS_DEV } from './lib/constants'
 
-if (!IS_DEV) {
+const dsn = (process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim()
+
+if (dsn) {
   Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-
-    // Setting this option to true will print useful information to the console while you're setting up Sentry.
+    dsn,
+    environment: (
+      process.env.SENTRY_ENVIRONMENT ||
+      process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ||
+      'production'
+    ).trim(),
+    tracesSampleRate: 0.001,
+    enableLogs: true,
+    integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
     debug: false,
   })
 }

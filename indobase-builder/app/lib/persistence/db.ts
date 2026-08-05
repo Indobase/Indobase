@@ -48,6 +48,13 @@ export async function openDatabase(): Promise<IDBDatabase | undefined> {
       resolve(undefined);
       logger.error((event.target as IDBOpenDBRequest).error);
     };
+
+    // Without this, a blocked upgrade (another Builder tab) hangs forever and top-level
+    // `await openDatabase()` in useChatHistory blocks the entire Chat route module graph.
+    request.onblocked = () => {
+      logger.warn('IndexedDB open blocked; continuing without persistence for this load');
+      resolve(undefined);
+    };
   });
 }
 

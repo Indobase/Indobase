@@ -118,6 +118,8 @@ services:
       STUDIO_HANDOFF_SECRET: ${STUDIO_HANDOFF_SECRET:-}
       CALENDAR_VERSION: ${GIT_SHA:-dev}
       GIT_SHA: ${GIT_SHA:-dev}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     networks:
       - calendar_net
       - traefik_public

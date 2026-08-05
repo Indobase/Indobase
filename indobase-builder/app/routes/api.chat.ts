@@ -18,6 +18,8 @@ import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
+  extractPlanSteps,
+  injectClarifyingQuestions,
   injectPlannerPlan,
 } from '~/lib/.server/orchestration/orchestrate-chat';
 import {
@@ -25,11 +27,12 @@ import {
   consumeBuilderPromptFromStudio,
   resolveBuilderMcpClaims,
   shouldConsumeBuilderPrompt,
+  isAutonomousRepairChat,
 } from '~/lib/indobase/builder-prompt-quota.server';
-import { isAutonomousRepairChat } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan } from '~/lib/indobase/generation-contract';
+import { getInstantClarifyingQuestions } from '~/lib/indobase/instant-clarifying.server';
 
 const logger = createScopedLogger('api.chat');
 
@@ -243,29 +246,46 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const isFirstBuildTurn = isInitialScaffoldTurn(processedMessages);
 
         /*
-         * Emergent-fast path: never wait on an LLM planner round. Inject a local instant plan
-         * (domain-aware for auth/payments/DB) and go straight to codegen.
+         * Emergent-style intake: vague first Build prompts get clarifying questions (local, no LLM
+         * planner wait). After answers, inject the instant plan and codegen.
          */
         if (useMultiAgent && !isToolContinuationRound) {
-          const instantPlan = getInstantBuildPlan(processedMessages);
-          orchestratedMessages = injectPlannerPlan(processedMessages, instantPlan);
-          logger.info('Using instant build plan (LLM planner skipped)');
-          dataStream.writeData({
-            type: 'progress',
-            label: 'coder',
-            status: 'in-progress',
-            order: progressCounter++,
-            message: 'Building',
-          } satisfies ProgressAnnotation);
-          dataStream.writeMessageAnnotation({
-            type: 'agentPlan',
-            agent: 'planner',
-            plan: instantPlan,
-            steps: instantPlan
-              .split('\n')
-              .map((line) => line.replace(/^\d+[.)]\s+/, '').trim())
-              .filter((line) => line && !line.startsWith('#')),
-          });
+          const clarifying = isFirstBuildTurn ? getInstantClarifyingQuestions(processedMessages) : null;
+
+          if (clarifying?.length) {
+            orchestratedMessages = injectClarifyingQuestions(processedMessages, clarifying);
+            logger.info(`Using instant clarifying questions (${clarifying.length})`);
+            dataStream.writeData({
+              type: 'progress',
+              label: 'scoping',
+              status: 'complete',
+              order: progressCounter++,
+              message: 'Agent has questions for you',
+            } satisfies ProgressAnnotation);
+            dataStream.writeMessageAnnotation({
+              type: 'clarifyingQuestions',
+              agent: 'planner',
+              questions: clarifying,
+            });
+          } else {
+            const instantPlan = getInstantBuildPlan(processedMessages);
+            orchestratedMessages = injectPlannerPlan(processedMessages, instantPlan);
+            logger.info('Using instant build plan (LLM planner skipped)');
+            dataStream.writeData({
+              type: 'progress',
+              label: 'coder',
+              status: 'in-progress',
+              order: progressCounter++,
+              message: 'Building',
+            } satisfies ProgressAnnotation);
+            dataStream.writeMessageAnnotation({
+              type: 'agentPlan',
+              agent: 'planner',
+              plan: instantPlan,
+              steps: extractPlanSteps(instantPlan),
+            });
+          }
+
           streamRecovery.updateActivity();
         }
 

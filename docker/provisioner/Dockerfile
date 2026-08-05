@@ -4,7 +4,10 @@ FROM node:20-alpine
 RUN apk add --no-cache docker-cli docker-cli-compose
 
 WORKDIR /app
+COPY provisioner/package.json ./
+RUN npm install --omit=dev
 COPY provisioner/server.mjs /app/server.mjs
+COPY provisioner/sentry.mjs /app/sentry.mjs
 COPY provisioner/tenant-traefik.mjs /app/tenant-traefik.mjs
 COPY provisioner/site-hosting.mjs /app/site-hosting.mjs
 COPY provisioner/shared-gateway-routes.mjs /app/shared-gateway-routes.mjs

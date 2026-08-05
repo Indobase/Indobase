@@ -4,6 +4,9 @@ import { RemixServer } from '@remix-run/react';
 import { isbot } from 'isbot';
 import { PassThrough } from 'node:stream';
 import { renderToPipeableStream } from 'react-dom/server';
+import { initBuilderSentry, Sentry } from '~/lib/sentry.server';
+
+initBuilderSentry({ service: 'builder' });
 
 const ABORT_DELAY = 5_000;
 
@@ -31,6 +34,8 @@ export default function handleRequest(
 
           const body = new PassThrough();
           responseHeaders.set('Content-Type', 'text/html');
+          // Avoid stale document → hashed /assets/index-*.js 404s after Swarm rolls.
+          responseHeaders.set('Cache-Control', 'no-store');
           // Must match WebContainer.boot({ coep: 'credentialless' }) in lib/webcontainer/index.ts
           responseHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
           responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
@@ -53,6 +58,7 @@ export default function handleRequest(
           didError = true;
           responseStatusCode = 500;
           console.error(error);
+          Sentry.captureException(error);
         },
       },
     );

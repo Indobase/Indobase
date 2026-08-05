@@ -5,18 +5,8 @@ import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 
 /**
- * Agent-phase progress view.
- *
- * Replaces the flat "Create file X / Run command Y" stream with the delegation model: named phases,
- * each attributed to an agent, with a human-readable summary of what happened.
- *
- * The difference is intent, not decoration. A flat action log reads as "watch the machine type" —
- * it asks the user to follow along with implementation detail (file paths, npm commands) they did
- * not ask for and mostly cannot judge. Grouping the same stream into phases reads as "a team is
- * building this for you": the user tracks *progress*, and drops into detail only when they want it.
- *
- * No new data is required — this derives entirely from the existing action stream, so it cannot
- * drift from what the runner is actually doing.
+ * Compact agent-delegation status rows (primary UX).
+ * Technical file/command detail stays one click away — not the default dump.
  */
 
 type PhaseId = 'scaffold' | 'dependencies' | 'backend' | 'verify' | 'run';
@@ -24,7 +14,6 @@ type PhaseStatus = 'pending' | 'running' | 'complete' | 'failed';
 
 type Phase = {
   id: PhaseId;
-  /** Which agent owns this phase — the delegation cue. */
   agent: string;
   label: string;
   icon: string;
@@ -36,14 +25,16 @@ type Phase = {
 const PHASE_ORDER: PhaseId[] = ['scaffold', 'dependencies', 'backend', 'verify', 'run'];
 
 const PHASE_META: Record<PhaseId, { agent: string; label: string; icon: string }> = {
-  scaffold: { agent: 'Builder', label: 'Building the app', icon: 'i-ph:code-block' },
-  dependencies: { agent: 'Builder', label: 'Installing packages', icon: 'i-ph:package' },
-  backend: { agent: 'Backend', label: 'Setting up the backend', icon: 'i-ph:database' },
-  verify: { agent: 'Quality', label: 'Checking it builds', icon: 'i-ph:check-circle' },
+  scaffold: { agent: 'Design', label: 'Delegated to Design Agent', icon: 'i-ph:paint-brush' },
+  dependencies: { agent: 'Builder', label: 'Delegated to Builder', icon: 'i-ph:package' },
+  backend: { agent: 'Backend', label: 'Delegated to Backend Agent', icon: 'i-ph:database' },
+  verify: { agent: 'Quality', label: 'Delegated to Quality Agent', icon: 'i-ph:check-circle' },
   run: { agent: 'Preview', label: 'Starting preview', icon: 'i-ph:play-circle' },
 };
 
-/** Shell commands that are dependency installs rather than app work. */
+/** Avoid `}` inside JSX attribute expressions (TSX parses it as end of expression). */
+const RUNNING_ROW_BG = 'bg-[#EAF2FF]';
+
 const INSTALL_RE = /\b(npm|pnpm|yarn|bun)\s+(i|install|add)\b/;
 
 function phaseOf(action: ActionState): PhaseId {
@@ -63,11 +54,6 @@ function phaseOf(action: ActionState): PhaseId {
   }
 }
 
-/**
- * A phase is failed if anything in it failed, running if anything is still going, complete only when
- * every action resolved. `start` actions run indefinitely by design (the dev server), so a running
- * start counts as complete — otherwise the preview phase would spin forever.
- */
 function statusOf(actions: ActionState[]): PhaseStatus {
   if (actions.some((a) => a.status === 'failed')) return 'failed';
 
@@ -84,10 +70,7 @@ function statusOf(actions: ActionState[]): PhaseStatus {
   return actions.some((a) => a.status === 'running') ? 'running' : 'pending';
 }
 
-/** Plain-language summary — what a non-developer would want to know happened. */
 function summarize(id: PhaseId, actions: ActionState[], status: PhaseStatus): string {
-  const n = actions.length;
-
   if (status === 'failed') {
     const failed = actions.find((a) => a.status === 'failed');
     return failed?.type === 'file' ? 'Some files could not be written' : 'A step did not complete';
@@ -108,11 +91,10 @@ function summarize(id: PhaseId, actions: ActionState[], status: PhaseStatus): st
     case 'run':
       return status === 'complete' ? 'Preview is live' : 'Starting the preview…';
     default:
-      return `${n} step${n === 1 ? '' : 's'}`;
+      return `${actions.length} step${actions.length === 1 ? '' : 's'}`;
   }
 }
 
-/** Group the flat action stream into ordered phases, dropping phases with no work in them. */
 export function buildPhases(actions: ActionState[]): Phase[] {
   const groups = new Map<PhaseId, ActionState[]>();
 
@@ -141,23 +123,22 @@ export function buildPhases(actions: ActionState[]): Phase[] {
   });
 }
 
-function StatusDot({ status }: { status: PhaseStatus }) {
+function StatusIcon({ status }: { status: PhaseStatus }) {
   if (status === 'running') {
-    return <div className="i-svg-spinners:90-ring-with-bg text-base text-bolt-elements-loader-progress" />;
+    return <div className="i-svg-spinners:90-ring-with-bg text-base text-[#2F6FED]" />;
   }
 
   if (status === 'complete') {
-    return <div className="i-ph:check-circle-fill text-base text-bolt-elements-icon-success" />;
+    return <div className="i-ph:check-circle-fill text-base text-emerald-500" />;
   }
 
   if (status === 'failed') {
-    return <div className="i-ph:x-circle-fill text-base text-bolt-elements-button-danger-text" />;
+    return <div className="i-ph:x-circle-fill text-base text-rose-500" />;
   }
 
-  return <div className="i-ph:circle text-base text-bolt-elements-textTertiary" />;
+  return <div className="i-ph:circle text-base text-gray-300" />;
 }
 
-/** One action rendered as a readable line rather than a raw command. */
 function actionLabel(action: ActionState): string {
   if (action.type === 'file') {
     return (action as ActionState & { filePath?: string }).filePath ?? 'file';
@@ -175,44 +156,37 @@ function actionLabel(action: ActionState): string {
 const PhaseRow = memo(({ phase }: { phase: Phase }) => {
   const [open, setOpen] = useState(false);
 
-  return (
-    <li className="relative pl-7">
-      {/* Timeline rail — the visual cue that these are sequential phases, not a flat list. */}
-      <span
-        aria-hidden="true"
-        className="absolute left-[7px] top-6 bottom-0 w-px bg-bolt-elements-borderColor last:hidden"
-      />
-      <span className="absolute left-0 top-1">
-        <StatusDot status={phase.status} />
-      </span>
+  if (phase.status === 'pending') {
+    return null;
+  }
 
+  return (
+    <li>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="group flex w-full items-baseline gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-bolt-elements-item-backgroundActive"
+        className={classNames(
+          'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors',
+          phase.status === 'running' ? RUNNING_ROW_BG : 'hover:bg-gray-50',
+        )}
       >
+        <StatusIcon status={phase.status} />
         <span
-          className={classNames('text-sm font-medium', {
-            'text-bolt-elements-textPrimary': phase.status !== 'pending',
-            'text-bolt-elements-textTertiary': phase.status === 'pending',
+          className={classNames('min-w-0 flex-1 truncate text-sm font-medium', {
+            'text-gray-900': phase.status !== 'pending',
+            'text-gray-400': phase.status === 'pending',
           })}
         >
           {phase.label}
         </span>
-        {/* Agent attribution — the "who is doing this for me" signal. */}
-        <span className="rounded-full bg-bolt-elements-item-backgroundAccent px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-bolt-elements-item-contentAccent">
-          {phase.agent}
-        </span>
-        <span className="ml-auto flex items-center gap-1 text-xs text-bolt-elements-textSecondary">
-          {phase.summary}
-          <span
-            className={classNames(
-              'text-bolt-elements-textTertiary transition-transform',
-              open ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold',
-            )}
-          />
-        </span>
+        <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">{phase.summary}</span>
+        <span
+          className={classNames(
+            'shrink-0 text-gray-400 transition-transform',
+            open ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold',
+          )}
+        />
       </button>
 
       <AnimatePresence>
@@ -222,14 +196,11 @@ const PhaseRow = memo(({ phase }: { phase: Phase }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15, ease: cubicEasingFn }}
-            className="overflow-hidden"
+            className="overflow-hidden pl-8"
           >
             {phase.actions.map((action, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-2 py-0.5 pl-1 font-mono text-xs text-bolt-elements-textTertiary"
-              >
-                <StatusDot status={action.status as PhaseStatus} />
+              <li key={i} className="flex items-center gap-2 py-1 font-mono text-xs text-gray-500">
+                <StatusIcon status={action.status as PhaseStatus} />
                 <span className="truncate">{actionLabel(action)}</span>
               </li>
             ))}
@@ -247,35 +218,25 @@ export const BuildPlan = memo(({ actions }: { actions: ActionState[] }) => {
     return null;
   }
 
+  const visible = phases.filter((p) => p.status !== 'pending');
   const done = phases.filter((p) => p.status === 'complete').length;
   const failed = phases.some((p) => p.status === 'failed');
   const allDone = done === phases.length && !failed;
+  const running = phases.find((p) => p.status === 'running');
 
   return (
-    <div className="px-5 py-4">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-bolt-elements-textSecondary">
-          {failed ? 'Build stopped' : allDone ? 'Build complete' : 'Building your app'}
+    <div className="rounded-2xl border border-gray-100 bg-white px-2 py-2 shadow-sm">
+      <div className="mb-1 flex items-center gap-2 px-2.5 pt-1">
+        <span className="text-xs font-semibold text-gray-500">
+          {failed ? 'Build stopped' : allDone ? 'Ready' : running ? running.label : 'Working'}
         </span>
-        <span className="text-xs text-bolt-elements-textTertiary">
+        <span className="ml-auto text-xs tabular-nums text-gray-400">
           {done}/{phases.length}
-        </span>
-        {/* Compact progress bar: progress at a glance without reading any step. */}
-        <span className="ml-auto h-1 w-24 overflow-hidden rounded-full bg-bolt-elements-borderColor">
-          <motion.span
-            className={classNames(
-              'block h-full rounded-full',
-              failed ? 'bg-bolt-elements-button-danger-text' : 'bg-bolt-elements-loader-progress',
-            )}
-            initial={{ width: 0 }}
-            animate={{ width: `${(done / phases.length) * 100}%` }}
-            transition={{ duration: 0.3, ease: cubicEasingFn }}
-          />
         </span>
       </div>
 
-      <ul className="flex flex-col gap-2">
-        {phases.map((phase) => (
+      <ul className="flex flex-col">
+        {visible.map((phase) => (
           <PhaseRow key={phase.id} phase={phase} />
         ))}
       </ul>

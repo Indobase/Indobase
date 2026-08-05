@@ -12,7 +12,11 @@ import { seedProjectEnvIfMissing } from '~/lib/indobase/seedProjectEnv';
 import {
   ensureNpmDependencies,
   isDevStartCommand,
+  isToolchainReady,
 } from '~/lib/indobase/ensureNpmDependencies';
+import { hasRunnablePackageJson, normalizeProjectFilesRoot } from '~/lib/indobase/normalize-project-files';
+import { hasWebContainerBootFailed } from '~/lib/webcontainer';
+import { shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { yieldAfterBatch } from '~/utils/yieldToMain';
 import { COMMON_BUILD_OUTPUT_DIRS } from '~/lib/indobase/buildOutputDirs';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
@@ -102,6 +106,14 @@ export class ActionRunner {
   #activeBuildProcess?: WebContainerProcess;
   #fileActionCount = 0;
   #getProjectFiles?: ProjectFilesProvider;
+  /** True once we kicked (or attempted) install+dev before the model's start action. */
+  #earlyDevStarted = false;
+  /** In-flight early Vite kickoff — formal start must await this to avoid Ctrl+C races. */
+  #earlyDevPromise: Promise<void> | null = null;
+  /** Set after a successful early or formal Vite bind — skip redundant start actions. */
+  #devServerRunning = false;
+  /** Dedupes concurrent ensureNpmDependencies from early-start + shell install. */
+  #ensureDepsPromise: Promise<Awaited<ReturnType<typeof ensureNpmDependencies>>> | null = null;
   runnerId = atom<string>(`${Date.now()}`);
   actions: ActionsMap = map({});
   onAlert?: (alert: ActionAlert) => void;
@@ -128,7 +140,19 @@ export class ActionRunner {
 
   addAction(data: ActionCallbackData) {
     const { actionId } = data;
-    const action = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[action-runner] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      data = { ...data, action: sanitized };
+    }
+
+    const action = data.action;
 
     const actions = this.actions.get();
     const existingAction = actions[actionId];
@@ -154,7 +178,19 @@ export class ActionRunner {
 
   async runAction(data: ActionCallbackData, isStreaming: boolean = false) {
     const { actionId } = data;
-    const incomingAction = data.action.type === 'file' ? sanitizeFileAction(data.action) : data.action;
+
+    if (data.action.type === 'file') {
+      const sanitized = sanitizeFileAction(data.action);
+
+      if (!sanitized) {
+        console.warn('[action-runner] skipped rejected generated path:', data.action.filePath);
+        return;
+      }
+
+      data = { ...data, action: sanitized };
+    }
+
+    const incomingAction = data.action;
     const action = this.actions.get()[actionId];
 
     if (!action) {
@@ -262,13 +298,22 @@ export class ActionRunner {
     }
   }
 
+  /**
+   * Finalize / formal start await this so early Vite isn't Ctrl+C'd mid-boot.
+   */
+  async awaitEarlyDev(): Promise<void> {
+    if (this.#earlyDevPromise) {
+      await this.#earlyDevPromise;
+    }
+  }
+
   async #ensureToolchainBeforeDevStart(command: string): Promise<void> {
     if (!isDevStartCommand(command)) {
       return;
     }
 
     const webcontainer = await this.#awaitWebContainer();
-    const installResult = await ensureNpmDependencies(webcontainer);
+    const installResult = await this.#ensureDepsOnce(webcontainer);
 
     if (!installResult.success) {
       throw new ActionCommandError(
@@ -277,6 +322,16 @@ export class ActionRunner {
           'npm install did not produce node_modules/.bin/vite (or another toolchain binary). Fix install before starting the preview.',
       );
     }
+  }
+
+  async #ensureDepsOnce(webcontainer: WebContainer): Promise<Awaited<ReturnType<typeof ensureNpmDependencies>>> {
+    if (!this.#ensureDepsPromise) {
+      this.#ensureDepsPromise = ensureNpmDependencies(webcontainer).finally(() => {
+        this.#ensureDepsPromise = null;
+      });
+    }
+
+    return this.#ensureDepsPromise;
   }
 
   async #runShellAction(action: ActionState) {
@@ -291,15 +346,62 @@ export class ActionRunner {
 
       if (!hydrated) {
         /*
-         * No usable WebContainer FS — do not fail the build phase. Server draft preview installs
-         * from workbench files in finalizeBuildAndMaybeRepair.
+         * No usable WebContainer FS — do not fail the build phase when a runnable package.json
+         * exists; server draft preview installs from workbench files in finalizeBuildAndMaybeRepair.
+         * Without package.json, marking install "complete" lied to BuildPlan ("Packages installed").
          */
+        if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+          throw new ActionCommandError(
+            'Project Incomplete',
+            'Missing root package.json — cannot install packages or start a draft preview. Write package.json at the project root (not a nested folder), then npm install.',
+          );
+        }
+
         logger.warn('Skipping WebContainer npm install; will use server draft preview');
         this.lastShellOutput = {
           exitCode: 0,
           output: '[skipped] WebContainer unavailable — server draft preview will install packages',
         };
         return;
+      }
+
+      try {
+        const webcontainer = await this.#awaitWebContainer();
+
+        if (await isToolchainReady(webcontainer)) {
+          logger.info('Skipping npm install — toolchain already present (vite/bin ready)');
+          this.lastShellOutput = {
+            exitCode: 0,
+            output: '[skipped] node_modules toolchain already installed',
+          };
+          void this.#kickEarlyDevIfReady();
+          return;
+        }
+
+        // Bare install → shared ensure path (dedupes with early Vite kickoff).
+        if (/^\s*(?:npm|pnpm|yarn)\s+(?:i|install)\b/i.test(action.content) && !/\badd\b/i.test(action.content)) {
+          const installResult = await this.#ensureDepsOnce(webcontainer);
+
+          if (!installResult.success) {
+            throw new ActionCommandError(
+              'Dependencies Missing',
+              installResult.error || 'npm install failed',
+            );
+          }
+
+          this.lastShellOutput = {
+            exitCode: 0,
+            output: installResult.output || '[ok] dependencies ensured',
+          };
+          void this.#kickEarlyDevIfReady();
+          return;
+        }
+      } catch (error) {
+        if (error instanceof ActionCommandError) {
+          throw error;
+        }
+
+        logger.warn('Toolchain readiness check failed; continuing with install', error);
       }
     }
 
@@ -361,6 +463,10 @@ export class ActionRunner {
       const enhancedError = this.#createEnhancedShellError(action.content, resp?.exitCode, resp?.output);
       throw new ActionCommandError(enhancedError.title, enhancedError.details);
     }
+
+    if (isInstall) {
+      void this.#kickEarlyDevIfReady();
+    }
   }
 
   async #runStartAction(action: ActionState) {
@@ -375,6 +481,13 @@ export class ActionRunner {
     const hydrated = await this.#hydrateWebContainerFromWorkbench();
 
     if (!hydrated) {
+      if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+        throw new ActionCommandError(
+          'Project Incomplete',
+          'Missing root package.json — cannot start the preview. Write a complete root-level Vite/Expo package.json with a dev script, then npm install and npm run dev.',
+        );
+      }
+
       logger.warn('Skipping WebContainer dev server; will use server draft preview');
       this.lastShellOutput = {
         exitCode: 0,
@@ -409,7 +522,17 @@ export class ActionRunner {
     const webcontainer = await this.#awaitWebContainer();
     await this.#ensureToolchainBeforeDevStart(action.content);
 
-    const previewAlreadyReady = await this.#hasOpenPreviewPort(webcontainer);
+    // Wait for early kickoff so we don't abort its shell command with a second executeCommand.
+    await this.awaitEarlyDev();
+
+    if (await this.#hasHealthyPreviewPort(webcontainer)) {
+      logger.info('Skipping npm run dev — healthy preview already running (early start / prior turn)');
+      this.lastShellOutput = {
+        exitCode: 0,
+        output: '[skipped] Dev server already running',
+      };
+      return;
+    }
 
     const resp = await shell.executeCommand(
       this.runnerId.get(),
@@ -433,9 +556,8 @@ export class ActionRunner {
      * server bound a port — that left "Start Application" checked with "No preview available".
      * Wait for WebContainer to report an open port before claiming success.
      */
-    if (!previewAlreadyReady) {
-      await this.#waitForPreviewPort(webcontainer, 90_000);
-    }
+    await this.#waitForPreviewPort(webcontainer, 90_000);
+    this.#devServerRunning = true;
 
     return resp;
   }
@@ -447,6 +569,14 @@ export class ActionRunner {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Skip start only when we previously claimed a successful Vite bind and a port is still open.
+   * Bare getPorts() alone can be a stale zombie from a half-dead process.
+   */
+  async #hasHealthyPreviewPort(webcontainer: WebContainer): Promise<boolean> {
+    return this.#devServerRunning && (await this.#hasOpenPreviewPort(webcontainer));
   }
 
   #waitForPreviewPort(webcontainer: WebContainer, timeoutMs: number): Promise<void> {
@@ -538,6 +668,97 @@ export class ActionRunner {
 
     this.#fileActionCount += 1;
     await yieldAfterBatch(this.#fileActionCount, 4);
+    void this.#kickEarlyDevIfReady();
+  }
+
+  /**
+   * As soon as a Vite scaffold exists in the workbench, install (if needed) and start the
+   * dev server in the background so later file writes HMR into a live preview — instead of
+   * waiting for the model's trailing start action after every file is written.
+   */
+  async #kickEarlyDevIfReady(): Promise<void> {
+    if (this.#earlyDevStarted || this.#earlyDevPromise || shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
+      return;
+    }
+
+    const files = normalizeProjectFilesRoot(this.#getProjectFiles?.() ?? {}).files;
+    const pkg = files['package.json'];
+
+    if (!pkg || !/\bvite\b/i.test(pkg)) {
+      return;
+    }
+
+    const hasEntry =
+      Boolean(files['index.html']) ||
+      Boolean(files['src/main.tsx']) ||
+      Boolean(files['src/main.jsx']) ||
+      Boolean(files['src/main.ts']) ||
+      Boolean(files['src/main.js']) ||
+      Boolean(files['App.tsx']) ||
+      Boolean(files['App.jsx']);
+
+    if (!hasEntry) {
+      return;
+    }
+
+    this.#earlyDevStarted = true;
+    this.#earlyDevPromise = this.#runEarlyDevKickoff().finally(() => {
+      this.#earlyDevPromise = null;
+    });
+    await this.#earlyDevPromise;
+  }
+
+  async #runEarlyDevKickoff(): Promise<void> {
+    try {
+      const hydrated = await this.#hydrateWebContainerFromWorkbench();
+
+      if (!hydrated) {
+        this.#earlyDevStarted = false;
+        return;
+      }
+
+      const webcontainer = await this.#awaitWebContainer();
+
+      if (await this.#hasHealthyPreviewPort(webcontainer)) {
+        return;
+      }
+
+      const installResult = await this.#ensureDepsOnce(webcontainer);
+
+      if (!installResult.success) {
+        logger.warn('Early dev install failed; formal start action will retry', installResult.error);
+        this.#earlyDevStarted = false;
+        return;
+      }
+
+      const shell = this.#shellTerminal();
+
+      await Promise.race([
+        shell.ready(),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Terminal not ready for early dev')), 20_000);
+        }),
+      ]);
+
+      if (await this.#hasHealthyPreviewPort(webcontainer)) {
+        return;
+      }
+
+      logger.info('Early-starting npm run dev before codegen finishes');
+      await shell.executeCommand(this.runnerId.get(), 'npm run dev', () => undefined, { exitTimeoutMs: 0 });
+
+      // Give the port a short window to bind before formal start may run.
+      try {
+        await this.#waitForPreviewPort(webcontainer, 25_000);
+        this.#devServerRunning = true;
+      } catch (error) {
+        logger.warn('Early Vite started but port not ready yet; formal start may retry', error);
+        this.#earlyDevStarted = false;
+      }
+    } catch (error) {
+      logger.warn('Early dev start failed; formal start action will retry', error);
+      this.#earlyDevStarted = false;
+    }
   }
 
   /**
@@ -596,14 +817,22 @@ export class ActionRunner {
   }
 
   async #awaitWebContainer(): Promise<WebContainer> {
+    if (hasWebContainerBootFailed()) {
+      throw new Error(
+        'WebContainer did not become ready in time. Preview will use the server draft build instead. Click Reset Terminal or hard-refresh (Chrome/Edge).',
+      );
+    }
+
     return Promise.race([
       this.#webcontainer,
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(
-            new Error('WebContainer did not become ready in time. Click Reset Terminal or hard-refresh (Chrome/Edge).'),
+            new Error(
+              'WebContainer did not become ready in time. Preview will use the server draft build instead. Click Reset Terminal or hard-refresh (Chrome/Edge).',
+            ),
           );
-        }, 120_000);
+        }, 95_000);
       }),
     ]);
   }
