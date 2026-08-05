@@ -30,12 +30,14 @@ function packageBuildLooksLikeVite(packageJson: string): boolean {
   }
 }
 
+/**
+ * Resolve an absolute npm binary. Do **not** use `process.execPath` here — the Remix/Vite
+ * server bundle replaces `process` with `vite-plugin-node-polyfills/shims/process`, where
+ * `execPath` is undefined and `path.dirname(undefined)` throws ERR_INVALID_ARG_TYPE
+ * ("The \"path\" argument must be of type string. Received undefined").
+ */
 async function resolveNpmBinary(): Promise<string> {
-  const candidates = [
-    path.join(path.dirname(process.execPath), 'npm'),
-    '/usr/local/bin/npm',
-    '/usr/bin/npm',
-  ];
+  const candidates = ['/usr/local/bin/npm', '/usr/bin/npm', '/bin/npm'];
 
   for (const candidate of candidates) {
     try {
@@ -50,14 +52,26 @@ async function resolveNpmBinary(): Promise<string> {
   return 'npm';
 }
 
+/** Read PATH without touching the Vite process shim's missing execPath. */
+function readHostPathEnv(): string {
+  const fromGlobal = (globalThis as { process?: { env?: { PATH?: string } } }).process?.env?.PATH;
+
+  if (typeof fromGlobal === 'string' && fromGlobal.trim()) {
+    return fromGlobal;
+  }
+
+  return SAFE_PATH;
+}
+
 function buildChildEnv(env: Record<string, string>): NodeJS.ProcessEnv {
-  const basePath = typeof process.env.PATH === 'string' && process.env.PATH.trim() ? process.env.PATH : SAFE_PATH;
+  const basePath = readHostPathEnv();
+  const hostEnv = (globalThis as { process?: { env?: NodeJS.ProcessEnv } }).process?.env ?? {};
 
   // Do not let deploy/project env override PATH or strip Node binaries.
   const { PATH: _ignoredPath, path: _ignoredPathLower, ...safeProjectEnv } = env;
 
   return {
-    ...process.env,
+    ...hostEnv,
     ...safeProjectEnv,
     PATH: basePath.includes('/usr/local/bin') ? basePath : `${SAFE_PATH}${path.delimiter}${basePath}`,
     CI: 'true',

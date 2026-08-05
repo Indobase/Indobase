@@ -89,9 +89,9 @@ export function normalizeProjectFilesRoot(files: Record<string, string>): Normal
 
   const flattened: Record<string, string> = {};
 
-  for (const [path, content] of Object.entries(files)) {
-    if (path.startsWith(rootPrefix)) {
-      const relative = path.slice(rootPrefix.length);
+  for (const [filePath, content] of Object.entries(files)) {
+    if (filePath.startsWith(rootPrefix)) {
+      const relative = filePath.slice(rootPrefix.length);
 
       if (relative) {
         flattened[relative] = content;
@@ -100,9 +100,9 @@ export function normalizeProjectFilesRoot(files: Record<string, string>): Normal
   }
 
   // Preserve non-nested siblings that don't collide (e.g. root README).
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.startsWith(rootPrefix) && flattened[path] === undefined) {
-      flattened[path] = content;
+  for (const [filePath, content] of Object.entries(files)) {
+    if (!filePath.startsWith(rootPrefix) && flattened[filePath] === undefined) {
+      flattened[filePath] = content;
     }
   }
 
