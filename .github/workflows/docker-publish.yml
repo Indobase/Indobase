@@ -151,7 +151,8 @@ jobs:
       - name: Build and push Indobase Builder (linux/amd64)
         uses: docker/build-push-action@v5
         with:
-          context: ./indobase-builder
+          # Monorepo root — Dockerfile copies packages/platform (@indobase/platform)
+          context: .
           file: ./indobase-builder/Dockerfile
           platforms: linux/amd64
           target: bolt-ai-production

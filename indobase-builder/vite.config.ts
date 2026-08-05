@@ -92,6 +92,7 @@ export default defineConfig((config) => {
       alias: {
         stream: 'node:stream',
         buffer: 'node:buffer',
+        '@indobase/platform': path.resolve(appRoot, '../packages/platform/src/index.ts'),
       },
     },
     ssr: {

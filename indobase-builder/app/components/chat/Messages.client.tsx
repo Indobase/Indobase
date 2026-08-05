@@ -17,6 +17,7 @@ interface MessagesProps {
   isStreaming?: boolean;
   messages?: Message[];
   append?: (message: Message) => void;
+  sendMessage?: (event: React.UIEvent, messageInput?: string) => void;
   chatMode?: 'discuss' | 'build';
   setChatMode?: (mode: 'discuss' | 'build') => void;
   model?: string;
@@ -83,6 +84,7 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
                         onRewind={handleRewind}
                         onFork={handleFork}
                         append={props.append}
+                        sendMessage={props.sendMessage}
                         chatMode={props.chatMode}
                         setChatMode={props.setChatMode}
                         model={props.model}

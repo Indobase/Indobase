@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { isServerPreviewMode } from './preview-mode';
+import { isServerPreviewMode, shouldSkipWebContainerRuntime } from './preview-mode';
 
-describe('preview-mode', () => {
+describe('preview-mode (draft-only)', () => {
   beforeEach(() => {
     delete (window as any).__INDOBASE_BUILDER_PUBLIC__;
     Object.defineProperty(window, 'location', {
@@ -11,21 +11,23 @@ describe('preview-mode', () => {
     });
   });
 
-  it('uses server preview when headless probe reports allowlist missing', async () => {
-    window.__INDOBASE_BUILDER_PUBLIC__ = {
-      webcontainerApiKey: 'wc_api_test',
-      webcontainerHeadlessOk: false,
-    };
-
-    expect(isServerPreviewMode()).toBe(true);
-  });
-
-  it('keeps WebContainer path when headless probe succeeds', async () => {
+  it('always uses server draft preview', () => {
     window.__INDOBASE_BUILDER_PUBLIC__ = {
       webcontainerApiKey: 'wc_api_test',
       webcontainerHeadlessOk: true,
     };
 
-    expect(isServerPreviewMode()).toBe(false);
+    expect(isServerPreviewMode()).toBe(true);
+    expect(shouldSkipWebContainerRuntime()).toBe(true);
+    expect(shouldSkipWebContainerRuntime(false)).toBe(true);
+  });
+
+  it('stays draft-only on localhost too', () => {
+    Object.defineProperty(window, 'location', {
+      value: { hostname: 'localhost' },
+      writable: true,
+    });
+
+    expect(isServerPreviewMode()).toBe(true);
   });
 });

@@ -18,6 +18,7 @@ export const DEFAULT_SITE_CLARIFYING_QUESTIONS: ClarifyingQuestion[] = [
       'Multi-section marketing site (home, about us, investment thesis, portfolio, team, contact)',
       'Something else',
     ],
+    recommended: 'Multi-section marketing site (home, about us, investment thesis, portfolio, team, contact)',
   },
   {
     question: 'What content should it highlight?',
@@ -27,6 +28,7 @@ export const DEFAULT_SITE_CLARIFYING_QUESTIONS: ClarifyingQuestion[] = [
       'Team and track record',
       'You decide — make it distinctive',
     ],
+    recommended: 'You decide — make it distinctive',
   },
   {
     question: 'Should visitors be able to reach out through the site?',
@@ -35,15 +37,17 @@ export const DEFAULT_SITE_CLARIFYING_QUESTIONS: ClarifyingQuestion[] = [
       'Yes — email and phone only',
       'No contact form for now',
     ],
+    recommended: 'Yes — a contact / pitch form that saves submissions',
   },
   {
     question: 'Any design preference?',
     suggestions: [
-      'Dark, premium, editorial',
+      'Dark, premium, editorial (classic family-office look)',
       'Light, clean, minimal',
       'You decide — make it distinctive',
       'Something else',
     ],
+    recommended: 'You decide — make it distinctive',
   },
   {
     question: 'Do you need an admin area to manage content?',
@@ -51,6 +55,7 @@ export const DEFAULT_SITE_CLARIFYING_QUESTIONS: ClarifyingQuestion[] = [
       'Yes, with a simple admin login',
       'Not yet — public site only',
     ],
+    recommended: 'Not yet — public site only',
   },
 ];
 

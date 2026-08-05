@@ -108,6 +108,8 @@ export type ClarifyingQuestion = {
   question: string;
   why?: string;
   suggestions?: string[];
+  /** Preferred answer — surfaced as Recommended and pre-selected in the card. */
+  recommended?: string;
 };
 
 /**

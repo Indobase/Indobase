@@ -21,7 +21,7 @@ export const buildRecommendationsReady = computed(
   (state) => state === 'idle' || state === 'preview-ready' || state === 'failed',
 );
 
-/** Emergent-style intake: open the preview pane while questions are answered. */
+/** Emergent-style intake: open the workbench while questions are answered (Preview waits for codegen). */
 export function beginScoping() {
   initialBuildLifecycle.set('scoping');
 }

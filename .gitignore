@@ -192,3 +192,7 @@ indobase-analytics/**/node_modules/
 indobase-analytics/**/.next/
 indobase-analytics/docker/deploy/.env
 
+
+# @indobase/platform local install
+packages/platform/node_modules
+packages/platform/package-lock.json

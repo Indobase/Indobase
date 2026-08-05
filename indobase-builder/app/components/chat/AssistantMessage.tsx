@@ -18,6 +18,7 @@ import type {
 import { ToolInvocations } from './ToolInvocations';
 import type { ToolCallAnnotation } from '~/types/context';
 import { sanitizePlanSteps } from '~/lib/indobase/sanitize-plan-text';
+import { toConversationalAssistantText } from '~/lib/indobase/sanitize-user-facing-chat';
 import { ClarifyingQuestionsCard, type ClarifyingQuestionView } from './ClarifyingQuestionsCard';
 
 interface AssistantMessageProps {
@@ -27,6 +28,7 @@ interface AssistantMessageProps {
   onRewind?: (messageId: string) => void;
   onFork?: (messageId: string) => void;
   append?: (message: Message) => void;
+  sendMessage?: (event: React.UIEvent, messageInput?: string) => void;
   chatMode?: 'discuss' | 'build';
   setChatMode?: (mode: 'discuss' | 'build') => void;
   model?: string;
@@ -69,6 +71,7 @@ export const AssistantMessage = memo(
     onRewind,
     onFork,
     append,
+    sendMessage,
     chatMode,
     setChatMode,
     model,
@@ -134,26 +137,16 @@ export const AssistantMessage = memo(
             suggestions: Array.isArray(q.suggestions)
               ? q.suggestions.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
               : undefined,
+            recommended:
+              typeof (q as ClarifyingQuestionView).recommended === 'string'
+                ? (q as ClarifyingQuestionView).recommended
+                : undefined,
           };
         })
         .filter((item): item is ClarifyingQuestionView => item !== null);
     })();
 
-    const usageAnnotation = filteredAnnotations.find((annotation) => annotation.type === 'usage')?.value as
-      | {
-          completionTokens?: number;
-          promptTokens?: number;
-          totalTokens?: number;
-        }
-      | undefined;
-    const usage =
-      usageAnnotation && typeof usageAnnotation.totalTokens === 'number'
-        ? {
-            completionTokens: Number(usageAnnotation.completionTokens) || 0,
-            promptTokens: Number(usageAnnotation.promptTokens) || 0,
-            totalTokens: usageAnnotation.totalTokens,
-          }
-        : undefined;
+    const conversationalContent = toConversationalAssistantText(content);
 
     const toolInvocations = parts?.filter((part) => part.type === 'tool-invocation');
     const toolCallAnnotations = filteredAnnotations.filter(
@@ -161,6 +154,7 @@ export const AssistantMessage = memo(
     ) as ToolCallAnnotation[];
 
     const hasActions = Boolean((onRewind || onFork) && messageId);
+    const hasClarifying = Boolean(clarifyingQuestions && clarifyingQuestions.length > 0);
 
     return (
       <div className="flex w-full gap-3">
@@ -220,46 +214,68 @@ export const AssistantMessage = memo(
             )}
           </div>
 
-          {clarifyingQuestions && clarifyingQuestions.length > 0 && (
-            <ClarifyingQuestionsCard
-              questions={clarifyingQuestions}
-              append={append}
-              model={model}
-              providerName={provider?.name}
-            />
-          )}
-
-          {planSteps && planSteps.length > 0 && !clarifyingQuestions?.length && (
-            <div className="mb-3 space-y-1.5">
-              {planSteps.map((step, index) => (
-                <div
-                  key={step}
-                  className="flex items-center gap-2.5 rounded-xl bg-[#EAF2FF]/px-3 py-2 text-sm text-gray-800"
-                >
-                  <span className="i-ph:check-circle-fill shrink-0 text-base text-[#2F6FED]" />
-                  <span className="min-w-0 flex-1">{step}</span>
-                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                    {index === 0 ? 'Design' : index === planSteps.length - 1 ? 'Preview' : 'Builder'}
-                  </span>
+          {hasClarifying ? (
+            <>
+              {conversationalContent ? (
+                <div className="mb-3 rounded-2xl bg-[#EAF2FF] px-4 py-3 text-gray-900 shadow-sm">
+                  <Markdown
+                    append={append}
+                    chatMode={chatMode}
+                    setChatMode={setChatMode}
+                    model={model}
+                    provider={provider}
+                    html
+                  >
+                    {conversationalContent}
+                  </Markdown>
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <p className="mb-3 rounded-2xl bg-[#EAF2FF] px-4 py-3 text-sm text-gray-800">
+                  A few quick choices and I&apos;ll build it for you.
+                </p>
+              )}
+              <ClarifyingQuestionsCard
+                questions={clarifyingQuestions!}
+                append={append}
+                sendMessage={sendMessage}
+                model={model}
+                providerName={provider?.name}
+              />
+            </>
+          ) : (
+            <>
+              {planSteps && planSteps.length > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  {planSteps.map((step, index) => (
+                    <div
+                      key={step}
+                      className="flex items-center gap-2.5 rounded-xl bg-[#EAF2FF] px-3 py-2 text-sm text-gray-800"
+                    >
+                      <span className="i-ph:check-circle-fill shrink-0 text-base text-[#2F6FED]" />
+                      <span className="min-w-0 flex-1">{step}</span>
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                        {index === 0 ? 'Design' : index === planSteps.length - 1 ? 'Preview' : 'Builder'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          {!(clarifyingQuestions && clarifyingQuestions.length > 0) && content.trim() && (
-            <div className="rounded-2xl bg-[#EAF2FF] px-4 py-3 text-gray-900 shadow-sm">
-              <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
-                {content}
-              </Markdown>
-            </div>
-          )}
-
-          {clarifyingQuestions && clarifyingQuestions.length > 0 && content.trim() && (
-            <p className="mb-3 rounded-2xl bg-[#EAF2FF] px-4 py-3 text-sm text-gray-800">
-              Answer below and I&apos;ll build the full project next — root{' '}
-              <code className="rounded bg-white/80 px-1 text-xs">package.json</code> and a live preview
-              included.
-            </p>
+              {conversationalContent ? (
+                <div className="rounded-2xl bg-[#EAF2FF] px-4 py-3 text-gray-900 shadow-sm">
+                  <Markdown
+                    append={append}
+                    chatMode={chatMode}
+                    setChatMode={setChatMode}
+                    model={model}
+                    provider={provider}
+                    html
+                  >
+                    {conversationalContent}
+                  </Markdown>
+                </div>
+              ) : null}
+            </>
           )}
 
           {toolInvocations && toolInvocations.length > 0 && (
@@ -272,33 +288,26 @@ export const AssistantMessage = memo(
             </div>
           )}
 
-          {(usage || hasActions) && (
+          {hasActions && (
             <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
-              {usage && (
-                <span title={`prompt ${usage.promptTokens} · completion ${usage.completionTokens}`}>
-                  {usage.totalTokens.toLocaleString()} tokens
-                </span>
-              )}
-              {hasActions && (
-                <div className="flex items-center gap-2">
-                  {onRewind && (
-                    <WithTooltip tooltip="Revert to this message">
-                      <button
-                        onClick={() => onRewind(messageId!)}
-                        className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-gray-700"
-                      />
-                    </WithTooltip>
-                  )}
-                  {onFork && (
-                    <WithTooltip tooltip="Fork chat from this message">
-                      <button
-                        onClick={() => onFork(messageId!)}
-                        className="i-ph:git-fork text-sm transition-colors hover:text-gray-700"
-                      />
-                    </WithTooltip>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {onRewind && (
+                  <WithTooltip tooltip="Revert to this message">
+                    <button
+                      onClick={() => onRewind(messageId!)}
+                      className="i-ph:arrow-u-up-left text-sm transition-colors hover:text-gray-700"
+                    />
+                  </WithTooltip>
+                )}
+                {onFork && (
+                  <WithTooltip tooltip="Fork chat from this message">
+                    <button
+                      onClick={() => onFork(messageId!)}
+                      className="i-ph:git-fork text-sm transition-colors hover:text-gray-700"
+                    />
+                  </WithTooltip>
+                )}
+              </div>
             </div>
           )}
         </div>

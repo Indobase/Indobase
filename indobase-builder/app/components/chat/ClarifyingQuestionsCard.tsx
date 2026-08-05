@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type { Message } from 'ai';
 import { classNames } from '~/utils/classNames';
 import { CLARIFYING_ANSWERS_MARKER } from '~/lib/indobase/clarifying-answers';
@@ -8,20 +8,40 @@ export type ClarifyingQuestionView = {
   question: string;
   why?: string;
   suggestions?: string[];
+  /** Preferred / recommended option (Emergent-style). */
+  recommended?: string;
 };
 
 interface ClarifyingQuestionsCardProps {
   questions: ClarifyingQuestionView[];
+  /** Prefer sendMessage so auth, quota, and beginCodegenCommand run. */
+  sendMessage?: (event: React.UIEvent, messageInput?: string) => void;
+  /** Fallback only when sendMessage is unavailable. */
   append?: (message: Message) => void;
   model?: string;
   providerName?: string;
 }
 
+function pickRecommended(question: ClarifyingQuestionView): string {
+  const suggestions = question.suggestions?.filter(Boolean) ?? [];
+  if (question.recommended && suggestions.includes(question.recommended)) {
+    return question.recommended;
+  }
+
+  const youDecide = suggestions.find((s) => /you decide/i.test(s));
+  if (youDecide) {
+    return youDecide;
+  }
+
+  return suggestions[0] || 'You decide — make it distinctive';
+}
+
 /**
- * Emergent-style intake card: one question at a time, multi-choice, Auto-answer + Next.
+ * Emergent-style intake card: one question at a time, multi-choice with Recommended,
+ * Auto-answer + Next.
  */
 export const ClarifyingQuestionsCard = memo(
-  ({ questions, append, model, providerName }: ClarifyingQuestionsCardProps) => {
+  ({ questions, sendMessage, append, model, providerName }: ClarifyingQuestionsCardProps) => {
     const safeQuestions = useMemo(
       () => questions.filter((q) => typeof q.question === 'string' && q.question.trim().length > 0),
       [questions],
@@ -31,58 +51,107 @@ export const ClarifyingQuestionsCard = memo(
     const [customText, setCustomText] = useState('');
     const [submitted, setSubmitted] = useState(false);
 
+    // Pre-select the recommended option for the current question (Emergent behavior).
+    useEffect(() => {
+      if (safeQuestions.length === 0) {
+        return;
+      }
+
+      const current = safeQuestions[index];
+      if (!current) {
+        return;
+      }
+
+      setAnswers((prev) => {
+        if (prev[index]?.trim()) {
+          return prev;
+        }
+
+        return { ...prev, [index]: pickRecommended(current) };
+      });
+      setCustomText('');
+    }, [index, safeQuestions]);
+
     if (safeQuestions.length === 0 || submitted) {
       return null;
     }
 
     const current = safeQuestions[index];
     const suggestions = current.suggestions?.filter(Boolean) ?? [];
-    const selected = answers[index] ?? '';
+    const recommended = pickRecommended(current);
+    const selected = answers[index] ?? recommended;
     const isLast = index >= safeQuestions.length - 1;
     const canAdvance = selected.trim().length > 0;
+    const canSubmit = Boolean(sendMessage || append);
 
     const selectOption = (value: string) => {
       setAnswers((prev) => ({ ...prev, [index]: value }));
       setCustomText('');
     };
 
-    const autoAnswer = () => {
-      const pick = suggestions[0] || 'You decide — make it distinctive';
-      selectOption(pick);
-    };
-
     const submitAll = (finalAnswers: Record<number, string>) => {
-      if (!append) {
+      if (!sendMessage && !append) {
         return;
       }
 
       const lines = safeQuestions.map((q, i) => {
-        const answer = finalAnswers[i]?.trim() || suggestions[0] || 'You decide';
+        const answer = finalAnswers[i]?.trim() || pickRecommended(q);
         return `${i + 1}. ${q.question}\n→ ${answer}`;
       });
 
+      // Plain body — sendMessage wraps Model/Provider and runs auth/quota/codegen lifecycle.
       const body = `${CLARIFYING_ANSWERS_MARKER}\n\n${lines.join('\n\n')}\n\nBuild with these decisions.`;
-      const content =
-        model && providerName ? `[Model: ${model}]\n\n[Provider: ${providerName}]\n\n${body}` : body;
 
       setSubmitted(true);
+
+      if (sendMessage) {
+        sendMessage({} as React.UIEvent, body);
+        return;
+      }
+
       beginInitialBuild();
-      append({
+      const content =
+        model && providerName ? `[Model: ${model}]\n\n[Provider: ${providerName}]\n\n${body}` : body;
+      append!({
         role: 'user',
         content,
       } as Message);
     };
 
+    /** Fill every unanswered step with its recommendation and start the build. */
+    const autoAnswer = () => {
+      const complete: Record<number, string> = { ...answers };
+      safeQuestions.forEach((q, i) => {
+        if (!complete[i]?.trim()) {
+          complete[i] = pickRecommended(q);
+        }
+      });
+      submitAll(complete);
+    };
+
     const goNext = () => {
-      if (!canAdvance) {
+      const resolved = {
+        ...answers,
+        [index]: (answers[index] || recommended).trim(),
+      };
+
+      if (!resolved[index]) {
         return;
       }
 
       if (isLast) {
-        submitAll(answers);
+        // Fill any unanswered steps with their recommendations before build.
+        const complete = { ...resolved };
+        safeQuestions.forEach((q, i) => {
+          if (!complete[i]?.trim()) {
+            complete[i] = pickRecommended(q);
+          }
+        });
+        submitAll(complete);
         return;
       }
 
+      setAnswers(resolved);
       setIndex((value) => value + 1);
       setCustomText('');
     };
@@ -100,7 +169,7 @@ export const ClarifyingQuestionsCard = memo(
       <div className="mb-3 overflow-hidden rounded-2xl border border-[#BFD9FF] bg-[#F3F8FF] shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-[#D6E7FF] px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2F6FED]/text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2F6FED] text-white">
               <span className="i-ph:chat-circle-dots text-sm" />
             </span>
             Agent has questions for you
@@ -117,6 +186,7 @@ export const ClarifyingQuestionsCard = memo(
           <div className="flex flex-col gap-2">
             {suggestions.map((option) => {
               const active = selected === option;
+              const isRecommended = option === recommended;
 
               return (
                 <button
@@ -138,7 +208,15 @@ export const ClarifyingQuestionsCard = memo(
                   >
                     ✓
                   </span>
-                  <span>{option}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block">{option}</span>
+                    {isRecommended ? (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#EAF2FF] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F6FED]">
+                        <span className="i-ph:sparkle-fill text-[10px]" aria-hidden />
+                        Recommended
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               );
             })}
@@ -174,14 +252,15 @@ export const ClarifyingQuestionsCard = memo(
             <button
               type="button"
               onClick={autoAnswer}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              disabled={!canSubmit}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
             >
               Auto-answer
             </button>
             <button
               type="button"
               onClick={goNext}
-              disabled={!canAdvance}
+              disabled={!canAdvance || (isLast && !canSubmit)}
               className="rounded-xl bg-[#2F6FED] px-4 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-40"
             >
               {isLast ? 'Build' : 'Next'}

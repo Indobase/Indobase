@@ -2,7 +2,6 @@ import { atom, type WritableAtom } from 'nanostores';
 import { createScopedLogger } from '~/utils/logger';
 import { WorkspaceEventBus } from './events';
 import {
-  createCommandId,
   createDiagnosticsId,
   createSnapshotId,
   EMPTY_SNAPSHOT_ID,
@@ -15,8 +14,10 @@ import {
   diffTrees,
   materializeSnapshot,
   normalizeProjectPath,
+  validateMutationSet,
   type MaterializedTree,
 } from './snapshot-tree';
+import { createWorkspaceCommand } from '@indobase/platform';
 import type {
   CommandIntent,
   CommandReason,
@@ -117,18 +118,16 @@ export class WorkspaceService {
    */
   beginWorkingCommand(input: BeginWorkingCommandInput): WorkingCommandSession {
     const baseSnapshotId = input.baseSnapshotId ?? this.headSnapshotId.get();
-    const command: WorkspaceCommand = {
-      id: createCommandId(),
+    const command = createWorkspaceCommand({
       type: input.type,
       intent: input.intent,
       scope: input.scope,
       reason: input.reason,
       baseSnapshotId,
-      status: 'running',
-      createdAt: Date.now(),
-      startedAt: Date.now(),
       goal: input.goal,
-    };
+    });
+    command.status = 'running';
+    command.startedAt = Date.now();
 
     this.registerCommand(command);
     this.markCommandStarted(command.id);
@@ -427,51 +426,6 @@ export class WorkspaceService {
     this.#commitChain = Promise.resolve();
     this.events.clear();
   }
-}
-
-function validateMutationSet(mutations: MutationSet): string | undefined {
-  if (!mutations?.files || !Array.isArray(mutations.files)) {
-    return 'Mutation set must include files[]';
-  }
-
-  const seen = new Set<string>();
-  const normalizedFiles: MutationSet['files'] = [];
-
-  for (const mutation of mutations.files) {
-    if (!mutation?.path?.trim()) {
-      return 'Mutation is missing path';
-    }
-
-    const path = normalizeProjectPath(mutation.path);
-
-    if (!path) {
-      return `Rejected path: ${mutation.path}`;
-    }
-
-    if (path.split('/').includes('..')) {
-      return `Rejected path: ${mutation.path}`;
-    }
-
-    if (seen.has(path)) {
-      return `Duplicate path in mutation set: ${path}`;
-    }
-
-    seen.add(path);
-
-    if (mutation.kind === 'upsert' && typeof mutation.content !== 'string') {
-      return `Upsert for ${path} is missing content`;
-    }
-
-    normalizedFiles.push(
-      mutation.kind === 'delete'
-        ? { kind: 'delete', path }
-        : { kind: 'upsert', path, content: mutation.content, isBinary: mutation.isBinary },
-    );
-  }
-
-  mutations.files = normalizedFiles;
-
-  return undefined;
 }
 
 function rebaseMutations(options: {

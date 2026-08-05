@@ -1,0 +1,23 @@
+{
+  "name": "@indobase/platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Indobase OS kernel — Identity, Workspace, Documents, Commands, Events, Capabilities, Execution",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

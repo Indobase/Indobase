@@ -12,6 +12,7 @@ import type { FileMap } from '~/lib/stores/files';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { buildService, workspaceService } from '~/lib/workspace';
 import { canQueueIndobaseDeployment } from '~/lib/indobase/studioApi';
+import { ExecutionCommands, createExecutionRequest, toExecutionResult } from '~/lib/platform';
 import { extractRelativePath } from '~/utils/diff';
 import { WORK_DIR } from '~/utils/constants';
 import { createScopedLogger } from '~/utils/logger';
@@ -22,6 +23,8 @@ export type PublishDraftPreviewResult = {
   error?: string;
   previewUrl?: string;
   success: boolean;
+  /** OS Execution result for build+preview (optional observability). */
+  execution?: ReturnType<typeof toExecutionResult>;
 };
 
 function collectWorkbenchSourceFiles(): Record<string, string> {
@@ -99,6 +102,24 @@ export async function publishDraftPreview(
 
   const snapshotId = workspaceService.headSnapshotId.get();
   const buildId = buildService.startBuild(snapshotId);
+  const projectRef =
+    connection.indobase?.projectRef || connection.selectedProjectId || 'unknown';
+
+  // OS Execution envelopes — adapters below (server-build + draft-preview host) stay unchanged.
+  const buildCommand = ExecutionCommands.build(projectRef, 'draft_preview');
+  const previewCommand = ExecutionCommands.preview(projectRef, 'draft_preview');
+  const buildExecution = createExecutionRequest({
+    kind: 'execution.build',
+    projectRef,
+    reason: 'draft_preview',
+    commandId: buildCommand.id,
+  });
+  const previewExecution = createExecutionRequest({
+    kind: 'execution.preview',
+    projectRef,
+    reason: 'draft_preview',
+    commandId: previewCommand.id,
+  });
 
   try {
     const buildResult = await collectBuildArtifactsViaServer(connection, relativeFilesToFileMap(sourceFiles), {
@@ -110,9 +131,12 @@ export async function publishDraftPreview(
       const error = buildResult.error || 'Server build failed for draft preview';
       buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
+      toExecutionResult(buildExecution, { ok: false, error });
 
-      return { success: false, error };
+      return { success: false, error, execution: toExecutionResult(previewExecution, { ok: false, error }) };
     }
+
+    toExecutionResult(buildExecution, { ok: true });
 
     const response = await fetch(
       '/api/indobase/draft-preview',
@@ -135,20 +159,32 @@ export async function publishDraftPreview(
       buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
 
-      return { success: false, error };
+      return {
+        success: false,
+        error,
+        execution: toExecutionResult(previewExecution, { ok: false, error }),
+      };
     }
 
     buildService.finishBuild(buildId, { status: 'succeeded', outputRef: payload.previewUrl });
     setDraftPreviewReady(payload.previewUrl, payload.expiresAt, { snapshotId, buildId });
     logger.info(`Draft preview ready at ${payload.previewUrl}`);
 
-    return { success: true, previewUrl: payload.previewUrl };
+    return {
+      success: true,
+      previewUrl: payload.previewUrl,
+      execution: toExecutionResult(previewExecution, { ok: true, outputRef: payload.previewUrl }),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Draft preview failed';
     buildService.finishBuild(buildId, { status: 'failed', error: message });
     setDraftPreviewError(message);
     logger.error('Draft preview failed', error);
 
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: message,
+      execution: toExecutionResult(previewExecution, { ok: false, error: message }),
+    };
   }
 }

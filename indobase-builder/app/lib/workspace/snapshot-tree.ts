@@ -1,6 +1,15 @@
 import type { FileMap } from '~/lib/stores/files';
 import { EMPTY_SNAPSHOT_ID, type SnapshotId } from './ids';
-import type { FileMutation, MutationSet, WorkspaceSnapshot } from './types';
+import {
+  normalizeProjectPath,
+  validateMutationSet,
+  type FileMutation,
+  type MutationSet,
+  type WorkspaceSnapshot,
+} from '@indobase/platform';
+
+export { normalizeProjectPath, validateMutationSet };
+export type { FileMutation, MutationSet };
 
 export type MaterializedFile = {
   content: string;
@@ -8,15 +17,6 @@ export type MaterializedFile = {
 };
 
 export type MaterializedTree = Record<string, MaterializedFile>;
-
-/** Normalize workbench / WC paths to project-relative keys. */
-export function normalizeProjectPath(filePath: string): string {
-  return filePath
-    .replace(/\\/g, '/')
-    .replace(/^\/home\/project\/?/, '')
-    .replace(/^\/+/, '')
-    .replace(/\/{2,}/g, '/');
-}
 
 export function fileMapToTree(files: FileMap): MaterializedTree {
   const tree: MaterializedTree = {};

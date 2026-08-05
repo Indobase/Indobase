@@ -1,3 +1,4 @@
+import { Platform } from '@indobase/platform';
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 
 export type DeployEnvironmentVariables = Record<string, string>;
@@ -7,6 +8,11 @@ function cleanEnvValue(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+/**
+ * Deploy / codegen env for a linked project.
+ * Auth URL + anon key bindings come from the Platform Runtime ABI (`auth` capability),
+ * not from hard-coded product knowledge.
+ */
 export function getDeployEnvironmentVariables(
   connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
 ): DeployEnvironmentVariables {
@@ -20,26 +26,23 @@ export function getDeployEnvironmentVariables(
     return {};
   }
 
+  const projectRef = cleanEnvValue(connection?.indobase?.projectRef) || 'unknown';
+  const runtime = Platform.resolve({
+    projectRef,
+    dataPlane: { url: apiUrl, anonKey },
+  });
+
   const env: DeployEnvironmentVariables = {
-    NEXT_PUBLIC_INDOBASE_ANON_KEY: anonKey,
-    NEXT_PUBLIC_INDOBASE_URL: apiUrl,
-    INDOBASE_ANON_KEY: anonKey,
-    INDOBASE_URL: apiUrl,
-    VITE_INDOBASE_ANON_KEY: anonKey,
-    VITE_INDOBASE_URL: apiUrl,
-    EXPO_PUBLIC_INDOBASE_ANON_KEY: anonKey,
-    EXPO_PUBLIC_INDOBASE_URL: apiUrl,
+    ...(runtime.capabilities.auth?.bindings.env ?? {}),
   };
 
-  const projectRef = cleanEnvValue(connection?.indobase?.projectRef);
-  const studioUrl = cleanEnvValue(connection?.indobase?.studioUrl);
-
-  if (projectRef) {
+  if (projectRef !== 'unknown') {
     env.INDOBASE_PROJECT_REF = projectRef;
     env.NEXT_PUBLIC_INDOBASE_PROJECT_REF = projectRef;
     env.VITE_INDOBASE_PROJECT_REF = projectRef;
   }
 
+  const studioUrl = cleanEnvValue(connection?.indobase?.studioUrl);
   if (studioUrl) {
     env.INDOBASE_STUDIO_URL = studioUrl;
     env.NEXT_PUBLIC_INDOBASE_STUDIO_URL = studioUrl;

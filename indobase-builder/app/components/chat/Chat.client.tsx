@@ -178,14 +178,7 @@ export const ChatImpl = memo(
       chatStore.setKey('started', started);
     }, [initialMessages]);
 
-    useEffect(() => {
-      if (!chatStarted) {
-        return;
-      }
-
-      // Warm WC in background — never block chat UI / My Apps navigation on boot.
-      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer().catch(() => undefined));
-    }, [chatStarted]);
+    // WebContainer warm boot removed — draft preview only.
 
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [imageDataList, setImageDataList] = useState<string[]>([]);
@@ -427,9 +420,13 @@ export const ChatImpl = memo(
 
       if (building) {
         beginInitialBuild();
-        beginCodegenCommand({
-          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
-        });
+        try {
+          beginCodegenCommand({
+            ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+          });
+        } catch (error) {
+          logger.warn('Workspace beginCodegenCommand failed (non-fatal)', error);
+        }
       }
     }, [chatData]);
 
@@ -511,7 +508,7 @@ export const ChatImpl = memo(
           if (chatMode === 'build') {
             automaticPreviewRepairAttemptRef.current = 0;
             workbenchStore.clearWorkspace();
-            workbenchStore.currentView.set('preview');
+            // Open workbench during scoping, but do not force Preview until codegen starts.
             workbenchStore.showWorkbench.set(true);
             beginScoping();
           }
@@ -605,18 +602,23 @@ export const ChatImpl = memo(
         return;
       }
 
-      void import('~/lib/webcontainer')
-        .then(async ({ getWebcontainer }) => {
-          const container = await getWebcontainer();
-          await seedProjectEnvIfMissing(
-            (filePath, content) => container.fs.writeFile(filePath, content),
-            (filePath) => container.fs.readFile(filePath, 'utf-8'),
-            indobaseConn,
-          );
-        })
-        .catch(() => {
-          // WC timeout / draft-preview fallback is expected; never leave an unhandled rejection (BUILDER-1).
-        });
+      // Seed .env into the workbench file map (draft preview reads workbench files — no WebContainer).
+      void seedProjectEnvIfMissing(
+        async (filePath, content) => {
+          workbenchStore.createFile(filePath, content);
+        },
+        async (filePath) => {
+          const files = workbenchStore.files.get();
+          const entry = files[filePath] || files[`/${filePath}`] || files[`.${filePath}`];
+          if (entry && entry.type === 'file' && typeof entry.content === 'string') {
+            return entry.content;
+          }
+          throw new Error('missing');
+        },
+        indobaseConn,
+      ).catch(() => {
+        // Non-fatal — draft build can still inject env at publish time.
+      });
     }, [
       indobaseConn.connectionSource,
       indobaseConn.credentials?.anonKey,
@@ -793,7 +795,11 @@ export const ChatImpl = memo(
               chatStore.setKey('aborted', false);
               setStreamStalled(false);
               initialBuildLifecycle.set('finalizing');
-              beginCodegenCommand({ ...inferRepairCommandMeta() });
+              try {
+                beginCodegenCommand({ ...inferRepairCommandMeta() });
+              } catch (error) {
+                logger.warn('Workspace beginCodegenCommand failed (non-fatal)', error);
+              }
               append({
                 role: 'user',
                 content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
@@ -906,7 +912,11 @@ export const ChatImpl = memo(
                 chatStore.setKey('aborted', false);
                 setStreamStalled(false);
                 initialBuildLifecycle.set('finalizing');
-                beginCodegenCommand({ ...inferRepairCommandMeta() });
+                try {
+                  beginCodegenCommand({ ...inferRepairCommandMeta() });
+                } catch (error) {
+                  logger.warn('Workspace beginCodegenCommand failed (non-fatal)', error);
+                }
                 append({
                   role: 'user',
                   content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
@@ -1393,7 +1403,7 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         if (chatMode === 'build') {
           // Fresh chat must not inherit prior project's workbench files into LLM context / WC.
           workbenchStore.clearWorkspace();
-          workbenchStore.currentView.set('preview');
+          // Open workbench during scoping, but do not force Preview until codegen starts.
           workbenchStore.showWorkbench.set(true);
           beginScoping();
         }
@@ -1435,9 +1445,13 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       }
 
       if (chatMode === 'build' && chatStarted) {
-        beginCodegenCommand({
-          ...inferCodegenCommandMeta({ isInitialBuild: false, scaffolded: false }),
-        });
+        try {
+          beginCodegenCommand({
+            ...inferCodegenCommandMeta({ isInitialBuild: false, scaffolded: false }),
+          });
+        } catch (error) {
+          logger.warn('Workspace beginCodegenCommand failed (non-fatal)', error);
+        }
       }
 
       if (
@@ -1445,9 +1459,13 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         (finalMessageContent.includes(CLARIFYING_ANSWERS_MARKER) || initialBuildLifecycle.get() === 'scoping')
       ) {
         beginInitialBuild();
-        beginCodegenCommand({
-          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
-        });
+        try {
+          beginCodegenCommand({
+            ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+          });
+        } catch (error) {
+          logger.warn('Workspace beginCodegenCommand failed (non-fatal)', error);
+        }
       }
 
       const modifiedFiles = workbenchStore.getModifiedFiles();

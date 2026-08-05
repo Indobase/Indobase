@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { createDataStream, generateId } from 'ai';
+import { createDataStream, formatDataStreamPart, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
@@ -19,7 +19,6 @@ import { withSecurity } from '~/lib/security';
 import {
   completeCoderPhase,
   extractPlanSteps,
-  injectClarifyingQuestions,
   injectPlannerPlan,
 } from '~/lib/.server/orchestration/orchestrate-chat';
 import {
@@ -31,7 +30,7 @@ import {
 } from '~/lib/indobase/builder-prompt-quota.server';
 import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
-import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan } from '~/lib/indobase/generation-contract';
+import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan, getCoderContractAppendix } from '~/lib/indobase/generation-contract';
 import { getInstantClarifyingQuestions } from '~/lib/indobase/instant-clarifying.server';
 
 const logger = createScopedLogger('api.chat');
@@ -247,14 +246,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
         /*
          * Emergent-style intake: vague first Build prompts get clarifying questions (local, no LLM
-         * planner wait). After answers, inject the instant plan and codegen.
+         * planner or coder wait). After answers, inject the instant plan and codegen.
          */
         if (useMultiAgent && !isToolContinuationRound) {
           const clarifying = isFirstBuildTurn ? getInstantClarifyingQuestions(processedMessages) : null;
 
           if (clarifying?.length) {
-            orchestratedMessages = injectClarifyingQuestions(processedMessages, clarifying);
-            logger.info(`Using instant clarifying questions (${clarifying.length})`);
+            logger.info(`Using instant clarifying questions (${clarifying.length}); skipping LLM`);
             dataStream.writeData({
               type: 'progress',
               label: 'scoping',
@@ -267,24 +265,37 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               agent: 'planner',
               questions: clarifying,
             });
-          } else {
-            const instantPlan = getInstantBuildPlan(processedMessages);
-            orchestratedMessages = injectPlannerPlan(processedMessages, instantPlan);
-            logger.info('Using instant build plan (LLM planner skipped)');
+            dataStream.write(
+              formatDataStreamPart('text', "Got it — a few quick choices and I'll build it for you."),
+            );
             dataStream.writeData({
               type: 'progress',
-              label: 'coder',
-              status: 'in-progress',
+              label: 'response',
+              status: 'complete',
               order: progressCounter++,
-              message: 'Building',
+              message: 'Waiting for your answers',
             } satisfies ProgressAnnotation);
-            dataStream.writeMessageAnnotation({
-              type: 'agentPlan',
-              agent: 'planner',
-              plan: instantPlan,
-              steps: extractPlanSteps(instantPlan),
-            });
+            streamRecovery.stop();
+            return;
           }
+
+          const instantPlan = getInstantBuildPlan(processedMessages);
+          const coderContract = getCoderContractAppendix(processedMessages);
+          orchestratedMessages = injectPlannerPlan(processedMessages, instantPlan, coderContract);
+          logger.info('Using instant build plan (LLM planner skipped)');
+          dataStream.writeData({
+            type: 'progress',
+            label: 'coder',
+            status: 'in-progress',
+            order: progressCounter++,
+            message: 'Building',
+          } satisfies ProgressAnnotation);
+          dataStream.writeMessageAnnotation({
+            type: 'agentPlan',
+            agent: 'planner',
+            plan: instantPlan,
+            steps: extractPlanSteps(instantPlan),
+          });
 
           streamRecovery.updateActivity();
         }

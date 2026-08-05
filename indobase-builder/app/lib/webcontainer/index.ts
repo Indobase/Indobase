@@ -5,6 +5,7 @@ import { cleanStackTrace } from '~/utils/stacktrace';
 import { isSingletonBootError, toUserFacingBootError } from './boot-errors';
 import { ensureWebContainerApiKeyConfigured } from './configure-api-key';
 import { whenBuilderPublicEnvReady } from './public-env';
+import { shouldSkipWebContainerRuntime } from './preview-mode';
 
 export {
   isFatalBootConfigError,
@@ -15,6 +16,11 @@ export {
 export { ensureWebContainerApiKeyConfigured, resolveWebContainerApiKey } from './configure-api-key';
 
 export const webcontainerBootErrorAtom = atom<string | null>(null);
+
+/** Quiet reject — draft preview is the only path; do not surface StackBlitz errors to users. */
+const DRAFT_ONLY_SKIP = Object.assign(new Error('WebContainer disabled — using server draft preview'), {
+  name: 'WebContainerDraftOnlySkip',
+});
 
 interface WebContainerContext {
   loaded: boolean;
@@ -316,6 +322,12 @@ export function getWebcontainer(): Promise<WebContainer> {
     });
   }
 
+  // Product mode: never boot StackBlitz — callers fall through to draft preview.
+  if (shouldSkipWebContainerRuntime()) {
+    webcontainerBootErrorAtom.set(null);
+    return Promise.reject(DRAFT_ONLY_SKIP);
+  }
+
   if (activeInstance && webcontainerContext.loaded) {
     return Promise.resolve(activeInstance);
   }
@@ -423,19 +435,13 @@ export async function getWebcontainerWithRetry(maxAttempts = 1): Promise<WebCont
   return sharedRetryPromise;
 }
 
-/** Start WebContainer boot as early as possible so the terminal is ready sooner. */
+/** No-op — WebContainer is disabled; draft preview only. */
 export function warmWebContainer(): void {
   if (import.meta.env.SSR) {
     return;
   }
 
-  if (bootFailureLatch) {
-    return;
-  }
-
-  void getWebcontainer().catch(() => {
-    // Terminal attach will surface the latched error; avoid unhandled rejection noise.
-  });
+  // Intentionally empty: never start StackBlitz boot.
 }
 
 /**

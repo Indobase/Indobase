@@ -22,7 +22,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./app/*"],
+      "@indobase/platform": ["../packages/platform/src/index.ts"],
+      "@indobase/platform/*": ["../packages/platform/src/*"]
     },
     // vite takes care of building everything, not tsc
     "noEmit": true

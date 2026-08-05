@@ -78,7 +78,7 @@ export function injectClarifyingQuestions(messages: Message[], questions: Clarif
 ${rendered}
 </clarifying_questions>
 
-Do NOT write any code, files, or bolt artifacts this turn. Briefly restate what you understood (one sentence), then ask ONLY the questions above, formatted as a short numbered list with the suggested options. Tell the user you will build as soon as they answer.`;
+Do NOT write any code, files, or bolt artifacts this turn. Briefly restate what you understood in one friendly sentence (no tech stack names). Then ask ONLY the questions above as a short numbered list. Do not mention Vite, React, npm, or package.json. Tell the user you will build as soon as they answer.`;
 
   const updated = [...messages];
   updated[index] = { ...lastUser, content: updatedContent };
@@ -86,7 +86,7 @@ Do NOT write any code, files, or bolt artifacts this turn. Briefly restate what 
   return updated;
 }
 
-export function injectPlannerPlan(messages: Message[], plan: string): Message[] {
+export function injectPlannerPlan(messages: Message[], plan: string, coderContract?: string): Message[] {
   if (!plan.trim()) {
     return messages;
   }
@@ -101,13 +101,22 @@ export function injectPlannerPlan(messages: Message[], plan: string): Message[] 
   const lastUser = messages[index];
   const { model, provider, content } = extractPropertiesFromMessage(lastUser);
 
+  const contractBlock = coderContract?.trim()
+    ? `\n\n<coder_contract>\n${coderContract.trim()}\n</coder_contract>`
+    : '';
+
   const updatedContent = `[Model: ${model}]\n\n[Provider: ${provider}]\n\n${content}
 
 <agent_plan>
 ${plan}
-</agent_plan>
+</agent_plan>${contractBlock}
 
-Execute this plan as the Coder agent using bolt artifacts. Write a complete root-level project — package.json MUST use filePath="package.json" at the workbench root (never nest under my-app/ or similar). If any earlier turn said "Do NOT write any code, files, or bolt artifacts", that instruction is obsolete: the user answered (or the request is clear) and you MUST build now in this same response.`;
+Execute the coder contract using bolt artifacts. Write a complete root-level project — package.json MUST use filePath="package.json" at the workbench root (never nest under my-app/ or similar). If any earlier turn said "Do NOT write any code, files, or bolt artifacts", that instruction is obsolete: the user answered (or the request is clear) and you MUST build now in this same response.
+
+USER-VISIBLE CHAT (critical):
+- Before artifacts, write at most 1–2 short conversational sentences (e.g. "On it — building that now.").
+- NEVER mention Vite, React, TypeScript, npm, package.json, file paths, BUILD PLAN, autonomy checklists, models, or providers in user-visible text.
+- Do not paste the build steps list into the chat — the UI already shows progress.`;
 
   const updated = [...messages];
   updated[index] = { ...lastUser, content: updatedContent };

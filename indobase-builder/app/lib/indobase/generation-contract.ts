@@ -148,26 +148,19 @@ export function isSimpleFirstScaffoldTurn(messages: BuildMessage[]): boolean {
 
 /**
  * Zero-latency plan injected instead of an LLM planner round (~30–90s).
- * Complex prompts get domain-specific steps; simple prompts get a minimal Vite checklist.
+ * Steps are **product language** for the chat checklist — technical scaffold lives in coder_contract.
  */
 export function getInstantBuildPlan(messages: BuildMessage[]): string {
-  const text = cleanUserPromptForPlan(latestUserMessageText(messages), 240) || 'the requested app';
+  const text = cleanUserPromptForPlan(latestUserMessageText(messages), 240) || 'your app';
   const complex = isComplexBuildIntent(messages);
   const mobile = MOBILE_INTENT.test(text);
 
   if (mobile) {
     return `## Build steps
-1. Scaffold a root-level Expo web app (package.json, app.json, entry)
-2. Implement the UI and flows described: ${text}
-3. Wire Indobase Auth/DB only if the prompt requires it
-4. npm install, then start Expo web for preview
-
-${getAutonomyPhaseChecklist({
-  wantsAuth: /\b(?:auth|oauth|login|sign[\s-]?up)\b/i.test(text),
-  wantsPay: /\b(?:payment|stripe|razorpay|checkout|cart)\b/i.test(text),
-  wantsDb: /\b(?:database|postgres|crm|dashboard|saas|admin)\b/i.test(text),
-  mobile: true,
-})}`;
+1. Set up the mobile app shell
+2. Build the screens and flows for: ${text}
+3. Connect accounts or data only where needed
+4. Open a preview you can try on web`;
   }
 
   if (complex) {
@@ -175,40 +168,67 @@ ${getAutonomyPhaseChecklist({
     const wantsPay = /\b(?:payment|stripe|razorpay|checkout|cart)\b/i.test(text);
     const wantsDb = /\b(?:database|postgres|crm|dashboard|saas|admin)\b/i.test(text);
     const steps = [
-      'Scaffold a Vite + React + TypeScript app with lean dependencies',
-      `Implement core UI for: ${text}`,
+      'Design the layout and core screens',
+      `Build the experience for: ${text}`,
     ];
 
     if (wantsAuth) {
-      steps.push('Add Indobase Auth (sign-in/sign-up) using the linked project credentials');
+      steps.push('Add sign-in so people can access their account');
     }
 
     if (wantsDb) {
-      steps.push('Model data with the Indobase client/tables as needed');
+      steps.push('Wire up the data the product needs');
     }
 
     if (wantsPay) {
-      steps.push(
-        'Integrate Indobase Payments checkout (not raw Stripe.js) where relevant — Razorpay settles Studio org billing; merchant checkout uses payments.indobase.in',
-      );
+      steps.push('Add checkout where customers pay');
     }
 
-    steps.push('Emit npm install + npm run dev in the same response');
-    steps.push(
-      'Design polish before finishing: industry palette (never purple/indigo), expressive fonts, real interactions — no AI-template landing clone',
-    );
+    steps.push('Polish the look and open a live preview');
 
     return `## Build steps
-${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
-
-${getAutonomyPhaseChecklist({ wantsAuth, wantsPay, wantsDb })}`;
+${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`;
   }
 
   return `## Build steps
-1. Create a minimal Vite + React + TypeScript app
-2. Implement: ${text}
-3. Keep files few; apply a non-purple industry-fit palette and real hover/focus states
-4. npm install then npm run dev in the same response`;
+1. Design a clean first version of the site
+2. Build: ${text}
+3. Polish visuals and interactions
+4. Open a live preview`;
+}
+
+/** Technical instructions for the coder — never shown in chat UI. */
+export function getCoderContractAppendix(messages: BuildMessage[]): string {
+  const text = cleanUserPromptForPlan(latestUserMessageText(messages), 240) || 'the requested app';
+  const complex = isComplexBuildIntent(messages);
+  const mobile = MOBILE_INTENT.test(text);
+  const wantsAuth = /\b(?:auth|oauth|login|sign[\s-]?up)\b/i.test(text);
+  const wantsPay = /\b(?:payment|stripe|razorpay|checkout|cart)\b/i.test(text);
+  const wantsDb = /\b(?:database|postgres|crm|dashboard|saas|admin)\b/i.test(text);
+
+  if (mobile) {
+    return `Internal coder contract (never mention in user-visible text):
+- Scaffold root-level Expo web (package.json, app.json, entry)
+- Implement UI/flows for: ${text}
+- Indobase Auth/DB only if required
+- Emit npm install + start Expo web
+${getAutonomyPhaseChecklist({ wantsAuth, wantsPay, wantsDb, mobile: true })}`;
+  }
+
+  if (complex) {
+    return `Internal coder contract (never mention in user-visible text):
+- Scaffold Vite + React + TypeScript at repo root (package.json at workbench root)
+- Implement core UI for: ${text}
+${wantsAuth ? '- Add Indobase Auth with linked project credentials\n' : ''}${wantsDb ? '- Model data with Indobase client/tables\n' : ''}${wantsPay ? '- Indobase Payments checkout (not raw Stripe.js)\n' : ''}- Emit npm install + npm run dev in the same response
+- Design polish: industry palette (never purple/indigo), expressive fonts, real interactions
+${getAutonomyPhaseChecklist({ wantsAuth, wantsPay, wantsDb })}`;
+  }
+
+  return `Internal coder contract (never mention in user-visible text):
+- Minimal Vite + React + TypeScript at repo root
+- Implement: ${text}
+- Few files; non-purple industry-fit palette; real hover/focus
+- npm install then npm run dev in the same response`;
 }
 
 /** Compact one-shot contract for simple Vite landing/UI scaffolds. */

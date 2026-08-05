@@ -20,6 +20,7 @@ export {
   materializeSnapshot,
   normalizeProjectPath,
   treeToFileMap,
+  validateMutationSet,
   type MaterializedFile,
   type MaterializedTree,
 } from './snapshot-tree';

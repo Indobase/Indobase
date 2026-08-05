@@ -11,8 +11,6 @@ import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import { isPreviewBusy, previewManagerState, previewUrlFromManager } from '~/lib/preview/preview-manager';
 import { streamingState } from '~/lib/stores/streaming';
-import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
-import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 import { classNames } from '~/utils/classNames';
 
 type ResizeSide = 'left' | 'right' | null;
@@ -23,18 +21,18 @@ interface PreviewProps {
 
 const PREVIEW_FEATURE_SLIDES = [
   {
-    title: 'Live preview beside chat',
-    detail: 'Watch your app appear here as the agent builds — no separate deploy step for first look.',
+    title: 'Explore your live preview',
+    detail: 'Your app will appear here as soon as the first build is ready — chat stays on the left.',
     icon: 'i-ph:app-window',
   },
   {
-    title: 'Edit and iterate in Manage',
-    detail: 'Open code, diffs, and terminal when you want control. Chat stays the primary way to change the product.',
-    icon: 'i-ph:code',
+    title: 'Iterate without leaving Builder',
+    detail: 'Answer questions, refine the prompt, and watch Manage for code while Preview stays ready.',
+    icon: 'i-ph:arrows-clockwise',
   },
   {
-    title: 'Publish when you are ready',
-    detail: 'Ship to your Indobase subdomain or custom domain from the workbench — Studio stays linked.',
+    title: 'Publish when it looks right',
+    detail: 'Ship to your Indobase subdomain or custom domain — Studio stays linked the whole way.',
     icon: 'i-ph:rocket-launch',
   },
 ];
@@ -92,22 +90,36 @@ function PreviewEmptyState({
 
   return (
     <div className="flex h-full w-full flex-col bg-[#F7F8FA]">
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
-        <div className="relative flex h-16 w-16 items-center justify-center">
-          {building ? (
-            <>
-              <span className="absolute inset-0 rounded-full border-2 border-[#BFD9FF]" />
-              <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#2F6FED]" />
-              <span className="i-ph:sparkle text-2xl text-[#2F6FED]" />
-            </>
-          ) : (
-            <span className={`${feature.icon} text-3xl text-[#2F6FED]`} />
-          )}
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center">
+        <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex items-center gap-1.5 border-b border-gray-100 bg-gray-50 px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-[#FF5F57]" />
+            <span className="h-2 w-2 rounded-full bg-[#FEBC2E]" />
+            <span className="h-2 w-2 rounded-full bg-[#28C840]" />
+            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-gray-400">Preview</span>
+          </div>
+          <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-[#0B1220] via-[#152238] to-[#1E3A5F] px-4">
+            {building ? (
+              <div className="flex flex-col items-center gap-2 text-white/90">
+                <span className="i-svg-spinners:90-ring-with-bg text-2xl text-[#7EB6FF]" />
+                <span className="text-xs font-medium">Preparing canvas…</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-white">
+                <span className={`${feature.icon} text-3xl text-[#7EB6FF]`} />
+                <span className="text-sm font-semibold">{feature.title}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="max-w-sm space-y-2">
           <p className="text-base font-semibold text-gray-900">
-            {building ? (draftBuilding ? 'Building your preview…' : 'Agent is preparing your app…') : feature.title}
+            {building
+              ? draftBuilding
+                ? 'Building your preview…'
+                : 'Agent is preparing your app…'
+              : 'Explore your workspace'}
           </p>
           <p className="text-sm leading-6 text-gray-500">
             {building
@@ -203,7 +215,6 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const previewMgr = useStore(previewManagerState);
   const buildLifecycle = useStore(initialBuildLifecycle);
   const isStreaming = useStore(streamingState);
-  const bootError = useStore(webcontainerBootErrorAtom);
 
   const managerPreviewUrl = previewUrlFromManager(previewMgr);
   const managerBusy = isPreviewBusy(previewMgr);
@@ -220,20 +231,16 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
     buildLifecycle === 'failed' || draftPreview.status === 'error' || previewMgr.lifecycle === 'error';
 
   /*
-   * Prefer draft path over WC boot noise. Under server-preview hosts (no key) WC is never expected.
-   * Soften early "Missing package.json" style failures until the build actually fails hard.
+   * Draft-preview only — never surface WebContainer / StackBlitz boot errors.
+   * Soften early failures until the build actually fails hard.
    */
   const previewFailure = draftBuilding || draftPreviewUrl || previewStarting
     ? undefined
-    : isServerPreviewMode()
-      ? previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+    : previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+      ? previewMgr.error || draftPreview.error
+      : hardFailed
         ? previewMgr.error || draftPreview.error
-        : undefined
-      : previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
-        ? previewMgr.error || draftPreview.error || bootError
-        : hardFailed
-          ? bootError || previewMgr.error || draftPreview.error
-          : undefined;
+        : undefined;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);

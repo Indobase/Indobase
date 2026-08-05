@@ -78,12 +78,11 @@ export class TerminalStore {
      * product. Say what this host does instead — previews still work, they are built server-side.
      */
     if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
-      terminal.write(coloredText.cyan('Server draft preview mode\n'));
+      terminal.write(coloredText.cyan('Preview mode\n'));
       terminal.write(
         coloredText.dim(
-          'WebContainer is unavailable in this tab, so Indobase Builder uses the server draft\n' +
-            'preview instead. Previews still appear in the Preview tab. Click Reset Terminal (↻)\n' +
-            'to retry the in-browser workspace.\n',
+          'Apps are built on Indobase servers and shown in the Preview tab.\n' +
+            'No in-browser workspace is required.\n',
         ),
       );
 

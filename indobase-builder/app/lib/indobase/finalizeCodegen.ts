@@ -190,10 +190,35 @@ export async function finalizeCodegen(
   let wcBuildId: ReturnType<typeof buildService.startBuild> | undefined;
   const skipWebContainerPreview = shouldSkipWebContainerRuntime();
 
+  /*
+   * Draft-preview-only product mode: never touch WebContainer. Callers (Chat) publish
+   * draft preview separately via publishDraftPreview().
+   */
+  if (skipWebContainerPreview) {
+    await workbenchStore.flushPendingActions();
+
+    const meta = options.isRepair
+      ? inferRepairCommandMeta()
+      : inferCodegenCommandMeta({
+          isInitialBuild: Boolean(options.isInitialBuild),
+          scaffolded: false,
+        });
+
+    const commit = await commitWorkbenchFiles({
+      files: workbenchStore.files.get(),
+      ...meta,
+      goal: options.goal,
+    });
+
+    return {
+      scaffolded: false,
+      previewUrl: '',
+      snapshotId: commit.ok ? commit.snapshot.id : undefined,
+    };
+  }
+
   try {
-    if (!skipWebContainerPreview) {
-      previewPreparing({ backend: 'webcontainer', snapshotId: workspaceService.headSnapshotId.get() });
-    }
+    previewPreparing({ backend: 'webcontainer', snapshotId: workspaceService.headSnapshotId.get() });
 
     await workbenchStore.flushPendingActions();
 

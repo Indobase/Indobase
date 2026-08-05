@@ -1,0 +1,36 @@
+/**
+ * Platform kernel bridge — Builder consumes OS contracts without product coupling.
+ * Prefer importing from here (or @indobase/platform) for Identity / Execution / Capabilities.
+ */
+export {
+  Platform,
+  identityFromClaims,
+  createWorkspace,
+  createWorkspaceCommand,
+  createDocumentRef,
+  ExecutionCommands,
+  WorkspaceSessionCommands,
+  CapabilityCommands,
+  createEventBus,
+  createCommand,
+  createExecutionRequest,
+  toExecutionResult,
+  toPlatformEvent,
+  toPlatformCommand,
+  validateMutationSet,
+  normalizeProjectPath,
+  PROVISIONER_ROUTE_TO_EXECUTION,
+  BUILDER_COMMAND_TO_KIND,
+  type PlatformActor,
+  type IdentityContext,
+  type ExecutionKind,
+  type ExecutionRequest,
+  type ExecutionResult,
+  type DocumentRef,
+  type Workspace as PlatformWorkspace,
+  type WorkspaceCommand,
+  type WorkspaceDomainEvent,
+  type Command as PlatformCommandEnvelope,
+  type MutationSet,
+  type MutationProposal,
+} from '@indobase/platform';

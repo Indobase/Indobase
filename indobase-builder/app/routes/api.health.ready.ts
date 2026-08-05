@@ -1,9 +1,5 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 
-import {
-  probeWebContainerHeadless,
-  resolveBuilderPublicOrigin,
-} from '~/lib/webcontainer/headless-probe.server';
 import { isProductionEnv, resolveBuilderHandoffSecretForStartup } from '~/lib/production.server';
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
@@ -43,39 +39,15 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
     : { status: 'error', message: 'No server LLM API key configured' };
 
   if (isProductionEnv(env)) {
-    const hasWebcontainerKey = Boolean(
-      process.env.WEBCONTAINER_API_KEY?.trim() ||
-        process.env.VITE_WEBCONTAINER_API_KEY?.trim() ||
-        env?.WEBCONTAINER_API_KEY?.trim() ||
-        env?.VITE_WEBCONTAINER_API_KEY?.trim(),
-    );
-
-    // Degraded (not ready=false) so deploy health gates still pass while preview is fixed.
-    checks.webcontainerApiKey = hasWebcontainerKey
-      ? { status: 'ok' }
-      : {
-          status: 'error',
-          message:
-            'WEBCONTAINER_API_KEY missing — production preview requires a StackBlitz WebContainer API key with builder.indobase.in allowlisted',
-        };
-
-    if (hasWebcontainerKey) {
-      const key =
-        process.env.WEBCONTAINER_API_KEY?.trim() ||
-        process.env.VITE_WEBCONTAINER_API_KEY?.trim() ||
-        env?.WEBCONTAINER_API_KEY?.trim() ||
-        env?.VITE_WEBCONTAINER_API_KEY?.trim() ||
-        '';
-      const origin = resolveBuilderPublicOrigin(request.url, env);
-      const allowlisted = await probeWebContainerHeadless(key, origin);
-
-      checks.webcontainerAllowlist = allowlisted
-        ? { status: 'ok' }
-        : {
-            status: 'error',
-            message: `StackBlitz /headless rejected ${origin || 'this Builder host'} (404). Allowlist builder.indobase.in and builder.indobase.fun in the StackBlitz API Console for this key. Server draft preview remains available.`,
-          };
-    }
+    // Draft preview only — WebContainer / StackBlitz is not required for users.
+    checks.webcontainerApiKey = {
+      status: 'ok',
+      message: 'skipped — Builder uses server draft preview (no WebContainer)',
+    };
+    checks.webcontainerAllowlist = {
+      status: 'ok',
+      message: 'skipped — draft preview mode',
+    };
   }
 
   const blockingChecks = Object.entries(checks).filter(

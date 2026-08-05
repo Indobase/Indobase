@@ -7,6 +7,7 @@ import React, { type RefCallback, useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { Workbench } from '~/components/workbench/Workbench.client';
+import { ChatWorkbenchResizeHandle } from './ChatWorkbenchResizeHandle';
 import { classNames } from '~/utils/classNames';
 import { Messages } from './Messages.client';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -640,6 +641,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                             messages={messages}
                             isStreaming={isStreaming}
                             append={append}
+                            sendMessage={sendMessage}
                             chatMode={chatMode}
                             setChatMode={setChatMode}
                             provider={provider}
@@ -671,6 +673,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               </StickToBottom>
             )}
           </div>
+          <ChatWorkbenchResizeHandle visible={Boolean(chatStarted)} />
           <ClientOnly>
             {() =>
               chatStarted ? (

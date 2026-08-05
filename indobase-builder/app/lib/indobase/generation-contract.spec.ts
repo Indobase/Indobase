@@ -84,22 +84,20 @@ describe('isSimpleFirstScaffoldTurn', () => {
 });
 
 describe('getInstantBuildPlan', () => {
-  it('includes auth steps for login prompts without calling an LLM', () => {
+  it('uses product-language steps for login prompts without calling an LLM', () => {
     const plan = getInstantBuildPlan([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }]);
 
     expect(isComplexBuildIntent([{ role: 'user', content: 'Build a SaaS dashboard with login auth' }])).toBe(true);
     expect(plan).toContain('## Build steps');
-    expect(plan).toMatch(/Auth/i);
-    expect(plan).toContain('Autonomy checklist');
-    expect(plan).toContain('Design polish');
+    expect(plan).toMatch(/sign-in|account/i);
+    expect(plan).not.toMatch(/Vite|npm install|Autonomy checklist/i);
   });
 
-  it('keeps a minimal plan for simple UI prompts', () => {
+  it('keeps a minimal product plan for simple UI prompts', () => {
     const plan = getInstantBuildPlan([{ role: 'user', content: 'Build a hello world landing page' }]);
 
-    expect(plan).toContain('minimal Vite');
-    expect(plan).not.toMatch(/Payments/i);
-    expect(plan).toMatch(/non-purple|industry-fit/i);
+    expect(plan).toMatch(/Design a clean|live preview/i);
+    expect(plan).not.toMatch(/Vite|npm|Payments/i);
   });
 
   it('does not leak Model/Provider annotations into the plan', () => {

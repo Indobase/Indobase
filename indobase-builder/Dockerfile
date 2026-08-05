@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1.7
+#
+# Build context must be the monorepo root (needs packages/platform for @indobase/platform).
+#   docker build -f indobase-builder/Dockerfile -t indobase-builder .
 
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
@@ -11,7 +14,7 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ git && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml ./
+COPY indobase-builder/package.json indobase-builder/pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
@@ -29,7 +32,9 @@ RUN corepack enable
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/package.json /app/package.json
 COPY --from=deps /app/pnpm-lock.yaml /app/pnpm-lock.yaml
-COPY . .
+# Platform sources — vite/tsconfig alias @indobase/platform → ../packages/platform/src
+COPY packages/platform /packages/platform
+COPY indobase-builder/ .
 
 ARG NODE_ENV=production
 ARG VITE_LOG_LEVEL=info
