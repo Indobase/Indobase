@@ -179,7 +179,14 @@ export const ChatImpl = memo(
       chatStore.setKey('started', started);
     }, [initialMessages]);
 
-    // WebContainer warm boot removed — draft preview only.
+    useEffect(() => {
+      if (!chatStarted) {
+        return;
+      }
+
+      // Warm WC in background — never block chat UI / My Apps navigation on boot.
+      void import('~/lib/webcontainer').then(({ getWebcontainer }) => getWebcontainer().catch(() => undefined));
+    }, [chatStarted]);
 
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [imageDataList, setImageDataList] = useState<string[]>([]);

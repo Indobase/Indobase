@@ -89,4 +89,18 @@ describe('webcontainer boot helpers', () => {
       false,
     );
   });
+
+  it('quiets expected server-preview skip rejects', () => {
+    const skip = Object.assign(new Error('WebContainer skipped — using server draft preview'), {
+      name: 'WebContainerServerPreviewSkip',
+    });
+    expect(isExpectedWebContainerFallbackError(skip)).toBe(true);
+    expect(
+      isExpectedWebContainerFallbackError(
+        Object.assign(new Error('WebContainer disabled — using server draft preview'), {
+          name: 'WebContainerDraftOnlySkip',
+        }),
+      ),
+    ).toBe(true);
+  });
 });

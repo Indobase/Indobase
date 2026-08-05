@@ -12,6 +12,8 @@ import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import { isPreviewBusy, previewManagerState, previewUrlFromManager } from '~/lib/preview/preview-manager';
 import { streamingState } from '~/lib/stores/streaming';
 import { toFriendlyPreviewError } from '~/lib/indobase/sanitize-user-facing-chat';
+import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
+import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
 import { classNames } from '~/utils/classNames';
 
 type ResizeSide = 'left' | 'right' | null;
@@ -228,25 +230,35 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
     buildLifecycle === 'finalizing';
   const draftBuilding = draftPreview.status === 'building' || managerBusy;
   const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : managerPreviewUrl;
+  const bootError = useStore(webcontainerBootErrorAtom);
   const hardFailed =
     buildLifecycle === 'failed' || draftPreview.status === 'error' || previewMgr.lifecycle === 'error';
   const draftFailed = draftPreview.status === 'error';
 
   /*
-   * Draft-preview only — never surface WebContainer / StackBlitz boot errors.
-   * Soften early failures until the build actually fails hard. Draft errors must still show
-   * even while a repair stream is "generating", otherwise Preview spins on Preparing canvas forever.
+   * Prefer draft path over WC boot noise on server-preview hosts. Still show draft compile errors
+   * even while a repair stream is "generating", otherwise Preview spins forever. On WC hosts,
+   * surface latched boot errors once the pane is idle with no iframe URL.
    */
-  const previewFailure =
-    draftFailed
-      ? toFriendlyPreviewError(draftPreview.error || previewMgr.error)
-      : draftBuilding || draftPreviewUrl || previewStarting
-        ? undefined
-        : previewMgr.lifecycle === 'error'
-          ? toFriendlyPreviewError(previewMgr.error)
-          : hardFailed
-            ? toFriendlyPreviewError(previewMgr.error || draftPreview.error)
-            : undefined;
+  const previewFailure = draftFailed
+    ? toFriendlyPreviewError(draftPreview.error || previewMgr.error)
+    : draftBuilding || draftPreviewUrl || previewStarting
+      ? undefined
+      : (() => {
+          const detail = bootError || previewMgr.error || draftPreview.error;
+
+          if (isServerPreviewMode()) {
+            return previewMgr.lifecycle === 'error' || hardFailed
+              ? toFriendlyPreviewError(detail)
+              : undefined;
+          }
+
+          if (previewMgr.lifecycle === 'error' || hardFailed || bootError) {
+            return toFriendlyPreviewError(detail);
+          }
+
+          return undefined;
+        })();
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);

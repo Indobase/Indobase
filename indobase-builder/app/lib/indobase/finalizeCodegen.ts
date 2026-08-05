@@ -1,7 +1,7 @@
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
 import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
-import { webcontainer } from '~/lib/webcontainer';
+import { hasWebContainerBootFailed, webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
 import {
   buildService,
@@ -188,11 +188,11 @@ export async function finalizeCodegen(
   options: FinalizeCodegenOptions = {},
 ): Promise<{ scaffolded: boolean; previewUrl: string; snapshotId?: string }> {
   let wcBuildId: ReturnType<typeof buildService.startBuild> | undefined;
-  const skipWebContainerPreview = shouldSkipWebContainerRuntime();
+  const skipWebContainerPreview = shouldSkipWebContainerRuntime(hasWebContainerBootFailed());
 
   /*
-   * Draft-preview-only product mode: never touch WebContainer. Callers (Chat) publish
-   * draft preview separately via publishDraftPreview().
+   * When WC is unavailable (no key / not allowlisted / prior boot failure), skip the in-browser
+   * install/dev path. Chat still publishes draft preview via publishDraftPreview().
    */
   if (skipWebContainerPreview) {
     await workbenchStore.flushPendingActions();

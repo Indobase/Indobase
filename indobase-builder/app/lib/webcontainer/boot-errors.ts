@@ -60,6 +60,16 @@ export function shouldSuggestExtensionDisable(errorMessage: string): boolean {
  */
 export function isExpectedWebContainerFallbackError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : '';
+
+  if (
+    name === 'WebContainerServerPreviewSkip' ||
+    name === 'WebContainerDraftOnlySkip' ||
+    /WebContainer skipped — using server draft|WebContainer disabled — using server draft/i.test(message)
+  ) {
+    return true;
+  }
+
   return (
     /workspace failed to start \(timed out\)/i.test(message) ||
     (/timed out|did not become ready/i.test(message) && /server draft|Reset Terminal/i.test(message))

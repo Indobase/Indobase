@@ -72,7 +72,18 @@ startTransition(() => {
 
 if (typeof window !== 'undefined') {
   installStaleChunkReloadHandlers();
-  // WebContainer / StackBlitz disabled — draft preview only (no API key bootstrap).
+  // sync <head> bootstrap already injected the client id.
+  const earlyWebContainerKey = window.__INDOBASE_BUILDER_PUBLIC__?.webcontainerApiKey?.trim();
+
+  if (earlyWebContainerKey) {
+    void import('~/lib/webcontainer/configure-api-key').then(({ ensureWebContainerApiKeyConfigured }) => {
+      try {
+        ensureWebContainerApiKeyConfigured();
+      } catch (error) {
+        console.warn('[webcontainer] early auth init failed (non-fatal)', error);
+      }
+    });
+  }
 }
 
 function bootClientSentry() {

@@ -17,9 +17,9 @@ export { ensureWebContainerApiKeyConfigured, resolveWebContainerApiKey } from '.
 
 export const webcontainerBootErrorAtom = atom<string | null>(null);
 
-/** Quiet reject — draft preview is the only path; do not surface StackBlitz errors to users. */
-const DRAFT_ONLY_SKIP = Object.assign(new Error('WebContainer disabled — using server draft preview'), {
-  name: 'WebContainerDraftOnlySkip',
+/** Quiet reject when server-preview mode skips WC (no key / not allowlisted). */
+const SERVER_PREVIEW_SKIP = Object.assign(new Error('WebContainer skipped — using server draft preview'), {
+  name: 'WebContainerServerPreviewSkip',
 });
 
 interface WebContainerContext {
@@ -322,10 +322,10 @@ export function getWebcontainer(): Promise<WebContainer> {
     });
   }
 
-  // Product mode: never boot StackBlitz — callers fall through to draft preview.
+  // No key / not allowlisted — skip boot and let callers use draft preview.
   if (shouldSkipWebContainerRuntime()) {
     webcontainerBootErrorAtom.set(null);
-    return Promise.reject(DRAFT_ONLY_SKIP);
+    return Promise.reject(SERVER_PREVIEW_SKIP);
   }
 
   if (activeInstance && webcontainerContext.loaded) {
@@ -435,13 +435,19 @@ export async function getWebcontainerWithRetry(maxAttempts = 1): Promise<WebCont
   return sharedRetryPromise;
 }
 
-/** No-op — WebContainer is disabled; draft preview only. */
+/** Start WebContainer boot as early as possible so the terminal is ready sooner. */
 export function warmWebContainer(): void {
   if (import.meta.env.SSR) {
     return;
   }
 
-  // Intentionally empty: never start StackBlitz boot.
+  if (bootFailureLatch || shouldSkipWebContainerRuntime()) {
+    return;
+  }
+
+  void getWebcontainer().catch(() => {
+    // Terminal attach will surface the latched error; avoid unhandled rejection noise.
+  });
 }
 
 /**
