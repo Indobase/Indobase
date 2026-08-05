@@ -83,5 +83,6 @@ indobase-design/
 indobase-design-v2/
 indobase-video/
 indobase-analytics/
-indobase-builder/
+# indobase-builder/ must stay in context — Builder image builds from monorepo root
+# (needs packages/platform + indobase-builder via indobase-builder/Dockerfile).
 
