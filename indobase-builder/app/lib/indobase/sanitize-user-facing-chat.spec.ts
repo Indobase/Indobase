@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isEmptyConversationalText, toConversationalAssistantText } from './sanitize-user-facing-chat';
+import {
+  isEmptyConversationalText,
+  toConversationalAssistantText,
+  toFriendlyPreviewError,
+} from './sanitize-user-facing-chat';
 
 describe('toConversationalAssistantText', () => {
   it('strips BUILD PLAN / Vite / npm dumps', () => {
@@ -37,5 +41,21 @@ Creating files…`;
     );
     expect(out).toBe('Got it — starting now.');
     expect(out).not.toContain('OpenRouter');
+  });
+
+  it('strips workspace-unavailable apologies', () => {
+    const raw =
+      "I couldn't modify or preview the project because the build workspace isn't available. Once that's enabled, I'll create Harbor & Hops.";
+    expect(toConversationalAssistantText(raw)).toBe('');
+  });
+});
+
+describe('toFriendlyPreviewError', () => {
+  it('softens server build failures', () => {
+    expect(toFriendlyPreviewError('Server build failed:\nerror TS2307')).toMatch(/preview build hit an error/i);
+  });
+
+  it('softens studio session errors', () => {
+    expect(toFriendlyPreviewError('Studio-linked session required for server draft preview')).toMatch(/Studio/i);
   });
 });

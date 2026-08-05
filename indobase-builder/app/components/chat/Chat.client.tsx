@@ -42,6 +42,7 @@ import {
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
+import { toFriendlyPreviewError } from '~/lib/indobase/sanitize-user-facing-chat';
 import {
   beginCodegenCommand,
   commitWorkbenchFiles,
@@ -813,6 +814,15 @@ export const ChatImpl = memo(
             }
 
             logger.error('Server preview build failed', draft.error);
+            setLlmErrorAlert({
+              type: 'error',
+              title: 'Preview needs another pass',
+              description: toFriendlyPreviewError(
+                draft.error ||
+                  'The preview could not be built from the generated files. Send a follow-up to keep going.',
+              ),
+              errorType: 'unknown',
+            });
 
             return true;
           }

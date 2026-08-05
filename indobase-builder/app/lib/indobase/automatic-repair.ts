@@ -71,7 +71,22 @@ The project is missing a runnable root scaffold. In this response you MUST:
 1. Write a complete root \`package.json\` with filePath="package.json" (NOT nested under a subdirectory)
 2. Write \`index.html\`, the app entry (\`src/main.tsx\` / \`src/App.tsx\`), and any other files needed for a Vite + React + TypeScript preview
 3. Emit \`<boltAction type="shell">npm install</boltAction>\` then \`<boltAction type="start">npm run dev</boltAction>\`
-Do not ask clarifying questions. Do not claim you cannot start the project this turn. Do not run a planner and do not emit quick actions.`;
+Do not ask clarifying questions. Do not claim the workspace or preview is unavailable. Do not run a planner and do not emit quick actions.`;
+  }
+
+  const serverBuildFail =
+    /server build failed|command failed:.*\bbuild\b|npm run build/i.test(options.errorText) &&
+    options.diagnostics.length === 0;
+
+  if (serverBuildFail) {
+    return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
+
+Automatic preview-build repair attempt ${options.nextAttempt} of ${options.maxAttempts}.
+${options.fileContext}
+
+The project files already exist. The server preview build failed with the log above.
+Fix ONLY the compile/type/import errors from that log by emitting complete replacement file actions for the broken files.
+Do NOT regenerate the whole project. Do NOT claim the build workspace, WebContainer, or preview runtime is unavailable — always write the file fixes. Keep the existing JSX/TSX authoring style. Do not run a planner and do not emit quick actions.`;
   }
 
   return `${ORCHESTRATOR_REPAIR_USER_PREFIX}${options.errorText}
@@ -79,7 +94,7 @@ Do not ask clarifying questions. Do not claim you cannot start the project this 
 Automatic focused repair attempt ${options.nextAttempt} of ${options.maxAttempts}.
 ${options.fileContext}
 
-Fix ONLY the implicated file(s) listed above and any directly required import. Every other project file already exists on disk and is correct — do not touch, re-emit, or recreate them, and NEVER regenerate the whole project. Keep the project's existing JSX/TSX authoring style (do not switch to React.createElement). Emit complete replacement file actions for the implicated files only. Do not run a planner and do not emit quick actions.`;
+Fix ONLY the implicated file(s) listed above and any directly required import. Every other project file already exists on disk and is correct — do not touch, re-emit, or recreate them, and NEVER regenerate the whole project. Keep the project's existing JSX/TSX authoring style (do not switch to React.createElement). Emit complete replacement file actions for the implicated files only. Do not claim the workspace is unavailable. Do not run a planner and do not emit quick actions.`;
 }
 
 export function decideAutomaticPreviewRepair(options: {

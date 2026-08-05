@@ -80,6 +80,31 @@ function buildChildEnv(env: Record<string, string>): NodeJS.ProcessEnv {
   };
 }
 
+const MAX_BUILD_LOG_CHARS = 6_000;
+
+/** Prefer real compiler output over Node's opaque "Command failed: …" message. */
+export function formatServerBuildExecError(error: unknown, fallback = 'Server build failed'): string {
+  if (!error || typeof error !== 'object') {
+    return typeof error === 'string' && error.trim() ? error : fallback;
+  }
+
+  const execError = error as {
+    message?: string;
+    stdout?: string | Buffer;
+    stderr?: string | Buffer;
+  };
+  const stderr = String(execError.stderr ?? '').trim();
+  const stdout = String(execError.stdout ?? '').trim();
+  const log = [stderr, stdout].filter(Boolean).join('\n\n').trim();
+
+  if (log) {
+    const clipped = log.length > MAX_BUILD_LOG_CHARS ? log.slice(-MAX_BUILD_LOG_CHARS) : log;
+    return `Server build failed:\n${clipped}`;
+  }
+
+  return execError.message?.trim() || fallback;
+}
+
 async function readDistArtifacts(distDir: string, root = distDir): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
   const entries = await fs.readdir(distDir, { withFileTypes: true });
@@ -212,8 +237,8 @@ export async function buildProjectArtifactsOnServer(
 
     return { success: true, files };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error('Server project build failed', error);
+    const message = formatServerBuildExecError(error);
+    logger.error('Server project build failed', message);
 
     return {
       success: false,

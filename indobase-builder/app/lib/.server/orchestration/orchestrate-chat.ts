@@ -116,7 +116,8 @@ Execute the coder contract using bolt artifacts. Write a complete root-level pro
 USER-VISIBLE CHAT (critical):
 - Before artifacts, write at most 1–2 short conversational sentences (e.g. "On it — building that now.").
 - NEVER mention Vite, React, TypeScript, npm, package.json, file paths, BUILD PLAN, autonomy checklists, models, or providers in user-visible text.
-- Do not paste the build steps list into the chat — the UI already shows progress.`;
+- Do not paste the build steps list into the chat — the UI already shows progress.
+- NEVER say the build workspace or preview environment is unavailable — always emit bolt artifacts; Indobase builds the preview on the server.`;
 
   const updated = [...messages];
   updated[index] = { ...lastUser, content: updatedContent };

@@ -341,6 +341,33 @@ export class ActionRunner {
 
     const isInstall = INSTALL_COMMAND_RE.test(action.content ?? '');
 
+    /*
+     * Draft-preview product mode: never touch WebContainer. Install/start are no-ops when a
+     * runnable package.json exists — publishDraftPreview builds on the server.
+     */
+    if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
+      if (isInstall) {
+        if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+          throw new ActionCommandError(
+            'Project Incomplete',
+            'Missing root package.json — cannot install packages or start a draft preview. Write package.json at the project root (not a nested folder), then npm install.',
+          );
+        }
+
+        this.lastShellOutput = {
+          exitCode: 0,
+          output: '[skipped] Server draft preview will install packages',
+        };
+        return;
+      }
+
+      this.lastShellOutput = {
+        exitCode: 0,
+        output: '[skipped] Server draft preview mode — shell runs on the build server',
+      };
+      return;
+    }
+
     if (isInstall) {
       const hydrated = await this.#hydrateWebContainerFromWorkbench();
 
@@ -472,6 +499,21 @@ export class ActionRunner {
   async #runStartAction(action: ActionState) {
     if (action.type !== 'start') {
       unreachable('Expected shell action');
+    }
+
+    if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
+      if (!hasRunnablePackageJson(this.#getProjectFiles?.() ?? {})) {
+        throw new ActionCommandError(
+          'Project Incomplete',
+          'Missing root package.json — cannot start the preview. Write a complete root-level Vite/Expo package.json with a dev script, then npm install and npm run dev.',
+        );
+      }
+
+      this.lastShellOutput = {
+        exitCode: 0,
+        output: '[skipped] Server draft preview will start the app',
+      };
+      return;
     }
 
     if (!this.#shellTerminal) {
@@ -817,6 +859,10 @@ export class ActionRunner {
   }
 
   async #awaitWebContainer(): Promise<WebContainer> {
+    if (shouldSkipWebContainerRuntime(hasWebContainerBootFailed())) {
+      throw new Error('Server draft preview mode — WebContainer is not used.');
+    }
+
     if (hasWebContainerBootFailed()) {
       throw new Error(
         'WebContainer did not become ready in time. Preview will use the server draft build instead. Click Reset Terminal or hard-refresh (Chrome/Edge).',

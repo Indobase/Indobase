@@ -10,6 +10,10 @@ const TECH_LINE_RE =
 
 const SECTION_HEADING_RE = /^#{1,4}\s*(?:build steps|build plan|autonomy checklist|implementation|tech(?:nical)? stack|dependencies)\b/i;
 
+/** Model sometimes apologizes about WC/workspace instead of emitting artifacts — drop that copy. */
+const WORKSPACE_UNAVAILABLE_RE =
+  /\b(?:build\s+)?workspace\s+isn'?t\s+available\b|\bwebcontainer\b.*\b(?:unavailable|not available|disabled)\b|\bcouldn'?t\s+(?:modify|preview|build).*(?:workspace|preview|environment)\b|\bonce\s+that'?s\s+enabled\b/i;
+
 /**
  * Remove technical dumps the model often echoes from the planner / system prompts.
  * Keeps short human sentences; drops plan lists and stack talk.
@@ -40,6 +44,10 @@ export function toConversationalAssistantText(raw: string): string {
       if (kept.length && kept[kept.length - 1] !== '') {
         kept.push('');
       }
+      continue;
+    }
+
+    if (WORKSPACE_UNAVAILABLE_RE.test(trimmed)) {
       continue;
     }
 
@@ -113,4 +121,34 @@ export function toConversationalAssistantText(raw: string): string {
 /** True when the only useful UI is the plan/progress cards (no chat prose needed). */
 export function isEmptyConversationalText(raw: string): boolean {
   return !toConversationalAssistantText(raw);
+}
+
+/** Soften draft/server-build errors for Preview / alerts (never raw WC / npm dumps). */
+export function toFriendlyPreviewError(raw: string | undefined | null): string {
+  const text = (raw || '').trim();
+
+  if (!text) {
+    return 'Something went wrong while preparing the preview. Try sending another message.';
+  }
+
+  if (/studio-linked session required/i.test(text)) {
+    return 'Reconnect through Studio so we can build your preview on Indobase servers.';
+  }
+
+  if (/project incomplete/i.test(text)) {
+    return 'The first pass did not finish a runnable project yet. Keep chatting — the agent will complete the files.';
+  }
+
+  if (/server build failed|command failed:.*\bbuild\b|npm run build/i.test(text)) {
+    return 'The preview build hit an error in the generated app. The agent is fixing it — hang tight, or send a follow-up.';
+  }
+
+  if (/webcontainer|stackblitz|workspace isn'?t available/i.test(text)) {
+    return 'Preview runs on Indobase servers. Retry the prompt if the canvas is still empty.';
+  }
+
+  // Keep short product-facing detail; drop huge compiler logs from the empty state.
+  const firstLine = text.split('\n').map((line) => line.trim()).find(Boolean) || text;
+
+  return firstLine.length > 220 ? `${firstLine.slice(0, 217).trim()}…` : firstLine;
 }

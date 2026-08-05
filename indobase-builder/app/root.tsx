@@ -63,7 +63,6 @@ const inlineThemeCode = stripIndents`
 import { logStore } from './lib/stores/logs';
 import { hydrateClientPrefsFromStorage } from './lib/stores/hydrateClientPrefs';
 import { restoreBuilderSessionOnLoad, startBuilderSessionKeeper } from './lib/indobase/builder-auth.client';
-import { warmWebContainer } from './lib/webcontainer';
 import {
   BUILDER_PUBLIC_ENV_SYNC_BOOTSTRAP,
   fetchBuilderPublicEnv,
@@ -99,10 +98,8 @@ export default function App() {
         logStore.logError('Failed to initialize debug logging', error);
       });
 
-    // Refresh public env (sync <head> bootstrap usually already set the WebContainer key).
-    void fetchBuilderPublicEnv().finally(() => {
-      warmWebContainer();
-    });
+  void fetchBuilderPublicEnv();
+  // WebContainer warm boot removed — draft preview only.
 
     void (async () => {
       await restoreBuilderSessionOnLoad();

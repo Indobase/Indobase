@@ -182,7 +182,26 @@ describe('automatic preview repair decisions', () => {
       expect(decision.prompt).toContain('scaffold repair');
       expect(decision.prompt).toContain('filePath="package.json"');
       expect(decision.prompt).toContain('npm install');
-      expect(decision.prompt).toContain('cannot start the project this turn');
+      expect(decision.prompt).toContain('Do not claim the workspace or preview is unavailable');
+    }
+  });
+
+  it('asks to fix compile errors from server build logs without regenerating', () => {
+    const decision = decideAutomaticPreviewRepair({
+      error: new Error('Server build failed:\nerror TS2307: Cannot find module "./Missing"'),
+      completedAttempts: 0,
+      files: {
+        '/home/project/src/App.tsx': { type: 'file', content: 'export default function App() { return null }' },
+      },
+    });
+
+    expect(decision).toMatchObject({ shouldRepair: true, nextAttempt: 1 });
+
+    if (decision.shouldRepair) {
+      expect(decision.prompt).toContain('preview-build repair');
+      expect(decision.prompt).toContain('TS2307');
+      expect(decision.prompt).toContain('Do NOT claim the build workspace');
+      expect(decision.prompt).not.toContain('Fix ONLY the implicated file(s) listed above');
     }
   });
 });

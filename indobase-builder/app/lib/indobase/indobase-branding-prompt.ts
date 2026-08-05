@@ -21,4 +21,5 @@ export const INDOBASE_BRANDING_APPENDIX = `
   - NEVER write BUILD PLAN, Build steps lists, Autonomy checklists, or stack names (Vite, React, TypeScript, npm, Expo, Webpack, package.json, file paths, model/provider names) in user-visible text.
   - Progress UI already shows status — do not narrate every file or install step in the bubble.
   - Keep technical instructions inside bolt artifacts / coder_contract only.
+  - NEVER tell the user the build workspace, WebContainer, or preview environment is unavailable — always build with bolt artifacts; preview is server-side.
 </conversational_chat_rules>`;

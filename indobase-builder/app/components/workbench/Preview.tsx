@@ -11,6 +11,7 @@ import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { draftPreviewStore } from '~/lib/stores/draft-preview';
 import { isPreviewBusy, previewManagerState, previewUrlFromManager } from '~/lib/preview/preview-manager';
 import { streamingState } from '~/lib/stores/streaming';
+import { toFriendlyPreviewError } from '~/lib/indobase/sanitize-user-facing-chat';
 import { classNames } from '~/utils/classNames';
 
 type ResizeSide = 'left' | 'right' | null;
@@ -229,18 +230,23 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : managerPreviewUrl;
   const hardFailed =
     buildLifecycle === 'failed' || draftPreview.status === 'error' || previewMgr.lifecycle === 'error';
+  const draftFailed = draftPreview.status === 'error';
 
   /*
    * Draft-preview only — never surface WebContainer / StackBlitz boot errors.
-   * Soften early failures until the build actually fails hard.
+   * Soften early failures until the build actually fails hard. Draft errors must still show
+   * even while a repair stream is "generating", otherwise Preview spins on Preparing canvas forever.
    */
-  const previewFailure = draftBuilding || draftPreviewUrl || previewStarting
-    ? undefined
-    : previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
-      ? previewMgr.error || draftPreview.error
-      : hardFailed
-        ? previewMgr.error || draftPreview.error
-        : undefined;
+  const previewFailure =
+    draftFailed
+      ? toFriendlyPreviewError(draftPreview.error || previewMgr.error)
+      : draftBuilding || draftPreviewUrl || previewStarting
+        ? undefined
+        : previewMgr.lifecycle === 'error'
+          ? toFriendlyPreviewError(previewMgr.error)
+          : hardFailed
+            ? toFriendlyPreviewError(previewMgr.error || draftPreview.error)
+            : undefined;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -1232,10 +1238,10 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
             </>
           ) : (
             <PreviewEmptyState
-              busy={previewStarting}
-              draftBuilding={draftBuilding}
+              busy={previewStarting && !draftFailed}
+              draftBuilding={draftBuilding && !draftFailed}
               bootError={previewFailure}
-              hardFailed={hardFailed && !previewStarting}
+              hardFailed={Boolean(previewFailure) || (hardFailed && !previewStarting)}
             />
           )}
 
