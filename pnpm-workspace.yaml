@@ -2,6 +2,7 @@ packages:
   - apps/*
   - "!apps/www-backup"
   - packages/*
+  - "!packages/platform"
   - "!packages/indobase-js"
   - "!packages/indobase-auth-js"
   - "!packages/indobase-functions-js"
