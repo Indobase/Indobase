@@ -1,25 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configureAPIKey = vi.hoisted(() => vi.fn());
+const authInit = vi.hoisted(() => vi.fn(() => ({ status: 'authorized' as const })));
 
 vi.mock('@webcontainer/api', () => ({
   configureAPIKey,
+  auth: { init: authInit },
 }));
 
 describe('ensureWebContainerApiKeyConfigured', () => {
   beforeEach(() => {
     configureAPIKey.mockClear();
+    authInit.mockClear();
     delete (window as any).__INDOBASE_BUILDER_PUBLIC__;
     vi.resetModules();
   });
 
-  it('configures the StackBlitz client key from window public env', async () => {
+  it('configures the StackBlitz client key and auth.init from window public env', async () => {
     window.__INDOBASE_BUILDER_PUBLIC__ = { webcontainerApiKey: 'wc_api_test_key' };
     const { ensureWebContainerApiKeyConfigured } = await import('./configure-api-key');
 
     ensureWebContainerApiKeyConfigured();
 
     expect(configureAPIKey).toHaveBeenCalledWith('wc_api_test_key');
+    expect(authInit).toHaveBeenCalledWith({ clientId: 'wc_api_test_key', scope: '' });
   });
 
   it('throws on production hosts when the key is missing', async () => {
@@ -32,6 +36,7 @@ describe('ensureWebContainerApiKeyConfigured', () => {
 
     expect(() => ensureWebContainerApiKeyConfigured()).toThrow(/WEBCONTAINER_API_KEY/);
     expect(configureAPIKey).not.toHaveBeenCalled();
+    expect(authInit).not.toHaveBeenCalled();
   });
 });
 

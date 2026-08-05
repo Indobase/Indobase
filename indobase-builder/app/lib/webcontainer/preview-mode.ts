@@ -1,4 +1,5 @@
 import { resolveWebContainerApiKey } from './configure-api-key';
+import { getBuilderPublicEnv } from './public-env';
 
 /**
  * Builder has two ways to show a running app:
@@ -25,8 +26,19 @@ export function isServerPreviewMode(): boolean {
   const isLocal =
     hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname.endsWith('.local');
 
-  // Localhost boots WebContainer keylessly, so it keeps the richer path.
-  return !isLocal && !resolveWebContainerApiKey();
+  if (isLocal) {
+    return false;
+  }
+
+  const { webcontainerHeadlessOk } = getBuilderPublicEnv();
+
+  // Server probe: StackBlitz /headless 404 when the domain is not allowlisted — use draft preview.
+  if (webcontainerHeadlessOk === false) {
+    return true;
+  }
+
+  // No key on a deployed host — WebContainer cannot boot.
+  return !resolveWebContainerApiKey();
 }
 
 /**

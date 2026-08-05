@@ -110,7 +110,7 @@ async function resolveBuildOutputPath(buildPath: string) {
 }
 
 export async function collectBuildArtifacts(): Promise<CollectBuildArtifactsResult> {
-  await finalizeCodegen();
+  await finalizeCodegen({ isInitialBuild: false });
 
   const artifact = workbenchStore.firstArtifact;
 

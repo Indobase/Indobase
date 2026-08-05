@@ -12,6 +12,8 @@ declare global {
     __INDOBASE_BUILDER_PUBLIC__?: {
       webcontainerApiKey?: string;
       sentryDsn?: string;
+      /** false when StackBlitz /headless rejects this Builder host (allowlist missing). */
+      webcontainerHeadlessOk?: boolean;
     };
   }
 }
@@ -19,6 +21,7 @@ declare global {
 type BuilderPublicEnv = {
   webcontainerApiKey: string;
   sentryDsn: string;
+  webcontainerHeadlessOk?: boolean;
 };
 
 let resolveReady!: () => void;
@@ -38,13 +41,20 @@ const readyPromise = new Promise<void>((resolve) => {
 function readWindowEnv(): BuilderPublicEnv {
   const fromWindow = typeof window !== 'undefined' ? window.__INDOBASE_BUILDER_PUBLIC__ : undefined;
 
+  const headlessOk = fromWindow?.webcontainerHeadlessOk;
+
   return {
     webcontainerApiKey: fromWindow?.webcontainerApiKey?.trim() || '',
     sentryDsn: fromWindow?.sentryDsn?.trim() || '',
+    ...(headlessOk === undefined ? {} : { webcontainerHeadlessOk: headlessOk }),
   };
 }
 
-export function applyBuilderPublicEnv( partial: { webcontainerApiKey?: string; sentryDsn?: string }): BuilderPublicEnv {
+export function applyBuilderPublicEnv(partial: {
+  webcontainerApiKey?: string;
+  sentryDsn?: string;
+  webcontainerHeadlessOk?: boolean;
+}): BuilderPublicEnv {
   if (typeof window === 'undefined') {
     return { webcontainerApiKey: '', sentryDsn: '' };
   }
@@ -55,6 +65,9 @@ export function applyBuilderPublicEnv( partial: { webcontainerApiKey?: string; s
       ? { webcontainerApiKey: partial.webcontainerApiKey.trim() }
       : {}),
     ...(partial.sentryDsn !== undefined ? { sentryDsn: partial.sentryDsn.trim() } : {}),
+    ...(partial.webcontainerHeadlessOk !== undefined
+      ? { webcontainerHeadlessOk: partial.webcontainerHeadlessOk }
+      : {}),
   };
 
   window.__INDOBASE_BUILDER_PUBLIC__ = next;
@@ -63,9 +76,12 @@ export function applyBuilderPublicEnv( partial: { webcontainerApiKey?: string; s
     resolveReady();
   }
 
+  const headlessOk = next.webcontainerHeadlessOk;
+
   return {
     webcontainerApiKey: next.webcontainerApiKey?.trim() || '',
     sentryDsn: next.sentryDsn?.trim() || '',
+    ...(headlessOk === undefined ? {} : { webcontainerHeadlessOk: headlessOk }),
   };
 }
 
@@ -117,10 +133,17 @@ export async function fetchBuilderPublicEnv(): Promise<BuilderPublicEnv> {
       return readWindowEnv();
     }
 
-    const data = (await response.json()) as { webcontainerApiKey?: string; sentryDsn?: string };
+    const data = (await response.json()) as {
+      webcontainerApiKey?: string;
+      sentryDsn?: string;
+      webcontainerHeadlessOk?: boolean;
+    };
     const applied = applyBuilderPublicEnv({
       webcontainerApiKey: data.webcontainerApiKey || '',
       sentryDsn: data.sentryDsn || '',
+      ...(data.webcontainerHeadlessOk === undefined
+        ? {}
+        : { webcontainerHeadlessOk: data.webcontainerHeadlessOk }),
     });
     markBuilderPublicEnvReady();
 
@@ -137,4 +160,4 @@ export async function fetchBuilderPublicEnv(): Promise<BuilderPublicEnv> {
  * Inline <head> script: synchronous XHR so the WebContainer key exists before route modules
  * (FilesStore idle boot) call getWebcontainer(). Mirrors Studio `_document.tsx` bootstrap.
  */
-export const BUILDER_PUBLIC_ENV_SYNC_BOOTSTRAP = `(function(){try{if(typeof window==='undefined')return;var x=new XMLHttpRequest();x.open('GET','/api/runtime-public-env',false);x.withCredentials=true;x.send(null);if(x.status===200){var j=JSON.parse(x.responseText);window.__INDOBASE_BUILDER_PUBLIC__=Object.assign(window.__INDOBASE_BUILDER_PUBLIC__||{},{webcontainerApiKey:(j.webcontainerApiKey||'').trim(),sentryDsn:(j.sentryDsn||'').trim()});}}catch(e){}})();`;
+export const BUILDER_PUBLIC_ENV_SYNC_BOOTSTRAP = `(function(){try{if(typeof window==='undefined')return;var x=new XMLHttpRequest();x.open('GET','/api/runtime-public-env',false);x.withCredentials=true;x.send(null);if(x.status===200){var j=JSON.parse(x.responseText);window.__INDOBASE_BUILDER_PUBLIC__=Object.assign(window.__INDOBASE_BUILDER_PUBLIC__||{},{webcontainerApiKey:(j.webcontainerApiKey||'').trim(),sentryDsn:(j.sentryDsn||'').trim(),webcontainerHeadlessOk:j.webcontainerHeadlessOk});}}catch(e){}})();`;

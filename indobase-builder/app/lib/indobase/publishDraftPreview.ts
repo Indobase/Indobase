@@ -10,6 +10,7 @@ import {
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import type { FileMap } from '~/lib/stores/files';
 import { workbenchStore } from '~/lib/stores/workbench';
+import { buildService, workspaceService } from '~/lib/workspace';
 import { canQueueIndobaseDeployment } from '~/lib/indobase/studioApi';
 import { extractRelativePath } from '~/utils/diff';
 import { WORK_DIR } from '~/utils/constants';
@@ -96,6 +97,9 @@ export async function publishDraftPreview(
 
   setDraftPreviewBuilding();
 
+  const snapshotId = workspaceService.headSnapshotId.get();
+  const buildId = buildService.startBuild(snapshotId);
+
   try {
     const buildResult = await collectBuildArtifactsViaServer(connection, relativeFilesToFileMap(sourceFiles), {
       // Relative base so draft iframe under /draft-preview/:id/ resolves assets.
@@ -104,6 +108,7 @@ export async function publishDraftPreview(
 
     if (!buildResult.success || !buildResult.files) {
       const error = buildResult.error || 'Server build failed for draft preview';
+      buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
 
       return { success: false, error };
@@ -127,17 +132,20 @@ export async function publishDraftPreview(
 
     if (!response.ok || !payload.success || !payload.previewUrl) {
       const error = payload.error || `Draft preview store failed (${response.status})`;
+      buildService.finishBuild(buildId, { status: 'failed', error });
       setDraftPreviewError(error);
 
       return { success: false, error };
     }
 
-    setDraftPreviewReady(payload.previewUrl, payload.expiresAt);
+    buildService.finishBuild(buildId, { status: 'succeeded', outputRef: payload.previewUrl });
+    setDraftPreviewReady(payload.previewUrl, payload.expiresAt, { snapshotId, buildId });
     logger.info(`Draft preview ready at ${payload.previewUrl}`);
 
     return { success: true, previewUrl: payload.previewUrl };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Draft preview failed';
+    buildService.finishBuild(buildId, { status: 'failed', error: message });
     setDraftPreviewError(message);
     logger.error('Draft preview failed', error);
 

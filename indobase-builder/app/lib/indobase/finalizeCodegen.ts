@@ -3,12 +3,24 @@ import { ensureProjectScaffold } from '~/lib/indobase/ensureProjectScaffold';
 import { ensureNpmDependencies } from '~/lib/indobase/ensureNpmDependencies';
 import { webcontainer } from '~/lib/webcontainer';
 import { workbenchStore } from '~/lib/stores/workbench';
+import {
+  buildService,
+  commitWorkbenchFiles,
+  inferCodegenCommandMeta,
+  inferRepairCommandMeta,
+  proposeWorkbenchFileWrite,
+  workspaceService,
+  type WorkspaceDiagnostic,
+} from '~/lib/workspace';
+import { previewBuilding, previewError, previewPreparing, previewReady } from '~/lib/preview/preview-manager';
 import { createScopedLogger } from '~/utils/logger';
+import { shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import {
   collectGeneratedSources,
   collectGeneratedSourcesAndStyles,
   findMissingLocalImportDiagnostics,
   GeneratedCodeValidationError,
+  type GeneratedCodeDiagnostic,
   validateGeneratedSources,
   verifyViteSourceTransforms,
 } from './generated-code-validation';
@@ -16,6 +28,41 @@ import { assertPreviewSmokeHealthy } from './preview-smoke';
 import { lintGeneratedVisualQuality } from './visual-quality-lint';
 
 const logger = createScopedLogger('finalizeCodegen');
+
+function toWorkspaceDiagnostics(diagnostics: GeneratedCodeDiagnostic[]): WorkspaceDiagnostic[] {
+  return diagnostics.map((diagnostic) => ({
+    filePath: diagnostic.filePath,
+    message: diagnostic.message,
+    line: diagnostic.line,
+    column: diagnostic.column,
+    source:
+      diagnostic.source === 'syntax'
+        ? 'syntax'
+        : diagnostic.source === 'design'
+          ? 'design'
+          : diagnostic.source === 'preview'
+            ? 'runtime'
+            : 'import',
+  }));
+}
+
+function recordAndThrow(error: unknown, options?: { backend?: 'webcontainer' | 'draft' }): never {
+  const backend = options?.backend ?? 'webcontainer';
+  previewError(error instanceof Error ? error.message : String(error), backend);
+
+  if (error instanceof GeneratedCodeValidationError) {
+    workspaceService.recordDiagnostics(toWorkspaceDiagnostics(error.diagnostics));
+  } else if (error instanceof Error) {
+    workspaceService.recordDiagnostics([
+      {
+        message: error.message,
+        source: 'runtime',
+      },
+    ]);
+  }
+
+  throw error;
+}
 
 async function packageHasDevScript(): Promise<boolean> {
   try {
@@ -124,64 +171,156 @@ async function ensureDevServerIfNeeded(): Promise<void> {
   }
 }
 
+export type FinalizeCodegenOptions = {
+  /** True for the first scaffold turn of a chat (GenerateProject). */
+  isInitialBuild?: boolean;
+  /** When set, commit is tagged as diagnostics-driven ModifyWorkspace (repair). */
+  isRepair?: boolean;
+  goal?: string;
+};
+
 /**
  * Flush streamed actions, scaffold static HTML projects, ensure the dev server is running, and wait
  * until the generated app has actually loaded in the WebContainer preview iframe.
+ * On success, commits a delta workspace snapshot (command → WorkspaceService).
  */
-export async function finalizeCodegen(): Promise<{ scaffolded: boolean; previewUrl: string }> {
-  await workbenchStore.flushPendingActions();
+export async function finalizeCodegen(
+  options: FinalizeCodegenOptions = {},
+): Promise<{ scaffolded: boolean; previewUrl: string; snapshotId?: string }> {
+  let wcBuildId: ReturnType<typeof buildService.startBuild> | undefined;
+  const skipWebContainerPreview = shouldSkipWebContainerRuntime();
 
-  // Let early Vite finish (or fail) before we force another start/install.
-  const earlyAwait = workbenchStore.firstArtifact?.runner.awaitEarlyDev?.();
+  try {
+    if (!skipWebContainerPreview) {
+      previewPreparing({ backend: 'webcontainer', snapshotId: workspaceService.headSnapshotId.get() });
+    }
 
-  if (earlyAwait) {
-    await earlyAwait.catch(() => undefined);
+    await workbenchStore.flushPendingActions();
+
+    // Let early Vite finish (or fail) before we force another start/install.
+    const earlyAwait = workbenchStore.firstArtifact?.runner.awaitEarlyDev?.();
+
+    if (earlyAwait) {
+      await earlyAwait.catch(() => undefined);
+    }
+
+    const container = await webcontainer;
+    const scaffolded = await ensureProjectScaffold();
+
+    if (scaffolded) {
+      try {
+        const pkg = await container.fs.readFile('package.json', 'utf-8');
+        proposeWorkbenchFileWrite('package.json', pkg);
+      } catch {
+        // Scaffold wrote on disk only — commit fallback still diffs workbench FileMap.
+      }
+    }
+
+    const generatedSources = await collectGeneratedSources(
+      container.fs as Parameters<typeof collectGeneratedSources>[0],
+    );
+    const sourcesAndStyles = await collectGeneratedSourcesAndStyles(
+      container.fs as Parameters<typeof collectGeneratedSourcesAndStyles>[0],
+    );
+
+    /*
+     * Hard failures (syntax / missing imports) throw before preview wait when present.
+     * Design lint runs only after a healthy preview so we don't burn the repair budget on style
+     * before the user can see a compiling app — and draft-first can stay honest.
+     */
+    const hardDiagnostics = [
+      ...validateGeneratedSources(generatedSources),
+      ...findMissingLocalImportDiagnostics(generatedSources),
+    ];
+
+    await ensureDevServerIfNeeded();
+
+    workbenchStore.refreshAllPreviews();
+
+    if (hardDiagnostics.length > 0) {
+      throw new GeneratedCodeValidationError(hardDiagnostics);
+    }
+
+    const snapshotId = workspaceService.headSnapshotId.get();
+
+    if (!skipWebContainerPreview) {
+      wcBuildId = buildService.startBuild(snapshotId);
+      previewBuilding({ backend: 'webcontainer', buildId: wcBuildId, snapshotId });
+    }
+
+    const preview = await workbenchStore.waitForPreviewLoaded();
+
+    if (await packageUsesVite()) {
+      await verifyViteSourceTransforms(preview.baseUrl, Object.keys(generatedSources));
+    }
+
+    await assertPreviewSmokeHealthy(preview.baseUrl);
+
+    const designDiagnostics = lintGeneratedVisualQuality(sourcesAndStyles);
+
+    if (designDiagnostics.length > 0) {
+      throw new GeneratedCodeValidationError(designDiagnostics, 'Visual quality check failed');
+    }
+
+    /*
+     * The iframe loaded and every generated source passed Vite's transform endpoint, so an earlier
+     * "Dev Server Failed" alert is now stale and can be cleared safely.
+     */
+    workbenchStore.clearAlert();
+
+    const meta = options.isRepair
+      ? inferRepairCommandMeta()
+      : inferCodegenCommandMeta({
+          isInitialBuild: Boolean(options.isInitialBuild),
+          scaffolded,
+        });
+
+    const commit = await commitWorkbenchFiles({
+      files: workbenchStore.files.get(),
+      ...meta,
+      goal: options.goal,
+    });
+
+    const committedSnapshotId = commit.ok ? commit.snapshot.id : snapshotId;
+
+    if (wcBuildId) {
+      buildService.finishBuild(wcBuildId, { status: 'succeeded', outputRef: preview.baseUrl });
+    }
+
+    if (!skipWebContainerPreview) {
+      previewReady({
+        previewUrl: preview.baseUrl,
+        backend: 'webcontainer',
+        snapshotId: committedSnapshotId,
+        buildId: wcBuildId,
+      });
+    }
+
+    if (commit.ok) {
+      workspaceService.events.emit({
+        type: 'PreviewReady',
+        snapshotId: commit.snapshot.id,
+        buildId: wcBuildId,
+        previewUrl: preview.baseUrl,
+        at: Date.now(),
+      });
+    } else {
+      logger.warn('Workspace snapshot commit skipped after successful finalize', commit.error);
+    }
+
+    return {
+      scaffolded,
+      previewUrl: preview.baseUrl,
+      snapshotId: commit.ok ? commit.snapshot.id : undefined,
+    };
+  } catch (error) {
+    if (wcBuildId) {
+      buildService.finishBuild(wcBuildId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    recordAndThrow(error);
   }
-
-  const scaffolded = await ensureProjectScaffold();
-  const container = await webcontainer;
-  const generatedSources = await collectGeneratedSources(container.fs as Parameters<typeof collectGeneratedSources>[0]);
-  const sourcesAndStyles = await collectGeneratedSourcesAndStyles(
-    container.fs as Parameters<typeof collectGeneratedSourcesAndStyles>[0],
-  );
-
-  /*
-   * Hard failures (syntax / missing imports) throw before preview wait when present.
-   * Design lint runs only after a healthy preview so we don't burn the repair budget on style
-   * before the user can see a compiling app — and draft-first can stay honest.
-   */
-  const hardDiagnostics = [
-    ...validateGeneratedSources(generatedSources),
-    ...findMissingLocalImportDiagnostics(generatedSources),
-  ];
-
-  await ensureDevServerIfNeeded();
-
-  workbenchStore.refreshAllPreviews();
-
-  if (hardDiagnostics.length > 0) {
-    throw new GeneratedCodeValidationError(hardDiagnostics);
-  }
-
-  const preview = await workbenchStore.waitForPreviewLoaded();
-
-  if (await packageUsesVite()) {
-    await verifyViteSourceTransforms(preview.baseUrl, Object.keys(generatedSources));
-  }
-
-  await assertPreviewSmokeHealthy(preview.baseUrl);
-
-  const designDiagnostics = lintGeneratedVisualQuality(sourcesAndStyles);
-
-  if (designDiagnostics.length > 0) {
-    throw new GeneratedCodeValidationError(designDiagnostics, 'Visual quality check failed');
-  }
-
-  /*
-   * The iframe loaded and every generated source passed Vite's transform endpoint, so an earlier
-   * "Dev Server Failed" alert is now stale and can be cleared safely.
-   */
-  workbenchStore.clearAlert();
-
-  return { scaffolded, previewUrl: preview.baseUrl };
 }

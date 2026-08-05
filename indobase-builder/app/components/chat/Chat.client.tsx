@@ -42,6 +42,12 @@ import {
 } from '~/lib/indobase/connection';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishDraftPreview } from '~/lib/indobase/publishDraftPreview';
+import {
+  beginCodegenCommand,
+  commitWorkbenchFiles,
+  inferCodegenCommandMeta,
+  inferRepairCommandMeta,
+} from '~/lib/workspace';
 import { hasWebContainerBootFailed } from '~/lib/webcontainer';
 import { isServerPreviewMode, shouldSkipWebContainerRuntime } from '~/lib/webcontainer/preview-mode';
 import { computeStreamProgressMarker } from '~/lib/indobase/stream-progress';
@@ -421,6 +427,9 @@ export const ChatImpl = memo(
 
       if (building) {
         beginInitialBuild();
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+        });
       }
     }, [chatData]);
 
@@ -748,8 +757,18 @@ export const ChatImpl = memo(
             const draft = await publishDraftPreview(indobaseConnection.get());
 
             if (draft.success && draft.previewUrl) {
+              const wasRepair = automaticPreviewRepairAttemptRef.current > 0;
               setLlmErrorAlert(undefined);
               automaticPreviewRepairAttemptRef.current = 0;
+
+              const meta = wasRepair
+                ? inferRepairCommandMeta()
+                : inferCodegenCommandMeta({ isInitialBuild, scaffolded: isInitialBuild });
+
+              void commitWorkbenchFiles({
+                files: workbenchStore.files.get(),
+                ...meta,
+              });
 
               if (isInitialBuild) {
                 initialBuildLifecycle.set('preview-ready');
@@ -774,6 +793,7 @@ export const ChatImpl = memo(
               chatStore.setKey('aborted', false);
               setStreamStalled(false);
               initialBuildLifecycle.set('finalizing');
+              beginCodegenCommand({ ...inferRepairCommandMeta() });
               append({
                 role: 'user',
                 content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
@@ -800,7 +820,10 @@ export const ChatImpl = memo(
             const draftPromise = publishDraftPreview(indobaseConnection.get());
 
             try {
-              await finalizeCodegen();
+              await finalizeCodegen({
+                isInitialBuild,
+                isRepair: automaticPreviewRepairAttemptRef.current > 0,
+              });
               automaticPreviewRepairAttemptRef.current = 0;
               setLlmErrorAlert(undefined);
 
@@ -883,6 +906,7 @@ export const ChatImpl = memo(
                 chatStore.setKey('aborted', false);
                 setStreamStalled(false);
                 initialBuildLifecycle.set('finalizing');
+                beginCodegenCommand({ ...inferRepairCommandMeta() });
                 append({
                   role: 'user',
                   content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${repair.prompt}`,
@@ -1410,11 +1434,20 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
         setMessages(messages.slice(0, -1));
       }
 
+      if (chatMode === 'build' && chatStarted) {
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: false, scaffolded: false }),
+        });
+      }
+
       if (
         chatMode === 'build' &&
         (finalMessageContent.includes(CLARIFYING_ANSWERS_MARKER) || initialBuildLifecycle.get() === 'scoping')
       ) {
         beginInitialBuild();
+        beginCodegenCommand({
+          ...inferCodegenCommandMeta({ isInitialBuild: true, scaffolded: true }),
+        });
       }
 
       const modifiedFiles = workbenchStore.getModifiedFiles();

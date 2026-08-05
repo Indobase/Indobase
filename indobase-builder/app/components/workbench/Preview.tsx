@@ -9,6 +9,7 @@ import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
 import type { ElementInfo } from './Inspector';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
 import { draftPreviewStore } from '~/lib/stores/draft-preview';
+import { isPreviewBusy, previewManagerState, previewUrlFromManager } from '~/lib/preview/preview-manager';
 import { streamingState } from '~/lib/stores/streaming';
 import { webcontainerBootErrorAtom } from '~/lib/webcontainer';
 import { isServerPreviewMode } from '~/lib/webcontainer/preview-mode';
@@ -199,9 +200,13 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
   const draftPreview = useStore(draftPreviewStore);
+  const previewMgr = useStore(previewManagerState);
   const buildLifecycle = useStore(initialBuildLifecycle);
   const isStreaming = useStore(streamingState);
   const bootError = useStore(webcontainerBootErrorAtom);
+
+  const managerPreviewUrl = previewUrlFromManager(previewMgr);
+  const managerBusy = isPreviewBusy(previewMgr);
 
   // Friendly building state while scoping/generating/streaming — never flash a harsh error first.
   const previewStarting =
@@ -209,9 +214,10 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
     buildLifecycle === 'scoping' ||
     buildLifecycle === 'generating' ||
     buildLifecycle === 'finalizing';
-  const draftBuilding = draftPreview.status === 'building';
-  const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : undefined;
-  const hardFailed = buildLifecycle === 'failed' || draftPreview.status === 'error';
+  const draftBuilding = draftPreview.status === 'building' || managerBusy;
+  const draftPreviewUrl = draftPreview.status === 'ready' ? draftPreview.previewUrl : managerPreviewUrl;
+  const hardFailed =
+    buildLifecycle === 'failed' || draftPreview.status === 'error' || previewMgr.lifecycle === 'error';
 
   /*
    * Prefer draft path over WC boot noise. Under server-preview hosts (no key) WC is never expected.
@@ -220,13 +226,13 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const previewFailure = draftBuilding || draftPreviewUrl || previewStarting
     ? undefined
     : isServerPreviewMode()
-      ? draftPreview.status === 'error'
-        ? draftPreview.error
+      ? previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+        ? previewMgr.error || draftPreview.error
         : undefined
-      : draftPreview.status === 'error'
-        ? draftPreview.error || bootError
+      : previewMgr.lifecycle === 'error' || draftPreview.status === 'error'
+        ? previewMgr.error || draftPreview.error || bootError
         : hardFailed
-          ? bootError || draftPreview.error
+          ? bootError || previewMgr.error || draftPreview.error
           : undefined;
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();

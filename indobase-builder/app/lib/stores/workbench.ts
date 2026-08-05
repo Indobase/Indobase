@@ -19,6 +19,7 @@ import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, IndobaseBackendAlert } from '~/types/actions';
 import { initialBuildLifecycle } from '~/lib/stores/build-lifecycle';
+import { proposeWorkbenchFileWrite, resetBuilderSession } from '~/lib/workspace';
 
 export interface ArtifactState {
   id: string;
@@ -332,6 +333,7 @@ export class WorkbenchStore {
    * WebContainer wipe is best-effort and never blocks navigation.
    */
   clearWorkspace() {
+    resetBuilderSession();
     this.artifacts.set({});
     this.artifactIdList = [];
     this.#reloadedMessages.clear();
@@ -748,6 +750,13 @@ export class WorkbenchStore {
       filePath: fullPath,
       isBinary: false,
     });
+
+    // Durable workspace path: propose into the active command (lazy-opens if needed).
+    const proposal = proposeWorkbenchFileWrite(relativePath || fullPath, content);
+
+    if (!proposal.ok) {
+      console.warn('[workbench] workspace proposal rejected:', proposal.error);
+    }
   }
 
   actionStreamSampler = createSampler(async (data: ActionCallbackData, isStreaming: boolean = false) => {
