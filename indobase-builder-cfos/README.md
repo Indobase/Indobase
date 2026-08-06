@@ -78,7 +78,7 @@ Use **Copy agent hint** in the chrome bar (or `AGENT_HINT.md`).
 Manual split (if you prefer two terminals):
 
 ```bash
-./scripts/fetch-cloudflare-os.sh
+./scripts/fetch-cloudflare-os.sh   # clones + applies Indobase UI rebrand
 cd upstream/cloudflare-os && pnpm install && pnpm run-local   # :8787
 # other terminal:
 cd bridge
@@ -87,14 +87,16 @@ export BUILDER_CFOS_HANDOFF_SECRET=…
 pnpm dev   # :8791
 ```
 
-`upstream/cloudflare-os` is gitignored — not vendored into the monorepo.
+`upstream/cloudflare-os` is gitignored — not vendored into the monorepo.  
+UI rebrand assets live in `branding/` and are applied by `scripts/rebrand-cloudflare-os.mjs` (also run from `fetch-cloudflare-os.sh`). Upstream `LICENSE` attribution is preserved.
 
 ## Layout
 
 ```
 indobase-builder-cfos/
   bridge/            # Hono SSO + Indobase chrome + runtime reverse proxy
-  scripts/           # fetch runtime, mint handoff, dev-stack
+  branding/          # Indobase mark/favicon + NOTICE (overlaid onto upstream UI)
+  scripts/           # fetch runtime, rebrand UI, mint handoff, dev-stack
   AGENT_HINT.md      # paste into agent chat (Indobase-only)
   upstream/          # gitignored clone of the execution runtime
   README.md

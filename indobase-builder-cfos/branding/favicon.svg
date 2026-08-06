@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Indobase Builder">
+  <path
+    fill="none"
+    stroke="#3B8FD6"
+    stroke-width="3.2"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M32 52 L50 40 L32 28 L14 40 Z"
+  />
+  <path
+    fill="none"
+    stroke="#3B8FD6"
+    stroke-width="3.2"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    opacity="0.75"
+    d="M32 45.5 L45.5 36.5 L32 28 L18.5 36.5 Z"
+  />
+  <path
+    fill="#F0B429"
+    stroke="#F0B429"
+    stroke-width="0.8"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M32 39 L42 32.5 L32 26 L22 32.5 Z"
+  />
+</svg>

@@ -4,20 +4,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="${CLOUDFLARE_OS_DIR:-$ROOT/upstream/cloudflare-os}"
 
-if [[ -d "$DEST/.git" ]]; then
-  echo "Already cloned: $DEST"
-  exit 0
-fi
-
-mkdir -p "$(dirname "$DEST")"
-echo "Cloning cloudflare/cloudflare-os (shallow) → $DEST"
-git clone --depth 1 https://github.com/cloudflare/cloudflare-os.git "$DEST"
-# PortableSSD / macOS often injects AppleDouble `._*` files that break CF OS JSON builds.
-find "$DEST" -name '._*' -delete 2>/dev/null || true
-# Skip AppleDouble archives if the volume recreates them during build.
-SCRIPT="$DEST/packages/workshop-backend/scripts/build-format-blueprints.mjs"
-if [[ -f "$SCRIPT" ]] && grep -q 'f.endsWith(".gadget")).toSorted()' "$SCRIPT"; then
-  python3 - "$SCRIPT" <<'PY'
+if [[ ! -d "$DEST/.git" ]]; then
+  mkdir -p "$(dirname "$DEST")"
+  echo "Cloning cloudflare/cloudflare-os (shallow) → $DEST"
+  git clone --depth 1 https://github.com/cloudflare/cloudflare-os.git "$DEST"
+  # PortableSSD / macOS often injects AppleDouble `._*` files that break CF OS JSON builds.
+  find "$DEST" -name '._*' -delete 2>/dev/null || true
+  # Skip AppleDouble archives if the volume recreates them during build.
+  SCRIPT="$DEST/packages/workshop-backend/scripts/build-format-blueprints.mjs"
+  if [[ -f "$SCRIPT" ]] && grep -q 'f.endsWith(".gadget")).toSorted()' "$SCRIPT"; then
+    python3 - "$SCRIPT" <<'PY'
 import sys
 from pathlib import Path
 p = Path(sys.argv[1])
@@ -28,7 +24,14 @@ if old in text:
     p.write_text(text.replace(old, new, 1))
     print("Patched blueprint AppleDouble filter")
 PY
+  fi
+else
+  echo "Already cloned: $DEST"
 fi
+
+# Customer-facing UI → Indobase (titles, logos, brand colors). Re-runnable.
+node "$ROOT/scripts/rebrand-cloudflare-os.mjs"
+
 echo "Done. Next:"
 echo "  cd $DEST && pnpm install && pnpm run-local"
 echo "Then set CLOUDFLARE_OS_URL=http://localhost:8787 on the bridge."
