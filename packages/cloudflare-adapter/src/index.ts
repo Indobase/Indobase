@@ -1,0 +1,63 @@
+/**
+ * @indobase/cloudflare-adapter — Builder Gen 3
+ *
+ * Maps agent execution runtime (CF OS, internal) onto @indobase/platform.
+ * Indobase owns workspace / commands / events / deploy; CF OS never writes SoT.
+ *
+ * @see docs/BUILDER-GEN3.md
+ */
+
+export {
+  INDOBASE_CF_CONCEPT_MAP,
+  mapCfConcept,
+  publicLabelForCfConcept,
+  type CfOsConcept,
+  type ConceptMapping,
+  type IndobaseConcept,
+} from './mapping'
+
+export {
+  VENDOR_BRAND_PATTERNS,
+  stripVendorBranding,
+  hasVendorBranding,
+  assertNoVendorBranding,
+} from './brand'
+
+export {
+  applyProposalsViaCommands,
+  proposalsToWorkspaceCommands,
+  createMutationProposal,
+  type ApplyProposalsMeta,
+  type AppliedProposalCommand,
+  type MutationProposal,
+} from './mutation-proposals'
+
+export {
+  startAgentTurn,
+  type AgentTurnRequest,
+  type AgentTurnResult,
+  type AgentTurnStatus,
+  type StartAgentTurnOptions,
+} from './agent-turn'
+
+export {
+  sessionToAgentContext,
+  formatAgentSessionPrompt,
+  type BridgeSessionLike,
+  type AgentSessionContext,
+} from './session-context'
+
+export {
+  createCloudflareOsAdapter,
+  commandsFromApplied,
+  type CloudflareOsAdapter,
+  type CreateCloudflareOsAdapterOptions,
+} from './adapter'
+
+/** Re-exports frequently used platform types so bridge code has one import path. */
+export type {
+  Command,
+  GenerationCapabilityContext,
+  ProjectRuntime,
+  WorkspaceCommand,
+} from '@indobase/platform'

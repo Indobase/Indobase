@@ -752,6 +752,7 @@ export class WorkbenchStore {
     });
 
     // Durable workspace path: propose into the active command (lazy-opens if needed).
+    // With BUILDER_GEN3_COMMANDS, finalize commits via applyProposalsViaCommands (not ActionRunner).
     const proposal = proposeWorkbenchFileWrite(relativePath || fullPath, content);
 
     if (!proposal.ok) {

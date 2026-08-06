@@ -24,7 +24,9 @@
     "paths": {
       "~/*": ["./app/*"],
       "@indobase/platform": ["../packages/platform/src/index.ts"],
-      "@indobase/platform/*": ["../packages/platform/src/*"]
+      "@indobase/platform/*": ["../packages/platform/src/*"],
+      "@indobase/cloudflare-adapter": ["../packages/cloudflare-adapter/src/index.ts"],
+      "@indobase/cloudflare-adapter/*": ["../packages/cloudflare-adapter/src/*"]
     },
     // vite takes care of building everything, not tsc
     "noEmit": true

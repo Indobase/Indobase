@@ -3,4 +3,6 @@ export type {
   DesignDocumentRef,
   DesignCommandKind,
   DesignDocumentContract,
+  DesignDocument,
 } from '../documents'
+export { designToDocumentRef, createDesignDocument } from '../documents'

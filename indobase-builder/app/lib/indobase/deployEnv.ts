@@ -12,6 +12,8 @@ function cleanEnvValue(value?: string) {
  * Deploy / codegen env for a linked project.
  * Auth URL + anon key bindings come from the Platform Runtime ABI (`auth` capability),
  * not from hard-coded product knowledge.
+ *
+ * Studio URL is a Builder deploy helper only — never part of ProjectRuntime ABI.
  */
 export function getDeployEnvironmentVariables(
   connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
@@ -42,6 +44,7 @@ export function getDeployEnvironmentVariables(
     env.VITE_INDOBASE_PROJECT_REF = projectRef;
   }
 
+  // Non-ABI: product control-plane hint for generated apps — outside Platform.resolve.
   const studioUrl = cleanEnvValue(connection?.indobase?.studioUrl);
   if (studioUrl) {
     env.INDOBASE_STUDIO_URL = studioUrl;

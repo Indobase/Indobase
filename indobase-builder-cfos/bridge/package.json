@@ -1,0 +1,23 @@
+{
+  "name": "@indobase/builder-cfos-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@indobase/cloudflare-adapter": "file:../../packages/cloudflare-adapter",
+    "@indobase/platform": "file:../../packages/platform",
+    "hono": "^4.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.2"
+  }
+}

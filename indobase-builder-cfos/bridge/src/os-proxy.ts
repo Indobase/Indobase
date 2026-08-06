@@ -1,0 +1,111 @@
+/**
+ * Reverse-proxy Cloudflare OS through the Indobase bridge.
+ * Strips framing blockers so we can embed CF OS same-origin under /os/app/*.
+ */
+import type { Context } from 'hono'
+
+const HOP_BY_HOP = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade',
+  'host',
+  'content-length',
+])
+
+const STRIP_RESPONSE = new Set([
+  'x-frame-options',
+  'content-security-policy',
+  'content-security-policy-report-only',
+  'cross-origin-opener-policy',
+  'cross-origin-embedder-policy',
+  'cross-origin-resource-policy',
+])
+
+export function resolveCloudflareOsBase(): string {
+  return (process.env.CLOUDFLARE_OS_URL || '').trim().replace(/\/+$/, '')
+}
+
+export async function proxyCloudflareOs(c: Context, opts: { upstreamBase: string; stripPrefix: string }) {
+  const url = new URL(c.req.url)
+  let path = url.pathname
+  if (path.startsWith(opts.stripPrefix)) {
+    path = path.slice(opts.stripPrefix.length) || '/'
+  }
+  if (!path.startsWith('/')) path = `/${path}`
+
+  const target = new URL(path + url.search, `${opts.upstreamBase}/`)
+
+  const headers = new Headers()
+  c.req.raw.headers.forEach((value, key) => {
+    if (HOP_BY_HOP.has(key.toLowerCase())) return
+    if (key.toLowerCase() === 'cookie') return // keep CF OS cookies separate; bridge session stays on bridge
+    headers.set(key, value)
+  })
+  headers.set('host', target.host)
+  // Avoid compressed body complications when rewriting HTML optionally later
+  headers.delete('accept-encoding')
+
+  const init: RequestInit = {
+    method: c.req.method,
+    headers,
+    redirect: 'manual',
+  }
+
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    init.body = c.req.raw.body
+    // @ts-expect-error duplex required for streaming body in Node fetch
+    init.duplex = 'half'
+  }
+
+  let upstream: Response
+  try {
+    upstream = await fetch(target, init)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'upstream unreachable'
+    return c.json(
+      {
+        ok: false,
+        message: `Cloudflare OS proxy failed: ${message}`,
+        upstream: opts.upstreamBase,
+      },
+      502
+    )
+  }
+
+  const outHeaders = new Headers()
+  upstream.headers.forEach((value, key) => {
+    const lower = key.toLowerCase()
+    if (HOP_BY_HOP.has(lower) || STRIP_RESPONSE.has(lower)) return
+    // Rewrite absolute redirects to upstream back through the proxy prefix
+    if (lower === 'location') {
+      try {
+        const loc = new URL(value, target)
+        if (loc.origin === new URL(opts.upstreamBase).origin) {
+          outHeaders.set(
+            'location',
+            `${opts.stripPrefix}${loc.pathname}${loc.search}${loc.hash}`
+          )
+          return
+        }
+      } catch {
+        // keep as-is
+      }
+    }
+    outHeaders.set(key, value)
+  })
+
+  // Allow same-origin embedding under the Indobase chrome
+  outHeaders.set('Content-Security-Policy', "frame-ancestors 'self'")
+  outHeaders.delete('X-Frame-Options')
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: outHeaders,
+  })
+}

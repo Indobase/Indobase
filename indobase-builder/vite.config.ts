@@ -93,6 +93,10 @@ export default defineConfig((config) => {
         stream: 'node:stream',
         buffer: 'node:buffer',
         '@indobase/platform': path.resolve(appRoot, '../packages/platform/src/index.ts'),
+        '@indobase/cloudflare-adapter': path.resolve(
+          appRoot,
+          '../packages/cloudflare-adapter/src/index.ts',
+        ),
       },
     },
     ssr: {

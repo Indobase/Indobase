@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@indobase/cloudflare-adapter": ["./src/shims/cloudflare-adapter-shim.d.ts"],
+      "@indobase/platform": ["./src/shims/platform-shim.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/shims/**/*.d.ts"],
+  "exclude": ["dist", "src/**/*.test.ts"]
+}

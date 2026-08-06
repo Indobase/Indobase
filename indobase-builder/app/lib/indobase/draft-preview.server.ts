@@ -1,3 +1,9 @@
+/**
+ * @deprecated Gen 3 — draft preview hosting ownership moves under Execution
+ * (`execution.preview` adapters). Keep this classic Builder path until Gen 3
+ * publish/preview cutover. Prefer Commands/Workspace for durable trees.
+ * See docs/BUILDER-GEN3.md and docs/BUILDER-GEN3-STATUS.md.
+ */
 import { randomBytes } from 'node:crypto';
 
 import { createScopedLogger } from '~/utils/logger';

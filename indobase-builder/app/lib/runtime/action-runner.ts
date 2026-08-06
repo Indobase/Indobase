@@ -37,6 +37,19 @@ import type { BoltShell } from '~/utils/shell';
 
 const logger = createScopedLogger('ActionRunner');
 
+/**
+ * Gen 3: ActionRunner must not remain the owner of durable workspace mutations.
+ *
+ * Phase 2: when `BUILDER_GEN3_COMMANDS=1` (or `VITE_BUILDER_GEN3_COMMANDS=1`),
+ * finalizeCodegen / commitWorkbenchFiles apply durable trees via
+ * MutationProposal → `@indobase/cloudflare-adapter` applyProposalsViaCommands →
+ * WorkspaceService (WorkspaceCommitted). This class stays a **compatibility
+ * adapter** for ephemeral WebContainer writes, shell/install/start, and preview.
+ *
+ * Classic path (flag off) remains production-safe default.
+ * @see docs/BUILDER-GEN3.md · docs/BUILDER-GEN3-STATUS.md
+ */
+
 /** Kill hung `npm run build` processes so publish builds cannot block forever. */
 const BUILD_PROCESS_TIMEOUT_MS = 300_000;
 
@@ -99,6 +112,7 @@ class ActionCommandError extends Error {
   }
 }
 
+/** @deprecated Gen 3 — durable SoT is Commands/Workspace; this runner is WC/preview compatibility. */
 export class ActionRunner {
   #webcontainer: Promise<WebContainer>;
   #currentExecutionPromise: Promise<void> = Promise.resolve();

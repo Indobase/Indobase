@@ -36,6 +36,47 @@ export type DesignDocumentContract = {
   ref: DesignDocumentRef
 }
 
+/**
+ * Canonical Design document envelope — Fabric JSON is an adapter payload, not the SoT.
+ * Gen-1 stub: kernel owns identity + kind; Design owns `payload` shape.
+ */
+export type DesignDocument<TPayload = unknown> = {
+  ref: DocumentRef & { kind: 'design' }
+  /** Adapter-owned (e.g. Fabric scene). Never import Fabric types into the kernel. */
+  payload?: TPayload
+  schemaVersion: number
+  updatedAt?: number
+}
+
+/** Map a Design product id + optional Fabric payload into the kernel envelope. */
+export function designToDocumentRef(input: {
+  id?: string
+  projectRef?: string
+  schemaVersion?: number
+}): DocumentRef {
+  return createDocumentRef({
+    kind: 'design',
+    id: input.id as DocumentId | undefined,
+    projectRef: input.projectRef,
+    schemaVersion: input.schemaVersion,
+  })
+}
+
+export function createDesignDocument<TPayload = unknown>(input: {
+  id?: string
+  projectRef?: string
+  schemaVersion?: number
+  payload?: TPayload
+}): DesignDocument<TPayload> {
+  const ref = designToDocumentRef(input) as DocumentRef & { kind: 'design' }
+  return {
+    ref,
+    payload: input.payload,
+    schemaVersion: input.schemaVersion ?? 1,
+    updatedAt: Date.now(),
+  }
+}
+
 export function createDocumentRef(input: {
   kind: DocumentKind
   projectRef?: string

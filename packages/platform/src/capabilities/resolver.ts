@@ -4,11 +4,17 @@ import type {
   ProjectRuntime,
   ResolveRuntimeInput,
 } from '../contracts/runtime'
+import { assertProjectRuntimeAbi } from '../contracts/runtime'
 import { descriptorFromDefinition, type CapabilityRegistryApi } from './registry'
 
 /**
- * Capability Resolver — read-only.
+ * Capability Resolver — read-only runtime gateway.
  * Describes what exists. Does not create sites, merchants, or schemas (that is Ensurer).
+ *
+ * Agents / Builder generation should plan against `resolveProjectRuntime` (or
+ * `Platform.resolve`) + `buildGenerationCapabilityContext` — not ad-hoc product hosts.
+ *
+ * `input.actor` (role/plan) narrows permissions only and is never copied onto the ABI.
  */
 export function resolveProjectRuntime(
   registry: CapabilityRegistryApi,
@@ -35,13 +41,19 @@ export function resolveProjectRuntime(
     }
   }
 
-  return {
+  const runtime: ProjectRuntime = {
     schemaVersion: 1,
     runtimeVersion: input.runtimeVersion ?? 1,
     projectRef: input.projectRef,
-    dataPlane: input.dataPlane,
+    dataPlane: {
+      url: input.dataPlane.url,
+      anonKey: input.dataPlane.anonKey,
+    },
     capabilities,
   }
+
+  assertProjectRuntimeAbi(runtime)
+  return runtime
 }
 
 export function getResolvedCapability(

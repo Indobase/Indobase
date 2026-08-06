@@ -44,7 +44,7 @@ OPTIONAL_NAMES=( mail )
 CONTROL_PLANE_VPS_IP="${CONTROL_PLANE_VPS_IP:-103.190.92.249}"
 # Explicit A records on control plane (override wildcard * → data plane .248)
 CONTROL_PLANE_A_NAMES=(
-  api studio builder status mail
+  api studio builder builder-v2 status mail
   discuss workspace crm domains
   email social design video analytics payments
 )
@@ -222,7 +222,7 @@ apply_control_plane_hostinger() {
   zone_json=$(CONTROL_PLANE_VPS_IP="${CONTROL_PLANE_VPS_IP}" python3 <<'EOF'
 import json, os
 names = [
-  "api", "studio", "builder", "status", "mail",
+  "api", "studio", "builder", "builder-v2", "status", "mail",
   "discuss", "workspace", "crm", "domains",
   "email", "social", "design", "video", "analytics", "payments",
 ]

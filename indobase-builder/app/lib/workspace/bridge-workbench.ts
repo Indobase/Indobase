@@ -1,6 +1,9 @@
 import type { FileMap } from '~/lib/stores/files';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { createScopedLogger } from '~/utils/logger';
 import { commandScheduler } from './command-scheduler';
+import { isBuilderGen3CommandsEnabled } from './gen3-flag';
+import { commitWorkbenchFilesViaGen3 } from './gen3-commit';
 import { diffTrees, fileMapToTree } from './snapshot-tree';
 import type { CommandIntent, CommandReason, CommandScope, WorkspaceCommandType } from './types';
 import { workspaceService } from './workspace-service';
@@ -14,7 +17,19 @@ export type CommitWorkbenchFilesOptions = {
   scope?: CommandScope;
   reason?: CommandReason;
   goal?: string;
+  /** Gen 3 only — overrides resolved Studio project ref. */
+  projectRef?: string;
 };
+
+function liveGen3ProjectRef(): string | undefined {
+  try {
+    const connection = indobaseConnection.get();
+
+    return connection.indobase?.projectRef?.trim() || connection.selectedProjectId?.trim();
+  } catch {
+    return undefined;
+  }
+}
 
 export type BeginCodegenCommandOptions = {
   type?: WorkspaceCommandType;
@@ -101,8 +116,30 @@ export function proposeWorkbenchFileWrite(filePath: string, content: string, isB
 /**
  * Commit the active working command if present; otherwise diff FileMap against HEAD.
  * Prefer proposals accumulated during streaming over a late full-tree diff.
+ *
+ * When `BUILDER_GEN3_COMMANDS=1` (or VITE_*), commits via MutationProposal →
+ * applyProposalsViaCommands → WorkspaceService (ActionRunner is not the owner).
  */
 export async function commitWorkbenchFiles(options: CommitWorkbenchFilesOptions = {}) {
+  if (isBuilderGen3CommandsEnabled()) {
+    const gen3 = await commitWorkbenchFilesViaGen3({
+      ...options,
+      resolveLiveProjectRef: liveGen3ProjectRef,
+    });
+
+    if (gen3.ok) {
+      logger.info(
+        `Gen3 workbench commit ${gen3.snapshot.id} v${gen3.snapshot.version} (${gen3.snapshot.mutations.files.length} ops)`,
+      );
+
+      return { ok: true as const, snapshot: gen3.snapshot };
+    }
+
+    logger.warn(`Gen3 workbench commit failed: ${gen3.error}`);
+
+    return { ok: false as const, error: gen3.error };
+  }
+
   const working = workspaceService.getWorkingCommand();
 
   if (working && working.proposalCount > 0) {

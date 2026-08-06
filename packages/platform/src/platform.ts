@@ -7,6 +7,11 @@ import {
 } from './capabilities/registry'
 import { registerGen1Capabilities } from './capabilities/register-gen1'
 import {
+  buildGenerationCapabilityContext,
+  formatGenerationCapabilityContextPrompt,
+  type GenerationCapabilityContext,
+} from './capabilities/generation-context'
+import {
   getResolvedCapability,
   resolveProjectRuntime,
 } from './capabilities/resolver'
@@ -29,13 +34,25 @@ export type PlatformApi = {
   /** Registry lookup — definition, not resolved project state. */
   getCapability(id: CapabilityId): CapabilityDefinition | undefined
 
-  /** Read-only Project Runtime ABI resolve. */
+  /**
+   * Capability Resolver gateway — read-only Project Runtime ABI.
+   * Prefer this (or `resolveProjectRuntime`) for agents / generation context.
+   */
   resolve(input: ResolveRuntimeInput): ProjectRuntime
+
+  /** Alias of `resolve` — explicit Capability Resolver entrypoint. */
+  resolveProjectRuntime(input: ResolveRuntimeInput): ProjectRuntime
 
   getResolvedCapability(
     runtime: ProjectRuntime,
     id: CapabilityId,
   ): CapabilityDescriptor | undefined
+
+  /** Prompt-safe capability snapshot for codegen / agents. */
+  buildGenerationCapabilityContext(runtime: ProjectRuntime): GenerationCapabilityContext
+
+  /** XML appendix derived from `buildGenerationCapabilityContext`. */
+  formatGenerationCapabilityContextPrompt(runtime: ProjectRuntime): string
 }
 
 export type CreatePlatformOptions = {
@@ -65,7 +82,16 @@ export function createPlatform(options: CreatePlatformOptions = {}): PlatformApi
     resolve(input) {
       return resolveProjectRuntime(capabilities, input)
     },
+    resolveProjectRuntime(input) {
+      return resolveProjectRuntime(capabilities, input)
+    },
     getResolvedCapability,
+    buildGenerationCapabilityContext,
+    formatGenerationCapabilityContextPrompt(runtime) {
+      return formatGenerationCapabilityContextPrompt(
+        buildGenerationCapabilityContext(runtime),
+      )
+    },
   }
 }
 

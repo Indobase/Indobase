@@ -1,0 +1,7 @@
+upstream/
+node_modules/
+bridge/dist/
+bridge/node_modules/
+.env
+.env.*
+!.env.example

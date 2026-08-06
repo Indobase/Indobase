@@ -3,6 +3,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import type { JwtPayload } from '@indobaseinc/indobase-js'
 
 import apiWrapper from 'lib/api/apiWrapper'
+import {
+  getBuilderCfosLaunchRedirect,
+  isBuilderCfosEnabled,
+} from 'lib/api/saas/builder-cfos-launch'
 import { getBuilderLaunchRedirect } from 'lib/api/saas/builder-launch'
 
 const builderLaunchHandler = (req: NextApiRequest, res: NextApiResponse) =>
@@ -16,7 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
   }
 
-  const { connect, ref, next, popup } = req.query
+  const { connect, ref, next, popup, runtime } = req.query
   if (typeof ref !== 'string' || !ref.trim()) {
     return res.status(400).json({ message: 'Project ref is required' })
   }
@@ -28,12 +32,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
   const connectFlow =
     connect === '1' || connect === 'true' || popup === '1' || popup === 'true'
 
-  const response = await getBuilderLaunchRedirect({
-    claims,
-    connectFlow,
-    ref: ref.trim(),
-    next: typeof next === 'string' ? next : undefined,
-  })
+  const forceCfos =
+    runtime === 'cfos' || runtime === 'builder-cfos' || runtime === 'v2'
+  const useCfos = forceCfos || isBuilderCfosEnabled()
+
+  const response = useCfos
+    ? await getBuilderCfosLaunchRedirect({
+        claims,
+        connectFlow,
+        ref: ref.trim(),
+        next: typeof next === 'string' ? next : undefined,
+      })
+    : await getBuilderLaunchRedirect({
+        claims,
+        connectFlow,
+        ref: ref.trim(),
+        next: typeof next === 'string' ? next : undefined,
+      })
 
   return res.status(200).json({
     backend: response.backend,
@@ -41,5 +56,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     url: response.url,
     project_ref: response.project.ref,
     organization_slug: response.project.organization_slug,
+    runtime: useCfos ? 'cfos' : 'classic',
   })
 }

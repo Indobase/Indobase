@@ -22,6 +22,7 @@ export * from './contracts/design'
 export * from './capabilities/registry'
 export * from './capabilities/commands'
 export * from './capabilities/resolver'
+export * from './capabilities/generation-context'
 export * from './capabilities/register-gen1'
 export { authCapability } from './capabilities/definitions/auth'
 

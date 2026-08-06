@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Deploy Builder Gen 3 CFOS SSO bridge on Vyom control-plane Swarm (.249).
+#
+# Usage:
+#   IMAGE_TAG=<git-sha> ./docker/scripts/deploy-indobase-builder-cfos-on-vps.sh
+#
+# Builds/pushes image as roshanraghavander/indobase-builder-cfos:<sha> if missing.
+# Syncs Traefik + Studio BUILDER_CFOS_APP_URL.
+# Does NOT set BUILDER_USE_CFOS=1 (classic Builder remains default; use ?runtime=cfos).
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SHA="${IMAGE_TAG:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
+IMAGE="${BUILDER_CFOS_IMAGE:-roshanraghavander/indobase-builder-cfos:${SHA}}"
+SSH_HOST="${VPS_SSH:-root@103.190.92.249}"
+SSH_KEY="${VPS_SSH_KEY:-$HOME/.ssh/id_ed25519_indobase_vps}"
+SSH_OPTS=(-4 -o ConnectTimeout=45 -i "$SSH_KEY")
+SERVICE_NAME="${BUILDER_CFOS_SERVICE_NAME:-indobase-builder-cfos}"
+CFOS_URL="${BUILDER_CFOS_APP_URL:-https://builder-v2.indobase.in}"
+STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
+BUILD_LOCALLY="${BUILD_CFOS_IMAGE:-1}"
+
+echo "==> Deploy Builder CFOS bridge ${IMAGE} to ${SSH_HOST}…"
+
+if [[ "$BUILD_LOCALLY" == "1" ]]; then
+  if ! curl -fsI "https://hub.docker.com/v2/repositories/roshanraghavander/indobase-builder-cfos/tags/${SHA}/" >/dev/null 2>&1; then
+    echo "Building and pushing ${IMAGE} (not on Hub yet)…"
+    docker build \
+      -f "${REPO_ROOT}/indobase-builder-cfos/Dockerfile" \
+      --build-arg "GIT_SHA=${SHA}" \
+      -t "${IMAGE}" \
+      "${REPO_ROOT}"
+    docker push "${IMAGE}"
+  else
+    echo "Hub already has tag ${SHA}"
+  fi
+fi
+
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase/lib /opt/indobase-builder-cfos"
+scp "${SSH_OPTS[@]}" \
+  "${SCRIPT_DIR}/lib/swarm-managed-env.sh" \
+  "${SSH_HOST}:/opt/indobase/lib/swarm-managed-env.sh"
+
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml" \
+  < "${REPO_ROOT}/docker/traefik/builder-v2-indobase.yml"
+echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml"
+
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
+set -euo pipefail
+source /opt/indobase/lib/swarm-managed-env.sh
+
+SERVICE_NAME="${SERVICE_NAME}"
+IMAGE="${IMAGE}"
+CFOS_URL="${CFOS_URL}"
+STUDIO_FILTER="${STUDIO_FILTER}"
+SHA="${SHA}"
+
+echo "Pulling \${IMAGE}…"
+docker pull "\${IMAGE}"
+
+ENV_FILE="/opt/indobase-builder-cfos.runtime.env"
+STUDIO_ENV="/opt/indobase/studio-swarm.env"
+DOCKER_ENV="/opt/indobase/docker/.env"
+
+SECRET=""
+if [[ -f "\${ENV_FILE}" ]]; then
+  SECRET="\$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' "\${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ \${#SECRET} -lt 32 && -f "\${STUDIO_ENV}" ]]; then
+  SECRET="\$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' "\${STUDIO_ENV}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ \${#SECRET} -lt 32 && -f "\${STUDIO_ENV}" ]]; then
+  SECRET="\$(grep -E '^BUILDER_HANDOFF_SECRET=' "\${STUDIO_ENV}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ \${#SECRET} -lt 32 && -f "\${DOCKER_ENV}" ]]; then
+  SECRET="\$(grep -E '^BUILDER_HANDOFF_SECRET=' "\${DOCKER_ENV}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ \${#SECRET} -lt 32 ]]; then
+  echo "::error::Could not find BUILDER_HANDOFF_SECRET / BUILDER_CFOS_HANDOFF_SECRET (>=32) on VPS"
+  exit 1
+fi
+
+if [[ ! -f "\${ENV_FILE}" ]]; then
+  cat > "\${ENV_FILE}" <<EOF
+NODE_ENV=production
+HOST=0.0.0.0
+PORT=8791
+EOF
+fi
+
+swarm_upsert_env_file_kv "\${ENV_FILE}" NODE_ENV "production"
+swarm_upsert_env_file_kv "\${ENV_FILE}" HOST "0.0.0.0"
+swarm_upsert_env_file_kv "\${ENV_FILE}" PORT "8791"
+swarm_upsert_env_file_kv "\${ENV_FILE}" GIT_SHA "\${SHA}"
+swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_VERSION "\${SHA}"
+swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+
+if [[ -f "\${STUDIO_ENV}" ]]; then
+  swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_APP_URL "\${CFOS_URL}"
+  swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+  if grep -q '^BUILDER_USE_CFOS=' "\${STUDIO_ENV}" 2>/dev/null; then
+    sed -i '/^BUILDER_USE_CFOS=/d' "\${STUDIO_ENV}" || true
+  fi
+fi
+
+if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
+  echo "Updating swarm service \${SERVICE_NAME} (image + managed env)…"
+  swarm_apply_env_file "\${SERVICE_NAME}" "\${ENV_FILE}" --image "\${IMAGE}"
+else
+  echo "Creating swarm service \${SERVICE_NAME}…"
+  docker service create \
+    --name "\${SERVICE_NAME}" \
+    --network dokploy-network \
+    --env-file "\${ENV_FILE}" \
+    --limit-memory 512m \
+    "\${IMAGE}"
+fi
+
+STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}")"
+if [[ -n "\${STUDIO_SVC}" && -f "\${STUDIO_ENV}" ]]; then
+  echo "Pointing Studio (\${STUDIO_SVC}) BUILDER_CFOS_APP_URL to \${CFOS_URL}…"
+  docker service update \
+    --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
+    --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
+    --env-rm "BUILDER_USE_CFOS" \
+    "\${STUDIO_SVC}" || true
+fi
+
+echo "Waiting for service to settle…"
+sleep 8
+docker service ps "\${SERVICE_NAME}" --no-trunc | head -8
+echo "Done. Smoke: curl -sS \${CFOS_URL}/sso/health"
+REMOTE
+
+echo "==> Public health checks…"
+for i in 1 2 3 4 5 6 7 8; do
+  if out=$(curl -fsS "${CFOS_URL}/sso/health" 2>/dev/null); then
+    echo "$out"
+    exit 0
+  fi
+  echo "health not ready yet (attempt ${i})…"
+  sleep 8
+done
+echo "::warning::CFOS bridge not ready at ${CFOS_URL}/sso/health yet — check DNS (.249), Traefik, swarm logs."
+exit 1

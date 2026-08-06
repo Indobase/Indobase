@@ -1,0 +1,30 @@
+# Traefik dynamic config for https://builder-v2.indobase.in
+# Copy to /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml on Vyom .249.
+# DNS: builder-v2.indobase.in → 103.190.92.249 (explicit A; must not use tenant wildcard .248).
+# Backend Swarm service: indobase-builder-cfos (port 8791).
+
+http:
+  routers:
+    indobase-builder-cfos-http:
+      rule: Host(`builder-v2.indobase.in`)
+      service: indobase-builder-cfos-svc
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+    indobase-builder-cfos-https:
+      rule: Host(`builder-v2.indobase.in`)
+      service: indobase-builder-cfos-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: builder-v2.indobase.in
+
+  services:
+    indobase-builder-cfos-svc:
+      loadBalancer:
+        servers:
+          - url: http://indobase-builder-cfos:8791
+        passHostHeader: true

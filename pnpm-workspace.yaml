@@ -3,6 +3,7 @@ packages:
   - "!apps/www-backup"
   - packages/*
   - "!packages/platform"
+  - "!packages/cloudflare-adapter"
   - "!packages/indobase-js"
   - "!packages/indobase-auth-js"
   - "!packages/indobase-functions-js"

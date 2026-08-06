@@ -232,6 +232,24 @@ export class WorkspaceService {
   }
 
   /**
+   * Drop a working session without failing the command.
+   * Used when Gen 3 handoff reuses the same CommandId for MutationProposal → commit.
+   */
+  clearWorkingCommand(commandId?: CommandId): void {
+    const session = this.getWorkingCommand(commandId);
+
+    if (!session) {
+      return;
+    }
+
+    this.#working.delete(session.commandId);
+
+    if (this.activeWorkingCommandId.get() === session.commandId) {
+      this.activeWorkingCommandId.set(undefined);
+    }
+  }
+
+  /**
    * Record versioned diagnostics for a snapshot (may evolve without a new file commit).
    * Defaults to HEAD when snapshotId omitted.
    */

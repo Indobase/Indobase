@@ -9,6 +9,8 @@ import {
   createWorkspace,
   createWorkspaceCommand,
   createDocumentRef,
+  createDesignDocument,
+  designToDocumentRef,
   createEventBus,
   createExecutionRequest,
   toExecutionResult,
@@ -16,6 +18,9 @@ import {
   toPlatformCommand,
   provisionerRouteForExecution,
   validateMutationSet,
+  buildGenerationCapabilityContext,
+  formatGenerationCapabilityContextPrompt,
+  FORBIDDEN_RUNTIME_ABI_KEYS,
   BUILDER_COMMAND_TO_KIND,
   PROVISIONER_ROUTE_TO_EXECUTION,
   EMPTY_SNAPSHOT_ID,
@@ -50,6 +55,64 @@ describe('@indobase/platform', () => {
     )
     expect(runtime.capabilities.auth?.bindings.sdk?.package).toBe('@indobaseinc/indobase-js')
     expect(runtime.capabilities.commerce).toBeUndefined()
+  })
+
+  it('ProjectRuntime ABI excludes forbidden non-capability fields', () => {
+    const runtime = Platform.resolveProjectRuntime({
+      projectRef: 'proj_abc',
+      dataPlane: { url: 'https://x.indobase.in', anonKey: 'k' },
+      actor: { role: 'owner', plan: 'pro' },
+    })
+
+    for (const key of FORBIDDEN_RUNTIME_ABI_KEYS) {
+      expect(Object.prototype.hasOwnProperty.call(runtime, key)).toBe(false)
+    }
+    // actor.plan is input-only — must not leak onto ABI
+    expect((runtime as Record<string, unknown>).plan).toBeUndefined()
+    expect((runtime as Record<string, unknown>).studioUrl).toBeUndefined()
+    expect((runtime as Record<string, unknown>).billingStatus).toBeUndefined()
+    expect(Object.keys(runtime).sort()).toEqual([
+      'capabilities',
+      'dataPlane',
+      'projectRef',
+      'runtimeVersion',
+      'schemaVersion',
+    ])
+  })
+
+  it('buildGenerationCapabilityContext is prompt-safe and capability-shaped', () => {
+    const runtime = Platform.resolve({
+      projectRef: 'proj_abc',
+      dataPlane: { url: 'https://proj_abc.indobase.in', anonKey: 'anon' },
+      capabilities: {
+        commerce: {
+          enabled: true,
+          intents: ['checkout'],
+          permissions: ['checkout:create'],
+          bindings: {
+            endpoints: {
+              createCheckout: '/functions/v1/commerce-checkout',
+              // product host must be scrubbed from generation context
+              bad: 'https://payments.indobase.in/checkout',
+            },
+          },
+        },
+      },
+    })
+
+    const ctx = buildGenerationCapabilityContext(runtime)
+    expect(ctx.schemaVersion).toBe(1)
+    expect(ctx.projectRef).toBe('proj_abc')
+    expect(ctx.capabilities.map((c) => c.id)).toEqual(['auth', 'commerce'])
+    const commerce = ctx.capabilities.find((c) => c.id === 'commerce')
+    expect(commerce?.endpoints?.createCheckout).toBe('/functions/v1/commerce-checkout')
+    expect(commerce?.endpoints?.bad).toBeUndefined()
+
+    const prompt = formatGenerationCapabilityContextPrompt(ctx)
+    expect(prompt).toContain('commerce')
+    expect(prompt).toContain('Capability Resolver')
+    expect(prompt).not.toContain('payments.indobase.in')
+    expect(Platform.formatGenerationCapabilityContextPrompt(runtime)).toContain('auth')
   })
 
   it('does not invent commerce/events without ensurer overrides', () => {
@@ -119,6 +182,11 @@ describe('@indobase/platform', () => {
     const doc = createDocumentRef({ kind: 'design', projectRef: 'proj_x' })
     expect(doc.kind).toBe('design')
     expect(doc.schemaVersion).toBe(1)
+
+    const design = createDesignDocument({ projectRef: 'proj_x', payload: { nodes: [] } })
+    expect(design.ref.kind).toBe('design')
+    expect(design.payload).toEqual({ nodes: [] })
+    expect(designToDocumentRef({ id: design.ref.id, projectRef: 'proj_x' }).kind).toBe('design')
   })
 
   it('exposes execution commands mapped from provisioner language', () => {
