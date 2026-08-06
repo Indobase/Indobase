@@ -19,15 +19,16 @@ COPY indobase-builder-cfos/bridge/tsconfig.build.json indobase-builder-cfos/brid
 COPY indobase-builder-cfos/bridge/src indobase-builder-cfos/bridge/src/
 
 WORKDIR /app/indobase-builder-cfos/bridge
-# file: deps resolve to ../../packages/*
 RUN npm install --ignore-scripts \
-  && npx --yes esbuild src/index.ts \
-    --bundle \
-    --platform=node \
-    --format=esm \
-    --outfile=dist/index.js \
-    --packages=bundle \
-    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+  && npm install --no-save esbuild@0.25.2 \
+  && ./node_modules/.bin/esbuild src/index.ts \
+       --bundle \
+       --platform=node \
+       --target=node22 \
+       --format=esm \
+       --outfile=dist/index.js \
+       --alias:@indobase/platform=/app/packages/platform/src/index.ts \
+       --alias:@indobase/cloudflare-adapter=/app/packages/cloudflare-adapter/src/index.ts
 
 FROM node:22-alpine
 WORKDIR /app
