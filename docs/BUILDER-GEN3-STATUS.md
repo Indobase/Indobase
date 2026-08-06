@@ -80,7 +80,7 @@ VITE_BUILDER_GEN3_COMMANDS=1  # client bundle
 | **Publish via `execution.publish`** | Gen 3 publish → Indobase hosting (subdomain / custom domain / Android queue), not classic-only deploy helpers. |
 | **Draft preview ownership** | Move draft/server-build under Execution adapters; retire Builder-local ownership (`draft-preview.server.ts` marked). |
 | **Agent transport** | `startAgentTurn` over bridge (Cap’n Web / Gatekeeper); still returns `MutationProposal[]` only. |
-| **Shared `packages/agent-runtime`** | Imports platform + cloudflare-adapter; never reverse. |
+| **Shared `packages/agent-runtime`** | **Gen-1 thin done** — imports platform; Planner/Executor productization + Builder chat wire-up still backlog. |
 | **Production Swarm Gen 3** | Only after staging smoke; out of this slice. |
 | **Default Gen3 Commands on** | Keep flag off in prod until Ensurer + transport + publish paths are ready. |
 

@@ -6,7 +6,8 @@
 #
 # Builds/pushes image as roshanraghavander/indobase-builder-cfos:<sha> if missing.
 # Syncs Traefik + Studio BUILDER_CFOS_APP_URL.
-# Does NOT set BUILDER_USE_CFOS=1 (classic Builder remains default; use ?runtime=cfos).
+# Set REPLACE_CLASSIC_BUILDER=1 to make CFOS the default Open Builder target and
+# scale classic indobase-builder to 0 (requires CLOUDFLARE_OS_URL on the CFOS service).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -20,6 +21,8 @@ SERVICE_NAME="${BUILDER_CFOS_SERVICE_NAME:-indobase-builder-cfos}"
 CFOS_URL="${BUILDER_CFOS_APP_URL:-https://builder-v2.indobase.in}"
 STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
 BUILD_LOCALLY="${BUILD_CFOS_IMAGE:-1}"
+REPLACE_CLASSIC="${REPLACE_CLASSIC_BUILDER:-0}"
+CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL:-}"
 
 echo "==> Deploy Builder CFOS bridge ${IMAGE} to ${SSH_HOST}…"
 
@@ -55,6 +58,8 @@ IMAGE="${IMAGE}"
 CFOS_URL="${CFOS_URL}"
 STUDIO_FILTER="${STUDIO_FILTER}"
 SHA="${SHA}"
+REPLACE_CLASSIC="${REPLACE_CLASSIC}"
+CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL_VALUE}"
 
 echo "Pulling \${IMAGE}…"
 docker pull "\${IMAGE}"
@@ -95,11 +100,16 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" PORT "8791"
 swarm_upsert_env_file_kv "\${ENV_FILE}" GIT_SHA "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_VERSION "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" CLOUDFLARE_OS_URL "\${CLOUDFLARE_OS_URL_VALUE}"
+fi
 
 if [[ -f "\${STUDIO_ENV}" ]]; then
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_APP_URL "\${CFOS_URL}"
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
-  if grep -q '^BUILDER_USE_CFOS=' "\${STUDIO_ENV}" 2>/dev/null; then
+  if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+    swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_USE_CFOS "1"
+  elif grep -q '^BUILDER_USE_CFOS=' "\${STUDIO_ENV}" 2>/dev/null; then
     sed -i '/^BUILDER_USE_CFOS=/d' "\${STUDIO_ENV}" || true
   fi
 fi
@@ -120,11 +130,23 @@ fi
 STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}")"
 if [[ -n "\${STUDIO_SVC}" && -f "\${STUDIO_ENV}" ]]; then
   echo "Pointing Studio (\${STUDIO_SVC}) BUILDER_CFOS_APP_URL to \${CFOS_URL}…"
-  docker service update \
-    --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
-    --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
-    --env-rm "BUILDER_USE_CFOS" \
-    "\${STUDIO_SVC}" || true
+  if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+    docker service update \
+      --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
+      --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
+      --env-add "BUILDER_USE_CFOS=1" \
+      "\${STUDIO_SVC}" || true
+    if docker service inspect indobase-builder >/dev/null 2>&1; then
+      echo "Scaling classic indobase-builder → 0 (CFOS is default)…"
+      docker service scale indobase-builder=0 || true
+    fi
+  else
+    docker service update \
+      --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
+      --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
+      --env-rm "BUILDER_USE_CFOS" \
+      "\${STUDIO_SVC}" || true
+  fi
 fi
 
 echo "Waiting for service to settle…"

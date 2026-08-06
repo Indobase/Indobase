@@ -1,6 +1,10 @@
 /**
  * Reverse-proxy Cloudflare OS through the Indobase bridge.
  * Strips framing blockers so we can embed CF OS same-origin under /os/app/*.
+ *
+ * Note: CF OS builds use root-absolute `/assets/*` and a WebSocket at `/api`.
+ * The workspace chrome prefers embedding CLOUDFLARE_OS_URL directly; this proxy
+ * still rewrites HTML when `/os/app/*` is used (Pop out / debugging).
  */
 import type { Context } from 'hono'
 
@@ -30,6 +34,18 @@ export function resolveCloudflareOsBase(): string {
   return (process.env.CLOUDFLARE_OS_URL || '').trim().replace(/\/+$/, '')
 }
 
+/** Rewrite root-absolute src/href so they stay under the proxy prefix. */
+export function rewriteHtmlForProxyPrefix(html: string, stripPrefix: string): string {
+  const prefix = stripPrefix.replace(/\/+$/, '') || ''
+  if (!prefix) return html
+  return html.replace(/\b(src|href)=("|')\/(?!\/)/gi, (full, attr: string, quote: string, offset: number, source: string) => {
+    const pathStart = offset + full.length - 1 // index of leading '/'
+    const rest = source.slice(pathStart)
+    if (rest === prefix || rest.startsWith(`${prefix}/`)) return full
+    return `${attr}=${quote}${prefix}/`
+  })
+}
+
 export async function proxyCloudflareOs(c: Context, opts: { upstreamBase: string; stripPrefix: string }) {
   const url = new URL(c.req.url)
   let path = url.pathname
@@ -47,7 +63,7 @@ export async function proxyCloudflareOs(c: Context, opts: { upstreamBase: string
     headers.set(key, value)
   })
   headers.set('host', target.host)
-  // Avoid compressed body complications when rewriting HTML optionally later
+  // Avoid compressed body complications when rewriting HTML
   headers.delete('accept-encoding')
 
   const init: RequestInit = {
@@ -102,6 +118,18 @@ export async function proxyCloudflareOs(c: Context, opts: { upstreamBase: string
   // Allow same-origin embedding under the Indobase chrome
   outHeaders.set('Content-Security-Policy', "frame-ancestors 'self'")
   outHeaders.delete('X-Frame-Options')
+
+  const contentType = upstream.headers.get('content-type') || ''
+  if (contentType.includes('text/html') && c.req.method === 'GET') {
+    const html = await upstream.text()
+    const rewritten = rewriteHtmlForProxyPrefix(html, opts.stripPrefix)
+    outHeaders.delete('content-length')
+    return new Response(rewritten, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: outHeaders,
+    })
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,

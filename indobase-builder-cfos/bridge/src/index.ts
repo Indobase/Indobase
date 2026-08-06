@@ -262,11 +262,13 @@ app.get(`${OS_PREFIX}`, (c) => c.redirect(`${OS_PREFIX}/`))
 app.get('/', (c) => {
   const session = getSession(c)
   if (!session) return c.html(renderLandingHtml())
+  const upstream = resolveCloudflareOsBase()
   return c.html(
     renderWorkspaceHtml({
       session,
-      cloudflareOsConfigured: Boolean(resolveCloudflareOsBase()),
+      cloudflareOsConfigured: Boolean(upstream),
       osProxyPath: `${OS_PREFIX}/`,
+      agentRuntimeUrl: upstream || null,
     })
   )
 })
@@ -274,11 +276,13 @@ app.get('/', (c) => {
 app.get('/workspace', (c) => {
   const session = getSession(c)
   if (!session) return c.redirect('/')
+  const upstream = resolveCloudflareOsBase()
   return c.html(
     renderWorkspaceHtml({
       session,
-      cloudflareOsConfigured: Boolean(resolveCloudflareOsBase()),
+      cloudflareOsConfigured: Boolean(upstream),
       osProxyPath: `${OS_PREFIX}/`,
+      agentRuntimeUrl: upstream || null,
     })
   )
 })

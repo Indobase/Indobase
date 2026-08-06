@@ -98,10 +98,21 @@ export function renderLandingHtml(): string {
 export function renderWorkspaceHtml(opts: {
   session: Session
   cloudflareOsConfigured: boolean
+  /** Same-origin proxy path (optional Pop-out / legacy). */
   osProxyPath?: string
+  /**
+   * Prefer embedding the agent runtime at its own origin.
+   * CF OS serves absolute `/assets/*` and a WebSocket at `/api`; a path-prefix
+   * reverse proxy breaks both unless every root route is also forwarded.
+   */
+  agentRuntimeUrl?: string | null
 }): string {
   const { session, cloudflareOsConfigured } = opts
-  const osPath = opts.osProxyPath || '/os/app/'
+  const osProxyPath = opts.osProxyPath || '/os/app/'
+  const runtimeUrl = (opts.agentRuntimeUrl || '').trim().replace(/\/+$/, '')
+  // Direct origin embed (assets + /api WebSocket work). Fall back to proxy path.
+  const embedSrc = runtimeUrl ? `${runtimeUrl}/` : osProxyPath
+  const popOutHref = runtimeUrl ? `${runtimeUrl}/` : osProxyPath
   const projectLabel = escapeHtml(session.projectName || session.projectRef)
   const email = escapeHtml(session.email)
   const hasBackend = Boolean(session.backend?.anon_key && session.backend?.api_url)
@@ -179,12 +190,12 @@ export function renderWorkspaceHtml(opts: {
       <button class="btn secondary" type="button" id="toggle-backend">Indobase</button>
       <button class="btn secondary" type="button" id="copy-hint">Copy agent hint</button>
       <a class="btn secondary" href="${escapeHtml(session.studioUrl)}/project/${escapeHtml(session.projectRef)}/backend" target="_blank" rel="noopener">Studio</a>
-      <a class="btn secondary" href="${escapeHtml(osPath)}" target="_blank" rel="noopener">Pop out</a>
+      <a class="btn secondary" href="${escapeHtml(popOutHref)}" target="_blank" rel="noopener">Pop out</a>
       <button class="btn secondary" type="button" id="logout">Sign out</button>
     </div>
   </header>
   <div class="stage">
-    <iframe id="os-frame" title="Indobase Builder workspace" src="${escapeHtml(osPath)}" allow="clipboard-read; clipboard-write"></iframe>
+    <iframe id="os-frame" title="Indobase Builder workspace" src="${escapeHtml(embedSrc)}" allow="clipboard-read; clipboard-write"></iframe>
     <aside class="drawer" id="drawer">
       <h2>Indobase connection</h2>
       <pre id="env-block">${envBlock}</pre>

@@ -36,6 +36,11 @@ echo "→ Cloudflare OS on :${CFOS_PORT}"
   if [[ ! -d node_modules ]]; then
     pnpm install
   fi
+  # Bake Indobase local auto-login into the frontend bundle (skip signup/login).
+  node "$ROOT/scripts/rebrand-cloudflare-os.mjs" >/dev/null
+  export VITE_DEV_AUTO_LOGIN=true
+  export VITE_DEV_USERNAME="${VITE_DEV_USERNAME:-dev}"
+  export VITE_DEV_PASSWORD="${VITE_DEV_PASSWORD:-devpassword}"
   # run-local binds 8787 by default
   pnpm run-local
 ) &
