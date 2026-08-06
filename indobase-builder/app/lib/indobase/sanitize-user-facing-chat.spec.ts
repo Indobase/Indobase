@@ -47,6 +47,8 @@ Creating files…`;
     expect(toConversationalAssistantText(null as unknown as string)).toBe('');
     expect(toConversationalAssistantText(['not', 'a', 'string'] as unknown as string)).toBe('');
   });
+
+  it('strips workspace-unavailable apologies', () => {
     const raw =
       "I couldn't modify or preview the project because the build workspace isn't available. Once that's enabled, I'll create Harbor & Hops.";
     expect(toConversationalAssistantText(raw)).toBe('');
