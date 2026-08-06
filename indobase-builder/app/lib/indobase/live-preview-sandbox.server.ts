@@ -497,7 +497,7 @@ export async function resolveSandboxPreviewResponse(
     record.files[relative] ??
     (relative === '' || relative === 'index.html' ? record.files['index.html'] : undefined);
 
-  if (raw == null) {
+  if (raw == null || typeof raw !== 'string') {
     return null;
   }
 

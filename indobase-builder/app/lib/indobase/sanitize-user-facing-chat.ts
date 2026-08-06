@@ -19,7 +19,7 @@ const WORKSPACE_UNAVAILABLE_RE =
  * Keeps short human sentences; drops plan lists and stack talk.
  */
 export function toConversationalAssistantText(raw: string): string {
-  if (!raw?.trim()) {
+  if (typeof raw !== 'string' || !raw.trim()) {
     return '';
   }
 

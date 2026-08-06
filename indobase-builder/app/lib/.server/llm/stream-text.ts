@@ -37,6 +37,7 @@ import { discussPrompt } from '~/lib/common/prompts/discuss-prompt';
 import { CODER_AGENT_APPENDIX } from '~/lib/.server/orchestration/prompts';
 import { INDOBASE_BRANDING_APPENDIX } from '~/lib/indobase/indobase-branding-prompt';
 import { getIndobaseManagedBackendPrompt } from '~/lib/indobase/indobase-backend-prompt';
+import { getGenerationCapabilityPromptAppendix } from '~/lib/indobase/generation-capability-context';
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
 import {
@@ -227,12 +228,66 @@ function buildToolGuards(baseTools: Record<string, unknown>) {
   return { tools, repairToolCall, promptAppendix };
 }
 
-function sanitizeText(text: string): string {
+function coerceToString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value == null) {
+    return '';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((part) => {
+        if (typeof part === 'string') {
+          return part;
+        }
+
+        if (part && typeof part === 'object' && 'type' in part && (part as { type?: string }).type === 'text') {
+          const text = (part as { text?: unknown }).text;
+          return typeof text === 'string' ? text : '';
+        }
+
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return String(value);
+}
+
+function sanitizeText(input: unknown): string {
+  const text = coerceToString(input);
+
+  if (!text) {
+    return '';
+  }
+
   let sanitized = text.replace(/<div class=\\"__boltThought__\\">.*?<\/div>/s, '');
   sanitized = sanitized.replace(/<think>.*?<\/think>/s, '');
   sanitized = sanitized.replace(/<boltAction type="file" filePath="package-lock\.json">[\s\S]*?<\/boltAction>/g, '');
 
   return sanitized.trim();
+}
+
+function sanitizeMessageContent(content: unknown): unknown {
+  if (typeof content === 'string' || content == null) {
+    return sanitizeText(content);
+  }
+
+  if (Array.isArray(content)) {
+    return content.map((part) => {
+      if (part && typeof part === 'object' && 'type' in part && (part as { type?: string }).type === 'text') {
+        return { ...part, text: sanitizeText((part as { text?: unknown }).text) };
+      }
+
+      return part;
+    });
+  }
+
+  return sanitizeText(content);
 }
 
 export async function streamText(props: {
@@ -275,9 +330,9 @@ export async function streamText(props: {
       const { model, provider, content } = extractPropertiesFromMessage(message);
       currentModel = model;
       currentProvider = provider;
-      newMessage.content = sanitizeText(content);
+      newMessage.content = sanitizeMessageContent(content) as typeof message.content;
     } else if (message.role == 'assistant') {
-      newMessage.content = sanitizeText(message.content);
+      newMessage.content = sanitizeMessageContent(message.content) as typeof message.content;
     }
 
     // Sanitize all text parts in parts array, if present
@@ -475,19 +530,29 @@ export async function streamText(props: {
     backendConnection?.isConnected &&
     backendConnection?.hasSelectedProject;
 
+  let capabilityAppendix = '';
+
   if (isIndobaseManaged) {
     systemPrompt = systemPrompt.replace(
       /<database_instructions>[\s\S]*?<\/database_instructions>/,
       STUDIO_MANAGED_DATABASE_INSTRUCTIONS,
     );
+    const managedApiUrl =
+      backendConnection?.credentials?.apiUrl || backendConnection?.indobase?.apiUrl;
+    const managedAnonKey = backendConnection?.credentials?.anonKey;
+    capabilityAppendix = getGenerationCapabilityPromptAppendix({
+      projectRef: backendConnection?.indobase?.projectRef,
+      apiUrl: managedApiUrl,
+      anonKey: managedAnonKey,
+    });
     systemPrompt = `${systemPrompt}${getIndobaseManagedBackendPrompt({
       projectRef: backendConnection?.indobase?.projectRef,
-      apiUrl: backendConnection?.credentials?.apiUrl || backendConnection?.indobase?.apiUrl,
-      anonKey: backendConnection?.credentials?.anonKey,
+      apiUrl: managedApiUrl,
+      anonKey: managedAnonKey,
       authUrl: backendConnection?.indobase?.authUrl,
       storageUrl: backendConnection?.indobase?.storageUrl,
       restUrl: backendConnection?.indobase?.restUrl,
-    })}${INDOBASE_STUDIO_WORKFLOW_APPENDIX}`;
+    })}${capabilityAppendix}${INDOBASE_STUDIO_WORKFLOW_APPENDIX}`;
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
@@ -564,7 +629,7 @@ export async function streamText(props: {
       apiKeys,
       providerSettings,
     }),
-    system: chatMode === 'build' ? systemPrompt : discussPrompt(),
+    system: chatMode === 'build' ? systemPrompt : `${discussPrompt()}${capabilityAppendix}`,
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,

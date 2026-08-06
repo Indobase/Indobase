@@ -59,6 +59,10 @@ export function storeDraftPreview(files: Record<string, string>): DraftPreviewRe
   const rewritten: Record<string, string> = {};
 
   for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') {
+      continue;
+    }
+
     const lower = path.toLowerCase();
 
     if (lower.endsWith('.html') || lower.endsWith('.css') || lower.endsWith('.js') || lower.endsWith('.mjs')) {
