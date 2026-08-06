@@ -91,7 +91,7 @@ Bridge PoC (`indobase-builder-cfos`) **imports the adapter**. It must not grow a
 | Phase | Goal | Exit |
 |-------|------|------|
 | **1 (this ADR)** | Adapter package + docs + PoC wired through adapter; deprecation markers on legacy owners | Tests green; status doc lists backlog |
-| **2** | Chat → Commands → Platform; Capability Ensurer in Studio; deeper brand strip in proxied UI | ActionRunner no longer SoT for mutations |
+| **2** | Chat → Commands → Platform (flag-gated); Capability Ensurer in Studio; deeper brand strip in proxied UI | Commands ownership slice done (`BUILDER_GEN3_COMMANDS`); Ensurer / brand strip / publish still backlog |
 | **3** | Shared agent runtime package; publish path via Execution; optional Swarm Gen-3 runtime | Classic Builder paths retired behind flags |
 
 Classic Builder (`indobase-builder`) stays production until Phase 2/3 cutover. See deprecation notes on ActionRunner and draft-preview ownership.

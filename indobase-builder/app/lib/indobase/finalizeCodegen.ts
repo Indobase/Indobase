@@ -183,6 +183,8 @@ export type FinalizeCodegenOptions = {
  * Flush streamed actions, scaffold static HTML projects, ensure the dev server is running, and wait
  * until the generated app has actually loaded in the WebContainer preview iframe.
  * On success, commits a delta workspace snapshot (command → WorkspaceService).
+ * With `BUILDER_GEN3_COMMANDS=1`, commit routes MutationProposal → applyProposalsViaCommands
+ * (ActionRunner is not the durable owner).
  */
 export async function finalizeCodegen(
   options: FinalizeCodegenOptions = {},
