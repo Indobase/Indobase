@@ -41,6 +41,20 @@ for (const [stem, id] of expected) {
   else ok(`${stem} author Indobase`)
   if (!OUTPUT_ICONS.has(side.output?.icon)) bad(`${stem}: bad icon ${side.output?.icon}`)
   else ok(`${stem} icon ${side.output.icon}`)
+  if (id === 'format.design') {
+    const desc = String(side.description || '')
+    if (!/ALWAYS/i.test(desc) || !/format\.design/.test(desc)) {
+      bad('workspace-design description must hard-route with ALWAYS + format.design')
+    } else ok('workspace-design description routes Design')
+    if (!/logo|instagram|poster/i.test(desc)) bad('workspace-design description missing logo/social/poster')
+    else ok('workspace-design description covers logo/social/poster')
+  }
+  if (id === 'format.slides') {
+    const desc = String(side.description || '')
+    if (!/NEVER/i.test(desc) || !/format\.design/.test(desc)) {
+      bad('workspace-slides description must forbid graphics and point to format.design')
+    } else ok('workspace-slides description defers graphics to Design')
+  }
 
   const bytes = await readFile(gadgetPath)
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -65,12 +79,27 @@ if (existsSync(yjsPath)) {
     else ok(`design has ${f} (${t.toString().length} chars)`)
   }
   const client = root.get('client.js').toString()
+  const server = root.get('server.js').toString()
   if (!client.includes('#3B8FD6')) bad('design client missing brand blue')
   else ok('design client brand blue')
   if (/Cloudflare/i.test(client)) bad('design client contains Cloudflare')
   else ok('design client Indobase-only naming')
+  if (!server.includes('bootstrapFromPrompt')) bad('design server missing bootstrapFromPrompt')
+  else ok('design server bootstrapFromPrompt')
 } else {
   console.warn('  skip yjs unpack (upstream not installed)')
+}
+
+// Keyword → format.design map (standalone script, kept in sync with adapter)
+{
+  const { spawnSync } = await import('node:child_process')
+  const assertScript = join(formatsRoot, 'scripts/assert-design-routing.mjs')
+  const r = spawnSync(process.execPath, [assertScript], { encoding: 'utf8' })
+  if (r.status !== 0) {
+    bad('assert-design-routing failed')
+    if (r.stdout) console.error(r.stdout)
+    if (r.stderr) console.error(r.stderr)
+  } else ok('assert-design-routing keyword map')
 }
 
 // No AppleDouble in formats root listing

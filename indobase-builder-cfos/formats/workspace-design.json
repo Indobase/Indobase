@@ -1,7 +1,7 @@
 {
   "blueprintId": "format.design",
   "title": "Design",
-  "description": "Create logos, social posts, posters, and other graphics with natural language or the canvas. Use for Instagram posts, stories, logo squares, and simple posters. Export PNG from the canvas.",
+  "description": "ALWAYS use for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, cover images, graphic design, and creatives. Single-canvas graphics with size presets (logo, IG post, story, poster) and PNG export. NEVER use Slides or HTML mocks for these — instantiate format.design. After createGadget, call setPreset and edit layers via RPC.",
   "output": {
     "id": "design",
     "noun": "Design",
@@ -9,5 +9,5 @@
     "icon": "appWindow"
   },
   "author": { "type": "user", "name": "Indobase", "id": "builder@indobase.in" },
-  "revision": 1
+  "revision": 2
 }

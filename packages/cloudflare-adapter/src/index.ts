@@ -48,6 +48,17 @@ export {
 } from './session-context'
 
 export {
+  DESIGN_FORMAT_BLUEPRINT_ID,
+  DESIGN_FORMAT_INTENT_KEYWORDS,
+  DESIGN_FORMAT_ROUTING_RULES,
+  DESIGN_FORMAT_INSTANCE_INSTRUCTIONS,
+  STANDARD_FORMAT_AGENT_HINTS,
+  promptLooksLikeDesignIntent,
+  inferDesignPresetFromPrompt,
+  preferredFormatForPrompt,
+} from './design-format-routing'
+
+export {
   createCloudflareOsAdapter,
   commandsFromApplied,
   type CloudflareOsAdapter,

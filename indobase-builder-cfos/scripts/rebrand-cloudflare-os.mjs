@@ -580,5 +580,53 @@ void (async () => {
   }
 }
 
+// --- Agent SYSTEM_PROMPT: hard Design format routing (survives AdminConfig gaps) ---
+{
+  const path = join(OS, 'packages/workshop-backend/src/agent.ts')
+  if (existsSync(path)) {
+    let text = readFileSync(path, 'utf8')
+    const marker = 'Indobase format routing (mandatory)'
+    if (text.includes(marker)) {
+      console.log('  agent SYSTEM_PROMPT already has Design routing')
+    } else {
+      const anchor =
+        'When the user asks for a new Gadget, ALWAYS consider starting from a blueprint. A blueprint is code for a specific type of Gadget that has already been written. The \\`listBlueprints\\` tool returns a list of available blueprints. If any of them match the user\'s request, and the user did not explicitly request otherwise, you should create a new gadget starting from a blueprint.'
+      const injection =
+        anchor +
+        '\n\n# Indobase format routing (mandatory)\n\n' +
+        'ALWAYS use Design format (blueprintId format.design) for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, and any graphic/creative design request. ' +
+        'NEVER use Slides (format.slides), Docs, Sheets, a random gadget, or a hand-written HTML mock for those intents — instantiate format.design with createGadget({ blueprintId: "format.design" }). ' +
+        'After creating Design, call bootstrapFromPrompt(userMessage) or setPreset (logo | ig-post | story | poster); edit layers via executeCode RPC, do not rewrite client.js for content.'
+      if (!text.includes(anchor)) {
+        console.warn('  skip: agent SYSTEM_PROMPT blueprint anchor drifted')
+      } else {
+        text = text.replace(anchor, injection)
+        writeFileSync(path, text)
+        console.log('  agent SYSTEM_PROMPT ← Design format routing')
+      }
+    }
+  }
+}
+
+// --- Local ADMINS: allow seed-format-routing via admin + Indobase auto-login "dev" ---
+{
+  const path = join(OS, 'run-dev-server.js')
+  if (existsSync(path)) {
+    let text = readFileSync(path, 'utf8')
+    if (text.includes('ADMINS = ["admin", "dev"]') || text.includes("ADMINS = ['admin', 'dev']")) {
+      console.log('  ADMINS already includes admin+dev')
+    } else if (text.includes('config.vars.ADMINS = ["admin"];')) {
+      text = text.replace(
+        'config.vars.ADMINS = ["admin"];',
+        'config.vars.ADMINS = ["admin", "dev"]; // Indobase: seed-format-routing + auto-login',
+      )
+      writeFileSync(path, text)
+      console.log('  ADMINS ← admin, dev')
+    } else {
+      console.warn('  skip: ADMINS assignment drifted')
+    }
+  }
+}
+
 console.log('Done. UI chrome reads as Indobase; LICENSE / Apache attribution untouched.')
 console.log(`Smoke: cd ${OS} && pnpm run-local  →  http://localhost:8787`)

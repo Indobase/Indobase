@@ -174,6 +174,33 @@ export class Gadget extends DurableObject {
     }));
   }
 
+  /**
+   * Prefer size + title from the user's request on first open.
+   * Agents should call this right after createGadget(format.design).
+   */
+  async bootstrapFromPrompt(prompt, options = {}) {
+    const text = String(prompt || "");
+    const preset =
+      (PRESETS[options.preset] && options.preset) || inferPreset(text) || "ig-post";
+    const title =
+      String(options.title || "").trim() ||
+      inferTitle(text, preset) ||
+      "Untitled design";
+    let d = await this.getDesign();
+    const p = PRESETS[preset];
+    d.preset = preset;
+    d.width = p.width;
+    d.height = p.height;
+    d.title = title;
+    // Clear placeholder starter copy when bootstrapping from a real request.
+    if (options.clearStarter !== false && looksLikeStarter(d)) {
+      d.layers = starterLayersForPreset(preset, title);
+      d.background = { color: preset === "logo" ? "#FFFFFF" : "#0B1220" };
+    }
+    await this.#save(d);
+    return d;
+  }
+
   async subscribe(cb) {
     const dup = cb.dup();
     this.subscribers.add(dup);
@@ -244,6 +271,104 @@ function normalizeDesign(raw) {
   };
 }
 
+function inferPreset(text) {
+  const t = text.toLowerCase();
+  if (/\b(logo|logotype|wordmark|brand\s*mark)\b/.test(t)) return "logo";
+  if (/\b(story|stories|reel)\b/.test(t) || /\big\s*story\b/.test(t)) return "story";
+  if (/\b(poster|flyer|flier|banner)\b/.test(t)) return "poster";
+  if (/\b(instagram|linkedin|facebook|social|ig\s*post|thumbnail|graphic|creative)\b/.test(t)) {
+    return "ig-post";
+  }
+  return null;
+}
+
+function inferTitle(text, preset) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  if (cleaned.length <= 48) return cleaned;
+  const label = PRESETS[preset]?.label || "Design";
+  return `${label}`;
+}
+
+function looksLikeStarter(d) {
+  if (!d?.layers?.length) return true;
+  const texts = d.layers
+    .filter((l) => l.type === "text")
+    .map((l) => String(l.props?.text || ""));
+  return texts.some((t) =>
+    /your design|indobase design|ask the agent/i.test(t));
+}
+
+function starterLayersForPreset(preset, title) {
+  const dark = preset !== "logo";
+  const fg = dark ? "#FFFFFF" : "#0F172A";
+  const muted = dark ? "#C9D8EA" : "#64748B";
+  const mark = "#3B8FD6";
+  if (preset === "logo") {
+    return [
+      {
+        id: "mark1",
+        type: "rect",
+        x: 156,
+        y: 156,
+        w: 200,
+        h: 200,
+        props: { fill: mark, radius: 40 },
+      },
+      {
+        id: "title1",
+        type: "text",
+        x: 56,
+        y: 380,
+        w: 400,
+        h: 64,
+        props: { text: title.slice(0, 32), fontSize: 36, weight: 700, color: fg, align: "center" },
+      },
+    ];
+  }
+  return [
+    {
+      id: "bgaccent1",
+      type: "ellipse",
+      x: Math.max(0, (PRESETS[preset]?.width || 1080) - 440),
+      y: -120,
+      w: 720,
+      h: 720,
+      props: { fill: mark, opacity: 0.35 },
+    },
+    {
+      id: "title1",
+      type: "text",
+      x: 96,
+      y: preset === "story" ? 720 : 360,
+      w: (PRESETS[preset]?.width || 1080) - 192,
+      h: 140,
+      props: {
+        text: title.slice(0, 64),
+        fontSize: preset === "story" ? 72 : 84,
+        weight: 700,
+        color: fg,
+        align: "left",
+      },
+    },
+    {
+      id: "sub1",
+      type: "text",
+      x: 96,
+      y: preset === "story" ? 900 : 520,
+      w: (PRESETS[preset]?.width || 1080) - 240,
+      h: 80,
+      props: {
+        text: "Edit layers or ask the agent to refine this Design.",
+        fontSize: 28,
+        weight: 500,
+        color: muted,
+        align: "left",
+      },
+    },
+  ];
+}
+
 function initialDesign() {
   return {
     themeVersion: SCHEMA,
@@ -252,79 +377,6 @@ function initialDesign() {
     width: 1080,
     height: 1080,
     background: { color: "#0B1220" },
-    layers: [
-      {
-        id: "bgaccent1",
-        type: "ellipse",
-        x: 640,
-        y: -120,
-        w: 720,
-        h: 720,
-        props: { fill: "#3B8FD6", opacity: 0.35 },
-      },
-      {
-        id: "bgaccent2",
-        type: "rect",
-        x: -80,
-        y: 780,
-        w: 520,
-        h: 420,
-        props: { fill: "#2F7AB8", opacity: 0.45, radius: 48 },
-      },
-      {
-        id: "title1",
-        type: "text",
-        x: 96,
-        y: 360,
-        w: 880,
-        h: 120,
-        props: {
-          text: "Your design",
-          fontSize: 96,
-          weight: 700,
-          color: "#FFFFFF",
-          align: "left",
-        },
-      },
-      {
-        id: "sub1",
-        type: "text",
-        x: 96,
-        y: 500,
-        w: 780,
-        h: 80,
-        props: {
-          text: "Ask the agent for a logo, Instagram post, or poster — or edit the canvas.",
-          fontSize: 32,
-          weight: 500,
-          color: "#C9D8EA",
-          align: "left",
-        },
-      },
-      {
-        id: "mark1",
-        type: "rect",
-        x: 96,
-        y: 96,
-        w: 72,
-        h: 72,
-        props: { fill: "#3B8FD6", radius: 16 },
-      },
-      {
-        id: "brand1",
-        type: "text",
-        x: 188,
-        y: 110,
-        w: 400,
-        h: 48,
-        props: {
-          text: "Indobase Design",
-          fontSize: 28,
-          weight: 600,
-          color: "#FFFFFF",
-          align: "left",
-        },
-      },
-    ],
+    layers: starterLayersForPreset("ig-post", "Your design"),
   };
 }

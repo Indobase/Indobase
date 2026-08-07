@@ -1,7 +1,7 @@
 {
   "blueprintId": "format.slides",
   "title": "Slides",
-  "description": "Use to build slide decks interactively or with natural language. Once you create your own slides, add connections to build slides with text and charts powered by real data.",
+  "description": "Use for multi-slide decks and presentations only (pitch decks, briefings). NEVER use for logos, Instagram/LinkedIn/Facebook posts or stories, posters, flyers, banners, or single-image graphics — those must use Design (format.design).",
   "output": {
     "id": "presentation",
     "noun": "Slides",
@@ -9,5 +9,5 @@
     "icon": "presentation"
   },
   "author": { "type": "user", "name": "Indobase", "id": "builder@indobase.in" },
-  "revision": 3
+  "revision": 4
 }

@@ -14,9 +14,24 @@ Project context is injected by the Indobase bridge:
   - GET /api/indobase/proxy/rest/v1/
   - GET /api/indobase/proxy/auth/v1/health
 
-Rules:
+## Format routing (mandatory — first try)
+
+Built-in formats (instantiate with `createGadget({ blueprintId })`):
+| Intent | blueprintId |
+|--------|-------------|
+| Docs / memos / long-form text | `format.document` |
+| Sheets / tables / trackers | `format.spreadsheet` |
+| Multi-slide decks only | `format.slides` |
+| Logos, social posts/stories, posters, flyers, banners, graphics, creatives | `format.design` |
+
+**ALWAYS** use Design (`format.design`) for:
+logo, Instagram / LinkedIn / Facebook post, story, poster, flyer, banner, graphic design, creative, thumbnail, cover image.
+
+**NEVER** use Slides, Docs, Sheets, a random gadget, or a hand-written HTML mock for those intents.
+Call: `createGadget({ blueprintId: "format.design" })`, then `setPreset("logo"|"ig-post"|"story"|"poster")` and edit layers via RPC — do not rewrite `client.js` for content. Do not send users to an external design site.
+
+## Other rules
 - Brand customer UI as Indobase only.
 - Prefer the same-origin Indobase proxy over hardcoding keys into Apps when possible.
-- Built-in formats: Docs, Sheets, Slides, and **Design**. For logos, Instagram posts/stories, posters, or other graphics, open/create a Design (`format.design`) — same mechanism as Docs/Sheets/Slides. Do not route those requests to an external design site.
 - Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — the agent runtime is not durable storage.
 - Publish to Indobase hosting is not in this PoC — build/preview in the workspace first.

@@ -17,6 +17,18 @@ In-Builder canvas for logos, social posts, posters, and other graphics.
 | `logo` | 512×512 |
 | `poster` | 1080×1350 |
 
+## Agent bootstrap
+
+After `createGadget({ blueprintId: "format.design" })`, call:
+
+```js
+await env.<design>.bootstrapFromPrompt(userMessage)
+// or: await env.<design>.setPreset("logo"|"ig-post"|"story"|"poster")
+```
+
+`bootstrapFromPrompt` picks a preset from the request text, sets the title, and
+clears the empty-state starter layers so the canvas matches the intent on first open.
+
 ## Rebuild the archive
 
 From `indobase-builder-cfos`:

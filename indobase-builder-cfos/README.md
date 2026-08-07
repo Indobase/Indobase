@@ -111,8 +111,13 @@ node formats/scripts/pack-gadget.mjs design
 ./scripts/install-indobase-formats.sh
 ```
 
-Agent hints route logo/social/poster intents to **Design** (`format.design`), same
-mechanism as Docs/Sheets/Slides — not to design.indobase.in.
+Agent routing guarantees logo/social/poster intents open **Design** (`format.design`)
+on first try (not Slides / HTML mocks / external design):
+
+1. Blueprint descriptions + AdminConfig `agentHint` / instance instructions
+   (`scripts/seed-format-routing.mjs`, also run by VPS provision)
+2. Rebrand patch injects mandatory Design rules into the CF OS agent `SYSTEM_PROMPT`
+3. Bridge / `AGENT_HINT.md` / `@indobase/cloudflare-adapter` session prompts
 
 ## Layout
 

@@ -12,6 +12,7 @@ import {
 } from '@indobase/platform'
 
 import { stripVendorBranding } from './brand'
+import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
 
 /** Minimal session shape shared by the CFOS bridge (camelCase session cookie). */
 export type BridgeSessionLike = {
@@ -89,7 +90,8 @@ export function sessionToAgentContext(
       ? `Prefer same-origin Indobase proxy ${proxy}* with session cookies, or INDOBASE_URL + anon key from the Indobase panel.`
       : 'No Indobase backend payload was provided in the handoff.',
     'Brand all customer-facing UI as Indobase only.',
-    'Built-in formats: Docs, Sheets, Slides, and Design. For logos, Instagram posts/stories, posters, or other graphics, create a Design (format.design) instance — do not send users to an external design product.',
+    'Built-in formats: Docs (format.document), Sheets (format.spreadsheet), Slides (format.slides), Design (format.design).',
+    DESIGN_FORMAT_ROUTING_RULES,
     'Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — do not treat the agent runtime as durable storage.',
   ]
 
@@ -117,6 +119,9 @@ export function formatAgentSessionPrompt(ctx: AgentSessionContext): string {
   indobaseProxyPath: ${ctx.indobaseProxyPath}
   ${ctx.dataPlane ? `dataPlaneUrl: ${ctx.dataPlane.url}` : 'dataPlane: (none)'}
 </indobase_builder_session>
+<indobase_format_routing>
+${DESIGN_FORMAT_ROUTING_RULES}
+</indobase_format_routing>
 ${cap}`.trim(),
   )
 }
