@@ -8,6 +8,7 @@
  *
  * Safe to re-run after `fetch-cloudflare-os.sh`.
  */
+import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -561,6 +562,21 @@ void (async () => {
     console.log('  modelSelection already forced')
   } else {
     console.warn('  skip: modelSelection getStoredSelectedModel drifted')
+  }
+}
+
+// --- Indobase format blueprints (Docs / Sheets / Slides / Design) ---
+{
+  const install = join(ROOT, 'scripts/install-indobase-formats.sh')
+  if (existsSync(install)) {
+    console.log('Installing Indobase formats (FORMAT_BLUEPRINTS_DIR → formats/)…')
+    const r = spawnSync('bash', [install], {
+      env: { ...process.env, CLOUDFLARE_OS_DIR: OS, FORMAT_BLUEPRINTS_DIR: join(ROOT, 'formats') },
+      stdio: 'inherit',
+    })
+    if (r.status !== 0) {
+      console.warn('  warning: install-indobase-formats.sh failed; runtime may keep upstream formats')
+    }
   }
 }
 

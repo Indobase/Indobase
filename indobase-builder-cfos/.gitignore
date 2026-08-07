@@ -5,3 +5,6 @@ bridge/node_modules/
 .env
 .env.*
 !.env.example
+# PortableSSD / macOS AppleDouble — never commit
+**/._*
+.DS_Store

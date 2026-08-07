@@ -16,12 +16,13 @@ SSH_OPTS=(-4 -o ConnectTimeout=45 -i "$SSH_KEY")
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
 
-echo "==> Sync rebrand + seed scripts to ${SSH_HOST}…"
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/scripts /opt/indobase-builder-cfos/branding"
+echo "==> Sync rebrand + seed scripts + Indobase formats to ${SSH_HOST}…"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/scripts /opt/indobase-builder-cfos/branding /opt/indobase-builder-cfos/formats"
 scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/rebrand-cloudflare-os.mjs" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/seed-openrouter-models.mjs" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/fetch-cloudflare-os.sh" \
+  "${REPO_ROOT}/indobase-builder-cfos/scripts/install-indobase-formats.sh" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/scripts/"
 scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/favicon.svg" \
@@ -29,6 +30,12 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/NOTICE" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/indobase-mark.svg" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/"
+# Formats tree (gadgets + Design source). Exclude AppleDouble junk.
+rsync -az --delete \
+  -e "ssh ${SSH_OPTS[*]}" \
+  --exclude '._*' --exclude '.DS_Store' \
+  "${REPO_ROOT}/indobase-builder-cfos/formats/" \
+  "${SSH_HOST}:/opt/indobase-builder-cfos/formats/"
 
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
   "SKIP_INSTALL=${SKIP_INSTALL}" \
@@ -55,9 +62,11 @@ if [[ "$SKIP_INSTALL" != "1" ]]; then
   pnpm install --frozen-lockfile || pnpm install
 fi
 
-echo "→ Indobase rebrand + local auto-login bake…"
+echo "→ Indobase rebrand + formats + local auto-login bake…"
 cd "$CFOS_DIR"
-CLOUDFLARE_OS_DIR="$CFOS_DIR" node "$ROOT_SCRIPTS/scripts/rebrand-cloudflare-os.mjs"
+CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
+  node "$ROOT_SCRIPTS/scripts/rebrand-cloudflare-os.mjs"
+bash "$ROOT_SCRIPTS/scripts/install-indobase-formats.sh" || true
 
 OPENROUTER_KEY=""
 if [[ -f /opt/indobase-builder.runtime.env ]]; then
@@ -88,6 +97,7 @@ Environment=VITE_DEV_USERNAME=dev
 Environment=VITE_DEV_PASSWORD=devpassword
 Environment=VITE_BACKEND_HOST=0.0.0.0:8787
 Environment=INDOBASE_WRANGLER_IP=0.0.0.0
+Environment=FORMAT_BLUEPRINTS_DIR=/opt/indobase-builder-cfos/formats
 ExecStart=${PNPM_BIN} run-local
 Restart=on-failure
 RestartSec=8

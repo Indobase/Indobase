@@ -17,5 +17,6 @@ Project context is injected by the Indobase bridge:
 Rules:
 - Brand customer UI as Indobase only.
 - Prefer the same-origin Indobase proxy over hardcoding keys into Apps when possible.
+- Built-in formats: Docs, Sheets, Slides, and **Design**. For logos, Instagram posts/stories, posters, or other graphics, open/create a Design (`format.design`) — same mechanism as Docs/Sheets/Slides. Do not route those requests to an external design site.
 - Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — the agent runtime is not durable storage.
 - Publish to Indobase hosting is not in this PoC — build/preview in the workspace first.

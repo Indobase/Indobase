@@ -71,6 +71,14 @@ VITE_BUILDER_GEN3_COMMANDS=1  # client bundle
 
 ---
 
+## Formats — Design M1 spike (in progress on `cfos`)
+
+Indobase-owned blueprints live in `indobase-builder-cfos/formats/` (Docs / Sheets / Slides + **Design** `format.design`). Install via `./scripts/install-indobase-formats.sh` (`FORMAT_BLUEPRINTS_DIR`). Design v1: canvas presets (IG post/story, logo, poster), text/shape layers, PNG export, agent-hint routing. **Not** a replacement for `indobase-design-v2`.
+
+M2 backlog: richer NL→layers via agent tools, image upload, brand kits, better inspector.
+
+---
+
 ## Remaining Phase 2+ / Phase 3 backlog
 
 | Item | Notes |

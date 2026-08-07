@@ -89,6 +89,7 @@ export function sessionToAgentContext(
       ? `Prefer same-origin Indobase proxy ${proxy}* with session cookies, or INDOBASE_URL + anon key from the Indobase panel.`
       : 'No Indobase backend payload was provided in the handoff.',
     'Brand all customer-facing UI as Indobase only.',
+    'Built-in formats: Docs, Sheets, Slides, and Design. For logos, Instagram posts/stories, posters, or other graphics, create a Design (format.design) instance — do not send users to an external design product.',
     'Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — do not treat the agent runtime as durable storage.',
   ]
 

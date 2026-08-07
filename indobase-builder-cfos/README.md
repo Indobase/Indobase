@@ -89,12 +89,38 @@ pnpm dev   # :8791
 
 `upstream/cloudflare-os` is gitignored — not vendored into the monorepo.
 
+## Built-in formats (Docs / Sheets / Slides / Design)
+
+Indobase owns format blueprints under [`formats/`](./formats/) so the gitignored
+upstream clone stays clean. `format.design` is an in-Builder canvas for logos,
+Instagram posts/stories, posters (presets + layers + PNG export).
+
+Install into a local or VPS runtime (regenerates `format-blueprints.ts`):
+
+```bash
+./scripts/install-indobase-formats.sh
+# then restart pnpm run-local / indobase-cfos-runtime
+```
+
+`dev-stack.sh` and `rebrand-cloudflare-os.mjs` call that install path.
+Rebuild Design after editing `formats/src/design/`:
+
+```bash
+node formats/scripts/pack-gadget.mjs design
+# bump revision in formats/workspace-design.json if a deployment already installed it
+./scripts/install-indobase-formats.sh
+```
+
+Agent hints route logo/social/poster intents to **Design** (`format.design`), same
+mechanism as Docs/Sheets/Slides — not to design.indobase.in.
+
 ## Layout
 
 ```
 indobase-builder-cfos/
   bridge/            # Hono SSO + Indobase chrome + runtime reverse proxy
-  scripts/           # fetch runtime, mint handoff, dev-stack
+  formats/           # Indobase-owned Docs/Sheets/Slides/Design blueprints
+  scripts/           # fetch runtime, mint handoff, dev-stack, install formats
   AGENT_HINT.md      # paste into agent chat (Indobase-only)
   upstream/          # gitignored clone of the execution runtime
   README.md

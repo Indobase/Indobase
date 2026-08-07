@@ -1,0 +1,13 @@
+{
+  "blueprintId": "format.design",
+  "title": "Design",
+  "description": "Create logos, social posts, posters, and other graphics with natural language or the canvas. Use for Instagram posts, stories, logo squares, and simple posters. Export PNG from the canvas.",
+  "output": {
+    "id": "design",
+    "noun": "Design",
+    "plural": "Designs",
+    "icon": "appWindow"
+  },
+  "author": { "type": "user", "name": "Indobase", "id": "builder@indobase.in" },
+  "revision": 1
+}

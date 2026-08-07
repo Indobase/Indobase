@@ -125,6 +125,8 @@ describe('@indobase/cloudflare-adapter', () => {
     expect(ctx.generation.projectRef).toBe('proj_abc')
     expect(hasVendorBranding(ctx.agentHint)).toBe(false)
     expect(ctx.agentHint).toContain('Indobase Builder')
+    expect(ctx.agentHint).toMatch(/Design/)
+    expect(ctx.agentHint).toMatch(/format\.design/)
     expect(ctx.agentHint).not.toMatch(/Cloudflare/i)
   })
 

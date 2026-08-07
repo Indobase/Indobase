@@ -29,6 +29,7 @@ describe('indobase-adapter bridge wiring', () => {
     assert.equal(ctx.projectRef, 'proj_demo')
     assert.equal(ctx.generation.projectRef, 'proj_demo')
     assert.match(ctx.agentHint, /Indobase Builder/)
+    assert.match(ctx.agentHint, /format\.design/)
     assert.doesNotMatch(ctx.agentHint, /Cloudflare/i)
   })
 
