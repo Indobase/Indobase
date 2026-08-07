@@ -82,3 +82,8 @@ export function assertLaunchHasContent(input: {
 }): { ok: boolean; message?: string }
 
 export function promptLooksLikeGoLiveIntent(prompt: string): boolean
+
+export const ACCOUNT_IN_CHAT_RULES: string
+export const GUEST_ACCOUNT_FIRST_HINT: string
+export const ACCOUNT_AUTH_START: string
+export const ACCOUNT_AUTH_VERIFY: string

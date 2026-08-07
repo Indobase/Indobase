@@ -11,6 +11,7 @@ import {
   assertProjectRuntimeAbi,
 } from '@indobase/platform'
 
+import { ACCOUNT_IN_CHAT_RULES, GUEST_ACCOUNT_FIRST_HINT } from './account-routing'
 import { stripVendorBranding } from './brand'
 import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
 import { LAUNCH_AGENT_HARD_RULES, LAUNCH_SESSION_HINT } from './launch-routing'
@@ -83,10 +84,18 @@ export function sessionToAgentContext(
 
   const generation = buildGenerationCapabilityContext(runtime)
   const proxy = options.indobaseProxyPath ?? DEFAULT_PROXY
+  const isGuest =
+    !session.email ||
+    session.orgSlug === 'guest' ||
+    session.projectRef.startsWith('draft_')
 
   const hintParts = [
+    ...(isGuest ? [GUEST_ACCOUNT_FIRST_HINT, ACCOUNT_IN_CHAT_RULES] : []),
     'You are operating inside Indobase OS (Agentic Business OS).',
     `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
+    isGuest
+      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds.'
+      : `Operator signed in as ${session.email}.`,
     dataPlane
       ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs.`
       : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',

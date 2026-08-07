@@ -163,7 +163,8 @@ export function readSessionToken(token: string, secret: string): Session | null 
   const gotrueId = typeof payload.gotrueId === 'string' ? payload.gotrueId : ''
   const email = typeof payload.email === 'string' ? payload.email : ''
   const projectRef = typeof payload.projectRef === 'string' ? payload.projectRef : ''
-  if (!gotrueId || !email || !projectRef) return null
+  // Guests may have empty email; require gotrueId + projectRef always.
+  if (!gotrueId || !projectRef) return null
 
   return {
     gotrueId,
@@ -201,6 +202,27 @@ export function readCookie(cookieHeader: string | undefined, name: string): stri
     if (k === name) return rest.join('=') || null
   }
   return null
+}
+
+export function createGuestSession(): Session {
+  const suffix = randomBytes(4).toString('hex')
+  return {
+    gotrueId: `guest_${randomBytes(8).toString('hex')}`,
+    email: '',
+    projectRef: `draft_${suffix}`,
+    orgSlug: 'guest',
+    projectName: 'My business',
+    studioUrl: '',
+  }
+}
+
+export function isGuestSession(session: Session): boolean {
+  return (
+    !session.email ||
+    session.gotrueId.startsWith('guest_') ||
+    session.projectRef.startsWith('draft_') ||
+    session.orgSlug === 'guest'
+  )
 }
 
 export function claimsToSession(claims: StudioClaims): Session {

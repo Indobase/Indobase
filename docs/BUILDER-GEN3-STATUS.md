@@ -13,13 +13,18 @@
 | OS-first constitution + ADR 0002 | **Done** — [INDOBASE-OS.md](./INDOBASE-OS.md) |
 | Platform API `/api/os/v1/*` | **Done** — identity, workspace, runtime/ensure, deploy/publish (wire for `business.launch`) |
 | OS-native signup (no provision) | **Done** — `createOsWorkspace`, bridge → Platform API |
-| Achievement home UX | **Deferred** — catalog in `os-home.ts`; core shell is iframe-first (no achievement grid / fat rail chrome) |
+| Guest may browse; Launch/Enable require account | **Done** — bridge `requireSignedInSession` (403 `account_required`) |
+| Subdomain ownership (no silent takeover) | **Done** — `static-launch` assignDomain conflict |
+| Lane 2 plan gate (`backendStudio`) | **Done** — `os-ensurer` (needs Studio image roll) |
+| PLATFORM_API_URL on CFOS deploy | **Done** — Swarm Studio DNS |
+| Achievement home UX | **Deferred** — OS is direct CFOS document (no iframe chrome) |
 | Lazy Ensurer stub | **Done** — `os-ensurer.ts`; evolving toward Capability Orchestrator ([adr/0006](./adr/0006-capability-orchestrator.md)) |
 | Launch Business / Go Live stub | **Done** — customer `business.launch` → Static Launch default ([adr/0005](./adr/0005-two-lane-launch.md)) |
 | Enable ≠ Connect | **Accepted** — Indobase-native capabilities; providers hidden ([adr/0006](./adr/0006-capability-orchestrator.md)) |
 | Six kernels narrative | **Done** — [INDOBASE-OS.md](./INDOBASE-OS.md) (Identity · Workspace · Capability · Execution · Business Runtime · Agent) |
 | Studio OTP + provision at signup | **Reverted** — not OS-first |
 | Legacy SSO handoff | **Kept** — existing accounts only |
+| Per-session CFOS agent isolation | **Open** — shared runtime operator until Phase 2 |
 
 ---
 

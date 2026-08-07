@@ -25,4 +25,10 @@ describe('os-proxy', () => {
     const html = '<script src="/assets/index.js"></script>'
     assert.equal(rewriteHtmlForProxyPrefix(html, ''), html)
   })
+
+  it('overridePath is documented for top-document CFOS at /', () => {
+    // Behavior covered by serveAgentDesktop in index; rewrite must not prefix assets.
+    const html = '<html><body><script src="/assets/a.js"></script></body></html>'
+    assert.equal(rewriteHtmlForProxyPrefix(html, ''), html)
+  })
 })

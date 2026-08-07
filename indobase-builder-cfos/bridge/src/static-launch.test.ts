@@ -57,6 +57,35 @@ describe('static launch lane', () => {
     }
   })
 
+  it('rejects subdomain takeover by another workspace', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-'))
+    process.env.INDOBASE_LAUNCH_ROOT = dir
+    process.env.INDOBASE_LAUNCH_PUBLIC_URL = 'http://127.0.0.1:8791'
+    process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX = 'indobase.in'
+    try {
+      const first = await launchStaticBusiness({
+        workspaceRef: 'biz_a',
+        title: 'A',
+        subdomain: 'taken-name',
+        files: { 'index.html': '<html><body>A</body></html>' },
+      })
+      assert.equal(first.ok, true)
+      const second = await launchStaticBusiness({
+        workspaceRef: 'biz_b',
+        title: 'B',
+        subdomain: 'taken-name',
+        files: { 'index.html': '<html><body>B</body></html>' },
+      })
+      assert.equal(second.ok, false)
+      assert.match(second.message || '', /already taken|another business/i)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      delete process.env.INDOBASE_LAUNCH_ROOT
+      delete process.env.INDOBASE_LAUNCH_PUBLIC_URL
+      delete process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX
+    }
+  })
+
   it('accepts a customer domain and returns DNS instructions', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-'))
     const traefikDir = await mkdtemp(path.join(os.tmpdir(), 'indobase-traefik-'))

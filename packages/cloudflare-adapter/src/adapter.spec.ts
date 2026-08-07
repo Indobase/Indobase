@@ -136,6 +136,36 @@ describe('@indobase/cloudflare-adapter', () => {
     expect(ctx.agentHint).not.toMatch(/Cloudflare/i)
   })
 
+  it('sessionToAgentContext includes account-in-chat rules for guests', () => {
+    const guest = sessionToAgentContext({
+      email: '',
+      projectRef: 'draft_abc',
+      projectName: 'My business',
+      orgSlug: 'guest',
+    })
+    expect(guest.agentHint).toMatch(/GUEST ACCOUNT GATE|HARD|FIRST/i)
+    expect(guest.agentHint).toMatch(/before|first/i)
+    expect(guest.agentHint).toMatch(/\/auth\/start/)
+    expect(guest.agentHint).toMatch(/\/auth\/verify/)
+    expect(guest.agentHint).toMatch(/dpdpConsent|Privacy|Terms|DPDP/i)
+    expect(guest.agentHint).toMatch(/acknowledge/i)
+    // Gate language must appear before general OS intro so auth cannot be skipped.
+    const gateIdx = guest.agentHint.search(/GUEST ACCOUNT GATE|HARD — FIRST/i)
+    const osIdx = guest.agentHint.indexOf('You are operating inside Indobase OS')
+    expect(gateIdx).toBeGreaterThanOrEqual(0)
+    expect(osIdx).toBeGreaterThan(gateIdx)
+  })
+
+  it('sessionToAgentContext does not prepend guest gate for signed-in operators', () => {
+    const signedIn = sessionToAgentContext({
+      email: 'op@indobase.in',
+      projectRef: 'proj_abc',
+      orgSlug: 'acme',
+    })
+    expect(signedIn.agentHint).not.toMatch(/GUEST ACCOUNT GATE/)
+    expect(signedIn.agentHint).toContain('Operator signed in as op@indobase.in')
+  })
+
   it('createCloudflareOsAdapter exposes the Phase 1 surface', () => {
     const adapter = createCloudflareOsAdapter({ indobaseProxyPath: '/api/indobase/proxy/' })
     expect(adapter.publicLabel('deploy')).toBe('Launch Business')

@@ -125,6 +125,17 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" PORT "8791"
 swarm_upsert_env_file_kv "\${ENV_FILE}" GIT_SHA "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_VERSION "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+# Platform API (OTP / ensure / publish) — Studio Swarm DNS on dokploy-network
+STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}" || true)"
+PLATFORM_API=""
+if [[ -n "\${STUDIO_SVC}" ]]; then
+  PLATFORM_API="http://\${STUDIO_SVC}:8080"
+fi
+if [[ -n "\${PLATFORM_API}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" PLATFORM_API_URL "\${PLATFORM_API}"
+  swarm_upsert_env_file_kv "\${ENV_FILE}" STUDIO_INTERNAL_URL "\${PLATFORM_API}"
+  echo "Platform API base: \${PLATFORM_API}"
+fi
 # Static Launch hosts (sites.indobase.in / *.sites.indobase.in) — keep in sync with Traefik
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_DOMAIN_SUFFIX "sites.indobase.in"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_CNAME_TARGET "sites.indobase.in"

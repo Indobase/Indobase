@@ -1,8 +1,8 @@
 /**
  * Indobase OS (Agentic Business OS) — Gen 3 bridge.
  *
- * Day-one entry: `/` + `/start` via Platform API (OS workspace, no provision).
- * Session → workspace chrome embeds `/os/app/*` (agent execution runtime proxy).
+ * Day-one entry: `/` (+ `/workspace`) mints a guest/signed-in session cookie, then
+ * proxies the CFOS agent desktop as the top document (no outer header / iframe shell).
  * Optional `/api/indobase/proxy/*` hits the linked project.
  *
  * Session → Generation Context via `@indobase/cloudflare-adapter` (docs/BUILDER-GEN3.md).
@@ -14,7 +14,9 @@ import {
   AUDIENCE,
   claimsToSession,
   clearSessionCookie,
+  createGuestSession,
   createSessionToken,
+  isGuestSession,
   readCookie,
   readSessionToken,
   resolveHandoffSecret,
@@ -27,7 +29,13 @@ import { buildAgentSessionContext } from './indobase-adapter.js'
 import { proxyIndobaseApi } from './indobase-proxy.js'
 import { proxyCloudflareOs, resolveCloudflareOsBase } from './os-proxy.js'
 import { createRuntimeProxyServer } from './runtime-proxy-server.js'
-import { platformDeployPublish, platformOtpStart, platformOtpVerify, platformRuntimeEnsure } from './platform-api-client.js'
+import {
+  platformDeployPublish,
+  platformOtpStart,
+  platformOtpVerify,
+  platformRuntimeEnsure,
+  resolvePlatformApiUrl,
+} from './platform-api-client.js'
 import {
   launchStaticBusiness,
   readLiveFile,
@@ -40,7 +48,8 @@ import {
   launchBusinessToolCatalog,
   LAUNCH_AGENT_HARD_RULES,
 } from './launch-business-tool.js'
-import { renderLandingHtml, renderStartHtml, renderWorkspaceHtml } from './workspace-html.js'
+import { GUEST_ACCOUNT_FIRST_HINT } from '@indobase/cloudflare-adapter'
+import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
 function isBridgeOwnedApiPath(pathname: string): boolean {
@@ -64,7 +73,8 @@ function publicVersion(): string {
 async function securityHeaders(c: Context, next: Next) {
   await next()
   const path = new URL(c.req.url).pathname
-  // Proxied CF OS sets its own CSP (rewritten for frame-ancestors self).
+  // Proxied CF OS under /os/app sets its own CSP (frame-ancestors self).
+  // Top-document `/` is the OS itself — apply standard bridge security headers.
   if (path.startsWith(OS_PREFIX)) return
   c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   c.res.headers.set('X-Content-Type-Options', 'nosniff')
@@ -89,9 +99,86 @@ function getSession(c: Context): Session | null {
 function requireSession(c: Context): Session | Response {
   const session = getSession(c)
   if (!session) {
-    return c.json({ message: 'Unauthorized — Start building or open your Indobase account link' }, 401)
+    return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
   }
   return session
+}
+
+/** Multi-tenant SaaS: Launch / Enable require a real account (not Guest / draft_*). */
+function requireSignedInSession(c: Context): Session | Response {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  if (isGuestSession(sessionOrErr)) {
+    return c.json(
+      {
+        ok: false,
+        code: 'account_required',
+        message:
+          'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
+      },
+      403,
+    )
+  }
+  return sessionOrErr
+}
+
+/** Mint a guest workspace session so `/` opens the agent desktop immediately (account in chat). */
+function ensureSessionForWorkspace(c: Context): { session: Session | null; setCookie?: string } {
+  const existing = getSession(c)
+  if (existing) return { session: existing }
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return { session: null }
+  }
+  const guest = createGuestSession()
+  const setCookie = sessionCookie(createSessionToken(guest, secret))
+  return { session: guest, setCookie }
+}
+
+function withOptionalSetCookie(res: Response, setCookie?: string): Response {
+  if (!setCookie) return res
+  const headers = new Headers(res.headers)
+  headers.append('Set-Cookie', setCookie)
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  })
+}
+
+/** Proxy CFOS index HTML as the top document; inject same-origin session bootstrap. */
+async function serveAgentDesktop(c: Context): Promise<Response> {
+  const { session, setCookie } = ensureSessionForWorkspace(c)
+  if (!session) {
+    return c.html(renderLandingHtml())
+  }
+  const upstream = resolveCloudflareOsBase()
+  if (!upstream) {
+    if (setCookie) c.header('Set-Cookie', setCookie)
+    return c.html(renderOfflineDesktopHtml(session))
+  }
+
+  const proxied = await proxyCloudflareOs(c, {
+    upstreamBase: upstream,
+    stripPrefix: '',
+    overridePath: '/',
+  })
+
+  const contentType = proxied.headers.get('content-type') || ''
+  if (contentType.includes('text/html') && c.req.method === 'GET') {
+    const html = injectIndobaseContextBootstrap(await proxied.text())
+    const headers = new Headers(proxied.headers)
+    if (setCookie) headers.append('Set-Cookie', setCookie)
+    return new Response(html, {
+      status: proxied.status,
+      statusText: proxied.statusText,
+      headers,
+    })
+  }
+
+  return withOptionalSetCookie(proxied, setCookie)
 }
 
 const app = new Hono()
@@ -117,12 +204,24 @@ app.get('/sso/health', async (c) => {
     }
   }
 
+  let platformApiConfigured = false
+  try {
+    platformApiConfigured = Boolean(resolvePlatformApiUrl())
+  } catch {
+    platformApiConfigured = false
+  }
+
+  const ready =
+    handoffConfigured && Boolean(upstream) && cloudflareOsReachable === true && platformApiConfigured
+
   return c.json({
     ok: true,
+    ready,
     service: 'indobase-builder-cfos',
     audience: AUDIENCE,
     version: publicVersion(),
     handoffConfigured,
+    platformApiConfigured,
     agentRuntimeConfigured: Boolean(upstream),
     agentRuntimeReachable: cloudflareOsReachable,
     /** @deprecated internal — prefer agentRuntimeConfigured */
@@ -132,6 +231,43 @@ app.get('/sso/health', async (c) => {
     indobaseProxyPath: '/api/indobase/proxy/',
     gen3Adapter: '@indobase/cloudflare-adapter',
   })
+})
+
+app.get('/ready', async (c) => {
+  let handoffConfigured = false
+  try {
+    resolveHandoffSecret()
+    handoffConfigured = true
+  } catch {
+    handoffConfigured = false
+  }
+  const upstream = resolveCloudflareOsBase()
+  let runtimeOk = false
+  if (upstream) {
+    try {
+      const res = await fetch(upstream, { method: 'GET', redirect: 'manual' })
+      runtimeOk = res.status < 500
+    } catch {
+      runtimeOk = false
+    }
+  }
+  let platformApiConfigured = false
+  try {
+    platformApiConfigured = Boolean(resolvePlatformApiUrl())
+  } catch {
+    platformApiConfigured = false
+  }
+  const ready = handoffConfigured && Boolean(upstream) && runtimeOk && platformApiConfigured
+  const body = {
+    ok: ready,
+    ready,
+    handoffConfigured,
+    platformApiConfigured,
+    agentRuntimeConfigured: Boolean(upstream),
+    agentRuntimeReachable: runtimeOk,
+    version: publicVersion(),
+  }
+  return c.json(body, ready ? 200 : 503)
 })
 
 app.get('/sso/launch', (c) => {
@@ -249,7 +385,7 @@ app.post('/auth/start', async (c) => {
   if (!result.ok) {
     return c.json({ message: result.message }, result.status >= 400 ? result.status : 502)
   }
-  return c.json({ ok: true, email: result.email, next: '/start?step=verify' })
+  return c.json({ ok: true, email: result.email, next: 'chat_verify' })
 })
 
 /**
@@ -302,7 +438,7 @@ app.post('/auth/verify', async (c) => {
 
 /** Lazy Ensurer proxy — capability.ensure via Platform API. */
 app.post('/api/os/runtime/ensure', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const body = await c.req.json().catch(() => ({}))
   const capability =
@@ -323,7 +459,7 @@ app.post('/api/os/runtime/ensure', async (c) => {
       // session refresh best-effort
     }
   }
-  return c.json(result, result.ok ? 200 : 502)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
 })
 
 /** Go Live — Static Launch lane (default). No Studio / provisioner / tenant stack. */
@@ -373,7 +509,7 @@ async function handleStaticGoLive(c: Context, session: Session) {
  * Set LAUNCH_USE_PLATFORM=1 only to force legacy Studio publish path.
  */
 app.post('/api/os/deploy/publish', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
 
   if (process.env.LAUNCH_USE_PLATFORM === '1') {
@@ -393,7 +529,7 @@ app.post('/api/os/deploy/publish', async (c) => {
 
 /** Alias — customer/agent verb business.launch */
 app.post('/api/os/launch', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleStaticGoLive(c, sessionOrErr)
 })
@@ -423,20 +559,20 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
 }
 
 app.post('/api/os/tools/launchBusiness', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
 
 app.post('/api/os/tools/goLive', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
 
 /** Attach a domain the customer already owns (CNAME → Indobase). */
 app.post('/api/os/domains/attach', async (c) => {
-  const sessionOrErr = requireSession(c)
+  const sessionOrErr = requireSignedInSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const body = (await c.req.json().catch(() => ({}))) as { domain?: string; customDomain?: string }
   const domain = typeof body.domain === 'string' ? body.domain : body.customDomain
@@ -538,8 +674,18 @@ app.get('/api/session', (c) => {
   if (!session) return c.json({ message: 'Unauthorized' }, 401)
   const upstream = resolveCloudflareOsBase()
   const agent = buildAgentSessionContext(session)
+  const guest = isGuestSession(session)
+  // Guest: agent.agentHint already leads with GUEST_ACCOUNT_FIRST_HINT (adapter SoT).
+  // Re-assert at the very front of the JSON payload for CFOS bootstrap consumers.
+  const agentHintBody = `${agent.agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}`
+  const agentHint = guest
+    ? agentHintBody.startsWith('GUEST ACCOUNT GATE')
+      ? agentHintBody
+      : `${GUEST_ACCOUNT_FIRST_HINT}\n\n${agentHintBody}`
+    : agentHintBody
   return c.json({
     email: session.email,
+    guest,
     project_ref: session.projectRef,
     project_name: session.projectName,
     organization_slug: session.orgSlug,
@@ -563,7 +709,25 @@ app.get('/api/session', (c) => {
     os_proxy_path: `${OS_PREFIX}/`,
     indobase_proxy_path: '/api/indobase/proxy/',
     generation_context: agent.generation,
-    agent_hint: `${agent.agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}`,
+    agent_hint: agentHint,
+    onboarding: guest
+      ? {
+          account_required: true,
+          gate: 'first',
+          message:
+            'Acknowledge their request, then complete Indobase account in chat (name+email+DPDP → /auth/start → OTP → /auth/verify) before any other work.',
+          auth: {
+            start: '/auth/start',
+            verify: '/auth/verify',
+            in_chat: true,
+          },
+        }
+      : null,
+    auth: {
+      start: '/auth/start',
+      verify: '/auth/verify',
+      in_chat: true,
+    },
     launch: {
       api: '/api/os/launch',
       domains_attach: '/api/os/domains/attach',
@@ -615,44 +779,16 @@ app.all(`${OS_PREFIX}/*`, (c) => requireRuntimeProxy(c, OS_PREFIX))
 
 app.get(`${OS_PREFIX}`, (c) => c.redirect(`${OS_PREFIX}/`))
 
-/** Start building entry (marketing → /start). Email OTP lands here next. */
-app.get('/start', (c) => {
-  const session = getSession(c)
-  if (session) return c.redirect('/')
-  return c.html(renderStartHtml())
-})
+/** Legacy /start → open OS immediately (account creation happens in chat). */
+app.get('/start', (c) => c.redirect('/'))
 
-app.get('/', (c) => {
-  const session = getSession(c)
-  if (!session) return c.html(renderLandingHtml())
-  const upstream = resolveCloudflareOsBase()
-  return c.html(
-    renderWorkspaceHtml({
-      session,
-      cloudflareOsConfigured: Boolean(upstream),
-      osProxyPath: `${OS_PREFIX}/`,
-      agentRuntimeUrl: upstream || null,
-    })
-  )
-})
+app.get('/', (c) => serveAgentDesktop(c))
 
-app.get('/workspace', (c) => {
-  const session = getSession(c)
-  if (!session) return c.redirect('/')
-  const upstream = resolveCloudflareOsBase()
-  return c.html(
-    renderWorkspaceHtml({
-      session,
-      cloudflareOsConfigured: Boolean(upstream),
-      osProxyPath: `${OS_PREFIX}/`,
-      agentRuntimeUrl: upstream || null,
-    })
-  )
-})
+app.get('/workspace', (c) => serveAgentDesktop(c))
 
 const upstream = resolveCloudflareOsBase()
 console.log(
-  `[builder-cfos] listening on :${PORT} aud=${AUDIENCE} cfos=${upstream || '(unset)'} proxy=${OS_PREFIX}/`
+  `[builder-cfos] listening on :${PORT} aud=${AUDIENCE} cfos=${upstream || '(unset)'} desktop=/ proxy=${OS_PREFIX}/`
 )
 
 createRuntimeProxyServer(app, PORT)

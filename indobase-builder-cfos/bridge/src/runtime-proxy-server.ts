@@ -54,6 +54,9 @@ function forwardWebSocketUpgrade(req: IncomingMessage, socket: Duplex, head: Buf
   delete headers['connection']
   delete headers['keep-alive']
   delete headers['proxy-connection']
+  // workerd wrongly mirrors Accept-Encoding onto the 101 response as
+  // Content-Encoding: gzip, which breaks browser WebSockets → "Can't reach the server".
+  delete headers['accept-encoding']
   // Keep upgrade + sec-websocket-* headers from the client
 
   const proxyReq = httpRequest(
@@ -75,6 +78,15 @@ function forwardWebSocketUpgrade(req: IncomingMessage, socket: Duplex, head: Buf
     const lines = [`HTTP/1.1 ${proxyRes.statusCode || 101} Switching Protocols`]
     for (const [key, value] of Object.entries(proxyRes.headers)) {
       if (value === undefined) continue
+      const lower = key.toLowerCase()
+      // Never forward encoding / length on a WebSocket handshake.
+      if (
+        lower === 'content-encoding' ||
+        lower === 'content-length' ||
+        lower === 'transfer-encoding'
+      ) {
+        continue
+      }
       if (Array.isArray(value)) {
         for (const v of value) lines.push(`${key}: ${v}`)
       } else {

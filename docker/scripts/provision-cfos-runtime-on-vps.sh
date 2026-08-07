@@ -93,11 +93,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/indobase-cfos-runtime/cloudflare-os
-Environment=NODE_ENV=development
+Environment=NODE_ENV=production
+# Temporary shared CFOS operator login so the agent desktop boots for every visitor.
+# Multi-tenant isolation for Launch/Enable is enforced on the Indobase bridge/Studio APIs
+# (guests cannot publish; subdomain ownership; plan gates). Per-session CFOS auth is Phase 2.
 Environment=VITE_DEV_AUTO_LOGIN=true
 Environment=VITE_DEV_USERNAME=dev
 Environment=VITE_DEV_PASSWORD=devpassword
-Environment=VITE_BACKEND_HOST=0.0.0.0:8787
+Environment=VITE_BACKEND_HOST=localhost:8787
 Environment=INDOBASE_WRANGLER_IP=0.0.0.0
 Environment=FORMAT_BLUEPRINTS_DIR=/opt/indobase-builder-cfos/formats
 ExecStart=${PNPM_BIN} run-local
@@ -152,6 +155,51 @@ for i in $(seq 1 240); do
   fi
   sleep 5
 done
+
+# Regression gate: frontend must never bake wss://0.0.0.0:8787 (INDOBASE_WRANGLER_IP is bind-only).
+echo "→ Asserting workshop frontend does not bake 0.0.0.0 into WebSocket host…"
+python3 - <<'PY'
+from pathlib import Path
+import re
+import sys
+
+roots = [
+    Path("/opt/indobase-cfos-runtime/cloudflare-os/packages/workshop-frontend/dist"),
+    Path("/opt/indobase-cfos-runtime/cloudflare-os/packages/workshop-frontend/src"),
+]
+js_files = []
+for root in roots:
+    if not root.exists():
+        continue
+    js_files.extend(root.rglob("*.js"))
+    js_files.extend(root.rglob("*.tsx"))
+    js_files.extend(root.rglob("*.ts"))
+
+if not js_files:
+    print("warn: no frontend assets found yet to assert (cold dist?)")
+    sys.exit(0)
+
+bad = []
+for path in js_files:
+    # Skip miniflare / unrelated trees if somehow included
+    text = path.read_text(errors="replace")
+    if "0.0.0.0:8787" in text and "startsWith(\"0.0.0.0\")" not in text and "startsWith('0.0.0.0')" not in text:
+        # Allow comments / guards; fail on literal URL bake patterns
+        if re.search(r'["\']0\.0\.0\.0:8787["\']', text) or re.search(r'wss://0\.0\.0\.0:8787', text):
+            bad.append(str(path))
+
+main = Path("/opt/indobase-cfos-runtime/cloudflare-os/packages/workshop-frontend/src/main.tsx")
+if main.exists():
+    src = main.read_text(errors="replace")
+    if "return window.location.host" not in src or "0.0.0.0" not in src:
+        print("::error::getBackendHost patch missing in main.tsx — re-run rebrand-cloudflare-os.mjs")
+        sys.exit(1)
+
+if bad:
+    print("::error::Frontend still bakes 0.0.0.0:8787 into:", *bad, sep="\n  ")
+    sys.exit(1)
+print("OK: no baked wss://0.0.0.0:8787; getBackendHost uses window.location.host off-loopback")
+PY
 
 if [[ -n "$OPENROUTER_KEY" ]]; then
   echo "→ Seeding OpenRouter models…"

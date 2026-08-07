@@ -4,8 +4,8 @@ Agentic Business OS: one Indobase shell. Engines sit behind Capabilities — not
 
 ## Day-one entry
 
-1. **`/`** — simple Indobase OS landing (Start building). Authenticated sessions get the core agent shell (top bar + CFOS iframe).
-2. **`/start`** — email OTP → OS workspace (**no** data-plane provision at signup).
+1. **`/`** — mints a guest session and opens the agent workspace (direct CFOS document). Guest is a hard gate: the agent must complete account in chat via `/auth/start` + `/auth/verify` (DPDP consent; no signup popup) before docs/design/code/launch.
+2. **`/start`** — redirects to `/` (legacy marketing links).
 3. **Legacy** — `/sso/launch#token=…` for existing accounts only.
 
 ## Platform API (headless control plane)

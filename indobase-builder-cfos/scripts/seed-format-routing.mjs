@@ -41,12 +41,15 @@ const FORMAT_HINTS = {
 
 const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
+## GUEST ACCOUNT GATE (HARD — FIRST before any other task)
+If Guest / no email / not signed in: briefly acknowledge their request, then BEFORE docs, design, code, launch, enable, or any other work: collect name+email+Privacy/Terms (DPDP) consent in chat → POST /auth/start { name, email, dpdpConsent: true } → ask for OTP → POST /auth/verify { name, email, token }. Only after ok, continue the original request. Never open a Start building form or /start modal. Never skip this gate.
+
 ## Go Live — HARD PATH (Indobase hosting only)
 When the operator says take live / launch / publish / go public / launch my business:
 1. MUST call launchBusiness (alias goLive): POST /api/os/tools/launchBusiness
    OR POST /api/os/launch with REAL html or files — never empty:
    { title, subdomain?, customDomain?, html } or { files: { "index.html": "…" } }.
-2. Default: https://{subdomain}.indobase.in. Local PoC may return /live/{ref}/.
+2. Default: https://{subdomain}.sites.indobase.in. Local PoC may return /live/{ref}/.
 3. Optional: customDomain for a domain they already own — DNS CNAME → sites.indobase.in. Never move hosting off Indobase.
 4. ONLY claim live after API returns ok:true AND url. Quote that exact url. NEVER invent a URL. NEVER third-party hosts.
 5. Tell them: Your business is now live + the API url (+ DNS steps if connecting their domain).

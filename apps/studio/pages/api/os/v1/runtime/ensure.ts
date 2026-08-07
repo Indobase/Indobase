@@ -52,6 +52,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const claims = claimsFromBody(payload)
   if (!claims) return res.status(400).json({ message: 'gotrue_id required' })
+  if (claims.sub.startsWith('guest_') || workspaceRef.startsWith('draft_')) {
+    return res.status(403).json({
+      ok: false,
+      code: 'account_required',
+      message: 'Create your Indobase account before enabling login, database, or payments.',
+    })
+  }
 
   try {
     const result = await ensureOsCapability({
@@ -61,7 +68,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })
     return res.status(200).json(result)
   } catch (error) {
-    return res.status(502).json({
+    const statusCode =
+      error && typeof error === 'object' && 'statusCode' in error
+        ? Number((error as { statusCode?: number }).statusCode)
+        : 502
+    return res.status(statusCode >= 400 && statusCode < 600 ? statusCode : 502).json({
+      ok: false,
       message: error instanceof Error ? error.message : 'Runtime ensure failed',
     })
   }

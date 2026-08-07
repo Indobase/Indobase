@@ -360,8 +360,16 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
         if (rec.workspaceRef === safeRef) delete reg.byHost[host]
       }
 
-      reg.byHost[`${subdomain}.${suffix}`] = {
-        hostname: `${subdomain}.${suffix}`,
+      const subdomainHost = `${subdomain}.${suffix}`
+      const existingSub = reg.byHost[subdomainHost]
+      if (existingSub && existingSub.workspaceRef !== safeRef) {
+        throw new Error(
+          `The Indobase link ${subdomain}.${suffix} is already taken by another business. Choose a different subdomain.`,
+        )
+      }
+
+      reg.byHost[subdomainHost] = {
+        hostname: subdomainHost,
         workspaceRef: safeRef,
         kind: 'subdomain',
         updatedAt: now,
@@ -374,6 +382,12 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
         if (!custom) throw new Error('That domain name is not valid')
         if (custom.endsWith(`.${suffix}`)) {
           throw new Error('Pick an Indobase subdomain for *.indobase.in links. Use Connect your domain for a domain you already own.')
+        }
+        const existingCustom = reg.byHost[custom]
+        if (existingCustom && existingCustom.workspaceRef !== safeRef) {
+          throw new Error(
+            `That domain is already connected to another Indobase business. Use a different domain or ask support.`,
+          )
         }
         reg.byHost[custom] = {
           hostname: custom,

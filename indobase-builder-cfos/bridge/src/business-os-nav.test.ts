@@ -6,7 +6,13 @@ import {
   BUSINESS_OS_NAV,
   businessOsNavById,
 } from './business-os-nav.ts'
-import { renderLandingHtml, renderStartHtml, renderWorkspaceHtml } from './workspace-html.ts'
+import {
+  injectIndobaseContextBootstrap,
+  renderLandingHtml,
+  renderOfflineDesktopHtml,
+  renderStartHtml,
+  renderWorkspaceHtml,
+} from './workspace-html.ts'
 import type { Session } from './auth.ts'
 
 describe('business-os-nav', () => {
@@ -49,55 +55,66 @@ describe('business-os-nav', () => {
 })
 
 describe('core workspace chrome', () => {
-  it('landing is a simple start CTA (no achievement grid / Go Live marketing)', () => {
+  const session: Session = {
+    gotrueId: 'local-poc',
+    email: 'poc@indobase.in',
+    projectRef: 'poc',
+    orgSlug: 'local',
+    projectName: 'Local PoC',
+    studioUrl: 'https://studio.indobase.in',
+  }
+
+  it('landing is emergency fallback only (no Start building funnel)', () => {
     const html = renderLandingHtml()
-    assert.match(html, /Start building/)
     assert.match(html, /Indobase/)
+    assert.doesNotMatch(html, /Start building/)
+    assert.doesNotMatch(html, /Send code/)
     assert.doesNotMatch(html, /achievement-grid/)
-    assert.doesNotMatch(html, /What do you want to achieve today/)
-    assert.doesNotMatch(html, /Create a logo/)
     assert.doesNotMatch(html, /Go Live/)
-    assert.doesNotMatch(html, /rail-nav/)
+    assert.doesNotMatch(html, /header class="ibar"/)
   })
 
-  it('start page collects name, email, consent, and OTP verify step', () => {
+  it('legacy start page bounces into OS (account in chat)', () => {
     const html = renderStartHtml()
-    assert.match(html, /id="name"/)
-    assert.match(html, /id="email"/)
-    assert.match(html, /id="dpdp-consent"/)
-    assert.match(html, /id="verify-form"/)
-    assert.match(html, /\/auth\/start/)
-    assert.match(html, /\/auth\/verify/)
+    assert.match(html, /Opening Indobase OS|url=\//)
+    assert.doesNotMatch(html, /id="name"/)
+    assert.doesNotMatch(html, /Send code/)
   })
 
-  it('workspace is iframe-first with Go Live (Indobase hosting only)', () => {
-    const session: Session = {
-      gotrueId: 'local-poc',
-      email: 'poc@indobase.in',
-      projectRef: 'poc',
-      orgSlug: 'local',
-      projectName: 'Local PoC',
-      studioUrl: 'https://studio.indobase.in',
-    }
+  it('desktop has no iframe shell / outer ibar (direct CFOS document)', () => {
     const html = renderWorkspaceHtml({
       session,
       cloudflareOsConfigured: true,
       osProxyPath: '/os/app/',
       agentRuntimeUrl: 'http://127.0.0.1:8787',
     })
-    assert.match(html, /id="os-frame"/)
-    assert.match(html, /Sign out/)
-    assert.match(html, /poc@indobase\.in/)
-    assert.match(html, /id="go-live"/)
-    assert.match(html, /Launch Business/)
-    assert.match(html, /\.indobase\.in/)
-    assert.match(html, /\/api\/os\/launch/)
-    assert.match(html, /\/api\/os\/tools\/launchBusiness/)
+    assert.doesNotMatch(html, /id="os-frame"/)
+    assert.doesNotMatch(html, /header class="ibar"/)
+    assert.doesNotMatch(html, /id="go-live"/)
     assert.doesNotMatch(html, /aside class="rail"/)
     assert.doesNotMatch(html, /rail-nav/)
-    assert.doesNotMatch(html, /Backend ready/)
     assert.doesNotMatch(html, /achievement-grid/)
-    // Ban list is in agent rules, not sold as options in the Launch modal copy
-    assert.match(html, /No other hosts/)
+  })
+
+  it('offline page has no iframe chrome', () => {
+    const html = renderOfflineDesktopHtml(session)
+    assert.match(html, /Agent desktop offline/)
+    assert.doesNotMatch(html, /id="os-frame"/)
+    assert.doesNotMatch(html, /header class="ibar"/)
+  })
+
+  it('context bootstrap pulls /api/session (launch + auth in chat)', () => {
+    const html = injectIndobaseContextBootstrap('<html><body><div id="app"></div></body></html>')
+    assert.doesNotMatch(html, /id="os-frame"/)
+    assert.doesNotMatch(html, /header class="ibar"/)
+    assert.match(html, /\/api\/session/)
+    assert.match(html, /__INDOBASE_AGENT_HINT__/)
+    assert.match(html, /__INDOBASE_ONBOARDING__/)
+    assert.match(html, /__INDOBASE_LAUNCH__/)
+    assert.match(html, /\/api\/os\/tools\/launchBusiness/)
+    assert.match(html, /\/api\/os\/launch/)
+    assert.match(html, /indobase:context/)
+    assert.match(html, /GUEST/)
+    assert.match(html, /ONBOARDING/)
   })
 })
