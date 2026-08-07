@@ -21,6 +21,7 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/scripts /o
 scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/rebrand-cloudflare-os.mjs" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/seed-openrouter-models.mjs" \
+  "${REPO_ROOT}/indobase-builder-cfos/scripts/seed-format-routing.mjs" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/fetch-cloudflare-os.sh" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/install-indobase-formats.sh" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/scripts/"
@@ -66,7 +67,8 @@ echo "→ Indobase rebrand + formats + local auto-login bake…"
 cd "$CFOS_DIR"
 CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
   node "$ROOT_SCRIPTS/scripts/rebrand-cloudflare-os.mjs"
-bash "$ROOT_SCRIPTS/scripts/install-indobase-formats.sh" || true
+CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
+  bash "$ROOT_SCRIPTS/scripts/install-indobase-formats.sh"
 
 OPENROUTER_KEY=""
 if [[ -f /opt/indobase-builder.runtime.env ]]; then
@@ -101,7 +103,7 @@ Environment=FORMAT_BLUEPRINTS_DIR=/opt/indobase-builder-cfos/formats
 ExecStart=${PNPM_BIN} run-local
 Restart=on-failure
 RestartSec=8
-MemoryMax=4G
+MemoryMax=7G
 LimitNOFILE=65535
 
 [Install]
@@ -134,12 +136,16 @@ systemctl enable indobase-cfos-runtime.service
 systemctl restart indobase-cfos-runtime.service
 
 echo "Waiting for :8787…"
-for i in $(seq 1 120); do
-  if curl -sf -o /dev/null http://127.0.0.1:8787/ 2>/dev/null; then
+for i in $(seq 1 240); do
+  # Cold start can take minutes for the first successful HTTP response.
+  if curl -sf -o /dev/null --connect-timeout 2 --max-time 90 http://127.0.0.1:8787/ 2>/dev/null; then
     echo "Runtime is up."
     break
   fi
-  if [[ "$i" -eq 120 ]]; then
+  if ss -lntp 2>/dev/null | grep -q ':8787'; then
+    echo "  (listener up; still warming HTTP… $i)"
+  fi
+  if [[ "$i" -eq 240 ]]; then
     echo "::error::Timed out waiting for CF OS on :8787"
     journalctl -u indobase-cfos-runtime -n 120 --no-pager || true
     exit 1
@@ -153,6 +159,16 @@ if [[ -n "$OPENROUTER_KEY" ]]; then
   OPEN_ROUTER_API_KEY="$OPENROUTER_KEY" CLOUDFLARE_OS_DIR="$CFOS_DIR" CLOUDFLARE_OS_URL=http://127.0.0.1:8787 \
     node scripts/seed-openrouter-models.mjs || echo "::warning::seed failed (runtime may still be warming)"
 fi
+
+echo "→ Seeding Design format routing (AdminConfig agentHints)…"
+cd /opt/indobase-builder-cfos
+CLOUDFLARE_OS_DIR="$CFOS_DIR" CLOUDFLARE_OS_URL=http://127.0.0.1:8787 \
+  VITE_DEV_USERNAME=dev VITE_DEV_PASSWORD=devpassword \
+  node scripts/seed-format-routing.mjs \
+  || CLOUDFLARE_OS_DIR="$CFOS_DIR" CLOUDFLARE_OS_URL=http://127.0.0.1:8787 \
+       VITE_DEV_USERNAME=admin VITE_DEV_PASSWORD=devpassword \
+       node scripts/seed-format-routing.mjs \
+  || echo "::warning::format-routing seed failed (runtime may still be warming; re-run seed-format-routing.mjs)"
 
 curl -sS -o /dev/null -w "runtime_http:%{http_code}\n" http://127.0.0.1:8787/ || true
 systemctl is-active indobase-cfos-runtime.service
