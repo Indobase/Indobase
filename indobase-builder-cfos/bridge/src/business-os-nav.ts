@@ -69,21 +69,21 @@ export const BUSINESS_OS_NAV: readonly BusinessOsNavItem[] = [
     id: 'customers',
     label: 'Customers',
     icon: '◉',
-    prompt: 'Set up customer CRM: contacts, pipeline, and follow-ups. Use capabilities — do not send me to another product.',
+    prompt: 'Set up customers — Enable Business Data / CRM skills inside Indobase. Do not send me to another product.',
     documentHint: 'crm',
   },
   {
     id: 'commerce',
     label: 'Commerce',
     icon: '₹',
-    prompt: 'Start charging customers — configure commerce capability and checkout. Do not send me to another product.',
+    prompt: 'Start accepting payments — Enable Payments for my business. Do not send me to another product or ask which payment vendor.',
     documentHint: 'commerce',
   },
   {
     id: 'analytics',
     label: 'Analytics',
     icon: '▤',
-    prompt: 'Add analytics and a simple dashboard for my business.',
+    prompt: 'Enable Analytics for my business — a simple dashboard. Do not connect an external analytics product.',
     documentHint: 'analytics',
   },
   {
@@ -111,7 +111,8 @@ export const BUSINESS_OS_NAV: readonly BusinessOsNavItem[] = [
     id: 'launch',
     label: 'Launch Business',
     icon: '▶',
-    prompt: 'Launch my business — go live in one sentence and return my live URL.',
+    prompt:
+      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API response. Never invent a URL or use a third-party host.',
   },
   {
     id: 'settings',

@@ -395,14 +395,20 @@ export function renderWorkspaceHtml(opts: {
           const s = await fetch('/api/session', { credentials: 'same-origin' }).then((r) => r.json());
           hint = s.agent_hint || '';
           window.__INDOBASE_AGENT_HINT__ = hint;
-          window.__INDOBASE_LAUNCH__ = { api: '/api/os/launch', status: '/api/os/launch/status' };
+          window.__INDOBASE_LAUNCH__ = {
+            api: '/api/os/launch',
+            status: '/api/os/launch/status',
+            tool: '/api/os/tools/launchBusiness',
+            toolAlias: '/api/os/tools/goLive',
+          };
         } catch {}
         frame?.contentWindow?.postMessage({
           type: 'indobase:context',
           payload: Object.assign({}, window.__INDOBASE__ || {}, {
             AGENT_HINT: hint,
             LAUNCH_API: '/api/os/launch',
-            LAUNCH_RULES: 'Indobase subdomain (*.indobase.in) or a domain you already own. Never third-party hosts.',
+            LAUNCH_TOOL: '/api/os/tools/launchBusiness',
+            LAUNCH_RULES: 'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
           }),
         }, '*');
       } catch {}

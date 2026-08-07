@@ -41,13 +41,21 @@ const FORMAT_HINTS = {
 
 const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
-## Go Live — Indobase hosting only
-When the operator says take live / launch / publish / go public:
-1. Call POST /api/os/launch with { title, subdomain?, customDomain?, html? or files? }.
-2. Default: Indobase subdomain (https://{subdomain}.indobase.in). Local PoC may return /live/{ref}/.
-3. Optional: customDomain for a domain they already own — return DNS CNAME to Indobase. Never move hosting off Indobase.
-4. NEVER mention third-party hosts or ask which company should host. Only Indobase subdomain or their own domain on Indobase.
-5. Tell them: Your business is now live + the URL.
+## Go Live — HARD PATH (Indobase hosting only)
+When the operator says take live / launch / publish / go public / launch my business:
+1. MUST call launchBusiness (alias goLive): POST /api/os/tools/launchBusiness
+   OR POST /api/os/launch with REAL html or files — never empty:
+   { title, subdomain?, customDomain?, html } or { files: { "index.html": "…" } }.
+2. Default: https://{subdomain}.indobase.in. Local PoC may return /live/{ref}/.
+3. Optional: customDomain for a domain they already own — DNS CNAME → sites.indobase.in. Never move hosting off Indobase.
+4. ONLY claim live after API returns ok:true AND url. Quote that exact url. NEVER invent a URL. NEVER third-party hosts.
+5. Tell them: Your business is now live + the API url (+ DNS steps if connecting their domain).
+
+## Enable capabilities (never “connect”)
+When they ask for login, database, payments, email, analytics:
+1. Call POST /api/os/runtime/ensure with { capability: "login"|"database"|"payments"|… }.
+2. Reply with Indobase Enable copy only: “Login enabled”, “Customer database created”, “Payments are live”.
+3. NEVER say Connect Neon/Coolify/Stripe/Postgres/Docker or name any vendor. Enable ≠ Connect.
 
 ## Format routing
 ALWAYS use Design format (blueprintId format.design) for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, and any graphic/creative design request.
@@ -177,15 +185,19 @@ async function seedAdmin(admin) {
   }
 
   const existing = String(after.instanceInstructions || '')
-  if (!existing.includes('Go Live') || !existing.includes('Indobase hosting only')) {
+  if (
+    !existing.includes('Go Live') ||
+    !existing.includes('HARD PATH') ||
+    !existing.includes('launchBusiness')
+  ) {
     const next = existing.trim()
       ? `${existing.trim()}\n\n${INSTANCE_INSTRUCTIONS}`
       : INSTANCE_INSTRUCTIONS
     await admin.setInstanceInstructions(next)
-    console.log('instanceInstructions ← Go Live + Design routing rules')
+    console.log('instanceInstructions ← Go Live HARD PATH + Design routing rules')
   } else {
     await admin.setInstanceInstructions(INSTANCE_INSTRUCTIONS)
-    console.log('instanceInstructions refreshed (Go Live + Design)')
+    console.log('instanceInstructions refreshed (Go Live HARD PATH + Design)')
   }
 
   const final = await admin.getSettings()

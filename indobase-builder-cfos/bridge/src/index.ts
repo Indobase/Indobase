@@ -33,9 +33,13 @@ import {
   readLiveFile,
   resolveWorkspaceRefForHost,
   getLaunchStatus,
-  LAUNCH_AGENT_RULES,
   sanitizeSubdomain,
 } from './static-launch.js'
+import {
+  executeLaunchBusinessTool,
+  launchBusinessToolCatalog,
+  LAUNCH_AGENT_HARD_RULES,
+} from './launch-business-tool.js'
 import { renderLandingHtml, renderStartHtml, renderWorkspaceHtml } from './workspace-html.js'
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
@@ -394,6 +398,42 @@ app.post('/api/os/launch', async (c) => {
   return handleStaticGoLive(c, sessionOrErr)
 })
 
+/**
+ * Agent tool: launchBusiness / goLive — HARD PATH.
+ * Requires real html or files; claim_live only when API returns a real URL.
+ */
+async function handleLaunchBusinessTool(c: Context, session: Session) {
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeLaunchBusinessTool(
+    session.projectRef,
+    {
+      title: typeof body.title === 'string' ? body.title : undefined,
+      subdomain: typeof body.subdomain === 'string' ? body.subdomain : undefined,
+      customDomain: typeof body.customDomain === 'string' ? body.customDomain : undefined,
+      custom_domain: typeof body.custom_domain === 'string' ? body.custom_domain : undefined,
+      html: typeof body.html === 'string' ? body.html : undefined,
+      files:
+        body.files && typeof body.files === 'object' && !Array.isArray(body.files)
+          ? (body.files as Record<string, string>)
+          : undefined,
+    },
+    { title: session.projectName || session.projectRef },
+  )
+  return c.json(result, result.ok ? 200 : result.status === 'rejected' ? 400 : 502)
+}
+
+app.post('/api/os/tools/launchBusiness', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleLaunchBusinessTool(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/goLive', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleLaunchBusinessTool(c, sessionOrErr)
+})
+
 /** Attach a domain the customer already owns (CNAME → Indobase). */
 app.post('/api/os/domains/attach', async (c) => {
   const sessionOrErr = requireSession(c)
@@ -429,7 +469,7 @@ app.get('/api/os/launch/status', async (c) => {
   const sessionOrErr = requireSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const status = await getLaunchStatus(sessionOrErr.projectRef)
-  return c.json({ ok: true, ...status, launch_rules: LAUNCH_AGENT_RULES })
+  return c.json({ ok: true, ...status, launch_rules: LAUNCH_AGENT_HARD_RULES })
 })
 
 /** Host-based serving: custom domain or *.indobase.in → static site */
@@ -523,12 +563,18 @@ app.get('/api/session', (c) => {
     os_proxy_path: `${OS_PREFIX}/`,
     indobase_proxy_path: '/api/indobase/proxy/',
     generation_context: agent.generation,
-    agent_hint: `${agent.agentHint}\n\n${LAUNCH_AGENT_RULES}`,
+    agent_hint: `${agent.agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}`,
     launch: {
       api: '/api/os/launch',
       domains_attach: '/api/os/domains/attach',
       status: '/api/os/launch/status',
       options: ['indobase_subdomain', 'custom_domain'],
+      tool: '/api/os/tools/launchBusiness',
+      tool_alias: '/api/os/tools/goLive',
+      rules: LAUNCH_AGENT_HARD_RULES,
+    },
+    tools: {
+      launchBusiness: launchBusinessToolCatalog(),
     },
   })
 })

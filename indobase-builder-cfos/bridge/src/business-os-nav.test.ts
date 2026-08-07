@@ -38,8 +38,9 @@ describe('business-os-nav', () => {
   it('launch catalog entry speaks go-live (substrate stays publish)', () => {
     const launch = businessOsNavById('launch')
     assert.equal(launch?.label, 'Launch Business')
-    assert.match(launch?.prompt || '', /go live/i)
-    assert.doesNotMatch(launch?.prompt || '', /publish|deploy|hosting/i)
+    assert.match(launch?.prompt || '', /launchBusiness|go live/i)
+    assert.match(launch?.prompt || '', /\/api\/os\/tools\/launchBusiness|live URL/i)
+    assert.doesNotMatch(launch?.prompt || '', /\bdeploy\b|\bhosting\b/i)
   })
 
   it('states the finish-in-OS principle', () => {
@@ -91,6 +92,7 @@ describe('core workspace chrome', () => {
     assert.match(html, /Launch Business/)
     assert.match(html, /\.indobase\.in/)
     assert.match(html, /\/api\/os\/launch/)
+    assert.match(html, /\/api\/os\/tools\/launchBusiness/)
     assert.doesNotMatch(html, /aside class="rail"/)
     assert.doesNotMatch(html, /rail-nav/)
     assert.doesNotMatch(html, /Backend ready/)

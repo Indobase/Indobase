@@ -499,12 +499,14 @@ function contentTypeFor(filePath: string): string {
   return 'application/octet-stream'
 }
 
+/** @deprecated Prefer LAUNCH_AGENT_HARD_RULES from @indobase/cloudflare-adapter */
 export const LAUNCH_AGENT_RULES = `
-## Go Live (Indobase only)
+## Go Live / Launch Business (HARD PATH — mandatory)
 When the operator asks to take live / launch / publish / go public:
-1. Call POST /api/os/launch with JSON { title, subdomain?, customDomain?, html? or files? }.
-2. Default: Indobase subdomain (https://{subdomain}.indobase.in) — or local preview /live/{ref}/.
-3. Optional customDomain: a domain they already own. Return DNS CNAME steps. Do not move hosting off Indobase.
-4. NEVER mention third-party hosts (page builders, git pages, generic CDNs) or ask which company should host. Only Indobase subdomain or their own domain on Indobase.
-5. Reply: "Your business is now live" + the Indobase URL (and DNS if connecting their domain).
+1. Call launchBusiness (POST /api/os/tools/launchBusiness or POST /api/os/launch) with REAL html or files — never empty.
+2. Default: https://{subdomain}.indobase.in — or local preview /live/{ref}/.
+3. Optional customDomain: domain they already own. DNS CNAME → sites.indobase.in. Hosting stays on Indobase.
+4. ONLY claim live after API returns ok:true AND url. NEVER invent a URL. NEVER third-party hosts.
+5. Reply: "Your business is now live" + the exact API url (and DNS if connecting their domain).
+6. Capabilities: Enable ≠ Connect — “Login enabled”, never “Connect Neon/Stripe/…”.
 `.trim()

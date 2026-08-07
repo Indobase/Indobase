@@ -35,7 +35,7 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
   {
     id: 'login',
     label: 'Add login',
-    prompt: 'Add user login and authentication to my business — ensure auth capability.',
+    prompt: 'Add user login to my business — Enable Customer Login (never connect an external auth product).',
     formatHint: 'auth',
   },
   {

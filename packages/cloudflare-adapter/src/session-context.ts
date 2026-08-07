@@ -13,6 +13,7 @@ import {
 
 import { stripVendorBranding } from './brand'
 import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
+import { LAUNCH_AGENT_HARD_RULES, LAUNCH_SESSION_HINT } from './launch-routing'
 
 /** Minimal session shape shared by the CFOS bridge (camelCase session cookie). */
 export type BridgeSessionLike = {
@@ -89,9 +90,10 @@ export function sessionToAgentContext(
     dataPlane
       ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs.`
       : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',
-    'Go Live / Launch Business: POST /api/os/launch with { subdomain?, customDomain?, html? }. Indobase subdomain (*.indobase.in) or a domain they already own (DNS CNAME to Indobase).',
+    LAUNCH_SESSION_HINT,
+    LAUNCH_AGENT_HARD_RULES,
     'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
-    'Add login / database / payments → capability.ensure later (Lane 2). Do not provision backend for a normal site launch.',
+    'Add login / database / payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect. Do not provision backend for a normal site launch.',
     'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
     'Brand all customer-facing UI as Indobase only.',
     'Built-in formats: Docs (format.document), Sheets (format.spreadsheet), Slides (format.slides), Design (format.design).',
@@ -124,6 +126,9 @@ export function formatAgentSessionPrompt(ctx: AgentSessionContext): string {
   indobaseProxyPath: ${ctx.indobaseProxyPath}
   ${ctx.dataPlane ? `dataPlaneUrl: ${ctx.dataPlane.url}` : 'dataPlane: (none)'}
 </indobase_builder_session>
+<indobase_go_live>
+${LAUNCH_AGENT_HARD_RULES}
+</indobase_go_live>
 <indobase_format_routing>
 ${DESIGN_FORMAT_ROUTING_RULES}
 </indobase_format_routing>

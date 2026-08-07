@@ -11,7 +11,13 @@ import {
   sanitizeSubdomain,
   buildCustomDomainTraefikYaml,
   traefikRouterId,
+  LAUNCH_AGENT_RULES,
 } from './static-launch.ts'
+import {
+  executeLaunchBusinessTool,
+  launchBusinessToolCatalog,
+  LAUNCH_AGENT_HARD_RULES,
+} from './launch-business-tool.ts'
 import { readFile } from 'node:fs/promises'
 
 describe('static launch lane', () => {
@@ -33,6 +39,7 @@ describe('static launch lane', () => {
       assert.equal(result.lane, 'static')
       assert.equal(result.subdomain, 'aquaharvest')
       assert.equal(result.previewUrl, 'http://127.0.0.1:8791/live/local_poc/')
+      assert.ok(result.url)
       assert.match(result.message, /live/i)
       assert.doesNotMatch(result.message, /studio|vercel|netlify|github pages|cloudflare pages/i)
 
@@ -105,5 +112,66 @@ describe('static launch lane', () => {
     assert.equal(typeof adapter.deploy, 'function')
     assert.equal(typeof adapter.assignDomain, 'function')
     assert.equal(typeof adapter.rollback, 'function')
+  })
+
+  it('agent hard rules forbid inventing live URLs', () => {
+    assert.match(LAUNCH_AGENT_HARD_RULES, /HARD PATH/i)
+    assert.match(LAUNCH_AGENT_HARD_RULES, /launchBusiness/)
+    assert.match(LAUNCH_AGENT_HARD_RULES, /NEVER invent/i)
+    assert.match(LAUNCH_AGENT_HARD_RULES, /sites\.indobase\.in/)
+    assert.match(LAUNCH_AGENT_HARD_RULES, /Enable ≠ Connect/)
+    assert.match(LAUNCH_AGENT_RULES, /HARD PATH/i)
+  })
+})
+
+describe('launchBusiness tool (hard path)', () => {
+  it('catalog points at same-origin launchBusiness wrapping /api/os/launch', () => {
+    const catalog = launchBusinessToolCatalog()
+    assert.equal(catalog.name, 'launchBusiness')
+    assert.equal(catalog.path, '/api/os/tools/launchBusiness')
+    assert.equal(catalog.alias_path, '/api/os/tools/goLive')
+    assert.equal(catalog.wraps, '/api/os/launch')
+    assert.ok(catalog.aliases.includes('goLive'))
+  })
+
+  it('rejects empty html/files without claiming live', async () => {
+    const result = await executeLaunchBusinessTool('ws_empty', {
+      title: 'Empty',
+      subdomain: 'empty',
+    })
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'rejected')
+    assert.equal(result.claim_live, false)
+    assert.equal(result.url, undefined)
+    assert.match(result.message, /html or files/i)
+  })
+
+  it('publishes real html and sets claim_live only with API url', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-tool-'))
+    process.env.INDOBASE_LAUNCH_ROOT = dir
+    process.env.INDOBASE_LAUNCH_PUBLIC_URL = 'http://127.0.0.1:8791'
+    process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX = 'indobase.in'
+    try {
+      const result = await executeLaunchBusinessTool(
+        'ws_tool',
+        {
+          title: 'AquaHarvest',
+          subdomain: 'aquaharvest',
+          html: '<html><body><h1>Live</h1></body></html>',
+        },
+        { title: 'fallback' },
+      )
+      assert.equal(result.ok, true)
+      assert.equal(result.claim_live, true)
+      assert.equal(result.tool, 'launchBusiness')
+      assert.ok(result.url)
+      assert.doesNotMatch(result.url || '', /vercel|netlify|github\.io/i)
+      assert.match(result.message, /live/i)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      delete process.env.INDOBASE_LAUNCH_ROOT
+      delete process.env.INDOBASE_LAUNCH_PUBLIC_URL
+      delete process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX
+    }
   })
 })
