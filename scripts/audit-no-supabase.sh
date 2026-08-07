@@ -54,6 +54,8 @@ is_intentional_reference() {
   [[ "$line" == *'supabase_realtime_admin'* ]] && return 0
   [[ "$line" == *'image: supabase/'* ]] && return 0
   [[ "$line" == *'PROVISIONER_PG_ADMIN_USER'* ]] && return 0
+  # Anti-leak detector must list vendor tokens to strip them from capability copy.
+  [[ "$line" == *'FORBIDDEN_PROVIDER_PATTERN'* ]] && return 0
   return 1
 }
 
