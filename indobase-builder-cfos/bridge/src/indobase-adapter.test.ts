@@ -28,7 +28,7 @@ describe('indobase-adapter bridge wiring', () => {
     const ctx = buildAgentSessionContext(sampleSession)
     assert.equal(ctx.projectRef, 'proj_demo')
     assert.equal(ctx.generation.projectRef, 'proj_demo')
-    assert.match(ctx.agentHint, /Indobase Builder/)
+    assert.match(ctx.agentHint, /Indobase OS/)
     assert.match(ctx.agentHint, /format\.design/)
     assert.match(ctx.agentHint, /ALWAYS/)
     assert.match(ctx.agentHint, /NEVER/)

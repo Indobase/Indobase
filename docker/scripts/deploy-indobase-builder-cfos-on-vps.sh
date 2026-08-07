@@ -53,6 +53,12 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-v2-
   < "${REPO_ROOT}/docker/traefik/builder-v2-indobase.yml"
 echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml"
 
+# Static Launch: sites.indobase.in + *.sites.indobase.in → CFOS bridge
+# (DNS A sites / *.sites → .249; do NOT touch tenant * → .248)
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/sites-indobase.yml" \
+  < "${REPO_ROOT}/docker/traefik/sites-indobase.yml"
+echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/sites-indobase.yml"
+
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
 set -euo pipefail
 source /opt/indobase/lib/swarm-managed-env.sh
@@ -104,6 +110,10 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" PORT "8791"
 swarm_upsert_env_file_kv "\${ENV_FILE}" GIT_SHA "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_VERSION "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+# Static Launch hosts (sites.indobase.in / *.sites.indobase.in) — keep in sync with Traefik
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_DOMAIN_SUFFIX "sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_CNAME_TARGET "sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_PUBLIC_URL "https://sites.indobase.in"
 if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then
   swarm_upsert_env_file_kv "\${ENV_FILE}" CLOUDFLARE_OS_URL "\${CLOUDFLARE_OS_URL_VALUE}"
 fi

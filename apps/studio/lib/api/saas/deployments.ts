@@ -1010,6 +1010,22 @@ export async function updateProjectDeployment({
     }
   }
 
+  // Auto-resume queued Indobase OS Launch (MarkLive + site hosting) when artifacts become ready.
+  if (current.status !== 'ready' && deployment.status === 'ready') {
+    void import('./os-publish-resume')
+      .then(({ resumeOsPublishAfterDeploymentReady }) =>
+        resumeOsPublishAfterDeploymentReady({ ref, deployment }),
+      )
+      .catch((error) => {
+        console.warn(
+          '[deployments] os publish resume hook failed for %s / %s: %s',
+          ref,
+          deployment.id,
+          error instanceof Error ? error.message : String(error),
+        )
+      })
+  }
+
   return deployment
 }
 

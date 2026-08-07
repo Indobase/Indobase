@@ -19,6 +19,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@ui': resolve(__dirname, './../../packages/ui/src'),
+      '@indobase/platform': resolve(__dirname, './../../packages/platform/src/index.ts'),
+      '@indobase/agent-runtime': resolve(__dirname, './../../packages/agent-runtime/src/index.ts'),
     },
   },
   test: {

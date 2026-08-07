@@ -1,5 +1,9 @@
+/**
+ * Indobase OS — core CFOS chrome.
+ * Light top bar + agent desktop iframe. No achievement home, no fat business rail.
+ */
 import type { Session } from './auth.js'
-import { buildAgentHint, stripVendorBranding } from './indobase-adapter.js'
+import { stripVendorBranding } from './indobase-adapter.js'
 
 function escapeHtml(value: string): string {
   return value
@@ -44,6 +48,27 @@ const SHELL_CSS = `
   a.btn.secondary, button.btn.secondary {
     background: transparent; color: var(--text); border: 1px solid var(--line);
   }
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 20; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 1.1rem 1.15rem; box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  }
+  .modal h2 { margin: 0 0 .35rem; font-size: 1rem; }
+  .modal p { margin: 0 0 .85rem; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+  .modal label { display: block; font-size: .72rem; color: var(--muted); margin: .55rem 0 .25rem; }
+  .modal input {
+    width: 100%; background: #0a101c; border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: .45rem .55rem; font-size: .85rem;
+  }
+  .modal .row { display: flex; gap: .45rem; margin-top: 1rem; justify-content: flex-end; }
+  .modal .status { font-size: .78rem; margin-top: .65rem; min-height: 1.2em; }
+  .modal .ok { color: #7ddea2; }
+  .modal .err { color: #f0a0a0; }
+  .modal code { font-size: .72rem; color: #c5d4ea; }
   .stage { height: calc(100% - var(--bar)); position: relative; }
   .stage iframe { border: 0; width: 100%; height: 100%; background: #000; display: block; }
   .drawer {
@@ -69,26 +94,209 @@ const SHELL_CSS = `
   }
   .ok { color: #7ddea2; }
   .warn { color: #e7c56a; }
+  .landing {
+    min-height: 100%; display: flex; flex-direction: column;
+  }
+  .landing .hero {
+    flex: 1; display: grid; place-items: center; padding: 2rem 1.25rem;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,143,214,.18), transparent 55%),
+      var(--bg);
+  }
+  .landing .card {
+    width: min(520px, 100%);
+    border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    padding: 1.75rem 1.5rem;
+  }
+  .landing h1 { margin: 0 0 .5rem; font-size: 1.55rem; letter-spacing: -.02em; }
+  .landing p { color: var(--muted); line-height: 1.55; margin: 0 0 1rem; }
+  .landing .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.1rem; }
+  .landing .fine { font-size: .72rem; color: var(--muted); margin-top: 1rem; }
 `
 
+/** Unauthenticated entry — simple CTA into OTP start (no achievement grid). */
 export function renderLandingHtml(): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder</title>
+  <title>Indobase OS</title>
   <style>${SHELL_CSS}</style>
 </head>
-<body>
+<body class="landing">
   <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
+    <div class="brand">Indobase <span>OS</span></div>
   </header>
-  <div class="empty">
-    <h1>Open Builder from Studio</h1>
-    <p>Sign in to Studio and use <strong>Open Builder</strong> on your project. That links your Indobase backend and opens the agent workspace.</p>
-    <p><a class="btn" href="https://studio.indobase.in">Go to Studio</a></p>
+  <div class="hero">
+    <div class="card">
+      <h1>Indobase OS</h1>
+      <p>Open the agent workspace and build from chat — documents, code, and tools in one shell.</p>
+      <div class="cta-row">
+        <a class="btn" href="/start">Start building</a>
+        <a class="btn secondary" href="/sso/health">Status</a>
+      </div>
+      <p class="fine">Sign in once, then work inside the agent desktop.</p>
+    </div>
   </div>
+</body>
+</html>`
+}
+
+/** Marketing / Get started — name + email OTP → auto workspace. */
+export function renderStartHtml(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Indobase — Start building</title>
+  <style>${SHELL_CSS}
+    .field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .85rem; }
+    .field label { font-size: .75rem; color: var(--muted); }
+    .field input {
+      appearance: none; border: 1px solid var(--line); border-radius: 8px;
+      background: #0a101c; color: var(--text); padding: .55rem .7rem; font-size: .9rem;
+    }
+    .field input:focus { outline: 2px solid rgba(59,143,214,.25); border-color: var(--accent); }
+    .consent { display: flex; gap: .55rem; align-items: flex-start; font-size: .78rem; color: var(--muted); margin-bottom: .85rem; }
+    .consent input { margin-top: .2rem; }
+    .consent a { color: var(--accent); }
+    #start-status { font-size: .78rem; color: var(--muted); min-height: 1.2em; }
+    #verify-step { display: none; }
+    #verify-step.active { display: block; }
+    #identity-step.hidden { display: none; }
+  </style>
+</head>
+<body class="landing">
+  <header class="ibar">
+    <div class="brand">Indobase <span>OS</span></div>
+    <a class="btn secondary" href="/">Back</a>
+  </header>
+  <div class="hero">
+    <div class="card">
+      <h1>Start building</h1>
+      <p>Enter your details to open the agent workspace.</p>
+      <div id="identity-step">
+        <form id="start-form">
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" autocomplete="name" required placeholder="Your name" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@company.com" />
+          </div>
+          <label class="consent">
+            <input id="dpdp-consent" type="checkbox" required />
+            <span>I agree to the <a href="https://indobase.in/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://indobase.in/terms" target="_blank" rel="noopener">Terms of Service</a>.</span>
+          </label>
+          <div class="cta-row">
+            <button class="btn" type="submit">Send code</button>
+          </div>
+          <p id="start-status"></p>
+        </form>
+      </div>
+      <div id="verify-step">
+        <p>Enter the verification code we sent to <strong id="verify-email"></strong>.</p>
+        <form id="verify-form">
+          <div class="field">
+            <label for="otp">Verification code</label>
+            <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" required placeholder="6-digit code" maxlength="8" />
+          </div>
+          <div class="cta-row">
+            <button class="btn" type="submit">Open Indobase OS</button>
+            <button class="btn secondary" type="button" id="back-to-email">Change email</button>
+          </div>
+          <p id="verify-status"></p>
+        </form>
+      </div>
+      <p class="fine">New here or returning — continue in the agent workspace after verify.</p>
+    </div>
+  </div>
+  <script>
+    const identityStep = document.getElementById('identity-step');
+    const verifyStep = document.getElementById('verify-step');
+    const startStatus = document.getElementById('start-status');
+    const verifyStatus = document.getElementById('verify-status');
+    const verifyEmail = document.getElementById('verify-email');
+    let pendingName = '';
+    let pendingEmail = '';
+
+    function showVerifyStep() {
+      identityStep?.classList.add('hidden');
+      verifyStep?.classList.add('active');
+      if (verifyEmail) verifyEmail.textContent = pendingEmail;
+      document.getElementById('otp')?.focus();
+    }
+
+    function showIdentityStep() {
+      verifyStep?.classList.remove('active');
+      identityStep?.classList.remove('hidden');
+    }
+
+    if (new URLSearchParams(location.search).get('step') === 'verify' && sessionStorage.getItem('ib_os_start_email')) {
+      pendingName = sessionStorage.getItem('ib_os_start_name') || '';
+      pendingEmail = sessionStorage.getItem('ib_os_start_email') || '';
+      showVerifyStep();
+    }
+
+    document.getElementById('back-to-email')?.addEventListener('click', () => {
+      showIdentityStep();
+      if (verifyStatus) verifyStatus.textContent = '';
+    });
+
+    document.getElementById('start-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      pendingName = document.getElementById('name')?.value?.trim() || '';
+      pendingEmail = document.getElementById('email')?.value?.trim().toLowerCase() || '';
+      const dpdpConsent = document.getElementById('dpdp-consent')?.checked === true;
+      if (startStatus) startStatus.textContent = 'Sending code…';
+      try {
+        const res = await fetch('/auth/start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ name: pendingName, email: pendingEmail, dpdpConsent }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (startStatus) startStatus.textContent = body.message || ('Could not start (' + res.status + ')');
+          return;
+        }
+        sessionStorage.setItem('ib_os_start_name', pendingName);
+        sessionStorage.setItem('ib_os_start_email', pendingEmail);
+        if (startStatus) startStatus.textContent = '';
+        showVerifyStep();
+        history.replaceState(null, '', '/start?step=verify');
+      } catch (err) {
+        if (startStatus) startStatus.textContent = err instanceof Error ? err.message : 'Could not start';
+      }
+    });
+
+    document.getElementById('verify-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = document.getElementById('otp')?.value?.trim() || '';
+      if (verifyStatus) verifyStatus.textContent = 'Verifying…';
+      try {
+        const res = await fetch('/auth/verify', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ name: pendingName, email: pendingEmail, token }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (verifyStatus) verifyStatus.textContent = body.message || ('Verification failed (' + res.status + ')');
+          return;
+        }
+        sessionStorage.removeItem('ib_os_start_name');
+        sessionStorage.removeItem('ib_os_start_email');
+        location.replace(body.next || '/');
+      } catch (err) {
+        if (verifyStatus) verifyStatus.textContent = err instanceof Error ? err.message : 'Verification failed';
+      }
+    });
+  </script>
 </body>
 </html>`
 }
@@ -115,10 +323,15 @@ export function renderWorkspaceHtml(opts: {
     Boolean(runtimeUrl) &&
     /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(runtimeUrl)
   const embedSrc = isLoopback && runtimeUrl ? `${runtimeUrl}/` : osProxyPath
-  const popOutHref = isLoopback && runtimeUrl ? `${runtimeUrl}/` : osProxyPath
   const projectLabel = escapeHtml(session.projectName || session.projectRef)
   const email = escapeHtml(session.email)
-  const hasBackend = Boolean(session.backend?.anon_key && session.backend?.api_url)
+  const suggestedSlug = escapeHtml(
+    (session.projectName || session.projectRef)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'my-business',
+  )
 
   const envJson = session.backend
     ? {
@@ -131,107 +344,110 @@ export function renderWorkspaceHtml(opts: {
       }
     : null
 
-  const envBlock = envJson ? escapeHtml(JSON.stringify(envJson, null, 2)) : 'No backend in handoff.'
+  const envBlock = envJson
+    ? escapeHtml(JSON.stringify(envJson, null, 2))
+    : 'No backend yet — say “Add login” or “Add database” to provision lazily.'
 
-  // Gen 3: hint comes from @indobase/cloudflare-adapter (vendor branding stripped).
-  const agentHint = escapeHtml(buildAgentHint(session))
-
-  if (!cloudflareOsConfigured) {
-    return `<!doctype html>
+  const shellHead = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder · ${projectLabel}</title>
+  <title>Indobase OS · ${projectLabel}</title>
   <style>${SHELL_CSS}</style>
 </head>
 <body>
   <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
+    <div class="brand">Indobase <span>OS</span></div>
     <div class="meta">${email} · ${projectLabel}</div>
     <div class="actions">
-      <a class="btn secondary" href="${escapeHtml(session.studioUrl)}/project/${escapeHtml(session.projectRef)}/backend" target="_blank" rel="noopener">Studio</a>
+      <button class="btn" type="button" id="go-live">Go Live</button>
       <button class="btn secondary" type="button" id="logout">Sign out</button>
     </div>
   </header>
-  <div class="empty">
-    <p class="pill warn">Agent runtime not connected</p>
-    <h1 style="margin-top:.75rem">${projectLabel} linked</h1>
-    <p>${escapeHtml(
-      stripVendorBranding(
-        'Studio handoff worked. Start the local agent execution runtime and set CLOUDFLARE_OS_URL on this bridge (see scripts/dev-stack.sh).',
-      ),
-    )}</p>
-    <pre>${envBlock}</pre>
-    <p style="margin-top:1rem">
-      <a class="btn secondary" href="/sso/health">Health</a>
-    </p>
-  </div>
-  <script>
-    document.getElementById('logout')?.addEventListener('click', async () => {
-      await fetch('/sso/logout', { method: 'POST', credentials: 'same-origin' });
-      location.href = '/';
-    });
-  </script>
-</body>
-</html>`
-  }
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder · ${projectLabel}</title>
-  <style>${SHELL_CSS}</style>
-</head>
-<body>
-  <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
-    <div class="meta"><span class="pill ${hasBackend ? 'ok' : 'warn'}">${hasBackend ? 'project linked' : 'no backend'}</span> ${email} · ${projectLabel}</div>
-    <div class="actions">
-      <button class="btn secondary" type="button" id="toggle-backend">Indobase</button>
-      <button class="btn secondary" type="button" id="copy-hint">Copy agent hint</button>
-      <a class="btn secondary" href="${escapeHtml(session.studioUrl)}/project/${escapeHtml(session.projectRef)}/backend" target="_blank" rel="noopener">Studio</a>
-      <a class="btn secondary" href="${escapeHtml(popOutHref)}" target="_blank" rel="noopener">Pop out</a>
-      <button class="btn secondary" type="button" id="logout">Sign out</button>
-    </div>
-  </header>
-  <div class="stage">
-    <iframe id="os-frame" title="Indobase Builder workspace" src="${escapeHtml(embedSrc)}" allow="clipboard-read; clipboard-write"></iframe>
-    <aside class="drawer" id="drawer">
-      <h2>Indobase connection</h2>
-      <pre id="env-block">${envBlock}</pre>
-      <p style="margin:.65rem 0 0; font-size:.78rem; color:var(--muted)">
-        Same-origin API proxy: <code>/api/indobase/proxy/rest/v1/…</code>
-      </p>
-      <div class="actions" style="margin-top:.75rem">
-        <button class="btn" type="button" id="copy-env">Copy env JSON</button>
+  <div class="modal-bg" id="launch-modal" role="dialog" aria-modal="true" aria-labelledby="launch-title">
+    <div class="modal">
+      <h2 id="launch-title">Launch Business</h2>
+      <p>Go live on Indobase — your subdomain or a domain you already own. No other hosts.</p>
+      <label for="launch-sub">Indobase link</label>
+      <div style="display:flex;align-items:center;gap:.35rem">
+        <input id="launch-sub" value="${suggestedSlug}" autocomplete="off" />
+        <span style="color:var(--muted);font-size:.8rem;white-space:nowrap">.indobase.in</span>
       </div>
-    </aside>
-  </div>
+      <label for="launch-domain">Your domain (optional)</label>
+      <input id="launch-domain" placeholder="www.yourbusiness.com" autocomplete="off" />
+      <div class="status" id="launch-status"></div>
+      <div class="row">
+        <button class="btn secondary" type="button" id="launch-cancel">Cancel</button>
+        <button class="btn" type="button" id="launch-confirm">Launch</button>
+      </div>
+    </div>
+  </div>`
+
+  const shellScript = `
   <script>
     window.__INDOBASE__ = ${envJson ? JSON.stringify(envJson) : 'null'};
-    const hint = ${JSON.stringify(agentHint)};
     const frame = document.getElementById('os-frame');
-    function pushContext() {
+    async function pushContext() {
       try {
-        frame?.contentWindow?.postMessage({ type: 'indobase:context', payload: window.__INDOBASE__ }, '*');
+        let hint = '';
+        try {
+          const s = await fetch('/api/session', { credentials: 'same-origin' }).then((r) => r.json());
+          hint = s.agent_hint || '';
+          window.__INDOBASE_AGENT_HINT__ = hint;
+          window.__INDOBASE_LAUNCH__ = { api: '/api/os/launch', status: '/api/os/launch/status' };
+        } catch {}
+        frame?.contentWindow?.postMessage({
+          type: 'indobase:context',
+          payload: Object.assign({}, window.__INDOBASE__ || {}, {
+            AGENT_HINT: hint,
+            LAUNCH_API: '/api/os/launch',
+            LAUNCH_RULES: 'Indobase subdomain (*.indobase.in) or a domain you already own. Never third-party hosts.',
+          }),
+        }, '*');
       } catch {}
     }
     frame?.addEventListener('load', pushContext);
     setInterval(pushContext, 4000);
+    pushContext();
 
-    document.getElementById('toggle-backend')?.addEventListener('click', () => {
-      document.getElementById('drawer')?.classList.toggle('open');
+    const modal = document.getElementById('launch-modal');
+    const statusEl = document.getElementById('launch-status');
+    document.getElementById('go-live')?.addEventListener('click', () => {
+      modal?.classList.add('open');
+      if (statusEl) { statusEl.textContent = ''; statusEl.className = 'status'; }
     });
-    document.getElementById('copy-env')?.addEventListener('click', async () => {
-      const text = document.getElementById('env-block')?.innerText || '';
-      await navigator.clipboard.writeText(text);
+    document.getElementById('launch-cancel')?.addEventListener('click', () => modal?.classList.remove('open'));
+    document.getElementById('launch-confirm')?.addEventListener('click', async () => {
+      const subdomain = document.getElementById('launch-sub')?.value?.trim() || '';
+      const customDomain = document.getElementById('launch-domain')?.value?.trim() || '';
+      if (statusEl) { statusEl.textContent = 'Launching…'; statusEl.className = 'status'; }
+      try {
+        const res = await fetch('/api/os/launch', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({
+            title: ${JSON.stringify(session.projectName || session.projectRef)},
+            subdomain,
+            customDomain: customDomain || undefined,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.ok) {
+          if (statusEl) { statusEl.textContent = body.message || 'Could not go live'; statusEl.className = 'status err'; }
+          return;
+        }
+        let msg = body.message || ('Live: ' + (body.url || ''));
+        if (body.dns && body.dns[0]) {
+          msg += ' DNS: CNAME ' + body.dns[0].name + ' → ' + body.dns[0].value;
+        }
+        if (statusEl) { statusEl.innerHTML = '<span class="ok">' + msg.replace(/</g,'&lt;') + '</span> <div><a class="btn" style="display:inline-block;margin-top:.5rem" href="' + (body.preview_url || body.url) + '" target="_blank" rel="noopener">Open live site</a></div>'; statusEl.className = 'status'; }
+      } catch (err) {
+        if (statusEl) { statusEl.textContent = err instanceof Error ? err.message : 'Could not go live'; statusEl.className = 'status err'; }
+      }
     });
-    document.getElementById('copy-hint')?.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(hint);
-    });
+
     document.getElementById('logout')?.addEventListener('click', async () => {
       await fetch('/sso/logout', { method: 'POST', credentials: 'same-origin' });
       location.href = '/';
@@ -239,4 +455,28 @@ export function renderWorkspaceHtml(opts: {
   </script>
 </body>
 </html>`
+
+  if (!cloudflareOsConfigured) {
+    return `${shellHead}
+  <div class="empty">
+    <p class="pill warn">Agent desktop offline</p>
+    <h1 style="margin-top:.75rem">${projectLabel}</h1>
+    <p>${escapeHtml(
+      stripVendorBranding(
+        'Your session is linked. Start the agent execution runtime and set CLOUDFLARE_OS_URL (see scripts/dev-stack.sh).',
+      ),
+    )}</p>
+    <pre>${envBlock}</pre>
+    <p style="margin-top:1rem">
+      <a class="btn secondary" href="/sso/health">Status</a>
+    </p>
+  </div>
+  ${shellScript}`
+  }
+
+  return `${shellHead}
+  <div class="stage">
+    <iframe id="os-frame" title="Indobase OS" src="${escapeHtml(embedSrc)}" allow="clipboard-read; clipboard-write"></iframe>
+  </div>
+  ${shellScript}`
 }

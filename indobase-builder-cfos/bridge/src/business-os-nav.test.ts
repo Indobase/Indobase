@@ -1,0 +1,101 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import {
+  BUSINESS_OS_FINISH_IN_OS_PRINCIPLE,
+  BUSINESS_OS_NAV,
+  businessOsNavById,
+} from './business-os-nav.ts'
+import { renderLandingHtml, renderStartHtml, renderWorkspaceHtml } from './workspace-html.ts'
+import type { Session } from './auth.ts'
+
+describe('business-os-nav', () => {
+  it('keeps task catalog for agents/API (not rendered as fat rail chrome)', () => {
+    const ids = BUSINESS_OS_NAV.map((n) => n.id)
+    for (const need of [
+      'home',
+      'ai',
+      'website',
+      'brand',
+      'customers',
+      'commerce',
+      'launch',
+      'settings',
+    ]) {
+      assert.ok(ids.includes(need as (typeof ids)[number]), `missing ${need}`)
+    }
+    assert.equal(ids.includes('studio' as never), false)
+    assert.equal(ids.includes('design-app' as never), false)
+  })
+
+  it('Brand and Marketing force Design format in prompts', () => {
+    const brand = businessOsNavById('brand')
+    const marketing = businessOsNavById('marketing')
+    assert.match(brand?.prompt || '', /format\.design/)
+    assert.match(marketing?.prompt || '', /format\.design/)
+  })
+
+  it('launch catalog entry speaks go-live (substrate stays publish)', () => {
+    const launch = businessOsNavById('launch')
+    assert.equal(launch?.label, 'Launch Business')
+    assert.match(launch?.prompt || '', /go live/i)
+    assert.doesNotMatch(launch?.prompt || '', /publish|deploy|hosting/i)
+  })
+
+  it('states the finish-in-OS principle', () => {
+    assert.match(BUSINESS_OS_FINISH_IN_OS_PRINCIPLE, /without leaving Indobase OS/)
+  })
+})
+
+describe('core workspace chrome', () => {
+  it('landing is a simple start CTA (no achievement grid / Go Live marketing)', () => {
+    const html = renderLandingHtml()
+    assert.match(html, /Start building/)
+    assert.match(html, /Indobase/)
+    assert.doesNotMatch(html, /achievement-grid/)
+    assert.doesNotMatch(html, /What do you want to achieve today/)
+    assert.doesNotMatch(html, /Create a logo/)
+    assert.doesNotMatch(html, /Go Live/)
+    assert.doesNotMatch(html, /rail-nav/)
+  })
+
+  it('start page collects name, email, consent, and OTP verify step', () => {
+    const html = renderStartHtml()
+    assert.match(html, /id="name"/)
+    assert.match(html, /id="email"/)
+    assert.match(html, /id="dpdp-consent"/)
+    assert.match(html, /id="verify-form"/)
+    assert.match(html, /\/auth\/start/)
+    assert.match(html, /\/auth\/verify/)
+  })
+
+  it('workspace is iframe-first with Go Live (Indobase hosting only)', () => {
+    const session: Session = {
+      gotrueId: 'local-poc',
+      email: 'poc@indobase.in',
+      projectRef: 'poc',
+      orgSlug: 'local',
+      projectName: 'Local PoC',
+      studioUrl: 'https://studio.indobase.in',
+    }
+    const html = renderWorkspaceHtml({
+      session,
+      cloudflareOsConfigured: true,
+      osProxyPath: '/os/app/',
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+    })
+    assert.match(html, /id="os-frame"/)
+    assert.match(html, /Sign out/)
+    assert.match(html, /poc@indobase\.in/)
+    assert.match(html, /id="go-live"/)
+    assert.match(html, /Launch Business/)
+    assert.match(html, /\.indobase\.in/)
+    assert.match(html, /\/api\/os\/launch/)
+    assert.doesNotMatch(html, /aside class="rail"/)
+    assert.doesNotMatch(html, /rail-nav/)
+    assert.doesNotMatch(html, /Backend ready/)
+    assert.doesNotMatch(html, /achievement-grid/)
+    // Ban list is in agent rules, not sold as options in the Launch modal copy
+    assert.match(html, /No other hosts/)
+  })
+})

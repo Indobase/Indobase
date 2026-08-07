@@ -30,7 +30,7 @@ describe('@indobase/cloudflare-adapter', () => {
       'Open Cloudflare OS and install a Gadget from os.cloudflare.app with Workers AI'
     const clean = stripVendorBranding(raw)
     expect(hasVendorBranding(clean)).toBe(false)
-    expect(clean).toContain('Indobase Builder')
+    expect(clean).toContain('Indobase OS')
     expect(clean).toContain('an App')
     expect(clean).toContain('Indobase Agent')
     expect(clean).not.toMatch(/Cloudflare/i)
@@ -124,7 +124,7 @@ describe('@indobase/cloudflare-adapter', () => {
     expect(ctx.dataPlane?.url).toBe('https://proj_abc.indobase.in')
     expect(ctx.generation.projectRef).toBe('proj_abc')
     expect(hasVendorBranding(ctx.agentHint)).toBe(false)
-    expect(ctx.agentHint).toContain('Indobase Builder')
+    expect(ctx.agentHint).toContain('Indobase OS')
     expect(ctx.agentHint).toMatch(/Design/)
     expect(ctx.agentHint).toMatch(/format\.design/)
     expect(ctx.agentHint).toMatch(/ALWAYS/)
@@ -135,7 +135,7 @@ describe('@indobase/cloudflare-adapter', () => {
 
   it('createCloudflareOsAdapter exposes the Phase 1 surface', () => {
     const adapter = createCloudflareOsAdapter({ indobaseProxyPath: '/api/indobase/proxy/' })
-    expect(adapter.publicLabel('deploy')).toBe('Publish')
+    expect(adapter.publicLabel('deploy')).toBe('Launch Business')
     const ctx = adapter.sessionToAgentContext({
       email: 'a@b.c',
       projectRef: 'ref1',

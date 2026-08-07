@@ -4,7 +4,20 @@
 **Package:** [`packages/platform`](../packages/platform) (`@indobase/platform`)  
 **Rule:** Every PR either strengthens a canonical contract or removes product-specific coupling.
 
-Indobase is a **Business Operating System**. Products (Builder, Design, Marketing, CRM, …) and future clients (Nomos) are thin clients of seven contracts — not the other way around.
+Indobase is a **Business Operating System** — an **Agentic Business OS**.  
+The customer-facing application is **Indobase OS** (CFOS-native Builder shell).  
+Ecosystem services (Studio, Design app, CRM, Payments, Analytics, Email, …) are **engines** behind Capabilities — not separate front doors.
+
+**Binding product principle:** *Can a business owner complete this entire task without leaving Indobase OS?* If no, the feature is unfinished.
+
+**Commit (2026-08):** One customer shell — CFOS-native. Do not maintain classic Remix Builder and CFOS as peer products. Classic Builder is archive / code quarry only.
+
+```text
+Describe business → Plan → Generate documents → Launch → Operate → Grow
+```
+
+Everything imports this.
+Nothing bypasses it.
 
 ---
 
@@ -25,8 +38,11 @@ Identity · Workspace · Documents · Commands · Events · Capabilities · Exec
 ───────────────────────────────────────────────────────────────────────────────
                          packages/platform
 ───────────────────────────────────────────────────────────────────────────────
-  Builder · Design · Studio · Provisioner · Nomos · Agents
+  Indobase OS (CFOS-native) · engines (commerce, CRM, email, analytics, deploy…)
+  Platform API (/api/os/v1) + Ensurer — Studio UI deprecated for customers
 ```
+
+See **[INDOBASE-OS.md](./INDOBASE-OS.md)** for the OS-first constitution and lazy-provision policy.
 
 Product names (Payments, Analytics, CRM) are **adapters**, never kernel imports.  
 ABI capability id for checkout/portal is **`commerce`** — product UI may still say Indobase Payments.
@@ -59,11 +75,20 @@ ABI capability id for checkout/portal is **`commerce`** — product UI may still
 
 ## Allowed
 
-- Adapters behind Execution / Capabilities  
+- Adapters behind Execution / Capabilities (engines; users never open them for the happy path)  
 - Builder-local helpers that are not promoted to the ABI (e.g. deploy `INDOBASE_STUDIO_URL` outside `Platform.resolve`)  
-- Studio as Identity + Ensurer host  
+- Studio server hosts Platform API implementation — **Studio UI is not a customer destination**  
+- DesignDocument **engine** inside Indobase OS documents — **not** a separate Design app front door  
 
 ---
+
+## Agentic OS UX (binding)
+
+Customer navigation is **task-oriented** (Website, Brand, Customers, Commerce, Launch Business…), never a product chooser (Builder / Design / CRM / Analytics apps).
+
+Chat is the operating system. Documents (Website, Design, Invoice, Dashboard, …) open inside Indobase OS like Docs/Sheets/Slides. **Launch Business / Go Live** is the customer verb (`business.launch`); infrastructure stays behind substrate `execution.publish`. After Go Live, AI workers operate continuously. Production narrative kernels: see [INDOBASE-OS.md](./INDOBASE-OS.md) (six kernels). Studio UI is not a customer destination — absorb as headless control plane.
+
+Keep reusable engines (`DesignDocument`, commerce, CRM, …). Remove separate **applications** from the default journey.
 
 ## Status (Gen-1 leakage audit)
 

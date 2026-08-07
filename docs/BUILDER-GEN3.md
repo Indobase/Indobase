@@ -3,7 +3,7 @@
 **Status:** Accepted (Phase 1)  
 **Date:** 2026-08-06  
 **Package:** [`packages/cloudflare-adapter`](../packages/cloudflare-adapter) (`@indobase/cloudflare-adapter`)  
-**Companion:** [BUILDER-GEN3-STATUS.md](./BUILDER-GEN3-STATUS.md) · [PLATFORM.md](./PLATFORM.md) · [BUILDER-CFOS-POC.md](./BUILDER-CFOS-POC.md)
+**Companion:** [BUILDER-GEN3-STATUS.md](./BUILDER-GEN3-STATUS.md) · [PLATFORM.md](./PLATFORM.md) · [INDOBASE-OS.md](./INDOBASE-OS.md) · [BUILDER-CFOS-POC.md](./BUILDER-CFOS-POC.md)
 
 ---
 
@@ -111,5 +111,5 @@ Classic Builder (`indobase-builder`) stays production until Phase 2/3 cutover. S
 ## Consequences
 
 - New agent/runtime work goes through `@indobase/cloudflare-adapter` + `@indobase/platform`.
-- Studio launch (`builder-cfos-launch`) remains Indobase SSO; runtime switch is an Execution substrate choice, not a product fork.
+- Studio launch (`builder-cfos-launch`) remains for **existing accounts** (migration bridge); marketing entry is OS `/start` via Platform API — see [INDOBASE-OS.md](./INDOBASE-OS.md).
 - Phase 2+ backlog is tracked in [BUILDER-GEN3-STATUS.md](./BUILDER-GEN3-STATUS.md).

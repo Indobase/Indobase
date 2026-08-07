@@ -13,6 +13,7 @@ export * from './events'
 export * from './workspace'
 export * from './documents'
 export * from './execution'
+export * from './business'
 
 export * from './contracts/runtime'
 export * from './contracts/capability-contract'

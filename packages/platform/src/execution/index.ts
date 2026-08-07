@@ -140,3 +140,11 @@ export function toExecutionResult(
     health: outcome.health,
   }
 }
+
+export * from './DeploymentResult'
+export * from './DeploymentAdapter'
+export * from './ExecutionPipeline'
+export * from './PublishPreflight'
+export * from './PublishPorts'
+export * from './ExecutionOrchestrator'
+export * from './ExecutionPublisher'

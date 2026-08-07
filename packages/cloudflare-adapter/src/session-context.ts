@@ -84,15 +84,20 @@ export function sessionToAgentContext(
   const proxy = options.indobaseProxyPath ?? DEFAULT_PROXY
 
   const hintParts = [
-    'You are building inside Indobase Builder.',
-    `Project: ${session.projectName || session.projectRef} (${session.projectRef}).`,
+    'You are operating inside Indobase OS (Agentic Business OS).',
+    `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
     dataPlane
-      ? `Prefer same-origin Indobase proxy ${proxy}* with session cookies, or INDOBASE_URL + anon key from the Indobase panel.`
-      : 'No Indobase backend payload was provided in the handoff.',
+      ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs.`
+      : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',
+    'Go Live / Launch Business: POST /api/os/launch with { subdomain?, customDomain?, html? }. Indobase subdomain (*.indobase.in) or a domain they already own (DNS CNAME to Indobase).',
+    'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
+    'Add login / database / payments → capability.ensure later (Lane 2). Do not provision backend for a normal site launch.',
+    'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
     'Brand all customer-facing UI as Indobase only.',
     'Built-in formats: Docs (format.document), Sheets (format.spreadsheet), Slides (format.slides), Design (format.design).',
     DESIGN_FORMAT_ROUTING_RULES,
     'Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — do not treat the agent runtime as durable storage.',
+    'Finish every task inside Indobase OS without leaving.',
   ]
 
   return {

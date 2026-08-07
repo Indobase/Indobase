@@ -39,8 +39,17 @@ const FORMAT_HINTS = {
     'ALWAYS for logos, Instagram/LinkedIn/Facebook posts & stories, posters, flyers, banners, thumbnails, graphic design, creatives. NEVER Slides or HTML mocks. createGadget blueprintId format.design; then setPreset.',
 }
 
-const INSTANCE_INSTRUCTIONS = `# Indobase format routing (mandatory)
+const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
+## Go Live — Indobase hosting only
+When the operator says take live / launch / publish / go public:
+1. Call POST /api/os/launch with { title, subdomain?, customDomain?, html? or files? }.
+2. Default: Indobase subdomain (https://{subdomain}.indobase.in). Local PoC may return /live/{ref}/.
+3. Optional: customDomain for a domain they already own — return DNS CNAME to Indobase. Never move hosting off Indobase.
+4. NEVER mention third-party hosts or ask which company should host. Only Indobase subdomain or their own domain on Indobase.
+5. Tell them: Your business is now live + the URL.
+
+## Format routing
 ALWAYS use Design format (blueprintId format.design) for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, and any graphic/creative design request.
 NEVER use Slides (format.slides), Docs, Sheets, a random gadget, or a hand-written HTML mock for those intents — instantiate format.design with createGadget({ blueprintId: "format.design" }).
 After creating Design, call bootstrapFromPrompt(userMessage) or setPreset (logo | ig-post | story | poster) and setTitle; edit layers via executeCode RPC, do not rewrite client.js for content.
@@ -168,16 +177,15 @@ async function seedAdmin(admin) {
   }
 
   const existing = String(after.instanceInstructions || '')
-  if (!existing.includes('format.design') || !existing.includes('ALWAYS use Design')) {
+  if (!existing.includes('Go Live') || !existing.includes('Indobase hosting only')) {
     const next = existing.trim()
       ? `${existing.trim()}\n\n${INSTANCE_INSTRUCTIONS}`
       : INSTANCE_INSTRUCTIONS
     await admin.setInstanceInstructions(next)
-    console.log('instanceInstructions ← Design routing rules')
+    console.log('instanceInstructions ← Go Live + Design routing rules')
   } else {
-    // Refresh the Indobase block in place when already present.
     await admin.setInstanceInstructions(INSTANCE_INSTRUCTIONS)
-    console.log('instanceInstructions refreshed (Design routing)')
+    console.log('instanceInstructions refreshed (Go Live + Design)')
   }
 
   const final = await admin.getSettings()

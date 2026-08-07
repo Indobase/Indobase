@@ -1,10 +1,11 @@
 /**
- * Indobase Builder Gen 3 PoC — Studio SSO bridge + agent execution runtime proxy.
+ * Indobase OS (Agentic Business OS) — Gen 3 bridge.
  *
- * Studio → `/sso/launch#token=…` → session → workspace chrome embeds `/os/app/*`
- * (reverse-proxied CF OS execution substrate). Optional `/api/indobase/proxy/*` hits the linked project.
+ * Day-one entry: `/` + `/start` via Platform API (OS workspace, no provision).
+ * Session → workspace chrome embeds `/os/app/*` (agent execution runtime proxy).
+ * Optional `/api/indobase/proxy/*` hits the linked project.
  *
- * Session → Generation Context mapping uses `@indobase/cloudflare-adapter` (see docs/BUILDER-GEN3.md).
+ * Session → Generation Context via `@indobase/cloudflare-adapter` (docs/BUILDER-GEN3.md).
  */
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
@@ -26,12 +27,22 @@ import { buildAgentSessionContext } from './indobase-adapter.js'
 import { proxyIndobaseApi } from './indobase-proxy.js'
 import { proxyCloudflareOs, resolveCloudflareOsBase } from './os-proxy.js'
 import { createRuntimeProxyServer } from './runtime-proxy-server.js'
-import { renderLandingHtml, renderWorkspaceHtml } from './workspace-html.js'
+import { platformDeployPublish, platformOtpStart, platformOtpVerify, platformRuntimeEnsure } from './platform-api-client.js'
+import {
+  launchStaticBusiness,
+  readLiveFile,
+  resolveWorkspaceRefForHost,
+  getLaunchStatus,
+  LAUNCH_AGENT_RULES,
+  sanitizeSubdomain,
+} from './static-launch.js'
+import { renderLandingHtml, renderStartHtml, renderWorkspaceHtml } from './workspace-html.js'
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
 function isBridgeOwnedApiPath(pathname: string): boolean {
   if (pathname === '/api/session') return true
   if (pathname === '/api/indobase' || pathname.startsWith('/api/indobase/')) return true
+  if (pathname === '/api/os' || pathname.startsWith('/api/os/')) return true
   return false
 }
 
@@ -74,7 +85,7 @@ function getSession(c: Context): Session | null {
 function requireSession(c: Context): Session | Response {
   const session = getSession(c)
   if (!session) {
-    return c.json({ message: 'Unauthorized — open Builder from Studio' }, 401)
+    return c.json({ message: 'Unauthorized — Start building or open your Indobase account link' }, 401)
   }
   return session
 }
@@ -125,7 +136,7 @@ app.get('/sso/launch', (c) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Opening Indobase Builder…</title>
+  <title>Opening Indobase…</title>
   <style>
     body { font-family: ui-sans-serif, system-ui, sans-serif; background:#0b1220; color:#e8eef8;
       display:grid; place-items:center; min-height:100vh; margin:0; }
@@ -133,7 +144,7 @@ app.get('/sso/launch', (c) => {
   </style>
 </head>
 <body>
-  <p id="status">Signing you into Builder…</p>
+  <p id="status">Opening Indobase OS…</p>
   <script>
     (async () => {
       const status = document.getElementById('status');
@@ -142,7 +153,7 @@ app.get('/sso/launch', (c) => {
       const qs = new URLSearchParams(location.search);
       const next = qs.get('next') || '/';
       if (!token) {
-        status.textContent = 'Missing handoff token. Open Builder from Studio.';
+        status.textContent = 'Missing handoff token. Use Start building or your Indobase account link.';
         return;
       }
       try {
@@ -188,7 +199,7 @@ app.post('/sso/exchange', async (c) => {
     return c.json(
       {
         message:
-          'Invalid or expired Studio handoff token (check BUILDER_CFOS_HANDOFF_SECRET matches Studio)',
+          'Invalid or expired account handoff token (check BUILDER_CFOS_HANDOFF_SECRET matches the issuer)',
       },
       401
     )
@@ -207,6 +218,279 @@ app.post('/sso/exchange', async (c) => {
 app.post('/sso/logout', (c) => {
   c.header('Set-Cookie', clearSessionCookie())
   return c.json({ ok: true })
+})
+
+/**
+ * Start building — send email OTP via Platform API (no data-plane provision).
+ */
+app.post('/auth/start', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const name = body && typeof body.name === 'string' ? body.name.trim() : ''
+  const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const dpdpConsent = Boolean(body && body.dpdpConsent === true)
+  if (!name || !email || !email.includes('@')) {
+    return c.json({ message: 'name and valid email required' }, 400)
+  }
+  if (!dpdpConsent) {
+    return c.json(
+      {
+        message:
+          'Accept the Privacy Policy and Terms of Service to continue (DPDP consent required).',
+      },
+      400,
+    )
+  }
+
+  const result = await platformOtpStart({ name, email, dpdpConsent })
+  if (!result.ok) {
+    return c.json({ message: result.message }, result.status >= 400 ? result.status : 502)
+  }
+  return c.json({ ok: true, email: result.email, next: '/start?step=verify' })
+})
+
+/**
+ * Verify OTP — create OS workspace (lazy backend), establish bridge session cookie.
+ */
+app.post('/auth/verify', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const name = body && typeof body.name === 'string' ? body.name.trim() : ''
+  const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const token = body && typeof body.token === 'string' ? body.token.trim() : ''
+  if (!name || !email || !email.includes('@') || !token) {
+    return c.json({ message: 'name, email, and verification code required' }, 400)
+  }
+
+  const result = await platformOtpVerify({ name, email, token })
+  if (!result.ok) {
+    return c.json({ message: result.message }, result.status >= 400 ? result.status : 502)
+  }
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch (err) {
+    return c.json(
+      { message: err instanceof Error ? err.message : 'Handoff secret not configured' },
+      503,
+    )
+  }
+
+  const ws = result.session
+  const session: Session = {
+    gotrueId: ws.gotrue_id,
+    email: ws.email,
+    projectRef: ws.workspace_ref,
+    orgSlug: ws.organization_slug,
+    projectName: ws.workspace_name,
+    studioUrl: 'https://studio.indobase.in',
+    backend: ws.backend ?? undefined,
+  }
+  const sessionToken = createSessionToken(session, secret)
+  c.header('Set-Cookie', sessionCookie(sessionToken))
+  return c.json({
+    ok: true,
+    project_ref: session.projectRef,
+    email: session.email,
+    provision_state: ws.provision_state,
+    next: '/',
+  })
+})
+
+/** Lazy Ensurer proxy — capability.ensure via Platform API. */
+app.post('/api/os/runtime/ensure', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = await c.req.json().catch(() => ({}))
+  const capability =
+    body && typeof body.capability === 'string' ? body.capability.trim() : 'auth'
+  const result = await platformRuntimeEnsure({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+    capability,
+  })
+  if (result.backend && result.provision_state === 'ready') {
+    let secret: string
+    try {
+      secret = resolveHandoffSecret()
+      const updated: Session = { ...sessionOrErr, backend: result.backend }
+      c.header('Set-Cookie', sessionCookie(createSessionToken(updated, secret)))
+    } catch {
+      // session refresh best-effort
+    }
+  }
+  return c.json(result, result.ok ? 200 : 502)
+})
+
+/** Go Live — Static Launch lane (default). No Studio / provisioner / tenant stack. */
+async function handleStaticGoLive(c: Context, session: Session) {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    reason?: string
+    html?: string
+    files?: Record<string, string>
+    title?: string
+    subdomain?: string
+    customDomain?: string
+    custom_domain?: string
+  }
+  const customDomain =
+    typeof body.customDomain === 'string'
+      ? body.customDomain
+      : typeof body.custom_domain === 'string'
+        ? body.custom_domain
+        : undefined
+  const result = await launchStaticBusiness({
+    workspaceRef: session.projectRef,
+    title: body.title || session.projectName || session.projectRef,
+    html: typeof body.html === 'string' ? body.html : undefined,
+    files: body.files && typeof body.files === 'object' ? body.files : undefined,
+    subdomain: typeof body.subdomain === 'string' ? body.subdomain : undefined,
+    customDomain,
+  })
+  return c.json(
+    {
+      ok: result.ok,
+      url: result.url,
+      preview_url: result.previewUrl,
+      status: result.status,
+      message: result.message,
+      lane: result.lane,
+      subdomain: result.subdomain,
+      custom_domain: result.customDomain,
+      dns: result.dns,
+      artifact_ref: result.artifactRef,
+    },
+    result.ok ? 200 : 502,
+  )
+}
+
+/**
+ * Go Live / Launch Business — ADR 0005 Static Launch (default).
+ * Set LAUNCH_USE_PLATFORM=1 only to force legacy Studio publish path.
+ */
+app.post('/api/os/deploy/publish', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+
+  if (process.env.LAUNCH_USE_PLATFORM === '1') {
+    const body = await c.req.json().catch(() => ({}))
+    const reason = body && typeof body.reason === 'string' ? body.reason : 'os_launch'
+    const result = await platformDeployPublish({
+      gotrueId: sessionOrErr.gotrueId,
+      email: sessionOrErr.email,
+      workspaceRef: sessionOrErr.projectRef,
+      reason,
+    })
+    return c.json(result, result.ok ? 200 : 502)
+  }
+
+  return handleStaticGoLive(c, sessionOrErr)
+})
+
+/** Alias — customer/agent verb business.launch */
+app.post('/api/os/launch', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleStaticGoLive(c, sessionOrErr)
+})
+
+/** Attach a domain the customer already owns (CNAME → Indobase). */
+app.post('/api/os/domains/attach', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as { domain?: string; customDomain?: string }
+  const domain = typeof body.domain === 'string' ? body.domain : body.customDomain
+  if (!domain || typeof domain !== 'string') {
+    return c.json({ ok: false, message: 'Provide the domain you already own.' }, 400)
+  }
+  const status = await getLaunchStatus(sessionOrErr.projectRef)
+  const result = await launchStaticBusiness({
+    workspaceRef: sessionOrErr.projectRef,
+    title: sessionOrErr.projectName || sessionOrErr.projectRef,
+    subdomain: status.subdomain || sanitizeSubdomain(sessionOrErr.projectRef),
+    customDomain: domain,
+  })
+  return c.json(
+    {
+      ok: result.ok,
+      url: result.url,
+      preview_url: result.previewUrl,
+      status: result.status,
+      message: result.message,
+      subdomain: result.subdomain,
+      custom_domain: result.customDomain,
+      dns: result.dns,
+    },
+    result.ok ? 200 : 502,
+  )
+})
+
+app.get('/api/os/launch/status', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const status = await getLaunchStatus(sessionOrErr.projectRef)
+  return c.json({ ok: true, ...status, launch_rules: LAUNCH_AGENT_RULES })
+})
+
+/** Host-based serving: custom domain or *.indobase.in → static site */
+app.use('*', async (c, next) => {
+  const host = (c.req.header('host') || '').split(':')[0].toLowerCase()
+  if (!host || host === '127.0.0.1' || host === 'localhost') {
+    return next()
+  }
+  // Skip API / OS chrome hosts
+  if (host.startsWith('builder.') || host.startsWith('studio.') || host.startsWith('api.')) {
+    return next()
+  }
+  const pathName = new URL(c.req.url).pathname
+  if (
+    pathName.startsWith('/api/') ||
+    pathName.startsWith('/os/') ||
+    pathName.startsWith('/sso/') ||
+    pathName.startsWith('/auth/') ||
+    pathName.startsWith('/assets/')
+  ) {
+    return next()
+  }
+  const ref = await resolveWorkspaceRefForHost(host)
+  if (!ref) return next()
+  const rel = pathName === '/' ? 'index.html' : pathName.replace(/^\/+/, '')
+  const file = await readLiveFile(ref, rel)
+  if (!file) return c.text('Not found', 404)
+  return new Response(new Uint8Array(file.body), {
+    status: 200,
+    headers: {
+      'Content-Type': file.contentType,
+      'X-Indobase-Launch-Lane': 'static',
+      'X-Indobase-Workspace': ref,
+    },
+  })
+})
+
+/** Public static sites from Static Launch lane */
+app.get('/live/:ref/*', async (c) => {
+  const ref = c.req.param('ref')
+  const wildcard = (c.req.param('*') || '').replace(/^\/+/, '')
+  const file = await readLiveFile(ref, wildcard || 'index.html')
+  if (!file) return c.text('Not found', 404)
+  return new Response(new Uint8Array(file.body), {
+    status: 200,
+    headers: {
+      'Content-Type': file.contentType,
+      'Cache-Control': 'public, max-age=60',
+      'X-Indobase-Launch-Lane': 'static',
+    },
+  })
+})
+
+app.get('/live/:ref', (c) => c.redirect(`/live/${c.req.param('ref')}/`))
+app.get('/live/:ref/', async (c) => {
+  const file = await readLiveFile(c.req.param('ref'), 'index.html')
+  if (!file) return c.text('Not found', 404)
+  return new Response(new Uint8Array(file.body), {
+    status: 200,
+    headers: { 'Content-Type': file.contentType, 'X-Indobase-Launch-Lane': 'static' },
+  })
 })
 
 app.get('/api/session', (c) => {
@@ -239,7 +523,13 @@ app.get('/api/session', (c) => {
     os_proxy_path: `${OS_PREFIX}/`,
     indobase_proxy_path: '/api/indobase/proxy/',
     generation_context: agent.generation,
-    agent_hint: agent.agentHint,
+    agent_hint: `${agent.agentHint}\n\n${LAUNCH_AGENT_RULES}`,
+    launch: {
+      api: '/api/os/launch',
+      domains_attach: '/api/os/domains/attach',
+      status: '/api/os/launch/status',
+      options: ['indobase_subdomain', 'custom_domain'],
+    },
   })
 })
 
@@ -278,6 +568,13 @@ app.all('/api/*', async (c) => {
 app.all(`${OS_PREFIX}/*`, (c) => requireRuntimeProxy(c, OS_PREFIX))
 
 app.get(`${OS_PREFIX}`, (c) => c.redirect(`${OS_PREFIX}/`))
+
+/** Start building entry (marketing → /start). Email OTP lands here next. */
+app.get('/start', (c) => {
+  const session = getSession(c)
+  if (session) return c.redirect('/')
+  return c.html(renderStartHtml())
+})
 
 app.get('/', (c) => {
   const session = getSession(c)

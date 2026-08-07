@@ -19,7 +19,11 @@
     "incremental": true,
     "paths": {
       "@/*": ["./*"],
-      "@ui/*": ["./../../packages/ui/src/*"] // handle ui package paths
+      "@ui/*": ["./../../packages/ui/src/*"], // handle ui package paths
+      "@indobase/platform": ["./../../packages/platform/src/index.ts"],
+      "@indobase/platform/*": ["./../../packages/platform/src/*"],
+      "@indobase/agent-runtime": ["./../../packages/agent-runtime/src/index.ts"],
+      "@indobase/agent-runtime/*": ["./../../packages/agent-runtime/src/*"]
     },
     "useDefineForClassFields": true,
     "plugins": [

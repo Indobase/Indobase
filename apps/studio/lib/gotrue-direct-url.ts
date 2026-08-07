@@ -34,3 +34,8 @@ export function gotrueVerifyUrl(base: string): string {
   const normalized = base.replace(/\/$/, '')
   return normalized.endsWith('/auth/v1') ? `${normalized}/verify` : `${normalized}/verify`
 }
+
+export function gotrueOtpUrl(base: string): string {
+  const normalized = base.replace(/\/$/, '')
+  return normalized.endsWith('/auth/v1') ? `${normalized}/otp` : `${normalized}/otp`
+}
