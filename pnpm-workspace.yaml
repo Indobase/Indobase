@@ -5,6 +5,7 @@ packages:
   - "!packages/platform"
   - "!packages/cloudflare-adapter"
   - "!packages/platform-api"
+  - "!packages/agent-runtime"
   - "!packages/indobase-js"
   - "!packages/indobase-auth-js"
   - "!packages/indobase-functions-js"
