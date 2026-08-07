@@ -79,8 +79,12 @@ SHA="${SHA}"
 REPLACE_CLASSIC="${REPLACE_CLASSIC}"
 CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL_VALUE}"
 
-echo "Pulling \${IMAGE}…"
-docker pull "\${IMAGE}"
+if docker image inspect "\${IMAGE}" >/dev/null 2>&1; then
+  echo "Using local image \${IMAGE} (skip registry pull)"
+else
+  echo "Pulling \${IMAGE}…"
+  docker pull "\${IMAGE}"
+fi
 
 ENV_FILE="/opt/indobase-builder-cfos.runtime.env"
 STUDIO_ENV="/opt/indobase/studio-swarm.env"
