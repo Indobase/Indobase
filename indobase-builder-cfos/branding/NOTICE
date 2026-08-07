@@ -1,0 +1,7 @@
+Indobase Builder Gen 3 agent runtime UI
+=======================================
+
+This tree includes a local clone of Cloudflare OS (Apache-2.0) under
+`upstream/cloudflare-os` for PoC integration. Upstream copyright and LICENSE
+remain in that directory. Customer-facing UI strings and assets are Indobase-
+branded; legal attribution is preserved in LICENSE/NOTICE files.

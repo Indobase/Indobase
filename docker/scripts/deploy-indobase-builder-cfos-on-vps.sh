@@ -23,6 +23,10 @@ STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
 BUILD_LOCALLY="${BUILD_CFOS_IMAGE:-1}"
 REPLACE_CLASSIC="${REPLACE_CLASSIC_BUILDER:-0}"
 CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL:-}"
+# Default internal runtime URL on Vyom .249 (docker_gwbridge → host :8787)
+if [[ -z "$CLOUDFLARE_OS_URL_VALUE" && "$REPLACE_CLASSIC" == "1" ]]; then
+  CLOUDFLARE_OS_URL_VALUE="http://172.18.0.1:8787"
+fi
 
 echo "==> Deploy Builder CFOS bridge ${IMAGE} to ${SSH_HOST}…"
 
@@ -114,9 +118,11 @@ if [[ -f "\${STUDIO_ENV}" ]]; then
   fi
 fi
 
+# Reach host-bound CF OS runtime (:8787) from Swarm tasks.
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "Updating swarm service \${SERVICE_NAME} (image + managed env)…"
   swarm_apply_env_file "\${SERVICE_NAME}" "\${ENV_FILE}" --image "\${IMAGE}"
+  docker service update --host-add "host.docker.internal:host-gateway" "\${SERVICE_NAME}" >/dev/null || true
 else
   echo "Creating swarm service \${SERVICE_NAME}…"
   docker service create \
@@ -124,7 +130,15 @@ else
     --network dokploy-network \
     --env-file "\${ENV_FILE}" \
     --limit-memory 512m \
+    --host-add "host.docker.internal:host-gateway" \
     "\${IMAGE}"
+fi
+
+if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+  if [[ -z "\${CLOUDFLARE_OS_URL_VALUE}" ]] && ! grep -q '^CLOUDFLARE_OS_URL=.' "\${ENV_FILE}" 2>/dev/null; then
+    echo "::error::REPLACE_CLASSIC_BUILDER=1 requires CLOUDFLARE_OS_URL (e.g. http://host.docker.internal:8787)"
+    exit 1
+  fi
 fi
 
 STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}")"

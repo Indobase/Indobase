@@ -83,13 +83,11 @@ export function renderLandingHtml(): string {
 <body>
   <header class="ibar">
     <div class="brand">Indobase <span>Builder</span></div>
-    <div class="meta">PoC · Indobase Builder Gen 3</div>
   </header>
   <div class="empty">
     <h1>Open Builder from Studio</h1>
-    <p>Studio SSO only. Use <strong>Open Builder</strong> in Studio (with <code>BUILDER_USE_CFOS=1</code>) to link your project and enter the agent workspace.</p>
-    <p><a class="btn" href="https://studio.indobase.in">Go to Studio</a>
-       <a class="btn secondary" href="/sso/health">Health</a></p>
+    <p>Sign in to Studio and use <strong>Open Builder</strong> on your project. That links your Indobase backend and opens the agent workspace.</p>
+    <p><a class="btn" href="https://studio.indobase.in">Go to Studio</a></p>
   </div>
 </body>
 </html>`
@@ -110,9 +108,14 @@ export function renderWorkspaceHtml(opts: {
   const { session, cloudflareOsConfigured } = opts
   const osProxyPath = opts.osProxyPath || '/os/app/'
   const runtimeUrl = (opts.agentRuntimeUrl || '').trim().replace(/\/+$/, '')
-  // Direct origin embed (assets + /api WebSocket work). Fall back to proxy path.
-  const embedSrc = runtimeUrl ? `${runtimeUrl}/` : osProxyPath
-  const popOutHref = runtimeUrl ? `${runtimeUrl}/` : osProxyPath
+  // Loopback: embed the runtime origin directly (local `dev-stack.sh`).
+  // Non-loopback / unset: same-origin `/os/app/` so CLOUDFLARE_OS_URL can be
+  // internal (host.docker.internal / Swarm DNS). Bridge proxies `/assets/*` + `/api` WS.
+  const isLoopback =
+    Boolean(runtimeUrl) &&
+    /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(runtimeUrl)
+  const embedSrc = isLoopback && runtimeUrl ? `${runtimeUrl}/` : osProxyPath
+  const popOutHref = isLoopback && runtimeUrl ? `${runtimeUrl}/` : osProxyPath
   const projectLabel = escapeHtml(session.projectName || session.projectRef)
   const email = escapeHtml(session.email)
   const hasBackend = Boolean(session.backend?.anon_key && session.backend?.api_url)

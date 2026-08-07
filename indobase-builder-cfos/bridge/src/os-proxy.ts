@@ -2,9 +2,9 @@
  * Reverse-proxy Cloudflare OS through the Indobase bridge.
  * Strips framing blockers so we can embed CF OS same-origin under /os/app/*.
  *
- * Note: CF OS builds use root-absolute `/assets/*` and a WebSocket at `/api`.
- * The workspace chrome prefers embedding CLOUDFLARE_OS_URL directly; this proxy
- * still rewrites HTML when `/os/app/*` is used (Pop out / debugging).
+ * CF OS builds use root-absolute `/assets/*` and a WebSocket at `/api`.
+ * Production embeds `/os/app/` and also proxies those root paths (session-gated)
+ * so CLOUDFLARE_OS_URL can stay internal (not browser-reachable).
  */
 import type { Context } from 'hono'
 

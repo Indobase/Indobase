@@ -6,7 +6,6 @@
  *
  * Session → Generation Context mapping uses `@indobase/cloudflare-adapter` (see docs/BUILDER-GEN3.md).
  */
-import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
 
@@ -26,7 +25,15 @@ import {
 import { buildAgentSessionContext } from './indobase-adapter.js'
 import { proxyIndobaseApi } from './indobase-proxy.js'
 import { proxyCloudflareOs, resolveCloudflareOsBase } from './os-proxy.js'
+import { createRuntimeProxyServer } from './runtime-proxy-server.js'
 import { renderLandingHtml, renderWorkspaceHtml } from './workspace-html.js'
+
+/** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
+function isBridgeOwnedApiPath(pathname: string): boolean {
+  if (pathname === '/api/session') return true
+  if (pathname === '/api/indobase' || pathname.startsWith('/api/indobase/')) return true
+  return false
+}
 
 const PORT = Number(process.env.PORT || process.env.BUILDER_CFOS_PORT || 8791)
 const OS_PREFIX = '/os/app'
@@ -242,7 +249,7 @@ app.all('/api/indobase/proxy/*', async (c) => {
   return proxyIndobaseApi(c, sessionOrErr, { stripPrefix: '/api/indobase/proxy' })
 })
 
-app.all(`${OS_PREFIX}/*`, async (c) => {
+async function requireRuntimeProxy(c: Context, stripPrefix: string) {
   const sessionOrErr = requireSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const upstream = resolveCloudflareOsBase()
@@ -254,8 +261,21 @@ app.all(`${OS_PREFIX}/*`, async (c) => {
       503
     )
   }
-  return proxyCloudflareOs(c, { upstreamBase: upstream, stripPrefix: OS_PREFIX })
+  return proxyCloudflareOs(c, { upstreamBase: upstream, stripPrefix })
+}
+
+// Root-absolute CF OS static assets (Vite build emits `/assets/...`).
+app.all('/assets/*', (c) => requireRuntimeProxy(c, ''))
+
+// Other CF OS HTTP APIs (`/api/client-errors`, `/api/site-logo`, …).
+// Exact `/api` WebSocket is handled by createRuntimeProxyServer upgrade hook.
+app.all('/api/*', async (c) => {
+  const pathname = new URL(c.req.url).pathname
+  if (isBridgeOwnedApiPath(pathname)) return c.notFound()
+  return requireRuntimeProxy(c, '')
 })
+
+app.all(`${OS_PREFIX}/*`, (c) => requireRuntimeProxy(c, OS_PREFIX))
 
 app.get(`${OS_PREFIX}`, (c) => c.redirect(`${OS_PREFIX}/`))
 
@@ -292,4 +312,4 @@ console.log(
   `[builder-cfos] listening on :${PORT} aud=${AUDIENCE} cfos=${upstream || '(unset)'} proxy=${OS_PREFIX}/`
 )
 
-serve({ fetch: app.fetch, port: PORT })
+createRuntimeProxyServer(app, PORT)

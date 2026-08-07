@@ -20,4 +20,9 @@ describe('os-proxy', () => {
     assert.match(out, /href="\/os\/app\/favicon\.svg"/)
     assert.match(out, /href="\/os\/app\/keep"/)
   })
+
+  it('leaves empty stripPrefix unchanged (root asset proxy)', () => {
+    const html = '<script src="/assets/index.js"></script>'
+    assert.equal(rewriteHtmlForProxyPrefix(html, ''), html)
+  })
 })
