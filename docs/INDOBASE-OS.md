@@ -3,7 +3,7 @@
 **Status:** Binding (Phase 1)  
 **Date:** 2026-08-07  
 **Kernel:** [`packages/platform`](../packages/platform) · **Shell:** [`indobase-builder-cfos`](../indobase-builder-cfos)  
-**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md)
+**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [CAPABILITIES.md](./CAPABILITIES.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md)
 
 ---
 
@@ -106,20 +106,41 @@ Those are **adapters**, not customer products.
 ```text
 business.launch()
  ├─ Static Launch (DEFAULT — ~95%)  → DeploymentAdapter → live URL in ~30–90s
- └─ Capability Launch (on demand)   → capability.ensure → Backend Adapter
+ └─ Capability Launch (on demand)   → Capability Orchestrator → Provider Adapters
 ```
 
-See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md). Static Go Live does **not** require Studio or a tenant BaaS stack.
+See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md). Static Go Live does **not** require a tenant BaaS stack.
 
 ---
 
-## Studio: absorb as headless control plane (optional Lane 2)
+## Capabilities: enable, don’t connect (binding)
 
-**Caution (binding):** Studio **UI** is not a customer product. Identity/billing may live in a small Identity service. Studio/`saas.*`/provisioner are **Capability** backends when needed — never on the default Static Launch path.
+**External implementation → fine. External product experience → not fine.**
 
-Do not route new customer journeys through Studio chrome. Do not market Studio as the OS.
+```text
+User: "Add user login"        → ✓ Login enabled
+User: "Add a customer database" → ✓ Customer database created
+User: "Add payments"          → ✓ Payments are live
+User: "Launch my business"    → ✓ Your business is live
+```
 
-Decision history: [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md).
+Never in customer chrome, agent copy, or Enable flows:
+
+- Connect Neon / Coolify / Stripe / Postgres / “Supabase” / Docker / Kubernetes
+
+Architecture: Chat → Planner → **Capability Orchestrator** → Internal Capability API → **hidden** Auth/DB/Deploy/Payments adapters. See [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md).
+
+Customer language: **Customer Login**, **Business Data**, **File Storage**, **Payments**, **Launch** — not provider names. Status UI is Indobase-shaped (Enabled / Healthy / region label). Compliance questions answer in Indobase terms first; provider IDs only in advanced/support contexts.
+
+---
+
+## Control plane: OS services (not “delete Studio” as the goal)
+
+**Objective:** split the control plane into small OS services — Identity, Workspace (Businesses), Launch, Capability Engine, Agent Runtime, **Operator Runtime** — behind stable interfaces. Adapters underneath are swappable.
+
+Studio UI is not a customer destination. Legacy Studio/`saas.*`/provisioner may remain **one adapter** until each responsibility has a proven replacement; migrate and retire incrementally. Do not market Studio or classic Builder as the product.
+
+Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/0005-two-lane-launch.md) · [adr/0006](./adr/0006-capability-orchestrator.md).
 
 ---
 
@@ -128,17 +149,14 @@ Decision history: [adr/0004-business-launch.md](./adr/0004-business-launch.md) �
 ### Create immediately (lightweight)
 
 - Identity (email OTP)
-- OS workspace record
+- OS workspace / **Business** record
 - Native documents / files in agent runtime
 
-### Provision only when needed
+### Enable only when needed (Capability Orchestrator)
 
-- PostgreSQL tenant stack
-- Auth server (GoTrue)
-- Object storage
-- Realtime · Functions · Payments · Analytics
+- Customer Login · Business Data · File Storage · Payments · Email · Analytics · …
 
-Example: user builds a landing page → **no backend**. User says “Add login” → `capability.ensure('auth')` → `execution.provision` → backend appears.
+Example: landing page → **no backend**. User says “Add login” → Orchestrator `ensure(auth)` → Auth Adapter → **Login enabled** (provider never named).
 
 ---
 

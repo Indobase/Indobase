@@ -25,6 +25,7 @@ export * from './capabilities/commands'
 export * from './capabilities/resolver'
 export * from './capabilities/generation-context'
 export * from './capabilities/register-gen1'
+export * from './capabilities/orchestrator'
 export { authCapability } from './capabilities/definitions/auth'
 
 export * from './adapters/registry'

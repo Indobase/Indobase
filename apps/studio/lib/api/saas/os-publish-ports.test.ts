@@ -447,7 +447,11 @@ describe('os-publish-ports', () => {
     vi.mocked(ensureOsCapability).mockResolvedValue({
       ok: true,
       capability: 'auth',
+      capabilityId: 'auth',
+      customer_label: 'Customer Login',
+      status: 'enabled',
       provision_state: 'ready',
+      message: 'Login enabled',
     })
     const port = createStudioCapabilityEnsurePort({ claims })
     const result = await port.ensureCapabilities({

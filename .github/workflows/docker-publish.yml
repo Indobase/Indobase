@@ -24,9 +24,6 @@ env:
   DOCKERHUB_PROVISIONER_REPO: roshanraghavander/ind-repo-provisioner
   DOCKERHUB_BUILDER_REPO: roshanraghavander/indobase-builder
   DOCKERHUB_WEBSITE_REPO: roshanraghavander/indobase-website
-  DOCKERHUB_EMAIL_REPO: roshanraghavander/indobase-email
-  DOCKERHUB_SOCIAL_REPO: roshanraghavander/indobase-social
-  DOCKERHUB_VIDEO_REPO: roshanraghavander/indobase-video
   SKIP_ASSET_UPLOAD: "1"
   NEXT_PUBLIC_INDOBASE_SAAS: "true"
   NEXT_PUBLIC_GOTRUE_URL: "https://api.indobase.in/auth/v1"
@@ -190,44 +187,6 @@ jobs:
           cache-from: type=gha,scope=indobase-website-v1
           cache-to: type=gha,mode=max,scope=indobase-website-v1
 
-      - name: Free runner disk before Email image
-        run: |
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h /
-
-      - name: Build and push Indobase Email (linux/amd64)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./indobase-email
-          file: ./indobase-email/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_EMAIL_REPO }}:latest
-            ${{ env.DOCKERHUB_EMAIL_REPO }}:${{ github.sha }}
-          cache-from: type=gha,scope=indobase-email-v1
-          cache-to: type=gha,mode=max,scope=indobase-email-v1
-
-      - name: Free runner disk before Social image
-        run: |
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h /
-
-      - name: Build and push Indobase Social (linux/amd64)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./indobase-social
-          file: ./indobase-social/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_SOCIAL_REPO }}:latest
-            ${{ env.DOCKERHUB_SOCIAL_REPO }}:${{ github.sha }}
-          cache-from: type=gha,scope=indobase-social-v1
-          cache-to: type=gha,mode=max,scope=indobase-social-v1
-
       - name: Verify images on Docker Hub
         run: |
           docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:${{ github.sha }}"
@@ -238,10 +197,6 @@ jobs:
           docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_REPO }}:latest"
           docker buildx imagetools inspect "${{ env.DOCKERHUB_WEBSITE_REPO }}:${{ github.sha }}"
           docker buildx imagetools inspect "${{ env.DOCKERHUB_WEBSITE_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_EMAIL_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_EMAIL_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_SOCIAL_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_SOCIAL_REPO }}:latest"
 
       - name: Build summary
         run: |
@@ -251,9 +206,7 @@ jobs:
           echo "- **Provisioner:** \`${{ env.DOCKERHUB_PROVISIONER_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Builder:** \`${{ env.DOCKERHUB_BUILDER_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Website:** \`${{ env.DOCKERHUB_WEBSITE_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Email:** \`${{ env.DOCKERHUB_EMAIL_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Social:** \`${{ env.DOCKERHUB_SOCIAL_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Video:** see workflow \`docker-publish-video.yml\` (\`${{ env.DOCKERHUB_VIDEO_REPO }}:${{ github.sha }}\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **OS note:** Email/Social/Video product images removed from this workflow (Agentic OS / CFOS)."
 
   # Manual rollout only: never deploy on push. Run workflow_dispatch with deploy=true.
   # Skipped steps (missing secrets) exit 0; webhook failures only warn. Smoke test is best-effort.

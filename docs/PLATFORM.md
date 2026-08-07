@@ -86,7 +86,7 @@ ABI capability id for checkout/portal is **`commerce`** — product UI may still
 
 Customer navigation is **task-oriented** (Website, Brand, Customers, Commerce, Launch Business…), never a product chooser (Builder / Design / CRM / Analytics apps).
 
-Chat is the operating system. Documents (Website, Design, Invoice, Dashboard, …) open inside Indobase OS like Docs/Sheets/Slides. **Launch Business / Go Live** is the customer verb (`business.launch`); infrastructure stays behind substrate `execution.publish`. After Go Live, AI workers operate continuously. Production narrative kernels: see [INDOBASE-OS.md](./INDOBASE-OS.md) (six kernels). Studio UI is not a customer destination — absorb as headless control plane.
+Chat is the operating system. Documents (Website, Design, Invoice, Dashboard, …) open inside Indobase OS like Docs/Sheets/Slides. **Launch Business / Go Live** is the customer verb (`business.launch`); infrastructure stays behind substrate `execution.publish`. **Enable** (login, business data, payments) goes through the Capability Orchestrator — never “connect” a vendor ([adr/0006](./adr/0006-capability-orchestrator.md)). After Go Live, AI workers operate continuously. Production narrative kernels: see [INDOBASE-OS.md](./INDOBASE-OS.md). Studio UI is not a customer destination; split control plane into OS services and retire legacy engines behind adapters.
 
 Keep reusable engines (`DesignDocument`, commerce, CRM, …). Remove separate **applications** from the default journey.
 

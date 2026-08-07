@@ -1,9 +1,0 @@
-web/node_modules
-web/dist
-**/._*
-.git
-.env
-docker/deploy/.env
-*.log
-.DS_Store
-README.md

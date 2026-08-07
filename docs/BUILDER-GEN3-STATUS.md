@@ -14,8 +14,9 @@
 | Platform API `/api/os/v1/*` | **Done** — identity, workspace, runtime/ensure, deploy/publish (wire for `business.launch`) |
 | OS-native signup (no provision) | **Done** — `createOsWorkspace`, bridge → Platform API |
 | Achievement home UX | **Deferred** — catalog in `os-home.ts`; core shell is iframe-first (no achievement grid / fat rail chrome) |
-| Lazy Ensurer stub | **Done** — `os-ensurer.ts` → `execution.provision` on demand |
-| Launch Business / Go Live stub | **Done** — customer `business.launch` → substrate `execution.publish` via Platform API |
+| Lazy Ensurer stub | **Done** — `os-ensurer.ts`; evolving toward Capability Orchestrator ([adr/0006](./adr/0006-capability-orchestrator.md)) |
+| Launch Business / Go Live stub | **Done** — customer `business.launch` → Static Launch default ([adr/0005](./adr/0005-two-lane-launch.md)) |
+| Enable ≠ Connect | **Accepted** — Indobase-native capabilities; providers hidden ([adr/0006](./adr/0006-capability-orchestrator.md)) |
 | Six kernels narrative | **Done** — [INDOBASE-OS.md](./INDOBASE-OS.md) (Identity · Workspace · Capability · Execution · Business Runtime · Agent) |
 | Studio OTP + provision at signup | **Reverted** — not OS-first |
 | Legacy SSO handoff | **Kept** — existing accounts only |

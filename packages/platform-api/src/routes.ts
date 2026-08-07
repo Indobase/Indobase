@@ -42,8 +42,13 @@ export type RuntimeEnsureRequest = {
 export type RuntimeEnsureResponse = {
   ok: boolean
   capability: string
+  capabilityId?: string
+  customer_label?: string
+  /** enabled | enabling | failed | unsupported */
+  status?: string
   provision_state: string
   backend?: OsWorkspaceSession['backend']
+  /** Customer Enable copy — never provider names */
   message?: string
 }
 

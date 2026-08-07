@@ -1,8 +1,0 @@
-{
-  "name": "@indobase/video-server",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@sentry/node": "^10.28.0"
-  }
-}

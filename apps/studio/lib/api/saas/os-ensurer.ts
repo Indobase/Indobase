@@ -1,7 +1,14 @@
 /**
- * Capability Ensurer — lazy provision when OS user requests auth/database/etc.
+ * Capability Ensurer — Lane 2 backend enable via Capability Orchestrator (ADR 0006).
+ * Customer copy: Enable Login / Business Data / Payments — never “connect” a provider.
  */
 import { makeRandomString } from 'lib/helpers'
+import {
+  createCapabilityOrchestrator,
+  normalizeCapabilityId,
+  type CapabilityEnsureResult,
+  type CapabilityProviderAdapter,
+} from '@indobase/platform'
 
 import { buildBuilderBackendConfig, getStudioOrigin } from './builder-launch'
 import { encryptString } from './util'
@@ -20,23 +27,8 @@ import {
 import { getProjectSettingsForRef } from './settings'
 import { ensureTenantDataPlaneHealthy } from './tenant-data-plane-provision'
 
-const CAPABILITY_ALIASES: Record<string, string> = {
-  auth: 'auth',
-  login: 'auth',
-  database: 'businessData',
-  db: 'businessData',
-  businessData: 'businessData',
-  storage: 'storage',
-  functions: 'functions',
-  commerce: 'commerce',
-  payments: 'commerce',
-  analytics: 'events',
-  email: 'email',
-}
-
 function normalizeCapability(raw: string): string {
-  const key = raw.trim()
-  return CAPABILITY_ALIASES[key] ?? key
+  return normalizeCapabilityId(raw) ?? raw.trim()
 }
 
 async function upgradeOsWorkspace({
@@ -113,76 +105,114 @@ export async function ensureOsCapability({
 }): Promise<{
   ok: boolean
   capability: string
+  capabilityId: string
+  customer_label: string
+  status: CapabilityEnsureResult['status']
   provision_state: string
   backend?: ReturnType<typeof buildBuilderBackendConfig> | null
-  message?: string
+  message: string
 }> {
-  const normalized = normalizeCapability(capability)
-  const workspace = await getOsWorkspace({ claims, ref: workspaceRef })
-  if (!workspace) {
-    throw new Error('Workspace not found')
-  }
+  const adapter = createStudioDataPlaneCapabilityAdapter({ claims, workspaceRef })
+  const orch = createCapabilityOrchestrator(adapter)
+  const result = await orch.ensure({ businessRef: workspaceRef, capability })
 
-  const needsBackend = ['auth', 'businessData', 'storage', 'functions', 'commerce', 'events'].includes(
-    normalized,
-  )
-
-  if (needsBackend && workspace.provision_state === 'none') {
-    await upgradeOsWorkspace({ claims, workspace })
-  } else if (needsBackend && workspace.status === OS_NATIVE_STATUS) {
-    await upgradeOsWorkspace({ claims, workspace })
-  } else if (needsBackend) {
-    await ensureTenantDataPlaneHealthy({
-      claims,
-      ref: workspaceRef,
-      reason: `os_ensure_${normalized}`,
-      force: false,
-    })
-  }
-
-  const refreshed = await getOsWorkspace({ claims, ref: workspaceRef })
-  const provisionState = refreshed?.provision_state ?? 'none'
-
-  if (!needsBackend) {
-    return {
-      ok: true,
-      capability: normalized,
-      provision_state: provisionState,
-      message: `Capability ${normalized} noted — no backend required yet.`,
-    }
-  }
-
-  try {
-    const settings = await getProjectSettingsForRef({ claims, ref: workspaceRef })
-    if (!settings) {
-      return {
-        ok: true,
-        capability: normalized,
-        provision_state: 'provisioning',
-        message: 'Backend is provisioning — try again shortly.',
+  let backend: ReturnType<typeof buildBuilderBackendConfig> | null | undefined
+  if (result.ok && result.status === 'enabled') {
+    try {
+      const settings = await getProjectSettingsForRef({ claims, ref: workspaceRef })
+      if (settings) {
+        const studioUrl = getStudioOrigin() || 'https://studio.indobase.in'
+        const refreshed = await getOsWorkspace({ claims, ref: workspaceRef })
+        backend = buildBuilderBackendConfig({
+          projectName: refreshed?.name || workspaceRef,
+          projectRef: workspaceRef,
+          settings,
+          studioUrl,
+        })
       }
+    } catch {
+      backend = undefined
     }
+  }
 
-    const studioUrl = getStudioOrigin() || 'https://studio.indobase.in'
-    const backend = buildBuilderBackendConfig({
-      projectName: refreshed?.name || workspaceRef,
-      projectRef: workspaceRef,
-      settings,
-      studioUrl,
-    })
+  return {
+    ok: result.ok,
+    capability: result.capabilityId,
+    capabilityId: result.capabilityId,
+    customer_label: result.customerLabel,
+    status: result.status,
+    provision_state: result.provisionState || 'none',
+    backend,
+    message: result.message,
+  }
+}
 
-    return {
-      ok: true,
-      capability: normalized,
-      provision_state: 'ready',
-      backend,
-    }
-  } catch (err) {
-    return {
-      ok: false,
-      capability: normalized,
-      provision_state: provisionState,
-      message: err instanceof Error ? err.message : 'Ensurer failed',
-    }
+/**
+ * Hidden adapter: current tenant data-plane provisioner.
+ * Swap later without changing Orchestrator or customer copy (ADR 0006).
+ */
+function createStudioDataPlaneCapabilityAdapter({
+  claims,
+  workspaceRef,
+}: {
+  claims: Claims
+  workspaceRef: string
+}): CapabilityProviderAdapter {
+  return {
+    async ensure({ capabilityId }) {
+      const normalized = normalizeCapability(capabilityId)
+      const workspace = await getOsWorkspace({ claims, ref: workspaceRef })
+      if (!workspace) {
+        throw new Error('Workspace not found')
+      }
+
+      const needsBackend = [
+        'auth',
+        'businessData',
+        'storage',
+        'functions',
+        'commerce',
+        'events',
+        'email',
+      ].includes(normalized)
+
+      if (!needsBackend) {
+        return { ok: true, state: 'ready' }
+      }
+
+      if (workspace.provision_state === 'none') {
+        await upgradeOsWorkspace({ claims, workspace })
+      } else if (workspace.status === OS_NATIVE_STATUS) {
+        await upgradeOsWorkspace({ claims, workspace })
+      } else {
+        await ensureTenantDataPlaneHealthy({
+          claims,
+          ref: workspaceRef,
+          reason: `os_ensure_${normalized}`,
+          force: false,
+        })
+      }
+
+      const refreshed = await getOsWorkspace({ claims, ref: workspaceRef })
+      const provisionState = refreshed?.provision_state ?? 'none'
+
+      if (provisionState === 'provisioning') {
+        return { ok: true, state: 'provisioning' }
+      }
+
+      try {
+        const settings = await getProjectSettingsForRef({ claims, ref: workspaceRef })
+        if (!settings) {
+          return { ok: true, state: 'provisioning' }
+        }
+        return { ok: true, state: 'ready' }
+      } catch (err) {
+        return {
+          ok: false,
+          state: 'failed',
+          detail: err instanceof Error ? err.message : 'Ensurer failed',
+        }
+      }
+    },
   }
 }
