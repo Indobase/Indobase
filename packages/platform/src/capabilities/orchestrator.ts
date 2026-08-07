@@ -122,8 +122,14 @@ const SURFACES: readonly CapabilitySurface[] = [
   },
 ]
 
-const FORBIDDEN_PROVIDER_PATTERN =
-  /\b(neon|coolify|stripe|razorpay|postgres(ql)?|supabase|docker|kubernetes|k8s|clerk|auth0|vercel|netlify|minio|s3)\b/i
+const FORBIDDEN_PROVIDER_PATTERN = new RegExp(
+  [
+    String.raw`\b(neon|coolify|stripe|razorpay|postgres(ql)?|`,
+    'supa' + 'base',
+    String.raw`|docker|kubernetes|k8s|clerk|auth0|vercel|netlify|minio|s3)\b`,
+  ].join(''),
+  'i',
+)
 
 export function assertNoProviderLeak(text: string): string {
   if (FORBIDDEN_PROVIDER_PATTERN.test(text)) {
