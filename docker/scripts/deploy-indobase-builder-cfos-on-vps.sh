@@ -55,9 +55,17 @@ echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml
 
 # Static Launch: sites.indobase.in + *.sites.indobase.in → CFOS bridge
 # (DNS A sites / *.sites → .249; do NOT touch tenant * → .248)
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /etc/dokploy/traefik/dynamic/certificates /etc/dokploy/traefik/dynamic/sites-custom /var/lib/indobase/launches"
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/sites-indobase.yml" \
   < "${REPO_ROOT}/docker/traefik/sites-indobase.yml"
 echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/sites-indobase.yml"
+
+# Wildcard TLS file pointer (certs themselves stay on VPS; do not overwrite)
+if [[ -f "${REPO_ROOT}/docker/traefik/sites-wildcard-tls.yml" ]]; then
+  ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/sites-wildcard-tls.yml" \
+    < "${REPO_ROOT}/docker/traefik/sites-wildcard-tls.yml"
+  echo "Synced Traefik TLS: /etc/dokploy/traefik/dynamic/sites-wildcard-tls.yml"
+fi
 
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
 set -euo pipefail
@@ -77,6 +85,9 @@ docker pull "\${IMAGE}"
 ENV_FILE="/opt/indobase-builder-cfos.runtime.env"
 STUDIO_ENV="/opt/indobase/studio-swarm.env"
 DOCKER_ENV="/opt/indobase/docker/.env"
+LAUNCH_ROOT="/var/lib/indobase/launches"
+TRAEFIK_CUSTOM_HOST="/etc/dokploy/traefik/dynamic/sites-custom"
+TRAEFIK_CUSTOM_CONTAINER="/var/lib/indobase/traefik-dynamic"
 
 SECRET=""
 if [[ -f "\${ENV_FILE}" ]]; then
@@ -114,6 +125,9 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_DOMAIN_SUFFIX "sites.indobase.in"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_CNAME_TARGET "sites.indobase.in"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_PUBLIC_URL "https://sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_ROOT "\${LAUNCH_ROOT}"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_USE_PATH_URL "0"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR "\${TRAEFIK_CUSTOM_CONTAINER}"
 if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then
   swarm_upsert_env_file_kv "\${ENV_FILE}" CLOUDFLARE_OS_URL "\${CLOUDFLARE_OS_URL_VALUE}"
 fi
@@ -128,11 +142,24 @@ if [[ -f "\${STUDIO_ENV}" ]]; then
   fi
 fi
 
-# Reach host-bound CF OS runtime (:8787) from Swarm tasks.
+ensure_bind_mount() {
+  local service="\$1" source="\$2" target="\$3"
+  local mounts
+  mounts="\$(docker service inspect "\$service" --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}' 2>/dev/null || echo 'null')"
+  if echo "\$mounts" | grep -q "\"Target\":\"\${target}\""; then
+    echo "Bind mount \${target} already present"
+    return 0
+  fi
+  echo "Adding bind mount \${source} → \${target}"
+  docker service update --mount-add "type=bind,source=\${source},destination=\${target}" "\$service" >/dev/null
+}
+
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "Updating swarm service \${SERVICE_NAME} (image + managed env)…"
   swarm_apply_env_file "\${SERVICE_NAME}" "\${ENV_FILE}" --image "\${IMAGE}"
   docker service update --host-add "host.docker.internal:host-gateway" "\${SERVICE_NAME}" >/dev/null || true
+  ensure_bind_mount "\${SERVICE_NAME}" "\${LAUNCH_ROOT}" "\${LAUNCH_ROOT}"
+  ensure_bind_mount "\${SERVICE_NAME}" "\${TRAEFIK_CUSTOM_HOST}" "\${TRAEFIK_CUSTOM_CONTAINER}"
 else
   echo "Creating swarm service \${SERVICE_NAME}…"
   docker service create \
@@ -141,6 +168,8 @@ else
     --env-file "\${ENV_FILE}" \
     --limit-memory 512m \
     --host-add "host.docker.internal:host-gateway" \
+    --mount "type=bind,source=\${LAUNCH_ROOT},destination=\${LAUNCH_ROOT}" \
+    --mount "type=bind,source=\${TRAEFIK_CUSTOM_HOST},destination=\${TRAEFIK_CUSTOM_CONTAINER}" \
     "\${IMAGE}"
 fi
 

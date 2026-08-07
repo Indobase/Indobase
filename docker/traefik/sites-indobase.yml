@@ -16,13 +16,16 @@
 #   INDOBASE_LAUNCH_CNAME_TARGET=sites.indobase.in
 #   INDOBASE_LAUNCH_PUBLIC_URL=https://sites.indobase.in
 #
-# TLS: HTTP-01 ACME covers sites.indobase.in. Wildcard SANs need DNS-01;
-# until then, slug.sites.indobase.in may present the apex cert or need
-# https://sites.indobase.in/live/{slug}/.
+# TLS:
+#   - Apex sites.indobase.in → HTTP-01 via certResolver letsencrypt (below).
+#   - *.sites.indobase.in → file cert (sites-wildcard-tls.yml + certificates/).
+#     Wildcard requires DNS-01; do not put *.sites on the shared HTTP-01 resolver.
+#   - Interim path URLs still work: https://sites.indobase.in/live/{slug}/
 #
 # Custom domains: customers CNAME to sites.indobase.in. Do NOT add an open
-# HostRegexp catch-all with ACME (abuse). Add a Host(`customer.example`) router
-# (or file snippet) when a custom domain is verified.
+# HostRegexp catch-all with ACME (abuse). Per-host routers are written by the
+# CFOS bridge to sites-custom/sites-custom-domains.yml when a domain is attached
+# (INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR → /etc/dokploy/traefik/dynamic/sites-custom).
 
 http:
   routers:

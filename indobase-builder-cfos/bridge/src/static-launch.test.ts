@@ -9,7 +9,10 @@ import {
   readLiveFile,
   resolveWorkspaceRefForHost,
   sanitizeSubdomain,
+  buildCustomDomainTraefikYaml,
+  traefikRouterId,
 } from './static-launch.ts'
+import { readFile } from 'node:fs/promises'
 
 describe('static launch lane', () => {
   it('publishes with Indobase subdomain metadata without Studio', async () => {
@@ -49,9 +52,11 @@ describe('static launch lane', () => {
 
   it('accepts a customer domain and returns DNS instructions', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-'))
+    const traefikDir = await mkdtemp(path.join(os.tmpdir(), 'indobase-traefik-'))
     process.env.INDOBASE_LAUNCH_ROOT = dir
     process.env.INDOBASE_LAUNCH_PUBLIC_URL = 'http://127.0.0.1:8791'
     process.env.INDOBASE_LAUNCH_CNAME_TARGET = 'sites.indobase.in'
+    process.env.INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR = traefikDir
     try {
       const result = await launchStaticBusiness({
         workspaceRef: 'local_poc',
@@ -69,12 +74,26 @@ describe('static launch lane', () => {
 
       const ref = await resolveWorkspaceRefForHost('www.muthufresh.com')
       assert.equal(ref, 'local_poc')
+
+      const yaml = await readFile(path.join(traefikDir, 'sites-custom-domains.yml'), 'utf8')
+      assert.match(yaml, /Host\(`www\.muthufresh\.com`\)/)
+      assert.match(yaml, /certResolver: letsencrypt/)
+      assert.doesNotMatch(yaml, /HostRegexp/)
     } finally {
       await rm(dir, { recursive: true, force: true })
+      await rm(traefikDir, { recursive: true, force: true })
       delete process.env.INDOBASE_LAUNCH_ROOT
       delete process.env.INDOBASE_LAUNCH_PUBLIC_URL
       delete process.env.INDOBASE_LAUNCH_CNAME_TARGET
+      delete process.env.INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR
     }
+  })
+
+  it('builds empty custom-domain Traefik yaml without catch-all', () => {
+    const yaml = buildCustomDomainTraefikYaml({ byHost: {} })
+    assert.match(yaml, /routers: \{\}/)
+    assert.doesNotMatch(yaml, /HostRegexp/)
+    assert.equal(traefikRouterId('www.Example.com'), 'www-example-com')
   })
 
   it('sanitizes subdomain labels', () => {
