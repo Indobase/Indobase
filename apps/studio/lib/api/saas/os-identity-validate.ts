@@ -69,5 +69,9 @@ export function validateOsIdentityVerifyInput(input: OsIdentityVerifyInput): {
   if (!name || !email.includes('@') || !token) {
     throw new OsIdentityError('name, email, and verification code are required', 400)
   }
+  // GoTrue email OTP is typically 6 digits; reject obvious garbage early.
+  if (token.length < 4 || token.length > 64) {
+    throw new OsIdentityError('Invalid verification code', 400)
+  }
   return { name, email, token }
 }

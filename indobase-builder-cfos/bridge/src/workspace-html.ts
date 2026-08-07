@@ -88,6 +88,8 @@ export function injectIndobaseContextBootstrap(html: string): string {
       });
       window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
+      window.__INDOBASE_USAGE__ = s.usage || null;
+      window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
       window.__INDOBASE_LAUNCH__ = s.launch || {
         api: '/api/os/launch',
         status: '/api/os/launch/status',
@@ -110,10 +112,13 @@ export function injectIndobaseContextBootstrap(html: string): string {
             detail: Object.assign({}, window.__INDOBASE__ || {}, {
               AGENT_HINT: window.__INDOBASE_AGENT_HINT__,
               ONBOARDING: window.__INDOBASE_ONBOARDING__,
+              USAGE: window.__INDOBASE_USAGE__,
+              ACTIONS: window.__INDOBASE_ACTIONS__,
               LAUNCH_API: '/api/os/launch',
               LAUNCH_TOOL: '/api/os/tools/launchBusiness',
               LAUNCH_RULES:
                 'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
+              PROMPT_QUOTA: '/api/os/usage/prompt-quota',
               AUTH: s.auth || { start: '/auth/start', verify: '/auth/verify', in_chat: true },
               GUEST: !!s.guest,
             }),

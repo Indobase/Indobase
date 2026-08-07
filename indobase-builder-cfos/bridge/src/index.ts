@@ -46,10 +46,12 @@ import {
 } from './static-launch.js'
 import {
   executeLaunchBusinessTool,
-  launchBusinessToolCatalog,
   LAUNCH_AGENT_HARD_RULES,
 } from './launch-business-tool.js'
-import { GUEST_ACCOUNT_FIRST_HINT } from '@indobase/cloudflare-adapter'
+import {
+  buildAuthVerifySuccessPayload,
+  buildSessionApiPayload,
+} from './session-payload.js'
 import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
@@ -428,14 +430,9 @@ app.post('/auth/verify', async (c) => {
   }
   const sessionToken = createSessionToken(session, secret)
   // Replaces any prior guest/draft_* cookie with the real signed-in workspace session.
+  // Next /api/session pull: guest=false, onboarding=null.
   c.header('Set-Cookie', sessionCookie(sessionToken))
-  return c.json({
-    ok: true,
-    project_ref: session.projectRef,
-    email: session.email,
-    provision_state: ws.provision_state,
-    next: '/',
-  })
+  return c.json(buildAuthVerifySuccessPayload(session, ws.provision_state))
 })
 
 /** Lazy Ensurer proxy — capability.ensure via Platform API. */
@@ -700,82 +697,39 @@ app.get('/live/:ref/', async (c) => {
   })
 })
 
-app.get('/api/session', (c) => {
+app.get('/api/session', async (c) => {
   const session = getSession(c)
   if (!session) return c.json({ message: 'Unauthorized' }, 401)
   const upstream = resolveCloudflareOsBase()
   const agent = buildAgentSessionContext(session)
   const guest = isGuestSession(session)
-  // Guest: agent.agentHint already leads with GUEST_ACCOUNT_FIRST_HINT (adapter SoT).
-  // Re-assert at the very front of the JSON payload for CFOS bootstrap consumers.
-  const agentHintBody = `${agent.agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}`
-  const agentHint = guest
-    ? agentHintBody.startsWith('GUEST ACCOUNT GATE')
-      ? agentHintBody
-      : `${GUEST_ACCOUNT_FIRST_HINT}\n\n${agentHintBody}`
-    : agentHintBody
-  return c.json({
-    email: session.email,
-    guest,
-    project_ref: session.projectRef,
-    project_name: session.projectName,
-    organization_slug: session.orgSlug,
-    studio_url: session.studioUrl,
-    backend: session.backend
-      ? {
-          api_url: session.backend.api_url,
-          auth_url: session.backend.auth_url,
-          rest_url: session.backend.rest_url,
-          storage_url: session.backend.storage_url,
-          project_ref: session.backend.project_ref,
-          project_name: session.backend.project_name,
-          anon_key: session.backend.anon_key,
-        }
-      : null,
-    // Gen 3: Indobase naming for clients; upstream URL is internal execution substrate only.
-    agent_runtime_configured: Boolean(upstream),
-    agent_runtime_url: upstream || null,
-    /** @deprecated internal — prefer agent_runtime_url */
-    cloudflare_os_url: upstream || null,
-    os_proxy_path: `${OS_PREFIX}/`,
-    indobase_proxy_path: '/api/indobase/proxy/',
-    generation_context: agent.generation,
-    agent_hint: agentHint,
-    onboarding: guest
-      ? {
-          account_required: true,
-          gate: 'first',
-          message:
-            'Acknowledge their request, then complete Indobase account in chat (name+email+DPDP → /auth/start → OTP → /auth/verify) before any other work.',
-          auth: {
-            start: '/auth/start',
-            verify: '/auth/verify',
-            in_chat: true,
-          },
-        }
-      : null,
-    auth: {
-      start: '/auth/start',
-      verify: '/auth/verify',
-      in_chat: true,
-    },
-    launch: {
-      api: '/api/os/launch',
-      domains_attach: '/api/os/domains/attach',
-      status: '/api/os/launch/status',
-      options: ['indobase_subdomain', 'custom_domain'],
-      tool: '/api/os/tools/launchBusiness',
-      tool_alias: '/api/os/tools/goLive',
-      rules: LAUNCH_AGENT_HARD_RULES,
-    },
-    usage: {
-      prompt_quota: '/api/os/usage/prompt-quota',
-      note: 'Free plan shares Builder 5-prompt meter; GET check / POST consume',
-    },
-    tools: {
-      launchBusiness: launchBusinessToolCatalog(),
-    },
-  })
+
+  // Signed-in: expose live Free-meter snapshot so agents/UI see remaining before codegen.
+  let promptQuota = null
+  if (!guest) {
+    const quotaResult = await platformPromptQuota({
+      gotrueId: session.gotrueId,
+      email: session.email,
+      workspaceRef: session.projectRef,
+      consume: false,
+    })
+    if (quotaResult.ok && quotaResult.quota) {
+      promptQuota = quotaResult.quota
+    }
+  }
+
+  return c.json(
+    buildSessionApiPayload({
+      session,
+      agentHint: agent.agentHint,
+      generation: agent.generation,
+      agentRuntimeConfigured: Boolean(upstream),
+      agentRuntimeUrl: upstream || null,
+      osProxyPath: `${OS_PREFIX}/`,
+      indobaseProxyPath: '/api/indobase/proxy/',
+      promptQuota,
+    }),
+  )
 })
 
 app.all('/api/indobase/proxy/*', async (c) => {

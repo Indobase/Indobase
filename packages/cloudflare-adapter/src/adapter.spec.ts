@@ -164,6 +164,8 @@ describe('@indobase/cloudflare-adapter', () => {
     })
     expect(signedIn.agentHint).not.toMatch(/GUEST ACCOUNT GATE/)
     expect(signedIn.agentHint).toContain('Operator signed in as op@indobase.in')
+    expect(signedIn.agentHint).toMatch(/prompt-quota|Prompt quota/i)
+    expect(signedIn.agentHint).toMatch(/Go Live|Create account|Add login/i)
   })
 
   it('createCloudflareOsAdapter exposes the Phase 1 surface', () => {

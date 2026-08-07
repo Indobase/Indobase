@@ -26,6 +26,8 @@ Header: `X-Indobase-OS-Secret` (= `BUILDER_CFOS_HANDOFF_SECRET`).
 
 Bridge proxies: `POST /api/os/runtime/ensure`, `POST /api/os/deploy/publish`, `GET`/`POST /api/os/usage/prompt-quota`. Guests may read `/api/os/launch/status`; mutate paths return `403 account_required`.
 
+`/api/session` (signed-in) includes live `usage` (prompt quota snapshot), `actions` / `command_palette` (Create account, Go Live, Add login…), and `tools.promptQuota`. Agents must GET then POST prompt-quota before heavy codegen (see `AGENT_HINT.md`); CFOS does not auto-meter every chat turn yet.
+
 CI builds Hub image `roshanraghavander/indobase-builder-cfos:<git-sha>` via `.github/workflows/docker-publish.yml` (push to `staging`/`main`).
 
 ## Env
@@ -57,7 +59,9 @@ Integrated stack: `./scripts/dev-stack.sh`
 |------|---------|
 | `/os/app/*` | Agent execution runtime |
 | `/api/indobase/proxy/*` | Tenant API (after lazy Ensurer) |
-| `/api/session` | Workspace + generation context |
+| `/api/session` | Workspace + generation context + usage/actions/tools |
+| `/api/os/usage/prompt-quota` | GET check / POST consume Free agent prompts |
+| `/auth/start` · `/auth/verify` | In-chat OTP (verify clears guest onboarding) |
 
 ## Legacy Studio handoff
 

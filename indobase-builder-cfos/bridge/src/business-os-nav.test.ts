@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  BUSINESS_OS_DISCOVERABLE_ACTIONS,
   BUSINESS_OS_FINISH_IN_OS_PRINCIPLE,
   BUSINESS_OS_NAV,
   businessOsNavById,
+  discoverableActionsForSession,
 } from './business-os-nav.ts'
 import {
   injectIndobaseContextBootstrap,
@@ -47,6 +49,21 @@ describe('business-os-nav', () => {
     assert.match(launch?.prompt || '', /launchBusiness|go live/i)
     assert.match(launch?.prompt || '', /\/api\/os\/tools\/launchBusiness|live URL/i)
     assert.doesNotMatch(launch?.prompt || '', /\bdeploy\b|\bhosting\b/i)
+  })
+
+  it('exposes discoverable SaaS actions (Go Live, Create account, Add login)', () => {
+    const ids = BUSINESS_OS_DISCOVERABLE_ACTIONS.map((a) => a.id)
+    for (const need of ['create-account', 'go-live', 'add-login', 'enable-payments']) {
+      assert.ok(ids.includes(need), `missing ${need}`)
+    }
+    const guestActions = discoverableActionsForSession({ guest: true })
+    assert.ok(guestActions.some((a) => a.id === 'create-account'))
+    assert.equal(guestActions.some((a) => a.id === 'go-live'), false)
+
+    const signedIn = discoverableActionsForSession({ guest: false })
+    assert.ok(signedIn.some((a) => a.id === 'go-live'))
+    assert.ok(signedIn.some((a) => a.id === 'add-login'))
+    assert.equal(signedIn.some((a) => a.id === 'create-account'), false)
   })
 
   it('states the finish-in-OS principle', () => {
@@ -110,9 +127,13 @@ describe('core workspace chrome', () => {
     assert.match(html, /\/api\/session/)
     assert.match(html, /__INDOBASE_AGENT_HINT__/)
     assert.match(html, /__INDOBASE_ONBOARDING__/)
+    assert.match(html, /__INDOBASE_USAGE__/)
+    assert.match(html, /__INDOBASE_ACTIONS__/)
     assert.match(html, /__INDOBASE_LAUNCH__/)
     assert.match(html, /\/api\/os\/tools\/launchBusiness/)
     assert.match(html, /\/api\/os\/launch/)
+    assert.match(html, /PROMPT_QUOTA/)
+    assert.match(html, /\/api\/os\/usage\/prompt-quota/)
     assert.match(html, /indobase:context/)
     assert.match(html, /GUEST/)
     assert.match(html, /ONBOARDING/)

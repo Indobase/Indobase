@@ -38,6 +38,10 @@ describe('os-identity validation', () => {
       validateOsIdentityVerifyInput({ name: 'Ada', email: 'ada@indobase.in', token: '' }),
     ).toThrow(/verification code/i)
 
+    expect(() =>
+      validateOsIdentityVerifyInput({ name: 'Ada', email: 'ada@indobase.in', token: '12' }),
+    ).toThrow(/Invalid verification code/i)
+
     const ok = validateOsIdentityVerifyInput({
       name: 'Ada',
       email: 'Ada@Indobase.in',

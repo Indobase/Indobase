@@ -129,3 +129,64 @@ export function businessOsNavById(id: string): BusinessOsNavItem | undefined {
 /** Gate for every feature: finish inside Indobase OS without leaving. */
 export const BUSINESS_OS_FINISH_IN_OS_PRINCIPLE =
   'Can a business owner complete this entire task without leaving Indobase OS?'
+
+/**
+ * Command-palette / agent-discoverable SaaS actions (half-wired chrome).
+ * Surfaced on /api/session + AGENT_HINT — not a full CFOS UI rebuild.
+ */
+export type BusinessOsDiscoverableAction = {
+  id: string
+  label: string
+  /** Prompt / instruction the agent should follow when this action is chosen */
+  prompt: string
+  /** Guests-only vs signed-in */
+  audience: 'guest' | 'signed_in' | 'any'
+}
+
+export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAction[] = [
+  {
+    id: 'create-account',
+    label: 'Create account',
+    audience: 'guest',
+    prompt:
+      'Create Indobase account in chat: name + email + DPDP consent → POST /auth/start → OTP → POST /auth/verify. Then continue their original request.',
+  },
+  {
+    id: 'go-live',
+    label: 'Go Live',
+    audience: 'signed_in',
+    prompt:
+      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API. Never invent a URL.',
+  },
+  {
+    id: 'launch-business',
+    label: 'Launch Business',
+    audience: 'signed_in',
+    prompt:
+      'Launch my business — call launchBusiness with real html/files and quote the API url only.',
+  },
+  {
+    id: 'add-login',
+    label: 'Add login',
+    audience: 'signed_in',
+    prompt:
+      'Add user login — Enable Customer Login via POST /api/os/runtime/ensure { capability: "login" }. Never connect an external auth product.',
+  },
+  {
+    id: 'enable-payments',
+    label: 'Enable payments',
+    audience: 'signed_in',
+    prompt:
+      'Start accepting payments — Enable Payments via runtime/ensure. Do not ask which payment vendor.',
+  },
+] as const
+
+export function discoverableActionsForSession(options: {
+  guest: boolean
+}): BusinessOsDiscoverableAction[] {
+  return BUSINESS_OS_DISCOVERABLE_ACTIONS.filter((a) => {
+    if (a.audience === 'any') return true
+    if (options.guest) return a.audience === 'guest'
+    return a.audience === 'signed_in'
+  })
+}

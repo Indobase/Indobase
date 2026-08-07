@@ -1,6 +1,6 @@
 # Builder Gen 3 — status
 
-**Updated:** 2026-08-08 (gaps closed before roll)  
+**Updated:** 2026-08-08 (prompt-quota agent wiring + OTP session polish)  
 **ADR:** [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [INDOBASE-OS.md](./INDOBASE-OS.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md)  
 **Product:** CFOS-native **Indobase OS** — one shell; engines behind Capabilities.
 
@@ -26,7 +26,7 @@
 | Guest account-first hints | **Done** — `GUEST_ACCOUNT_FIRST_HINT`, session `onboarding.gate`, AGENT_HINT, seed-format-routing |
 | Subdomain ownership (no silent takeover) | **Done** — `static-launch` assignDomain conflict |
 | Lane 2 plan gate (`backendStudio`) | **Done** — `assertOsEnsureAccess` rejects guest/`draft_*` + Free |
-| OS agent prompt quota hook | **Done** — Studio `/api/os/v1/usage/prompt-quota` + bridge `/api/os/usage/prompt-quota` (shares Builder free meter; full CFOS chat metering still open) |
+| OS agent prompt quota hook | **Done** — Studio + bridge endpoints; `/api/session.usage` live snapshot; AGENT_HINT / seed / adapter rules (check then consume; 402 upgrade copy) |
 | CFOS CI image (Hub SHA) | **Done** — `docker-publish.yml` builds `roshanraghavander/indobase-builder-cfos:<sha>` |
 | PLATFORM_API_URL on CFOS deploy | **Done** — Swarm Studio DNS |
 | Achievement home UX | **N/A** — OS is direct CFOS document (no iframe chrome) |
@@ -36,9 +36,20 @@
 | Six kernels narrative | **Done** — [INDOBASE-OS.md](./INDOBASE-OS.md) |
 | Studio OTP + provision at signup | **Reverted** — not OS-first |
 | Legacy SSO handoff | **Kept** — existing accounts only |
-| Per-session CFOS agent isolation | **Open** — shared runtime operator until Phase 2 (remaining before multi-tenant agent safety) |
-| Full Lane 2 Payments/Email adapters | **Open** |
-| Human OTP email send on prod | **Ops verify at roll** — control-plane GoTrue mail |
+| Discoverable SaaS actions | **Done** — `/api/session.actions` (Create account, Go Live, Add login, Enable payments) + AGENT_HINT |
+| OTP verify clears guest gate | **Done** — verify sets signed-in cookie; response `guest:false` / `onboarding:null`; next `/api/session` matches |
+
+---
+
+## Remaining before roll (defer / ops)
+
+| Item | Notes |
+|------|--------|
+| **CFOS runtime chat-turn metering hook** | Bridge + hints instruct agents to GET/POST `/api/os/usage/prompt-quota`; upstream CFOS still does not auto-intercept every chat turn — needs a runtime hook for hard enforcement |
+| **Staging smoke** | Guest OTP → verify → session gate clear; signed-in quota check/consume; Go Live; Enable login (plan gate) on `*.indobase.fun` before Vyom |
+| **Per-session CFOS agent isolation** | **Open / Phase 2** — shared runtime operator until multi-tenant agent safety |
+| **Full Lane 2 Payments/Email adapters** | **Open** — Ensure path + plan gate exist; product adapters incomplete |
+| **Prod OTP email ops verify** | **Ops at roll** — control-plane GoTrue mail on live `.249` (cannot finish in repo alone) |
 
 ---
 

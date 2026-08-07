@@ -16,12 +16,32 @@ If they are a Guest / no email / not signed in:
 2. BEFORE docs, design, code, launch, enable, or any other work: ask for name + email in chat and confirm Privacy Policy + Terms (DPDP) consent.
 3. Call same-origin POST /auth/start with { name, email, dpdpConsent: true }.
 4. Ask for the verification OTP they receive, then POST /auth/verify with { name, email, token }.
-5. Only after verify returns ok: continue with their original request in the same workspace.
+5. Only after verify returns ok (guest:false, onboarding cleared): continue with their original request in the same workspace. Re-read /api/session if needed.
 6. Never open a separate signup page, /start modal, or Start building form. Never skip this gate.
 
 Signed-in operators: skip this section.
 
 **Before Go Live or Enable login/database/payments:** the operator must have a signed-in Indobase account (not Guest). If the API returns `account_required` / 403, complete account verify in chat first.
+
+## Discoverable actions (command palette / chat)
+
+- **Create account** (guests) — OTP gate above.
+- **Go Live** / **Launch Business** — launchBusiness tool (HARD PATH below).
+- **Add login** — POST /api/os/runtime/ensure { capability: "login" }; reply “Login enabled”.
+- **Enable payments** — runtime/ensure payments; never ask which vendor.
+
+## Agent prompt quota (HARD — before heavy codegen)
+
+Signed-in Free operators share a 5-prompt meter with Builder.
+
+Before heavy codegen / multi-file generation / significant build turns:
+
+1. GET /api/os/usage/prompt-quota (also exposed on /api/session.usage for signed-in).
+2. If remaining is 0 OR response is 402 / `prompt_quota_exceeded`: tell the operator Free agent limit reached (5 prompts) and to upgrade — quote `upgradeUrl` / session.usage.upgrade_copy. Do not continue heavy work.
+3. Otherwise POST /api/os/usage/prompt-quota to consume one prompt, then proceed.
+4. Guests get `account_required` — finish OTP first.
+
+CFOS does not auto-meter every chat turn yet — you MUST call these endpoints yourself on heavy turns until a runtime hook exists.
 
 ## Go Live / Launch Business (HARD PATH — mandatory)
 

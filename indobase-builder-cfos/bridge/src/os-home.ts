@@ -40,16 +40,23 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
   },
   {
     id: 'payments',
-    label: 'Connect payments',
-    prompt: 'Start charging customers — configure commerce and checkout.',
+    label: 'Enable payments',
+    prompt: 'Start charging customers — Enable Payments for my business. Do not ask which payment vendor.',
     navId: 'commerce',
     formatHint: 'commerce',
   },
   {
     id: 'go-live',
     label: 'Go Live',
-    prompt: 'Launch my business — go live on Indobase and return my live URL.',
+    prompt:
+      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API.',
     navId: 'launch',
+  },
+  {
+    id: 'create-account',
+    label: 'Create account',
+    prompt:
+      'Create Indobase account in chat: name + email + DPDP consent → POST /auth/start → OTP → POST /auth/verify.',
   },
   {
     id: 'crm',

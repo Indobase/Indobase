@@ -15,6 +15,7 @@ import { ACCOUNT_IN_CHAT_RULES, GUEST_ACCOUNT_FIRST_HINT } from './account-routi
 import { stripVendorBranding } from './brand'
 import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
 import { LAUNCH_AGENT_HARD_RULES, LAUNCH_SESSION_HINT } from './launch-routing'
+import { PROMPT_QUOTA_AGENT_RULES, PROMPT_QUOTA_SESSION_HINT } from './prompt-quota-routing'
 
 /** Minimal session shape shared by the CFOS bridge (camelCase session cookie). */
 export type BridgeSessionLike = {
@@ -101,9 +102,11 @@ export function sessionToAgentContext(
       : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',
     LAUNCH_SESSION_HINT,
     LAUNCH_AGENT_HARD_RULES,
+    ...(isGuest ? [] : [PROMPT_QUOTA_SESSION_HINT, PROMPT_QUOTA_AGENT_RULES]),
     'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
     'Add login / database / payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect. Do not provision backend for a normal site launch.',
     'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
+    'Discoverable actions (command palette / chat): Create account (guests), Go Live / Launch Business, Add login, Enable payments — finish inside Indobase OS.',
     'Brand all customer-facing UI as Indobase only.',
     'Built-in formats: Docs (format.document), Sheets (format.spreadsheet), Slides (format.slides), Design (format.design).',
     DESIGN_FORMAT_ROUTING_RULES,
