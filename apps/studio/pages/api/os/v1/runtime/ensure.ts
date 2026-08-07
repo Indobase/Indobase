@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiWrapper from 'lib/api/apiWrapper'
 import { requireOsApiSecret } from 'lib/api/saas/os-api-auth'
+import { assertOsAccountForEnsure } from 'lib/api/saas/os-ensurer-access'
 import { ensureOsCapability } from 'lib/api/saas/os-ensurer'
 import type { Claims } from 'lib/api/saas/platform'
 
@@ -52,11 +53,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const claims = claimsFromBody(payload)
   if (!claims) return res.status(400).json({ message: 'gotrue_id required' })
-  if (claims.sub.startsWith('guest_') || workspaceRef.startsWith('draft_')) {
+
+  // Early guest/draft reject (plan gate still runs inside ensurer with org plan).
+  const early = assertOsAccountForEnsure({
+    gotrueId: claims.sub,
+    workspaceRef,
+  })
+  if (!early.ok) {
     return res.status(403).json({
       ok: false,
-      code: 'account_required',
-      message: 'Create your Indobase account before enabling login, database, or payments.',
+      code: early.code,
+      message: early.message,
     })
   }
 
@@ -72,8 +79,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       error && typeof error === 'object' && 'statusCode' in error
         ? Number((error as { statusCode?: number }).statusCode)
         : 502
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code?: string }).code || '')
+        : undefined
     return res.status(statusCode >= 400 && statusCode < 600 ? statusCode : 502).json({
       ok: false,
+      ...(code ? { code } : {}),
       message: error instanceof Error ? error.message : 'Runtime ensure failed',
     })
   }

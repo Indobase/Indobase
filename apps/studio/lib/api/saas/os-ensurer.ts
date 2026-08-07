@@ -26,8 +26,19 @@ import {
 } from './os-workspace'
 import { getProjectSettingsForRef } from './settings'
 import { ensureTenantDataPlaneHealthy } from './tenant-data-plane-provision'
-import { assertFeatureAllowed } from './plan-entitlements'
 import { getOrganizationPlanByProjectRef } from './plan-metering'
+import {
+  assertOsEnsureAccess,
+  throwOsEnsureDenial,
+  type OsEnsureAccessDenial,
+} from './os-ensurer-access'
+
+export {
+  assertOsAccountForEnsure,
+  assertOsEnsureAccess,
+  throwOsEnsureDenial,
+  type OsEnsureAccessDenial,
+} from './os-ensurer-access'
 
 function normalizeCapability(raw: string): string {
   return normalizeCapabilityId(raw) ?? raw.trim()
@@ -43,22 +54,9 @@ async function upgradeOsWorkspace({
   const gotrueId = getGotrueUserId(claims)
   const ref = workspace.ref
 
-  if (gotrueId.startsWith('guest_') || ref.startsWith('draft_')) {
-    const err = new Error('Create your Indobase account before enabling login, database, or payments.')
-    ;(err as Error & { statusCode?: number }).statusCode = 403
-    throw err
-  }
-
   const planRaw = await getOrganizationPlanByProjectRef(ref)
-  const allowed = assertFeatureAllowed(planRaw || 'free', 'backendStudio')
-  if (!allowed.ok) {
-    const err = new Error(
-      allowed.message ||
-        'Upgrade your Indobase plan to Enable login, customer database, or payments on this business.',
-    )
-    ;(err as Error & { statusCode?: number }).statusCode = 403
-    throw err
-  }
+  const access = assertOsEnsureAccess({ gotrueId, workspaceRef: ref, plan: planRaw })
+  if (!access.ok) throwOsEnsureDenial(access)
 
   if (workspace.provision_state === 'ready' && workspace.data_plane_mode !== OS_NATIVE_DATA_PLANE_MODE) {
     return

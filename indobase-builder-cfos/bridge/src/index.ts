@@ -33,6 +33,7 @@ import {
   platformDeployPublish,
   platformOtpStart,
   platformOtpVerify,
+  platformPromptQuota,
   platformRuntimeEnsure,
   resolvePlatformApiUrl,
 } from './platform-api-client.js'
@@ -426,6 +427,7 @@ app.post('/auth/verify', async (c) => {
     backend: ws.backend ?? undefined,
   }
   const sessionToken = createSessionToken(session, secret)
+  // Replaces any prior guest/draft_* cookie with the real signed-in workspace session.
   c.header('Set-Cookie', sessionCookie(sessionToken))
   return c.json({
     ok: true,
@@ -608,6 +610,35 @@ app.get('/api/os/launch/status', async (c) => {
   return c.json({ ok: true, ...status, launch_rules: LAUNCH_AGENT_HARD_RULES })
 })
 
+/**
+ * OS agent prompt quota — shares Free Builder meter (saas.organizations.builder_prompts_used).
+ * GET = check; POST = consume one prompt. Guests blocked (account_required).
+ */
+app.get('/api/os/usage/prompt-quota', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await platformPromptQuota({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+    consume: false,
+  })
+  return c.json(result, result.ok ? 200 : result.httpStatus >= 400 ? result.httpStatus : 502)
+})
+
+app.post('/api/os/usage/prompt-quota', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await platformPromptQuota({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+    consume: true,
+  })
+  const status = result.ok ? 200 : result.httpStatus === 402 ? 402 : result.httpStatus >= 400 ? result.httpStatus : 502
+  return c.json(result, status)
+})
+
 /** Host-based serving: custom domain or *.indobase.in → static site */
 app.use('*', async (c, next) => {
   const host = (c.req.header('host') || '').split(':')[0].toLowerCase()
@@ -736,6 +767,10 @@ app.get('/api/session', (c) => {
       tool: '/api/os/tools/launchBusiness',
       tool_alias: '/api/os/tools/goLive',
       rules: LAUNCH_AGENT_HARD_RULES,
+    },
+    usage: {
+      prompt_quota: '/api/os/usage/prompt-quota',
+      note: 'Free plan shares Builder 5-prompt meter; GET check / POST consume',
     },
     tools: {
       launchBusiness: launchBusinessToolCatalog(),

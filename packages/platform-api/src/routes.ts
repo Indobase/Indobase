@@ -12,7 +12,26 @@ export const PlatformApiRoutes = {
   workspace: (ref: string) => `${PLATFORM_API_PREFIX}/workspace/${encodeURIComponent(ref)}`,
   runtimeEnsure: `${PLATFORM_API_PREFIX}/runtime/ensure`,
   deployPublish: `${PLATFORM_API_PREFIX}/deploy/publish`,
+  /** GET/POST — OS agent usage shares Builder free-prompt meter */
+  promptQuota: `${PLATFORM_API_PREFIX}/usage/prompt-quota`,
 } as const
+
+export type OsPromptQuota = {
+  plan: string
+  used: number
+  limit: number | null
+  remaining: number | null
+  isFree: boolean
+  organization_slug: string
+  upgradeUrl: string
+}
+
+export type OsPromptQuotaResponse = {
+  ok: boolean
+  quota?: OsPromptQuota
+  code?: string
+  message?: string
+}
 
 export type OsWorkspaceSession = {
   gotrue_id: string

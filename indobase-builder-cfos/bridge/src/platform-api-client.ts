@@ -5,6 +5,7 @@ import {
   OS_API_SECRET_HEADER,
   PlatformApiRoutes,
   type DeployPublishResponse,
+  type OsPromptQuotaResponse,
   type OsWorkspaceSession,
   type RuntimeEnsureResponse,
 } from '@indobase/platform-api'
@@ -164,5 +165,90 @@ export async function platformDeployPublish(input: {
     ok: false,
     status: 'failed',
     message: 'Could not go live — try Launch Business again.',
+  }
+}
+
+/** Check (GET) or consume (POST) OS agent prompt quota on the Platform API. */
+export async function platformPromptQuota(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  consume?: boolean
+}): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
+  if (input.consume) {
+    return platformPromptQuotaConsume(input)
+  }
+  return platformPromptQuotaGet(input)
+}
+
+export async function platformPromptQuotaGet(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+}): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
+  const base = resolvePlatformApiUrl()
+  if (!base) {
+    return {
+      ok: false,
+      message: 'PLATFORM_API_URL is not configured on the bridge.',
+      httpStatus: 503,
+    }
+  }
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Handoff secret not configured',
+      httpStatus: 503,
+    }
+  }
+
+  const params = new URLSearchParams({
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  })
+  try {
+    const res = await fetch(`${base}${PlatformApiRoutes.promptQuota}?${params}`, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        [OS_API_SECRET_HEADER]: secret,
+      },
+    })
+    const json = (await res.json().catch(() => null)) as OsPromptQuotaResponse | null
+    if (json && typeof json === 'object') {
+      return { ...json, httpStatus: res.status }
+    }
+    return { ok: false, message: 'Could not load agent prompt quota', httpStatus: res.status }
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Platform API request failed',
+      httpStatus: 502,
+    }
+  }
+}
+
+export async function platformPromptQuotaConsume(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+}): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
+  const { status, json } = await platformFetch(PlatformApiRoutes.promptQuota, {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  })
+  if (json && typeof json === 'object') {
+    return { ...(json as OsPromptQuotaResponse), httpStatus: status }
+  }
+  return {
+    ok: false,
+    message: 'Could not consume agent prompt quota',
+    httpStatus: status,
   }
 }

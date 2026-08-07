@@ -8,18 +8,22 @@ import { gotrueOtpUrl, gotrueVerifyUrl, resolveDirectGotrueUrl } from 'lib/gotru
 import { recordDataPrincipalConsent } from './data-principal'
 import { createOsWorkspace, type OsWorkspaceRecord } from './os-workspace'
 import { getPrimaryEmail, type Claims } from './platform'
+import {
+  OsIdentityError,
+  validateOsIdentityStartInput,
+  validateOsIdentityVerifyInput,
+  type OsIdentityStartInput,
+  type OsIdentityVerifyInput,
+} from './os-identity-validate'
 
-export type OsIdentityStartInput = {
-  name: string
-  email: string
-  dpdpConsent?: boolean
-}
-
-export type OsIdentityVerifyInput = {
-  name: string
-  email: string
-  token: string
-}
+export {
+  OsIdentityError,
+  osIdentityErrorStatus,
+  validateOsIdentityStartInput,
+  validateOsIdentityVerifyInput,
+  type OsIdentityStartInput,
+  type OsIdentityVerifyInput,
+} from './os-identity-validate'
 
 export type OsIdentitySession = {
   gotrue_id: string
@@ -37,8 +41,9 @@ function resolveControlPlaneAnonKey(): string {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     ''
   if (!anon.trim()) {
-    throw new Error(
+    throw new OsIdentityError(
       'Missing anon key for OS identity. Set SUPABASE_ANON_KEY or ANON_KEY on the control plane.',
+      503,
     )
   }
   return anon.trim()
@@ -46,11 +51,11 @@ function resolveControlPlaneAnonKey(): string {
 
 function claimsFromAccessToken(accessToken: string): Claims {
   const parts = accessToken.split('.')
-  if (parts.length !== 3) throw new Error('Invalid access token')
+  if (parts.length !== 3) throw new OsIdentityError('Invalid access token', 502)
   const payload = JSON.parse(
     Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
   ) as JwtPayload & Record<string, unknown>
-  if (!payload.sub) throw new Error('Access token missing subject')
+  if (!payload.sub) throw new OsIdentityError('Access token missing subject', 502)
   return payload as Claims
 }
 
@@ -64,16 +69,7 @@ function normalizeDisplayName(name: string, email: string): string {
 export async function startOsIdentityOtp(
   input: OsIdentityStartInput,
 ): Promise<{ ok: true; email: string }> {
-  const name = input.name.trim()
-  const email = input.email.trim().toLowerCase()
-  if (!name || !email.includes('@')) {
-    throw new Error('name and valid email are required')
-  }
-  if (input.dpdpConsent !== true) {
-    throw new Error(
-      'You must accept the Privacy Policy and Terms of Service to continue (DPDP consent required).',
-    )
-  }
+  const { name, email } = validateOsIdentityStartInput(input)
 
   const gotrueBase = resolveDirectGotrueUrl()
   const otpUrl = gotrueOtpUrl(gotrueBase)
@@ -112,10 +108,19 @@ export async function startOsIdentityOtp(
         (typeof json?.message === 'string' && json.message) ||
         (typeof json?.error_description === 'string' && json.error_description) ||
         `Failed to send verification code (${response.status})`
-      throw new Error(message)
+      throw new OsIdentityError(message, response.status >= 500 ? 502 : 400)
     }
 
     return { ok: true, email }
+  } catch (error) {
+    if (error instanceof OsIdentityError) throw error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new OsIdentityError('Verification code request timed out — try again.', 504)
+    }
+    throw new OsIdentityError(
+      error instanceof Error ? error.message : 'Failed to send verification code',
+      502,
+    )
   } finally {
     clearTimeout(timeoutId)
   }
@@ -124,12 +129,7 @@ export async function startOsIdentityOtp(
 export async function verifyOsIdentityOtp(
   input: OsIdentityVerifyInput,
 ): Promise<OsIdentitySession> {
-  const name = input.name.trim()
-  const email = input.email.trim().toLowerCase()
-  const token = input.token.trim()
-  if (!name || !email.includes('@') || !token) {
-    throw new Error('name, email, and verification code are required')
-  }
+  const { name, email, token } = validateOsIdentityVerifyInput(input)
 
   const gotrueBase = resolveDirectGotrueUrl()
   const verifyUrl = gotrueVerifyUrl(gotrueBase)
@@ -163,11 +163,10 @@ export async function verifyOsIdentityOtp(
         (typeof json?.message === 'string' && json.message) ||
         (typeof json?.error_description === 'string' && json.error_description) ||
         'Invalid or expired verification code'
-      throw new Error(message)
+      throw new OsIdentityError(message, response.status >= 500 ? 502 : 400)
     }
 
-    accessToken =
-      typeof json?.access_token === 'string' ? json.access_token : ''
+    accessToken = typeof json?.access_token === 'string' ? json.access_token : ''
     userId =
       typeof (json?.user as { id?: string } | undefined)?.id === 'string'
         ? (json!.user as { id: string }).id
@@ -178,8 +177,17 @@ export async function verifyOsIdentityOtp(
         : email
 
     if (!accessToken || !userId) {
-      throw new Error('Verification did not return a session')
+      throw new OsIdentityError('Verification did not return a session', 502)
     }
+  } catch (error) {
+    if (error instanceof OsIdentityError) throw error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new OsIdentityError('Verification timed out — try again with a fresh code.', 504)
+    }
+    throw new OsIdentityError(
+      error instanceof Error ? error.message : 'Verification failed',
+      502,
+    )
   } finally {
     clearTimeout(timeoutId)
   }
@@ -191,22 +199,24 @@ export async function verifyOsIdentityOtp(
   const displayName = normalizeDisplayName(name, verifiedEmail)
   const workspace = await createOsWorkspace({ claims, displayName })
 
+  // DPDP: consent collected at /auth/start (dpdpConsent: true). Record on verify when identity is known.
   try {
     await recordDataPrincipalConsent({
       gotrueId: userId,
       email: verifiedEmail,
       consentType: 'signup_privacy',
       consented: true,
-      metadata: { source: 'indobase_os_start' },
+      metadata: { source: 'indobase_os_otp_verify' },
     })
     await recordDataPrincipalConsent({
       gotrueId: userId,
       email: verifiedEmail,
       consentType: 'signup_terms',
       consented: true,
-      metadata: { source: 'indobase_os_start' },
+      metadata: { source: 'indobase_os_otp_verify' },
     })
   } catch (consentError) {
+    // Non-fatal — account + workspace already created; ops can backfill consent.
     console.error('[os-identity] Failed to record DPDP consent:', consentError)
   }
 

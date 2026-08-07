@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
 import { enforcePublicAuthRateLimits } from 'lib/api/rate-limit'
 import { requireOsApiSecret } from 'lib/api/saas/os-api-auth'
-import { startOsIdentityOtp } from 'lib/api/saas/os-identity'
+import { osIdentityErrorStatus, startOsIdentityOtp } from 'lib/api/saas/os-identity'
 
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -43,7 +43,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to send verification code'
-    const status = message.includes('consent') ? 400 : 502
-    return res.status(status).json({ message })
+    return res.status(osIdentityErrorStatus(error)).json({ message })
   }
 }
