@@ -27,5 +27,6 @@ describe('getDesignInstructions', () => {
     const text = getDesignInstructions();
     expect(text).toContain('never purple');
     expect(text).toContain('Art direction');
+    expect(text).toContain('indobase-stock');
   });
 });

@@ -31,8 +31,18 @@ export function getDesignInstructions(designScheme?: DesignScheme): string {
   - Warm cream (#F4F1EA-ish) + terracotta serif "brochure" cliché
   - Cookie layouts: hero + 3 identical feature cards + logo cloud + pricing + footer every time
   - Pill badge clusters, floating promo stickers, emoji-as-icon rows, fake "Trusted by" logos
-  - Unsplash URLs; if stock photos are needed use Pexels only with real known URLs
+  - Unsplash or invented Pexels photo IDs — NEVER guess stock CDN URLs
   - Static brochure pages with no hover/focus/loading/empty/error states
+
+  Real photography (REQUIRED when a photo is needed):
+  - Do NOT invent https://images.unsplash.com/... or https://images.pexels.com/... links
+  - Use Indobase stock markers; finalizeCodegen resolves them to real Openverse CC images:
+      <img data-indobase-stock="warm coffee shop interior, daylight" alt="Cafe interior" src="" />
+      background-image: url("indobase-stock:modern dental clinic reception");
+      src={"indobase-stock:handmade ceramic bowls on wood table"}
+  - Write a specific, visual search phrase (subject + setting + mood). One marker per image.
+  - If a photo is not needed, prefer CSS/SVG atmosphere — never a fake stock URL
+  - Icons: use lucide-react (or similar), not random PNGs
 
   Art direction (pick ONE style that fits the brief and commit):
   - editorial / photographic / Swiss grid / industrial / hospitality-warm / clinical-calm /

@@ -386,7 +386,7 @@ Examples:
     - HARD BAN: purple/violet/indigo primaries, purple gradients, Inter-only type, and marketing-landing clones inside the app.
     - Use advanced UI/UX patterns: cards, lists, tabs, modals, carousels, and custom navigation.
     - Ensure the navigation is intuitive and easy to understand.
-    - Integrate high-quality images, icons, and illustrations (e.g., Pexels, lucide-react-native).
+    - Integrate high-quality images via indobase-stock markers + lucide icons.
     - Implement smooth animations, transitions, and micro-interactions for a polished experience.
     - Ensure thoughtful typography, color schemes, and spacing for visual hierarchy.
     - Add interactive elements: search, filters, forms, and feedback (loading, error, empty states).
@@ -480,16 +480,14 @@ Examples:
     </icons>
 
     <image_handling>
-      - Use Unsplash for stock photos
-      - Direct URL linking only
-      - ONLY use valid, existing Unsplash URLs
-      - NO downloading or storing of images locally
-      - Proper Image component implementation
-      - Test all image URLs to ensure they load correctly
-      - Implement proper loading states
-      - Handle image errors gracefully
-      - Use appropriate image sizes
-      - Implement lazy loading where appropriate
+      - NEVER invent Unsplash or Pexels CDN URLs (models hallucinate IDs → broken images)
+      - Use stock markers resolved by Indobase to real Openverse CC images:
+          data-indobase-stock="subject, setting, mood"
+          url("indobase-stock:subject setting mood")
+      - Prefer specific visual queries over vague ones ("hero image")
+      - Icons: lucide-react / lucide-react-native — not random PNGs
+      - Proper Image / img with alt, loading states, and graceful error fallbacks
+      - Lazy loading where appropriate
     </image_handling>
 
     <error_handling>
