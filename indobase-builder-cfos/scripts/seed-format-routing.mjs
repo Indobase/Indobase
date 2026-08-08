@@ -47,11 +47,11 @@ If Guest / no email / not signed in: briefly acknowledge their request, then BEF
 ## Discoverable actions
 Create account (guests) · Go Live / Launch Business · Add login · Enable payments — all inside Indobase OS chat / tools. Never send the operator to Studio.
 
-## Agent prompt quota (HARD — before heavy codegen)
+## Agent prompt quota (HARD)
 Signed-in Free operators share a 5-prompt Builder meter.
-Before heavy codegen / multi-file generation: GET /api/os/usage/prompt-quota → if remaining 0 or 402/prompt_quota_exceeded, tell operator Free limit reached and to upgrade (quote upgradeUrl) — do not continue; else POST /api/os/usage/prompt-quota to consume one, then proceed.
+Runtime: ChatInterface POST /api/os/agent/begin-turn meters each user send (402 upgrade / 403 account abort).
+On heavy tool paths outside the composer: GET /api/os/usage/prompt-quota → if remaining 0 or 402/prompt_quota_exceeded, tell operator Free limit reached and to upgrade (quote upgradeUrl) — do not continue; else POST /api/os/usage/prompt-quota to consume one, then proceed.
 Guests get account_required — finish OTP first.
-CFOS does not auto-meter every chat turn yet — call these endpoints yourself on heavy turns.
 
 ## Go Live — HARD PATH (Indobase hosting only)
 When the operator says take live / launch / publish / go public / launch my business:
@@ -202,16 +202,17 @@ async function seedAdmin(admin) {
     !existing.includes('HARD PATH') ||
     !existing.includes('launchBusiness') ||
     !existing.includes('prompt-quota') ||
+    !existing.includes('begin-turn') ||
     !existing.includes('Discoverable actions')
   ) {
     const next = existing.trim()
       ? `${existing.trim()}\n\n${INSTANCE_INSTRUCTIONS}`
       : INSTANCE_INSTRUCTIONS
     await admin.setInstanceInstructions(next)
-    console.log('instanceInstructions ← Go Live HARD PATH + prompt-quota + Design routing rules')
+    console.log('instanceInstructions ← Go Live HARD PATH + begin-turn + Design routing rules')
   } else {
     await admin.setInstanceInstructions(INSTANCE_INSTRUCTIONS)
-    console.log('instanceInstructions refreshed (Go Live HARD PATH + prompt-quota + Design)')
+    console.log('instanceInstructions refreshed (Go Live HARD PATH + begin-turn + Design)')
   }
 
   const final = await admin.getSettings()

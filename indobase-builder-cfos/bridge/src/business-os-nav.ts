@@ -170,14 +170,21 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
     label: 'Add login',
     audience: 'signed_in',
     prompt:
-      'Add user login — Enable Customer Login via POST /api/os/runtime/ensure { capability: "login" }. Never connect an external auth product.',
+      'Add user login — Enable Customer Login via POST /api/os/runtime/ensure { capability: "login" }. Quote Login enabled + next_steps. Optionally brand OTP From with POST /api/os/auth/mail { from_email, from_name }. Never connect an external auth product.',
+  },
+  {
+    id: 'login-mail',
+    label: 'Set login email From',
+    audience: 'signed_in',
+    prompt:
+      'Brand product login OTP From — POST /api/os/auth/mail with from_email + from_name (or mode indobase to use Indobase mail). Quote the API message. Never ask which mail vendor.',
   },
   {
     id: 'enable-payments',
     label: 'Enable payments',
     audience: 'signed_in',
     prompt:
-      'Start accepting payments — Enable Payments via runtime/ensure. Do not ask which payment vendor.',
+      'Start accepting payments — Enable Payments via runtime/ensure. Quote the API message (finish checkout setup / pending); do not claim Payments are live from ensure alone. Use launch_url when present. Do not ask which payment vendor.',
   },
 ] as const
 

@@ -170,16 +170,16 @@ function buildCapabilityStatuses(
   const capabilities: NonNullable<OsBusinessConfig['capabilities']> = {}
 
   if (hasCapability(set, 'payments', 'payment', 'billing', 'commerce', 'checkout')) {
-    // Capability path ensured — full payment provider connect remains deferred (no new gateways).
+    // Data-plane ensured — checkout setup still pending (do not claim Payments are live).
     capabilities.payments = {
       status: 'pending',
-      note: 'Payments are enabled for this business. Connect a payment method when you are ready to charge.',
+      note: 'Payments backend is ready — finish checkout setup to charge customers.',
     }
   }
   if (hasCapability(set, 'email', 'mail', 'newsletter')) {
     capabilities.email = {
       status: 'pending',
-      note: 'Email is enabled. Finish sender setup when you are ready to send campaigns or receipts.',
+      note: 'Email backend is ready — finish sender setup to send campaigns.',
     }
   }
   if (hasCapability(set, 'analytics', 'tracking', 'metrics')) {

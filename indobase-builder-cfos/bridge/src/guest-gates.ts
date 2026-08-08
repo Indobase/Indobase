@@ -12,10 +12,17 @@ export const OS_ACCOUNT_REQUIRED_PATHS = [
   '/api/os/tools/goLive',
   '/api/os/domains/attach',
   '/api/os/usage/prompt-quota',
+  '/api/os/auth/mail',
 ] as const
 
 /** Read paths guests may call (session required, account not required). */
-export const OS_GUEST_ALLOWED_READ_PATHS = ['/api/os/launch/status', '/api/session'] as const
+export const OS_GUEST_ALLOWED_READ_PATHS = [
+  '/api/os/launch/status',
+  '/api/session',
+  '/api/os/runtime/agent-credentials',
+  // Guests may begin-turn (no consume) so OTP signup chat is not blocked by the meter.
+  '/api/os/agent/begin-turn',
+] as const
 
 export function pathRequiresSignedInAccount(pathname: string): boolean {
   const path = pathname.split('?')[0] || pathname

@@ -53,7 +53,7 @@ describe('business-os-nav', () => {
 
   it('exposes discoverable SaaS actions (Go Live, Create account, Add login)', () => {
     const ids = BUSINESS_OS_DISCOVERABLE_ACTIONS.map((a) => a.id)
-    for (const need of ['create-account', 'go-live', 'add-login', 'enable-payments']) {
+    for (const need of ['create-account', 'go-live', 'add-login', 'login-mail', 'enable-payments']) {
       assert.ok(ids.includes(need), `missing ${need}`)
     }
     const guestActions = discoverableActionsForSession({ guest: true })
@@ -134,6 +134,8 @@ describe('core workspace chrome', () => {
     assert.match(html, /\/api\/os\/launch/)
     assert.match(html, /PROMPT_QUOTA/)
     assert.match(html, /\/api\/os\/usage\/prompt-quota/)
+    assert.match(html, /__INDOBASE_BEGIN_TURN__/)
+    assert.match(html, /\/api\/os\/agent\/begin-turn/)
     assert.match(html, /indobase:context/)
     assert.match(html, /GUEST/)
     assert.match(html, /ONBOARDING/)

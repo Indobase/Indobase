@@ -1,9 +1,10 @@
 /**
  * Bridge-side OS agent prompt quota helpers.
  * Endpoints: GET/POST /api/os/usage/prompt-quota (Platform API → Builder free meter).
+ * Runtime hook: ChatInterface POST /api/os/agent/begin-turn (see agent-turn-meter.ts).
  *
- * CFOS does not intercept every upstream chat turn yet — agents follow AGENT_HINT /
- * session.usage rules, and callers can use these helpers for consistent 402 copy.
+ * Agents should still GET/POST prompt-quota on heavy tool paths as defense in depth;
+ * the UI begin-turn hook meters ordinary chat sends.
  */
 import type { OsPromptQuota, OsPromptQuotaResponse } from '@indobase/platform-api'
 
@@ -51,7 +52,7 @@ export function buildSessionPromptQuotaBlock(
     path: BRIDGE_PROMPT_QUOTA_PATH,
     check: 'GET',
     consume: 'POST',
-    note: 'Free plan shares Builder 5-prompt meter; GET check / POST consume before heavy codegen. On 402 stop and show upgrade copy.',
+    note: 'ChatInterface meters each user send via POST /api/os/agent/begin-turn. Agents should still GET check / POST consume on heavy tool paths. On 402 stop and show upgrade copy.',
     quota: q,
     exhausted,
     upgrade_copy: upgradeCopyForQuota(q),

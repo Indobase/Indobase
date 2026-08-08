@@ -41,7 +41,7 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
   {
     id: 'payments',
     label: 'Enable payments',
-    prompt: 'Start charging customers — Enable Payments for my business. Do not ask which payment vendor.',
+    prompt: 'Start charging customers — Enable Payments via runtime/ensure. Quote finish-setup copy until truly live; do not ask which payment vendor.',
     navId: 'commerce',
     formatHint: 'commerce',
   },

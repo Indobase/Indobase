@@ -33,6 +33,7 @@ import {
   platformDeployPublish,
   platformOtpStart,
   platformOtpVerify,
+  platformAuthMail,
   platformPromptQuota,
   platformRuntimeEnsure,
   resolvePlatformApiUrl,
@@ -53,6 +54,12 @@ import {
   buildSessionApiPayload,
 } from './session-payload.js'
 import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
+import {
+  BRIDGE_AGENT_BEGIN_TURN_PATH,
+  interpretBeginTurnResult,
+  shouldConsumeAgentTurn,
+} from './agent-turn-meter.js'
+import { deriveAgentCredentials } from './agent-credentials.js'
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
 function isBridgeOwnedApiPath(pathname: string): boolean {
@@ -461,6 +468,45 @@ app.post('/api/os/runtime/ensure', async (c) => {
   return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
 })
 
+/**
+ * Product Auth login mail — brand OTP From (fleet SMTP; Indobase-native copy).
+ * GET = status; POST = { mode: 'indobase'|'branded', from_email?, from_name? }
+ */
+app.get('/api/os/auth/mail', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await platformAuthMail({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+  })
+  return c.json(result, result.ok ? 200 : result.httpStatus >= 400 ? result.httpStatus : 502)
+})
+
+app.post('/api/os/auth/mail', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as {
+    mode?: string
+    from_email?: string
+    fromEmail?: string
+    from_name?: string
+    fromName?: string
+  }
+  const mode =
+    body.mode === 'indobase' || body.mode === 'branded' ? body.mode : undefined
+  const result = await platformAuthMail({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+    mode,
+    fromEmail: body.from_email || body.fromEmail,
+    fromName: body.from_name || body.fromName,
+    consume: true,
+  })
+  return c.json(result, result.ok ? 200 : result.httpStatus >= 400 ? result.httpStatus : 502)
+})
+
 /** Go Live — Static Launch lane (default). No Studio / provisioner / tenant stack. */
 async function handleStaticGoLive(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as {
@@ -634,6 +680,103 @@ app.post('/api/os/usage/prompt-quota', async (c) => {
   })
   const status = result.ok ? 200 : result.httpStatus === 402 ? 402 : result.httpStatus >= 400 ? result.httpStatus : 502
   return c.json(result, status)
+})
+
+/**
+ * Hard CFOS chat-turn meter — ChatInterface calls this before every user send.
+ * Guests: always ok (no consume) so OTP signup chat can proceed.
+ * Signed-in Free: consumes Builder meter when shouldConsumeAgentTurn.
+ */
+app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+
+  let message: string | undefined
+  try {
+    const body = await c.req.json().catch(() => null)
+    if (body && typeof body === 'object' && typeof (body as { message?: unknown }).message === 'string') {
+      message = (body as { message: string }).message
+    }
+  } catch {
+    message = undefined
+  }
+
+  // Guests must be able to chat (account OTP gate). Meter only after verify.
+  if (isGuestSession(sessionOrErr)) {
+    return c.json({
+      ok: true,
+      guest: true,
+      consumed: false,
+      quota: null,
+      code: null,
+      message: null,
+    })
+  }
+
+  const consume = shouldConsumeAgentTurn({ message })
+  const result = await platformPromptQuota({
+    gotrueId: sessionOrErr.gotrueId,
+    email: sessionOrErr.email,
+    workspaceRef: sessionOrErr.projectRef,
+    consume,
+  })
+
+  const interpreted = interpretBeginTurnResult(result.httpStatus, result)
+  const status = interpreted.ok
+    ? 200
+    : interpreted.exhausted
+      ? 402
+      : interpreted.accountRequired
+        ? 403
+        : result.httpStatus >= 400
+          ? result.httpStatus
+          : 502
+
+  return c.json(
+    {
+      ok: interpreted.ok,
+      guest: false,
+      quota: interpreted.quota ?? result.quota ?? null,
+      code: interpreted.code,
+      message: interpreted.message ?? (interpreted.ok ? null : result.message ?? null),
+      consumed: consume && interpreted.ok,
+    },
+    status,
+  )
+})
+
+/**
+ * Per-session CFOS runtime principal (guest or signed-in).
+ * Username/password derived from session + handoff secret — never shared `dev`/`devpassword`.
+ */
+app.get('/api/os/runtime/agent-credentials', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch (err) {
+    return c.json(
+      {
+        ok: false,
+        code: 'handoff_secret_missing',
+        message: err instanceof Error ? err.message : 'Handoff secret not configured',
+      },
+      503,
+    )
+  }
+  const creds = deriveAgentCredentials({
+    handoffSecret: secret,
+    gotrueId: sessionOrErr.gotrueId,
+    projectRef: sessionOrErr.projectRef,
+  })
+  // Never log password.
+  return c.json({
+    ok: true,
+    username: creds.username,
+    password: creds.password,
+    storage_key: creds.storage_key,
+  })
 })
 
 /** Host-based serving: custom domain or *.indobase.in → static site */

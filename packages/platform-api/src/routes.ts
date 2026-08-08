@@ -14,7 +14,27 @@ export const PlatformApiRoutes = {
   deployPublish: `${PLATFORM_API_PREFIX}/deploy/publish`,
   /** GET/POST — OS agent usage shares Builder free-prompt meter */
   promptQuota: `${PLATFORM_API_PREFIX}/usage/prompt-quota`,
+  /** GET/POST — product Auth OTP From (branded login mail) */
+  authMail: `${PLATFORM_API_PREFIX}/auth/mail`,
 } as const
+
+export type OsAuthMailStatus = {
+  ok: boolean
+  mode: 'indobase' | 'branded'
+  from_email: string
+  from_name: string
+  branded: boolean
+  default_from_email: string
+  default_from_name: string
+  message?: string
+  code?: string
+}
+
+export type OsEnsureNextStep = {
+  id: string
+  label: string
+  path?: string
+}
 
 export type OsPromptQuota = {
   plan: string
@@ -69,6 +89,12 @@ export type RuntimeEnsureResponse = {
   backend?: OsWorkspaceSession['backend']
   /** Customer Enable copy — never provider names */
   message?: string
+  /** Product handoff when ensure left setup unfinished (commerce/email) */
+  launch_url?: string | null
+  /** pending = backend ready, finish product setup; ready = fully live */
+  setup_status?: 'pending' | 'ready'
+  /** Soft follow-ups (e.g. brand login From after Login enabled) */
+  next_steps?: OsEnsureNextStep[]
 }
 
 export type DeployPublishRequest = {

@@ -120,7 +120,8 @@ See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md). Static Go Live
 ```text
 User: "Add user login"        → ✓ Login enabled
 User: "Add a customer database" → ✓ Customer database created
-User: "Add payments"          → ✓ Payments are live
+User: "Add payments"          → ✓ Payments backend ready — finish checkout setup
+User: "Add email"             → ✓ Email backend ready — finish sender setup
 User: "Launch my business"    → ✓ Your business is live
 ```
 

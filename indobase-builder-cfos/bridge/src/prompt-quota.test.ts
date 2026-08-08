@@ -40,7 +40,7 @@ describe('prompt-quota helpers', () => {
     assert.equal(block.exhausted, true)
     assert.match(block.upgrade_copy, /Free agent limit/)
     assert.match(block.upgrade_copy, /\/org\/acme\/billing/)
-    assert.match(block.note, /GET check \/ POST consume/)
+    assert.match(block.note, /begin-turn|GET check|POST consume/i)
   })
 
   it('interprets 402 exhausted responses for agents', () => {

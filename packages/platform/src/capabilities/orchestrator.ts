@@ -29,6 +29,10 @@ export type CapabilityEnsureResult = {
   message: string
   /** Substrate provision hint — not shown as product UI */
   provisionState?: string
+  /** Product handoff URL when setup still needs operator steps (payments/email) */
+  launchUrl?: string | null
+  /** pending = backend ready, product setup unfinished; ready = fully live */
+  setupStatus?: 'pending' | 'ready'
 }
 
 /**
@@ -41,8 +45,16 @@ export type CapabilityProviderAdapter = {
     capabilityId: CapabilityId
   }): Promise<{
     ok: boolean
-    /** ready → enabled; provisioning → enabling; none/failed as named */
-    state: 'ready' | 'provisioning' | 'none' | 'failed'
+    /**
+     * ready → enabled; provisioning → enabling; pending_setup → enabling
+     * (backend ready, finish product setup); none/failed as named.
+     */
+    state: 'ready' | 'provisioning' | 'none' | 'failed' | 'pending_setup'
+    /** Overrides surface pending/enabled copy when set (must stay provider-free) */
+    customerMessage?: string
+    /** Product handoff when state is pending_setup */
+    launchUrl?: string | null
+    setupStatus?: 'pending' | 'ready'
     /** Internal diagnostics only — stripped from customer message */
     detail?: string
   }>
@@ -54,6 +66,8 @@ type CapabilitySurface = {
   aliases: readonly string[]
   enabledMessage: string
   enablingMessage: string
+  /** Backend ready but product setup unfinished (commerce / email) */
+  pendingMessage?: string
 }
 
 const SURFACES: readonly CapabilitySurface[] = [
@@ -91,6 +105,8 @@ const SURFACES: readonly CapabilitySurface[] = [
     aliases: ['commerce', 'payments', 'payment', 'checkout', 'billing'],
     enabledMessage: 'Payments are live',
     enablingMessage: 'Enabling payments…',
+    pendingMessage:
+      'Payments backend is ready — finish checkout setup to charge customers.',
   },
   {
     id: 'events',
@@ -105,6 +121,7 @@ const SURFACES: readonly CapabilitySurface[] = [
     aliases: ['email', 'mail'],
     enabledMessage: 'Email enabled',
     enablingMessage: 'Enabling email…',
+    pendingMessage: 'Email backend is ready — finish sender setup to send campaigns.',
   },
   {
     id: 'functions',
@@ -175,6 +192,11 @@ export function enablingMessageFor(capabilityId: CapabilityId | string): string 
   return surface?.enablingMessage ?? 'Enabling…'
 }
 
+/** Pending-setup copy when backend is ready but product setup is unfinished. */
+export function pendingMessageFor(capabilityId: CapabilityId | string): string | undefined {
+  return resolveCapabilitySurface(String(capabilityId))?.pendingMessage
+}
+
 export type CapabilityOrchestrator = {
   ensure(input: CapabilityEnsureRequest): Promise<CapabilityEnsureResult>
   listSurfaces(): readonly { id: CapabilityId; customerLabel: string }[]
@@ -223,6 +245,23 @@ export function createCapabilityOrchestrator(
           }
         }
 
+        if (raw.state === 'pending_setup') {
+          const pendingCopy =
+            raw.customerMessage?.trim() ||
+            surface.pendingMessage ||
+            surface.enablingMessage
+          return {
+            ok: true,
+            capabilityId: surface.id,
+            customerLabel: surface.customerLabel,
+            status: 'enabling',
+            message: assertNoProviderLeak(pendingCopy),
+            provisionState: 'pending_setup',
+            launchUrl: raw.launchUrl ?? null,
+            setupStatus: raw.setupStatus ?? 'pending',
+          }
+        }
+
         if (!raw.ok || raw.state === 'failed') {
           return {
             ok: false,
@@ -241,8 +280,12 @@ export function createCapabilityOrchestrator(
           capabilityId: surface.id,
           customerLabel: surface.customerLabel,
           status: 'enabled',
-          message: assertNoProviderLeak(surface.enabledMessage),
+          message: assertNoProviderLeak(
+            raw.customerMessage?.trim() || surface.enabledMessage,
+          ),
           provisionState: raw.state,
+          launchUrl: raw.launchUrl,
+          setupStatus: raw.setupStatus ?? 'ready',
         }
       } catch {
         return {
@@ -310,6 +353,20 @@ export function toCapabilityEnsureResult(input: {
     }
   }
 
+  if (state === 'pending_setup') {
+    return {
+      ok: true,
+      capabilityId,
+      customerLabel,
+      status: 'enabling',
+      message: assertNoProviderLeak(
+        input.message?.trim() || surface.pendingMessage || surface.enablingMessage,
+      ),
+      provisionState: input.provisionState,
+      setupStatus: 'pending',
+    }
+  }
+
   return {
     ok: true,
     capabilityId,
@@ -317,5 +374,6 @@ export function toCapabilityEnsureResult(input: {
     status: 'enabled',
     message: assertNoProviderLeak(surface.enabledMessage),
     provisionState: input.provisionState,
+    setupStatus: 'ready',
   }
 }

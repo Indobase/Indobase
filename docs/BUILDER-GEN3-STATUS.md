@@ -1,6 +1,6 @@
 # Builder Gen 3 — status
 
-**Updated:** 2026-08-08 (prompt-quota agent wiring + OTP session polish)  
+**Updated:** 2026-08-08 (begin-turn meter + principal-scoped CFOS login; Lane 2 pending_setup)  
 **ADR:** [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [INDOBASE-OS.md](./INDOBASE-OS.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md)  
 **Product:** CFOS-native **Indobase OS** — one shell; engines behind Capabilities.
 
@@ -10,8 +10,9 @@
 
 1. Open **`/`** on the CFOS bridge — mints a guest session and serves the agent workspace as the **top document** (direct CFOS; no outer iframe chrome).
 2. Guest is account-first: agent must finish OTP in chat (`/auth/start` → `/auth/verify`, DPDP consent) before docs/design/code/launch/enable.
-3. Launch / Enable / prompt-quota mutate paths require a signed-in session (`account_required`); `/api/os/launch/status` remains readable for guests.
+3. Launch / Enable / prompt-quota mutate paths require a signed-in session (`account_required`); `/api/os/launch/status`, `/api/os/runtime/agent-credentials`, and `/api/os/agent/begin-turn` remain usable for guests (begin-turn does not consume until signed-in).
 4. **Gaps closed in repo before any Vyom / `.249` roll** — finish staging smoke first; do not treat Hub SHA tags alone as “safe to roll.”
+5. **Prod OTP** — Resend SMTP live on control-plane GoTrue (`auth@indobase.in`); verify with `verify-os-otp-smtp-on-vps.sh --fix`.
 
 ---
 
@@ -26,7 +27,8 @@
 | Guest account-first hints | **Done** — `GUEST_ACCOUNT_FIRST_HINT`, session `onboarding.gate`, AGENT_HINT, seed-format-routing |
 | Subdomain ownership (no silent takeover) | **Done** — `static-launch` assignDomain conflict |
 | Lane 2 plan gate (`backendStudio`) | **Done** — `assertOsEnsureAccess` rejects guest/`draft_*` + Free |
-| OS agent prompt quota hook | **Done** — Studio + bridge endpoints; `/api/session.usage` live snapshot; AGENT_HINT / seed / adapter rules (check then consume; 402 upgrade copy) |
+| OS agent prompt quota hook | **Done** — Studio + bridge endpoints; `/api/session.usage` live snapshot; ChatInterface `POST /api/os/agent/begin-turn` hard meter; AGENT_HINT / seed / adapter rules (402 upgrade copy) |
+| Principal-scoped CFOS login | **Done** — `GET /api/os/runtime/agent-credentials` + rebrand `devAutoLogin` (not shared `dev`/`devpassword`) |
 | CFOS CI image (Hub SHA) | **Done** — `docker-publish.yml` builds `roshanraghavander/indobase-builder-cfos:<sha>` |
 | PLATFORM_API_URL on CFOS deploy | **Done** — Swarm Studio DNS |
 | Achievement home UX | **N/A** — OS is direct CFOS document (no iframe chrome) |
@@ -45,11 +47,11 @@
 
 | Item | Notes |
 |------|--------|
-| **CFOS runtime chat-turn metering hook** | Bridge + hints instruct agents to GET/POST `/api/os/usage/prompt-quota`; upstream CFOS still does not auto-intercept every chat turn — needs a runtime hook for hard enforcement |
-| **Staging smoke** | Guest OTP → verify → session gate clear; signed-in quota check/consume; Go Live; Enable login (plan gate) on `*.indobase.fun` before Vyom |
-| **Per-session CFOS agent isolation** | **Open / Phase 2** — shared runtime operator until multi-tenant agent safety |
-| **Full Lane 2 Payments/Email adapters** | **Open** — Ensure path + plan gate exist; product adapters incomplete |
-| **Prod OTP email ops verify** | **Ops at roll** — control-plane GoTrue mail on live `.249` (cannot finish in repo alone) |
+| **Staging smoke** | Guest OTP → verify → session gate clear; signed-in begin-turn 402; Go Live; Enable login (plan gate) on `*.indobase.fun` before Vyom |
+| **Full agent VM / filesystem isolation** | **Open / Phase 2** — principal-scoped CFOS login is done; shared desktop/runtime filesystem isolation is not |
+| **Full Lane 2 Payments/Email adapters** | **In progress** — Ensure now returns `pending_setup` + finish-setup copy + `launch_url` / `setup_status` (not “Payments are live” / “Email enabled” from data-plane alone). Product checkout/sender completion still unfinished |
+| **Product Auth OTP From branding** | **Done (repo)** — `GET/POST /api/os/v1/auth/mail` + bridge `/api/os/auth/mail`; From applies to live tenant GoTrue on re-apply; ensure(auth) returns `next_steps` |
+| **Prod OTP email ops verify** | **Blocked on SMTP** — `verify-os-otp-smtp-on-vps.sh --fix` (2026-08-08): Studio health OK; `/etc/indobase/smtp.env` + `indobase-auth` have **empty** `SMTP_PASS` / no `RESEND_API_KEY` (host `indobase-smtp-relay`). OTP mail will not deliver until real credentials are placed in smtp.env; `--apply` not safe yet |
 
 ---
 

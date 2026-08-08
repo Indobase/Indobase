@@ -1,6 +1,9 @@
 /**
  * Capability Ensurer — Lane 2 backend enable via Capability Orchestrator (ADR 0006).
  * Customer copy: Enable Login / Business Data / Payments — never “connect” a provider.
+ *
+ * Commerce / email: data-plane ready is not “live”. Adapter returns pending_setup and
+ * a product handoff URL when minting succeeds.
  */
 import { makeRandomString } from 'lib/helpers'
 import {
@@ -32,6 +35,8 @@ import {
   throwOsEnsureDenial,
   type OsEnsureAccessDenial,
 } from './os-ensurer-access'
+import { AUTH_LOGIN_MAIL_NEXT_STEP } from './os-product-auth-mail'
+import { finalizeProductCapabilityEnsure } from './os-ensurer-product-setup'
 
 export {
   assertOsAccountForEnsure,
@@ -39,6 +44,8 @@ export {
   throwOsEnsureDenial,
   type OsEnsureAccessDenial,
 } from './os-ensurer-access'
+
+export { finalizeProductCapabilityEnsure } from './os-ensurer-product-setup'
 
 function normalizeCapability(raw: string): string {
   return normalizeCapabilityId(raw) ?? raw.trim()
@@ -128,6 +135,9 @@ export async function ensureOsCapability({
   provision_state: string
   backend?: ReturnType<typeof buildBuilderBackendConfig> | null
   message: string
+  launch_url?: string | null
+  setup_status?: 'pending' | 'ready'
+  next_steps?: Array<{ id: string; label: string; path?: string }>
 }> {
   const adapter = createStudioDataPlaneCapabilityAdapter({ claims, workspaceRef })
   const orch = createCapabilityOrchestrator(adapter)
@@ -152,6 +162,11 @@ export async function ensureOsCapability({
     }
   }
 
+  const next_steps =
+    result.ok && result.status === 'enabled' && result.capabilityId === 'auth'
+      ? [AUTH_LOGIN_MAIL_NEXT_STEP]
+      : undefined
+
   return {
     ok: result.ok,
     capability: result.capabilityId,
@@ -161,6 +176,9 @@ export async function ensureOsCapability({
     provision_state: result.provisionState || 'none',
     backend,
     message: result.message,
+    ...(result.launchUrl !== undefined ? { launch_url: result.launchUrl } : {}),
+    ...(result.setupStatus !== undefined ? { setup_status: result.setupStatus } : {}),
+    ...(next_steps ? { next_steps } : {}),
   }
 }
 
@@ -194,7 +212,7 @@ function createStudioDataPlaneCapabilityAdapter({
       ].includes(normalized)
 
       if (!needsBackend) {
-        return { ok: true, state: 'ready' }
+        return { ok: true, state: 'ready', setupStatus: 'ready' }
       }
 
       if (workspace.provision_state === 'none') {
@@ -222,7 +240,11 @@ function createStudioDataPlaneCapabilityAdapter({
         if (!settings) {
           return { ok: true, state: 'provisioning' }
         }
-        return { ok: true, state: 'ready' }
+        return finalizeProductCapabilityEnsure({
+          claims,
+          workspaceRef,
+          capabilityId: normalized,
+        })
       } catch (err) {
         return {
           ok: false,

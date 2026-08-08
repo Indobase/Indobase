@@ -68,6 +68,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    // Passes through launch_url / setup_status when present (commerce/email pending_setup).
     const result = await ensureOsCapability({
       claims,
       workspaceRef,

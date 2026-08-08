@@ -96,6 +96,8 @@ export function injectIndobaseContextBootstrap(html: string): string {
         tool: '/api/os/tools/launchBusiness',
         tool_alias: '/api/os/tools/goLive',
       };
+      // ChatInterface meters each user send via this path (hard Free-plan enforce).
+      window.__INDOBASE_BEGIN_TURN__ = '/api/os/agent/begin-turn';
       window.__INDOBASE__ = s.backend
         ? {
             INDOBASE_URL: s.backend.api_url,
@@ -119,6 +121,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
               LAUNCH_RULES:
                 'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
               PROMPT_QUOTA: '/api/os/usage/prompt-quota',
+              BEGIN_TURN: window.__INDOBASE_BEGIN_TURN__,
               AUTH: s.auth || { start: '/auth/start', verify: '/auth/verify', in_chat: true },
               GUEST: !!s.guest,
             }),

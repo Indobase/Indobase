@@ -5,6 +5,7 @@ import {
   OS_API_SECRET_HEADER,
   PlatformApiRoutes,
   type DeployPublishResponse,
+  type OsAuthMailStatus,
   type OsPromptQuotaResponse,
   type OsWorkspaceSession,
   type RuntimeEnsureResponse,
@@ -165,6 +166,115 @@ export async function platformDeployPublish(input: {
     ok: false,
     status: 'failed',
     message: 'Could not go live — try Launch Business again.',
+  }
+}
+
+/** GET/POST product Auth OTP From (branded login mail). */
+export async function platformAuthMail(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  mode?: 'indobase' | 'branded'
+  fromEmail?: string
+  fromName?: string
+  consume?: boolean
+}): Promise<OsAuthMailStatus & { httpStatus: number }> {
+  const write = Boolean(input.mode || input.fromEmail || input.fromName || input.consume)
+  if (!write) {
+    const base = resolvePlatformApiUrl()
+    if (!base) {
+      return {
+        ok: false,
+        mode: 'indobase',
+        from_email: '',
+        from_name: '',
+        branded: false,
+        default_from_email: '',
+        default_from_name: '',
+        message: 'PLATFORM_API_URL is not configured on the bridge.',
+        httpStatus: 503,
+      }
+    }
+    let secret: string
+    try {
+      secret = resolveHandoffSecret()
+    } catch (err) {
+      return {
+        ok: false,
+        mode: 'indobase',
+        from_email: '',
+        from_name: '',
+        branded: false,
+        default_from_email: '',
+        default_from_name: '',
+        message: err instanceof Error ? err.message : 'Handoff secret not configured',
+        httpStatus: 503,
+      }
+    }
+    const params = new URLSearchParams({
+      gotrue_id: input.gotrueId,
+      email: input.email,
+      workspace_ref: input.workspaceRef,
+    })
+    try {
+      const res = await fetch(`${base}${PlatformApiRoutes.authMail}?${params}`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          [OS_API_SECRET_HEADER]: secret,
+        },
+      })
+      const json = (await res.json().catch(() => null)) as OsAuthMailStatus | null
+      if (json && typeof json === 'object') {
+        return { ...json, httpStatus: res.status }
+      }
+      return {
+        ok: false,
+        mode: 'indobase',
+        from_email: '',
+        from_name: '',
+        branded: false,
+        default_from_email: '',
+        default_from_name: '',
+        message: 'Could not load login mail settings',
+        httpStatus: res.status,
+      }
+    } catch (err) {
+      return {
+        ok: false,
+        mode: 'indobase',
+        from_email: '',
+        from_name: '',
+        branded: false,
+        default_from_email: '',
+        default_from_name: '',
+        message: err instanceof Error ? err.message : 'Platform API request failed',
+        httpStatus: 502,
+      }
+    }
+  }
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.authMail, {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+    ...(input.mode ? { mode: input.mode } : {}),
+    ...(input.fromEmail ? { from_email: input.fromEmail } : {}),
+    ...(input.fromName ? { from_name: input.fromName } : {}),
+  })
+  if (json && typeof json === 'object') {
+    return { ...(json as OsAuthMailStatus), httpStatus: status }
+  }
+  return {
+    ok: false,
+    mode: 'indobase',
+    from_email: '',
+    from_name: '',
+    branded: false,
+    default_from_email: '',
+    default_from_name: '',
+    message: 'Could not update login mail settings',
+    httpStatus: status,
   }
 }
 

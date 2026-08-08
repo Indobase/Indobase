@@ -24,9 +24,11 @@ Bridge calls **`PLATFORM_API_URL`** (Studio service hosting `/api/os/v1/*`):
 
 Header: `X-Indobase-OS-Secret` (= `BUILDER_CFOS_HANDOFF_SECRET`).
 
-Bridge proxies: `POST /api/os/runtime/ensure`, `POST /api/os/deploy/publish`, `GET`/`POST /api/os/usage/prompt-quota`. Guests may read `/api/os/launch/status`; mutate paths return `403 account_required`.
+Bridge proxies: `POST /api/os/runtime/ensure`, `POST /api/os/deploy/publish`, `GET`/`POST /api/os/usage/prompt-quota`, `POST /api/os/agent/begin-turn`, `GET /api/os/runtime/agent-credentials`. Guests may read `/api/os/launch/status` and agent-credentials, and may call begin-turn (no consume). Mutate paths return `403 account_required`.
 
-`/api/session` (signed-in) includes live `usage` (prompt quota snapshot), `actions` / `command_palette` (Create account, Go Live, Add login…), and `tools.promptQuota`. Agents must GET then POST prompt-quota before heavy codegen (see `AGENT_HINT.md`); CFOS does not auto-meter every chat turn yet.
+`/api/session` (signed-in) includes live `usage` (prompt quota snapshot), `actions` / `command_palette` (Create account, Go Live, Add login…), and `tools.promptQuota`. ChatInterface hard-meters each user send via `POST /api/os/agent/begin-turn`; agents should still GET then POST prompt-quota on heavy tool paths (see `AGENT_HINT.md`).
+
+CFOS runtime login uses **principal-scoped** credentials from `GET /api/os/runtime/agent-credentials` (derived per `gotrueId` + `projectRef`) — not a shared `dev`/`devpassword` operator. Full filesystem / agent VM isolation remains Phase 2.
 
 CI builds Hub image `roshanraghavander/indobase-builder-cfos:<git-sha>` via `.github/workflows/docker-publish.yml` (push to `staging`/`main`).
 
@@ -61,6 +63,8 @@ Integrated stack: `./scripts/dev-stack.sh`
 | `/api/indobase/proxy/*` | Tenant API (after lazy Ensurer) |
 | `/api/session` | Workspace + generation context + usage/actions/tools |
 | `/api/os/usage/prompt-quota` | GET check / POST consume Free agent prompts |
+| `/api/os/agent/begin-turn` | ChatInterface hard meter (consume on user send) |
+| `/api/os/runtime/agent-credentials` | Per-session CFOS username/password (guest OK) |
 | `/auth/start` · `/auth/verify` | In-chat OTP (verify clears guest onboarding) |
 
 ## Legacy Studio handoff

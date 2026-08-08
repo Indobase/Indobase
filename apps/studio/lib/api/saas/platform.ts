@@ -3046,7 +3046,12 @@ function resolveTenantMailerTemplatesBase(): string {
 }
 
 /** SMTP + mailer settings for tenant GoTrue (shared control-plane mail or SAAS_TENANT_SMTP_*). */
-function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: string }) {
+function resolveTenantGoTrueMailerEnv(opts: {
+  apiExternalUrl: string
+  siteUrl: string
+  /** Per-project auth_config — brands From via os_product_mail / Studio SMTP_* fields */
+  authConfig?: unknown
+}) {
   const smtpHost = resolveTenantSmtpHost()
   const smtpPort =
     process.env.SAAS_TENANT_SMTP_PORT?.trim() ||
@@ -3054,14 +3059,12 @@ function resolveTenantGoTrueMailerEnv(opts: { apiExternalUrl: string; siteUrl: s
     (isDockerOnlyMailHost(smtpHost) || smtpHost === 'indobase-mail' ? '2500' : '587')
   const smtpUser = process.env.SAAS_TENANT_SMTP_USER?.trim() ?? process.env.SMTP_USER?.trim() ?? ''
   const smtpPass = process.env.SAAS_TENANT_SMTP_PASS?.trim() ?? process.env.SMTP_PASS?.trim() ?? ''
-  const smtpAdminEmail =
-    process.env.SAAS_TENANT_SMTP_ADMIN_EMAIL?.trim() ||
-    process.env.SMTP_ADMIN_EMAIL?.trim() ||
-    'auth@indobase.in'
-  const smtpSenderName =
-    process.env.SAAS_TENANT_SMTP_SENDER_NAME?.trim() ||
-    process.env.SMTP_SENDER_NAME?.trim() ||
-    'Indobase'
+  // Lazy require avoids circular import with os-product-auth-mail → platform Claims.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { resolveProductMailerFromIdentity } = require('./os-product-auth-mail-core') as typeof import('./os-product-auth-mail-core')
+  const fromIdentity = resolveProductMailerFromIdentity(opts.authConfig ?? null)
+  const smtpAdminEmail = fromIdentity.smtpAdminEmail
+  const smtpSenderName = fromIdentity.smtpSenderName
   const autoConfirmRaw =
     process.env.SAAS_TENANT_MAILER_AUTOCONFIRM?.trim() ??
     process.env.ENABLE_EMAIL_AUTOCONFIRM?.trim() ??
@@ -3151,10 +3154,13 @@ function buildSlimTenantDockerCompose(opts: {
   edgeFunctionSecrets?: Record<string, string>
   /** Per-IP signup/sign-in and related GoTrue rate limits (from auth_config). */
   rateLimits?: GoTrueRateLimitComposeEnv | null
+  /** Brands GOTRUE_SMTP_ADMIN_EMAIL / SENDER_NAME from os_product_mail */
+  authConfig?: unknown
 }): string {
   const mailer = resolveTenantGoTrueMailerEnv({
     apiExternalUrl: opts.apiExternalUrl,
     siteUrl: opts.siteUrl,
+    authConfig: opts.authConfig,
   })
   const rateLimits = opts.rateLimits ?? resolveGoTrueRateLimitComposeEnv()
   const rateLimitYaml = formatGoTrueRateLimitComposeYaml(rateLimits)
@@ -3816,6 +3822,7 @@ export async function getTenantStackArtifacts({
     rateLimits: resolveGoTrueRateLimitComposeEnv(
       (p.auth_config ?? null) as Parameters<typeof resolveGoTrueRateLimitComposeEnv>[0]
     ),
+    authConfig: p.auth_config ?? null,
     })
   )
   assertValidTenantComposeYaml(dockerComposeYml)

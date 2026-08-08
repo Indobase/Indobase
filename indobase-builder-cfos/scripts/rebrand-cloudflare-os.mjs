@@ -437,31 +437,87 @@ for (const [rel, pairs] of [
   }
 }
 
-// --- Local PoC: skip CF OS signup/login (Studio SSO is the gate) ---
+// --- Per-session CFOS principal + same-origin API host (Studio SSO is the gate) ---
 {
   const path = join(OS, 'packages/workshop-frontend/src/main.tsx')
   let text = read(path)
-  const oldGate = `async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {
-  if (import.meta.env.VITE_DEV_AUTO_LOGIN !== 'true') return
-  if (localStorage.getItem('authToken')) return  // already logged in`
 
-  const newGate = `async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {
-  // Indobase local PoC: auto-login on loopback so Studio SSO is the only gate.
+  const beginMarker = 'async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {'
+  const afterMarker = '\n\n// WebSocket RPC connection management.'
+  const beginIdx = text.indexOf(beginMarker)
+  const afterIdx = text.indexOf(afterMarker, beginIdx)
+  const newDevAutoLogin = `async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {
+  // Indobase: per-session CFOS principal via /api/os/runtime/agent-credentials
+  // (not shared VITE_DEV_USERNAME/PASSWORD). VITE_DEV_AUTO_LOGIN enables this flow.
   const host = typeof window !== 'undefined' ? window.location.hostname : ''
   const onLoopback = host === 'localhost' || host === '127.0.0.1'
   if (import.meta.env.VITE_DEV_AUTO_LOGIN !== 'true' && !onLoopback) return
-  if (localStorage.getItem('authToken')) return  // already logged in`
 
-  text = replaceOnce(text, oldGate, newGate, path)
+  let username = import.meta.env.VITE_DEV_USERNAME ?? 'dev'
+  let password = import.meta.env.VITE_DEV_PASSWORD ?? 'devpassword'
+  let storageKey: string | null = null
 
-  const oldHost = `function getBackendHost(): string {
-  const backendHost = import.meta.env.VITE_BACKEND_HOST?.trim();
-  if (backendHost) return backendHost;
+  try {
+    const res = await fetch('/api/os/runtime/agent-credentials', { credentials: 'same-origin' })
+    if (res.ok) {
+      const json = await res.json() as {
+        ok?: boolean
+        username?: string
+        password?: string
+        storage_key?: string
+      }
+      if (json?.ok && json.username && json.password && json.storage_key) {
+        username = json.username
+        password = json.password
+        storageKey = json.storage_key
+      }
+    } else if (!onLoopback) {
+      console.warn('[indobase] agent-credentials unavailable; skipping auto-login')
+      return
+    }
+  } catch (err) {
+    if (!onLoopback) {
+      console.warn('[indobase] agent-credentials fetch failed; skipping auto-login', err)
+      return
+    }
+    // Loopback fallback: env VITE_DEV_* for bare CFOS without bridge.
+  }
 
-  // When opening the Vite dev server directly (localhost:3000), the backend is at localhost:8787.
-  // Otherwise, the API is on the same host as the frontend.
-  return window.location.hostname === 'localhost' ? 'localhost:8787' : window.location.host;
+  if (storageKey) {
+    const scoped = localStorage.getItem(storageKey)
+    if (scoped) {
+      localStorage.setItem('authToken', scoped)
+      return
+    }
+  }
+  if (!storageKey && localStorage.getItem('authToken')) return
+
+  const { hashPassword } = await import('./passwordHash')
+  const passwordHash = await hashPassword(username, password)
+
+  let token = await stub.createAccount(username, username, passwordHash)
+  if (!token) {
+    token = await stub.login(username, passwordHash)
+  }
+
+  if (token) {
+    localStorage.setItem('authToken', token)
+    if (storageKey) localStorage.setItem(storageKey, token)
+  }
 }`
+
+  if (
+    text.includes('/api/os/runtime/agent-credentials') &&
+    text.includes('per-session CFOS principal')
+  ) {
+    console.log('  devAutoLogin already uses per-session agent-credentials (skip)')
+  } else if (beginIdx >= 0 && afterIdx > beginIdx) {
+    text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
+    console.log('  devAutoLogin ← per-session agent-credentials')
+  } else {
+    console.warn('  skip: devAutoLogin block not found (upstream drifted)')
+  }
+
   // Off-loopback MUST use window.location.host (same-origin behind builder.indobase.in).
   // Never return VITE_BACKEND_HOST when it is a bind address like 0.0.0.0 — browsers cannot open wss://0.0.0.0.
   const newHost = `function getBackendHost(): string {
@@ -475,19 +531,27 @@ for (const [rel, pairs] of [
   }
   return window.location.host;
 }`
-  if (text.includes(oldHost)) {
-    text = text.replace(oldHost, newHost)
-  } else if (
+  if (
     text.includes('Never use bind addresses like 0.0.0.0') &&
     text.includes('return window.location.host')
   ) {
     console.log('  getBackendHost already Indobase-safe (skip)')
-  } else if (text.includes('function getBackendHost()')) {
-    console.warn(
-      '  warn: getBackendHost present but neither upstream nor Indobase patch matched — check main.tsx',
-    )
   } else {
-    text = replaceOnce(text, oldHost, newHost, path)
+    const hostStart = text.indexOf('function getBackendHost(): string {')
+    if (hostStart >= 0) {
+      // Match balanced braces for the function body.
+      let i = hostStart + 'function getBackendHost(): string {'.length
+      let depth = 1
+      while (i < text.length && depth > 0) {
+        if (text[i] === '{') depth++
+        else if (text[i] === '}') depth--
+        i++
+      }
+      text = text.slice(0, hostStart) + newHost + text.slice(i)
+      console.log('  getBackendHost ← same-origin off-loopback')
+    } else {
+      console.warn('  warn: getBackendHost not found — check main.tsx')
+    }
   }
 
   // Await auto-login before first paint so LoginPage never flashes.
@@ -515,9 +579,15 @@ void (async () => {
     </StrictMode>
   )
 })()`
-  text = replaceOnce(text, oldBoot, newBoot, path)
+  if (text.includes('finish auto-login before render')) {
+    console.log('  boot already awaits auto-login (skip)')
+  } else if (text.includes(oldBoot)) {
+    text = text.replace(oldBoot, newBoot)
+  } else {
+    console.warn('  skip: boot block drifted')
+  }
   write(path, text)
-  console.log('  local auto-login enabled (skip signup/login on loopback)')
+  console.log('  local auto-login enabled (per-session principals)')
 }
 
 {
@@ -526,8 +596,10 @@ void (async () => {
     envPath,
     [
       '# Generated by Indobase rebrand.',
-      '# Shared CFOS operator auto-login (temporary): agent desktop needs a runtime session.',
-      '# Tenant isolation for Go Live / Enable is enforced by the Indobase bridge + Studio APIs.',
+      '# VITE_DEV_AUTO_LOGIN enables the Indobase per-session credentials flow',
+      '# (GET /api/os/runtime/agent-credentials → principal-scoped CFOS login).',
+      '# VITE_DEV_USERNAME/PASSWORD are loopback-only fallback when the bridge',
+      '# credentials endpoint is unavailable — NOT the production shared path.',
       'VITE_DEV_AUTO_LOGIN=true',
       'VITE_DEV_USERNAME=dev',
       'VITE_DEV_PASSWORD=devpassword',
@@ -538,6 +610,63 @@ void (async () => {
     ].join('\n'),
   )
   console.log('  wrote', envPath)
+}
+
+// --- ChatInterface: hard Free-plan meter via POST /api/os/agent/begin-turn ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    if (text.includes('/api/os/agent/begin-turn') || text.includes('Indobase begin-turn meter')) {
+      console.log('  ChatInterface begin-turn meter already patched (skip)')
+    } else {
+      const anchor = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+
+    sendInFlightRef.current = true;`
+      const injection = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+
+    // Indobase begin-turn meter (hard Free-plan enforce).
+    // Guests get 200 (no consume) so OTP signup chat works. Fail-closed on 402 only.
+    // Fail-open on 5xx/network. Do not abort on 403 — guests must be able to chat.
+    try {
+      const meter = await fetch('/api/os/agent/begin-turn', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: inputValue }),
+      })
+      if (meter.status === 402) {
+        let msg = 'Free agent limit reached (5 prompts). Upgrade your plan to continue building with Indobase.'
+        try {
+          const j = await meter.json() as { message?: string }
+          if (typeof j?.message === 'string' && j.message.trim()) msg = j.message.trim()
+        } catch { /* keep default */ }
+        toasts.add({ title: msg, variant: 'error' })
+        return
+      }
+      if (!meter.ok && meter.status >= 500) {
+        console.warn('[indobase] begin-turn meter unavailable; allowing send (fail-open)', meter.status)
+      }
+    } catch (err) {
+      console.warn('[indobase] begin-turn meter network error; allowing send (fail-open)', err)
+    }
+
+    sendInFlightRef.current = true;`
+      if (text.includes(anchor)) {
+        text = text.replace(anchor, injection)
+        write(path, text)
+        console.log('  ChatInterface ← begin-turn meter')
+      } else {
+        console.warn('  skip: ChatInterface handleSend meter anchor drifted')
+      }
+    }
+  }
 }
 
 // --- Hide model chooser (Indobase routes models server-side; no UI picker) ---

@@ -27,21 +27,24 @@ Signed-in operators: skip this section.
 
 - **Create account** (guests) — OTP gate above.
 - **Go Live** / **Launch Business** — launchBusiness tool (HARD PATH below).
-- **Add login** — POST /api/os/runtime/ensure { capability: "login" }; reply “Login enabled”.
-- **Enable payments** — runtime/ensure payments; never ask which vendor.
+- **Add login** — POST /api/os/runtime/ensure { capability: "login" }; reply “Login enabled” and mention next_steps. Optionally brand OTP From via POST /api/os/auth/mail { from_email, from_name } (or mode: "indobase"). Never ask which mail vendor.
+- **Set login email From** — POST /api/os/auth/mail; quote API message.
+- **Enable payments** — runtime/ensure payments; reply with the API message (finish checkout setup / pending). Never claim “Payments are live” from ensure alone; never ask which vendor. Use `launch_url` when present.
 
-## Agent prompt quota (HARD — before heavy codegen)
+## Agent prompt quota (HARD)
 
 Signed-in Free operators share a 5-prompt meter with Builder.
 
-Before heavy codegen / multi-file generation / significant build turns:
+**Runtime hook:** ChatInterface calls `POST /api/os/agent/begin-turn` before each user send (hard enforce; 402 upgrade / 403 account_required abort the send).
+
+On heavy tool paths / codegen outside the chat composer, still:
 
 1. GET /api/os/usage/prompt-quota (also exposed on /api/session.usage for signed-in).
 2. If remaining is 0 OR response is 402 / `prompt_quota_exceeded`: tell the operator Free agent limit reached (5 prompts) and to upgrade — quote `upgradeUrl` / session.usage.upgrade_copy. Do not continue heavy work.
 3. Otherwise POST /api/os/usage/prompt-quota to consume one prompt, then proceed.
 4. Guests get `account_required` — finish OTP first.
 
-CFOS does not auto-meter every chat turn yet — you MUST call these endpoints yourself on heavy turns until a runtime hook exists.
+Do not rely on honor-system alone for chat turns — begin-turn already meters the composer.
 
 ## Go Live / Launch Business (HARD PATH — mandatory)
 
@@ -57,7 +60,8 @@ When the operator says take live, launch, publish, go live, or launch my busines
    NEVER invent, guess, or paste a third-party URL. NEVER say “Your business is now live” without the API url.
 5. NEVER ask which host to use. NEVER suggest page builders, git pages, or generic CDNs.
 6. Auth/database/payments only when they ask — Capability Lane 2 via Indobase **Enable**
-   (“Login enabled”, “Customer database created”, “Payments are live”). NEVER say Connect
+   (“Login enabled”, “Customer database created”; payments/email: finish setup until truly live —
+   do not claim “Payments are live” / “Email enabled” from ensure alone). NEVER say Connect
    Neon/Coolify/Stripe/Postgres/Docker or ask which vendor to use. Providers are hidden.
    **Enable ≠ Connect.**
 

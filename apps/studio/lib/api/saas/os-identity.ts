@@ -103,11 +103,17 @@ export async function startOsIdentityOtp(
     }
 
     if (!response.ok) {
-      const message =
+      const upstream =
         (typeof json?.msg === 'string' && json.msg) ||
         (typeof json?.message === 'string' && json.message) ||
         (typeof json?.error_description === 'string' && json.error_description) ||
-        `Failed to send verification code (${response.status})`
+        ''
+      const opaque =
+        !upstream ||
+        /internal|smtp|mailer|dial|connection refused|timeout/i.test(upstream)
+      const message = opaque
+        ? `Couldn't send the verification email (${response.status}). Mail delivery may be misconfigured on the control plane — try again shortly.`
+        : upstream
       throw new OsIdentityError(message, response.status >= 500 ? 502 : 400)
     }
 
