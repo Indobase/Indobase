@@ -7,6 +7,7 @@ enum ConnectorProviderEnum {
   STRIPE = 0;
   HUBSPOT = 1;
   PENNYLANE = 2;
+  RAZORPAY = 3;
 }
 
 enum ConnectorTypeEnum {
@@ -36,6 +37,14 @@ message StripeConnector {
   string api_publishable_key = 4;
   string api_secret_key = 5;
   string webhook_secret = 6;
+}
+
+// India settlements machine credentials (Razorpay Recurring / Route).
+message RazorpayConnector {
+  string alias = 1;
+  string key_id = 2;
+  string key_secret = 3;
+  string webhook_secret = 4;
 }
 
 message HubspotConnectorData {

@@ -1,78 +1,70 @@
-# Indobase Payments ↔ Razorpay (next step)
+# Indobase Payments ↔ Razorpay (official docs)
 
-Companion to [PAYMENTS.md](./PAYMENTS.md) and [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md).
+Companion to [PAYMENTS-STRIPE-RAZORPAY.md](./PAYMENTS-STRIPE-RAZORPAY.md), [PAYMENTS.md](./PAYMENTS.md),
+and [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md).
 
-**Status: not implemented in phase 1.** The Indobase Payments engine (Meteroid
-fork) ships with the **Stripe** (or mock) adapter working. Razorpay is the India
-money-movement path once partnerships and product work land.
+**Official references (use these, not guesswork):**
 
-Product-facing name remains **Indobase Payments**. Operators target Studio
-sign-in (SSO handoff follow-up). Razorpay keys below are **machine credentials**,
-not a second user account.
+| Topic | Docs |
+|---|---|
+| Route overview | https://razorpay.com/docs/payments/route/ |
+| Route integration (Linked Account → stakeholder → product config → transfers) | https://razorpay.com/docs/payments/route/integration-guide/ |
+| Create Linked Account | https://razorpay.com/docs/api/payments/route/create-linked-account/ (`POST /v2/accounts`, `type=route`) |
+| Orders | https://razorpay.com/docs/api/orders/create/ (`POST /v1/orders`) |
+| Standard Checkout.js | https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/ |
+| Webhook signature | https://razorpay.com/docs/webhooks/validate-test/ (`X-Razorpay-Signature`, HMAC-SHA256 raw body) |
+
+**Status**
+
+- Studio dual-rail KYC + agent ask (India/Razorpay vs International/Stripe) → `settlement_market`
+- Live **Route Linked Account → stakeholder → product config → bank settlements** when keys + KYC fields present
+- Payments engine: ConnectRazorpay + webhook settle (`payment.captured` / mandate auth) + `razorpay-client` (Orders / customers / get_customer / recurring + Route v2)
+- Production still needs commercial Route keys + webhook secrets on the Payments host
+
+Product chrome: **Indobase Payments / India settlements**. Agents ask **India (Razorpay)** so the rail is clear; keys stay machine credentials.
 
 ---
 
 ## 1. Recurring Payments, not Razorpay Subscriptions
 
-| | Who owns the schedule | Fit for Indobase Payments |
+| | Who owns the schedule | Fit |
 |---|---|---|
-| **Subscriptions** — Razorpay charges on its plan cadence | Razorpay | ✗ Two schedulers; double-charge risk |
-| **Recurring Payments** — customer authorises once; Indobase charges the token when ready | Indobase Payments engine | ✓ |
-
-Indobase Payments owns plans, usage, proration, and invoice timing. Razorpay
-stores the mandate and executes debits.
+| **Subscriptions** (Razorpay plan cadence) | Razorpay | ✗ Double scheduler |
+| **Recurring Payments** (token + Indobase debit) | Indobase Payments | ✓ |
 
 ---
 
-## 2. Core API mapping (when building)
+## 2. Core API mapping (from Razorpay docs)
 
-| Indobase Payments concern | Razorpay |
+| Indobase concern | Razorpay API |
 |---|---|
-| Create payer / customer | `POST /v1/customers` |
-| Collect mandate (card / UPI AutoPay / e-mandate) | Authorisation payment → **token** |
-| Read saved method | `GET /v1/customers/:id/tokens/:token_id` |
-| Charge | `POST /v1/orders` + recurring charge against token |
+| Linked Account (merchant) | `POST /v2/accounts` + fetch account |
+| Payer / customer | `POST /v1/customers` |
+| Checkout order | `POST /v1/orders` then Checkout.js with `order_id` |
+| Mandate / token | Auth payment → token; `GET /v1/customers/:id/tokens` |
+| Subsequent charge | `POST /v1/payments/create/recurring` |
 
 ### Pre-debit notification
 
-Under RBI rules the customer must be notified before each debit. The payments
-engine must schedule:
-
-1. Notify (typically D−1)
-2. Debit on D
-
-Amount freezes at notification time when required. Confirm thresholds with
-Razorpay when building.
+Under RBI rules notify before debit (typically D−1). Confirm thresholds with Razorpay.
 
 ---
 
 ## 3. Webhook signature
 
-Razorpay signs webhooks with **HMAC-SHA256 over the raw request body**, secret in
-`X-Razorpay-Signature`.
+Per Razorpay docs: HMAC-SHA256 over the **raw** body; header `X-Razorpay-Signature`; constant-time compare.
 
-Verify against the **raw body**, never a re-serialised JSON object. Use
-constant-time comparison.
-
-Reference (platform billing only — different product):
-`verifyRazorpayWebhookSignature` in `apps/studio/lib/api/saas/razorpay-billing.ts`.
+Platform plan billing (different product): `verifyRazorpayWebhookSignature` in
+`apps/studio/lib/api/saas/razorpay-billing.ts`.
 
 ---
 
-## 4. Still blocking before money-movement implementation
+## 4. Studio wiring
 
-1. Commercial relationship (Route / Linked Accounts vs partner) — sets whose
-   `key_id` authenticates each call, liability, and settlement.
-2. Connector in the Indobase Payments fork (replace/augment Stripe adapter).
-3. ~~Studio SSO~~ **done**. ~~Merchant KYC UI + `saas.project_payment_merchants`~~
-   **done** (stub provider until Route HTTP is wired).
+`RazorpayRouteOnboardingProvider` in `apps/studio/lib/api/saas/merchant-kyc-provider.ts`
+implements create/sync against official `/v2/accounts`. Do **not** extend
+`razorpay-billing.ts` (Indobase org plan billing).
 
-Studio KYC already exposes `MerchantOnboardingProvider` /
-`StubRazorpayRouteProvider` in `apps/studio/lib/api/saas/merchant-kyc-provider.ts`.
-Wire live Linked Account create/sync there when keys and partnership land —
-do not extend `razorpay-billing.ts` (Indobase plan billing).
-
-Settle partnerships before writing the HTTP client — it changes auth on every
-call above.
+Engine crate: `indobase-payments/modules/meteroid/crates/razorpay-client`.
 
 **This is not legal advice.**

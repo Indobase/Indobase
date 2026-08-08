@@ -169,6 +169,7 @@ async fn test_webhook_in_ingest_dedup_and_worker() {
         Arc::new(Stripe {
             client: Arc::new(StripeClient::new()),
         }),
+        Arc::new(meteroid::adapters::razorpay::Razorpay::default()),
     )
     .await;
 

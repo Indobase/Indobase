@@ -2,7 +2,12 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 import { randomUUID } from 'node:crypto'
 
 import { publishDiscussEvent } from './discuss-events'
-import { getMerchantOnboardingProvider, resolveSettlementAdapter } from './merchant-kyc-provider'
+import {
+  adapterForSettlementMarket,
+  getMerchantOnboardingProvider,
+  resolveSettlementAdapter,
+  settlementMarketForAdapter,
+} from './merchant-kyc-provider'
 import type {
   MerchantBusinessType,
   MerchantDocumentMeta,
@@ -18,7 +23,17 @@ import {
   type PaymentsRole,
 } from './payments-launch'
 import { executeQuery } from './query'
-import { encryptString } from './util'
+import {
+  GATEWAY_EXTERNAL_LINKS,
+  hintId,
+  validateRazorpayKeys,
+  validateStripeKeys,
+  type GatewayConnectBody,
+} from './merchant-gateway-keys'
+import { syncMerchantGatewayKeysToPayments } from './merchant-gateway-sync'
+import { decryptString, encryptString } from './util'
+
+export type { GatewayConnectBody } from './merchant-gateway-keys'
 
 export type {
   MerchantBusinessType,
@@ -212,11 +227,41 @@ function normalizeDocuments(docs: MerchantDocumentMeta[] | null | undefined): Me
   })
 }
 
+function parseAggregatorMeta(raw: MerchantRow['aggregator_meta']): Record<string, unknown> {
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+}
+
 function toPublic(row: MerchantRow): MerchantProfilePublic {
   const status = row.kyc_status
-  const settlementAdapter = resolveSettlementAdapter()
-  const canConfirmGoLive =
-    (status === 'submitted' || status === 'under_review') && settlementAdapter === 'stripe'
+  const settlementAdapter = resolveSettlementAdapter({
+    country: row.business_country,
+    storedProvider: row.aggregator_provider,
+  })
+  const canConfirmGoLive = status === 'submitted' || status === 'under_review'
+  const meta = parseAggregatorMeta(row.aggregator_meta)
+  const onboardingUrl =
+    typeof meta.onboarding_url === 'string' && meta.onboarding_url.startsWith('https://')
+      ? meta.onboarding_url
+      : null
+  const aggregatorMessage =
+    typeof meta.message === 'string'
+      ? meta.message
+      : typeof row.kyc_rejection_reason === 'string' && status === 'under_review'
+        ? row.kyc_rejection_reason
+        : null
+  const gatewayKeysConfigured = meta.gateway_keys_configured === true
+  const gatewayConnectorSynced = meta.gateway_connector_synced === true
+  const gatewayKeyHint =
+    typeof meta.gateway_key_id_hint === 'string' ? meta.gateway_key_id_hint : null
+
   return {
     id: row.id,
     project_ref: row.project_ref,
@@ -245,13 +290,23 @@ function toPublic(row: MerchantRow): MerchantProfilePublic {
     bank_ifsc: row.bank_ifsc,
     bank_name: row.bank_name,
     documents: parseDocuments(row.documents),
-    aggregator_provider: row.aggregator_provider,
+    aggregator_provider: settlementAdapter,
     aggregator_account_id: row.aggregator_account_id,
     aggregator_status: row.aggregator_status,
     settlement_adapter: settlementAdapter,
-    can_confirm_go_live: canConfirmGoLive,
+    settlement_market: settlementMarketForAdapter(settlementAdapter),
+    onboarding_url: onboardingUrl,
+    aggregator_message: aggregatorMessage,
+    route_product_id: typeof meta.product_id === 'string' ? meta.product_id : null,
+    route_activation_status:
+      typeof meta.activation_status === 'string' ? meta.activation_status : null,
+    gateway_keys_configured: gatewayKeysConfigured,
+    gateway_connector_synced: gatewayConnectorSynced,
+    gateway_key_hint: gatewayKeyHint,
+    can_confirm_go_live: canConfirmGoLive && !gatewayKeysConfigured,
     can_browse_payments: true,
-    can_go_live: status === 'verified',
+    // BYOK: keys validated + saved is enough to go live (KYC done on Razorpay/Stripe).
+    can_go_live: status === 'verified' || gatewayKeysConfigured,
     can_edit_merchant_kyc: false,
     organization_slug: '',
     payments_tenant_slug: '',
@@ -442,6 +497,37 @@ export async function patchMerchantProfile({
   const documents =
     patch.documents !== undefined ? normalizeDocuments(patch.documents) : undefined
 
+  if (
+    patch.settlement_market != null &&
+    patch.settlement_market !== 'india' &&
+    patch.settlement_market !== 'international'
+  ) {
+    throw new Error('Invalid settlement_market')
+  }
+
+  const nextCountry =
+    patch.business_country !== undefined
+      ? patch.business_country?.trim().toUpperCase() || 'IN'
+      : patch.settlement_market === 'india'
+        ? 'IN'
+        : patch.settlement_market === 'international' &&
+            (!current.business_country ||
+              current.business_country.toUpperCase() === 'IN' ||
+              current.business_country.toUpperCase() === 'IND')
+          ? 'US'
+          : null
+
+  let nextAggregator: string | null = null
+  if (patch.settlement_market) {
+    nextAggregator = adapterForSettlementMarket(patch.settlement_market)
+  } else if (patch.business_country !== undefined) {
+    // Country change re-picks the rail (ignore prior stored provider for this update).
+    nextAggregator = resolveSettlementAdapter({
+      country: nextCountry || current.business_country,
+      storedProvider: null,
+    })
+  }
+
   // Rejected → draft when the operator starts editing again.
   const nextStatus: MerchantKycStatus =
     current.kyc_status === 'rejected' ? 'draft' : current.kyc_status
@@ -471,6 +557,7 @@ export async function patchMerchantProfile({
         bank_ifsc = coalesce($19, bank_ifsc),
         bank_name = coalesce($20, bank_name),
         documents = coalesce($21::jsonb, documents),
+        aggregator_provider = coalesce($23, aggregator_provider),
         updated_by_gotrue_id = $22,
         updated_at = now()
       where project_ref = $1
@@ -504,9 +591,7 @@ export async function patchMerchantProfile({
       patch.business_postal_code !== undefined
         ? patch.business_postal_code?.trim() || null
         : null,
-      patch.business_country !== undefined
-        ? patch.business_country?.trim().toUpperCase() || 'IN'
-        : null,
+      nextCountry,
       patch.contact_email !== undefined ? patch.contact_email?.trim() || null : null,
       patch.contact_phone !== undefined ? patch.contact_phone?.trim() || null : null,
       patch.bank_account_holder_name !== undefined
@@ -518,6 +603,7 @@ export async function patchMerchantProfile({
       patch.bank_name !== undefined ? patch.bank_name?.trim() || null : null,
       documents !== undefined ? JSON.stringify(documents) : null,
       actorId,
+      nextAggregator,
     ],
     actorId,
   })
@@ -608,7 +694,21 @@ export async function submitMerchantProfile({
 
   assertReadyToSubmit(current)
 
-  const provider = getMerchantOnboardingProvider()
+  const settlementAdapter = resolveSettlementAdapter({
+    country: current.business_country,
+    storedProvider: current.aggregator_provider,
+  })
+  const provider = getMerchantOnboardingProvider(settlementAdapter)
+
+  let bankAccountNumber: string | null = null
+  if (current.bank_account_number_enc?.trim()) {
+    try {
+      bankAccountNumber = decryptString(current.bank_account_number_enc).replace(/\D/g, '') || null
+    } catch {
+      bankAccountNumber = null
+    }
+  }
+
   const linked = await provider.createOrUpdateLinkedAccount({
     projectRef: project.ref,
     businessLegalName: current.business_legal_name || '',
@@ -620,6 +720,13 @@ export async function submitMerchantProfile({
     bankAccountHolderName: current.bank_account_holder_name,
     bankAccountLast4: current.bank_account_last4,
     bankIfsc: current.bank_ifsc,
+    bankAccountNumber,
+    businessAddressLine1: current.business_address_line1,
+    businessAddressLine2: current.business_address_line2,
+    businessCity: current.business_city,
+    businessState: current.business_state,
+    businessPostalCode: current.business_postal_code,
+    businessCountry: current.business_country,
   })
 
   // Without a live aggregator, move to under_review so operators see a clear queue state.
@@ -684,8 +791,9 @@ export async function submitMerchantProfile({
 }
 
 /**
- * Owner/admin review for Stripe settlement go-live (or explicit reject).
+ * Owner/admin review for settlement go-live (or explicit reject).
  * Unblocks live charges / checkout MCP tools when status becomes verified.
+ * Works for both India and international rails (India Linked Account API still stubbed).
  */
 export async function reviewMerchantProfile({
   claims,
@@ -715,17 +823,10 @@ export async function reviewMerchantProfile({
     )
   }
 
-  const settlementAdapter = resolveSettlementAdapter()
-  if (decision === 'verify' && settlementAdapter !== 'stripe') {
-    const allowManual =
-      process.env.INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY === 'true' ||
-      process.env.INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY === '1'
-    if (!allowManual) {
-      throw new Error(
-        'Manual KYC verify is only enabled for the Stripe settlement adapter (or set INDOBASE_PAYMENTS_ALLOW_MANUAL_KYC_VERIFY=true).'
-      )
-    }
-  }
+  const settlementAdapter = resolveSettlementAdapter({
+    country: current.business_country,
+    storedProvider: current.aggregator_provider,
+  })
 
   if (decision === 'reject') {
     const rejection =
@@ -819,8 +920,8 @@ export async function reviewMerchantProfile({
         settlement_adapter: settlementAdapter,
         message:
           settlementAdapter === 'stripe'
-            ? 'Verified for Stripe settlement. Connect Stripe in Indobase Payments, then create checkout sessions / subscriptions.'
-            : 'Verified by organization admin.',
+            ? 'Verified for international card settlement. Finish card settlement setup in Indobase Payments, then create checkout sessions / subscriptions.'
+            : 'Verified for India settlements. Settlements target the merchant bank account once the India aggregator Linked Account path is fully connected.',
       }),
       actorId,
     ],
@@ -843,6 +944,266 @@ export async function reviewMerchantProfile({
   })
 }
 
+/**
+ * BYOK: merchant completes KYC on Razorpay/Stripe, pastes API keys here.
+ * Validates keys against the PSP, encrypts at rest, marks project ready to charge.
+ */
+export async function connectMerchantGatewayKeys({
+  claims,
+  ref,
+  body,
+}: {
+  claims: Claims
+  ref: string
+  body: GatewayConnectBody
+}): Promise<MerchantProfilePublic> {
+  const { actorId, project } = await assertMerchantAdminAccess(claims, ref)
+  await ensureDraftRow({
+    actorId,
+    projectRef: project.ref,
+    organizationId: project.organization_id,
+    contactEmail: getPrimaryEmail(claims),
+  })
+
+  const market = body.settlement_market
+  if (market !== 'india' && market !== 'international') {
+    throw new Error('settlement_market must be india or international')
+  }
+
+  const adapter = adapterForSettlementMarket(market)
+  let publicHint = ''
+  let metaExtra: Record<string, unknown> = {}
+  const links = GATEWAY_EXTERNAL_LINKS[market]
+  let razorpayPlain:
+    | { keyId: string; keySecret: string; webhookSecret?: string }
+    | undefined
+  let stripePlain:
+    | { secretKey: string; publishableKey?: string; webhookSecret?: string }
+    | undefined
+
+  if (market === 'india') {
+    const keyId = (body.key_id || '').trim()
+    const keySecret = (body.key_secret || '').trim()
+    const webhookSecret = (body.webhook_secret || '').trim()
+    if (!keyId.startsWith('rzp_')) {
+      throw new Error(
+        'Razorpay Key Id must start with rzp_ — create an account and finish KYC at Razorpay, then copy keys from the dashboard'
+      )
+    }
+    if (keySecret.length < 16) {
+      throw new Error('Razorpay Key Secret looks invalid')
+    }
+    await validateRazorpayKeys(keyId, keySecret)
+    publicHint = hintId(keyId)
+    razorpayPlain = {
+      keyId,
+      keySecret,
+      ...(webhookSecret ? { webhookSecret } : {}),
+    }
+    metaExtra = {
+      gateway_provider: 'razorpay',
+      gateway_key_id_hint: publicHint,
+      gateway_key_id_enc: encryptString(keyId),
+      gateway_key_secret_enc: encryptString(keySecret),
+      ...(webhookSecret ? { gateway_webhook_secret_enc: encryptString(webhookSecret) } : {}),
+      gateway_signup_url: links.signup,
+      gateway_kyc_url: links.kyc,
+      gateway_keys_url: links.keys,
+    }
+  } else {
+    const secretKey = (body.secret_key || '').trim()
+    const publishableKey = (body.publishable_key || '').trim()
+    const webhookSecret = (body.webhook_secret || '').trim()
+    if (!secretKey.startsWith('sk_')) {
+      throw new Error(
+        'Stripe secret key must start with sk_ — create an account and finish verification at Stripe, then copy keys from the dashboard'
+      )
+    }
+    if (!publishableKey.startsWith('pk_')) {
+      throw new Error(
+        'Stripe publishable key (pk_…) is required — copy it from the Stripe Dashboard API keys page'
+      )
+    }
+    await validateStripeKeys(secretKey)
+    publicHint = hintId(secretKey)
+    stripePlain = {
+      secretKey,
+      ...(publishableKey ? { publishableKey } : {}),
+      ...(webhookSecret ? { webhookSecret } : {}),
+    }
+    metaExtra = {
+      gateway_provider: 'stripe',
+      gateway_key_id_hint: publicHint,
+      gateway_secret_key_enc: encryptString(secretKey),
+      ...(publishableKey
+        ? { gateway_publishable_key_enc: encryptString(publishableKey) }
+        : {}),
+      ...(webhookSecret ? { gateway_webhook_secret_enc: encryptString(webhookSecret) } : {}),
+      gateway_signup_url: links.signup,
+      gateway_kyc_url: links.kyc,
+      gateway_keys_url: links.keys,
+    }
+  }
+
+  // One paste: push keys into Payments engine connectors (best-effort; Studio still stores encrypted).
+  const sync = await syncMerchantGatewayKeysToPayments({
+    claims,
+    ref: project.ref,
+    market,
+    razorpay: razorpayPlain,
+    stripe: stripePlain,
+  })
+
+  const message = sync.ok
+    ? market === 'india'
+      ? 'Razorpay keys connected and synced to Indobase Payments. Ask an agent to wire checkout into your site.'
+      : 'Stripe keys connected and synced to Indobase Payments. Ask an agent to wire checkout into your site.'
+    : market === 'india'
+      ? `Razorpay keys saved in Studio. Payments connector sync pending (${sync.message}). Retry Connect gateway or open Payments if charges fail.`
+      : `Stripe keys saved in Studio. Payments connector sync pending (${sync.message}). Retry Connect gateway or open Payments if charges fail.`
+
+  const updated = await executeQuery<MerchantRow>({
+    query: `
+      update saas.project_payment_merchants
+      set
+        kyc_status = 'verified',
+        submitted_at = coalesce(submitted_at, now()),
+        reviewed_at = now(),
+        verified_at = now(),
+        kyc_rejection_reason = null,
+        aggregator_provider = $2,
+        aggregator_account_id = $3,
+        aggregator_status = $6,
+        aggregator_meta = coalesce(aggregator_meta, '{}'::jsonb) || $4::jsonb,
+        business_country = case
+          when $2 = 'razorpay_route' then 'IN'
+          else coalesce(nullif(business_country, ''), 'US')
+        end,
+        updated_by_gotrue_id = $5,
+        updated_at = now()
+      where project_ref = $1
+      returning
+        id, project_ref, organization_id, kyc_status, kyc_rejection_reason,
+        submitted_at, reviewed_at, verified_at,
+        business_legal_name, business_trade_name, business_type, pan, gstin,
+        business_address_line1, business_address_line2, business_city, business_state,
+        business_postal_code, business_country, contact_email, contact_phone,
+        bank_account_holder_name, bank_account_number_enc, bank_account_last4,
+        bank_ifsc, bank_name, documents,
+        aggregator_provider, aggregator_account_id, aggregator_status, aggregator_meta,
+        inserted_at, updated_at
+    `,
+    parameters: [
+      project.ref,
+      adapter,
+      publicHint,
+      JSON.stringify({
+        ...metaExtra,
+        gateway_keys_configured: true,
+        gateway_connected_at: new Date().toISOString(),
+        gateway_connector_synced: sync.ok,
+        gateway_connector_id: sync.connectorId || null,
+        gateway_connector_sync_message: sync.message,
+        message,
+        stubbed: false,
+        byok: true,
+        settlement_adapter: adapter,
+        settlement_market: market,
+      }),
+      actorId,
+      sync.ok ? 'connector_synced' : 'keys_connected',
+    ],
+    actorId,
+  })
+  if (updated.error) throw updated.error
+  if (!updated.data?.[0]) throw new Error('Merchant profile not found')
+
+  return getMerchantProfile({ claims, ref })
+}
+
+/**
+ * Server-side decrypt of BYOK gateway credentials for Payments connector sync / charge adapters.
+ * Never expose these fields on MerchantProfilePublic.
+ */
+export async function getDecryptedMerchantGatewayKeys({
+  claims,
+  ref,
+}: {
+  claims: Claims
+  ref: string
+}): Promise<{
+  market: 'india' | 'international'
+  razorpay?: { keyId: string; keySecret: string; webhookSecret?: string }
+  stripe?: { secretKey: string; publishableKey?: string; webhookSecret?: string }
+} | null> {
+  const profile = await getMerchantProfile({ claims, ref })
+  if (!profile.gateway_keys_configured) return null
+
+  const { actorId } = await assertMerchantAdminAccess(claims, ref)
+  const loaded = await executeQuery<MerchantRow>({
+    query: `
+      select
+        id, project_ref, organization_id, kyc_status, kyc_rejection_reason,
+        submitted_at, reviewed_at, verified_at,
+        business_legal_name, business_trade_name, business_type, pan, gstin,
+        business_address_line1, business_address_line2, business_city, business_state,
+        business_postal_code, business_country, contact_email, contact_phone,
+        bank_account_holder_name, bank_account_number_enc, bank_account_last4,
+        bank_ifsc, bank_name, documents,
+        aggregator_provider, aggregator_account_id, aggregator_status, aggregator_meta,
+        inserted_at, updated_at
+      from saas.project_payment_merchants
+      where project_ref = $1
+      limit 1
+    `,
+    parameters: [ref],
+    actorId,
+  })
+  if (loaded.error) throw loaded.error
+  const row = loaded.data?.[0]
+  if (!row) return null
+
+  const meta =
+    typeof row.aggregator_meta === 'string'
+      ? (JSON.parse(row.aggregator_meta || '{}') as Record<string, unknown>)
+      : (row.aggregator_meta || {})
+
+  const market = profile.settlement_market === 'india' ? 'india' : 'international'
+  const decryptOpt = (v: unknown): string | undefined => {
+    if (typeof v !== 'string' || !v.trim()) return undefined
+    try {
+      return decryptString(v)
+    } catch {
+      return undefined
+    }
+  }
+
+  if (market === 'india') {
+    const keyId = decryptOpt(meta.gateway_key_id_enc)
+    const keySecret = decryptOpt(meta.gateway_key_secret_enc)
+    if (!keyId || !keySecret) return null
+    return {
+      market,
+      razorpay: {
+        keyId,
+        keySecret,
+        webhookSecret: decryptOpt(meta.gateway_webhook_secret_enc),
+      },
+    }
+  }
+
+  const secretKey = decryptOpt(meta.gateway_secret_key_enc)
+  if (!secretKey) return null
+  return {
+    market,
+    stripe: {
+      secretKey,
+      publishableKey: decryptOpt(meta.gateway_publishable_key_enc),
+      webhookSecret: decryptOpt(meta.gateway_webhook_secret_enc),
+    },
+  }
+}
+
 /** Hard gate for live charges / checkout (MCP + APIs). Browse remains allowed when false. */
 export async function assertMerchantCanGoLive({
   claims,
@@ -854,7 +1215,7 @@ export async function assertMerchantCanGoLive({
   const profile = await getMerchantProfile({ claims, ref })
   if (!profile.can_go_live) {
     throw new Error(
-      `Merchant KYC is "${profile.kyc_status}" — verify merchant KYC in Studio (Payments → Confirm Stripe go-live) before creating live charges or checkout sessions.`
+      `Payment gateway not ready ("${profile.kyc_status}"). Complete KYC on Razorpay or Stripe, paste API keys in Studio Payments (Connect gateway), then try again.`
     )
   }
   return profile

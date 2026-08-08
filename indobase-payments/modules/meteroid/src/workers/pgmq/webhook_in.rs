@@ -1,9 +1,10 @@
+use crate::adapters::razorpay::Razorpay;
 use crate::adapters::stripe::Stripe;
 use crate::adapters::types::{ParsedRequest, WebhookAdapter};
-use crate::services::storage::{ObjectStoreService, Prefix};
 use crate::workers::pgmq::PgmqResult;
 use crate::workers::pgmq::error::PgmqError;
 use crate::workers::pgmq::processor::{HandleResult, PgmqHandler};
+use crate::services::storage::{ObjectStoreService, Prefix};
 use common_domain::ids::{ConnectorId, StoredDocumentId};
 use error_stack::{Report, ResultExt};
 use meteroid_store::domain::enums::ConnectorProviderEnum;
@@ -20,6 +21,7 @@ pub struct WebhookIn {
     store: Arc<Store>,
     object_store: Arc<dyn ObjectStoreService>,
     stripe_adapter: Arc<Stripe>,
+    razorpay_adapter: Arc<Razorpay>,
 }
 
 impl WebhookIn {
@@ -28,12 +30,14 @@ impl WebhookIn {
         store: Arc<Store>,
         object_store: Arc<dyn ObjectStoreService>,
         stripe_adapter: Arc<Stripe>,
+        razorpay_adapter: Arc<Razorpay>,
     ) -> Self {
         Self {
             services,
             store,
             object_store,
             stripe_adapter,
+            razorpay_adapter,
         }
     }
 
@@ -56,8 +60,9 @@ impl WebhookIn {
             .await
             .change_context(PgmqError::HandleMessages)?;
 
-        let adapter = match connector.provider {
+        let adapter: Arc<dyn WebhookAdapter + Send + Sync> = match connector.provider {
             ConnectorProviderEnum::Stripe => self.stripe_adapter.clone(),
+            ConnectorProviderEnum::Razorpay => self.razorpay_adapter.clone(),
             other => {
                 return Err(Report::new(PgmqError::HandleMessages)
                     .attach(format!("Unsupported inbound webhook provider: {other:?}")));

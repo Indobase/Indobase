@@ -5,8 +5,8 @@
  * Legacy path `/os/app/*` still works (prefix rewrite + frame-ancestors for embeds).
  *
  * CF OS builds use root-absolute `/assets/*` and a WebSocket at `/api`.
- * Those root paths are also proxied (session-gated) so CLOUDFLARE_OS_URL can stay
- * internal (not browser-reachable).
+ * `/assets/*` + favicon are proxied publicly; `/api` and `/os/app/*` stay
+ * session-gated so CLOUDFLARE_OS_URL can remain internal (not browser-reachable).
  */
 import type { Context } from 'hono'
 
@@ -41,6 +41,15 @@ const STRIP_RESPONSE = new Set([
 
 export function resolveCloudflareOsBase(): string {
   return (process.env.CLOUDFLARE_OS_URL || '').trim().replace(/\/+$/, '')
+}
+
+/** Root-absolute hashed static files — never accept SPA HTML fallback (MIME poisoning). */
+export function isStaticAssetPath(pathname: string): boolean {
+  const path = pathname.split('?')[0] || ''
+  return (
+    path.startsWith('/assets/') ||
+    /\.(?:css|js|mjs|map|svg|png|jpe?g|gif|webp|woff2?|ttf|ico)$/i.test(path)
+  )
 }
 
 /** Rewrite root-absolute src/href so they stay under the proxy prefix. */
@@ -142,6 +151,15 @@ export async function proxyCloudflareOs(
   outHeaders.set('Pragma', 'no-cache')
 
   const contentType = upstream.headers.get('content-type') || ''
+  // During CFOS rebuilds, workerd SPA `not_found_handling` returns index.html for
+  // missing hashed /assets/* — browsers then refuse CSS/JS (MIME text/html).
+  if (
+    isStaticAssetPath(path) &&
+    contentType.includes('text/html') &&
+    (c.req.method === 'GET' || c.req.method === 'HEAD')
+  ) {
+    return c.text('Static asset not found (upstream returned HTML)', 404)
+  }
   if (contentType.includes('text/html') && c.req.method === 'GET') {
     // fetch() already decoded gzip/br — body must be served without content-encoding.
     const html = await upstream.text()

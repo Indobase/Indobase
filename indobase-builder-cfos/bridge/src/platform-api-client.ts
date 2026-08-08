@@ -8,7 +8,13 @@ import {
   type OsAuthMailStatus,
   type OsPromptQuotaResponse,
   type OsWorkspaceSession,
+  type PaymentsConnectGatewayResponse,
+  type PaymentsWireCheckoutResponse,
   type RuntimeEnsureResponse,
+  type ShopCatalogResponse,
+  type ApplySchemaResponse,
+  type ProductionChecklistResponse,
+  type ProductImagesResponse,
 } from '@indobase/platform-api'
 
 import { resolveHandoffSecret } from './auth.js'
@@ -128,13 +134,19 @@ export async function platformRuntimeEnsure(input: {
   email: string
   workspaceRef: string
   capability: string
+  /** india | international | razorpay | stripe — sets merchant settlement rail */
+  settlementMarket?: string | null
 }): Promise<RuntimeEnsureResponse & { status?: number }> {
-  const { status, json } = await platformFetch(PlatformApiRoutes.runtimeEnsure, {
+  const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
     workspace_ref: input.workspaceRef,
     capability: input.capability,
-  })
+  }
+  if (input.settlementMarket?.trim()) {
+    body.settlement_market = input.settlementMarket.trim()
+  }
+  const { status, json } = await platformFetch(PlatformApiRoutes.runtimeEnsure, body)
   if (json && typeof json === 'object') {
     return { ...(json as RuntimeEnsureResponse), status }
   }
@@ -147,18 +159,224 @@ export async function platformRuntimeEnsure(input: {
   }
 }
 
+/** BYOK: agent/operator pastes Razorpay or Stripe keys after PSP KYC. */
+export async function platformPaymentsConnectGateway(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  settlementMarket: string
+  keyId?: string | null
+  keySecret?: string | null
+  publishableKey?: string | null
+  secretKey?: string | null
+  webhookSecret?: string | null
+}): Promise<PaymentsConnectGatewayResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+    settlement_market: input.settlementMarket.trim(),
+  }
+  if (input.keyId?.trim()) body.key_id = input.keyId.trim()
+  if (input.keySecret?.trim()) body.key_secret = input.keySecret.trim()
+  if (input.publishableKey?.trim()) body.publishable_key = input.publishableKey.trim()
+  if (input.secretKey?.trim()) body.secret_key = input.secretKey.trim()
+  if (input.webhookSecret?.trim()) body.webhook_secret = input.webhookSecret.trim()
+
+  const { status, json } = await platformFetch(
+    PlatformApiRoutes.paymentsConnectGateway,
+    body
+  )
+  if (json && typeof json === 'object') {
+    return { ...(json as PaymentsConnectGatewayResponse), status }
+  }
+  return {
+    ok: false,
+    message: 'Connect gateway failed',
+    status,
+  }
+}
+
+/** Agent wireCheckout: plan + customer + hosted checkout_url. */
+export async function platformPaymentsWireCheckout(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  planVersionId?: string | null
+  planName?: string | null
+  price?: string | null
+  currency?: string | null
+  billingPeriod?: string | null
+  mode?: string | null
+  customerId?: string | null
+  customerName?: string | null
+  customerEmail?: string | null
+  expiresInHours?: number | null
+}): Promise<PaymentsWireCheckoutResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  }
+  if (input.planVersionId?.trim()) body.plan_version_id = input.planVersionId.trim()
+  if (input.planName?.trim()) body.plan_name = input.planName.trim()
+  if (input.price?.trim()) body.price = input.price.trim()
+  if (input.currency?.trim()) body.currency = input.currency.trim()
+  if (input.billingPeriod?.trim()) body.billing_period = input.billingPeriod.trim()
+  if (input.mode?.trim()) body.mode = input.mode.trim()
+  if (input.customerId?.trim()) body.customer_id = input.customerId.trim()
+  if (input.customerName?.trim()) body.customer_name = input.customerName.trim()
+  if (input.customerEmail?.trim()) body.customer_email = input.customerEmail.trim()
+  if (typeof input.expiresInHours === 'number') body.expires_in_hours = input.expiresInHours
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.paymentsWireCheckout, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as PaymentsWireCheckoutResponse), status }
+  }
+  return { ok: false, message: 'Wire checkout failed', status }
+}
+
+/** Agent setupShopCatalog / listShopCatalog. */
+export async function platformShopCatalog(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  action?: 'setup' | 'list' | string | null
+  brand?: string | null
+  products?: Array<Record<string, unknown>> | null
+}): Promise<ShopCatalogResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+    action: input.action || 'setup',
+  }
+  if (input.brand?.trim()) body.brand = input.brand.trim()
+  if (Array.isArray(input.products)) body.products = input.products
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.shopCatalog, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as ShopCatalogResponse), status }
+  }
+  return { ok: false, message: 'Shop catalog failed', status }
+}
+
+/** Agent applySchema — declarative tables. */
+export async function platformApplySchema(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  brand?: string | null
+  tables?: Array<Record<string, unknown>> | null
+}): Promise<ApplySchemaResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  }
+  if (input.brand?.trim()) body.brand = input.brand.trim()
+  if (Array.isArray(input.tables)) body.tables = input.tables
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.dataApplySchema, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as ApplySchemaResponse), status }
+  }
+  return { ok: false, message: 'applySchema failed', status }
+}
+
+/** Agent productionChecklist claim gate. */
+export async function platformProductionChecklist(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  appType?: string | null
+  liveUrl?: string | null
+  brand?: string | null
+  checks?: Record<string, unknown> | null
+}): Promise<ProductionChecklistResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  }
+  if (input.appType?.trim()) body.app_type = input.appType.trim()
+  if (input.liveUrl?.trim()) body.live_url = input.liveUrl.trim()
+  if (input.brand?.trim()) body.brand = input.brand.trim()
+  if (input.checks && typeof input.checks === 'object') body.checks = input.checks
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.productionChecklist, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as ProductionChecklistResponse), status }
+  }
+  return {
+    ok: false,
+    claim_production_ready: false,
+    message: 'productionChecklist failed',
+    status,
+  }
+}
+
+/** Agent listShopOrders / placeTestShopOrder. */
+export async function platformShopOrders(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  action?: 'list' | 'place' | 'test' | string | null
+  brand?: string | null
+  orderEmail?: string | null
+  items?: Array<Record<string, unknown>> | null
+  cleanup?: boolean | null
+}): Promise<ShopCatalogResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+    action: input.action || 'list',
+  }
+  if (input.brand?.trim()) body.brand = input.brand.trim()
+  if (input.orderEmail?.trim()) body.order_email = input.orderEmail.trim()
+  if (Array.isArray(input.items)) body.items = input.items
+  if (typeof input.cleanup === 'boolean') body.cleanup = input.cleanup
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.shopOrders, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as ShopCatalogResponse), status }
+  }
+  return { ok: false, message: 'Shop orders failed', status }
+}
+
 export async function platformDeployPublish(input: {
   gotrueId: string
   email: string
   workspaceRef: string
   reason?: string
+  /** Static site files for Studio hosting (unifies with Builder publish path). */
+  files?: Record<string, string> | null
+  html?: string | null
+  title?: string | null
+  subdomain?: string | null
+  customDomain?: string | null
+  intent?: string | null
 }): Promise<DeployPublishResponse & { status?: number }> {
-  const { status, json } = await platformFetch(PlatformApiRoutes.deployPublish, {
+  const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
     workspace_ref: input.workspaceRef,
     reason: input.reason || 'os_launch',
-  })
+    // Hosting-only: do not auto-ensure payments/login from launch content.
+    required_capabilities: [],
+  }
+  if (input.title?.trim()) body.title = input.title.trim()
+  if (input.subdomain?.trim()) body.subdomain = input.subdomain.trim()
+  if (input.customDomain?.trim()) body.custom_domain = input.customDomain.trim()
+  if (input.intent?.trim()) body.intent = input.intent.trim()
+  if (input.html?.trim()) body.html = input.html
+  if (input.files && typeof input.files === 'object') {
+    body.files = input.files
+    body.artifacts = input.files
+  }
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.deployPublish, body)
   if (json && typeof json === 'object') {
     return { ...(json as DeployPublishResponse), status }
   }
@@ -167,6 +385,29 @@ export async function platformDeployPublish(input: {
     status: 'failed',
     message: 'Could not go live — try Launch Business again.',
   }
+}
+
+/** Agent resolveProductImages — Openverse commercial URLs. */
+export async function platformResolveProductImages(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  queries?: string[] | null
+  pageSize?: number | null
+}): Promise<ProductImagesResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  }
+  if (Array.isArray(input.queries)) body.queries = input.queries
+  if (typeof input.pageSize === 'number') body.page_size = input.pageSize
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.mediaProductImages, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as ProductImagesResponse), status }
+  }
+  return { ok: false, message: 'product images failed', status }
 }
 
 /** GET/POST product Auth OTP From (branded login mail). */

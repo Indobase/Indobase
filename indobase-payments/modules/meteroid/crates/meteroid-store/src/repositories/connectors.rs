@@ -1,7 +1,8 @@
 use crate::domain::connectors::{
     Connector, ConnectorAccessToken, ConnectorMeta, ConnectorNew, HubspotPublicData,
     HubspotSensitiveData, PennylanePublicData, PennylaneSensitiveData, ProviderData,
-    ProviderSensitiveData, StripePublicData, StripeSensitiveData,
+    ProviderSensitiveData, RazorpayPublicData, RazorpaySensitiveData, StripePublicData,
+    StripeSensitiveData,
 };
 use crate::domain::entity_activity::{Activity, ActivityType, Actor, AuditInput, EntityType};
 use crate::domain::enums::{ConnectorProviderEnum, ConnectorTypeEnum};
@@ -42,6 +43,15 @@ pub trait ConnectorsInterface {
         publishable_key: String,
         stripe_data: StripeSensitiveData,
         stripe_account_id: String,
+    ) -> StoreResult<ConnectorMeta>;
+
+    async fn connect_razorpay(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        alias: String,
+        key_id: String,
+        razorpay_data: RazorpaySensitiveData,
     ) -> StoreResult<ConnectorMeta>;
 
     async fn get_connector_with_data(
@@ -183,6 +193,60 @@ impl ConnectorsInterface for Store {
                         "provider": "stripe",
                         "alias": alias,
                         "stripe_account_id": stripe_account_id,
+                    }));
+                    self.internal
+                        .record_audit_tx(conn, tenant_id, actor, AuditInput::Activity(activity))
+                        .await?;
+                    Ok(res)
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(res.into())
+    }
+
+    async fn connect_razorpay(
+        &self,
+        actor: Actor,
+        tenant_id: TenantId,
+        alias: String,
+        key_id: String,
+        razorpay_data: RazorpaySensitiveData,
+    ) -> StoreResult<ConnectorMeta> {
+        let row: ConnectorRowNew = ConnectorNew {
+            tenant_id,
+            alias: alias.clone(),
+            connector_type: ConnectorTypeEnum::PaymentProvider,
+            provider: ConnectorProviderEnum::Razorpay,
+            data: Some(ProviderData::Razorpay(RazorpayPublicData {
+                key_id: key_id.clone(),
+            })),
+            sensitive: Some(ProviderSensitiveData::Razorpay(razorpay_data)),
+        }
+        .to_row(&self.settings.crypt_key)?;
+
+        let res = self
+            .transaction(|conn| {
+                let actor = &actor;
+                let row = &row;
+                let alias = &alias;
+                let key_id = &key_id;
+                async move {
+                    let res = row
+                        .insert(conn)
+                        .await
+                        .map_err(Into::<Report<StoreError>>::into)?;
+
+                    let activity = Activity::new(
+                        ActivityType::ConnectorConnected,
+                        EntityType::Connector,
+                        res.id.as_uuid(),
+                    )
+                    .with_metadata(serde_json::json!({
+                        "provider": "razorpay",
+                        "alias": alias,
+                        "key_id": key_id,
                     }));
                     self.internal
                         .record_audit_tx(conn, tenant_id, actor, AuditInput::Activity(activity))

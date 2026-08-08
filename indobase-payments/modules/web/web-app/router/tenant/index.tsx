@@ -10,6 +10,7 @@ import { EditHubspotIntegrationModal } from '@/features/settings/integrations/Ed
 import { HubspotIntegrationModal } from '@/features/settings/integrations/HubspotIntegration'
 import { PennylaneIntegrationModal } from '@/features/settings/integrations/PennylaneIntegration'
 import { StripeIntegrationModal } from '@/features/settings/integrations/StripeIntegration'
+import { IndiaSettlementsIntegrationModal } from '@/features/settings/integrations/IndiaSettlementsIntegration'
 import { DeadLetterPage } from '@/pages/admin/deadletter'
 import { DeadLetterDetailPage } from '@/pages/admin/deadletter-detail'
 import { BatchJobPage } from '@/pages/tenants/batchjob'
@@ -46,6 +47,10 @@ export const tenantRoutes: RouteObject = {
         {
           path: 'add-stripe',
           element: <StripeIntegrationModal />,
+        },
+        {
+          path: 'add-india-settlements',
+          element: <IndiaSettlementsIntegrationModal />,
         },
         {
           path: 'connect-pennylane',

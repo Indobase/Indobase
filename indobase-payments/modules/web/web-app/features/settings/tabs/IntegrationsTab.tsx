@@ -98,8 +98,8 @@ export const IntegrationsTab = () => {
       icon: CreditCard,
       integrations: [
         {
-          name: 'Stripe',
-          description: 'Global payments platform',
+          name: 'International cards',
+          description: 'Card and direct-debit settlement outside India',
           features: ['Card', 'Direct Debit (SEPA, ACH, Bacs)', 'Link'],
           icon: ({ className }) => (
             <BrandIcon path={siStripe.path} color="#635bff" className={className}/>
@@ -107,6 +107,18 @@ export const IntegrationsTab = () => {
           link: `add-stripe`,
           data: connectorsQuery.data?.connectors.filter(
             connector => connector.provider === ConnectorProviderEnum.STRIPE
+          ),
+        },
+        {
+          name: 'India settlements',
+          description: 'INR / UPI / mandate settlement for Indian merchants',
+          features: ['UPI AutoPay', 'Cards (INR)', 'e-mandate'],
+          icon: ({ className }) => (
+            <BrandIcon path={siAdyen.path} color="#0d7377" className={className}/>
+          ),
+          link: `add-india-settlements`,
+          data: connectorsQuery.data?.connectors.filter(
+            connector => connector.provider === ConnectorProviderEnum.RAZORPAY
           ),
         },
         {

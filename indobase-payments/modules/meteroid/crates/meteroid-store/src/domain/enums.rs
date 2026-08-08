@@ -143,6 +143,7 @@ pub enum ConnectorProviderEnum {
     Stripe,
     Pennylane,
     Mock,
+    Razorpay,
 }
 
 #[derive(o2o, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

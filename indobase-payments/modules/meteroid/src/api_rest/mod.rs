@@ -1,7 +1,9 @@
+use crate::adapters::razorpay::Razorpay;
 use crate::adapters::stripe::Stripe;
 use crate::api_rest::addons::addon_routes;
 use crate::api_rest::batch_jobs::batch_job_routes;
 use crate::api_rest::checkoutsessions::checkout_session_routes;
+use crate::api_rest::connectors::connector_routes;
 use crate::api_rest::coupons::coupon_routes;
 use crate::api_rest::creditnotes::credit_note_routes;
 use crate::api_rest::customers::customer_routes;
@@ -36,6 +38,7 @@ mod addresses;
 mod auth;
 mod batch_jobs;
 mod checkoutsessions;
+mod connectors;
 pub(crate) mod coupons;
 mod creditnotes;
 mod currencies;
@@ -69,6 +72,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(invoice_routes())
         .merge(credit_note_routes())
         .merge(checkout_session_routes())
+        .merge(connector_routes())
         .merge(event_routes())
         .merge(usage_routes())
         .merge(product_routes())
@@ -85,6 +89,7 @@ pub struct AppState {
     pub store: Store,
     pub services: Services,
     pub stripe_adapter: Arc<Stripe>,
+    pub razorpay_adapter: Arc<Razorpay>,
     pub jwt_secret: SecretString,
     pub portal_url: String,
     pub ready: Arc<AtomicBool>,

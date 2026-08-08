@@ -386,7 +386,9 @@ const FlexDetails = ({
 const getProviderName = (provider: ConnectorProviderEnum | undefined): string => {
   switch (provider) {
     case ConnectorProviderEnum.STRIPE:
-      return 'Stripe'
+      return 'International cards'
+    case ConnectorProviderEnum.RAZORPAY:
+      return 'India settlements'
     case ConnectorProviderEnum.HUBSPOT:
       return 'Hubspot'
     case ConnectorProviderEnum.PENNYLANE:

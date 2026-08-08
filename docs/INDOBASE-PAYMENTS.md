@@ -219,7 +219,7 @@ Builder build-mode injects the `indobase-payments` skill when the prompt mention
 3. `create_customer` → `create_checkout_session` → wire Subscribe to `session.checkout_url`.
 4. Manage billing: `create_portal_token` → `${portal_url}/portal/customer?token=…`.
 
-Live charge tools fail until Studio merchant KYC is **verified** (Confirm Stripe go-live).
+Live charge tools fail until Studio merchant KYC is **verified** (Confirm go-live).
 
 ### Builder auto-wire
 
@@ -236,7 +236,7 @@ No extra Builder env is required beyond the existing Studio handoff / MCP token.
 2. Deploy Payments API image that includes Studio MCP JWT auth in REST middleware.
 3. Redeploy Studio (and Builder) so `/api/mcp/payments` and auto-wire are live.
 4. Open Payments once from Studio for the org (provisions the `ib-*` Payments org/tenant).
-5. Complete merchant KYC → **Confirm Stripe go-live** → connect Stripe in Payments.
+5. Complete merchant KYC → **Confirm go-live** → finish settlement setup in Payments.
 6. From Builder (linked project): ask for pricing/checkout — skill + MCP tools should engage.
 
 ### Cursor / external agents

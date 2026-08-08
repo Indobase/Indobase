@@ -128,10 +128,22 @@ export function injectIndobaseContextBootstrap(html: string): string {
           }),
         );
       } catch (_) {}
+      // Claim session if CFOS authVerify AgentTool finished OTP (workerd cannot Set-Cookie).
+      if (s.guest) {
+        try {
+          const claim = await fetch('/api/os/auth/claim-session', { credentials: 'same-origin' }).then(function (r) {
+            return r.json();
+          });
+          if (claim && claim.upgraded) {
+            window.location.reload();
+            return;
+          }
+        } catch (_) {}
+      }
     } catch (_) {}
   }
   pull();
-  setInterval(pull, 60000);
+  setInterval(pull, 15000);
 })();
 </script>`
   if (/<\/body>/i.test(html)) {

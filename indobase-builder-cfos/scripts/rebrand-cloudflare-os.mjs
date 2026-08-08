@@ -773,6 +773,1124 @@ void (async () => {
   }
 }
 
+// --- Agent tool: launchBusiness (POST to Indobase bridge; webFetch cannot POST) ---
+{
+  const agentPath = join(OS, 'packages/workshop-backend/src/agent.ts')
+  const overseerPath = join(OS, 'packages/workshop-backend/src/overseer.ts')
+  const envPath = join(OS, 'packages/workshop-backend/src/env.d.ts')
+
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (text.includes('Indobase launchBusiness tool') || text.includes('name: "launchBusiness"')) {
+      console.log('  launchBusiness AgentTool already patched')
+    } else {
+      // 1) AgentHooks method
+      const hooksAnchor = `  // Returns the resources needed by \`webFetch\` to delegate document-to-Markdown conversion
+  // to Workers AI. Exposed as a narrow interface (rather than handing over the whole \`env\`)
+  // so the dependency surface stays explicit.
+  getWebFetchEnv(): WebFetchEnv;`
+      const hooksInjection = `${hooksAnchor}
+
+  // Indobase: config for the built-in launchBusiness tool (bridge URL + OS secret).
+  // Null when unset — tool then explains Launch is not configured.
+  getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null;`
+      if (text.includes(hooksAnchor) && !text.includes('getIndobaseLaunchConfig')) {
+        text = text.replace(hooksAnchor, hooksInjection)
+      } else if (!text.includes('getIndobaseLaunchConfig')) {
+        console.warn('  skip: AgentHooks getWebFetchEnv anchor drifted')
+      }
+
+      // 2) System prompt note near webFetch description
+      const webFetchNote =
+        'The Gadget\'s own code (server.js / client.js) still cannot make network requests at runtime; \\`webFetch\\` is a tool for *you*, not something you can call from gadget code.'
+      if (text.includes(webFetchNote) && !text.includes('Indobase Go Live / Launch Business')) {
+        text = text.replace(
+          webFetchNote,
+          webFetchNote +
+            '\n\n# Indobase Go Live / Launch Business\n\n' +
+            'To take a site live you MUST call the \\`launchBusiness\\` tool (alias goLive) with real html or files. ' +
+            'Do NOT use webFetch for Launch (GET-only, no cookies). Do NOT invent a live URL. ' +
+            'Only claim live after the tool returns ok:true with a non-empty url.',
+        )
+      }
+
+      // 3) Insert tool after webFetch block — find webFetch closing and inject before editFile or after webFetch
+      const toolMarker = '    webFetch: defineTool({'
+      if (text.includes(toolMarker) && !text.includes('Indobase launchBusiness tool')) {
+        const launchTool = `
+    // Indobase launchBusiness tool — posts site HTML to the Indobase OS bridge.
+    // webFetch cannot do this (HTTPS GET only, no cookies / POST).
+    launchBusiness: defineTool({
+      name: "launchBusiness",
+      label: "Launch business",
+      description:
+          "Take the business live on Indobase. Posts real html/files to the Indobase launch API. " +
+          "Returns the live URL. Never invent a URL. Alias: goLive.",
+      parameters: Type.Object({
+        title: Type.Optional(Type.String({ description: "Business / site title" })),
+        subdomain: Type.Optional(Type.String({
+          description: "Indobase subdomain label (e.g. sprouteats)",
+        })),
+        customDomain: Type.Optional(Type.String({
+          description: "Optional domain they already own (CNAME → sites.indobase.in)",
+        })),
+        html: Type.Optional(Type.String({
+          description: "Full index HTML to publish (required if files omitted)",
+        })),
+        files: Type.Optional(Type.Any({
+          description: "Path→content map (must include index.html if html omitted)",
+        })),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_live: false,
+            code: "launch_not_configured",
+            message:
+              "Indobase launch is not configured on this runtime (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET). Ask the operator to reload after ops restores Launch.",
+          }));
+        }
+        const html = typeof args.html === "string" ? args.html : undefined;
+        const files =
+          args.files && typeof args.files === "object" && !Array.isArray(args.files)
+            ? args.files as Record<string, string>
+            : undefined;
+        if ((!html || !html.trim()) && !(files && Object.keys(files).length > 0)) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_live: false,
+            code: "content_required",
+            message: "launchBusiness requires real html or files (e.g. index.html). Do not call empty.",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_live: false,
+            code: "agent_identity_missing",
+            message: "Cannot Launch: missing agent username. Reload Indobase OS and sign in again.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/launchBusiness";
+        let resp: Response;
+        try {
+          resp = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+            body: JSON.stringify({
+              title: args.title,
+              subdomain: args.subdomain,
+              customDomain: args.customDomain,
+              html,
+              files,
+            }),
+          });
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_live: false,
+            code: "launch_network_error",
+            message: err instanceof Error ? err.message : "Launch request failed",
+          }));
+        }
+        let body: Record<string, unknown> = {};
+        try {
+          body = await resp.json() as Record<string, unknown>;
+        } catch {
+          body = { ok: false, message: await resp.text().catch(() => "non-JSON launch response") };
+        }
+        const ok = resp.ok && body.ok === true;
+        const url = typeof body.url === "string" ? body.url : undefined;
+        return toolResult(jsonToolResultText({
+          ...body,
+          ok,
+          claim_live: ok && Boolean(url),
+          httpStatus: resp.status,
+          tool: "launchBusiness",
+        }));
+      },
+    }),
+`
+        text = text.replace(toolMarker, launchTool + toolMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← launchBusiness AgentTool')
+      } else {
+        console.warn('  skip: webFetch tool anchor not found for launchBusiness')
+      }
+    }
+  }
+
+  // --- Agent tool: connectGateway (BYOK Razorpay/Stripe keys; webFetch cannot POST) ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (
+      text.includes('Indobase connectGateway tool') ||
+      text.includes('name: "connectGateway"')
+    ) {
+      console.log('  connectGateway AgentTool already patched')
+    } else {
+      const connectTool = `
+    // Indobase connectGateway tool — paste Razorpay/Stripe API keys after PSP KYC.
+    // webFetch cannot do this (HTTPS GET only, no cookies / POST).
+    connectGateway: defineTool({
+      name: "connectGateway",
+      label: "Connect payment gateway",
+      description:
+          "Connect payment gateway keys after the operator finishes KYC on Razorpay or Stripe. " +
+          "Posts keys to Indobase (validated + synced to Payments). Never invent keys. " +
+          "Alias: connectPaymentGateway. Do not use webFetch.",
+      parameters: Type.Object({
+        settlement_market: Type.String({
+          description: "india | international (aliases razorpay | stripe)",
+        }),
+        key_id: Type.Optional(Type.String({ description: "Razorpay Key Id (rzp_…) — India" })),
+        key_secret: Type.Optional(Type.String({ description: "Razorpay Key Secret — India" })),
+        publishable_key: Type.Optional(Type.String({
+          description: "Stripe publishable key (pk_…) — International",
+        })),
+        secret_key: Type.Optional(Type.String({
+          description: "Stripe secret key (sk_…) — International",
+        })),
+        webhook_secret: Type.Optional(Type.String({
+          description: "Optional webhook signing secret",
+        })),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_gateway_ready: false,
+            code: "bridge_not_configured",
+            message:
+              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET).",
+          }));
+        }
+        const market = typeof args.settlement_market === "string" ? args.settlement_market.trim() : "";
+        if (!market) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_gateway_ready: false,
+            code: "settlement_market_required",
+            message: "settlement_market required (india|international|razorpay|stripe)",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_gateway_ready: false,
+            code: "agent_identity_missing",
+            message: "Cannot connect gateway: missing agent username. Reload Indobase OS and sign in again.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/connectGateway";
+        let resp: Response;
+        try {
+          resp = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+            body: JSON.stringify({
+              settlement_market: market,
+              key_id: args.key_id,
+              key_secret: args.key_secret,
+              publishable_key: args.publishable_key,
+              secret_key: args.secret_key,
+              webhook_secret: args.webhook_secret,
+            }),
+          });
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_gateway_ready: false,
+            code: "connect_gateway_network_error",
+            message: err instanceof Error ? err.message : "connectGateway request failed",
+          }));
+        }
+        let body: Record<string, unknown> = {};
+        try {
+          body = await resp.json() as Record<string, unknown>;
+        } catch {
+          body = { ok: false, message: await resp.text().catch(() => "non-JSON connectGateway response") };
+        }
+        const ok = resp.ok && body.ok === true;
+        return toolResult(jsonToolResultText({
+          ...body,
+          ok,
+          claim_gateway_ready: ok && (body.can_go_live === true || body.gateway_keys_configured === true),
+          httpStatus: resp.status,
+          tool: "connectGateway",
+        }));
+      },
+    }),
+`
+      const launchMarker = '    // Indobase launchBusiness tool'
+      const webFetchMarker = '    webFetch: defineTool({'
+      if (text.includes(launchMarker)) {
+        text = text.replace(launchMarker, connectTool + launchMarker)
+        // Prompt note
+        if (!text.includes('Indobase Connect payment gateway')) {
+          const liveNote =
+            'Only claim live after the tool returns ok:true with a non-empty url.'
+          if (text.includes(liveNote)) {
+            text = text.replace(
+              liveNote,
+              liveNote +
+                '\n\n# Indobase Connect payment gateway\n\n' +
+                'When the operator pastes Razorpay/Stripe API keys after PSP KYC, you MUST call the \\`connectGateway\\` tool ' +
+                '(alias connectPaymentGateway). Do NOT use webFetch. Quote ok + gateway_connector_synced, then wire checkout.',
+            )
+          }
+        }
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← connectGateway AgentTool')
+      } else if (text.includes(webFetchMarker) && !text.includes('name: "connectGateway"')) {
+        text = text.replace(webFetchMarker, connectTool + webFetchMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← connectGateway AgentTool (webFetch anchor)')
+      } else {
+        console.warn('  skip: no anchor found for connectGateway AgentTool')
+      }
+    }
+  }
+
+  // --- Agent tool: wireCheckout (hosted checkout_url after connectGateway) ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (
+      text.includes('Indobase wireCheckout tool') ||
+      text.includes('name: "wireCheckout"')
+    ) {
+      console.log('  wireCheckout AgentTool already patched')
+    } else {
+      const wireTool = `
+    // Indobase wireCheckout tool — plan + customer + hosted checkout_url for site CTAs.
+    // webFetch cannot do this (HTTPS GET only, no cookies / POST).
+    wireCheckout: defineTool({
+      name: "wireCheckout",
+      label: "Wire checkout",
+      description:
+          "Create Indobase Payments plan + customer + hosted checkout session and return checkout_url. " +
+          "Use that exact URL for Subscribe/Buy CTAs. Never invent a checkout URL. " +
+          "Requires gateway keys first (connectGateway). Alias: wirePricing. Do not use webFetch.",
+      parameters: Type.Object({
+        plan_version_id: Type.Optional(Type.String({
+          description: "Existing plan version id (skip plan create when set)",
+        })),
+        plan_name: Type.Optional(Type.String({ description: "Plan name when creating (default Starter)" })),
+        price: Type.Optional(Type.String({
+          description: "Price in major units, e.g. \\"999\\" or \\"19.99\\" (required if creating plan)",
+        })),
+        currency: Type.Optional(Type.String({ description: "ISO currency, default INR" })),
+        billing_period: Type.Optional(Type.String({
+          description: "MONTHLY or ANNUAL (default MONTHLY)",
+        })),
+        customer_id: Type.Optional(Type.String({ description: "Existing customer id or alias" })),
+        customer_name: Type.Optional(Type.String({ description: "Customer name when creating" })),
+        customer_email: Type.Optional(Type.String({
+          description: "Customer email when creating (required if no customer_id)",
+        })),
+        expires_in_hours: Type.Optional(Type.Number({
+          description: "Checkout session TTL hours (default 24)",
+        })),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_checkout_ready: false,
+            code: "bridge_not_configured",
+            message:
+              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET).",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_checkout_ready: false,
+            code: "agent_identity_missing",
+            message: "Cannot wire checkout: missing agent username. Reload Indobase OS and sign in again.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/wireCheckout";
+        let resp: Response;
+        try {
+          resp = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+            body: JSON.stringify({
+              plan_version_id: args.plan_version_id,
+              plan_name: args.plan_name,
+              price: args.price,
+              currency: args.currency,
+              billing_period: args.billing_period,
+              customer_id: args.customer_id,
+              customer_name: args.customer_name,
+              customer_email: args.customer_email,
+              expires_in_hours: args.expires_in_hours,
+            }),
+          });
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_checkout_ready: false,
+            code: "wire_checkout_network_error",
+            message: err instanceof Error ? err.message : "wireCheckout request failed",
+          }));
+        }
+        let body: Record<string, unknown> = {};
+        try {
+          body = await resp.json() as Record<string, unknown>;
+        } catch {
+          body = { ok: false, message: await resp.text().catch(() => "non-JSON wireCheckout response") };
+        }
+        const checkoutUrl =
+          typeof body.checkout_url === "string" && body.checkout_url.startsWith("http")
+            ? body.checkout_url
+            : undefined;
+        const ok = resp.ok && body.ok === true && Boolean(checkoutUrl);
+        return toolResult(jsonToolResultText({
+          ...body,
+          ok,
+          claim_checkout_ready: ok,
+          checkout_url: checkoutUrl,
+          httpStatus: resp.status,
+          tool: "wireCheckout",
+        }));
+      },
+    }),
+`
+      const connectMarker = '    // Indobase connectGateway tool'
+      const launchMarker = '    // Indobase launchBusiness tool'
+      const webFetchMarker = '    webFetch: defineTool({'
+      if (text.includes(connectMarker)) {
+        text = text.replace(connectMarker, wireTool + connectMarker)
+        if (!text.includes('Indobase Wire checkout')) {
+          const connectNote =
+            '(alias connectPaymentGateway). Do NOT use webFetch. Quote ok + gateway_connector_synced, then wire checkout.'
+          if (text.includes(connectNote)) {
+            text = text.replace(
+              connectNote,
+              connectNote +
+                '\n\n# Indobase Wire checkout\n\n' +
+                'After connectGateway succeeds, call the \\`wireCheckout\\` tool (alias wirePricing) to mint checkout_url, ' +
+                'then patch the site Subscribe/Buy CTA to that URL. Never invent a checkout URL.',
+            )
+          }
+        }
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← wireCheckout AgentTool')
+      } else if (text.includes(launchMarker)) {
+        text = text.replace(launchMarker, wireTool + launchMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← wireCheckout AgentTool (launchBusiness anchor)')
+      } else if (text.includes(webFetchMarker) && !text.includes('name: "wireCheckout"')) {
+        text = text.replace(webFetchMarker, wireTool + webFetchMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← wireCheckout AgentTool (webFetch anchor)')
+      } else {
+        console.warn('  skip: no anchor found for wireCheckout AgentTool')
+      }
+    }
+  }
+
+  // --- Agent tool: setupShopCatalog (tenant DB inventory; webFetch cannot POST) ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (
+      text.includes('Indobase setupShopCatalog tool') ||
+      text.includes('name: "setupShopCatalog"')
+    ) {
+      console.log('  setupShopCatalog AgentTool already patched')
+    } else {
+      const shopTool = `
+    // Indobase setupShopCatalog tool — tenant DB products + stock + admin_html.
+    setupShopCatalog: defineTool({
+      name: "setupShopCatalog",
+      label: "Setup shop catalog",
+      description:
+          "Ensure shop tables, upsert products with stock/prices/image_url, return catalog_json + admin_html. " +
+          "Call after Enable database. Alias: seedShopCatalog. Do not use webFetch.",
+      parameters: Type.Object({
+        brand: Type.Optional(Type.String({ description: "Brand name for admin_html" })),
+        products: Type.Optional(Type.Array(Type.Object({
+          slug: Type.Optional(Type.String()),
+          name: Type.String(),
+          description: Type.Optional(Type.String()),
+          price: Type.String({ description: "Major units, e.g. \\"480\\"" }),
+          currency: Type.Optional(Type.String()),
+          stock: Type.Optional(Type.Number()),
+          image_url: Type.Optional(Type.String()),
+          active: Type.Optional(Type.Boolean()),
+        }))),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_catalog_ready: false,
+            code: "bridge_not_configured",
+            message: "Indobase bridge is not configured.",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_catalog_ready: false,
+            code: "agent_identity_missing",
+            message: "Missing agent username. Reload Indobase OS and sign in again.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/setupShopCatalog";
+        let resp: Response;
+        try {
+          resp = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+            body: JSON.stringify({
+              brand: args.brand,
+              products: args.products,
+              action: "setup",
+            }),
+          });
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            claim_catalog_ready: false,
+            code: "shop_catalog_network_error",
+            message: err instanceof Error ? err.message : "setupShopCatalog failed",
+          }));
+        }
+        let body: Record<string, unknown> = {};
+        try {
+          body = await resp.json() as Record<string, unknown>;
+        } catch {
+          body = { ok: false, message: await resp.text().catch(() => "non-JSON setupShopCatalog response") };
+        }
+        const ok = resp.ok && body.ok === true;
+        return toolResult(jsonToolResultText({
+          ...body,
+          ok,
+          claim_catalog_ready: ok,
+          httpStatus: resp.status,
+          tool: "setupShopCatalog",
+        }));
+      },
+    }),
+`
+      const wireMarker = '    // Indobase wireCheckout tool'
+      const connectMarker = '    // Indobase connectGateway tool'
+      const launchMarker = '    // Indobase launchBusiness tool'
+      if (text.includes(wireMarker)) {
+        text = text.replace(wireMarker, shopTool + wireMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← setupShopCatalog AgentTool')
+      } else if (text.includes(connectMarker)) {
+        text = text.replace(connectMarker, shopTool + connectMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← setupShopCatalog AgentTool (connectGateway anchor)')
+      } else if (text.includes(launchMarker)) {
+        text = text.replace(launchMarker, shopTool + launchMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← setupShopCatalog AgentTool (launchBusiness anchor)')
+      } else {
+        console.warn('  skip: no anchor found for setupShopCatalog AgentTool')
+      }
+    }
+  }
+
+  // --- Agent tools: ensure* / applySchema / productionChecklist / resolveProductImages / shop orders ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (
+      text.includes('Indobase ensureLogin tool') ||
+      text.includes('name: "ensureLogin"')
+    ) {
+      console.log('  ensure*/applySchema/checklist/images AgentTools already patched')
+    } else {
+      const capabilityTools = `
+    // Indobase ensureLogin tool — runtime/ensure login (webFetch cannot POST).
+    ensureLogin: defineTool({
+      name: "ensureLogin",
+      label: "Enable login",
+      description:
+          "Enable customer login for this business. Quote Login enabled + next_steps. Do not use webFetch.",
+      parameters: Type.Object({}),
+      execute: async () => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/ensureLogin";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: "{}",
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureLogin" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureLogin failed" }));
+        }
+      },
+    }),
+
+    // Indobase ensureDatabase tool
+    ensureDatabase: defineTool({
+      name: "ensureDatabase",
+      label: "Enable database",
+      description: "Enable the customer database (businessData). Then call applySchema or setupShopCatalog. Do not use webFetch.",
+      parameters: Type.Object({}),
+      execute: async () => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/ensureDatabase";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: "{}",
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureDatabase" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureDatabase failed" }));
+        }
+      },
+    }),
+
+    // Indobase ensureEmail tool
+    ensureEmail: defineTool({
+      name: "ensureEmail",
+      label: "Enable email",
+      description: "Enable Indobase Email. Usually returns pending_setup + launch_url. Do not claim Email enabled until setup finishes. Do not use webFetch.",
+      parameters: Type.Object({}),
+      execute: async () => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/ensureEmail";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: "{}",
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureEmail" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureEmail failed" }));
+        }
+      },
+    }),
+
+    // Indobase ensureAnalytics tool
+    ensureAnalytics: defineTool({
+      name: "ensureAnalytics",
+      label: "Enable analytics",
+      description: "Enable Indobase Analytics. Returns launch_url for site setup. Do not claim Analytics live from ensure alone. Do not use webFetch.",
+      parameters: Type.Object({}),
+      execute: async () => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/ensureAnalytics";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: "{}",
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureAnalytics" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureAnalytics failed" }));
+        }
+      },
+    }),
+
+    // Indobase applySchema tool — declarative tables only.
+    applySchema: defineTool({
+      name: "applySchema",
+      label: "Apply data model",
+      description: "Apply declarative tables to the customer database. Call ensureDatabase first. Do not send arbitrary SQL. Do not use webFetch.",
+      parameters: Type.Object({
+        brand: Type.Optional(Type.String()),
+        tables: Type.Array(Type.Any({ description: "Declarative table defs (name + columns)" })),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/applySchema";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: JSON.stringify({ brand: args.brand, tables: args.tables }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "applySchema" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "apply_schema_network_error", message: err instanceof Error ? err.message : "applySchema failed" }));
+        }
+      },
+    }),
+
+    // Indobase productionChecklist tool — claim gate.
+    productionChecklist: defineTool({
+      name: "productionChecklist",
+      label: "Production checklist",
+      description: "Claim-production-ready gate by app_type. Only claim production ready when claim_production_ready is true. Do not use webFetch.",
+      parameters: Type.Object({
+        app_type: Type.String({ description: "saas | ecommerce | booking | blog | landing | dashboard | other" }),
+        live_url: Type.Optional(Type.String()),
+        checks: Type.Optional(Type.Any()),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, claim_production_ready: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, claim_production_ready: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/productionChecklist";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: JSON.stringify({ app_type: args.app_type, live_url: args.live_url, checks: args.checks }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "productionChecklist" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, claim_production_ready: false, code: "checklist_network_error", message: err instanceof Error ? err.message : "productionChecklist failed" }));
+        }
+      },
+    }),
+
+    // Indobase resolveProductImages tool — Openverse commercial URLs.
+    resolveProductImages: defineTool({
+      name: "resolveProductImages",
+      label: "Resolve product images",
+      description: "Resolve commercial-friendly HTTPS image URLs for product names. Pass urls as image_url into setupShopCatalog. Never invent Unsplash URLs. Do not use webFetch.",
+      parameters: Type.Object({
+        queries: Type.Array(Type.String({ description: "Product name or search phrase" })),
+        page_size: Type.Optional(Type.Number()),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/resolveProductImages";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: JSON.stringify({ queries: args.queries, page_size: args.page_size }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "resolveProductImages" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "product_images_network_error", message: err instanceof Error ? err.message : "resolveProductImages failed" }));
+        }
+      },
+    }),
+
+    // Indobase placeTestShopOrder tool
+    placeTestShopOrder: defineTool({
+      name: "placeTestShopOrder",
+      label: "Place test shop order",
+      description: "Place a test order against shop_products to prove inventory. Prefer cleanup:true. Do not use webFetch.",
+      parameters: Type.Object({
+        email: Type.Optional(Type.String()),
+        items: Type.Optional(Type.Array(Type.Any())),
+        cleanup: Type.Optional(Type.Boolean()),
+        brand: Type.Optional(Type.String()),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/placeTestShopOrder";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: JSON.stringify({ email: args.email, items: args.items, cleanup: args.cleanup, brand: args.brand }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "placeTestShopOrder" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "shop_order_network_error", message: err instanceof Error ? err.message : "placeTestShopOrder failed" }));
+        }
+      },
+    }),
+
+    // Indobase listShopOrders tool
+    listShopOrders: defineTool({
+      name: "listShopOrders",
+      label: "List shop catalog/orders",
+      description: "List shop products + recent orders and return admin_html (live REST refresh). Alias: listShopCatalog. Do not use webFetch.",
+      parameters: Type.Object({
+        brand: Type.Optional(Type.String()),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) return toolResult(jsonToolResultText({ ok: false, code: "bridge_not_configured", message: "Indobase bridge is not configured." }));
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({ ok: false, code: "agent_identity_missing", message: "Missing agent username. Reload Indobase OS." }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/tools/listShopOrders";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", "X-Indobase-OS-Secret": cfg.osSecret, "X-Indobase-Agent-Username": agentUsername },
+            body: JSON.stringify({ brand: args.brand }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "listShopOrders" }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({ ok: false, code: "shop_list_network_error", message: err instanceof Error ? err.message : "listShopOrders failed" }));
+        }
+      },
+    }),
+
+`
+      const shopMarker = '    // Indobase setupShopCatalog tool'
+      const wireMarker = '    // Indobase wireCheckout tool'
+      const launchMarker = '    // Indobase launchBusiness tool'
+      if (text.includes(shopMarker)) {
+        text = text.replace(shopMarker, capabilityTools + shopMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← ensure*/applySchema/checklist/images AgentTools')
+      } else if (text.includes(wireMarker)) {
+        text = text.replace(wireMarker, capabilityTools + wireMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← ensure* AgentTools (wireCheckout anchor)')
+      } else if (text.includes(launchMarker)) {
+        text = text.replace(launchMarker, capabilityTools + launchMarker)
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← ensure* AgentTools (launchBusiness anchor)')
+      } else {
+        console.warn('  skip: no anchor found for ensure*/applySchema AgentTools')
+      }
+    }
+  }
+
+  // --- authStart / authVerify AgentTools (OTP; webFetch cannot POST) ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    if (text.includes('Indobase authStart tool') || text.includes('name: "authStart"')) {
+      console.log('  authStart/authVerify AgentTools already patched')
+    } else {
+      const toolMarker = '    // Indobase launchBusiness tool'
+      const authTools = `
+    // Indobase authStart tool — send email OTP (webFetch is GET-only).
+    authStart: defineTool({
+      name: "authStart",
+      label: "Send verification code",
+      description:
+          "Send an Indobase email verification OTP. Requires name, email, and dpdpConsent:true. " +
+          "Use BEFORE launch/enable when the operator is a Guest. Do not use webFetch.",
+      parameters: Type.Object({
+        name: Type.String({ description: "Operator display name" }),
+        email: Type.String({ description: "Operator email for the OTP" }),
+        dpdpConsent: Type.Boolean({
+          description: "Must be true — Privacy Policy + Terms (DPDP) consent",
+        }),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_not_configured",
+            message: "Indobase auth bridge is not configured on this runtime.",
+          }));
+        }
+        if (!args.dpdpConsent) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "dpdp_required",
+            message: "dpdpConsent must be true before sending OTP.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/auth/start";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              name: args.name,
+              email: args.email,
+              dpdpConsent: true,
+            }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({
+            ...body,
+            ok: resp.ok && body.ok === true,
+            httpStatus: resp.status,
+            tool: "authStart",
+            next: "Ask the operator for the 6-digit code from email, then call authVerify.",
+          }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_network_error",
+            message: err instanceof Error ? err.message : "authStart failed",
+          }));
+        }
+      },
+    }),
+
+    // Indobase authVerify tool — verify OTP; browser claims session via /api/os/auth/claim-session.
+    authVerify: defineTool({
+      name: "authVerify",
+      label: "Verify email code",
+      description:
+          "Verify the Indobase email OTP and finish account creation. After ok, tell the operator " +
+          "to wait a moment or refresh — the browser completes sign-in automatically.",
+      parameters: Type.Object({
+        name: Type.String({ description: "Same name used in authStart" }),
+        email: Type.String({ description: "Same email used in authStart" }),
+        token: Type.String({ description: "6-digit verification code from email" }),
+      }),
+      execute: async (_toolCallId, args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_not_configured",
+            message: "Indobase auth bridge is not configured on this runtime.",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "agent_identity_missing",
+            message: "Cannot verify: missing agent username. Reload Indobase OS.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/auth/verify";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+            body: JSON.stringify({
+              name: args.name,
+              email: args.email,
+              token: args.token,
+            }),
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({
+            ...body,
+            ok: resp.ok && body.ok === true,
+            httpStatus: resp.status,
+            tool: "authVerify",
+            next: resp.ok
+              ? "Verified. Ask the operator to wait ~15s or refresh — sign-in completes in the browser."
+              : undefined,
+          }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_network_error",
+            message: err instanceof Error ? err.message : "authVerify failed",
+          }));
+        }
+      },
+    }),
+
+    // Indobase launchBusiness tool`
+      if (text.includes(toolMarker)) {
+        text = text.replace(toolMarker, authTools)
+        // Prompt note for account gate
+        if (!text.includes('Indobase account OTP tools')) {
+          const gateNote =
+            'To take a site live you MUST call the \\`launchBusiness\\` tool (alias goLive) with real html or files. '
+          if (text.includes(gateNote)) {
+            text = text.replace(
+              gateNote,
+              'For Guest operators: call \\`authStart\\` (name+email+dpdpConsent) then \\`authVerify\\` with the email code before Launch/Enable. ' +
+                gateNote,
+            )
+          }
+        }
+        writeFileSync(agentPath, text)
+        console.log('  agent.ts ← authStart/authVerify AgentTools')
+      } else {
+        console.warn('  skip: launchBusiness marker not found for auth tools')
+      }
+    }
+  }
+
+  if (existsSync(overseerPath)) {
+    let text = readFileSync(overseerPath, 'utf8')
+    if (text.includes('getIndobaseLaunchConfig()')) {
+      console.log('  overseer getIndobaseLaunchConfig already patched')
+    } else {
+      const anchor = `  getWebFetchEnv(): WebFetchEnv {
+    if (this.storage.prohibitAllSharing.get()) {`
+      const injection = `  getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
+    const bridgeUrl = String((this.env as { INDOBASE_BRIDGE_URL?: string }).INDOBASE_BRIDGE_URL || "").trim();
+    const osSecret = String((this.env as { INDOBASE_OS_SECRET?: string }).INDOBASE_OS_SECRET || "").trim();
+    if (!bridgeUrl || !osSecret) return null;
+    return { bridgeUrl, osSecret };
+  }
+
+  getWebFetchEnv(): WebFetchEnv {
+    if (this.storage.prohibitAllSharing.get()) {`
+      if (text.includes(anchor)) {
+        text = text.replace(anchor, injection)
+        writeFileSync(overseerPath, text)
+        console.log('  overseer.ts ← getIndobaseLaunchConfig')
+      } else {
+        console.warn('  skip: overseer getWebFetchEnv anchor drifted')
+      }
+    }
+  }
+
+  if (existsSync(envPath)) {
+    let text = readFileSync(envPath, 'utf8')
+    if (text.includes('INDOBASE_BRIDGE_URL')) {
+      console.log('  env.d.ts already has Indobase launch vars')
+    } else {
+      // Append to Cloudflare.Env interface if present
+      const iface = 'interface Env {'
+      const alt = 'type Env ='
+      if (text.includes('INDOBASE_BRIDGE_URL')) {
+        /* already */
+      } else if (text.includes(iface)) {
+        text = text.replace(
+          iface,
+          `${iface}\n      INDOBASE_BRIDGE_URL?: string;\n      INDOBASE_OS_SECRET?: string;`,
+        )
+        writeFileSync(envPath, text)
+        console.log('  env.d.ts ← INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET')
+      } else {
+        // workers-types generated style — append ambient
+        text +=
+          '\n// Indobase launch (AgentTool → bridge)\n' +
+          'declare namespace Cloudflare {\n' +
+          '  interface Env {\n' +
+          '    INDOBASE_BRIDGE_URL?: string;\n' +
+          '    INDOBASE_OS_SECRET?: string;\n' +
+          '  }\n' +
+          '}\n'
+        writeFileSync(envPath, text)
+        console.log('  env.d.ts ← Cloudflare.Env Indobase launch vars')
+      }
+    }
+  }
+}
+
+// --- .dev.vars: bridge URL + OS secret for launchBusiness tool ---
+{
+  const path = join(OS, '.dev.vars')
+  const bridgeUrl =
+    process.env.INDOBASE_BRIDGE_URL?.trim() ||
+    process.env.BUILDER_CFOS_PUBLIC_URL?.trim() ||
+    'https://builder.indobase.in'
+  const osSecret =
+    process.env.INDOBASE_OS_SECRET?.trim() ||
+    process.env.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
+    process.env.BUILDER_HANDOFF_SECRET?.trim() ||
+    ''
+  let existing = existsSync(path) ? readFileSync(path, 'utf8') : ''
+  const upsert = (key, value) => {
+    if (!value) return
+    const line = `${key}=${value}`
+    if (new RegExp(`^${key}=`, 'm').test(existing)) {
+      existing = existing.replace(new RegExp(`^${key}=.*$`, 'm'), line)
+    } else {
+      existing = existing.trimEnd() + (existing.endsWith('\n') || !existing ? '' : '\n') + line + '\n'
+    }
+  }
+  upsert('INDOBASE_BRIDGE_URL', bridgeUrl)
+  if (osSecret.length >= 32) upsert('INDOBASE_OS_SECRET', osSecret)
+  else console.warn('  skip: INDOBASE_OS_SECRET / handoff secret missing or <32 chars')
+  writeFileSync(path, existing.endsWith('\n') ? existing : existing + '\n', { mode: 0o600 })
+  console.log('  .dev.vars ← INDOBASE_BRIDGE_URL' + (osSecret.length >= 32 ? ' + INDOBASE_OS_SECRET' : ''))
+}
+
 // --- Local ADMINS: allow seed-format-routing via admin + Indobase auto-login "dev" ---
 {
   const path = join(OS, 'run-dev-server.js')
@@ -789,6 +1907,94 @@ void (async () => {
       console.log('  ADMINS ← admin, dev')
     } else {
       console.warn('  skip: ADMINS assignment drifted')
+    }
+  }
+}
+
+// --- Follow-up recommendation chips (competitor-style guided next steps) ---
+{
+  const feSrc = join(OS, 'packages/workshop-frontend/src')
+  const followupsDir = join(feSrc)
+  const brandFollowups = join(BRAND, 'followups')
+  const chatPath = join(feSrc, 'ChatInterface.tsx')
+
+  if (existsSync(brandFollowups) && existsSync(feSrc)) {
+    for (const name of [
+      'followups.ts',
+      'FollowUpRecommendations.tsx',
+      'FollowUpRecommendations.module.css',
+    ]) {
+      const from = join(brandFollowups, name)
+      const to = join(followupsDir, name)
+      if (existsSync(from)) {
+        copyFileSync(from, to)
+      }
+    }
+    // Prefer bridge parser when developing in the monorepo (unit-tested canonical).
+    const bridgeParser = join(ROOT, 'bridge/src/followups.ts')
+    if (existsSync(bridgeParser)) {
+      copyFileSync(bridgeParser, join(followupsDir, 'followups.ts'))
+      copyFileSync(bridgeParser, join(brandFollowups, 'followups.ts'))
+    }
+    console.log('  copied FollowUpRecommendations → workshop-frontend/src')
+  }
+
+  if (existsSync(chatPath)) {
+    let text = read(chatPath)
+    const importNeedle = 'import styles from "./ChatInterface.module.css";'
+    const importInjection =
+      'import styles from "./ChatInterface.module.css";\n' +
+      'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips'
+
+    if (text.includes('FollowUpRecommendations') && text.includes('Indobase follow-up chips')) {
+      console.log('  ChatInterface follow-up chips already patched (skip)')
+    } else if (text.includes(importNeedle) && !text.includes('FollowUpRecommendations')) {
+      text = text.replace(importNeedle, importInjection)
+
+      const oldBlock = `                              {hasMessageText && (
+                                <div className={\`text-[14px] leading-[22px] tracking-[-0.25px] text-kumo-default \${styles.markdownContent}\`}>
+                                  <MarkdownMessage
+                                    message={msg.message}
+                                    capsules={msg.capsules}
+                                    formats={msg.formats}
+                                  />
+                                </div>
+                              )}`
+
+      const newBlock = `                              {hasMessageText && (
+                                <FollowUpRecommendations
+                                  message={msg.message}
+                                  allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq)}
+                                  disabled={isAgentActive}
+                                  onPick={(next) => {
+                                    void handleSend(next)
+                                  }}
+                                >
+                                  {(body) => (
+                                    <div className={\`text-[14px] leading-[22px] tracking-[-0.25px] text-kumo-default \${styles.markdownContent}\`}>
+                                      <MarkdownMessage
+                                        message={body}
+                                        capsules={msg.capsules}
+                                        formats={msg.formats}
+                                      />
+                                    </div>
+                                  )}
+                                </FollowUpRecommendations>
+                              )}`
+
+      if (text.includes(oldBlock)) {
+        text = text.replace(oldBlock, newBlock)
+        write(chatPath, text)
+        console.log('  ChatInterface ← follow-up recommendation chips')
+      } else if (text.includes('Indobase follow-up chips')) {
+        write(chatPath, text)
+        console.log('  ChatInterface import added; render anchor already patched or drifted')
+      } else {
+        write(chatPath, text)
+        console.warn('  skip: ChatInterface assistant MarkdownMessage anchor drifted')
+      }
+    } else if (!text.includes(importNeedle)) {
+      console.warn('  skip: ChatInterface styles import drifted')
     }
   }
 }

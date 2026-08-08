@@ -5,11 +5,13 @@ import type { JwtPayload } from '@indobaseinc/indobase-js'
 import apiWrapper from 'lib/api/apiWrapper'
 import { setNoStore } from 'lib/api/no-store'
 import {
+  connectMerchantGatewayKeys,
   getMerchantProfile,
   patchMerchantProfile,
   reviewMerchantProfile,
   submitMerchantProfile,
 } from 'lib/api/saas/merchant-kyc'
+import type { GatewayConnectBody } from 'lib/api/saas/merchant-gateway-keys'
 import type { MerchantProfilePatch } from 'lib/api/saas/merchant-kyc-types'
 
 export default (req: NextApiRequest, res: NextApiResponse) =>
@@ -49,6 +51,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
         const profile = await submitMerchantProfile({ claims, ref })
         return res.status(200).json({ merchant: profile })
       }
+      if (action === 'connect_gateway') {
+        const profile = await connectMerchantGatewayKeys({
+          claims,
+          ref,
+          body: body as GatewayConnectBody,
+        })
+        return res.status(200).json({ merchant: profile })
+      }
       if (action === 'verify' || action === 'reject') {
         const profile = await reviewMerchantProfile({
           claims,
@@ -59,7 +69,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
         return res.status(200).json({ merchant: profile })
       }
       return res.status(400).json({
-        message: 'Unsupported action. Use action: "submit" | "verify" | "reject".',
+        message:
+          'Unsupported action. Use action: "submit" | "connect_gateway" | "verify" | "reject".',
       })
     }
 

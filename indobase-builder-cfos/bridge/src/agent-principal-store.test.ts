@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, describe, it } from 'node:test'
+
+import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.ts'
+
+describe('agent-principal-store', () => {
+  let dir = ''
+
+  afterEach(async () => {
+    if (dir) {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
+      dir = ''
+    }
+    delete process.env.INDOBASE_AGENT_PRINCIPAL_DIR
+  })
+
+  it('remembers and looks up a principal by CFOS username', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+
+    await rememberAgentPrincipal({
+      username: 'ib_abc123def4567890',
+      gotrueId: 'user-1',
+      projectRef: 'ws-sprout',
+      email: 'owner@example.com',
+      guest: false,
+      projectName: 'SproutEats',
+    })
+
+    const found = await lookupAgentPrincipal('ib_abc123def4567890')
+    assert.ok(found)
+    assert.equal(found.projectRef, 'ws-sprout')
+    assert.equal(found.gotrueId, 'user-1')
+    assert.equal(found.guest, false)
+    assert.equal(found.projectName, 'SproutEats')
+    assert.ok(found.updatedAt)
+  })
+
+  it('returns null for unknown usernames', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    assert.equal(await lookupAgentPrincipal('ib_missing'), null)
+  })
+
+  it('overwrites the same username', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_same',
+      gotrueId: 'g1',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: true,
+    })
+    await rememberAgentPrincipal({
+      username: 'ib_same',
+      gotrueId: 'g1',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: false,
+    })
+    const found = await lookupAgentPrincipal('ib_same')
+    assert.equal(found?.guest, false)
+  })
+})

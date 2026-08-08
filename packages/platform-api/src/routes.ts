@@ -16,7 +16,86 @@ export const PlatformApiRoutes = {
   promptQuota: `${PLATFORM_API_PREFIX}/usage/prompt-quota`,
   /** GET/POST — product Auth OTP From (branded login mail) */
   authMail: `${PLATFORM_API_PREFIX}/auth/mail`,
+  /** POST — BYOK Razorpay/Stripe API keys after PSP KYC */
+  paymentsConnectGateway: `${PLATFORM_API_PREFIX}/payments/connect-gateway`,
+  /** POST — create plan/customer/checkout session → checkout_url for site CTA */
+  paymentsWireCheckout: `${PLATFORM_API_PREFIX}/payments/wire-checkout`,
+  /** POST — ensure/seed/list shop catalog (tenant DB inventory) */
+  shopCatalog: `${PLATFORM_API_PREFIX}/shop/catalog`,
+  /** POST — list shop orders or place test order */
+  shopOrders: `${PLATFORM_API_PREFIX}/shop/orders`,
+  /** POST — declarative tables for any app data model */
+  dataApplySchema: `${PLATFORM_API_PREFIX}/data/apply-schema`,
+  /** POST — production-ready claim gate by app type */
+  productionChecklist: `${PLATFORM_API_PREFIX}/production/checklist`,
+  /** POST — resolve commercial stock image URLs for products */
+  mediaProductImages: `${PLATFORM_API_PREFIX}/media/product-images`,
 } as const
+
+export type ProductImagesResponse = {
+  ok: boolean
+  message?: string
+  code?: string
+  images?: Array<Record<string, unknown>>
+  by_query?: Record<string, Record<string, unknown> | null>
+}
+
+export type ApplySchemaResponse = {
+  ok: boolean
+  message?: string
+  code?: string
+  tables?: string[]
+  statements_run?: number
+  admin_html?: string
+}
+
+export type ProductionChecklistResponse = {
+  ok: boolean
+  claim_production_ready: boolean
+  app_type?: string
+  live_url?: string
+  message?: string
+  checks?: Array<{ id: string; required: boolean; passed: boolean; label: string }>
+  missing?: string[]
+  next_steps?: OsEnsureNextStep[]
+}
+
+export type ShopCatalogResponse = {
+  ok: boolean
+  message?: string
+  code?: string
+  products?: Array<Record<string, unknown>>
+  orders?: Array<Record<string, unknown>>
+  order?: Record<string, unknown>
+  admin_html?: string
+  catalog_json?: Array<Record<string, unknown>>
+}
+
+export type PaymentsConnectGatewayResponse = {
+  ok: boolean
+  message?: string
+  gateway_keys_configured?: boolean
+  gateway_connector_synced?: boolean
+  gateway_key_hint?: string | null
+  settlement_market?: 'india' | 'international'
+  settlement_adapter?: 'stripe' | 'razorpay_route'
+  can_go_live?: boolean
+  next_steps?: OsEnsureNextStep[]
+  code?: string
+}
+
+export type PaymentsWireCheckoutResponse = {
+  ok: boolean
+  message?: string
+  checkout_url?: string
+  session_id?: string
+  plan_version_id?: string
+  plan_id?: string
+  customer_id?: string
+  code?: string
+  next_steps?: OsEnsureNextStep[]
+  mode?: string
+}
 
 export type OsAuthMailStatus = {
   ok: boolean
@@ -75,6 +154,11 @@ export type OsWorkspaceSession = {
 export type RuntimeEnsureRequest = {
   workspace_ref: string
   capability: string
+  /**
+   * Commerce only: india | international (aliases razorpay | stripe).
+   * Sets the project merchant settlement rail from the operator’s choice.
+   */
+  settlement_market?: 'india' | 'international' | 'razorpay' | 'stripe' | string
   hints?: Record<string, unknown>
 }
 
@@ -95,6 +179,10 @@ export type RuntimeEnsureResponse = {
   setup_status?: 'pending' | 'ready'
   /** Soft follow-ups (e.g. brand login From after Login enabled) */
   next_steps?: OsEnsureNextStep[]
+  /** Commerce: india | international after ensure */
+  settlement_market?: 'india' | 'international'
+  /** Commerce: stripe | razorpay_route (for agent wiring; not shown as Enable copy) */
+  settlement_adapter?: 'stripe' | 'razorpay_route'
 }
 
 export type DeployPublishRequest = {

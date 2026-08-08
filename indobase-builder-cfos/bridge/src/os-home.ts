@@ -39,9 +39,17 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
     formatHint: 'auth',
   },
   {
+    id: 'shop-backend',
+    label: 'Add a real backend',
+    prompt:
+      'Add a real product backend — ensureDatabase, resolveProductImages, setupShopCatalog, placeTestShopOrder, publish admin_html once via launchBusiness (live REST refresh)',
+    formatHint: 'database',
+  },
+  {
     id: 'payments',
-    label: 'Enable payments',
-    prompt: 'Start charging customers — Enable Payments via runtime/ensure. Quote finish-setup copy until truly live; do not ask which payment vendor.',
+    label: 'Add payments',
+    prompt:
+      'Add payments — ask me India (Razorpay) vs International (Stripe), Enable Payments via runtime/ensure with settlement_market, send me to finish KYC on their dashboard, then call connectGateway (POST /api/os/tools/connectGateway) with my API keys and wireCheckout (POST /api/os/tools/wireCheckout, mode one_time for Buy) to get checkout_url for this site.',
     navId: 'commerce',
     formatHint: 'commerce',
   },

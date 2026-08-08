@@ -8,6 +8,8 @@
 # Optional:
 #   CFOS_RUNTIME_DIR=/opt/indobase-cfos-runtime/cloudflare-os
 #   SKIP_INSTALL=1   # only (re)start systemd after sources exist
+#   FORCE_RESTART=1  # always systemctl restart (default: soft-reload when already healthy)
+#   Soft reload avoids ~2–4 min Builder outage (wrangler cold start) when only frontend rebrand changed.
 set -euo pipefail
 
 SSH_HOST="${VPS_SSH:-root@103.190.92.249}"
@@ -15,9 +17,10 @@ SSH_KEY="${VPS_SSH_KEY:-$HOME/.ssh/id_ed25519_indobase_vps}"
 SSH_OPTS=(-4 -o ConnectTimeout=45 -i "$SSH_KEY")
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
+FORCE_RESTART="${FORCE_RESTART:-0}"
 
 echo "==> Sync rebrand + seed scripts + Indobase formats to ${SSH_HOST}…"
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/scripts /opt/indobase-builder-cfos/branding /opt/indobase-builder-cfos/formats"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/scripts /opt/indobase-builder-cfos/branding/followups /opt/indobase-builder-cfos/formats"
 scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/rebrand-cloudflare-os.mjs" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/seed-openrouter-models.mjs" \
@@ -31,6 +34,11 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/NOTICE" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/indobase-mark.svg" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/"
+scp "${SSH_OPTS[@]}" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/followups.ts" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/FollowUpRecommendations.tsx" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/FollowUpRecommendations.module.css" \
+  "${SSH_HOST}:/opt/indobase-builder-cfos/branding/followups/"
 # Formats tree (gadgets + Design source). Exclude AppleDouble junk.
 rsync -az --delete \
   -e "ssh ${SSH_OPTS[*]}" \
@@ -40,11 +48,52 @@ rsync -az --delete \
 
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
   "SKIP_INSTALL=${SKIP_INSTALL}" \
+  "FORCE_RESTART=${FORCE_RESTART}" \
   bash -s <<'REMOTE'
 set -euo pipefail
 export CFOS_DIR="${CFOS_RUNTIME_DIR:-/opt/indobase-cfos-runtime/cloudflare-os}"
 export ROOT_SCRIPTS=/opt/indobase-builder-cfos
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
+FORCE_RESTART="${FORCE_RESTART:-0}"
+
+wait_cfos_ready() {
+  local label="${1:-CF OS}"
+  echo "Waiting for ${label} on :8787 (HTTP + WebSocket /api)…"
+  for i in $(seq 1 240); do
+    if curl -sf -o /dev/null --connect-timeout 2 --max-time 30 http://127.0.0.1:8787/ 2>/dev/null; then
+      # Exact /api upgrade is what the bridge proxies for Builder RPC.
+      local ws_code
+      ws_code="$(
+        curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 15 \
+          -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+          -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+          http://127.0.0.1:8787/api 2>/dev/null || echo 000
+      )"
+      # 101 = ready; 400 = HTTP hit without completing upgrade still proves listener+handler.
+      if [[ "$ws_code" == "101" || "$ws_code" == "400" ]]; then
+        echo "Runtime is up (HTTP 200, /api → ${ws_code})."
+        return 0
+      fi
+      echo "  (HTTP up; /api returned ${ws_code}, waiting… $i)"
+    elif ss -lntp 2>/dev/null | grep -q ':8787'; then
+      echo "  (listener up; still warming HTTP… $i)"
+    fi
+    if [[ "$i" -eq 240 ]]; then
+      echo "::error::Timed out waiting for CF OS on :8787"
+      journalctl -u indobase-cfos-runtime -n 120 --no-pager || true
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+ensure_docker_host_8787() {
+  # Swarm bridge reaches host via docker_gwbridge (172.18.0.1); INPUT policy is DROP.
+  iptables -C INPUT -i docker_gwbridge -p tcp --dport 8787 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -i docker_gwbridge -p tcp --dport 8787 -j ACCEPT
+  iptables -C INPUT -i docker0 -p tcp --dport 8787 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -i docker0 -p tcp --dport 8787 -j ACCEPT
+}
 
 corepack enable >/dev/null 2>&1 || true
 command -v pnpm >/dev/null || corepack prepare pnpm@10.12.1 --activate
@@ -83,8 +132,55 @@ if [[ -n "$OPENROUTER_KEY" ]]; then
   echo "Wrote $CFOS_DIR/.dev.vars (OpenRouter)"
 fi
 
+# Bridge URL + handoff secret so CFOS launchBusiness AgentTool can POST to Indobase OS.
+BRIDGE_URL="${INDOBASE_BRIDGE_URL:-https://builder.indobase.in}"
+OS_SECRET=""
+if [[ -f /opt/indobase-builder-cfos.runtime.env ]]; then
+  OS_SECRET="$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' /opt/indobase-builder-cfos.runtime.env | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -z "$OS_SECRET" && -f /opt/indobase/docker/.env ]]; then
+  OS_SECRET="$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' /opt/indobase/docker/.env | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -z "$OS_SECRET" && -n "${BUILDER_CFOS_HANDOFF_SECRET:-}" ]]; then
+  OS_SECRET="$BUILDER_CFOS_HANDOFF_SECRET"
+fi
+umask 077
+touch "$CFOS_DIR/.dev.vars"
+chmod 600 "$CFOS_DIR/.dev.vars"
+python3 - <<PY
+from pathlib import Path
+p = Path("$CFOS_DIR") / ".dev.vars"
+text = p.read_text() if p.exists() else ""
+updates = {
+  "INDOBASE_BRIDGE_URL": """$BRIDGE_URL""",
+}
+secret = """$OS_SECRET"""
+if len(secret) >= 32:
+  updates["INDOBASE_OS_SECRET"] = secret
+lines = text.splitlines()
+out = []
+seen = set()
+for line in lines:
+  if not line.strip() or line.startswith("#") or "=" not in line:
+    out.append(line)
+    continue
+  k = line.split("=", 1)[0]
+  if k in updates:
+    out.append(f"{k}={updates[k]}")
+    seen.add(k)
+  else:
+    out.append(line)
+for k, v in updates.items():
+  if k not in seen:
+    out.append(f"{k}={v}")
+p.write_text("\\n".join(out) + "\\n")
+print("Updated", p, "keys:", ", ".join(updates))
+PY
+
 PNPM_BIN="$(command -v pnpm)"
-cat > /etc/systemd/system/indobase-cfos-runtime.service <<UNIT
+UNIT_PATH=/etc/systemd/system/indobase-cfos-runtime.service
+UNIT_NEW="$(mktemp)"
+cat > "$UNIT_NEW" <<UNIT
 [Unit]
 Description=Indobase Builder agent runtime (Cloudflare OS workerd)
 After=network.target
@@ -113,6 +209,16 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 UNIT
 
+UNIT_CHANGED=0
+if [[ ! -f "$UNIT_PATH" ]] || ! cmp -s "$UNIT_NEW" "$UNIT_PATH"; then
+  install -m 644 "$UNIT_NEW" "$UNIT_PATH"
+  UNIT_CHANGED=1
+  echo "Updated systemd unit"
+else
+  echo "Systemd unit unchanged"
+fi
+rm -f "$UNIT_NEW"
+
 # Bind wrangler on 0.0.0.0 so Docker host-gateway can reach :8787
 python3 - <<'PY'
 from pathlib import Path
@@ -134,28 +240,38 @@ else:
     print("Patched run-dev-server.js for INDOBASE_WRANGLER_IP")
 PY
 
+ensure_docker_host_8787
+
+# Pre-build workshop frontend WHILE the old runtime is still serving traffic when possible.
+# Cold `pnpm run-local` otherwise spends 1–2+ minutes in vite before wrangler binds :8787.
+echo "→ Pre-building workshop-frontend (shortens restart outage window)…"
+cd "$CFOS_DIR/packages/workshop-frontend"
+if [[ -f package.json ]]; then
+  "$PNPM_BIN" exec vite build -c vite.config.ts \
+    || echo "::warning::frontend pre-build failed; run-local will rebuild on start"
+fi
+cd "$CFOS_DIR"
+
 systemctl daemon-reload
 systemctl enable indobase-cfos-runtime.service
-systemctl restart indobase-cfos-runtime.service
 
-echo "Waiting for :8787…"
-for i in $(seq 1 240); do
-  # Cold start can take minutes for the first successful HTTP response.
-  if curl -sf -o /dev/null --connect-timeout 2 --max-time 90 http://127.0.0.1:8787/ 2>/dev/null; then
-    echo "Runtime is up."
-    break
-  fi
-  if ss -lntp 2>/dev/null | grep -q ':8787'; then
-    echo "  (listener up; still warming HTTP… $i)"
-  fi
-  if [[ "$i" -eq 240 ]]; then
-    echo "::error::Timed out waiting for CF OS on :8787"
-    journalctl -u indobase-cfos-runtime -n 120 --no-pager || true
-    exit 1
-  fi
-  sleep 5
-done
+RUNTIME_HEALTHY=0
+if systemctl is-active --quiet indobase-cfos-runtime.service \
+  && curl -sf -o /dev/null --connect-timeout 2 --max-time 10 http://127.0.0.1:8787/ 2>/dev/null; then
+  RUNTIME_HEALTHY=1
+fi
 
+if [[ "$FORCE_RESTART" == "1" || "$UNIT_CHANGED" == "1" || "$RUNTIME_HEALTHY" != "1" ]]; then
+  echo "→ Full restart (FORCE_RESTART=${FORCE_RESTART} UNIT_CHANGED=${UNIT_CHANGED} HEALTHY=${RUNTIME_HEALTHY})…"
+  systemctl restart indobase-cfos-runtime.service
+  wait_cfos_ready "CF OS after restart" || exit 1
+else
+  echo "→ Soft reload: runtime already healthy; skipping systemctl restart (vite --watch picks up rebrand)."
+  echo "   Set FORCE_RESTART=1 to force a cold start. Avoids ~2–4 min Builder WSS outage."
+  # Give watch rebuild a moment; still assert readiness.
+  sleep 3
+  wait_cfos_ready "CF OS soft reload" || exit 1
+fi
 # Regression gate: frontend must never bake wss://0.0.0.0:8787 (INDOBASE_WRANGLER_IP is bind-only).
 echo "→ Asserting workshop frontend does not bake 0.0.0.0 into WebSocket host…"
 python3 - <<'PY'

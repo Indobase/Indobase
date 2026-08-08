@@ -40,6 +40,7 @@ pub enum ProviderData {
     Hubspot(HubspotPublicData),
     Pennylane(PennylanePublicData),
     Mock(MockPublicData),
+    Razorpay(RazorpayPublicData),
 }
 
 json_value_ser!(ProviderData);
@@ -71,6 +72,7 @@ pub enum ProviderSensitiveData {
     Hubspot(HubspotSensitiveData),
     Pennylane(PennylaneSensitiveData),
     Mock(MockSensitiveData),
+    Razorpay(RazorpaySensitiveData),
 }
 
 impl ProviderSensitiveData {
@@ -120,6 +122,20 @@ impl TryFrom<OAuthTokens> for PennylaneSensitiveData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StripeSensitiveData {
     pub api_secret_key: String,
+    pub webhook_secret: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RazorpayPublicData {
+    /// Razorpay Key Id (rzp_…); used as the public connection identifier.
+    pub key_id: String,
+}
+
+json_value_ser!(RazorpayPublicData);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RazorpaySensitiveData {
+    pub key_secret: String,
     pub webhook_secret: String,
 }
 

@@ -6,6 +6,7 @@ use axum::{
     http::Request,
     response::{IntoResponse, Response},
 };
+use std::sync::Arc;
 
 use crate::api_rest::AppState;
 use crate::services::storage::Prefix;
@@ -54,8 +55,9 @@ async fn handler(
         .change_context(errors::AdapterWebhookError::UnknownEndpointId)?;
 
     // - get adapter (reject unsupported providers before doing any work)
-    let adapter = match connector.provider {
+    let adapter: Arc<dyn WebhookAdapter + Send + Sync> = match connector.provider {
         ConnectorProviderEnum::Stripe => app_state.stripe_adapter.clone(),
+        ConnectorProviderEnum::Razorpay => app_state.razorpay_adapter.clone(),
         ConnectorProviderEnum::Hubspot => bail!(errors::AdapterWebhookError::ProviderNotSupported(
             "hubspot".to_owned(),
         )),
@@ -92,12 +94,18 @@ async fn handler(
 
     // Verify the signature before persisting anything, so unauthenticated callers
     // can never write to storage or the database.
-    if let Some(ProviderSensitiveData::Stripe(sensitive_data)) = &connector.sensitive {
+    let webhook_secret = match &connector.sensitive {
+        Some(ProviderSensitiveData::Stripe(sensitive_data)) => {
+            Some(sensitive_data.webhook_secret.as_str())
+        }
+        Some(ProviderSensitiveData::Razorpay(sensitive_data)) => {
+            Some(sensitive_data.webhook_secret.as_str())
+        }
+        _ => None,
+    };
+    if let Some(secret) = webhook_secret {
         adapter
-            .verify_webhook(
-                &parsed_request,
-                &SecretString::from(sensitive_data.webhook_secret.as_str()),
-            )
+            .verify_webhook(&parsed_request, &SecretString::from(secret))
             .await?;
     }
 

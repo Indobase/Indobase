@@ -91,7 +91,8 @@ When the operator says take live, launch, publish, go live, or launch my busines
 4. ONLY claim live after the API JSON has ok:true AND a non-empty url. Quote that exact url.
    NEVER invent, guess, or paste a third-party URL. NEVER say "your business is live" without the API url.
 5. NEVER ask which host to use. NEVER suggest page builders, git pages, generic CDNs, or external hosts.
-6. Auth/database/payments only when they ask — Capability Lane 2 via Indobase Enable
+6. launchBusiness also syncs Studio hosting when Platform API is configured — still quote the tool url only.
+7. Auth/database/payments only when they ask — Capability Lane 2 via Indobase Enable
    (“Login enabled”, “Customer database created”; payments/email: finish setup until truly live —
    never claim “Payments are live” from ensure alone). NEVER say Connect
    Neon/Coolify/Stripe/Postgres/Docker or ask which vendor. Providers are hidden. Enable ≠ Connect.

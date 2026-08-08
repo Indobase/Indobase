@@ -5,9 +5,10 @@ use common_grpc::middleware::server::auth::RequestExt;
 use meteroid_grpc::meteroid::api::connectors::v1::connectors_service_server::ConnectorsService;
 use meteroid_grpc::meteroid::api::connectors::v1::{
     ConnectHubspotRequest, ConnectHubspotResponse, ConnectPennylaneRequest,
-    ConnectPennylaneResponse, ConnectStripeRequest, ConnectStripeResponse, ConnectorTypeEnum,
-    DisconnectConnectorRequest, DisconnectConnectorResponse, ListConnectorsRequest,
-    ListConnectorsResponse, UpdateHubspotConnectorRequest, UpdateHubspotConnectorResponse,
+    ConnectPennylaneResponse, ConnectRazorpayRequest, ConnectRazorpayResponse, ConnectStripeRequest,
+    ConnectStripeResponse, ConnectorTypeEnum, DisconnectConnectorRequest,
+    DisconnectConnectorResponse, ListConnectorsRequest, ListConnectorsResponse,
+    UpdateHubspotConnectorRequest, UpdateHubspotConnectorResponse,
 };
 use meteroid_oauth::model::OauthProvider;
 use meteroid_store::domain::connectors::HubspotPublicData;
@@ -107,6 +108,44 @@ impl ConnectorsService for ConnectorsServiceComponents {
             .map_err(Into::<ConnectorApiError>::into)?;
 
         Ok(Response::new(ConnectStripeResponse {
+            connector: mapping::connectors::connector_meta_to_server(&res),
+        }))
+    }
+
+    async fn connect_razorpay(
+        &self,
+        request: Request<ConnectRazorpayRequest>,
+    ) -> Result<Response<ConnectRazorpayResponse>, Status> {
+        let tenant_id = request.tenant()?;
+        let actor = request.actor_typed()?;
+        let req = request.into_inner();
+
+        let data = req.data.ok_or(ConnectorApiError::MissingArgument(
+            "Missing India settlements data".to_string(),
+        ))?;
+
+        if data.key_id.trim().is_empty() || data.key_secret.trim().is_empty() {
+            return Err(ConnectorApiError::MissingArgument(
+                "key_id and key_secret are required".to_string(),
+            )
+            .into());
+        }
+
+        let sensitive_data = mapping::connectors::razorpay_data_to_domain(&data);
+
+        let res = self
+            .store
+            .connect_razorpay(
+                actor,
+                tenant_id,
+                data.alias,
+                data.key_id.trim().to_string(),
+                sensitive_data,
+            )
+            .await
+            .map_err(Into::<ConnectorApiError>::into)?;
+
+        Ok(Response::new(ConnectRazorpayResponse {
             connector: mapping::connectors::connector_meta_to_server(&res),
         }))
     }
