@@ -170,7 +170,14 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
     label: 'Add login',
     audience: 'signed_in',
     prompt:
-      'Add user login — Enable Customer Login via POST /api/os/runtime/ensure { capability: "login" }. Quote Login enabled + next_steps. Optionally brand OTP From with POST /api/os/auth/mail { from_email, from_name }. Never connect an external auth product.',
+      'Add user login — call ensureLogin (POST /api/os/tools/ensureLogin), quote Login enabled + next_steps, wire a Sign-in CTA. Optionally brand OTP From with POST /api/os/auth/mail. Never connect an external auth product.',
+  },
+  {
+    id: 'apply-schema',
+    label: 'Add a data model',
+    audience: 'signed_in',
+    prompt:
+      'Call ensureDatabase then applySchema with the tables this web app needs (SaaS orgs/users, booking slots, blog posts, etc.). For shops use setupShopCatalog. Then run productionChecklist before claiming production ready.',
   },
   {
     id: 'login-mail',
@@ -180,11 +187,32 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
       'Brand product login OTP From — POST /api/os/auth/mail with from_email + from_name (or mode indobase to use Indobase mail). Quote the API message. Never ask which mail vendor.',
   },
   {
-    id: 'enable-payments',
-    label: 'Enable payments',
+    id: 'add-shop-backend',
+    label: 'Add a real backend',
     audience: 'signed_in',
     prompt:
-      'Start accepting payments — Enable Payments via runtime/ensure. Quote the API message (finish checkout setup / pending); do not claim Payments are live from ensure alone. Use launch_url when present. Do not ask which payment vendor.',
+      'Add a real product backend — ensureDatabase, resolveProductImages for product names, setupShopCatalog with image_url, placeTestShopOrder, publish admin_html once via launchBusiness as admin.html (live REST refresh — no republish for stock), then wireCheckout mode one_time.',
+  },
+  {
+    id: 'enable-email',
+    label: 'Add email',
+    audience: 'signed_in',
+    prompt:
+      'Enable Indobase Email — call ensureEmail, quote pending_setup + launch_url, and finish sender setup before claiming Email enabled.',
+  },
+  {
+    id: 'enable-analytics',
+    label: 'Add analytics',
+    audience: 'signed_in',
+    prompt:
+      'Enable Indobase Analytics — call ensureAnalytics, quote launch_url, and finish site setup before claiming Analytics live.',
+  },
+  {
+    id: 'enable-payments',
+    label: 'Add payments',
+    audience: 'signed_in',
+    prompt:
+      'Add payments — ask India (Razorpay) vs International (Stripe), then POST /api/os/runtime/ensure { capability: "payments", settlement_market: "india"|"international" }. Quote the API message + settlement_adapter; send them to the PSP dashboard for KYC + API keys; when they paste keys call connectGateway (POST /api/os/tools/connectGateway); then wireCheckout for checkout_url. Do not claim Payments are live from ensure alone.',
   },
 ] as const
 

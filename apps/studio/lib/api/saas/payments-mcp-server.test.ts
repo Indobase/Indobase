@@ -29,6 +29,9 @@ describe('createPaymentsMcpServer', () => {
         'list_checkout_sessions',
         'get_checkout_session',
         'create_subscription',
+        'connect_india_settlements',
+        'connect_international_cards',
+        'list_payment_connectors',
       ])
     )
   })

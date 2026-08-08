@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { resolveCloudflareOsBase, rewriteHtmlForProxyPrefix } from './os-proxy.ts'
+import {
+  isStaticAssetPath,
+  resolveCloudflareOsBase,
+  rewriteHtmlForProxyPrefix,
+} from './os-proxy.ts'
 
 describe('os-proxy', () => {
   it('trims trailing slash from CLOUDFLARE_OS_URL', () => {
@@ -10,6 +14,14 @@ describe('os-proxy', () => {
     assert.equal(resolveCloudflareOsBase(), 'http://127.0.0.1:8787')
     if (prev === undefined) delete process.env.CLOUDFLARE_OS_URL
     else process.env.CLOUDFLARE_OS_URL = prev
+  })
+
+  it('detects hashed static asset paths (SPA HTML must not be proxied as CSS/JS)', () => {
+    assert.equal(isStaticAssetPath('/assets/index-BB2HfDpS.css'), true)
+    assert.equal(isStaticAssetPath('/assets/index-Cz5H4VWj.js'), true)
+    assert.equal(isStaticAssetPath('/favicon.svg'), true)
+    assert.equal(isStaticAssetPath('/'), false)
+    assert.equal(isStaticAssetPath('/api'), false)
   })
 
   it('rewrites root-absolute asset URLs under the proxy prefix', () => {

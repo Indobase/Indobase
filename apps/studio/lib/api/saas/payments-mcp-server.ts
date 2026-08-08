@@ -39,7 +39,7 @@ export type PaymentsMcpServerOptions = {
 function liveChargeGate(liveChargesAllowed: boolean | undefined) {
   if (liveChargesAllowed === false) {
     throw new Error(
-      'Merchant KYC is not verified — confirm Stripe go-live in Studio Payments before create_checkout_session or create_subscription.'
+      'Payment gateway not ready — complete KYC on Razorpay/Stripe, paste API keys in Studio Payments → Connect gateway, then retry create_checkout_session or create_subscription.'
     )
   }
 }
@@ -407,6 +407,87 @@ export function createPaymentsMcpServer(client: PaymentsApiClient, opts?: Paymen
         try {
           liveChargeGate(liveChargesAllowed)
           const data = await client.request('POST', '/api/v1/subscriptions', { body: args.body })
+          return textResult(data)
+        } catch (error) {
+          return errorResult(error)
+        }
+      }
+    )
+
+    server.registerTool(
+      'connect_india_settlements',
+      {
+        title: 'Connect India settlements keys',
+        description:
+          'BYOK: connect Razorpay merchant API keys to Indobase Payments (India settlements). Prefer Studio/OS connect-gateway so Studio KYC gate + Payments sync stay aligned; use this when wiring the Payments tenant directly.',
+        inputSchema: {
+          key_id: z.string().min(1).describe('Razorpay Key Id (rzp_…)'),
+          key_secret: z.string().min(1).describe('Razorpay Key Secret'),
+          webhook_secret: z.string().optional().describe('Webhook signing secret'),
+          alias: z.string().optional().describe('Connector alias (default india)'),
+        },
+      },
+      async (args) => {
+        try {
+          const data = await client.request('POST', '/api/v1/connectors/razorpay', {
+            body: {
+              alias: args.alias?.trim() || 'india',
+              key_id: args.key_id,
+              key_secret: args.key_secret,
+              webhook_secret: args.webhook_secret || '',
+            },
+          })
+          return textResult(data)
+        } catch (error) {
+          return errorResult(error)
+        }
+      }
+    )
+
+    server.registerTool(
+      'connect_international_cards',
+      {
+        title: 'Connect international card keys',
+        description:
+          'BYOK: connect Stripe merchant API keys to Indobase Payments (International cards). Prefer Studio/OS connect-gateway so Studio KYC gate + Payments sync stay aligned.',
+        inputSchema: {
+          api_secret_key: z.string().min(1).describe('Stripe secret key (sk_…)'),
+          api_publishable_key: z
+            .string()
+            .optional()
+            .describe('Stripe publishable key (pk_…)'),
+          webhook_secret: z.string().optional().describe('Webhook signing secret (whsec_…)'),
+          alias: z.string().optional().describe('Connector alias (default international)'),
+        },
+      },
+      async (args) => {
+        try {
+          const data = await client.request('POST', '/api/v1/connectors/stripe', {
+            body: {
+              alias: args.alias?.trim() || 'international',
+              api_secret_key: args.api_secret_key,
+              api_publishable_key: args.api_publishable_key || '',
+              webhook_secret: args.webhook_secret || '',
+            },
+          })
+          return textResult(data)
+        } catch (error) {
+          return errorResult(error)
+        }
+      }
+    )
+
+    server.registerTool(
+      'list_payment_connectors',
+      {
+        title: 'List payment connectors',
+        description:
+          'List Indobase Payments payment-provider connectors for the tenant (metadata only; never secrets).',
+        inputSchema: {},
+      },
+      async () => {
+        try {
+          const data = await client.request('GET', '/api/v1/connectors')
           return textResult(data)
         } catch (error) {
           return errorResult(error)

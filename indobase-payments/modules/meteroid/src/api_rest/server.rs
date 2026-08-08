@@ -1,3 +1,4 @@
+use crate::adapters::razorpay::Razorpay;
 use crate::adapters::stripe::Stripe;
 use crate::api_rest::AppState;
 use crate::api_rest::api_routes;
@@ -32,6 +33,7 @@ pub async fn start_rest_server(
     config: Config,
     object_store: Arc<dyn ObjectStoreService>,
     stripe_adapter: Arc<Stripe>,
+    razorpay_adapter: Arc<Razorpay>,
     store: Store,
     services: Services,
     ready: Arc<std::sync::atomic::AtomicBool>,
@@ -44,6 +46,7 @@ pub async fn start_rest_server(
         config,
         object_store,
         stripe_adapter,
+        razorpay_adapter,
         store,
         services,
         ready,
@@ -58,6 +61,7 @@ pub async fn start_rest_server_with_listener(
     config: Config,
     object_store: Arc<dyn ObjectStoreService>,
     stripe_adapter: Arc<Stripe>,
+    razorpay_adapter: Arc<Razorpay>,
     store: Store,
     services: Services,
     ready: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -69,6 +73,7 @@ pub async fn start_rest_server_with_listener(
         store: store.clone(),
         services,
         stripe_adapter,
+        razorpay_adapter,
         jwt_secret: config.jwt_secret,
         portal_url: config.public_url, // TODO separate portal URL from public URL
         ready,

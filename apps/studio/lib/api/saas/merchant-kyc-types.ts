@@ -61,11 +61,27 @@ export type MerchantProfilePublic = {
   aggregator_provider: string
   aggregator_account_id: string | null
   aggregator_status: string | null
-  /** Active settlement adapter for this environment (stripe | razorpay_route). */
+  /** Active settlement adapter for this project (stripe | razorpay_route). */
   settlement_adapter: 'stripe' | 'razorpay_route'
+  /** Operator-facing market: india → Razorpay Route; international → Stripe. */
+  settlement_market: 'india' | 'international'
+  /** Stripe Connect Account Link URL when minted (https only). */
+  onboarding_url: string | null
+  /** Last aggregator provider message (safe for operators). */
+  aggregator_message: string | null
+  /** Razorpay Route product configuration id when created. */
+  route_product_id: string | null
+  /** Razorpay Route product activation_status when known. */
+  route_activation_status: string | null
+  /** True when merchant pasted + validated Razorpay/Stripe API keys (BYOK). */
+  gateway_keys_configured: boolean
+  /** True when keys were also pushed into the Payments engine connector. */
+  gateway_connector_synced: boolean
+  /** Masked key hint only (never full secrets). */
+  gateway_key_hint: string | null
   /**
-   * Owner/admin can confirm Stripe go-live while KYC is under review
-   * (interim until Razorpay Route auto-activates linked accounts).
+   * Owner/admin can confirm go-live while KYC is under review
+   * (legacy path — prefer Connect gateway with BYOK keys).
    */
   can_confirm_go_live: boolean
   /** Soft-gate helpers for Studio UI. */
@@ -102,6 +118,11 @@ export type MerchantProfilePatch = {
   bank_account_number?: string | null
   bank_ifsc?: string | null
   bank_name?: string | null
+  /**
+   * Settlement market (India vs international cards). Maps to aggregator_provider.
+   * Only editable while KYC is draft/rejected.
+   */
+  settlement_market?: 'india' | 'international' | null
   /** Replace document metadata list (upload bytes are out of scope). */
   documents?: MerchantDocumentMeta[] | null
 }

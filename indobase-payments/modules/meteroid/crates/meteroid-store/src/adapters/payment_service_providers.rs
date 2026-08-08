@@ -23,6 +23,11 @@ use stripe_client::payment_methods::PaymentMethodsApi;
 use stripe_client::setup_intents::{
     CreateSetupIntent, CreateSetupIntentUsage, SetupIntentApi, StripePaymentMethodType,
 };
+use razorpay_client::RazorpayClient;
+use razorpay_client::{
+    CreateCustomerRequest as RzCreateCustomer, CreateOrderRequest, CreateRecurringPaymentRequest,
+    IndiaAuthCheckoutPayload, Payment as RzPayment,
+};
 use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
@@ -88,6 +93,7 @@ pub fn initialize_payment_provider(
             };
             Ok(Box::new(MockPaymentProvider::new(mock_config)))
         }
+        ConnectorProviderEnum::Razorpay => Ok(Box::new(RazorpayClient::new())),
         _ => bail!(PaymentProviderError::Configuration(
             "unknown payment provider".to_owned()
         )),
@@ -431,6 +437,307 @@ fn extract_stripe_public_key(
             "No api_publishable_key found".to_string(),
         ))),
     }
+}
+
+fn extract_razorpay_keys(
+    connector: &Connector,
+) -> Result<(String, SecretString), Report<PaymentProviderError>> {
+    let key_id = match &connector.data {
+        Some(ProviderData::Razorpay(data)) => data.key_id.clone(),
+        _ => {
+            return Err(Report::new(PaymentProviderError::Configuration(
+                "Not an India settlements connector".to_string(),
+            )));
+        }
+    };
+    let key_secret = match &connector.sensitive {
+        Some(ProviderSensitiveData::Razorpay(data)) => {
+            SecretString::from(data.key_secret.clone())
+        }
+        _ => {
+            return Err(Report::new(PaymentProviderError::Configuration(
+                "Missing India settlements key secret".to_string(),
+            )));
+        }
+    };
+    Ok((key_id, key_secret))
+}
+
+#[async_trait::async_trait]
+impl PaymentProvider for RazorpayClient {
+    async fn create_customer_in_provider(
+        &self,
+        customer: &Customer,
+        connector: &Connector,
+    ) -> Result<String, Report<PaymentProviderError>> {
+        let (key_id, key_secret) = extract_razorpay_keys(connector)?;
+        let mut notes = HashMap::from([
+            ("indobase.id".to_string(), customer.id.as_base62()),
+            (
+                "indobase.tenant_id".to_string(),
+                customer.tenant_id.as_base62(),
+            ),
+        ]);
+        if let Some(alias) = &customer.alias {
+            notes.insert("indobase.alias".to_string(), alias.clone());
+        }
+
+        let created = self
+            .create_customer(
+                &key_id,
+                &key_secret,
+                RzCreateCustomer {
+                    name: Some(customer.name.clone()),
+                    email: customer.billing_email.clone(),
+                    contact: customer.phone.clone(),
+                    fail_existing: Some("0".to_string()),
+                    notes: Some(notes),
+                },
+            )
+            .await
+            .map_err(|e| PaymentProviderError::CustomerCreation(e.to_string()))?;
+
+        Ok(created.id)
+    }
+
+    async fn get_payment_method_from_provider(
+        &self,
+        connector: &Connector,
+        payment_method_id: &str,
+        customer_id: &str,
+    ) -> Result<CustomerPaymentMethodFromProvider, Report<PaymentProviderError>> {
+        let (key_id, key_secret) = extract_razorpay_keys(connector)?;
+        let token = self
+            .get_token(&key_id, &key_secret, customer_id, payment_method_id)
+            .await
+            .map_err(|e| PaymentProviderError::PaymentIntent(e.to_string()))?;
+
+        let method = token.method.as_deref().unwrap_or("card");
+        let payment_method_type = match method {
+            "upi" | "emandate" | "nach" => PaymentMethodTypeEnum::DirectDebitSepa, // closest domestic recurring bucket
+            _ => PaymentMethodTypeEnum::Card,
+        };
+
+        Ok(CustomerPaymentMethodFromProvider {
+            external_payment_method_id: token.id,
+            payment_method_type,
+            account_number_hint: None,
+            card_brand: token.card.as_ref().and_then(|c| c.network.clone()),
+            card_last4: token.card.as_ref().and_then(|c| c.last4.clone()),
+            card_exp_month: None,
+            card_exp_year: None,
+        })
+    }
+
+    async fn create_setup_intent_in_provider(
+        &self,
+        connection: &CustomerConnection,
+        connector: &Connector,
+        _payment_methods: Vec<PaymentMethodTypeEnum>,
+    ) -> Result<SetupIntent, Report<PaymentProviderError>> {
+        let (key_id, key_secret) = extract_razorpay_keys(connector)?;
+
+        // ₹1 auth order for mandate / token registration (amount in paise).
+        let amount_paise = 100i64;
+        let currency = "INR".to_string();
+        let notes = HashMap::from([
+            (
+                "indobase.tenant_id".to_string(),
+                connector.tenant_id.as_base62(),
+            ),
+            (
+                "indobase.customer_id".to_string(),
+                connection.customer_id.as_base62(),
+            ),
+            (
+                "indobase.connection_id".to_string(),
+                connection.id.as_base62(),
+            ),
+            ("indobase.purpose".to_string(), "mandate_auth".to_string()),
+        ]);
+
+        let order = self
+            .create_order(
+                &key_id,
+                &key_secret,
+                CreateOrderRequest {
+                    amount: amount_paise,
+                    currency: currency.clone(),
+                    receipt: Some(format!("auth-{}", connection.id.as_base62())),
+                    customer_id: Some(connection.external_customer_id.clone()),
+                    payment_capture: Some(1),
+                    notes: Some(notes),
+                    method: None,
+                    token: None,
+                },
+            )
+            .await
+            .map_err(|e| PaymentProviderError::SetupIntent(e.to_string()))?;
+
+        let payload = IndiaAuthCheckoutPayload {
+            order_id: order.id.clone(),
+            customer_id: connection.external_customer_id.clone(),
+            key_id: key_id.clone(),
+            amount: amount_paise,
+            currency,
+            name: None,
+            email: None,
+            contact: None,
+        };
+        let client_secret = serde_json::to_string(&payload).map_err(|e| {
+            PaymentProviderError::SetupIntent(format!("serialize checkout payload: {e}"))
+        })?;
+
+        Ok(SetupIntent {
+            intent_id: order.id,
+            client_secret,
+            public_key: SecretString::from(key_id),
+            provider: ConnectorProviderEnum::Razorpay,
+            connector_id: connector.id,
+            connection_id: connection.id,
+        })
+    }
+
+    async fn create_payment_intent_in_provider(
+        &self,
+        connector: &Connector,
+        transaction_id: &PaymentTransactionId,
+        customer_external_id: &str,
+        payment_method_external_id: &str,
+        _payment_method_type: &PaymentMethodTypeEnum,
+        amount: i64,
+        currency: &str,
+    ) -> Result<PaymentIntent, Report<PaymentProviderError>> {
+        let (key_id, key_secret) = extract_razorpay_keys(connector)?;
+        let currency = currency.to_uppercase();
+        if currency != "INR" {
+            return Err(Report::new(PaymentProviderError::PaymentIntent(
+                "India settlements currently support INR only".to_string(),
+            )));
+        }
+
+        let notes = HashMap::from([
+            (
+                "indobase.tenant_id".to_string(),
+                connector.tenant_id.as_base62(),
+            ),
+            (
+                "indobase.transaction_id".to_string(),
+                transaction_id.as_base62(),
+            ),
+        ]);
+
+        let order = self
+            .create_order(
+                &key_id,
+                &key_secret,
+                CreateOrderRequest {
+                    amount,
+                    currency: currency.clone(),
+                    receipt: Some(transaction_id.as_base62()),
+                    customer_id: Some(customer_external_id.to_string()),
+                    payment_capture: Some(1),
+                    notes: Some(notes.clone()),
+                    method: None,
+                    token: None,
+                },
+            )
+            .await
+            .map_err(|e| PaymentProviderError::PaymentIntent(e.to_string()))?;
+
+        // Recurring API requires email + contact — prefer live customer from Razorpay.
+        // https://razorpay.com/docs/api/payments/recurring-payments/
+        let rz_customer = self
+            .get_customer(&key_id, &key_secret, customer_external_id)
+            .await
+            .ok();
+        let email = rz_customer
+            .as_ref()
+            .and_then(|c| c.email.clone())
+            .filter(|e| !e.trim().is_empty())
+            .unwrap_or_else(|| format!("{customer_external_id}@customers.indobase.payments"));
+        let contact = rz_customer
+            .as_ref()
+            .and_then(|c| c.contact.clone())
+            .map(|c| c.chars().filter(|ch| ch.is_ascii_digit()).collect::<String>())
+            .filter(|c| c.len() >= 8)
+            .unwrap_or_else(|| "9999999999".to_string());
+
+        let payment = self
+            .create_recurring_payment(
+                &key_id,
+                &key_secret,
+                CreateRecurringPaymentRequest {
+                    email,
+                    contact,
+                    amount,
+                    currency: currency.clone(),
+                    order_id: order.id,
+                    customer_id: customer_external_id.to_string(),
+                    token: payment_method_external_id.to_string(),
+                    recurring: "1".to_string(),
+                    notes: Some(notes),
+                },
+            )
+            .await
+            .map_err(|e| PaymentProviderError::PaymentIntent(e.to_string()))?;
+
+        payment_to_intent(payment, connector.tenant_id, *transaction_id)
+    }
+}
+
+pub fn payment_to_intent(
+    payment: RzPayment,
+    tenant_id: TenantId,
+    transaction_id: PaymentTransactionId,
+) -> Result<PaymentIntent, Report<PaymentProviderError>> {
+    let status_str = payment.status.to_lowercase();
+    let (new_status, processed_at) = match status_str.as_str() {
+        "captured" | "authorized" => (
+            PaymentStatusEnum::Settled,
+            Some(chrono::Utc::now().naive_utc()),
+        ),
+        "failed" => (PaymentStatusEnum::Failed, None),
+        "refunded" | "cancelled" | "canceled" => (PaymentStatusEnum::Cancelled, None),
+        _ => (PaymentStatusEnum::Pending, None),
+    };
+
+    // Prefer notes for round-trip ids when present (webhook path).
+    let notes_obj = payment.notes.as_ref().and_then(|n| n.as_object());
+    let tenant_id = notes_obj
+        .and_then(|n| {
+            n.get("indobase.tenant_id")
+                .or_else(|| n.get("meteroid.tenant_id"))
+                .and_then(|v| v.as_str())
+        })
+        .and_then(|s| TenantId::parse_base62(s).ok())
+        .unwrap_or(tenant_id);
+
+    let transaction_id = notes_obj
+        .and_then(|n| {
+            n.get("indobase.transaction_id")
+                .or_else(|| n.get("meteroid.transaction_id"))
+                .and_then(|v| v.as_str())
+        })
+        .and_then(|s| PaymentTransactionId::parse_base62(s).ok())
+        .unwrap_or(transaction_id);
+
+    Ok(PaymentIntent {
+        external_id: payment.id,
+        amount_requested: payment.amount,
+        amount_received: if matches!(new_status, PaymentStatusEnum::Settled) {
+            Some(payment.amount)
+        } else {
+            None
+        },
+        currency: payment.currency,
+        next_action: None,
+        status: new_status.into(),
+        processed_at,
+        last_payment_error: payment.error_description,
+        tenant_id,
+        transaction_id,
+    })
 }
 
 impl From<&PaymentMethodTypeEnum> for Option<StripePaymentMethodType> {

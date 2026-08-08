@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAccessToken } from 'common'
 import { toast } from 'sonner'
 
+import type { GatewayConnectBody } from 'lib/api/saas/merchant-gateway-keys'
 import type { MerchantProfilePatch, MerchantProfilePublic } from 'lib/api/saas/merchant-kyc-types'
 import type { ResponseError, UseCustomMutationOptions } from 'types'
 import { merchantProfileKeys } from './merchant-profile-query'
@@ -135,6 +136,60 @@ export const useMerchantProfileSubmitMutation = ({
     async onError(error, variables, context) {
       if (onError === undefined) {
         toast.error(error.message || 'Failed to submit merchant KYC')
+      } else {
+        await onError(error, variables, context)
+      }
+    },
+    ...options,
+  })
+}
+
+async function connectGateway(projectRef: string, body: GatewayConnectBody) {
+  const accessToken = await getAccessToken()
+  const response = await fetch(`/api/platform/projects/${projectRef}/payments/merchant`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({ action: 'connect_gateway', ...body }),
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw Object.assign(new Error(payload?.message || 'Failed to connect payment gateway keys'), {
+      code: response.status,
+      message: payload?.message || 'Failed to connect payment gateway keys',
+    })
+  }
+  return payload as MerchantMutationResult
+}
+
+export type MerchantGatewayConnectVariables = {
+  projectRef: string
+} & GatewayConnectBody
+
+export const useMerchantGatewayConnectMutation = ({
+  onSuccess,
+  onError,
+  ...options
+}: Omit<
+  UseCustomMutationOptions<MerchantMutationResult, ResponseError, MerchantGatewayConnectVariables>,
+  'mutationFn'
+> = {}) => {
+  const queryClient = useQueryClient()
+  return useMutation<MerchantMutationResult, ResponseError, MerchantGatewayConnectVariables>({
+    mutationFn: ({ projectRef, ...body }) => connectGateway(projectRef, body),
+    async onSuccess(data, variables, context) {
+      await queryClient.invalidateQueries({
+        queryKey: merchantProfileKeys.detail(variables.projectRef),
+      })
+      await onSuccess?.(data, variables, context)
+    },
+    async onError(error, variables, context) {
+      if (onError === undefined) {
+        toast.error(error.message || 'Failed to connect payment gateway keys')
       } else {
         await onError(error, variables, context)
       }

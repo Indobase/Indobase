@@ -5038,6 +5038,7 @@ dependencies = [
  "futures",
  "governor",
  "hex",
+ "hmac 0.13.0",
  "http 1.4.2",
  "hubspot-client",
  "hyper",
@@ -5070,6 +5071,7 @@ dependencies = [
  "prost",
  "prost-types",
  "rand 0.10.1",
+ "razorpay-client",
  "rdkafka",
  "reqwest 0.13.4",
  "rstest",
@@ -5288,6 +5290,7 @@ dependencies = [
  "paste",
  "prost-types",
  "rand 0.10.1",
+ "razorpay-client",
  "rstest",
  "rust_decimal",
  "rust_decimal_macros",
@@ -7235,6 +7238,25 @@ checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "razorpay-client"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "hex",
+ "hmac 0.13.0",
+ "log",
+ "reqwest 0.13.4",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

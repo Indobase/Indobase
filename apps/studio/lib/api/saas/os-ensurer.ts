@@ -36,7 +36,12 @@ import {
   type OsEnsureAccessDenial,
 } from './os-ensurer-access'
 import { AUTH_LOGIN_MAIL_NEXT_STEP } from './os-product-auth-mail'
+import { getMerchantProfile } from './merchant-kyc'
 import { finalizeProductCapabilityEnsure } from './os-ensurer-product-setup'
+import {
+  normalizeSettlementMarket,
+  type SettlementMarket,
+} from './merchant-kyc-provider'
 
 export {
   assertOsAccountForEnsure,
@@ -122,10 +127,13 @@ export async function ensureOsCapability({
   claims,
   workspaceRef,
   capability,
+  settlementMarket: settlementMarketRaw,
 }: {
   claims: Claims
   workspaceRef: string
   capability: string
+  /** india | international (aliases: razorpay | stripe) from OS agent chips */
+  settlementMarket?: string | null
 }): Promise<{
   ok: boolean
   capability: string
@@ -138,8 +146,15 @@ export async function ensureOsCapability({
   launch_url?: string | null
   setup_status?: 'pending' | 'ready'
   next_steps?: Array<{ id: string; label: string; path?: string }>
+  settlement_market?: SettlementMarket
+  settlement_adapter?: 'stripe' | 'razorpay_route'
 }> {
-  const adapter = createStudioDataPlaneCapabilityAdapter({ claims, workspaceRef })
+  const settlementMarket = normalizeSettlementMarket(settlementMarketRaw)
+  const adapter = createStudioDataPlaneCapabilityAdapter({
+    claims,
+    workspaceRef,
+    settlementMarket,
+  })
   const orch = createCapabilityOrchestrator(adapter)
   const result = await orch.ensure({ businessRef: workspaceRef, capability })
 
@@ -162,10 +177,35 @@ export async function ensureOsCapability({
     }
   }
 
+  // Orchestrator strips adapter extras — re-read merchant rail for the agent.
+  let settlementMarketOut = settlementMarket ?? undefined
+  let settlementAdapterOut: 'stripe' | 'razorpay_route' | undefined =
+    settlementMarket === 'india'
+      ? 'razorpay_route'
+      : settlementMarket === 'international'
+        ? 'stripe'
+        : undefined
+  if (result.capabilityId === 'commerce') {
+    try {
+      const profile = await getMerchantProfile({ claims, ref: workspaceRef })
+      settlementMarketOut = profile.settlement_market
+      settlementAdapterOut = profile.settlement_adapter
+    } catch {
+      // keep inferred rail from request when profile read fails
+    }
+  }
+
   const next_steps =
-    result.ok && result.status === 'enabled' && result.capabilityId === 'auth'
+    result.ok && result.capabilityId === 'auth' && result.status === 'enabled'
       ? [AUTH_LOGIN_MAIL_NEXT_STEP]
-      : undefined
+      : result.ok && result.capabilityId === 'commerce'
+        ? commerceNextSteps({
+            setupStatus: result.setupStatus,
+            settlementMarket: settlementMarketOut,
+            settlementAdapter: settlementAdapterOut,
+            launchUrl: result.launchUrl,
+          })
+        : undefined
 
   return {
     ok: result.ok,
@@ -179,7 +219,46 @@ export async function ensureOsCapability({
     ...(result.launchUrl !== undefined ? { launch_url: result.launchUrl } : {}),
     ...(result.setupStatus !== undefined ? { setup_status: result.setupStatus } : {}),
     ...(next_steps ? { next_steps } : {}),
+    ...(settlementMarketOut ? { settlement_market: settlementMarketOut } : {}),
+    ...(settlementAdapterOut ? { settlement_adapter: settlementAdapterOut } : {}),
   }
+}
+
+function commerceNextSteps(opts: {
+  setupStatus?: 'pending' | 'ready'
+  settlementMarket?: SettlementMarket
+  settlementAdapter?: 'stripe' | 'razorpay_route'
+  launchUrl?: string | null
+}): Array<{ id: string; label: string; path?: string }> {
+  const rail =
+    opts.settlementMarket === 'india' || opts.settlementAdapter === 'razorpay_route'
+      ? 'India (Razorpay Route / Orders + Checkout.js)'
+      : opts.settlementMarket === 'international' || opts.settlementAdapter === 'stripe'
+        ? 'International (Stripe Checkout Sessions)'
+        : 'the selected settlement rail'
+
+  const steps: Array<{ id: string; label: string; path?: string }> = [
+    {
+      id: 'wire_checkout',
+      label: `Call wireCheckout (POST /api/os/tools/wireCheckout) for ${rail} and set Subscribe/Buy CTA href to checkout_url.`,
+    },
+    {
+      id: 'shop_catalog',
+      label:
+        'For ecommerce inventory: call setupShopCatalog with products, then placeTestShopOrder, then publish admin_html.',
+    },
+  ]
+
+  if (opts.setupStatus !== 'ready') {
+    steps.unshift({
+      id: 'finish_merchant_kyc',
+      label:
+        'Finish merchant verification and Confirm go-live in Payments setup so charges can go live.',
+      path: opts.launchUrl || undefined,
+    })
+  }
+
+  return steps
 }
 
 /**
@@ -189,9 +268,11 @@ export async function ensureOsCapability({
 function createStudioDataPlaneCapabilityAdapter({
   claims,
   workspaceRef,
+  settlementMarket,
 }: {
   claims: Claims
   workspaceRef: string
+  settlementMarket?: SettlementMarket | null
 }): CapabilityProviderAdapter {
   return {
     async ensure({ capabilityId }) {
@@ -244,6 +325,7 @@ function createStudioDataPlaneCapabilityAdapter({
           claims,
           workspaceRef,
           capabilityId: normalized,
+          settlementMarket,
         })
       } catch (err) {
         return {

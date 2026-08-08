@@ -15,6 +15,7 @@ pub mod connectors {
             server::ConnectorProviderEnum::Pennylane => {
                 domain_enum::ConnectorProviderEnum::Pennylane
             }
+            server::ConnectorProviderEnum::Razorpay => domain_enum::ConnectorProviderEnum::Razorpay,
         }
     }
 
@@ -32,6 +33,9 @@ pub mod connectors {
             }
             domain_enum::ConnectorProviderEnum::Pennylane => {
                 Some(server::ConnectorProviderEnum::Pennylane)
+            }
+            domain_enum::ConnectorProviderEnum::Razorpay => {
+                Some(server::ConnectorProviderEnum::Razorpay)
             }
             domain_enum::ConnectorProviderEnum::Mock => {
                 // Mock connector is for testing only - should never be returned via API
@@ -91,6 +95,7 @@ pub mod connectors {
             provider: provider as i32,
             data: value.data.as_ref().and_then(|data| match data {
                 ProviderData::Stripe(_) => None,
+                ProviderData::Razorpay(_) => None,
                 ProviderData::Hubspot(d) => Some(server::ConnectorData {
                     data: Some(server::connector_data::Data::Hubspot(
                         HubspotConnectorData {
@@ -115,6 +120,15 @@ pub mod connectors {
     pub fn stripe_data_to_domain(value: &server::StripeConnector) -> domain::StripeSensitiveData {
         domain::StripeSensitiveData {
             api_secret_key: value.api_secret_key.clone(),
+            webhook_secret: value.webhook_secret.clone(),
+        }
+    }
+
+    pub fn razorpay_data_to_domain(
+        value: &server::RazorpayConnector,
+    ) -> domain::RazorpaySensitiveData {
+        domain::RazorpaySensitiveData {
+            key_secret: value.key_secret.clone(),
             webhook_secret: value.webhook_secret.clone(),
         }
     }

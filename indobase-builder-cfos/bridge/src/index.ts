@@ -49,6 +49,22 @@ import {
   executeLaunchBusinessTool,
   LAUNCH_AGENT_HARD_RULES,
 } from './launch-business-tool.js'
+import { executeConnectGatewayTool } from './connect-gateway-tool.js'
+import { executeWireCheckoutTool } from './wire-checkout-tool.js'
+import {
+  executeListShopOrders,
+  executePlaceTestShopOrder,
+  executeSetupShopCatalog,
+} from './shop-catalog-tool.js'
+import {
+  executeEnsureAnalytics,
+  executeEnsureDatabase,
+  executeEnsureEmail,
+  executeEnsureLogin,
+} from './ensure-capability-tool.js'
+import { executeApplySchema } from './apply-schema-tool.js'
+import { executeProductionChecklist } from './production-checklist-tool.js'
+import { executeResolveProductImages } from './product-images-tool.js'
 import {
   buildAuthVerifySuccessPayload,
   buildSessionApiPayload,
@@ -60,6 +76,11 @@ import {
   shouldConsumeAgentTurn,
 } from './agent-turn-meter.js'
 import { deriveAgentCredentials } from './agent-credentials.js'
+import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.js'
+import { rememberPendingSession, takePendingSession } from './pending-session-store.js'
+import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
+
+initBridgeSentry('builder-cfos')
 
 /** Bridge-owned `/api/*` paths — everything else under `/api` is the agent runtime. */
 function isBridgeOwnedApiPath(pathname: string): boolean {
@@ -132,6 +153,86 @@ function requireSignedInSession(c: Context): Session | Response {
   return sessionOrErr
 }
 
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let out = 0
+  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return out === 0
+}
+
+/**
+ * Cookie session OR CFOS AgentTool auth:
+ *   X-Indobase-OS-Secret: BUILDER_CFOS_HANDOFF_SECRET
+ *   X-Indobase-Agent-Username: ib_… (from /api/os/runtime/agent-credentials)
+ * Principal must have been remembered when the browser fetched credentials.
+ */
+async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | Response> {
+  const cookieSession = getSession(c)
+  if (cookieSession) {
+    if (isGuestSession(cookieSession)) {
+      return c.json(
+        {
+          ok: false,
+          code: 'account_required',
+          message:
+            'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
+        },
+        403,
+      )
+    }
+    return cookieSession
+  }
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
+  }
+
+  const provided =
+    (c.req.header('x-indobase-os-secret') || c.req.header('X-Indobase-OS-Secret') || '').trim()
+  const username =
+    (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
+
+  if (!provided || !username || !timingSafeEqualString(provided, secret)) {
+    return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
+  }
+
+  const principal = await lookupAgentPrincipal(username)
+  if (!principal) {
+    return c.json(
+      {
+        ok: false,
+        code: 'agent_principal_unknown',
+        message:
+          'Agent session is not linked to an Indobase workspace yet. Reload Indobase OS so credentials can register, then retry Launch.',
+      },
+      401,
+    )
+  }
+  if (principal.guest || principal.projectRef.startsWith('draft_')) {
+    return c.json(
+      {
+        ok: false,
+        code: 'account_required',
+        message:
+          'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
+      },
+      403,
+    )
+  }
+
+  return {
+    gotrueId: principal.gotrueId,
+    email: principal.email,
+    projectRef: principal.projectRef,
+    orgSlug: 'os',
+    projectName: principal.projectName,
+    studioUrl: 'https://studio.indobase.in',
+  }
+}
+
 /** Mint a guest workspace session so `/` opens the agent desktop immediately (account in chat). */
 function ensureSessionForWorkspace(c: Context): { session: Session | null; setCookie?: string } {
   const existing = getSession(c)
@@ -178,7 +279,7 @@ async function serveAgentDesktop(c: Context): Promise<Response> {
 
   const contentType = proxied.headers.get('content-type') || ''
   if (contentType.includes('text/html') && c.req.method === 'GET') {
-    const html = injectIndobaseContextBootstrap(await proxied.text())
+    const html = injectBrowserSentry(injectIndobaseContextBootstrap(await proxied.text()))
     const headers = new Headers(proxied.headers)
     if (setCookie) headers.append('Set-Cookie', setCookie)
     return new Response(html, {
@@ -193,6 +294,7 @@ async function serveAgentDesktop(c: Context): Promise<Response> {
 
 const app = new Hono()
 app.use('*', securityHeaders)
+app.onError(bridgeSentryOnError('builder-cfos'))
 
 app.get('/sso/health', async (c) => {
   let handoffConfigured = false
@@ -400,6 +502,8 @@ app.post('/auth/start', async (c) => {
 
 /**
  * Verify OTP — create OS workspace (lazy backend), establish bridge session cookie.
+ * AgentTool path: X-Indobase-OS-Secret + X-Indobase-Agent-Username → pending claim
+ * (workerd cannot Set-Cookie on the browser).
  */
 app.post('/auth/verify', async (c) => {
   const body = await c.req.json().catch(() => null)
@@ -436,24 +540,577 @@ app.post('/auth/verify', async (c) => {
     backend: ws.backend ?? undefined,
   }
   const sessionToken = createSessionToken(session, secret)
+
+  // Agent tool verify: stash for browser claim (no Set-Cookie from workerd).
+  const provided =
+    (c.req.header('x-indobase-os-secret') || c.req.header('X-Indobase-OS-Secret') || '').trim()
+  const agentUsername =
+    (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
+  if (provided && agentUsername && timingSafeEqualString(provided, secret)) {
+    await rememberPendingSession({
+      username: agentUsername,
+      sessionToken,
+      email: session.email,
+      projectRef: session.projectRef,
+    })
+    await rememberAgentPrincipal({
+      username: agentUsername,
+      gotrueId: session.gotrueId,
+      projectRef: session.projectRef,
+      email: session.email,
+      guest: false,
+      projectName: session.projectName,
+    })
+    return c.json({
+      ...buildAuthVerifySuccessPayload(session, ws.provision_state),
+      pending_claim: true,
+      message:
+        'Verified. Your browser will finish sign-in automatically in a moment (or refresh Indobase OS).',
+    })
+  }
+
   // Replaces any prior guest/draft_* cookie with the real signed-in workspace session.
   // Next /api/session pull: guest=false, onboarding=null.
   c.header('Set-Cookie', sessionCookie(sessionToken))
   return c.json(buildAuthVerifySuccessPayload(session, ws.provision_state))
 })
 
+/**
+ * Browser claims a session verified by the CFOS authVerify AgentTool.
+ */
+app.get('/api/os/auth/claim-session', async (c) => {
+  const sessionOrErr = requireSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch (err) {
+    return c.json(
+      { ok: false, message: err instanceof Error ? err.message : 'Handoff secret missing' },
+      503,
+    )
+  }
+  const creds = deriveAgentCredentials({
+    handoffSecret: secret,
+    gotrueId: sessionOrErr.gotrueId,
+    projectRef: sessionOrErr.projectRef,
+  })
+  const pending = await takePendingSession(creds.username)
+  if (!pending) {
+    return c.json({ ok: true, upgraded: false })
+  }
+  c.header('Set-Cookie', sessionCookie(pending.sessionToken))
+  return c.json({
+    ok: true,
+    upgraded: true,
+    email: pending.email,
+    project_ref: pending.projectRef,
+  })
+})
+
+/**
+ * BYOK gateway keys — agent or operator pastes Razorpay/Stripe keys after PSP KYC.
+ * Prefer agent tool POST /api/os/tools/connectGateway (same handler).
+ * Accepts cookie session or CFOS AgentTool headers.
+ */
+async function handleConnectGatewayTool(c: Context, session: Session) {
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeConnectGatewayTool(
+    {
+      gotrueId: session.gotrueId,
+      email: session.email,
+      projectRef: session.projectRef,
+    },
+    {
+      settlement_market:
+        typeof body.settlement_market === 'string' ? body.settlement_market : undefined,
+      settlementMarket:
+        typeof body.settlementMarket === 'string' ? body.settlementMarket : undefined,
+      key_id: typeof body.key_id === 'string' ? body.key_id : null,
+      key_secret: typeof body.key_secret === 'string' ? body.key_secret : null,
+      publishable_key: typeof body.publishable_key === 'string' ? body.publishable_key : null,
+      secret_key: typeof body.secret_key === 'string' ? body.secret_key : null,
+      webhook_secret: typeof body.webhook_secret === 'string' ? body.webhook_secret : null,
+    },
+  )
+  const http = result.ok
+    ? 200
+    : result.status === 403
+      ? 403
+      : result.status === 400
+        ? 400
+        : 502
+  return c.json(result, http)
+}
+
+app.post('/api/os/payments/connect-gateway', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleConnectGatewayTool(c, sessionOrErr)
+})
+
+/** Agent tool: connectGateway — HARD PATH when operator pastes PSP API keys. */
+app.post('/api/os/tools/connectGateway', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleConnectGatewayTool(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/connectPaymentGateway', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleConnectGatewayTool(c, sessionOrErr)
+})
+
+/**
+ * Agent tool: wireCheckout — HARD PATH for hosted checkout_url after gateway keys.
+ */
+async function handleWireCheckoutTool(c: Context, session: Session) {
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeWireCheckoutTool(
+    {
+      gotrueId: session.gotrueId,
+      email: session.email,
+      projectRef: session.projectRef,
+    },
+    {
+      plan_version_id:
+        typeof body.plan_version_id === 'string' ? body.plan_version_id : null,
+      plan_name: typeof body.plan_name === 'string' ? body.plan_name : null,
+      price:
+        typeof body.price === 'string' || typeof body.price === 'number' ? body.price : null,
+      currency: typeof body.currency === 'string' ? body.currency : null,
+      billing_period:
+        typeof body.billing_period === 'string' ? body.billing_period : null,
+      mode: typeof body.mode === 'string' ? body.mode : null,
+      customer_id: typeof body.customer_id === 'string' ? body.customer_id : null,
+      customer_name: typeof body.customer_name === 'string' ? body.customer_name : null,
+      customer_email:
+        typeof body.customer_email === 'string' ? body.customer_email : null,
+      expires_in_hours:
+        typeof body.expires_in_hours === 'number' ? body.expires_in_hours : null,
+    },
+  )
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'gateway_not_ready'
+      ? 403
+      : result.status === 400 ||
+          result.code === 'price_required' ||
+          result.code === 'customer_email_required'
+        ? 400
+        : 502
+  return c.json(result, http)
+}
+
+app.post('/api/os/payments/wire-checkout', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleWireCheckoutTool(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/wireCheckout', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleWireCheckoutTool(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/wirePricing', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleWireCheckoutTool(c, sessionOrErr)
+})
+
+/**
+ * Shop catalog / inventory — real tenant-DB backend (Naïve-parity catalog path).
+ */
+async function handleSetupShopCatalog(
+  c: Context,
+  session: Session,
+  body?: Record<string, unknown>,
+) {
+  const payload = body ?? ((await c.req.json().catch(() => ({}))) as Record<string, unknown>)
+  const products = Array.isArray(payload.products)
+    ? payload.products.filter((p): p is Record<string, unknown> => !!p && typeof p === 'object')
+    : null
+  const result = await executeSetupShopCatalog(
+    {
+      gotrueId: session.gotrueId,
+      email: session.email,
+      projectRef: session.projectRef,
+    },
+    {
+      brand: typeof payload.brand === 'string' ? payload.brand : null,
+      products,
+      action: typeof payload.action === 'string' ? payload.action : 'setup',
+    },
+  )
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'database_required'
+      ? 403
+      : result.status === 400 || result.code === 'invalid_product'
+        ? 400
+        : 502
+  return c.json(result, http)
+}
+
+async function handleListShopOrders(
+  c: Context,
+  session: Session,
+  body?: Record<string, unknown>,
+) {
+  const payload = body ?? ((await c.req.json().catch(() => ({}))) as Record<string, unknown>)
+  const result = await executeListShopOrders(
+    {
+      gotrueId: session.gotrueId,
+      email: session.email,
+      projectRef: session.projectRef,
+    },
+    { brand: typeof payload.brand === 'string' ? payload.brand : null },
+  )
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'database_required'
+      ? 403
+      : 502
+  return c.json(result, http)
+}
+
+async function handlePlaceTestShopOrder(
+  c: Context,
+  session: Session,
+  body?: Record<string, unknown>,
+) {
+  const payload = body ?? ((await c.req.json().catch(() => ({}))) as Record<string, unknown>)
+  const items = Array.isArray(payload.items)
+    ? payload.items.filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
+    : null
+  const result = await executePlaceTestShopOrder(
+    {
+      gotrueId: session.gotrueId,
+      email: session.email,
+      projectRef: session.projectRef,
+    },
+    {
+      order_email:
+        typeof payload.order_email === 'string'
+          ? payload.order_email
+          : typeof payload.customer_email === 'string'
+            ? payload.customer_email
+            : null,
+      items,
+      cleanup: typeof payload.cleanup === 'boolean' ? payload.cleanup : null,
+      brand: typeof payload.brand === 'string' ? payload.brand : null,
+    },
+  )
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'database_required'
+      ? 403
+      : result.status === 400 || result.code === 'invalid_order'
+        ? 400
+        : 502
+  return c.json(result, http)
+}
+
+app.post('/api/os/shop/catalog', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleSetupShopCatalog(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/setupShopCatalog', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleSetupShopCatalog(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/seedShopCatalog', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleSetupShopCatalog(c, sessionOrErr)
+})
+
+app.post('/api/os/shop/orders', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const action = typeof body.action === 'string' ? body.action.toLowerCase() : 'list'
+  if (action === 'place' || action === 'test') {
+    return handlePlaceTestShopOrder(c, sessionOrErr, body)
+  }
+  return handleListShopOrders(c, sessionOrErr, body)
+})
+
+app.post('/api/os/tools/listShopOrders', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleListShopOrders(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/listShopCatalog', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleListShopOrders(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/placeTestShopOrder', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handlePlaceTestShopOrder(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/testShopCheckout', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handlePlaceTestShopOrder(c, sessionOrErr)
+})
+
+/** ensureLogin / ensureDatabase — any web app capability hard paths. */
+app.post('/api/os/tools/ensureLogin', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureLogin(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/enableLogin', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureLogin(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/ensureDatabase', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureDatabase(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/ensureBusinessData', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureDatabase(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/ensureEmail', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureEmail(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/enableEmail', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureEmail(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/ensureAnalytics', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureAnalytics(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/ensureEvents', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureAnalytics(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+app.post('/api/os/tools/enableAnalytics', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const result = await executeEnsureAnalytics(sessionOrErr)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+})
+
+/** resolveProductImages — Openverse commercial URLs for catalogs. */
+app.post('/api/os/media/product-images', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const queries = Array.isArray(body.queries)
+    ? body.queries.filter((q): q is string => typeof q === 'string')
+    : typeof body.query === 'string'
+      ? [body.query]
+      : []
+  const result = await executeResolveProductImages(sessionOrErr, {
+    queries,
+    page_size: typeof body.page_size === 'number' ? body.page_size : undefined,
+  })
+  return c.json(
+    result,
+    result.ok ? 200 : result.code === 'query_required' ? 400 : result.status === 403 ? 403 : 502,
+  )
+})
+
+app.post('/api/os/tools/resolveProductImages', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const queries = Array.isArray(body.queries)
+    ? body.queries.filter((q): q is string => typeof q === 'string')
+    : typeof body.query === 'string'
+      ? [body.query]
+      : []
+  const result = await executeResolveProductImages(sessionOrErr, {
+    queries,
+    page_size: typeof body.page_size === 'number' ? body.page_size : undefined,
+  })
+  return c.json(
+    result,
+    result.ok ? 200 : result.code === 'query_required' ? 400 : result.status === 403 ? 403 : 502,
+  )
+})
+
+app.post('/api/os/tools/findProductImages', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const queries = Array.isArray(body.queries)
+    ? body.queries.filter((q): q is string => typeof q === 'string')
+    : typeof body.query === 'string'
+      ? [body.query]
+      : []
+  const result = await executeResolveProductImages(sessionOrErr, {
+    queries,
+    page_size: typeof body.page_size === 'number' ? body.page_size : undefined,
+  })
+  return c.json(
+    result,
+    result.ok ? 200 : result.code === 'query_required' ? 400 : result.status === 403 ? 403 : 502,
+  )
+})
+
+/** applySchema — declarative data model for any app. */
+app.post('/api/os/data/apply-schema', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const tables = Array.isArray(body.tables)
+    ? body.tables.filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+    : null
+  const result = await executeApplySchema(sessionOrErr, {
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    tables,
+  })
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'database_required'
+      ? 403
+      : result.status === 400 ||
+          result.code === 'tables_required' ||
+          result.code === 'invalid_schema'
+        ? 400
+        : 502
+  return c.json(result, http)
+})
+
+app.post('/api/os/tools/applySchema', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const tables = Array.isArray(body.tables)
+    ? body.tables.filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+    : null
+  const result = await executeApplySchema(sessionOrErr, {
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    tables,
+  })
+  const http = result.ok
+    ? 200
+    : result.status === 403 || result.code === 'database_required'
+      ? 403
+      : result.status === 400 ||
+          result.code === 'tables_required' ||
+          result.code === 'invalid_schema'
+        ? 400
+        : 502
+  return c.json(result, http)
+})
+
+/** productionChecklist — claim gate for any app type. */
+app.post('/api/os/production/checklist', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const checks =
+    body.checks && typeof body.checks === 'object' && !Array.isArray(body.checks)
+      ? (body.checks as Record<string, unknown>)
+      : null
+  const result = await executeProductionChecklist(sessionOrErr, {
+    app_type: typeof body.app_type === 'string' ? body.app_type : null,
+    live_url: typeof body.live_url === 'string' ? body.live_url : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    checks,
+  })
+  return c.json(result, 200)
+})
+
+app.post('/api/os/tools/productionChecklist', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const checks =
+    body.checks && typeof body.checks === 'object' && !Array.isArray(body.checks)
+      ? (body.checks as Record<string, unknown>)
+      : null
+  const result = await executeProductionChecklist(sessionOrErr, {
+    app_type: typeof body.app_type === 'string' ? body.app_type : null,
+    live_url: typeof body.live_url === 'string' ? body.live_url : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    checks,
+  })
+  return c.json(result, 200)
+})
+
+app.post('/api/os/tools/claimProductionReady', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const checks =
+    body.checks && typeof body.checks === 'object' && !Array.isArray(body.checks)
+      ? (body.checks as Record<string, unknown>)
+      : null
+  const result = await executeProductionChecklist(sessionOrErr, {
+    app_type: typeof body.app_type === 'string' ? body.app_type : null,
+    live_url: typeof body.live_url === 'string' ? body.live_url : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    checks,
+  })
+  return c.json(result, 200)
+})
+
 /** Lazy Ensurer proxy — capability.ensure via Platform API. */
 app.post('/api/os/runtime/ensure', async (c) => {
-  const sessionOrErr = requireSignedInSession(c)
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const body = await c.req.json().catch(() => ({}))
   const capability =
     body && typeof body.capability === 'string' ? body.capability.trim() : 'auth'
+  const settlementMarket =
+    body && typeof body.settlement_market === 'string'
+      ? body.settlement_market.trim()
+      : body && typeof body.settlementMarket === 'string'
+        ? body.settlementMarket.trim()
+        : body && typeof body.settlement_adapter === 'string'
+          ? body.settlement_adapter.trim()
+          : body && typeof body.adapter === 'string'
+            ? body.adapter.trim()
+            : undefined
   const result = await platformRuntimeEnsure({
     gotrueId: sessionOrErr.gotrueId,
     email: sessionOrErr.email,
     workspaceRef: sessionOrErr.projectRef,
     capability,
+    settlementMarket,
   })
   if (result.backend && result.provision_state === 'ready') {
     let secret: string
@@ -574,7 +1231,7 @@ app.post('/api/os/deploy/publish', async (c) => {
 
 /** Alias — customer/agent verb business.launch */
 app.post('/api/os/launch', async (c) => {
-  const sessionOrErr = requireSignedInSession(c)
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleStaticGoLive(c, sessionOrErr)
 })
@@ -582,6 +1239,7 @@ app.post('/api/os/launch', async (c) => {
 /**
  * Agent tool: launchBusiness / goLive — HARD PATH.
  * Requires real html or files; claim_live only when API returns a real URL.
+ * Cookie session OR CFOS AgentTool headers (secret + ib_ username).
  */
 async function handleLaunchBusinessTool(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
@@ -597,6 +1255,8 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
         body.files && typeof body.files === 'object' && !Array.isArray(body.files)
           ? (body.files as Record<string, string>)
           : undefined,
+      gotrueId: session.gotrueId,
+      email: session.email,
     },
     { title: session.projectName || session.projectRef },
   )
@@ -604,13 +1264,13 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
 }
 
 app.post('/api/os/tools/launchBusiness', async (c) => {
-  const sessionOrErr = requireSignedInSession(c)
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
 
 app.post('/api/os/tools/goLive', async (c) => {
-  const sessionOrErr = requireSignedInSession(c)
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
@@ -770,6 +1430,15 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     gotrueId: sessionOrErr.gotrueId,
     projectRef: sessionOrErr.projectRef,
   })
+  // Link CFOS username → Indobase workspace so the workerd launchBusiness tool can auth.
+  await rememberAgentPrincipal({
+    username: creds.username,
+    gotrueId: sessionOrErr.gotrueId,
+    projectRef: sessionOrErr.projectRef,
+    email: sessionOrErr.email || '',
+    guest: isGuestSession(sessionOrErr),
+    projectName: sessionOrErr.projectName,
+  })
   // Never log password.
   return c.json({
     ok: true,
@@ -896,8 +1565,31 @@ async function requireRuntimeProxy(c: Context, stripPrefix: string) {
   return proxyCloudflareOs(c, { upstreamBase: upstream, stripPrefix })
 }
 
+/**
+ * Public CFOS static shell (hashed Vite assets + favicon). Must not require a
+ * session cookie — module scripts with `crossorigin` and first-paint requests
+ * can race the Set-Cookie from GET /, which previously 401'd the JS/CSS and
+ * left builder.indobase.in looking broken / "404".
+ */
+async function proxyPublicRuntime(c: Context) {
+  const upstream = resolveCloudflareOsBase()
+  if (!upstream) {
+    return c.json(
+      {
+        message: 'CLOUDFLARE_OS_URL is not set. Run scripts/dev-stack.sh or export the URL.',
+      },
+      503,
+    )
+  }
+  return proxyCloudflareOs(c, { upstreamBase: upstream, stripPrefix: '' })
+}
+
 // Root-absolute CF OS static assets (Vite build emits `/assets/...`).
-app.all('/assets/*', (c) => requireRuntimeProxy(c, ''))
+app.all('/assets/*', (c) => proxyPublicRuntime(c))
+
+// CFOS index references `/favicon.svg` at the site root (not under /assets).
+app.get('/favicon.svg', (c) => proxyPublicRuntime(c))
+app.get('/favicon.ico', (c) => proxyPublicRuntime(c))
 
 // Other CF OS HTTP APIs (`/api/client-errors`, `/api/site-logo`, …).
 // Exact `/api` WebSocket is handled by createRuntimeProxyServer upgrade hook.

@@ -147,6 +147,22 @@ if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then
   swarm_upsert_env_file_kv "\${ENV_FILE}" CLOUDFLARE_OS_URL "\${CLOUDFLARE_OS_URL_VALUE}"
 fi
 
+# Sentry — Indobase OS / Gen 3 CFOS bridge (project: builder-cfos)
+SENTRY_DSN_VALUE="\${SENTRY_DSN:-}"
+if [[ -z "\${SENTRY_DSN_VALUE}" && -f "\${ENV_FILE}" ]]; then
+  SENTRY_DSN_VALUE="\$(grep -E '^SENTRY_DSN=' "\${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -z "\${SENTRY_DSN_VALUE}" && -f "\${STUDIO_ENV}" ]]; then
+  SENTRY_DSN_VALUE="\$(grep -E '^SENTRY_DSN_BUILDER_CFOS=' "\${STUDIO_ENV}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -n "\${SENTRY_DSN_VALUE}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" SENTRY_DSN "\${SENTRY_DSN_VALUE}"
+  swarm_upsert_env_file_kv "\${ENV_FILE}" SENTRY_ENVIRONMENT "\${SENTRY_ENVIRONMENT:-production}"
+  echo "Sentry DSN configured for \${SERVICE_NAME}"
+else
+  echo "::warning::SENTRY_DSN not set for builder-cfos — errors will not report to Sentry"
+fi
+
 if [[ -f "\${STUDIO_ENV}" ]]; then
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_APP_URL "\${CFOS_URL}"
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"

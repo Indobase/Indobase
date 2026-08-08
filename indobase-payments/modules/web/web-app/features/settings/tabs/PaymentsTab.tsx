@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@md/ui'
 import { useQueryClient } from '@tanstack/react-query'
-import { siStripe } from 'simple-icons'
+import { siAdyen, siStripe } from 'simple-icons'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -139,6 +139,12 @@ const PaymentMethodsForm = ({
                                       color="#635bff"
                                       className="w-3 h-3"
                                     />
+                                  ) : provider.provider === ConnectorProviderEnum.RAZORPAY ? (
+                                    <BrandIcon
+                                      path={siAdyen.path}
+                                      color="#0d7377"
+                                      className="w-3 h-3"
+                                    />
                                   ) : (
                                     'P'
                                   )}
@@ -179,6 +185,12 @@ const PaymentMethodsForm = ({
                                     <BrandIcon
                                       path={siStripe.path}
                                       color="#635bff"
+                                      className="w-3 h-3"
+                                    />
+                                  ) : provider.provider === ConnectorProviderEnum.RAZORPAY ? (
+                                    <BrandIcon
+                                      path={siAdyen.path}
+                                      color="#0d7377"
                                       className="w-3 h-3"
                                     />
                                   ) : (

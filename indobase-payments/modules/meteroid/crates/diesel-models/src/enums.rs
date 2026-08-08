@@ -147,6 +147,7 @@ pub enum ConnectorProviderEnum {
     Hubspot,
     Pennylane,
     Mock,
+    Razorpay,
 }
 
 impl ConnectorProviderEnum {
@@ -156,6 +157,7 @@ impl ConnectorProviderEnum {
             ConnectorProviderEnum::Hubspot => "hubspot",
             ConnectorProviderEnum::Pennylane => "pennylane",
             ConnectorProviderEnum::Mock => "mock",
+            ConnectorProviderEnum::Razorpay => "razorpay",
         }
     }
 }

@@ -16,6 +16,7 @@ import { Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 import { toast } from 'sonner'
 
+import { MerchantGatewaySetup } from './MerchantGatewaySetup'
 import { MerchantKycOnboarding } from './MerchantKycOnboarding'
 import { usePaymentsLaunch } from './usePaymentsLaunch'
 import { resetAutoLaunch, useAutoLaunchProduct } from './useAutoLaunchProduct'
@@ -38,11 +39,11 @@ function statusLabel(status: MerchantKycStatus): string {
 }
 
 /**
- * Indobase Payments project hub: soft-gated merchant KYC + SSO into the Payments product.
+ * Indobase Payments project hub: BYOK gateway keys + SSO into the Payments product.
  *
  * - Browse / open Payments dashboard: org owner, admin, developer, or viewer.
- * - Merchant KYC edits: owner/admin only (others see Ask an admin).
- * - Go live / collect payments: requires verified merchant KYC.
+ * - Connect gateway (paste Razorpay/Stripe keys): owner/admin only.
+ * - Go live / collect payments: keys validated (or legacy verified KYC).
  */
 export const ProjectPaymentsHome = () => {
   const { ref } = useParams()
@@ -62,11 +63,11 @@ export const ProjectPaymentsHome = () => {
   const canEditKyc = merchant?.can_edit_merchant_kyc === true
   const canConfirmGoLive = merchant?.can_confirm_go_live === true
 
-  const confirmStripeGoLive = async () => {
+  const confirmGoLive = async () => {
     if (!ref) return
     try {
       await reviewMerchant({ projectRef: ref, action: 'verify' })
-      toast.success('Merchant verified for Stripe go-live')
+      toast.success('Merchant verified — you can go live')
     } catch {
       // toast handled by mutation default onError
     }
@@ -192,6 +193,24 @@ export const ProjectPaymentsHome = () => {
         </p>
       </section>
 
+      <section className="rounded-md border border-border px-4 py-3 text-sm">
+        <p className="font-medium text-foreground">Settlement rail</p>
+        <dl className="mt-2 grid gap-1 text-foreground-light sm:grid-cols-[10rem_1fr]">
+          <dt className="text-foreground-lighter">Market</dt>
+          <dd className="text-foreground">
+            {merchant.settlement_market === 'india'
+              ? 'India settlements'
+              : 'International cards'}
+          </dd>
+          <dt className="text-foreground-lighter">Country</dt>
+          <dd className="font-mono text-xs text-foreground">{merchant.business_country || '—'}</dd>
+        </dl>
+        <p className="mt-2 text-xs text-foreground-lighter">
+          Chosen when connecting the gateway. Finish KYC on Razorpay (India) or Stripe
+          (international), then paste API keys below so agents can wire checkout.
+        </p>
+      </section>
+
       {!verified ? (
         <div
           className={cn(
@@ -209,11 +228,10 @@ export const ProjectPaymentsHome = () => {
             )}
           />
           <div className="space-y-1 text-sm">
-            <p className="font-medium text-foreground">Complete merchant onboarding</p>
+            <p className="font-medium text-foreground">Connect your payment gateway</p>
             <p className="text-foreground-light">
-              KYC status: <span className="text-foreground">{statusLabel(merchant.kyc_status)}</span>.
-              You can browse the Payments dashboard now. Going live to collect payments requires a
-              verified merchant profile.
+              Complete KYC on Razorpay or Stripe, then paste API keys in Connect gateway. You can
+              browse the Payments dashboard now; collecting payments needs validated keys.
             </p>
           </div>
         </div>
@@ -221,14 +239,22 @@ export const ProjectPaymentsHome = () => {
         <div className="flex gap-3 rounded-md border border-brand bg-brand/10 px-4 py-3">
           <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-brand" />
           <div className="space-y-1 text-sm">
-            <p className="font-medium text-foreground">Merchant verified</p>
+            <p className="font-medium text-foreground">
+              {merchant.gateway_keys_configured ? 'Gateway keys connected' : 'Merchant verified'}
+            </p>
             <p className="text-foreground-light">
-              You can go live and collect payments. Settlements target your linked bank account
-              {merchant.bank_account_masked ? ` (${merchant.bank_account_masked})` : ''}.
+              You can go live and collect payments. Ask an agent to wire checkout into your site, or
+              open the Payments dashboard to manage connectors.
             </p>
           </div>
         </div>
       )}
+
+      <MerchantGatewaySetup
+        projectRef={ref}
+        merchant={merchant}
+        readOnly={!canEditKyc}
+      />
 
       <section className="flex flex-col gap-3 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
@@ -264,22 +290,49 @@ export const ProjectPaymentsHome = () => {
           <p>
             Your merchant KYC is {statusLabel(merchant.kyc_status).toLowerCase()}.
             {merchant.aggregator_account_id
-              ? ` Aggregator account id: ${merchant.aggregator_account_id}.`
+              ? ` Settlement account id: ${merchant.aggregator_account_id}.`
               : ''}{' '}
             You can still browse the Payments dashboard while review completes.
           </p>
+          {merchant.aggregator_message ? (
+            <p className="text-xs text-foreground-lighter">{merchant.aggregator_message}</p>
+          ) : null}
+          {merchant.settlement_market === 'india' && merchant.route_activation_status ? (
+            <p className="text-xs text-foreground-lighter">
+              India Route activation: {merchant.route_activation_status}
+              {merchant.route_product_id ? ` (product ${merchant.route_product_id})` : ''}.
+            </p>
+          ) : null}
+          {merchant.onboarding_url ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-foreground-lighter">
+                Finish international card onboarding (Stripe hosted Account Link), then return here
+                and Confirm go-live.
+              </p>
+              <Button
+                type="default"
+                icon={<ExternalLink size={14} />}
+                onClick={() => {
+                  window.open(merchant.onboarding_url!, '_blank', 'noopener,noreferrer')
+                }}
+              >
+                Continue card onboarding
+              </Button>
+            </div>
+          ) : null}
           {canConfirmGoLive ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-foreground-lighter">
-                Stripe settlement: after confirming go-live, connect Stripe keys in Indobase Payments
-                and configure the webhook so invoices settle when charges succeed.
+                {merchant.settlement_market === 'india'
+                  ? 'After confirming go-live, India settlements use your Route Linked Account + bank details submitted during KYC.'
+                  : 'After confirming go-live, finish international card settlement in Indobase Payments (Checkout Sessions + webhook) so invoices settle when charges succeed.'}
               </p>
               <Button
                 type="primary"
                 loading={isReviewing}
-                onClick={() => void confirmStripeGoLive()}
+                onClick={() => void confirmGoLive()}
               >
-                Confirm Stripe go-live
+                Confirm go-live
               </Button>
             </div>
           ) : null}
@@ -289,21 +342,33 @@ export const ProjectPaymentsHome = () => {
       {!canEditKyc ? (
         <Admonition
           type="note"
-          title="Ask an admin to complete merchant KYC"
-          description="Merchant onboarding (business details, bank account, documents) is limited to organization owners and admins. You can still open the Payments dashboard."
+          title="Ask an admin to connect the payment gateway"
+          description="Pasting Razorpay or Stripe API keys is limited to organization owners and admins. You can still open the Payments dashboard."
         />
       ) : null}
 
-      <MerchantKycOnboarding
-        projectRef={ref}
-        merchant={merchant}
-        readOnly={
-          !canEditKyc ||
-          merchant.kyc_status === 'submitted' ||
-          merchant.kyc_status === 'under_review' ||
-          merchant.kyc_status === 'verified'
-        }
-      />
+      {/* Legacy Studio KYC form — optional; preferred path is Connect gateway (BYOK). */}
+      {!merchant.gateway_keys_configured ? (
+        <details className="rounded-md border border-border p-4">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            Advanced: Studio merchant profile (optional)
+          </summary>
+          <p className="mb-3 mt-2 text-xs text-foreground-lighter">
+            Prefer completing KYC on Razorpay/Stripe and pasting API keys above. This form is only
+            needed for legacy platform onboarding.
+          </p>
+          <MerchantKycOnboarding
+            projectRef={ref}
+            merchant={merchant}
+            readOnly={
+              !canEditKyc ||
+              merchant.kyc_status === 'submitted' ||
+              merchant.kyc_status === 'under_review' ||
+              merchant.kyc_status === 'verified'
+            }
+          />
+        </details>
+      ) : null}
     </div>
   )
 }

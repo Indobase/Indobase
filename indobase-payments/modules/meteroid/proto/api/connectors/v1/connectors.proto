@@ -12,6 +12,14 @@ message ConnectStripeResponse {
   Connector connector = 1;
 }
 
+message ConnectRazorpayRequest {
+  RazorpayConnector data = 1;
+}
+
+message ConnectRazorpayResponse {
+  Connector connector = 1;
+}
+
 message ListConnectorsRequest {
   optional ConnectorTypeEnum connector_type = 1;
 }
@@ -56,6 +64,7 @@ service ConnectorsService {
   rpc DisconnectConnector(DisconnectConnectorRequest) returns (DisconnectConnectorResponse) {}
 
   rpc ConnectStripe(ConnectStripeRequest) returns (ConnectStripeResponse) {}
+  rpc ConnectRazorpay(ConnectRazorpayRequest) returns (ConnectRazorpayResponse) {}
   rpc ConnectHubspot(ConnectHubspotRequest) returns (ConnectHubspotResponse) {}
   rpc UpdateHubspotConnector(UpdateHubspotConnectorRequest) returns (UpdateHubspotConnectorResponse) {}
 

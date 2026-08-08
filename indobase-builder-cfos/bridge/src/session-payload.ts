@@ -13,7 +13,40 @@ import {
   BUSINESS_OS_DISCOVERABLE_ACTIONS,
   discoverableActionsForSession,
 } from './business-os-nav.js'
+import {
+  CONNECT_GATEWAY_AGENT_HARD_RULES,
+  connectGatewayToolCatalog,
+} from './connect-gateway-tool.js'
 import { launchBusinessToolCatalog } from './launch-business-tool.js'
+import {
+  WIRE_CHECKOUT_AGENT_HARD_RULES,
+  wireCheckoutToolCatalog,
+} from './wire-checkout-tool.js'
+import {
+  SHOP_CATALOG_AGENT_HARD_RULES,
+  listShopOrdersToolCatalog,
+  placeTestShopOrderToolCatalog,
+  setupShopCatalogToolCatalog,
+} from './shop-catalog-tool.js'
+import {
+  ENSURE_CAPABILITY_AGENT_HARD_RULES,
+  ensureAnalyticsToolCatalog,
+  ensureDatabaseToolCatalog,
+  ensureEmailToolCatalog,
+  ensureLoginToolCatalog,
+} from './ensure-capability-tool.js'
+import {
+  APPLY_SCHEMA_AGENT_HARD_RULES,
+  applySchemaToolCatalog,
+} from './apply-schema-tool.js'
+import {
+  PRODUCTION_CHECKLIST_AGENT_HARD_RULES,
+  productionChecklistToolCatalog,
+} from './production-checklist-tool.js'
+import {
+  PRODUCT_IMAGES_AGENT_HARD_RULES,
+  resolveProductImagesToolCatalog,
+} from './product-images-tool.js'
 import {
   buildSessionPromptQuotaBlock,
   promptQuotaToolCatalog,
@@ -44,7 +77,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
-  const agentHintBody = `${agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}`
+  const agentHintBody = `${agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) return agentHintBody
   return agentHintBody.startsWith('GUEST ACCOUNT GATE')
     ? agentHintBody
@@ -113,6 +146,43 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       tool_alias: '/api/os/tools/goLive',
       rules: LAUNCH_AGENT_HARD_RULES,
     },
+    payments: {
+      ensure: '/api/os/runtime/ensure',
+      connect_gateway: '/api/os/payments/connect-gateway',
+      wire_checkout: '/api/os/payments/wire-checkout',
+      tool: '/api/os/tools/connectGateway',
+      tool_alias: '/api/os/tools/connectPaymentGateway',
+      wire_checkout_tool: '/api/os/tools/wireCheckout',
+      rules: CONNECT_GATEWAY_AGENT_HARD_RULES,
+      wire_checkout_rules: WIRE_CHECKOUT_AGENT_HARD_RULES,
+    },
+    shop: {
+      catalog: '/api/os/shop/catalog',
+      orders: '/api/os/shop/orders',
+      setup_tool: '/api/os/tools/setupShopCatalog',
+      list_orders_tool: '/api/os/tools/listShopOrders',
+      place_test_tool: '/api/os/tools/placeTestShopOrder',
+      rules: SHOP_CATALOG_AGENT_HARD_RULES,
+    },
+    data: {
+      apply_schema: '/api/os/data/apply-schema',
+      apply_schema_tool: '/api/os/tools/applySchema',
+      ensure_login_tool: '/api/os/tools/ensureLogin',
+      ensure_database_tool: '/api/os/tools/ensureDatabase',
+      ensure_email_tool: '/api/os/tools/ensureEmail',
+      ensure_analytics_tool: '/api/os/tools/ensureAnalytics',
+      rules: APPLY_SCHEMA_AGENT_HARD_RULES,
+    },
+    media: {
+      product_images: '/api/os/media/product-images',
+      tool: '/api/os/tools/resolveProductImages',
+      rules: PRODUCT_IMAGES_AGENT_HARD_RULES,
+    },
+    production: {
+      checklist: '/api/os/production/checklist',
+      tool: '/api/os/tools/productionChecklist',
+      rules: PRODUCTION_CHECKLIST_AGENT_HARD_RULES,
+    },
     usage: {
       prompt_quota: usage.path,
       ...usage,
@@ -122,6 +192,18 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     discoverable_actions: BUSINESS_OS_DISCOVERABLE_ACTIONS,
     tools: {
       launchBusiness: launchBusinessToolCatalog(),
+      ensureLogin: ensureLoginToolCatalog(),
+      ensureDatabase: ensureDatabaseToolCatalog(),
+      ensureEmail: ensureEmailToolCatalog(),
+      ensureAnalytics: ensureAnalyticsToolCatalog(),
+      applySchema: applySchemaToolCatalog(),
+      connectGateway: connectGatewayToolCatalog(),
+      wireCheckout: wireCheckoutToolCatalog(),
+      setupShopCatalog: setupShopCatalogToolCatalog(),
+      listShopOrders: listShopOrdersToolCatalog(),
+      placeTestShopOrder: placeTestShopOrderToolCatalog(),
+      resolveProductImages: resolveProductImagesToolCatalog(),
+      productionChecklist: productionChecklistToolCatalog(),
       promptQuota: promptQuotaToolCatalog(),
     },
   }

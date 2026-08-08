@@ -15,6 +15,7 @@ import {
   type StaticLaunchInput,
   type StaticLaunchResult,
 } from './static-launch.js'
+import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
 
 export { LAUNCH_AGENT_HARD_RULES, LAUNCH_BUSINESS_TOOL }
 
@@ -25,19 +26,23 @@ export type LaunchBusinessToolInput = {
   custom_domain?: string
   html?: string
   files?: Record<string, string>
+  /** When set, also mirrors artifacts to Studio hosting (Builder-compatible path). */
+  gotrueId?: string
+  email?: string
 }
 
 export type LaunchBusinessToolResult = {
   ok: boolean
-  status: StaticLaunchResult['status'] | 'rejected'
+  status: StaticLaunchResult['status'] | 'rejected' | 'queued' | 'published' | 'failed'
   url?: string
   preview_url?: string
   message: string
-  lane: 'static'
+  lane: 'static' | 'platform' | 'static+platform'
   subdomain?: string
   custom_domain?: string
   dns?: StaticLaunchResult['dns']
   artifact_ref?: string
+  platform_url?: string
   /** Agent must only claim live when true */
   claim_live: boolean
   tool: 'launchBusiness'
@@ -86,19 +91,61 @@ export async function executeLaunchBusinessTool(
   const result = await launchStaticBusiness(launchInput)
   const claim = assertCanClaimLive({ ok: result.ok, url: result.url })
 
+  // Mirror artifacts to Studio hosting when Platform API is configured (unifies with Builder publish).
+  let platformUrl: string | undefined
+  let platformMirrored = false
+  if (
+    claim.allowed &&
+    resolvePlatformApiUrl() &&
+    input.gotrueId?.trim() &&
+    typeof input.email === 'string'
+  ) {
+    const files =
+      launchInput.files ||
+      (launchInput.html ? { 'index.html': launchInput.html } : undefined)
+    try {
+      const mirrored = await platformDeployPublish({
+        gotrueId: input.gotrueId.trim(),
+        email: input.email,
+        workspaceRef,
+        reason: 'launchBusiness',
+        files,
+        html: launchInput.html,
+        title: launchInput.title,
+        subdomain: launchInput.subdomain,
+        customDomain: launchInput.customDomain,
+        intent: 'go_live',
+      })
+      if (mirrored.ok && typeof mirrored.url === 'string' && mirrored.url.startsWith('http')) {
+        platformUrl = mirrored.url
+        platformMirrored = true
+      }
+    } catch {
+      // Static URL remains authoritative if platform mirror fails.
+    }
+  }
+
+  const liveUrl = claim.allowed ? result.url : undefined
+  const message = !claim.allowed
+    ? claim.reason || result.message || 'Could not go live'
+    : platformMirrored && platformUrl && platformUrl !== liveUrl
+      ? `${result.message} Also synced to Studio hosting: ${platformUrl}`
+      : platformMirrored
+        ? `${result.message} (synced to Studio hosting)`
+        : result.message
+
   return {
     ok: result.ok && claim.allowed,
     status: result.ok && !claim.allowed ? 'failed' : result.status,
-    url: claim.allowed ? result.url : undefined,
+    url: liveUrl,
     preview_url: result.previewUrl,
-    message: claim.allowed
-      ? result.message
-      : claim.reason || result.message || 'Could not go live',
-    lane: 'static',
+    message,
+    lane: platformMirrored ? 'static+platform' : 'static',
     subdomain: result.subdomain,
     custom_domain: result.customDomain,
     dns: result.dns,
     artifact_ref: result.artifactRef,
+    platform_url: platformUrl,
     claim_live: claim.allowed,
     tool: 'launchBusiness',
   }

@@ -14,6 +14,7 @@
     "@indobase/cloudflare-adapter": "file:../../packages/cloudflare-adapter",
     "@indobase/platform": "file:../../packages/platform",
     "@indobase/platform-api": "file:../../packages/platform-api",
+    "@sentry/node": "^10.28.0",
     "hono": "^4.8.5"
   },
   "devDependencies": {

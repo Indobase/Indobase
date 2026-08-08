@@ -39,6 +39,8 @@ CI builds Hub image `roshanraghavander/indobase-builder-cfos:<git-sha>` via `.gi
 | `BUILDER_CFOS_HANDOFF_SECRET` | ≥32 chars; shared with Platform API |
 | `PLATFORM_API_URL` | Control plane base, e.g. `http://127.0.0.1:8080` |
 | `CLOUDFLARE_OS_URL` | Agent runtime (dev-stack sets this) |
+| `SENTRY_DSN` | Indobase Sentry project `builder-cfos` DSN (server + browser) |
+| `SENTRY_ENVIRONMENT` | Optional; default `production` / `NODE_ENV` |
 
 ## Quick start
 

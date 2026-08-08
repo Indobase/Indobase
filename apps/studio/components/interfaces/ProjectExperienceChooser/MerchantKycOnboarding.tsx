@@ -76,6 +76,7 @@ type FormState = {
   bank_account_number: string
   bank_ifsc: string
   bank_name: string
+  settlement_market: 'india' | 'international'
   documents: MerchantDocumentMeta[]
 }
 
@@ -97,6 +98,7 @@ function formFromProfile(merchant: MerchantProfilePublic): FormState {
     bank_account_number: '',
     bank_ifsc: merchant.bank_ifsc || '',
     bank_name: merchant.bank_name || '',
+    settlement_market: merchant.settlement_market || 'india',
     documents: merchant.documents || [],
   }
 }
@@ -214,7 +216,8 @@ export function MerchantKycOnboarding({
         business_postal_code: form.business_postal_code,
         contact_email: form.contact_email,
         contact_phone: form.contact_phone,
-        business_country: 'IN',
+        settlement_market: form.settlement_market,
+        business_country: form.settlement_market === 'india' ? 'IN' : 'US',
       },
     })
     toast.success('Business details saved')
@@ -367,6 +370,29 @@ export function MerchantKycOnboarding({
 
       {step.id === 'business' ? (
         <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <label className="text-sm text-foreground-light" htmlFor="settlement_market">
+              Settlement market
+            </label>
+            <Select_Shadcn_
+              value={form.settlement_market}
+              disabled={!editable || saving}
+              onValueChange={(value) =>
+                setField('settlement_market', value as 'india' | 'international')
+              }
+            >
+              <SelectTrigger_Shadcn_ id="settlement_market">
+                <SelectValue_Shadcn_ placeholder="Select market" />
+              </SelectTrigger_Shadcn_>
+              <SelectContent_Shadcn_>
+                <SelectItem_Shadcn_ value="india">India settlements</SelectItem_Shadcn_>
+                <SelectItem_Shadcn_ value="international">International cards</SelectItem_Shadcn_>
+              </SelectContent_Shadcn_>
+            </Select_Shadcn_>
+            <p className="text-xs text-foreground-lighter">
+              India for INR / domestic payouts. International for card settlement outside India.
+            </p>
+          </div>
           <Input
             label="Legal business name"
             value={form.business_legal_name}
@@ -599,6 +625,12 @@ export function MerchantKycOnboarding({
 
       {step.id === 'review' ? (
         <div className="space-y-3 rounded-md border border-border p-4 text-sm">
+          <ReviewRow
+            label="Settlement market"
+            value={
+              form.settlement_market === 'india' ? 'India settlements' : 'International cards'
+            }
+          />
           <ReviewRow label="Legal name" value={form.business_legal_name || merchant.business_legal_name} />
           <ReviewRow label="Business type" value={form.business_type || merchant.business_type} />
           <ReviewRow label="PAN" value={merchant.pan_masked || (form.pan ? 'Will save on submit' : '—')} />

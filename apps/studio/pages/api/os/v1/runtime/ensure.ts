@@ -46,6 +46,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ? payload.workspaceRef.trim()
         : ''
   const capability = typeof payload.capability === 'string' ? payload.capability.trim() : ''
+  const settlementMarketRaw =
+    typeof payload.settlement_market === 'string'
+      ? payload.settlement_market.trim()
+      : typeof payload.settlementMarket === 'string'
+        ? payload.settlementMarket.trim()
+        : typeof payload.settlement_adapter === 'string'
+          ? payload.settlement_adapter.trim()
+          : typeof payload.adapter === 'string'
+            ? payload.adapter.trim()
+            : undefined
 
   if (!workspaceRef || !capability) {
     return res.status(400).json({ message: 'workspace_ref and capability required' })
@@ -73,6 +83,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       claims,
       workspaceRef,
       capability,
+      settlementMarket: settlementMarketRaw,
     })
     return res.status(200).json(result)
   } catch (error) {

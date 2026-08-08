@@ -53,6 +53,7 @@ strum = { workspace = true, features = ["derive", "std"] }
 meteroid-mailer = { workspace = true }
 meteroid-oauth = { workspace = true }
 stripe-client = { workspace = true }
+razorpay-client = { workspace = true }
 common-domain = { workspace = true }
 metering-grpc = { workspace = true }
 prost-types = { workspace = true }

@@ -7,6 +7,7 @@ use tokio::signal;
 
 use common_build_info::BuildInfo;
 use common_logging::telemetry;
+use meteroid::adapters::razorpay::Razorpay;
 use meteroid::adapters::stripe::Stripe;
 use meteroid::clients::usage::MeteringUsageClient;
 use meteroid::config::Config;
@@ -106,11 +107,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let stripe = Arc::new(StripeClient::new());
     let stripe_adapter = Arc::new(Stripe { client: stripe });
+    let razorpay_adapter = Arc::new(Razorpay::default());
 
     let rest_server = meteroid::api_rest::server::start_rest_server(
         config.clone(),
         object_store_service.clone(),
         stripe_adapter.clone(),
+        razorpay_adapter.clone(),
         store.clone(),
         services.clone(),
         ready.clone(),

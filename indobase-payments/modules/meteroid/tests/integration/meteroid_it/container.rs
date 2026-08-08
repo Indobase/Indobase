@@ -232,6 +232,7 @@ async fn start_meteroid_from_config(
 
     let stripe = Arc::new(StripeClient::new());
     let stripe_adapter = Arc::new(Stripe { client: stripe });
+    let razorpay_adapter = Arc::new(meteroid::adapters::razorpay::Razorpay::default());
 
     let object_store = in_memory_object_store();
     let ready = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
@@ -239,6 +240,7 @@ async fn start_meteroid_from_config(
         config.clone(),
         object_store.clone(),
         stripe_adapter,
+        razorpay_adapter,
         store.clone(),
         services.clone(),
         ready,
