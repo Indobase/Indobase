@@ -51,7 +51,7 @@
 | **Full agent VM / filesystem isolation** | **Open / Phase 2** — principal-scoped CFOS login is done; shared desktop/runtime filesystem isolation is not |
 | **Full Lane 2 Payments/Email adapters** | **In progress** — Ensure now returns `pending_setup` + finish-setup copy + `launch_url` / `setup_status` (not “Payments are live” / “Email enabled” from data-plane alone). Product checkout/sender completion still unfinished |
 | **Product Auth OTP From branding** | **Done (repo)** — `GET/POST /api/os/v1/auth/mail` + bridge `/api/os/auth/mail`; From applies to live tenant GoTrue on re-apply; ensure(auth) returns `next_steps` |
-| **Prod OTP email ops verify** | **Blocked on SMTP** — `verify-os-otp-smtp-on-vps.sh --fix` (2026-08-08): Studio health OK; `/etc/indobase/smtp.env` + `indobase-auth` have **empty** `SMTP_PASS` / no `RESEND_API_KEY` (host `indobase-smtp-relay`). OTP mail will not deliver until real credentials are placed in smtp.env; `--apply` not safe yet |
+| **Prod OTP email ops verify** | **Done (ops)** — Resend on `.249` (`smtp.resend.com`, From `auth@indobase.in`); domain verified; OTP `/otp` smoke HTTP 200 |
 
 ---
 
