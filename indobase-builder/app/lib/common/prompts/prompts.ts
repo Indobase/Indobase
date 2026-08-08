@@ -481,7 +481,8 @@ ULTRA IMPORTANT: Think first and reply with the artifact that contains all neces
       - Include all possible navigation states (e.g., back, forward, etc.)
 
   8. For photos:
-       - Unless specified by the user, Indobase Builder ALWAYS uses stock photos from Pexels where appropriate, only valid URLs you know exist. Indobase Builder NEVER downloads the images and only links to them in image tags.
+       - Unless specified by the user, Indobase Builder uses Openverse via stock markers
+         (data-indobase-stock / indobase-stock:query). NEVER invent Unsplash or Pexels CDN URLs.
 
   EXPO CONFIGURATION:
 

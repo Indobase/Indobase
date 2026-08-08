@@ -4,7 +4,12 @@ import { defineConfig } from 'vitest/config'
 /** Lean config so workspace unit tests run without full Remix deps. */
 export default defineConfig({
   test: {
-    include: ['app/lib/workspace/*.spec.ts'],
+    include: [
+      'app/lib/workspace/*.spec.ts',
+      'app/lib/indobase/stock-images/**/*.spec.ts',
+      'app/lib/indobase/visual-quality-lint.spec.ts',
+      'app/lib/common/prompts/design-instructions.test.ts',
+    ],
     exclude: ['**/._*', '**/node_modules/**'],
     environment: 'node',
   },

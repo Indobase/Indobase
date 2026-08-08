@@ -1,0 +1,13 @@
+{
+  "blueprintId": "format.design",
+  "title": "Design",
+  "description": "ALWAYS use for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, cover images, graphic design, and creatives. Single-canvas graphics with size presets (logo, IG post, story, poster) and PNG export. NEVER use Slides or HTML mocks for these — instantiate format.design. After createGadget, call setPreset and edit layers via RPC.",
+  "output": {
+    "id": "design",
+    "noun": "Design",
+    "plural": "Designs",
+    "icon": "appWindow"
+  },
+  "author": { "type": "user", "name": "Indobase", "id": "builder@indobase.in" },
+  "revision": 2
+}

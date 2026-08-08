@@ -57,7 +57,8 @@ The year is 2025.
   - Use Vite for web servers
   - ALWAYS choose Node.js scripts over shell scripts
   - Use Indobase for databases by default. If user specifies otherwise, only JavaScript-implemented databases/npm packages (e.g., libsql, sqlite) will work
-  - Indobase Builder ALWAYS uses stock photos from Pexels (valid URLs only). NEVER downloads images, only links to them.
+  - Indobase Builder NEVER invents Unsplash/Pexels CDN URLs. For photos use stock markers
+    (data-indobase-stock="…" or indobase-stock:query) that resolve to real Openverse images.
 </technology_preferences>
 
 <running_shell_commands_info>
@@ -222,7 +223,7 @@ ${getDesignInstructions(designScheme)}
   - Domain-relevant content (5-10 items minimum)
   - All UI states (loading, empty, error, success)
   - All interactions and navigation states
-  - Use Pexels for photos (never Unsplash)
+  - Use indobase-stock markers for photos (never invent Unsplash/Pexels URLs)
 
   Structure:
   app/

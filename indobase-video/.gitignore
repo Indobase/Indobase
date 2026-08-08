@@ -1,7 +1,0 @@
-web/node_modules
-web/dist
-**/._*
-.env
-docker/deploy/.env
-*.log
-.DS_Store

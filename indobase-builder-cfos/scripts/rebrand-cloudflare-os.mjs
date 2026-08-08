@@ -8,6 +8,7 @@
  *
  * Safe to re-run after `fetch-cloudflare-os.sh`.
  */
+import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -353,7 +354,7 @@ for (const rel of [
   const walk = (dir) => {
     const out = []
     for (const name of readdirSync(dir)) {
-      if (name === 'node_modules') continue
+      if (name === 'node_modules' || name === '.wrangler' || name === 'dist' || name.startsWith('._')) continue
       const p = join(dir, name)
       let st
       try {
@@ -362,7 +363,7 @@ for (const rel of [
         continue
       }
       if (st.isDirectory()) out.push(...walk(p))
-      else if (/\.(ts|tsx|html)$/.test(name) && name !== 'worker-configuration.d.ts') out.push(p)
+      else if (/\.(ts|tsx|html)$/.test(name) && name !== 'worker-configuration.d.ts' && !name.startsWith('._')) out.push(p)
     }
     return out
   }
@@ -433,6 +434,362 @@ for (const [rel, pairs] of [
       'Connect a cloud account to keep building once your free allowance runs',
     )
     write(path, text)
+  }
+}
+
+// --- Per-session CFOS principal + same-origin API host (Studio SSO is the gate) ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/main.tsx')
+  let text = read(path)
+
+  const beginMarker = 'async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {'
+  const afterMarker = '\n\n// WebSocket RPC connection management.'
+  const beginIdx = text.indexOf(beginMarker)
+  const afterIdx = text.indexOf(afterMarker, beginIdx)
+  const newDevAutoLogin = `async function devAutoLogin(stub: RpcStub<PublicApi>): Promise<void> {
+  // Indobase: per-session CFOS principal via /api/os/runtime/agent-credentials
+  // (not shared VITE_DEV_USERNAME/PASSWORD). VITE_DEV_AUTO_LOGIN enables this flow.
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  const onLoopback = host === 'localhost' || host === '127.0.0.1'
+  if (import.meta.env.VITE_DEV_AUTO_LOGIN !== 'true' && !onLoopback) return
+
+  let username = import.meta.env.VITE_DEV_USERNAME ?? 'dev'
+  let password = import.meta.env.VITE_DEV_PASSWORD ?? 'devpassword'
+  let storageKey: string | null = null
+
+  try {
+    const res = await fetch('/api/os/runtime/agent-credentials', { credentials: 'same-origin' })
+    if (res.ok) {
+      const json = await res.json() as {
+        ok?: boolean
+        username?: string
+        password?: string
+        storage_key?: string
+      }
+      if (json?.ok && json.username && json.password && json.storage_key) {
+        username = json.username
+        password = json.password
+        storageKey = json.storage_key
+      }
+    } else if (!onLoopback) {
+      console.warn('[indobase] agent-credentials unavailable; skipping auto-login')
+      return
+    }
+  } catch (err) {
+    if (!onLoopback) {
+      console.warn('[indobase] agent-credentials fetch failed; skipping auto-login', err)
+      return
+    }
+    // Loopback fallback: env VITE_DEV_* for bare CFOS without bridge.
+  }
+
+  if (storageKey) {
+    const scoped = localStorage.getItem(storageKey)
+    if (scoped) {
+      localStorage.setItem('authToken', scoped)
+      return
+    }
+  }
+  if (!storageKey && localStorage.getItem('authToken')) return
+
+  const { hashPassword } = await import('./passwordHash')
+  const passwordHash = await hashPassword(username, password)
+
+  let token = await stub.createAccount(username, username, passwordHash)
+  if (!token) {
+    token = await stub.login(username, passwordHash)
+  }
+
+  if (token) {
+    localStorage.setItem('authToken', token)
+    if (storageKey) localStorage.setItem(storageKey, token)
+  }
+}`
+
+  if (
+    text.includes('/api/os/runtime/agent-credentials') &&
+    text.includes('per-session CFOS principal')
+  ) {
+    console.log('  devAutoLogin already uses per-session agent-credentials (skip)')
+  } else if (beginIdx >= 0 && afterIdx > beginIdx) {
+    text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
+    console.log('  devAutoLogin ← per-session agent-credentials')
+  } else {
+    console.warn('  skip: devAutoLogin block not found (upstream drifted)')
+  }
+
+  // Off-loopback MUST use window.location.host (same-origin behind builder.indobase.in).
+  // Never return VITE_BACKEND_HOST when it is a bind address like 0.0.0.0 — browsers cannot open wss://0.0.0.0.
+  const newHost = `function getBackendHost(): string {
+  // Same-origin when served behind Indobase bridge (builder.indobase.in).
+  // Never use bind addresses like 0.0.0.0 — browsers cannot open wss://0.0.0.0.
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    const backendHost = import.meta.env.VITE_BACKEND_HOST?.trim();
+    if (backendHost && !backendHost.startsWith('0.0.0.0')) return backendHost;
+    return \`\${host}:8787\`;
+  }
+  return window.location.host;
+}`
+  if (
+    text.includes('Never use bind addresses like 0.0.0.0') &&
+    text.includes('return window.location.host')
+  ) {
+    console.log('  getBackendHost already Indobase-safe (skip)')
+  } else {
+    const hostStart = text.indexOf('function getBackendHost(): string {')
+    if (hostStart >= 0) {
+      // Match balanced braces for the function body.
+      let i = hostStart + 'function getBackendHost(): string {'.length
+      let depth = 1
+      while (i < text.length && depth > 0) {
+        if (text[i] === '{') depth++
+        else if (text[i] === '}') depth--
+        i++
+      }
+      text = text.slice(0, hostStart) + newHost + text.slice(i)
+      console.log('  getBackendHost ← same-origin off-loopback')
+    } else {
+      console.warn('  warn: getBackendHost not found — check main.tsx')
+    }
+  }
+
+  // Await auto-login before first paint so LoginPage never flashes.
+  const oldBoot = `// Kick off dev auto-login in the background. If it completes before
+// useAuth checks the token, the user skips the login page. If the backend
+// is unreachable, the app still renders immediately (showing a connection
+// banner or login page) instead of hanging on a blank screen.
+devAutoLogin(currentStub).catch(() => {})
+
+root.render(
+  <StrictMode>
+    <FrontendErrorBoundary>
+      <AppWithConnection />
+    </FrontendErrorBoundary>
+  </StrictMode>
+)`
+  const newBoot = `// Indobase local PoC: finish auto-login before render so signup/login never shows.
+void (async () => {
+  await devAutoLogin(currentStub).catch(() => {})
+  root.render(
+    <StrictMode>
+      <FrontendErrorBoundary>
+        <AppWithConnection />
+      </FrontendErrorBoundary>
+    </StrictMode>
+  )
+})()`
+  if (text.includes('finish auto-login before render')) {
+    console.log('  boot already awaits auto-login (skip)')
+  } else if (text.includes(oldBoot)) {
+    text = text.replace(oldBoot, newBoot)
+  } else {
+    console.warn('  skip: boot block drifted')
+  }
+  write(path, text)
+  console.log('  local auto-login enabled (per-session principals)')
+}
+
+{
+  const envPath = join(OS, 'packages/workshop-frontend/.env.production.local')
+  write(
+    envPath,
+    [
+      '# Generated by Indobase rebrand.',
+      '# VITE_DEV_AUTO_LOGIN enables the Indobase per-session credentials flow',
+      '# (GET /api/os/runtime/agent-credentials → principal-scoped CFOS login).',
+      '# VITE_DEV_USERNAME/PASSWORD are loopback-only fallback when the bridge',
+      '# credentials endpoint is unavailable — NOT the production shared path.',
+      'VITE_DEV_AUTO_LOGIN=true',
+      'VITE_DEV_USERNAME=dev',
+      'VITE_DEV_PASSWORD=devpassword',
+      '# Loopback-only for getBackendHost(); never 0.0.0.0 (bind address breaks browser wss).',
+      '# Off-loopback (builder.indobase.in) uses window.location.host via the rebrand patch.',
+      'VITE_BACKEND_HOST=localhost:8787',
+      '',
+    ].join('\n'),
+  )
+  console.log('  wrote', envPath)
+}
+
+// --- ChatInterface: hard Free-plan meter via POST /api/os/agent/begin-turn ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    if (text.includes('/api/os/agent/begin-turn') || text.includes('Indobase begin-turn meter')) {
+      console.log('  ChatInterface begin-turn meter already patched (skip)')
+    } else {
+      const anchor = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+
+    sendInFlightRef.current = true;`
+      const injection = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+
+    // Indobase begin-turn meter (hard Free-plan enforce).
+    // Guests get 200 (no consume) so OTP signup chat works. Fail-closed on 402 only.
+    // Fail-open on 5xx/network. Do not abort on 403 — guests must be able to chat.
+    try {
+      const meter = await fetch('/api/os/agent/begin-turn', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: inputValue }),
+      })
+      if (meter.status === 402) {
+        let msg = 'Free agent limit reached (5 prompts). Upgrade your plan to continue building with Indobase.'
+        try {
+          const j = await meter.json() as { message?: string }
+          if (typeof j?.message === 'string' && j.message.trim()) msg = j.message.trim()
+        } catch { /* keep default */ }
+        toasts.add({ title: msg, variant: 'error' })
+        return
+      }
+      if (!meter.ok && meter.status >= 500) {
+        console.warn('[indobase] begin-turn meter unavailable; allowing send (fail-open)', meter.status)
+      }
+    } catch (err) {
+      console.warn('[indobase] begin-turn meter network error; allowing send (fail-open)', err)
+    }
+
+    sendInFlightRef.current = true;`
+      if (text.includes(anchor)) {
+        text = text.replace(anchor, injection)
+        write(path, text)
+        console.log('  ChatInterface ← begin-turn meter')
+      } else {
+        console.warn('  skip: ChatInterface handleSend meter anchor drifted')
+      }
+    }
+  }
+}
+
+// --- Hide model chooser (Indobase routes models server-side; no UI picker) ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  let text = read(path)
+  const start = text.indexOf('              <DropdownMenu>\n                <DropdownMenu.Trigger\n                  render={\n                    <button\n                      type="button"\n                      className="group inline-flex h-8 min-w-0 max-w-[180px]')
+  const endMarker = '              </DropdownMenu>\n              {isAgentActive && onStop ? ('
+  const end = text.indexOf(endMarker, start)
+  if (start >= 0 && end > start) {
+    const keepFrom = end + '              </DropdownMenu>\n'.length
+    text =
+      text.slice(0, start) +
+      '              {/* Indobase: model picker removed — preferred/server model only */}\n' +
+      text.slice(keepFrom)
+    write(path, text)
+    console.log('  model chooser removed from ChatInterface composer')
+  } else if (text.includes('Indobase: model picker removed')) {
+    console.log('  model chooser already removed')
+  } else {
+    console.warn('  skip: ChatInterface model picker block not found (upstream drifted)')
+  }
+}
+
+{
+  const path = join(OS, 'packages/workshop-frontend/src/modelSelection.ts')
+  let text = read(path)
+  const oldFn = `export function getStoredSelectedModel(
+  models: AiChatAuthorInfo[],
+): string | null {
+  const storedModel = localStorage.getItem(LAST_SELECTED_MODEL_KEY);
+
+  if (storedModel === NO_AGENT_OPTION_VALUE) {
+    return null;
+  }
+
+  if (storedModel && models.some((model) => model.id === storedModel)) {
+    return storedModel;
+  }
+
+  // Default: Return the first configured model, or null if none are configured.
+  return models[0]?.id ?? null;
+}`
+  const newFn = `export function getStoredSelectedModel(
+  models: AiChatAuthorInfo[],
+): string | null {
+  // Indobase: no model chooser — always use preferred/server coding model when present.
+  const preferred =
+    models.find((model) => model.id === "openai/gpt-5.6-luna") ??
+    models.find((model) => model.id.includes("gpt-5.6-luna")) ??
+    models[0];
+  return preferred?.id ?? null;
+}`
+  if (text.includes(oldFn)) {
+    write(path, text.replace(oldFn, newFn))
+    console.log('  modelSelection forced to preferred coding model')
+  } else if (text.includes('no model chooser')) {
+    console.log('  modelSelection already forced')
+  } else {
+    console.warn('  skip: modelSelection getStoredSelectedModel drifted')
+  }
+}
+
+// --- Indobase format blueprints (Docs / Sheets / Slides / Design) ---
+{
+  const install = join(ROOT, 'scripts/install-indobase-formats.sh')
+  if (existsSync(install)) {
+    console.log('Installing Indobase formats (FORMAT_BLUEPRINTS_DIR → formats/)…')
+    const r = spawnSync('bash', [install], {
+      env: { ...process.env, CLOUDFLARE_OS_DIR: OS, FORMAT_BLUEPRINTS_DIR: join(ROOT, 'formats') },
+      stdio: 'inherit',
+    })
+    if (r.status !== 0) {
+      console.warn('  warning: install-indobase-formats.sh failed; runtime may keep upstream formats')
+    }
+  }
+}
+
+// --- Agent SYSTEM_PROMPT: hard Design format routing (survives AdminConfig gaps) ---
+{
+  const path = join(OS, 'packages/workshop-backend/src/agent.ts')
+  if (existsSync(path)) {
+    let text = readFileSync(path, 'utf8')
+    const marker = 'Indobase format routing (mandatory)'
+    if (text.includes(marker)) {
+      console.log('  agent SYSTEM_PROMPT already has Design routing')
+    } else {
+      const anchor =
+        'When the user asks for a new Gadget, ALWAYS consider starting from a blueprint. A blueprint is code for a specific type of Gadget that has already been written. The \\`listBlueprints\\` tool returns a list of available blueprints. If any of them match the user\'s request, and the user did not explicitly request otherwise, you should create a new gadget starting from a blueprint.'
+      const injection =
+        anchor +
+        '\n\n# Indobase format routing (mandatory)\n\n' +
+        'ALWAYS use Design format (blueprintId format.design) for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, and any graphic/creative design request. ' +
+        'NEVER use Slides (format.slides), Docs, Sheets, a random gadget, or a hand-written HTML mock for those intents — instantiate format.design with createGadget({ blueprintId: "format.design" }). ' +
+        'After creating Design, call bootstrapFromPrompt(userMessage) or setPreset (logo | ig-post | story | poster); edit layers via executeCode RPC, do not rewrite client.js for content.'
+      if (!text.includes(anchor)) {
+        console.warn('  skip: agent SYSTEM_PROMPT blueprint anchor drifted')
+      } else {
+        text = text.replace(anchor, injection)
+        writeFileSync(path, text)
+        console.log('  agent SYSTEM_PROMPT ← Design format routing')
+      }
+    }
+  }
+}
+
+// --- Local ADMINS: allow seed-format-routing via admin + Indobase auto-login "dev" ---
+{
+  const path = join(OS, 'run-dev-server.js')
+  if (existsSync(path)) {
+    let text = readFileSync(path, 'utf8')
+    if (text.includes('ADMINS = ["admin", "dev"]') || text.includes("ADMINS = ['admin', 'dev']")) {
+      console.log('  ADMINS already includes admin+dev')
+    } else if (text.includes('config.vars.ADMINS = ["admin"];')) {
+      text = text.replace(
+        'config.vars.ADMINS = ["admin"];',
+        'config.vars.ADMINS = ["admin", "dev"]; // Indobase: seed-format-routing + auto-login',
+      )
+      writeFileSync(path, text)
+      console.log('  ADMINS ← admin, dev')
+    } else {
+      console.warn('  skip: ADMINS assignment drifted')
+    }
   }
 }
 

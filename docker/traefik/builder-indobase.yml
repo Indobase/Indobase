@@ -1,17 +1,16 @@
 # Traefik dynamic config for https://builder.indobase.in
 # Copy to /etc/dokploy/traefik/dynamic/builder-indobase.yml on the Vyom control-plane VPS.
 # Requires DNS: builder.indobase.in -> 103.190.92.249 (Vyom .249).
-# Backend Swarm service: indobase-builder (port 5173).
+# Backend: Gen 3 CFOS bridge (indobase-builder-cfos:8791). Classic Remix Builder scaled to 0.
 #
-# Long-lived SSE (/api/chat) needs generous forwarding timeouts + flush so
-# idle model/tool gaps are not closed as dead connections.
+# Long-lived agent WebSocket (/api) + SSE need generous forwarding timeouts.
 
 http:
   serversTransports:
     indobase-builder-long:
       forwardingTimeouts:
         dialTimeout: 30s
-        # 0 = wait indefinitely for the first response byte (SSE chat streams).
+        # 0 = wait indefinitely for the first response byte (streams / WS upgrade).
         responseHeaderTimeout: 0s
         idleConnTimeout: 3600s
   routers:
@@ -36,5 +35,5 @@ http:
         responseForwarding:
           flushInterval: 1ms
         servers:
-          - url: http://indobase-builder:5173
+          - url: http://indobase-builder-cfos:8791
         passHostHeader: true

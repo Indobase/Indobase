@@ -26,6 +26,7 @@ import {
 } from './generated-code-validation';
 import { assertPreviewSmokeHealthy } from './preview-smoke';
 import { lintGeneratedVisualQuality } from './visual-quality-lint';
+import { resolveStockInGeneratedSources } from './stock-images/resolve-stock-client';
 
 const logger = createScopedLogger('finalizeCodegen');
 
@@ -249,6 +250,34 @@ export async function finalizeCodegen(
     const sourcesAndStyles = await collectGeneratedSourcesAndStyles(
       container.fs as Parameters<typeof collectGeneratedSourcesAndStyles>[0],
     );
+
+    /*
+     * Resolve Openverse stock placeholders before preview/lint so agents never need to invent
+     * Pexels/Unsplash URLs. Markers: data-indobase-stock / indobase-stock:query
+     */
+    try {
+      const stock = await resolveStockInGeneratedSources(sourcesAndStyles);
+      for (const filePath of stock.changedFiles) {
+        const next = sourcesAndStyles[filePath];
+        if (typeof next !== 'string') {
+          continue;
+        }
+        await container.fs.writeFile(filePath, next);
+        proposeWorkbenchFileWrite(filePath, next);
+        if (filePath in generatedSources) {
+          generatedSources[filePath] = next;
+        }
+      }
+      if (stock.changedFiles.length) {
+        logger.info(`Resolved stock images in ${stock.changedFiles.length} file(s)`);
+        workbenchStore.refreshAllPreviews();
+      }
+      if (stock.unresolved.length) {
+        logger.warn(`Unresolved stock queries: ${stock.unresolved.slice(0, 5).join('; ')}`);
+      }
+    } catch (stockError) {
+      logger.warn('Stock image resolve skipped', stockError);
+    }
 
     /*
      * Hard failures (syntax / missing imports) throw before preview wait when present.

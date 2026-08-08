@@ -1,0 +1,13 @@
+{
+  "blueprintId": "format.slides",
+  "title": "Slides",
+  "description": "Use for multi-slide decks and presentations only (pitch decks, briefings). NEVER use for logos, Instagram/LinkedIn/Facebook posts or stories, posters, flyers, banners, or single-image graphics — those must use Design (format.design).",
+  "output": {
+    "id": "presentation",
+    "noun": "Slides",
+    "plural": "Slides",
+    "icon": "presentation"
+  },
+  "author": { "type": "user", "name": "Indobase", "id": "builder@indobase.in" },
+  "revision": 4
+}

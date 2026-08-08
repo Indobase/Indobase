@@ -1,0 +1,19 @@
+# File-backed wildcard TLS for Static Launch subdomains.
+# Copy to /etc/dokploy/traefik/dynamic/sites-wildcard-tls.yml on Vyom (.249).
+# Pair with certificates at:
+#   /etc/dokploy/traefik/dynamic/certificates/sites-wildcard.crt
+#   /etc/dokploy/traefik/dynamic/certificates/sites-wildcard.key
+#
+# Issued via DNS-01 (lego + Hostinger TXT). Apex sites.indobase.in stays on
+# HTTP-01 letsencrypt in sites-indobase.yml (wildcard SANs cannot use HTTP-01).
+#
+# Renewal: re-issue before expiry (lego account under
+# /var/lib/indobase/certs/sites-wildcard/). Prefer adding a separate Traefik
+# certResolver with dnsChallenge.provider=hostinger + HOSTINGER_API_TOKEN on
+# dokploy-traefik when ready — do NOT replace the shared HTTP-01 letsencrypt
+# resolver used by Studio/Builder/ecosystem hosts.
+
+tls:
+  certificates:
+    - certFile: /etc/dokploy/traefik/dynamic/certificates/sites-wildcard.crt
+      keyFile: /etc/dokploy/traefik/dynamic/certificates/sites-wildcard.key

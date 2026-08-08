@@ -2,6 +2,11 @@ upstream/
 node_modules/
 bridge/dist/
 bridge/node_modules/
+bridge/.indobase-launches/
+.indobase-launches/
 .env
 .env.*
 !.env.example
+# PortableSSD / macOS AppleDouble — never commit
+**/._*
+.DS_Store

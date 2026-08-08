@@ -1,5 +1,9 @@
+/**
+ * Indobase OS — emergency / offline HTML only.
+ * Normal entry proxies the CFOS agent desktop as the top document (no iframe shell).
+ */
 import type { Session } from './auth.js'
-import { buildAgentHint, stripVendorBranding } from './indobase-adapter.js'
+import { stripVendorBranding } from './indobase-adapter.js'
 
 function escapeHtml(value: string): string {
   return value
@@ -17,7 +21,6 @@ const SHELL_CSS = `
     --text: #e8eef8;
     --muted: #9aa8c0;
     --accent: #3B8FD6;
-    --bar: 52px;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -26,203 +29,224 @@ const SHELL_CSS = `
     background: var(--bg);
     color: var(--text);
   }
-  header.ibar {
-    height: var(--bar);
-    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-    padding: 0 1rem; border-bottom: 1px solid var(--line);
-    background: rgba(11,18,32,.92); backdrop-filter: blur(10px);
-  }
-  .brand { font-weight: 700; letter-spacing: .02em; font-size: .95rem; white-space: nowrap; }
-  .brand span { color: var(--accent); }
-  .meta { color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .actions { display: flex; gap: .45rem; align-items: center; flex-shrink: 0; }
-  a.btn, button.btn {
-    appearance: none; border: 0; cursor: pointer; text-decoration: none;
-    background: var(--accent); color: #041018; font-weight: 650;
-    padding: .35rem .7rem; border-radius: 8px; font-size: .78rem;
-  }
-  a.btn.secondary, button.btn.secondary {
-    background: transparent; color: var(--text); border: 1px solid var(--line);
-  }
-  .stage { height: calc(100% - var(--bar)); position: relative; }
-  .stage iframe { border: 0; width: 100%; height: 100%; background: #000; display: block; }
-  .drawer {
-    position: absolute; top: 12px; right: 12px; width: min(380px, calc(100% - 24px));
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: .9rem 1rem; box-shadow: 0 12px 40px rgba(0,0,0,.35); display: none; z-index: 5;
-  }
-  .drawer.open { display: block; }
-  .drawer h2 { margin: 0 0 .5rem; font-size: .9rem; color: var(--muted); }
-  pre {
-    margin: 0; max-height: 220px; overflow: auto; font-size: .72rem;
-    background: #0a101c; border: 1px solid var(--line); border-radius: 8px; padding: .65rem;
-  }
-  .empty {
-    max-width: 640px; margin: 4rem auto; padding: 1.5rem;
-    border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
-  }
-  .empty h1 { margin: 0 0 .5rem; font-size: 1.35rem; }
-  .empty p { color: var(--muted); line-height: 1.5; }
   .pill {
     display: inline-flex; border: 1px solid var(--line); border-radius: 999px;
     padding: .15rem .55rem; font-size: .72rem; color: var(--muted);
   }
   .ok { color: #7ddea2; }
   .warn { color: #e7c56a; }
+  .empty {
+    max-width: 640px; margin: 4rem auto; padding: 1.5rem;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+  }
+  .empty h1 { margin: 0 0 .5rem; font-size: 1.35rem; }
+  .empty p { color: var(--muted); line-height: 1.5; }
+  a.btn, button.btn {
+    appearance: none; border: 0; cursor: pointer; text-decoration: none;
+    background: var(--accent); color: #041018; font-weight: 650;
+    padding: .35rem .7rem; border-radius: 8px; font-size: .78rem;
+    display: inline-block;
+  }
+  a.btn.secondary, button.btn.secondary {
+    background: transparent; color: var(--text); border: 1px solid var(--line);
+  }
+  pre {
+    margin: 0; max-height: 220px; overflow: auto; font-size: .72rem;
+    background: #0a101c; border: 1px solid var(--line); border-radius: 8px; padding: .65rem;
+  }
+  .landing {
+    min-height: 100%; display: flex; flex-direction: column;
+  }
+  .landing .hero {
+    flex: 1; display: grid; place-items: center; padding: 2rem 1.25rem;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,143,214,.18), transparent 55%),
+      var(--bg);
+  }
+  .landing .card {
+    width: min(520px, 100%);
+    border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    padding: 1.75rem 1.5rem;
+  }
+  .landing h1 { margin: 0 0 .5rem; font-size: 1.55rem; letter-spacing: -.02em; }
+  .landing p { color: var(--muted); line-height: 1.55; margin: 0 0 1rem; }
+  .landing .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.1rem; }
 `
 
+/**
+ * Same-document bootstrap for the proxied CFOS desktop.
+ * Replaces the old parent-frame postMessage + Go Live chrome.
+ * Agent uses /api/session + launchBusiness; account/sign-out happen in chat / settings.
+ */
+export function injectIndobaseContextBootstrap(html: string): string {
+  const script = `<script>
+(function () {
+  async function pull() {
+    try {
+      const s = await fetch('/api/session', { credentials: 'same-origin' }).then(function (r) {
+        return r.json();
+      });
+      window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
+      window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
+      window.__INDOBASE_USAGE__ = s.usage || null;
+      window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
+      window.__INDOBASE_LAUNCH__ = s.launch || {
+        api: '/api/os/launch',
+        status: '/api/os/launch/status',
+        tool: '/api/os/tools/launchBusiness',
+        tool_alias: '/api/os/tools/goLive',
+      };
+      // ChatInterface meters each user send via this path (hard Free-plan enforce).
+      window.__INDOBASE_BEGIN_TURN__ = '/api/os/agent/begin-turn';
+      window.__INDOBASE__ = s.backend
+        ? {
+            INDOBASE_URL: s.backend.api_url,
+            INDOBASE_ANON_KEY: s.backend.anon_key,
+            VITE_INDOBASE_URL: s.backend.api_url,
+            VITE_INDOBASE_ANON_KEY: s.backend.anon_key,
+            INDOBASE_PROXY: '/api/indobase/proxy',
+            PROJECT_REF: s.project_ref,
+          }
+        : null;
+      try {
+        window.dispatchEvent(
+          new CustomEvent('indobase:context', {
+            detail: Object.assign({}, window.__INDOBASE__ || {}, {
+              AGENT_HINT: window.__INDOBASE_AGENT_HINT__,
+              ONBOARDING: window.__INDOBASE_ONBOARDING__,
+              USAGE: window.__INDOBASE_USAGE__,
+              ACTIONS: window.__INDOBASE_ACTIONS__,
+              LAUNCH_API: '/api/os/launch',
+              LAUNCH_TOOL: '/api/os/tools/launchBusiness',
+              LAUNCH_RULES:
+                'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
+              PROMPT_QUOTA: '/api/os/usage/prompt-quota',
+              BEGIN_TURN: window.__INDOBASE_BEGIN_TURN__,
+              AUTH: s.auth || { start: '/auth/start', verify: '/auth/verify', in_chat: true },
+              GUEST: !!s.guest,
+            }),
+          }),
+        );
+      } catch (_) {}
+    } catch (_) {}
+  }
+  pull();
+  setInterval(pull, 60000);
+})();
+</script>`
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${script}</body>`)
+  }
+  return `${html}${script}`
+}
+
+/** Fallback if handoff secret missing — normal entry mints a guest and opens the agent desktop. */
 export function renderLandingHtml(): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder</title>
+  <title>Indobase OS</title>
   <style>${SHELL_CSS}</style>
 </head>
-<body>
-  <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
-    <div class="meta">PoC · Indobase Builder Gen 3</div>
-  </header>
-  <div class="empty">
-    <h1>Open Builder from Studio</h1>
-    <p>Studio SSO only. Use <strong>Open Builder</strong> in Studio (with <code>BUILDER_USE_CFOS=1</code>) to link your project and enter the agent workspace.</p>
-    <p><a class="btn" href="https://studio.indobase.in">Go to Studio</a>
-       <a class="btn secondary" href="/sso/health">Health</a></p>
+<body class="landing">
+  <div class="hero">
+    <div class="card">
+      <h1>Indobase OS</h1>
+      <p>Workspace unavailable right now. Retry shortly, or open from your Indobase account link.</p>
+      <div class="cta-row">
+        <a class="btn" href="/">Retry</a>
+        <a class="btn secondary" href="/sso/health">Status</a>
+      </div>
+    </div>
   </div>
 </body>
 </html>`
 }
 
-export function renderWorkspaceHtml(opts: {
-  session: Session
-  cloudflareOsConfigured: boolean
-  osProxyPath?: string
-}): string {
-  const { session, cloudflareOsConfigured } = opts
-  const osPath = opts.osProxyPath || '/os/app/'
-  const projectLabel = escapeHtml(session.projectName || session.projectRef)
-  const email = escapeHtml(session.email)
-  const hasBackend = Boolean(session.backend?.anon_key && session.backend?.api_url)
-
-  const envJson = session.backend
-    ? {
-        INDOBASE_URL: session.backend.api_url,
-        INDOBASE_ANON_KEY: session.backend.anon_key,
-        VITE_INDOBASE_URL: session.backend.api_url,
-        VITE_INDOBASE_ANON_KEY: session.backend.anon_key,
-        INDOBASE_PROXY: '/api/indobase/proxy',
-        PROJECT_REF: session.projectRef,
-      }
-    : null
-
-  const envBlock = envJson ? escapeHtml(JSON.stringify(envJson, null, 2)) : 'No backend in handoff.'
-
-  // Gen 3: hint comes from @indobase/cloudflare-adapter (vendor branding stripped).
-  const agentHint = escapeHtml(buildAgentHint(session))
-
-  if (!cloudflareOsConfigured) {
-    return `<!doctype html>
+/**
+ * @deprecated Account creation happens in chat. `/start` redirects to `/`.
+ * Kept as a tiny bounce page for old marketing links.
+ */
+export function renderStartHtml(): string {
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder · ${projectLabel}</title>
+  <title>Indobase OS</title>
+  <meta http-equiv="refresh" content="0;url=/" />
   <style>${SHELL_CSS}</style>
 </head>
-<body>
-  <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
-    <div class="meta">${email} · ${projectLabel}</div>
-    <div class="actions">
-      <a class="btn secondary" href="${escapeHtml(session.studioUrl)}/project/${escapeHtml(session.projectRef)}/backend" target="_blank" rel="noopener">Studio</a>
-      <button class="btn secondary" type="button" id="logout">Sign out</button>
-    </div>
-  </header>
-  <div class="empty">
-    <p class="pill warn">Agent runtime not connected</p>
-    <h1 style="margin-top:.75rem">${projectLabel} linked</h1>
-    <p>${escapeHtml(
-      stripVendorBranding(
-        'Studio handoff worked. Start the local agent execution runtime and set CLOUDFLARE_OS_URL on this bridge (see scripts/dev-stack.sh).',
-      ),
-    )}</p>
-    <pre>${envBlock}</pre>
-    <p style="margin-top:1rem">
-      <a class="btn secondary" href="/sso/health">Health</a>
-    </p>
-  </div>
-  <script>
-    document.getElementById('logout')?.addEventListener('click', async () => {
-      await fetch('/sso/logout', { method: 'POST', credentials: 'same-origin' });
-      location.href = '/';
-    });
-  </script>
+<body class="landing">
+  <div class="hero"><div class="card">
+    <h1>Opening Indobase OS…</h1>
+    <p>Create your account in chat when you’re ready.</p>
+    <div class="cta-row"><a class="btn" href="/">Continue</a></div>
+  </div></div>
 </body>
 </html>`
-  }
+}
+
+/** Shown only when CLOUDFLARE_OS_URL is unset — no iframe chrome. */
+export function renderOfflineDesktopHtml(session: Session): string {
+  const projectLabel = escapeHtml(session.projectName || session.projectRef)
+  const envJson = session.backend
+    ? {
+        INDOBASE_URL: session.backend.api_url,
+        INDOBASE_ANON_KEY: session.backend.anon_key,
+        PROJECT_REF: session.projectRef,
+      }
+    : null
+  const envBlock = envJson
+    ? escapeHtml(JSON.stringify(envJson, null, 2))
+    : 'No backend yet — say “Add login” or “Add database” to provision lazily.'
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Indobase Builder · ${projectLabel}</title>
+  <title>Indobase OS · ${projectLabel}</title>
   <style>${SHELL_CSS}</style>
 </head>
 <body>
-  <header class="ibar">
-    <div class="brand">Indobase <span>Builder</span></div>
-    <div class="meta"><span class="pill ${hasBackend ? 'ok' : 'warn'}">${hasBackend ? 'project linked' : 'no backend'}</span> ${email} · ${projectLabel}</div>
-    <div class="actions">
-      <button class="btn secondary" type="button" id="toggle-backend">Indobase</button>
-      <button class="btn secondary" type="button" id="copy-hint">Copy agent hint</button>
-      <a class="btn secondary" href="${escapeHtml(session.studioUrl)}/project/${escapeHtml(session.projectRef)}/backend" target="_blank" rel="noopener">Studio</a>
-      <a class="btn secondary" href="${escapeHtml(osPath)}" target="_blank" rel="noopener">Pop out</a>
-      <button class="btn secondary" type="button" id="logout">Sign out</button>
-    </div>
-  </header>
-  <div class="stage">
-    <iframe id="os-frame" title="Indobase Builder workspace" src="${escapeHtml(osPath)}" allow="clipboard-read; clipboard-write"></iframe>
-    <aside class="drawer" id="drawer">
-      <h2>Indobase connection</h2>
-      <pre id="env-block">${envBlock}</pre>
-      <p style="margin:.65rem 0 0; font-size:.78rem; color:var(--muted)">
-        Same-origin API proxy: <code>/api/indobase/proxy/rest/v1/…</code>
-      </p>
-      <div class="actions" style="margin-top:.75rem">
-        <button class="btn" type="button" id="copy-env">Copy env JSON</button>
-      </div>
-    </aside>
+  <div class="empty">
+    <p class="pill warn">Agent desktop offline</p>
+    <h1 style="margin-top:.75rem">${projectLabel}</h1>
+    <p>${escapeHtml(
+      stripVendorBranding(
+        'Your session is linked. Start the agent execution runtime and set CLOUDFLARE_OS_URL (see scripts/dev-stack.sh).',
+      ),
+    )}</p>
+    <pre>${envBlock}</pre>
+    <p style="margin-top:1rem">
+      <a class="btn secondary" href="/sso/health">Status</a>
+    </p>
   </div>
-  <script>
-    window.__INDOBASE__ = ${envJson ? JSON.stringify(envJson) : 'null'};
-    const hint = ${JSON.stringify(agentHint)};
-    const frame = document.getElementById('os-frame');
-    function pushContext() {
-      try {
-        frame?.contentWindow?.postMessage({ type: 'indobase:context', payload: window.__INDOBASE__ }, '*');
-      } catch {}
-    }
-    frame?.addEventListener('load', pushContext);
-    setInterval(pushContext, 4000);
-
-    document.getElementById('toggle-backend')?.addEventListener('click', () => {
-      document.getElementById('drawer')?.classList.toggle('open');
-    });
-    document.getElementById('copy-env')?.addEventListener('click', async () => {
-      const text = document.getElementById('env-block')?.innerText || '';
-      await navigator.clipboard.writeText(text);
-    });
-    document.getElementById('copy-hint')?.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(hint);
-    });
-    document.getElementById('logout')?.addEventListener('click', async () => {
-      await fetch('/sso/logout', { method: 'POST', credentials: 'same-origin' });
-      location.href = '/';
-    });
-  </script>
 </body>
 </html>`
+}
+
+/**
+ * @deprecated Prefer proxying CFOS at `/`. Kept for tests that still import the name;
+ * aliases the offline page (no iframe / no outer bar).
+ */
+export function renderWorkspaceHtml(opts: {
+  session: Session
+  cloudflareOsConfigured: boolean
+  osProxyPath?: string
+  agentRuntimeUrl?: string | null
+}): string {
+  void opts.osProxyPath
+  void opts.agentRuntimeUrl
+  if (opts.cloudflareOsConfigured) {
+    // Callers should proxy CFOS; this path only exists for unit tests / miswired callers.
+    return renderOfflineDesktopHtml(opts.session).replace(
+      'Agent desktop offline',
+      'Use direct CFOS proxy at /',
+    )
+  }
+  return renderOfflineDesktopHtml(opts.session)
 }

@@ -2,12 +2,13 @@ import type { GeneratedCodeDiagnostic } from './generated-code-validation';
 
 /** Hexes / Tailwind tokens that scream the banned AI-template purple look. */
 const BANNED_PURPLE_HEX =
-  /#(?:9[eE]7[fF]{2}|7[cC]3[aA][eE][dD]|8[bB]5[cC][fF]6|6366[fF]1|a855[fF]7|9333[eE][aA]|7[cC]5[cC][dD]6|4[fF]46[eE]5)\b/g;
+  /#(?:9[eE]7[fF]{3}|7[cC]3[aA][eE][dD]|8[bB]5[cC][fF]6|6366[fF]1|a855[fF]7|9333[eE][aA]|7[cC]5[cC][dD]6|4[fF]46[eE]5)\b/g;
 
 const BANNED_PURPLE_TAILWIND =
   /\b(?:bg|text|from|to|via|border|ring|shadow|outline|fill|stroke)-(?:purple|violet|indigo)(?:-\d{2,3})?\b/g;
 
 const BANNED_UNSPLASH = /https?:\/\/(?:images\.)?unsplash\.com\//i;
+const BANNED_PEXELS = /https?:\/\/(?:images\.)?pexels\.com\//i;
 
 const INTER_ONLY_FONT =
   /font-family\s*:\s*(?:['"]Inter['"]|Inter)(?:\s*,\s*(?:system-ui|sans-serif|ui-sans-serif))?\s*;/i;
@@ -50,11 +51,11 @@ export function lintGeneratedVisualQuality(sources: Record<string, string>): Gen
       });
     }
 
-    if (BANNED_UNSPLASH.test(content)) {
+    if (BANNED_UNSPLASH.test(content) || BANNED_PEXELS.test(content)) {
       diagnostics.push({
         filePath,
         message:
-          'Unsplash URLs are banned — use Pexels with a real known URL, local assets, or CSS/SVG atmosphere instead.',
+          'Guessed Unsplash/Pexels URLs are banned — use data-indobase-stock="…" or url("indobase-stock:…") so Indobase can resolve a real Openverse image.',
         source: 'design',
       });
     }

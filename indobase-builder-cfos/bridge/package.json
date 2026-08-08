@@ -13,6 +13,7 @@
     "@hono/node-server": "^1.14.4",
     "@indobase/cloudflare-adapter": "file:../../packages/cloudflare-adapter",
     "@indobase/platform": "file:../../packages/platform",
+    "@indobase/platform-api": "file:../../packages/platform-api",
     "hono": "^4.8.5"
   },
   "devDependencies": {

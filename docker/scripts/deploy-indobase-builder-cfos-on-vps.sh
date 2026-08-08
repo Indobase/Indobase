@@ -6,7 +6,8 @@
 #
 # Builds/pushes image as roshanraghavander/indobase-builder-cfos:<sha> if missing.
 # Syncs Traefik + Studio BUILDER_CFOS_APP_URL.
-# Does NOT set BUILDER_USE_CFOS=1 (classic Builder remains default; use ?runtime=cfos).
+# Set REPLACE_CLASSIC_BUILDER=1 to make CFOS the default Open Builder target and
+# scale classic indobase-builder to 0 (requires CLOUDFLARE_OS_URL on the CFOS service).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -20,6 +21,12 @@ SERVICE_NAME="${BUILDER_CFOS_SERVICE_NAME:-indobase-builder-cfos}"
 CFOS_URL="${BUILDER_CFOS_APP_URL:-https://builder-v2.indobase.in}"
 STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
 BUILD_LOCALLY="${BUILD_CFOS_IMAGE:-1}"
+REPLACE_CLASSIC="${REPLACE_CLASSIC_BUILDER:-0}"
+CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL:-}"
+# Default internal runtime URL on Vyom .249 (docker_gwbridge → host :8787)
+if [[ -z "$CLOUDFLARE_OS_URL_VALUE" && "$REPLACE_CLASSIC" == "1" ]]; then
+  CLOUDFLARE_OS_URL_VALUE="http://172.18.0.1:8787"
+fi
 
 echo "==> Deploy Builder CFOS bridge ${IMAGE} to ${SSH_HOST}…"
 
@@ -46,6 +53,20 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-v2-
   < "${REPO_ROOT}/docker/traefik/builder-v2-indobase.yml"
 echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml"
 
+# Static Launch: sites.indobase.in + *.sites.indobase.in → CFOS bridge
+# (DNS A sites / *.sites → .249; do NOT touch tenant * → .248)
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /etc/dokploy/traefik/dynamic/certificates /etc/dokploy/traefik/dynamic/sites-custom /var/lib/indobase/launches"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/sites-indobase.yml" \
+  < "${REPO_ROOT}/docker/traefik/sites-indobase.yml"
+echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/sites-indobase.yml"
+
+# Wildcard TLS file pointer (certs themselves stay on VPS; do not overwrite)
+if [[ -f "${REPO_ROOT}/docker/traefik/sites-wildcard-tls.yml" ]]; then
+  ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/sites-wildcard-tls.yml" \
+    < "${REPO_ROOT}/docker/traefik/sites-wildcard-tls.yml"
+  echo "Synced Traefik TLS: /etc/dokploy/traefik/dynamic/sites-wildcard-tls.yml"
+fi
+
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE
 set -euo pipefail
 source /opt/indobase/lib/swarm-managed-env.sh
@@ -55,13 +76,22 @@ IMAGE="${IMAGE}"
 CFOS_URL="${CFOS_URL}"
 STUDIO_FILTER="${STUDIO_FILTER}"
 SHA="${SHA}"
+REPLACE_CLASSIC="${REPLACE_CLASSIC}"
+CLOUDFLARE_OS_URL_VALUE="${CLOUDFLARE_OS_URL_VALUE}"
 
-echo "Pulling \${IMAGE}…"
-docker pull "\${IMAGE}"
+if docker image inspect "\${IMAGE}" >/dev/null 2>&1; then
+  echo "Using local image \${IMAGE} (skip registry pull)"
+else
+  echo "Pulling \${IMAGE}…"
+  docker pull "\${IMAGE}"
+fi
 
 ENV_FILE="/opt/indobase-builder-cfos.runtime.env"
 STUDIO_ENV="/opt/indobase/studio-swarm.env"
 DOCKER_ENV="/opt/indobase/docker/.env"
+LAUNCH_ROOT="/var/lib/indobase/launches"
+TRAEFIK_CUSTOM_HOST="/etc/dokploy/traefik/dynamic/sites-custom"
+TRAEFIK_CUSTOM_CONTAINER="/var/lib/indobase/traefik-dynamic"
 
 SECRET=""
 if [[ -f "\${ENV_FILE}" ]]; then
@@ -95,18 +125,56 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" PORT "8791"
 swarm_upsert_env_file_kv "\${ENV_FILE}" GIT_SHA "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_VERSION "\${SHA}"
 swarm_upsert_env_file_kv "\${ENV_FILE}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
+# Platform API (OTP / ensure / publish) — Studio Swarm DNS on dokploy-network
+STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}" || true)"
+PLATFORM_API=""
+if [[ -n "\${STUDIO_SVC}" ]]; then
+  PLATFORM_API="http://\${STUDIO_SVC}:8080"
+fi
+if [[ -n "\${PLATFORM_API}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" PLATFORM_API_URL "\${PLATFORM_API}"
+  swarm_upsert_env_file_kv "\${ENV_FILE}" STUDIO_INTERNAL_URL "\${PLATFORM_API}"
+  echo "Platform API base: \${PLATFORM_API}"
+fi
+# Static Launch hosts (sites.indobase.in / *.sites.indobase.in) — keep in sync with Traefik
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_DOMAIN_SUFFIX "sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_CNAME_TARGET "sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_PUBLIC_URL "https://sites.indobase.in"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_ROOT "\${LAUNCH_ROOT}"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_USE_PATH_URL "0"
+swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR "\${TRAEFIK_CUSTOM_CONTAINER}"
+if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then
+  swarm_upsert_env_file_kv "\${ENV_FILE}" CLOUDFLARE_OS_URL "\${CLOUDFLARE_OS_URL_VALUE}"
+fi
 
 if [[ -f "\${STUDIO_ENV}" ]]; then
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_APP_URL "\${CFOS_URL}"
   swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_CFOS_HANDOFF_SECRET "\${SECRET}"
-  if grep -q '^BUILDER_USE_CFOS=' "\${STUDIO_ENV}" 2>/dev/null; then
+  if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+    swarm_upsert_env_file_kv "\${STUDIO_ENV}" BUILDER_USE_CFOS "1"
+  elif grep -q '^BUILDER_USE_CFOS=' "\${STUDIO_ENV}" 2>/dev/null; then
     sed -i '/^BUILDER_USE_CFOS=/d' "\${STUDIO_ENV}" || true
   fi
 fi
 
+ensure_bind_mount() {
+  local service="\$1" source="\$2" target="\$3"
+  local mounts
+  mounts="\$(docker service inspect "\$service" --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}' 2>/dev/null || echo 'null')"
+  if echo "\$mounts" | grep -q "\"Target\":\"\${target}\""; then
+    echo "Bind mount \${target} already present"
+    return 0
+  fi
+  echo "Adding bind mount \${source} → \${target}"
+  docker service update --mount-add "type=bind,source=\${source},destination=\${target}" "\$service" >/dev/null
+}
+
 if docker service inspect "\${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "Updating swarm service \${SERVICE_NAME} (image + managed env)…"
   swarm_apply_env_file "\${SERVICE_NAME}" "\${ENV_FILE}" --image "\${IMAGE}"
+  docker service update --host-add "host.docker.internal:host-gateway" "\${SERVICE_NAME}" >/dev/null || true
+  ensure_bind_mount "\${SERVICE_NAME}" "\${LAUNCH_ROOT}" "\${LAUNCH_ROOT}"
+  ensure_bind_mount "\${SERVICE_NAME}" "\${TRAEFIK_CUSTOM_HOST}" "\${TRAEFIK_CUSTOM_CONTAINER}"
 else
   echo "Creating swarm service \${SERVICE_NAME}…"
   docker service create \
@@ -114,17 +182,39 @@ else
     --network dokploy-network \
     --env-file "\${ENV_FILE}" \
     --limit-memory 512m \
+    --host-add "host.docker.internal:host-gateway" \
+    --mount "type=bind,source=\${LAUNCH_ROOT},destination=\${LAUNCH_ROOT}" \
+    --mount "type=bind,source=\${TRAEFIK_CUSTOM_HOST},destination=\${TRAEFIK_CUSTOM_CONTAINER}" \
     "\${IMAGE}"
+fi
+
+if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+  if [[ -z "\${CLOUDFLARE_OS_URL_VALUE}" ]] && ! grep -q '^CLOUDFLARE_OS_URL=.' "\${ENV_FILE}" 2>/dev/null; then
+    echo "::error::REPLACE_CLASSIC_BUILDER=1 requires CLOUDFLARE_OS_URL (e.g. http://host.docker.internal:8787)"
+    exit 1
+  fi
 fi
 
 STUDIO_SVC="\$(swarm_discover_service "\${STUDIO_FILTER}")"
 if [[ -n "\${STUDIO_SVC}" && -f "\${STUDIO_ENV}" ]]; then
   echo "Pointing Studio (\${STUDIO_SVC}) BUILDER_CFOS_APP_URL to \${CFOS_URL}…"
-  docker service update \
-    --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
-    --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
-    --env-rm "BUILDER_USE_CFOS" \
-    "\${STUDIO_SVC}" || true
+  if [[ "\${REPLACE_CLASSIC}" == "1" ]]; then
+    docker service update \
+      --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
+      --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
+      --env-add "BUILDER_USE_CFOS=1" \
+      "\${STUDIO_SVC}" || true
+    if docker service inspect indobase-builder >/dev/null 2>&1; then
+      echo "Scaling classic indobase-builder → 0 (CFOS is default)…"
+      docker service scale indobase-builder=0 || true
+    fi
+  else
+    docker service update \
+      --env-add "BUILDER_CFOS_APP_URL=\${CFOS_URL}" \
+      --env-add "BUILDER_CFOS_HANDOFF_SECRET=\${SECRET}" \
+      --env-rm "BUILDER_USE_CFOS" \
+      "\${STUDIO_SVC}" || true
+  fi
 fi
 
 echo "Waiting for service to settle…"

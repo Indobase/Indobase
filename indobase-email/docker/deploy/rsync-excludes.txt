@@ -1,5 +1,0 @@
-.env
-node_modules
-.gocache
-console/dist
-notification_center/dist

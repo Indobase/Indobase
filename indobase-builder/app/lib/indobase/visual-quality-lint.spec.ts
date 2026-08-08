@@ -11,7 +11,7 @@ describe('lintGeneratedVisualQuality', () => {
     });
 
     expect(diagnostics.some((d) => d.message.includes('#9E7FFF'))).toBe(true);
-    expect(diagnostics.some((d) => d.message.includes('Unsplash'))).toBe(true);
+    expect(diagnostics.some((d) => d.message.match(/Unsplash|Pexels|stock/i))).toBe(true);
     expect(diagnostics.every((d) => d.source === 'design')).toBe(true);
   });
 

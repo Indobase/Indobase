@@ -36,6 +36,15 @@ echo "→ Cloudflare OS on :${CFOS_PORT}"
   if [[ ! -d node_modules ]]; then
     pnpm install
   fi
+  # Bake Indobase local auto-login into the frontend bundle (skip signup/login)
+  # and install Indobase formats (Docs / Sheets / Slides / Design).
+  node "$ROOT/scripts/rebrand-cloudflare-os.mjs" >/dev/null
+  # Keep FORMAT_BLUEPRINTS_DIR for any workshop-backend rebuild during run-local.
+  FORMATS_ABS="$ROOT/formats"
+  export FORMAT_BLUEPRINTS_DIR="$(python3 -c "import os; print(os.path.relpath('$FORMATS_ABS', '$CFOS_DIR/packages/workshop-backend'))")"
+  export VITE_DEV_AUTO_LOGIN=true
+  export VITE_DEV_USERNAME="${VITE_DEV_USERNAME:-dev}"
+  export VITE_DEV_PASSWORD="${VITE_DEV_PASSWORD:-devpassword}"
   # run-local binds 8787 by default
   pnpm run-local
 ) &

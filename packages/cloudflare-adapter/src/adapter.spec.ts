@@ -30,7 +30,7 @@ describe('@indobase/cloudflare-adapter', () => {
       'Open Cloudflare OS and install a Gadget from os.cloudflare.app with Workers AI'
     const clean = stripVendorBranding(raw)
     expect(hasVendorBranding(clean)).toBe(false)
-    expect(clean).toContain('Indobase Builder')
+    expect(clean).toContain('Indobase OS')
     expect(clean).toContain('an App')
     expect(clean).toContain('Indobase Agent')
     expect(clean).not.toMatch(/Cloudflare/i)
@@ -124,13 +124,53 @@ describe('@indobase/cloudflare-adapter', () => {
     expect(ctx.dataPlane?.url).toBe('https://proj_abc.indobase.in')
     expect(ctx.generation.projectRef).toBe('proj_abc')
     expect(hasVendorBranding(ctx.agentHint)).toBe(false)
-    expect(ctx.agentHint).toContain('Indobase Builder')
+    expect(ctx.agentHint).toContain('Indobase OS')
+    expect(ctx.agentHint).toMatch(/Design/)
+    expect(ctx.agentHint).toMatch(/format\.design/)
+    expect(ctx.agentHint).toMatch(/ALWAYS/)
+    expect(ctx.agentHint).toMatch(/NEVER/)
+    expect(ctx.agentHint).toMatch(/Slides/)
+    expect(ctx.agentHint).toMatch(/HARD PATH|launchBusiness|\/api\/os\/launch/)
+    expect(ctx.agentHint).toMatch(/sites\.indobase\.in|indobase\.in/)
+    expect(ctx.agentHint).toMatch(/Enable ≠ Connect|Enable/)
     expect(ctx.agentHint).not.toMatch(/Cloudflare/i)
+  })
+
+  it('sessionToAgentContext includes account-in-chat rules for guests', () => {
+    const guest = sessionToAgentContext({
+      email: '',
+      projectRef: 'draft_abc',
+      projectName: 'My business',
+      orgSlug: 'guest',
+    })
+    expect(guest.agentHint).toMatch(/GUEST ACCOUNT GATE|HARD|FIRST/i)
+    expect(guest.agentHint).toMatch(/before|first/i)
+    expect(guest.agentHint).toMatch(/\/auth\/start/)
+    expect(guest.agentHint).toMatch(/\/auth\/verify/)
+    expect(guest.agentHint).toMatch(/dpdpConsent|Privacy|Terms|DPDP/i)
+    expect(guest.agentHint).toMatch(/acknowledge/i)
+    // Gate language must appear before general OS intro so auth cannot be skipped.
+    const gateIdx = guest.agentHint.search(/GUEST ACCOUNT GATE|HARD — FIRST/i)
+    const osIdx = guest.agentHint.indexOf('You are operating inside Indobase OS')
+    expect(gateIdx).toBeGreaterThanOrEqual(0)
+    expect(osIdx).toBeGreaterThan(gateIdx)
+  })
+
+  it('sessionToAgentContext does not prepend guest gate for signed-in operators', () => {
+    const signedIn = sessionToAgentContext({
+      email: 'op@indobase.in',
+      projectRef: 'proj_abc',
+      orgSlug: 'acme',
+    })
+    expect(signedIn.agentHint).not.toMatch(/GUEST ACCOUNT GATE/)
+    expect(signedIn.agentHint).toContain('Operator signed in as op@indobase.in')
+    expect(signedIn.agentHint).toMatch(/prompt-quota|Prompt quota/i)
+    expect(signedIn.agentHint).toMatch(/Go Live|Create account|Add login/i)
   })
 
   it('createCloudflareOsAdapter exposes the Phase 1 surface', () => {
     const adapter = createCloudflareOsAdapter({ indobaseProxyPath: '/api/indobase/proxy/' })
-    expect(adapter.publicLabel('deploy')).toBe('Publish')
+    expect(adapter.publicLabel('deploy')).toBe('Launch Business')
     const ctx = adapter.sessionToAgentContext({
       email: 'a@b.c',
       projectRef: 'ref1',
@@ -138,6 +178,11 @@ describe('@indobase/cloudflare-adapter', () => {
     expect(ctx.indobaseProxyPath).toBe('/api/indobase/proxy/')
     const prompt = adapter.formatAgentSessionPrompt(ctx)
     expect(prompt).toContain('indobase_builder_session')
+    expect(prompt).toContain('indobase_go_live')
+    expect(prompt).toContain('indobase_format_routing')
+    expect(prompt).toMatch(/format\.design/)
+    expect(prompt).toMatch(/ALWAYS/)
+    expect(prompt).toMatch(/launchBusiness/)
     expect(hasVendorBranding(prompt)).toBe(false)
   })
 })

@@ -1,0 +1,57 @@
+# Traefik dynamic config for Indobase Static Launch
+# Copy to /etc/dokploy/traefik/dynamic/sites-indobase.yml on Vyom control-plane (.249).
+#
+# Hosts (intentional — does NOT steal tenant *.indobase.in on .248):
+#   - sites.indobase.in          → CNAME apex for customer custom domains
+#   - *.sites.indobase.in        → branded launch subdomains (slug.sites.indobase.in)
+#
+# DNS (Hostinger zone for indobase.in):
+#   - A  sites      → 103.190.92.249
+#   - A  *.sites    → 103.190.92.249
+#   - KEEP apex wildcard * → 103.190.92.248 for project tenants
+#
+# Backend: Gen 3 CFOS bridge (same as builder.indobase.in).
+# Bridge env expectation:
+#   INDOBASE_LAUNCH_DOMAIN_SUFFIX=sites.indobase.in
+#   INDOBASE_LAUNCH_CNAME_TARGET=sites.indobase.in
+#   INDOBASE_LAUNCH_PUBLIC_URL=https://sites.indobase.in
+#
+# TLS:
+#   - Apex sites.indobase.in → HTTP-01 via certResolver letsencrypt (below).
+#   - *.sites.indobase.in → file cert (sites-wildcard-tls.yml + certificates/).
+#     Wildcard requires DNS-01; do not put *.sites on the shared HTTP-01 resolver.
+#   - Interim path URLs still work: https://sites.indobase.in/live/{slug}/
+#
+# Custom domains: customers CNAME to sites.indobase.in. Do NOT add an open
+# HostRegexp catch-all with ACME (abuse). Per-host routers are written by the
+# CFOS bridge to sites-custom/sites-custom-domains.yml when a domain is attached
+# (INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR → /etc/dokploy/traefik/dynamic/sites-custom).
+
+http:
+  routers:
+    indobase-sites-http:
+      rule: Host(`sites.indobase.in`) || HostRegexp(`^.+\.sites\.indobase\.in$`)
+      service: indobase-sites-svc
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - web
+      priority: 100
+
+    indobase-sites-https:
+      rule: Host(`sites.indobase.in`) || HostRegexp(`^.+\.sites\.indobase\.in$`)
+      service: indobase-sites-svc
+      entryPoints:
+        - websecure
+      priority: 100
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: sites.indobase.in
+
+  services:
+    indobase-sites-svc:
+      loadBalancer:
+        servers:
+          - url: http://indobase-builder-cfos:8791
+        passHostHeader: true

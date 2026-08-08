@@ -82,7 +82,7 @@ export const INDOBASE_CF_CONCEPT_MAP: readonly ConceptMapping[] = [
     cf: 'deploy',
     indobase: 'ExecutionPublish',
     contract: 'Execution',
-    publicLabel: 'Publish',
+    publicLabel: 'Launch Business',
   },
   {
     cf: 'auth',

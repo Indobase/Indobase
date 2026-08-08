@@ -13,6 +13,10 @@ COPY packages/cloudflare-adapter/package.json packages/cloudflare-adapter/
 COPY packages/cloudflare-adapter/src packages/cloudflare-adapter/src/
 COPY packages/cloudflare-adapter/tsconfig.json packages/cloudflare-adapter/
 
+COPY packages/platform-api/package.json packages/platform-api/
+COPY packages/platform-api/src packages/platform-api/src/
+COPY packages/platform-api/tsconfig.json packages/platform-api/
+
 COPY indobase-builder-cfos/bridge/package.json indobase-builder-cfos/bridge/
 COPY indobase-builder-cfos/bridge/tsconfig.json indobase-builder-cfos/bridge/
 COPY indobase-builder-cfos/bridge/tsconfig.build.json indobase-builder-cfos/bridge/
@@ -28,7 +32,8 @@ RUN npm install --ignore-scripts \
        --format=esm \
        --outfile=dist/index.js \
        --alias:@indobase/platform=/app/packages/platform/src/index.ts \
-       --alias:@indobase/cloudflare-adapter=/app/packages/cloudflare-adapter/src/index.ts
+       --alias:@indobase/cloudflare-adapter=/app/packages/cloudflare-adapter/src/index.ts \
+       --alias:@indobase/platform-api=/app/packages/platform-api/src/index.ts
 
 FROM node:22-alpine
 WORKDIR /app

@@ -17,7 +17,7 @@ export const VENDOR_BRAND_PATTERNS: readonly RegExp[] = [
 ]
 
 const REPLACEMENTS: Array<{ pattern: RegExp; replacement: string }> = [
-  { pattern: /\bCloudflare\s+OS\b/gi, replacement: 'Indobase Builder' },
+  { pattern: /\bCloudflare\s+OS\b/gi, replacement: 'Indobase OS' },
   { pattern: /\bCloudflare\s+Workers?\b/gi, replacement: 'Indobase runtime' },
   { pattern: /\bos\.cloudflare\.app\b/gi, replacement: 'builder.indobase.in' },
   { pattern: /\bcloudflare\.com\b/gi, replacement: 'indobase.in' },

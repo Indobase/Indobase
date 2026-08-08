@@ -11,7 +11,11 @@ import {
   assertProjectRuntimeAbi,
 } from '@indobase/platform'
 
+import { ACCOUNT_IN_CHAT_RULES, GUEST_ACCOUNT_FIRST_HINT } from './account-routing'
 import { stripVendorBranding } from './brand'
+import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
+import { LAUNCH_AGENT_HARD_RULES, LAUNCH_SESSION_HINT } from './launch-routing'
+import { PROMPT_QUOTA_AGENT_RULES, PROMPT_QUOTA_SESSION_HINT } from './prompt-quota-routing'
 
 /** Minimal session shape shared by the CFOS bridge (camelCase session cookie). */
 export type BridgeSessionLike = {
@@ -81,15 +85,33 @@ export function sessionToAgentContext(
 
   const generation = buildGenerationCapabilityContext(runtime)
   const proxy = options.indobaseProxyPath ?? DEFAULT_PROXY
+  const isGuest =
+    !session.email ||
+    session.orgSlug === 'guest' ||
+    session.projectRef.startsWith('draft_')
 
   const hintParts = [
-    'You are building inside Indobase Builder.',
-    `Project: ${session.projectName || session.projectRef} (${session.projectRef}).`,
+    ...(isGuest ? [GUEST_ACCOUNT_FIRST_HINT, ACCOUNT_IN_CHAT_RULES] : []),
+    'You are operating inside Indobase OS (Agentic Business OS).',
+    `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
+    isGuest
+      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds.'
+      : `Operator signed in as ${session.email}.`,
     dataPlane
-      ? `Prefer same-origin Indobase proxy ${proxy}* with session cookies, or INDOBASE_URL + anon key from the Indobase panel.`
-      : 'No Indobase backend payload was provided in the handoff.',
+      ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs.`
+      : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',
+    LAUNCH_SESSION_HINT,
+    LAUNCH_AGENT_HARD_RULES,
+    ...(isGuest ? [] : [PROMPT_QUOTA_SESSION_HINT, PROMPT_QUOTA_AGENT_RULES]),
+    'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
+    'Add login / database / payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect. Do not provision backend for a normal site launch.',
+    'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
+    'Discoverable actions (command palette / chat): Create account (guests), Go Live / Launch Business, Add login, Enable payments — finish inside Indobase OS.',
     'Brand all customer-facing UI as Indobase only.',
+    'Built-in formats: Docs (format.document), Sheets (format.spreadsheet), Slides (format.slides), Design (format.design).',
+    DESIGN_FORMAT_ROUTING_RULES,
     'Propose workspace file changes as MutationProposals; Indobase Workspace commits via Commands — do not treat the agent runtime as durable storage.',
+    'Finish every task inside Indobase OS without leaving.',
   ]
 
   return {
@@ -116,6 +138,12 @@ export function formatAgentSessionPrompt(ctx: AgentSessionContext): string {
   indobaseProxyPath: ${ctx.indobaseProxyPath}
   ${ctx.dataPlane ? `dataPlaneUrl: ${ctx.dataPlane.url}` : 'dataPlane: (none)'}
 </indobase_builder_session>
+<indobase_go_live>
+${LAUNCH_AGENT_HARD_RULES}
+</indobase_go_live>
+<indobase_format_routing>
+${DESIGN_FORMAT_ROUTING_RULES}
+</indobase_format_routing>
 ${cap}`.trim(),
   )
 }
