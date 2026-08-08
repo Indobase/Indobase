@@ -23,6 +23,8 @@ COPY indobase-builder-cfos/bridge/tsconfig.build.json indobase-builder-cfos/brid
 COPY indobase-builder-cfos/bridge/src indobase-builder-cfos/bridge/src/
 
 WORKDIR /app/indobase-builder-cfos/bridge
+# Bundle app code only — keep node_modules (Sentry/OTel) external so ESM
+# dynamic requires of Node builtins work at runtime.
 RUN npm install --ignore-scripts \
   && npm install --no-save esbuild@0.25.2 \
   && ./node_modules/.bin/esbuild src/index.ts \
@@ -30,6 +32,7 @@ RUN npm install --ignore-scripts \
        --platform=node \
        --target=node22 \
        --format=esm \
+       --packages=external \
        --outfile=dist/index.js \
        --alias:@indobase/platform=/app/packages/platform/src/index.ts \
        --alias:@indobase/cloudflare-adapter=/app/packages/cloudflare-adapter/src/index.ts \
@@ -42,6 +45,8 @@ ENV NODE_ENV=production
 ENV GIT_SHA=$GIT_SHA
 ENV BUILDER_CFOS_VERSION=$GIT_SHA
 ENV PORT=8791
+COPY indobase-builder-cfos/bridge/package.json ./package.json
+RUN npm install --omit=dev --ignore-scripts
 COPY --from=build /app/indobase-builder-cfos/bridge/dist/index.js ./dist/index.js
 EXPOSE 8791
 CMD ["node", "dist/index.js"]

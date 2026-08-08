@@ -250,27 +250,11 @@ async function seedAdmin(admin) {
     }
   }
 
-  const existing = String(after.instanceInstructions || '')
-  if (
-    !existing.includes('Go Live') ||
-    !existing.includes('HARD PATH') ||
-    !existing.includes('launchBusiness') ||
-    !existing.includes('prompt-quota') ||
-    !existing.includes('begin-turn') ||
-    !existing.includes('Discoverable actions') ||
-    !existing.includes('INDOBASE_FOLLOWUPS') ||
-    !existing.includes('productionChecklist') ||
-    !existing.includes('resolveProductImages')
-  ) {
-    const next = existing.trim()
-      ? `${existing.trim()}\n\n${INSTANCE_INSTRUCTIONS}`
-      : INSTANCE_INSTRUCTIONS
-    await admin.setInstanceInstructions(next)
-    console.log('instanceInstructions ← any-app hard paths + follow-ups + Design routing')
-  } else {
-    await admin.setInstanceInstructions(INSTANCE_INSTRUCTIONS)
-    console.log('instanceInstructions refreshed (any-app hard paths + follow-ups + Design)')
-  }
+  // Always replace (never append) — CFOS caps instanceInstructions at 8000 chars.
+  await admin.setInstanceInstructions(INSTANCE_INSTRUCTIONS)
+  console.log(
+    `instanceInstructions refreshed (${INSTANCE_INSTRUCTIONS.length} chars; any-app hard paths + follow-ups + Design)`,
+  )
 
   const final = await admin.getSettings()
   const design = (final.formats || []).find((f) => f.blueprintId === 'format.design')
