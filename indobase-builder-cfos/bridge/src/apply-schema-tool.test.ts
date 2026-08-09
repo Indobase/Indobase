@@ -31,6 +31,18 @@ describe('general web-app production tools', () => {
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureEmail/)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureAnalytics/)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /applySchema/)
+    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensure-first|BEFORE building|before.*UI/i)
+    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /guidedBackend/)
+  })
+
+  it('guidedBackend is ensure-first before UI', async () => {
+    const { GUIDED_BACKEND_AGENT_HARD_RULES, guidedBackendToolCatalog } = await import(
+      './guided-backend-chain.ts'
+    )
+    const catalog = guidedBackendToolCatalog()
+    assert.equal(catalog.name, 'guidedBackend')
+    assert.equal(catalog.path, '/api/os/tools/guidedBackend')
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /BEFORE generating the main UI|ensure-first/i)
   })
 
   it('resolveProductImages points at OS media tool', () => {

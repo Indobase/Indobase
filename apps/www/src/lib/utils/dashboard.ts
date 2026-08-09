@@ -1,6 +1,7 @@
 import { getUtmSourceForLink } from '$lib/utils/utm';
 import { browser } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
+import { getBuilderUrl } from '$lib/utils/builder';
 
 const DEFAULT_CONSOLE_BASE = 'https://studio.indobase.in';
 
@@ -56,15 +57,16 @@ export function getAppwriteDashboardUrl(path = ''): string {
 }
 
 /**
- * Sign-up URL — lands directly on Studio's sign-up.
+ * Sign-up URL — Builder-first (agentic OS). Lands on Builder, not Studio plan wizards.
  *
- * This used to append `returnTo=/billing/plans`, pushing every new account into plan selection
- * before they had seen the product. Sign-up now ends where Studio's own post-sign-in flow decides,
- * so the marketing CTAs ask for one step rather than two.
- *
- * `extraParams` still passes through for campaign links (e.g. `{ code: 'sites300' }`).
+ * Prefer PUBLIC_BUILDER_URL / classic builder.indobase.in. Campaign `extraParams`
+ * (e.g. `{ code: 'sites300' }`) still pass through as query string.
  */
 export function getSignUpUrl(extraParams: Record<string, string> = {}): string {
-    const query = new URLSearchParams(extraParams).toString();
-    return getAppwriteDashboardUrl(`/sign-up${query ? `?${query}` : ''}`);
+    const base = getBuilderUrl();
+    const url = new URL(base);
+    for (const [k, v] of Object.entries(extraParams)) {
+        if (v != null && String(v).length) url.searchParams.set(k, String(v));
+    }
+    return url.toString();
 }

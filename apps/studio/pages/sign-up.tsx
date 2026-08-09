@@ -1,10 +1,29 @@
+import type { GetServerSideProps } from 'next'
 import Link from 'next/link'
 
 import { SignUpForm } from 'components/interfaces/SignIn/SignUpForm'
 import SignInLayout from 'components/layouts/SignInLayout/SignInLayout'
 import { UnknownInterface } from 'components/ui/UnknownInterface'
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
+import { getPublicBuilderUrl } from 'lib/constants/builder-url'
 import type { NextPageWithLayout } from 'types'
+
+/**
+ * Builder-first: marketing / cold signup should land in Builder (agentic OS).
+ * Keep this page as a fallback when redirect is disabled (?studio=1).
+ */
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  if (ctx.query.studio === '1' || ctx.query.studio === 'true') {
+    return { props: {} }
+  }
+  const builder = getPublicBuilderUrl()
+  return {
+    redirect: {
+      destination: builder,
+      permanent: false,
+    },
+  }
+}
 
 const SignUpPage: NextPageWithLayout = () => {
   const { dashboardAuthSignUp: signUpEnabled } = useIsFeatureEnabled(['dashboard_auth:sign_up'])

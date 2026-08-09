@@ -15,6 +15,8 @@ import {
   type ApplySchemaResponse,
   type ProductionChecklistResponse,
   type ProductImagesResponse,
+  type WorkspaceUpdateResponse,
+  type BillingUpgradePlanResponse,
 } from '@indobase/platform-api'
 
 import { resolveHandoffSecret } from './auth.js'
@@ -408,6 +410,56 @@ export async function platformResolveProductImages(input: {
     return { ...(json as ProductImagesResponse), status }
   }
   return { ok: false, message: 'product images failed', status }
+}
+
+/** Agent updateWorkspace — rename org / project. */
+export async function platformWorkspaceUpdate(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  name?: string | null
+  brand?: string | null
+  organizationName?: string | null
+  projectName?: string | null
+}): Promise<WorkspaceUpdateResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+  }
+  if (input.name?.trim()) body.name = input.name.trim()
+  if (input.brand?.trim()) body.brand = input.brand.trim()
+  if (input.organizationName?.trim()) body.organization_name = input.organizationName.trim()
+  if (input.projectName?.trim()) body.project_name = input.projectName.trim()
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.workspaceUpdate, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as WorkspaceUpdateResponse), status }
+  }
+  return { ok: false, message: 'Workspace update failed', status }
+}
+
+/** Agent upgradePlan — Razorpay checkout for Indobase ladder. */
+export async function platformBillingUpgradePlan(input: {
+  gotrueId: string
+  email: string
+  workspaceRef: string
+  plan: string
+  tier?: string | null
+}): Promise<BillingUpgradePlanResponse & { status?: number }> {
+  const body: Record<string, unknown> = {
+    gotrue_id: input.gotrueId,
+    email: input.email,
+    workspace_ref: input.workspaceRef,
+    plan: input.plan.trim(),
+  }
+  if (input.tier?.trim()) body.tier = input.tier.trim()
+
+  const { status, json } = await platformFetch(PlatformApiRoutes.billingUpgradePlan, body)
+  if (json && typeof json === 'object') {
+    return { ...(json as BillingUpgradePlanResponse), status }
+  }
+  return { ok: false, message: 'Plan upgrade failed', status }
 }
 
 /** GET/POST product Auth OTP From (branded login mail). */

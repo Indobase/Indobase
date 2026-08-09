@@ -30,11 +30,10 @@ export const APPLY_SCHEMA_TOOL = {
 } as const
 
 export const APPLY_SCHEMA_AGENT_HARD_RULES = `
-## applySchema (HARD PATH — any app data model)
+## applySchema (HARD PATH — after ensureDatabase, before UI that needs data)
 
-After ensureDatabase:
-
-1. Call **applySchema** with the tables this product needs. Example SaaS:
+1. Call **ensureDatabase** first if not already ready.
+2. Call **applySchema** with the tables this product needs **before** building screens that read/write those tables. Example SaaS:
    { "brand": "Acme", "tables": [
      { "name": "organizations", "columns": [
        { "name": "id", "type": "uuid", "primary_key": true, "default": "gen_random_uuid()" },
@@ -47,11 +46,11 @@ After ensureDatabase:
        { "name": "role", "type": "text", "required": true, "default": "'member'" }
      ] }
    ] }
-2. Booking example tables: resources, slots, bookings. Blog: posts, tags. Dashboard: metrics_events.
-3. Ecommerce inventory: prefer **setupShopCatalog** (preset). Or applySchema + your own orders tables.
-4. ONLY claim a real backend after applySchema (or setupShopCatalog) returns ok:true.
-5. Wire the UI to the project REST API + Auth (session.backend). Never invent a third-party database.
-6. Pass declarative tables only — do not send arbitrary SQL.
+3. Booking: resources, slots, bookings. Blog: posts, tags. Dashboard: metrics_events.
+4. Ecommerce inventory: prefer **setupShopCatalog** / **guidedBackend**. Or applySchema + your own orders tables.
+5. ONLY claim a real backend after applySchema (or setupShopCatalog) returns ok:true.
+6. Wire the UI to project REST + Auth (session.backend). Never invent a third-party database.
+7. Pass declarative tables only — do not send arbitrary SQL.
 `.trim()
 
 export function applySchemaToolCatalog() {

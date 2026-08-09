@@ -249,6 +249,22 @@ console.log('  chrome logos → IndobaseMark')
   write(path, text)
 }
 
+// --- Home landing hero (agentic business OS ICP) ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/routes/index.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    text = replaceAll(text, 'What are we working on?', 'Describe Your Business Idea')
+    text = replaceAll(
+      text,
+      'Ask a question, create an output, or create an app that works with your tools and data.',
+      'Tell Indobase what you want to build — we’ll create the site, backend, and go live with you.',
+    )
+    write(path, text)
+    console.log('  home landing hero → agentic business OS copy')
+  }
+}
+
 // --- User-facing limits messages ---
 {
   const path = join(OS, 'packages/workshop-shared/src/limits.ts')

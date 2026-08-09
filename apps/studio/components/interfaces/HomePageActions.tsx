@@ -18,6 +18,7 @@ import { Input } from 'ui-patterns/DataInputs/Input'
 
 import { FilterPopover } from '../ui/FilterPopover'
 import { SortDropdown } from '../ui/SortDropdown'
+import { getPublicBuilderUrl } from 'lib/constants/builder-url'
 
 interface HomePageActionsProps {
   slug?: string
@@ -149,9 +150,14 @@ export const HomePageActions = ({ slug: _slug, hideNewProject = false }: HomePag
         )}
 
         {projectCreationEnabled && !hideNewProject && (
-          <Button asChild icon={<Plus />} type="primary" size="tiny">
-            <Link href={`/new/${slug}`}>New project</Link>
-          </Button>
+          <>
+            <Button asChild type="primary" size="tiny">
+              <a href={getPublicBuilderUrl()}>Continue in Builder</a>
+            </Button>
+            <Button asChild icon={<Plus />} type="default" size="tiny">
+              <Link href={`/new/${slug}`}>New project</Link>
+            </Button>
+          </>
         )}
       </div>
     </div>

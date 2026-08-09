@@ -41,98 +41,50 @@ const FORMAT_HINTS = {
 
 const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
-## GUEST ACCOUNT GATE (HARD — FIRST before any other task)
-If Guest / no email / not signed in: briefly acknowledge their request, then BEFORE docs, design, code, launch, enable, or any other work: collect name+email+Privacy/Terms (DPDP) consent in chat → call authStart { name, email, dpdpConsent: true } → ask for OTP → call authVerify { name, email, token }. After ok, tell them to wait/refresh for browser sign-in, then continue. Never open a Start building form or /start modal. Never skip this gate. Do NOT use webFetch for auth.
+## GUEST GATE (HARD — before other work)
+Guest / no email: acknowledge request, then collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. After ok: wait/refresh for sign-in, then continue the ORIGINAL request. No Start building modal. No webFetch for auth. **This turn: no FOLLOWUPS chips** (no Go Live / payments / checklist).
 
-## Discoverable actions
-Create account (guests) · Go Live · Add login · Add a data model · Add email/analytics · Add a real backend (shop) · Add payments · Production checklist — all inside Indobase OS chat / tools. Never send the operator to Studio.
+## Goal → gate → build → cards (HARD)
+Cards are **agent-authored only** (<<<INDOBASE_FOLLOWUPS>>> / CHOICES). UI invents nothing — no block → no cards.
+Stage gate (timing): guest_gate=0 chips · building=goal CHOICES only (≤4) · deliverable/payments=≤4 personalized.
+1. Clear build ask → ack → guest gate if unsigned-in.
+2. Guest gate turn → **zero chips**; after verify, build the ORIGINAL request.
+3. Building → no Go Live/payments/checklist wall; at most one goal-tied CHOICE block if blocked.
+4. Deliverable only → emit 2–4 personalized chips for THIS brand/goal (never paste a fixed 8-card menu).
+5. Payments CHOICES only if they ask for payments.
+Clear “create a website for X” is enough — do not ask SaaS vs shop first. Prefer named tools over webFetch POST.
 
-## Agent prompt quota (HARD)
-Signed-in Free operators share a 5-prompt Builder meter.
-Runtime: ChatInterface POST /api/os/agent/begin-turn meters each user send (402 upgrade / 403 account abort).
-On heavy tool paths outside the composer: GET /api/os/usage/prompt-quota → if remaining 0 or 402/prompt_quota_exceeded, tell operator Free limit reached and to upgrade (quote upgradeUrl) — do not continue; else POST /api/os/usage/prompt-quota to consume one, then proceed.
-Guests get account_required — finish OTP first.
+## Quota
+Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/POST /api/os/usage/prompt-quota; on 0/402 stop + quote upgradeUrl. Guests: finish OTP first.
 
-## Universal production path (any web app)
-1. Build UI → **launchBusiness** (quote exact url).
-2. **ensureLogin** / **ensureDatabase** / **applySchema** as needed (shops: **resolveProductImages** → **setupShopCatalog**).
-3. Optional: **ensureEmail** / **ensureAnalytics** — quote pending_setup + launch_url; finish product setup before claiming live.
-4. Payments only if they sell (BYOK path below).
-5. SEO + legal → **productionChecklist** — claim production ready ONLY when claim_production_ready:true.
+## Production path (ensure-first)
+Classify early. Landing/marketing only: Build UI → launchBusiness (real html/files; quote exact url; never invent; *.sites.indobase.in; customDomain CNAME → sites.indobase.in).
+Apps with login/data (SaaS, shop, booking, blog CMS, dashboard): ensureLogin and/or ensureDatabase → applySchema or guidedBackend/setupShopCatalog FIRST → build UI against session.backend → launchBusiness. Prefer guidedBackend for ecommerce / “Add a real backend”.
+Optional ensureEmail / ensureAnalytics — pending_setup until product setup done.
+productionChecklist — claim ready only if claim_production_ready:true.
+Never Neon/Coolify/Firebase/Mailchimp, mock APIs, or third-party hosts.
 
-## Go Live — HARD PATH (Indobase hosting only)
-When the operator says take live / launch / publish / go public / launch my business:
-1. MUST call the launchBusiness agent tool (alias goLive) with REAL html or files — never empty:
-   { title, subdomain?, customDomain?, html } or { files: { "index.html": "…" } }.
-   Do NOT use webFetch for Launch (GET-only). Do NOT invent a URL.
-2. Default live URL comes from the tool (typically https://{subdomain}.sites.indobase.in). Tool also syncs Studio hosting when Platform API is up.
-3. Optional: customDomain for a domain they already own — DNS CNAME → sites.indobase.in. Never move hosting off Indobase.
-4. ONLY claim live after tool returns ok:true AND url. Quote that exact url. NEVER invent a URL. NEVER third-party hosts.
-5. Tell them: Your business is now live + the tool url (+ DNS steps if connecting their domain).
+## Payments (BYOK)
+Ask market → ensure payments + settlement_market → Razorpay/Stripe KYC + connectGateway keys → wireCheckout → set Buy CTA to checkout_url. Claim “Payments are live” only when verified.
 
-## Enable capabilities (prefer named tools — webFetch cannot POST)
-1. Login → **ensureLogin** → wire Sign-in CTA. Optional branded OTP From: POST /api/os/auth/mail.
-2. Database → **ensureDatabase** → **applySchema** (declarative tables only) OR shop preset **setupShopCatalog**.
-3. Email → **ensureEmail**; Analytics → **ensureAnalytics**. Never claim product live from ensure alone.
-4. Shop imagery → **resolveProductImages** then set image_url. Publish admin_html once (live REST refresh — no republish for stock).
-5. Never Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
-
-## Payments stage machine (ask → PSP KYC → paste keys → wireCheckout)
-Official map: docs/PAYMENTS-STRIPE-RAZORPAY.md (BYOK Razorpay/Stripe keys + Orders/Checkout.js / Stripe Checkout Sessions).
-1. **Add payments** → Where will customers pay? CHOICES (India/Razorpay · International/Stripe · I’ll describe).
-2. ensure { capability: "payments", settlement_market: "india"|"international" }.
-3. Send to Razorpay/Stripe dashboard for merchant KYC + copy API keys → call connectGateway (POST /api/os/tools/connectGateway) with the keys. Keys stay in Studio for direct checkout.
-4. Call wireCheckout (POST /api/os/tools/wireCheckout) → set Subscribe/Buy CTA href to checkout_url. Never invent a URL.
-5. If pending → Finish payments setup wall. After live → checkout / production checklist chips.
-6. Claim “Payments are live” only when setup_status ready / verified — never from ensure alone.
-
-## Follow-up recommendations (HARD — never leave the operator stuck)
-After every clarifying question AND after every completed deliverable (preview, Go Live, Enable, design done), end with clickable chips:
-
+Chip format (rewrite every time — do not copy labels verbatim):
 <<<INDOBASE_FOLLOWUPS
-title: Where should I take this next?
-Go Live on Indobase | Go Live — publish this business to my Indobase subdomain
-Connect my domain | Connect a domain I already own — CNAME to sites.indobase.in
-Add customer login | Call ensureLogin and wire a Sign-in CTA
-Add a real backend | Call ensureDatabase then applySchema (or resolveProductImages + setupShopCatalog for shops)
-Add payments | I want to connect payments — ask me India (Razorpay) vs International (Stripe), then connectGateway and wireCheckout
-Production checklist | Run productionChecklist for this app_type — only claim production ready if claim_production_ready is true
-Refine the design | Refine the design and branding
-Leave it as-is for now | Leave it as-is for now
+title: Where should I take Aural next?
+Polish hero with product shots | Refine the Aural hero with close-up headphone photography
+Go Live on Indobase | Go Live — publish Aural to my Indobase subdomain
+Wire Buy CTA | Add checkout for the Buy button when I am ready
 INDOBASE_FOLLOWUPS>>>
 
-Payments market ask:
+Payments market (only when they ask):
 <<<INDOBASE_CHOICES
 title: Where will customers pay?
-India (Razorpay) | Connect payments for India with Razorpay — ensure settlement_market india, wire checkout into this site
-International (Stripe) | Connect payments internationally with Stripe — ensure settlement_market international, wire checkout into this site
-I'll describe my market | I'll describe where my customers pay
+India (Razorpay) | Payments India/Razorpay — ensure settlement_market india, then KYC + connectGateway + wireCheckout
+International (Stripe) | Payments international/Stripe — ensure settlement_market international, then KYC + connectGateway + wireCheckout
+I'll describe my market | I'll describe where customers pay
 INDOBASE_CHOICES>>>
 
-Payments pending wall:
-<<<INDOBASE_FOLLOWUPS
-title: Finish payments setup
-Open Payments setup | Open Studio project Payments, finish Razorpay/Stripe KYC, paste API keys via connectGateway, then wireCheckout
-Complete merchant verification | Walk me through merchant verification and Confirm go-live
-Wire checkout into the site | Call wireCheckout (POST /api/os/tools/wireCheckout) with plan_name, price, currency, customer_email — set Subscribe/Buy CTA to checkout_url
-Skip payments for now | Skip payments for now
-INDOBASE_FOLLOWUPS>>>
-
-For clarifying picks before building, use <<<INDOBASE_CHOICES … INDOBASE_CHOICES>>> (same line format). Always include an “I’ll type …” option when choices aren’t exhaustive.
-Do the work (or ask one clarifying question) first — never gate building on a chip click when you already have enough detail.
-ONLY Indobase-native hosting. Payments: ask Razorpay vs Stripe for the rail, then Enable in-product.
-Personalize title when you know the brand (e.g. Where should I take MERIDIAN next?).
-
 ## Format routing
-ALWAYS use Design format (blueprintId format.design) for logos, Instagram/LinkedIn/Facebook posts and stories, posters, flyers, banners, thumbnails, and any graphic/creative design request.
-NEVER use Slides (format.slides), Docs, Sheets, a random gadget, or a hand-written HTML mock for those intents — instantiate format.design with createGadget({ blueprintId: "format.design" }).
-After creating Design, call bootstrapFromPrompt(userMessage) or setPreset (logo | ig-post | story | poster) and setTitle; edit layers via executeCode RPC, do not rewrite client.js for content.
-
-Standard blueprintIds:
-* Docs — format.document
-* Sheets — format.spreadsheet
-* Slides — format.slides (decks only)
-* Design — format.design (logos / social / posters / graphics)
+ALWAYS format.design for logos/social/posters/graphics (createGadget + bootstrapFromPrompt/setPreset). NEVER Slides/Docs/Sheets/HTML mocks for those. Docs=format.document Sheets=format.spreadsheet Slides=format.slides (decks only).
 `
 
 function argValue(flag) {

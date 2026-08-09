@@ -13,6 +13,8 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
   otherwise re-introspect the database — you already have it.
 
   When the app genuinely needs persistence or auth:
+  - ENSURE-FIRST: apply migrations / schema via indobase MCP or boltAction type="indobase" BEFORE wiring screens
+    that read/write those tables. Never invent mock APIs, fake JSON backends, or third-party database URLs.
   - Prefer the **indobase** MCP server tools: execute_sql, apply_migration, generate_typescript_types, deploy_edge_function, etc.
   - You MAY also use boltAction type="indobase" (migration + query pair) — changes auto-apply to the linked tenant database.
 
@@ -25,7 +27,7 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
   For EVERY database schema change:
   1. Write the migration file under indobase/migrations/
   2. Apply it via indobase MCP OR boltAction type="indobase" query with the same SQL
-  3. Wire the frontend to read/write via the indobase client
+  3. THEN wire the frontend to read/write via the indobase client — not before
 
   DATA PRESERVATION: No destructive DROP/DELETE without explicit user request. No BEGIN/COMMIT/ROLLBACK. Enable RLS on new tables.
 </database_instructions>`;
@@ -33,11 +35,10 @@ export const STUDIO_MANAGED_DATABASE_INSTRUCTIONS = `
 export function getStudioBackendUserPreamble(): string {
   return `INDOBASE BACKEND (Studio-linked — available, not mandatory):
 - An Indobase tenant backend is already connected. Do not ask the user for API keys.
-- Build the app first. Only use the database/auth if this app actually needs to persist data or
-  sign users in. If it does not (a timer, calculator, game, landing page, or anything the user says
-  needs no login), write NO migrations and make NO database calls.
-- If it does need the backend: wire src/lib/indobase.ts and .env with VITE_INDOBASE_URL /
-  VITE_INDOBASE_ANON_KEY, and apply the migrations before marking the feature complete.
+- Landing/static apps (no login, no data): build UI only — write NO migrations and make NO database calls.
+- Apps that need auth or persistence: apply migrations via MCP / indobase actions FIRST, then wire
+  src/lib/indobase.ts + .env (VITE_INDOBASE_URL / VITE_INDOBASE_ANON_KEY). Never invent mock APIs
+  or third-party database URLs. Do not mark the feature complete until schema is applied and UI is wired.
 
 `;
 }

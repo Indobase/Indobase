@@ -83,11 +83,14 @@ async function main() {
     console.error('Missing OPEN_ROUTER_API_KEY / OPENROUTER_API_KEY (or --key-file)')
     process.exit(1)
   }
+  const skipTest = process.argv.includes('--skip-test')
   console.log(`CF OS: ${CFOS_URL}`)
   console.log(`OpenRouter key: set len=${apiKey.length} prefix=${apiKey.slice(0, 10)}…`)
 
-  const username = process.env.VITE_DEV_USERNAME || 'dev'
-  const password = process.env.VITE_DEV_PASSWORD || 'devpassword'
+  const username =
+    argValue('--username') || process.env.VITE_DEV_USERNAME || process.env.CFOS_USERNAME || 'dev'
+  const password =
+    argValue('--password') || process.env.VITE_DEV_PASSWORD || process.env.CFOS_PASSWORD || 'devpassword'
 
   const api = await connectRpc()
   const passwordHash = await hashPassword(username, password)
@@ -139,16 +142,18 @@ async function main() {
     console.log('Onboarding marked complete')
   }
 
-  const testModelId = preferredId || MODELS[0].id
-  console.log(`Test run via LanguageModelBinding.run (${testModelId})…`)
-  const overseer = await auth.newGadget()
-  const gk = await overseer.newAiModelGatekeeper(testModelId)
-  const session = await gk.openSession()
-  const reply = await session.run({
-    prompt: 'Reply with exactly the three characters: OK.',
-    systemPrompt: 'You are a terse test harness. Do not add punctuation or explanation.',
-  })
-  console.log('Model reply:', JSON.stringify(String(reply).slice(0, 300)))
+  if (!skipTest) {
+    const testModelId = preferredId || MODELS[0].id
+    console.log(`Test run via LanguageModelBinding.run (${testModelId})…`)
+    const overseer = await auth.newGadget()
+    const gk = await overseer.newAiModelGatekeeper(testModelId)
+    const session = await gk.openSession()
+    const reply = await session.run({
+      prompt: 'Reply with exactly the three characters: OK.',
+      systemPrompt: 'You are a terse test harness. Do not add punctuation or explanation.',
+    })
+    console.log('Model reply:', JSON.stringify(String(reply).slice(0, 300)))
+  }
 
   const models = await auth.listModels()
   console.log('Configured models:', models.map((m) => `${m.name} [${m.id}]`).join(' | '))

@@ -27,4 +27,9 @@ describe('platform-api-client', () => {
   it('exposes OS prompt-quota Platform route', () => {
     assert.equal(PlatformApiRoutes.promptQuota, '/api/os/v1/usage/prompt-quota')
   })
+
+  it('exposes workspace update and billing upgrade Platform routes', () => {
+    assert.equal(PlatformApiRoutes.workspaceUpdate, '/api/os/v1/workspace/update')
+    assert.equal(PlatformApiRoutes.billingUpgradePlan, '/api/os/v1/billing/upgrade-plan')
+  })
 })

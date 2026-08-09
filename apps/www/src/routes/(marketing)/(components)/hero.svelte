@@ -132,9 +132,7 @@
         </div>
 
         <!--
-            Goes to Studio (studio.indobase.in) rather than Builder: getSignUpUrl() is the same
-            helper behind the header's "Start building for free", so both primary CTAs land on the
-            same sign-up → plan-selection flow instead of splitting traffic between two products.
+            Builder-first: getSignUpUrl() → builder.indobase.in (same as header Start building CTA).
         -->
         <a
             href={getSignUpUrl()}

@@ -1,11 +1,19 @@
 /**
  * Parse Indobase follow-up / choice chips from agent message text.
  *
- * General web-app path:
- *   classify app type → build → Go Live → ensureLogin / ensureDatabase / applySchema
- *   → payments (optional BYOK) → productionChecklist claim gate
+ * Product policy (goal → gate → build → cards):
+ *   1. Clear build ask → ack (+ guest gate if unsigned-in)
+ *   2. Guest gate → name/email/DPDP/OTP only — NO chips
+ *   3. Building → at most goal-tied CHOICES the agent emits (if blocked)
+ *   4. Deliverable ready → agent-authored FOLLOWUPS only
+ *   5. Capability path → agent-authored CHOICES for that path
  *
- * Ecommerce preset: setupShopCatalog + wireCheckout one_time.
+ * Cards are ALWAYS agent-authored (<<<INDOBASE_FOLLOWUPS>>> / CHOICES).
+ * The UI never invents a predetermined catalog — no block → no cards.
+ *
+ * Timing is enforced by a thin deterministic stage gate (Naive-style):
+ * guest_gate → none | building → goal CHOICES only (strip canned walls) |
+ * payments / deliverable → show agent chips, max 4.
  */
 
 export type FollowUpItem = {
@@ -20,12 +28,21 @@ export type ParsedFollowUps = {
   items: FollowUpItem[]
 }
 
+/** Conversation stage for chip timing (not a ranking algorithm). */
+export type ChipStage = 'guest_gate' | 'building' | 'payments' | 'deliverable'
+
+/** Naive-style brevity: never show a wall of chips. */
+export const MAX_VISIBLE_CHIPS = 4
+
 const BLOCK_RE =
   /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n([\s\S]*?)\r?\nINDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
 
 export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
 
-/** Indobase-native next steps after preview / Go Live (never third-party hosts). */
+/**
+ * Example catalog for agent instructions / seeds only — NOT injected by the UI.
+ * Prefer personalized, goal-tied chips from the agent.
+ */
 export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Go Live on Indobase',
@@ -43,7 +60,7 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Add a real backend',
     message:
-      'Call ensureDatabase then applySchema with the tables this app needs (or setupShopCatalog if it is a shop), then wire the UI to the project REST API',
+      'Call guidedBackend (or ensureDatabase then applySchema / setupShopCatalog) BEFORE more UI — then wire screens to session.backend / project REST',
   },
   {
     label: 'Add payments',
@@ -65,39 +82,39 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   },
 ] as const
 
-/** Classify what kind of web app before deep Lane-2 work. */
+/** Example CHOICES for agent instructions — not UI-injected. */
 export const APP_TYPE_TITLE = 'What kind of web app is this?'
 
 export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
     message:
-      'This is a landing/marketing site — Go Live, SEO + legal, optional domain; productionChecklist app_type landing',
+      'This is a landing/marketing site — build UI → launchBusiness; SEO + legal; optional domain; productionChecklist app_type landing',
   },
   {
     label: 'SaaS / web app',
     message:
-      'This is a SaaS web app — ensureLogin, ensureDatabase, applySchema for orgs/users, wire auth UI, then productionChecklist app_type saas',
+      'This is a SaaS web app — ensureLogin + ensureDatabase + applySchema FIRST, then build UI against session.backend, then Go Live; productionChecklist app_type saas',
   },
   {
     label: 'Ecommerce / store',
     message:
-      'This is an ecommerce store — resolveProductImages, setupShopCatalog, payments (connectGateway + wireCheckout), admin_html once (live REST), productionChecklist app_type ecommerce',
+      'This is an ecommerce store — guidedBackend mode=ecommerce (or setupShopCatalog) FIRST, then storefront UI, then Go Live; payments when asked; productionChecklist app_type ecommerce',
   },
   {
     label: 'Booking / appointments',
     message:
-      'This is a booking app — ensureLogin, applySchema for resources/slots/bookings, optional payments, productionChecklist app_type booking',
+      'This is a booking app — ensureLogin + applySchema for resources/slots/bookings FIRST, then UI, then Go Live; productionChecklist app_type booking',
   },
   {
     label: 'Blog / content',
     message:
-      'This is a blog/content site — applySchema for posts, SEO + legal, productionChecklist app_type blog',
+      'This is a blog/content site — ensureDatabase + applySchema for posts FIRST, then UI + SEO, then Go Live; productionChecklist app_type blog',
   },
   {
     label: 'Dashboard / internal tool',
     message:
-      'This is a dashboard/internal tool — ensureLogin, applySchema for entities, productionChecklist app_type dashboard',
+      'This is a dashboard/internal tool — ensureLogin + applySchema FIRST, then UI, then Go Live; productionChecklist app_type dashboard',
   },
   {
     label: "I'll describe it",
@@ -105,7 +122,6 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   },
 ] as const
 
-/** Ask where customers pay before ensuring — maps to settlement_market. */
 export const PAYMENTS_MARKET_TITLE = 'Where will customers pay?'
 
 export const PAYMENTS_MARKET_FOLLOWUPS: readonly FollowUpItem[] = [
@@ -126,9 +142,6 @@ export const PAYMENTS_MARKET_FOLLOWUPS: readonly FollowUpItem[] = [
   },
 ] as const
 
-/**
- * After ensure pending_setup — KYC on PSP + paste keys + wire checkout.
- */
 export const PAYMENTS_SETUP_TITLE = 'Finish payments setup'
 
 export const PAYMENTS_SETUP_FOLLOWUPS: readonly FollowUpItem[] = [
@@ -181,7 +194,6 @@ export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
   },
 ] as const
 
-/** After catalog/backend is live — Naïve-style next steps. */
 export const SHOP_BACKEND_TITLE = 'Shop backend is live — what next?'
 
 export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
@@ -222,6 +234,9 @@ export function parseFollowUpLine(line: string): FollowUpItem | null {
   return { label, message }
 }
 
+/**
+ * Extract the first FOLLOWUPS/CHOICES block. Returns null if none.
+ */
 export function parseFollowUps(message: string): ParsedFollowUps | null {
   if (!message || !/<<<INDOBASE_(FOLLOWUPS|CHOICES)/i.test(message)) {
     return null
@@ -252,126 +267,104 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
   return { body, title, items }
 }
 
-/** Heuristic: finished build / preview / launch summary without explicit chips. */
+/** Body mentions a real preview / live site (not merely “what’s next”). */
+export function bodyHasDeliverableSignal(message: string): boolean {
+  const text = message.toLowerCase()
+  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready/.test(
+    text,
+  )
+}
+
+/** Heuristic: finished build / preview / launch summary (tests / docs). */
 export function looksLikeCompletedDeliverable(message: string): boolean {
   const text = message.toLowerCase()
   if (parseFollowUps(message)) return false
+  if (looksLikePreBuildClarification(message)) return false
+  if (bodyHasDeliverableSignal(message)) return true
   if (
-    looksLikePaymentsPending(message) ||
-    looksLikePaymentsLive(message) ||
-    looksLikePaymentsMarketAsk(message) ||
-    looksLikeShopBackendReady(message) ||
-    looksLikeAppTypeAsk(message)
+    /where do you want to take|what('s| is) next|take it from here/.test(text) &&
+    bodyHasDeliverableSignal(message)
   ) {
-    return false
-  }
-  if (/sites\.indobase\.in|live preview|go live|is now live|here's what i built|here is what i built/.test(text)) {
-    return true
-  }
-  if (/where do you want to take|what('s| is) next|take it from here/.test(text)) {
     return true
   }
   return false
 }
 
-/** Agent is asking India vs international / Razorpay vs Stripe before ensure. */
-export function looksLikePaymentsMarketAsk(message: string): boolean {
+/** Guest gate / account / "before I begin" — not a finished website. */
+export function looksLikePreBuildClarification(message: string): boolean {
   const text = message.toLowerCase()
-  if (/payments are live|finish checkout setup|payments backend is ready/.test(text)) {
-    return false
-  }
   return (
-    /where will customers pay|where (will|do|should).*(customer|buyer|people).*pay|india.*(razorpay|or|vs).*stripe|stripe.*(or|vs).*razorpay|razorpay.*stripe|which (payment|settlement) (rail|market)|india \(razorpay\)|international \(stripe\)/.test(
-      text
-    )
+    /clarifying guest|guest (account )?gate|before i begin|please share:|dpdp consent|name \+ email|name and email|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
+      text,
+    ) ||
+    (/guest/.test(text) && /name|email|consent/.test(text) && /before|first|gate|share/.test(text))
   )
 }
 
-/** Enable payments returned pending / finish-setup. */
-export function looksLikePaymentsPending(message: string): boolean {
-  const text = message.toLowerCase()
-  if (/payments are live/.test(text)) return false
-  return (
-    /finish checkout setup|payments backend is ready|pending_setup|merchant (kyc|verification|onboarding)|confirm go-live|launch_url|checkout setup|india settlements selected|international cards selected|connect gateway|paste (api )?keys|complete kyc on (razorpay|stripe)/.test(
-      text
-    ) && /payment/.test(text)
-  )
+/** Default post-build wall (Go Live / payments / checklist…) — not for pre-build chat. */
+export function itemsLookLikeDefaultPostBuild(items: readonly FollowUpItem[]): boolean {
+  if (items.length < 3) return false
+  const blob = items.map((i) => `${i.label} ${i.message}`.toLowerCase()).join('\n')
+  const markers = ['go live', 'add payments', 'production checklist', 'connect my domain', 'add customer login']
+  const hits = markers.filter((m) => blob.includes(m)).length
+  return hits >= 2
 }
 
-export function looksLikePaymentsLive(message: string): boolean {
-  return /payments are live/.test(message.toLowerCase())
-}
-
-/** Agent is asking what kind of app / product. */
-export function looksLikeAppTypeAsk(message: string): boolean {
+/** Payments market / KYC / checkout path (capability stage). */
+export function looksLikePaymentsPath(message: string): boolean {
   const text = message.toLowerCase()
-  if (/where will customers pay|payments are live|finish payments/.test(text)) return false
-  return /what kind of (web )?app|saas or (shop|store|ecommerce)|landing or saas|booking or blog|what are we building/.test(
+  return /where will customers pay|finish payments|payments are live|settlement_market|connectgateway|wirecheckout|paste (api )?keys|merchant kyc|razorpay|stripe|india \(razorpay\)|international \(stripe\)/.test(
     text,
   )
 }
 
-/** Agent finished setupShopCatalog / placeTestShopOrder. */
-export function looksLikeShopBackendReady(message: string): boolean {
-  const text = message.toLowerCase()
-  if (/payments are live|finish payments setup/.test(text)) return false
-  return (
-    /shop catalog ready|catalog:\s*\d+\s*products|test order .* verified|admin_html|units in stock|real backend/.test(
-      text,
-    ) && /product|catalog|inventory|order|admin/.test(text)
-  )
+/**
+ * Infer chip timing stage from the agent message body (after FOLLOWUPS strip).
+ * Deterministic rules only — content still comes from the agent.
+ */
+export function inferChipStage(body: string): ChipStage {
+  if (looksLikePreBuildClarification(body)) return 'guest_gate'
+  if (bodyHasDeliverableSignal(body)) return 'deliverable'
+  if (looksLikePaymentsPath(body)) return 'payments'
+  return 'building'
 }
 
+function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
+  if (parsed.items.length <= MAX_VISIBLE_CHIPS) return parsed
+  return { ...parsed, items: parsed.items.slice(0, MAX_VISIBLE_CHIPS) }
+}
+
+/**
+ * Enforce Naive-style timing + brevity on agent-authored chips.
+ * Never invents chips — only strips / trims.
+ */
+export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
+  if (stage === 'guest_gate') {
+    return { body: parsed.body, title: '', items: [] }
+  }
+
+  if (stage === 'building') {
+    // Mid-build: allow goal-tied CHOICES; strip canned post-build catalogs.
+    if (itemsLookLikeDefaultPostBuild(parsed.items)) {
+      return { body: parsed.body, title: '', items: [] }
+    }
+    return capChips(parsed)
+  }
+
+  // payments | deliverable — show agent chips, cap at 4
+  return capChips(parsed)
+}
+
+/**
+ * Resolve chips for display.
+ *
+ * Agent-authored only: parse FOLLOWUPS/CHOICES from the message.
+ * Stage gate enforces timing; never invents catalogs.
+ */
 export function resolveFollowUps(message: string): ParsedFollowUps | null {
   const parsed = parseFollowUps(message)
-  if (parsed) return parsed
-
-  if (looksLikePaymentsLive(message)) {
-    return {
-      body: message,
-      title: PAYMENTS_LIVE_TITLE,
-      items: [...PAYMENTS_LIVE_FOLLOWUPS],
-    }
-  }
-
-  if (looksLikeShopBackendReady(message)) {
-    return {
-      body: message,
-      title: SHOP_BACKEND_TITLE,
-      items: [...SHOP_BACKEND_FOLLOWUPS],
-    }
-  }
-
-  if (looksLikeAppTypeAsk(message)) {
-    return {
-      body: message,
-      title: APP_TYPE_TITLE,
-      items: [...APP_TYPE_FOLLOWUPS],
-    }
-  }
-
-  if (looksLikePaymentsPending(message)) {
-    return {
-      body: message,
-      title: PAYMENTS_SETUP_TITLE,
-      items: [...PAYMENTS_SETUP_FOLLOWUPS],
-    }
-  }
-
-  if (looksLikePaymentsMarketAsk(message)) {
-    return {
-      body: message,
-      title: PAYMENTS_MARKET_TITLE,
-      items: [...PAYMENTS_MARKET_FOLLOWUPS],
-    }
-  }
-
-  if (!looksLikeCompletedDeliverable(message)) return null
-  return {
-    body: message,
-    title: DEFAULT_POST_BUILD_TITLE,
-    items: [...DEFAULT_POST_BUILD_FOLLOWUPS],
-  }
+  if (!parsed) return null
+  return applyStageGate(parsed)
 }
 
 /** Serialize a follow-ups block for agent replies / tests. */

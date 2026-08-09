@@ -63,6 +63,7 @@ import {
   executeEnsureLogin,
 } from './ensure-capability-tool.js'
 import { executeApplySchema } from './apply-schema-tool.js'
+import { executeGuidedBackend } from './guided-backend-chain.js'
 import { executeProductionChecklist } from './production-checklist-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
 import {
@@ -76,6 +77,7 @@ import {
   shouldConsumeAgentTurn,
 } from './agent-turn-meter.js'
 import { deriveAgentCredentials } from './agent-credentials.js'
+import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.js'
 import { rememberPendingSession, takePendingSession } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -1036,6 +1038,55 @@ app.post('/api/os/tools/applySchema', async (c) => {
   return c.json(result, http)
 })
 
+/** guidedBackend — ensureDatabase → schema/catalog (ensure-first) before UI. */
+app.post('/api/os/tools/guidedBackend', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeGuidedBackend(sessionOrErr, {
+    mode: typeof body.mode === 'string' ? body.mode : null,
+    vertical: typeof body.vertical === 'string' ? body.vertical : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    place_test_order:
+      typeof body.place_test_order === 'boolean' ? body.place_test_order : undefined,
+    title: typeof body.title === 'string' ? body.title : undefined,
+    subdomain: typeof body.subdomain === 'string' ? body.subdomain : undefined,
+    html: typeof body.html === 'string' ? body.html : undefined,
+    files:
+      body.files && typeof body.files === 'object' && !Array.isArray(body.files)
+        ? (body.files as Record<string, string>)
+        : undefined,
+    admin_html_as: typeof body.admin_html_as === 'string' ? body.admin_html_as : undefined,
+    message: typeof body.message === 'string' ? body.message : undefined,
+  })
+  const http = result.ok ? 200 : result.code === 'database_required' ? 403 : 502
+  return c.json(result, http)
+})
+
+app.post('/api/os/tools/runGuidedBackend', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeGuidedBackend(sessionOrErr, {
+    mode: typeof body.mode === 'string' ? body.mode : null,
+    vertical: typeof body.vertical === 'string' ? body.vertical : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    place_test_order:
+      typeof body.place_test_order === 'boolean' ? body.place_test_order : undefined,
+    title: typeof body.title === 'string' ? body.title : undefined,
+    subdomain: typeof body.subdomain === 'string' ? body.subdomain : undefined,
+    html: typeof body.html === 'string' ? body.html : undefined,
+    files:
+      body.files && typeof body.files === 'object' && !Array.isArray(body.files)
+        ? (body.files as Record<string, string>)
+        : undefined,
+    admin_html_as: typeof body.admin_html_as === 'string' ? body.admin_html_as : undefined,
+    message: typeof body.message === 'string' ? body.message : undefined,
+  })
+  const http = result.ok ? 200 : result.code === 'database_required' ? 403 : 502
+  return c.json(result, http)
+})
+
 /** productionChecklist — claim gate for any app type. */
 app.post('/api/os/production/checklist', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
@@ -1439,12 +1490,15 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     guest: isGuestSession(sessionOrErr),
     projectName: sessionOrErr.projectName,
   })
+  // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
+  ensureAgentModelsAsync({ username: creds.username, password: creds.password })
   // Never log password.
   return c.json({
     ok: true,
     username: creds.username,
     password: creds.password,
     storage_key: creds.storage_key,
+    modelsEnsuring: openRouterKeyConfigured(),
   })
 })
 

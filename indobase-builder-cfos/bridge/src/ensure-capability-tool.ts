@@ -8,8 +8,8 @@ export const ENSURE_LOGIN_TOOL = {
   name: 'ensureLogin',
   aliases: ['enableLogin', 'addLogin', 'ensure_login'] as const,
   description:
-    'Enable customer login for this business (Indobase Auth). Returns Login enabled + next_steps. ' +
-    'Then wire a Sign-in CTA. Do not use webFetch. Never connect an external auth product.',
+    'Enable customer login BEFORE building UI that needs Sign-in (Indobase Auth). Returns Login enabled + backend tips. ' +
+    'Wire Sign-in CTA to session.backend. Do not use webFetch. Never connect an external auth product.',
   method: 'POST' as const,
   path: '/api/os/tools/ensureLogin',
   wraps: '/api/os/runtime/ensure',
@@ -20,8 +20,8 @@ export const ENSURE_DATABASE_TOOL = {
   name: 'ensureDatabase',
   aliases: ['enableDatabase', 'ensureBusinessData', 'ensure_database'] as const,
   description:
-    'Enable the customer database (businessData) for this business. ' +
-    'Then call applySchema for the app data model (or setupShopCatalog for shops). Do not use webFetch.',
+    'Enable the customer database BEFORE building UI that needs data (businessData). ' +
+    'Then applySchema (or setupShopCatalog / guidedBackend). Build against session.backend — never invent API URLs. Do not use webFetch.',
   method: 'POST' as const,
   path: '/api/os/tools/ensureDatabase',
   wraps: '/api/os/runtime/ensure',
@@ -53,14 +53,22 @@ export const ENSURE_ANALYTICS_TOOL = {
 } as const
 
 export const ENSURE_CAPABILITY_AGENT_HARD_RULES = `
-## Enable capabilities (HARD PATH — any web app)
+## Enable capabilities (HARD — ensure-first for apps that need a backend)
 
-1. **Login:** **ensureLogin** — wire Sign-in CTA. Optional: /api/os/auth/mail for branded OTP From.
-2. **Database:** **ensureDatabase** → **applySchema** (or setupShopCatalog for shops).
-3. **Email:** **ensureEmail** — quote pending_setup + launch_url; finish sender setup before claiming Email enabled.
-4. **Analytics:** **ensureAnalytics** — quote launch_url; finish site setup before claiming Analytics live.
-5. Do NOT use webFetch. Do NOT say Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
-6. Do NOT claim “production ready” until productionChecklist returns claim_production_ready:true.
+**Do not build UI against a missing backend.** Classify early, then:
+
+### Landing / marketing only (no accounts, no app data)
+Build UI → launchBusiness. Skip ensure*.
+
+### SaaS / booking / blog-with-CMS / dashboard / any app with login or data
+1. **ensureLogin** (if accounts) and/or **ensureDatabase** FIRST — wait for ok / claim_*_ready.
+2. **applySchema** (or **guidedBackend** / **setupShopCatalog** for shops) BEFORE writing screens that read/write data.
+3. **Build UI** wired to session.backend (api_url / auth_url / anon_key / REST). Never invent Neon/Firebase URLs or fake JSON APIs.
+4. **launchBusiness** when the real UI is ready.
+5. Optional **ensureEmail** / **ensureAnalytics** — quote pending_setup + launch_url; do not block Go Live on them.
+6. Do NOT use webFetch for ensure. Do NOT say Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
+7. Do NOT claim “production ready” until productionChecklist returns claim_production_ready:true.
+8. Prefer **guidedBackend** for ecommerce or “Add a real backend” to run ensureDatabase → schema/catalog in one call.
 `.trim()
 
 export function ensureLoginToolCatalog() {
@@ -159,8 +167,11 @@ export async function executeEnsureDatabase(session: {
       typeof result.message === 'string'
         ? result.message
         : claim
-          ? 'Customer database ready — call applySchema next'
+          ? 'Customer database ready — applySchema (or guidedBackend) next, then build UI against session.backend'
           : 'Could not enable database',
+    next_hint: claim
+      ? 'ENSURE_FIRST_OK: applySchema or guidedBackend, then build the UI against session.backend api_url + anon_key. Do not invent third-party databases.'
+      : undefined,
   }
 }
 

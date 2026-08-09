@@ -5,15 +5,12 @@ import {
   parseFollowUps,
   resolveFollowUps,
   looksLikeCompletedDeliverable,
-  looksLikePaymentsPending,
-  looksLikePaymentsLive,
-  looksLikePaymentsMarketAsk,
+  looksLikePreBuildClarification,
+  formatFollowUpsBlock,
+  inferChipStage,
+  applyStageGate,
+  MAX_VISIBLE_CHIPS,
   DEFAULT_POST_BUILD_FOLLOWUPS,
-  PAYMENTS_SETUP_FOLLOWUPS,
-  PAYMENTS_LIVE_FOLLOWUPS,
-  PAYMENTS_MARKET_FOLLOWUPS,
-  SHOP_BACKEND_FOLLOWUPS,
-  looksLikeShopBackendReady,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -54,70 +51,144 @@ INDOBASE_CHOICES>>>
     assert.equal(parsed.items[1].message, "I'll type my specific niche")
   })
 
-  it('falls back to Indobase defaults after a completed deliverable', () => {
+  it('does not invent chips after a completed deliverable without an agent block', () => {
     const input =
       'MERIDIAN — live preview\nhttps://demo.sites.indobase.in\nWhere do you want to take it next?'
     assert.equal(looksLikeCompletedDeliverable(input), true)
-    const resolved = resolveFollowUps(input)
-    assert.ok(resolved)
-    assert.equal(resolved.items.length, DEFAULT_POST_BUILD_FOLLOWUPS.length)
-    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
-    assert.ok(resolved.items.some((i) => i.label === 'Add payments'))
-    assert.ok(resolved.items.some((i) => i.label === 'Add a real backend'))
-    assert.ok(resolved.items.some((i) => i.label === 'Production checklist'))
-    assert.ok(!resolved.items.some((i) => /vercel/i.test(i.label + i.message)))
+    assert.equal(resolveFollowUps(input), null)
   })
 
-  it('shows shop-backend chips after catalog is ready', () => {
-    const input = 'Shop catalog ready — 8 products. Test order ORD-ABC verified.'
-    assert.equal(looksLikeShopBackendReady(input), true)
+  it('shows agent-authored chips after a deliverable', () => {
+    const input = `Here's what I built — live preview
+https://aural.sites.indobase.in
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take Aural next?
+Polish the hero with product shots | Refine the hero with headphone product photography
+Go Live on Indobase | Go Live — publish Aural to my Indobase subdomain
+Add Buy with Razorpay | Connect India payments and wireCheckout for the Buy CTA
+INDOBASE_FOLLOWUPS>>>
+`
+    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'deliverable')
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.equal(resolved.items.length, SHOP_BACKEND_FOLLOWUPS.length)
-    assert.ok(resolved.items.some((i) => i.label === 'Publish admin dashboard'))
+    assert.equal(resolved.title, 'Where should I take Aural next?')
+    assert.equal(resolved.items.length, 3)
+    assert.ok(resolved.items.some((i) => /product shots/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /Razorpay/i.test(i.label)))
   })
 
-  it('asks India (Razorpay) vs International (Stripe) before ensure', () => {
-    const input = 'Where will customers pay — India (Razorpay) or International (Stripe)?'
-    assert.equal(looksLikePaymentsMarketAsk(input), true)
-    const resolved = resolveFollowUps(input)
-    assert.ok(resolved)
-    assert.equal(resolved.title, 'Where will customers pay?')
-    assert.equal(resolved.items.length, PAYMENTS_MARKET_FOLLOWUPS.length)
-    assert.ok(resolved.items.some((i) => i.label === 'India (Razorpay)'))
-    assert.ok(resolved.items.some((i) => i.label === 'International (Stripe)'))
-    assert.ok(resolved.items.some((i) => /settlement_market.*india/i.test(i.message)))
-    assert.ok(resolved.items.some((i) => /settlement_market.*international/i.test(i.message)))
-  })
+  it('keeps goal-tied CHOICES the agent emits mid-build', () => {
+    const input = `Two directions for the headphone landing:
 
-  it('shows payments setup wall after Enable payments pending', () => {
-    const input =
-      'Payments backend is ready — finish checkout setup to charge customers. India settlements selected.\nlaunch_url: https://dashboard.razorpay.com/app/keys'
-    assert.equal(looksLikePaymentsPending(input), true)
-    assert.equal(looksLikeCompletedDeliverable(input), false)
+<<<INDOBASE_CHOICES
+title: Which direction for Aural?
+Dark studio look | Dark studio aesthetic with close-up product hero
+Bright lifestyle look | Bright lifestyle photos on white
+I'll type my direction | I'll describe the look I want
+INDOBASE_CHOICES>>>
+`
+    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'building')
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.equal(resolved.title, 'Finish payments setup')
-    assert.equal(resolved.items.length, PAYMENTS_SETUP_FOLLOWUPS.length)
-    assert.ok(resolved.items.some((i) => i.label === 'Complete KYC on Razorpay/Stripe'))
-    assert.ok(resolved.items.some((i) => i.label === 'Paste API keys'))
-    assert.ok(resolved.items.some((i) => i.label === 'Wire checkout into the site'))
-    assert.ok(resolved.items.some((i) => /wireCheckout/i.test(i.message)))
-  })
-
-  it('shows payments-live chips when KYC verified', () => {
-    const input = 'Payments are live. International cards selected.'
-    assert.equal(looksLikePaymentsLive(input), true)
-    const resolved = resolveFollowUps(input)
-    assert.ok(resolved)
-    assert.equal(resolved.title, 'Payments are live — what next?')
-    assert.equal(resolved.items.length, PAYMENTS_LIVE_FOLLOWUPS.length)
-    assert.ok(resolved.items.some((i) => i.label === 'Wire checkout into the site'))
-    assert.ok(resolved.items.some((i) => i.label === 'Production checklist'))
-    assert.ok(resolved.items.some((i) => /wireCheckout/i.test(i.message)))
+    assert.equal(resolved.title, 'Which direction for Aural?')
+    assert.equal(resolved.items.length, 3)
   })
 
   it('does not invent chips for ordinary questions', () => {
     assert.equal(resolveFollowUps('What color should the logo be?'), null)
+  })
+
+  it('guest_gate stage strips all chips', () => {
+    const input = `Clarifying guest gate needs
+
+I can create a polished headphone product website. Before I begin, please share:
+
+1. Name
+2. Email address
+3. DPDP consent
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take this next?
+Go Live on Indobase | Go Live — publish
+Connect my domain | Connect domain
+Add customer login | ensureLogin
+Add a real backend | ensureDatabase
+Add payments | payments
+Production checklist | checklist
+Refine the design | refine
+Leave it as-is for now | leave
+INDOBASE_FOLLOWUPS>>>
+`
+    assert.equal(looksLikePreBuildClarification(input), true)
+    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'guest_gate')
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 0)
+    assert.match(resolved.body, /Before I begin/)
+    assert.doesNotMatch(resolved.body, /INDOBASE_FOLLOWUPS/)
+  })
+
+  it('building stage strips canned post-build wall', () => {
+    const input = `I'll sketch a few options for the headphone landing page.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take this next?
+Go Live on Indobase | Go Live — publish
+Connect my domain | Connect domain
+Add customer login | ensureLogin
+Add a real backend | ensureDatabase
+Add payments | payments
+Production checklist | checklist
+Refine the design | refine
+Leave it as-is for now | leave
+INDOBASE_FOLLOWUPS>>>
+`
+    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'building')
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 0)
+    assert.match(resolved.body, /headphone landing/)
+  })
+
+  it('deliverable stage caps long agent walls at MAX_VISIBLE_CHIPS', () => {
+    const block = formatFollowUpsBlock('Where should I take Aural next?', DEFAULT_POST_BUILD_FOLLOWUPS)
+    const input = `Here's what I built — live preview\nhttps://aural.sites.indobase.in\n\n${block}`
+    assert.equal(DEFAULT_POST_BUILD_FOLLOWUPS.length > MAX_VISIBLE_CHIPS, true)
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, MAX_VISIBLE_CHIPS)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+  })
+
+  it('payments stage keeps market CHOICES', () => {
+    const input = `Where will customers pay — India (Razorpay) or International (Stripe)?
+
+<<<INDOBASE_CHOICES
+title: Where will customers pay?
+India (Razorpay) | Connect India Razorpay
+International (Stripe) | Connect Stripe international
+I'll describe my market | I'll describe
+INDOBASE_CHOICES>>>
+`
+    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'payments')
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 3)
+  })
+
+  it('applyStageGate is idempotent for empty guest gate', () => {
+    const gated = applyStageGate({
+      body: 'Before I begin, please share name and DPDP consent',
+      title: 'x',
+      items: [{ label: 'Go Live', message: 'go' }],
+    })
+    assert.equal(gated.items.length, 0)
+    assert.equal(inferChipStage(gated.body), 'guest_gate')
+  })
+
+  it('does not treat vague whats-next as a completed deliverable', () => {
+    assert.equal(looksLikeCompletedDeliverable("What's next?"), false)
+    assert.equal(resolveFollowUps("What's next?"), null)
   })
 })

@@ -56,7 +56,11 @@ export const FollowUpChipGrid = memo(function FollowUpChipGrid({
 
 type Props = {
   message: string
-  /** Also show Indobase defaults after a completed deliverable with no block. */
+  /**
+   * When true (default), run resolveFollowUps (agent blocks + strip bad early walls).
+   * When false, parseFollowUps only (no strip heuristics).
+   * Neither mode invents predetermined catalogs.
+   */
   allowFallback?: boolean
   onPick: (message: string) => void
   disabled?: boolean
@@ -66,6 +70,7 @@ type Props = {
 
 /**
  * Splits agent text into markdown body + chip grid.
+ * Chips come only from agent FOLLOWUPS/CHOICES blocks.
  */
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,
@@ -83,7 +88,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   return (
     <>
       {children ? children(body, resolved) : null}
-      {resolved && (
+      {resolved && resolved.items.length > 0 && (
         <FollowUpChipGrid
           title={resolved.title}
           items={resolved.items}

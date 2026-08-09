@@ -15,6 +15,8 @@
     "@indobase/platform": "file:../../packages/platform",
     "@indobase/platform-api": "file:../../packages/platform-api",
     "@sentry/node": "^10.28.0",
+    "capnweb": "^0.8.0",
+    "hash-wasm": "^4.12.0",
     "hono": "^4.8.5"
   },
   "devDependencies": {

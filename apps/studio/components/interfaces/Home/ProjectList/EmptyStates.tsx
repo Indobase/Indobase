@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { useIsFeatureEnabled } from 'hooks/misc/useIsFeatureEnabled'
 import { BASE_PATH } from 'lib/constants'
+import { getPublicBuilderUrl } from 'lib/constants/builder-url'
 import {
   Button,
   Card,
@@ -85,31 +86,44 @@ export const LoadingCardView = () => {
 
 export const NoProjectsState = ({ slug }: { slug: string }) => {
   const projectCreationEnabled = useIsFeatureEnabled('projects:create')
+  const builderUrl = getPublicBuilderUrl()
 
   return (
     <EmptyStatePresentational
       icon={BoxPlus}
-      title="Create a project"
-      description="Launch a complete backend built on Postgres."
+      title="Continue in Builder"
+      description="Create and ship your app with Indobase Builder. Studio keeps your org and project data — the agent sets them up for you."
     >
-      {projectCreationEnabled && (
-        <Button size="tiny" type="default" asChild icon={<Plus />}>
-          <Link href={`/new/${slug}`}>New project</Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="tiny" type="primary" asChild>
+          <a href={builderUrl}>Continue in Builder</a>
         </Button>
-      )}
+        {projectCreationEnabled && (
+          <Button size="tiny" type="default" asChild icon={<Plus />}>
+            <Link href={`/new/${slug}`}>New project in Studio</Link>
+          </Button>
+        )}
+      </div>
     </EmptyStatePresentational>
   )
 }
 
 export const NoOrganizationsState = () => {
+  const builderUrl = getPublicBuilderUrl()
+
   return (
     <EmptyStatePresentational
-      title="Create an organization"
-      description="Manage your team and projects in one place."
+      title="Continue in Builder"
+      description="Start in Indobase Builder — your Free organization and workspace are created when you verify in chat. No Studio onboarding wizard required."
     >
-      <Button size="tiny" type="primary" asChild icon={<Plus />}>
-        <Link href="/new">New organization</Link>
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="tiny" type="primary" asChild>
+          <a href={builderUrl}>Continue in Builder</a>
+        </Button>
+        <Button size="tiny" type="default" asChild icon={<Plus />}>
+          <Link href="/new">New organization in Studio</Link>
+        </Button>
+      </div>
     </EmptyStatePresentational>
   )
 }

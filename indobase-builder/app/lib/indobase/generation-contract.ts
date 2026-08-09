@@ -282,7 +282,7 @@ Build a complete root-level Vite web app. Before UI files, write a complete root
 In the same response write \`index.html\`, the application entry point, and every referenced source/style file.
 
 First-hour integrations (only when the user asked):
-- Auth/data → Indobase client with linked Studio project credentials (\`@indobaseinc/indobase-js\`)
+- Auth/data → ENSURE-FIRST: apply migrations via indobase MCP (or boltAction type="indobase"), then wire Indobase client with linked Studio credentials (\`@indobaseinc/indobase-js\`). Never invent mock APIs or third-party DB URLs.
 - Payments → merchant BYOK hosted checkout via Studio/OS \`wireCheckout\` / \`connectGateway\` (Razorpay Payment Links or Stripe Checkout Sessions with the merchant's keys). Never invent checkout URLs; do not default to embedding Stripe.js secrets in the client.
 - AI features inside the app → call your own backend/edge function; do not require the end user to paste OpenAI/Anthropic keys
 - Code ownership → keep sources clean for download/export; do not force GitHub as a publish step (Indobase publish is default)

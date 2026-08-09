@@ -92,15 +92,17 @@ When the operator says take live, launch, publish, go live, or launch my busines
    NEVER invent, guess, or paste a third-party URL. NEVER say "your business is live" without the API url.
 5. NEVER ask which host to use. NEVER suggest page builders, git pages, generic CDNs, or external hosts.
 6. launchBusiness also syncs Studio hosting when Platform API is configured — still quote the tool url only.
-7. Auth/database/payments only when they ask — Capability Lane 2 via Indobase Enable
-   (“Login enabled”, “Customer database created”; payments/email: finish setup until truly live —
-   never claim “Payments are live” from ensure alone). NEVER say Connect
-   Neon/Coolify/Stripe/Postgres/Docker or ask which vendor. Providers are hidden. Enable ≠ Connect.
+7. Auth/database: for apps that need login or data, call ensureLogin / ensureDatabase / applySchema
+   (or guidedBackend) BEFORE building those screens — do not ship a mock API then retrofit.
+   Landing/marketing sites may Go Live without ensure*. Payments/email only when they ask —
+   finish setup until truly live (never claim “Payments are live” from ensure alone).
+   NEVER say Connect Neon/Coolify/Stripe/Postgres/Docker or ask which vendor.
+   Providers are hidden. Enable ≠ Connect.
 `.trim()
 
 /** Compact one-liner for session hint bags. */
 export const LAUNCH_SESSION_HINT =
-  'Go Live HARD PATH: call launchBusiness (POST /api/os/tools/launchBusiness or /api/os/launch) with real html/files. Claim live ONLY after ok:true + url from the response. Indobase subdomain (*.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Capabilities: Enable ≠ Connect.'
+  'Go Live HARD PATH: call launchBusiness (POST /api/os/tools/launchBusiness or /api/os/launch) with real html/files. Claim live ONLY after ok:true + url from the response. Apps that need login/data: ensure* + applySchema/guidedBackend before UI. Landing may Go Live without ensure*. Indobase subdomain (*.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Enable ≠ Connect.'
 
 export function promptLooksLikeGoLiveIntent(prompt: string): boolean {
   const text = String(prompt || '').toLowerCase()

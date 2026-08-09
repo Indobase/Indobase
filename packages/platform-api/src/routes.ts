@@ -30,7 +30,35 @@ export const PlatformApiRoutes = {
   productionChecklist: `${PLATFORM_API_PREFIX}/production/checklist`,
   /** POST — resolve commercial stock image URLs for products */
   mediaProductImages: `${PLATFORM_API_PREFIX}/media/product-images`,
+  /** POST — rename org / workspace (updateWorkspace agent tool) */
+  workspaceUpdate: `${PLATFORM_API_PREFIX}/workspace/update`,
+  /** POST — start Razorpay plan checkout (upgradePlan agent tool) */
+  billingUpgradePlan: `${PLATFORM_API_PREFIX}/billing/upgrade-plan`,
 } as const
+
+export type WorkspaceUpdateResponse = {
+  ok: boolean
+  organization_slug?: string
+  organization_name?: string
+  workspace_ref?: string
+  workspace_name?: string
+  message?: string
+  code?: string
+}
+
+export type BillingUpgradePlanResponse = {
+  ok: boolean
+  plan?: string
+  organization_slug?: string
+  checkout_url?: string
+  pending_checkout_url?: string
+  provider?: 'razorpay'
+  payment_required?: boolean
+  /** true only when Free downgrade applied immediately — never invent for paid tiers */
+  upgraded?: boolean
+  message?: string
+  code?: string
+}
 
 export type ProductImagesResponse = {
   ok: boolean

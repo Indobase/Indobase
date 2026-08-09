@@ -40,6 +40,10 @@ import {
   applySchemaToolCatalog,
 } from './apply-schema-tool.js'
 import {
+  GUIDED_BACKEND_AGENT_HARD_RULES,
+  guidedBackendToolCatalog,
+} from './guided-backend-chain.js'
+import {
   PRODUCTION_CHECKLIST_AGENT_HARD_RULES,
   productionChecklistToolCatalog,
 } from './production-checklist-tool.js'
@@ -77,7 +81,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
-  const agentHintBody = `${agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const agentHintBody = `${agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) return agentHintBody
   return agentHintBody.startsWith('GUEST ACCOUNT GATE')
     ? agentHintBody
@@ -167,11 +171,13 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     data: {
       apply_schema: '/api/os/data/apply-schema',
       apply_schema_tool: '/api/os/tools/applySchema',
+      guided_backend_tool: '/api/os/tools/guidedBackend',
       ensure_login_tool: '/api/os/tools/ensureLogin',
       ensure_database_tool: '/api/os/tools/ensureDatabase',
       ensure_email_tool: '/api/os/tools/ensureEmail',
       ensure_analytics_tool: '/api/os/tools/ensureAnalytics',
       rules: APPLY_SCHEMA_AGENT_HARD_RULES,
+      guided_backend_rules: GUIDED_BACKEND_AGENT_HARD_RULES,
     },
     media: {
       product_images: '/api/os/media/product-images',
@@ -197,6 +203,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       ensureEmail: ensureEmailToolCatalog(),
       ensureAnalytics: ensureAnalyticsToolCatalog(),
       applySchema: applySchemaToolCatalog(),
+      guidedBackend: guidedBackendToolCatalog(),
       connectGateway: connectGatewayToolCatalog(),
       wireCheckout: wireCheckoutToolCatalog(),
       setupShopCatalog: setupShopCatalogToolCatalog(),
