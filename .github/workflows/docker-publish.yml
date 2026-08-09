@@ -48,9 +48,23 @@ env:
   VITE_SENTRY_DSN: "https://4ae0d2d42c0ec4bdd71f78058194e665@o4511846637240320.ingest.us.sentry.io/4511846713982976"
 
 jobs:
-  build:
+  # Fast gate — fail early before burning parallel build minutes.
+  audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Audit rebrand (Phase A gate)
+        run: bash scripts/audit-no-supabase.sh
+
+  # Parallel image builds (separate runners) so CFOS/www are not blocked by classic Builder.
+  build-studio:
+    needs: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
     permissions:
       contents: read
       packages: write
@@ -58,26 +72,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Audit rebrand (Phase A gate)
-        run: bash scripts/audit-no-supabase.sh
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Free runner disk before Studio image
+      - name: Free runner disk
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
           docker system prune -af || true
           docker builder prune -af || true
           df -h /
-
       - name: Add swap for Studio Next build
         run: |
           set -eux
@@ -88,10 +95,7 @@ jobs:
           sudo mkswap /swapfile
           sudo swapon /swapfile
           free -h
-          swapon --show
-          awk '/SwapTotal/ {print}' /proc/meminfo
-
-      - name: Build and push (linux/amd64 for Dokploy)
+      - name: Build and push Studio (linux/amd64)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -123,11 +127,28 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest
             ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
-          # v3 scope: avoid reusing a poisoned build-studio layer from older cache entries
           cache-from: type=gha,scope=ind-repo-v7
           cache-to: type=gha,mode=max,scope=ind-repo-v7
 
-      - name: Build and push data-plane provisioner (linux/amd64)
+  build-provisioner:
+    needs: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push provisioner (linux/amd64)
         uses: docker/build-push-action@v5
         with:
           context: ./docker
@@ -140,16 +161,34 @@ jobs:
           cache-from: type=gha,scope=ind-repo-provisioner-v1
           cache-to: type=gha,mode=max,scope=ind-repo-provisioner-v1
 
-      - name: Free runner disk before Builder image
+  build-builder:
+    needs: audit
+    # Classic Builder is optional for CFOS prod — do not fail the whole workflow if it breaks.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Free runner disk
         run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
           docker system prune -af || true
-          docker builder prune -af || true
           df -h /
-
-      - name: Build and push Indobase Builder (linux/amd64)
+      - name: Build and push classic Builder (linux/amd64)
         uses: docker/build-push-action@v5
         with:
-          # Monorepo root — Dockerfile copies packages/platform (@indobase/platform)
           context: .
           file: ./indobase-builder/Dockerfile
           platforms: linux/amd64
@@ -166,16 +205,28 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_BUILDER_REPO }}:latest
             ${{ env.DOCKERHUB_BUILDER_REPO }}:${{ github.sha }}
-          cache-from: type=gha,scope=indobase-builder-v1
-          cache-to: type=gha,mode=max,scope=indobase-builder-v1
+          cache-from: type=gha,scope=indobase-builder-v2
+          cache-to: type=gha,mode=max,scope=indobase-builder-v2
 
-      - name: Free runner disk before Builder CFOS image
-        run: |
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h /
-
-      - name: Build and push Indobase Builder CFOS (linux/amd64)
+  build-builder-cfos:
+    needs: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Builder CFOS (linux/amd64)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -190,13 +241,25 @@ jobs:
           cache-from: type=gha,scope=indobase-builder-cfos-v1
           cache-to: type=gha,mode=max,scope=indobase-builder-cfos-v1
 
-      - name: Free runner disk before Website image
-        run: |
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h /
-
-      - name: Build and push Indobase Website (linux/amd64)
+  build-website:
+    needs: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Website (linux/amd64)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -209,37 +272,66 @@ jobs:
           cache-from: type=gha,scope=indobase-website-v1
           cache-to: type=gha,mode=max,scope=indobase-website-v1
 
-      - name: Verify images on Docker Hub
+  # Aggregate status for summary; deploy waits on the critical prod images.
+  build:
+    needs: [build-studio, build-provisioner, build-builder, build-builder-cfos, build-website]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Require prod-critical images
         run: |
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_PROVISIONER_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_PROVISIONER_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_CFOS_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_CFOS_REPO }}:latest"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_WEBSITE_REPO }}:${{ github.sha }}"
-          docker buildx imagetools inspect "${{ env.DOCKERHUB_WEBSITE_REPO }}:latest"
-
+          set -euo pipefail
+          echo "studio=${{ needs.build-studio.result }}"
+          echo "provisioner=${{ needs.build-provisioner.result }}"
+          echo "builder=${{ needs.build-builder.result }}"
+          echo "cfos=${{ needs.build-builder-cfos.result }}"
+          echo "website=${{ needs.build-website.result }}"
+          # Prod agentic path: Studio + CFOS + www must succeed. Classic Builder is best-effort.
+          test "${{ needs.build-studio.result }}" = "success"
+          test "${{ needs.build-builder-cfos.result }}" = "success"
+          test "${{ needs.build-website.result }}" = "success"
+          test "${{ needs.build-provisioner.result }}" = "success"
+          if [ "${{ needs.build-builder.result }}" != "success" ]; then
+            echo "::warning::Classic Builder image failed — CFOS/Studio/www still published. Fix indobase-builder Dockerfile if classic is needed."
+          fi
+      - name: Verify Hub tags (critical)
+        run: |
+          set -euo pipefail
+          for img in \
+            "${{ env.DOCKERHUB_REPO }}:${{ github.sha }}" \
+            "${{ env.DOCKERHUB_PROVISIONER_REPO }}:${{ github.sha }}" \
+            "${{ env.DOCKERHUB_BUILDER_CFOS_REPO }}:${{ github.sha }}" \
+            "${{ env.DOCKERHUB_WEBSITE_REPO }}:${{ github.sha }}"; do
+            echo "inspect $img"
+            docker buildx imagetools inspect "$img"
+          done
+          if docker buildx imagetools inspect "${{ env.DOCKERHUB_BUILDER_REPO }}:${{ github.sha }}"; then
+            echo "classic builder tag ok"
+          else
+            echo "::warning::classic builder tag missing"
+          fi
       - name: Build summary
+        if: always()
         run: |
-          echo "## Docker build" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Docker build (parallel)" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Studio:** \`${{ env.DOCKERHUB_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Provisioner:** \`${{ env.DOCKERHUB_PROVISIONER_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Builder:** \`${{ env.DOCKERHUB_BUILDER_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Builder CFOS:** \`${{ env.DOCKERHUB_BUILDER_CFOS_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Website:** \`${{ env.DOCKERHUB_WEBSITE_REPO }}:${{ github.sha }}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **OS note:** Email/Social/Video product images removed from this workflow (Agentic OS / CFOS)."
+          echo "- **Studio:** ${{ needs.build-studio.result }} — \`${{ env.DOCKERHUB_REPO }}:${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Provisioner:** ${{ needs.build-provisioner.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Builder CFOS:** ${{ needs.build-builder-cfos.result }} — \`${{ env.DOCKERHUB_BUILDER_CFOS_REPO }}:${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Website:** ${{ needs.build-website.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Classic Builder:** ${{ needs.build-builder.result }} (non-blocking for CFOS prod)" >> "$GITHUB_STEP_SUMMARY"
 
   # Manual rollout only: never deploy on push. Run workflow_dispatch with deploy=true.
   # Skipped steps (missing secrets) exit 0; webhook failures only warn. Smoke test is best-effort.
+  # Depends on aggregate `build` (critical images only) so classic Builder failure does not block deploy.
   deploy:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && needs.build.result == 'success'
     steps:
       - name: Trigger Dokploy deploy (Git webhook payload)
         id: dokploy_webhook

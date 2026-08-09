@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Build context must be the monorepo root (needs packages/platform for @indobase/platform).
+# Build context must be the monorepo root (packages/platform + packages/cloudflare-adapter).
 #   docker build -f indobase-builder/Dockerfile -t indobase-builder .
 
 FROM node:22-bookworm-slim AS deps
@@ -32,8 +32,10 @@ RUN corepack enable
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/package.json /app/package.json
 COPY --from=deps /app/pnpm-lock.yaml /app/pnpm-lock.yaml
-# Platform sources — vite/tsconfig alias @indobase/platform → ../packages/platform/src
+# Monorepo packages — vite aliases @indobase/platform + @indobase/cloudflare-adapter
+# resolve to ../packages/* from /app (see vite.config.ts).
 COPY packages/platform /packages/platform
+COPY packages/cloudflare-adapter /packages/cloudflare-adapter
 COPY indobase-builder/ .
 
 ARG NODE_ENV=production
