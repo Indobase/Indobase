@@ -127,7 +127,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     await transport.handleRequest(
       req,
       withIndobaseMcpBranding(res, {
-        name: 'indobase-payments',
+        name: 'indobase-merchant-payments',
         title: 'Indobase Payments',
         version: '2.0.0',
       }),

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { buildStudioPaymentsHubUrl } from './payments-launch'
 import {
+  buildStudioPaymentsHubUrl,
   isPaymentsMerchantAdminRole,
   isPaymentsRole,
   isPaymentsRoleDeniedMessage,
@@ -9,9 +9,9 @@ import {
   PAYMENTS_ROLE_DENIED_CODE,
   paymentsTenantSlugForOrg,
   sanitizePaymentsOrgSlug,
-} from './payments-launch-shared'
+} from './payments-access-shared'
 
-describe('payments-launch', () => {
+describe('payments-access', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
   })

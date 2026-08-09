@@ -9,7 +9,7 @@ import { useParams } from 'common'
 import { useMerchantProfileQuery } from 'data/payments/merchant-profile-query'
 import { useMerchantProfileReviewMutation } from 'data/payments/merchant-profile-mutation'
 import type { MerchantKycStatus } from 'lib/api/saas/merchant-kyc-types'
-import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-launch-shared'
+import { isPaymentsRoleDeniedMessage } from 'lib/api/saas/payments-access-shared'
 import { Button, cn } from 'ui'
 import { Admonition } from 'ui-patterns/admonition'
 import { toast } from 'sonner'
@@ -247,8 +247,8 @@ export const ProjectPaymentsHome = () => {
             Advanced: Studio merchant profile (optional)
           </summary>
           <p className="mb-3 mt-2 text-xs text-foreground-lighter">
-            Prefer completing KYC on Razorpay/Stripe and pasting API keys above. This form is only
-            needed for legacy platform onboarding.
+            Prefer completing KYC on Razorpay/Stripe and pasting API keys above. This optional
+            profile is for business details only — it does not create Route or Connect accounts.
           </p>
           <MerchantKycOnboarding
             projectRef={ref}

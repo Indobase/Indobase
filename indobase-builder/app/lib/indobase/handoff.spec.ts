@@ -148,7 +148,7 @@ describe('indobase handoff', () => {
             Authorization: 'Bearer mcp-token',
           },
         },
-        'indobase-payments': {
+        'indobase-merchant-payments': {
           type: 'streamable-http',
           url: expectedPaymentsMcpUrl,
           headers: {
@@ -166,7 +166,7 @@ describe('indobase handoff', () => {
         type: 'streamable-http',
         url: expectedMcpUrl,
       },
-      'indobase-payments': {
+      'indobase-merchant-payments': {
         type: 'streamable-http',
         url: expectedPaymentsMcpUrl,
       },

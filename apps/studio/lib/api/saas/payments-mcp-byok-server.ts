@@ -43,7 +43,7 @@ export type ByokPaymentsMcpOptions = {
 export function createByokPaymentsMcpServer(opts: ByokPaymentsMcpOptions) {
   const { claims, projectRef, readOnly = false } = opts
   const server = new McpServer({
-    name: 'indobase-payments',
+    name: 'indobase-merchant-payments',
     title: 'Indobase Payments',
     version: '2.0.0',
   })

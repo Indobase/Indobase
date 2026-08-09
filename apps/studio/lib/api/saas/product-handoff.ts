@@ -12,7 +12,7 @@ import { executeQuery } from './query'
  *
  * Analytics, Design, Discuss, Domains, Social, Suite, and Video share this
  * implementation. Builder is deliberately NOT included — see `builder-launch.ts`.
- * Merchant Payments are Studio BYOK (no separate product host) — see payments-launch.ts.
+ * Merchant Payments are Studio BYOK (no separate product host) — see payments-access.ts.
  */
 
 type Claims = JwtPayload & Record<string, unknown>

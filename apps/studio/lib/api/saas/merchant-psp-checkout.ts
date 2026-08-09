@@ -3,7 +3,7 @@
  * No Indobase Payments engine / connectors.
  */
 
-import { getStudioOrigin } from './payments-launch'
+import { getStudioOrigin } from './payments-access'
 
 export type PspCheckoutInput = {
   projectRef: string

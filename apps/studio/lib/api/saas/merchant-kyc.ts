@@ -21,7 +21,7 @@ import {
   paymentsTenantSlugForOrg,
   resolvePaymentsRole,
   type PaymentsRole,
-} from './payments-launch'
+} from './payments-access'
 import { executeQuery } from './query'
 import {
   GATEWAY_EXTERNAL_LINKS,
@@ -729,8 +729,7 @@ export async function submitMerchantProfile({
     businessCountry: current.business_country,
   })
 
-  // Without a live aggregator, move to under_review so operators see a clear queue state.
-  // When Route is wired, provider status can drive verified/rejected.
+  // BYOK path: profile moves to under_review until gateway keys + Confirm go-live.
   const nextStatus: MerchantKycStatus =
     linked.status === 'active' ? 'verified' : linked.status === 'rejected' ? 'rejected' : 'under_review'
 

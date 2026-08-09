@@ -1,5 +1,5 @@
 ---
-name: indobase-payments
+name: indobase-merchant-payments
 description: Add merchant Razorpay/Stripe BYOK checkout to Builder apps using connectGateway / wireCheckout (or Studio payments MCP) for hosted checkout_url CTAs.
 user-invocable: false
 risk: safe

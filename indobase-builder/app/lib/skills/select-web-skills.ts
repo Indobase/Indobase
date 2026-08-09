@@ -93,7 +93,7 @@ const SKILL_RULES: SkillRule[] = [
     patterns: [/\bhono\b/i],
   },
   {
-    id: 'indobase-payments',
+    id: 'indobase-merchant-payments',
     patterns: [
       /\bindobase\s*payments\b/i,
       /\b(payment|payments|checkout|pricing\s*page|subscribe|subscription|billing\s*portal|customer\s*portal)\b/i,
@@ -219,7 +219,7 @@ export function selectWebSkills(options: SelectWebSkillsOptions): SelectedWebSki
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 
   const overrideHit = ranked.find((entry) => FRAMEWORK_OVERRIDE.includes(entry.id) && entry.score >= 8);
-  const paymentsHit = ranked.find((entry) => entry.id === 'indobase-payments' && entry.score >= 8);
+  const paymentsHit = ranked.find((entry) => entry.id === 'indobase-merchant-payments' && entry.score >= 8);
   const filtered = (overrideHit
     ? ranked.filter((entry) => {
         if (entry.id === 'react-best-practices' || entry.id === 'tailwind-design-system') {

@@ -2,8 +2,10 @@
 
 **Status (2026-08):** Merchant checkout is **Studio BYOK** (Razorpay / Stripe keys in
 SaaS). Agents use `connectGateway` + `wireCheckout` (or Studio MCP
-`/api/mcp/payments`). There is **no** separate Payments product dashboard for the
-operator path.
+`/api/mcp/payments`, server id `indobase-merchant-payments`). There is **no** separate
+Payments product dashboard for the operator path.
+
+Open merchant Payments in Studio at `/project/[ref]/payments` (no compat launch route).
 
 The legacy AGPL engine tree (`indobase-payments/`) was removed from the monorepo
 after the Vyom `.249` Compose stack was stopped. Studio no longer SSO-launches
@@ -22,9 +24,6 @@ See also [PAYMENTS.md](./PAYMENTS.md) and [PAYMENTS-STRIPE-RAZORPAY.md](./PAYMEN
 | PSP KYC + API keys | Razorpay / Stripe dashboards |
 | Paste keys | Studio `/project/[ref]/payments` or OS `connectGateway` |
 | Checkout URL | OS `wireCheckout` / MCP `create_checkout_session` |
-
-Compatibility: `GET /api/platform/projects/[ref]/payments/launch` returns the
-Studio Payments hub URL (`mode: studio_byok`), not a product SSO token.
 
 ---
 
@@ -57,4 +56,5 @@ docker compose -f docker-compose.prod.yml --env-file .env down --remove-orphans
 ## Branding
 
 Customer UI: **Indobase Payments** / Studio Payments hub only. Never show upstream
-engine product chrome in operator-facing strings.
+engine product chrome in operator-facing strings. Internal MCP/skill id:
+`indobase-merchant-payments`.

@@ -48,6 +48,12 @@ export function paymentsTenantSlugForOrg(organizationSlug: string): string {
   return sanitizePaymentsOrgSlug(organizationSlug)
 }
 
+/** Studio project Payments hub (BYOK) — not a separate Payments product host. */
+export function buildStudioPaymentsHubUrl(projectRef: string, studioOrigin: string): string {
+  const origin = studioOrigin.replace(/\/+$/, '')
+  return `${origin}/project/${encodeURIComponent(projectRef)}/payments`
+}
+
 export function isPaymentsRoleDeniedMessage(message: string | null | undefined): boolean {
   if (!message) return false
   const lower = message.toLowerCase()

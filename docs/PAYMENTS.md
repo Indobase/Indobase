@@ -2,18 +2,16 @@
 
 Product overview for merchant money movement (not Studio org plan billing).
 
-**Status (2026-08):** Merchant checkout is **Studio BYOK** — operators paste their own
+**Status (2026-08):** Merchant checkout is **Studio BYOK only** — operators paste their own
 Razorpay (India) or Stripe (international) API keys; agents wire hosted checkout via
 `connectGateway` + `wireCheckout`. The legacy Payments product host
-(`payments.indobase.in`) and Meteroid REST path are retired from Studio/agent flows.
+(`payments.indobase.in`), Meteroid REST path, Razorpay Route Linked Accounts, and Stripe
+Connect Account Links are **not** merchant product paths.
 
 | Rail | Operator ask | Setup | Customer checkout |
 |---|---|---|---|
 | **India** | Razorpay | PSP dashboard KYC → paste keys in Studio / `connectGateway` | Razorpay Payment Links / Subscriptions (`wireCheckout`) |
 | **International** | Stripe | PSP dashboard verification → paste keys | Stripe Checkout Sessions (`wireCheckout`) |
-
-Optional platform onboarding (Route Linked Accounts / Stripe Connect Account Links)
-is gated by `INDOBASE_MERCHANT_PLATFORM_ONBOARDING=true` — not the default BYOK path.
 
 Official API map: [PAYMENTS-STRIPE-RAZORPAY.md](./PAYMENTS-STRIPE-RAZORPAY.md).
 
@@ -32,10 +30,10 @@ Agents ask India (Razorpay) vs International (Stripe) in OS chat, then Ensure wi
 
 ## Settlement rails
 
-| Market | Adapter | Live path |
+| Market | Adapter id (legacy name) | Live path |
 |---|---|---|
-| India settlements | `razorpay_route` | BYOK merchant keys → Payment Links / Subscriptions; optional Route Linked Accounts when platform Route keys present |
-| International cards | `stripe` | BYOK secret/publishable keys → Checkout Sessions; optional Connect Account Links when platform Stripe secret present |
+| India settlements | `razorpay_route` | BYOK merchant keys → Payment Links / Subscriptions |
+| International cards | `stripe` | BYOK secret/publishable keys → Checkout Sessions |
 
 ---
 

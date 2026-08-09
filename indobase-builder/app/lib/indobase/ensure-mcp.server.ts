@@ -4,7 +4,7 @@ import { resolveBuilderMcpClaims } from '~/lib/indobase/builder-prompt-quota.ser
 import { BUILDER_MCP_COOKIE } from '~/lib/indobase/builder-session.constants';
 import {
   INDOBASE_MCP_SERVER_NAME,
-  INDOBASE_PAYMENTS_MCP_SERVER_NAME,
+  INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME,
 } from '~/lib/indobase/mcp';
 import { resolveStudioServerFetchBase } from '~/lib/indobase/studio-server-url.server';
 import type { MCPConfig } from '~/lib/services/mcpService';
@@ -76,7 +76,7 @@ export async function ensureIndobaseMcpFromRequest(
   const sameIndobase = sameServerEndpoint(mcpService, INDOBASE_MCP_SERVER_NAME, indobaseUrl, mcpToken);
   const samePayments = sameServerEndpoint(
     mcpService,
-    INDOBASE_PAYMENTS_MCP_SERVER_NAME,
+    INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME,
     paymentsUrl,
     mcpToken,
   );
@@ -95,7 +95,7 @@ export async function ensureIndobaseMcpFromRequest(
           Authorization: `Bearer ${mcpToken}`,
         },
       },
-      [INDOBASE_PAYMENTS_MCP_SERVER_NAME]: {
+      [INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME]: {
         type: 'streamable-http',
         url: paymentsUrl,
         headers: {

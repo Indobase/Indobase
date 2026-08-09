@@ -1,18 +1,16 @@
-import type { JwtPayload } from '@indobaseinc/indobase-js'
-
 import { getURL } from 'lib/helpers'
 
-import { getProject, getGotrueUserId } from './platform'
 import {
+  buildStudioPaymentsHubUrl,
   isPaymentsMerchantAdminRole,
   isPaymentsRole,
-  paymentsTenantSlugForOrg,
   type PaymentsMerchantAdminRole,
   type PaymentsRole,
-} from './payments-launch-shared'
+} from './payments-access-shared'
 import { executeQuery } from './query'
 
 export {
+  buildStudioPaymentsHubUrl,
   isPaymentsMerchantAdminRole,
   isPaymentsRole,
   isPaymentsRoleDeniedMessage,
@@ -23,9 +21,7 @@ export {
   sanitizePaymentsOrgSlug,
   type PaymentsMerchantAdminRole,
   type PaymentsRole,
-} from './payments-launch-shared'
-
-type Claims = JwtPayload & Record<string, unknown>
+} from './payments-access-shared'
 
 /**
  * The caller's Payments-eligible role, or null if they are not an org member
@@ -66,42 +62,7 @@ export function getStudioOrigin(): string {
   return getURL() || 'https://studio.indobase.in'
 }
 
-/** Studio project Payments hub (BYOK) — not a separate Payments product host. */
-export function buildStudioPaymentsHubUrl(projectRef: string, studioOrigin?: string): string {
-  const origin = (studioOrigin || getStudioOrigin()).replace(/\/+$/, '')
-  return `${origin}/project/${encodeURIComponent(projectRef)}/payments`
-}
-
-/**
- * Returns the Studio BYOK Payments hub URL for this project.
- * Legacy SSO to payments.indobase.in is retired — merchant checkout uses Razorpay/Stripe keys in Studio.
- */
-export async function getPaymentsLaunchRedirect({
-  claims,
-  ref,
-}: {
-  claims: Claims
-  ref: string
-}) {
-  const project = await getProject({ claims, ref })
-  if (!project) {
-    throw new Error('Project not found')
-  }
-
-  const userId = getGotrueUserId(claims)
-  const role = await resolvePaymentsRole(userId, project.organization_slug)
-  if (!role) {
-    throw new Error(
-      'Ask an organization owner or admin to grant you Payments access (owner, admin, developer, or viewer).'
-    )
-  }
-
-  const paymentsTenantSlug = paymentsTenantSlugForOrg(project.organization_slug)
-
-  return {
-    project,
-    paymentsTenantSlug,
-    role,
-    url: buildStudioPaymentsHubUrl(project.ref),
-  }
+/** Studio project Payments hub URL using the configured Studio origin. */
+export function studioPaymentsHubUrl(projectRef: string): string {
+  return buildStudioPaymentsHubUrl(projectRef, getStudioOrigin())
 }

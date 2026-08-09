@@ -73,7 +73,7 @@ describe('selectWebSkills', () => {
       ],
     });
 
-    expect(selected.some((skill) => skill.id === 'indobase-payments')).toBe(true);
+    expect(selected.some((skill) => skill.id === 'indobase-merchant-payments')).toBe(true);
     expect(selected.some((skill) => skill.id === 'shopify-development')).toBe(false);
   });
 });

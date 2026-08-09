@@ -3,7 +3,9 @@ import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { readStoredConnectionRaw } from '~/lib/indobase/connection-storage';
 
 export const INDOBASE_MCP_SERVER_NAME = 'indobase';
-export const INDOBASE_PAYMENTS_MCP_SERVER_NAME = 'indobase-payments';
+export const INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME = 'indobase-merchant-payments';
+/** @deprecated Use INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME */
+export const INDOBASE_PAYMENTS_MCP_SERVER_NAME = INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME;
 
 function buildIndobaseMcpUrl(studioUrl: string, projectRef: string) {
   const base = studioUrl.trim().replace(/\/+$/, '');
@@ -72,7 +74,7 @@ export function getAutoIndobaseMcpConfig(connection?: IndobaseConnectionState | 
         url: buildIndobaseMcpUrl(studioUrl, projectRef),
         headers: authHeaders,
       },
-      [INDOBASE_PAYMENTS_MCP_SERVER_NAME]: {
+      [INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME]: {
         type: 'streamable-http',
         url: buildIndobasePaymentsMcpUrl(studioUrl, projectRef),
         headers: authHeaders,
@@ -113,11 +115,12 @@ export function mergeMcpConfigWithIndobase(
     }
   }
 
-  if (autoConfig?.mcpServers?.[INDOBASE_PAYMENTS_MCP_SERVER_NAME]) {
-    mergedServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME] =
-      autoConfig.mcpServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME];
+  if (autoConfig?.mcpServers?.[INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME]) {
+    mergedServers[INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME] =
+      autoConfig.mcpServers[INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME];
   } else {
-    delete mergedServers[INDOBASE_PAYMENTS_MCP_SERVER_NAME];
+    delete mergedServers[INDOBASE_MERCHANT_PAYMENTS_MCP_SERVER_NAME];
+    delete mergedServers['indobase-payments'];
   }
 
   return {
