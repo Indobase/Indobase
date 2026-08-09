@@ -1,1 +1,0 @@
-ALTER TYPE "SubscriptionStatusEnum" ADD VALUE IF NOT EXISTS 'ERRORED';

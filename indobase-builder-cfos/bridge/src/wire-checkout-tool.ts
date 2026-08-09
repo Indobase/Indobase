@@ -9,7 +9,7 @@ export const WIRE_CHECKOUT_TOOL = {
   name: 'wireCheckout',
   aliases: ['wirePricing', 'createCheckoutCta', 'wire_checkout'] as const,
   description:
-    'Create Indobase Payments plan + customer + hosted checkout session and return checkout_url. ' +
+    'Create hosted Razorpay/Stripe checkout with the merchant BYOK keys and return checkout_url. ' +
     'Use that exact URL for Subscribe/Buy CTAs on the site. Never invent a checkout URL. ' +
     'Requires gateway keys first (connectGateway). Do not use webFetch.',
   method: 'POST' as const,

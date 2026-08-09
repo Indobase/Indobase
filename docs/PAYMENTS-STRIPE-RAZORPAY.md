@@ -22,16 +22,17 @@ Indobase Studio (**Payments → Connect gateway**). Agents wire checkout against
      `connectPaymentGateway`) with `settlement_market` + keys — preferred in chat
    - Same handler: `POST /api/os/payments/connect-gateway`
    - Studio UI fallback: **Payments → Connect gateway** (`action: "connect_gateway"`)
-   Keys are validated against the PSP, stored encrypted in Studio, and synced into
-   Indobase Payments connectors (`POST /api/v1/connectors/razorpay` or `/stripe`).
-5. Wire pricing + checkout into the **built site** (hosted checkout / MCP).
+   Keys are validated against the PSP and stored encrypted in Studio SaaS only.
+   Checkout uses Razorpay Payment Links / Subscriptions or Stripe Checkout Sessions
+   directly (`wireCheckout` / MCP `create_checkout_session`) — no separate billing engine.
+5. Wire pricing + checkout into the **built site** with the returned `checkout_url`.
 
 Platform Route Linked Accounts / Stripe Connect Account Links are **opt-in** via
 `INDOBASE_MERCHANT_PLATFORM_ONBOARDING=true` — not the default path.
 
 | Operator choice | `settlement_market` | `settlement_adapter` | Official product |
 |---|---|---|---|
-| India (Razorpay) | `india` | `razorpay_route` | Merchant [API keys](https://dashboard.razorpay.com/app/keys) + [Orders](https://razorpay.com/docs/api/orders/) + [Standard Checkout](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/) |
+| India (Razorpay) | `india` | `razorpay_route` | Merchant [API keys](https://dashboard.razorpay.com/app/keys) + [Payment Links](https://razorpay.com/docs/api/payments/payment-links/) / [Subscriptions](https://razorpay.com/docs/api/payments/subscriptions/) |
 | International (Stripe) | `international` | `stripe` | Merchant [API keys](https://dashboard.stripe.com/apikeys) + [Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create) |
 
 ---
@@ -60,8 +61,8 @@ On submit, Studio runs the Route guide sequence:
 3. [Request product config](https://razorpay.com/docs/api/payments/route/request-product-config/) (`product_name: route`)
 4. [Update product / settlements](https://razorpay.com/docs/api/payments/route/update-product-config/) (account_number, ifsc_code, beneficiary_name, `tnc_accepted`)
 
-India charge webhooks (`payment.captured` / `payment.failed`) settle invoices in the Payments engine
-(`adapters/razorpay.rs`) using notes `indobase.transaction_id`. Mandate auth tokens upsert payment methods.
+Legacy engine webhook settle was removed with the `indobase-payments/` tree.
+BYOK checkout uses Razorpay Payment Links / Subscriptions from Studio directly.
 
 ### Customer checkout (built site)
 
@@ -72,18 +73,12 @@ Per [Standard Checkout integration steps](https://razorpay.com/docs/payments/pay
 3. Server: [verify payment signature](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/#13-store-fields-in-your-server) (`razorpay_order_id` + `razorpay_payment_id` + `razorpay_signature`)
 4. Prefer webhooks for capture confirmation — [validate webhooks](https://razorpay.com/docs/webhooks/validate-test/) (`X-Razorpay-Signature`, HMAC-SHA256 of **raw** body)
 
-Indobase default for Builder/OS sites: **Indobase Payments hosted checkout** via the OS **`wireCheckout`** tool (`POST /api/os/tools/wireCheckout` → plan + customer + session → `checkout_url`). MCP `create_checkout_session` remains available for Builder; agents should prefer `wireCheckout`. Do not put Key Secret in the browser.
+Indobase default for Builder/OS sites: **merchant-hosted checkout** via the OS **`wireCheckout`** tool (`POST /api/os/tools/wireCheckout` → Razorpay Payment Link or Stripe Checkout Session → `checkout_url`). MCP `create_checkout_session` remains available for Builder; agents should prefer `wireCheckout`. Do not put Key Secret in the browser.
 
-### Recurring (engine)
+### Recurring (BYOK)
 
-Prefer Razorpay **Recurring Payments** (token + subsequent charge) over Razorpay Subscriptions plans — Indobase owns the billing schedule. See [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md).
-
-| Concern | Official API |
-|---|---|
-| Customer | `POST /v1/customers` |
-| Order (auth / charge) | `POST /v1/orders` |
-| Recurring charge | `POST /v1/payments/create/recurring` |
-| Tokens | `GET /v1/customers/:id/tokens` |
+Prefer Razorpay **Subscriptions** / Payment Links for merchant recurring under BYOK.
+Legacy engine Recurring Payments notes: [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md) (parked).
 
 ---
 
@@ -122,7 +117,7 @@ Studio mints Connect **Account Links** when `INDOBASE_PAYMENTS_STRIPE_SECRET_KEY
 |---|---|
 | India Route | `RAZORPAY_ROUTE_KEY_ID`, `RAZORPAY_ROUTE_KEY_SECRET` (or `INDOBASE_PAYMENTS_RAZORPAY_KEY_*`) |
 | India webhooks | webhook secret used by Payments engine (HMAC raw body) |
-| International | Stripe secret / publishable / webhook secrets on Payments connector |
+| International | Stripe secret / publishable / webhook secrets stored in Studio BYOK |
 
 Never ask the operator to paste keys into CFOS chat. Keys live in Studio / Payments admin.
 

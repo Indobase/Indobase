@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package meteroid.api.webhooks.out.v1;
-
-message PortalAccess {
-  string url = 1;
-  string token = 2;
-}

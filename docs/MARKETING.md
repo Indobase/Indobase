@@ -187,7 +187,7 @@ VIDEO_HANDOFF_SECRET=<same-as-video-.env-VIDEO_HANDOFF_SECRET>
 - **MIT (Video):** Indobase Video v1 + OpenCut classic attribution in
   `indobase-video/NOTICE.md` / `LICENSE`.
 - Do not mix AGPL into proprietary Studio/Builder bundles without a deliberate
-  boundary (same approach as `indobase-payments/`).
+  boundary (ecosystem AGPL products stay in their own trees; Payments is Studio BYOK).
 - India DPDP applies to audience/contact and social account data.
 
 ---

@@ -1,5 +1,0 @@
-version: v1
-directories:
-  - crates/common-grpc/proto
-  - modules/meteroid/proto
-  - modules/metering/proto

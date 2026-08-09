@@ -14,22 +14,10 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
   })),
 }))
 
-vi.mock('lib/api/saas/payments-mcp', () => ({
-  mintPaymentsMcpBearer: vi.fn().mockResolvedValue({
-    apiBaseUrl: 'https://api.payments.indobase.in',
-    bearerToken: 'test-token',
-    organizationSlug: 'acme',
-    projectRef: 'proj_123',
-    role: 'owner',
+vi.mock('lib/api/saas/payments-mcp-byok-server', () => ({
+  createByokPaymentsMcpServer: vi.fn().mockReturnValue({
+    connect: vi.fn().mockResolvedValue(undefined),
   }),
-  createPaymentsApiClient: vi.fn().mockReturnValue({
-    apiBaseUrl: 'https://api.payments.indobase.in',
-    request: vi.fn(),
-  }),
-}))
-
-vi.mock('lib/api/saas/merchant-kyc', () => ({
-  getMerchantCanGoLive: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('lib/api/saas/builder-mcp-auth', async () => {
@@ -56,6 +44,7 @@ vi.mock('lib/gotrue', () => ({
 }))
 
 import handler from '../../../../../pages/api/mcp/payments/index'
+import { createByokPaymentsMcpServer } from 'lib/api/saas/payments-mcp-byok-server'
 
 describe('/api/mcp/payments', () => {
   beforeEach(() => {
@@ -78,7 +67,7 @@ describe('/api/mcp/payments', () => {
     expect(res._getStatusCode()).toBe(401)
   })
 
-  it('accepts POST with Bearer + project_ref', async () => {
+  it('accepts POST with Bearer + project_ref via BYOK MCP', async () => {
     const { req, res } = createMocks({
       method: 'POST',
       query: { project_ref: 'proj_123' },
@@ -86,6 +75,7 @@ describe('/api/mcp/payments', () => {
       body: {},
     })
     await handler(req as any, res as any)
+    expect(createByokPaymentsMcpServer).toHaveBeenCalled()
     expect(res._getStatusCode()).not.toBe(401)
     expect(res._getStatusCode()).not.toBe(405)
   })

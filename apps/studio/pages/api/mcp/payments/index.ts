@@ -6,9 +6,7 @@ import {
   verifyBuilderMcpToken,
 } from 'lib/api/saas/builder-mcp-auth'
 import { withIndobaseMcpBranding } from 'lib/api/mcp-branding'
-import { createPaymentsMcpServer } from 'lib/api/saas/payments-mcp-server'
-import { createPaymentsApiClient, mintPaymentsMcpBearer } from 'lib/api/saas/payments-mcp'
-import { getMerchantCanGoLive } from 'lib/api/saas/merchant-kyc'
+import { createByokPaymentsMcpServer } from 'lib/api/saas/payments-mcp-byok-server'
 import { getUserClaims } from 'lib/gotrue'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -17,7 +15,6 @@ const mcpQuerySchema = z.object({
   project_ref: z.string().min(1).optional(),
   read_only: zBooleanString().default('false'),
   readonly: zBooleanString().optional(),
-  // Reserved for future feature filters; accepted so clients can pass features=payments.
   features: z
     .string()
     .transform(commaSeparatedStringIntoArray)
@@ -107,7 +104,6 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     })
   }
 
-  // Touch headers so future cookie-forwarding stays consistent with /api/mcp.
   fromNodeHeaders(req.headers)
 
   const userClaims =
@@ -116,19 +112,11 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       : builderMcpClaimsToJwtPayload(auth.claims)
 
   try {
-    const minted = await mintPaymentsMcpBearer({
+    const server = createByokPaymentsMcpServer({
       claims: userClaims as never,
       projectRef: auth.projectRef,
+      readOnly,
     })
-    const client = createPaymentsApiClient({
-      apiBaseUrl: minted.apiBaseUrl,
-      bearerToken: minted.bearerToken,
-    })
-    const liveChargesAllowed = await getMerchantCanGoLive({
-      claims: userClaims as never,
-      ref: auth.projectRef,
-    })
-    const server = createPaymentsMcpServer(client, { readOnly, liveChargesAllowed })
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -141,7 +129,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       withIndobaseMcpBranding(res, {
         name: 'indobase-payments',
         title: 'Indobase Payments',
-        version: '1.0.0',
+        version: '2.0.0',
       }),
       req.body
     )

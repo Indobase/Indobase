@@ -16,7 +16,7 @@ Canonical names for Studio, chooser tiles, launchers, bridge shells, and product
 | **Discuss** | `discuss` · `aud=indobase-discuss` | `discuss.indobase.in` | `discuss.indobase.fun` | Studio SSO only |
 | **Meet** | `meet` · `aud=indobase-meet` | `meet.indobase.in` | `meet.indobase.fun` | Studio SSO only |
 | **Calendar** | `calendar` · `aud=indobase-calendar` | `calendar.indobase.in` | `calendar.indobase.fun` | Studio SSO only |
-| **Payments** | `payments` | `payments.indobase.in` | `payments.indobase.fun` | Studio SSO only |
+| **Payments** | Studio BYOK (no product host) | `studio.indobase.in` `/project/[ref]/payments` | same on `.fun` | Studio session (not product SSO) |
 | **Analytics** | `analytics` | `analytics.indobase.in` | `analytics.indobase.fun` | Studio SSO only |
 | **Design** | `design` | `design.indobase.in` | `design.indobase.fun` | Studio SSO only |
 | **Email** | `email` | `email.indobase.in` | `email.indobase.fun` | Studio SSO only |

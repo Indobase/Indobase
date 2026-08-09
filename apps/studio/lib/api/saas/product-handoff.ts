@@ -10,8 +10,9 @@ import { executeQuery } from './query'
 /**
  * One implementation of the Studio → product SSO handoff.
  *
- * Analytics, CRM, Design, Discuss, Payments, Social, Suite, and Video share this
+ * Analytics, Design, Discuss, Domains, Social, Suite, and Video share this
  * implementation. Builder is deliberately NOT included — see `builder-launch.ts`.
+ * Merchant Payments are Studio BYOK (no separate product host) — see payments-launch.ts.
  */
 
 type Claims = JwtPayload & Record<string, unknown>
@@ -21,7 +22,6 @@ export const HANDOFF_PRODUCTS = [
   'design',
   'discuss',
   'domains',
-  'payments',
   'social',
   'suite',
   'video',
@@ -79,12 +79,6 @@ const PRODUCTS: Record<HandoffProduct, ProductConfig> = {
     label: 'Domains',
     launchPath: '/sso/launch',
     defaultBaseUrl: 'https://domains.indobase.in',
-  },
-  payments: {
-    audience: 'indobase-payments',
-    label: 'Payments',
-    launchPath: '/launch',
-    defaultBaseUrl: 'https://payments.indobase.in',
   },
   social: {
     audience: 'indobase-social',

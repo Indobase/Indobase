@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package meteroid.common.v1;
-
-message Decimal {
-    string value = 1;
-}

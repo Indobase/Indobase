@@ -2,30 +2,30 @@
 
 Product overview for merchant money movement (not Studio org plan billing).
 
-**Status (2026-08):** Dual rail is wired end-to-end in-repo:
+**Status (2026-08):** Merchant checkout is **Studio BYOK** — operators paste their own
+Razorpay (India) or Stripe (international) API keys; agents wire hosted checkout via
+`connectGateway` + `wireCheckout`. The legacy Payments product host
+(`payments.indobase.in`) and Meteroid REST path are retired from Studio/agent flows.
 
-| Rail | Operator ask | Studio KYC / aggregator | Engine charges |
+| Rail | Operator ask | Setup | Customer checkout |
 |---|---|---|---|
-| **India** | Razorpay | Route Linked Account → stakeholder → product config → bank settlements (`POST/PATCH /v2/…`) when Route keys present | Orders + Recurring + webhook settle (`payment.captured` / mandate auth) |
-| **International** | Stripe | Connect Account Links when Stripe secret present; Confirm go-live | Stripe connector + Checkout Sessions / PaymentIntents |
+| **India** | Razorpay | PSP dashboard KYC → paste keys in Studio / `connectGateway` | Razorpay Payment Links / Subscriptions (`wireCheckout`) |
+| **International** | Stripe | PSP dashboard verification → paste keys | Stripe Checkout Sessions (`wireCheckout`) |
 
-OS / Builder agents ask **India (Razorpay)** vs **International (Stripe)**, call
-`runtime/ensure` with `settlement_market`, then wire hosted checkout into the site.
+Optional platform onboarding (Route Linked Accounts / Stripe Connect Account Links)
+is gated by `INDOBASE_MERCHANT_PLATFORM_ONBOARDING=true` — not the default BYOK path.
 
 Official API map: [PAYMENTS-STRIPE-RAZORPAY.md](./PAYMENTS-STRIPE-RAZORPAY.md).
-
-Recurring Payments / live Route Linked Accounts product-config path is implemented;
-commercial Route partnership + live secrets still gate production money.
 
 ---
 
 ## What operators see
 
-| Collect money | **International cards** (Stripe) + **India settlements** (Razorpay Route) |
-| Merchant KYC | Studio onboarding wizard → `saas.project_payment_merchants` |
-| Go live | Owner/admin Confirm go-live after KYC submit / review |
+| Collect money | **International cards** (Stripe) + **India settlements** (Razorpay) |
+| Merchant setup | Studio `/project/[ref]/payments` → Connect gateway |
+| Go live | Validated BYOK keys (owner/admin) |
 
-Agents ask India (Razorpay) vs International (Stripe) in OS chat, then Enable with
+Agents ask India (Razorpay) vs International (Stripe) in OS chat, then Ensure with
 `settlement_market` and wire checkout into the built site.
 
 ---
@@ -34,22 +34,20 @@ Agents ask India (Razorpay) vs International (Stripe) in OS chat, then Enable wi
 
 | Market | Adapter | Live path |
 |---|---|---|
-| India settlements | `razorpay_route` | Live `POST /v2/accounts` + stakeholder + product + settlements when Route keys + KYC email/phone/bank present ([docs](https://razorpay.com/docs/api/payments/route/create-linked-account/)) |
-| International cards | `stripe` | Connect Account Links via `INDOBASE_PAYMENTS_STRIPE_SECRET_KEY` + [Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create) after go-live |
-
-| Provider | `StripeSettlementOnboardingProvider` + `RazorpayRouteOnboardingProvider` |
+| India settlements | `razorpay_route` | BYOK merchant keys → Payment Links / Subscriptions; optional Route Linked Accounts when platform Route keys present |
+| International cards | `stripe` | BYOK secret/publishable keys → Checkout Sessions; optional Connect Account Links when platform Stripe secret present |
 
 ---
 
 ## Platform billing vs merchant Payments
 
 `apps/studio/lib/api/saas/razorpay-billing.ts` charges Indobase plans — separate from
-merchant Indobase Payments.
+merchant BYOK checkout.
 
 ---
 
 ## Related
 
 - [PAYMENTS-STRIPE-RAZORPAY.md](./PAYMENTS-STRIPE-RAZORPAY.md) — official PSP mapping
-- [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md) — engine Recurring details
-- [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) — deploy / ops
+- [INDOBASE-PAYMENTS.md](./INDOBASE-PAYMENTS.md) — BYOK status + completed VPS teardown notes
+- [RAZORPAY-CONNECTOR.md](./RAZORPAY-CONNECTOR.md) — historical connector notes (parked)

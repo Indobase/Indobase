@@ -71,7 +71,7 @@ export const ECOSYSTEM_PRODUCTS = {
   payments: {
     id: 'payments',
     name: 'Payments',
-    tagline: 'Collect INR, invoices, payouts',
+    tagline: 'Razorpay / Stripe checkout with your own keys',
   },
   analytics: {
     id: 'analytics',

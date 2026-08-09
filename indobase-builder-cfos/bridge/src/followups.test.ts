@@ -92,7 +92,7 @@ INDOBASE_CHOICES>>>
 
   it('shows payments setup wall after Enable payments pending', () => {
     const input =
-      'Payments backend is ready — finish checkout setup to charge customers. India settlements selected.\nlaunch_url: https://payments.indobase.in/...'
+      'Payments backend is ready — finish checkout setup to charge customers. India settlements selected.\nlaunch_url: https://dashboard.razorpay.com/app/keys'
     assert.equal(looksLikePaymentsPending(input), true)
     assert.equal(looksLikeCompletedDeliverable(input), false)
     const resolved = resolveFollowUps(input)

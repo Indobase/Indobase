@@ -1,5 +1,0 @@
-export { CreditNotesHeader } from './CreditNotesHeader'
-export { CreditNotesTable } from './CreditNotesTable'
-export { CreditNoteStatusBadge } from './CreditNoteStatusBadge'
-export { FilterDropdown } from './FilterDropdown'
-export type { CreditNotesSearch } from './types'

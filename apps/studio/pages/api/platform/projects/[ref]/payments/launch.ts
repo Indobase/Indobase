@@ -15,6 +15,10 @@ const paymentsLaunchHandler = (req: NextApiRequest, res: NextApiResponse) =>
 
 export default paymentsLaunchHandler
 
+/**
+ * Compatibility endpoint: previously minted SSO to payments.indobase.in.
+ * Now returns the Studio project Payments hub (BYOK Razorpay/Stripe).
+ */
 async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPayload) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET'])
@@ -37,15 +41,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
     })
 
     return res.status(200).json({
-      token: response.token,
       url: response.url,
       project_ref: response.project.ref,
       organization_slug: response.project.organization_slug,
       payments_tenant_slug: response.paymentsTenantSlug,
       role: response.role,
+      mode: 'studio_byok',
+      message:
+        'Merchant payments are configured in Studio (Connect gateway). There is no separate Payments product dashboard.',
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to launch Payments'
+    const message = error instanceof Error ? error.message : 'Failed to open Payments setup'
     if (isPaymentsRoleDeniedMessage(message)) {
       return res.status(403).json({
         code: PAYMENTS_ROLE_DENIED_CODE,
@@ -53,15 +59,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse, claims?: JwtPa
           'Ask an organization owner or admin to grant you Payments access. Developers and viewers can open Payments once they are members of this organization.',
       })
     }
-    const status =
-      message.toLowerCase().includes('not found')
-        ? 404
-        : message.toLowerCase().includes('secret')
-          ? 503
-          : 500
+    const status = message.toLowerCase().includes('not found') ? 404 : 500
     return res.status(status).json({ message })
   }
 }
 
-// Re-export helper for tests / callers that only need slug mapping.
 export { paymentsTenantSlugForOrg }

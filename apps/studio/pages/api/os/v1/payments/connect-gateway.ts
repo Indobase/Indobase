@@ -21,7 +21,7 @@ function claimsFromBody(payload: Record<string, unknown>): Claims | null {
 
 /**
  * OS / agent BYOK: paste Razorpay or Stripe API keys after PSP KYC.
- * Validates keys, stores encrypted in Studio, syncs Payments connectors.
+ * Validates keys and stores them encrypted in Studio (direct Razorpay/Stripe checkout).
  */
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 
@@ -110,7 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         {
           id: 'wire_checkout',
           label: 'Wire checkout into the site',
-          path: 'MCP create_checkout_session',
+          path: 'POST /api/os/tools/wireCheckout',
         },
       ],
     })

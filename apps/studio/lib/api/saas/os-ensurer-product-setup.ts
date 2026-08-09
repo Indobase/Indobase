@@ -6,14 +6,14 @@
 import { enabledMessageFor, pendingMessageFor } from '@indobase/platform'
 
 import type { Claims } from './platform'
+import { GATEWAY_EXTERNAL_LINKS } from './merchant-gateway-keys'
 import { getMerchantCanGoLive, getMerchantProfile, patchMerchantProfile } from './merchant-kyc'
 import type { SettlementMarket } from './merchant-kyc-provider'
-import { getPaymentsLaunchRedirect } from './payments-launch'
 import { getEmailLaunchRedirect } from './email-launch'
 import { getAnalyticsLaunchRedirect } from './analytics-launch'
 
 export const COMMERCE_HANDOFF_FAIL_MESSAGE =
-  'Payments backend is ready — finish KYC on the payment provider dashboard, paste API keys in Studio Connect gateway, then wire checkout.'
+  'Payments backend is ready — finish KYC on the payment provider dashboard, paste API keys via connectGateway, then wireCheckout.'
 
 export const EMAIL_HANDOFF_FAIL_MESSAGE =
   'Email backend is ready — setup could not be linked right now. Finish sender setup from Indobase OS when you can.'
@@ -105,7 +105,7 @@ export async function finalizeProductCapabilityEnsure({
 
     const pending =
       (pendingMessageFor('commerce') ||
-        'Payments backend is ready — finish KYC on the provider dashboard, paste API keys in Studio Connect gateway, then wire checkout.') +
+        'Payments backend is ready — finish KYC on the provider dashboard, paste API keys via connectGateway, then wireCheckout.') +
       railSuffix
     const live = (enabledMessageFor('commerce') || 'Payments are live') + railSuffix
 
@@ -116,47 +116,28 @@ export async function finalizeProductCapabilityEnsure({
       merchantLive = false
     }
 
-    try {
-      const redirect = await getPaymentsLaunchRedirect({ claims, ref: workspaceRef })
-      if (merchantLive) {
-        return {
-          ok: true,
-          state: 'ready',
-          customerMessage: live,
-          launchUrl: redirect.url,
-          setupStatus: 'ready',
-          ...rail,
-        }
-      }
+    // Naive BYOK: send operators to the PSP keys page — not a separate Payments product.
+    const market: SettlementMarket =
+      rail.settlementMarket === 'india' ? 'india' : 'international'
+    const launchUrl = GATEWAY_EXTERNAL_LINKS[market].keys
+
+    if (merchantLive) {
       return {
         ok: true,
-        state: 'pending_setup',
-        customerMessage: pending,
-        launchUrl: redirect.url,
-        setupStatus: 'pending',
+        state: 'ready',
+        customerMessage: live,
+        launchUrl,
+        setupStatus: 'ready',
         ...rail,
       }
-    } catch (err) {
-      if (merchantLive) {
-        return {
-          ok: true,
-          state: 'ready',
-          customerMessage: live,
-          launchUrl: null,
-          setupStatus: 'ready',
-          detail: err instanceof Error ? err.message : 'payments handoff failed',
-          ...rail,
-        }
-      }
-      return {
-        ok: true,
-        state: 'pending_setup',
-        customerMessage: COMMERCE_HANDOFF_FAIL_MESSAGE + railSuffix,
-        launchUrl: null,
-        setupStatus: 'pending',
-        detail: err instanceof Error ? err.message : 'payments handoff failed',
-        ...rail,
-      }
+    }
+    return {
+      ok: true,
+      state: 'pending_setup',
+      customerMessage: pending,
+      launchUrl,
+      setupStatus: 'pending',
+      ...rail,
     }
   }
 

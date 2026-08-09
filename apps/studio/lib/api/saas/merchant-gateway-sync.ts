@@ -1,10 +1,11 @@
 /**
- * Push Studio BYOK gateway keys into Indobase Payments connectors (one paste).
+ * Legacy Payments-engine connector sync — intentionally a no-op.
+ *
+ * Merchant Razorpay/Stripe keys stay encrypted in Studio SaaS only.
+ * Checkout uses direct PSP APIs (see merchant-psp-checkout / wirePaymentsCheckout).
  */
 
 import type { JwtPayload } from '@indobaseinc/indobase-js'
-
-import { createPaymentsApiClient, mintPaymentsMcpBearer } from './payments-mcp'
 
 type Claims = JwtPayload & Record<string, unknown>
 
@@ -17,12 +18,10 @@ export type GatewaySyncResult = {
 }
 
 /**
- * Sync decrypted Studio merchant keys into Payments REST connectors.
- * Replaces any existing payment-provider connector for that rail.
+ * Previously pushed BYOK keys into Indobase Payments connectors.
+ * Now records Studio-only readiness so connectGateway / wireCheckout stay billing-engine-free.
  */
 export async function syncMerchantGatewayKeysToPayments({
-  claims,
-  ref,
   market,
   razorpay,
   stripe,
@@ -33,63 +32,25 @@ export async function syncMerchantGatewayKeysToPayments({
   razorpay?: { keyId: string; keySecret: string; webhookSecret?: string }
   stripe?: { secretKey: string; publishableKey?: string; webhookSecret?: string }
 }): Promise<GatewaySyncResult> {
-  try {
-    const minted = await mintPaymentsMcpBearer({ claims, projectRef: ref })
-    const client = createPaymentsApiClient({
-      apiBaseUrl: minted.apiBaseUrl,
-      bearerToken: minted.bearerToken,
-    })
-
-    if (market === 'india') {
-      if (!razorpay?.keyId || !razorpay.keySecret) {
-        return { ok: false, message: 'Missing Razorpay keys for Payments sync' }
-      }
-      const data = await client.request<{
-        connector?: { id?: string; alias?: string; provider?: string }
-      }>('POST', '/api/v1/connectors/razorpay', {
-        body: {
-          alias: 'india',
-          key_id: razorpay.keyId,
-          key_secret: razorpay.keySecret,
-          webhook_secret: razorpay.webhookSecret || '',
-        },
-      })
-      return {
-        ok: true,
-        connectorId: data.connector?.id,
-        alias: data.connector?.alias || 'india',
-        provider: data.connector?.provider || 'razorpay',
-        message: 'India settlements connector synced in Indobase Payments',
-      }
+  if (market === 'india') {
+    if (!razorpay?.keyId || !razorpay.keySecret) {
+      return { ok: false, message: 'Missing Razorpay keys' }
     }
-
-    if (!stripe?.secretKey) {
-      return { ok: false, message: 'Missing Stripe secret key for Payments sync' }
-    }
-    const data = await client.request<{
-      connector?: { id?: string; alias?: string; provider?: string }
-    }>('POST', '/api/v1/connectors/stripe', {
-      body: {
-        alias: 'international',
-        api_publishable_key: stripe.publishableKey || '',
-        api_secret_key: stripe.secretKey,
-        webhook_secret: stripe.webhookSecret || '',
-      },
-    })
     return {
       ok: true,
-      connectorId: data.connector?.id,
-      alias: data.connector?.alias || 'international',
-      provider: data.connector?.provider || 'stripe',
-      message: 'International cards connector synced in Indobase Payments',
+      alias: 'india',
+      provider: 'razorpay',
+      message: 'Razorpay keys stored in Studio — checkout uses Razorpay APIs directly',
     }
-  } catch (err) {
-    return {
-      ok: false,
-      message:
-        err instanceof Error
-          ? err.message
-          : 'Failed to sync gateway keys into Indobase Payments',
-    }
+  }
+
+  if (!stripe?.secretKey) {
+    return { ok: false, message: 'Missing Stripe secret key' }
+  }
+  return {
+    ok: true,
+    alias: 'international',
+    provider: 'stripe',
+    message: 'Stripe keys stored in Studio — checkout uses Stripe APIs directly',
   }
 }

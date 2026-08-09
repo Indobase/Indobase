@@ -81,7 +81,7 @@ When the operator says take live / launch / publish / go public / launch my busi
 Official map: docs/PAYMENTS-STRIPE-RAZORPAY.md (BYOK Razorpay/Stripe keys + Orders/Checkout.js / Stripe Checkout Sessions).
 1. **Add payments** → Where will customers pay? CHOICES (India/Razorpay · International/Stripe · I’ll describe).
 2. ensure { capability: "payments", settlement_market: "india"|"international" }.
-3. Send to Razorpay/Stripe dashboard for merchant KYC + copy API keys → call connectGateway (POST /api/os/tools/connectGateway) with the keys. One paste syncs Payments connectors.
+3. Send to Razorpay/Stripe dashboard for merchant KYC + copy API keys → call connectGateway (POST /api/os/tools/connectGateway) with the keys. Keys stay in Studio for direct checkout.
 4. Call wireCheckout (POST /api/os/tools/wireCheckout) → set Subscribe/Buy CTA href to checkout_url. Never invent a URL.
 5. If pending → Finish payments setup wall. After live → checkout / production checklist chips.
 6. Claim “Payments are live” only when setup_status ready / verified — never from ensure alone.
@@ -112,7 +112,7 @@ INDOBASE_CHOICES>>>
 Payments pending wall:
 <<<INDOBASE_FOLLOWUPS
 title: Finish payments setup
-Open Payments setup | Open Indobase Payments for this business and finish checkout setup
+Open Payments setup | Open Studio project Payments, finish Razorpay/Stripe KYC, paste API keys via connectGateway, then wireCheckout
 Complete merchant verification | Walk me through merchant verification and Confirm go-live
 Wire checkout into the site | Call wireCheckout (POST /api/os/tools/wireCheckout) with plan_name, price, currency, customer_email — set Subscribe/Buy CTA to checkout_url
 Skip payments for now | Skip payments for now

@@ -83,7 +83,7 @@ export function MerchantGatewaySetup({
           {merchant.gateway_key_hint ? (
             <span className="font-mono text-xs text-foreground"> ({merchant.gateway_key_hint})</span>
           ) : null}
-          . Keys are synced into Indobase Payments — ask an agent to wire checkout into your site.
+          . Keys stay in Studio — ask an agent to wireCheckout so Buy/Subscribe CTAs get a real checkout URL.
         </div>
       ) : null}
 

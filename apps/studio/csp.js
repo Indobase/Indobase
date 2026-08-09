@@ -154,34 +154,11 @@ module.exports.getCSP = function getCSP() {
     POSTHOG_ASSETS_URL,
     POSTHOG_UI_URL,
   ].filter(Boolean)
-  // Payments SSO handoff (and optional Studio embed) — must be in frame-src;
-  // default-src does not cover frames once frame-src is set explicitly.
-  const paymentsPublicOrigin = (() => {
-    const raw = process.env.NEXT_PUBLIC_INDOBASE_PAYMENTS_URL?.trim()
-    if (!raw) return null
-    try {
-      return new URL(raw).origin
-    } catch {
-      return null
-    }
-  })()
-  const INDOBASE_PAYMENTS_FRAME_URLS = [
-    ...new Set(
-      [
-        paymentsPublicOrigin,
-        'https://payments.indobase.in',
-        'https://api.payments.indobase.in',
-        'https://payments.indobase.fun',
-        'https://api.payments.indobase.fun',
-      ].filter(Boolean)
-    ),
-  ]
-
+  // Merchant Payments are Studio BYOK (no payments.indobase.in iframe).
   const FRAME_SRC_URLS = [
     HCAPTCHA_ASSET_URL,
     STRIPE_JS_URL,
     ...include(STAPE_URL),
-    ...INDOBASE_PAYMENTS_FRAME_URLS,
     ...(isDevOrStaging ? [POSTHOG_URL, POSTHOG_UI_URL] : [POSTHOG_UI_URL]),
   ].filter(Boolean)
   const IMG_SRC_URLS = [

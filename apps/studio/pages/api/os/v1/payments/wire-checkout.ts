@@ -22,7 +22,7 @@ function claimsFromBody(payload: Record<string, unknown>): Claims | null {
 }
 
 /**
- * OS / agent: create plan + customer + hosted checkout session → checkout_url for site CTA.
+ * OS / agent: create hosted Razorpay/Stripe checkout with merchant BYOK keys → checkout_url.
  */
 export default (req: NextApiRequest, res: NextApiResponse) => apiWrapper(req, res, handler)
 

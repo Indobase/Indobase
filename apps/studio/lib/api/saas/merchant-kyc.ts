@@ -1045,7 +1045,7 @@ export async function connectMerchantGatewayKeys({
     }
   }
 
-  // One paste: push keys into Payments engine connectors (best-effort; Studio still stores encrypted).
+  // Studio-only BYOK: keys stay encrypted here; checkout calls Razorpay/Stripe directly.
   const sync = await syncMerchantGatewayKeysToPayments({
     claims,
     ref: project.ref,
@@ -1056,11 +1056,11 @@ export async function connectMerchantGatewayKeys({
 
   const message = sync.ok
     ? market === 'india'
-      ? 'Razorpay keys connected and synced to Indobase Payments. Ask an agent to wire checkout into your site.'
-      : 'Stripe keys connected and synced to Indobase Payments. Ask an agent to wire checkout into your site.'
+      ? 'Razorpay keys connected in Studio. Ask an agent to wireCheckout (Buy/Subscribe CTA).'
+      : 'Stripe keys connected in Studio. Ask an agent to wireCheckout (Buy/Subscribe CTA).'
     : market === 'india'
-      ? `Razorpay keys saved in Studio. Payments connector sync pending (${sync.message}). Retry Connect gateway or open Payments if charges fail.`
-      : `Stripe keys saved in Studio. Payments connector sync pending (${sync.message}). Retry Connect gateway or open Payments if charges fail.`
+      ? `Razorpay keys could not be saved (${sync.message}). Retry Connect gateway.`
+      : `Stripe keys could not be saved (${sync.message}). Retry Connect gateway.`
 
   const updated = await executeQuery<MerchantRow>({
     query: `
@@ -1111,7 +1111,7 @@ export async function connectMerchantGatewayKeys({
         settlement_market: market,
       }),
       actorId,
-      sync.ok ? 'connector_synced' : 'keys_connected',
+      'keys_connected',
     ],
     actorId,
   })
@@ -1122,7 +1122,7 @@ export async function connectMerchantGatewayKeys({
 }
 
 /**
- * Server-side decrypt of BYOK gateway credentials for Payments connector sync / charge adapters.
+ * Server-side decrypt of BYOK gateway credentials for direct Razorpay/Stripe checkout.
  * Never expose these fields on MerchantProfilePublic.
  */
 export async function getDecryptedMerchantGatewayKeys({

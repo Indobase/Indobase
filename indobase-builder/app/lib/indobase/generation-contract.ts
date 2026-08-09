@@ -283,7 +283,7 @@ In the same response write \`index.html\`, the application entry point, and ever
 
 First-hour integrations (only when the user asked):
 - Auth/data → Indobase client with linked Studio project credentials (\`@indobaseinc/indobase-js\`)
-- Payments → Indobase Payments hosted checkout (\`payments.indobase.in\`), never default to raw Stripe Checkout.js
+- Payments → merchant BYOK hosted checkout via Studio/OS \`wireCheckout\` / \`connectGateway\` (Razorpay Payment Links or Stripe Checkout Sessions with the merchant's keys). Never invent checkout URLs; do not default to embedding Stripe.js secrets in the client.
 - AI features inside the app → call your own backend/edge function; do not require the end user to paste OpenAI/Anthropic keys
 - Code ownership → keep sources clean for download/export; do not force GitHub as a publish step (Indobase publish is default)
 

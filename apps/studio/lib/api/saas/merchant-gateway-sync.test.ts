@@ -1,26 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('./payments-mcp', () => ({
-  mintPaymentsMcpBearer: vi.fn(async () => ({
-    apiBaseUrl: 'https://api.payments.test',
-    bearerToken: 'token',
-    organizationSlug: 'acme',
-    projectRef: 'abcdefghijklmnop',
-    role: 'owner',
-  })),
-  createPaymentsApiClient: vi.fn(({ bearerToken }: { bearerToken: string }) => ({
-    apiBaseUrl: 'https://api.payments.test',
-    request: vi.fn(async (_method: string, path: string) => {
-      if (path.includes('razorpay')) {
-        return { connector: { id: 'ctr_rzp', alias: 'india', provider: 'razorpay' } }
-      }
-      return { connector: { id: 'ctr_stripe', alias: 'international', provider: 'stripe' } }
-    }),
-    _token: bearerToken,
-  })),
-}))
-
-import { createPaymentsApiClient } from './payments-mcp'
 import { syncMerchantGatewayKeysToPayments } from './merchant-gateway-sync'
 
 describe('merchant-gateway-sync', () => {
@@ -28,7 +7,7 @@ describe('merchant-gateway-sync', () => {
     vi.clearAllMocks()
   })
 
-  it('syncs Razorpay keys to Payments connector', async () => {
+  it('records Studio-only Razorpay readiness without Payments engine', async () => {
     const result = await syncMerchantGatewayKeysToPayments({
       claims: { sub: 'user-1', email: 'ops@example.com' },
       ref: 'abcdefghijklmnop',
@@ -38,10 +17,10 @@ describe('merchant-gateway-sync', () => {
     expect(result.ok).toBe(true)
     expect(result.alias).toBe('india')
     expect(result.provider).toBe('razorpay')
-    expect(createPaymentsApiClient).toHaveBeenCalled()
+    expect(result.message).toMatch(/Studio/i)
   })
 
-  it('syncs Stripe keys to Payments connector', async () => {
+  it('records Studio-only Stripe readiness without Payments engine', async () => {
     const result = await syncMerchantGatewayKeysToPayments({
       claims: { sub: 'user-1', email: 'ops@example.com' },
       ref: 'abcdefghijklmnop',
@@ -54,5 +33,15 @@ describe('merchant-gateway-sync', () => {
     expect(result.ok).toBe(true)
     expect(result.alias).toBe('international')
     expect(result.provider).toBe('stripe')
+    expect(result.message).toMatch(/Studio/i)
+  })
+
+  it('fails when keys missing', async () => {
+    const result = await syncMerchantGatewayKeysToPayments({
+      claims: { sub: 'user-1', email: 'ops@example.com' },
+      ref: 'abcdefghijklmnop',
+      market: 'india',
+    })
+    expect(result.ok).toBe(false)
   })
 })

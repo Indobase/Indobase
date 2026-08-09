@@ -65,6 +65,7 @@ Platform plan billing (different product): `verifyRazorpayWebhookSignature` in
 implements create/sync against official `/v2/accounts`. Do **not** extend
 `razorpay-billing.ts` (Indobase org plan billing).
 
-Engine crate: `indobase-payments/modules/meteroid/crates/razorpay-client`.
+Historical engine crate lived under the removed `indobase-payments/` tree; live
+merchant checkout is Studio BYOK (`merchant-psp-checkout` / `wireCheckout`).
 
 **This is not legal advice.**

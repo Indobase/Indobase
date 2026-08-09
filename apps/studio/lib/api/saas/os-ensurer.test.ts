@@ -3,10 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assertOsEnsureAccess } from './os-ensurer-access'
 import { finalizeProductCapabilityEnsure } from './os-ensurer-product-setup'
 
-vi.mock('./payments-launch', () => ({
-  getPaymentsLaunchRedirect: vi.fn(),
-}))
-
 vi.mock('./email-launch', () => ({
   getEmailLaunchRedirect: vi.fn(),
 }))
@@ -17,7 +13,6 @@ vi.mock('./merchant-kyc', () => ({
   patchMerchantProfile: vi.fn(),
 }))
 
-import { getPaymentsLaunchRedirect } from './payments-launch'
 import { getEmailLaunchRedirect } from './email-launch'
 import {
   getMerchantCanGoLive,
@@ -93,14 +88,11 @@ describe('finalizeProductCapabilityEnsure', () => {
     vi.clearAllMocks()
   })
 
-  it('returns pending_setup + launch_url for commerce when KYC not verified', async () => {
+  it('returns pending_setup + PSP keys launch_url for commerce when KYC not verified', async () => {
     vi.mocked(getMerchantCanGoLive).mockResolvedValue(false)
     vi.mocked(getMerchantProfile).mockResolvedValue({
       settlement_market: 'international',
       settlement_adapter: 'stripe',
-    } as never)
-    vi.mocked(getPaymentsLaunchRedirect).mockResolvedValue({
-      url: 'https://payments.indobase.in/launch#token=abc',
     } as never)
 
     const result = await finalizeProductCapabilityEnsure({
@@ -112,8 +104,8 @@ describe('finalizeProductCapabilityEnsure', () => {
     expect(result.ok).toBe(true)
     expect(result.state).toBe('pending_setup')
     expect(result.setupStatus).toBe('pending')
-    expect(result.launchUrl).toContain('payments.indobase.in')
-    expect(result.customerMessage).toMatch(/paste API keys|Connect gateway|finish checkout setup/i)
+    expect(result.launchUrl).toMatch(/dashboard\.stripe\.com/i)
+    expect(result.customerMessage).toMatch(/paste API keys|Connect gateway|finish checkout setup|wireCheckout/i)
     expect(result.customerMessage).not.toMatch(/Payments are live/i)
     expect(result.customerMessage).not.toMatch(/razorpay|stripe/i)
   })
@@ -123,9 +115,6 @@ describe('finalizeProductCapabilityEnsure', () => {
     vi.mocked(patchMerchantProfile).mockResolvedValue({
       settlement_market: 'india',
       settlement_adapter: 'razorpay_route',
-    } as never)
-    vi.mocked(getPaymentsLaunchRedirect).mockResolvedValue({
-      url: 'https://payments.indobase.in/launch#token=abc',
     } as never)
 
     const result = await finalizeProductCapabilityEnsure({
@@ -142,6 +131,7 @@ describe('finalizeProductCapabilityEnsure', () => {
     })
     expect(result.settlementMarket).toBe('india')
     expect(result.settlementAdapter).toBe('razorpay_route')
+    expect(result.launchUrl).toMatch(/dashboard\.razorpay\.com/i)
     expect(result.customerMessage).toMatch(/India settlements selected/i)
     expect(result.customerMessage).not.toMatch(/razorpay|stripe/i)
   })
@@ -151,9 +141,6 @@ describe('finalizeProductCapabilityEnsure', () => {
     vi.mocked(getMerchantProfile).mockResolvedValue({
       settlement_market: 'international',
       settlement_adapter: 'stripe',
-    } as never)
-    vi.mocked(getPaymentsLaunchRedirect).mockResolvedValue({
-      url: 'https://payments.indobase.in/launch#token=abc',
     } as never)
 
     const result = await finalizeProductCapabilityEnsure({
@@ -165,16 +152,15 @@ describe('finalizeProductCapabilityEnsure', () => {
     expect(result.state).toBe('ready')
     expect(result.setupStatus).toBe('ready')
     expect(result.customerMessage).toMatch(/Payments are live/i)
-    expect(result.launchUrl).toContain('payments.indobase.in')
+    expect(result.launchUrl).toMatch(/dashboard\.stripe\.com/i)
   })
 
-  it('keeps pending_setup when payments handoff mint fails and KYC not verified', async () => {
+  it('still returns PSP keys URL when gateway not ready (no Payments product handoff)', async () => {
     vi.mocked(getMerchantCanGoLive).mockResolvedValue(false)
     vi.mocked(getMerchantProfile).mockResolvedValue({
       settlement_market: 'international',
       settlement_adapter: 'stripe',
     } as never)
-    vi.mocked(getPaymentsLaunchRedirect).mockRejectedValue(new Error('secret missing'))
 
     const result = await finalizeProductCapabilityEnsure({
       claims,
@@ -184,8 +170,8 @@ describe('finalizeProductCapabilityEnsure', () => {
 
     expect(result.ok).toBe(true)
     expect(result.state).toBe('pending_setup')
-    expect(result.launchUrl).toBeNull()
-    expect(result.customerMessage).toMatch(/could not be linked/i)
+    expect(result.launchUrl).toMatch(/dashboard\.stripe\.com/i)
+    expect(result.customerMessage).toMatch(/paste API keys|Connect gateway|wireCheckout|finish checkout setup/i)
     expect(result.customerMessage?.toLowerCase()).not.toMatch(/razorpay|stripe|secret/)
   })
 

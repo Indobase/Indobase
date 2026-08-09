@@ -140,7 +140,7 @@ export const PAYMENTS_SETUP_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Paste API keys',
     message:
-      'I will paste my Razorpay or Stripe API keys — call connectGateway (POST /api/os/tools/connectGateway) with settlement_market and the keys so Indobase validates them and syncs the Payments connector',
+      'I will paste my Razorpay or Stripe API keys — call connectGateway (POST /api/os/tools/connectGateway) with settlement_market and the keys so Indobase validates and stores them for direct checkout',
   },
   {
     label: 'Wire checkout into the site',
@@ -170,10 +170,6 @@ export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
     label: 'Production checklist',
     message:
       'Finish the production site checklist — login if needed, SEO title/description, privacy/terms links, custom domain CNAME, and confirm checkout CTA uses wireCheckout checkout_url',
-  },
-  {
-    label: 'Open Payments dashboard',
-    message: 'Open the Indobase Payments dashboard for this business',
   },
   {
     label: 'Refine the design',

@@ -46,7 +46,7 @@ describe('CapabilityOrchestrator (ADR 0006)', () => {
         return {
           ok: true,
           state: 'pending_setup',
-          launchUrl: 'https://payments.indobase.in/launch#token=x',
+          launchUrl: 'https://dashboard.razorpay.com/app/keys',
           setupStatus: 'pending',
         }
       },
@@ -57,7 +57,8 @@ describe('CapabilityOrchestrator (ADR 0006)', () => {
     expect(result.status).toBe('enabling')
     expect(result.provisionState).toBe('pending_setup')
     expect(result.setupStatus).toBe('pending')
-    expect(result.launchUrl).toContain('payments.indobase.in')
+    expect(result.launchUrl).toContain('dashboard.razorpay.com')
+    expect(result.launchUrl).not.toContain('payments.indobase.in')
     expect(result.message).toBe(
       'Payments backend is ready — finish checkout setup to charge customers.',
     )

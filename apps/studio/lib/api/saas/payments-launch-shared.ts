@@ -1,12 +1,12 @@
 /**
- * Client-safe Payments SSO helpers (no Node crypto / DB imports).
- * Server minting lives in `payments-launch.ts`.
+ * Client-safe Payments access helpers (no Node crypto / DB imports).
+ * Role checks for Studio BYOK Payments hub + merchant KYC.
  */
 
 /**
- * Org roles allowed to open Payments via Studio SSO.
+ * Org roles allowed to open the Studio Payments hub (BYOK).
  * Matches saas.organization_members.role: owner | admin | developer | viewer.
- * Merchant KYC edits stay owner/admin-only (see merchant-kyc).
+ * Merchant KYC / gateway key edits stay owner/admin-only (see merchant-kyc).
  */
 export const PAYMENTS_ALLOWED_ROLES = ['owner', 'admin', 'developer', 'viewer'] as const
 export type PaymentsRole = (typeof PAYMENTS_ALLOWED_ROLES)[number]
@@ -31,8 +31,8 @@ export function isPaymentsMerchantAdminRole(
 }
 
 /**
- * Same slug mapping as Payments `sanitize_studio_org_slug`:
- * Studio org slug → Payments org/tenant slug `ib-{sanitized}`.
+ * Stable merchant tenant slug derived from Studio org slug (`ib-{sanitized}`).
+ * Kept for saas merchant profile rows; no longer maps to a separate Payments product org.
  */
 export function sanitizePaymentsOrgSlug(raw: string): string {
   const cleaned = raw
