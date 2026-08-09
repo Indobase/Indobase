@@ -1,4 +1,5 @@
 import { getPlanEntitlements } from './plan-entitlements'
+import { arePlanGatesBypassed } from './plan-gates'
 
 /** Inject or strip Indobase badge HTML based on org plan. */
 export function applyIndobaseBadgeToHtml(html: string, plan: string | null | undefined): string {
@@ -31,5 +32,6 @@ export function planRequiresIndobaseBadge(plan: string | null | undefined): bool
 }
 
 export function planHasBackendStudio(plan: string | null | undefined): boolean {
+  if (arePlanGatesBypassed()) return true
   return getPlanEntitlements(plan).backendStudio
 }

@@ -9,8 +9,8 @@ import { PageContainer } from 'ui-patterns/PageContainer'
 import { PageSection, PageSectionContent } from 'ui-patterns/PageSection'
 
 /**
- * Free plan cannot open backend Studio. Basic+ can.
- * Opening Studio on Free must prompt an upgrade to Basic.
+ * Free plan cannot open backend Studio when plan gates are enabled. Basic+ can.
+ * When plan gates are bypassed (default for go-live), children always render.
  */
 export function BackendStudioUpgradeGate({ children }: PropsWithChildren) {
   const { enabled, isLoading, hasAccess, organization, planName, billingHref } =

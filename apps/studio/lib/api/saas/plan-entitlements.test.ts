@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   assertFeatureAllowed,
@@ -9,6 +9,31 @@ import {
 } from './plan-entitlements'
 
 describe('plan-entitlements', () => {
+  const envKeys = [
+    'INDOBASE_PLAN_GATES_ENABLED',
+    'NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED',
+  ] as const
+  const previous: Record<string, string | undefined> = {}
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      if (key in previous) {
+        const value = previous[key]
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+        delete previous[key]
+      }
+    }
+  })
+
+  function setGates(enabled: boolean | null) {
+    for (const key of envKeys) {
+      if (!(key in previous)) previous[key] = process.env[key]
+      if (enabled === null) delete process.env[key]
+      else process.env[key] = enabled ? 'true' : 'false'
+    }
+  }
+
   it('maps Free → Basic as access: Studio opens at Basic, Free apps still run a backend', () => {
     const free = getPlanEntitlements('free')
     const basic = getPlanEntitlements('basic')
@@ -16,7 +41,7 @@ describe('plan-entitlements', () => {
     expect(free.maxApps).toBe(1)
     expect(free.customDomain).toBe(false)
     expect(free.showIndobaseBadge).toBe(true)
-    // Free apps run on a real backend, but the owner cannot open Studio.
+    // Free apps run on a real backend, but the owner cannot open Studio (catalog).
     expect(free.backendStudio).toBe(false)
     expect(free.buildsPerDay).toBe(20)
     expect(free.idleSleepDays).toBe(7)
@@ -71,12 +96,21 @@ describe('plan-entitlements', () => {
     expect(getPlanChangeType('pro', 'basic')).toBe('downgrade')
   })
 
-  it('gates custom domain and backend studio with upgrade hints', () => {
+  it('gates custom domain and backend studio with upgrade hints when plan gates are on', () => {
+    setGates(true)
     expect(assertFeatureAllowed('free', 'customDomain').ok).toBe(false)
     expect(assertFeatureAllowed('basic', 'customDomain').ok).toBe(true)
     expect(assertFeatureAllowed('free', 'backendStudio').ok).toBe(false)
     expect(assertFeatureAllowed('basic', 'backendStudio').ok).toBe(true)
     expect(assertFeatureAllowed('pro', 'backendStudio').ok).toBe(true)
+  })
+
+  it('allows gated features for Free when plan gates are bypassed', () => {
+    setGates(false)
+    expect(assertFeatureAllowed('free', 'backendStudio').ok).toBe(true)
+    expect(assertFeatureAllowed('free', 'customDomain').ok).toBe(true)
+    // Catalog stays truthful for billing display
+    expect(getPlanEntitlements('free').backendStudio).toBe(false)
   })
 
   it('marks Basic/Pro/Studio as Razorpay checkout plans', () => {

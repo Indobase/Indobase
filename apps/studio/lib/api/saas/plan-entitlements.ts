@@ -9,7 +9,12 @@
  * - Basic → Pro: headroom (bigger DB, more apps, GitHub export, dedicated stack)
  * - Pro → Studio: team (seats, shared billing, priority builds)
  * - Enterprise: compliance / SLA / dedicated
+ *
+ * Runtime hard-gates respect `arePlanGatesBypassed()` (see plan-gates.ts). Catalog values here
+ * stay truthful for billing UI even when gates are temporarily off.
  */
+
+import { arePlanGatesBypassed } from './plan-gates'
 
 export type IndobasePlanId =
   | 'free'
@@ -310,6 +315,10 @@ export function assertFeatureAllowed(
     'customDomain' | 'backendStudio' | 'githubExport' | 'priorityBuildQueue'
   >
 ): { ok: true } | { ok: false; message: string; upgradeHint: string } {
+  // Temporary go-live: when plan gates are off, treat gated features as allowed.
+  // Catalog entitlements (getPlanEntitlements) stay truthful for billing display.
+  if (arePlanGatesBypassed()) return { ok: true }
+
   const e = getPlanEntitlements(plan)
   if (e[feature]) return { ok: true }
 

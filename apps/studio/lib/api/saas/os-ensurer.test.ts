@@ -21,7 +21,32 @@ import {
 } from './merchant-kyc'
 
 describe('assertOsEnsureAccess', () => {
+  const envKeys = [
+    'INDOBASE_PLAN_GATES_ENABLED',
+    'NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED',
+  ] as const
+  const previous: Record<string, string | undefined> = {}
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      if (key in previous) {
+        const value = previous[key]
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+        delete previous[key]
+      }
+    }
+  })
+
+  function setGates(enabled: boolean) {
+    for (const key of envKeys) {
+      if (!(key in previous)) previous[key] = process.env[key]
+      process.env[key] = enabled ? 'true' : 'false'
+    }
+  }
+
   it('rejects guest gotrue ids', () => {
+    setGates(true)
     const result = assertOsEnsureAccess({
       gotrueId: 'guest_abc123',
       workspaceRef: 'acme-workspace',
@@ -35,6 +60,7 @@ describe('assertOsEnsureAccess', () => {
   })
 
   it('rejects draft_* workspace refs', () => {
+    setGates(true)
     const result = assertOsEnsureAccess({
       gotrueId: 'user-1',
       workspaceRef: 'draft_deadbeef',
@@ -45,7 +71,8 @@ describe('assertOsEnsureAccess', () => {
     expect(result.code).toBe('account_required')
   })
 
-  it('rejects Free plan without backendStudio', () => {
+  it('rejects Free plan without backendStudio when plan gates are on', () => {
+    setGates(true)
     const result = assertOsEnsureAccess({
       gotrueId: 'user-1',
       workspaceRef: 'acme-ws',
@@ -57,7 +84,15 @@ describe('assertOsEnsureAccess', () => {
     expect(result.statusCode).toBe(403)
   })
 
+  it('allows Free plan when plan gates are bypassed', () => {
+    setGates(false)
+    expect(
+      assertOsEnsureAccess({ gotrueId: 'user-1', workspaceRef: 'acme-ws', plan: 'free' }).ok,
+    ).toBe(true)
+  })
+
   it('allows Basic+ signed-in workspaces', () => {
+    setGates(true)
     expect(
       assertOsEnsureAccess({ gotrueId: 'user-1', workspaceRef: 'acme-ws', plan: 'basic' }).ok,
     ).toBe(true)
@@ -69,7 +104,8 @@ describe('assertOsEnsureAccess', () => {
     ).toBe(true)
   })
 
-  it('treats missing plan as free (blocked)', () => {
+  it('treats missing plan as free (blocked when gates on)', () => {
+    setGates(true)
     const result = assertOsEnsureAccess({
       gotrueId: 'user-1',
       workspaceRef: 'acme-ws',

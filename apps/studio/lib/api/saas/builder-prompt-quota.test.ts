@@ -30,9 +30,29 @@ describe('builder-prompt-quota', () => {
   })
 
   it('can disable quota enforcement via env', () => {
-    const previous = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED
+    const previousQuota = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED
+    const previousGates = process.env.INDOBASE_PLAN_GATES_ENABLED
+    const previousPublicGates = process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED
+    // Force plan gates on so this test isolates the quota-specific env flag.
+    process.env.INDOBASE_PLAN_GATES_ENABLED = 'true'
+    process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED = 'true'
     process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = 'true'
     expect(isBuilderPromptQuotaDisabled()).toBe(true)
-    process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = previous
+    process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = previousQuota
+    process.env.INDOBASE_PLAN_GATES_ENABLED = previousGates
+    process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED = previousPublicGates
+  })
+
+  it('disables Builder prompt quota when plan gates are bypassed', () => {
+    const previousQuota = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED
+    const previousGates = process.env.INDOBASE_PLAN_GATES_ENABLED
+    const previousPublicGates = process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED
+    delete process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED
+    process.env.INDOBASE_PLAN_GATES_ENABLED = 'false'
+    process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED = 'false'
+    expect(isBuilderPromptQuotaDisabled()).toBe(true)
+    process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED = previousQuota
+    process.env.INDOBASE_PLAN_GATES_ENABLED = previousGates
+    process.env.NEXT_PUBLIC_INDOBASE_PLAN_GATES_ENABLED = previousPublicGates
   })
 })

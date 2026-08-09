@@ -1,11 +1,13 @@
 import type { PlanId } from 'data/subscriptions/types'
 
 import { getPlanEntitlements, canonicalizePlanId } from './plan-entitlements'
+import { arePlanGatesBypassed } from './plan-gates'
 import { executeQuery } from './query'
 
 export const FREE_VIDEO_AI_LIMIT = 5
 
 export function isVideoAiQuotaDisabled(): boolean {
+  if (arePlanGatesBypassed()) return true
   const flag = process.env.INDOBASE_VIDEO_AI_QUOTA_DISABLED?.trim().toLowerCase()
   return flag === '1' || flag === 'true' || flag === 'yes'
 }

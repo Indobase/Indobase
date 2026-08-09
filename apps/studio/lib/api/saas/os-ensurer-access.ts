@@ -36,7 +36,8 @@ export function assertOsAccountForEnsure(input: {
 }
 
 /**
- * Lane 2 plan/account gate — reject Guest/draft and Free (no backendStudio) before provision.
+ * Lane 2 plan/account gate — reject Guest/draft always; Free (no backendStudio) only when
+ * plan gates are enabled (see plan-gates.ts).
  */
 export function assertOsEnsureAccess(input: {
   gotrueId: string

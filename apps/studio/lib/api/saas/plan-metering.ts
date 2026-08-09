@@ -1,4 +1,5 @@
 import { getPlanEntitlements, canonicalizePlanId } from './plan-entitlements'
+import { arePlanGatesBypassed } from './plan-gates'
 import { executeQuery } from './query'
 
 export type AppLimitResult =
@@ -38,8 +39,8 @@ export async function checkOrganizationAppLimit(orgSlug: string): Promise<AppLim
   const used = row.project_count ?? 0
   const limit = entitlements.maxApps
 
-  if (limit == null || used < limit) {
-    return { ok: true, plan: canonicalizePlanId(row.plan), used, limit }
+  if (arePlanGatesBypassed() || limit == null || used < limit) {
+    return { ok: true, plan: canonicalizePlanId(row.plan), used, limit: arePlanGatesBypassed() ? null : limit }
   }
 
   const upgradeHint =
@@ -86,8 +87,8 @@ export async function checkOrganizationSeatLimit(orgSlug: string): Promise<SeatL
   const used = row.member_count ?? 0
   const limit = entitlements.maxSeats
 
-  if (limit == null || used < limit) {
-    return { ok: true, used, limit }
+  if (arePlanGatesBypassed() || limit == null || used < limit) {
+    return { ok: true, used, limit: arePlanGatesBypassed() ? null : limit }
   }
 
   return {
@@ -125,7 +126,7 @@ export async function checkOrganizationBuildQuota(orgSlug: string): Promise<Buil
   const entitlements = getPlanEntitlements(org.plan)
   const limit = entitlements.buildsPerDay
 
-  if (limit == null) {
+  if (arePlanGatesBypassed() || limit == null) {
     return { ok: true, used: 0, limit: null, plan: canonicalizePlanId(org.plan) }
   }
 

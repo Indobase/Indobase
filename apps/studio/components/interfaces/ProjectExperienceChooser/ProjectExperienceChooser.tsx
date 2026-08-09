@@ -27,6 +27,7 @@ import {
 import { Badge, Button, cn } from 'ui'
 
 import { ECOSYSTEM_PRODUCTS } from 'lib/constants/ecosystem-products'
+import { arePlanGatesBypassed } from 'lib/api/saas/plan-gates'
 
 import { BuilderLaunchButton } from './BuilderLaunchButton'
 import { useBuilderLaunch } from './useBuilderLaunch'
@@ -207,10 +208,14 @@ export const ProjectExperienceChooser = () => {
    */
   const planName = organization?.plan?.name ?? 'Free'
   const isPaidPlan = (organization?.plan?.id ?? 'free') !== 'free'
+  const planGatesOff = arePlanGatesBypassed()
+  // When plan gates are off, Free can use Payments / Studio without upgrading — don't list upgrade as a setup blocker.
   const setupSteps = [
     { label: 'Project created', done: Boolean(project?.ref) },
     { label: 'Backend provisioned', done: project?.status === 'ACTIVE_HEALTHY' },
-    { label: 'Upgrade for Payments & custom domains', done: isPaidPlan },
+    ...(planGatesOff
+      ? []
+      : [{ label: 'Upgrade for Payments & custom domains', done: isPaidPlan }]),
   ]
   const remaining = setupSteps.filter((s) => !s.done).length
 
@@ -453,7 +458,7 @@ export const ProjectExperienceChooser = () => {
                     </li>
                   ))}
                 </ul>
-                {!isPaidPlan && organization?.slug && (
+                {!planGatesOff && !isPaidPlan && organization?.slug && (
                   <Button asChild type="default" size="tiny" className="mt-3 w-full">
                     <Link href={`/org/${organization.slug}/billing?panel=subscriptionPlan`}>
                       Upgrade from {planName}

@@ -1,11 +1,14 @@
 import type { PlanId } from 'data/subscriptions/types'
 
 import { getPlanEntitlements, canonicalizePlanId } from './plan-entitlements'
+import { arePlanGatesBypassed } from './plan-gates'
 import { executeQuery } from './query'
 
 export const FREE_BUILDER_PROMPT_LIMIT = 5
 
 export function isBuilderPromptQuotaDisabled(): boolean {
+  // Global plan-gate bypass also lifts the Free 5-prompt Builder / OS meter.
+  if (arePlanGatesBypassed()) return true
   const flag = process.env.INDOBASE_BUILDER_PROMPT_QUOTA_DISABLED?.trim().toLowerCase()
   return flag === '1' || flag === 'true' || flag === 'yes'
 }
