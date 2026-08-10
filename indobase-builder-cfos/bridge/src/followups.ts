@@ -3,7 +3,7 @@
  *
  * Product policy (goal → gate → build → cards):
  *   1. Clear build ask → ack (+ guest gate if unsigned-in)
- *   2. Guest gate → name/email/DPDP/OTP only — NO chips
+ *   2. Guest gate → name/email/DPDP/OTP; niche CHOICES OK (store asks)
  *   3. Building → at most goal-tied CHOICES the agent emits (if blocked)
  *   4. Deliverable ready → agent-authored FOLLOWUPS only
  *   5. Capability path → agent-authored CHOICES for that path
@@ -11,9 +11,10 @@
  * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
  * If the agent omits chips after a completed deliverable, resolveFollowUps
  * injects Naive-style postPreview / postBackend / postGoLive chips (≤4).
+ * Niche prose without a CHOICES block is injected as ecommerce niche chips.
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
- * guest_gate → none | building → goal CHOICES only (strip canned walls) |
+ * guest_gate → niche CHOICES only | building → goal CHOICES only (strip walls) |
  * payments / deliverable → show chips, max 4.
  */
 
@@ -122,6 +123,86 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
     message: "I'll describe the web app so you can pick the right production path",
   },
 ] as const
+
+export const ECOMMERCE_NICHE_TITLE = 'What will your store sell?'
+
+/** Self-contained niche CHOICES for FE (no vertical-catalog import). Preview-only messages. */
+export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
+  {
+    label: 'Apparel / fashion',
+    message:
+      'Niche Apparel / fashion — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=apparel). Do NOT call guidedBackend yet. After preview, emit FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is).',
+  },
+  {
+    label: 'Electronics / gadgets',
+    message:
+      'Niche Electronics / gadgets — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=electronics). Do NOT call guidedBackend yet.',
+  },
+  {
+    label: 'Food / grocery',
+    message:
+      'Niche Food / grocery — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=food-grocery). Do NOT call guidedBackend yet.',
+  },
+  {
+    label: 'Beauty / personal care',
+    message:
+      'Niche Beauty / personal care — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=beauty). Do NOT call guidedBackend yet.',
+  },
+  {
+    label: "I'll type my specific niche",
+    message:
+      "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
+  },
+] as const
+
+export function itemsLookLikeEcommerceNiche(items: readonly FollowUpItem[]): boolean {
+  if (!items.length) return false
+  const blob = items.map((i) => `${i.label} ${i.message}`.toLowerCase()).join('\n')
+  return (
+    /what will your store sell|vertical=apparel|niche apparel|i'll type my specific niche|localstorage cart|do not call guidedbackend yet/.test(
+      blob,
+    ) || items.some((i) => /apparel|electronics|handmade|beauty|grocery|niche/i.test(i.label))
+  )
+}
+
+export function looksLikeEcommerceNicheAsk(message: string): boolean {
+  const text = message.toLowerCase()
+  return /what will (your|the) store sell|which vertical|apparel \/ fashion|streetwear|women'?s fashion|handmade|pick a (store )?niche|store category|what (kind of|type of) (products|goods)|digital products \(downloads\)|electronics \/ gadgets|home lifestyle/.test(
+    text,
+  )
+}
+
+/**
+ * Strip leaked model CoT / “Considering…” dumps from assistant text shown in chat.
+ */
+export function stripLeakedCot(message: string): string {
+  if (!message) return message
+  let t = message
+  // Drop a "Considering…" heading and the following paragraph until a blank line.
+  t = t.replace(/(?:^|\n+)#{0,3}\s*Considering[^\n]*\n(?:[^\n]+\n)*?(?=\n\n|$)/gi, '\n\n')
+  t = t.replace(/(?:^|\n)Considering guest information[^\n]*\n?/gi, '\n')
+  // Drop obvious internal-planning one-liners
+  t = t.replace(
+    /(?:^|\n)(?:I need to|Let me think|Internal(?:ly)?|My (?:plan|reasoning))\b[^\n]{10,}\n?/gi,
+    '\n',
+  )
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+export function injectNicheChoices(message: string): ParsedFollowUps | null {
+  if (!message || parseFollowUps(message)) return null
+  const lower = message.toLowerCase()
+  const nicheAsk = looksLikeEcommerceNicheAsk(message)
+  const guestStore =
+    looksLikePreBuildClarification(message) &&
+    /\b(store|shop|ecommerce|apparel|fashion|sell|product website)\b/.test(lower)
+  if (!nicheAsk && !guestStore) return null
+  return {
+    body: stripLeakedCot(message),
+    title: ECOMMERCE_NICHE_TITLE,
+    items: ECOMMERCE_NICHE_FOLLOWUPS.slice(0, MAX_VISIBLE_CHIPS),
+  }
+}
 
 export const PAYMENTS_MARKET_TITLE = 'Where will customers pay?'
 
@@ -473,22 +554,25 @@ function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
 }
 
 /**
- * Enforce Naive-style timing + brevity on agent-authored chips.
- * Never invents chips mid-guest-gate; strips canned walls mid-build.
+ * Enforce Naive-style timing + brevity.
+ * Guest gate: strip post-build walls, but KEEP ecommerce niche CHOICES.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
   if (stage === 'guest_gate') {
-    return { body: parsed.body, title: '', items: [] }
+    if (itemsLookLikeEcommerceNiche(parsed.items) || /^what will your store sell/i.test(parsed.title)) {
+      return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
+    }
+    return { body: stripLeakedCot(parsed.body), title: '', items: [] }
   }
 
   if (stage === 'building') {
     if (itemsLookLikeDefaultPostBuild(parsed.items)) {
-      return { body: parsed.body, title: '', items: [] }
+      return { body: stripLeakedCot(parsed.body), title: '', items: [] }
     }
-    return capChips(parsed)
+    return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
   }
 
-  return capChips(parsed)
+  return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
 }
 
 /** Best-effort brand name from agent prose (for injected chip titles). */
@@ -509,7 +593,8 @@ export function extractBrandFromMessage(message: string): string | null {
  */
 export function injectDeliverableFollowUps(message: string): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
-  if (looksLikePreBuildClarification(message)) return null
+  // Guest-gate turns may inject niche instead; don't also inject post-preview walls.
+  if (looksLikePreBuildClarification(message) && !bodyHasDeliverableSignal(message)) return null
   if (!looksLikeCompletedDeliverable(message) && !bodyHasDeliverableSignal(message)) return null
 
   const brand = extractBrandFromMessage(message)
@@ -523,7 +608,7 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     stage = postPreviewFollowups(brand)
   }
   return {
-    body: message,
+    body: stripLeakedCot(message),
     title: stage.title,
     items: stage.items.slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -532,14 +617,19 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
 /**
  * Resolve chips for display.
  *
- * Prefer agent-authored FOLLOWUPS/CHOICES. If the agent omitted chips after a
- * completed deliverable, inject postPreview / postBackend / postGoLive examples
- * so the Naive ladder cannot silently disappear.
+ * Prefer agent-authored FOLLOWUPS/CHOICES. Inject niche CHOICES when the agent
+ * asks niche/guest-store in prose without a block. Inject post-deliverable chips
+ * when the agent omits FOLLOWUPS after a completed build.
  */
 export function resolveFollowUps(message: string): ParsedFollowUps | null {
-  const parsed = parseFollowUps(message)
+  const cleaned = stripLeakedCot(message)
+  const parsed = parseFollowUps(cleaned)
   if (parsed) return applyStageGate(parsed)
-  const injected = injectDeliverableFollowUps(message)
+
+  const niche = injectNicheChoices(cleaned)
+  if (niche) return applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
+
+  const injected = injectDeliverableFollowUps(cleaned)
   if (!injected) return null
   return applyStageGate(injected, 'deliverable')
 }

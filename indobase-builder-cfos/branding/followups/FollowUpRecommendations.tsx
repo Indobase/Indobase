@@ -7,6 +7,7 @@ import { memo, useMemo, type ReactNode } from 'react'
 import {
   parseFollowUps,
   resolveFollowUps,
+  stripLeakedCot,
   type FollowUpItem,
   type ParsedFollowUps,
 } from './followups'
@@ -78,11 +79,12 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   disabled,
   children,
 }: Props) {
+  const cleaned = useMemo(() => stripLeakedCot(message), [message])
   const resolved = useMemo(
-    () => (allowFallback ? resolveFollowUps(message) : parseFollowUps(message)),
-    [allowFallback, message],
+    () => (allowFallback ? resolveFollowUps(cleaned) : parseFollowUps(cleaned)),
+    [allowFallback, cleaned],
   )
-  const body = resolved?.body ?? message
+  const body = resolved?.body ?? cleaned
 
   return (
     <>

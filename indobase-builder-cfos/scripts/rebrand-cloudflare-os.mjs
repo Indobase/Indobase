@@ -2230,5 +2230,40 @@ ${injection}`
   }
 }
 
+// --- Hide thinking / CoT by default (Naive-clean operator chat) ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    const oldDefault = `function getStoredShowThinkingTraces(): boolean {
+  try {
+    // Clean up the key this setting replaced.
+    window.localStorage.removeItem("expandReasoningByDefault");
+    return window.localStorage.getItem(SHOW_THINKING_TRACES_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}`
+    const newDefault = `function getStoredShowThinkingTraces(): boolean {
+  try {
+    // Clean up the key this setting replaced.
+    window.localStorage.removeItem("expandReasoningByDefault");
+    // Indobase: hide CoT / thinking traces by default (operator chat stays clean).
+    return window.localStorage.getItem(SHOW_THINKING_TRACES_KEY) === "true";
+  } catch {
+    return false;
+  }
+}`
+    if (text.includes('Indobase: hide CoT')) {
+      console.log('  ChatInterface thinking traces already default-off (skip)')
+    } else if (text.includes(oldDefault)) {
+      write(path, text.replace(oldDefault, newDefault))
+      console.log('  ChatInterface ← hide thinking traces by default')
+    } else {
+      console.warn('  skip: getStoredShowThinkingTraces anchor drifted')
+    }
+  }
+}
+
 console.log('Done. UI chrome reads as Indobase; LICENSE / Apache attribution untouched.')
 console.log(`Smoke: cd ${OS} && pnpm run-local  →  http://localhost:8787`)

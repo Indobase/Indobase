@@ -15,6 +15,7 @@ import {
   postBackendFollowups,
   postGoLiveFollowups,
   postPaymentsFollowups,
+  stripLeakedCot,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -112,8 +113,8 @@ INDOBASE_CHOICES>>>
     assert.equal(resolveFollowUps('What color should the logo be?'), null)
   })
 
-  it('guest_gate stage strips all chips', () => {
-    const input = `Clarifying guest gate needs
+  it('guest_gate stage strips post-build walls but keeps niche CHOICES', () => {
+    const wall = `Clarifying guest gate needs
 
 I can create a polished headphone product website. Before I begin, please share:
 
@@ -133,13 +134,43 @@ Refine the design | refine
 Leave it as-is for now | leave
 INDOBASE_FOLLOWUPS>>>
 `
-    assert.equal(looksLikePreBuildClarification(input), true)
-    assert.equal(inferChipStage(parseFollowUps(input)!.body), 'guest_gate')
+    assert.equal(looksLikePreBuildClarification(wall), true)
+    const resolvedWall = resolveFollowUps(wall)
+    assert.ok(resolvedWall)
+    assert.equal(resolvedWall.items.length, 0)
+
+    const niche = `I'd love to build this. Before I begin, please share name + email + DPDP.
+
+<<<INDOBASE_CHOICES
+title: What will your store sell?
+Apparel / fashion | Niche Apparel — preview only, do NOT call guidedBackend yet
+Electronics / gadgets | Niche Electronics — preview only
+I'll type my specific niche | I'll type my niche
+INDOBASE_CHOICES>>>
+`
+    const resolvedNiche = resolveFollowUps(niche)
+    assert.ok(resolvedNiche)
+    assert.equal(resolvedNiche.title, 'What will your store sell?')
+    assert.ok(resolvedNiche.items.length >= 2)
+  })
+
+  it('injects niche CHOICES when agent asks niche in prose under guest gate', () => {
+    const input = `I'd love to build an apparel store. Before I begin, please share name and email and DPDP consent.
+
+What will your store sell? Streetwear, women's fashion, handmade, or electronics?`
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.equal(resolved.items.length, 0)
-    assert.match(resolved.body, /Before I begin/)
-    assert.doesNotMatch(resolved.body, /INDOBASE_FOLLOWUPS/)
+    assert.equal(resolved.title, 'What will your store sell?')
+    assert.ok(resolved.items.some((i) => /Apparel/i.test(i.label)))
+  })
+
+  it('strips leaked CoT from assistant body', () => {
+    const dirty = `Considering guest information
+I need to ask for auth before building gadgets and follow-ups.
+
+I'd love to build this for you. Before I begin, please share name and email.`
+    assert.doesNotMatch(stripLeakedCot(dirty), /Considering guest/i)
+    assert.match(stripLeakedCot(dirty), /I'd love to build/i)
   })
 
   it('building stage strips canned post-build wall', () => {

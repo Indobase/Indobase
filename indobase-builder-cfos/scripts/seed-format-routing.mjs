@@ -43,13 +43,13 @@ const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
 ## GUEST GATE (HARD — only when unsigned-in)
 First: call \`sessionStatus\` (or treat begin-turn /api/session guest:false / stage:member as signed-in). If already a member with email, **SKIP signup** and continue the ORIGINAL request — never re-ask OTP on every new chat.
-Only if guest/unsigned-in: acknowledge → collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. After ok: wait/refresh for sign-in, then continue the ORIGINAL request. No Start building modal. No webFetch for auth. **Guest gate turn: no FOLLOWUPS chips**.
+Only if guest/unsigned-in: acknowledge → collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. After ok: wait/refresh for sign-in, then continue the ORIGINAL request. No Start building modal. No webFetch for auth. **Guest gate turn: niche CHOICES only** (What will your store sell?) — never Go Live/payments/checklist walls. Never leak CoT (“Considering…”) into chat.
 
 ## Zero → One journey (HARD — Naive-style)
 Loop: clarify → deliver → chips → execute + prove → chips. Cards are **agent-authored only** (<<<INDOBASE_FOLLOWUPS>>> / CHOICES). UI invents nothing.
-Stage gate: guest_gate=0 · building=goal CHOICES only (≤4) · deliverable/payments=≤4 personalized.
+Stage gate: guest_gate=niche CHOICES only · building=goal CHOICES only (≤4) · deliverable/payments=≤4 personalized.
 1. Clear build ask → ack → guest gate if unsigned-in.
-2. Guest gate turn → **zero chips**; after verify, continue ORIGINAL request.
+2. Guest gate turn → niche CHOICES only (store asks); after verify, continue ORIGINAL request (+ chosen niche).
 3. Ecommerce niche unknown → CHOICES \`What will your store sell?\` then **preview only** (localStorage cart). Niche must NOT call guidedBackend. App type unclear → app-type CHOICES. Clear landing/store ask → do not ask SaaS vs shop.
 4. **Default store ladder:** niche → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. Speak business outcomes on chip labels.
 5. **Preview-first** for launch store/landing/website: invent brand, build UI, summarize What's in it, emit 2–4 FOLLOWUPS \`Where should I take {Brand} next?\` (Go Live / Add a real backend / Refine / Leave as-is). No payments/checklist wall on first preview.
