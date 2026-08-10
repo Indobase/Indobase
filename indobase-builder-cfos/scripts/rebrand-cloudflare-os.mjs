@@ -1821,34 +1821,20 @@ void (async () => {
   if (existsSync(overseerPath)) {
     let text = readFileSync(overseerPath, 'utf8')
     if (text.includes('getIndobaseLaunchConfig()')) {
-      if (!text.includes('launch_config_probe')) {
-        const bare =
-          /getIndobaseLaunchConfig\(\): \{ bridgeUrl: string; osSecret: string \} \| null \{\n    const bridgeUrl = String\(\(this\.env as \{ INDOBASE_BRIDGE_URL\?: string \}\)\.INDOBASE_BRIDGE_URL \|\| ""\)\.trim\(\);\n    const osSecret = String\(\(this\.env as \{ INDOBASE_OS_SECRET\?: string \}\)\.INDOBASE_OS_SECRET \|\| ""\)\.trim\(\);\n    if \(!bridgeUrl \|\| !osSecret\) return null;/
-        const withProbe = `getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
+      // Strip leftover debug probe from earlier sessions (idempotent).
+      if (text.includes('launch_config_probe')) {
+        const withProbe =
+          /getIndobaseLaunchConfig\(\): \{ bridgeUrl: string; osSecret: string \} \| null \{\n    const bridgeUrl = String\(\(this\.env as \{ INDOBASE_BRIDGE_URL\?: string \}\)\.INDOBASE_BRIDGE_URL \|\| ""\)\.trim\(\);\n    const osSecret = String\(\(this\.env as \{ INDOBASE_OS_SECRET\?: string \}\)\.INDOBASE_OS_SECRET \|\| ""\)\.trim\(\);\n    \/\/ #region agent log\n    console\.log\(JSON\.stringify\(\{[\s\S]*?\/\/ #endregion\n    if \(!bridgeUrl \|\| !osSecret\) return null;/
+        const bare = `getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
     const bridgeUrl = String((this.env as { INDOBASE_BRIDGE_URL?: string }).INDOBASE_BRIDGE_URL || "").trim();
     const osSecret = String((this.env as { INDOBASE_OS_SECRET?: string }).INDOBASE_OS_SECRET || "").trim();
-    // #region agent log
-    console.log(JSON.stringify({
-      sessionId: "012e63",
-      hypothesisId: "A",
-      location: "overseer.ts:getIndobaseLaunchConfig",
-      message: "launch_config_probe",
-      data: {
-        hasBridgeUrl: Boolean(bridgeUrl),
-        bridgeHost: bridgeUrl ? bridgeUrl.replace(/^https?:\\/\\//, "").split("/")[0] : "",
-        secretLen: osSecret.length,
-        configured: Boolean(bridgeUrl && osSecret),
-      },
-      timestamp: Date.now(),
-    }));
-    // #endregion
     if (!bridgeUrl || !osSecret) return null;`
-        if (bare.test(text)) {
-          text = text.replace(bare, withProbe)
+        if (withProbe.test(text)) {
+          text = text.replace(withProbe, bare)
           writeFileSync(overseerPath, text)
-          console.log('  overseer.ts ← launch_config_probe instrumentation')
+          console.log('  overseer.ts ← removed launch_config_probe')
         } else {
-          console.log('  overseer getIndobaseLaunchConfig already patched (probe skipped)')
+          console.log('  overseer getIndobaseLaunchConfig already patched')
         }
       } else {
         console.log('  overseer getIndobaseLaunchConfig already patched')
@@ -1859,21 +1845,6 @@ void (async () => {
       const injection = `  getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
     const bridgeUrl = String((this.env as { INDOBASE_BRIDGE_URL?: string }).INDOBASE_BRIDGE_URL || "").trim();
     const osSecret = String((this.env as { INDOBASE_OS_SECRET?: string }).INDOBASE_OS_SECRET || "").trim();
-    // #region agent log
-    console.log(JSON.stringify({
-      sessionId: "012e63",
-      hypothesisId: "A",
-      location: "overseer.ts:getIndobaseLaunchConfig",
-      message: "launch_config_probe",
-      data: {
-        hasBridgeUrl: Boolean(bridgeUrl),
-        bridgeHost: bridgeUrl ? bridgeUrl.replace(/^https?:\\/\\//, "").split("/")[0] : "",
-        secretLen: osSecret.length,
-        configured: Boolean(bridgeUrl && osSecret),
-      },
-      timestamp: Date.now(),
-    }));
-    // #endregion
     if (!bridgeUrl || !osSecret) return null;
     return { bridgeUrl, osSecret };
   }

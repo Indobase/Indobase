@@ -461,25 +461,6 @@ app.post('/auth/start', async (c) => {
   const name = body && typeof body.name === 'string' ? body.name.trim() : ''
   const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const dpdpConsent = Boolean(body && body.dpdpConsent === true)
-  // #region agent log
-  fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-    body: JSON.stringify({
-      sessionId: '012e63',
-      hypothesisId: 'C',
-      location: 'bridge/index.ts:/auth/start',
-      message: 'auth_start_entry',
-      data: {
-        hasName: Boolean(name),
-        hasEmail: Boolean(email && email.includes('@')),
-        dpdpConsent,
-        emailDomain: email.includes('@') ? email.split('@')[1] : '',
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
   if (!name || !email || !email.includes('@')) {
     return c.json({ ok: false, message: 'Enter your name and a valid email.' }, 400)
   }
@@ -496,24 +477,6 @@ app.post('/auth/start', async (c) => {
 
   const result = await platformOtpStart({ name, email, dpdpConsent })
   if (!result.ok) {
-    // #region agent log
-    fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-      body: JSON.stringify({
-        sessionId: '012e63',
-        hypothesisId: 'E',
-        location: 'bridge/index.ts:/auth/start',
-        message: 'auth_start_platform_error',
-        data: {
-          status: result.status,
-          code: result.code ?? null,
-          hasRetryAfter: Boolean(result.retryAfterSeconds),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     const normalized = normalizeAuthRouteError(
       result.status,
       {
@@ -528,20 +491,6 @@ app.post('/auth/start', async (c) => {
     }
     return c.json(authErrorJsonBody(normalized), normalized.status as 400 | 429 | 502 | 503 | 504)
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-    body: JSON.stringify({
-      sessionId: '012e63',
-      hypothesisId: 'C',
-      location: 'bridge/index.ts:/auth/start',
-      message: 'auth_start_ok',
-      data: { next: 'verify' },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
   return c.json({ ok: true, email: result.email, next: 'verify' })
 })
 
@@ -609,25 +558,6 @@ app.post('/auth/verify', async (c) => {
     (c.req.header('x-indobase-os-secret') || c.req.header('X-Indobase-OS-Secret') || '').trim()
   const agentUsername =
     (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
-  // #region agent log
-  fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-    body: JSON.stringify({
-      sessionId: '012e63',
-      hypothesisId: 'D',
-      location: 'bridge/index.ts:/auth/verify',
-      message: 'auth_verify_agent_headers',
-      data: {
-        hasOsSecretHeader: Boolean(provided),
-        osSecretLen: provided.length,
-        secretMatch: Boolean(provided && timingSafeEqualString(provided, secret)),
-        hasAgentUsername: Boolean(agentUsername),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
   if (provided && agentUsername && timingSafeEqualString(provided, secret)) {
     await rememberPendingSession({
       username: agentUsername,
