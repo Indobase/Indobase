@@ -1660,11 +1660,87 @@ void (async () => {
     }
   }
 
-  // --- authStart / authVerify AgentTools (OTP; webFetch cannot POST) ---
+  // --- sessionStatus / authStart / authVerify AgentTools (OTP; webFetch cannot POST) ---
   if (existsSync(agentPath)) {
     let text = readFileSync(agentPath, 'utf8')
     if (text.includes('Indobase authStart tool') || text.includes('name: "authStart"')) {
-      console.log('  authStart/authVerify AgentTools already patched')
+      if (!text.includes('name: "sessionStatus"') && !text.includes('Indobase sessionStatus')) {
+        const sessionStatusTool = `
+    // Indobase sessionStatus — check signed-in before OTP (do not re-ask every chat).
+    sessionStatus: defineTool({
+      name: "sessionStatus",
+      label: "Check Indobase sign-in",
+      description:
+          "Return whether the operator is already signed in to Indobase (guest vs member). " +
+          "Call this at the start of a new chat or before authStart. If signed_in/stage=member, " +
+          "do NOT ask for signup or OTP — continue the original request.",
+      parameters: Type.Object({}),
+      execute: async (_toolCallId, _args) => {
+        const cfg = hooks.getIndobaseLaunchConfig();
+        if (!cfg) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_not_configured",
+            message: "Indobase auth bridge is not configured on this runtime.",
+          }));
+        }
+        const agentUsername = initiator?.id;
+        if (!agentUsername || typeof agentUsername !== "string") {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "agent_identity_missing",
+            message: "Cannot read session: missing agent username. Reload Indobase OS.",
+          }));
+        }
+        const endpoint = cfg.bridgeUrl.replace(/\\/+$/, "") + "/api/os/runtime/session-status";
+        try {
+          const resp = await fetch(endpoint, {
+            method: "GET",
+            headers: {
+              "X-Indobase-OS-Secret": cfg.osSecret,
+              "X-Indobase-Agent-Username": agentUsername,
+            },
+          });
+          let body: Record<string, unknown> = {};
+          try { body = await resp.json() as Record<string, unknown>; }
+          catch { body = { message: await resp.text().catch(() => "non-JSON") }; }
+          return toolResult(jsonToolResultText({
+            ...body,
+            ok: resp.ok && body.ok === true,
+            httpStatus: resp.status,
+            tool: "sessionStatus",
+            next: body.signed_in === true || body.guest === false || body.stage === "member"
+              ? "Operator is signed in — skip authStart/authVerify; continue their request."
+              : "Operator is a guest — collect name+email+DPDP, then authStart → authVerify once.",
+          }));
+        } catch (err) {
+          return toolResult(jsonToolResultText({
+            ok: false,
+            code: "auth_network_error",
+            message: err instanceof Error ? err.message : "sessionStatus failed",
+          }));
+        }
+      },
+    }),
+`
+        const authAnchor = text.includes('// Indobase authStart tool')
+          ? '// Indobase authStart tool'
+          : '    authStart: defineTool({'
+        if (text.includes(authAnchor)) {
+          text = text.replace(authAnchor, `${sessionStatusTool}${authAnchor}`)
+          // Refresh SYSTEM_PROMPT guest note if still the old wording
+          text = text.replace(
+            'For Guest operators: call \\`authStart\\` (name+email+dpdpConsent) then \\`authVerify\\` with the email code before Launch/Enable. ',
+            'Call \\`sessionStatus\\` first each chat — if signed_in/member, SKIP signup. Only for Guest operators: call \\`authStart\\` (name+email+dpdpConsent) then \\`authVerify\\` with the email code before Launch/Enable. ',
+          )
+          writeFileSync(agentPath, text)
+          console.log('  agent.ts ← sessionStatus AgentTool')
+        } else {
+          console.warn('  skip: authStart anchor missing for sessionStatus inject')
+        }
+      } else {
+        console.log('  authStart/authVerify/sessionStatus AgentTools already patched')
+      }
     } else {
       const toolMarker = '    // Indobase launchBusiness tool'
       const authTools = `
@@ -1805,7 +1881,7 @@ void (async () => {
           if (text.includes(gateNote)) {
             text = text.replace(
               gateNote,
-              'For Guest operators: call \\`authStart\\` (name+email+dpdpConsent) then \\`authVerify\\` with the email code before Launch/Enable. ' +
+              'Call \\`sessionStatus\\` first each chat — if signed_in/member, SKIP signup. Only for Guest operators: call \\`authStart\\` (name+email+dpdpConsent) then \\`authVerify\\` with the email code before Launch/Enable. ' +
                 gateNote,
             )
           }

@@ -5,6 +5,9 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+/** Alias so claim-session works even when CFOS agent username ≠ cookie-derived ib_* . */
+export const BROWSER_PENDING_CLAIM_KEY = '__browser_claim__'
+
 export type PendingSessionRecord = {
   username: string
   sessionToken: string
@@ -68,7 +71,7 @@ export async function rememberPendingSession(input: {
   if (!username || !input.sessionToken) return
   const now = Date.now()
   const store = prune(await readStore(), now)
-  store.pending[username] = {
+  const record: PendingSessionRecord = {
     username,
     sessionToken: input.sessionToken,
     email: input.email,
@@ -76,6 +79,9 @@ export async function rememberPendingSession(input: {
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + TTL_MS).toISOString(),
   }
+  store.pending[username] = record
+  // Always mirror under the browser claim alias (agent username may be `dev` / drifted).
+  store.pending[BROWSER_PENDING_CLAIM_KEY] = { ...record, username: BROWSER_PENDING_CLAIM_KEY }
   await writeStore(store)
 }
 
@@ -88,7 +94,25 @@ export async function takePendingSession(
   const store = prune(await readStore(), now)
   const found = store.pending[key] || null
   if (!found) return null
-  delete store.pending[key]
+  // Drop every alias that points at the same token (agent username + browser claim).
+  for (const [k, v] of Object.entries(store.pending)) {
+    if (v && v.sessionToken === found.sessionToken) delete store.pending[k]
+  }
   await writeStore(store)
   return found
+}
+
+/** Try several usernames then the browser alias (for claim-session). */
+export async function takePendingSessionForClaim(
+  usernames: string[],
+): Promise<PendingSessionRecord | null> {
+  const tried = new Set<string>()
+  for (const raw of [...usernames, BROWSER_PENDING_CLAIM_KEY]) {
+    const key = raw.trim()
+    if (!key || tried.has(key)) continue
+    tried.add(key)
+    const found = await takePendingSession(key)
+    if (found) return found
+  }
+  return null
 }

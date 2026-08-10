@@ -66,6 +66,7 @@ export const OS_GUEST_ALLOWED_READ_PATHS = [
   '/api/os/launch/status',
   '/api/session',
   '/api/os/runtime/agent-credentials',
+  '/api/os/runtime/session-status',
   // Guests may begin-turn (no consume) so OTP signup chat is not blocked by the meter.
   '/api/os/agent/begin-turn',
   // Auth chrome + agent OTP (no account yet).

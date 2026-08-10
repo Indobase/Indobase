@@ -82,7 +82,7 @@ import {
 import { deriveAgentCredentials } from './agent-credentials.js'
 import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.js'
-import { rememberPendingSession, takePendingSession } from './pending-session-store.js'
+import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 
 initBridgeSentry('builder-cfos')
@@ -214,10 +214,71 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
   }
 }
 
+/**
+ * Cookie or AgentTool principal — guests allowed (for sessionStatus / claim flows).
+ */
+async function resolveSessionOrAgentPrincipal(
+  c: Context,
+): Promise<{ session: Session; guest: boolean } | Response> {
+  const cookieSession = getSession(c)
+  if (cookieSession) {
+    return { session: cookieSession, guest: isGuestSession(cookieSession) }
+  }
+
+  let secret: string
+  try {
+    secret = resolveHandoffSecret()
+  } catch {
+    return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
+  }
+
+  const provided =
+    (c.req.header('x-indobase-os-secret') || c.req.header('X-Indobase-OS-Secret') || '').trim()
+  const username =
+    (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
+
+  if (!provided || !username || !timingSafeEqualString(provided, secret)) {
+    return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
+  }
+
+  const principal = await lookupAgentPrincipal(username)
+  if (!principal) {
+    return c.json(
+      {
+        ok: false,
+        code: 'agent_principal_unknown',
+        message:
+          'Agent session is not linked to an Indobase workspace yet. Reload Indobase OS so credentials can register.',
+      },
+      401,
+    )
+  }
+
+  const guest = Boolean(principal.guest || principal.projectRef.startsWith('draft_') || !principal.email)
+  return {
+    guest,
+    session: {
+      gotrueId: principal.gotrueId,
+      email: principal.email,
+      projectRef: principal.projectRef,
+      orgSlug: guest ? 'guest' : 'os',
+      projectName: principal.projectName,
+      studioUrl: 'https://studio.indobase.in',
+    },
+  }
+}
+
 /** Mint a guest workspace session so `/` opens the agent desktop immediately (account in chat). */
 function ensureSessionForWorkspace(c: Context): { session: Session | null; setCookie?: string } {
   const existing = getSession(c)
   if (existing) return { session: existing }
+
+  // Cookie present but unreadable/expired — never overwrite a signed-in cookie with a fresh guest.
+  const rawCookie = readCookie(c.req.header('cookie'), SESSION_COOKIE)
+  if (rawCookie) {
+    return { session: null }
+  }
+
   let secret: string
   try {
     secret = resolveHandoffSecret()
@@ -597,6 +658,28 @@ app.post('/auth/verify', async (c) => {
 })
 
 /**
+ * Session stage for agents + UI — cookie or AgentTool principal.
+ * Members: skip OTP on every new chat. Guests: run authStart/authVerify once.
+ */
+app.get('/api/os/runtime/session-status', async (c) => {
+  const resolved = await resolveSessionOrAgentPrincipal(c)
+  if (resolved instanceof Response) return resolved
+  const { session, guest } = resolved
+  return c.json({
+    ok: true,
+    guest,
+    stage: guest ? 'guest' : 'member',
+    email: session.email || null,
+    project_ref: session.projectRef,
+    project_name: session.projectName || null,
+    signed_in: !guest,
+    message: guest
+      ? 'Unsigned-in: complete Continue with email / authStart+authVerify once, then continue the original request.'
+      : 'Signed in — do not ask for signup/OTP again. Continue the operator request.',
+  })
+})
+
+/**
  * Browser claims a session verified by the CFOS authVerify AgentTool.
  * Idempotent: no pending claim → upgraded=false (still ok).
  */
@@ -617,7 +700,9 @@ app.get('/api/os/auth/claim-session', async (c) => {
     gotrueId: sessionOrErr.gotrueId,
     projectRef: sessionOrErr.projectRef,
   })
-  const pending = await takePendingSession(creds.username)
+  const headerAgent =
+    (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
+  const pending = await takePendingSessionForClaim([creds.username, headerAgent])
   if (!pending) {
     // Already claimed, or verify used Set-Cookie directly — report current stage.
     const alreadyMember = !isGuestSession(sessionOrErr)
@@ -1445,6 +1530,9 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     return c.json({
       ok: true,
       guest: true,
+      stage: 'guest',
+      signed_in: false,
+      email: null,
       consumed: false,
       quota: null,
       code: null,
@@ -1475,6 +1563,9 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     {
       ok: interpreted.ok,
       guest: false,
+      stage: 'member',
+      signed_in: true,
+      email: sessionOrErr.email || null,
       quota: interpreted.quota ?? result.quota ?? null,
       code: interpreted.code,
       message: interpreted.message ?? (interpreted.ok ? null : result.message ?? null),

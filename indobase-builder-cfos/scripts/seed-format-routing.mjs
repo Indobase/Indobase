@@ -41,8 +41,9 @@ const FORMAT_HINTS = {
 
 const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 
-## GUEST GATE (HARD — before other work)
-Guest / no email: acknowledge request, then collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. After ok: wait/refresh for sign-in, then continue the ORIGINAL request. No Start building modal. No webFetch for auth. **This turn: no FOLLOWUPS chips** (no Go Live / payments / checklist).
+## GUEST GATE (HARD — only when unsigned-in)
+First: call \`sessionStatus\` (or treat begin-turn /api/session guest:false / stage:member as signed-in). If already a member with email, **SKIP signup** and continue the ORIGINAL request — never re-ask OTP on every new chat.
+Only if guest/unsigned-in: acknowledge → collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. After ok: wait/refresh for sign-in, then continue the ORIGINAL request. No Start building modal. No webFetch for auth. **Guest gate turn: no FOLLOWUPS chips**.
 
 ## Goal → gate → build → cards (HARD)
 Cards are **agent-authored only** (<<<INDOBASE_FOLLOWUPS>>> / CHOICES). UI invents nothing — no block → no cards.

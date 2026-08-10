@@ -40,6 +40,7 @@ describe('guest gates', () => {
     assert.equal(pathAllowsGuestRead('/api/os/launch/status'), true)
     assert.equal(pathAllowsGuestRead('/api/session'), true)
     assert.equal(pathAllowsGuestRead('/api/os/runtime/agent-credentials'), true)
+    assert.equal(pathAllowsGuestRead('/api/os/runtime/session-status'), true)
     assert.equal(pathAllowsGuestRead('/auth/start'), true)
     assert.equal(pathAllowsGuestRead('/auth/verify'), true)
     // begin-turn allows guests (no consume) so OTP signup chat is not blocked
