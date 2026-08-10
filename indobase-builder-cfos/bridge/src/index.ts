@@ -241,7 +241,16 @@ function withOptionalSetCookie(res: Response, setCookie?: string): Response {
 }
 
 /** Proxy CFOS index HTML as the top document; inject same-origin session bootstrap. */
-async function serveAgentDesktop(c: Context): Promise<Response> {
+async function serveAgentDesktop(
+  c: Context,
+  opts?: {
+    /**
+     * When true, proxy the request path as-is (CFOS deep links like
+     * `/workspace/<id>?w=0`). Default overrides to `/` for shell entry.
+     */
+    preservePath?: boolean
+  },
+): Promise<Response> {
   const { session, setCookie } = ensureSessionForWorkspace(c)
   if (!session) {
     return c.html(renderLandingHtml())
@@ -255,7 +264,7 @@ async function serveAgentDesktop(c: Context): Promise<Response> {
   const proxied = await proxyCloudflareOs(c, {
     upstreamBase: upstream,
     stripPrefix: '',
-    overridePath: '/',
+    ...(opts?.preservePath ? {} : { overridePath: '/' }),
   })
 
   const contentType = proxied.headers.get('content-type') || ''
@@ -1682,6 +1691,8 @@ app.get('/start', (c) => c.redirect('/'))
 app.get('/', (c) => serveAgentDesktop(c))
 
 app.get('/workspace', (c) => serveAgentDesktop(c))
+// CFOS SPA deep-links here; without this catch-all a refresh shows bare "404 Not Found".
+app.all('/workspace/*', (c) => serveAgentDesktop(c, { preservePath: true }))
 
 const upstream = resolveCloudflareOsBase()
 console.log(
