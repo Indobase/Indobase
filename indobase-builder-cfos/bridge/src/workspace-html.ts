@@ -83,10 +83,36 @@ const SHELL_CSS = `
 export function injectIndobaseContextBootstrap(html: string): string {
   const script = `<script>
 (function () {
+  function ibDbg(hypothesisId, message, data) {
+    // #region agent log
+    try {
+      fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
+        body: JSON.stringify({
+          sessionId: '012e63',
+          runId: 'fifty-sweep',
+          hypothesisId: hypothesisId,
+          location: 'workspace-html.ts:bootstrap',
+          message: message,
+          data: data || {},
+          timestamp: Date.now(),
+        }),
+      }).catch(function () {});
+    } catch (_) {}
+    // #endregion
+  }
   async function pull() {
     try {
       const s = await fetch('/api/session', { credentials: 'same-origin' }).then(function (r) {
         return r.json();
+      });
+      ibDbg('B', 'session_pull', {
+        guest: !!s.guest,
+        stage: s.stage || (s.guest ? 'guest' : 'member'),
+        hasOnboarding: !!s.onboarding,
+        hasEmail: !!(s.email || (s.user && s.user.email)),
+        projectRefPrefix: String(s.project_ref || '').slice(0, 8),
       });
       window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
@@ -145,13 +171,23 @@ export function injectIndobaseContextBootstrap(html: string): string {
           const claim = await fetch('/api/os/auth/claim-session', { credentials: 'same-origin' }).then(function (r) {
             return r.json();
           });
+          ibDbg('A', 'claim_session_result', {
+            upgraded: !!(claim && claim.upgraded),
+            guest: claim && claim.guest,
+            stage: claim && claim.stage,
+            session_ready: claim && claim.session_ready,
+          });
           if (claim && claim.upgraded) {
             window.location.reload();
             return;
           }
-        } catch (_) {}
+        } catch (err) {
+          ibDbg('A', 'claim_session_error', { message: String(err && err.message || err) });
+        }
       }
-    } catch (_) {}
+    } catch (err) {
+      ibDbg('B', 'session_pull_error', { message: String(err && err.message || err) });
+    }
   }
   pull();
   setInterval(pull, 15000);

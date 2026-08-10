@@ -266,6 +266,28 @@ export function injectAuthChrome(html: string): string {
         body: JSON.stringify({ name: name, email: email, token: token }),
       });
       var body = await readJson(res);
+      // #region agent log
+      try {
+        fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
+          body: JSON.stringify({
+            sessionId: '012e63',
+            runId: 'fifty-sweep',
+            hypothesisId: 'C',
+            location: 'auth-chrome.ts:verifyOtp',
+            message: 'auth_verify_result',
+            data: {
+              httpOk: !!res.ok,
+              bodyOk: !(body && body.ok === false),
+              status: res.status,
+              hasPendingClaim: !!(body && body.pending_claim),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(function () {});
+      } catch (_) {}
+      // #endregion
       if (!res.ok || (body && body.ok === false)) {
         setErr(friendlyFromBody(body, res.status, 'Invalid or expired code. Request a new one and try again.'));
         return;
