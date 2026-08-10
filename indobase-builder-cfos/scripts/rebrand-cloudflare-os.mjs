@@ -472,6 +472,7 @@ for (const [rel, pairs] of [
   let username = import.meta.env.VITE_DEV_USERNAME ?? 'dev'
   let password = import.meta.env.VITE_DEV_PASSWORD ?? 'devpassword'
   let storageKey: string | null = null
+  let signedIn = false
 
   try {
     const res = await fetch('/api/os/runtime/agent-credentials', { credentials: 'same-origin' })
@@ -481,11 +482,15 @@ for (const [rel, pairs] of [
         username?: string
         password?: string
         storage_key?: string
+        guest?: boolean
+        signed_in?: boolean
+        stage?: string
       }
       if (json?.ok && json.username && json.password && json.storage_key) {
         username = json.username
         password = json.password
         storageKey = json.storage_key
+        signedIn = json.signed_in === true || json.guest === false || json.stage === 'member'
       }
     } else if (!onLoopback) {
       console.warn('[indobase] agent-credentials unavailable; skipping auto-login')
@@ -498,6 +503,54 @@ for (const [rel, pairs] of [
     }
     // Loopback fallback: env VITE_DEV_* for bare CFOS without bridge.
   }
+
+  // Drop stale CFOS tokens when Indobase identity changes (guest → member),
+  // otherwise new chats keep the guest principal and re-ask signup.
+  const activeKey = 'indobase.cfos.active_storage_key'
+  const prevKey = localStorage.getItem(activeKey)
+  let clearedStale = false
+  let clearedDraftKeys = 0
+  if (storageKey && prevKey && prevKey !== storageKey) {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem(prevKey)
+    clearedStale = true
+  }
+  if (signedIn) {
+    // Never keep a draft_/guest-scoped token alongside a member cookie.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith('indobase.cfos.auth.draft_')) {
+        localStorage.removeItem(k)
+        clearedDraftKeys += 1
+      }
+    }
+  }
+  // #region agent log
+  try {
+    fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
+      body: JSON.stringify({
+        sessionId: '012e63',
+        runId: 'stale-token-fix',
+        hypothesisId: 'F',
+        location: 'main.tsx:devAutoLogin',
+        message: 'cfos_identity_switch',
+        data: {
+          signedIn,
+          storageKeyPrefix: storageKey ? String(storageKey).slice(0, 28) : null,
+          prevKeyPrefix: prevKey ? String(prevKey).slice(0, 28) : null,
+          keyChanged: Boolean(storageKey && prevKey && prevKey !== storageKey),
+          clearedStale,
+          clearedDraftKeys,
+          hadAuthToken: Boolean(localStorage.getItem('authToken')),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+  } catch { /* ignore */ }
+  // #endregion
+  if (storageKey) localStorage.setItem(activeKey, storageKey)
 
   if (storageKey) {
     const scoped = localStorage.getItem(storageKey)
@@ -519,16 +572,29 @@ for (const [rel, pairs] of [
   if (token) {
     localStorage.setItem('authToken', token)
     if (storageKey) localStorage.setItem(storageKey, token)
+  } else if (signedIn) {
+    // Do not leave a previous guest authToken in place after member cookie upgrade.
+    localStorage.removeItem('authToken')
   }
 }`
 
   if (
-    text.includes('/api/os/runtime/agent-credentials') &&
-    text.includes('per-session CFOS principal')
+    text.includes('indobase.cfos.active_storage_key') &&
+    text.includes('draft_')
   ) {
-    console.log('  devAutoLogin already uses per-session agent-credentials (skip)')
+    console.log('  devAutoLogin already clears stale guest tokens (skip)')
+  } else if (
+    text.includes('/api/os/runtime/agent-credentials') &&
+    text.includes('per-session CFOS principal') &&
+    beginIdx >= 0 &&
+    afterIdx > beginIdx
+  ) {
+    text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
+    write(path, text)
+    console.log('  devAutoLogin ← stale-guest token clear on member upgrade')
   } else if (beginIdx >= 0 && afterIdx > beginIdx) {
     text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
+    write(path, text)
     console.log('  devAutoLogin ← per-session agent-credentials')
   } else {
     console.warn('  skip: devAutoLogin block not found (upstream drifted)')
@@ -633,20 +699,14 @@ void (async () => {
   const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
   if (existsSync(path)) {
     let text = read(path)
-    if (text.includes('/api/os/agent/begin-turn') || text.includes('Indobase begin-turn meter')) {
-      console.log('  ChatInterface begin-turn meter already patched (skip)')
+    const hasGuestSync =
+      text.includes('__INDOBASE_GUEST__') && text.includes('meter.clone().json()')
+    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync) {
+      console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
     } else {
-      const anchor = `    if (hasFailedAttachment) {
-      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
-      return;
-    }
-
-    sendInFlightRef.current = true;`
-      const injection = `    if (hasFailedAttachment) {
-      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
-      return;
-    }
-
+      const meterBlockRe =
+        /\n    \/\/ Indobase begin-turn meter[\s\S]*?\n    sendInFlightRef\.current = true;/
+      const injection = `
     // Indobase begin-turn meter (hard Free-plan enforce).
     // Guests get 200 (no consume) so OTP signup chat works. Fail-closed on 402 only.
     // Fail-open on 5xx/network. Do not abort on 403 — guests must be able to chat.
@@ -666,6 +726,15 @@ void (async () => {
         toasts.add({ title: msg, variant: 'error' })
         return
       }
+      if (meter.ok) {
+        try {
+          const j = await meter.clone().json() as { guest?: boolean; stage?: string; signed_in?: boolean }
+          const isGuest = j?.signed_in === false || j?.guest === true || j?.stage === 'guest'
+          ;(window as unknown as { __INDOBASE_GUEST__?: boolean }).__INDOBASE_GUEST__ = isGuest
+          ;(window as unknown as { __INDOBASE_SESSION_STAGE__?: string }).__INDOBASE_SESSION_STAGE__ =
+            j?.stage || (isGuest ? 'guest' : 'member')
+        } catch { /* ignore */ }
+      }
       if (!meter.ok && meter.status >= 500) {
         console.warn('[indobase] begin-turn meter unavailable; allowing send (fail-open)', meter.status)
       }
@@ -674,12 +743,29 @@ void (async () => {
     }
 
     sendInFlightRef.current = true;`
-      if (text.includes(anchor)) {
-        text = text.replace(anchor, injection)
+      if (meterBlockRe.test(text)) {
+        text = text.replace(meterBlockRe, injection)
         write(path, text)
-        console.log('  ChatInterface ← begin-turn meter')
+        console.log('  ChatInterface ← begin-turn meter + guest sync (upgrade)')
       } else {
-        console.warn('  skip: ChatInterface handleSend meter anchor drifted')
+        const anchor = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+
+    sendInFlightRef.current = true;`
+        const full = `    if (hasFailedAttachment) {
+      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      return;
+    }
+${injection}`
+        if (text.includes(anchor)) {
+          text = text.replace(anchor, full)
+          write(path, text)
+          console.log('  ChatInterface ← begin-turn meter + guest sync')
+        } else {
+          console.warn('  skip: ChatInterface handleSend meter anchor drifted')
+        }
       }
     }
   }

@@ -1611,12 +1611,40 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
   })
   // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
   ensureAgentModelsAsync({ username: creds.username, password: creds.password })
+  const guest = isGuestSession(sessionOrErr)
+  // #region agent log
+  fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
+    body: JSON.stringify({
+      sessionId: '012e63',
+      runId: 'stale-token-fix',
+      hypothesisId: 'F',
+      location: 'bridge/index.ts:agent-credentials',
+      message: 'agent_credentials_issued',
+      data: {
+        guest,
+        stage: guest ? 'guest' : 'member',
+        usernamePrefix: String(creds.username || '').slice(0, 12),
+        storageKeyPrefix: String(creds.storage_key || '').slice(0, 28),
+        projectRefPrefix: String(sessionOrErr.projectRef || '').slice(0, 10),
+        hasEmail: Boolean(sessionOrErr.email),
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
   // Never log password.
   return c.json({
     ok: true,
     username: creds.username,
     password: creds.password,
     storage_key: creds.storage_key,
+    guest,
+    stage: guest ? 'guest' : 'member',
+    signed_in: !guest,
+    email: sessionOrErr.email || null,
+    project_ref: sessionOrErr.projectRef,
     modelsEnsuring: openRouterKeyConfigured(),
   })
 })
