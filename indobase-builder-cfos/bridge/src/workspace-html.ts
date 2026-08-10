@@ -228,6 +228,38 @@ export function renderLandingHtml(): string {
 }
 
 /**
+ * Deep-linked /workspace/:id while unsigned-in or guest — do not open as the wrong CFOS principal.
+ */
+export function renderWorkspaceSignInRequiredHtml(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in — Indobase Builder</title>
+  <style>${SHELL_CSS}</style>
+</head>
+<body class="landing">
+  <div class="hero">
+    <div class="card">
+      <h1>Sign in to open this workspace</h1>
+      <p>This workspace belongs to your Indobase account. Guests cannot open it — continue with email so we load your Builder session, then retry this link.</p>
+      <div class="cta-row">
+        <a class="btn" href="/?open_auth=1">Continue with email</a>
+        <a class="btn secondary" href="/">Start a new workspace</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    try {
+      window.dispatchEvent(new CustomEvent('indobase:open-auth'));
+    } catch (_) {}
+  </script>
+</body>
+</html>`
+}
+
+/**
  * @deprecated Account creation happens in chat. `/start` redirects to `/`.
  * Kept as a tiny bounce page for old marketing links.
  */

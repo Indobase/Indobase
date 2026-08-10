@@ -57,9 +57,8 @@ export const FollowUpChipGrid = memo(function FollowUpChipGrid({
 type Props = {
   message: string
   /**
-   * When true (default), run resolveFollowUps (agent blocks + strip bad early walls).
-   * When false, parseFollowUps only (no strip heuristics).
-   * Neither mode invents predetermined catalogs.
+   * When true (default), run resolveFollowUps (agent blocks + deliverable fallback).
+   * When false, parseFollowUps only (no stage gate / injection).
    */
   allowFallback?: boolean
   onPick: (message: string) => void
@@ -70,7 +69,7 @@ type Props = {
 
 /**
  * Splits agent text into markdown body + chip grid.
- * Chips come only from agent FOLLOWUPS/CHOICES blocks.
+ * Chips come from agent FOLLOWUPS/CHOICES, or Naive deliverable fallback.
  */
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,

@@ -2218,11 +2218,15 @@ ${injection}`
         console.log('  ChatInterface import added; render anchor already patched or drifted')
       } else {
         write(chatPath, text)
-        console.warn('  skip: ChatInterface assistant MarkdownMessage anchor drifted')
+        throw new Error(
+          'ChatInterface assistant MarkdownMessage anchor drifted — FollowUpRecommendations not wired. Fix rebrand patch.',
+        )
       }
     } else if (!text.includes(importNeedle)) {
-      console.warn('  skip: ChatInterface styles import drifted')
+      throw new Error('ChatInterface styles import drifted — cannot inject FollowUpRecommendations')
     }
+  } else {
+    throw new Error(`ChatInterface.tsx missing at ${chatPath}`)
   }
 }
 

@@ -8,12 +8,13 @@
  *   4. Deliverable ready → agent-authored FOLLOWUPS only
  *   5. Capability path → agent-authored CHOICES for that path
  *
- * Cards are ALWAYS agent-authored (<<<INDOBASE_FOLLOWUPS>>> / CHOICES).
- * The UI never invents a predetermined catalog — no block → no cards.
+ * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
+ * If the agent omits chips after a completed deliverable, resolveFollowUps
+ * injects Naive-style postPreview / postBackend / postGoLive chips (≤4).
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
  * guest_gate → none | building → goal CHOICES only (strip canned walls) |
- * payments / deliverable → show agent chips, max 4.
+ * payments / deliverable → show chips, max 4.
  */
 
 export type FollowUpItem = {
@@ -407,7 +408,7 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
 /** Body mentions a real preview / live site (not merely “what’s next”). */
 export function bodyHasDeliverableSignal(message: string): boolean {
   const text = message.toLowerCase()
-  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready/.test(
+  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim/.test(
     text,
   )
 }
@@ -473,7 +474,7 @@ function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
 
 /**
  * Enforce Naive-style timing + brevity on agent-authored chips.
- * Never invents chips — only strips / trims.
+ * Never invents chips mid-guest-gate; strips canned walls mid-build.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
   if (stage === 'guest_gate') {
@@ -481,27 +482,66 @@ export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = infer
   }
 
   if (stage === 'building') {
-    // Mid-build: allow goal-tied CHOICES; strip canned post-build catalogs.
     if (itemsLookLikeDefaultPostBuild(parsed.items)) {
       return { body: parsed.body, title: '', items: [] }
     }
     return capChips(parsed)
   }
 
-  // payments | deliverable — show agent chips, cap at 4
   return capChips(parsed)
+}
+
+/** Best-effort brand name from agent prose (for injected chip titles). */
+export function extractBrandFromMessage(message: string): string | null {
+  const brandLine =
+    /\*\*([A-Z][A-Za-z0-9 &-]{1,40})\*\*/.exec(message) ||
+    /(?:brand|named|called)\s*[:—–-]?\s*\*?\*?\s*([A-Z][A-Za-z0-9 &-]{1,40})/i.exec(message) ||
+    /\b([A-Z][A-Z0-9]{2,}(?:\s+[A-Z][a-z]+){0,3})\b\s*[—–-]\s*(?:live|modern|a |an )/i.exec(message)
+  if (!brandLine?.[1]) return null
+  const brand = brandLine[1].trim().replace(/\s+/g, ' ')
+  if (brand.length < 2 || /^(HERE|THIS|THE|HTTP|HTTPS|INDOBASE)$/i.test(brand)) return null
+  return brand
+}
+
+/**
+ * When the agent finished a deliverable but omitted FOLLOWUPS, inject Naive-style
+ * post-preview chips so non-technical operators always get a next step.
+ */
+export function injectDeliverableFollowUps(message: string): ParsedFollowUps | null {
+  if (!message || parseFollowUps(message)) return null
+  if (looksLikePreBuildClarification(message)) return null
+  if (!looksLikeCompletedDeliverable(message) && !bodyHasDeliverableSignal(message)) return null
+
+  const brand = extractBrandFromMessage(message)
+  let stage: StageFollowUps
+  const lower = message.toLowerCase()
+  if (/claim_backend_ready|catalog seeded|place.?test.?shop.?order|shop backend is live/.test(lower)) {
+    stage = postBackendFollowups(brand)
+  } else if (/sites\.indobase\.in|go live — published|published to|is now live/.test(lower)) {
+    stage = postGoLiveFollowups(brand, { store: true })
+  } else {
+    stage = postPreviewFollowups(brand)
+  }
+  return {
+    body: message,
+    title: stage.title,
+    items: stage.items.slice(0, MAX_VISIBLE_CHIPS),
+  }
 }
 
 /**
  * Resolve chips for display.
  *
- * Agent-authored only: parse FOLLOWUPS/CHOICES from the message.
- * Stage gate enforces timing; never invents catalogs.
+ * Prefer agent-authored FOLLOWUPS/CHOICES. If the agent omitted chips after a
+ * completed deliverable, inject postPreview / postBackend / postGoLive examples
+ * so the Naive ladder cannot silently disappear.
  */
 export function resolveFollowUps(message: string): ParsedFollowUps | null {
   const parsed = parseFollowUps(message)
-  if (!parsed) return null
-  return applyStageGate(parsed)
+  if (parsed) return applyStageGate(parsed)
+  const injected = injectDeliverableFollowUps(message)
+  if (!injected) return null
+  return applyStageGate(injected, 'deliverable')
 }
 
 /** Serialize a follow-ups block for agent replies / tests. */

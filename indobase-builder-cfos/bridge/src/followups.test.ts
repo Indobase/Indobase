@@ -55,10 +55,19 @@ INDOBASE_CHOICES>>>
     assert.equal(parsed.items[1].message, "I'll type my specific niche")
   })
 
-  it('does not invent chips after a completed deliverable without an agent block', () => {
+  it('injects Naive post-preview chips when agent omits FOLLOWUPS after a deliverable', () => {
     const input =
-      'MERIDIAN — live preview\nhttps://demo.sites.indobase.in\nWhere do you want to take it next?'
+      "Here's what I built — MERIDIAN live preview\nhttps://demo.sites.indobase.in\nWhere do you want to take it next?"
     assert.equal(looksLikeCompletedDeliverable(input), true)
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.match(resolved.title, /MERIDIAN|next/i)
+    assert.ok(resolved.items.length >= 2 && resolved.items.length <= MAX_VISIBLE_CHIPS)
+    assert.ok(resolved.items.some((i) => /Go Live|Add a real backend|Refine/i.test(i.label)))
+  })
+
+  it('does not inject chips for guest-gate clarifications', () => {
+    const input = 'Before I begin, please share name and email and DPDP consent.'
     assert.equal(resolveFollowUps(input), null)
   })
 

@@ -73,7 +73,7 @@ import {
 } from './session-payload.js'
 import { accountRequiredBody } from './guest-gates.js'
 import { authErrorJsonBody, normalizeAuthRouteError } from './auth-errors.js'
-import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
+import { renderLandingHtml, renderOfflineDesktopHtml, renderWorkspaceSignInRequiredHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
 import {
   BRIDGE_AGENT_BEGIN_TURN_PATH,
   interpretBeginTurnResult,
@@ -269,13 +269,20 @@ async function resolveSessionOrAgentPrincipal(
 }
 
 /** Mint a guest workspace session so `/` opens the agent desktop immediately (account in chat). */
-function ensureSessionForWorkspace(c: Context): { session: Session | null; setCookie?: string } {
+function ensureSessionForWorkspace(
+  c: Context,
+  opts?: { mintGuest?: boolean },
+): { session: Session | null; setCookie?: string } {
   const existing = getSession(c)
   if (existing) return { session: existing }
 
   // Cookie present but unreadable/expired — never overwrite a signed-in cookie with a fresh guest.
   const rawCookie = readCookie(c.req.header('cookie'), SESSION_COOKIE)
   if (rawCookie) {
+    return { session: null }
+  }
+
+  if (opts?.mintGuest === false) {
     return { session: null }
   }
 
@@ -312,9 +319,17 @@ async function serveAgentDesktop(
     preservePath?: boolean
   },
 ): Promise<Response> {
-  const { session, setCookie } = ensureSessionForWorkspace(c)
+  const preservePath = Boolean(opts?.preservePath)
+  // Deep links must not mint/open as guest — wrong CFOS principal → access denied.
+  const { session, setCookie } = ensureSessionForWorkspace(c, { mintGuest: !preservePath })
   if (!session) {
+    if (preservePath) {
+      return c.html(renderWorkspaceSignInRequiredHtml())
+    }
     return c.html(renderLandingHtml())
+  }
+  if (preservePath && isGuestSession(session)) {
+    return c.html(renderWorkspaceSignInRequiredHtml())
   }
   const upstream = resolveCloudflareOsBase()
   if (!upstream) {
@@ -325,7 +340,7 @@ async function serveAgentDesktop(
   const proxied = await proxyCloudflareOs(c, {
     upstreamBase: upstream,
     stripPrefix: '',
-    ...(opts?.preservePath ? {} : { overridePath: '/' }),
+    ...(preservePath ? {} : { overridePath: '/' }),
   })
 
   const contentType = proxied.headers.get('content-type') || ''
