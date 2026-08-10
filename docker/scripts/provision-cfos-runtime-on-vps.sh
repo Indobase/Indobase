@@ -244,6 +244,8 @@ Environment=VITE_DEV_PASSWORD=devpassword
 Environment=VITE_BACKEND_HOST=localhost:8787
 Environment=INDOBASE_WRANGLER_IP=0.0.0.0
 Environment=FORMAT_BLUEPRINTS_DIR=/opt/indobase-builder-cfos/formats
+# Re-seed Indobase bridge vars into workshop-backend before start (wrangler regen can wipe them).
+ExecStartPre=/usr/local/sbin/indobase-cfos-seed-indobase-vars.sh
 ExecStart=${PNPM_BIN} run-local
 Restart=on-failure
 RestartSec=8
@@ -253,6 +255,69 @@ LimitNOFILE=65535
 [Install]
 WantedBy=multi-user.target
 UNIT
+
+# Durable seed script: wrangler.dev.jsonc + .dev.vars for Overseer DO auth/launch.
+install -m 755 /dev/stdin /usr/local/sbin/indobase-cfos-seed-indobase-vars.sh <<'SEED'
+#!/usr/bin/env bash
+set -euo pipefail
+CFOS="${CFOS_DIR:-/opt/indobase-cfos-runtime/cloudflare-os}"
+WB="$CFOS/packages/workshop-backend"
+ROOT_ENV=/opt/indobase-builder-cfos.runtime.env
+BRIDGE_URL="${INDOBASE_BRIDGE_URL:-https://builder.indobase.in}"
+OS_SECRET=""
+if [[ -f "$WB/.dev.vars" ]]; then
+  OS_SECRET="$(grep -E '^INDOBASE_OS_SECRET=' "$WB/.dev.vars" | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -z "$OS_SECRET" && -f "$ROOT_ENV" ]]; then
+  OS_SECRET="$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' "$ROOT_ENV" | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -z "$OS_SECRET" || ${#OS_SECRET} -lt 32 ]]; then
+  echo "indobase-cfos-seed: missing OS secret; skip"
+  exit 0
+fi
+umask 077
+python3 - <<PY
+from pathlib import Path
+import json, re
+cfos = Path("""$CFOS""")
+updates = {"INDOBASE_BRIDGE_URL": """$BRIDGE_URL""", "INDOBASE_OS_SECRET": """$OS_SECRET"""}
+
+def upsert_dev_vars(path: Path):
+  text = path.read_text() if path.exists() else ""
+  lines, seen = [], set()
+  for line in text.splitlines():
+    if not line.strip() or line.startswith("#") or "=" not in line:
+      lines.append(line); continue
+    k = line.split("=", 1)[0]
+    if k in updates:
+      lines.append(f"{k}={updates[k]}"); seen.add(k)
+    else:
+      lines.append(line)
+  for k, v in updates.items():
+    if k not in seen:
+      lines.append(f"{k}={v}")
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text("\\n".join(lines) + "\\n")
+  path.chmod(0o600)
+
+upsert_dev_vars(cfos / ".dev.vars")
+upsert_dev_vars(cfos / "packages/workshop-backend/.dev.vars")
+wrangler = cfos / "packages/workshop-backend/wrangler.dev.jsonc"
+if wrangler.exists():
+  text = wrangler.read_text()
+  for k, v in updates.items():
+    lit = json.dumps(v)
+    pat = re.compile(rf'"{re.escape(k)}"\\s*:\\s*"[^"]*"')
+    if pat.search(text):
+      text = pat.sub(f'"{k}": {lit}', text, count=1)
+    elif re.search(r'"vars"\\s*:\\s*\\{', text):
+      text = re.sub(r'("vars"\\s*:\\s*\\{)', rf'\\1\\n    "{k}": {lit},', text, count=1)
+  wrangler.write_text(text)
+  wrangler.chmod(0o600)
+print("indobase-cfos-seed: ok")
+PY
+SEED
+/usr/local/sbin/indobase-cfos-seed-indobase-vars.sh || true
 
 UNIT_CHANGED=0
 if [[ ! -f "$UNIT_PATH" ]] || ! cmp -s "$UNIT_NEW" "$UNIT_PATH"; then
