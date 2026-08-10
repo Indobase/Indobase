@@ -112,27 +112,8 @@ if [[ "$SKIP_INSTALL" != "1" ]]; then
   pnpm install --frozen-lockfile || pnpm install
 fi
 
-echo "→ Indobase rebrand + formats + local auto-login bake…"
-cd "$CFOS_DIR"
-CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
-  node "$ROOT_SCRIPTS/scripts/rebrand-cloudflare-os.mjs"
-CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
-  bash "$ROOT_SCRIPTS/scripts/install-indobase-formats.sh"
-
-OPENROUTER_KEY=""
-if [[ -f /opt/indobase-builder.runtime.env ]]; then
-  OPENROUTER_KEY="$(grep -E '^OPEN_ROUTER_API_KEY=' /opt/indobase-builder.runtime.env | head -1 | cut -d= -f2- || true)"
-fi
-if [[ -n "$OPENROUTER_KEY" ]]; then
-  umask 077
-  printf '%s\n' \
-    '# Seeded from classic Builder — do not commit' \
-    "OPEN_ROUTER_API_KEY=${OPENROUTER_KEY}" \
-    > "$CFOS_DIR/.dev.vars"
-  echo "Wrote $CFOS_DIR/.dev.vars (OpenRouter)"
-fi
-
-# Bridge URL + handoff secret so CFOS launchBusiness AgentTool can POST to Indobase OS.
+# Bridge URL + handoff secret — resolve BEFORE rebrand so workshop-backend wrangler
+# vars + .dev.vars are seeded (Overseer DO does not inherit root worker .dev.vars).
 BRIDGE_URL="${INDOBASE_BRIDGE_URL:-https://builder.indobase.in}"
 OS_SECRET=""
 if [[ -f /opt/indobase-builder-cfos.runtime.env ]]; then
@@ -144,37 +125,101 @@ fi
 if [[ -z "$OS_SECRET" && -n "${BUILDER_CFOS_HANDOFF_SECRET:-}" ]]; then
   OS_SECRET="$BUILDER_CFOS_HANDOFF_SECRET"
 fi
-umask 077
-touch "$CFOS_DIR/.dev.vars"
-chmod 600 "$CFOS_DIR/.dev.vars"
-python3 - <<PY
+export INDOBASE_BRIDGE_URL="$BRIDGE_URL"
+export INDOBASE_OS_SECRET="$OS_SECRET"
+export BUILDER_CFOS_HANDOFF_SECRET="${BUILDER_CFOS_HANDOFF_SECRET:-$OS_SECRET}"
+
+echo "→ Indobase rebrand + formats + local auto-login bake…"
+cd "$CFOS_DIR"
+CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
+  INDOBASE_BRIDGE_URL="$BRIDGE_URL" INDOBASE_OS_SECRET="$OS_SECRET" \
+  BUILDER_CFOS_HANDOFF_SECRET="$OS_SECRET" \
+  node "$ROOT_SCRIPTS/scripts/rebrand-cloudflare-os.mjs"
+CLOUDFLARE_OS_DIR="$CFOS_DIR" FORMAT_BLUEPRINTS_DIR="$ROOT_SCRIPTS/formats" \
+  bash "$ROOT_SCRIPTS/scripts/install-indobase-formats.sh"
+
+OPENROUTER_KEY=""
+if [[ -f /opt/indobase-builder.runtime.env ]]; then
+  OPENROUTER_KEY="$(grep -E '^OPEN_ROUTER_API_KEY=' /opt/indobase-builder.runtime.env | head -1 | cut -d= -f2- || true)"
+fi
+if [[ -n "$OPENROUTER_KEY" ]]; then
+  umask 077
+  # Merge — never truncate; wiping would drop Indobase bridge keys mid-provision.
+  touch "$CFOS_DIR/.dev.vars"
+  chmod 600 "$CFOS_DIR/.dev.vars"
+  python3 - <<PY
 from pathlib import Path
 p = Path("$CFOS_DIR") / ".dev.vars"
 text = p.read_text() if p.exists() else ""
-updates = {
-  "INDOBASE_BRIDGE_URL": """$BRIDGE_URL""",
-}
+key, val = "OPEN_ROUTER_API_KEY", """$OPENROUTER_KEY"""
+lines, seen = [], False
+for line in text.splitlines():
+  if line.startswith(key + "="):
+    lines.append(f"{key}={val}")
+    seen = True
+  else:
+    lines.append(line)
+if not seen:
+  lines.append(f"{key}={val}")
+p.write_text("\\n".join(lines) + "\\n")
+print("Merged OpenRouter into", p)
+PY
+fi
+
+umask 077
+# Root + workshop-backend .dev.vars AND wrangler.dev.jsonc vars (authoritative for multi-config).
+python3 - <<PY
+from pathlib import Path
+import json
+import re
+
+cfos = Path("$CFOS_DIR")
+bridge = """$BRIDGE_URL"""
 secret = """$OS_SECRET"""
+updates = {"INDOBASE_BRIDGE_URL": bridge}
 if len(secret) >= 32:
   updates["INDOBASE_OS_SECRET"] = secret
-lines = text.splitlines()
-out = []
-seen = set()
-for line in lines:
-  if not line.strip() or line.startswith("#") or "=" not in line:
-    out.append(line)
-    continue
-  k = line.split("=", 1)[0]
-  if k in updates:
-    out.append(f"{k}={updates[k]}")
-    seen.add(k)
-  else:
-    out.append(line)
-for k, v in updates.items():
-  if k not in seen:
-    out.append(f"{k}={v}")
-p.write_text("\\n".join(out) + "\\n")
-print("Updated", p, "keys:", ", ".join(updates))
+
+def upsert_dev_vars(path: Path) -> None:
+  text = path.read_text() if path.exists() else ""
+  lines = text.splitlines()
+  out, seen = [], set()
+  for line in lines:
+    if not line.strip() or line.startswith("#") or "=" not in line:
+      out.append(line)
+      continue
+    k = line.split("=", 1)[0]
+    if k in updates:
+      out.append(f"{k}={updates[k]}")
+      seen.add(k)
+    else:
+      out.append(line)
+  for k, v in updates.items():
+    if k not in seen:
+      out.append(f"{k}={v}")
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text("\\n".join(out) + "\\n")
+  path.chmod(0o600)
+  print("Updated", path, "keys:", ", ".join(updates))
+
+upsert_dev_vars(cfos / ".dev.vars")
+upsert_dev_vars(cfos / "packages/workshop-backend/.dev.vars")
+
+wrangler = cfos / "packages/workshop-backend/wrangler.dev.jsonc"
+if wrangler.exists() and updates:
+  text = wrangler.read_text()
+  for k, v in updates.items():
+    lit = json.dumps(v)
+    pat = re.compile(rf'"{re.escape(k)}"\\s*:\\s*"[^"]*"')
+    if pat.search(text):
+      text = pat.sub(f'"{k}": {lit}', text, count=1)
+    elif re.search(r'"vars"\\s*:\\s*\\{', text):
+      text = re.sub(r'("vars"\\s*:\\s*\\{)', rf'\\1\\n    "{k}": {lit},', text, count=1)
+  wrangler.write_text(text)
+  wrangler.chmod(0o600)
+  print("Updated", wrangler, "vars:", ", ".join(updates))
+else:
+  print("skip wrangler.dev.jsonc sync (missing or empty updates)")
 PY
 
 PNPM_BIN="$(command -v pnpm)"

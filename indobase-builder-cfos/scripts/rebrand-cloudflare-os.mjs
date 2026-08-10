@@ -1821,13 +1821,59 @@ void (async () => {
   if (existsSync(overseerPath)) {
     let text = readFileSync(overseerPath, 'utf8')
     if (text.includes('getIndobaseLaunchConfig()')) {
-      console.log('  overseer getIndobaseLaunchConfig already patched')
+      if (!text.includes('launch_config_probe')) {
+        const bare =
+          /getIndobaseLaunchConfig\(\): \{ bridgeUrl: string; osSecret: string \} \| null \{\n    const bridgeUrl = String\(\(this\.env as \{ INDOBASE_BRIDGE_URL\?: string \}\)\.INDOBASE_BRIDGE_URL \|\| ""\)\.trim\(\);\n    const osSecret = String\(\(this\.env as \{ INDOBASE_OS_SECRET\?: string \}\)\.INDOBASE_OS_SECRET \|\| ""\)\.trim\(\);\n    if \(!bridgeUrl \|\| !osSecret\) return null;/
+        const withProbe = `getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
+    const bridgeUrl = String((this.env as { INDOBASE_BRIDGE_URL?: string }).INDOBASE_BRIDGE_URL || "").trim();
+    const osSecret = String((this.env as { INDOBASE_OS_SECRET?: string }).INDOBASE_OS_SECRET || "").trim();
+    // #region agent log
+    console.log(JSON.stringify({
+      sessionId: "012e63",
+      hypothesisId: "A",
+      location: "overseer.ts:getIndobaseLaunchConfig",
+      message: "launch_config_probe",
+      data: {
+        hasBridgeUrl: Boolean(bridgeUrl),
+        bridgeHost: bridgeUrl ? bridgeUrl.replace(/^https?:\\/\\//, "").split("/")[0] : "",
+        secretLen: osSecret.length,
+        configured: Boolean(bridgeUrl && osSecret),
+      },
+      timestamp: Date.now(),
+    }));
+    // #endregion
+    if (!bridgeUrl || !osSecret) return null;`
+        if (bare.test(text)) {
+          text = text.replace(bare, withProbe)
+          writeFileSync(overseerPath, text)
+          console.log('  overseer.ts ← launch_config_probe instrumentation')
+        } else {
+          console.log('  overseer getIndobaseLaunchConfig already patched (probe skipped)')
+        }
+      } else {
+        console.log('  overseer getIndobaseLaunchConfig already patched')
+      }
     } else {
       const anchor = `  getWebFetchEnv(): WebFetchEnv {
     if (this.storage.prohibitAllSharing.get()) {`
       const injection = `  getIndobaseLaunchConfig(): { bridgeUrl: string; osSecret: string } | null {
     const bridgeUrl = String((this.env as { INDOBASE_BRIDGE_URL?: string }).INDOBASE_BRIDGE_URL || "").trim();
     const osSecret = String((this.env as { INDOBASE_OS_SECRET?: string }).INDOBASE_OS_SECRET || "").trim();
+    // #region agent log
+    console.log(JSON.stringify({
+      sessionId: "012e63",
+      hypothesisId: "A",
+      location: "overseer.ts:getIndobaseLaunchConfig",
+      message: "launch_config_probe",
+      data: {
+        hasBridgeUrl: Boolean(bridgeUrl),
+        bridgeHost: bridgeUrl ? bridgeUrl.replace(/^https?:\\/\\//, "").split("/")[0] : "",
+        secretLen: osSecret.length,
+        configured: Boolean(bridgeUrl && osSecret),
+      },
+      timestamp: Date.now(),
+    }));
+    // #endregion
     if (!bridgeUrl || !osSecret) return null;
     return { bridgeUrl, osSecret };
   }
@@ -1878,9 +1924,11 @@ void (async () => {
   }
 }
 
-// --- .dev.vars: bridge URL + OS secret for launchBusiness tool ---
+// --- .dev.vars + workshop-backend wrangler vars for launchBusiness / authStart ---
+// Overseer DO runs in workshop-backend. Wrangler multi-config does NOT pass root
+// .dev.vars into that service — vars must be in packages/workshop-backend/.dev.vars
+// AND/OR wrangler.dev.jsonc "vars" (bindings list confirms the latter works on Vyom).
 {
-  const path = join(OS, '.dev.vars')
   const bridgeUrl =
     process.env.INDOBASE_BRIDGE_URL?.trim() ||
     process.env.BUILDER_CFOS_PUBLIC_URL?.trim() ||
@@ -1890,21 +1938,51 @@ void (async () => {
     process.env.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
     process.env.BUILDER_HANDOFF_SECRET?.trim() ||
     ''
-  let existing = existsSync(path) ? readFileSync(path, 'utf8') : ''
-  const upsert = (key, value) => {
-    if (!value) return
-    const line = `${key}=${value}`
-    if (new RegExp(`^${key}=`, 'm').test(existing)) {
-      existing = existing.replace(new RegExp(`^${key}=.*$`, 'm'), line)
-    } else {
-      existing = existing.trimEnd() + (existing.endsWith('\n') || !existing ? '' : '\n') + line + '\n'
+  const upsertDevVars = (path) => {
+    let existing = existsSync(path) ? readFileSync(path, 'utf8') : ''
+    const upsert = (key, value) => {
+      if (!value) return
+      const line = `${key}=${value}`
+      if (new RegExp(`^${key}=`, 'm').test(existing)) {
+        existing = existing.replace(new RegExp(`^${key}=.*$`, 'm'), line)
+      } else {
+        existing = existing.trimEnd() + (existing.endsWith('\n') || !existing ? '' : '\n') + line + '\n'
+      }
     }
+    upsert('INDOBASE_BRIDGE_URL', bridgeUrl)
+    if (osSecret.length >= 32) upsert('INDOBASE_OS_SECRET', osSecret)
+    writeFileSync(path, existing.endsWith('\n') ? existing : existing + '\n', { mode: 0o600 })
   }
-  upsert('INDOBASE_BRIDGE_URL', bridgeUrl)
-  if (osSecret.length >= 32) upsert('INDOBASE_OS_SECRET', osSecret)
-  else console.warn('  skip: INDOBASE_OS_SECRET / handoff secret missing or <32 chars')
-  writeFileSync(path, existing.endsWith('\n') ? existing : existing + '\n', { mode: 0o600 })
-  console.log('  .dev.vars ← INDOBASE_BRIDGE_URL' + (osSecret.length >= 32 ? ' + INDOBASE_OS_SECRET' : ''))
+  upsertDevVars(join(OS, '.dev.vars'))
+  upsertDevVars(join(OS, 'packages/workshop-backend/.dev.vars'))
+
+  const wbWrangler = join(OS, 'packages/workshop-backend/wrangler.dev.jsonc')
+  if (existsSync(wbWrangler) && bridgeUrl && osSecret.length >= 32) {
+    let text = readFileSync(wbWrangler, 'utf8')
+    const setJsoncString = (key, value) => {
+      const re = new RegExp(`"${key}"\\s*:\\s*"[^"]*"`)
+      const line = `"${key}": ${JSON.stringify(value)}`
+      if (re.test(text)) {
+        text = text.replace(re, line)
+        return
+      }
+      // Insert after "vars": {
+      if (!/"vars"\s*:\s*\{/.test(text)) return
+      text = text.replace(/("vars"\s*:\s*\{)/, `$1\n    ${line},`)
+    }
+    setJsoncString('INDOBASE_BRIDGE_URL', bridgeUrl)
+    setJsoncString('INDOBASE_OS_SECRET', osSecret)
+    writeFileSync(wbWrangler, text, { mode: 0o600 })
+    console.log('  workshop-backend/wrangler.dev.jsonc ← INDOBASE_BRIDGE_URL + INDOBASE_OS_SECRET')
+  }
+
+  if (osSecret.length < 32) {
+    console.warn('  skip: INDOBASE_OS_SECRET / handoff secret missing or <32 chars')
+  }
+  console.log(
+    '  .dev.vars (+ workshop-backend/) ← INDOBASE_BRIDGE_URL' +
+      (osSecret.length >= 32 ? ' + INDOBASE_OS_SECRET' : ''),
+  )
 }
 
 // --- Local ADMINS: allow seed-format-routing via admin + Indobase auto-login "dev" ---
