@@ -1,9 +1,9 @@
 /**
  * Indobase OS (Agentic Business OS) — Gen 3 bridge.
  *
- * Day-one entry: `/` (+ `/workspace`) mints a guest/signed-in session cookie, then
- * proxies the CFOS agent desktop as the top document (no outer header / iframe shell).
- * Optional `/api/indobase/proxy/*` hits the linked project.
+ * Day-one entry: `/` (+ `/workspace` and `/workspace/*` deep links) mints a guest/signed-in
+ * session cookie, then proxies the CFOS agent desktop as the top document (no outer header /
+ * iframe shell). Optional `/api/indobase/proxy/*` hits the linked project.
  *
  * Session → Generation Context via `@indobase/cloudflare-adapter` (docs/BUILDER-GEN3.md).
  */
