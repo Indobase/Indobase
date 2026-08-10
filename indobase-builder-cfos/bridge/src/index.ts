@@ -1151,7 +1151,7 @@ app.post('/api/os/tools/applySchema', async (c) => {
   return c.json(result, http)
 })
 
-/** guidedBackend — ensureDatabase → schema/catalog (ensure-first) before UI. */
+/** guidedBackend — ensureDatabase → schema/catalog when live data is needed (after preview or backend chip). */
 app.post('/api/os/tools/guidedBackend', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr

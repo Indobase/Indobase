@@ -1,11 +1,12 @@
 /**
  * Deterministic guided backend chain for Indobase OS (CFOS).
  *
- * After ecommerce / “Add a real backend” chips, orchestrate:
+ * After ecommerce / “Add a real backend” chips (or when live REST is needed), orchestrate:
  *   ensureDatabase → (ecommerce: images + setupShopCatalog) | (generic: applySchema)
  *   → optional launchBusiness when html/files provided
  *
- * Progress messages are returned; never invent live URLs.
+ * Preview-first storefronts may exist before this chain. Progress messages are returned;
+ * never invent live URLs.
  */
 
 import { executeEnsureDatabase } from './ensure-capability-tool.js'
@@ -55,14 +56,16 @@ export const GUIDED_BACKEND_TOOL = {
 } as const
 
 export const GUIDED_BACKEND_AGENT_HARD_RULES = `
-## Guided backend (HARD PATH — ensure-first)
+## Guided backend (HARD PATH — when live data is needed)
 
-When the product needs a real backend (SaaS, ecommerce, booking, dashboard, blog CMS, or chip **Add a real backend** / ecommerce vertical):
+**Preview-first is OK** for a clear launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
 
-1. Call **guidedBackend** (or ensureLogin + ensureDatabase + applySchema) **BEFORE** generating the main UI. Do not ship a mock API then retrofit.
-2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports).
+When the product needs a real backend (SaaS/data, chip **Add a real backend**, ecommerce vertical seed, or screens that hit project REST):
+
+1. Call **guidedBackend** (or ensureLogin + ensureDatabase + applySchema) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
+2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports). Prove with placeTestShopOrder when available.
 3. Generic apps: \`mode: "generic"\` — default orgs/memberships schema (or pass applySchema tables yourself).
-4. After claim_backend_ready: build/wire UI to session.backend / catalog_json, then launchBusiness with real html/files.
+4. After claim_backend_ready: wire UI to session.backend / catalog_json, emit next-stage FOLLOWUPS, then launchBusiness with real html/files when they Go Live.
 5. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 6. Email / Analytics optional — do not block Go Live on them.
 7. Payments remain BYOK — guidedBackend does not skip KYC.

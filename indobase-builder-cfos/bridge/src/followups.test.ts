@@ -11,6 +11,9 @@ import {
   applyStageGate,
   MAX_VISIBLE_CHIPS,
   DEFAULT_POST_BUILD_FOLLOWUPS,
+  postPreviewFollowups,
+  postBackendFollowups,
+  postGoLiveFollowups,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -190,5 +193,24 @@ INDOBASE_CHOICES>>>
   it('does not treat vague whats-next as a completed deliverable', () => {
     assert.equal(looksLikeCompletedDeliverable("What's next?"), false)
     assert.equal(resolveFollowUps("What's next?"), null)
+  })
+
+  it('postPreviewFollowups formats a Naive-style where-next block', () => {
+    const stage = postPreviewFollowups('MERIDIAN')
+    assert.equal(stage.title, 'Where should I take MERIDIAN next?')
+    assert.equal(stage.items.length, 4)
+    assert.ok(stage.items.some((i) => /Add a real backend/i.test(i.label)))
+    const block = formatFollowUpsBlock(stage.title, stage.items)
+    assert.match(block, /<<<INDOBASE_FOLLOWUPS/)
+    assert.match(block, /guidedBackend/)
+    const parsed = parseFollowUps(`Preview ready.\n\n${block}`)
+    assert.ok(parsed)
+    assert.equal(parsed.items.length, 4)
+  })
+
+  it('postBackendFollowups and postGoLiveFollowups stay within chip budget', () => {
+    assert.ok(postBackendFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)
+    assert.ok(postGoLiveFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)
+    assert.match(postGoLiveFollowups('Aural').items.map((i) => i.label).join(' '), /domain|payments|checklist/i)
   })
 })

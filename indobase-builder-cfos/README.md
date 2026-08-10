@@ -10,6 +10,18 @@ Agentic Business OS: one Indobase shell. Engines sit behind Capabilities — not
 
 Finish remaining product gaps (see [BUILDER-GEN3-STATUS.md](../docs/BUILDER-GEN3-STATUS.md)) on **`staging`** before any Vyom / production roll.
 
+## Agent Zero→One instructions (CFOS seed)
+
+Chat journey playbook lives in [`AGENT_HINT.md`](./AGENT_HINT.md) and is seeded into CFOS AdminConfig as `instanceInstructions` via:
+
+```bash
+# On the CFOS runtime host (after bridge/staging deploy), with CLOUDFLARE_OS_URL pointing at :8787:
+cd /opt/indobase-builder-cfos   # or monorepo indobase-builder-cfos
+CLOUDFLARE_OS_URL=http://127.0.0.1:8787 node scripts/seed-format-routing.mjs
+```
+
+Always re-run after changing Zero→One / format-routing text — CFOS does not pick up `INSTANCE_INSTRUCTIONS` from git alone. Cap is 8000 chars (script replaces, never appends).
+
 ## Platform API (headless control plane)
 
 Bridge calls **`PLATFORM_API_URL`** (Studio service hosting `/api/os/v1/*`):

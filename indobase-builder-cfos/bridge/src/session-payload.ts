@@ -70,6 +70,45 @@ export function sessionStage(session: Session): SessionStage {
   return isGuestSession(session) ? 'guest' : 'member'
 }
 
+/** Detect BYOK gateway hints from session.backend.public_env when present. */
+export function sessionLooksPaymentsReady(session: Session): boolean {
+  const env = session.backend?.public_env
+  if (!env || typeof env !== 'object') return false
+  const blob = Object.entries(env)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n')
+    .toLowerCase()
+  return /razorpay|stripe|gateway_keys|payments_ready|checkout_ready/.test(blob)
+}
+
+/**
+ * Compact Zero→One journey appendix for agent_hint (steers chips; does not invent UI cards).
+ */
+export function buildJourneyStateAppendix(session: Session): string {
+  const backendReady = Boolean(session.backend?.api_url || session.backend?.rest_url)
+  const paymentsReady = sessionLooksPaymentsReady(session)
+  const lines = ['## Journey state (session)', `- Backend: ${backendReady ? 'ready' : 'not ready'}`]
+  if (backendReady) {
+    const ref = session.backend?.project_ref || session.projectRef
+    lines.push(`- Backend project_ref: ${ref}`)
+    lines.push(
+      '- Prefer chips: wire storefront/admin to session.backend, Go Live (launchBusiness), Connect payments, Leave as-is — rewrite for brand; ≤4.',
+    )
+  } else {
+    lines.push(
+      '- Prefer path: preview-first → FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is). Call guidedBackend only after backend chip/ask.',
+    )
+  }
+  if (paymentsReady) {
+    lines.push('- Payments: keys appear configured — prefer wireCheckout + productionChecklist when relevant.')
+  } else {
+    lines.push(
+      '- Payments: not known from session — emit India vs Stripe CHOICES only when operator asks or picks Add payments.',
+    )
+  }
+  return lines.join('\n')
+}
+
 export function buildOnboardingGate(session: Session): SessionOnboardingGate | null {
   if (!isGuestSession(session)) return null
   return {
@@ -88,7 +127,8 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
-  const agentHintBody = `${agentHint}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const journey = buildJourneyStateAppendix(session)
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) return agentHintBody
   return agentHintBody.startsWith('GUEST ACCOUNT GATE')
     ? agentHintBody

@@ -118,7 +118,9 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /setupShopCatalog/)
     assert.match(payload.agent_hint, /resolveProductImages/)
     assert.match(payload.agent_hint, /applySchema/)
-    assert.match(payload.agent_hint, /guidedBackend|ensure-first/i)
+    assert.match(payload.agent_hint, /guidedBackend|Preview-first|live data/i)
+    assert.match(payload.agent_hint, /Journey state \(session\)/)
+    assert.match(payload.agent_hint, /Backend: not ready/)
     assert.match(payload.agent_hint, /productionChecklist/)
   })
 
@@ -126,5 +128,27 @@ describe('session-payload', () => {
     const guest = createGuestSession()
     const hint = composeAgentHintForSession(guest, 'Build a landing page.')
     assert.match(hint, /^GUEST ACCOUNT GATE/)
+    assert.match(hint, /Journey state \(session\)/)
+  })
+
+  it('journey appendix prefers wire chips when backend is ready', () => {
+    const withBackend: Session = {
+      ...signedIn,
+      backend: {
+        anon_key: 'anon',
+        api_url: 'https://proj.indobase.in',
+        auth_url: 'https://proj.indobase.in/auth/v1',
+        project_name: 'Demo',
+        project_ref: 'proj_abc',
+        project_url: 'https://proj.indobase.in',
+        rest_url: 'https://proj.indobase.in/rest/v1',
+        storage_url: 'https://proj.indobase.in/storage/v1',
+        public_env: { RAZORPAY_KEY_ID: 'rzp_test' },
+      },
+    }
+    const hint = composeAgentHintForSession(withBackend, 'Operator hint.')
+    assert.match(hint, /Backend: ready/)
+    assert.match(hint, /wire storefront\/admin/)
+    assert.match(hint, /Payments: keys appear configured/)
   })
 })

@@ -218,6 +218,106 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   },
 ] as const
 
+function brandLabel(brand?: string | null): string {
+  const b = (brand || '').trim()
+  return b || 'this'
+}
+
+function whereNextTitle(brand?: string | null): string {
+  const b = (brand || '').trim()
+  return b ? `Where should I take ${b} next?` : DEFAULT_POST_BUILD_TITLE
+}
+
+export type StageFollowUps = {
+  title: string
+  items: FollowUpItem[]
+}
+
+/**
+ * Example chips after a first preview (Naive-style) — agent must rewrite for the brand.
+ * Not injected by the UI.
+ */
+export function postPreviewFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Go Live on Indobase',
+        message: `Go Live — publish ${name} to my Indobase subdomain with launchBusiness`,
+      },
+      {
+        label: 'Add a real backend',
+        message: `Call guidedBackend (or ensureDatabase + applySchema / setupShopCatalog) for ${name}, prove with placeTestShopOrder if shop, then wire UI to session.backend`,
+      },
+      {
+        label: 'Refine the design',
+        message: `Refine the design and branding for ${name} — polish layout, typography, and visuals`,
+      },
+      {
+        label: 'Leave it as-is for now',
+        message: 'Looks good — leave it as-is for now',
+      },
+    ],
+  }
+}
+
+/**
+ * Example chips after guidedBackend / shop catalog is ready — agent must rewrite.
+ */
+export function postBackendFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Wire storefront to this catalog',
+        message: `Wire the ${name} storefront to catalog_json / session.backend REST and Buy CTAs`,
+      },
+      {
+        label: 'Go Live on Indobase',
+        message: `Go Live — publish ${name} with launchBusiness and quote the exact url`,
+      },
+      {
+        label: 'Publish admin dashboard',
+        message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh)`,
+      },
+      {
+        label: 'Connect payments',
+        message: `Connect payments for ${name} — ask India vs International, then connectGateway + wireCheckout`,
+      },
+    ],
+  }
+}
+
+/**
+ * Example chips after launchBusiness returned a live url — agent must rewrite.
+ */
+export function postGoLiveFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Connect my domain',
+        message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
+      },
+      {
+        label: 'Add a real backend',
+        message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
+      },
+      {
+        label: 'Add payments',
+        message: `Connect payments for ${name} — India vs International, connectGateway, wireCheckout`,
+      },
+      {
+        label: 'Production checklist',
+        message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+      },
+    ],
+  }
+}
+
 export function parseFollowUpLine(line: string): FollowUpItem | null {
   const trimmed = line.trim()
   if (!trimmed || trimmed.startsWith('#')) return null

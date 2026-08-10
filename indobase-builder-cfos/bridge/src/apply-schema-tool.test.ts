@@ -35,14 +35,16 @@ describe('general web-app production tools', () => {
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /guidedBackend/)
   })
 
-  it('guidedBackend is ensure-first before UI', async () => {
+  it('guidedBackend allows preview-first then chip-triggered ensure', async () => {
     const { GUIDED_BACKEND_AGENT_HARD_RULES, guidedBackendToolCatalog } = await import(
       './guided-backend-chain.ts'
     )
     const catalog = guidedBackendToolCatalog()
     assert.equal(catalog.name, 'guidedBackend')
     assert.equal(catalog.path, '/api/os/tools/guidedBackend')
-    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /BEFORE generating the main UI|ensure-first/i)
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /Preview-first is OK/i)
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /Add a real backend/i)
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /BEFORE.*wiring UI to a live API/i)
   })
 
   it('resolveProductImages points at OS media tool', () => {
