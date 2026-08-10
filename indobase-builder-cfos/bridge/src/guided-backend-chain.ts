@@ -60,12 +60,14 @@ export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 
 **Preview-first is OK** for a clear launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
 
-When the product needs a real backend (SaaS/data, chip **Add a real backend**, ecommerce vertical seed, or screens that hit project REST):
+**Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. Do not skip wire or invent checkout URLs.
+
+When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
 
 1. Call **guidedBackend** (or ensureLogin + ensureDatabase + applySchema) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports). Prove with placeTestShopOrder when available.
 3. Generic apps: \`mode: "generic"\` — default orgs/memberships schema (or pass applySchema tables yourself).
-4. After claim_backend_ready: wire UI to session.backend / catalog_json, emit next-stage FOLLOWUPS, then launchBusiness with real html/files when they Go Live.
+4. After claim_backend_ready: emit FOLLOWUPS Wire storefront → Go Live → Admin (≤4). Wire catalog to session.backend first; launchBusiness when they Go Live; payments only when they ask/pick Add payments.
 5. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 6. Email / Analytics optional — do not block Go Live on them.
 7. Payments remain BYOK — guidedBackend does not skip KYC.
@@ -383,7 +385,7 @@ async function maybeLaunch(
       brand: base.brand,
       steps: base.steps,
       progress,
-      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT: build the UI against session.backend / project REST (and catalog_json if shop). Then Go Live with launchBusiness — do not invent a live URL.`,
+      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT (store ladder): (1) Wire storefront to catalog_json / session.backend (2) emit FOLLOWUPS Wire → Go Live → Admin (3) launchBusiness on Go Live — do not invent a live URL. Payments only when they ask.`,
       claim_backend_ready: true,
       catalog_json: base.catalog_json,
       admin_html: base.admin_html,

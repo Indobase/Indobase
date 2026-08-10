@@ -91,17 +91,16 @@ export const PLACE_TEST_SHOP_ORDER_TOOL = {
 export const SHOP_CATALOG_AGENT_HARD_RULES = `
 ## Shop catalog / inventory (HARD PATH — ecommerce backend)
 
-When the operator wants a real product backend (not just a static storefront):
+When the operator wants a real product backend (not just a static storefront) — typically after **Add a real backend**:
 
-1. Ensure database if needed: **ensureDatabase** (or POST /api/os/runtime/ensure { capability: "businessData" }).
-2. Resolve images: **resolveProductImages** with product name queries — set each product \`image_url\` from returned HTTPS urls.
-3. Call **setupShopCatalog** with products:
-   { "brand": "MERIDIAN", "products": [{ "slug": "wool-coat", "name": "Wool Coat", "price": "480", "currency": "USD", "stock": 24, "image_url": "https://…" }] }
-4. Prove inventory: **placeTestShopOrder** with cleanup:true (default) — quote order_number + stock proof.
-5. Publish **admin_html** once via launchBusiness as \`admin.html\`. Live admin auto-refreshes from project REST every 5s — do NOT republish admin just to refresh orders/stock.
-6. Wire Buy CTAs with **wireCheckout** mode \`one_time\` using the same prices; never invent checkout URLs.
-7. Never invent Unsplash/Pexels URLs. Do not claim native AI product photography unless you actually generated assets.
-8. Claim “real backend” only after setupShopCatalog ok + (optional) placeTestShopOrder ok.
+1. Prefer **guidedBackend** mode=ecommerce (or: ensureDatabase → resolveProductImages → setupShopCatalog).
+2. Prove inventory: **placeTestShopOrder** with cleanup:true (default) — quote order_number + stock proof.
+3. Emit FOLLOWUPS: Wire storefront → Go Live → Publish admin (≤4). Do **not** jump to wireCheckout yet.
+4. **Wire storefront** to catalog_json / session.backend REST (product grid + cart). Buy CTA may stay placeholder until payments.
+5. **Go Live** with launchBusiness (real html/files) — quote exact url.
+6. Publish **admin_html** once as \`admin.html\` when asked — live REST refresh; do NOT republish just to refresh orders.
+7. **Payments last** (when asked): India vs International → ensure → KYC → **connectGateway** → **wireCheckout** mode one_time (prefer INR for India) → patch Buy CTA. Never invent checkout URLs.
+8. Never invent Unsplash/Pexels URLs. Claim “real backend” only after setupShopCatalog/guidedBackend ok + (optional) placeTestShopOrder ok.
 `.trim()
 
 export function setupShopCatalogToolCatalog() {

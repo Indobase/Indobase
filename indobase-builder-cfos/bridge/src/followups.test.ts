@@ -14,6 +14,7 @@ import {
   postPreviewFollowups,
   postBackendFollowups,
   postGoLiveFollowups,
+  postPaymentsFollowups,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -211,6 +212,17 @@ INDOBASE_CHOICES>>>
   it('postBackendFollowups and postGoLiveFollowups stay within chip budget', () => {
     assert.ok(postBackendFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)
     assert.ok(postGoLiveFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)
-    assert.match(postGoLiveFollowups('Aural').items.map((i) => i.label).join(' '), /domain|payments|checklist/i)
+    assert.ok(postBackendFollowups('Aural').items.every((i) => !/payments|razorpay/i.test(i.label)))
+    assert.match(postGoLiveFollowups('Aural', { store: true }).items.map((i) => i.label).join(' '), /payments|domain|checklist/i)
+  })
+
+  it('ecommerce niche chips are preview-first (no guidedBackend on pick)', async () => {
+    const { ecommerceVerticalFollowups } = await import('./vertical-catalog.ts')
+    const { items } = ecommerceVerticalFollowups('MERIDIAN')
+    assert.ok(items.length >= 2)
+    for (const item of items) {
+      assert.doesNotMatch(item.message, /INDOBASE_GUIDED_BACKEND/)
+      assert.match(item.message, /preview|Do NOT call guidedBackend/i)
+    }
   })
 })

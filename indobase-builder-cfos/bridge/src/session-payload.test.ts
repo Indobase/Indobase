@@ -148,7 +148,8 @@ describe('session-payload', () => {
     }
     const hint = composeAgentHintForSession(withBackend, 'Operator hint.')
     assert.match(hint, /Backend: ready/)
-    assert.match(hint, /wire storefront\/admin/)
+    assert.match(hint, /Wire storefront/)
+    assert.match(hint, /Default store ladder/)
     assert.match(hint, /Payments: keys appear configured/)
   })
 })

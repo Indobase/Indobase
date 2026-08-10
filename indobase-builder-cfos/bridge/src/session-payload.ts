@@ -87,23 +87,28 @@ export function sessionLooksPaymentsReady(session: Session): boolean {
 export function buildJourneyStateAppendix(session: Session): string {
   const backendReady = Boolean(session.backend?.api_url || session.backend?.rest_url)
   const paymentsReady = sessionLooksPaymentsReady(session)
-  const lines = ['## Journey state (session)', `- Backend: ${backendReady ? 'ready' : 'not ready'}`]
+  const lines = [
+    '## Journey state (session)',
+    `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
+    '## Default store ladder (when building a shop)',
+    'niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. ≤4 chips; rewrite for brand.',
+  ]
   if (backendReady) {
     const ref = session.backend?.project_ref || session.projectRef
     lines.push(`- Backend project_ref: ${ref}`)
     lines.push(
-      '- Prefer chips: wire storefront/admin to session.backend, Go Live (launchBusiness), Connect payments, Leave as-is — rewrite for brand; ≤4.',
+      '- Prefer chips (order): Wire storefront → Go Live (launchBusiness) → Publish admin / Leave — payments only after live or explicit ask.',
     )
   } else {
     lines.push(
-      '- Prefer path: preview-first → FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is). Call guidedBackend only after backend chip/ask.',
+      '- Prefer path: preview-first → FOLLOWUPS (Go Live / Add a real backend / Refine / Leave). Niche pick must NOT call guidedBackend.',
     )
   }
   if (paymentsReady) {
-    lines.push('- Payments: keys appear configured — prefer wireCheckout + productionChecklist when relevant.')
+    lines.push('- Payments: keys appear configured — prefer wireCheckout (INR if India) + patch Buy CTA + productionChecklist.')
   } else {
     lines.push(
-      '- Payments: not known from session — emit India vs Stripe CHOICES only when operator asks or picks Add payments.',
+      '- Payments: not known from session — India vs Stripe CHOICES only when operator asks or picks Add payments.',
     )
   }
   return lines.join('\n')

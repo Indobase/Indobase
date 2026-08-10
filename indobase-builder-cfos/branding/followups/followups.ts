@@ -89,32 +89,32 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
     message:
-      'This is a landing/marketing site — Go Live, SEO + legal, optional domain; productionChecklist app_type landing',
+      'This is a landing/marketing site — build UI → launchBusiness; SEO + legal; optional domain; productionChecklist app_type landing',
   },
   {
     label: 'SaaS / web app',
     message:
-      'This is a SaaS web app — ensureLogin, ensureDatabase, applySchema for orgs/users, wire auth UI, then productionChecklist app_type saas',
+      'This is a SaaS web app — ensureLogin + ensureDatabase + applySchema FIRST, then build UI against session.backend, then Go Live; productionChecklist app_type saas',
   },
   {
     label: 'Ecommerce / store',
     message:
-      'This is an ecommerce store — resolveProductImages, setupShopCatalog, payments (connectGateway + wireCheckout), admin_html once (live REST), productionChecklist app_type ecommerce',
+      'This is an ecommerce store — niche CHOICES if needed, preview storefront first (localStorage cart); guidedBackend only on Add a real backend, then Wire → Go Live → payments when asked; productionChecklist app_type ecommerce',
   },
   {
     label: 'Booking / appointments',
     message:
-      'This is a booking app — ensureLogin, applySchema for resources/slots/bookings, optional payments, productionChecklist app_type booking',
+      'This is a booking app — ensureLogin + applySchema for resources/slots/bookings FIRST, then UI, then Go Live; productionChecklist app_type booking',
   },
   {
     label: 'Blog / content',
     message:
-      'This is a blog/content site — applySchema for posts, SEO + legal, productionChecklist app_type blog',
+      'This is a blog/content site — ensureDatabase + applySchema for posts FIRST, then UI + SEO, then Go Live; productionChecklist app_type blog',
   },
   {
     label: 'Dashboard / internal tool',
     message:
-      'This is a dashboard/internal tool — ensureLogin, applySchema for entities, productionChecklist app_type dashboard',
+      'This is a dashboard/internal tool — ensureLogin + applySchema FIRST, then UI, then Go Live; productionChecklist app_type dashboard',
   },
   {
     label: "I'll describe it",
@@ -200,17 +200,16 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Wire storefront to this catalog',
     message:
-      'Wire the storefront product grid to catalog_json from setupShopCatalog / listShopOrders and Buy buttons to wireCheckout mode one_time checkout_url',
+      'Wire the storefront product grid to catalog_json / session.backend REST — keep Buy CTA placeholder until payments are connected',
+  },
+  {
+    label: 'Go Live on Indobase',
+    message: 'Go Live — publish this store with launchBusiness and quote the exact url',
   },
   {
     label: 'Publish admin dashboard',
     message:
       'Publish admin_html from listShopOrders via launchBusiness as admin.html once — it live-refreshes from project REST; do not republish just to refresh orders',
-  },
-  {
-    label: 'Connect payments',
-    message:
-      'Connect payments — ask India vs International, ensure, PSP KYC, connectGateway, then wireCheckout',
   },
   {
     label: 'Leave it as-is for now',
@@ -248,7 +247,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend (or ensureDatabase + applySchema / setupShopCatalog) for ${name}, prove with placeTestShopOrder if shop, then wire UI to session.backend`,
+        message: `Call guidedBackend mode=ecommerce for ${name}, prove with placeTestShopOrder, then emit Wire / Go Live chips — do not skip to payments yet`,
       },
       {
         label: 'Refine the design',
@@ -264,6 +263,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
 
 /**
  * Example chips after guidedBackend / shop catalog is ready — agent must rewrite.
+ * Order: wire → Go Live → admin (payments after live).
  */
 export function postBackendFollowups(brand?: string | null): StageFollowUps {
   const name = brandLabel(brand)
@@ -272,7 +272,7 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Wire storefront to this catalog',
-        message: `Wire the ${name} storefront to catalog_json / session.backend REST and Buy CTAs`,
+        message: `Wire the ${name} storefront to catalog_json / session.backend REST (product grid + cart); Buy CTA placeholder until payments`,
       },
       {
         label: 'Go Live on Indobase',
@@ -283,8 +283,8 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
         message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh)`,
       },
       {
-        label: 'Connect payments',
-        message: `Connect payments for ${name} — ask India vs International, then connectGateway + wireCheckout`,
+        label: 'Leave it as-is for now',
+        message: 'Looks good — leave it as-is for now',
       },
     ],
   }
@@ -292,27 +292,64 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
 
 /**
  * Example chips after launchBusiness returned a live url — agent must rewrite.
+ * Store path prefers Add payments (India/Razorpay ask) over re-doing backend.
  */
-export function postGoLiveFollowups(brand?: string | null): StageFollowUps {
+export function postGoLiveFollowups(brand?: string | null, opts?: { store?: boolean }): StageFollowUps {
+  const name = brandLabel(brand)
+  const store = opts?.store !== false
+  const items: FollowUpItem[] = [
+    {
+      label: 'Connect my domain',
+      message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
+    },
+    {
+      label: 'Add payments',
+      message: store
+        ? `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`
+        : `Connect payments for ${name} — India vs International, connectGateway, wireCheckout`,
+    },
+    {
+      label: 'Production checklist',
+      message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+    },
+    {
+      label: 'Refine the design',
+      message: `Refine the design and branding for ${name}`,
+    },
+  ]
+  if (!store) {
+    items.splice(1, 0, {
+      label: 'Add a real backend',
+      message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
+    })
+    items.pop()
+  }
+  return { title: whereNextTitle(brand), items: items.slice(0, MAX_VISIBLE_CHIPS) }
+}
+
+/**
+ * Example chips after connectGateway is ready — agent must rewrite.
+ */
+export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
   const name = brandLabel(brand)
   return {
     title: whereNextTitle(brand),
     items: [
       {
-        label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
-      },
-      {
-        label: 'Add a real backend',
-        message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
-      },
-      {
-        label: 'Add payments',
-        message: `Connect payments for ${name} — India vs International, connectGateway, wireCheckout`,
+        label: 'Wire checkout into the site',
+        message: `Call wireCheckout for ${name} (mode one_time, prefer INR if India) and set Buy CTA href to checkout_url`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+        message: `Run productionChecklist for ${name} with checkout_wired true when CTA uses wireCheckout url`,
+      },
+      {
+        label: 'Publish admin dashboard',
+        message: `Publish admin_html for ${name} as admin.html once if not already live`,
+      },
+      {
+        label: 'Leave it as-is for now',
+        message: 'Looks good — leave it as-is for now',
       },
     ],
   }

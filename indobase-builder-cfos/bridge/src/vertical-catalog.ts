@@ -384,18 +384,20 @@ export function ecommerceVerticalFollowups(brand?: string | null): {
   title: string
   items: Array<{ label: string; message: string }>
 } {
-  const brandBit = brand?.trim() ? ` for ${brand.trim()}` : ''
+  const brandBit = brand?.trim() ? ` named ${brand.trim()}` : ''
   return {
     title: ECOMMERCE_VERTICAL_TITLE,
     items: [
       ...ECOMMERCE_VERTICALS.map((v) => ({
         label: v.label,
-        message: `INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandBit ? ` brand=${brand!.trim()}` : ''} — seed ${v.label} catalog with images via guidedBackend (do not invent products)`,
+        message:
+          `Niche ${v.label}${brandBit} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
+          `Do NOT call guidedBackend yet. After preview, emit FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is).`,
       })),
       {
         label: "I'll type my specific niche",
         message:
-          "I'll type my specific niche — then call guidedBackend mode=ecommerce with products I describe (or closest vertical seed)",
+          "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
       },
     ],
   }

@@ -23,11 +23,11 @@ describe('shop catalog tools', () => {
   })
 
   it('hard rules require setupShopCatalog, imagery, and live admin (no republish)', () => {
-    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /setupShopCatalog/)
+    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /setupShopCatalog|guidedBackend/)
     assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /placeTestShopOrder/)
     assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /admin_html/)
     assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /wireCheckout/)
-    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /resolveProductImages/)
-    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /do NOT republish admin/i)
+    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /Wire storefront|store ladder|Payments last/i)
+    assert.match(SHOP_CATALOG_AGENT_HARD_RULES, /do NOT republish/i)
   })
 })

@@ -38,6 +38,19 @@ Take operators from a blank ask to a live business in chat. Loop: **clarify → 
 
 Respect **Journey state** on `/api/session` agent_hint when present (backend ready or not).
 
+## Default store ladder (HARD — non-technical operators)
+
+For ecommerce / “launch a store / sell X”, use this order and speak business outcomes (not tool names in chip labels):
+
+1. **Niche** CHOICES (`What will your store sell?`) → **preview only** (localStorage cart). Niche must **not** call guidedBackend.
+2. **Preview** → What’s in it + FOLLOWUPS: Go Live / Add a real backend / Refine / Leave as-is.
+3. **Add a real backend** → `guidedBackend mode=ecommerce` + `placeTestShopOrder` (prove stock) → FOLLOWUPS: Wire storefront → Go Live → Admin.
+4. **Wire** catalog to `session.backend` / catalog_json.
+5. **Go Live** → `launchBusiness` → quote exact `url` → FOLLOWUPS: Domain / Add payments / Checklist.
+6. **Add payments** → India (Razorpay) vs International (Stripe) → ensure → KYC → `connectGateway` → `wireCheckout` (prefer INR for India) → patch Buy CTA.
+
+Never dump payments/checklist on the first preview. Never invent checkout or live URLs.
+
 ## App type (ask early when unclear)
 
 If the product type is unclear, ask with CHOICES:
