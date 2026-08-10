@@ -165,14 +165,16 @@ export async function platformRuntimeEnsure(input: {
   }
   const { status, json } = await platformFetch(PlatformApiRoutes.runtimeEnsure, body)
   if (json && typeof json === 'object') {
-    return { ...(json as RuntimeEnsureResponse), status }
+    // Do not overwrite RuntimeEnsureResponse.status ("enabled"|"enabling"|…)
+    // with the HTTP status number — that breaks claim_*_ready checks.
+    return { ...(json as RuntimeEnsureResponse), httpStatus: status }
   }
   return {
     ok: false,
     capability: input.capability,
     provision_state: 'none',
     message: 'Runtime ensure failed',
-    status,
+    httpStatus: status,
   }
 }
 

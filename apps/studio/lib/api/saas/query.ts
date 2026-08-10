@@ -67,10 +67,15 @@ export async function executeQuery<T = unknown>({
   let finalQuery = query
   let finalParameters = parameters
 
-  if (trimmedActor) {
+  // DDL cannot be prefixed with a WITH … CTE (`WITH x CREATE TABLE` → syntax error
+  // near "create"). applySchema / setupShopCatalog rely on create/grant without RLS
+  // actor GUC — skip injection for those statements.
+  const leadingQuery = query.replace(/^\s+/, '')
+  const isDdl = /^(create|alter|drop|grant|revoke|comment|truncate)\b/i.test(leadingQuery)
+
+  if (trimmedActor && !isDdl) {
     const actorParamNum = (parameters?.length ?? 0) + 1
     const setActorCte = `_set_actor AS MATERIALIZED (SELECT set_config('app.uid', $${actorParamNum}, true))`
-    const leadingQuery = query.replace(/^\s+/, '')
     finalQuery = /^with\s/i.test(leadingQuery)
       ? leadingQuery.replace(/^with\s+/i, `WITH ${setActorCte}, `)
       : `WITH ${setActorCte} ${leadingQuery}`
