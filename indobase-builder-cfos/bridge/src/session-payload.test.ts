@@ -30,6 +30,7 @@ describe('session-payload', () => {
     const body = buildAuthVerifySuccessPayload(signedIn, 'none')
     assert.equal(body.ok, true)
     assert.equal(body.guest, false)
+    assert.equal(body.stage, 'member')
     assert.equal(body.onboarding, null)
     assert.equal(body.session_ready, true)
     assert.equal(body.email, 'op@indobase.in')
@@ -48,8 +49,11 @@ describe('session-payload', () => {
       indobaseProxyPath: '/api/indobase/proxy/',
     })
     assert.equal(payload.guest, true)
+    assert.equal(payload.stage, 'guest')
     assert.ok(payload.onboarding)
     assert.equal(payload.onboarding?.account_required, true)
+    assert.equal(payload.auth.ui, true)
+    assert.equal(payload.auth.open_event, 'indobase:open-auth')
     assert.match(payload.agent_hint, /GUEST ACCOUNT GATE/)
     assert.equal(payload.usage.quota, null)
     assert.ok(payload.actions.some((a) => a.id === 'create-account'))
@@ -76,6 +80,7 @@ describe('session-payload', () => {
       },
     })
     assert.equal(payload.guest, false)
+    assert.equal(payload.stage, 'member')
     assert.equal(payload.onboarding, null)
     assert.doesNotMatch(payload.agent_hint, /GUEST ACCOUNT GATE/)
     assert.equal(payload.usage.quota?.remaining, 4)

@@ -61,7 +61,13 @@ export type SessionOnboardingGate = {
   account_required: true
   gate: 'first'
   message: string
-  auth: { start: string; verify: string; in_chat: true }
+  auth: { start: string; verify: string; in_chat: true; ui: true }
+}
+
+export type SessionStage = 'guest' | 'member'
+
+export function sessionStage(session: Session): SessionStage {
+  return isGuestSession(session) ? 'guest' : 'member'
 }
 
 export function buildOnboardingGate(session: Session): SessionOnboardingGate | null {
@@ -70,11 +76,12 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
     account_required: true,
     gate: 'first',
     message:
-      'Acknowledge their request, then complete Indobase account in chat (name+email+DPDP → /auth/start → OTP → /auth/verify) before any other work.',
+      'Acknowledge their request, then complete Indobase account via Continue with email (or in chat: name+email+DPDP → /auth/start → OTP → /auth/verify) before any other work.',
     auth: {
       start: '/auth/start',
       verify: '/auth/verify',
       in_chat: true,
+      ui: true,
     },
   }
 }
@@ -103,6 +110,7 @@ export type BuildSessionApiPayloadInput = {
 export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
   const { session } = input
   const guest = isGuestSession(session)
+  const stage = sessionStage(session)
   const onboarding = buildOnboardingGate(session)
   const usage: SessionPromptQuotaBlock = buildSessionPromptQuotaBlock(
     guest ? null : input.promptQuota ?? null,
@@ -112,6 +120,8 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
   return {
     email: session.email,
     guest,
+    /** UI-readable session stage: guest (unsigned) | member (signed-in Free+). */
+    stage,
     project_ref: session.projectRef,
     project_name: session.projectName,
     organization_slug: session.orgSlug,
@@ -140,6 +150,9 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       start: '/auth/start',
       verify: '/auth/verify',
       in_chat: true,
+      /** Deterministic Continue-with-email chrome is injected on the desktop. */
+      ui: true,
+      open_event: 'indobase:open-auth',
     },
     launch: {
       api: '/api/os/launch',
@@ -221,6 +234,7 @@ export function buildAuthVerifySuccessPayload(session: Session, provisionState: 
   return {
     ok: true as const,
     guest: false as const,
+    stage: 'member' as const,
     onboarding: null,
     project_ref: session.projectRef,
     email: session.email,
@@ -229,5 +243,22 @@ export function buildAuthVerifySuccessPayload(session: Session, provisionState: 
     next: '/',
     /** Hint for clients: re-fetch /api/session — guest gate is cleared. */
     session_ready: true,
+  }
+}
+
+/** Browser claim after agent-side OTP verify — same stage semantics as verify. */
+export function buildClaimSessionSuccessPayload(input: {
+  email: string
+  projectRef: string
+}) {
+  return {
+    ok: true as const,
+    upgraded: true as const,
+    guest: false as const,
+    stage: 'member' as const,
+    session_ready: true as const,
+    onboarding: null,
+    email: input.email,
+    project_ref: input.projectRef,
   }
 }

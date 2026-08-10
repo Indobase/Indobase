@@ -120,7 +120,7 @@ describe('core workspace chrome', () => {
     assert.doesNotMatch(html, /header class="ibar"/)
   })
 
-  it('context bootstrap pulls /api/session (launch + auth in chat)', () => {
+  it('context bootstrap pulls /api/session (launch + auth chrome)', () => {
     const html = injectIndobaseContextBootstrap('<html><body><div id="app"></div></body></html>')
     assert.doesNotMatch(html, /id="os-frame"/)
     assert.doesNotMatch(html, /header class="ibar"/)
@@ -139,5 +139,7 @@ describe('core workspace chrome', () => {
     assert.match(html, /indobase:context/)
     assert.match(html, /GUEST/)
     assert.match(html, /ONBOARDING/)
+    assert.match(html, /Continue with email/)
+    assert.match(html, /__INDOBASE_SESSION_STAGE__/)
   })
 })

@@ -3,6 +3,7 @@
  * Normal entry proxies the CFOS agent desktop as the top document (no iframe shell).
  */
 import type { Session } from './auth.js'
+import { injectAuthChrome } from './auth-chrome.js'
 import { stripVendorBranding } from './indobase-adapter.js'
 
 function escapeHtml(value: string): string {
@@ -76,7 +77,8 @@ const SHELL_CSS = `
 /**
  * Same-document bootstrap for the proxied CFOS desktop.
  * Replaces the old parent-frame postMessage + Go Live chrome.
- * Agent uses /api/session + launchBusiness; account/sign-out happen in chat / settings.
+ * Agent uses /api/session + launchBusiness; guests get Continue-with-email chrome
+ * (same /auth/start|/auth/verify as chat) so auth works if the model stalls.
  */
 export function injectIndobaseContextBootstrap(html: string): string {
   const script = `<script>
@@ -90,6 +92,14 @@ export function injectIndobaseContextBootstrap(html: string): string {
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
       window.__INDOBASE_USAGE__ = s.usage || null;
       window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
+      window.__INDOBASE_GUEST__ = !!s.guest;
+      window.__INDOBASE_SESSION_STAGE__ = s.stage || (s.guest ? 'guest' : 'member');
+      window.__INDOBASE_AUTH__ = s.auth || {
+        start: '/auth/start',
+        verify: '/auth/verify',
+        in_chat: true,
+        ui: true,
+      };
       window.__INDOBASE_LAUNCH__ = s.launch || {
         api: '/api/os/launch',
         status: '/api/os/launch/status',
@@ -122,8 +132,9 @@ export function injectIndobaseContextBootstrap(html: string): string {
                 'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
               PROMPT_QUOTA: '/api/os/usage/prompt-quota',
               BEGIN_TURN: window.__INDOBASE_BEGIN_TURN__,
-              AUTH: s.auth || { start: '/auth/start', verify: '/auth/verify', in_chat: true },
+              AUTH: window.__INDOBASE_AUTH__,
               GUEST: !!s.guest,
+              STAGE: window.__INDOBASE_SESSION_STAGE__,
             }),
           }),
         );
@@ -146,10 +157,13 @@ export function injectIndobaseContextBootstrap(html: string): string {
   setInterval(pull, 15000);
 })();
 </script>`
+  let withScript = html
   if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `${script}</body>`)
+    withScript = html.replace(/<\/body>/i, `${script}</body>`)
+  } else {
+    withScript = `${html}${script}`
   }
-  return `${html}${script}`
+  return injectAuthChrome(withScript)
 }
 
 /** Fallback if handoff secret missing — normal entry mints a guest and opens the agent desktop. */

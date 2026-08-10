@@ -20,6 +20,7 @@ import {
 } from '@indobase/platform-api'
 
 import { resolveHandoffSecret } from './auth.js'
+import { extractPlatformErrorMessage } from './auth-errors.js'
 
 export function resolvePlatformApiUrl(): string {
   const raw =
@@ -91,7 +92,10 @@ export async function platformOtpStart(input: {
   name: string
   email: string
   dpdpConsent: boolean
-}): Promise<{ ok: true; email: string } | { ok: false; status: number; message: string }> {
+}): Promise<
+  | { ok: true; email: string }
+  | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
+> {
   const { status, json } = await platformFetch(PlatformApiRoutes.identityOtpStart, {
     name: input.name,
     email: input.email,
@@ -100,10 +104,16 @@ export async function platformOtpStart(input: {
   if (status >= 200 && status < 300) {
     return { ok: true, email: typeof json?.email === 'string' ? json.email : input.email }
   }
+  const extracted = extractPlatformErrorMessage(
+    json,
+    "Couldn't send the verification email. Please try again shortly.",
+  )
   return {
     ok: false,
     status,
-    message: (typeof json?.message === 'string' && json.message) || 'Could not send verification code',
+    message: extracted.message,
+    code: extracted.code,
+    retryAfterSeconds: extracted.retryAfterSeconds,
   }
 }
 
@@ -113,7 +123,7 @@ export async function platformOtpVerify(input: {
   token: string
 }): Promise<
   | { ok: true; session: OsWorkspaceSession }
-  | { ok: false; status: number; message: string }
+  | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
 > {
   const { status, json } = await platformFetch(PlatformApiRoutes.identityOtpVerify, {
     name: input.name,
@@ -123,11 +133,16 @@ export async function platformOtpVerify(input: {
   if (status >= 200 && status < 300 && json?.session && typeof json.session === 'object') {
     return { ok: true, session: json.session as OsWorkspaceSession }
   }
+  const extracted = extractPlatformErrorMessage(
+    json,
+    'Invalid or expired verification code. Request a new code and try again.',
+  )
   return {
     ok: false,
     status,
-    message:
-      (typeof json?.message === 'string' && json.message) || 'Invalid or expired verification code',
+    message: extracted.message,
+    code: extracted.code,
+    retryAfterSeconds: extracted.retryAfterSeconds,
   }
 }
 

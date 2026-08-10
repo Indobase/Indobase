@@ -8,6 +8,8 @@ type RateLimitOptions = {
   scope?: 'ip' | 'identity'
   /** Used with scope=identity, or appended to IP bucket when scope is ip. */
   identityKey?: string | null
+  /** Optional user-facing 429 message (defaults to generic too-many-requests). */
+  message?: string
 }
 
 type RateLimitBucket = {
@@ -66,11 +68,18 @@ export function enforceRateLimit(
   }
 
   const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAt - now) / 1000))
+  const message =
+    options.message?.trim() || 'Too many requests. Please try again later.'
   res.setHeader('Retry-After', String(retryAfterSeconds))
+  // Top-level message + code for OS bridge / OTP clients; nested error kept for older callers.
   res.status(429).json({
+    ok: false,
+    message,
+    code: 'rate_limited',
+    retryAfterSeconds,
     error: {
       code: 'rate_limited',
-      message: 'Too many requests. Please try again later.',
+      message,
       retryAfterSeconds,
     },
   })
@@ -85,13 +94,21 @@ export function clearRateLimitStateForTests() {
 export function enforcePublicAuthRateLimits(
   req: NextApiRequest,
   res: NextApiResponse,
-  options: { keyPrefix: string; ipMax: number; ipWindowMs: number; email?: string | null }
+  options: {
+    keyPrefix: string
+    ipMax: number
+    ipWindowMs: number
+    email?: string | null
+    /** Optional copy for OTP / auth chrome clients. */
+    message?: string
+  }
 ): boolean {
   if (
     !enforceRateLimit(req, res, {
       keyPrefix: options.keyPrefix,
       max: options.ipMax,
       windowMs: options.ipWindowMs,
+      message: options.message,
     })
   ) {
     return false
@@ -106,5 +123,8 @@ export function enforcePublicAuthRateLimits(
     windowMs: 15 * 60_000,
     scope: 'identity',
     identityKey: email,
+    message:
+      options.message ||
+      'Too many verification attempts for this email. Please wait a few minutes and try again.',
   })
 }

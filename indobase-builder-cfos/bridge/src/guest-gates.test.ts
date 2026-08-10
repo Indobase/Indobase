@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import {
   OS_ACCOUNT_REQUIRED_PATHS,
   OS_GUEST_ALLOWED_READ_PATHS,
+  accountRequiredBody,
   pathAllowsGuestRead,
   pathRequiresSignedInAccount,
 } from './guest-gates.ts'
@@ -39,10 +40,21 @@ describe('guest gates', () => {
     assert.equal(pathAllowsGuestRead('/api/os/launch/status'), true)
     assert.equal(pathAllowsGuestRead('/api/session'), true)
     assert.equal(pathAllowsGuestRead('/api/os/runtime/agent-credentials'), true)
+    assert.equal(pathAllowsGuestRead('/auth/start'), true)
+    assert.equal(pathAllowsGuestRead('/auth/verify'), true)
     // begin-turn allows guests (no consume) so OTP signup chat is not blocked
     assert.equal(pathRequiresSignedInAccount('/api/os/agent/begin-turn'), false)
     assert.equal(pathAllowsGuestRead('/api/os/agent/begin-turn'), true)
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/usage/prompt-quota'))
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/auth/mail'))
+    assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/tools/launchBusiness'))
+    assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/tools/connectGateway'))
+    assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/tools/ensureLogin'))
+  })
+
+  it('accountRequiredBody points operators at Continue with email', () => {
+    const body = accountRequiredBody()
+    assert.equal(body.code, 'account_required')
+    assert.match(body.message, /Continue with email/)
   })
 })

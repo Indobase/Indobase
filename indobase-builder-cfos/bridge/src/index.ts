@@ -68,8 +68,11 @@ import { executeProductionChecklist } from './production-checklist-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
 import {
   buildAuthVerifySuccessPayload,
+  buildClaimSessionSuccessPayload,
   buildSessionApiPayload,
 } from './session-payload.js'
+import { accountRequiredBody } from './guest-gates.js'
+import { authErrorJsonBody, normalizeAuthRouteError } from './auth-errors.js'
 import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
 import {
   BRIDGE_AGENT_BEGIN_TURN_PATH,
@@ -142,15 +145,7 @@ function requireSignedInSession(c: Context): Session | Response {
   const sessionOrErr = requireSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   if (isGuestSession(sessionOrErr)) {
-    return c.json(
-      {
-        ok: false,
-        code: 'account_required',
-        message:
-          'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
-      },
-      403,
-    )
+    return c.json(accountRequiredBody(), 403)
   }
   return sessionOrErr
 }
@@ -172,15 +167,7 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
   const cookieSession = getSession(c)
   if (cookieSession) {
     if (isGuestSession(cookieSession)) {
-      return c.json(
-        {
-          ok: false,
-          code: 'account_required',
-          message:
-            'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
-        },
-        403,
-      )
+      return c.json(accountRequiredBody(), 403)
     }
     return cookieSession
   }
@@ -214,15 +201,7 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
     )
   }
   if (principal.guest || principal.projectRef.startsWith('draft_')) {
-    return c.json(
-      {
-        ok: false,
-        code: 'account_required',
-        message:
-          'Create your Indobase account in chat first (name + email + verification code), then Launch or Enable.',
-      },
-      403,
-    )
+    return c.json(accountRequiredBody(), 403)
   }
 
   return {
@@ -475,7 +454,7 @@ app.post('/sso/logout', (c) => {
 })
 
 /**
- * Start building — send email OTP via Platform API (no data-plane provision).
+ * Start OTP — Platform API (no data-plane provision). Same path for chat + Continue with email.
  */
 app.post('/auth/start', async (c) => {
   const body = await c.req.json().catch(() => null)
@@ -483,11 +462,12 @@ app.post('/auth/start', async (c) => {
   const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const dpdpConsent = Boolean(body && body.dpdpConsent === true)
   if (!name || !email || !email.includes('@')) {
-    return c.json({ message: 'name and valid email required' }, 400)
+    return c.json({ ok: false, message: 'Enter your name and a valid email.' }, 400)
   }
   if (!dpdpConsent) {
     return c.json(
       {
+        ok: false,
         message:
           'Accept the Privacy Policy and Terms of Service to continue (DPDP consent required).',
       },
@@ -497,13 +477,25 @@ app.post('/auth/start', async (c) => {
 
   const result = await platformOtpStart({ name, email, dpdpConsent })
   if (!result.ok) {
-    return c.json({ message: result.message }, result.status >= 400 ? result.status : 502)
+    const normalized = normalizeAuthRouteError(
+      result.status,
+      {
+        message: result.message,
+        code: result.code,
+        retryAfterSeconds: result.retryAfterSeconds,
+      },
+      'start',
+    )
+    if (normalized.retryAfterSeconds) {
+      c.header('Retry-After', String(normalized.retryAfterSeconds))
+    }
+    return c.json(authErrorJsonBody(normalized), normalized.status as 400 | 429 | 502 | 503 | 504)
   }
-  return c.json({ ok: true, email: result.email, next: 'chat_verify' })
+  return c.json({ ok: true, email: result.email, next: 'verify' })
 })
 
 /**
- * Verify OTP — create OS workspace (lazy backend), establish bridge session cookie.
+ * Verify OTP — idempotent Free workspace (lazy backend), establish bridge session cookie.
  * AgentTool path: X-Indobase-OS-Secret + X-Indobase-Agent-Username → pending claim
  * (workerd cannot Set-Cookie on the browser).
  */
@@ -513,20 +505,38 @@ app.post('/auth/verify', async (c) => {
   const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const token = body && typeof body.token === 'string' ? body.token.trim() : ''
   if (!name || !email || !email.includes('@') || !token) {
-    return c.json({ message: 'name, email, and verification code required' }, 400)
+    return c.json(
+      { ok: false, message: 'Enter your name, email, and the verification code.' },
+      400,
+    )
   }
 
   const result = await platformOtpVerify({ name, email, token })
   if (!result.ok) {
-    return c.json({ message: result.message }, result.status >= 400 ? result.status : 502)
+    const normalized = normalizeAuthRouteError(
+      result.status,
+      {
+        message: result.message,
+        code: result.code,
+        retryAfterSeconds: result.retryAfterSeconds,
+      },
+      'verify',
+    )
+    if (normalized.retryAfterSeconds) {
+      c.header('Retry-After', String(normalized.retryAfterSeconds))
+    }
+    return c.json(authErrorJsonBody(normalized), normalized.status as 400 | 429 | 502 | 503 | 504)
   }
 
   let secret: string
   try {
     secret = resolveHandoffSecret()
-  } catch (err) {
+  } catch {
     return c.json(
-      { message: err instanceof Error ? err.message : 'Handoff secret not configured' },
+      {
+        ok: false,
+        message: 'Sign-in is temporarily unavailable. Please try again in a moment.',
+      },
       503,
     )
   }
@@ -572,13 +582,14 @@ app.post('/auth/verify', async (c) => {
   }
 
   // Replaces any prior guest/draft_* cookie with the real signed-in workspace session.
-  // Next /api/session pull: guest=false, onboarding=null.
+  // Next /api/session pull: guest=false, stage=member, onboarding=null.
   c.header('Set-Cookie', sessionCookie(sessionToken))
   return c.json(buildAuthVerifySuccessPayload(session, ws.provision_state))
 })
 
 /**
  * Browser claims a session verified by the CFOS authVerify AgentTool.
+ * Idempotent: no pending claim → upgraded=false (still ok).
  */
 app.get('/api/os/auth/claim-session', async (c) => {
   const sessionOrErr = requireSession(c)
@@ -586,9 +597,9 @@ app.get('/api/os/auth/claim-session', async (c) => {
   let secret: string
   try {
     secret = resolveHandoffSecret()
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, message: err instanceof Error ? err.message : 'Handoff secret missing' },
+      { ok: false, message: 'Sign-in is temporarily unavailable. Please try again in a moment.' },
       503,
     )
   }
@@ -599,15 +610,23 @@ app.get('/api/os/auth/claim-session', async (c) => {
   })
   const pending = await takePendingSession(creds.username)
   if (!pending) {
-    return c.json({ ok: true, upgraded: false })
+    // Already claimed, or verify used Set-Cookie directly — report current stage.
+    const alreadyMember = !isGuestSession(sessionOrErr)
+    return c.json({
+      ok: true,
+      upgraded: false,
+      guest: !alreadyMember,
+      stage: alreadyMember ? 'member' : 'guest',
+      session_ready: alreadyMember,
+    })
   }
   c.header('Set-Cookie', sessionCookie(pending.sessionToken))
-  return c.json({
-    ok: true,
-    upgraded: true,
-    email: pending.email,
-    project_ref: pending.projectRef,
-  })
+  return c.json(
+    buildClaimSessionSuccessPayload({
+      email: pending.email,
+      projectRef: pending.projectRef,
+    }),
+  )
 })
 
 /**

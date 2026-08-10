@@ -23,7 +23,7 @@ If they are a Guest / no email / not signed in:
 
 Signed-in operators: skip this section.
 
-**Before Go Live or Enable login/database/payments:** the operator must have a signed-in Indobase account (not Guest). If the API returns `account_required` / 403, complete account verify in chat first.
+**Before Go Live or Enable login/database/payments:** the operator must have a signed-in Indobase account (not Guest). If the API returns `account_required` / 403, complete account verify via **Continue with email** (or in chat) first.
 
 ## App type (ask early when unclear)
 

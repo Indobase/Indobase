@@ -32,6 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ipMax: 20,
     ipWindowMs: 60_000,
     email,
+    message: 'Too many verification attempts. Please wait a minute and try again.',
   })
   if (!allowed) return
 

@@ -18,7 +18,8 @@ SSH_HOST="${VPS_SSH:-root@103.190.92.249}"
 SSH_KEY="${VPS_SSH_KEY:-$HOME/.ssh/id_ed25519_indobase_vps}"
 SSH_OPTS=(-4 -o ConnectTimeout=45 -i "$SSH_KEY")
 SERVICE_NAME="${BUILDER_CFOS_SERVICE_NAME:-indobase-builder-cfos}"
-CFOS_URL="${BUILDER_CFOS_APP_URL:-https://builder-v2.indobase.in}"
+# CFOS is the only Builder at builder.indobase.in (builder-v2 hostname retired).
+CFOS_URL="${BUILDER_CFOS_APP_URL:-https://builder.indobase.in}"
 STUDIO_FILTER="${INDOBASE_STUDIO_NAME_FILTER:-indobase-studio}"
 BUILD_LOCALLY="${BUILD_CFOS_IMAGE:-1}"
 REPLACE_CLASSIC="${REPLACE_CLASSIC_BUILDER:-0}"
@@ -49,9 +50,11 @@ scp "${SSH_OPTS[@]}" \
   "${SCRIPT_DIR}/lib/swarm-managed-env.sh" \
   "${SSH_HOST}:/opt/indobase/lib/swarm-managed-env.sh"
 
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml" \
-  < "${REPO_ROOT}/docker/traefik/builder-v2-indobase.yml"
-echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cat > /etc/dokploy/traefik/dynamic/builder-indobase.yml" \
+  < "${REPO_ROOT}/docker/traefik/builder-indobase.yml"
+# Retire duplicate hostname (same CFOS backend).
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "rm -f /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml"
+echo "Synced Traefik route: /etc/dokploy/traefik/dynamic/builder-indobase.yml (builder-v2 removed)"
 
 # Static Launch: sites.indobase.in + *.sites.indobase.in → CFOS bridge
 # (DNS A sites / *.sites → .249; do NOT touch tenant * → .248)

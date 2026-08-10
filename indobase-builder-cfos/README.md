@@ -4,7 +4,7 @@ Agentic Business OS: one Indobase shell. Engines sit behind Capabilities — not
 
 ## Day-one entry
 
-1. **`/`** — mints a guest session and opens the agent workspace as the **direct CFOS document** (no outer iframe chrome). Guest is account-first: the agent must complete account in chat via `/auth/start` + `/auth/verify` (DPDP consent; no signup popup) before docs/design/code/launch/enable.
+1. **`/`** — mints a guest session and opens the agent workspace as the **direct CFOS document** (no outer iframe chrome). Guest is account-first: complete account via **Continue with email** chrome or chat (`/auth/start` + `/auth/verify`, DPDP consent) before docs/design/code/launch/enable. No Studio plan wizards.
 2. **`/start`** — redirects to `/` (legacy marketing links).
 3. **Legacy** — `/sso/launch#token=…` for existing accounts only.
 
@@ -26,7 +26,7 @@ Header: `X-Indobase-OS-Secret` (= `BUILDER_CFOS_HANDOFF_SECRET`).
 
 Bridge proxies: `POST /api/os/runtime/ensure`, `POST /api/os/deploy/publish`, `GET`/`POST /api/os/usage/prompt-quota`, `POST /api/os/agent/begin-turn`, `GET /api/os/runtime/agent-credentials`. Guests may read `/api/os/launch/status` and agent-credentials, and may call begin-turn (no consume). Mutate paths return `403 account_required`.
 
-`/api/session` (signed-in) includes live `usage` (prompt quota snapshot), `actions` / `command_palette` (Create account, Go Live, Add login…), and `tools.promptQuota`. ChatInterface hard-meters each user send via `POST /api/os/agent/begin-turn`; agents should still GET then POST prompt-quota on heavy tool paths (see `AGENT_HINT.md`).
+`/api/session` includes `guest`, `stage` (`guest`|`member`), live `usage` (signed-in prompt quota), `actions` / `command_palette` (Create account, Go Live, Add login…), `auth.ui` (Continue with email chrome), and `tools.promptQuota`. ChatInterface hard-meters each user send via `POST /api/os/agent/begin-turn`; agents should still GET then POST prompt-quota on heavy tool paths (see `AGENT_HINT.md`).
 
 CFOS runtime login uses **principal-scoped** credentials from `GET /api/os/runtime/agent-credentials` (derived per `gotrueId` + `projectRef`) — not a shared `dev`/`devpassword` operator. Full filesystem / agent VM isolation remains Phase 2.
 
@@ -39,7 +39,7 @@ CI builds Hub image `roshanraghavander/indobase-builder-cfos:<git-sha>` via `.gi
 | `BUILDER_CFOS_HANDOFF_SECRET` | ≥32 chars; shared with Platform API |
 | `PLATFORM_API_URL` | Control plane base, e.g. `http://127.0.0.1:8080` |
 | `CLOUDFLARE_OS_URL` | Agent runtime (dev-stack sets this) |
-| `SENTRY_DSN` | Indobase Sentry project `builder-cfos` DSN (server + browser) |
+| `SENTRY_DSN` | Indobase Sentry project `builder` DSN (server + browser) |
 | `SENTRY_ENVIRONMENT` | Optional; default `production` / `NODE_ENV` |
 
 ## Quick start

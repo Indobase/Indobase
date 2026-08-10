@@ -1,7 +1,7 @@
-# Traefik dynamic config for https://builder-v2.indobase.in
-# Copy to /etc/dokploy/traefik/dynamic/builder-v2-indobase.yml on Vyom .249.
-# DNS: builder-v2.indobase.in → 103.190.92.249 (explicit A; must not use tenant wildcard .248).
-# Backend Swarm service: indobase-builder-cfos (port 8791).
+# DEPRECATED — do not deploy. CFOS Builder is only at https://builder.indobase.in
+# (see docker/traefik/builder-indobase.yml). builder-v2 was a temporary dual-hostname.
+# Traefik dynamic config for https://builder-v2.indobase.in (retired).
+# Backend was Swarm service indobase-builder-cfos (port 8791).
 
 http:
   routers:
