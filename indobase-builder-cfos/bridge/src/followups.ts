@@ -39,9 +39,6 @@ export type ChipStage = 'guest_gate' | 'building' | 'payments' | 'deliverable'
 /** Naive-style brevity: never show a wall of chips. */
 export const MAX_VISIBLE_CHIPS = 4
 
-const BLOCK_RE =
-  /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n([\s\S]*?)\r?\nINDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
-
 export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
 
 /**
