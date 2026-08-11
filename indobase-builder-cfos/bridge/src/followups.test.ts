@@ -140,7 +140,7 @@ INDOBASE_CHOICES>>>
     assert.equal(resolveFollowUps('What color should the logo be?'), null)
   })
 
-  it('guest_gate stage strips post-build walls but keeps niche CHOICES', () => {
+  it('guest_gate stage strips ALL chips including niche CHOICES', () => {
     const wall = `Clarifying guest gate needs
 
 I can create a polished headphone product website. Before I begin, please share:
@@ -177,12 +177,19 @@ INDOBASE_CHOICES>>>
 `
     const resolvedNiche = resolveFollowUps(niche)
     assert.ok(resolvedNiche)
-    assert.equal(resolvedNiche.title, 'What will your store sell?')
-    assert.ok(resolvedNiche.items.length >= 2)
+    assert.equal(resolvedNiche.items.length, 0)
   })
 
-  it('injects niche CHOICES when agent asks niche in prose under guest gate', () => {
+  it('does not inject niche CHOICES during guest/auth prose', () => {
     const input = `I'd love to build an apparel store. Before I begin, please share name and email and DPDP consent.
+
+What will your store sell? Streetwear, women's fashion, handmade, or electronics?`
+    const resolved = resolveFollowUps(input)
+    assert.ok(!resolved || resolved.items.length === 0)
+  })
+
+  it('injects niche CHOICES after signed-in product ask (not auth gate)', () => {
+    const input = `You're verified — continuing your ecommerce build.
 
 What will your store sell? Streetwear, women's fashion, handmade, or electronics?`
     const resolved = resolveFollowUps(input)

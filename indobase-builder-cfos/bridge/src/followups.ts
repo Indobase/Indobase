@@ -202,13 +202,16 @@ export function stripLeakedCot(message: string): string {
 
 export function injectNicheChoices(message: string): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
+  // Never inject niche cards during guest/auth turns.
+  if (inferChipStage(message) === 'guest_gate' || looksLikePreBuildClarification(message)) {
+    return null
+  }
   const lower = message.toLowerCase()
   const nicheAsk = looksLikeEcommerceNicheAsk(message)
-  // Guest store asks only — avoid false positives on generic “sell” / marketing copy.
   const guestStore =
-    looksLikePreBuildClarification(message) &&
     /\b(store|shop|ecommerce|e-?commerce|apparel|fashion|product website|online store|webshop)\b/.test(lower) &&
-    !/\b(saas|dashboard|booking|blog|landing page only)\b/.test(lower)
+    !/\b(saas|dashboard|booking|blog|landing page only)\b/.test(lower) &&
+    /what will your store sell|which niche|pick a niche/i.test(lower)
   if (!nicheAsk && !guestStore) return null
   return {
     body: stripLeakedCot(message),
@@ -648,7 +651,7 @@ export function stripDeadEndChips(parsed: ParsedFollowUps): ParsedFollowUps {
 
 /**
  * Enforce Naive-style timing + brevity.
- * Guest gate: strip post-build walls, but KEEP ecommerce niche CHOICES.
+ * Guest/auth turn: strip ALL chips (no niche cards while signing up).
  * Building: strip only long canned walls — keep ≤4 personalized launch-ladder chips
  * so the operator can keep advancing to full Go Live.
  */
@@ -656,9 +659,7 @@ export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = infer
   const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
 
   if (stage === 'guest_gate') {
-    if (itemsLookLikeEcommerceNiche(cleaned.items) || /^what will your store sell/i.test(cleaned.title)) {
-      return capChips(cleaned)
-    }
+    // Auth / DPDP / OTP turn — never show recommendation or niche cards.
     return { body: cleaned.body, title: '', items: [] }
   }
 

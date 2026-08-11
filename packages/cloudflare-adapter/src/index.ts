@@ -61,6 +61,7 @@ export {
 export {
   ACCOUNT_IN_CHAT_RULES,
   GUEST_ACCOUNT_FIRST_HINT,
+  MEMBER_SESSION_HINT,
   ACCOUNT_AUTH_START,
   ACCOUNT_AUTH_VERIFY,
 } from './account-routing'

@@ -101,8 +101,73 @@ async function consumeOtp(email: string, otpId: string): Promise<void> {
   }
 }
 
+async function ensureSmtpConfigured(config: ManagedBackendConfig, token: string): Promise<void> {
+  const password =
+    process.env.POCKETBASE_SMTP_PASS?.trim() ||
+    process.env.SMTP_PASS?.trim() ||
+    process.env.RESEND_API_KEY?.trim() ||
+    ''
+  if (!password) return
+
+  const host =
+    process.env.POCKETBASE_SMTP_HOST?.trim() ||
+    process.env.SMTP_HOST?.trim() ||
+    'smtp.resend.com'
+  const port = parseInt(
+    process.env.POCKETBASE_SMTP_PORT?.trim() || process.env.SMTP_PORT?.trim() || '587',
+    10,
+  )
+  const username =
+    process.env.POCKETBASE_SMTP_USER?.trim() || process.env.SMTP_USER?.trim() || 'resend'
+  const sender =
+    process.env.POCKETBASE_SMTP_SENDER?.trim() ||
+    process.env.SMTP_ADMIN_EMAIL?.trim() ||
+    'auth@indobase.in'
+  const senderName =
+    process.env.POCKETBASE_SMTP_SENDER_NAME?.trim() ||
+    process.env.SMTP_SENDER_NAME?.trim() ||
+    'Indobase'
+
+  const current = await fetch(`${config.adminUrl}/api/settings`, {
+    headers: { Authorization: token },
+  })
+  const settings = (await current.json().catch(() => ({}))) as {
+    smtp?: { enabled?: boolean; password?: string; host?: string }
+    meta?: Record<string, unknown>
+  }
+  // Always re-apply password from env when provided — API never returns stored password.
+  await fetch(`${config.adminUrl}/api/settings`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      meta: {
+        ...(settings.meta || {}),
+        appName: 'Indobase',
+        appURL: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
+        senderName,
+        senderAddress: sender,
+      },
+      smtp: {
+        ...(settings.smtp || {}),
+        enabled: true,
+        host,
+        port: Number.isFinite(port) ? port : 587,
+        username,
+        password,
+        authMethod: 'PLAIN',
+        tls: false,
+      },
+    }),
+  }).catch(() => null)
+}
+
 async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<void> {
   const token = await adminAuth(config)
+  await ensureSmtpConfigured(config, token)
+
   const listResponse = await fetch(`${config.adminUrl}/api/collections?page=1&perPage=50`, {
     headers: { Authorization: token },
   })
@@ -111,7 +176,7 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
       id: string
       name: string
       type?: string
-      otp?: { enabled?: boolean }
+      otp?: { enabled?: boolean; length?: number }
       createRule?: string | null
     }>
     message?: string
@@ -128,7 +193,10 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
   // OTP auto-create needs a create rule; require email present (not fully world-open junk).
   const desiredCreate = '@request.body.email != "" || @request.data.email != ""'
   const needsPatch =
-    !users.otp?.enabled || users.createRule === null || users.createRule === undefined
+    !users.otp?.enabled ||
+    users.createRule === null ||
+    users.createRule === undefined ||
+    users.otp?.length !== 6
 
   if (needsPatch) {
     const patch = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
@@ -138,7 +206,7 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        otp: { enabled: true, duration: 300 },
+        otp: { enabled: true, duration: 300, length: 6 },
         createRule: users.createRule === '' ? desiredCreate : users.createRule || desiredCreate,
       }),
     })
@@ -151,7 +219,7 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          otp: { enabled: true, duration: 300 },
+          otp: { enabled: true, duration: 300, length: 6 },
           createRule: '',
         }),
       })

@@ -709,8 +709,8 @@ app.get('/api/os/runtime/session-status', async (c) => {
     project_name: session.projectName || null,
     signed_in: !guest,
     message: guest
-      ? 'Unsigned-in: complete account in chat (name+email+DPDP → authStart+authVerify) or Create account, then continue the original request.'
-      : 'Signed in — do not ask for signup/OTP again. Continue the operator request.',
+      ? 'Unsigned-in: complete account in chat (name+email+DPDP → authStart+authVerify) or Create account. Do not emit niche/recommendation cards until after verify. Then continue the original request.'
+      : 'Signed in — do not ask for signup/OTP/Create account again. Continue the operator request immediately. Niche CHOICES are OK only after this point.',
   })
 })
 

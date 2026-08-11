@@ -11,7 +11,7 @@ import {
   assertProjectRuntimeAbi,
 } from '@indobase/platform'
 
-import { ACCOUNT_IN_CHAT_RULES, GUEST_ACCOUNT_FIRST_HINT } from './account-routing'
+import { ACCOUNT_IN_CHAT_RULES, GUEST_ACCOUNT_FIRST_HINT, MEMBER_SESSION_HINT } from './account-routing'
 import { stripVendorBranding } from './brand'
 import { DESIGN_FORMAT_ROUTING_RULES } from './design-format-routing'
 import { LAUNCH_AGENT_HARD_RULES, LAUNCH_SESSION_HINT } from './launch-routing'
@@ -91,12 +91,12 @@ export function sessionToAgentContext(
     session.projectRef.startsWith('draft_')
 
   const hintParts = [
-    ...(isGuest ? [GUEST_ACCOUNT_FIRST_HINT, ACCOUNT_IN_CHAT_RULES] : []),
+    ...(isGuest ? [GUEST_ACCOUNT_FIRST_HINT, ACCOUNT_IN_CHAT_RULES] : [MEMBER_SESSION_HINT]),
     'You are operating inside Indobase OS (Agentic Business OS).',
     `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
     isGuest
-      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds.'
-      : `Operator signed in as ${session.email}.`,
+      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds. Do not emit niche/recommendation cards during auth.'
+      : `Operator signed in as ${session.email}. Do NOT re-ask name/email/OTP/Create account.`,
     dataPlane
       ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs. Wire Sign-in and data screens to session.backend — never localStorage auth or mock APIs.`
       : 'No backend yet — landing/marketing may Static Launch only. For SaaS, booking, dashboard, or any app with login/data: call ensureLogin + ensureDatabase + applySchema (or guidedBackend mode=generic) BEFORE building auth/data UI.',

@@ -4,6 +4,7 @@
 import type { OsPromptQuota } from '@indobase/platform-api'
 import {
   GUEST_ACCOUNT_FIRST_HINT,
+  MEMBER_SESSION_HINT,
   LAUNCH_AGENT_HARD_RULES,
 } from '@indobase/cloudflare-adapter'
 
@@ -140,7 +141,11 @@ export function composeAgentHintForSession(session: Session, agentHint: string):
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session)
   const agentHintBody = `${agentHint}\n\n${journey}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
-  if (!guest) return agentHintBody
+  if (!guest) {
+    return agentHintBody.startsWith('SIGNED-IN SESSION')
+      ? agentHintBody
+      : `${MEMBER_SESSION_HINT}\n\n${agentHintBody}`
+  }
   return agentHintBody.startsWith('GUEST ACCOUNT GATE')
     ? agentHintBody
     : `${GUEST_ACCOUNT_FIRST_HINT}\n\n${agentHintBody}`
