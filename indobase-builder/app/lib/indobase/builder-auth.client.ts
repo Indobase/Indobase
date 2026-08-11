@@ -54,12 +54,18 @@ export function persistLastProjectRef(projectRef: string) {
 
 export function getStoredBuilderMcpToken(): string | null {
   const connection = getStoredIndobaseConnectionFromAuth();
+  const token = connection?.indobase?.mcpToken?.trim();
 
-  if (!isIndobaseStudioManagedConnection(connection)) {
-    return null;
+  if (token) {
+    return token;
   }
 
-  return connection.indobase.mcpToken?.trim() || null;
+  // Legacy Studio-managed path (token only when handoff connection is complete).
+  if (isIndobaseStudioManagedConnection(connection)) {
+    return connection.indobase.mcpToken?.trim() || null;
+  }
+
+  return null;
 }
 
 function decodeJwtExp(token: string): number | null {
@@ -114,46 +120,23 @@ export function getStudioOrigin(connection?: IndobaseConnectionState | null): st
   );
 }
 
+/** Builder email OTP sign-in (no Studio / GoTrue). */
 export function getStudioBuilderConnectUrl(options?: {
   connection?: IndobaseConnectionState | null;
   projectRef?: string;
   returnTo?: string;
   popup?: boolean;
 }): string {
-  const connection = options?.connection ?? getStoredIndobaseConnectionFromAuth();
-  const studioUrl = getStudioOrigin(connection);
-  const projectRef =
-    options?.projectRef ||
-    connection?.indobase?.projectRef ||
-    connection?.selectedProjectId ||
-    getLastProjectRef() ||
-    '';
-
   const returnTo = options?.returnTo || (typeof window !== 'undefined' ? window.location.pathname : '/');
-
-  if (!projectRef) {
-    const params = new URLSearchParams();
-    params.set('return_to', returnTo);
-    if (options?.popup) {
-      params.set('popup', '1');
-    }
-    const suffix = params.toString() ? `?${params.toString()}` : '';
-    return `${studioUrl}/builder/connect${suffix}`;
-  }
-
   const params = new URLSearchParams();
-
-  if (options?.returnTo) {
-    params.set('return_to', options.returnTo);
-  }
+  params.set('return_to', returnTo === '/connect' ? '/' : returnTo);
 
   if (options?.popup) {
     params.set('popup', '1');
   }
 
-  const suffix = params.toString() ? `?${params.toString()}` : '';
-
-  return `${studioUrl}/project/${encodeURIComponent(projectRef)}/builder/connect${suffix}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/auth?${params.toString()}`;
 }
 
 async function rebuildConnectionFromBackendConfig(session: SessionResponse): Promise<void> {
@@ -222,6 +205,54 @@ async function applySessionToStoredConnection(session: SessionResponse): Promise
 
   const connection = getStoredIndobaseConnectionFromAuth();
 
+  // OTP / managed backend sessions — never call Studio backend rebuild.
+  if (
+    connection?.backendProvider === 'pocketbase' ||
+    connection?.connectionSource === 'pocketbase' ||
+    session.projectRef === 'builder-os'
+  ) {
+    const projectRef = session.projectRef || connection?.indobase?.projectRef || connection?.selectedProjectId || 'builder-os';
+    persistLastProjectRef(projectRef);
+    const email = session.email?.trim() || connection?.user?.email || '';
+    const sub = session.sub?.trim() || connection?.user?.id || '';
+    const backendUrl =
+      connection?.pocketbase?.url ||
+      connection?.indobase?.apiUrl ||
+      connection?.credentials?.apiUrl ||
+      'https://backend.indobase.in';
+
+    updateIndobaseConnection({
+      isConnected: true,
+      connectionSource: connection?.connectionSource === 'pocketbase' ? 'pocketbase' : connection?.connectionSource || 'studio_handoff',
+      backendProvider: connection?.backendProvider === 'pocketbase' ? 'pocketbase' : connection?.backendProvider || 'indobase',
+      selectedProjectId: projectRef,
+      ...(connection?.pocketbase ? { pocketbase: connection.pocketbase } : {}),
+      ...(email
+        ? {
+            user: {
+              id: sub || email,
+              email,
+              role: 'builder',
+              created_at: connection?.user?.created_at || new Date().toISOString(),
+              last_sign_in_at: new Date().toISOString(),
+            },
+          }
+        : {}),
+      indobase: {
+        apiUrl: backendUrl,
+        authUrl: backendUrl,
+        organizationSlug: session.organizationSlug || connection?.indobase?.organizationSlug || 'indobase',
+        projectRef,
+        projectUrl: connection?.indobase?.projectUrl || backendUrl,
+        restUrl: connection?.indobase?.restUrl || backendUrl,
+        storageUrl: connection?.indobase?.storageUrl || backendUrl,
+        studioUrl: session.studioUrl || 'https://builder.indobase.in',
+        mcpToken: session.mcpToken,
+      },
+    });
+    return;
+  }
+
   if (!connection || connection.connectionSource !== 'studio_handoff') {
     await rebuildConnectionFromBackendConfig(session);
     return;
@@ -236,6 +267,8 @@ async function applySessionToStoredConnection(session: SessionResponse): Promise
   updateIndobaseConnection({
     isConnected: true,
     connectionSource: 'studio_handoff',
+    backendProvider: 'indobase',
+    pocketbase: undefined,
     selectedProjectId: projectRef || connection.selectedProjectId,
     ...(email
       ? {
@@ -544,7 +577,7 @@ export function redirectToStudioBuilderConnect(returnTo?: string, pendingPrompt?
     return;
   }
 
-  // Preserve the in-flight prompt across the full-page navigation to Studio and back.
+  // Preserve the in-flight prompt across the full-page navigation to /auth and back.
   if (pendingPrompt !== undefined) {
     persistPendingBuildPrompt(pendingPrompt);
   }

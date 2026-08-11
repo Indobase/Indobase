@@ -32,6 +32,8 @@ import { isTemplateBootstrapFollowUp } from '~/lib/indobase/chat-request';
 import { ensureIndobaseMcpFromRequest } from '~/lib/indobase/ensure-mcp.server';
 import { inspectOneShotBuildResponse, isInitialScaffoldTurn, getInstantBuildPlan, getCoderContractAppendix } from '~/lib/indobase/generation-contract';
 import { getInstantClarifyingQuestions } from '~/lib/indobase/instant-clarifying.server';
+import { createManagedPocketBaseTools } from '~/lib/pocketbase/pocketbase-tools.server';
+import { createPocketBaseAppId } from '~/lib/pocketbase/managed.server';
 
 const logger = createScopedLogger('api.chat');
 
@@ -438,20 +440,43 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         }
 
         const mcpTools = mcpService.toolsWithoutExecute;
+        const isPocketBaseSession =
+          indobaseBackend?.backendProvider === 'pocketbase' ||
+          indobaseBackend?.connectionSource === 'pocketbase' ||
+          Boolean(indobaseBackend?.pocketbase?.url);
+        const pocketBaseAppId =
+          (typeof indobaseBackend?.pocketbase?.appId === 'string' && indobaseBackend.pocketbase.appId) ||
+          createPocketBaseAppId(
+            typeof indobaseBackend?.pocketbase?.url === 'string' ? indobaseBackend.pocketbase.url : undefined,
+          );
+        const pocketBaseTools = isPocketBaseSession
+          ? createManagedPocketBaseTools({ env, appId: pocketBaseAppId })
+          : null;
 
         /*
          * First build turns must write files, not poke the live database. With MCP tools enabled the
          * coder burns rounds on list_files / apply_migration before scaffolding, then marks shell
          * actions complete without a working preview. Tools stay available on follow-up turns.
+         * Managed Indobase-backend schema tools follow the same gate.
          */
         const hasMcpTools =
           Object.keys(mcpTools).length > 0 && !toolBudgetExhausted && !isFirstBuildTurn && !isRepairRound;
+        /*
+         * Backend schema tools are allowed on the first build turn so the agent can
+         * provision collections before wiring screens — users never touch admin UI.
+         */
+        const hasPocketBaseTools = Boolean(pocketBaseTools) && !toolBudgetExhausted && !isRepairRound;
+        const mergedTools = {
+          ...(hasMcpTools ? mcpTools : {}),
+          ...(hasPocketBaseTools && pocketBaseTools ? pocketBaseTools : {}),
+        };
+        const hasAnyTools = Object.keys(mergedTools).length > 0;
 
         if (toolBudgetExhausted) {
           logger.warn(
             `Tool budget exhausted for this turn (${toolInvocationsThisTurn} tool calls); disabling tools to force codegen`,
           );
-        } else if (isFirstBuildTurn && Object.keys(mcpTools).length > 0) {
+        } else if (isFirstBuildTurn && Object.keys(mcpTools).length > 0 && !hasPocketBaseTools) {
           logger.info('First build turn: MCP tools disabled so the coder scaffolds files first');
         }
 
@@ -462,12 +487,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           indobaseConnection: indobaseBackend
             ? {
                 ...indobaseBackend,
+                backendProvider: indobaseBackend.backendProvider,
                 connectionSource: indobaseBackend.connectionSource,
+                pocketbase: indobaseBackend.pocketbase,
                 indobase: indobaseBackend.indobase,
               }
             : undefined,
-          toolChoice: hasMcpTools ? 'auto' : undefined,
-          tools: hasMcpTools ? mcpTools : undefined,
+          toolChoice: hasAnyTools ? 'auto' : undefined,
+          tools: hasAnyTools ? mergedTools : undefined,
           maxSteps: maxLLMSteps,
           onStepFinish: ({ toolCalls }) => {
             // add tool call annotations for frontend processing

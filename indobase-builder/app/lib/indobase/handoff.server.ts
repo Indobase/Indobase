@@ -24,10 +24,10 @@ const handoffSchema = z.object({
         VITE_INDOBASE_URL: z.string().url().optional(),
         EXPO_PUBLIC_INDOBASE_ANON_KEY: z.string().min(1).optional(),
         EXPO_PUBLIC_INDOBASE_URL: z.string().url().optional(),
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-        NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-        SUPABASE_ANON_KEY: z.string().min(1),
-        SUPABASE_URL: z.string().url(),
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+        NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+        SUPABASE_ANON_KEY: z.string().min(1).optional(),
+        SUPABASE_URL: z.string().url().optional(),
         VITE_SUPABASE_ANON_KEY: z.string().min(1).optional(),
         VITE_SUPABASE_URL: z.string().url().optional(),
       })
@@ -69,6 +69,8 @@ function resolveBuilderHandoffSecret(env?: ServerEnv) {
   const secret =
     env?.BUILDER_HANDOFF_SECRET?.trim() ||
     process.env.BUILDER_HANDOFF_SECRET?.trim() ||
+    env?.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
+    process.env.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
     env?.AUTH_JWT_SECRET?.trim() ||
     process.env.AUTH_JWT_SECRET?.trim() ||
     env?.JWT_SECRET?.trim() ||

@@ -1,0 +1,25 @@
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:0.25.8
+    container_name: indobase-pocketbase
+    restart: unless-stopped
+    networks:
+      - docker_default
+    volumes:
+      - pocketbase_data:/pb_data
+    # Host publish kept for admin/debug; public traffic via Traefik file route.
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+networks:
+  docker_default:
+    external: true
+
+volumes:
+  pocketbase_data:

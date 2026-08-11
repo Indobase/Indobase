@@ -73,12 +73,12 @@ export function backendConfigFromGuidedSnapshot(
   return {
     api_url: snapshot.api_url,
     anon_key: snapshot.anon_key,
-    auth_url: snapshot.auth_url || `${api}/auth/v1`,
-    rest_url: snapshot.rest_url || `${api}/rest/v1/`,
-    storage_url: snapshot.storage_url || `${api}/storage/v1`,
+    auth_url: snapshot.auth_url || api,
+    rest_url: snapshot.rest_url || api,
+    storage_url: snapshot.storage_url || api,
     project_ref: projectRef,
     project_name: snapshot.project_name || session.projectName || projectRef,
-    project_url: `https://studio.indobase.in/project/${projectRef}/backend`,
+    project_url: snapshot.project_url || api,
   }
 }
 

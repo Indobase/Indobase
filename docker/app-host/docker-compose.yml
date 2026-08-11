@@ -1,0 +1,21 @@
+services:
+  app-host:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "server.mjs"]
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./:/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - app_host_data:/var/lib/indobase/apps
+    environment:
+      APP_HOST_PORT: ${APP_HOST_PORT:-8791}
+      APP_HOST_TOKEN: ${APP_HOST_TOKEN:?set APP_HOST_TOKEN}
+      APP_HOST_DOMAIN: ${APP_HOST_DOMAIN:-indobase.in}
+      APP_HOST_ROOT: /var/lib/indobase/apps
+      APP_HOST_NETWORK: ${APP_HOST_NETWORK:-indobase-apps}
+      APP_HOST_NGINX_IMAGE: ${APP_HOST_NGINX_IMAGE:-nginx:1.27-alpine}
+
+volumes:
+  app_host_data:

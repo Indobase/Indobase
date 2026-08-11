@@ -1,9 +1,8 @@
-/** Production Studio origin — used when no env / hostname sibling applies. */
-export const DEFAULT_STUDIO_URL = 'https://studio.indobase.in';
+/** Production Builder origin — used when no env / hostname applies. */
+export const DEFAULT_STUDIO_URL = 'https://builder.indobase.in';
 
 /**
- * Map Builder host → sibling Studio host (builder.X → studio.X).
- * Lets the same Docker image serve prod (.in) and Hostinger staging (.fun).
+ * Map Builder host → same-origin Builder (auth lives on Builder; Studio is retired for Builder login).
  */
 export function resolveStudioUrlFromBuilderHostname(hostname: string): string | null {
   const host = hostname.trim().toLowerCase().replace(/\.$/, '');
@@ -12,7 +11,7 @@ export function resolveStudioUrlFromBuilderHostname(hostname: string): string | 
   }
 
   if (host.startsWith('builder.')) {
-    return `https://studio.${host.slice('builder.'.length)}`;
+    return `https://${host}`;
   }
 
   return null;
@@ -23,8 +22,8 @@ function normalizeOrigin(url: string): string {
 }
 
 /**
- * Resolve the Studio origin for Connect-via-Studio and related client links.
- * Priority: explicit env → Builder hostname sibling → production default.
+ * Resolve the Builder origin for auth redirects and related client links.
+ * Priority: explicit env → Builder hostname → production default.
  */
 export function resolveDefaultStudioUrl(options?: {
   envStudioUrl?: string | null;

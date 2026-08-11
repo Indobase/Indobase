@@ -8,6 +8,26 @@ function cleanEnvValue(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+function getPocketBaseEnvironmentVariables(
+  connection?: Pick<IndobaseConnectionState, 'backendProvider' | 'connectionSource' | 'pocketbase'> | null,
+): DeployEnvironmentVariables {
+  const isPocketBase =
+    connection?.backendProvider === 'pocketbase' || connection?.connectionSource === 'pocketbase';
+  const url = cleanEnvValue(connection?.pocketbase?.url);
+
+  if (!isPocketBase || !url) {
+    return {};
+  }
+
+  // Public env for generated apps — Indobase brand only (never PocketBase names).
+  return {
+    INDOBASE_URL: url,
+    VITE_INDOBASE_URL: url,
+    NEXT_PUBLIC_INDOBASE_URL: url,
+    EXPO_PUBLIC_INDOBASE_URL: url,
+  };
+}
+
 /**
  * Deploy / codegen env for a linked project.
  * Auth URL + anon key bindings come from the Platform Runtime ABI (`auth` capability),
@@ -16,8 +36,16 @@ function cleanEnvValue(value?: string) {
  * Studio URL is a Builder deploy helper only — never part of ProjectRuntime ABI.
  */
 export function getDeployEnvironmentVariables(
-  connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
+  connection?: Pick<
+    IndobaseConnectionState,
+    'credentials' | 'indobase' | 'backendProvider' | 'connectionSource' | 'pocketbase'
+  > | null,
 ): DeployEnvironmentVariables {
+  const pocketbaseEnv = getPocketBaseEnvironmentVariables(connection);
+  if (Object.keys(pocketbaseEnv).length > 0) {
+    return pocketbaseEnv;
+  }
+
   const apiUrl =
     cleanEnvValue(connection?.credentials?.apiUrl) ||
     cleanEnvValue(connection?.indobase?.apiUrl) ||
@@ -56,7 +84,10 @@ export function getDeployEnvironmentVariables(
 }
 
 export function hasDeployEnvironmentVariables(
-  connection?: Pick<IndobaseConnectionState, 'credentials' | 'indobase'> | null,
+  connection?: Pick<
+    IndobaseConnectionState,
+    'credentials' | 'indobase' | 'backendProvider' | 'connectionSource' | 'pocketbase'
+  > | null,
 ): boolean {
   return Object.keys(getDeployEnvironmentVariables(connection)).length > 0;
 }

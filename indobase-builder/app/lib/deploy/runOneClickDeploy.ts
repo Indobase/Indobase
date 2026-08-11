@@ -1,11 +1,13 @@
 import { toast } from 'react-toastify';
 
 import { capturePostHogEvent, capturePostHogException } from '~/lib/analytics/posthog.client';
+import { publishToAppHost } from '~/lib/deploy/publishToAppHost';
 import { publishToIndobase } from '~/lib/deploy/publishToIndobase';
 import { quickGitHubDeploy } from '~/lib/deploy/quickGitHubDeploy';
 import { quickGitLabDeploy } from '~/lib/deploy/quickGitLabDeploy';
 import { getStudioOrigin } from '~/lib/indobase/builder-auth.client';
 import { getStudioProjectHostingUrl } from '~/lib/indobase/studioLinks';
+import { hasPocketBaseConnection } from '~/lib/pocketbase/connection';
 import type { IndobaseConnectionState } from '~/lib/stores/indobase-connection';
 import { workbenchStore } from '~/lib/stores/workbench';
 
@@ -27,6 +29,39 @@ export async function runOneClickDeploy(
 
   switch (target) {
     case 'indobase': {
+      // PocketBase path: publish to app-host containers (no Studio / tenant data plane).
+      if (hasPocketBaseConnection(context.connection)) {
+        toast.info('Publishing with Indobase backend…');
+        const result = await publishToAppHost(context.connection, {
+          metadata: { source: 'one_click_deploy_backend' },
+        });
+
+        if (result.success && result.openedUrl) {
+          capturePostHogEvent('builder_deploy_succeeded', {
+            target: 'app_host',
+            project_ref: context.connection.pocketbase?.appId,
+            source: 'one_click_deploy',
+          });
+          toast.success(`Live at ${result.openedUrl}`);
+          window.open(result.openedUrl, '_blank', 'noopener,noreferrer');
+          return true;
+        }
+
+        capturePostHogEvent('builder_deploy_failed', {
+          target: 'app_host',
+          project_ref: context.connection.pocketbase?.appId,
+          status: result.status,
+          source: 'one_click_deploy',
+        });
+        capturePostHogException(new Error(result.error || 'Could not publish app container.'), {
+          target: 'app_host',
+          status: result.status,
+          source: 'one_click_deploy',
+        });
+        toast.error(result.error || 'Could not publish app container.');
+        return false;
+      }
+
       const result = await publishToIndobase(context.connection, {
         metadata: { source: 'one_click_deploy' },
         onDeploymentStatus: (deployment) => {

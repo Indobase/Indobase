@@ -57,6 +57,8 @@ export function buildConnectionFromSessionAndBackend(
   return {
     isConnected: true,
     connectionSource: 'studio_handoff',
+    backendProvider: 'indobase',
+    pocketbase: undefined,
     selectedProjectId: projectRef,
     project,
     stats: { projects: [project], totalProjects: 1 },

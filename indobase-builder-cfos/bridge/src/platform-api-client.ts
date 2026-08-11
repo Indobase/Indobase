@@ -21,6 +21,12 @@ import {
 
 import { resolveHandoffSecret } from './auth.js'
 import { extractPlatformErrorMessage } from './auth-errors.js'
+import {
+  ensureCollection,
+  ensureManagedBackend,
+  isManagedBackendConfigured,
+} from './pocketbase/managed.js'
+import { managedBackendOtpStart, managedBackendOtpVerify } from './pocketbase/otp.js'
 
 export function resolvePlatformApiUrl(): string {
   const raw =
@@ -96,6 +102,15 @@ export async function platformOtpStart(input: {
   | { ok: true; email: string }
   | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
 > {
+  // Preferred path: managed Indobase backend (no Studio / GoTrue).
+  if (isManagedBackendConfigured()) {
+    const local = await managedBackendOtpStart({ name: input.name, email: input.email })
+    if (local.ok) {
+      return { ok: true, email: local.email }
+    }
+    return { ok: false, status: local.status, message: local.message }
+  }
+
   const { status, json } = await platformFetch(PlatformApiRoutes.identityOtpStart, {
     name: input.name,
     email: input.email,
@@ -125,6 +140,14 @@ export async function platformOtpVerify(input: {
   | { ok: true; session: OsWorkspaceSession }
   | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
 > {
+  if (isManagedBackendConfigured()) {
+    const local = await managedBackendOtpVerify(input)
+    if (local.ok) {
+      return { ok: true, session: local.session }
+    }
+    return { ok: false, status: local.status, message: local.message }
+  }
+
   const { status, json } = await platformFetch(PlatformApiRoutes.identityOtpVerify, {
     name: input.name,
     email: input.email,
@@ -153,7 +176,45 @@ export async function platformRuntimeEnsure(input: {
   capability: string
   /** india | international | razorpay | stripe — sets merchant settlement rail */
   settlementMarket?: string | null
-}): Promise<RuntimeEnsureResponse & { status?: number }> {
+}): Promise<RuntimeEnsureResponse & { status?: number; httpStatus?: number }> {
+  const capability = input.capability.trim()
+
+  // Login + business data → managed Indobase backend (no tenant data plane).
+  if (
+    isManagedBackendConfigured() &&
+    (capability === 'login' ||
+      capability === 'auth' ||
+      capability === 'businessData' ||
+      capability === 'database' ||
+      capability === 'data')
+  ) {
+    try {
+      const ensured = await ensureManagedBackend({
+        appId: input.workspaceRef,
+        seed: input.email || input.workspaceRef,
+      })
+      const label = capability === 'login' || capability === 'auth' ? 'Login' : 'Customer database'
+      return {
+        ok: true,
+        capability,
+        status: 'enabled',
+        provision_state: 'ready',
+        backend: ensured.backend,
+        message: `${label} enabled`,
+        setup_status: 'ready',
+        httpStatus: 200,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        capability,
+        provision_state: 'none',
+        message: error instanceof Error ? error.message : 'Could not enable Indobase backend',
+        httpStatus: 502,
+      }
+    }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -288,6 +349,45 @@ export async function platformApplySchema(input: {
   brand?: string | null
   tables?: Array<Record<string, unknown>> | null
 }): Promise<ApplySchemaResponse & { status?: number }> {
+  if (isManagedBackendConfigured() && Array.isArray(input.tables)) {
+    try {
+      const created: string[] = []
+      for (const table of input.tables) {
+        const name = typeof table.name === 'string' ? table.name.trim() : ''
+        if (!name) continue
+        const columns = Array.isArray(table.columns) ? table.columns : []
+        const fields = columns
+          .filter((col): col is Record<string, unknown> => Boolean(col) && typeof col === 'object')
+          .map((col) => ({
+            name: typeof col.name === 'string' ? col.name : '',
+            type: typeof col.type === 'string' ? col.type : 'text',
+            required: Boolean(col.required),
+          }))
+          .filter((field) => field.name)
+        const result = await ensureCollection({
+          appId: input.workspaceRef,
+          name,
+          fields,
+        })
+        created.push(result.logicalName)
+      }
+      return {
+        ok: true,
+        message: created.length
+          ? `Schema ready (${created.join(', ')})`
+          : 'Schema applied',
+        tables: created,
+        status: 200,
+      } as ApplySchemaResponse & { status?: number }
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : 'applySchema failed',
+        status: 502,
+      }
+    }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -606,6 +706,23 @@ export async function platformPromptQuotaGet(input: {
   email: string
   workspaceRef: string
 }): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
+  // Studio meter unavailable during platform pivot — do not block Builder when managed backend is live.
+  if (isManagedBackendConfigured()) {
+    return {
+      ok: true,
+      quota: {
+        plan: 'pro',
+        used: 0,
+        remaining: null,
+        limit: null,
+        isFree: false,
+        organization_slug: 'indobase',
+        upgradeUrl: '',
+      },
+      httpStatus: 200,
+    }
+  }
+
   const base = resolvePlatformApiUrl()
   if (!base) {
     return {
@@ -658,6 +775,10 @@ export async function platformPromptQuotaConsume(input: {
   email: string
   workspaceRef: string
 }): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
+  if (isManagedBackendConfigured()) {
+    return platformPromptQuotaGet(input)
+  }
+
   const { status, json } = await platformFetch(PlatformApiRoutes.promptQuota, {
     gotrue_id: input.gotrueId,
     email: input.email,

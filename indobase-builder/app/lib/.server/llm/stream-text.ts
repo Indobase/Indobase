@@ -41,6 +41,11 @@ import { getGenerationCapabilityPromptAppendix } from '~/lib/indobase/generation
 import { INDOBASE_STUDIO_WORKFLOW_APPENDIX } from '~/lib/indobase/indobase-studio-workflow-prompt';
 import { STUDIO_MANAGED_DATABASE_INSTRUCTIONS } from '~/lib/indobase/studio-database-prompt';
 import {
+  getPocketBaseBackendPrompt,
+  POCKETBASE_BRANDING_RULES,
+  POCKETBASE_DATABASE_INSTRUCTIONS,
+} from '~/lib/pocketbase/pocketbase-backend-prompt';
+import {
   getCompactGenerationContractAppendix,
   getGenerationContractAppendix,
   inferBuilderProjectTarget,
@@ -59,10 +64,15 @@ export interface StreamingOptions extends Omit<Parameters<typeof _streamText>[0]
 type BackendConnectionContext = {
   isConnected: boolean;
   hasSelectedProject: boolean;
-  connectionSource?: 'manual' | 'studio_handoff';
+  backendProvider?: 'indobase' | 'pocketbase';
+  connectionSource?: 'manual' | 'studio_handoff' | 'pocketbase';
   credentials?: {
     anonKey?: string;
     apiUrl?: string;
+  };
+  pocketbase?: {
+    url?: string;
+    appId?: string;
   };
   indobase?: {
     apiUrl?: string;
@@ -525,14 +535,34 @@ export async function streamText(props: {
 
   systemPrompt = `${systemPrompt}${INDOBASE_BRANDING_APPENDIX}`;
 
+  const isPocketBaseManaged =
+    backendConnection?.isConnected &&
+    backendConnection?.hasSelectedProject &&
+    (backendConnection?.backendProvider === 'pocketbase' ||
+      backendConnection?.connectionSource === 'pocketbase' ||
+      Boolean(backendConnection?.pocketbase?.url));
+
   const isIndobaseManaged =
+    !isPocketBaseManaged &&
     backendConnection?.connectionSource === 'studio_handoff' &&
     backendConnection?.isConnected &&
     backendConnection?.hasSelectedProject;
 
   let capabilityAppendix = '';
 
-  if (isIndobaseManaged) {
+  if (isPocketBaseManaged) {
+    const pocketBaseUrl =
+      backendConnection?.pocketbase?.url || backendConnection?.credentials?.apiUrl;
+    systemPrompt = systemPrompt.replace(/<branding_rules>[\s\S]*?<\/branding_rules>/, POCKETBASE_BRANDING_RULES);
+    systemPrompt = systemPrompt.replace(
+      /<database_instructions>[\s\S]*?<\/database_instructions>/,
+      POCKETBASE_DATABASE_INSTRUCTIONS,
+    );
+    systemPrompt = `${systemPrompt}${getPocketBaseBackendPrompt({
+      url: pocketBaseUrl,
+      appId: backendConnection?.pocketbase?.appId,
+    })}`;
+  } else if (isIndobaseManaged) {
     systemPrompt = systemPrompt.replace(
       /<database_instructions>[\s\S]*?<\/database_instructions>/,
       STUDIO_MANAGED_DATABASE_INSTRUCTIONS,

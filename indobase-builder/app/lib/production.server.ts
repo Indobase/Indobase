@@ -17,6 +17,8 @@ export function resolveBuilderHandoffSecretForStartup(env?: ServerEnv): string {
   const secret =
     env?.BUILDER_HANDOFF_SECRET?.trim() ||
     process.env.BUILDER_HANDOFF_SECRET?.trim() ||
+    env?.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
+    process.env.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||
     '';
 
   return secret;

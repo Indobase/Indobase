@@ -6,14 +6,11 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const env = (context as { cloudflare?: { env?: Record<string, string | undefined> } })?.cloudflare?.env;
   const checks: Record<string, { status: 'ok' | 'error'; message?: string }> = {};
 
-  const handoffSecret =
-    env?.BUILDER_HANDOFF_SECRET?.trim() ||
-    process.env.BUILDER_HANDOFF_SECRET?.trim() ||
-    resolveBuilderHandoffSecretForStartup(env);
+  const handoffSecret = resolveBuilderHandoffSecretForStartup(env);
 
   checks.handoffSecret = handoffSecret.length >= 32
     ? { status: 'ok' }
-    : { status: 'error', message: 'BUILDER_HANDOFF_SECRET is missing or too short' };
+    : { status: 'error', message: 'Builder handoff secret is missing or too short' };
 
   if (isProductionEnv(env)) {
     if (env?.BUILDER_ALLOW_UNAUTHENTICATED === 'true' || process.env.BUILDER_ALLOW_UNAUTHENTICATED === 'true') {

@@ -41,6 +41,8 @@ export function buildIndobaseConnectionFromHandoff(
       apiUrl: payload.backend.api_url,
     },
     connectionSource: 'studio_handoff',
+    backendProvider: 'indobase',
+    pocketbase: undefined,
     indobase: {
       apiUrl: payload.backend.api_url,
       authUrl: payload.backend.auth_url,

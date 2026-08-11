@@ -7,12 +7,12 @@ import {
 } from './studio-origin';
 
 describe('resolveStudioUrlFromBuilderHostname', () => {
-  it('maps builder.indobase.in to studio.indobase.in', () => {
-    expect(resolveStudioUrlFromBuilderHostname('builder.indobase.in')).toBe('https://studio.indobase.in');
+  it('maps builder.indobase.in to itself (Builder auth)', () => {
+    expect(resolveStudioUrlFromBuilderHostname('builder.indobase.in')).toBe('https://builder.indobase.in');
   });
 
-  it('maps builder.indobase.fun to studio.indobase.fun', () => {
-    expect(resolveStudioUrlFromBuilderHostname('builder.indobase.fun')).toBe('https://studio.indobase.fun');
+  it('maps builder.indobase.fun to itself', () => {
+    expect(resolveStudioUrlFromBuilderHostname('builder.indobase.fun')).toBe('https://builder.indobase.fun');
   });
 
   it('returns null for localhost and non-builder hosts', () => {
@@ -32,8 +32,8 @@ describe('resolveDefaultStudioUrl', () => {
     ).toBe('https://studio.custom.example');
   });
 
-  it('uses hostname sibling when env is unset', () => {
-    expect(resolveDefaultStudioUrl({ hostname: 'builder.indobase.fun' })).toBe('https://studio.indobase.fun');
+  it('uses Builder hostname when env is unset', () => {
+    expect(resolveDefaultStudioUrl({ hostname: 'builder.indobase.fun' })).toBe('https://builder.indobase.fun');
   });
 
   it('falls back to production default', () => {

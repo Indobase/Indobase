@@ -221,12 +221,12 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
     projectRef: principal.projectRef,
     orgSlug: 'os',
     projectName: principal.projectName,
-    studioUrl: 'https://studio.indobase.in',
+    studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
     ...(principal.backend
       ? {
           backend: {
             ...principal.backend,
-            project_url: `https://studio.indobase.in/project/${principal.projectRef}/backend`,
+            project_url: principal.backend.project_url || principal.backend.api_url,
           },
         }
       : {}),
@@ -282,7 +282,7 @@ async function resolveSessionOrAgentPrincipal(
       projectRef: principal.projectRef,
       orgSlug: guest ? 'guest' : 'os',
       projectName: principal.projectName,
-      studioUrl: 'https://studio.indobase.in',
+      studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
     },
   }
 }
@@ -653,7 +653,7 @@ app.post('/auth/verify', async (c) => {
     orgSlug: ws.organization_slug,
     projectName: ws.workspace_name,
     displayName: name,
-    studioUrl: 'https://studio.indobase.in',
+    studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
     backend: ws.backend ?? undefined,
   }
   const sessionToken = createSessionToken(session, secret)

@@ -31,8 +31,8 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import type { BuilderPromptQuotaState } from '~/types/builder-quota';
-import { BackendLinkBanner } from '~/components/indobase/BackendLinkBanner';
 import { hasIndobaseStudioHandoff } from '~/lib/indobase/connection';
+import { hasPocketBaseConnection } from '~/lib/pocketbase/connection';
 import { MyAppsList } from '~/components/chat/MyAppsList.client';
 import { ChatPaneErrorBoundary } from './ChatPaneErrorBoundary';
 import { AgentWorkingBanner } from './AgentWorkingBanner';
@@ -508,13 +508,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           </h1>
           <p className="mt-3 max-w-lg text-center text-[15px] leading-6 text-white/90">
             {isBackendConnected
-              ? 'Your Indobase backend is linked — describe the product and Builder builds it from scratch.'
-              : 'Describe your idea. The AI builds it from your prompt — no starter templates.'}
+              ? hasPocketBaseConnection(indobaseConn)
+                ? 'Indobase backend is ready — describe the product and Builder builds it.'
+                : 'Your Indobase backend is linked — describe the product and Builder builds it from scratch.'
+              : 'Describe your idea. The AI builds it — Indobase backend is set up automatically when you need it.'}
           </p>
 
           <div className="mt-10 w-full max-w-[42rem]">
             {alertStack}
-            {!isBackendConnected && <div className="mb-3"><BackendLinkBanner /></div>}
             {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
 
             <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.22)] ring-1 ring-black/5">
@@ -532,7 +533,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   {isBackendConnected && (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
                       <span className="i-ph:check-circle-fill" />
-                      Backend linked
+                      {hasPocketBaseConnection(indobaseConn) ? 'Indobase backend ready' : 'Backend linked'}
                     </span>
                   )}
                   <button

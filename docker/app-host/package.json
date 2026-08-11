@@ -1,0 +1,13 @@
+{
+  "name": "indobase-app-host",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Deploy Builder static apps as Docker containers (replaces tenant data-plane stacks)",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

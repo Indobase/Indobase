@@ -14,10 +14,11 @@ export interface IndobaseBuilderBackendConfig {
     VITE_INDOBASE_URL: string;
     EXPO_PUBLIC_INDOBASE_ANON_KEY: string;
     EXPO_PUBLIC_INDOBASE_URL: string;
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
-    NEXT_PUBLIC_SUPABASE_URL: string;
-    SUPABASE_ANON_KEY: string;
-    SUPABASE_URL: string;
+    // Legacy aliases — optional; do not require rebranded engine env names.
+    NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+    NEXT_PUBLIC_SUPABASE_URL?: string;
+    SUPABASE_ANON_KEY?: string;
+    SUPABASE_URL?: string;
     VITE_SUPABASE_ANON_KEY?: string;
     VITE_SUPABASE_URL?: string;
   };

@@ -46,6 +46,28 @@ describe('deploy environment variables', () => {
     ).toBe(true);
   });
 
+  it('derives Indobase backend env vars from a managed backend connection', () => {
+    const env = getDeployEnvironmentVariables({
+      backendProvider: 'pocketbase',
+      connectionSource: 'pocketbase',
+      pocketbase: { url: 'http://127.0.0.1:8090' },
+    });
+
+    expect(env).toEqual({
+      INDOBASE_URL: 'http://127.0.0.1:8090',
+      VITE_INDOBASE_URL: 'http://127.0.0.1:8090',
+      NEXT_PUBLIC_INDOBASE_URL: 'http://127.0.0.1:8090',
+      EXPO_PUBLIC_INDOBASE_URL: 'http://127.0.0.1:8090',
+    });
+    expect(
+      hasDeployEnvironmentVariables({
+        backendProvider: 'pocketbase',
+        connectionSource: 'pocketbase',
+        pocketbase: { url: 'http://127.0.0.1:8090' },
+      }),
+    ).toBe(true);
+  });
+
   it('ignores blank values from partial connection state', () => {
     const env = getDeployEnvironmentVariables({
       credentials: {

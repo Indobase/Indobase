@@ -14,10 +14,15 @@ export interface PromptOptions {
 export type BackendPromptContext = {
   isConnected: boolean;
   hasSelectedProject: boolean;
-  connectionSource?: 'manual' | 'studio_handoff';
+  backendProvider?: 'indobase' | 'pocketbase';
+  connectionSource?: 'manual' | 'studio_handoff' | 'pocketbase';
   credentials?: {
     anonKey?: string;
     apiUrl?: string;
+  };
+  pocketbase?: {
+    url?: string;
+    appId?: string;
   };
 };
 

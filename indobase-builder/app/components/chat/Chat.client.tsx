@@ -28,7 +28,7 @@ import { createSampler } from '~/utils/sampler';
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
 import { filesToArtifacts } from '~/utils/fileUtils';
-import { indobaseConnection, updateIndobaseConnection } from '~/lib/stores/indobase-connection';
+import { indobaseConnection } from '~/lib/stores/indobase-connection';
 import { useMCPStore } from '~/lib/stores/mcp';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -40,6 +40,9 @@ import {
   hasSelectedIndobaseProject,
   isIndobaseStudioManagedConnection,
 } from '~/lib/indobase/connection';
+import { getPocketBaseUserPreamble } from '~/lib/pocketbase/pocketbase-backend-prompt';
+import { hasPocketBaseConnection } from '~/lib/pocketbase/connection';
+import { ensureManagedPocketBaseForChat } from '~/lib/pocketbase/ensure-managed.client';
 import { finalizeCodegen } from '~/lib/indobase/finalizeCodegen';
 import { publishSandboxPreview } from '~/lib/indobase/publishSandboxPreview';
 import { toFriendlyPreviewError } from '~/lib/indobase/sanitize-user-facing-chat';
@@ -290,11 +293,18 @@ export const ChatImpl = memo(
         indobase: {
           isConnected: indobaseConn.isConnected ?? false,
           hasSelectedProject,
+          backendProvider: indobaseConn.backendProvider,
           connectionSource: indobaseConn.connectionSource,
           credentials: {
             apiUrl: indobaseConn?.credentials?.apiUrl,
             anonKey: indobaseConn?.credentials?.anonKey,
           },
+          pocketbase: indobaseConn.pocketbase
+            ? {
+                url: indobaseConn.pocketbase.url,
+                appId: indobaseConn.pocketbase.appId,
+              }
+            : undefined,
           indobase: indobaseConn.indobase
             ? {
                 apiUrl: indobaseConn.indobase.apiUrl,
@@ -501,7 +511,7 @@ export const ChatImpl = memo(
           const ready = await prepareStudioLinkedChat();
 
           if (!ready && hasIndobaseStudioHandoff(indobaseConn)) {
-            toast.error('Builder session expired. Reconnecting through Studio…');
+            toast.error('Builder session expired. Sign in again…');
             redirectToStudioBuilderConnect();
 
             return;
@@ -509,9 +519,11 @@ export const ChatImpl = memo(
 
           runAnimation();
 
-          const preamble = hasIndobaseStudioHandoff(indobaseConn)
-            ? wrapStudioContext(`${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`)
-            : '';
+          const preamble = hasPocketBaseConnection(indobaseConn)
+            ? wrapStudioContext(getPocketBaseUserPreamble(indobaseConn.pocketbase?.url))
+            : hasIndobaseStudioHandoff(indobaseConn)
+              ? wrapStudioContext(`${getStudioBackendUserPreamble()}${await getStudioSchemaPreamble(indobaseConn)}`)
+              : '';
 
           if (chatMode === 'build') {
             automaticPreviewRepairAttemptRef.current = 0;
@@ -606,7 +618,7 @@ export const ChatImpl = memo(
     ]);
 
     useEffect(() => {
-      if (!hasIndobaseStudioHandoff(indobaseConn)) {
+      if (!hasIndobaseStudioHandoff(indobaseConn) && !hasPocketBaseConnection(indobaseConn)) {
         return;
       }
 
@@ -632,6 +644,9 @@ export const ChatImpl = memo(
       indobaseConn.credentials?.anonKey,
       indobaseConn.credentials?.apiUrl,
       indobaseConn.indobase?.projectRef,
+      indobaseConn.pocketbase?.url,
+      indobaseConn.pocketbase?.appId,
+      indobaseConn.backendProvider,
     ]);
 
     useEffect(() => {
@@ -1097,7 +1112,7 @@ export const ChatImpl = memo(
           ) {
             void ensureBuilderSession({ retries: 2 }).then((restored) => {
               if (!restored && !getStoredBuilderMcpToken()) {
-                toast.error('Connect via Studio to build. Opening Studio sign-in…');
+                toast.error('Sign in to build. Opening email sign-in…');
                 redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
               } else if (!restored) {
                 toast.error('Could not refresh the builder session. Check your connection and try again.');
@@ -1325,41 +1340,51 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       });
 
       /*
-       * Composer command: `/connect [url] [anonKey]` — link a backend without
-       * leaving the chat. With a URL + anon key it connects directly; bare
-       * `/connect` opens the Studio flow.
+       * Agents auto-provision Indobase backend — no manual /connect or URL pasting for users.
        */
       const trimmedInput = messageContent.trim();
 
-      if (trimmedInput === '/connect' || trimmedInput.toLowerCase().startsWith('/connect ')) {
-        const parts = trimmedInput.split(/\s+/);
-
-        if (parts.length >= 3 && /^https?:\/\//.test(parts[1])) {
-          const apiUrl = parts[1].replace(/\/+$/, '');
-          const anonKey = parts[2];
-          const projectRef = apiUrl.replace(/^https?:\/\//, '').split('.')[0] || 'indobase';
-
-          updateIndobaseConnection({
-            credentials: { apiUrl, anonKey, projectRef },
-            selectedProjectId: projectRef,
-            connectionSource: 'manual',
-          });
-          toast.success('Connected to your Indobase backend');
-        } else {
-          toast.info('Opening Studio to connect your backend…');
-          redirectToStudioBuilderConnect();
-        }
-
+      if (
+        trimmedInput === '/connect' ||
+        trimmedInput.toLowerCase().startsWith('/connect ') ||
+        trimmedInput.toLowerCase().startsWith('/pocketbase')
+      ) {
+        toast.info('Indobase backend is set up automatically — just describe what you want to build.');
         setInput('');
 
         return;
       }
 
-      if (hasIndobaseStudioHandoff(indobaseConn)) {
+      // Builder email OTP session required (Studio / GoTrue path removed).
+      {
+        const sessionReady = await ensureBuilderSession({ retries: 1 });
+
+        if (!sessionReady && !getStoredBuilderMcpToken()) {
+          toast.error('Sign in to build. Opening email sign-in…');
+          redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
+          return;
+        }
+      }
+
+      // Always auto-provision managed Indobase backend for builds (no Studio required).
+      if (chatMode === 'build') {
+        const ensured = await ensureManagedPocketBaseForChat({
+          seed: description || trimmedInput.slice(0, 48),
+          force: true,
+        });
+
+        if (!ensured.ok && ensured.configured !== false) {
+          // Soft-fail: frontend-only builds still work if managed backend is down.
+          logger.warn('Indobase backend ensure failed', ensured.message);
+        }
+      }
+
+      // Studio session refresh only if still on legacy handoff (not managed-backend path).
+      if (hasIndobaseStudioHandoff(indobaseConn) && !hasPocketBaseConnection(indobaseConnection.get())) {
         const ready = await prepareStudioLinkedChat();
 
         if (!ready) {
-          toast.error('Builder session expired. Reconnecting through Studio…');
+          toast.error('Builder session expired. Sign in again…');
           redirectToStudioBuilderConnect(undefined, pendingBuildPromptRef.current);
 
           return;
@@ -1388,6 +1413,12 @@ Continue building ${projectGoal} wired to the linked Indobase backend. Fix any i
       let finalMessageContent = messageContent;
 
       if (
+        hasPocketBaseConnection(indobaseConn) &&
+        !chatStarted &&
+        !finalMessageContent.includes('INDOBASE BACKEND (agent-managed')
+      ) {
+        finalMessageContent = `${wrapStudioContext(getPocketBaseUserPreamble(indobaseConn.pocketbase?.url))}${finalMessageContent}`;
+      } else if (
         hasIndobaseStudioHandoff(indobaseConn) &&
         !chatStarted &&
         !finalMessageContent.includes('INDOBASE BACKEND (Studio-linked')

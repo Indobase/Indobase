@@ -16,6 +16,14 @@ import { getBuilderRequestInit } from '~/lib/indobase/builder-auth.client';
 
 export type IndobaseBackendProject = import('~/types/indobase-backend').IndobaseBackendProject;
 
+export type BuilderBackendProvider = 'indobase' | 'pocketbase';
+
+export type PocketBaseConnection = {
+  url: string;
+  /** Stable app scope for collection names on the shared managed instance. */
+  appId?: string;
+};
+
 export interface IndobaseConnectionState {
   user: IndobaseBackendUser | null;
   token: string;
@@ -24,7 +32,10 @@ export interface IndobaseConnectionState {
   isConnected?: boolean;
   project?: IndobaseBackendProject;
   credentials?: IndobaseBackendCredentials;
-  connectionSource?: 'manual' | 'studio_handoff';
+  /** Which app backend Builder should generate against. */
+  backendProvider?: BuilderBackendProvider;
+  connectionSource?: 'manual' | 'studio_handoff' | 'pocketbase';
+  pocketbase?: PocketBaseConnection;
   indobase?: {
     apiUrl: string;
     authUrl: string;
@@ -89,18 +100,29 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
   const nextCredentials = connection.credentials !== undefined ? connection.credentials : currentState.credentials;
   const nextConnectionSource =
     connection.connectionSource !== undefined ? connection.connectionSource : currentState.connectionSource;
+  const nextBackendProvider =
+    connection.backendProvider !== undefined ? connection.backendProvider : currentState.backendProvider;
+  const nextPocketbase = connection.pocketbase !== undefined ? connection.pocketbase : currentState.pocketbase;
 
   const hasValidCredentials = Boolean(
     nextSelectedProjectId && resolveApiUrl(nextCredentials) && nextCredentials?.anonKey,
   );
-  const isStudioManagedConnection = nextConnectionSource === 'studio_handoff' && hasValidCredentials;
+  const isStudioManagedConnection =
+    nextConnectionSource === 'studio_handoff' &&
+    nextBackendProvider !== 'pocketbase' &&
+    hasValidCredentials;
 
   // A manually-entered project URL + anon key is enough to talk to the backend
   // (DB/auth/storage, .env seeding). Studio handoff additionally unlocks
   // publish, MCP and prompt quota, but a manual connection is still "connected".
-  const isManualConnection = nextConnectionSource === 'manual' && hasValidCredentials;
+  const isManualConnection =
+    nextConnectionSource === 'manual' && nextBackendProvider !== 'pocketbase' && hasValidCredentials;
 
-  connection.isConnected = isStudioManagedConnection || isManualConnection;
+  const isPocketBaseConnection =
+    (nextConnectionSource === 'pocketbase' || nextBackendProvider === 'pocketbase') &&
+    Boolean(nextPocketbase?.url?.trim());
+
+  connection.isConnected = isStudioManagedConnection || isManualConnection || isPocketBaseConnection;
 
   if (connection.selectedProjectId !== undefined) {
     if (connection.selectedProjectId && nextStats?.projects) {
@@ -108,6 +130,15 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
 
       if (selectedProject) {
         connection.project = selectedProject;
+      } else if (nextBackendProvider === 'pocketbase' || nextConnectionSource === 'pocketbase') {
+        connection.project = {
+          id: connection.selectedProjectId,
+          name: 'Indobase backend',
+          region: 'indobase',
+          organization_id: '',
+          status: 'active',
+          created_at: new Date().toISOString(),
+        };
       } else {
         connection.project = {
           id: connection.selectedProjectId,
@@ -122,6 +153,8 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
       connection.project = undefined;
       connection.credentials = undefined;
       connection.indobase = undefined;
+      connection.pocketbase = undefined;
+      connection.backendProvider = undefined;
       connection.connectionSource = undefined;
     }
   }
@@ -129,7 +162,14 @@ export function updateIndobaseConnection(connection: Partial<IndobaseConnectionS
   const newState = { ...currentState, ...connection };
   indobaseConnection.set(newState);
 
-  if (connection.user || connection.token || connection.selectedProjectId !== undefined || connection.credentials) {
+  if (
+    connection.user ||
+    connection.token ||
+    connection.selectedProjectId !== undefined ||
+    connection.credentials ||
+    connection.pocketbase ||
+    connection.backendProvider !== undefined
+  ) {
     writeStoredConnectionRaw(JSON.stringify(newState));
 
     if (newState.credentials) {
