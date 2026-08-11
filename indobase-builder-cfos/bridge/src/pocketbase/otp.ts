@@ -363,7 +363,8 @@ export async function managedBackendOtpVerify(input: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         otpId: pending.otpId,
-        otp: input.token.trim(),
+        // PocketBase auth-with-otp form field is `password` (the email code), not `otp`.
+        password: input.token.trim(),
       }),
     })
     const payload = (await response.json().catch(() => ({}))) as {
