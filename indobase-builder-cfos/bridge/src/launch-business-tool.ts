@@ -1,5 +1,5 @@
 /**
- * Agent-facing launchBusiness / goLive tool — wraps Static Launch.
+ * Agent-facing launchBusiness / goLive tool — wraps Static Launch (+ optional app-host).
  * Same-origin only; never invents URLs; never third-party hosts.
  */
 
@@ -16,8 +16,10 @@ import {
   type StaticLaunchResult,
 } from './static-launch.js'
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
+import { isManagedBackendConfigured } from './pocketbase/managed.js'
 import { assertLaunchArchitectureReady } from './launch-backend-gate.js'
 import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
+import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 
 export { LAUNCH_AGENT_HARD_RULES, LAUNCH_BUSINESS_TOOL }
@@ -43,7 +45,7 @@ export type LaunchBusinessToolResult = {
   url?: string
   preview_url?: string
   message: string
-  lane: 'static' | 'platform' | 'static+platform'
+  lane: 'static' | 'platform' | 'static+platform' | 'app-host' | 'static+app-host'
   subdomain?: string
   custom_domain?: string
   dns?: StaticLaunchResult['dns']
@@ -78,6 +80,8 @@ export async function executeLaunchBusinessTool(
     app_type: input.app_type,
     require_backend: input.require_backend,
     projectRef: workspaceRef,
+    html: typeof input.html === 'string' ? input.html : undefined,
+    files: input.files && typeof input.files === 'object' ? input.files : undefined,
   })
   if (!backendGate.ok) {
     return {
@@ -121,11 +125,25 @@ export async function executeLaunchBusinessTool(
   const result = await launchStaticBusiness(launchInput)
   const claim = assertCanClaimLive({ ok: result.ok, url: result.url })
 
-  // Mirror artifacts to Studio hosting when Platform API is configured (unifies with Builder publish).
+  // App-host container publish when configured (pivot Phase A).
+  let appHostUrl: string | undefined
+  if (claim.allowed && resolveAppHostProvisioner()) {
+    const hosted = await publishToAppHost({
+      workspaceRef,
+      subdomain: launchInput.subdomain || result.subdomain,
+      title: launchInput.title,
+      files: launchInput.files,
+      html: launchInput.html,
+    })
+    if (hosted.ok) appHostUrl = hosted.url
+  }
+
+  // Mirror to Studio only when managed backend is NOT the primary path (Studio may be scaled down).
   let platformUrl: string | undefined
   let platformMirrored = false
   if (
     claim.allowed &&
+    !isManagedBackendConfigured() &&
     resolvePlatformApiUrl() &&
     input.gotrueId?.trim() &&
     typeof input.email === 'string'
@@ -155,14 +173,24 @@ export async function executeLaunchBusinessTool(
     }
   }
 
-  const liveUrl = claim.allowed ? result.url : undefined
-  const message = !claim.allowed
+  const liveUrl = claim.allowed ? appHostUrl || result.url : undefined
+  let message = !claim.allowed
     ? claim.reason || result.message || 'Could not go live'
-    : platformMirrored && platformUrl && platformUrl !== liveUrl
-      ? `${result.message} Also synced to Studio hosting: ${platformUrl}`
-      : platformMirrored
-        ? `${result.message} (synced to Studio hosting)`
-        : result.message
+    : result.message
+  if (claim.allowed && appHostUrl && appHostUrl !== result.url) {
+    message = `${message} App host: ${appHostUrl}`
+  }
+  if (claim.allowed && platformMirrored && platformUrl) {
+    message = `${message} Also synced to Studio hosting: ${platformUrl}`
+  }
+
+  const lane: LaunchBusinessToolResult['lane'] = appHostUrl
+    ? result.ok
+      ? 'static+app-host'
+      : 'app-host'
+    : platformMirrored
+      ? 'static+platform'
+      : 'static'
 
   return {
     ok: result.ok && claim.allowed,
@@ -170,12 +198,12 @@ export async function executeLaunchBusinessTool(
     url: liveUrl,
     preview_url: result.previewUrl,
     message,
-    lane: platformMirrored ? 'static+platform' : 'static',
+    lane,
     subdomain: result.subdomain,
     custom_domain: result.customDomain,
     dns: result.dns,
     artifact_ref: result.artifactRef,
-    platform_url: platformUrl,
+    platform_url: platformUrl || appHostUrl,
     claim_live: claim.allowed,
     tool: 'launchBusiness',
   }

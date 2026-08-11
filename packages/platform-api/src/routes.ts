@@ -176,6 +176,8 @@ export type OsWorkspaceSession = {
     project_url: string
     rest_url: string
     storage_url: string
+    /** Managed records backend public env (collection prefix, kind, etc.). */
+    public_env?: Record<string, string>
   } | null
 }
 

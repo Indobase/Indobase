@@ -31,7 +31,9 @@ type StoreFile = {
 const TTL_MS = 10 * 60 * 1000
 
 function storePath(): string {
+  // Prefer shared volume so Swarm replicas share OTP state.
   const root =
+    process.env.INDOBASE_OTP_STORE_DIR?.trim() ||
     process.env.INDOBASE_AGENT_PRINCIPAL_DIR?.trim() ||
     process.env.INDOBASE_LAUNCH_ROOT?.trim() ||
     path.join(process.cwd(), '.indobase-launches')
@@ -82,16 +84,21 @@ async function rememberOtp(input: { email: string; otpId: string; name: string }
   await writeStore(store)
 }
 
-async function takeOtp(email: string): Promise<PendingOtp | null> {
+/** Peek without deleting — consume only after successful verify. */
+async function peekOtp(email: string): Promise<PendingOtp | null> {
   const key = email.trim().toLowerCase()
-  const now = Date.now()
-  const store = prune(await readStore(), now)
-  const record = store.pending[key] || null
-  if (record) {
+  const store = prune(await readStore())
+  return store.pending[key] || null
+}
+
+async function consumeOtp(email: string, otpId: string): Promise<void> {
+  const key = email.trim().toLowerCase()
+  const store = prune(await readStore())
+  const record = store.pending[key]
+  if (record?.otpId === otpId) {
     delete store.pending[key]
     await writeStore(store)
   }
-  return record
 }
 
 async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<void> {
@@ -118,7 +125,12 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
     throw new Error('Indobase backend auth collection is missing')
   }
 
-  if (!users.otp?.enabled || users.createRule === null) {
+  // OTP auto-create needs a create rule; require email present (not fully world-open junk).
+  const desiredCreate = '@request.body.email != "" || @request.data.email != ""'
+  const needsPatch =
+    !users.otp?.enabled || users.createRule === null || users.createRule === undefined
+
+  if (needsPatch) {
     const patch = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
       method: 'PATCH',
       headers: {
@@ -127,12 +139,26 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
       },
       body: JSON.stringify({
         otp: { enabled: true, duration: 300 },
-        createRule: '',
+        createRule: users.createRule === '' ? desiredCreate : users.createRule || desiredCreate,
       }),
     })
     if (!patch.ok) {
-      const err = (await patch.json().catch(() => ({}))) as { message?: string }
-      throw new Error(err.message || 'Failed to enable Indobase backend OTP')
+      // Fallback: empty createRule (OTP still works) if expression rejected
+      const fallback = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          otp: { enabled: true, duration: 300 },
+          createRule: '',
+        }),
+      })
+      if (!fallback.ok) {
+        const err = (await patch.json().catch(() => ({}))) as { message?: string }
+        throw new Error(err.message || 'Failed to enable Indobase backend OTP')
+      }
     }
   }
 }
@@ -190,7 +216,7 @@ export async function managedBackendOtpVerify(input: {
   }
 
   const email = input.email.trim().toLowerCase()
-  const pending = await takeOtp(email)
+  const pending = await peekOtp(email)
   if (!pending?.otpId) {
     return {
       ok: false,
@@ -215,8 +241,6 @@ export async function managedBackendOtpVerify(input: {
     }
 
     if (!response.ok || !payload.token || !payload.record?.id) {
-      // Put otpId back so a mistyped code can retry once within TTL.
-      await rememberOtp({ email, otpId: pending.otpId, name: pending.name || input.name })
       return {
         ok: false,
         status: 401,
@@ -224,16 +248,19 @@ export async function managedBackendOtpVerify(input: {
       }
     }
 
+    await consumeOtp(email, pending.otpId)
+
     const userId = payload.record.id
     const verifiedEmail = (payload.record.email || email).trim().toLowerCase()
-    const ensured = await ensureManagedBackend({ seed: verifiedEmail })
+    const appId = createAppId(verifiedEmail)
+    const ensured = await ensureManagedBackend({ appId, seed: verifiedEmail })
     const workspaceName =
       input.name.trim() || payload.record.name?.trim() || verifiedEmail.split('@')[0] || 'My business'
 
     const session: OsWorkspaceSession = {
       gotrue_id: userId,
       email: verifiedEmail,
-      workspace_ref: ensured.appId || createAppId(verifiedEmail),
+      workspace_ref: ensured.appId,
       organization_slug: 'indobase',
       workspace_name: workspaceName,
       provision_state: 'ready',

@@ -76,7 +76,7 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
 3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
-5. After claim_backend_ready: emit FOLLOWUPS Wire → Go Live → Admin (≤4). Wire UI to session.backend; launchBusiness on Go Live; payments only when they ask.
+5. After claim_backend_ready: emit FOLLOWUPS Wire → Go Live → Admin (≤4). Wire UI to session.backend **records API** (collection prefix + \`/api/collections/{physical}/records\`, OTP user Bearer). launchBusiness on Go Live — omit app_type only for pure landing; shops/SaaS must pass app_type or content must be wired (localStorage-only Go Live is rejected).
 6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 7. Email / Analytics optional — do not block Go Live on them.
 8. Payments remain BYOK — guidedBackend does not skip KYC.
@@ -441,11 +441,14 @@ export async function executeGuidedBackend(
       })
       steps.push({
         id: 'architectureSmoke',
-        status: smoke.ok ? 'ok' : 'skipped',
+        status: smoke.ok ? 'ok' : 'failed',
         message: smoke.ok
           ? smoke.message
-          : `${smoke.message} — continue; customize with applySchema if the product needs different tables.`,
+          : `${smoke.message} — fix with applySchema / re-run guidedBackend before claiming architecture ready.`,
       })
+      if (!smoke.ok) {
+        return failResult(mode, vertical.id, brand, steps, 'architecture_smoke_failed')
+      }
     }
 
     return maybeLaunch(session, input, {
@@ -478,11 +481,14 @@ export async function executeGuidedBackend(
       })
       steps.push({
         id: 'architectureSmoke',
-        status: smoke.ok ? 'ok' : 'skipped',
+        status: smoke.ok ? 'ok' : 'failed',
         message: smoke.ok
           ? smoke.message
-          : `${smoke.message} — continue; customize with applySchema as needed.`,
+          : `${smoke.message} — fix with applySchema / re-run guidedBackend before claiming architecture ready.`,
       })
+      if (!smoke.ok) {
+        return failResult(mode, undefined, brand, steps, 'architecture_smoke_failed')
+      }
     } catch (err) {
       steps.push({
         id: 'architectureBoilerplate',
@@ -549,8 +555,8 @@ async function maybeLaunch(
     const progress = progressMarkdown(base.steps)
     const wireHint =
       base.mode === 'generic'
-        ? 'Wire Sign-in + data screens to session.backend (api_url + anon_key + auth_url). Do not use localStorage auth.'
-        : 'Wire storefront to catalog_json / session.backend'
+        ? 'Wire Sign-in + data to session.backend records API: physical collection = INDOBASE_COLLECTION_PREFIX + table; POST/GET {api}/api/collections/{physical}/records; OTP auth on users (Bearer user token). Do not use localStorage auth or /rest/v1.'
+        : 'Wire storefront to catalog_json / session.backend records API (collection prefix + /api/collections/…/records), not localStorage-only.'
     return {
       ok: true,
       tool: 'guidedBackend',

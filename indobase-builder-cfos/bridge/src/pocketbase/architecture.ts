@@ -14,48 +14,74 @@ import {
 import {
   adminAuth,
   getManagedBackendConfig,
+  mapFieldTypeToPb,
   physicalCollectionName,
+  sanitizeAppId,
   type ManagedBackendConfig,
   type SchemaField,
 } from './managed.js'
 
-function mapFieldType(type?: string): string {
-  const t = (type || 'text').toLowerCase()
-  if (t.includes('bool')) return 'bool'
-  if (t.includes('int') || t.includes('numeric') || t.includes('float') || t.includes('number')) {
-    return 'number'
+type CollectionRow = {
+  id: string
+  name: string
+  listRule?: string | null
+  viewRule?: string | null
+  createRule?: string | null
+  updateRule?: string | null
+  deleteRule?: string | null
+  fields?: Array<{ id?: string; name: string; type?: string; required?: boolean }>
+}
+
+function inferProfile(rules: CollectionRules | RuleProfile | undefined): RuleProfile {
+  if (typeof rules === 'string') return rules
+  if (!rules) return 'owner'
+  // Match known profiles by create/list shape
+  if (rules.createRule === '' || rules.updateRule === '' || rules.deleteRule === '') {
+    // open writes rejected later
   }
-  if (t.includes('json')) return 'json'
-  if (t.includes('email')) return 'email'
-  if (t.includes('date') || t.includes('time')) return 'date'
-  if (t.includes('url') || t.includes('file')) return 'url'
-  return 'text'
+  const pub = rulesForProfile('public_read_auth_write')
+  if (rules.listRule === pub.listRule && rules.createRule === pub.createRule) {
+    return 'public_read_auth_write'
+  }
+  const org = rulesForProfile('members_of_org')
+  if (rules.listRule === org.listRule && (rules.createRule || '').includes('org_id')) {
+    return 'members_of_org'
+  }
+  const auth = rulesForProfile('authenticated')
+  if (rules.listRule === auth.listRule && rules.createRule === auth.createRule) {
+    return 'authenticated'
+  }
+  return 'owner'
 }
 
 async function listCollections(
   config: ManagedBackendConfig,
   token: string,
-): Promise<Array<{ id: string; name: string; listRule?: string | null; viewRule?: string | null; createRule?: string | null; updateRule?: string | null; deleteRule?: string | null; fields?: Array<{ name: string }> }>> {
-  const response = await fetch(`${config.adminUrl}/api/collections?page=1&perPage=200`, {
-    headers: { Authorization: token },
-  })
-  const payload = (await response.json().catch(() => ({}))) as {
-    items?: Array<{
-      id: string
-      name: string
-      listRule?: string | null
-      viewRule?: string | null
-      createRule?: string | null
-      updateRule?: string | null
-      deleteRule?: string | null
-      fields?: Array<{ name: string }>
-    }>
-    message?: string
+): Promise<CollectionRow[]> {
+  const items: CollectionRow[] = []
+  let page = 1
+  const perPage = 200
+  for (;;) {
+    const response = await fetch(
+      `${config.adminUrl}/api/collections?page=${page}&perPage=${perPage}`,
+      { headers: { Authorization: token } },
+    )
+    const payload = (await response.json().catch(() => ({}))) as {
+      items?: CollectionRow[]
+      totalPages?: number
+      page?: number
+      message?: string
+    }
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to list collections')
+    }
+    items.push(...(payload.items || []))
+    const totalPages = typeof payload.totalPages === 'number' ? payload.totalPages : page
+    if (page >= totalPages || !(payload.items || []).length) break
+    page += 1
+    if (page > 50) break
   }
-  if (!response.ok) {
-    throw new Error(payload.message || 'Failed to list collections')
-  }
-  return payload.items || []
+  return items
 }
 
 export async function ensureCollectionSecure(options: {
@@ -71,20 +97,14 @@ export async function ensureCollectionSecure(options: {
 
   const token = await adminAuth(config)
   const logicalName = options.name.trim()
-  const collectionName = physicalCollectionName(options.appId, logicalName)
+  const collectionName = physicalCollectionName(sanitizeAppId(options.appId), logicalName)
+  const profile = inferProfile(options.rules)
   const rules: CollectionRules =
     typeof options.rules === 'string' || !options.rules
-      ? rulesForProfile((options.rules as RuleProfile) || 'owner')
+      ? rulesForProfile(profile)
       : options.rules
 
-  if (!isSecureWriteRules(rules) && rules.createRule !== '') {
-    // public_read_auth_write has empty list but auth-gated writes — still OK
-  }
-  if (isSecureWriteRules(rules) === false && rules.createRule === '') {
-    throw new Error(`Refusing open write rules for collection ${logicalName}`)
-  }
-  // Allow public_read_auth_write (empty list/view, auth create)
-  if (rules.createRule === '' || rules.updateRule === '' || rules.deleteRule === '') {
+  if (!isSecureWriteRules(rules)) {
     throw new Error(`Refusing open write rules for collection ${logicalName}`)
   }
 
@@ -92,34 +112,49 @@ export async function ensureCollectionSecure(options: {
     .filter((field) => field.name?.trim() && field.name.trim().toLowerCase() !== 'id')
     .map((field) => ({
       name: field.name.trim(),
-      type: mapFieldType(field.type),
+      type: mapFieldTypeToPb(field.type),
       required: Boolean(field.required),
     }))
 
-  // Always ensure owner on owner-scoped collections
-  const profile: RuleProfile =
-    typeof options.rules === 'string' ? options.rules : options.rules ? 'owner' : 'owner'
   if (profile !== 'public_read_auth_write' && !fields.some((f) => f.name === 'owner')) {
     fields.unshift({ name: 'owner', type: 'text', required: true })
+  }
+  if (profile === 'members_of_org' && !fields.some((f) => f.name === 'org_id')) {
+    fields.unshift({ name: 'org_id', type: 'text', required: true })
   }
 
   const items = await listCollections(config, token)
   const existing = items.find((item) => item.name === collectionName)
 
   if (existing) {
+    const existingNames = new Set((existing.fields || []).map((f) => f.name))
+    const missingFields = fields.filter((f) => !existingNames.has(f.name))
+    const patchBody: Record<string, unknown> = {
+      listRule: rules.listRule,
+      viewRule: rules.viewRule,
+      createRule: rules.createRule,
+      updateRule: rules.updateRule,
+      deleteRule: rules.deleteRule,
+    }
+    if (missingFields.length) {
+      // PocketBase merges fields when `fields` includes existing + new (send full set).
+      patchBody.fields = [
+        ...(existing.fields || []).map((f) => ({
+          id: f.id,
+          name: f.name,
+          type: f.type || 'text',
+          required: Boolean(f.required),
+        })),
+        ...missingFields,
+      ]
+    }
     const patch = await fetch(`${config.adminUrl}/api/collections/${existing.id}`, {
       method: 'PATCH',
       headers: {
         Authorization: token,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        listRule: rules.listRule,
-        viewRule: rules.viewRule,
-        createRule: rules.createRule,
-        updateRule: rules.updateRule,
-        deleteRule: rules.deleteRule,
-      }),
+      body: JSON.stringify(patchBody),
     })
     if (!patch.ok) {
       const err = (await patch.json().catch(() => ({}))) as { message?: string }
@@ -418,6 +453,22 @@ export async function seedEcommerceCatalog(options: {
   const token = await adminAuth(config)
   const physical = physicalCollectionName(options.appId, 'products')
   const upserted: Array<Record<string, unknown>> = []
+
+  if (!options.products.length) {
+    const list = await fetch(
+      `${config.adminUrl}/api/collections/${physical}/records?perPage=100`,
+      { headers: { Authorization: token } },
+    )
+    const listPayload = (await list.json().catch(() => ({}))) as {
+      items?: Array<Record<string, unknown>>
+      message?: string
+    }
+    if (!list.ok) {
+      return { ok: false, message: listPayload.message || 'Could not list products' }
+    }
+    const items = listPayload.items || []
+    return { ok: true, products: items, catalog_json: { products: items } }
+  }
 
   for (const product of options.products) {
     const price = typeof product.price === 'number' ? product.price : Number(product.price) || 0

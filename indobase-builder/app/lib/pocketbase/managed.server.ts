@@ -57,10 +57,23 @@ export function isManagedPocketBaseConfigured(env?: ServerEnv): boolean {
 }
 
 export function createPocketBaseAppId(seed?: string): string {
-  const raw = (seed || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`)
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-  return raw.slice(0, 10) || `app${Date.now().toString(36).slice(-6)}`;
+  const source =
+    seed?.trim() ||
+    `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  const cleaned = source.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (/^[a-z][a-z0-9]{5,15}$/.test(cleaned)) {
+    return cleaned.slice(0, 16);
+  }
+  // Hash long/odd seeds so emails don't collide on short prefixes.
+  let hash = 0;
+  for (let i = 0; i < source.length; i++) hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+  const hex = hash.toString(16).padStart(8, '0').slice(0, 10);
+  const prefix = (cleaned.slice(0, 4) || 'app').replace(/^[^a-z]+/, '') || 'app';
+  return `${prefix}${hex}`.slice(0, 14);
+}
+
+export function sanitizePocketBaseAppId(raw: string): string {
+  return createPocketBaseAppId(raw);
 }
 
 export function physicalCollectionName(appId: string, logicalName: string): string {
@@ -168,7 +181,9 @@ export async function ensureManagedPocketBase(options: {
   // Verify admin credentials once so later schema tools do not surprise-fail.
   await adminAuth(config);
 
-  const appId = options.appId?.trim() || createPocketBaseAppId(options.seed);
+  const appId = options.appId?.trim()
+    ? sanitizePocketBaseAppId(options.appId)
+    : createPocketBaseAppId(options.seed);
 
   logger.info(`Ensured managed backend appId=${appId} url=${config.publicUrl}`);
 

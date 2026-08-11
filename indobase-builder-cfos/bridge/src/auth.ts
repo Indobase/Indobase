@@ -93,19 +93,38 @@ function parseBackend(raw: unknown): BackendConfig | undefined {
   const api = typeof b.api_url === 'string' ? b.api_url : ''
   const projectRef = typeof b.project_ref === 'string' ? b.project_ref : ''
   if (!anon || !api || !projectRef) return undefined
+  const publicEnv =
+    b.public_env && typeof b.public_env === 'object'
+      ? (b.public_env as Record<string, string>)
+      : undefined
+  const managed =
+    anon === 'public' ||
+    anon === 'indobase-backend' ||
+    publicEnv?.INDOBASE_BACKEND_KIND === 'records' ||
+    (typeof b.rest_url === 'string' && b.rest_url.includes('/api/collections'))
+  const base = api.replace(/\/+$/, '')
   return {
     anon_key: anon,
     api_url: api,
-    auth_url: typeof b.auth_url === 'string' ? b.auth_url : `${api}/auth/v1`,
+    auth_url: typeof b.auth_url === 'string'
+      ? b.auth_url
+      : managed
+        ? `${base}/api/collections/users`
+        : `${base}/auth/v1`,
     project_name: typeof b.project_name === 'string' ? b.project_name : projectRef,
     project_ref: projectRef,
     project_url: typeof b.project_url === 'string' ? b.project_url : '',
-    rest_url: typeof b.rest_url === 'string' ? b.rest_url : `${api}/rest/v1/`,
-    storage_url: typeof b.storage_url === 'string' ? b.storage_url : `${api}/storage/v1`,
-    public_env:
-      b.public_env && typeof b.public_env === 'object'
-        ? (b.public_env as Record<string, string>)
-        : undefined,
+    rest_url: typeof b.rest_url === 'string'
+      ? b.rest_url
+      : managed
+        ? `${base}/api/collections`
+        : `${base}/rest/v1/`,
+    storage_url: typeof b.storage_url === 'string'
+      ? b.storage_url
+      : managed
+        ? `${base}/api/files`
+        : `${base}/storage/v1`,
+    public_env: publicEnv,
   }
 }
 

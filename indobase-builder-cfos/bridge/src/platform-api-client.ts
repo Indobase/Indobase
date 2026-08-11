@@ -24,12 +24,18 @@ import { extractPlatformErrorMessage } from './auth-errors.js'
 import {
   ensureManagedBackend,
   isManagedBackendConfigured,
+  sanitizeAppId,
 } from './pocketbase/managed.js'
 import { managedBackendOtpStart, managedBackendOtpVerify } from './pocketbase/otp.js'
 import {
   applyArchitectureBlueprint,
+  seedEcommerceCatalog,
+  placeManagedTestOrder,
+  smokeProveArchitecture,
 } from './pocketbase/architecture.js'
 import { inferBlueprintFromTables, resolveBlueprintId } from './pocketbase/blueprints.js'
+
+export { isManagedBackendConfigured } from './pocketbase/managed.js'
 
 export function resolvePlatformApiUrl(): string {
   const raw =
@@ -193,7 +199,7 @@ export async function platformRuntimeEnsure(input: {
   ) {
     try {
       const ensured = await ensureManagedBackend({
-        appId: input.workspaceRef,
+        appId: sanitizeAppId(input.workspaceRef),
         seed: input.email || input.workspaceRef,
       })
       const label = capability === 'login' || capability === 'auth' ? 'Login' : 'Customer database'
@@ -254,6 +260,15 @@ export async function platformPaymentsConnectGateway(input: {
   secretKey?: string | null
   webhookSecret?: string | null
 }): Promise<PaymentsConnectGatewayResponse & { status?: number }> {
+  if (isManagedBackendConfigured() && !resolvePlatformApiUrl()) {
+    return {
+      ok: false,
+      message:
+        'Payments connect requires the payments control plane. Configure PLATFORM_API_URL or connect gateway keys after Studio payments API is available.',
+      status: 503,
+    } as PaymentsConnectGatewayResponse & { status?: number }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -328,6 +343,57 @@ export async function platformShopCatalog(input: {
   brand?: string | null
   products?: Array<Record<string, unknown>> | null
 }): Promise<ShopCatalogResponse & { status?: number }> {
+  if (isManagedBackendConfigured()) {
+    const appId = sanitizeAppId(input.workspaceRef)
+    const action = (input.action || 'setup').toLowerCase()
+    if (action === 'list') {
+      const local = await seedEcommerceCatalog({
+        appId,
+        ownerId: input.gotrueId,
+        products: [],
+      })
+      // list via seed with empty products still ensures collections; return ok shape
+      if (!local.ok) {
+        return { ok: false, message: local.message, status: 502 }
+      }
+      return {
+        ok: true,
+        message: 'Shop catalog on Indobase backend',
+        products: local.products,
+        catalog_json: local.catalog_json,
+        status: 200,
+      } as ShopCatalogResponse & { status?: number }
+    }
+    const products = Array.isArray(input.products)
+      ? input.products.map((p) => ({
+          slug: String(p.slug || ''),
+          name: String(p.name || p.slug || 'Item'),
+          description: typeof p.description === 'string' ? p.description : undefined,
+          price: (p.price as string | number) ?? 0,
+          currency: typeof p.currency === 'string' ? p.currency : 'INR',
+          stock: typeof p.stock === 'number' ? p.stock : 10,
+          image_url: typeof p.image_url === 'string' ? p.image_url : undefined,
+        }))
+      : []
+    const local = await seedEcommerceCatalog({
+      appId,
+      ownerId: input.gotrueId,
+      products: products.filter((p) => p.slug),
+    })
+    if (!local.ok) {
+      return { ok: false, message: local.message, status: 502 }
+    }
+    return {
+      ok: true,
+      message: input.brand
+        ? `Seeded catalog for ${input.brand} on Indobase backend`
+        : 'Seeded shop catalog on Indobase backend',
+      products: local.products,
+      catalog_json: local.catalog_json,
+      status: 200,
+    } as ShopCatalogResponse & { status?: number }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -368,7 +434,7 @@ export async function platformApplySchema(input: {
           (input.blueprint && resolveBlueprintId(input.blueprint)) ||
           (hasTables ? inferBlueprintFromTables(input.tables) : 'saas')
         const applied = await applyArchitectureBlueprint({
-          appId: input.workspaceRef,
+          appId: sanitizeAppId(input.workspaceRef),
           blueprint: blueprintId,
         })
         names.push(...applied.collections)
@@ -376,7 +442,7 @@ export async function platformApplySchema(input: {
 
       if (hasTables) {
         const custom = await applyCustomTables({
-          appId: input.workspaceRef,
+          appId: sanitizeAppId(input.workspaceRef),
           tables: input.tables!,
         })
         names.push(...custom.collections)
@@ -392,6 +458,14 @@ export async function platformApplySchema(input: {
       }
 
       const unique = [...new Set(names)]
+      const blueprintId =
+        (input.blueprint && resolveBlueprintId(input.blueprint)) ||
+        (hasTables ? inferBlueprintFromTables(input.tables) : 'saas')
+      const smoke = await smokeProveArchitecture({
+        appId: sanitizeAppId(input.workspaceRef),
+        blueprint: customOnly ? undefined : blueprintId,
+        probe: true,
+      })
       return {
         ok: true,
         message: hasTables
@@ -401,7 +475,7 @@ export async function platformApplySchema(input: {
           : `Starter schema ready (${unique.join(', ')}). Customize with applySchema tables for this customer's product.`,
         tables: unique,
         status: 200,
-        claim_architecture_ready: true,
+        claim_architecture_ready: smoke.ok === true,
       }
     } catch (error) {
       return {
@@ -439,6 +513,46 @@ export async function platformProductionChecklist(input: {
   brand?: string | null
   checks?: Record<string, unknown> | null
 }): Promise<ProductionChecklistResponse & { status?: number }> {
+  if (isManagedBackendConfigured()) {
+    const hasLive =
+      typeof input.liveUrl === 'string' &&
+      /^https?:\/\//i.test(input.liveUrl.trim()) &&
+      !/example\.|localhost|127\.0\.0\.1/i.test(input.liveUrl)
+    const appType = (input.appType || '').toLowerCase()
+    const needsBackend = ['saas', 'ecommerce', 'booking', 'blog', 'dashboard'].includes(appType)
+    let backendOk = !needsBackend
+    if (needsBackend) {
+      try {
+        const ensured = await ensureManagedBackend({
+          appId: sanitizeAppId(input.workspaceRef),
+          seed: input.email,
+        })
+        backendOk = Boolean(ensured.backend?.api_url)
+        if (backendOk && appType) {
+          const smoke = await smokeProveArchitecture({
+            appId: sanitizeAppId(input.workspaceRef),
+            blueprint: resolveBlueprintId(appType) || 'saas',
+            probe: false,
+          })
+          backendOk = smoke.ok
+        }
+      } catch {
+        backendOk = false
+      }
+    }
+    const claim = hasLive && backendOk
+    return {
+      ok: claim,
+      claim_production_ready: claim,
+      message: claim
+        ? 'Production checklist passed (Indobase backend + live URL).'
+        : !hasLive
+          ? 'Publish with launchBusiness and pass the real live URL before claiming production ready.'
+          : 'Backend architecture incomplete — run guidedBackend / applySchema, wire UI, then re-check.',
+      status: claim ? 200 : 400,
+    } as ProductionChecklistResponse & { status?: number }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -472,6 +586,46 @@ export async function platformShopOrders(input: {
   items?: Array<Record<string, unknown>> | null
   cleanup?: boolean | null
 }): Promise<ShopCatalogResponse & { status?: number }> {
+  if (isManagedBackendConfigured()) {
+    const appId = sanitizeAppId(input.workspaceRef)
+    const action = (input.action || 'list').toLowerCase()
+    if (action === 'place' || action === 'test') {
+      const first = Array.isArray(input.items) ? input.items[0] : null
+      const slug =
+        first && typeof first === 'object' && typeof first.slug === 'string' ? first.slug : ''
+      if (!slug) {
+        return { ok: false, message: 'Pass items[].slug for a test order', status: 400 }
+      }
+      const test = await placeManagedTestOrder({
+        appId,
+        ownerId: input.gotrueId,
+        email: input.orderEmail || input.email,
+        slug,
+        cleanup: input.cleanup !== false,
+      })
+      return {
+        ok: test.ok,
+        message: test.message,
+        status: test.ok ? 200 : 502,
+      } as ShopCatalogResponse & { status?: number }
+    }
+    const catalog = await seedEcommerceCatalog({
+      appId,
+      ownerId: input.gotrueId,
+      products: [],
+    })
+    if (!catalog.ok) {
+      return { ok: false, message: catalog.message, status: 502 }
+    }
+    return {
+      ok: true,
+      message: 'Shop orders snapshot from Indobase backend',
+      products: catalog.products,
+      catalog_json: catalog.catalog_json,
+      status: 200,
+    } as ShopCatalogResponse & { status?: number }
+  }
+
   const body: Record<string, unknown> = {
     gotrue_id: input.gotrueId,
     email: input.email,
@@ -732,21 +886,10 @@ export async function platformPromptQuotaGet(input: {
   email: string
   workspaceRef: string
 }): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
-  // Studio meter unavailable during platform pivot — do not block Builder when managed backend is live.
+  // Studio meter unavailable during platform pivot — use local managed meter.
   if (isManagedBackendConfigured()) {
-    return {
-      ok: true,
-      quota: {
-        plan: 'pro',
-        used: 0,
-        remaining: null,
-        limit: null,
-        isFree: false,
-        organization_slug: 'indobase',
-        upgradeUrl: '',
-      },
-      httpStatus: 200,
-    }
+    const { managedPromptQuotaGet } = await import('./managed-prompt-quota.js')
+    return managedPromptQuotaGet(input)
   }
 
   const base = resolvePlatformApiUrl()
@@ -802,7 +945,8 @@ export async function platformPromptQuotaConsume(input: {
   workspaceRef: string
 }): Promise<OsPromptQuotaResponse & { httpStatus: number }> {
   if (isManagedBackendConfigured()) {
-    return platformPromptQuotaGet(input)
+    const { managedPromptQuotaConsume } = await import('./managed-prompt-quota.js')
+    return managedPromptQuotaConsume(input)
   }
 
   const { status, json } = await platformFetch(PlatformApiRoutes.promptQuota, {

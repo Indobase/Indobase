@@ -37,4 +37,14 @@ describe('backend-session-sync', () => {
     assert.equal(cfg.rest_url, 'https://app.indobase.in/rest/v1/')
     assert.equal(cfg.project_ref, 'app-1')
   })
+
+  it('backendConfigFromGuidedSnapshot uses records ABI for managed public key', () => {
+    const cfg = backendConfigFromGuidedSnapshot(
+      { api_url: 'https://backend.indobase.in', anon_key: 'public', project_ref: 'abc' },
+      { projectRef: 'abc', projectName: 'App' },
+    )
+    assert.equal(cfg.auth_url, 'https://backend.indobase.in/api/collections/users')
+    assert.equal(cfg.rest_url, 'https://backend.indobase.in/api/collections')
+    assert.equal(cfg.public_env?.INDOBASE_BACKEND_KIND, 'records')
+  })
 })

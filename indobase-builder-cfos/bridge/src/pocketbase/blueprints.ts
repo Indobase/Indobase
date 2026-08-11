@@ -62,13 +62,14 @@ export function rulesForProfile(profile: RuleProfile): CollectionRules {
         deleteRule: '@request.auth.id != ""',
       }
     case 'members_of_org':
-      // Org-scoped rows: caller must be authenticated; ownership via owner + org_id fields.
+      // Org-scoped: require auth + non-empty org_id; writes owned by caller.
       return {
-        listRule: '@request.auth.id != "" && owner = @request.auth.id',
-        viewRule: '@request.auth.id != "" && owner = @request.auth.id',
-        createRule: '@request.auth.id != "" && @request.data.owner = @request.auth.id',
-        updateRule: '@request.auth.id != "" && owner = @request.auth.id',
-        deleteRule: '@request.auth.id != "" && owner = @request.auth.id',
+        listRule: '@request.auth.id != "" && org_id != ""',
+        viewRule: '@request.auth.id != "" && org_id != ""',
+        createRule:
+          '@request.auth.id != "" && @request.data.owner = @request.auth.id && @request.data.org_id != ""',
+        updateRule: '@request.auth.id != "" && owner = @request.auth.id && org_id != ""',
+        deleteRule: '@request.auth.id != "" && owner = @request.auth.id && org_id != ""',
       }
     default:
       return {

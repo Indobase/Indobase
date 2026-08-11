@@ -70,15 +70,26 @@ export function backendConfigFromGuidedSnapshot(
 ): BackendConfig {
   const api = snapshot.api_url.replace(/\/+$/, '')
   const projectRef = snapshot.project_ref || session.projectRef
+  const managed =
+    snapshot.anon_key === 'public' ||
+    snapshot.anon_key === 'indobase-backend' ||
+    (snapshot.rest_url || '').includes('/api/collections')
   return {
     api_url: snapshot.api_url,
     anon_key: snapshot.anon_key,
-    auth_url: snapshot.auth_url || api,
-    rest_url: snapshot.rest_url || api,
-    storage_url: snapshot.storage_url || api,
+    auth_url: snapshot.auth_url || (managed ? `${api}/api/collections/users` : `${api}/auth/v1`),
+    rest_url: snapshot.rest_url || (managed ? `${api}/api/collections` : `${api}/rest/v1/`),
+    storage_url: snapshot.storage_url || (managed ? `${api}/api/files` : `${api}/storage/v1`),
     project_ref: projectRef,
     project_name: snapshot.project_name || session.projectName || projectRef,
     project_url: snapshot.project_url || api,
+    public_env: managed
+      ? {
+          INDOBASE_BACKEND_KIND: 'records',
+          INDOBASE_COLLECTION_PREFIX: `ib_${projectRef}_`,
+          INDOBASE_RECORDS_BASE: `${api}/api/collections`,
+        }
+      : undefined,
   }
 }
 

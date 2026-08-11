@@ -96,7 +96,7 @@ When the operator wants a real product backend (not just a static storefront) �
 1. Prefer **guidedBackend** mode=ecommerce (or: ensureDatabase → resolveProductImages → setupShopCatalog).
 2. Prove inventory: **placeTestShopOrder** with cleanup:true (default) — quote order_number + stock proof.
 3. Emit FOLLOWUPS: Wire storefront → Go Live → Publish admin (≤4). Do **not** jump to wireCheckout yet.
-4. **Wire storefront** to catalog_json / session.backend REST (product grid + cart). Buy CTA may stay placeholder until payments.
+4. **Wire storefront** to catalog_json / session.backend records API (\`INDOBASE_COLLECTION_PREFIX\` + \`/api/collections/{physical}/records\`). Buy CTA may stay placeholder until payments.
 5. **Go Live** with launchBusiness (real html/files) — quote exact url.
 6. Publish **admin_html** once as \`admin.html\` when asked — live REST refresh; do NOT republish just to refresh orders.
 7. **Payments last** (when asked): India vs International → ensure → KYC → **connectGateway** → **wireCheckout** mode one_time (prefer INR for India) → patch Buy CTA. Never invent checkout URLs.

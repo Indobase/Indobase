@@ -1,10 +1,16 @@
 /**
- * Session-authenticated proxy to the linked Indobase project API (anon key).
- * Lets the CF OS chrome / operators call tenant REST without pasting keys.
+ * Session-authenticated proxy to the linked Indobase project API.
+ * Supports managed records backend (rewrites legacy /rest/v1 + /auth/v1) and preserves user Bearer tokens.
  */
 import type { Context } from 'hono'
 
 import type { Session } from './auth.js'
+import {
+  collectionPrefix,
+  isManagedPublicKey,
+  physicalCollectionName,
+  sanitizeAppId,
+} from './pocketbase/managed.js'
 
 const HOP_BY_HOP = new Set([
   'connection',
@@ -18,14 +24,71 @@ const HOP_BY_HOP = new Set([
   'host',
   'content-length',
   'cookie',
-  'authorization',
   'apikey',
 ])
+
+function isManagedSessionBackend(session: Session): boolean {
+  const b = session.backend
+  if (!b) return false
+  if (isManagedPublicKey(b.anon_key)) return true
+  if (b.public_env?.INDOBASE_BACKEND_KIND === 'records') return true
+  if ((b.rest_url || '').includes('/api/collections')) return true
+  return false
+}
+
+/**
+ * Map PostgREST/GoTrue-shaped paths onto PocketBase records/auth when session is managed.
+ */
+export function rewriteManagedBackendPath(
+  path: string,
+  projectRef: string,
+): string {
+  const appId = sanitizeAppId(projectRef)
+  const prefix = collectionPrefix(appId)
+
+  let p = path.startsWith('/') ? path : `/${path}`
+
+  // /rest/v1/{table} → /api/collections/ib_{app}_{table}/records
+  const rest = p.match(/^\/rest\/v1\/([^/?#]+)(.*)$/i)
+  if (rest) {
+    const logical = decodeURIComponent(rest[1])
+    const physical = logical.startsWith(prefix)
+      ? logical
+      : physicalCollectionName(appId, logical)
+    return `/api/collections/${physical}/records${rest[2] || ''}`
+  }
+
+  // /auth/v1/otp → users request-otp / auth-with-otp (best-effort)
+  if (/^\/auth\/v1\/otp\/?$/i.test(p) || /^\/auth\/v1\/otp\/start/i.test(p)) {
+    return '/api/collections/users/request-otp'
+  }
+  if (/^\/auth\/v1\/otp\/verify/i.test(p) || /^\/auth\/v1\/verify/i.test(p)) {
+    return '/api/collections/users/auth-with-otp'
+  }
+  if (/^\/auth\/v1\/user/i.test(p)) {
+    return '/api/collections/users/records'
+  }
+  if (/^\/auth\/v1\/?/i.test(p)) {
+    return p.replace(/^\/auth\/v1/i, '/api/collections/users')
+  }
+
+  // Bare logical collection under /api/collections/{logical}/records → physical
+  const col = p.match(/^\/api\/collections\/([^/?#]+)(\/records.*)?$/i)
+  if (col) {
+    const name = decodeURIComponent(col[1])
+    if (name !== 'users' && name !== '_superusers' && !name.startsWith('ib_')) {
+      const physical = physicalCollectionName(appId, name)
+      return `/api/collections/${physical}${col[2] || ''}`
+    }
+  }
+
+  return p
+}
 
 export async function proxyIndobaseApi(
   c: Context,
   session: Session,
-  opts: { stripPrefix: string }
+  opts: { stripPrefix: string },
 ) {
   if (!session.backend?.api_url || !session.backend.anon_key) {
     return c.json({ message: 'No Indobase backend on this session' }, 400)
@@ -38,16 +101,32 @@ export async function proxyIndobaseApi(
   }
   if (!path.startsWith('/')) path = `/${path}`
 
+  const managed = isManagedSessionBackend(session)
+  if (managed && session.backend.project_ref) {
+    path = rewriteManagedBackendPath(path, session.backend.project_ref)
+  }
+
   const base = session.backend.api_url.replace(/\/+$/, '')
   const target = new URL(path + url.search, `${base}/`)
 
+  const clientAuth = c.req.header('authorization') || c.req.header('Authorization') || ''
+
   const headers = new Headers()
   c.req.raw.headers.forEach((value, key) => {
-    if (HOP_BY_HOP.has(key.toLowerCase())) return
+    const lower = key.toLowerCase()
+    if (HOP_BY_HOP.has(lower)) return
+    if (lower === 'authorization') return // set explicitly below
     headers.set(key, value)
   })
-  headers.set('apikey', session.backend.anon_key)
-  headers.set('Authorization', `Bearer ${session.backend.anon_key}`)
+
+  if (clientAuth.toLowerCase().startsWith('bearer ')) {
+    headers.set('Authorization', clientAuth)
+  } else if (!managed) {
+    headers.set('apikey', session.backend.anon_key)
+    headers.set('Authorization', `Bearer ${session.backend.anon_key}`)
+  }
+  // Managed public reads: no apikey; authenticated writes need client Bearer.
+
   headers.set('host', target.host)
   headers.delete('accept-encoding')
 
@@ -69,6 +148,15 @@ export async function proxyIndobaseApi(
       if (HOP_BY_HOP.has(key.toLowerCase())) return
       out.set(key, value)
     })
+    // Help browsers calling from published origins when upstream omits CORS
+    if (!out.has('access-control-allow-origin')) {
+      const origin = c.req.header('origin')
+      if (origin) {
+        out.set('access-control-allow-origin', origin)
+        out.set('vary', 'Origin')
+        out.set('access-control-allow-credentials', 'true')
+      }
+    }
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
@@ -78,9 +166,8 @@ export async function proxyIndobaseApi(
     return c.json(
       {
         message: err instanceof Error ? err.message : 'Indobase API unreachable',
-        api_url: base,
       },
-      502
+      502,
     )
   }
 }

@@ -109,14 +109,19 @@ export function injectIndobaseContextBootstrap(html: string): string {
       // ChatInterface meters each user send via this path (hard Free-plan enforce).
       window.__INDOBASE_BEGIN_TURN__ = '/api/os/agent/begin-turn';
       window.__INDOBASE__ = s.backend
-        ? {
-            INDOBASE_URL: s.backend.api_url,
-            INDOBASE_ANON_KEY: s.backend.anon_key,
-            VITE_INDOBASE_URL: s.backend.api_url,
-            VITE_INDOBASE_ANON_KEY: s.backend.anon_key,
-            INDOBASE_PROXY: '/api/indobase/proxy',
-            PROJECT_REF: s.project_ref,
-          }
+        ? Object.assign(
+            {
+              INDOBASE_URL: s.backend.api_url,
+              INDOBASE_ANON_KEY: s.backend.anon_key,
+              VITE_INDOBASE_URL: s.backend.api_url,
+              VITE_INDOBASE_ANON_KEY: s.backend.anon_key,
+              INDOBASE_PROXY: '/api/indobase/proxy',
+              PROJECT_REF: s.project_ref || s.backend.project_ref,
+              INDOBASE_AUTH_URL: s.backend.auth_url,
+              INDOBASE_REST_URL: s.backend.rest_url,
+            },
+            s.backend.public_env || {},
+          )
         : null;
       try {
         window.dispatchEvent(
@@ -267,6 +272,9 @@ export function renderOfflineDesktopHtml(session: Session): string {
         INDOBASE_URL: session.backend.api_url,
         INDOBASE_ANON_KEY: session.backend.anon_key,
         PROJECT_REF: session.projectRef,
+        INDOBASE_AUTH_URL: session.backend.auth_url,
+        INDOBASE_REST_URL: session.backend.rest_url,
+        ...(session.backend.public_env || {}),
       }
     : null
   const envBlock = envJson

@@ -11,7 +11,14 @@ import type { BackendConfig } from './auth.js'
 /** Latest tenant keys from ensure* — lets agent-tool sessions use real REST/Auth. */
 export type AgentPrincipalBackendSnapshot = Pick<
   BackendConfig,
-  'api_url' | 'anon_key' | 'auth_url' | 'rest_url' | 'storage_url' | 'project_ref' | 'project_name'
+  | 'api_url'
+  | 'anon_key'
+  | 'auth_url'
+  | 'rest_url'
+  | 'storage_url'
+  | 'project_ref'
+  | 'project_name'
+  | 'public_env'
 >
 
 export type AgentPrincipalRecord = {
@@ -103,6 +110,7 @@ function snapshotBackend(backend: BackendConfig): AgentPrincipalBackendSnapshot 
     storage_url: backend.storage_url,
     project_ref: backend.project_ref,
     project_name: backend.project_name,
+    public_env: backend.public_env,
   }
 }
 
