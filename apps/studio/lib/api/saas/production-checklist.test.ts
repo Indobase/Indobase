@@ -51,4 +51,21 @@ describe('production-checklist', () => {
     expect(result.claim_production_ready).toBe(false)
     expect(result.missing).toContain('live_url')
   })
+
+  it('analyzeLiveHtml detects seo and legal markers', async () => {
+    const { analyzeLiveHtml, mergeAgentChecksWithServerVerified } = await import(
+      './production-checklist'
+    )
+    const html = `<html><head><title>Acme</title><meta name="description" content="Best app"/></head><body><h1>Acme</h1><a href="/privacy">Privacy</a><a href="/terms">Terms</a><button>Sign in</button></body></html>`
+    const parsed = analyzeLiveHtml(html)
+    expect(parsed.seo_basics).toBe(true)
+    expect(parsed.legal_links).toBe(true)
+    expect(parsed.login_wired).toBe(true)
+    const merged = mergeAgentChecksWithServerVerified(
+      { login_wired: true, schema_applied: true },
+      { schema_applied: false },
+    )
+    expect(merged.schema_applied).toBe(false)
+    expect(merged.login_wired).toBe(true)
+  })
 })

@@ -16,6 +16,9 @@ import {
   type StaticLaunchResult,
 } from './static-launch.js'
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
+import { assertLaunchBackendReady } from './launch-backend-gate.js'
+import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
+import type { BackendConfig } from './auth.js'
 
 export { LAUNCH_AGENT_HARD_RULES, LAUNCH_BUSINESS_TOOL }
 
@@ -29,6 +32,9 @@ export type LaunchBusinessToolInput = {
   /** When set, also mirrors artifacts to Studio hosting (Builder-compatible path). */
   gotrueId?: string
   email?: string
+  /** Explicit app type — saas/booking/dashboard/ecommerce/blog require session backend before Go Live. */
+  app_type?: string | null
+  require_backend?: boolean | null
 }
 
 export type LaunchBusinessToolResult = {
@@ -46,6 +52,7 @@ export type LaunchBusinessToolResult = {
   /** Agent must only claim live when true */
   claim_live: boolean
   tool: 'launchBusiness'
+  code?: string
 }
 
 function resolveCustomDomain(input: LaunchBusinessToolInput): string | undefined {
@@ -65,8 +72,24 @@ function resolveCustomDomain(input: LaunchBusinessToolInput): string | undefined
 export async function executeLaunchBusinessTool(
   workspaceRef: string,
   input: LaunchBusinessToolInput,
-  defaults?: { title?: string },
+  defaults?: { title?: string; backend?: BackendConfig | null },
 ): Promise<LaunchBusinessToolResult> {
+  const backendGate = assertLaunchBackendReady(defaults?.backend, {
+    app_type: input.app_type,
+    require_backend: input.require_backend,
+  })
+  if (!backendGate.ok) {
+    return {
+      ok: false,
+      status: 'rejected',
+      message: backendGate.message,
+      code: backendGate.code,
+      lane: 'static',
+      claim_live: false,
+      tool: 'launchBusiness',
+    }
+  }
+
   const content = assertLaunchHasContent(input)
   if (!content.ok) {
     return {
@@ -79,13 +102,19 @@ export async function executeLaunchBusinessTool(
     }
   }
 
+  const injected = injectIndobaseEnvIntoLaunchContent({
+    html: typeof input.html === 'string' ? input.html : undefined,
+    files: input.files && typeof input.files === 'object' ? input.files : undefined,
+    backend: defaults?.backend ?? undefined,
+  })
+
   const launchInput: StaticLaunchInput = {
     workspaceRef,
     title: typeof input.title === 'string' && input.title.trim() ? input.title : defaults?.title,
     subdomain: typeof input.subdomain === 'string' ? input.subdomain : undefined,
     customDomain: resolveCustomDomain(input),
-    html: typeof input.html === 'string' ? input.html : undefined,
-    files: input.files && typeof input.files === 'object' ? input.files : undefined,
+    html: injected.html ?? (typeof input.html === 'string' ? input.html : undefined),
+    files: injected.files ?? (input.files && typeof input.files === 'object' ? input.files : undefined),
   }
 
   const result = await launchStaticBusiness(launchInput)

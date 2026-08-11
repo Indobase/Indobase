@@ -175,6 +175,58 @@ describe('launchBusiness tool (hard path)', () => {
     assert.match(result.message, /html or files/i)
   })
 
+  it('rejects saas go live without backend', async () => {
+    const result = await executeLaunchBusinessTool(
+      'ws_saas',
+      {
+        app_type: 'saas',
+        html: '<html><body>App</body></html>',
+      },
+      { backend: null },
+    )
+    assert.equal(result.ok, false)
+    assert.equal(result.code, 'backend_required')
+    assert.equal(result.claim_live, false)
+  })
+
+  it('injects backend env into published html', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-env-'))
+    process.env.INDOBASE_LAUNCH_ROOT = dir
+    process.env.INDOBASE_LAUNCH_PUBLIC_URL = 'http://127.0.0.1:8791'
+    process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX = 'indobase.in'
+    try {
+      const result = await executeLaunchBusinessTool(
+        'ws_env',
+        {
+          html: '<html><head></head><body><h1>App</h1></body></html>',
+          subdomain: 'envtest',
+        },
+        {
+          backend: {
+            api_url: 'https://ws-env.indobase.in',
+            anon_key: 'anon-test',
+            auth_url: 'https://ws-env.indobase.in/auth/v1',
+            rest_url: 'https://ws-env.indobase.in/rest/v1/',
+            storage_url: 'https://ws-env.indobase.in/storage/v1',
+            project_ref: 'ws_env',
+            project_name: 'Env',
+            project_url: 'https://studio.indobase.in/project/ws_env/backend',
+          },
+        },
+      )
+      assert.equal(result.ok, true)
+      const file = await readLiveFile('ws_env', 'index.html')
+      assert.ok(file)
+      assert.match(file.body.toString('utf8'), /__INDOBASE_ENV__/)
+      assert.match(file.body.toString('utf8'), /ws-env\.indobase\.in/)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      delete process.env.INDOBASE_LAUNCH_ROOT
+      delete process.env.INDOBASE_LAUNCH_PUBLIC_URL
+      delete process.env.INDOBASE_LAUNCH_DOMAIN_SUFFIX
+    }
+  })
+
   it('publishes real html and sets claim_live only with API url', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-tool-'))
     process.env.INDOBASE_LAUNCH_ROOT = dir

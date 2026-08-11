@@ -62,7 +62,7 @@ Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/
 ## Production path (hybrid)
 Landing / clear store preview: Build UI → FOLLOWUPS → launchBusiness on Go Live (real html/files; quote exact url; never invent; *.sites.indobase.in; customDomain CNAME → sites.indobase.in).
 Store after Add a real backend: guidedBackend + placeTestShopOrder → Wire storefront → Go Live → payments when asked (India/Razorpay default ask → connectGateway → wireCheckout INR).
-When they need login/data/backend (or pick those chips): ensureLogin and/or ensureDatabase → applySchema or guidedBackend/setupShopCatalog → wire to session.backend → launchBusiness.
+When they need login/data/backend (or pick those chips): **guidedBackend mode=generic** (ensureLogin + ensureDatabase + applySchema) for SaaS/booking/dashboard; ecommerce uses guidedBackend mode=ecommerce → wire session.backend → launchBusiness (omit app_type for landing-only static launch; saas/booking/dashboard/ecommerce/blog require backend before Go Live with app_type).
 Optional ensureEmail / ensureAnalytics — pending_setup until product setup done.
 productionChecklist — claim ready only if claim_production_ready:true.
 Never Neon/Coolify/Firebase/Mailchimp, mock APIs, or third-party hosts.

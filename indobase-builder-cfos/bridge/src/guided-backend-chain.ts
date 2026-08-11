@@ -2,14 +2,15 @@
  * Deterministic guided backend chain for Indobase OS (CFOS).
  *
  * After ecommerce / “Add a real backend” chips (or when live REST is needed), orchestrate:
- *   ensureDatabase → (ecommerce: images + setupShopCatalog) | (generic: applySchema)
+ *   generic: ensureLogin → ensureDatabase → applySchema
+ *   ecommerce: ensureDatabase → images + setupShopCatalog
  *   → optional launchBusiness when html/files provided
  *
  * Preview-first storefronts may exist before this chain. Progress messages are returned;
  * never invent live URLs.
  */
 
-import { executeEnsureDatabase } from './ensure-capability-tool.js'
+import { executeEnsureDatabase, executeEnsureLogin } from './ensure-capability-tool.js'
 import { executeApplySchema } from './apply-schema-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
 import { executeSetupShopCatalog, executePlaceTestShopOrder } from './shop-catalog-tool.js'
@@ -26,8 +27,8 @@ export const GUIDED_BACKEND_TOOL = {
   name: 'guidedBackend',
   aliases: ['runGuidedBackend', 'autoBackend', 'guided_backend'] as const,
   description:
-    'ENSURE-FIRST: ensureDatabase → applySchema (generic) or resolveProductImages + setupShopCatalog (ecommerce). ' +
-    'Call BEFORE building UI that needs data. Optional placeTestShopOrder and launchBusiness when html is ready. Do not invent live URLs.',
+    'ENSURE-FIRST: generic → ensureLogin + ensureDatabase + applySchema; ecommerce → ensureDatabase + catalog. ' +
+    'Call BEFORE building UI that needs auth or data. Optional placeTestShopOrder and launchBusiness when html is ready. Do not invent live URLs.',
   method: 'POST' as const,
   path: '/api/os/tools/guidedBackend',
   parameters: {
@@ -64,9 +65,9 @@ export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 
 When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
 
-1. Call **guidedBackend** (or ensureLogin + ensureDatabase + applySchema) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
+1. Call **guidedBackend** (generic includes **ensureLogin** + ensureDatabase + applySchema) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports). Prove with placeTestShopOrder when available.
-3. Generic apps: \`mode: "generic"\` — default orgs/memberships schema (or pass applySchema tables yourself).
+3. Generic / SaaS / booking / dashboard: \`mode: "generic"\` — ensureLogin + default orgs/memberships schema (or pass applySchema tables yourself).
 4. After claim_backend_ready: emit FOLLOWUPS Wire storefront → Go Live → Admin (≤4). Wire catalog to session.backend first; launchBusiness when they Go Live; payments only when they ask/pick Add payments.
 5. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 6. Email / Analytics optional — do not block Go Live on them.
@@ -103,6 +104,16 @@ export type GuidedBackendResult = {
   progress: string
   message: string
   claim_backend_ready: boolean
+  claim_login_ready?: boolean
+  backend?: {
+    api_url: string
+    anon_key: string
+    auth_url?: string
+    rest_url?: string
+    storage_url?: string
+    project_ref?: string
+    project_name?: string
+  }
   catalog_json?: unknown
   admin_html?: string
   url?: string
@@ -201,6 +212,24 @@ function attachImageUrls(
 
 type SessionLike = { gotrueId: string; email: string; projectRef: string }
 
+type EnsureBackendPayload = GuidedBackendResult['backend']
+
+function backendPayloadFromEnsure(
+  result: { backend?: EnsureBackendPayload | null; claim_login_ready?: boolean },
+): EnsureBackendPayload | undefined {
+  const b = result.backend
+  if (!b?.api_url?.trim() || !b?.anon_key?.trim()) return undefined
+  return {
+    api_url: b.api_url,
+    anon_key: b.anon_key,
+    auth_url: b.auth_url,
+    rest_url: b.rest_url,
+    storage_url: b.storage_url,
+    project_ref: b.project_ref,
+    project_name: b.project_name,
+  }
+}
+
 /**
  * Run the deterministic chain. Callers must pass a signed-in session.
  */
@@ -214,8 +243,29 @@ export async function executeGuidedBackend(
   const verticalId = (input.vertical || parsed?.vertical || '').trim() || null
   const brand = (input.brand || parsed?.brand || '').trim() || undefined
   const steps: GuidedBackendStep[] = []
+  let backendSnapshot: EnsureBackendPayload | undefined
+  let claimLoginReady = false
 
-  // 1) ensureDatabase
+  if (mode === 'generic') {
+    const login = await executeEnsureLogin(session)
+    if (!login.ok) {
+      steps.push({
+        id: 'ensureLogin',
+        status: 'failed',
+        message: login.message || 'Login ensure failed',
+      })
+      return failResult(mode, verticalId, brand, steps, login.code || 'login_required')
+    }
+    steps.push({
+      id: 'ensureLogin',
+      status: 'ok',
+      message: login.message || 'Customer login ready',
+    })
+    claimLoginReady = Boolean(login.claim_login_ready)
+    backendSnapshot = backendPayloadFromEnsure(login) ?? backendSnapshot
+  }
+
+  // ensureDatabase (all modes)
   const db = await executeEnsureDatabase(session)
   if (!db.ok) {
     steps.push({
@@ -230,6 +280,7 @@ export async function executeGuidedBackend(
     status: 'ok',
     message: db.message || 'Customer database ready',
   })
+  backendSnapshot = backendPayloadFromEnsure(db) ?? backendSnapshot
 
   let catalog_json: unknown
   let admin_html: string | undefined
@@ -323,6 +374,8 @@ export async function executeGuidedBackend(
       steps,
       catalog_json,
       admin_html,
+      backend: backendSnapshot,
+      claim_login_ready: claimLoginReady,
     })
   }
 
@@ -351,6 +404,8 @@ export async function executeGuidedBackend(
     brand,
     steps,
     admin_html,
+    backend: backendSnapshot,
+    claim_login_ready: claimLoginReady,
   })
 }
 
@@ -364,6 +419,8 @@ async function maybeLaunch(
     steps: GuidedBackendStep[]
     catalog_json?: unknown
     admin_html?: string
+    backend?: EnsureBackendPayload
+    claim_login_ready?: boolean
   },
 ): Promise<GuidedBackendResult> {
   const hasHtml = typeof input.html === 'string' && input.html.trim().length > 0
@@ -377,6 +434,10 @@ async function maybeLaunch(
         'Publish skipped — call launchBusiness (or guidedBackend with html/files) when the storefront is ready. Do not invent a live URL.',
     })
     const progress = progressMarkdown(base.steps)
+    const wireHint =
+      base.mode === 'generic'
+        ? 'Wire Sign-in + data screens to session.backend (api_url + anon_key + auth_url). Do not use localStorage auth.'
+        : 'Wire storefront to catalog_json / session.backend'
     return {
       ok: true,
       tool: 'guidedBackend',
@@ -385,8 +446,10 @@ async function maybeLaunch(
       brand: base.brand,
       steps: base.steps,
       progress,
-      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT (store ladder): (1) Wire storefront to catalog_json / session.backend (2) emit FOLLOWUPS Wire → Go Live → Admin (3) launchBusiness on Go Live — do not invent a live URL. Payments only when they ask.`,
+      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT: (1) ${wireHint} (2) emit FOLLOWUPS Wire → Go Live → Admin (3) launchBusiness on Go Live — do not invent a live URL. Payments only when they ask.`,
       claim_backend_ready: true,
+      claim_login_ready: base.claim_login_ready,
+      backend: base.backend,
       catalog_json: base.catalog_json,
       admin_html: base.admin_html,
       claim_live: false,
@@ -454,6 +517,8 @@ async function maybeLaunch(
     progress,
     message: `${progress}\n\nYour business is live: ${launched.url}`,
     claim_backend_ready: true,
+    claim_login_ready: base.claim_login_ready,
+    backend: base.backend,
     catalog_json: base.catalog_json,
     admin_html: base.admin_html,
     url: launched.url,

@@ -168,6 +168,21 @@ export function looksLikeEcommerceNicheAsk(message: string): boolean {
   )
 }
 
+/** SaaS / booking / dashboard / client-app asks that need ensure-first (not store preview). */
+export function looksLikeSaaSOrBackendAppAsk(message: string): boolean {
+  const text = message.toLowerCase()
+  if (/landing page only|marketing site only|static brochure/.test(text)) return false
+  return (
+    /\b(saas|web app|client portal|customer portal|dashboard|internal tool|booking app|appointments app)\b/.test(
+      text,
+    ) ||
+    /\b(with login|with auth|user accounts|sign[\s-]?in|customer login|database|real backend|postgres|supabase)\b/.test(
+      text,
+    ) ||
+    /this is a saas|build a saas|saas web app/.test(text)
+  )
+}
+
 /**
  * Strip leaked model CoT / “Considering…” dumps from assistant text shown in chat.
  */
@@ -334,6 +349,32 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
       {
         label: 'Wire + Go Live',
         message: `If catalog exists, wire the ${name} storefront to session.backend then Go Live with launchBusiness`,
+      },
+    ],
+  }
+}
+
+/** Ensure-first chips when the operator asked for SaaS/auth/data (not store preview). */
+export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Enable login + database',
+        message: `Call guidedBackend mode=generic for ${name} (ensureLogin + ensureDatabase + applySchema) FIRST — then build UI against session.backend`,
+      },
+      {
+        label: 'Wire auth + data UI',
+        message: `Wire Sign-in and data screens for ${name} to session.backend api_url + anon_key — no localStorage auth or mock APIs`,
+      },
+      {
+        label: 'Go Live when wired',
+        message: `When auth and data are wired, Go Live with launchBusiness app_type=saas and quote the exact url`,
+      },
+      {
+        label: 'Production checklist',
+        message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
       },
     ],
   }
@@ -677,6 +718,11 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     )
   ) {
     stage = postBackendFollowups(brand)
+  } else if (
+    looksLikeSaaSOrBackendAppAsk(message) &&
+    !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
+  ) {
+    stage = postSaasEnsureFirstFollowups(brand)
   } else {
     stage = postPreviewFollowups(brand)
   }

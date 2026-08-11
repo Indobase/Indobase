@@ -98,13 +98,15 @@ export function sessionToAgentContext(
       ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds.'
       : `Operator signed in as ${session.email}.`,
     dataPlane
-      ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs.`
-      : 'No backend yet — Static Launch only. Docs/Sheets/Slides/Design work without a database.',
+      ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs. Wire Sign-in and data screens to session.backend — never localStorage auth or mock APIs.`
+      : 'No backend yet — landing/marketing may Static Launch only. For SaaS, booking, dashboard, or any app with login/data: call ensureLogin + ensureDatabase + applySchema (or guidedBackend mode=generic) BEFORE building auth/data UI.',
     LAUNCH_SESSION_HINT,
     LAUNCH_AGENT_HARD_RULES,
     ...(isGuest ? [] : [PROMPT_QUOTA_SESSION_HINT, PROMPT_QUOTA_AGENT_RULES]),
     'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
-    'Add login / database / payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect. Do not provision backend for a normal site launch.',
+    dataPlane
+      ? 'Add payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect.'
+      : 'Add login / database / payments → Enable via ensureLogin, ensureDatabase, applySchema, or guidedBackend when the product needs auth or live data — not for pure landing pages.',
     'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
     'Discoverable actions (command palette / chat): Create account (guests), Go Live / Launch Business, Add login, Enable payments — finish inside Indobase OS.',
     'Brand all customer-facing UI as Indobase only.',

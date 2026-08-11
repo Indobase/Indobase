@@ -88,7 +88,9 @@ INDOBASE_CHOICES>>>
 6. **Payments** (when asked) — India vs International → ensure → KYC → **connectGateway** → **wireCheckout**.
 7. **SEO + legal**; claim production ready ONLY after **productionChecklist** returns `claim_production_ready: true`.
 
-Prefer **guidedBackend** for ecommerce “Add a real backend” (ensureDatabase → schema/catalog + optional test order).
+Prefer **guidedBackend mode=generic** for SaaS/booking/dashboard (ensureLogin + ensureDatabase + applySchema). Ecommerce “Add a real backend” uses **guidedBackend mode=ecommerce**.
+
+**Go Live gate:** if you pass `app_type` saas/booking/dashboard/ecommerce/blog to **launchBusiness**, session.backend must be ready first or the API returns `backend_required` — run guidedBackend/ensure* and wire UI first. Landing previews may omit app_type.
 
 ## Discoverable hard tools
 

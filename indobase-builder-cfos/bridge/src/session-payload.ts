@@ -106,6 +106,9 @@ export function buildJourneyStateAppendix(session: Session): string {
     lines.push(
       '- Prefer path: preview-first → FOLLOWUPS with **Go Live first** (Add a real backend / Refine then Go Live). Niche pick must NOT call guidedBackend. Do not dead-end on Leave as-is.',
     )
+    lines.push(
+      '- **SaaS / booking / dashboard / client app with accounts:** ensure-first — call ensureLogin + ensureDatabase + applySchema (or guidedBackend mode=generic) BEFORE auth/data UI; never ship localStorage-only login for production.',
+    )
   }
   if (paymentsReady) {
     lines.push('- Payments: keys appear configured — prefer wireCheckout (INR if India) + patch Buy CTA + productionChecklist.')

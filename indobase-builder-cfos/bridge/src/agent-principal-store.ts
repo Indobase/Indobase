@@ -6,6 +6,14 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import type { BackendConfig } from './auth.js'
+
+/** Latest tenant keys from ensure* — lets agent-tool sessions use real REST/Auth. */
+export type AgentPrincipalBackendSnapshot = Pick<
+  BackendConfig,
+  'api_url' | 'anon_key' | 'auth_url' | 'rest_url' | 'storage_url' | 'project_ref' | 'project_name'
+>
+
 export type AgentPrincipalRecord = {
   username: string
   gotrueId: string
@@ -13,6 +21,7 @@ export type AgentPrincipalRecord = {
   email: string
   guest: boolean
   projectName?: string
+  backend?: AgentPrincipalBackendSnapshot
   updatedAt: string
 }
 
@@ -83,4 +92,34 @@ export async function lookupAgentPrincipal(
   if (!key) return null
   const store = await readStore()
   return store.principals[key] || null
+}
+
+function snapshotBackend(backend: BackendConfig): AgentPrincipalBackendSnapshot {
+  return {
+    api_url: backend.api_url,
+    anon_key: backend.anon_key,
+    auth_url: backend.auth_url,
+    rest_url: backend.rest_url,
+    storage_url: backend.storage_url,
+    project_ref: backend.project_ref,
+    project_name: backend.project_name,
+  }
+}
+
+/** Merge ensure* backend keys onto an existing CFOS principal (agent-tool path). */
+export async function updateAgentPrincipalBackend(
+  username: string,
+  backend: BackendConfig,
+): Promise<void> {
+  const key = username.trim()
+  if (!key || !backend.api_url?.trim() || !backend.anon_key?.trim()) return
+  const store = await readStore()
+  const existing = store.principals[key]
+  if (!existing) return
+  store.principals[key] = {
+    ...existing,
+    backend: snapshotBackend(backend),
+    updatedAt: new Date().toISOString(),
+  }
+  await writeStore(store)
 }

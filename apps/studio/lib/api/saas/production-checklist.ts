@@ -52,6 +52,8 @@ export type ProductionChecklistResult = {
   checks: ProductionCheckItem[]
   missing: string[]
   next_steps: Array<{ id: string; label: string }>
+  /** Server-side probes that downgraded false-positive agent claims. */
+  server_verified?: Partial<Record<keyof ProductionCheckFlags, boolean>>
 }
 
 export function normalizeAppType(raw: string | null | undefined): AppType {
@@ -240,4 +242,192 @@ export function evaluateProductionChecklist(
     missing,
     next_steps,
   }
+}
+
+export type BackendProbeConfig = {
+  api_url: string
+  anon_key: string
+  auth_url?: string
+  rest_url?: string
+}
+
+export type ServerVerifiedFlags = Partial<Record<keyof ProductionCheckFlags, boolean>>
+
+const FETCH_TIMEOUT_MS = 8_000
+
+async function fetchText(url: string): Promise<string | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: { Accept: 'text/html,application/xhtml+xml,*/*' },
+    })
+    if (!res.ok) return null
+    const text = await res.text()
+    return text.slice(0, 512_000)
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export function analyzeLiveHtml(html: string): {
+  seo_basics?: boolean
+  legal_links?: boolean
+  login_wired?: boolean
+} {
+  const lower = html.toLowerCase()
+  const hasTitle = /<title[^>]*>\s*[^<\s][^<]{0,200}\s*<\/title>/i.test(html)
+  const hasMeta = /<meta[^>]+name=["']description["'][^>]+content=["'][^"']{3,}/i.test(html)
+  const hasH1 = /<h1[^>]*>\s*[^<\s]/i.test(html)
+  const seo = hasTitle && hasMeta && hasH1
+
+  const legal =
+    /privacy/i.test(lower) &&
+    (/terms/i.test(lower) || /terms of service/i.test(lower) || /conditions/i.test(lower))
+
+  const login =
+    /sign[\s-]?in|log[\s-]?in|create account|register|auth/i.test(lower) ||
+    /__indobase_env__|indobase_auth|gotrue|supabase\.auth/i.test(lower)
+
+  return {
+    seo_basics: seo,
+    legal_links: legal,
+    login_wired: login,
+  }
+}
+
+async function probeAuthHealthy(backend: BackendProbeConfig): Promise<boolean> {
+  const authBase = (backend.auth_url || `${backend.api_url.replace(/\/+$/, '')}/auth/v1`).replace(
+    /\/+$/,
+    '',
+  )
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${authBase}/health`, {
+      method: 'GET',
+      headers: {
+        apikey: backend.anon_key,
+        Authorization: `Bearer ${backend.anon_key}`,
+      },
+      signal: controller.signal,
+    })
+    return res.ok || res.status === 401
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function probeSchemaTable(
+  backend: BackendProbeConfig,
+  table: string,
+): Promise<boolean> {
+  const restBase = (backend.rest_url || `${backend.api_url.replace(/\/+$/, '')}/rest/v1/`).replace(
+    /\/+$/,
+    '',
+  )
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${restBase}/${table}?select=id&limit=1`, {
+      method: 'GET',
+      headers: {
+        apikey: backend.anon_key,
+        Authorization: `Bearer ${backend.anon_key}`,
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    })
+    return res.status === 200 || res.status === 406
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function schemaTableForAppType(appType: AppType): string {
+  if (appType === 'ecommerce') return 'products'
+  return 'organizations'
+}
+
+/** Live probes — downgrade agent claims the server can disprove. */
+export async function verifyProductionChecksServer(input: {
+  appType: AppType
+  liveUrl?: string
+  backend?: BackendProbeConfig | null
+}): Promise<ServerVerifiedFlags> {
+  const verified: ServerVerifiedFlags = {}
+  const liveUrl = input.liveUrl?.trim()
+
+  if (liveUrl?.startsWith('http')) {
+    const html = await fetchText(liveUrl)
+    verified.live_url = Boolean(html && html.length > 32)
+    if (html) {
+      const parsed = analyzeLiveHtml(html)
+      if (parsed.seo_basics != null) verified.seo_basics = parsed.seo_basics
+      if (parsed.legal_links != null) verified.legal_links = parsed.legal_links
+      if (parsed.login_wired != null) verified.login_wired = parsed.login_wired
+    } else {
+      verified.live_url = false
+    }
+  }
+
+  const backend = input.backend
+  if (backend?.api_url?.trim() && backend.anon_key?.trim()) {
+    const authOk = await probeAuthHealthy(backend)
+    if (verified.login_wired == null) {
+      verified.login_wired = authOk
+    } else {
+      verified.login_wired = verified.login_wired && authOk
+    }
+
+    const table = schemaTableForAppType(input.appType)
+    verified.schema_applied = await probeSchemaTable(backend, table)
+  }
+
+  return verified
+}
+
+export function mergeAgentChecksWithServerVerified(
+  agent: ProductionCheckFlags,
+  verified: ServerVerifiedFlags,
+): ProductionCheckFlags {
+  const merged: ProductionCheckFlags = { ...agent }
+  for (const key of Object.keys(verified) as (keyof ProductionCheckFlags)[]) {
+    const server = verified[key]
+    if (server === false && agent[key] === true) {
+      merged[key] = false
+    }
+  }
+  return merged
+}
+
+export async function evaluateProductionChecklistWithVerification(
+  input: ProductionChecklistInput & { backend?: BackendProbeConfig | null },
+): Promise<ProductionChecklistResult> {
+  const appType = normalizeAppType(input.app_type)
+  const liveUrl =
+    typeof input.live_url === 'string' && input.live_url.trim().startsWith('http')
+      ? input.live_url.trim()
+      : undefined
+
+  const verified = await verifyProductionChecksServer({
+    appType,
+    liveUrl,
+    backend: input.backend ?? null,
+  })
+  const mergedChecks = mergeAgentChecksWithServerVerified(input.checks || {}, verified)
+  const result = evaluateProductionChecklist({
+    ...input,
+    checks: mergedChecks,
+  })
+  return { ...result, server_verified: verified }
 }

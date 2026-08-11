@@ -88,4 +88,30 @@ describe('agent-principal-store', () => {
     const found = await lookupAgentPrincipal('ib_same')
     assert.equal(found?.guest, false)
   })
+
+  it('updateAgentPrincipalBackend stores api_url and anon_key', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_backend',
+      gotrueId: 'user-1',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: false,
+    })
+    const { updateAgentPrincipalBackend } = await import('./agent-principal-store.ts')
+    await updateAgentPrincipalBackend('ib_backend', {
+      api_url: 'https://ws-1.indobase.in',
+      anon_key: 'anon',
+      auth_url: 'https://ws-1.indobase.in/auth/v1',
+      rest_url: 'https://ws-1.indobase.in/rest/v1/',
+      storage_url: 'https://ws-1.indobase.in/storage/v1',
+      project_ref: 'ws-1',
+      project_name: 'Workspace',
+      project_url: 'https://studio.indobase.in/project/ws-1/backend',
+    })
+    const found = await lookupAgentPrincipal('ib_backend')
+    assert.equal(found?.backend?.api_url, 'https://ws-1.indobase.in')
+    assert.equal(found?.backend?.anon_key, 'anon')
+  })
 })

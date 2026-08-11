@@ -3,10 +3,12 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import apiWrapper from 'lib/api/apiWrapper'
 import { requireOsApiSecret } from 'lib/api/saas/os-api-auth'
 import { assertOsAccountForEnsure } from 'lib/api/saas/os-ensurer-access'
+import { buildBuilderBackendConfig, getStudioOrigin } from 'lib/api/saas/builder-launch'
 import {
-  evaluateProductionChecklist,
+  evaluateProductionChecklistWithVerification,
   type ProductionCheckFlags,
 } from 'lib/api/saas/production-checklist'
+import { getProjectSettingsForRef } from 'lib/api/saas/settings'
 import type { Claims } from 'lib/api/saas/platform'
 
 function claimsFromBody(payload: Record<string, unknown>): Claims | null {
@@ -75,11 +77,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       typeof checksRaw.custom_domain === 'boolean' ? checksRaw.custom_domain : null,
   }
 
-  const result = evaluateProductionChecklist({
+  let backendProbe: {
+    api_url: string
+    anon_key: string
+    auth_url?: string
+    rest_url?: string
+  } | null = null
+  try {
+    const settings = await getProjectSettingsForRef({ claims, ref: workspaceRef })
+    if (settings) {
+      const studioUrl = getStudioOrigin() || 'https://studio.indobase.in'
+      const cfg = buildBuilderBackendConfig({
+        projectName: workspaceRef,
+        projectRef: workspaceRef,
+        settings,
+        studioUrl,
+      })
+      if (cfg.api_url?.trim() && cfg.anon_key?.trim()) {
+        backendProbe = {
+          api_url: cfg.api_url,
+          anon_key: cfg.anon_key,
+          auth_url: cfg.auth_url,
+          rest_url: cfg.rest_url,
+        }
+      }
+    }
+  } catch {
+    backendProbe = null
+  }
+
+  const result = await evaluateProductionChecklistWithVerification({
     app_type: typeof payload.app_type === 'string' ? payload.app_type : null,
     live_url: typeof payload.live_url === 'string' ? payload.live_url : null,
     brand: typeof payload.brand === 'string' ? payload.brand : null,
     checks,
+    backend: backendProbe,
   })
 
   return res.status(200).json(result)

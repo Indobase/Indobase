@@ -6,6 +6,7 @@ import {
   resolveFollowUps,
   looksLikeCompletedDeliverable,
   looksLikePreBuildClarification,
+  looksLikeSaaSOrBackendAppAsk,
   formatFollowUpsBlock,
   inferChipStage,
   applyStageGate,
@@ -403,5 +404,15 @@ INDOBASE_CHOICES>>>
       assert.doesNotMatch(item.message, /INDOBASE_GUIDED_BACKEND/)
       assert.match(item.message, /preview|Do NOT call guidedBackend/i)
     }
+  })
+
+  it('injects ensure-first chips for SaaS deliverables without backend', () => {
+    assert.ok(looksLikeSaaSOrBackendAppAsk('Build a SaaS web app with user login and database'))
+    const input =
+      "Here's your client portal UI with sign-in screens — preview ready.\n\nWhat's in it: dashboard shell."
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /Enable login \+ database/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /guidedBackend mode=generic/i.test(i.message)))
   })
 })

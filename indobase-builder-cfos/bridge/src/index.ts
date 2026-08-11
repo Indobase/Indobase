@@ -83,6 +83,7 @@ import {
 import { deriveAgentCredentials } from './agent-credentials.js'
 import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.js'
+import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 
@@ -158,6 +159,15 @@ function timingSafeEqualString(a: string, b: string): boolean {
   return out === 0
 }
 
+async function respondEnsureTool(
+  c: Context,
+  session: Session,
+  result: Awaited<ReturnType<typeof executeEnsureLogin>>,
+) {
+  await syncBackendAfterEnsure(c, getSession(c), result)
+  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+}
+
 /**
  * Cookie session OR CFOS AgentTool auth:
  *   X-Indobase-OS-Secret: BUILDER_CFOS_HANDOFF_SECRET
@@ -212,6 +222,14 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
     orgSlug: 'os',
     projectName: principal.projectName,
     studioUrl: 'https://studio.indobase.in',
+    ...(principal.backend
+      ? {
+          backend: {
+            ...principal.backend,
+            project_url: `https://studio.indobase.in/project/${principal.projectRef}/backend`,
+          },
+        }
+      : {}),
   }
 }
 
@@ -1004,28 +1022,28 @@ app.post('/api/os/tools/ensureLogin', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const result = await executeEnsureLogin(sessionOrErr)
-  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+  return respondEnsureTool(c, sessionOrErr, result)
 })
 
 app.post('/api/os/tools/enableLogin', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const result = await executeEnsureLogin(sessionOrErr)
-  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+  return respondEnsureTool(c, sessionOrErr, result)
 })
 
 app.post('/api/os/tools/ensureDatabase', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const result = await executeEnsureDatabase(sessionOrErr)
-  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+  return respondEnsureTool(c, sessionOrErr, result)
 })
 
 app.post('/api/os/tools/ensureBusinessData', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
   const result = await executeEnsureDatabase(sessionOrErr)
-  return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
+  return respondEnsureTool(c, sessionOrErr, result)
 })
 
 app.post('/api/os/tools/ensureEmail', async (c) => {
@@ -1189,6 +1207,9 @@ app.post('/api/os/tools/guidedBackend', async (c) => {
     admin_html_as: typeof body.admin_html_as === 'string' ? body.admin_html_as : undefined,
     message: typeof body.message === 'string' ? body.message : undefined,
   })
+  if (result.backend) {
+    await syncGuidedBackendResult(c, getSession(c), sessionOrErr, result)
+  }
   const http = result.ok ? 200 : result.code === 'database_required' ? 403 : 502
   return c.json(result, http)
 })
@@ -1213,6 +1234,9 @@ app.post('/api/os/tools/runGuidedBackend', async (c) => {
     admin_html_as: typeof body.admin_html_as === 'string' ? body.admin_html_as : undefined,
     message: typeof body.message === 'string' ? body.message : undefined,
   })
+  if (result.backend) {
+    await syncGuidedBackendResult(c, getSession(c), sessionOrErr, result)
+  }
   const http = result.ok ? 200 : result.code === 'database_required' ? 403 : 502
   return c.json(result, http)
 })
@@ -1293,21 +1317,7 @@ app.post('/api/os/runtime/ensure', async (c) => {
     capability,
     settlementMarket,
   })
-  if (result.backend && result.provision_state === 'ready') {
-    // Only refresh the browser session cookie when this request carries one.
-    // Agent-tool ensure responses never reach the operator browser Set-Cookie jar.
-    const browserSession = getSession(c)
-    if (browserSession && !isGuestSession(browserSession)) {
-      let secret: string
-      try {
-        secret = resolveHandoffSecret()
-        const updated: Session = { ...browserSession, backend: result.backend }
-        c.header('Set-Cookie', sessionCookie(createSessionToken(updated, secret)))
-      } catch {
-        // session refresh best-effort
-      }
-    }
-  }
+  await syncBackendAfterEnsure(c, getSession(c), result)
   return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
 })
 
@@ -1441,12 +1451,17 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
         body.files && typeof body.files === 'object' && !Array.isArray(body.files)
           ? (body.files as Record<string, string>)
           : undefined,
+      app_type: typeof body.app_type === 'string' ? body.app_type : undefined,
+      require_backend:
+        typeof body.require_backend === 'boolean' ? body.require_backend : undefined,
       gotrueId: session.gotrueId,
       email: session.email,
     },
-    { title: session.projectName || session.projectRef },
+    { title: session.projectName || session.projectRef, backend: session.backend ?? null },
   )
-  return c.json(result, result.ok ? 200 : result.status === 'rejected' ? 400 : 502)
+  const http =
+    result.ok ? 200 : result.status === 'rejected' || result.code === 'backend_required' ? 400 : 502
+  return c.json(result, http)
 }
 
 app.post('/api/os/tools/launchBusiness', async (c) => {
