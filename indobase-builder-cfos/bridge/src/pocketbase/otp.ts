@@ -164,7 +164,14 @@ async function ensureSmtpConfigured(config: ManagedBackendConfig, token: string)
   }).catch(() => null)
 }
 
-async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<void> {
+/**
+ * PocketBase request-otp returns a fake 200/otpId when the user does not exist
+ * and cannot be auto-created (empty/null createRule). Empty createRule must be
+ * replaced — OTP auto-create requires a non-empty rule that allows the record.
+ */
+const OTP_CREATE_RULE = 'email != ""'
+
+async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<string> {
   const token = await adminAuth(config)
   await ensureSmtpConfigured(config, token)
 
@@ -190,13 +197,13 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
     throw new Error('Indobase backend auth collection is missing')
   }
 
-  // OTP auto-create needs a create rule; require email present (not fully world-open junk).
-  const desiredCreate = '@request.body.email != "" || @request.data.email != ""'
+  const rule = (users.createRule ?? '').trim()
   const needsPatch =
     !users.otp?.enabled ||
-    users.createRule === null ||
-    users.createRule === undefined ||
-    users.otp?.length !== 6
+    !rule ||
+    users.otp?.length !== 6 ||
+    rule === '@request.body.email != ""' ||
+    rule === '@request.body.email != "" || @request.data.email != ""'
 
   if (needsPatch) {
     const patch = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
@@ -207,27 +214,69 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
       },
       body: JSON.stringify({
         otp: { enabled: true, duration: 300, length: 6 },
-        createRule: users.createRule === '' ? desiredCreate : users.createRule || desiredCreate,
+        createRule: OTP_CREATE_RULE,
       }),
     })
     if (!patch.ok) {
-      // Fallback: empty createRule (OTP still works) if expression rejected
-      const fallback = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
+      const err = (await patch.json().catch(() => ({}))) as { message?: string }
+      throw new Error(err.message || 'Failed to enable Indobase backend OTP')
+    }
+  }
+
+  return token
+}
+
+/** Ensure auth user exists so request-otp actually emails (not a fake otpId). */
+async function ensureAuthUserForOtp(
+  config: ManagedBackendConfig,
+  token: string,
+  input: { email: string; name: string },
+): Promise<void> {
+  const email = input.email.trim().toLowerCase()
+  const filter = encodeURIComponent(`email="${email.replace(/"/g, '\\"')}"`)
+  const list = await fetch(
+    `${config.adminUrl}/api/collections/users/records?page=1&perPage=1&filter=${filter}`,
+    { headers: { Authorization: token } },
+  )
+  const listPayload = (await list.json().catch(() => ({}))) as {
+    items?: Array<{ id: string; name?: string }>
+    totalItems?: number
+  }
+  const existing = listPayload.items?.[0]
+  if (existing?.id) {
+    const name = input.name.trim()
+    if (name && name !== (existing.name || '').trim()) {
+      await fetch(`${config.adminUrl}/api/collections/users/records/${existing.id}`, {
         method: 'PATCH',
         headers: {
           Authorization: token,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          otp: { enabled: true, duration: 300, length: 6 },
-          createRule: '',
-        }),
-      })
-      if (!fallback.ok) {
-        const err = (await patch.json().catch(() => ({}))) as { message?: string }
-        throw new Error(err.message || 'Failed to enable Indobase backend OTP')
-      }
+        body: JSON.stringify({ name }),
+      }).catch(() => null)
     }
+    return
+  }
+
+  const password = `Ib${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}!aA1`
+  const create = await fetch(`${config.adminUrl}/api/collections/users/records`, {
+    method: 'POST',
+    headers: {
+      Authorization: token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      emailVisibility: true,
+      password,
+      passwordConfirm: password,
+      name: input.name.trim() || email.split('@')[0] || 'Operator',
+      verified: false,
+    }),
+  })
+  if (!create.ok) {
+    const err = (await create.json().catch(() => ({}))) as { message?: string }
+    throw new Error(err.message || 'Could not prepare account for sign-in code')
   }
 }
 
@@ -242,7 +291,8 @@ export async function managedBackendOtpStart(input: {
 
   const email = input.email.trim().toLowerCase()
   try {
-    await ensureAuthCollectionReady(config)
+    const token = await ensureAuthCollectionReady(config)
+    await ensureAuthUserForOtp(config, token, { email, name: input.name })
     const response = await fetch(`${config.adminUrl}/api/collections/users/request-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -259,6 +309,20 @@ export async function managedBackendOtpStart(input: {
         message: payload.message || 'Could not send sign-in code',
       }
     }
+
+    // Fake otpIds resolve with no _otps row — treat that as failure.
+    const otpCheck = await fetch(
+      `${config.adminUrl}/api/collections/_otps/records/${payload.otpId}`,
+      { headers: { Authorization: token } },
+    )
+    if (!otpCheck.ok) {
+      return {
+        ok: false,
+        status: 502,
+        message: 'Sign-in code was not emailed. Check the address and try again.',
+      }
+    }
+
     await rememberOtp({ email, otpId: payload.otpId, name: input.name })
     return { ok: true, email }
   } catch (error) {
