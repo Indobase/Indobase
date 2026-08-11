@@ -5,6 +5,7 @@
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
+  inferChipStage,
   parseFollowUps,
   resolveFollowUps,
   stripLeakedCot,
@@ -21,6 +22,22 @@ export {
   DEFAULT_POST_BUILD_TITLE,
 } from './followups'
 export type { FollowUpItem, ParsedFollowUps }
+
+function isBrowserGuestSession(): boolean {
+  try {
+    const w = window as unknown as {
+      __INDOBASE_SESSION_STAGE__?: string
+      __INDOBASE__?: { guest?: boolean } | null
+    }
+    if (w.__INDOBASE_SESSION_STAGE__ === 'guest') return true
+    if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object' && (w.__INDOBASE__ as { guest?: boolean }).guest === true) {
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}
 
 export const FollowUpChipGrid = memo(function FollowUpChipGrid({
   title,
@@ -87,6 +104,7 @@ type Props = {
 /**
  * Splits agent text into markdown body + chip grid.
  * Chips come from agent FOLLOWUPS/CHOICES, or Naive deliverable fallback.
+ * Never show chips during guest/auth turns (even if the agent emits CHOICES).
  */
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,
@@ -96,10 +114,15 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   children,
 }: Props) {
   const cleaned = useMemo(() => stripLeakedCot(message), [message])
-  const resolved = useMemo(
-    () => (allowFallback ? resolveFollowUps(cleaned) : parseFollowUps(cleaned)),
-    [allowFallback, cleaned],
-  )
+  const resolved = useMemo(() => {
+    const raw = allowFallback ? resolveFollowUps(cleaned) : parseFollowUps(cleaned)
+    if (!raw) return null
+    // Defense in depth: hide chips while unsigned-in / auth ask.
+    if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
+      return { ...raw, title: '', items: [] as FollowUpItem[] }
+    }
+    return raw
+  }, [allowFallback, cleaned])
   const body = resolved?.body ?? cleaned
 
   return (

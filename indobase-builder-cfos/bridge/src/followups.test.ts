@@ -180,6 +180,27 @@ INDOBASE_CHOICES>>>
     assert.equal(resolvedNiche.items.length, 0)
   })
 
+  it('strips chips when agent says I will build then asks name/email/DPDP', () => {
+    const flower = `Great — I'll build an online flower shop with bouquets, seasonal arrangements, and gifting options. Before I start, please send:
+1. Your name
+2. Your email address
+3. Confirmation that you agree to Indobase's Privacy Policy and Terms of Service (DPDP consent)
+
+<<<INDOBASE_CHOICES
+title: What will your store sell?
+Apparel / fashion | Niche Apparel
+Electronics / gadgets | Niche Electronics
+Food / grocery | Niche Food
+Beauty / personal care | Niche Beauty
+INDOBASE_CHOICES>>>
+`
+    assert.equal(looksLikePreBuildClarification(flower), true)
+    assert.equal(inferChipStage(flower), 'guest_gate')
+    const resolved = resolveFollowUps(flower)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 0)
+  })
+
   it('does not inject niche CHOICES during guest/auth prose', () => {
     const input = `I'd love to build an apparel store. Before I begin, please share name and email and DPDP consent.
 

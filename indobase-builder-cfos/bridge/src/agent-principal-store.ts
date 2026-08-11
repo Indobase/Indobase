@@ -101,6 +101,27 @@ export async function lookupAgentPrincipal(
   return store.principals[key] || null
 }
 
+/**
+ * After OTP, CFOS may still call tools as the pre-verify guest username while the
+ * browser cookie is already a member. Prefer any non-guest principal for the same
+ * workspace so sessionStatus does not restart signup.
+ */
+export async function lookupMemberPrincipalForProject(
+  projectRef: string,
+): Promise<AgentPrincipalRecord | null> {
+  const ref = projectRef.trim()
+  if (!ref || ref.startsWith('draft_')) return null
+  const store = await readStore()
+  let best: AgentPrincipalRecord | null = null
+  for (const row of Object.values(store.principals)) {
+    if (!row || row.guest) continue
+    if (row.projectRef !== ref) continue
+    if (!row.email?.includes('@')) continue
+    if (!best || Date.parse(row.updatedAt) > Date.parse(best.updatedAt)) best = row
+  }
+  return best
+}
+
 function snapshotBackend(backend: BackendConfig): AgentPrincipalBackendSnapshot {
   return {
     api_url: backend.api_url,

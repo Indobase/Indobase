@@ -530,9 +530,11 @@ export function looksLikeCompletedDeliverable(message: string): boolean {
 /** Guest gate / account / "before I begin" — not a finished website. */
 export function looksLikePreBuildClarification(message: string): boolean {
   const text = message.toLowerCase()
-  // Past the gate / already building — never reclassify as guest_gate (keeps launch chips).
+
+  // Explicitly past auth — keep launch chips (checked before authAsk so
+  // "past the guest gate" does not re-trigger the gate).
   if (
-    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|on file|continue(ing)? (with )?the original|building the|i('ll| will) (now )?(build|continue)|preview ready|here's what i built|sites\.indobase\.in|past the guest( account)? gate|guest checkout/.test(
+    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|continue(ing)? (with )?the original|preview ready|here's what i built|sites\.indobase\.in|past the guest( account)? gate|guest checkout/.test(
       text,
     )
   ) {
@@ -540,22 +542,26 @@ export function looksLikePreBuildClarification(message: string): boolean {
   }
   if (bodyHasDeliverableSignal(message)) return false
 
-  return (
-    /clarifying guest|guest (account )?gate|before i begin|please share:|dpdp consent|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
+  // Auth/DPDP ask wins even when the agent also says "I'll build…" (common false-negative).
+  const authAsk =
+    /clarifying guest|before i (begin|start)|please (share|send):|dpdp consent|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
       text,
     ) ||
     // Require ask/collect context — bare "name and email" mentions must not strip launch chips.
-    /(?:please share|need your|ask(?:ing)? for|provide your|send (me )?your).{0,60}(name.{0,24}email|email.{0,24}name)/.test(
+    /(?:please (?:share|send)|need your|ask(?:ing)? for|provide your|send (me )?your).{0,80}(name.{0,40}email|email.{0,40}name|your name)/.test(
       text,
     ) ||
-    (/(?:name \+ email|name and email)/.test(text) &&
-      /(?:before i begin|please share|dpdp|consent|otp|guest)/.test(text) &&
-      !/(?:on file|verified|signed)/.test(text)) ||
-    // Require explicit guest-account-gate phrasing — not "guest checkout" / "first email".
+    (/(?:name \+ email|name and email|your name|your email)/.test(text) &&
+      /(?:before i (?:begin|start)|please (?:share|send)|dpdp|consent|otp|agree)/.test(text) &&
+      !/(?:on file|verified|already signed)/.test(text)) ||
+    // Explicit guest-account-gate phrasing — not "guest checkout" / "past the guest gate".
     (/guest (account )?gate/.test(text) &&
       /(?:name|email|consent|otp|dpdp|privacy|terms)/.test(text) &&
       !/(?:checkout|past the guest|already)/.test(text))
-  )
+
+  if (authAsk) return true
+
+  return false
 }
 
 /** Default post-build wall (Go Live / payments / checklist…) — not for pre-build chat. */

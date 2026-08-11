@@ -81,8 +81,13 @@ import {
   shouldConsumeAgentTurn,
 } from './agent-turn-meter.js'
 import { deriveAgentCredentials } from './agent-credentials.js'
+import {
+  lookupAgentPrincipal,
+  lookupMemberPrincipalForProject,
+  rememberAgentPrincipal,
+  updateAgentPrincipalBackend,
+} from './agent-principal-store.js'
 import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
-import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.js'
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -260,7 +265,7 @@ async function resolveSessionOrAgentPrincipal(
     return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
   }
 
-  const principal = await lookupAgentPrincipal(username)
+  let principal = await lookupAgentPrincipal(username)
   if (!principal) {
     return c.json(
       {
@@ -273,7 +278,19 @@ async function resolveSessionOrAgentPrincipal(
     )
   }
 
-  const guest = Boolean(principal.guest || principal.projectRef.startsWith('draft_') || !principal.email)
+  // OTP upgrades the browser to a member, but AgentTool may still present the
+  // pre-claim guest username. Prefer a member principal for the same workspace.
+  const looksGuest = Boolean(
+    principal.guest || principal.projectRef.startsWith('draft_') || !principal.email?.includes('@'),
+  )
+  if (looksGuest && !principal.projectRef.startsWith('draft_')) {
+    const member = await lookupMemberPrincipalForProject(principal.projectRef)
+    if (member) principal = member
+  }
+
+  const guest = Boolean(
+    principal.guest || principal.projectRef.startsWith('draft_') || !principal.email?.includes('@'),
+  )
   return {
     guest,
     session: {
