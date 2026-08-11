@@ -195,6 +195,45 @@ INDOBASE_FOLLOWUPS>>>
     assert.match(resolved.body, /headphone landing/)
   })
 
+  it('building stage keeps ≤4 personalized launch-ladder chips', () => {
+    const input = `Polished the hero a bit — ready when you are.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take Aural next?
+Go Live on Indobase | Go Live — publish Aural
+Add a real backend | guidedBackend for Aural then Go Live
+Refine then Go Live | Refine then Go Live
+Add payments | Add payments after live
+INDOBASE_FOLLOWUPS>>>
+`
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 4)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+  })
+
+  it('injects post-Go Live chips when agent omits FOLLOWUPS after live url', () => {
+    const input =
+      "Aural is now live at https://aural.sites.indobase.in — here's the published storefront."
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /payments|domain|checklist/i.test(i.label)))
+  })
+
+  it('postPreviewFollowups formats a Naive-style where-next block', () => {
+    const stage = postPreviewFollowups('MERIDIAN')
+    assert.equal(stage.title, 'Where should I take MERIDIAN next?')
+    assert.equal(stage.items.length, 4)
+    assert.ok(stage.items.some((i) => /Add a real backend/i.test(i.label)))
+    assert.ok(stage.items.every((i) => !/leave it as-is/i.test(i.label)))
+    const block = formatFollowUpsBlock(stage.title, stage.items)
+    assert.match(block, /<<<INDOBASE_FOLLOWUPS/)
+    assert.match(block, /guidedBackend/)
+    const parsed = parseFollowUps(`Preview ready.\n\n${block}`)
+    assert.ok(parsed)
+    assert.equal(parsed.items.length, 4)
+  })
+
   it('deliverable stage caps long agent walls at MAX_VISIBLE_CHIPS', () => {
     const block = formatFollowUpsBlock('Where should I take Aural next?', DEFAULT_POST_BUILD_FOLLOWUPS)
     const input = `Here's what I built — live preview\nhttps://aural.sites.indobase.in\n\n${block}`
@@ -234,19 +273,6 @@ INDOBASE_CHOICES>>>
   it('does not treat vague whats-next as a completed deliverable', () => {
     assert.equal(looksLikeCompletedDeliverable("What's next?"), false)
     assert.equal(resolveFollowUps("What's next?"), null)
-  })
-
-  it('postPreviewFollowups formats a Naive-style where-next block', () => {
-    const stage = postPreviewFollowups('MERIDIAN')
-    assert.equal(stage.title, 'Where should I take MERIDIAN next?')
-    assert.equal(stage.items.length, 4)
-    assert.ok(stage.items.some((i) => /Add a real backend/i.test(i.label)))
-    const block = formatFollowUpsBlock(stage.title, stage.items)
-    assert.match(block, /<<<INDOBASE_FOLLOWUPS/)
-    assert.match(block, /guidedBackend/)
-    const parsed = parseFollowUps(`Preview ready.\n\n${block}`)
-    assert.ok(parsed)
-    assert.equal(parsed.items.length, 4)
   })
 
   it('postBackendFollowups and postGoLiveFollowups stay within chip budget', () => {

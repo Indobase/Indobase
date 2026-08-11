@@ -2,10 +2,13 @@
  * Parse Indobase follow-up / choice chips from agent message text.
  *
  * Product policy (goal → gate → build → cards):
+ *   North star: take the operator to a **full launch** via recommendation chips
+ *   (preview → Go Live → payments/domain/checklist) — never stall after 1–2 rounds
+ *   and never restart guest/auth once signed in.
  *   1. Clear build ask → ack (+ guest gate if unsigned-in)
  *   2. Guest gate → name/email/DPDP/OTP; niche CHOICES OK (store asks)
- *   3. Building → at most goal-tied CHOICES the agent emits (if blocked)
- *   4. Deliverable ready → agent-authored FOLLOWUPS only
+ *   3. Building → at most goal-tied CHOICES; keep ≤4 personalized launch-ladder chips
+ *   4. Deliverable / stage done → agent FOLLOWUPS (or inject next ladder stage)
  *   5. Capability path → agent-authored CHOICES for that path
  *
  * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
@@ -14,7 +17,7 @@
  * Niche prose without a CHOICES block is injected as ecommerce niche chips.
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
- * guest_gate → niche CHOICES only | building → goal CHOICES only (strip walls) |
+ * guest_gate → niche CHOICES only | building → keep ≤4 ladder chips (strip long walls) |
  * payments / deliverable → show chips, max 4.
  */
 
@@ -131,27 +134,27 @@ export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Apparel / fashion',
     message:
-      'Niche Apparel / fashion — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=apparel). Do NOT call guidedBackend yet. After preview, emit FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is).',
+      'Niche Apparel / fashion — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=apparel). Do NOT call guidedBackend yet. After preview, emit launch-ladder FOLLOWUPS (Go Live first) and keep advancing until live url + payments path.',
   },
   {
     label: 'Electronics / gadgets',
     message:
-      'Niche Electronics / gadgets — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=electronics). Do NOT call guidedBackend yet.',
+      'Niche Electronics / gadgets — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=electronics). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
   },
   {
     label: 'Food / grocery',
     message:
-      'Niche Food / grocery — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=food-grocery). Do NOT call guidedBackend yet.',
+      'Niche Food / grocery — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=food-grocery). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
   },
   {
     label: 'Beauty / personal care',
     message:
-      'Niche Beauty / personal care — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=beauty). Do NOT call guidedBackend yet.',
+      'Niche Beauty / personal care — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=beauty). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
   },
   {
     label: "I'll type my specific niche",
     message:
-      "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
+      "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend; after preview keep emitting Go Live–first launch-ladder chips",
   },
 ] as const
 
@@ -282,11 +285,12 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Wire storefront to this catalog',
     message:
-      'Wire the storefront product grid to catalog_json / session.backend REST — keep Buy CTA placeholder until payments are connected',
+      'Wire the storefront product grid to catalog_json / session.backend REST — keep Buy CTA placeholder until payments are connected; then emit Go Live chips',
   },
   {
     label: 'Go Live on Indobase',
-    message: 'Go Live — publish this store with launchBusiness and quote the exact url',
+    message:
+      'Go Live — publish this store with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips',
   },
   {
     label: 'Publish admin dashboard',
@@ -294,8 +298,8 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
       'Publish admin_html from listShopOrders via launchBusiness as admin.html once — it live-refreshes from project REST; do not republish just to refresh orders',
   },
   {
-    label: 'Leave it as-is for now',
-    message: 'Looks good — leave it as-is for now',
+    label: 'Wire then Go Live',
+    message: 'Wire the storefront to session.backend then Go Live with launchBusiness — full launch is the goal',
   },
 ] as const
 
@@ -325,19 +329,19 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} to my Indobase subdomain with launchBusiness`,
+        message: `Go Live — publish ${name} to my Indobase subdomain with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
       },
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name}, prove with placeTestShopOrder, then emit Wire / Go Live chips — do not skip to payments yet`,
+        message: `Call guidedBackend mode=ecommerce for ${name}, prove with placeTestShopOrder, then emit Wire / Go Live chips — do not restart guest/auth`,
       },
       {
-        label: 'Refine the design',
-        message: `Refine the design and branding for ${name} — polish layout, typography, and visuals`,
+        label: 'Refine then Go Live',
+        message: `Refine the design and branding for ${name}, then Go Live with launchBusiness (full launch is the goal)`,
       },
       {
-        label: 'Leave it as-is for now',
-        message: 'Looks good — leave it as-is for now',
+        label: 'Wire + Go Live',
+        message: `If catalog exists, wire the ${name} storefront to session.backend then Go Live with launchBusiness`,
       },
     ],
   }
@@ -354,19 +358,19 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Wire storefront to this catalog',
-        message: `Wire the ${name} storefront to catalog_json / session.backend REST (product grid + cart); Buy CTA placeholder until payments`,
+        message: `Wire the ${name} storefront to catalog_json / session.backend REST (product grid + cart); Buy CTA placeholder until payments; then emit Go Live chips`,
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} with launchBusiness and quote the exact url`,
+        message: `Go Live — publish ${name} with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
       },
       {
         label: 'Publish admin dashboard',
-        message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh)`,
+        message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh), then continue to Go Live if the storefront is not live yet`,
       },
       {
-        label: 'Leave it as-is for now',
-        message: 'Looks good — leave it as-is for now',
+        label: 'Wire then Go Live',
+        message: `Wire ${name} to session.backend then Go Live with launchBusiness in one pass — full launch is the goal`,
       },
     ],
   }
@@ -423,15 +427,15 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist for ${name} with checkout_wired true when CTA uses wireCheckout url`,
+        message: `Run productionChecklist for ${name} with checkout_wired true when CTA uses wireCheckout url — finish full launch`,
       },
       {
         label: 'Publish admin dashboard',
         message: `Publish admin_html for ${name} as admin.html once if not already live`,
       },
       {
-        label: 'Leave it as-is for now',
-        message: 'Looks good — leave it as-is for now',
+        label: 'Connect my domain',
+        message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
       },
     ],
   }
@@ -486,10 +490,10 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
   return { body, title, items }
 }
 
-/** Body mentions a real preview / live site (not merely “what’s next”). */
+/** Body mentions a real preview / live site / stage progress (not merely “what’s next”). */
 export function bodyHasDeliverableSignal(message: string): boolean {
   const text = message.toLowerCase()
-  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim/.test(
+  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim|wired (the )?storefront|storefront wired|admin\.html|checkout_url|payments are live|claim_production_ready/.test(
     text,
   )
 }
@@ -529,6 +533,11 @@ export function itemsLookLikeDefaultPostBuild(items: readonly FollowUpItem[]): b
   return hits >= 2
 }
 
+/** Long canned walls only — ≤4 personalized launch-ladder chips must stay visible. */
+export function itemsLookLikeCannedPostBuildWall(items: readonly FollowUpItem[]): boolean {
+  return itemsLookLikeDefaultPostBuild(items) && items.length > MAX_VISIBLE_CHIPS
+}
+
 /** Payments market / KYC / checkout path (capability stage). */
 export function looksLikePaymentsPath(message: string): boolean {
   const text = message.toLowerCase()
@@ -556,6 +565,8 @@ function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
 /**
  * Enforce Naive-style timing + brevity.
  * Guest gate: strip post-build walls, but KEEP ecommerce niche CHOICES.
+ * Building: strip only long canned walls — keep ≤4 personalized launch-ladder chips
+ * so the operator can keep advancing to full Go Live.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
   if (stage === 'guest_gate') {
@@ -566,7 +577,7 @@ export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = infer
   }
 
   if (stage === 'building') {
-    if (itemsLookLikeDefaultPostBuild(parsed.items)) {
+    if (itemsLookLikeCannedPostBuildWall(parsed.items)) {
       return { body: stripLeakedCot(parsed.body), title: '', items: [] }
     }
     return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
@@ -589,7 +600,7 @@ export function extractBrandFromMessage(message: string): string | null {
 
 /**
  * When the agent finished a deliverable but omitted FOLLOWUPS, inject Naive-style
- * post-preview chips so non-technical operators always get a next step.
+ * next-ladder chips so operators keep moving toward full launch.
  */
 export function injectDeliverableFollowUps(message: string): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
@@ -600,10 +611,16 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
   const brand = extractBrandFromMessage(message)
   let stage: StageFollowUps
   const lower = message.toLowerCase()
-  if (/claim_backend_ready|catalog seeded|place.?test.?shop.?order|shop backend is live/.test(lower)) {
-    stage = postBackendFollowups(brand)
+  if (/checkout_url|payments are live|wirecheckout|claim_production_ready/.test(lower)) {
+    stage = postPaymentsFollowups(brand)
   } else if (/sites\.indobase\.in|go live — published|published to|is now live/.test(lower)) {
     stage = postGoLiveFollowups(brand, { store: true })
+  } else if (
+    /claim_backend_ready|catalog seeded|place.?test.?shop.?order|shop backend is live|wired (the )?storefront|storefront wired/.test(
+      lower,
+    )
+  ) {
+    stage = postBackendFollowups(brand)
   } else {
     stage = postPreviewFollowups(brand)
   }

@@ -392,7 +392,7 @@ export function ecommerceVerticalFollowups(brand?: string | null): {
         label: v.label,
         message:
           `Niche ${v.label}${brandBit} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
-          `Do NOT call guidedBackend yet. After preview, emit FOLLOWUPS (Go Live / Add a real backend / Refine / Leave as-is).`,
+          `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
       })),
       {
         label: "I'll type my specific niche",

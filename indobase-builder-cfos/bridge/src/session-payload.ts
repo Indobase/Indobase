@@ -89,26 +89,29 @@ export function buildJourneyStateAppendix(session: Session): string {
   const paymentsReady = sessionLooksPaymentsReady(session)
   const lines = [
     '## Journey state (session)',
+    '## North star (HARD)',
+    '- Always take the operator to a **full launch** via recommendation chips (preview → Go Live → domain/payments/checklist).',
+    '- After every completed stage: emit 2–4 next FOLLOWUPS. Never stop after 1–2 chip rounds. Never restart guest/auth once signed in.',
     `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
     '## Default store ladder (when building a shop)',
-    'niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. ≤4 chips; rewrite for brand.',
+    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional backend/wire → Go Live → Add payments → wireCheckout → productionChecklist. ≤4 chips; rewrite for brand.',
   ]
   if (backendReady) {
     const ref = session.backend?.project_ref || session.projectRef
     lines.push(`- Backend project_ref: ${ref}`)
     lines.push(
-      '- Prefer chips (order): Wire storefront → Go Live (launchBusiness) → Publish admin / Leave — payments only after live or explicit ask.',
+      '- Prefer chips (order): Wire storefront → Go Live (launchBusiness) → Domain / Add payments / Checklist — keep advancing until live.',
     )
   } else {
     lines.push(
-      '- Prefer path: preview-first → FOLLOWUPS (Go Live / Add a real backend / Refine / Leave). Niche pick must NOT call guidedBackend.',
+      '- Prefer path: preview-first → FOLLOWUPS with **Go Live first** (Add a real backend / Refine then Go Live). Niche pick must NOT call guidedBackend. Do not dead-end on Leave as-is.',
     )
   }
   if (paymentsReady) {
     lines.push('- Payments: keys appear configured — prefer wireCheckout (INR if India) + patch Buy CTA + productionChecklist.')
   } else {
     lines.push(
-      '- Payments: not known from session — India vs Stripe CHOICES only when operator asks or picks Add payments.',
+      '- Payments: after Go Live, ALWAYS offer Add payments CHOICES (India/Razorpay vs Stripe) — full launch includes a checkout path.',
     )
   }
   return lines.join('\n')

@@ -120,6 +120,7 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /applySchema/)
     assert.match(payload.agent_hint, /guidedBackend|Preview-first|live data/i)
     assert.match(payload.agent_hint, /Journey state \(session\)/)
+    assert.match(payload.agent_hint, /North star \(HARD\)/)
     assert.match(payload.agent_hint, /Backend: not ready/)
     assert.match(payload.agent_hint, /productionChecklist/)
   })
