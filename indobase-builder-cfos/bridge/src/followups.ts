@@ -78,12 +78,8 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
       'Run productionChecklist for this app_type with the live_url and honest checks — only claim production ready if claim_production_ready is true',
   },
   {
-    label: 'Refine the design',
-    message: 'Refine the design and branding — polish layout, typography, and visuals',
-  },
-  {
-    label: 'Leave it as-is for now',
-    message: 'Looks good — leave it as-is for now',
+    label: 'Refine then Go Live',
+    message: 'Refine the design briefly, then Go Live with launchBusiness — full launch is the goal',
   },
 ] as const
 
@@ -270,12 +266,8 @@ export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
       'Finish the production site checklist — login if needed, SEO title/description, privacy/terms links, custom domain CNAME, and confirm checkout CTA uses wireCheckout checkout_url',
   },
   {
-    label: 'Refine the design',
-    message: 'Refine the design and branding — polish layout, typography, and visuals',
-  },
-  {
-    label: 'Leave it as-is for now',
-    message: 'Looks good — leave it as-is for now',
+    label: 'Connect my domain',
+    message: 'Connect a domain I already own — customDomain + CNAME to sites.indobase.in',
   },
 ] as const
 
@@ -493,7 +485,7 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
 /** Body mentions a real preview / live site / stage progress (not merely “what’s next”). */
 export function bodyHasDeliverableSignal(message: string): boolean {
   const text = message.toLowerCase()
-  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim|wired (the )?storefront|storefront wired|admin\.html|checkout_url|payments are live|claim_production_ready/.test(
+  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim|wired (the )?storefront|storefront wired|admin\.html|checkout_url|payments are live|claim_production_ready|refined (the )?(design|hero|branding)|polished (the )?(hero|layout|storefront)|ready when you are|i('ve| have) (updated|refined|polished)/.test(
     text,
   )
 }
@@ -516,10 +508,27 @@ export function looksLikeCompletedDeliverable(message: string): boolean {
 /** Guest gate / account / "before I begin" — not a finished website. */
 export function looksLikePreBuildClarification(message: string): boolean {
   const text = message.toLowerCase()
+  // Past the gate / already building — never reclassify as guest_gate (keeps launch chips).
+  if (
+    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|on file|continue(ing)? (with )?the original|building the|i('ll| will) (now )?(build|continue)|preview ready|here's what i built|sites\.indobase\.in/.test(
+      text,
+    )
+  ) {
+    return false
+  }
+  if (bodyHasDeliverableSignal(message)) return false
+
   return (
-    /clarifying guest|guest (account )?gate|before i begin|please share:|dpdp consent|name \+ email|name and email|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
+    /clarifying guest|guest (account )?gate|before i begin|please share:|dpdp consent|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
       text,
     ) ||
+    // Require ask/collect context — bare "name and email" mentions must not strip launch chips.
+    /(?:please share|need your|ask(?:ing)? for|provide your|send (me )?your).{0,60}(name.{0,24}email|email.{0,24}name)/.test(
+      text,
+    ) ||
+    (/(?:name \+ email|name and email)/.test(text) &&
+      /(?:before i begin|please share|dpdp|consent|otp|guest)/.test(text) &&
+      !/(?:on file|verified|signed)/.test(text)) ||
     (/guest/.test(text) && /name|email|consent/.test(text) && /before|first|gate|share/.test(text))
   )
 }

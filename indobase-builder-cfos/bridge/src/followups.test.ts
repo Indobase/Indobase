@@ -173,6 +173,41 @@ I'd love to build this for you. Before I begin, please share name and email.`
     assert.match(stripLeakedCot(dirty), /I'd love to build/i)
   })
 
+  it('does not treat post-verify name/email mentions as guest_gate (keeps launch chips)', () => {
+    const input = `Thanks — you are verified. Name and email are on file. Building the apparel preview next.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take MERIDIAN next?
+Go Live on Indobase | Go Live — publish MERIDIAN
+Add a real backend | guidedBackend then Go Live
+Refine then Go Live | Refine then Go Live
+Wire + Go Live | Wire then Go Live
+INDOBASE_FOLLOWUPS>>>
+`
+    assert.equal(looksLikePreBuildClarification(input), false)
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.equal(resolved.items.length, 4)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+  })
+
+  it('still detects real guest-gate asks for name + email', () => {
+    assert.equal(
+      looksLikePreBuildClarification(
+        "I'd love to build this. Before I begin, please share name and email and DPDP consent.",
+      ),
+      true,
+    )
+  })
+
+  it('injects launch chips after refine/polish prose without FOLLOWUPS', () => {
+    const input = "I've polished the hero and refined the branding — ready when you are."
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+    assert.ok(resolved.items.every((i) => !/leave it as-is/i.test(i.label)))
+  })
+
   it('building stage strips canned post-build wall', () => {
     const input = `I'll sketch a few options for the headphone landing page.
 
