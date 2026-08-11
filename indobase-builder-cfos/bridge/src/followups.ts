@@ -453,7 +453,8 @@ export function parseFollowUpLine(line: string): FollowUpItem | null {
 }
 
 /**
- * Extract the first FOLLOWUPS/CHOICES block. Returns null if none.
+ * Extract FOLLOWUPS/CHOICES chips. If the agent emits multiple blocks, prefer the
+ * **last** one (latest stage) and strip all blocks from the markdown body.
  */
 export function parseFollowUps(message: string): ParsedFollowUps | null {
   if (!message || !/<<<INDOBASE_(FOLLOWUPS|CHOICES)/i.test(message)) {
@@ -461,27 +462,38 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
   }
 
   let title = DEFAULT_POST_BUILD_TITLE
-  const items: FollowUpItem[] = []
-  let body = message
+  let items: FollowUpItem[] = []
+  let found = false
+  // Fresh regex — BLOCK_RE is global; avoid lastIndex bleed across calls.
+  const blockRe =
+    /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n([\s\S]*?)\r?\nINDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
 
-  body = body.replace(BLOCK_RE, (_full, _open, inner: string) => {
-    for (const rawLine of inner.split(/\r?\n/)) {
-      const line = rawLine.trim()
-      if (!line) continue
-      const titleMatch = /^title\s*:\s*(.+)$/i.exec(line)
-      if (titleMatch) {
-        title = titleMatch[1].trim() || title
-        continue
+  const body = message
+    .replace(blockRe, (_full, _open, inner: string) => {
+      const blockItems: FollowUpItem[] = []
+      let blockTitle = DEFAULT_POST_BUILD_TITLE
+      for (const rawLine of inner.split(/\r?\n/)) {
+        const line = rawLine.trim()
+        if (!line) continue
+        const titleMatch = /^title\s*:\s*(.+)$/i.exec(line)
+        if (titleMatch) {
+          blockTitle = titleMatch[1].trim() || blockTitle
+          continue
+        }
+        const item = parseFollowUpLine(line)
+        if (item) blockItems.push(item)
       }
-      const item = parseFollowUpLine(line)
-      if (item) items.push(item)
-    }
-    return ''
-  })
+      if (blockItems.length > 0) {
+        found = true
+        title = blockTitle
+        items = blockItems
+      }
+      return ''
+    })
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()
 
-  body = body.replace(/\n{3,}/g, '\n\n').trimEnd()
-
-  if (items.length === 0) return null
+  if (!found || items.length === 0) return null
   return { body, title, items }
 }
 

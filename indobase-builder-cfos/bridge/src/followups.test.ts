@@ -40,6 +40,32 @@ INDOBASE_FOLLOWUPS>>>
     assert.doesNotMatch(parsed.body, /INDOBASE_FOLLOWUPS/)
   })
 
+  it('prefers the last FOLLOWUPS block when the agent emits two', () => {
+    const input = `Building…
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take this next?
+Go Live on Indobase | early go live
+INDOBASE_FOLLOWUPS>>>
+
+Preview ready — what's in it: shop grid.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take Aural next?
+Add payments | connect payments
+Connect my domain | connect domain
+Production checklist | checklist
+INDOBASE_FOLLOWUPS>>>
+`
+    const parsed = parseFollowUps(input)
+    assert.ok(parsed)
+    assert.equal(parsed.title, 'Where should I take Aural next?')
+    assert.ok(parsed.items.some((i) => /payments/i.test(i.label)))
+    assert.ok(parsed.items.every((i) => !/early go live/i.test(i.message)))
+    assert.doesNotMatch(parsed.body, /INDOBASE_FOLLOWUPS/)
+    assert.match(parsed.body, /Preview ready/)
+  })
+
   it('accepts INDOBASE_CHOICES alias for clarifying questions', () => {
     const input = `What will you sell?
 

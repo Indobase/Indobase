@@ -2,7 +2,7 @@
  * Follow-up / clarifying choice chips (competitor-style guided next steps).
  * Copied into CFOS workshop-frontend by rebrand-cloudflare-os.mjs.
  */
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   parseFollowUps,
@@ -33,23 +33,39 @@ export const FollowUpChipGrid = memo(function FollowUpChipGrid({
   onPick: (message: string) => void
   disabled?: boolean
 }) {
+  const [pickedKey, setPickedKey] = useState<string | null>(null)
+
+  // New chip set (new agent turn) → allow picks again.
+  useEffect(() => {
+    setPickedKey(null)
+  }, [title, items])
+
   if (!items.length) return null
+
+  const locked = Boolean(disabled || pickedKey)
 
   return (
     <div className={styles.root} role="region" aria-label={title}>
       <div className={styles.title}>{title}</div>
       <div className={styles.grid}>
-        {items.map((item) => (
-          <button
-            key={`${item.label}::${item.message}`}
-            type="button"
-            className={styles.chip}
-            disabled={disabled}
-            onClick={() => onPick(item.message)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {items.map((item) => {
+          const key = `${item.label}::${item.message}`
+          return (
+            <button
+              key={key}
+              type="button"
+              className={styles.chip}
+              disabled={locked}
+              onClick={() => {
+                if (locked) return
+                setPickedKey(key)
+                onPick(item.message)
+              }}
+            >
+              {item.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
