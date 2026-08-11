@@ -80,6 +80,8 @@ export function openRouterKeyConfigured(): boolean {
 export async function ensureAgentModels(input: {
   username: string
   password: string
+  /** Human label — never seed CFOS profile as ib_*. */
+  displayName?: string
 }): Promise<{ ok: boolean; message?: string }> {
   const apiKey = resolveOpenRouterKey()
   if (!apiKey || apiKey.length < 20) {
@@ -88,11 +90,14 @@ export async function ensureAgentModels(input: {
 
   const cfosUrl = resolveCfosUrl()
   const wsUrl = cfosUrl.replace(/^http/, 'ws') + '/api'
+  const rawLabel = typeof input.displayName === 'string' ? input.displayName.trim() : ''
+  const accountLabel =
+    rawLabel && !rawLabel.startsWith('ib_') ? rawLabel : 'Indobase operator'
 
   try {
     const api = newWebSocketRpcSession(wsUrl) as unknown as PublicApi
     const passwordHash = await hashPassword(input.username, input.password)
-    let token = await api.createAccount(input.username, input.username, passwordHash)
+    let token = await api.createAccount(input.username, accountLabel, passwordHash)
     if (!token) token = await api.login(input.username, passwordHash)
     if (!token) return { ok: false, message: 'CFOS login failed' }
 
@@ -132,7 +137,11 @@ export async function ensureAgentModels(input: {
 }
 
 /** Fire-and-forget wrapper for credentials endpoint. */
-export function ensureAgentModelsAsync(input: { username: string; password: string }): void {
+export function ensureAgentModelsAsync(input: {
+  username: string
+  password: string
+  displayName?: string
+}): void {
   if (!openRouterKeyConfigured()) {
     console.warn('[ensure-agent-models] OPEN_ROUTER_API_KEY missing — chat will not generate')
     return

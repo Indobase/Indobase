@@ -226,6 +226,21 @@ INDOBASE_FOLLOWUPS>>>
     )
   })
 
+  it('does not treat guest checkout / past the guest gate as guest_gate', () => {
+    assert.equal(
+      looksLikePreBuildClarification(
+        'Added guest checkout on the first email receipt screen for the store.',
+      ),
+      false,
+    )
+    assert.equal(
+      looksLikePreBuildClarification(
+        "We're past the guest gate — continuing with Go Live chips for the apparel site.",
+      ),
+      false,
+    )
+  })
+
   it('injects launch chips after refine/polish prose without FOLLOWUPS', () => {
     const input = "I've polished the hero and refined the branding — ready when you are."
     const resolved = resolveFollowUps(input)

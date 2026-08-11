@@ -53,9 +53,9 @@ describe('guest gates', () => {
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/tools/ensureLogin'))
   })
 
-  it('accountRequiredBody points operators at Continue with email', () => {
+  it('accountRequiredBody points operators at Create account / chat verify', () => {
     const body = accountRequiredBody()
     assert.equal(body.code, 'account_required')
-    assert.match(body.message, /Continue with email/)
+    assert.match(body.message, /Create your Indobase account/)
   })
 })

@@ -530,7 +530,7 @@ export function looksLikePreBuildClarification(message: string): boolean {
   const text = message.toLowerCase()
   // Past the gate / already building — never reclassify as guest_gate (keeps launch chips).
   if (
-    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|on file|continue(ing)? (with )?the original|building the|i('ll| will) (now )?(build|continue)|preview ready|here's what i built|sites\.indobase\.in/.test(
+    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|on file|continue(ing)? (with )?the original|building the|i('ll| will) (now )?(build|continue)|preview ready|here's what i built|sites\.indobase\.in|past the guest( account)? gate|guest checkout/.test(
       text,
     )
   ) {
@@ -549,7 +549,10 @@ export function looksLikePreBuildClarification(message: string): boolean {
     (/(?:name \+ email|name and email)/.test(text) &&
       /(?:before i begin|please share|dpdp|consent|otp|guest)/.test(text) &&
       !/(?:on file|verified|signed)/.test(text)) ||
-    (/guest/.test(text) && /name|email|consent/.test(text) && /before|first|gate|share/.test(text))
+    // Require explicit guest-account-gate phrasing — not "guest checkout" / "first email".
+    (/guest (account )?gate/.test(text) &&
+      /(?:name|email|consent|otp|dpdp|privacy|terms)/.test(text) &&
+      !/(?:checkout|past the guest|already)/.test(text))
   )
 }
 

@@ -17,6 +17,7 @@ import {
   createGuestSession,
   createSessionToken,
   isGuestSession,
+  profileDisplayName,
   readCookie,
   readSessionToken,
   resolveHandoffSecret,
@@ -539,7 +540,7 @@ app.post('/sso/logout', (c) => {
 })
 
 /**
- * Start OTP — Platform API (no data-plane provision). Same path for chat + Continue with email.
+ * Start OTP — Platform API (no data-plane provision). Same path for chat + Create account modal.
  */
 app.post('/auth/start', async (c) => {
   const body = await c.req.json().catch(() => null)
@@ -633,6 +634,7 @@ app.post('/auth/verify', async (c) => {
     projectRef: ws.workspace_ref,
     orgSlug: ws.organization_slug,
     projectName: ws.workspace_name,
+    displayName: name,
     studioUrl: 'https://studio.indobase.in',
     backend: ws.backend ?? undefined,
   }
@@ -689,7 +691,7 @@ app.get('/api/os/runtime/session-status', async (c) => {
     project_name: session.projectName || null,
     signed_in: !guest,
     message: guest
-      ? 'Unsigned-in: complete Continue with email / authStart+authVerify once, then continue the original request.'
+      ? 'Unsigned-in: complete account in chat (name+email+DPDP → authStart+authVerify) or Create account, then continue the original request.'
       : 'Signed in — do not ask for signup/OTP again. Continue the operator request.',
   })
 })
@@ -1292,13 +1294,18 @@ app.post('/api/os/runtime/ensure', async (c) => {
     settlementMarket,
   })
   if (result.backend && result.provision_state === 'ready') {
-    let secret: string
-    try {
-      secret = resolveHandoffSecret()
-      const updated: Session = { ...sessionOrErr, backend: result.backend }
-      c.header('Set-Cookie', sessionCookie(createSessionToken(updated, secret)))
-    } catch {
-      // session refresh best-effort
+    // Only refresh the browser session cookie when this request carries one.
+    // Agent-tool ensure responses never reach the operator browser Set-Cookie jar.
+    const browserSession = getSession(c)
+    if (browserSession && !isGuestSession(browserSession)) {
+      let secret: string
+      try {
+        secret = resolveHandoffSecret()
+        const updated: Session = { ...browserSession, backend: result.backend }
+        c.header('Set-Cookie', sessionCookie(createSessionToken(updated, secret)))
+      } catch {
+        // session refresh best-effort
+      }
     }
   }
   return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
@@ -1625,30 +1632,13 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     projectName: sessionOrErr.projectName,
   })
   // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
-  ensureAgentModelsAsync({ username: creds.username, password: creds.password })
+  const displayName = profileDisplayName(sessionOrErr)
+  ensureAgentModelsAsync({
+    username: creds.username,
+    password: creds.password,
+    displayName: displayName || undefined,
+  })
   const guest = isGuestSession(sessionOrErr)
-  // #region agent log
-  fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-    body: JSON.stringify({
-      sessionId: '012e63',
-      runId: 'stale-token-fix',
-      hypothesisId: 'F',
-      location: 'bridge/index.ts:agent-credentials',
-      message: 'agent_credentials_issued',
-      data: {
-        guest,
-        stage: guest ? 'guest' : 'member',
-        usernamePrefix: String(creds.username || '').slice(0, 12),
-        storageKeyPrefix: String(creds.storage_key || '').slice(0, 28),
-        projectRefPrefix: String(sessionOrErr.projectRef || '').slice(0, 10),
-        hasEmail: Boolean(sessionOrErr.email),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
   // Never log password.
   return c.json({
     ok: true,
@@ -1659,6 +1649,7 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     stage: guest ? 'guest' : 'member',
     signed_in: !guest,
     email: sessionOrErr.email || null,
+    display_name: displayName || null,
     project_ref: sessionOrErr.projectRef,
     modelsEnsuring: openRouterKeyConfigured(),
   })

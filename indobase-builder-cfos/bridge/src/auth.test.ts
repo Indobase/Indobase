@@ -5,7 +5,9 @@ import { describe, it } from 'node:test'
 import {
   AUDIENCE,
   claimsToSession,
+  clearSessionCookie,
   createSessionToken,
+  profileDisplayName,
   readSessionToken,
   verifyStudioHandoff,
 } from './auth.ts'
@@ -66,7 +68,26 @@ describe('builder-cfos auth', () => {
     const restored = readSessionToken(sessionToken, SECRET)
     assert.ok(restored)
     assert.equal(restored.email, 'ops@indobase.in')
+    assert.equal(restored.displayName, 'ops')
     assert.equal(restored.backend?.api_url, 'https://proj_demo.indobase.in')
+  })
+
+  it('keeps OTP displayName on session round-trip', () => {
+    const sessionToken = createSessionToken(
+      {
+        gotrueId: 'user-2',
+        email: 'ada@indobase.in',
+        projectRef: 'proj_ada',
+        orgSlug: 'ada',
+        displayName: 'Ada Lovelace',
+        studioUrl: 'https://studio.indobase.in',
+      },
+      SECRET,
+    )
+    const restored = readSessionToken(sessionToken, SECRET)
+    assert.ok(restored)
+    assert.equal(restored.displayName, 'Ada Lovelace')
+    assert.equal(profileDisplayName(restored), 'Ada Lovelace')
   })
 
   it('rejects wrong audience', () => {
@@ -83,5 +104,19 @@ describe('builder-cfos auth', () => {
       SECRET
     )
     assert.equal(verifyStudioHandoff(token, SECRET), null)
+  })
+
+  it('clearSessionCookie mirrors Secure in production', () => {
+    const prev = process.env.NODE_ENV
+    const prevForce = process.env.FORCE_SECURE_COOKIES
+    process.env.NODE_ENV = 'production'
+    delete process.env.FORCE_SECURE_COOKIES
+    assert.match(clearSessionCookie(), /Secure/)
+    process.env.NODE_ENV = 'development'
+    process.env.FORCE_SECURE_COOKIES = '1'
+    assert.match(clearSessionCookie(), /Secure/)
+    process.env.NODE_ENV = prev
+    if (prevForce === undefined) delete process.env.FORCE_SECURE_COOKIES
+    else process.env.FORCE_SECURE_COOKIES = prevForce
   })
 })

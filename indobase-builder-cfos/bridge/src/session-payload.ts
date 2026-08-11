@@ -8,7 +8,7 @@ import {
 } from '@indobase/cloudflare-adapter'
 
 import type { Session } from './auth.js'
-import { isGuestSession } from './auth.js'
+import { isGuestSession, profileDisplayName } from './auth.js'
 import {
   BUSINESS_OS_DISCOVERABLE_ACTIONS,
   discoverableActionsForSession,
@@ -123,7 +123,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
     account_required: true,
     gate: 'first',
     message:
-      'Acknowledge their request, then complete Indobase account via Continue with email (or in chat: name+email+DPDP → /auth/start → OTP → /auth/verify) before any other work.',
+      'Acknowledge their request, then complete Indobase account in chat (name+email+DPDP → /auth/start → OTP → /auth/verify) or via Create account before any other work.',
     auth: {
       start: '/auth/start',
       verify: '/auth/verify',
@@ -167,6 +167,8 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
 
   return {
     email: session.email,
+    /** Operator display name for CFOS profile sync (OTP name or email local-part). */
+    display_name: profileDisplayName(session) || null,
     guest,
     /** UI-readable session stage: guest (unsigned) | member (signed-in Free+). */
     stage,
@@ -198,7 +200,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       start: '/auth/start',
       verify: '/auth/verify',
       in_chat: true,
-      /** Deterministic Continue-with-email chrome is injected on the desktop. */
+      /** Deterministic Create-account chrome is injected on the desktop. */
       ui: true,
       open_event: 'indobase:open-auth',
     },

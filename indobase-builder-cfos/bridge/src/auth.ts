@@ -35,6 +35,8 @@ export type Session = {
   projectRef: string
   orgSlug: string
   projectName?: string
+  /** Operator display name from OTP / Studio — synced into CFOS profile. */
+  displayName?: string
   studioUrl: string
   backend?: BackendConfig
 }
@@ -172,6 +174,7 @@ export function readSessionToken(token: string, secret: string): Session | null 
     projectRef,
     orgSlug: typeof payload.orgSlug === 'string' ? payload.orgSlug : '',
     projectName: typeof payload.projectName === 'string' ? payload.projectName : undefined,
+    displayName: typeof payload.displayName === 'string' ? payload.displayName : undefined,
     studioUrl:
       typeof payload.studioUrl === 'string' ? payload.studioUrl : 'https://studio.indobase.in',
     backend: parseBackend(payload.backend),
@@ -192,7 +195,10 @@ export function sessionCookie(token: string): string {
 }
 
 export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
+  const secure = process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === '1'
+  const parts = [`${SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
+  if (secure) parts.push('Secure')
+  return parts.join('; ')
 }
 
 export function readCookie(cookieHeader: string | undefined, name: string): string | null {
@@ -226,13 +232,28 @@ export function isGuestSession(session: Session): boolean {
 }
 
 export function claimsToSession(claims: StudioClaims): Session {
+  const email = claims.email
+  const local = email.includes('@') ? email.split('@')[0]?.trim() : ''
   return {
     gotrueId: claims.sub,
-    email: claims.email,
+    email,
     projectRef: claims.project_ref,
     orgSlug: claims.organization_slug,
     projectName: claims.project_name,
+    displayName: local || undefined,
     studioUrl: claims.studio_url || 'https://studio.indobase.in',
     backend: claims.backend,
   }
+}
+
+/** Human-readable name for CFOS profile / chat authorship. */
+export function profileDisplayName(session: Pick<Session, 'displayName' | 'email'>): string {
+  const named = typeof session.displayName === 'string' ? session.displayName.trim() : ''
+  if (named) return named
+  const email = typeof session.email === 'string' ? session.email.trim() : ''
+  if (email.includes('@')) {
+    const local = email.split('@')[0]?.trim()
+    if (local) return local
+  }
+  return ''
 }

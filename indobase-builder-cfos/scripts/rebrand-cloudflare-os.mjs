@@ -453,6 +453,52 @@ for (const [rel, pairs] of [
   }
 }
 
+// --- AuthContext: keep CFOS profile name in sync with Indobase session ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/AuthContext.tsx')
+  let text = read(path)
+  if (text.includes('indobaseSyncProfileFromSession')) {
+    console.log('  AuthContext already syncs Indobase display name (skip)')
+  } else {
+    const marker = `  useEffect(() => {
+    let cancelled = false
+    authenticatedApi.whoami().then((info) => {
+      if (!cancelled) setCurrentUser(info)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [authenticatedApi])`
+    const replacement = `  useEffect(() => {
+    let cancelled = false
+    async function indobaseSyncProfileFromSession() {
+      try {
+        const info = await authenticatedApi.whoami()
+        if (cancelled) return
+        setCurrentUser(info)
+        const s = await fetch('/api/session', { credentials: 'same-origin' }).then((r) => r.json()).catch(() => null)
+        if (cancelled || !s || s.guest) return
+        const desired = String(s.display_name || '').trim()
+          || (s.email && String(s.email).includes('@') ? String(s.email).split('@')[0].trim() : '')
+        if (!desired || desired.startsWith('ib_')) return
+        if (info?.name === desired) return
+        await authenticatedApi.setOwnDisplayName(desired)
+        if (!cancelled) setCurrentUser({ ...info, name: desired })
+      } catch {
+        // best-effort
+      }
+    }
+    indobaseSyncProfileFromSession()
+    return () => { cancelled = true }
+  }, [authenticatedApi])`
+    if (text.includes(marker)) {
+      text = text.replace(marker, replacement)
+      write(path, text)
+      console.log('  AuthContext ← sync display name from /api/session')
+    } else {
+      console.warn('  skip: AuthContext whoami effect not found (upstream drifted)')
+    }
+  }
+}
+
 // --- Per-session CFOS principal + same-origin API host (Studio SSO is the gate) ---
 {
   const path = join(OS, 'packages/workshop-frontend/src/main.tsx')
@@ -473,6 +519,7 @@ for (const [rel, pairs] of [
   let password = import.meta.env.VITE_DEV_PASSWORD ?? 'devpassword'
   let storageKey: string | null = null
   let signedIn = false
+  let displayName = ''
 
   try {
     const res = await fetch('/api/os/runtime/agent-credentials', { credentials: 'same-origin' })
@@ -485,12 +532,19 @@ for (const [rel, pairs] of [
         guest?: boolean
         signed_in?: boolean
         stage?: string
+        email?: string | null
+        display_name?: string | null
       }
       if (json?.ok && json.username && json.password && json.storage_key) {
         username = json.username
         password = json.password
         storageKey = json.storage_key
         signedIn = json.signed_in === true || json.guest === false || json.stage === 'member'
+        displayName = String(json.display_name || '').trim()
+          || (json.email && String(json.email).includes('@')
+            ? String(json.email).split('@')[0].trim()
+            : '')
+          || ''
       }
     } else if (!onLoopback) {
       console.warn('[indobase] agent-credentials unavailable; skipping auto-login')
@@ -508,12 +562,9 @@ for (const [rel, pairs] of [
   // otherwise new chats keep the guest principal and re-ask signup.
   const activeKey = 'indobase.cfos.active_storage_key'
   const prevKey = localStorage.getItem(activeKey)
-  let clearedStale = false
-  let clearedDraftKeys = 0
   if (storageKey && prevKey && prevKey !== storageKey) {
     localStorage.removeItem('authToken')
     localStorage.removeItem(prevKey)
-    clearedStale = true
   }
   if (signedIn) {
     // Never keep a draft_/guest-scoped token alongside a member cookie.
@@ -521,50 +572,45 @@ for (const [rel, pairs] of [
       const k = localStorage.key(i)
       if (k && k.startsWith('indobase.cfos.auth.draft_')) {
         localStorage.removeItem(k)
-        clearedDraftKeys += 1
       }
     }
   }
-  // #region agent log
-  try {
-    fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-      body: JSON.stringify({
-        sessionId: '012e63',
-        runId: 'stale-token-fix',
-        hypothesisId: 'F',
-        location: 'main.tsx:devAutoLogin',
-        message: 'cfos_identity_switch',
-        data: {
-          signedIn,
-          storageKeyPrefix: storageKey ? String(storageKey).slice(0, 28) : null,
-          prevKeyPrefix: prevKey ? String(prevKey).slice(0, 28) : null,
-          keyChanged: Boolean(storageKey && prevKey && prevKey !== storageKey),
-          clearedStale,
-          clearedDraftKeys,
-          hadAuthToken: Boolean(localStorage.getItem('authToken')),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-  } catch { /* ignore */ }
-  // #endregion
   if (storageKey) localStorage.setItem(activeKey, storageKey)
+
+  async function syncCfosProfileName(token: string, desired: string): Promise<void> {
+    if (!desired || desired.startsWith('ib_')) return
+    try {
+      const api = await stub.authenticate(token)
+      const who = await api.whoami()
+      if (who?.name !== desired) await api.setOwnDisplayName(desired)
+    } catch {
+      // Profile sync is best-effort; chat still works with the token.
+    }
+  }
 
   if (storageKey) {
     const scoped = localStorage.getItem(storageKey)
     if (scoped) {
       localStorage.setItem('authToken', scoped)
+      if (signedIn && displayName) await syncCfosProfileName(scoped, displayName)
       return
     }
   }
-  if (!storageKey && localStorage.getItem('authToken')) return
+  if (!storageKey && localStorage.getItem('authToken')) {
+    // Member Indobase cookie without storage_key must not keep a stale guest CFOS token.
+    if (signedIn) {
+      localStorage.removeItem('authToken')
+    } else {
+      return
+    }
+  }
 
   const { hashPassword } = await import('./passwordHash')
   const passwordHash = await hashPassword(username, password)
 
-  let token = await stub.createAccount(username, username, passwordHash)
+  const accountLabel =
+    displayName && !displayName.startsWith('ib_') ? displayName : 'Indobase operator'
+  let token = await stub.createAccount(username, accountLabel, passwordHash)
   if (!token) {
     token = await stub.login(username, passwordHash)
   }
@@ -572,6 +618,7 @@ for (const [rel, pairs] of [
   if (token) {
     localStorage.setItem('authToken', token)
     if (storageKey) localStorage.setItem(storageKey, token)
+    if (signedIn && displayName) await syncCfosProfileName(token, displayName)
   } else if (signedIn) {
     // Do not leave a previous guest authToken in place after member cookie upgrade.
     localStorage.removeItem('authToken')
@@ -579,19 +626,20 @@ for (const [rel, pairs] of [
 }`
 
   if (
-    text.includes('indobase.cfos.active_storage_key') &&
-    text.includes('draft_')
+    text.includes('syncCfosProfileName') &&
+    text.includes('Indobase operator') &&
+    text.includes('Member Indobase cookie without storage_key') &&
+    text.includes('indobase.cfos.active_storage_key')
   ) {
-    console.log('  devAutoLogin already clears stale guest tokens (skip)')
+    console.log('  devAutoLogin already syncs CFOS profile display name (skip)')
   } else if (
     text.includes('/api/os/runtime/agent-credentials') &&
-    text.includes('per-session CFOS principal') &&
     beginIdx >= 0 &&
     afterIdx > beginIdx
   ) {
     text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
     write(path, text)
-    console.log('  devAutoLogin ← stale-guest token clear on member upgrade')
+    console.log('  devAutoLogin ← profile displayName sync from Indobase session')
   } else if (beginIdx >= 0 && afterIdx > beginIdx) {
     text = text.slice(0, beginIdx) + newDevAutoLogin + text.slice(afterIdx)
     write(path, text)

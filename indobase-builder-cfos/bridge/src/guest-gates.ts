@@ -79,7 +79,7 @@ export const OS_GUEST_ALLOWED_READ_PATHS = [
 export const ACCOUNT_REQUIRED_CODE = 'account_required' as const
 
 export const ACCOUNT_REQUIRED_MESSAGE =
-  'Create your Indobase account first — use Continue with email (or finish name + email + verification in chat), then retry Launch / Enable.'
+  'Create your Indobase account first — finish name + email + verification in chat (or Create account), then retry Launch / Enable.'
 
 export function accountRequiredBody() {
   return {

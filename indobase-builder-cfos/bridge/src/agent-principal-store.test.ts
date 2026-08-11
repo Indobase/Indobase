@@ -45,6 +45,29 @@ describe('agent-principal-store', () => {
     assert.equal(await lookupAgentPrincipal('ib_missing'), null)
   })
 
+  it('does not downgrade a member principal back to guest for the same username', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_same',
+      gotrueId: 'user-real',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: false,
+    })
+    await rememberAgentPrincipal({
+      username: 'ib_same',
+      gotrueId: 'guest_abc',
+      projectRef: 'draft_1',
+      email: '',
+      guest: true,
+    })
+    const found = await lookupAgentPrincipal('ib_same')
+    assert.equal(found?.guest, false)
+    assert.equal(found?.email, 'a@x.com')
+    assert.equal(found?.gotrueId, 'user-real')
+  })
+
   it('overwrites the same username', async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
     process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir

@@ -6,14 +6,7 @@
 const AUTH_CHROME_CSS = `
 #ib-auth-root { all: initial; font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
 #ib-auth-root * { box-sizing: border-box; }
-#ib-auth-fab {
-  position: fixed; z-index: 2147483000; right: 1rem; bottom: 1rem;
-  appearance: none; border: 0; cursor: pointer;
-  background: #3B8FD6; color: #041018; font-weight: 650;
-  padding: .65rem 1rem; border-radius: 10px; font-size: .85rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,.35);
-}
-#ib-auth-fab[hidden], #ib-auth-modal[hidden] { display: none !important; }
+#ib-auth-modal[hidden], #ib-auth-backdrop[hidden] { display: none !important; }
 #ib-auth-backdrop {
   position: fixed; inset: 0; z-index: 2147483001;
   background: rgba(6, 12, 22, .62);
@@ -78,10 +71,9 @@ const AUTH_CHROME_CSS = `
 export function injectAuthChrome(html: string): string {
   const markup = `<style id="ib-auth-chrome-css">${AUTH_CHROME_CSS}</style>
 <div id="ib-auth-root">
-  <button type="button" id="ib-auth-fab" hidden>Continue with email</button>
   <div id="ib-auth-backdrop" hidden></div>
   <div id="ib-auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ib-auth-title">
-    <h2 id="ib-auth-title">Continue with email</h2>
+    <h2 id="ib-auth-title">Create your Indobase account</h2>
     <p class="lead" id="ib-auth-lead">Create your Indobase account to publish, enable backends, and keep building.</p>
     <div id="ib-auth-err" role="alert"></div>
     <div id="ib-auth-ok"></div>
@@ -115,7 +107,6 @@ export function injectAuthChrome(html: string): string {
   if (window.__INDOBASE_AUTH_CHROME__) return;
   window.__INDOBASE_AUTH_CHROME__ = true;
 
-  var fab = document.getElementById('ib-auth-fab');
   var backdrop = document.getElementById('ib-auth-backdrop');
   var modal = document.getElementById('ib-auth-modal');
   var errEl = document.getElementById('ib-auth-err');
@@ -167,9 +158,6 @@ export function injectAuthChrome(html: string): string {
     setErr('');
     setOk('');
   }
-  function showFab(show) {
-    if (fab) fab.hidden = !show;
-  }
   function showVerifyStep(on) {
     if (stepStart) stepStart.hidden = !!on;
     if (stepVerify) stepVerify.hidden = !on;
@@ -180,7 +168,6 @@ export function injectAuthChrome(html: string): string {
       if (detail.AUTH.start) authPaths.start = detail.AUTH.start;
       if (detail.AUTH.verify) authPaths.verify = detail.AUTH.verify;
     }
-    showFab(guest);
     if (!guest) closeModal();
   }
 
@@ -266,35 +253,12 @@ export function injectAuthChrome(html: string): string {
         body: JSON.stringify({ name: name, email: email, token: token }),
       });
       var body = await readJson(res);
-      // #region agent log
-      try {
-        fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-          body: JSON.stringify({
-            sessionId: '012e63',
-            runId: 'fifty-sweep',
-            hypothesisId: 'C',
-            location: 'auth-chrome.ts:verifyOtp',
-            message: 'auth_verify_result',
-            data: {
-              httpOk: !!res.ok,
-              bodyOk: !(body && body.ok === false),
-              status: res.status,
-              hasPendingClaim: !!(body && body.pending_claim),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(function () {});
-      } catch (_) {}
-      // #endregion
       if (!res.ok || (body && body.ok === false)) {
         setErr(friendlyFromBody(body, res.status, 'Invalid or expired code. Request a new one and try again.'));
         return;
       }
       setOk('Signed in. Reloading your workspace…');
       guest = false;
-      showFab(false);
       setTimeout(function () { window.location.reload(); }, 400);
     } catch (_) {
       setErr("Couldn't verify right now. Try again in a moment.");
@@ -303,7 +267,6 @@ export function injectAuthChrome(html: string): string {
     }
   }
 
-  if (fab) fab.addEventListener('click', openModal);
   if (backdrop) backdrop.addEventListener('click', closeModal);
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (backBtn) backBtn.addEventListener('click', function () { showVerifyStep(false); setErr(''); });
@@ -332,9 +295,12 @@ export function injectAuthChrome(html: string): string {
       GUEST: true,
       AUTH: (window.__INDOBASE__ && window.__INDOBASE__.AUTH) || window.__INDOBASE_AUTH__ || authPaths,
     });
-  } else {
-    showFab(true);
   }
+
+  try {
+    var qs = new URLSearchParams(window.location.search || '');
+    if (qs.get('open_auth') === '1') openModal();
+  } catch (_) {}
 })();
 </script>`
 

@@ -68,7 +68,7 @@ export function interpretBeginTurnResult(
       code: code || 'account_required',
       message:
         message ||
-        'Create your Indobase account first — use Continue with email (or finish verification in chat), then continue.',
+        'Create your Indobase account first — finish verification in chat (or Create account), then continue.',
       httpStatus: 403,
     }
   }

@@ -77,42 +77,16 @@ const SHELL_CSS = `
 /**
  * Same-document bootstrap for the proxied CFOS desktop.
  * Replaces the old parent-frame postMessage + Go Live chrome.
- * Agent uses /api/session + launchBusiness; guests get Continue-with-email chrome
+ * Agent uses /api/session + launchBusiness; guests get Create-account chrome
  * (same /auth/start|/auth/verify as chat) so auth works if the model stalls.
  */
 export function injectIndobaseContextBootstrap(html: string): string {
   const script = `<script>
 (function () {
-  function ibDbg(hypothesisId, message, data) {
-    // #region agent log
-    try {
-      fetch('http://127.0.0.1:7641/ingest/4ce20ee8-0650-48ea-a925-95c23cb06179', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '012e63' },
-        body: JSON.stringify({
-          sessionId: '012e63',
-          runId: 'fifty-sweep',
-          hypothesisId: hypothesisId,
-          location: 'workspace-html.ts:bootstrap',
-          message: message,
-          data: data || {},
-          timestamp: Date.now(),
-        }),
-      }).catch(function () {});
-    } catch (_) {}
-    // #endregion
-  }
   async function pull() {
     try {
       const s = await fetch('/api/session', { credentials: 'same-origin' }).then(function (r) {
         return r.json();
-      });
-      ibDbg('B', 'session_pull', {
-        guest: !!s.guest,
-        stage: s.stage || (s.guest ? 'guest' : 'member'),
-        hasOnboarding: !!s.onboarding,
-        hasEmail: !!(s.email || (s.user && s.user.email)),
-        projectRefPrefix: String(s.project_ref || '').slice(0, 8),
       });
       window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
@@ -161,6 +135,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
               AUTH: window.__INDOBASE_AUTH__,
               GUEST: !!s.guest,
               STAGE: window.__INDOBASE_SESSION_STAGE__,
+              DISPLAY_NAME: s.display_name || null,
             }),
           }),
         );
@@ -171,26 +146,26 @@ export function injectIndobaseContextBootstrap(html: string): string {
           const claim = await fetch('/api/os/auth/claim-session', { credentials: 'same-origin' }).then(function (r) {
             return r.json();
           });
-          ibDbg('A', 'claim_session_result', {
-            upgraded: !!(claim && claim.upgraded),
-            guest: claim && claim.guest,
-            stage: claim && claim.stage,
-            session_ready: claim && claim.session_ready,
-          });
           if (claim && claim.upgraded) {
             window.location.reload();
             return;
           }
-        } catch (err) {
-          ibDbg('A', 'claim_session_error', { message: String(err && err.message || err) });
-        }
+        } catch (_) {}
       }
-    } catch (err) {
-      ibDbg('B', 'session_pull_error', { message: String(err && err.message || err) });
-    }
+    } catch (_) {}
   }
   pull();
   setInterval(pull, 15000);
+
+  // Create account action → open auth modal (FAB removed).
+  window.addEventListener('indobase:run-action', function (ev) {
+    try {
+      var id = ev && ev.detail && ev.detail.id;
+      if (id === 'create-account' && typeof window.__INDOBASE_OPEN_AUTH__ === 'function') {
+        window.__INDOBASE_OPEN_AUTH__();
+      }
+    } catch (_) {}
+  });
 })();
 </script>`
   let withScript = html
@@ -231,7 +206,7 @@ export function renderLandingHtml(): string {
  * Deep-linked /workspace/:id while unsigned-in or guest — do not open as the wrong CFOS principal.
  */
 export function renderWorkspaceSignInRequiredHtml(): string {
-  return `<!doctype html>
+  const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -243,9 +218,9 @@ export function renderWorkspaceSignInRequiredHtml(): string {
   <div class="hero">
     <div class="card">
       <h1>Sign in to open this workspace</h1>
-      <p>This workspace belongs to your Indobase account. Guests cannot open it — continue with email so we load your Builder session, then retry this link.</p>
+      <p>This workspace belongs to your Indobase account. Guests cannot open it — sign in with email so we load your Builder session, then retry this link.</p>
       <div class="cta-row">
-        <a class="btn" href="/?open_auth=1">Continue with email</a>
+        <a class="btn" href="/?open_auth=1">Sign in with email</a>
         <a class="btn secondary" href="/">Start a new workspace</a>
       </div>
     </div>
@@ -257,6 +232,7 @@ export function renderWorkspaceSignInRequiredHtml(): string {
   </script>
 </body>
 </html>`
+  return injectAuthChrome(html)
 }
 
 /**

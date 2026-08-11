@@ -149,7 +149,7 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
     label: 'Create account',
     audience: 'guest',
     prompt:
-      'Create Indobase account: open Continue with email (or collect name + email + DPDP in chat) → POST /auth/start → OTP → POST /auth/verify. Then continue their original request.',
+      'Create Indobase account: collect name + email + DPDP in chat → POST /auth/start → OTP → POST /auth/verify (or Create account). Then continue their original request.',
   },
   {
     id: 'go-live',

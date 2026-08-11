@@ -64,7 +64,7 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
     id: 'create-account',
     label: 'Create account',
     prompt:
-      'Create Indobase account via Continue with email (or in chat: name + email + DPDP → POST /auth/start → OTP → POST /auth/verify).',
+      'Create Indobase account in chat (name + email + DPDP → POST /auth/start → OTP → POST /auth/verify) or via Create account.',
   },
   {
     id: 'crm',

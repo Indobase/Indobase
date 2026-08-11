@@ -56,12 +56,20 @@ export async function rememberAgentPrincipal(
   const username = record.username.trim()
   if (!username) return
   const store = await readStore()
+  const existing = store.principals[username]
+  // Never clobber a verified member principal with a guest rewrite for the same CFOS
+  // username (OTP verify upgrades ib_* → member; a later guest cookie credentials pull
+  // must not flip guest back to true before claim-session).
+  const incomingGuest = Boolean(record.guest)
+  if (existing && !existing.guest && incomingGuest) {
+    return
+  }
   store.principals[username] = {
     username,
     gotrueId: record.gotrueId,
     projectRef: record.projectRef,
     email: record.email,
-    guest: Boolean(record.guest),
+    guest: incomingGuest,
     projectName: record.projectName,
     updatedAt: record.updatedAt || new Date().toISOString(),
   }
