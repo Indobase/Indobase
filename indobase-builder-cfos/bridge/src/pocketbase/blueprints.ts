@@ -1,6 +1,6 @@
 /**
- * Locked product-backend blueprints for agent-built apps.
- * Schema + authz rules are platform-owned — agents pick a vertical, not invent open tables.
+ * Product-backend blueprints — starter boilerplate for agent-built apps.
+ * Agents should seed a blueprint, then customize with applySchema tables for the customer's product.
  */
 
 export type BlueprintId = 'saas' | 'ecommerce' | 'booking' | 'blog' | 'dashboard'

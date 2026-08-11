@@ -1,5 +1,6 @@
 /**
- * Apply locked blueprints + smoke-prove architecture on the managed Indobase backend.
+ * Apply boilerplate blueprints + custom collections on the managed Indobase backend.
+ * Blueprints are starters — agents may extend or reshape with applyCustomTables.
  */
 import {
   getBlueprint,
@@ -210,6 +211,55 @@ export async function applyArchitectureBlueprint(options: {
     created,
     secured,
   }
+}
+
+/**
+ * Create/update arbitrary product collections with secure write rules.
+ * Use after (or instead of) a boilerplate blueprint to customize the customer's data model.
+ */
+export async function applyCustomTables(options: {
+  appId: string
+  tables: Array<Record<string, unknown>>
+  /** Default rule profile for custom tables (owner-scoped). */
+  rules?: RuleProfile
+}): Promise<{ ok: true; collections: string[]; created: string[] }> {
+  const created: string[] = []
+  const collections: string[] = []
+  const rules = options.rules || 'owner'
+
+  for (const table of options.tables) {
+    const name = typeof table.name === 'string' ? table.name.trim() : ''
+    if (!name) continue
+    const columns = Array.isArray(table.columns) ? table.columns : []
+    const fields = columns
+      .filter((col): col is Record<string, unknown> => Boolean(col) && typeof col === 'object')
+      .map((col) => ({
+        name: typeof col.name === 'string' ? col.name : '',
+        type: typeof col.type === 'string' ? col.type : 'text',
+        required: Boolean(col.required),
+      }))
+      .filter((field) => field.name)
+
+    const profileRaw =
+      typeof table.rules === 'string'
+        ? table.rules
+        : table.public_read === true
+          ? 'public_read_auth_write'
+          : table.authenticated_write === true
+            ? 'authenticated'
+            : rules
+
+    const result = await ensureCollectionSecure({
+      appId: options.appId,
+      name,
+      fields,
+      rules: profileRaw as RuleProfile,
+    })
+    collections.push(result.logicalName)
+    if (result.created) created.push(result.logicalName)
+  }
+
+  return { ok: true, collections, created }
 }
 
 export type ArchitectureSmokeResult =

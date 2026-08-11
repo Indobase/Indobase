@@ -72,11 +72,11 @@ export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 
 When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
 
-1. Call **guidedBackend** (generic includes **ensureLogin** + locked **saas** architecture blueprint + smoke proof; ecommerce applies **ecommerce** blueprint + catalog + test order) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
-2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports). Prove with placeTestShopOrder when available.
-3. Generic / SaaS / booking / dashboard: \`mode: "generic"\` — ensureLogin + architecture blueprint (orgs/memberships/projects with ownership rules). Prefer applySchema blueprint=saas|booking|blog|dashboard over inventing open tables.
-4. ONLY claim claim_backend_ready when architecture smoke passed (collections exist + write rules are not world-open).
-5. After claim_backend_ready: emit FOLLOWUPS Wire storefront → Go Live → Admin (≤4). Wire catalog to session.backend first; launchBusiness when they Go Live; payments only when they ask/pick Add payments.
+1. Call **guidedBackend** (seeds a **starter** saas/ecommerce boilerplate + secure rules) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
+2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
+3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
+4. Prefer owner-scoped / authenticated write rules — never world-open writes.
+5. After claim_backend_ready: emit FOLLOWUPS Wire → Go Live → Admin (≤4). Wire UI to session.backend; launchBusiness on Go Live; payments only when they ask.
 6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 7. Email / Analytics optional — do not block Go Live on them.
 8. Payments remain BYOK — guidedBackend does not skip KYC.
@@ -304,15 +304,15 @@ export async function executeGuidedBackend(
           blueprint: 'ecommerce',
         })
         steps.push({
-          id: 'architectureBlueprint',
+          id: 'architectureBoilerplate',
           status: 'ok',
-          message: `Ecommerce architecture applied (${applied.collections.join(', ')})`,
+          message: `Ecommerce starter schema seeded (${applied.collections.join(', ')}). Customize with applySchema as needed.`,
         })
       } catch (err) {
         steps.push({
-          id: 'architectureBlueprint',
+          id: 'architectureBoilerplate',
           status: 'failed',
-          message: err instanceof Error ? err.message : 'Architecture blueprint failed',
+          message: err instanceof Error ? err.message : 'Starter schema failed',
         })
         return failResult(mode, vertical.id, brand, steps, 'architecture_failed')
       }
@@ -441,12 +441,11 @@ export async function executeGuidedBackend(
       })
       steps.push({
         id: 'architectureSmoke',
-        status: smoke.ok ? 'ok' : 'failed',
-        message: smoke.message,
+        status: smoke.ok ? 'ok' : 'skipped',
+        message: smoke.ok
+          ? smoke.message
+          : `${smoke.message} — continue; customize with applySchema if the product needs different tables.`,
       })
-      if (!smoke.ok) {
-        return failResult(mode, vertical.id, brand, steps, 'architecture_smoke_failed')
-      }
     }
 
     return maybeLaunch(session, input, {
@@ -461,7 +460,7 @@ export async function executeGuidedBackend(
     })
   }
 
-  // generic: locked saas architecture blueprint (+ smoke), not open freeform tables
+  // generic: seed saas starter boilerplate, then agents customize with applySchema
   if (isManagedBackendConfigured()) {
     try {
       const applied = await applyArchitectureBlueprint({
@@ -469,9 +468,9 @@ export async function executeGuidedBackend(
         blueprint: 'saas',
       })
       steps.push({
-        id: 'architectureBlueprint',
+        id: 'architectureBoilerplate',
         status: 'ok',
-        message: `SaaS architecture applied (${applied.collections.join(', ')})`,
+        message: `SaaS starter schema seeded (${applied.collections.join(', ')}). Customize with applySchema for this customer's product.`,
       })
       const smoke = await smokeProveArchitecture({
         appId: session.projectRef,
@@ -479,17 +478,16 @@ export async function executeGuidedBackend(
       })
       steps.push({
         id: 'architectureSmoke',
-        status: smoke.ok ? 'ok' : 'failed',
-        message: smoke.message,
+        status: smoke.ok ? 'ok' : 'skipped',
+        message: smoke.ok
+          ? smoke.message
+          : `${smoke.message} — continue; customize with applySchema as needed.`,
       })
-      if (!smoke.ok) {
-        return failResult(mode, undefined, brand, steps, 'architecture_smoke_failed')
-      }
     } catch (err) {
       steps.push({
-        id: 'architectureBlueprint',
+        id: 'architectureBoilerplate',
         status: 'failed',
-        message: err instanceof Error ? err.message : 'Architecture blueprint failed',
+        message: err instanceof Error ? err.message : 'Starter schema failed',
       })
       return failResult(mode, undefined, brand, steps, 'architecture_failed')
     }

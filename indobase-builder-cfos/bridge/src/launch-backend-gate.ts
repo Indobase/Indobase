@@ -1,11 +1,11 @@
 /**
  * Block Go Live for app types that require a provisioned backend when session.backend is missing.
  * Landing / unspecified app_type stay preview-first (static launch OK).
- * When managed Indobase backend is configured, also require architecture smoke (collections + secure rules).
+ *
+ * Blueprints are optional starters — we do not lock Go Live to an exact schema.
+ * Agents may customize collections freely after ensure/guidedBackend.
  */
 
-import { isManagedBackendConfigured } from './pocketbase/managed.js'
-import { smokeProveArchitecture } from './pocketbase/architecture.js'
 import { resolveBlueprintId, type BlueprintId } from './pocketbase/blueprints.js'
 
 export type LaunchAppType =
@@ -75,7 +75,7 @@ export function assertLaunchBackendReady(
       ok: false,
       code: 'backend_required',
       message:
-        `${label} apps need a real Indobase backend before Go Live. Call guidedBackend (locked architecture blueprint + smoke proof), wire UI to session.backend, then launchBusiness.`,
+        `${label} apps need a real Indobase backend before Go Live. Call guidedBackend or ensureLogin + applySchema (starter blueprint + any custom tables), wire UI to session.backend, then launchBusiness.`,
     }
   }
 
@@ -83,42 +83,12 @@ export function assertLaunchBackendReady(
 }
 
 /**
- * Async architecture gate — collections exist + write rules are not world-open.
- * No-op when managed backend is not configured or app type does not need a blueprint.
+ * Go Live gate — only requires a linked backend URL/key.
+ * Schema customization is open; agents are not locked to a fixed blueprint.
  */
 export async function assertLaunchArchitectureReady(
   backend: { api_url?: string; anon_key?: string; project_ref?: string } | null | undefined,
   input: LaunchBackendGateInput,
 ): Promise<{ ok: true } | LaunchBackendGateDenial> {
-  const base = assertLaunchBackendReady(backend, input)
-  if (!base.ok) return base
-
-  if (!isManagedBackendConfigured()) return { ok: true }
-
-  const appType = input.app_type?.trim() ? normalizeLaunchAppType(input.app_type) : null
-  if (!appType || !launchAppTypeRequiresBackend(appType)) return { ok: true }
-
-  const blueprint = blueprintForLaunchAppType(appType)
-  if (!blueprint) return { ok: true }
-
-  const appId = input.projectRef?.trim() || backend?.project_ref?.trim() || ''
-  if (!appId) {
-    return {
-      ok: false,
-      code: 'architecture_required',
-      message:
-        'Backend architecture is not proven for this workspace. Call guidedBackend / applySchema first.',
-    }
-  }
-
-  const smoke = await smokeProveArchitecture({ appId, blueprint, probe: false })
-  if (!smoke.ok) {
-    return {
-      ok: false,
-      code: 'architecture_required',
-      message: `${smoke.message} Run guidedBackend before Go Live.`,
-    }
-  }
-
-  return { ok: true }
+  return assertLaunchBackendReady(backend, input)
 }

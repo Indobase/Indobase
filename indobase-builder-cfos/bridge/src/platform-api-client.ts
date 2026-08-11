@@ -28,7 +28,6 @@ import {
 import { managedBackendOtpStart, managedBackendOtpVerify } from './pocketbase/otp.js'
 import {
   applyArchitectureBlueprint,
-  smokeProveArchitecture,
 } from './pocketbase/architecture.js'
 import { inferBlueprintFromTables, resolveBlueprintId } from './pocketbase/blueprints.js'
 
@@ -345,7 +344,7 @@ export async function platformShopCatalog(input: {
   return { ok: false, message: 'Shop catalog failed', status }
 }
 
-/** Agent applySchema — declarative tables OR locked architecture blueprint. */
+/** Agent applySchema — boilerplate blueprint and/or custom tables (agents customize freely). */
 export async function platformApplySchema(input: {
   gotrueId: string
   email: string
@@ -353,33 +352,54 @@ export async function platformApplySchema(input: {
   brand?: string | null
   tables?: Array<Record<string, unknown>> | null
   blueprint?: string | null
+  /** When true, skip seeding a starter blueprint and only apply `tables`. */
+  custom_only?: boolean | null
 }): Promise<ApplySchemaResponse & { status?: number; claim_architecture_ready?: boolean }> {
   if (isManagedBackendConfigured()) {
     try {
-      const blueprintId =
-        (input.blueprint && resolveBlueprintId(input.blueprint)) ||
-        inferBlueprintFromTables(input.tables)
-      const applied = await applyArchitectureBlueprint({
-        appId: input.workspaceRef,
-        blueprint: blueprintId,
-      })
-      const smoke = await smokeProveArchitecture({
-        appId: input.workspaceRef,
-        blueprint: blueprintId,
-      })
-      if (!smoke.ok) {
+      const { applyCustomTables } = await import('./pocketbase/architecture.js')
+      const hasTables = Array.isArray(input.tables) && input.tables.length > 0
+      const customOnly = input.custom_only === true
+      const names: string[] = []
+
+      // Starter boilerplate (optional) — not a lock; agents may extend afterward.
+      if (!customOnly) {
+        const blueprintId =
+          (input.blueprint && resolveBlueprintId(input.blueprint)) ||
+          (hasTables ? inferBlueprintFromTables(input.tables) : 'saas')
+        const applied = await applyArchitectureBlueprint({
+          appId: input.workspaceRef,
+          blueprint: blueprintId,
+        })
+        names.push(...applied.collections)
+      }
+
+      if (hasTables) {
+        const custom = await applyCustomTables({
+          appId: input.workspaceRef,
+          tables: input.tables!,
+        })
+        names.push(...custom.collections)
+      }
+
+      if (!names.length) {
         return {
           ok: false,
-          message: smoke.message,
-          tables: applied.collections,
-          status: 502,
+          message: 'Pass tables to customize, or a blueprint starter (saas|ecommerce|booking|blog|dashboard).',
+          status: 400,
           claim_architecture_ready: false,
         }
       }
+
+      const unique = [...new Set(names)]
       return {
         ok: true,
-        message: smoke.message,
-        tables: applied.collections,
+        message: hasTables
+          ? customOnly
+            ? `Custom schema ready (${unique.join(', ')}). Keep evolving with applySchema.`
+            : `Schema ready — starter + custom (${unique.join(', ')}). Keep customizing with applySchema as the product evolves.`
+          : `Starter schema ready (${unique.join(', ')}). Customize with applySchema tables for this customer's product.`,
+        tables: unique,
         status: 200,
         claim_architecture_ready: true,
       }
