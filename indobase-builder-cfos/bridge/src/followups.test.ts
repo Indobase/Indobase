@@ -208,6 +208,43 @@ INDOBASE_FOLLOWUPS>>>
     assert.ok(resolved.items.every((i) => !/leave it as-is/i.test(i.label)))
   })
 
+  it('does not niche-inject on generic sell copy without store intent', () => {
+    const input =
+      "Before I begin, please share name and email and DPDP consent. I'll help you sell your idea."
+    const resolved = resolveFollowUps(input)
+    // Guest gate with no store niche → no chips (null or empty items)
+    assert.ok(!resolved || resolved.items.length === 0)
+    if (resolved) assert.notEqual(resolved.title, 'What will your store sell?')
+  })
+
+  it('strips Leave-as-is dead-end chips from agent FOLLOWUPS', () => {
+    const input = `Preview ready — what's in it: shop grid.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where should I take Aural next?
+Go Live on Indobase | Go Live now
+Leave it as-is for now | leave
+Refine then Go Live | refine then go live
+INDOBASE_FOLLOWUPS>>>
+`
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.every((i) => !/leave it as-is/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+  })
+
+  it('injects post-Go Live chips when published without hostname', () => {
+    const input = 'Published successfully — your store is live. claim_live true.'
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /payments|domain|checklist/i.test(i.label)))
+  })
+
+  it('extracts brand from sites.indobase.in URL', async () => {
+    const { extractBrandFromMessage } = await import('./followups.ts')
+    assert.equal(extractBrandFromMessage('Live at https://aural.sites.indobase.in'), 'Aural')
+  })
+
   it('building stage strips canned post-build wall', () => {
     const input = `I'll sketch a few options for the headphone landing page.
 

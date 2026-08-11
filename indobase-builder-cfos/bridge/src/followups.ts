@@ -192,9 +192,11 @@ export function injectNicheChoices(message: string): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   const lower = message.toLowerCase()
   const nicheAsk = looksLikeEcommerceNicheAsk(message)
+  // Guest store asks only — avoid false positives on generic “sell” / marketing copy.
   const guestStore =
     looksLikePreBuildClarification(message) &&
-    /\b(store|shop|ecommerce|apparel|fashion|sell|product website)\b/.test(lower)
+    /\b(store|shop|ecommerce|e-?commerce|apparel|fashion|product website|online store|webshop)\b/.test(lower) &&
+    !/\b(saas|dashboard|booking|blog|landing page only)\b/.test(lower)
   if (!nicheAsk && !guestStore) return null
   return {
     body: stripLeakedCot(message),
@@ -242,8 +244,9 @@ export const PAYMENTS_SETUP_FOLLOWUPS: readonly FollowUpItem[] = [
       'Call wireCheckout (POST /api/os/tools/wireCheckout) with plan_name, price, currency, and customer_email — then set the site Subscribe/Buy CTA href to the returned checkout_url',
   },
   {
-    label: 'Skip payments for now',
-    message: 'Skip payments for now — leave checkout unfinished',
+    label: 'Wire checkout + checklist',
+    message:
+      'Call wireCheckout then run productionChecklist with checkout_wired true — finish the full launch path',
   },
 ] as const
 
@@ -485,7 +488,15 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
 /** Body mentions a real preview / live site / stage progress (not merely “what’s next”). */
 export function bodyHasDeliverableSignal(message: string): boolean {
   const text = message.toLowerCase()
-  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim|wired (the )?storefront|storefront wired|admin\.html|checkout_url|payments are live|claim_production_ready|refined (the )?(design|hero|branding)|polished (the )?(hero|layout|storefront)|ready when you are|i('ve| have) (updated|refined|polished)/.test(
+  return /sites\.indobase\.in|live preview|is now live|here's what i built|here is what i built|go live — published|published to|preview is ready|preview ready|what's in it|what is in it|storefront is ready|storefront ready|i built a (full )?(apparel|fashion|ecommerce|store|shop)|claim_backend_ready|catalog seeded|backend ready \(claim|wired (the )?storefront|storefront wired|admin\.html|checkout_url|payments are live|claim_production_ready|refined (the )?(design|hero|branding)|polished (the )?(hero|layout|storefront)|ready when you are|i('ve| have) (updated|refined|polished)|claim_live|published successfully|your (site|store|shop|business) is live|launchbusiness (returned|succeeded|ok)|go live (is )?complete|live at https?:\/\//.test(
+    text,
+  )
+}
+
+/** Published / Go Live complete (even without repeating the hostname). */
+export function looksLikeLivePublished(message: string): boolean {
+  const text = message.toLowerCase()
+  return /sites\.indobase\.in|go live — published|published to|is now live|claim_live|published successfully|your (site|store|shop|business) is live|launchbusiness (returned|succeeded|ok)|go live (is )?complete|live at https?:\/\//.test(
     text,
   )
 }
@@ -571,6 +582,17 @@ function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
   return { ...parsed, items: parsed.items.slice(0, MAX_VISIBLE_CHIPS) }
 }
 
+/** Drop Leave-as-is / skip-for-now dead-ends so the ladder keeps moving to full launch. */
+export function stripDeadEndChips(parsed: ParsedFollowUps): ParsedFollowUps {
+  const items = parsed.items.filter(
+    (i) => !/leave (it )?as-?is|skip (payments|for now)|looks good — leave|leave checkout unfinished/i.test(
+      `${i.label} ${i.message}`,
+    ),
+  )
+  if (items.length === parsed.items.length) return parsed
+  return { ...parsed, items }
+}
+
 /**
  * Enforce Naive-style timing + brevity.
  * Guest gate: strip post-build walls, but KEEP ecommerce niche CHOICES.
@@ -578,27 +600,40 @@ function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
  * so the operator can keep advancing to full Go Live.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
+  const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
+
   if (stage === 'guest_gate') {
-    if (itemsLookLikeEcommerceNiche(parsed.items) || /^what will your store sell/i.test(parsed.title)) {
-      return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
+    if (itemsLookLikeEcommerceNiche(cleaned.items) || /^what will your store sell/i.test(cleaned.title)) {
+      return capChips(cleaned)
     }
-    return { body: stripLeakedCot(parsed.body), title: '', items: [] }
+    return { body: cleaned.body, title: '', items: [] }
   }
 
   if (stage === 'building') {
-    if (itemsLookLikeCannedPostBuildWall(parsed.items)) {
-      return { body: stripLeakedCot(parsed.body), title: '', items: [] }
+    if (itemsLookLikeCannedPostBuildWall(cleaned.items)) {
+      return { body: cleaned.body, title: '', items: [] }
     }
-    return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
+    return capChips(cleaned)
   }
 
-  return capChips({ ...parsed, body: stripLeakedCot(parsed.body) })
+  return capChips(cleaned)
 }
 
 /** Best-effort brand name from agent prose (for injected chip titles). */
 export function extractBrandFromMessage(message: string): string | null {
+  const fromUrl = /https?:\/\/([a-z0-9][a-z0-9-]{1,40})\.sites\.indobase\.in/i.exec(message)
+  if (fromUrl?.[1] && !/^(www|app|api|admin)$/i.test(fromUrl[1])) {
+    const slug = fromUrl[1].replace(/-/g, ' ')
+    return slug.replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+  const fromTitle = /where should i take\s+([A-Z][A-Za-z0-9 &-]{1,40})\s+next/i.exec(message)
+  if (fromTitle?.[1]) {
+    const brand = fromTitle[1].trim().replace(/\s+/g, ' ')
+    if (brand.length >= 2 && !/^(THIS|THE|IT|YOUR)$/i.test(brand)) return brand
+  }
   const brandLine =
     /\*\*([A-Z][A-Za-z0-9 &-]{1,40})\*\*/.exec(message) ||
+    /["“]([A-Z][A-Za-z0-9 &-]{1,40})["”]/.exec(message) ||
     /(?:brand|named|called)\s*[:—–-]?\s*\*?\*?\s*([A-Z][A-Za-z0-9 &-]{1,40})/i.exec(message) ||
     /\b([A-Z][A-Z0-9]{2,}(?:\s+[A-Z][a-z]+){0,3})\b\s*[—–-]\s*(?:live|modern|a |an )/i.exec(message)
   if (!brandLine?.[1]) return null
@@ -622,7 +657,7 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
   const lower = message.toLowerCase()
   if (/checkout_url|payments are live|wirecheckout|claim_production_ready/.test(lower)) {
     stage = postPaymentsFollowups(brand)
-  } else if (/sites\.indobase\.in|go live — published|published to|is now live/.test(lower)) {
+  } else if (looksLikeLivePublished(message)) {
     stage = postGoLiveFollowups(brand, { store: true })
   } else if (
     /claim_backend_ready|catalog seeded|place.?test.?shop.?order|shop backend is live|wired (the )?storefront|storefront wired/.test(

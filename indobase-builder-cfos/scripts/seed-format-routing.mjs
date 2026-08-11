@@ -54,7 +54,7 @@ Stage gate: guest_gate=niche CHOICES only · building=≤4 launch-ladder CHOICES
 3. Ecommerce niche unknown → CHOICES \`What will your store sell?\` then **preview only** (localStorage cart). Niche must NOT call guidedBackend. App type unclear → app-type CHOICES. Clear landing/store ask → do not ask SaaS vs shop.
 4. **Default store ladder:** niche → preview FOLLOWUPS (**Go Live first**) → optional Add a real backend → Wire → Go Live → Add payments → wireCheckout → checklist. Speak business outcomes on chip labels.
 5. **Preview-first** for launch store/landing/website: invent brand, build UI, summarize What's in it, emit 2–4 FOLLOWUPS \`Where should I take {Brand} next?\` with Go Live first (not Leave-as-is). No payments wall on first preview.
-6. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. After Go Live: Domain / Add payments / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
+6. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. **Go Live chip → immediately call launchBusiness** (real html/files; quote exact url; never invent). After Go Live: Domain / Add payments / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
 
 ## Quota
 Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/POST /api/os/usage/prompt-quota; on 0/402 stop + quote upgradeUrl. Guests: finish OTP first.
