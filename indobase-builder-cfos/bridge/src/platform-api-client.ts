@@ -22,11 +22,15 @@ import {
 import { resolveHandoffSecret } from './auth.js'
 import { extractPlatformErrorMessage } from './auth-errors.js'
 import {
-  ensureCollection,
   ensureManagedBackend,
   isManagedBackendConfigured,
 } from './pocketbase/managed.js'
 import { managedBackendOtpStart, managedBackendOtpVerify } from './pocketbase/otp.js'
+import {
+  applyArchitectureBlueprint,
+  smokeProveArchitecture,
+} from './pocketbase/architecture.js'
+import { inferBlueprintFromTables, resolveBlueprintId } from './pocketbase/blueprints.js'
 
 export function resolvePlatformApiUrl(): string {
   const raw =
@@ -341,49 +345,50 @@ export async function platformShopCatalog(input: {
   return { ok: false, message: 'Shop catalog failed', status }
 }
 
-/** Agent applySchema — declarative tables. */
+/** Agent applySchema — declarative tables OR locked architecture blueprint. */
 export async function platformApplySchema(input: {
   gotrueId: string
   email: string
   workspaceRef: string
   brand?: string | null
   tables?: Array<Record<string, unknown>> | null
-}): Promise<ApplySchemaResponse & { status?: number }> {
-  if (isManagedBackendConfigured() && Array.isArray(input.tables)) {
+  blueprint?: string | null
+}): Promise<ApplySchemaResponse & { status?: number; claim_architecture_ready?: boolean }> {
+  if (isManagedBackendConfigured()) {
     try {
-      const created: string[] = []
-      for (const table of input.tables) {
-        const name = typeof table.name === 'string' ? table.name.trim() : ''
-        if (!name) continue
-        const columns = Array.isArray(table.columns) ? table.columns : []
-        const fields = columns
-          .filter((col): col is Record<string, unknown> => Boolean(col) && typeof col === 'object')
-          .map((col) => ({
-            name: typeof col.name === 'string' ? col.name : '',
-            type: typeof col.type === 'string' ? col.type : 'text',
-            required: Boolean(col.required),
-          }))
-          .filter((field) => field.name)
-        const result = await ensureCollection({
-          appId: input.workspaceRef,
-          name,
-          fields,
-        })
-        created.push(result.logicalName)
+      const blueprintId =
+        (input.blueprint && resolveBlueprintId(input.blueprint)) ||
+        inferBlueprintFromTables(input.tables)
+      const applied = await applyArchitectureBlueprint({
+        appId: input.workspaceRef,
+        blueprint: blueprintId,
+      })
+      const smoke = await smokeProveArchitecture({
+        appId: input.workspaceRef,
+        blueprint: blueprintId,
+      })
+      if (!smoke.ok) {
+        return {
+          ok: false,
+          message: smoke.message,
+          tables: applied.collections,
+          status: 502,
+          claim_architecture_ready: false,
+        }
       }
       return {
         ok: true,
-        message: created.length
-          ? `Schema ready (${created.join(', ')})`
-          : 'Schema applied',
-        tables: created,
+        message: smoke.message,
+        tables: applied.collections,
         status: 200,
-      } as ApplySchemaResponse & { status?: number }
+        claim_architecture_ready: true,
+      }
     } catch (error) {
       return {
         ok: false,
         message: error instanceof Error ? error.message : 'applySchema failed',
         status: 502,
+        claim_architecture_ready: false,
       }
     }
   }
@@ -395,6 +400,7 @@ export async function platformApplySchema(input: {
   }
   if (input.brand?.trim()) body.brand = input.brand.trim()
   if (Array.isArray(input.tables)) body.tables = input.tables
+  if (input.blueprint?.trim()) body.blueprint = input.blueprint.trim()
 
   const { status, json } = await platformFetch(PlatformApiRoutes.dataApplySchema, body)
   if (json && typeof json === 'object') {

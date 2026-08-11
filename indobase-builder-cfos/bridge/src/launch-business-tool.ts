@@ -16,7 +16,7 @@ import {
   type StaticLaunchResult,
 } from './static-launch.js'
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
-import { assertLaunchBackendReady } from './launch-backend-gate.js'
+import { assertLaunchArchitectureReady } from './launch-backend-gate.js'
 import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
 import type { BackendConfig } from './auth.js'
 
@@ -74,19 +74,20 @@ export async function executeLaunchBusinessTool(
   input: LaunchBusinessToolInput,
   defaults?: { title?: string; backend?: BackendConfig | null },
 ): Promise<LaunchBusinessToolResult> {
-  const backendGate = assertLaunchBackendReady(defaults?.backend, {
+  const backendGate = await assertLaunchArchitectureReady(defaults?.backend, {
     app_type: input.app_type,
     require_backend: input.require_backend,
+    projectRef: workspaceRef,
   })
   if (!backendGate.ok) {
     return {
       ok: false,
       status: 'rejected',
       message: backendGate.message,
-      code: backendGate.code,
       lane: 'static',
       claim_live: false,
       tool: 'launchBusiness',
+      code: backendGate.code,
     }
   }
 

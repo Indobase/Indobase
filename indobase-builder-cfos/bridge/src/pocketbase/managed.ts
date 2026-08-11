@@ -156,63 +156,12 @@ export async function ensureCollection(options: {
   name: string
   fields?: SchemaField[]
 }): Promise<{ name: string; logicalName: string; id?: string; created: boolean }> {
-  const config = getManagedBackendConfig()
-  if (!config) {
-    throw new Error('Indobase backend is not configured')
-  }
-
-  const token = await adminAuth(config)
-  const logicalName = options.name.trim()
-  const collectionName = physicalCollectionName(options.appId, logicalName)
-  const fields = (options.fields || [])
-    .filter((field) => field.name?.trim() && field.name.trim().toLowerCase() !== 'id')
-    .map((field) => ({
-      name: field.name.trim(),
-      type: mapPgTypeToPb(field.type),
-      required: Boolean(field.required),
-    }))
-
-  const listResponse = await fetch(`${config.adminUrl}/api/collections?page=1&perPage=200`, {
-    headers: { Authorization: token },
+  // Delegate to secure ensurer — never create world-writable collections.
+  const { ensureCollectionSecure } = await import('./architecture.js')
+  return ensureCollectionSecure({
+    appId: options.appId,
+    name: options.name,
+    fields: options.fields,
+    rules: 'owner',
   })
-  const listPayload = (await listResponse.json().catch(() => ({}))) as {
-    items?: Array<{ id: string; name: string }>
-  }
-  const existing = listPayload.items?.find((item) => item.name === collectionName)
-  if (existing) {
-    return { name: collectionName, logicalName, id: existing.id, created: false }
-  }
-
-  const createResponse = await fetch(`${config.adminUrl}/api/collections`, {
-    method: 'POST',
-    headers: {
-      Authorization: token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: collectionName,
-      type: 'base',
-      fields,
-      listRule: '',
-      viewRule: '',
-      createRule: '',
-      updateRule: '',
-      deleteRule: '',
-    }),
-  })
-  const createPayload = (await createResponse.json().catch(() => ({}))) as {
-    id?: string
-    name?: string
-    message?: string
-  }
-  if (!createResponse.ok) {
-    throw new Error(createPayload.message || `Failed to create collection ${collectionName}`)
-  }
-
-  return {
-    name: createPayload.name || collectionName,
-    logicalName,
-    id: createPayload.id,
-    created: true,
-  }
 }

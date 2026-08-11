@@ -22,6 +22,13 @@ import {
   type AppVertical,
   type VerticalSeedProduct,
 } from './vertical-catalog.js'
+import { isManagedBackendConfigured } from './pocketbase/managed.js'
+import {
+  applyArchitectureBlueprint,
+  placeManagedTestOrder,
+  seedEcommerceCatalog,
+  smokeProveArchitecture,
+} from './pocketbase/architecture.js'
 
 export const GUIDED_BACKEND_TOOL = {
   name: 'guidedBackend',
@@ -65,13 +72,14 @@ export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 
 When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
 
-1. Call **guidedBackend** (generic includes **ensureLogin** + ensureDatabase + applySchema) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
+1. Call **guidedBackend** (generic includes **ensureLogin** + locked **saas** architecture blueprint + smoke proof; ecommerce applies **ecommerce** blueprint + catalog + test order) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\` (apparel, electronics, food-grocery, beauty, home, sports). Prove with placeTestShopOrder when available.
-3. Generic / SaaS / booking / dashboard: \`mode: "generic"\` — ensureLogin + default orgs/memberships schema (or pass applySchema tables yourself).
-4. After claim_backend_ready: emit FOLLOWUPS Wire storefront → Go Live → Admin (≤4). Wire catalog to session.backend first; launchBusiness when they Go Live; payments only when they ask/pick Add payments.
-5. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
-6. Email / Analytics optional — do not block Go Live on them.
-7. Payments remain BYOK — guidedBackend does not skip KYC.
+3. Generic / SaaS / booking / dashboard: \`mode: "generic"\` — ensureLogin + architecture blueprint (orgs/memberships/projects with ownership rules). Prefer applySchema blueprint=saas|booking|blog|dashboard over inventing open tables.
+4. ONLY claim claim_backend_ready when architecture smoke passed (collections exist + write rules are not world-open).
+5. After claim_backend_ready: emit FOLLOWUPS Wire storefront → Go Live → Admin (≤4). Wire catalog to session.backend first; launchBusiness when they Go Live; payments only when they ask/pick Add payments.
+6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
+7. Email / Analytics optional — do not block Go Live on them.
+8. Payments remain BYOK — guidedBackend does not skip KYC.
 `.trim()
 
 export type GuidedBackendStep = {
@@ -289,6 +297,27 @@ export async function executeGuidedBackend(
     const vertical = findEcommerceVertical(verticalId) || ECOMMERCE_VERTICALS[0]
     const products = seedProductsFromVertical(vertical)
 
+    if (isManagedBackendConfigured()) {
+      try {
+        const applied = await applyArchitectureBlueprint({
+          appId: session.projectRef,
+          blueprint: 'ecommerce',
+        })
+        steps.push({
+          id: 'architectureBlueprint',
+          status: 'ok',
+          message: `Ecommerce architecture applied (${applied.collections.join(', ')})`,
+        })
+      } catch (err) {
+        steps.push({
+          id: 'architectureBlueprint',
+          status: 'failed',
+          message: err instanceof Error ? err.message : 'Architecture blueprint failed',
+        })
+        return failResult(mode, vertical.id, brand, steps, 'architecture_failed')
+      }
+    }
+
     // 2) resolveProductImages (best-effort)
     let imageResult: Awaited<ReturnType<typeof executeResolveProductImages>> | null = null
     try {
@@ -313,37 +342,75 @@ export async function executeGuidedBackend(
 
     const seeded = attachImageUrls(products, imageResult)
 
-    // 3) setupShopCatalog
-    const catalog = await executeSetupShopCatalog(session, {
-      brand: brand || vertical.label,
-      products: seeded,
-      action: 'setup',
-    })
-    if (!catalog.ok) {
+    // 3) setupShopCatalog — prefer managed backend seed when Studio shop API is unavailable
+    let catalogOk = false
+    if (isManagedBackendConfigured()) {
+      const local = await seedEcommerceCatalog({
+        appId: session.projectRef,
+        ownerId: session.gotrueId,
+        products: seeded.map((p) => ({
+          slug: String(p.slug),
+          name: String(p.name),
+          description: typeof p.description === 'string' ? p.description : undefined,
+          price: p.price as string | number,
+          currency: typeof p.currency === 'string' ? p.currency : 'INR',
+          stock: typeof p.stock === 'number' ? p.stock : 10,
+          image_url: typeof p.image_url === 'string' ? p.image_url : undefined,
+        })),
+      })
+      if (local.ok) {
+        catalogOk = true
+        catalog_json = local.catalog_json
+        steps.push({
+          id: 'setupShopCatalog',
+          status: 'ok',
+          message: `Seeded ${vertical.label} catalog on Indobase backend`,
+        })
+      }
+    }
+
+    if (!catalogOk) {
+      const catalog = await executeSetupShopCatalog(session, {
+        brand: brand || vertical.label,
+        products: seeded,
+        action: 'setup',
+      })
+      if (!catalog.ok) {
+        steps.push({
+          id: 'setupShopCatalog',
+          status: 'failed',
+          message: catalog.message || 'Catalog seed failed',
+        })
+        return failResult(mode, vertical.id, brand, steps, catalog.code || 'catalog_failed')
+      }
       steps.push({
         id: 'setupShopCatalog',
-        status: 'failed',
-        message: catalog.message || 'Catalog seed failed',
+        status: 'ok',
+        message: catalog.message || `Seeded ${vertical.label} catalog`,
       })
-      return failResult(mode, vertical.id, brand, steps, catalog.code || 'catalog_failed')
+      catalog_json = catalog.catalog_json ?? catalog.products
+      admin_html = typeof catalog.admin_html === 'string' ? catalog.admin_html : undefined
+      catalogOk = true
     }
-    steps.push({
-      id: 'setupShopCatalog',
-      status: 'ok',
-      message: catalog.message || `Seeded ${vertical.label} catalog`,
-    })
-    catalog_json = catalog.catalog_json ?? catalog.products
-    admin_html = typeof catalog.admin_html === 'string' ? catalog.admin_html : undefined
 
     // 4) optional test order
     const placeTest = input.place_test_order !== false
     if (placeTest) {
-      const first = Array.isArray(catalog.products) ? catalog.products[0] : null
-      const slug =
-        first && typeof first === 'object' && first && 'slug' in first
-          ? String((first as { slug?: string }).slug || products[0]?.slug || '')
-          : products[0]?.slug || ''
-      if (slug) {
+      const slug = products[0]?.slug || ''
+      if (slug && isManagedBackendConfigured()) {
+        const test = await placeManagedTestOrder({
+          appId: session.projectRef,
+          ownerId: session.gotrueId,
+          email: session.email || 'test@indobase.in',
+          slug,
+          cleanup: true,
+        })
+        steps.push({
+          id: 'placeTestShopOrder',
+          status: test.ok ? 'ok' : 'skipped',
+          message: test.message,
+        })
+      } else if (slug) {
         const test = await executePlaceTestShopOrder(session, {
           order_email: session.email || 'test@indobase.in',
           items: [{ slug, quantity: 1 }],
@@ -367,6 +434,21 @@ export async function executeGuidedBackend(
       }
     }
 
+    if (isManagedBackendConfigured()) {
+      const smoke = await smokeProveArchitecture({
+        appId: session.projectRef,
+        blueprint: 'ecommerce',
+      })
+      steps.push({
+        id: 'architectureSmoke',
+        status: smoke.ok ? 'ok' : 'failed',
+        message: smoke.message,
+      })
+      if (!smoke.ok) {
+        return failResult(mode, vertical.id, brand, steps, 'architecture_smoke_failed')
+      }
+    }
+
     return maybeLaunch(session, input, {
       mode,
       vertical: vertical.id,
@@ -379,25 +461,58 @@ export async function executeGuidedBackend(
     })
   }
 
-  // generic: applySchema with default tables
-  const schema = await executeApplySchema(session, {
-    brand: brand || 'App',
-    tables: DEFAULT_GENERIC_SCHEMA_TABLES,
-  })
-  if (!schema.ok) {
+  // generic: locked saas architecture blueprint (+ smoke), not open freeform tables
+  if (isManagedBackendConfigured()) {
+    try {
+      const applied = await applyArchitectureBlueprint({
+        appId: session.projectRef,
+        blueprint: 'saas',
+      })
+      steps.push({
+        id: 'architectureBlueprint',
+        status: 'ok',
+        message: `SaaS architecture applied (${applied.collections.join(', ')})`,
+      })
+      const smoke = await smokeProveArchitecture({
+        appId: session.projectRef,
+        blueprint: 'saas',
+      })
+      steps.push({
+        id: 'architectureSmoke',
+        status: smoke.ok ? 'ok' : 'failed',
+        message: smoke.message,
+      })
+      if (!smoke.ok) {
+        return failResult(mode, undefined, brand, steps, 'architecture_smoke_failed')
+      }
+    } catch (err) {
+      steps.push({
+        id: 'architectureBlueprint',
+        status: 'failed',
+        message: err instanceof Error ? err.message : 'Architecture blueprint failed',
+      })
+      return failResult(mode, undefined, brand, steps, 'architecture_failed')
+    }
+  } else {
+    const schema = await executeApplySchema(session, {
+      brand: brand || 'App',
+      tables: DEFAULT_GENERIC_SCHEMA_TABLES,
+    })
+    if (!schema.ok) {
+      steps.push({
+        id: 'applySchema',
+        status: 'failed',
+        message: schema.message || 'applySchema failed',
+      })
+      return failResult(mode, undefined, brand, steps, schema.code || 'schema_failed')
+    }
     steps.push({
       id: 'applySchema',
-      status: 'failed',
-      message: schema.message || 'applySchema failed',
+      status: 'ok',
+      message: schema.message || 'Default orgs/memberships schema applied',
     })
-    return failResult(mode, undefined, brand, steps, schema.code || 'schema_failed')
+    if (typeof schema.admin_html === 'string') admin_html = schema.admin_html
   }
-  steps.push({
-    id: 'applySchema',
-    status: 'ok',
-    message: schema.message || 'Default orgs/memberships schema applied',
-  })
-  if (typeof schema.admin_html === 'string') admin_html = schema.admin_html
 
   return maybeLaunch(session, input, {
     mode,
