@@ -1,5 +1,6 @@
 /**
- * Ensure the current CFOS principal has OpenRouter models (Luna/Terra).
+ * Ensure the current CFOS principal has the approved OpenRouter model pool
+ * (code / org / chat) and purge anything else (e.g. leftover gpt-3.5-turbo).
  * Uses Cap'n Web against CLOUDFLARE_OS_URL — same path as scripts/seed-openrouter-models.mjs.
  */
 import { createHash } from 'node:crypto'
@@ -7,24 +8,16 @@ import { createHash } from 'node:crypto'
 import { newWebSocketRpcSession } from 'capnweb'
 import { argon2id } from 'hash-wasm'
 
+import {
+  CFOS_APPROVED_MODELS,
+  isApprovedCfosModelId,
+  preferredCfosModelId,
+  quickCfosModelId,
+} from './cfos-model-policy.js'
+
 const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21,
 ])
-
-const MODELS = [
-  {
-    id: 'openai/gpt-5.6-luna',
-    name: 'GPT 5.6 Luna (OpenRouter)',
-    preferred: true,
-    quick: false,
-  },
-  {
-    id: 'openai/gpt-5.6-terra',
-    name: 'GPT 5.6 Terra (OpenRouter)',
-    preferred: false,
-    quick: true,
-  },
-] as const
 
 function resolveOpenRouterKey(): string {
   return (
@@ -82,7 +75,7 @@ export async function ensureAgentModels(input: {
   password: string
   /** Human label — never seed CFOS profile as ib_*. */
   displayName?: string
-}): Promise<{ ok: boolean; message?: string }> {
+}): Promise<{ ok: boolean; message?: string; purged?: string[]; seeded?: string[] }> {
   const apiKey = resolveOpenRouterKey()
   if (!apiKey || apiKey.length < 20) {
     return { ok: false, message: 'OPEN_ROUTER_API_KEY missing' }
@@ -103,12 +96,27 @@ export async function ensureAgentModels(input: {
 
     const auth = await api.authenticate(token)
     const existing = await auth.listModels()
+    const purged: string[] = []
 
-    let preferredId: string | null = null
-    let quickId: string | null = null
+    // Remove junk / legacy models (gpt-3.5-turbo, free-tier leftovers, etc.)
+    for (const m of existing) {
+      if (!isApprovedCfosModelId(m.id)) {
+        try {
+          await auth.deleteModel(m.id)
+          purged.push(m.id)
+        } catch (err) {
+          console.warn(
+            `[ensure-agent-models] purge failed ${m.id}:`,
+            err instanceof Error ? err.message : err,
+          )
+        }
+      }
+    }
 
-    for (const model of MODELS) {
-      if (existing.some((m) => m.id === model.id)) {
+    const seeded: string[] = []
+    for (const model of CFOS_APPROVED_MODELS) {
+      const stillThere = (await auth.listModels()).some((m) => m.id === model.id)
+      if (stillThere) {
         await auth.deleteModel(model.id)
       }
       await auth.addModel(
@@ -120,15 +128,20 @@ export async function ensureAgentModels(input: {
           apiUrl: 'https://openrouter.ai/api/v1',
         },
       )
-      if (model.preferred) preferredId = model.id
-      if (model.quick) quickId = model.id
+      seeded.push(model.id)
     }
 
-    if (preferredId) await auth.setPreferredModel(preferredId)
-    if (quickId) await auth.setQuickModel(quickId)
+    await auth.setPreferredModel(preferredCfosModelId())
+    await auth.setQuickModel(quickCfosModelId())
     if (!(await auth.isOnboardingCompleted())) await auth.completeOnboarding()
 
-    return { ok: true }
+    if (purged.length) {
+      console.log(
+        `[ensure-agent-models] purged non-approved for ${input.username}: ${purged.join(', ')}`,
+      )
+    }
+
+    return { ok: true, purged, seeded }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn(`[ensure-agent-models] ${input.username}: ${message}`)
@@ -150,6 +163,49 @@ export function ensureAgentModelsAsync(input: {
     if (r.ok) console.log(`[ensure-agent-models] ok user=${input.username}`)
     else console.warn(`[ensure-agent-models] failed user=${input.username} ${r.message || ''}`)
   })
+}
+
+/**
+ * Await model seed with a timeout so the first chat turn does not race an empty/junk pool.
+ * Returns modelsReady=false on timeout/failure (caller may still proceed; preferred is Luna).
+ */
+export async function ensureAgentModelsWithTimeout(
+  input: {
+    username: string
+    password: string
+    displayName?: string
+  },
+  timeoutMs = 12_000,
+): Promise<{ ok: boolean; modelsReady: boolean; message?: string; purged?: string[] }> {
+  if (!openRouterKeyConfigured()) {
+    return { ok: false, modelsReady: false, message: 'OPEN_ROUTER_API_KEY missing' }
+  }
+  try {
+    const result = await Promise.race([
+      ensureAgentModels(input),
+      new Promise<{ ok: false; message: string }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, message: 'ensureAgentModels timeout' }), timeoutMs),
+      ),
+    ])
+    if (result.ok) {
+      return {
+        ok: true,
+        modelsReady: true,
+        purged: 'purged' in result ? result.purged : undefined,
+      }
+    }
+    return {
+      ok: false,
+      modelsReady: false,
+      message: result.message,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      modelsReady: false,
+      message: err instanceof Error ? err.message : String(err),
+    }
+  }
 }
 
 /** Deterministic fingerprint for logs (not for auth). */

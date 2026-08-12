@@ -871,18 +871,38 @@ ${injection}`
   const newFn = `export function getStoredSelectedModel(
   models: AiChatAuthorInfo[],
 ): string | null {
-  // Indobase: no model chooser — always use preferred/server coding model when present.
+  // Indobase: no model chooser — approved pool only (never gpt-3.5 / random models[0]).
+  const approved = new Set([
+    "openai/gpt-5.6-luna",
+    "openai/gpt-5.6-terra",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-coder-30b-a3b-instruct",
+  ]);
   const preferred =
     models.find((model) => model.id === "openai/gpt-5.6-luna") ??
     models.find((model) => model.id.includes("gpt-5.6-luna")) ??
-    models[0];
+    models.find((model) => model.id === "openai/gpt-5.6-terra") ??
+    models.find((model) => model.id === "openai/gpt-oss-120b") ??
+    models.find((model) => approved.has(model.id));
   return preferred?.id ?? null;
 }`
   if (text.includes(oldFn)) {
     write(path, text.replace(oldFn, newFn))
     console.log('  modelSelection forced to preferred coding model')
-  } else if (text.includes('no model chooser')) {
-    console.log('  modelSelection already forced')
+  } else if (text.includes('approved pool only') || text.includes('no model chooser — always use preferred')) {
+    // Upgrade older Indobase patch that still fell back to models[0]
+    if (text.includes('models[0]') && text.includes('no model chooser')) {
+      const loose =
+        /export function getStoredSelectedModel\(\s*models: AiChatAuthorInfo\[\],\s*\): string \| null \{[\s\S]*?\n\}/
+      if (loose.test(text)) {
+        write(path, text.replace(loose, newFn.trim()))
+        console.log('  modelSelection ← purged models[0] fallback (approved pool only)')
+      } else {
+        console.log('  modelSelection already forced')
+      }
+    } else {
+      console.log('  modelSelection already forced')
+    }
   } else {
     console.warn('  skip: modelSelection getStoredSelectedModel drifted')
   }

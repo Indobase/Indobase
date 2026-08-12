@@ -90,7 +90,7 @@ import {
   rememberAgentPrincipal,
   updateAgentPrincipalBackend,
 } from './agent-principal-store.js'
-import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
+import { ensureAgentModelsWithTimeout, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
@@ -1798,13 +1798,22 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
   if (session.backend?.api_url && session.backend?.anon_key) {
     await updateAgentPrincipalBackend(creds.username, session.backend)
   }
-  // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
+  // Seed OpenRouter approved pool (await briefly so first turn does not hit junk/3.5).
   const displayName = profileDisplayName(session)
-  ensureAgentModelsAsync({
-    username: creds.username,
-    password: creds.password,
-    displayName: displayName || undefined,
-  })
+  const modelSeed = openRouterKeyConfigured()
+    ? await ensureAgentModelsWithTimeout({
+        username: creds.username,
+        password: creds.password,
+        displayName: displayName || undefined,
+      })
+    : { ok: false, modelsReady: false, message: 'OPEN_ROUTER_API_KEY missing' }
+  if (modelSeed.ok) {
+    console.log(`[ensure-agent-models] ok user=${creds.username}`)
+  } else {
+    console.warn(
+      `[ensure-agent-models] ${creds.username}: ${modelSeed.message || 'failed'}`,
+    )
+  }
   const guest = isGuestSession(session)
   // Never log password.
   return c.json({
@@ -1819,6 +1828,14 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     display_name: displayName || null,
     project_ref: session.projectRef,
     modelsEnsuring: openRouterKeyConfigured(),
+    modelsReady: modelSeed.modelsReady === true,
+    preferred_model: 'openai/gpt-5.6-luna',
+    model_pool: [
+      'openai/gpt-5.6-luna',
+      'openai/gpt-5.6-terra',
+      'openai/gpt-oss-120b',
+      'qwen/qwen3-coder-30b-a3b-instruct',
+    ],
   })
 })
 

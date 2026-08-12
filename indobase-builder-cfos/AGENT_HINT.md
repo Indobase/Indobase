@@ -23,6 +23,10 @@ If they are a Guest / no email / not signed in:
 
 Signed-in operators: skip this section.
 
+## Models (HARD — server-routed, no picker)
+
+Indobase seeds an **approved OpenRouter pool** only: **Luna** (code/build), **Terra** (org/quick), **GPT-OSS 120B** (cheap chat), **Qwen3 Coder** (code failover). Never use or ask for `gpt-3.5-turbo` or other unlisted models. Prefer quality (Luna) for storefront/HTML/backend work; cheap models are for titles/clarify only. If a turn fails with rate_limit, retry with the next approved model — do not surface raw OpenRouter rate-limit URLs as the final answer.
+
 **Before Go Live or Enable login/database/payments:** the operator must have a signed-in Indobase account (not Guest). If the API returns `account_required` / 403, complete account verify in chat (name + email + DPDP → OTP) or via Create account first.
 
 ## Zero → One journey (HARD — Naive-style)

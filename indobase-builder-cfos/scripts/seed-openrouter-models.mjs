@@ -62,6 +62,7 @@ async function connectRpc() {
   return newWebSocketRpcSession(WS_URL)
 }
 
+/** Approved pool only — purge anything else after seed (no gpt-3.5-turbo fallback). */
 const MODELS = [
   {
     id: 'openai/gpt-5.6-luna',
@@ -75,7 +76,20 @@ const MODELS = [
     preferred: false,
     quick: true,
   },
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (OpenRouter)',
+    preferred: false,
+    quick: false,
+  },
+  {
+    id: 'qwen/qwen3-coder-30b-a3b-instruct',
+    name: 'Qwen3 Coder 30B (OpenRouter)',
+    preferred: false,
+    quick: false,
+  },
 ]
+const APPROVED_IDS = new Set(MODELS.map((m) => m.id))
 
 async function main() {
   const apiKey = resolveApiKey()
@@ -107,11 +121,18 @@ async function main() {
     `Existing models: ${existing.length ? existing.map((m) => m.id).join(', ') : '(none)'}`,
   )
 
+  for (const m of existing) {
+    if (!APPROVED_IDS.has(m.id)) {
+      await auth.deleteModel(m.id)
+      console.log(`Purged non-approved model ${m.id}`)
+    }
+  }
+
   let preferredId = null
   let quickId = null
 
   for (const model of MODELS) {
-    const already = existing.some((m) => m.id === model.id)
+    const already = (await auth.listModels()).some((m) => m.id === model.id)
     if (already) {
       await auth.deleteModel(model.id)
     }
