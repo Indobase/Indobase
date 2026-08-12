@@ -1173,7 +1173,9 @@ ${injection}`
             ok: false,
             claim_gateway_ready: false,
             code: "connect_gateway_network_error",
-            message: err instanceof Error ? err.message : "connectGateway request failed",
+            message: err instanceof Error
+              ? `Bridge unreachable for connectGateway (${cfg.bridgeUrl}): ${err.message}. Tool exists — retry. If keys are missing, ask the operator to finish Razorpay/Stripe KYC and paste API keys (not a missing backend tool).`
+              : "connectGateway request failed",
           }));
         }
         let body: Record<string, unknown> = {};
