@@ -753,7 +753,7 @@ export async function listManagedShopSnapshot(options: {
   const publicBase = config.publicUrl.replace(/\/+$/, '')
 
   const [productsRes, token] = await Promise.all([
-    fetch(`${publicBase}/api/collections/${productsName}/records?perPage=200&sort=-created`),
+    fetch(`${publicBase}/api/collections/${productsName}/records?perPage=200&sort=-created_at`),
     adminAuth(config),
   ])
   const productsPayload = (await productsRes.json().catch(() => ({}))) as {
@@ -769,7 +769,7 @@ export async function listManagedShopSnapshot(options: {
 
   const auth = adminAuthHeader(token)
   const ordersRes = await fetch(
-    `${config.adminUrl}/api/collections/${ordersName}/records?perPage=50&sort=-created`,
+    `${config.adminUrl}/api/collections/${ordersName}/records?perPage=50&sort=-created_at`,
     { headers: { Authorization: auth } },
   )
   const ordersPayload = (await ordersRes.json().catch(() => ({}))) as {

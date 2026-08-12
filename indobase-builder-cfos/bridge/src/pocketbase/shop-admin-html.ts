@@ -102,8 +102,8 @@ async function load(){
     const productsCol=window.__INDOBASE_COLLECTION__('products');
     const ordersCol=window.__INDOBASE_COLLECTION__('orders');
     const [pr,or]=await Promise.all([
-      fetch(API+'/'+productsCol+'/records?perPage=200&sort=-created'),
-      fetch(API+'/'+ordersCol+'/records?perPage=50&sort=-created'),
+      fetch(API+'/'+productsCol+'/records?perPage=200&sort=-created_at'),
+      fetch(API+'/'+ordersCol+'/records?perPage=50&sort=-created_at'),
     ]);
     const pj=await pr.json().catch(()=>({}));
     const oj=await or.json().catch(()=>({}));
