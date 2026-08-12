@@ -23,6 +23,7 @@ import { resolveHandoffSecret } from './auth.js'
 import { extractPlatformErrorMessage } from './auth-errors.js'
 import {
   ensureManagedBackend,
+  getManagedBackendConfig,
   isManagedBackendConfigured,
   sanitizeAppId,
 } from './pocketbase/managed.js'
@@ -32,10 +33,30 @@ import {
   seedEcommerceCatalog,
   placeManagedTestOrder,
   smokeProveArchitecture,
+  listManagedShopSnapshot,
 } from './pocketbase/architecture.js'
+import { buildManagedShopAdminHtml } from './pocketbase/shop-admin-html.js'
 import { inferBlueprintFromTables, resolveBlueprintId } from './pocketbase/blueprints.js'
 
 export { isManagedBackendConfigured } from './pocketbase/managed.js'
+
+async function managedShopAdminHtml(options: {
+  appId: string
+  brand?: string | null
+  products?: Array<Record<string, unknown>>
+}): Promise<string | undefined> {
+  const config = getManagedBackendConfig()
+  if (!config) return undefined
+  const snapshot = await listManagedShopSnapshot({ appId: options.appId })
+  if (!snapshot.ok) return undefined
+  return buildManagedShopAdminHtml({
+    brand: options.brand || undefined,
+    appId: options.appId,
+    publicUrl: config.publicUrl,
+    products: options.products?.length ? options.products : snapshot.products,
+    orders: snapshot.orders,
+  })
+}
 
 export function resolvePlatformApiUrl(): string {
   const raw =
@@ -361,6 +382,11 @@ export async function platformShopCatalog(input: {
         message: 'Shop catalog on Indobase backend',
         products: local.products,
         catalog_json: local.catalog_json,
+        admin_html: await managedShopAdminHtml({
+          appId,
+          brand: input.brand,
+          products: local.products,
+        }),
         status: 200,
       } as ShopCatalogResponse & { status?: number }
     }
@@ -390,6 +416,11 @@ export async function platformShopCatalog(input: {
         : 'Seeded shop catalog on Indobase backend',
       products: local.products,
       catalog_json: local.catalog_json,
+      admin_html: await managedShopAdminHtml({
+        appId,
+        brand: input.brand,
+        products: local.products,
+      }),
       status: 200,
     } as ShopCatalogResponse & { status?: number }
   }
@@ -622,6 +653,11 @@ export async function platformShopOrders(input: {
       message: 'Shop orders snapshot from Indobase backend',
       products: catalog.products,
       catalog_json: catalog.catalog_json,
+      admin_html: await managedShopAdminHtml({
+        appId,
+        brand: input.brand,
+        products: catalog.products,
+      }),
       status: 200,
     } as ShopCatalogResponse & { status?: number }
   }

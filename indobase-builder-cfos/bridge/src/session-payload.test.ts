@@ -123,6 +123,9 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /North star \(HARD\)/)
     assert.match(payload.agent_hint, /Backend: not ready/)
     assert.match(payload.agent_hint, /productionChecklist/)
+    assert.ok(payload.journey)
+    assert.equal(payload.journey.current_stage, 'live')
+    assert.match(payload.journey.next_action?.label || '', /Go Live/i)
   })
 
   it('composeAgentHintForSession re-asserts guest gate at the front', () => {

@@ -734,3 +734,53 @@ export async function placeManagedTestOrder(options: {
 
   return { ok: true, message: 'Test order verified (stock restored)' }
 }
+
+/** Products (public) + orders (admin) for admin_html snapshot and listShopOrders. */
+export async function listManagedShopSnapshot(options: {
+  appId: string
+}): Promise<
+  | { ok: true; products: Array<Record<string, unknown>>; orders: Array<Record<string, unknown>> }
+  | { ok: false; message: string }
+> {
+  const config = getManagedBackendConfig()
+  if (!config) {
+    return { ok: false, message: 'Indobase backend is not configured' }
+  }
+
+  const appId = sanitizeAppId(options.appId)
+  const productsName = physicalCollectionName(appId, 'products')
+  const ordersName = physicalCollectionName(appId, 'orders')
+  const publicBase = config.publicUrl.replace(/\/+$/, '')
+
+  const [productsRes, token] = await Promise.all([
+    fetch(`${publicBase}/api/collections/${productsName}/records?perPage=200&sort=-created`),
+    adminAuth(config),
+  ])
+  const productsPayload = (await productsRes.json().catch(() => ({}))) as {
+    items?: Array<Record<string, unknown>>
+    message?: string
+  }
+  if (!productsRes.ok) {
+    return {
+      ok: false,
+      message: formatPbError(productsPayload, 'Could not list products'),
+    }
+  }
+
+  const auth = adminAuthHeader(token)
+  const ordersRes = await fetch(
+    `${config.adminUrl}/api/collections/${ordersName}/records?perPage=50&sort=-created`,
+    { headers: { Authorization: auth } },
+  )
+  const ordersPayload = (await ordersRes.json().catch(() => ({}))) as {
+    items?: Array<Record<string, unknown>>
+    message?: string
+  }
+  const orders = ordersRes.ok ? ordersPayload.items || [] : []
+
+  return {
+    ok: true,
+    products: productsPayload.items || [],
+    orders,
+  }
+}

@@ -22,13 +22,15 @@ import {
   type AppVertical,
   type VerticalSeedProduct,
 } from './vertical-catalog.js'
-import { isManagedBackendConfigured } from './pocketbase/managed.js'
+import { getManagedBackendConfig, isManagedBackendConfigured } from './pocketbase/managed.js'
 import {
   applyArchitectureBlueprint,
+  listManagedShopSnapshot,
   placeManagedTestOrder,
   seedEcommerceCatalog,
   smokeProveArchitecture,
 } from './pocketbase/architecture.js'
+import { buildManagedShopAdminHtml } from './pocketbase/shop-admin-html.js'
 
 export const GUIDED_BACKEND_TOOL = {
   name: 'guidedBackend',
@@ -361,6 +363,19 @@ export async function executeGuidedBackend(
       if (local.ok) {
         catalogOk = true
         catalog_json = local.catalog_json
+        const config = getManagedBackendConfig()
+        if (config) {
+          const snapshot = await listManagedShopSnapshot({ appId: session.projectRef })
+          if (snapshot.ok) {
+            admin_html = buildManagedShopAdminHtml({
+              brand: brand || vertical.label,
+              appId: session.projectRef,
+              publicUrl: config.publicUrl,
+              products: local.products?.length ? local.products : snapshot.products,
+              orders: snapshot.orders,
+            })
+          }
+        }
         steps.push({
           id: 'setupShopCatalog',
           status: 'ok',

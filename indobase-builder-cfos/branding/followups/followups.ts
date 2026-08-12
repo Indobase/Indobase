@@ -168,12 +168,29 @@ export function looksLikeEcommerceNicheAsk(message: string): boolean {
   )
 }
 
+/** SaaS / booking / dashboard / client-app asks that need ensure-first (not store preview). */
+export function looksLikeSaaSOrBackendAppAsk(message: string): boolean {
+  const text = message.toLowerCase()
+  if (/landing page only|marketing site only|static brochure/.test(text)) return false
+  return (
+    /\b(saas|web app|client portal|customer portal|dashboard|internal tool|booking app|appointments app)\b/.test(
+      text,
+    ) ||
+    /\b(with login|with auth|user accounts|sign[\s-]?in|customer login|database|real backend|postgres|supabase)\b/.test(
+      text,
+    ) ||
+    /this is a saas|build a saas|saas web app/.test(text)
+  )
+}
+
 /**
  * Strip leaked model CoT / “Considering…” dumps from assistant text shown in chat.
  */
 export function stripLeakedCot(message: string): string {
   if (!message) return message
   let t = message
+  t = t.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  t = t.replace(/<thought>[\s\S]*?<\/thought>/gi, '')
   // Drop a "Considering…" heading and the following paragraph until a blank line.
   t = t.replace(/(?:^|\n+)#{0,3}\s*Considering[^\n]*\n(?:[^\n]+\n)*?(?=\n\n|$)/gi, '\n\n')
   t = t.replace(/(?:^|\n)Considering guest information[^\n]*\n?/gi, '\n')
@@ -187,6 +204,7 @@ export function stripLeakedCot(message: string): string {
 
 export function injectNicheChoices(message: string): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
+  // Never inject niche cards during guest/auth turns.
   if (inferChipStage(message) === 'guest_gate' || looksLikePreBuildClarification(message)) {
     return null
   }
@@ -336,6 +354,32 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
       {
         label: 'Wire + Go Live',
         message: `If catalog exists, wire the ${name} storefront to session.backend then Go Live with launchBusiness`,
+      },
+    ],
+  }
+}
+
+/** Ensure-first chips when the operator asked for SaaS/auth/data (not store preview). */
+export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Enable login + database',
+        message: `Call guidedBackend mode=generic for ${name} (ensureLogin + ensureDatabase + applySchema) FIRST — then build UI against session.backend`,
+      },
+      {
+        label: 'Wire auth + data UI',
+        message: `Wire Sign-in and data screens for ${name} to session.backend api_url + anon_key — no localStorage auth or mock APIs`,
+      },
+      {
+        label: 'Go Live when wired',
+        message: `When auth and data are wired, Go Live with launchBusiness app_type=saas and quote the exact url`,
+      },
+      {
+        label: 'Production checklist',
+        message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
       },
     ],
   }
@@ -623,6 +667,7 @@ export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = infer
   const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
 
   if (stage === 'guest_gate') {
+    // Auth / DPDP / OTP turn — never show recommendation or niche cards.
     return { body: cleaned.body, title: '', items: [] }
   }
 
@@ -682,6 +727,11 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     )
   ) {
     stage = postBackendFollowups(brand)
+  } else if (
+    looksLikeSaaSOrBackendAppAsk(message) &&
+    !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
+  ) {
+    stage = postSaasEnsureFirstFollowups(brand)
   } else {
     stage = postPreviewFollowups(brand)
   }
@@ -689,6 +739,51 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     body: stripLeakedCot(message),
     title: stage.title,
     items: stage.items.slice(0, MAX_VISIBLE_CHIPS),
+  }
+}
+
+/** Generic next-step chips when the agent omitted FOLLOWUPS on a substantive reply. */
+export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps | null {
+  if (!message?.trim() || parseFollowUps(message)) return null
+  if (looksLikePreBuildClarification(message)) return null
+
+  const body = stripLeakedCot(message).trim()
+  if (body.length < 60) return null
+
+  const deliverable = injectDeliverableFollowUps(message)
+  if (deliverable) return deliverable
+
+  const stage = inferChipStage(body)
+  if (stage === 'guest_gate' || stage === 'payments') return null
+
+  const brand = extractBrandFromMessage(body)
+  if (stage === 'deliverable') {
+    return postPreviewFollowups(brand)
+  }
+
+  return {
+    body,
+    title: brand ? `Where should I take ${brand} next?` : DEFAULT_POST_BUILD_TITLE,
+    items: [
+      {
+        label: 'Go Live on Indobase',
+        message:
+          'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url, then emit Domain / Add payments / Production checklist chips.',
+      },
+      {
+        label: 'Keep building',
+        message: 'Continue implementing the next important screen or feature for this app',
+      },
+      {
+        label: 'Refine the design',
+        message: 'Refine spacing, typography, colors, and mobile layout',
+      },
+      {
+        label: 'Add a real backend',
+        message:
+          'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
+      },
+    ],
   }
 }
 
@@ -708,8 +803,12 @@ export function resolveFollowUps(message: string): ParsedFollowUps | null {
   if (niche) return applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
 
   const injected = injectDeliverableFollowUps(cleaned)
-  if (!injected) return null
-  return applyStageGate(injected, 'deliverable')
+  if (injected) return applyStageGate(injected, 'deliverable')
+
+  const generic = injectAssistantTurnFollowUps(cleaned)
+  if (generic) return applyStageGate(generic)
+
+  return null
 }
 
 /** Serialize a follow-ups block for agent replies / tests. */

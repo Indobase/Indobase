@@ -38,6 +38,8 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/followups.ts" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/FollowUpRecommendations.tsx" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/FollowUpRecommendations.module.css" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/LaunchJourneyCard.tsx" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/LaunchJourneyCard.module.css" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/followups/"
 # Formats tree (gadgets + Design source). Exclude AppleDouble junk.
 rsync -az --delete \

@@ -189,6 +189,8 @@ export function looksLikeSaaSOrBackendAppAsk(message: string): boolean {
 export function stripLeakedCot(message: string): string {
   if (!message) return message
   let t = message
+  t = t.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  t = t.replace(/<thought>[\s\S]*?<\/thought>/gi, '')
   // Drop a "Considering…" heading and the following paragraph until a blank line.
   t = t.replace(/(?:^|\n+)#{0,3}\s*Considering[^\n]*\n(?:[^\n]+\n)*?(?=\n\n|$)/gi, '\n\n')
   t = t.replace(/(?:^|\n)Considering guest information[^\n]*\n?/gi, '\n')
@@ -740,6 +742,51 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
   }
 }
 
+/** Generic next-step chips when the agent omitted FOLLOWUPS on a substantive reply. */
+export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps | null {
+  if (!message?.trim() || parseFollowUps(message)) return null
+  if (looksLikePreBuildClarification(message)) return null
+
+  const body = stripLeakedCot(message).trim()
+  if (body.length < 60) return null
+
+  const deliverable = injectDeliverableFollowUps(message)
+  if (deliverable) return deliverable
+
+  const stage = inferChipStage(body)
+  if (stage === 'guest_gate' || stage === 'payments') return null
+
+  const brand = extractBrandFromMessage(body)
+  if (stage === 'deliverable') {
+    return postPreviewFollowups(brand)
+  }
+
+  return {
+    body,
+    title: brand ? `Where should I take ${brand} next?` : DEFAULT_POST_BUILD_TITLE,
+    items: [
+      {
+        label: 'Go Live on Indobase',
+        message:
+          'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url, then emit Domain / Add payments / Production checklist chips.',
+      },
+      {
+        label: 'Keep building',
+        message: 'Continue implementing the next important screen or feature for this app',
+      },
+      {
+        label: 'Refine the design',
+        message: 'Refine spacing, typography, colors, and mobile layout',
+      },
+      {
+        label: 'Add a real backend',
+        message:
+          'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
+      },
+    ],
+  }
+}
+
 /**
  * Resolve chips for display.
  *
@@ -756,8 +803,12 @@ export function resolveFollowUps(message: string): ParsedFollowUps | null {
   if (niche) return applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
 
   const injected = injectDeliverableFollowUps(cleaned)
-  if (!injected) return null
-  return applyStageGate(injected, 'deliverable')
+  if (injected) return applyStageGate(injected, 'deliverable')
+
+  const generic = injectAssistantTurnFollowUps(cleaned)
+  if (generic) return applyStageGate(generic)
+
+  return null
 }
 
 /** Serialize a follow-ups block for agent replies / tests. */

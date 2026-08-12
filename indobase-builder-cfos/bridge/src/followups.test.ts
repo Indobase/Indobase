@@ -417,6 +417,15 @@ INDOBASE_CHOICES>>>
     assert.equal(resolveFollowUps("What's next?"), null)
   })
 
+  it('injects generic building chips when agent omitted FOLLOWUPS', () => {
+    const input =
+      'I updated the hero layout with clearer typography, tighter spacing, and a stronger mobile grid for the storefront shell.'
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved!.items.length >= 2)
+    assert.ok(resolved!.items.some((i) => /Go Live|Keep building|Refine/i.test(i.label)))
+  })
+
   it('postBackendFollowups and postGoLiveFollowups stay within chip budget', () => {
     assert.ok(postBackendFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)
     assert.ok(postGoLiveFollowups('Aural').items.length <= MAX_VISIBLE_CHIPS)

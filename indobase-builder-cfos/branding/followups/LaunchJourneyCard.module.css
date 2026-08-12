@@ -1,0 +1,136 @@
+.root {
+  margin-top: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-kumo-brand) 28%, var(--color-kumo-line));
+  background: color-mix(in srgb, var(--color-kumo-brand) 6%, var(--color-kumo-tint));
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.kicker {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-kumo-brand);
+  margin-bottom: 0.2rem;
+}
+
+.headline {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-color-kumo-strong);
+}
+
+.liveLink {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--color-kumo-brand);
+  text-decoration: none;
+}
+
+.liveLink:hover {
+  text-decoration: underline;
+}
+
+.steps {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .steps {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-kumo-line);
+  flex-shrink: 0;
+}
+
+.stepLabel {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-color-kumo-inactive);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stepDone .stepDot {
+  background: #059669;
+}
+
+.stepDone .stepLabel {
+  color: var(--text-color-kumo-default);
+}
+
+.stepCurrent .stepDot {
+  background: var(--color-kumo-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-kumo-brand) 22%, transparent);
+}
+
+.stepCurrent .stepLabel {
+  color: var(--text-color-kumo-strong);
+  font-weight: 600;
+}
+
+.primary {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  background: var(--color-kumo-brand);
+  color: #fff;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  transition: transform 80ms ease, opacity 120ms ease;
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+.primary:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary:focus-visible {
+  outline: 2px solid var(--color-kumo-brand);
+  outline-offset: 2px;
+}

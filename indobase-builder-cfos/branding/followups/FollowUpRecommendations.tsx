@@ -13,6 +13,8 @@ import {
   type ParsedFollowUps,
 } from './followups'
 
+import { LaunchJourneyCard } from './LaunchJourneyCard'
+
 import styles from './FollowUpRecommendations.module.css'
 
 export {
@@ -95,6 +97,8 @@ type Props = {
    * When false, parseFollowUps only (no stage gate / injection).
    */
   allowFallback?: boolean
+  /** When true, show the Naive-style launch progress card (latest completed turn only). */
+  showLaunchJourney?: boolean
   onPick: (message: string) => void
   disabled?: boolean
   /** Render markdown (or other) body with the stripped message. */
@@ -109,13 +113,18 @@ type Props = {
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,
   allowFallback = true,
+  showLaunchJourney = false,
   onPick,
   disabled,
   children,
 }: Props) {
   const cleaned = useMemo(() => stripLeakedCot(message), [message])
   const resolved = useMemo(() => {
-    const raw = allowFallback ? resolveFollowUps(cleaned) : parseFollowUps(cleaned)
+    // Agent-authored FOLLOWUPS blocks can appear before the turn is marked complete.
+    const explicit = parseFollowUps(cleaned)
+    const raw = allowFallback
+      ? resolveFollowUps(cleaned)
+      : explicit ?? null
     if (!raw) return null
     // Defense in depth: hide chips while unsigned-in / auth ask.
     if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
@@ -128,6 +137,9 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   return (
     <>
       {children ? children(body, resolved) : null}
+      {showLaunchJourney && !isBrowserGuestSession() && (
+        <LaunchJourneyCard onPick={onPick} disabled={disabled} />
+      )}
       {resolved && resolved.items.length > 0 && (
         <FollowUpChipGrid
           title={resolved.title}

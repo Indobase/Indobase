@@ -68,6 +68,7 @@ import { executeApplySchema } from './apply-schema-tool.js'
 import { executeGuidedBackend } from './guided-backend-chain.js'
 import { executeProductionChecklist } from './production-checklist-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
+import { parseFollowUps, resolveFollowUps, stripLeakedCot } from './followups.js'
 import {
   buildAuthVerifySuccessPayload,
   buildClaimSessionSuccessPayload,
@@ -1118,6 +1119,24 @@ app.post('/api/os/tools/enableAnalytics', async (c) => {
   return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
 })
 
+/** resolveFollowUps — parse INDOBASE_FOLLOWUPS blocks and inject ladder chips (debug / CFOS UI). */
+app.post('/api/os/tools/followups', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { message?: string }
+  const message = typeof body.message === 'string' ? body.message : ''
+  if (!message.trim()) {
+    return c.json({ ok: false, error: 'message required' }, 400)
+  }
+  const cleaned = stripLeakedCot(message)
+  const parsed = parseFollowUps(cleaned)
+  const resolved = resolveFollowUps(message)
+  return c.json({
+    ok: true,
+    cleaned_message: cleaned,
+    parsed,
+    resolved,
+  })
+})
+
 /** resolveProductImages — Openverse commercial URLs for catalogs. */
 app.post('/api/os/media/product-images', async (c) => {
   const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
@@ -1806,6 +1825,13 @@ app.get('/api/session', async (c) => {
     }
   }
 
+  let launchStatus = null
+  try {
+    launchStatus = await getLaunchStatus(session.projectRef)
+  } catch {
+    launchStatus = null
+  }
+
   return c.json(
     buildSessionApiPayload({
       session,
@@ -1816,6 +1842,7 @@ app.get('/api/session', async (c) => {
       osProxyPath: `${OS_PREFIX}/`,
       indobaseProxyPath: '/api/indobase/proxy/',
       promptQuota,
+      launchStatus,
     }),
   )
 })
@@ -1895,7 +1922,6 @@ app.all('/workspace/*', (c) => serveAgentDesktop(c, { preservePath: true }))
  * Serve like `/` (mint guest + index) so guests can open the shell; keep
  * `/workspace/<id>` on preservePath for principal safety.
  */
-import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
 for (const prefix of CFOS_SPA_SHELL_PREFIXES) {
   app.get(prefix, (c) => serveAgentDesktop(c))
   app.all(`${prefix}/*`, (c) => serveAgentDesktop(c))

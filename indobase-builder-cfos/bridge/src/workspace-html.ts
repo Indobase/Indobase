@@ -90,6 +90,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
       });
       window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
+      window.__INDOBASE_JOURNEY__ = s.journey || null;
       window.__INDOBASE_USAGE__ = s.usage || null;
       window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
       window.__INDOBASE_GUEST__ = !!s.guest;
@@ -129,6 +130,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
             detail: Object.assign({}, window.__INDOBASE__ || {}, {
               AGENT_HINT: window.__INDOBASE_AGENT_HINT__,
               ONBOARDING: window.__INDOBASE_ONBOARDING__,
+              JOURNEY: window.__INDOBASE_JOURNEY__,
               USAGE: window.__INDOBASE_USAGE__,
               ACTIONS: window.__INDOBASE_ACTIONS__,
               LAUNCH_API: '/api/os/launch',

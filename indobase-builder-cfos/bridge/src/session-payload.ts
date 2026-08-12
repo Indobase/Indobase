@@ -10,6 +10,7 @@ import {
 
 import type { Session } from './auth.js'
 import { isGuestSession, profileDisplayName } from './auth.js'
+import { buildLaunchJourneyState, type LaunchStatusSnapshot } from './launch-journey.js'
 import {
   BUSINESS_OS_DISCOVERABLE_ACTIONS,
   discoverableActionsForSession,
@@ -161,6 +162,7 @@ export type BuildSessionApiPayloadInput = {
   indobaseProxyPath: string
   /** Live quota for signed-in operators; omit/null for guests. */
   promptQuota?: OsPromptQuota | null
+  launchStatus?: LaunchStatusSnapshot | null
 }
 
 export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
@@ -172,6 +174,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     guest ? null : input.promptQuota ?? null,
   )
   const actions = discoverableActionsForSession({ guest })
+  const journey = buildLaunchJourneyState(session, input.launchStatus)
 
   return {
     email: session.email,
@@ -204,6 +207,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     generation_context: input.generation,
     agent_hint: composeAgentHintForSession(session, input.agentHint),
     onboarding,
+    journey,
     auth: {
       start: '/auth/start',
       verify: '/auth/verify',

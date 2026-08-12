@@ -2208,6 +2208,8 @@ ${injection}`
       'followups.ts',
       'FollowUpRecommendations.tsx',
       'FollowUpRecommendations.module.css',
+      'LaunchJourneyCard.tsx',
+      'LaunchJourneyCard.module.css',
     ]) {
       const from = join(brandFollowups, name)
       const to = join(followupsDir, name)
@@ -2232,7 +2234,27 @@ ${injection}`
       'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips'
 
     if (text.includes('FollowUpRecommendations') && text.includes('Indobase follow-up chips')) {
-      console.log('  ChatInterface follow-up chips already patched (skip)')
+      const oldAllow =
+        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq)}'
+      const newAllow =
+        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}'
+      if (text.includes(oldAllow) && !text.includes(newAllow)) {
+        text = text.replace(oldAllow, newAllow)
+      }
+      const oldJourney =
+        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  disabled={isAgentActive}'
+      const newJourney =
+        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  showLaunchJourney={actionMessageSeq === J2}\n                                  disabled={isAgentActive}'
+      if (text.includes(oldJourney) && !text.includes('showLaunchJourney')) {
+        text = text.replace(oldJourney, newJourney)
+        write(chatPath, text)
+        console.log('  ChatInterface ← launch journey card on latest turn')
+      } else if (text.includes(oldAllow) && text.includes(newAllow) && !text.includes('showLaunchJourney')) {
+        write(chatPath, text)
+        console.log('  ChatInterface ← follow-up allowFallback when agent idle')
+      } else {
+        console.log('  ChatInterface follow-up chips already patched (skip)')
+      }
     } else if (text.includes(importNeedle) && !text.includes('FollowUpRecommendations')) {
       text = text.replace(importNeedle, importInjection)
 
@@ -2249,7 +2271,8 @@ ${injection}`
       const newBlock = `                              {hasMessageText && (
                                 <FollowUpRecommendations
                                   message={msg.message}
-                                  allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq)}
+                                  allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}
+                                  showLaunchJourney={actionMessageSeq === J2}
                                   disabled={isAgentActive}
                                   onPick={(next) => {
                                     void handleSend(next)

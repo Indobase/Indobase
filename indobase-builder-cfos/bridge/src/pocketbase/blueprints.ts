@@ -156,6 +156,14 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
   ecommerce: {
     id: 'ecommerce',
     label: 'Ecommerce / store',
+    /**
+     * Physical collection names: ib_{sanitizeAppId(projectRef)}_{logicalName}
+     * Canonical field names (do not rename without fleet migration):
+     *   products — name, slug, price, currency, stock, image_url, active, owner
+     *   orders — email, status, total, currency, items_json, owner
+     *   order_items — order_id, product_slug, quantity, unit_price, owner
+     * Spec aliases (docs only): title→name, inventory→stock, customer_email→email
+     */
     collections: [
       {
         name: 'products',
