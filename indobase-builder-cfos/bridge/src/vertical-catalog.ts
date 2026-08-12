@@ -380,31 +380,45 @@ export function findEcommerceVertical(raw: string | null | undefined): AppVertic
   return null
 }
 
-export function ecommerceVerticalFollowups(brand?: string | null): {
+export function ecommerceVerticalFollowups(
+  brand?: string | null,
+  opts?: { autoChain?: boolean },
+): {
   title: string
   items: Array<{ label: string; message: string }>
 } {
   const brandBit = brand?.trim() ? ` named ${brand.trim()}` : ''
+  const brandArg = brand?.trim() ? ` brand=${brand.trim()}` : ''
+  const autoChain = Boolean(opts?.autoChain)
   return {
-    title: ECOMMERCE_VERTICAL_TITLE,
+    title: autoChain
+      ? brand?.trim()
+        ? `Launch ${brand.trim()} — full backend path`
+        : 'Launch your store — pick a niche'
+      : ECOMMERCE_VERTICAL_TITLE,
     items: [
       ...ECOMMERCE_VERTICALS.map((v) => ({
         label: v.label,
-        message:
-          `Niche ${v.label}${brandBit} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
-          `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
+        message: autoChain
+          ? `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`
+          : `Niche ${v.label}${brandBit} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
+            `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
       })),
       {
         label: "I'll type my specific niche",
-        message:
-          "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
+        message: autoChain
+          ? `I'll type my specific niche — INDOBASE_GUIDED_BACKEND mode=ecommerce place_test_order=true${brandArg} — seed catalog, prove order, wire storefront, then Go Live`
+          : "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
       },
     ],
   }
 }
 
-export function formatEcommerceVerticalChoicesBlock(brand?: string | null): string {
-  const { title, items } = ecommerceVerticalFollowups(brand)
+export function formatEcommerceVerticalChoicesBlock(
+  brand?: string | null,
+  opts?: { autoChain?: boolean },
+): string {
+  const { title, items } = ecommerceVerticalFollowups(brand, opts)
   const lines = [`<<<INDOBASE_CHOICES`, `title: ${title}`]
   for (const item of items) {
     lines.push(`${item.label} | ${item.message}`)

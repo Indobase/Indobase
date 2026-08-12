@@ -73,9 +73,11 @@ export const GUIDED_BACKEND_TOOL = {
 export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 ## Guided backend (HARD PATH — when live data is needed)
 
+**LANDING SINGLE-TURN (HARD):** clear landing/marketing / "website for X" (no store/shop/backend ask) → build HTML and call **launchBusiness** \`app_type=landing\` in the **same turn**. Do **not** call guidedBackend. Do **not** ask continue/take-live micro-prompts. Skip PocketBase ecommerce.
+
 **Preview-first is OK** for an **ambiguous** launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
 
-**AUTO-CHAIN (HARD):** when the operator says launch store/shop, add real backend, take live (with store/backend), or create admin → call **guidedBackend mode=ecommerce** + **placeTestShopOrder** in the **same turn** — do not emit preview-only niche chips (“Do NOT call guidedBackend yet”).
+**AUTO-CHAIN (HARD):** when the operator says launch store/shop, add real backend, take live (with store/backend), or create admin → call **guidedBackend mode=ecommerce** + **placeTestShopOrder** in the **same turn** — do not emit preview-only niche chips (“Do NOT call guidedBackend yet”). Niche chips must use vertical ids from the catalog (apparel, electronics, food-grocery, beauty, …).
 
 **Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. Do not skip wire or invent checkout URLs.
 
@@ -87,7 +89,7 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
 5. After claim_backend_ready: emit FOLLOWUPS Wire → Go Live → Admin (≤4). Wire UI to session.backend **records API** (collection prefix + \`/api/collections/{physical}/records\`, OTP user Bearer). launchBusiness on Go Live — omit app_type only for pure landing; shops/SaaS must pass app_type or content must be wired (localStorage-only Go Live is rejected).
 6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
-7. Email / Analytics optional — do not block Go Live on them.
+7. Email / Analytics optional — do not block Go Live on them. After live url, offer **ensureAnalytics** chip (non-blocking).
 8. Payments remain BYOK — guidedBackend does not skip KYC.
 `.trim()
 

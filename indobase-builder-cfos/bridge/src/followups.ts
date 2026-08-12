@@ -64,7 +64,7 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Connect my domain',
     message:
-      'Connect a domain I already own — publish with customDomain and give me CNAME to sites.indobase.in',
+      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; Indobase does not auto-verify yet)',
   },
   {
     label: 'Add customer login',
@@ -98,7 +98,7 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
     message:
-      'This is a landing/marketing site — build UI → launchBusiness; SEO + legal; optional domain; productionChecklist app_type landing',
+      'This is a landing/marketing site — build UI and call launchBusiness app_type=landing in the same turn (skip guidedBackend); SEO + legal; optional domain; then ensureAnalytics + productionChecklist',
   },
   {
     label: 'SaaS / web app',
@@ -136,12 +136,54 @@ export const ECOMMERCE_NICHE_TITLE = 'What will your store sell?'
 export const AUTO_CHAIN_STORE_TITLE = 'Launch your store — pick a niche'
 
 /**
- * Clear backend/live intent — skip preview-only niche ladder; auto-chain guidedBackend.
- * Used by chip injection and agent policy seeds.
+ * Vertical ids/labels aligned with vertical-catalog.ts ECOMMERCE_VERTICALS (first 4 for chip budget).
+ * Kept inline so FE branding copy stays free of vertical-catalog imports.
+ */
+export const ECOMMERCE_AUTO_CHAIN_VERTICALS = [
+  { id: 'apparel', label: 'Apparel / fashion' },
+  { id: 'electronics', label: 'Electronics' },
+  { id: 'food-grocery', label: 'Food & grocery' },
+  { id: 'beauty', label: 'Beauty' },
+] as const
+
+/**
+ * Clear landing/marketing ask (not store/SaaS) — single-turn build + launchBusiness; skip PB ecommerce.
+ */
+export function looksLikeClearLandingAsk(message: string): boolean {
+  const text = message.toLowerCase()
+  if (
+    /\b(store|shop|ecommerce|e-?commerce|inventory|product catalog|online store|webshop|sell products|checkout|guidedbackend|place_test_order)\b/.test(
+      text,
+    )
+  ) {
+    return false
+  }
+  if (/\b(saas|dashboard|booking app|client portal|with login|user accounts)\b/.test(text)) return false
+  return (
+    /\b(landing\s*(page|site)|marketing\s*(site|page|landing)|brochure(\s*site)?|coming\s*soon\s*page)\b/.test(
+      text,
+    ) ||
+    /\b(website|site|page) for (my |our |a )[\w][\w\s'-]{1,40}/.test(text) ||
+    /\b(build|make|create|design) (me )?(a |my |our )?(simple )?(landing|marketing|brochure)\b/.test(text)
+  )
+}
+
+/**
+ * Landing single-turn Go Live — clear landing ask; agent must call launchBusiness in the same turn
+ * (no continue / take-live micro-prompts; no guidedBackend).
+ */
+export function looksLikeLandingSingleTurnIntent(message: string): boolean {
+  return looksLikeClearLandingAsk(message)
+}
+
+/**
+ * Clear backend/live store intent — skip preview-only niche ladder; auto-chain guidedBackend.
+ * Used by chip injection and agent policy seeds. Does NOT fire for clear landing/marketing asks.
  */
 export function looksLikeAutoChainIntent(message: string): boolean {
   const text = message.toLowerCase()
   if (/do not call guidedbackend|preview only|localstorage cart only|niche only/.test(text)) return false
+  if (looksLikeClearLandingAsk(message)) return false
   return (
     /\b(launch (a |my )?(store|shop|business|ecommerce)|take (it )?live|go live now|publish (my |the )?(store|shop|site|business))\b/.test(
       text,
@@ -160,22 +202,34 @@ export function autoChainStoreFollowups(brand?: string | null): StageFollowUps {
   const brandArg = name !== 'this' ? ` brand=${name}` : ''
   return {
     title: name !== 'this' ? `Launch ${name} — full backend path` : AUTO_CHAIN_STORE_TITLE,
+    items: ECOMMERCE_AUTO_CHAIN_VERTICALS.map((v) => ({
+      label: v.label,
+      message: `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`,
+    })),
+  }
+}
+
+/** Landing single-turn chips — Go Live with launchBusiness; skip PocketBase ecommerce. */
+export function landingSingleTurnFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
     items: [
       {
-        label: 'Apparel / fashion',
-        message: `Launch apparel/fashion store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=apparel${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`,
+        label: 'Go Live on Indobase',
+        message: `Go Live now — call launchBusiness app_type=landing for ${name} with real html/files in this turn (skip guidedBackend / PocketBase ecommerce). Quote the exact url, then emit Domain / Analytics / Checklist chips — no continue/take-live micro-prompts`,
       },
       {
-        label: 'Electronics / gadgets',
-        message: `Launch electronics/gadgets store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=electronics${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+        label: 'Connect my domain',
+        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www → sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet`,
       },
       {
-        label: 'Food / grocery',
-        message: `Launch food/grocery store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=food-grocery${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+        label: 'Add analytics',
+        message: `After the live url, call ensureAnalytics for ${name} (non-blocking) — quote launch_url / pending_setup; do not block Go Live`,
       },
       {
-        label: 'Beauty / personal care',
-        message: `Launch beauty store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=beauty${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+        label: 'Production checklist',
+        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
       },
     ],
   }
@@ -207,34 +261,20 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
   }
 }
 
-/** Self-contained niche CHOICES for FE (no vertical-catalog import). Preview-only messages. */
+/** Self-contained niche CHOICES for FE (no vertical-catalog import). Preview-only; labels match ECOMMERCE_VERTICALS. */
 export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
-  {
-    label: 'Apparel / fashion',
+  ...ECOMMERCE_AUTO_CHAIN_VERTICALS.map((v) => ({
+    label: v.label,
     message:
-      'Niche Apparel / fashion — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=apparel). Do NOT call guidedBackend yet. After preview, emit launch-ladder FOLLOWUPS (Go Live first) and keep advancing until live url + payments path.',
-  },
-  {
-    label: 'Electronics / gadgets',
-    message:
-      'Niche Electronics / gadgets — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=electronics). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
-  },
-  {
-    label: 'Food / grocery',
-    message:
-      'Niche Food / grocery — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=food-grocery). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
-  },
-  {
-    label: 'Beauty / personal care',
-    message:
-      'Niche Beauty / personal care — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=beauty). Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and continue the launch ladder.',
-  },
+      `Niche ${v.label} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
+      `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
+  })),
   {
     label: "I'll type my specific niche",
     message:
       "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend; after preview keep emitting Go Live–first launch-ladder chips",
   },
-] as const
+]
 
 export function itemsLookLikeEcommerceNiche(items: readonly FollowUpItem[]): boolean {
   if (!items.length) return false
@@ -454,7 +494,8 @@ export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
   },
   {
     label: 'Connect my domain',
-    message: 'Connect a domain I already own — customDomain + CNAME to sites.indobase.in',
+    message:
+      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)',
   },
 ] as const
 
@@ -588,32 +629,44 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
 export function postGoLiveFollowups(brand?: string | null, opts?: { store?: boolean }): StageFollowUps {
   const name = brandLabel(brand)
   const store = opts?.store !== false
+  const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
+  const analyticsMsg = `Call ensureAnalytics for ${name} after the live url (non-blocking) — quote launch_url / pending_setup; do not claim Analytics live from ensure alone`
   const items: FollowUpItem[] = [
     {
       label: 'Connect my domain',
-      message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
-    },
-    {
-      label: 'Add payments',
-      message: store
-        ? `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`
-        : `Connect payments for ${name} — India vs International, connectGateway, wireCheckout`,
-    },
-    {
-      label: 'Production checklist',
-      message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
-    },
-    {
-      label: 'Refine the design',
-      message: `Refine the design and branding for ${name}`,
+      message: domainMsg,
     },
   ]
-  if (!store) {
-    items.splice(1, 0, {
-      label: 'Add a real backend',
-      message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
-    })
-    items.pop()
+  if (store) {
+    items.push(
+      {
+        label: 'Add payments',
+        message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`,
+      },
+      {
+        label: 'Add analytics',
+        message: analyticsMsg,
+      },
+      {
+        label: 'Production checklist',
+        message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+      },
+    )
+  } else {
+    items.push(
+      {
+        label: 'Add analytics',
+        message: analyticsMsg,
+      },
+      {
+        label: 'Add a real backend',
+        message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
+      },
+      {
+        label: 'Production checklist',
+        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+      },
+    )
   }
   return { title: whereNextTitle(brand), items: items.slice(0, MAX_VISIBLE_CHIPS) }
 }
@@ -640,7 +693,7 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — customDomain + CNAME to sites.indobase.in`,
+        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)`,
       },
     ],
   }
@@ -887,7 +940,8 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
   if (/checkout_url|payments are live|wirecheckout|claim_production_ready/.test(lower)) {
     stage = postPaymentsFollowups(brand)
   } else if (looksLikeLivePublished(message)) {
-    stage = postGoLiveFollowups(brand, { store: true })
+    const landing = looksLikeClearLandingAsk(message)
+    stage = postGoLiveFollowups(brand, { store: !landing })
   } else if (
     /claim_backend_ready|catalog seeded|place.?test.?shop.?order|shop backend is live|wired (the )?storefront|storefront wired/.test(
       lower,
@@ -899,6 +953,8 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
   ) {
     stage = postSaasEnsureFirstFollowups(brand)
+  } else if (looksLikeLandingSingleTurnIntent(message)) {
+    stage = landingSingleTurnFollowups(brand)
   } else if (looksLikeAutoChainIntent(message) && !/claim_backend_ready|catalog seeded|place.?test.?shop.?order/.test(lower)) {
     stage = autoChainBackendFollowups(brand)
   } else {

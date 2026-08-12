@@ -8,7 +8,10 @@ import {
   looksLikePreBuildClarification,
   looksLikeSaaSOrBackendAppAsk,
   looksLikeAutoChainIntent,
+  looksLikeClearLandingAsk,
+  looksLikeLandingSingleTurnIntent,
   autoChainStoreFollowups,
+  landingSingleTurnFollowups,
   formatFollowUpsBlock,
   inferChipStage,
   applyStageGate,
@@ -96,7 +99,10 @@ INDOBASE_CHOICES>>>
     assert.ok(resolved)
     assert.match(resolved.title, /MERIDIAN|next/i)
     assert.ok(resolved.items.length >= 2 && resolved.items.length <= MAX_VISIBLE_CHIPS)
-    assert.ok(resolved.items.some((i) => /Go Live|Add a real backend|Refine/i.test(i.label)))
+    // Live hostname → post-Go Live ladder (domain / payments / analytics / checklist)
+    assert.ok(
+      resolved.items.some((i) => /Connect my domain|Add payments|Add analytics|Production checklist/i.test(i.label)),
+    )
   })
 
   it('does not inject chips for guest-gate clarifications', () => {
@@ -448,6 +454,38 @@ INDOBASE_CHOICES>>>
     }
   })
 
+  it('ecommerceVerticalFollowups autoChain uses catalog vertical ids', async () => {
+    const { ecommerceVerticalFollowups, ECOMMERCE_VERTICALS } = await import('./vertical-catalog.ts')
+    const { items } = ecommerceVerticalFollowups('MERIDIAN', { autoChain: true })
+    assert.ok(items.length >= 2)
+    const catalogIds = new Set(ECOMMERCE_VERTICALS.map((v) => v.id))
+    for (const item of items.slice(0, 4)) {
+      assert.match(item.message, /INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=/i)
+      assert.doesNotMatch(item.message, /Do NOT call guidedBackend yet/i)
+      const m = /vertical=([\w-]+)/i.exec(item.message)
+      assert.ok(m?.[1] && catalogIds.has(m[1]))
+    }
+  })
+
+  it('autoChainStoreFollowups labels match catalog verticals', () => {
+    const stage = autoChainStoreFollowups('MERIDIAN')
+    assert.equal(stage.items[0].label, 'Apparel / fashion')
+    assert.equal(stage.items[1].label, 'Electronics')
+    assert.equal(stage.items[2].label, 'Food & grocery')
+    assert.equal(stage.items[3].label, 'Beauty')
+    for (const item of stage.items) {
+      assert.match(item.message, /vertical=(apparel|electronics|food-grocery|beauty)/)
+    }
+  })
+
+  it('postGoLiveFollowups include ensureAnalytics chip', () => {
+    const store = postGoLiveFollowups('Aural', { store: true })
+    assert.ok(store.items.some((i) => /Add analytics|ensureAnalytics/i.test(i.label + i.message)))
+    const landing = postGoLiveFollowups('CRUMB', { store: false })
+    assert.ok(landing.items.some((i) => /ensureAnalytics/i.test(i.message)))
+    assert.ok(landing.items.some((i) => /Connect my domain|CNAME/i.test(i.label + i.message)))
+  })
+
   it('injects ensure-first chips for SaaS deliverables without backend', () => {
     assert.ok(looksLikeSaaSOrBackendAppAsk('Build a SaaS web app with user login and database'))
     const input =
@@ -463,6 +501,28 @@ INDOBASE_CHOICES>>>
     assert.ok(looksLikeAutoChainIntent('Add a real backend and take it live for my shop'))
     assert.ok(looksLikeAutoChainIntent('Create admin dashboard for orders'))
     assert.equal(looksLikeAutoChainIntent('Niche Apparel — preview only, do NOT call guidedBackend yet'), false)
+    assert.equal(looksLikeAutoChainIntent('Website for my bakery — landing page'), false)
+  })
+
+  it('looksLikeClearLandingAsk and landing single-turn chips skip guidedBackend', () => {
+    assert.ok(looksLikeClearLandingAsk('Website for my bakery'))
+    assert.ok(looksLikeLandingSingleTurnIntent('Build a landing page for my cafe'))
+    assert.equal(looksLikeClearLandingAsk('Launch my apparel store'), false)
+    const stage = landingSingleTurnFollowups('CRUMB')
+    assert.ok(stage.items.some((i) => /launchBusiness app_type=landing/i.test(i.message)))
+    assert.ok(stage.items.every((i) => !/guidedBackend mode=ecommerce/i.test(i.message)))
+    assert.ok(stage.items.some((i) => /ensureAnalytics/i.test(i.message)))
+  })
+
+  it('injects landing single-turn Go Live chips for clear landing deliverables', () => {
+    const input =
+      "Here's what I built — CRUMB bakery landing preview ready.\n\nWhat's in it: hero, menu teaser, contact. Website for my bakery."
+    assert.ok(looksLikeLandingSingleTurnIntent(input))
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /launchBusiness app_type=landing|skip guidedBackend/i.test(i.message)))
+    assert.ok(resolved.items.every((i) => !/INDOBASE_GUIDED_BACKEND mode=ecommerce/i.test(i.message)))
   })
 
   it('injects auto-chain niche chips when agent asks niche with launch intent in prose', () => {

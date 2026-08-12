@@ -120,12 +120,12 @@ Companion architecture doc: [`ZERO-TO-ONE-LAUNCH-ARCHITECTURE.md`](./ZERO-TO-ONE
 
 | ID | Item | Acceptance | Owner files |
 | --- | --- | --- | --- |
-| P1 #1 | **Single-turn Go Live** for clear landing asks | “Website for my bakery” → preview + `launchBusiness` in one agent turn when html ready | `guided-backend-chain.ts`, `launch-business-tool.ts`, `AGENT_HINT.md` |
+| P1 #1 | **Single-turn Go Live** for clear landing asks ✅ | “Website for my bakery” → build + `launchBusiness app_type=landing` in one agent turn; skip PB ecommerce; no continue/take-live micro-prompts | `followups.ts` (`looksLikeClearLandingAsk`, `landingSingleTurnFollowups`), `seed-format-routing.mjs`, `AGENT_HINT.md`, `guided-backend-chain.ts` |
 | P1 #2 | **Journey-driven chips** ✅ | `LaunchJourneyCard.next_action` injects chip matching `launch-journey.ts` stage | `launch-journey.ts`, `FollowUpRecommendations.tsx`, `followups.ts` |
 | P1 #3 | **Static preview lane** ✅ | After HTML exists, agent quotes `launchBusiness` URL not Gadget iframe; `launch.preview_policy` on `/api/session` | `session-payload.ts`, `AGENT_HINT.md`, `business-os-nav.ts` |
 | P1 #4 | **Gadget iframe localStorage** ✅ | No SecurityError on preview; prefer static draft lane (`enforce_static_over_gadget`, HARD preview_policy) | `session-payload.ts`, `rebrand-cloudflare-os.mjs`, `AGENT_HINT.md` |
 | P1 #5 | **Wire-proof automation** ✅ | After backend, auto-inject `__INDOBASE_ENV__` via `autoWireLaunchArtifacts` in guidedBackend | `wire-proof.ts`, `publish-env-inject.ts`, `guided-backend-chain.ts` |
-| P1 #6 | **Vertical catalog sync** | `vertical-catalog.ts` ecommerce chips align with auto-chain policy | `vertical-catalog.ts`, `followups.ts` |
+| P1 #6 | **Vertical catalog sync** ✅ | Auto-chain niche chips use `ECOMMERCE_VERTICALS` ids/labels; `ecommerceVerticalFollowups({ autoChain: true })` | `vertical-catalog.ts`, `followups.ts` (`ECOMMERCE_AUTO_CHAIN_VERTICALS`) |
 | P1 #7 | **Chat noise reduction** ✅ | Strip sessionStatus / blueprint list dumps from operator markdown | `followups.ts`, `FollowUpRecommendations.tsx` |
 
 **Done when (P1 milestone):** Staging smoke — new user → live subdomain + wired catalog + admin.html in ≤4 prompts (Free quota).
@@ -158,10 +158,10 @@ Manual (signed-in on builder.indobase.in):
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| P2E #1 | Custom domain auto-verify | Domains product integration |
-| P2E #2 | Multi-environment (staging tenant) | Per-project PB isolation |
+| P2E #1 | Custom domain auto-verify | **Partial this ship:** clearer CNAME DNS instructions on `launchBusiness` / static-launch + journey next_action “Connect my domain” when live without customDomain. **Deferred:** registrar auto-verify / Domains product integration (no unverifiable DNS magic). |
+| P2E #2 | Multi-environment (staging tenant) | **Deferred this ship** — no per-project multi-env PB config flag exists; needs dedicated infra (staging tenant isolation). Not in this roll. |
 | P2E #3 | Prompt quota upsell UX | In-chat upgrade without leaving CFOS (partial: governance choices → upgradePlan) |
-| P2E #4 | Analytics auto-wire | `ensureAnalytics` post-Go Live |
+| P2E #4 | Analytics auto-wire | **Partial this ship:** post-Go Live / landing chips call `ensureAnalytics` (non-blocking). Full auto-wire after every Go Live without chip still deferred. |
 
 ---
 
@@ -223,7 +223,7 @@ Manual script:
 
 ## Recommended next actions (after this PR)
 
-1. **P1 #1** — single-turn Go Live for clear landing asks when html is ready in one agent turn.
-2. **P1 #6** — vertical-catalog ecommerce chips align with auto-chain (remaining P1).
-3. **P2E** — custom domain auto-verify, multi-env PB, analytics auto-wire.
-4. Soft-provision CFOS after branding/rebrand/seed changes so ChatInterface gets persistent journey.
+1. Soft-provision CFOS after branding/rebrand/seed changes so ChatInterface gets landing single-turn + vertical sync.
+2. **P2E #1 remaining** — Domains product auto-verify (not DNS instruction copy).
+3. **P2E #2** — multi-env PocketBase (deferred; needs infra).
+4. **P2E #4 remaining** — auto-call `ensureAnalytics` on successful launchBusiness without requiring a chip.

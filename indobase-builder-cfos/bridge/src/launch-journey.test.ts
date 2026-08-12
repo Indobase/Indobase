@@ -46,16 +46,27 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.backend_ready, true)
   })
 
-  it('live site advances to payments then checklist', () => {
+  it('live site without custom domain pushes Connect domain first', () => {
     const journey = buildLaunchJourneyState(memberSession(), {
       subdomain: 'threadline',
       url: 'https://threadline.sites.indobase.in',
     })
     assert.equal(journey.current_stage, 'payments')
     assert.equal(journey.live_url, 'https://threadline.sites.indobase.in')
-    assert.match(journey.next_action?.label || '', /Add payments/i)
+    assert.match(journey.next_action?.label || '', /Connect my domain/i)
+    assert.match(journey.next_action?.message || '', /CNAME|sites\.indobase\.in|auto-verify/i)
     assert.equal(journey.flags.is_live, true)
     assert.ok(journey.completed_stages.includes('live'))
     assert.ok(journey.completed_stages.includes('backend'))
+  })
+
+  it('live site with custom domain advances to Add payments', () => {
+    const journey = buildLaunchJourneyState(memberSession(), {
+      subdomain: 'threadline',
+      customDomain: 'www.threadline.com',
+      url: 'https://www.threadline.com',
+    })
+    assert.equal(journey.current_stage, 'payments')
+    assert.match(journey.next_action?.label || '', /Add payments/i)
   })
 })

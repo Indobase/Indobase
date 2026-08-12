@@ -401,7 +401,10 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
             type: 'CNAME',
             name: custom.startsWith('www.') ? 'www' : '@',
             value: cnameTarget(),
-            note: `At your domain registrar, point ${custom} to ${cnameTarget()}. After DNS updates, customers open https://${custom}. Until then use your Indobase preview link.`,
+            note:
+              `At your domain registrar, create a CNAME: host "${custom.startsWith('www.') ? 'www' : '@'}" → "${cnameTarget()}". ` +
+              `Indobase does not auto-verify DNS — after propagation (often minutes to a few hours), customers open https://${custom}. ` +
+              `Until then use your Indobase subdomain preview link. Apex "@" may need an ALIAS/ANAME if your registrar does not allow CNAME on root.`,
           },
         ]
       }
@@ -462,7 +465,7 @@ export async function launchStaticBusiness(
       customDomain: customHost || undefined,
       dns: assigned.dns,
       message: hasCustom
-        ? `Your business is on Indobase. Add the DNS record below for ${customHost}. Meanwhile open ${assigned.previewUrl}`
+        ? `Your business is on Indobase. Add DNS CNAME host "${customHost?.startsWith('www.') ? 'www' : '@'}" → sites.indobase.in for ${customHost} (no auto-verify — wait for registrar propagation). Meanwhile open ${assigned.previewUrl}`
         : `Your business is now live — ${primaryUrl}`,
       lane: 'static',
       artifactRef: deployed.artifactRef,

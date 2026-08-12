@@ -69,7 +69,7 @@ Build UI → launchBusiness. Skip ensure*.
    - Auth: users OTP on \`{api}/api/collections/users\` — Bearer **user** token (anon_key is \`public\`, not Kong)
    Never invent Neon/Firebase URLs or PostgREST \`/rest/v1\` / \`/auth/v1\` paths on the managed backend.
 4. **launchBusiness** when the real UI is ready.
-5. Optional **ensureEmail** / **ensureAnalytics** — quote pending_setup + launch_url; do not block Go Live on them.
+5. Optional **ensureEmail** / **ensureAnalytics** — quote pending_setup + launch_url; do not block Go Live on them. After a live url, prefer emitting an **Add analytics** chip that calls ensureAnalytics (non-blocking).
 6. Do NOT use webFetch for ensure. Do NOT say Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
 7. Do NOT claim “production ready” until productionChecklist returns claim_production_ready:true.
 8. Prefer **guidedBackend** for ecommerce or “Add a real backend” to run ensureDatabase → schema/catalog in one call.

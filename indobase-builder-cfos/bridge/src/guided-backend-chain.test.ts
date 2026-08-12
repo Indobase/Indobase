@@ -9,6 +9,11 @@ import {
 } from './guided-backend-chain.ts'
 
 describe('guided-backend-chain', () => {
+  it('parseGuidedBackendIntent ignores clear landing asks', () => {
+    assert.equal(parseGuidedBackendIntent('Website for my bakery — landing page go live'), null)
+    assert.equal(parseGuidedBackendIntent('Build a marketing site and publish'), null)
+  })
+
   it('parseGuidedBackendIntent detects Add a real backend as generic', () => {
     const parsed = parseGuidedBackendIntent('Add a real backend for my SaaS dashboard')
     assert.ok(parsed)
