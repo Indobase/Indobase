@@ -33,7 +33,16 @@ type CollectionRow = {
   createRule?: string | null
   updateRule?: string | null
   deleteRule?: string | null
-  fields?: Array<{ id?: string; name: string; type?: string; required?: boolean }>
+  fields?: Array<{
+    id?: string
+    name: string
+    type?: string
+    required?: boolean
+    autogeneratePattern?: string
+    primaryKey?: boolean
+    system?: boolean
+    pattern?: string
+  }>
 }
 
 function inferProfile(rules: CollectionRules | RuleProfile | undefined): RuleProfile {
@@ -86,6 +95,61 @@ async function listCollections(
     if (page > 50) break
   }
   return items
+}
+
+/** PB primary keys need autogeneratePattern or admin/record creates fail with id required. */
+async function ensurePrimaryKeyAutogenerate(
+  config: ManagedBackendConfig,
+  token: string,
+  collection: CollectionRow,
+): Promise<void> {
+  const fields = collection.fields || []
+  const idField = fields.find((f) => f.name === 'id')
+  if (!idField?.id) return
+  const pattern = String((idField as { autogeneratePattern?: string }).autogeneratePattern || '')
+  if (pattern.trim()) return
+  const patchedFields = fields.map((f) => {
+    if (f.name !== 'id') {
+      return {
+        id: f.id,
+        name: f.name,
+        type: f.type || 'text',
+        required: Boolean(f.required),
+      }
+    }
+    return {
+      ...f,
+      id: f.id,
+      name: 'id',
+      type: 'text',
+      required: true,
+      primaryKey: true,
+      system: true,
+      autogeneratePattern: '[a-z0-9]{15}',
+      pattern: '^[a-z0-9]+$',
+    }
+  })
+  const patch = await fetch(`${config.adminUrl}/api/collections/${collection.id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: adminAuthHeader(token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields: patchedFields }),
+  })
+  if (!patch.ok) {
+    const err = (await patch.json().catch(() => ({}))) as PbErrorPayload
+    throw new Error(formatPbError(err, `Failed to restore id autogenerate on ${collection.name}`))
+  }
+}
+
+function newRecordId(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let out = ''
+  for (let i = 0; i < 15; i += 1) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)]!
+  }
+  return out
 }
 
 export async function ensureCollectionSecure(
@@ -168,6 +232,7 @@ export async function ensureCollectionSecure(
       const err = (await patch.json().catch(() => ({}))) as PbErrorPayload
       throw new Error(formatPbError(err, `Failed to secure collection ${logicalName}`))
     }
+    await ensurePrimaryKeyAutogenerate(config, token, existing)
     return {
       name: collectionName,
       logicalName,
@@ -210,6 +275,15 @@ export async function ensureCollectionSecure(
       return ensureCollectionSecure(options, attempt + 1)
     }
     throw new Error(formatPbError(createPayload, `Failed to create collection ${collectionName}`))
+  }
+
+  const createdId = createPayload.id
+  if (createdId) {
+    const refreshed = await listCollections(config, token)
+    const createdRow = refreshed.find((item) => item.id === createdId || item.name === collectionName)
+    if (createdRow) {
+      await ensurePrimaryKeyAutogenerate(config, token, createdRow)
+    }
   }
 
   return {
@@ -408,6 +482,7 @@ export async function smokeProveArchitecture(options: {
     if (probeCollection) {
       const physical = physicalCollectionName(options.appId, probeCollection.name)
       const body: Record<string, unknown> = {
+        id: newRecordId(),
         owner: options.appId || 'architecture-smoke',
       }
       for (const field of probeCollection.fields) {
@@ -619,6 +694,7 @@ export async function placeManagedTestOrder(options: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      id: newRecordId(),
       owner: options.ownerId,
       email: options.email,
       status: 'test',
