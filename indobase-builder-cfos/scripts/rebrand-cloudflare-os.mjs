@@ -2120,10 +2120,18 @@ ${injection}`
 // .dev.vars into that service — vars must be in packages/workshop-backend/.dev.vars
 // AND/OR wrangler.dev.jsonc "vars" (bindings list confirms the latter works on Vyom).
 {
-  const bridgeUrl =
+  const bridgeUrlRaw =
     process.env.INDOBASE_BRIDGE_URL?.trim() ||
     process.env.BUILDER_CFOS_PUBLIC_URL?.trim() ||
     'https://builder.indobase.in'
+  // Vyom CFOS workerd cannot reach localhost bridge publish — always seed a reachable URL.
+  let bridgeUrl = bridgeUrlRaw.replace(/\/+$/, '')
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(bridgeUrl)) {
+    console.warn(
+      '  WARN: INDOBASE_BRIDGE_URL is loopback — forcing https://builder.indobase.in for CFOS .dev.vars (reseed: /usr/local/sbin/indobase-cfos-seed-indobase-vars.sh)',
+    )
+    bridgeUrl = 'https://builder.indobase.in'
+  }
   const osSecret =
     process.env.INDOBASE_OS_SECRET?.trim() ||
     process.env.BUILDER_CFOS_HANDOFF_SECRET?.trim() ||

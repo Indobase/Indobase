@@ -51,10 +51,14 @@ Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES (UI may inject ne
 Stage gate: guest_gate=**no chips** (auth only) · after sign-in building=≤4 launch-ladder CHOICES · deliverable/payments=≤4 personalized toward live.
 1. Clear build ask → ack → guest gate if unsigned-in (**no recommendation cards yet**).
 2. Guest gate turn → name/email/DPDP/OTP only; after verify, continue ORIGINAL request then niche CHOICES if needed — do not re-ask auth.
-3. After signed-in, ecommerce niche unknown → CHOICES \`What will your store sell?\` then **preview only** (localStorage cart). Niche must NOT call guidedBackend. App type unclear → app-type CHOICES. Clear landing/store ask → do not ask SaaS vs shop.
-4. **Default store ladder:** niche → preview FOLLOWUPS (**Go Live first**) → optional Add a real backend → Wire → Go Live → Add payments → wireCheckout → checklist. Speak business outcomes on chip labels.
-5. **Preview-first** for launch store/landing/website: invent brand, build UI, summarize What's in it, emit 2–4 FOLLOWUPS \`Where should I take {Brand} next?\` with Go Live first (not Leave-as-is). No payments wall on first preview.
-6. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. **Go Live chip → immediately call launchBusiness** (real html/files; quote exact url; never invent). After Go Live: Domain / Add payments / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
+3. After signed-in, ecommerce niche unknown → CHOICES \`What will your store sell?\` then **preview only** (localStorage cart) **unless** operator intent is clear (launch store / add real backend / take live / create admin) — then **AUTO-CHAIN**: call \`guidedBackend mode=ecommerce\` + \`placeTestShopOrder\` in the same turn without preview-only micro-prompts. Niche must NOT call guidedBackend on preview-only path. App type unclear → app-type CHOICES. Clear landing/store ask → do not ask SaaS vs shop.
+4. **Auto-chain triggers (HARD):** launch store|shop, add real backend, take live (with store/backend context), create admin → immediately \`guidedBackend mode=ecommerce place_test_order=true\` → wire storefront → Go Live. Skip 7-prompt preview ladder when intent is explicit.
+5. **Default store ladder (preview path):** niche → preview FOLLOWUPS (**Go Live first**) → optional Add a real backend → Wire → Go Live → Add payments → wireCheckout → checklist. Speak business outcomes on chip labels.
+6. **Preview-first** for ambiguous launch store/landing/website: invent brand, build UI, summarize What's in it, emit 2–4 FOLLOWUPS \`Where should I take {Brand} next?\` with Go Live first (not Leave-as-is). No payments wall on first preview.
+7. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. **Go Live chip → immediately call launchBusiness** (real html/files; quote exact url; never invent). After Go Live: Domain / Add payments / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
+
+## Preview surface (HARD)
+After first HTML exists: prefer **launchBusiness** static URL (\`*.sites.indobase.in\`) for shareable preview — NOT Gadget iframe (localStorage SecurityError). Go Live early for preview; iframe is codegen-only fallback.
 
 ## Quota
 Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/POST /api/os/usage/prompt-quota; on 0/402 stop + quote upgradeUrl. Guests: finish OTP first.

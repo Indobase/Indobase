@@ -160,4 +160,37 @@ describe('agent-principal-store', () => {
     assert.equal(found?.backend?.api_url, 'https://ws-1.indobase.in')
     assert.equal(found?.backend?.anon_key, 'anon')
   })
+
+  it('rehydrateSessionBackend merges principal snapshot when cookie lacks backend', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    const { deriveAgentUsername } = await import('./agent-credentials.ts')
+    const gotrueId = 'user-rehydrate'
+    const projectRef = 'ws-rehydrate'
+    const username = deriveAgentUsername(gotrueId, projectRef)
+    await rememberAgentPrincipal({
+      username,
+      gotrueId,
+      projectRef,
+      email: 're@example.com',
+      guest: false,
+      backend: {
+        api_url: 'https://backend.indobase.in',
+        anon_key: 'public',
+        auth_url: 'https://backend.indobase.in/api/collections/users',
+        rest_url: 'https://backend.indobase.in/api/collections',
+        storage_url: 'https://backend.indobase.in/api/files',
+        project_ref: projectRef,
+        project_name: 'Rehydrate',
+      },
+    })
+    const { rehydrateSessionBackend } = await import('./agent-principal-store.ts')
+    const hydrated = await rehydrateSessionBackend({
+      gotrueId,
+      projectRef,
+      backend: undefined,
+    })
+    assert.equal(hydrated.backend?.api_url, 'https://backend.indobase.in')
+    assert.equal(hydrated.backend?.anon_key, 'public')
+  })
 })

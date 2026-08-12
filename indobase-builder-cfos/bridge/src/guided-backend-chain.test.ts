@@ -15,4 +15,24 @@ describe('guided-backend-chain', () => {
     assert.ok(parsed)
     assert.equal(parsed.mode, 'ecommerce')
   })
+
+  it('parseGuidedBackendIntent detects launch store with place_test_order', () => {
+    const parsed = parseGuidedBackendIntent('Launch my apparel store with real backend and inventory')
+    assert.ok(parsed)
+    assert.equal(parsed.mode, 'ecommerce')
+    assert.equal(parsed.place_test_order, true)
+  })
+
+  it('parseGuidedBackendIntent detects create admin as ecommerce', () => {
+    const parsed = parseGuidedBackendIntent('Create admin dashboard for my shop catalog')
+    assert.ok(parsed)
+    assert.equal(parsed.mode, 'ecommerce')
+    assert.equal(parsed.place_test_order, true)
+  })
+
+  it('parseGuidedBackendIntent detects take live with store context', () => {
+    const parsed = parseGuidedBackendIntent('Take my store live with backend catalog wired')
+    assert.ok(parsed)
+    assert.equal(parsed.mode, 'ecommerce')
+  })
 })

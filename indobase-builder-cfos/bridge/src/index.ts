@@ -86,11 +86,13 @@ import { deriveAgentCredentials } from './agent-credentials.js'
 import {
   lookupAgentPrincipal,
   lookupMemberPrincipalForProject,
+  rehydrateSessionBackend,
   rememberAgentPrincipal,
   updateAgentPrincipalBackend,
 } from './agent-principal-store.js'
 import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
+import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
@@ -114,6 +116,45 @@ function publicVersion(): string {
     if (v && v !== 'dev') return v
   }
   return 'dev'
+}
+
+/** Public URL CFOS AgentTools should call (seeded as INDOBASE_BRIDGE_URL). */
+function resolveBridgePublicUrl(): string {
+  return (
+    process.env.INDOBASE_BRIDGE_URL?.trim() ||
+    process.env.BUILDER_CFOS_PUBLIC_URL?.trim() ||
+    process.env.BUILDER_PUBLIC_URL?.trim() ||
+    'https://builder.indobase.in'
+  ).replace(/\/+$/, '')
+}
+
+function isLoopbackBridgeUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return host === 'localhost' || host === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
+function logBridgeStartupWarnings(): void {
+  const bridgeUrl = resolveBridgePublicUrl()
+  const version = publicVersion()
+  if (isLoopbackBridgeUrl(bridgeUrl) && version !== 'dev') {
+    console.warn(
+      `[builder-cfos] WARN: INDOBASE_BRIDGE_URL is loopback (${bridgeUrl}) in prod — CFOS AgentTools will fail. Reseed with /usr/local/sbin/indobase-cfos-seed-indobase-vars.sh or use https://builder.indobase.in`,
+    )
+  }
+  if (!resolvePlatformApiUrl()) {
+    console.warn(
+      '[builder-cfos] WARN: PLATFORM_API_URL / STUDIO_INTERNAL_URL unset — ensure*, OTP, and quota may return 503',
+    )
+  }
+  if (!isManagedBackendConfigured()) {
+    console.warn(
+      '[builder-cfos] WARN: POCKETBASE_* env unset — managed backend ensure/guidedBackend paths may fail',
+    )
+  }
 }
 
 async function securityHeaders(c: Context, next: Next) {
@@ -188,7 +229,7 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
     if (isGuestSession(cookieSession)) {
       return c.json(accountRequiredBody(), 403)
     }
-    return cookieSession
+    return rehydrateSessionBackend(cookieSession)
   }
 
   let secret: string
@@ -249,7 +290,8 @@ async function resolveSessionOrAgentPrincipal(
 ): Promise<{ session: Session; guest: boolean } | Response> {
   const cookieSession = getSession(c)
   if (cookieSession) {
-    return { session: cookieSession, guest: isGuestSession(cookieSession) }
+    const session = await rehydrateSessionBackend(cookieSession)
+    return { session, guest: isGuestSession(session) }
   }
 
   let secret: string
@@ -294,17 +336,23 @@ async function resolveSessionOrAgentPrincipal(
   const guest = Boolean(
     principal.guest || principal.projectRef.startsWith('draft_') || !principal.email?.includes('@'),
   )
-  return {
-    guest,
-    session: {
-      gotrueId: principal.gotrueId,
-      email: principal.email,
-      projectRef: principal.projectRef,
-      orgSlug: guest ? 'guest' : 'os',
-      projectName: principal.projectName,
-      studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
-    },
+  const session: Session = {
+    gotrueId: principal.gotrueId,
+    email: principal.email,
+    projectRef: principal.projectRef,
+    orgSlug: guest ? 'guest' : 'os',
+    projectName: principal.projectName,
+    studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
+    ...(principal.backend
+      ? {
+          backend: {
+            ...principal.backend,
+            project_url: principal.backend.project_url || principal.backend.api_url,
+          },
+        }
+      : {}),
   }
+  return { guest, session }
 }
 
 /** Mint a guest workspace session so `/` opens the agent desktop immediately (account in chat). */
@@ -428,8 +476,30 @@ app.get('/sso/health', async (c) => {
     platformApiConfigured = false
   }
 
+  const managedBackendConfigured = isManagedBackendConfigured()
+  const bridgePublicUrl = resolveBridgePublicUrl()
+  const bridgeUrlMisconfigured = isLoopbackBridgeUrl(bridgePublicUrl) && publicVersion() !== 'dev'
+  let bridgeReachable: boolean | null = null
+  if (bridgePublicUrl) {
+    try {
+      const probe =
+        isLoopbackBridgeUrl(bridgePublicUrl) && !bridgeUrlMisconfigured
+          ? `http://127.0.0.1:${PORT}/sso/health`
+          : `${bridgePublicUrl}/sso/health`
+      const res = await fetch(probe, { method: 'GET', redirect: 'manual' })
+      bridgeReachable = res.status < 500
+    } catch {
+      bridgeReachable = false
+    }
+  }
+
   const ready =
-    handoffConfigured && Boolean(upstream) && cloudflareOsReachable === true && platformApiConfigured
+    handoffConfigured &&
+    Boolean(upstream) &&
+    cloudflareOsReachable === true &&
+    platformApiConfigured &&
+    bridgeReachable === true &&
+    !bridgeUrlMisconfigured
 
   return c.json({
     ok: true,
@@ -439,6 +509,11 @@ app.get('/sso/health', async (c) => {
     version: publicVersion(),
     handoffConfigured,
     platformApiConfigured,
+    managedBackendConfigured,
+    bridgePublicUrl,
+    bridgeReachable,
+    bridgeUrlMisconfigured,
+    bridgeReseedScript: '/usr/local/sbin/indobase-cfos-seed-indobase-vars.sh',
     agentRuntimeConfigured: Boolean(upstream),
     agentRuntimeReachable: cloudflareOsReachable,
     /** @deprecated internal — prefer agentRuntimeConfigured */
@@ -1675,6 +1750,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
 app.get('/api/os/runtime/agent-credentials', async (c) => {
   const sessionOrErr = requireSession(c)
   if (sessionOrErr instanceof Response) return sessionOrErr
+  const session = await rehydrateSessionBackend(sessionOrErr)
   let secret: string
   try {
     secret = resolveHandoffSecret()
@@ -1690,43 +1766,43 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
   }
   const creds = deriveAgentCredentials({
     handoffSecret: secret,
-    gotrueId: sessionOrErr.gotrueId,
-    projectRef: sessionOrErr.projectRef,
-    cfosBindGotrueId: sessionOrErr.cfosBindGotrueId,
-    cfosBindProjectRef: sessionOrErr.cfosBindProjectRef,
+    gotrueId: session.gotrueId,
+    projectRef: session.projectRef,
+    cfosBindGotrueId: session.cfosBindGotrueId,
+    cfosBindProjectRef: session.cfosBindProjectRef,
   })
   // Link CFOS username → Indobase workspace so the workerd launchBusiness tool can auth.
   await rememberAgentPrincipal({
     username: creds.username,
-    gotrueId: sessionOrErr.gotrueId,
-    projectRef: sessionOrErr.projectRef,
-    email: sessionOrErr.email || '',
-    guest: isGuestSession(sessionOrErr),
-    projectName: sessionOrErr.projectName,
-    backend: sessionOrErr.backend
+    gotrueId: session.gotrueId,
+    projectRef: session.projectRef,
+    email: session.email || '',
+    guest: isGuestSession(session),
+    projectName: session.projectName,
+    backend: session.backend
       ? {
-          api_url: sessionOrErr.backend.api_url,
-          anon_key: sessionOrErr.backend.anon_key,
-          auth_url: sessionOrErr.backend.auth_url,
-          rest_url: sessionOrErr.backend.rest_url,
-          storage_url: sessionOrErr.backend.storage_url,
-          project_ref: sessionOrErr.backend.project_ref,
-          project_name: sessionOrErr.backend.project_name,
-          public_env: sessionOrErr.backend.public_env,
+          api_url: session.backend.api_url,
+          anon_key: session.backend.anon_key,
+          auth_url: session.backend.auth_url,
+          rest_url: session.backend.rest_url,
+          storage_url: session.backend.storage_url,
+          project_ref: session.backend.project_ref,
+          project_name: session.backend.project_name,
+          public_env: session.backend.public_env,
         }
       : undefined,
   })
-  if (sessionOrErr.backend?.api_url && sessionOrErr.backend?.anon_key) {
-    await updateAgentPrincipalBackend(creds.username, sessionOrErr.backend)
+  if (session.backend?.api_url && session.backend?.anon_key) {
+    await updateAgentPrincipalBackend(creds.username, session.backend)
   }
   // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
-  const displayName = profileDisplayName(sessionOrErr)
+  const displayName = profileDisplayName(session)
   ensureAgentModelsAsync({
     username: creds.username,
     password: creds.password,
     displayName: displayName || undefined,
   })
-  const guest = isGuestSession(sessionOrErr)
+  const guest = isGuestSession(session)
   // Never log password.
   return c.json({
     ok: true,
@@ -1736,9 +1812,9 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     guest,
     stage: guest ? 'guest' : 'member',
     signed_in: !guest,
-    email: sessionOrErr.email || null,
+    email: session.email || null,
     display_name: displayName || null,
-    project_ref: sessionOrErr.projectRef,
+    project_ref: session.projectRef,
     modelsEnsuring: openRouterKeyConfigured(),
   })
 })
@@ -1805,8 +1881,9 @@ app.get('/live/:ref/', async (c) => {
 })
 
 app.get('/api/session', async (c) => {
-  const session = getSession(c)
-  if (!session) return c.json({ message: 'Unauthorized' }, 401)
+  const rawSession = getSession(c)
+  if (!rawSession) return c.json({ message: 'Unauthorized' }, 401)
+  const session = await rehydrateSessionBackend(rawSession)
   const upstream = resolveCloudflareOsBase()
   const agent = buildAgentSessionContext(session)
   const guest = isGuestSession(session)
@@ -1927,9 +2004,11 @@ for (const prefix of CFOS_SPA_SHELL_PREFIXES) {
   app.all(`${prefix}/*`, (c) => serveAgentDesktop(c))
 }
 
+logBridgeStartupWarnings()
+
 const upstream = resolveCloudflareOsBase()
 console.log(
-  `[builder-cfos] listening on :${PORT} aud=${AUDIENCE} cfos=${upstream || '(unset)'} desktop=/ proxy=${OS_PREFIX}/`
+  `[builder-cfos] listening on :${PORT} aud=${AUDIENCE} cfos=${upstream || '(unset)'} bridge=${resolveBridgePublicUrl()} desktop=/ proxy=${OS_PREFIX}/`
 )
 
 createRuntimeProxyServer(app, PORT)

@@ -122,6 +122,80 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
 
 export const ECOMMERCE_NICHE_TITLE = 'What will your store sell?'
 
+export const AUTO_CHAIN_STORE_TITLE = 'Launch your store — pick a niche'
+
+/**
+ * Clear backend/live intent — skip preview-only niche ladder; auto-chain guidedBackend.
+ * Used by chip injection and agent policy seeds.
+ */
+export function looksLikeAutoChainIntent(message: string): boolean {
+  const text = message.toLowerCase()
+  if (/do not call guidedbackend|preview only|localstorage cart only|niche only/.test(text)) return false
+  return (
+    /\b(launch (a |my )?(store|shop|business|ecommerce)|take (it )?live|go live now|publish (my |the )?(store|shop|site|business))\b/.test(
+      text,
+    ) ||
+    /\b(add (a )?real backend|real backend|create admin|shop admin|admin dashboard|wire (the )?backend|full backend)\b/.test(
+      text,
+    ) ||
+    /\bguidedbackend\b/.test(text) ||
+    /\b(launch with backend|store with (real )?inventory|live catalog|place_test_order)\b/.test(text)
+  )
+}
+
+/** Auto-chain niche CHOICES — each chip invokes guidedBackend + placeTestShopOrder (not preview-only). */
+export function autoChainStoreFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  const brandArg = name !== 'this' ? ` brand=${name}` : ''
+  return {
+    title: name !== 'this' ? `Launch ${name} — full backend path` : AUTO_CHAIN_STORE_TITLE,
+    items: [
+      {
+        label: 'Apparel / fashion',
+        message: `Launch apparel/fashion store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=apparel${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`,
+      },
+      {
+        label: 'Electronics / gadgets',
+        message: `Launch electronics/gadgets store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=electronics${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+      },
+      {
+        label: 'Food / grocery',
+        message: `Launch food/grocery store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=food-grocery${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+      },
+      {
+        label: 'Beauty / personal care',
+        message: `Launch beauty store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=beauty${brandArg} place_test_order=true — seed catalog, prove order, wire storefront, then Go Live`,
+      },
+    ],
+  }
+}
+
+/** Chips after auto-chain intent when backend is not yet ready — full chain, not preview. */
+export function autoChainBackendFollowups(brand?: string | null): StageFollowUps {
+  const name = brandLabel(brand)
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      {
+        label: 'Launch with real backend',
+        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true — seed catalog, prove order, wire storefront to session.backend, then emit Go Live chips`,
+      },
+      {
+        label: 'Go Live on Indobase',
+        message: `Go Live — publish ${name} with launchBusiness (real html/files), quote exact url, then Domain / Add payments / Checklist chips`,
+      },
+      {
+        label: 'Create admin dashboard',
+        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true, publish admin_html via launchBusiness as admin.html once, then Go Live if storefront not live`,
+      },
+      {
+        label: 'Wire then Go Live',
+        message: `Wire ${name} storefront to session.backend catalog_json then Go Live with launchBusiness in one pass`,
+      },
+    ],
+  }
+}
+
 /** Self-contained niche CHOICES for FE (no vertical-catalog import). Preview-only messages. */
 export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
@@ -215,6 +289,15 @@ export function injectNicheChoices(message: string): ParsedFollowUps | null {
     !/\b(saas|dashboard|booking|blog|landing page only)\b/.test(lower) &&
     /what will your store sell|which niche|pick a niche/i.test(lower)
   if (!nicheAsk && !guestStore) return null
+  const brand = extractBrandFromMessage(message)
+  if (looksLikeAutoChainIntent(message)) {
+    const stage = autoChainStoreFollowups(brand)
+    return {
+      body: stripLeakedCot(message),
+      title: stage.title,
+      items: stage.items.slice(0, MAX_VISIBLE_CHIPS),
+    }
+  }
   return {
     body: stripLeakedCot(message),
     title: ECOMMERCE_NICHE_TITLE,
@@ -732,6 +815,8 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
     !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
   ) {
     stage = postSaasEnsureFirstFollowups(brand)
+  } else if (looksLikeAutoChainIntent(message) && !/claim_backend_ready|catalog seeded|place.?test.?shop.?order/.test(lower)) {
+    stage = autoChainBackendFollowups(brand)
   } else {
     stage = postPreviewFollowups(brand)
   }

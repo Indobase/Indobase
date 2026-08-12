@@ -1,9 +1,28 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, describe, it } from 'node:test'
+import type { Context } from 'hono'
 
-import { backendFromEnsureResult, backendConfigFromGuidedSnapshot } from './backend-session-sync.ts'
+import {
+  backendFromEnsureResult,
+  backendConfigFromGuidedSnapshot,
+  syncBackendAfterEnsure,
+} from './backend-session-sync.ts'
+import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.ts'
 
 describe('backend-session-sync', () => {
+  let dir = ''
+
+  afterEach(async () => {
+    if (dir) {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
+      dir = ''
+    }
+    delete process.env.INDOBASE_AGENT_PRINCIPAL_DIR
+  })
+
   it('backendFromEnsureResult returns null when ok is false', () => {
     assert.equal(
       backendFromEnsureResult({
@@ -46,5 +65,38 @@ describe('backend-session-sync', () => {
     assert.equal(cfg.auth_url, 'https://backend.indobase.in/api/collections/users')
     assert.equal(cfg.rest_url, 'https://backend.indobase.in/api/collections')
     assert.equal(cfg.public_env?.INDOBASE_BACKEND_KIND, 'records')
+  })
+
+  it('syncBackendAfterEnsure stashes backend on agent principal from tool headers', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-sync-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_sync_tool',
+      gotrueId: 'user-sync',
+      projectRef: 'ws-sync',
+      email: 'sync@example.com',
+      guest: false,
+    })
+    const headers = new Map<string, string>([['x-indobase-agent-username', 'ib_sync_tool']])
+    const c = {
+      req: {
+        header: (name: string) => headers.get(name.toLowerCase()) || '',
+      },
+      header: () => {},
+    } as unknown as Context
+    const backend = {
+      api_url: 'https://backend.indobase.in',
+      anon_key: 'public',
+      auth_url: 'https://backend.indobase.in/api/collections/users',
+      rest_url: 'https://backend.indobase.in/api/collections',
+      storage_url: 'https://backend.indobase.in/api/files',
+      project_ref: 'ws-sync',
+      project_name: 'Sync',
+      project_url: 'https://backend.indobase.in',
+    }
+    await syncBackendAfterEnsure(c, null, { ok: true, backend })
+    const found = await lookupAgentPrincipal('ib_sync_tool')
+    assert.equal(found?.backend?.api_url, 'https://backend.indobase.in')
+    assert.equal(found?.backend?.anon_key, 'public')
   })
 })

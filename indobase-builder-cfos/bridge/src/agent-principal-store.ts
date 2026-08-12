@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { deriveAgentUsername } from './agent-credentials.js'
 import type { BackendConfig } from './auth.js'
 
 /** Latest tenant keys from ensure* — lets agent-tool sessions use real REST/Auth. */
@@ -155,4 +156,41 @@ export async function updateAgentPrincipalBackend(
     updatedAt: new Date().toISOString(),
   }
   await writeStore(store)
+}
+
+export type SessionBackendCarrier = {
+  gotrueId: string
+  projectRef: string
+  cfosBindGotrueId?: string
+  cfosBindProjectRef?: string
+  backend?: BackendConfig
+}
+
+/** Resolve the CFOS agent principal for a browser or tool session. */
+export async function lookupAgentPrincipalForSession(
+  session: SessionBackendCarrier,
+): Promise<AgentPrincipalRecord | null> {
+  const gotrueId = (session.cfosBindGotrueId || session.gotrueId).trim()
+  const projectRef = (session.cfosBindProjectRef || session.projectRef).trim()
+  if (!gotrueId || !projectRef || projectRef.startsWith('draft_')) return null
+  return lookupAgentPrincipal(deriveAgentUsername(gotrueId, projectRef))
+}
+
+/**
+ * When the signed cookie lost backend keys but ensure* stashed them on the agent principal,
+ * merge the snapshot back onto the session for /api/session and tool auth.
+ */
+export async function rehydrateSessionBackend<T extends SessionBackendCarrier>(
+  session: T,
+): Promise<T> {
+  if (session.backend?.api_url?.trim() && session.backend?.anon_key?.trim()) return session
+  const principal = await lookupAgentPrincipalForSession(session)
+  if (!principal?.backend?.api_url?.trim() || !principal?.backend?.anon_key?.trim()) return session
+  return {
+    ...session,
+    backend: {
+      ...principal.backend,
+      project_url: principal.backend.project_url || principal.backend.api_url,
+    } as BackendConfig,
+  }
 }

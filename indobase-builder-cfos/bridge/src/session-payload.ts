@@ -224,6 +224,10 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       tool: '/api/os/tools/launchBusiness',
       tool_alias: '/api/os/tools/goLive',
       rules: LAUNCH_AGENT_HARD_RULES,
+      /** Prefer static lane over Gadget iframe after first HTML exists. */
+      preview_policy:
+        'After first HTML exists, prefer launchBusiness static URL (*.sites.indobase.in) over Gadget iframe preview — iframe localStorage can SecurityError.',
+      draft_preview_path: journey.live_url ? null : `/live/${session.projectRef}/`,
     },
     payments: {
       ensure: '/api/os/runtime/ensure',

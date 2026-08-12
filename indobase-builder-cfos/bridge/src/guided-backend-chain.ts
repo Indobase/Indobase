@@ -68,7 +68,9 @@ export const GUIDED_BACKEND_TOOL = {
 export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 ## Guided backend (HARD PATH — when live data is needed)
 
-**Preview-first is OK** for a clear launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
+**Preview-first is OK** for an **ambiguous** launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
+
+**AUTO-CHAIN (HARD):** when the operator says launch store/shop, add real backend, take live (with store/backend), or create admin → call **guidedBackend mode=ecommerce** + **placeTestShopOrder** in the **same turn** — do not emit preview-only niche chips (“Do NOT call guidedBackend yet”).
 
 **Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. Do not skip wire or invent checkout URLs.
 
@@ -152,17 +154,28 @@ export function parseGuidedBackendIntent(message: string | null | undefined): Gu
   const addBackend = /add a real backend|call ensureDatabase then applySchema|guidedBackend/i.test(text)
   const ecommercePath =
     /this is an ecommerce store|mode\s*=\s*ecommerce|vertical\s*=\s*[\w-]+|seed .+ catalog/i.test(text)
+  const launchStore =
+    /\blaunch\s+(a\s+|my\s+)?(store|shop|business|ecommerce)\b/i.test(text) ||
+    /\blaunch\b[\s\S]{0,80}\b(store|shop|business|ecommerce)\b/i.test(text)
+  const createAdmin = /\b(create admin|shop admin|admin dashboard|publish admin_html)\b/i.test(text)
+  const takeLiveWithBackend =
+    (/\b(take\s+(it\s+)?live|go\s+live)\b/i.test(text) || /\btake\s+[\s\S]{0,40}\blive\b/i.test(text)) &&
+    /store|shop|backend|catalog|inventory|ecommerce/i.test(text)
 
-  if (!marker && !addBackend && !ecommercePath) return null
+  if (!marker && !addBackend && !ecommercePath && !launchStore && !createAdmin && !takeLiveWithBackend) {
+    return null
+  }
 
   let mode: 'ecommerce' | 'generic' = 'generic'
-  if (/mode\s*=\s*ecommerce/i.test(text) || ecommercePath) mode = 'ecommerce'
+  if (/mode\s*=\s*ecommerce/i.test(text) || ecommercePath || launchStore || createAdmin || takeLiveWithBackend) {
+    mode = 'ecommerce'
+  }
   if (/mode\s*=\s*generic/i.test(text)) mode = 'generic'
   if (/setupShopCatalog|ecommerce store|vertical\s*=/i.test(text) && !/mode\s*=\s*generic/i.test(text)) {
     mode = 'ecommerce'
   }
   // “Add a real backend” without shop cues → generic
-  if (addBackend && !ecommercePath && !/shop|store|ecommerce|catalog|vertical/i.test(text)) {
+  if (addBackend && !ecommercePath && !launchStore && !createAdmin && !/shop|store|ecommerce|catalog|vertical/i.test(text)) {
     mode = 'generic'
   }
 
@@ -176,7 +189,26 @@ export function parseGuidedBackendIntent(message: string | null | undefined): Gu
   const brandMatch = /brand\s*=\s*([^\n|,—]+)/i.exec(text)
   const brand = brandMatch?.[1]?.trim() || null
 
-  return { mode, vertical, brand, message: text }
+  const place_test_order =
+    mode === 'ecommerce' &&
+    (inputHasPlaceTestOrderTrue(text) ||
+      launchStore ||
+      createAdmin ||
+      takeLiveWithBackend ||
+      /place_test_order\s*=\s*true/i.test(text) ||
+      !/place_test_order\s*=\s*false/i.test(text))
+
+  return {
+    mode,
+    vertical,
+    brand,
+    message: text,
+    ...(place_test_order ? { place_test_order: true } : {}),
+  }
+}
+
+function inputHasPlaceTestOrderTrue(text: string): boolean {
+  return /place_test_order\s*=\s*true/i.test(text) || /\bprove (with )?placeTestShopOrder\b/i.test(text)
 }
 
 function progressMarkdown(steps: GuidedBackendStep[]): string {

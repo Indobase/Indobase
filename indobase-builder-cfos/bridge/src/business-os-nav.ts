@@ -159,6 +159,13 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
       'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API. Never invent a URL.',
   },
   {
+    id: 'static-preview',
+    label: 'Preview on Indobase',
+    audience: 'signed_in',
+    prompt:
+      'After first HTML exists, prefer launchBusiness (real html/files) for a shareable *.sites.indobase.in preview URL — do NOT rely on Gadget iframe preview (localStorage SecurityError). Quote the exact API url.',
+  },
+  {
     id: 'launch-business',
     label: 'Launch Business',
     audience: 'signed_in',

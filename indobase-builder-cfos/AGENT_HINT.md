@@ -32,16 +32,30 @@ Signed-in operators: skip this section.
 1. **Guest gate** — collect name + email + DPDP + OTP. That turn may emit **niche CHOICES only** (`What will your store sell?`) so operators pick a vertical while signing up. Do **not** emit Go Live / payments / checklist walls. After verify, continue the original ask (+ chosen niche) into preview-first — do **not** re-ask auth.
 2. **App type unclear** (“build me an app”) → app-type CHOICES below. Clear landing/store ask → do **not** ask SaaS vs shop.
 3. **Ecommerce niche unknown** → emit vertical CHOICES (`What will your store sell?`). Prefer CHOICES chips, never niche-only prose.
-4. **Preview-first** (default for launch store / landing / “website for X”): invent brand + aesthetic, build the UI (shop cart may use localStorage), summarize **What’s in it**, then emit 2–4 FOLLOWUPS titled `Where should I take {Brand} next?` with **Go Live first** (Add a real backend / Refine then Go Live / Wire+Go Live). **No** payments wall on the first preview — but do not offer Leave-as-is as the primary path.
+   **AUTO-CHAIN (skip preview ladder):** when the operator says **launch store/shop**, **add real backend**, **take live** (with store/backend context), or **create admin** → call `guidedBackend mode=ecommerce` + `placeTestShopOrder` in the **same turn** (no “Do NOT call guidedBackend yet” niche chips).
+4. **Preview-first** (default for **ambiguous** launch store / landing / “website for X”): invent brand + aesthetic, build the UI (shop cart may use localStorage), summarize **What’s in it**, then emit 2–4 FOLLOWUPS titled `Where should I take {Brand} next?` with **Go Live first** (Add a real backend / Refine then Go Live / Wire+Go Live). **No** payments wall on the first preview — but do not offer Leave-as-is as the primary path.
 5. **On chip / explicit ask** (backend, login, SaaS/data, wire, admin, payments, domain, Go Live): run that stage fully with tools; narrate progress; **prove** (ecommerce backend → `guidedBackend` + `placeTestShopOrder`); then **always** emit the **next** stage’s chips (≤4, personalized) toward full launch. **Go Live chip → immediately call `launchBusiness`** with real html/files; quote exact `url`; never only talk about publishing.
 6. **After Go Live** (tool returned url): ALWAYS emit Domain / Add payments / Checklist FOLLOWUPS (full launch continues). Payments market CHOICES when they pick Add payments.
 7. **Never leak CoT** — no “Considering…”, internal reasoning, or thinking dumps in operator-facing chat.
 
 Respect **Journey state** on `/api/session` agent_hint when present (backend ready or not).
 
+## Preview surface (HARD)
+
+After the first HTML/files exist for a landing or store UI:
+
+- Prefer **launchBusiness** static URL (`*.sites.indobase.in`) for operator preview — shareable, no iframe sandbox issues.
+- Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin).
+- Gadget iframe is codegen-only fallback during build; once html is ready, Go Live early for preview or use `/live/{project_ref}/` draft lane when offered on `/api/session`.
+
 ## Default store ladder (HARD — non-technical operators)
 
 For ecommerce / “launch a store / sell X”, use this order and speak business outcomes (not tool names in chip labels):
+
+**AUTO-CHAIN (when intent is explicit — one-turn magic):**
+If the operator says **launch store/shop**, **add real backend**, **take live** (with store/backend), or **create admin** → skip preview-only niche ladder → `guidedBackend mode=ecommerce` + `placeTestShopOrder` → wire storefront → Go Live in as few turns as possible.
+
+**Preview ladder (ambiguous asks only):**
 
 1. **Niche** CHOICES (`What will your store sell?`) → **preview only** (localStorage cart). Niche must **not** call guidedBackend.
 2. **Preview** → What’s in it + FOLLOWUPS with **Go Live first**.

@@ -7,6 +7,8 @@ import {
   looksLikeCompletedDeliverable,
   looksLikePreBuildClarification,
   looksLikeSaaSOrBackendAppAsk,
+  looksLikeAutoChainIntent,
+  autoChainStoreFollowups,
   formatFollowUpsBlock,
   inferChipStage,
   applyStageGate,
@@ -451,5 +453,41 @@ INDOBASE_CHOICES>>>
     assert.ok(resolved)
     assert.ok(resolved.items.some((i) => /Enable login \+ database/i.test(i.label)))
     assert.ok(resolved.items.some((i) => /guidedBackend mode=generic/i.test(i.message)))
+  })
+
+  it('looksLikeAutoChainIntent detects launch store and backend asks', () => {
+    assert.ok(looksLikeAutoChainIntent('Launch my apparel store with real backend'))
+    assert.ok(looksLikeAutoChainIntent('Add a real backend and take it live for my shop'))
+    assert.ok(looksLikeAutoChainIntent('Create admin dashboard for orders'))
+    assert.equal(looksLikeAutoChainIntent('Niche Apparel — preview only, do NOT call guidedBackend yet'), false)
+  })
+
+  it('injects auto-chain niche chips when agent asks niche with launch intent in prose', () => {
+    const input =
+      "You're verified — I'll launch your store with real backend. What will your store sell? Apparel, electronics, or food?"
+    assert.ok(looksLikeAutoChainIntent(input))
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.match(resolved.title, /Launch|full backend/i)
+    assert.ok(resolved.items.every((i) => /INDOBASE_GUIDED_BACKEND|guidedBackend/i.test(i.message)))
+    assert.ok(resolved.items.every((i) => !/Do NOT call guidedBackend yet/i.test(i.message)))
+  })
+
+  it('autoChainStoreFollowups invoke guidedBackend with place_test_order', () => {
+    const stage = autoChainStoreFollowups('MERIDIAN')
+    assert.ok(stage.items.length >= 2)
+    for (const item of stage.items) {
+      assert.match(item.message, /guidedBackend|INDOBASE_GUIDED_BACKEND/i)
+      assert.match(item.message, /place_test_order=true|placeTestShopOrder/i)
+    }
+  })
+
+  it('injects auto-chain backend chips for launch intent deliverable without backend', () => {
+    const input =
+      "Here's what I built — storefront preview ready. You asked to launch your electronics store with real backend and inventory."
+    assert.ok(looksLikeAutoChainIntent(input))
+    const resolved = resolveFollowUps(input)
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /Launch with real backend|guidedBackend/i.test(i.label + i.message)))
   })
 })
