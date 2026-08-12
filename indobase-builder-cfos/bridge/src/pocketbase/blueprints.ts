@@ -5,7 +5,13 @@
 
 export type BlueprintId = 'saas' | 'ecommerce' | 'booking' | 'blog' | 'dashboard'
 
-export type RuleProfile = 'owner' | 'authenticated' | 'public_read_auth_write' | 'members_of_org'
+export type RuleProfile =
+  | 'owner'
+  | 'authenticated'
+  | 'public_read_auth_write'
+  | 'public_read_admin_write'
+  | 'admin_only'
+  | 'members_of_org'
 
 export type CollectionRules = {
   listRule: string | null
@@ -62,6 +68,24 @@ export function rulesForProfile(profile: RuleProfile): CollectionRules {
         createRule: '@request.auth.id != ""',
         updateRule: '@request.auth.id != ""',
         deleteRule: '@request.auth.id != ""',
+      }
+    case 'public_read_admin_write':
+      // Catalog readable by storefront; mutations only via admin (Commerce / guidedBackend).
+      return {
+        listRule: '',
+        viewRule: '',
+        createRule: null,
+        updateRule: null,
+        deleteRule: null,
+      }
+    case 'admin_only':
+      // Transactional domains (orders, reservations) — CheckoutService via admin token only.
+      return {
+        listRule: null,
+        viewRule: null,
+        createRule: null,
+        updateRule: null,
+        deleteRule: null,
       }
     case 'members_of_org':
       // Org-scoped: require auth + non-empty org_id; writes owned by caller.
@@ -179,7 +203,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'active', type: 'bool' },
           CREATED,
         ],
-        rules: 'public_read_auth_write',
+        rules: 'public_read_admin_write',
       },
       {
         name: 'orders',
@@ -201,8 +225,8 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'shipping_address', type: 'json' },
           CREATED,
         ],
-        // Mutations only via Commerce CheckoutService (admin). Public list denied.
-        rules: 'owner',
+        // Mutations only via Commerce CheckoutService (admin). Public API denied.
+        rules: 'admin_only',
       },
       {
         name: 'order_items',
@@ -216,7 +240,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'unit_price_minor', type: 'number' },
           CREATED,
         ],
-        rules: 'owner',
+        rules: 'admin_only',
       },
       {
         name: 'inventory_reservations',
@@ -229,7 +253,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'expires_at', type: 'date', required: true },
           CREATED,
         ],
-        rules: 'owner',
+        rules: 'admin_only',
       },
     ],
   },

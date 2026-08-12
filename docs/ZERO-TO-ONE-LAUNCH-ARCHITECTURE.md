@@ -78,9 +78,10 @@ Example: project `roshB77a4744fa` → `ib_roshb77a4744fa_products`.
 
 | Logical | Physical | Key fields (canonical) | Access |
 | --- | --- | --- | --- |
-| products | `ib_{id}_products` | `name`, `slug`, `price`, `currency`, `stock`, `image_url`, `active`, `owner` | public read, auth write |
-| orders | `ib_{id}_orders` | `email`, `status`, `total`, `currency`, `items_json`, `owner` | owner-scoped |
-| order_items | `ib_{id}_order_items` | `order_id`, `product_slug`, `quantity`, `unit_price`, `owner` | owner-scoped |
+| products | `ib_{id}_products` | `name`, `slug`, `price`, `currency`, `stock`, `image_url`, `active`, `owner` | public read; **admin write only** (Commerce / guidedBackend) |
+| orders | `ib_{id}_orders` | `email`, `status`, `total`, `amount_minor`, `currency`, `items_json`, `owner`, … | **admin only** — CheckoutService |
+| order_items | `ib_{id}_order_items` | `order_id`, `product_slug`, `quantity`, `unit_price`, `owner` | **admin only** |
+| inventory_reservations | `ib_{id}_inventory_reservations` | `order_id`, `product_id`, `quantity`, `status`, `expires_at` | **admin only** |
 
 **Spec alias map (documentation only — do not rename live collections):**
 

@@ -52,6 +52,23 @@ function inferProfile(rules: CollectionRules | RuleProfile | undefined): RulePro
   if (rules.createRule === '' || rules.updateRule === '' || rules.deleteRule === '') {
     // open writes rejected later
   }
+  if (
+    rules.listRule === null &&
+    rules.viewRule === null &&
+    rules.createRule === null &&
+    rules.updateRule === null &&
+    rules.deleteRule === null
+  ) {
+    return 'admin_only'
+  }
+  const pubAdmin = rulesForProfile('public_read_admin_write')
+  if (
+    rules.listRule === pubAdmin.listRule &&
+    rules.createRule === null &&
+    rules.updateRule === null
+  ) {
+    return 'public_read_admin_write'
+  }
   const pub = rulesForProfile('public_read_auth_write')
   if (rules.listRule === pub.listRule && rules.createRule === pub.createRule) {
     return 'public_read_auth_write'
@@ -188,7 +205,12 @@ export async function ensureCollectionSecure(
       required: Boolean(field.required),
     }))
 
-  if (profile !== 'public_read_auth_write' && !fields.some((f) => f.name === 'owner')) {
+  if (
+    profile !== 'public_read_auth_write' &&
+    profile !== 'public_read_admin_write' &&
+    profile !== 'admin_only' &&
+    !fields.some((f) => f.name === 'owner')
+  ) {
     fields.unshift({ name: 'owner', type: 'text', required: true })
   }
   if (profile === 'members_of_org' && !fields.some((f) => f.name === 'org_id')) {

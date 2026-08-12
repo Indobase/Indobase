@@ -47,4 +47,24 @@ describe('backend blueprints', () => {
     assert.match(rules.createRule || '', /@request\.auth\.id/)
     assert.equal(isSecureWriteRules(rules), true)
   })
+
+  it('ecommerce locks transactional collections to admin-only (Commerce authority)', () => {
+    const ecom = getBlueprint('ecommerce')
+    const byName = Object.fromEntries(ecom.collections.map((c) => [c.name, c]))
+    assert.equal(byName.products.rules, 'public_read_admin_write')
+    assert.equal(byName.orders.rules, 'admin_only')
+    assert.equal(byName.order_items.rules, 'admin_only')
+    assert.equal(byName.inventory_reservations.rules, 'admin_only')
+
+    const products = rulesForProfile('public_read_admin_write')
+    assert.equal(products.listRule, '')
+    assert.equal(products.createRule, null)
+    assert.equal(products.updateRule, null)
+
+    const orders = rulesForProfile('admin_only')
+    assert.equal(orders.listRule, null)
+    assert.equal(orders.createRule, null)
+    assert.equal(isSecureWriteRules(orders), true)
+    assert.equal(isOpenWriteRule(orders.createRule), false)
+  })
 })
