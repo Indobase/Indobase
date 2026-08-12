@@ -92,6 +92,7 @@ import { ensureAgentModelsAsync, openRouterKeyConfigured } from './ensure-agent-
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
+import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
 
 initBridgeSentry('builder-cfos')
 
@@ -1886,6 +1887,19 @@ app.get('/', (c) => serveAgentDesktop(c))
 app.get('/workspace', (c) => serveAgentDesktop(c))
 // CFOS SPA deep-links here; without this catch-all a refresh shows bare "404 Not Found".
 app.all('/workspace/*', (c) => serveAgentDesktop(c, { preservePath: true }))
+
+/**
+ * CFOS client-router shell routes (plural). Hard refresh / bookmarks must serve the
+ * SPA index — upstream workerd already SPA-fallbacks these; the bridge must route
+ * them (otherwise Hono returns plain "404 Not Found").
+ * Serve like `/` (mint guest + index) so guests can open the shell; keep
+ * `/workspace/<id>` on preservePath for principal safety.
+ */
+import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
+for (const prefix of CFOS_SPA_SHELL_PREFIXES) {
+  app.get(prefix, (c) => serveAgentDesktop(c))
+  app.all(`${prefix}/*`, (c) => serveAgentDesktop(c))
+}
 
 const upstream = resolveCloudflareOsBase()
 console.log(
