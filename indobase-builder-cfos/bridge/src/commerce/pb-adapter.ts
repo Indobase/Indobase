@@ -16,7 +16,12 @@ import { majorToMinor } from './money.js'
 import type { CommerceProduct, PricedLine } from './types.js'
 
 function newId(): string {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 15)
+  // PocketBase default id pattern: ^[a-z0-9]+$ (typically 15 chars)
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let out = ''
+  const bytes = crypto.getRandomValues(new Uint8Array(15))
+  for (const b of bytes) out += alphabet[b % alphabet.length]
+  return out
 }
 
 async function adminToken(): Promise<{ token: string; base: string }> {
@@ -169,7 +174,7 @@ export async function createReservation(input: {
 
 export async function createOrderRecord(input: {
   projectRef: string
-  orderId: string
+  orderId?: string
   email: string
   customerName?: string
   currency: string
@@ -184,6 +189,7 @@ export async function createOrderRecord(input: {
   const { token, base } = await adminToken()
   const ordersCol = physicalCollectionName(appId, 'orders')
   const itemsCol = physicalCollectionName(appId, 'order_items')
+  const orderId = input.orderId || newId()
 
   const { ok, body } = await pbJson<{ id?: string } & PbErrorPayload>(
     `${base}/api/collections/${ordersCol}/records`,
@@ -194,13 +200,13 @@ export async function createOrderRecord(input: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        id: input.orderId,
+        id: orderId,
         owner: appId,
         email: input.email,
         customer_name: input.customerName || '',
         status: 'pending',
         payment_status: 'pending',
-        total: input.amountMinor / 100, // legacy major for admin UI; amount_minor is authority
+        total: input.amountMinor / 100,
         amount_minor: input.amountMinor,
         subtotal_minor: input.subtotalMinor,
         currency: input.currency,
@@ -229,7 +235,7 @@ export async function createOrderRecord(input: {
       body: JSON.stringify({
         id: newId(),
         owner: appId,
-        order_id: input.orderId,
+        order_id: body.id,
         product_slug: line.slug,
         product_id: line.productId,
         quantity: line.quantity,
@@ -239,7 +245,7 @@ export async function createOrderRecord(input: {
     })
   }
 
-  return { id: body.id }
+  return { id: String(body.id) }
 }
 
 export async function patchOrderPayment(

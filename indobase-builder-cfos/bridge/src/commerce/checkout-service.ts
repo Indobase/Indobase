@@ -28,7 +28,11 @@ import type {
 const RESERVATION_TTL_MS = 30 * 60 * 1000
 
 function newOrderId(): string {
-  return `ord_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let out = ''
+  const bytes = crypto.getRandomValues(new Uint8Array(15))
+  for (const b of bytes) out += alphabet[b % alphabet.length]
+  return out
 }
 
 export async function executeCheckout(
@@ -124,16 +128,7 @@ export async function executeCheckout(
     const orderId = newOrderId()
     const expiresAt = new Date(Date.now() + RESERVATION_TTL_MS).toISOString()
 
-    for (const line of lines) {
-      await createReservation({
-        projectRef,
-        orderId,
-        productId: line.productId,
-        quantity: line.quantity,
-        expiresAt,
-      })
-    }
-
+    // Create order first so reservations reference a real order id
     await createOrderRecord({
       projectRef,
       orderId,
@@ -147,6 +142,16 @@ export async function executeCheckout(
       reservationExpiresAt: expiresAt,
       shippingAddress: input.shippingAddress as Record<string, unknown> | undefined,
     })
+
+    for (const line of lines) {
+      await createReservation({
+        projectRef,
+        orderId,
+        productId: line.productId,
+        quantity: line.quantity,
+        expiresAt,
+      })
+    }
 
     let paymentUrl: string | null = null
     let paymentRequired = true
