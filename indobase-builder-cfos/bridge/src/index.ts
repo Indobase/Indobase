@@ -24,6 +24,7 @@ import {
   SESSION_COOKIE,
   sessionCookie,
   verifyStudioHandoff,
+  withPreservedCfosBind,
   type Session,
 } from './auth.js'
 import { buildAgentSessionContext } from './indobase-adapter.js'
@@ -663,16 +664,20 @@ app.post('/auth/verify', async (c) => {
   }
 
   const ws = result.session
-  const session: Session = {
-    gotrueId: ws.gotrue_id,
-    email: ws.email,
-    projectRef: ws.workspace_ref,
-    orgSlug: ws.organization_slug,
-    projectName: ws.workspace_name,
-    displayName: name,
-    studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
-    backend: ws.backend ?? undefined,
-  }
+  const previous = getSession(c)
+  const session: Session = withPreservedCfosBind(
+    {
+      gotrueId: ws.gotrue_id,
+      email: ws.email,
+      projectRef: ws.workspace_ref,
+      orgSlug: ws.organization_slug,
+      projectName: ws.workspace_name,
+      displayName: name,
+      studioUrl: process.env.INDOBASE_BUILDER_PUBLIC_URL?.trim() || 'https://builder.indobase.in',
+      backend: ws.backend ?? undefined,
+    },
+    previous,
+  )
   const sessionToken = createSessionToken(session, secret)
 
   // Agent tool verify: stash for browser claim (no Set-Cookie from workerd).
@@ -751,6 +756,8 @@ app.get('/api/os/auth/claim-session', async (c) => {
     handoffSecret: secret,
     gotrueId: sessionOrErr.gotrueId,
     projectRef: sessionOrErr.projectRef,
+    cfosBindGotrueId: sessionOrErr.cfosBindGotrueId,
+    cfosBindProjectRef: sessionOrErr.cfosBindProjectRef,
   })
   const headerAgent =
     (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
@@ -1653,6 +1660,8 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     handoffSecret: secret,
     gotrueId: sessionOrErr.gotrueId,
     projectRef: sessionOrErr.projectRef,
+    cfosBindGotrueId: sessionOrErr.cfosBindGotrueId,
+    cfosBindProjectRef: sessionOrErr.cfosBindProjectRef,
   })
   // Link CFOS username → Indobase workspace so the workerd launchBusiness tool can auth.
   await rememberAgentPrincipal({

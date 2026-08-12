@@ -45,11 +45,15 @@ export function deriveAgentCredentials(input: {
   handoffSecret: string
   gotrueId: string
   projectRef: string
+  /** Optional frozen bind — keeps CFOS login stable across guest→member OTP. */
+  cfosBindGotrueId?: string
+  cfosBindProjectRef?: string
 }): AgentCredentials {
-  const { handoffSecret, gotrueId, projectRef } = input
+  const gotrueId = (input.cfosBindGotrueId || input.gotrueId).trim()
+  const projectRef = (input.cfosBindProjectRef || input.projectRef).trim()
   return {
     username: deriveAgentUsername(gotrueId, projectRef),
-    password: deriveAgentPassword(handoffSecret, gotrueId, projectRef),
+    password: deriveAgentPassword(input.handoffSecret, gotrueId, projectRef),
     storage_key: agentAuthStorageKey(projectRef, gotrueId),
   }
 }

@@ -563,6 +563,14 @@ for (const [rel, pairs] of [
   const activeKey = 'indobase.cfos.active_storage_key'
   const prevKey = localStorage.getItem(activeKey)
   if (storageKey && prevKey && prevKey !== storageKey) {
+    // Guest→member OTP rotates Indobase-derived CFOS credentials, but workspaces are owned
+    // by the previous CFOS principal. Keep that token or Doc/preview returns access denied.
+    const prevToken = localStorage.getItem(prevKey)
+    if (signedIn && prevToken) {
+      localStorage.setItem('authToken', prevToken)
+      localStorage.setItem(activeKey, prevKey)
+      return
+    }
     localStorage.removeItem('authToken')
     localStorage.removeItem(prevKey)
   }

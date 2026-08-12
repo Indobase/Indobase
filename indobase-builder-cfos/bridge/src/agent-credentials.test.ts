@@ -67,7 +67,21 @@ describe('agent-credentials', () => {
     assert.notEqual(a, b)
   })
 
-  it('builds storage key', () => {
-    assert.equal(agentAuthStorageKey('ref', 'gid'), 'indobase.cfos.auth.ref.gid')
+  it('keeps credentials stable when cfos bind is set across gotrue/project change', () => {
+    const guest = deriveAgentCredentials({
+      handoffSecret: SECRET,
+      gotrueId: 'guest_aaa',
+      projectRef: 'draft_1',
+    })
+    const member = deriveAgentCredentials({
+      handoffSecret: SECRET,
+      gotrueId: 'user-bbb',
+      projectRef: 'app_from_email',
+      cfosBindGotrueId: 'guest_aaa',
+      cfosBindProjectRef: 'draft_1',
+    })
+    assert.equal(guest.username, member.username)
+    assert.equal(guest.password, member.password)
+    assert.equal(guest.storage_key, member.storage_key)
   })
 })

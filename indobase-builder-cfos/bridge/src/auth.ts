@@ -39,6 +39,13 @@ export type Session = {
   displayName?: string
   studioUrl: string
   backend?: BackendConfig
+  /**
+   * Frozen CFOS login identity. Guest→member OTP changes gotrueId/projectRef; if CFOS
+   * credentials rotate, openGadget returns WORKSPACE_ACCESS_DENIED (blank preview).
+   * Bind fields stay on the first mint for the browser cookie lifetime.
+   */
+  cfosBindGotrueId?: string
+  cfosBindProjectRef?: string
 }
 
 export const AUDIENCE = 'indobase-builder-cfos'
@@ -197,6 +204,10 @@ export function readSessionToken(token: string, secret: string): Session | null 
     studioUrl:
       typeof payload.studioUrl === 'string' ? payload.studioUrl : 'https://studio.indobase.in',
     backend: parseBackend(payload.backend),
+    cfosBindGotrueId:
+      typeof payload.cfosBindGotrueId === 'string' ? payload.cfosBindGotrueId : undefined,
+    cfosBindProjectRef:
+      typeof payload.cfosBindProjectRef === 'string' ? payload.cfosBindProjectRef : undefined,
   }
 }
 
@@ -231,13 +242,37 @@ export function readCookie(cookieHeader: string | undefined, name: string): stri
 
 export function createGuestSession(): Session {
   const suffix = randomBytes(4).toString('hex')
+  const gotrueId = `guest_${randomBytes(8).toString('hex')}`
+  const projectRef = `draft_${suffix}`
   return {
-    gotrueId: `guest_${randomBytes(8).toString('hex')}`,
+    gotrueId,
     email: '',
-    projectRef: `draft_${suffix}`,
+    projectRef,
     orgSlug: 'guest',
     projectName: 'My business',
     studioUrl: '',
+    cfosBindGotrueId: gotrueId,
+    cfosBindProjectRef: projectRef,
+  }
+}
+
+/** Prefer frozen CFOS bind ids so OTP does not rotate the workerd login. */
+export function sessionCfosBind(session: Session): { gotrueId: string; projectRef: string } {
+  return {
+    gotrueId: session.cfosBindGotrueId?.trim() || session.gotrueId,
+    projectRef: session.cfosBindProjectRef?.trim() || session.projectRef,
+  }
+}
+
+/** Carry CFOS bind forward when upgrading guest → member (or refreshing session). */
+export function withPreservedCfosBind(next: Session, previous: Session | null | undefined): Session {
+  const bindGotrue = previous?.cfosBindGotrueId?.trim() || previous?.gotrueId || next.cfosBindGotrueId
+  const bindProject =
+    previous?.cfosBindProjectRef?.trim() || previous?.projectRef || next.cfosBindProjectRef
+  return {
+    ...next,
+    cfosBindGotrueId: bindGotrue || next.gotrueId,
+    cfosBindProjectRef: bindProject || next.projectRef,
   }
 }
 
