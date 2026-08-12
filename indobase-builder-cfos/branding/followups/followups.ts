@@ -26,6 +26,17 @@ export type FollowUpItem = {
   message: string
 }
 
+/** Session journey primary CTA — aligned with launch-journey.ts next_action. */
+export type JourneyNextAction = {
+  label: string
+  message: string
+}
+
+export type ResolveFollowUpsOptions = {
+  journeyNextAction?: JourneyNextAction | null
+  journeyHeadline?: string | null
+}
+
 export type ParsedFollowUps = {
   /** Message with the follow-ups block stripped (for markdown). */
   body: string
@@ -274,6 +285,79 @@ export function stripLeakedCot(message: string): string {
     '\n',
   )
   return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Hide raw tool capsule dumps from operator-visible markdown (keep dev capsules intact). */
+export function stripToolCapsuleNoise(message: string): string {
+  if (!message) return message
+  let t = message
+  t = t.replace(/```(?:json)?\s*\{[\s\S]*?"tool"\s*:\s*"sessionStatus"[\s\S]*?\}\s*```/gi, '')
+  t = t.replace(
+    /```(?:json)?\s*\{[\s\S]*?"(?:signed_in|stage|guest)"[\s\S]*?"sessionStatus"[\s\S]*?\}\s*```/gi,
+    '',
+  )
+  t = t.replace(/^.*\bListed \d+ blueprints?\b.*$/gim, '')
+  t = t.replace(/^.*\bsessionStatus\b.*(?:signed_in|member|guest).*$/gim, '')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+export function cleanOperatorMessage(message: string): string {
+  return stripToolCapsuleNoise(stripLeakedCot(message))
+}
+
+function journeyChipTitle(headline?: string | null): string {
+  const h = (headline || '').trim()
+  return h || DEFAULT_POST_BUILD_TITLE
+}
+
+function journeyChipAlreadyPresent(items: readonly FollowUpItem[], nextAction: JourneyNextAction): boolean {
+  const label = nextAction.label.toLowerCase()
+  const msg = nextAction.message.toLowerCase()
+  return items.some(
+    (i) =>
+      i.label.toLowerCase() === label ||
+      i.message.toLowerCase() === msg ||
+      (label.includes('go live') && /go live/i.test(i.label)),
+  )
+}
+
+function prependJourneyChip(parsed: ParsedFollowUps, nextAction: JourneyNextAction): ParsedFollowUps {
+  if (journeyChipAlreadyPresent(parsed.items, nextAction)) return parsed
+  return {
+    ...parsed,
+    items: [nextAction, ...parsed.items].slice(0, MAX_VISIBLE_CHIPS),
+  }
+}
+
+function applyJourneyChip(
+  parsed: ParsedFollowUps,
+  nextAction: JourneyNextAction,
+  headline?: string | null,
+): ParsedFollowUps {
+  const withChip = prependJourneyChip(parsed, nextAction)
+  const h = (headline || '').trim()
+  return h ? { ...withChip, title: h } : withChip
+}
+
+/**
+ * When the agent omits FOLLOWUPS, inject the session journey next_action as the primary chip.
+ */
+export function injectJourneyNextActionFollowUps(
+  message: string,
+  nextAction: JourneyNextAction,
+  headline?: string | null,
+): ParsedFollowUps | null {
+  if (!message?.trim() || !nextAction?.label?.trim() || parseFollowUps(message)) return null
+  if (looksLikePreBuildClarification(message)) return null
+
+  const body = cleanOperatorMessage(message).trim()
+  if (body.length < 20) return null
+
+  return {
+    body,
+    title: journeyChipTitle(headline),
+    items: [{ label: nextAction.label.trim(), message: nextAction.message.trim() || nextAction.label.trim() }],
+  }
 }
 
 export function injectNicheChoices(message: string): ParsedFollowUps | null {
@@ -878,20 +962,43 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
  * Prefer agent-authored FOLLOWUPS/CHOICES. Inject niche CHOICES when the agent
  * asks niche/guest-store in prose without a block. Inject post-deliverable chips
  * when the agent omits FOLLOWUPS after a completed build.
+ * When session journey.next_action is present and the agent omitted FOLLOWUPS,
+ * prepend or inject that chip so UI matches launch-journey.ts.
  */
-export function resolveFollowUps(message: string): ParsedFollowUps | null {
-  const cleaned = stripLeakedCot(message)
+export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions): ParsedFollowUps | null {
+  const cleaned = cleanOperatorMessage(message)
+  const journeyNext = opts?.journeyNextAction?.label?.trim()
+    ? {
+        label: opts.journeyNextAction.label.trim(),
+        message: (opts.journeyNextAction.message || opts.journeyNextAction.label).trim(),
+      }
+    : null
+
   const parsed = parseFollowUps(cleaned)
   if (parsed) return applyStageGate(parsed)
 
   const niche = injectNicheChoices(cleaned)
-  if (niche) return applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
+  if (niche) {
+    const gated = applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
+    return journeyNext ? applyStageGate(prependJourneyChip(gated, journeyNext)) : gated
+  }
 
   const injected = injectDeliverableFollowUps(cleaned)
-  if (injected) return applyStageGate(injected, 'deliverable')
+  if (injected) {
+    const withJourney = journeyNext ? prependJourneyChip(injected, journeyNext) : injected
+    return applyStageGate(withJourney, 'deliverable')
+  }
 
   const generic = injectAssistantTurnFollowUps(cleaned)
-  if (generic) return applyStageGate(generic)
+  if (generic) {
+    const withJourney = journeyNext ? prependJourneyChip(generic, journeyNext) : generic
+    return applyStageGate(withJourney)
+  }
+
+  if (journeyNext) {
+    const journeyOnly = injectJourneyNextActionFollowUps(cleaned, journeyNext, opts?.journeyHeadline)
+    if (journeyOnly) return applyStageGate(journeyOnly)
+  }
 
   return null
 }

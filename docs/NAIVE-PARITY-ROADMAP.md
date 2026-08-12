@@ -121,12 +121,28 @@ Companion architecture doc: [`ZERO-TO-ONE-LAUNCH-ARCHITECTURE.md`](./ZERO-TO-ONE
 | ID | Item | Acceptance | Owner files |
 | --- | --- | --- | --- |
 | P1 #1 | **Single-turn Go Live** for clear landing asks | “Website for my bakery” → preview + `launchBusiness` in one agent turn when html ready | `guided-backend-chain.ts`, `launch-business-tool.ts`, `AGENT_HINT.md` |
-| P1 #2 | **Journey-driven chips** | `LaunchJourneyCard.next_action` injects chip matching `launch-journey.ts` stage | `launch-journey.ts`, `FollowUpRecommendations.tsx`, `followups.ts` |
-| P1 #3 | **Gadget iframe localStorage** | No SecurityError on preview; fallback to static draft lane | `rebrand-cloudflare-os.mjs` (ChatInterface), `publish-env-inject.ts` |
-| P1 #4 | **Wire-proof automation** | After backend, agent auto-patches storefront env from `session.backend.public_env` | `wire-proof.ts`, `publish-env-inject.ts` |
-| P1 #5 | **Vertical catalog sync** | `vertical-catalog.ts` ecommerce chips align with auto-chain policy | `vertical-catalog.ts`, `followups.ts` |
+| P1 #2 | **Journey-driven chips** ✅ | `LaunchJourneyCard.next_action` injects chip matching `launch-journey.ts` stage | `launch-journey.ts`, `FollowUpRecommendations.tsx`, `followups.ts` |
+| P1 #3 | **Static preview lane** ✅ | After HTML exists, agent quotes `launchBusiness` URL not Gadget iframe; `launch.preview_policy` on `/api/session` | `session-payload.ts`, `AGENT_HINT.md`, `business-os-nav.ts` |
+| P1 #4 | **Gadget iframe localStorage** | No SecurityError on preview; fallback to static draft lane | `rebrand-cloudflare-os.mjs` (ChatInterface), `publish-env-inject.ts` |
+| P1 #5 | **Wire-proof automation** | After backend, agent auto-patches storefront env from `session.backend.public_env` | `wire-proof.ts`, `publish-env-inject.ts` |
+| P1 #6 | **Vertical catalog sync** | `vertical-catalog.ts` ecommerce chips align with auto-chain policy | `vertical-catalog.ts`, `followups.ts` |
+| P1 #7 | **Chat noise reduction** ✅ | Strip sessionStatus / blueprint list dumps from operator markdown | `followups.ts`, `FollowUpRecommendations.tsx` |
 
 **Done when (P1 milestone):** Staging smoke — new user → live subdomain + wired catalog + admin.html in ≤4 prompts (Free quota).
+
+#### P1 smoke tests (journey chips + static preview)
+
+```bash
+cd indobase-builder-cfos/bridge && node --import tsx --test \
+  src/followups.test.ts src/launch-journey.test.ts src/session-payload.test.ts
+```
+
+Manual (signed-in on builder.indobase.in):
+
+1. Start a landing/store ask → after agent delivers HTML **without** FOLLOWUPS block, chip grid shows **journey next_action** (e.g. Go Live) matching LaunchJourneyCard primary button.
+2. `curl -sS -b cookies.txt https://builder.indobase.in/api/session | jq '.journey.next_action, .launch.preview_policy'` — next_action label matches chip; preview_policy mentions launchBusiness not Gadget iframe.
+3. After Go Live, agent reply quotes `*.sites.indobase.in` url (not Gadget iframe src) when sharing preview.
+4. Operator markdown does not show raw `sessionStatus` JSON or “Listed N blueprints” lines when agent pastes tool output inline.
 
 ---
 
@@ -199,6 +215,6 @@ Manual script:
 
 ## Recommended next actions (after this PR)
 
-1. **P1 #2** — wire `LaunchJourneyCard.next_action` into chip injection so UI matches journey state machine.
-2. **P1 #3** — reproduce gadget iframe localStorage SecurityError in staging; validate static preview lane end-to-end.
-3. **P1 #1** — single-turn Go Live for clear landing asks when html is ready in one agent turn.
+1. **P1 #1** — single-turn Go Live for clear landing asks when html is ready in one agent turn.
+2. **P1 #4** — reproduce gadget iframe localStorage SecurityError in staging; validate static preview lane end-to-end.
+3. **P1 #5** — wire-proof automation after guidedBackend.

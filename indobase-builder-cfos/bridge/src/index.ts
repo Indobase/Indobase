@@ -68,7 +68,7 @@ import { executeApplySchema } from './apply-schema-tool.js'
 import { executeGuidedBackend } from './guided-backend-chain.js'
 import { executeProductionChecklist } from './production-checklist-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
-import { parseFollowUps, resolveFollowUps, stripLeakedCot } from './followups.js'
+import { parseFollowUps, resolveFollowUps, cleanOperatorMessage } from './followups.js'
 import {
   buildAuthVerifySuccessPayload,
   buildClaimSessionSuccessPayload,
@@ -1185,14 +1185,28 @@ app.post('/api/os/tools/enableAnalytics', async (c) => {
 
 /** resolveFollowUps — parse INDOBASE_FOLLOWUPS blocks and inject ladder chips (debug / CFOS UI). */
 app.post('/api/os/tools/followups', async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { message?: string }
+  const body = (await c.req.json().catch(() => ({}))) as {
+    message?: string
+    journey_next_action?: { label?: string; message?: string } | null
+    journey_headline?: string | null
+  }
   const message = typeof body.message === 'string' ? body.message : ''
   if (!message.trim()) {
     return c.json({ ok: false, error: 'message required' }, 400)
   }
-  const cleaned = stripLeakedCot(message)
+  const cleaned = cleanOperatorMessage(message)
   const parsed = parseFollowUps(cleaned)
-  const resolved = resolveFollowUps(message)
+  const journeyNext =
+    body.journey_next_action?.label?.trim()
+      ? {
+          label: body.journey_next_action.label.trim(),
+          message: (body.journey_next_action.message || body.journey_next_action.label).trim(),
+        }
+      : null
+  const resolved = resolveFollowUps(message, {
+    journeyNextAction: journeyNext,
+    journeyHeadline: body.journey_headline ?? null,
+  })
   return c.json({
     ok: true,
     cleaned_message: cleaned,

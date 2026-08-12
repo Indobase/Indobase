@@ -137,6 +137,8 @@ export function injectIndobaseContextBootstrap(html: string): string {
               LAUNCH_TOOL: '/api/os/tools/launchBusiness',
               LAUNCH_RULES:
                 'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
+              PREVIEW_POLICY: (s.launch && s.launch.preview_policy) || '',
+              LIVE_URL: (s.journey && s.journey.live_url) || null,
               PROMPT_QUOTA: '/api/os/usage/prompt-quota',
               BEGIN_TURN: window.__INDOBASE_BEGIN_TURN__,
               AUTH: window.__INDOBASE_AUTH__,

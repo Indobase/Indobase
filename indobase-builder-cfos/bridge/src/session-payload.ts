@@ -86,18 +86,31 @@ export function sessionLooksPaymentsReady(session: Session): boolean {
 /**
  * Compact Zero→One journey appendix for agent_hint (steers chips; does not invent UI cards).
  */
-export function buildJourneyStateAppendix(session: Session): string {
+export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatusSnapshot | null): string {
   const backendReady = Boolean(session.backend?.api_url || session.backend?.rest_url)
   const paymentsReady = sessionLooksPaymentsReady(session)
+  const journey = buildLaunchJourneyState(session, launch)
   const lines = [
     '## Journey state (session)',
     '## North star (HARD)',
     '- Always take the operator to a **full launch** via recommendation chips (preview → Go Live → domain/payments/checklist).',
     '- After every completed stage: emit 2–4 next FOLLOWUPS. Never stop after 1–2 chip rounds. Never restart guest/auth once signed in.',
     `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
-    '## Default store ladder (when building a shop)',
-    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional backend/wire → Go Live → Add payments → wireCheckout → productionChecklist. ≤4 chips; rewrite for brand.',
+    `- Journey stage: ${journey.current_stage}`,
+    `- Preview policy: after first HTML exists, quote **launchBusiness** \`*.sites.indobase.in\` url — NOT Gadget iframe (localStorage SecurityError).`,
   ]
+  if (journey.next_action) {
+    lines.push(
+      `- Journey next_action chip: **${journey.next_action.label}** — ${journey.next_action.message}`,
+    )
+  }
+  if (journey.live_url) {
+    lines.push(`- Live url: ${journey.live_url}`)
+  }
+  lines.push('## Default store ladder (when building a shop)')
+  lines.push(
+    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional backend/wire → Go Live → Add payments → wireCheckout → productionChecklist. ≤4 chips; rewrite for brand.',
+  )
   if (backendReady) {
     const ref = session.backend?.project_ref || session.projectRef
     lines.push(`- Backend project_ref: ${ref}`)

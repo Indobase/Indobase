@@ -19,6 +19,9 @@ import {
   postGoLiveFollowups,
   postPaymentsFollowups,
   stripLeakedCot,
+  stripToolCapsuleNoise,
+  cleanOperatorMessage,
+  injectJourneyNextActionFollowUps,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -489,5 +492,64 @@ INDOBASE_CHOICES>>>
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
     assert.ok(resolved.items.some((i) => /Launch with real backend|guidedBackend/i.test(i.label + i.message)))
+  })
+
+  it('injects journey next_action when agent omits FOLLOWUPS on substantive reply', () => {
+    const input =
+      'I refined the hero typography and tightened spacing on mobile. The bakery landing page reads cleaner now.'
+    const resolved = resolveFollowUps(input, {
+      journeyNextAction: {
+        label: 'Go Live on Indobase',
+        message:
+          'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url.',
+      },
+      journeyHeadline: 'Backend ready — publish to your Indobase subdomain',
+    })
+    assert.ok(resolved)
+    assert.equal(resolved.items[0].label, 'Go Live on Indobase')
+    assert.match(resolved.title, /publish to your Indobase subdomain/i)
+  })
+
+  it('prepends journey next_action to deliverable chips without duplicating Go Live', () => {
+    const input =
+      "Here's what I built — MERIDIAN live preview\nhttps://demo.sites.indobase.in\nWhere do you want to take it next?"
+    const resolved = resolveFollowUps(input, {
+      journeyNextAction: {
+        label: 'Go Live on Indobase',
+        message: 'Go Live — publish MERIDIAN with launchBusiness and quote the exact url.',
+      },
+    })
+    assert.ok(resolved)
+    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+    assert.ok(resolved.items.length <= MAX_VISIBLE_CHIPS)
+  })
+
+  it('stripToolCapsuleNoise removes sessionStatus dumps and blueprint list lines', () => {
+    const input = `Updated the layout.
+
+\`\`\`json
+{"tool":"sessionStatus","signed_in":true,"stage":"member"}
+\`\`\`
+
+Listed 12 blueprints for format.design.
+
+The hero is ready.`
+    const cleaned = cleanOperatorMessage(input)
+    assert.doesNotMatch(cleaned, /sessionStatus/)
+    assert.doesNotMatch(cleaned, /Listed 12 blueprints/)
+    assert.match(cleaned, /hero is ready/)
+  })
+
+  it('injectJourneyNextActionFollowUps returns null when agent authored FOLLOWUPS', () => {
+    const input = `Done.
+
+<<<INDOBASE_FOLLOWUPS
+title: Next
+Refine | Refine design
+INDOBASE_FOLLOWUPS>>>`
+    assert.equal(
+      injectJourneyNextActionFollowUps(input, { label: 'Go Live', message: 'Go Live now' }),
+      null,
+    )
   })
 })

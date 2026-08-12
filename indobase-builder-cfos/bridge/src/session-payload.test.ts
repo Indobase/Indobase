@@ -121,11 +121,15 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /guidedBackend|Preview-first|live data/i)
     assert.match(payload.agent_hint, /Journey state \(session\)/)
     assert.match(payload.agent_hint, /North star \(HARD\)/)
+    assert.match(payload.agent_hint, /Preview policy/)
+    assert.match(payload.agent_hint, /Journey next_action chip/)
     assert.match(payload.agent_hint, /Backend: not ready/)
     assert.match(payload.agent_hint, /productionChecklist/)
     assert.ok(payload.journey)
     assert.equal(payload.journey.current_stage, 'live')
     assert.match(payload.journey.next_action?.label || '', /Go Live/i)
+    assert.match(payload.launch.preview_policy || '', /launchBusiness/)
+    assert.ok(payload.actions.some((a) => a.id === 'static-preview'))
   })
 
   it('composeAgentHintForSession re-asserts guest gate at the front', () => {

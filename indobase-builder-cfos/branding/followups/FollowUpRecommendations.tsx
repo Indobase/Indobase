@@ -8,12 +8,12 @@ import {
   inferChipStage,
   parseFollowUps,
   resolveFollowUps,
-  stripLeakedCot,
+  cleanOperatorMessage,
   type FollowUpItem,
   type ParsedFollowUps,
 } from './followups'
 
-import { LaunchJourneyCard } from './LaunchJourneyCard'
+import { LaunchJourneyCard, readLaunchJourneyFromWindow } from './LaunchJourneyCard'
 
 import styles from './FollowUpRecommendations.module.css'
 
@@ -118,20 +118,31 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   disabled,
   children,
 }: Props) {
-  const cleaned = useMemo(() => stripLeakedCot(message), [message])
+  const cleaned = useMemo(() => cleanOperatorMessage(message), [message])
+  const journeyOpts = useMemo(() => {
+    const journey = readLaunchJourneyFromWindow()
+    if (!journey?.next_action?.label || journey.guest) return undefined
+    return {
+      journeyNextAction: journey.next_action,
+      journeyHeadline: journey.headline,
+    }
+  }, [cleaned])
   const resolved = useMemo(() => {
     // Agent-authored FOLLOWUPS blocks can appear before the turn is marked complete.
     const explicit = parseFollowUps(cleaned)
     const raw = allowFallback
-      ? resolveFollowUps(cleaned)
-      : explicit ?? null
+      ? resolveFollowUps(cleaned, journeyOpts)
+      : explicit ??
+        (journeyOpts?.journeyNextAction
+          ? resolveFollowUps(cleaned, journeyOpts)
+          : null)
     if (!raw) return null
     // Defense in depth: hide chips while unsigned-in / auth ask.
     if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
       return { ...raw, title: '', items: [] as FollowUpItem[] }
     }
     return raw
-  }, [allowFallback, cleaned])
+  }, [allowFallback, cleaned, journeyOpts])
   const body = resolved?.body ?? cleaned
 
   return (
