@@ -119,17 +119,12 @@ export function buildLaunchJourneyState(
               'Add a real product backend — call guidedBackend, wire the storefront to session.backend, prove inventory if ecommerce, then continue toward payments and production checklist.',
           }
         : !paymentsDone
-          ? launch?.customDomain
-            ? {
-                label: 'Add payments',
-                message:
-                  'Add payments — ask me India (Razorpay) vs International (Stripe), enable payments, guide KYC, connectGateway with my keys, then wireCheckout for Buy CTAs.',
-              }
-            : {
-                label: 'Connect my domain',
-                message:
-                  'Connect a domain I already own — call launchBusiness with customDomain; return CNAME @ or www → sites.indobase.in. DNS must propagate at my registrar (Indobase does not auto-verify DNS yet). Quote tool dns instructions, then offer Add payments / ensureAnalytics / Checklist.',
-              }
+          ? {
+              // Payments stage CTA must match stepper/headline — domain is a secondary chip.
+              label: 'Add payments',
+              message:
+                'Add payments — ask me India (Razorpay) vs International (Stripe), enable payments, guide KYC, connectGateway with my keys, then wireCheckout for Buy CTAs. Domain can wait until checkout works.',
+            }
           : {
               label: 'Run production checklist',
               message:

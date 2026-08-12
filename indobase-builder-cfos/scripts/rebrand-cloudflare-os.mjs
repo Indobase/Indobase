@@ -2359,6 +2359,26 @@ ${injection}`
   }
 }
 
+// --- Soften createGadget ERROR badge (preview workspace fails ≠ launch failed) ---
+{
+  const chatPath = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  if (existsSync(chatPath)) {
+    let text = read(chatPath)
+    const oldHasError = 'hasError: toolCalls.some((tc) => Boolean(tc.error)),'
+    const newHasError =
+      'hasError: toolCalls.some((tc) => Boolean(tc.error) && tc.toolName !== "createGadget"),'
+    if (text.includes(oldHasError)) {
+      text = text.replace(oldHasError, newHasError)
+      write(chatPath, text)
+      console.log('  ChatInterface ← createGadget errors no longer show fatal ERROR badge')
+    } else if (text.includes(newHasError)) {
+      console.log('  ChatInterface createGadget ERROR soft already patched (skip)')
+    } else {
+      console.warn('  skip: ChatInterface hasError grouping drifted')
+    }
+  }
+}
+
 // --- Hide thinking / CoT by default (Naive-clean operator chat) ---
 {
   const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')

@@ -478,6 +478,12 @@ INDOBASE_CHOICES>>>
     }
   })
 
+  it('postGoLiveFollowups put Add payments first for stores', () => {
+    const store = postGoLiveFollowups('Aural', { store: true })
+    assert.equal(store.items[0]?.label, 'Add payments')
+    assert.ok(store.items.some((i) => /Connect my domain/i.test(i.label)))
+  })
+
   it('postGoLiveFollowups include ensureAnalytics chip', () => {
     const store = postGoLiveFollowups('Aural', { store: true })
     assert.ok(store.items.some((i) => /Add analytics|ensureAnalytics/i.test(i.label + i.message)))

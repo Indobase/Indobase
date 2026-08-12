@@ -631,18 +631,20 @@ export function postGoLiveFollowups(brand?: string | null, opts?: { store?: bool
   const store = opts?.store !== false
   const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
   const analyticsMsg = `Call ensureAnalytics for ${name} after the live url (non-blocking) — quote launch_url / pending_setup; do not claim Analytics live from ensure alone`
-  const items: FollowUpItem[] = [
-    {
-      label: 'Connect my domain',
-      message: domainMsg,
-    },
-  ]
+  const items: FollowUpItem[] = []
+  // Store: payments first (matches journey Payments stage); domain is secondary.
+  if (store) {
+    items.push({
+      label: 'Add payments',
+      message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`,
+    })
+  }
+  items.push({
+    label: 'Connect my domain',
+    message: domainMsg,
+  })
   if (store) {
     items.push(
-      {
-        label: 'Add payments',
-        message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`,
-      },
       {
         label: 'Add analytics',
         message: analyticsMsg,
