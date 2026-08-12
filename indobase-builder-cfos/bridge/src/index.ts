@@ -479,19 +479,8 @@ app.get('/sso/health', async (c) => {
   const managedBackendConfigured = isManagedBackendConfigured()
   const bridgePublicUrl = resolveBridgePublicUrl()
   const bridgeUrlMisconfigured = isLoopbackBridgeUrl(bridgePublicUrl) && publicVersion() !== 'dev'
-  let bridgeReachable: boolean | null = null
-  if (bridgePublicUrl) {
-    try {
-      const probe =
-        isLoopbackBridgeUrl(bridgePublicUrl) && !bridgeUrlMisconfigured
-          ? `http://127.0.0.1:${PORT}/sso/health`
-          : `${bridgePublicUrl}/sso/health`
-      const res = await fetch(probe, { method: 'GET', redirect: 'manual' })
-      bridgeReachable = res.status < 500
-    } catch {
-      bridgeReachable = false
-    }
-  }
+  // Bridge listener is this process — avoid hairpin fetch to public URL from inside Swarm.
+  let bridgeReachable: boolean | null = true
 
   const ready =
     handoffConfigured &&
