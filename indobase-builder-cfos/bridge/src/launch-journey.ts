@@ -80,9 +80,10 @@ export function buildLaunchJourneyState(
     (published && launch?.customDomain ? `https://${launch.customDomain}` : null)
 
   const accountDone = !guest
-  const previewDone = accountDone
   const backendDone = backendReady
   const liveDone = published
+  // Preview is not "signed in" — require backend or a published site.
+  const previewDone = liveDone || backendDone
   const paymentsDone = paymentsReady
 
   let currentStage: LaunchJourneyStageId = 'account'

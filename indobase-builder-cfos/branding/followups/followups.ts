@@ -35,6 +35,9 @@ export type JourneyNextAction = {
 export type ResolveFollowUpsOptions = {
   journeyNextAction?: JourneyNextAction | null
   journeyHeadline?: string | null
+  /** When the launch registry shows a live url — suppress niche + Go Live chips. */
+  journeyIsLive?: boolean
+  journeyLiveUrl?: string | null
 }
 
 export type ParsedFollowUps = {
@@ -361,6 +364,38 @@ function journeyChipAlreadyPresent(items: readonly FollowUpItem[], nextAction: J
   )
 }
 
+function isGoLiveChip(item: FollowUpItem): boolean {
+  const label = item.label.toLowerCase()
+  const msg = item.message.toLowerCase()
+  return (
+    /\bgo live\b/.test(label) ||
+    (/\blaunchbusiness\b/.test(msg) && /\bgo live\b/.test(msg) && !/\bcustomdomain\b/.test(msg))
+  )
+}
+
+function isNicheCategoryChip(item: FollowUpItem): boolean {
+  return /^(apparel|electronics|food|beauty|grocery|fashion|i'?ll type)/i.test(item.label.trim())
+}
+
+function looksLikeNicheChipSet(parsed: ParsedFollowUps): boolean {
+  const title = (parsed.title || '').toLowerCase()
+  if (/what will your (online )?shop sell|choose your store category|which niche|pick a niche/.test(title)) {
+    return true
+  }
+  const nicheCount = parsed.items.filter(isNicheCategoryChip).length
+  return nicheCount >= 2
+}
+
+/** After publish, never push operators back to Go Live / niche. */
+export function filterChipsForLiveJourney(
+  parsed: ParsedFollowUps,
+  opts?: { isLive?: boolean },
+): ParsedFollowUps {
+  if (!opts?.isLive) return parsed
+  const items = parsed.items.filter((i) => !isGoLiveChip(i) && !isNicheCategoryChip(i))
+  return { ...parsed, items: items.slice(0, MAX_VISIBLE_CHIPS) }
+}
+
 function prependJourneyChip(parsed: ParsedFollowUps, nextAction: JourneyNextAction): ParsedFollowUps {
   if (journeyChipAlreadyPresent(parsed.items, nextAction)) return parsed
   return {
@@ -400,8 +435,13 @@ export function injectJourneyNextActionFollowUps(
   }
 }
 
-export function injectNicheChoices(message: string): ParsedFollowUps | null {
+export function injectNicheChoices(
+  message: string,
+  opts?: { journeyIsLive?: boolean },
+): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
+  // Site already live — niche is early-ladder only; payments/ops chips instead.
+  if (opts?.journeyIsLive) return null
   // Never inject niche cards during guest/auth turns.
   if (inferChipStage(message) === 'guest_gate' || looksLikePreBuildClarification(message)) {
     return null
@@ -1025,6 +1065,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
  */
 export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions): ParsedFollowUps | null {
   const cleaned = cleanOperatorMessage(message)
+  const isLive = Boolean(opts?.journeyIsLive || opts?.journeyLiveUrl)
   const journeyNext = opts?.journeyNextAction?.label?.trim()
     ? {
         label: opts.journeyNextAction.label.trim(),
@@ -1032,15 +1073,45 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
       }
     : null
 
-  const parsed = parseFollowUps(cleaned)
-  if (parsed) return applyStageGate(parsed)
+  const finish = (parsed: ParsedFollowUps | null): ParsedFollowUps | null => {
+    if (!parsed) return null
+    return filterChipsForLiveJourney(parsed, { isLive })
+  }
 
-  const niche = injectNicheChoices(cleaned)
+  const parsed = parseFollowUps(cleaned)
+  if (parsed) {
+    const gated = applyStageGate(parsed)
+    // Agent-authored niche while live → replace with post-live ladder (not merge with journey).
+    if (isLive && looksLikeNicheChipSet(gated)) {
+      // fall through to isLive post-live injection
+    } else {
+      return finish(
+        journeyNext ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline)) : gated,
+      )
+    }
+  }
+
+  const niche = injectNicheChoices(cleaned, { journeyIsLive: isLive })
   if (niche) {
     const gated = applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
-    return journeyNext
-      ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline))
-      : gated
+    return finish(
+      journeyNext ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline)) : gated,
+    )
+  }
+
+  // Already live + agent asked niche (or omitted FOLLOWUPS): payments / post-live ladder.
+  if (isLive) {
+    const brand = extractBrandFromMessage(cleaned)
+    const postLive = postGoLiveFollowups(brand, { store: true })
+    const injected: ParsedFollowUps = {
+      body: stripLeakedCot(cleaned),
+      title: opts?.journeyHeadline?.trim() || postLive.title,
+      items: postLive.items.slice(0, MAX_VISIBLE_CHIPS),
+    }
+    const withJourney = journeyNext
+      ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)
+      : injected
+    return finish(applyStageGate(withJourney, 'payments'))
   }
 
   const injected = injectDeliverableFollowUps(cleaned)
@@ -1048,7 +1119,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     const withJourney = journeyNext
       ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)
       : injected
-    return applyStageGate(withJourney, 'deliverable')
+    return finish(applyStageGate(withJourney, 'deliverable'))
   }
 
   const generic = injectAssistantTurnFollowUps(cleaned)
@@ -1056,12 +1127,12 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     const withJourney = journeyNext
       ? applyJourneyChip(generic, journeyNext, opts?.journeyHeadline)
       : generic
-    return applyStageGate(withJourney)
+    return finish(applyStageGate(withJourney))
   }
 
   if (journeyNext) {
     const journeyOnly = injectJourneyNextActionFollowUps(cleaned, journeyNext, opts?.journeyHeadline)
-    if (journeyOnly) return applyStageGate(journeyOnly)
+    if (journeyOnly) return finish(applyStageGate(journeyOnly))
   }
 
   return null

@@ -63,6 +63,8 @@ When a tool/path is blocked, quote `/api/session.governance` (or tool `governanc
 - `account_required` → Create account / OTP first.
 - `gateway_not_ready` / payments BYOK → explain operators bring Razorpay/Stripe keys after KYC; never invent hosted PSP credentials.
 - `wire_required` → ecommerce: publish `storefront_html` / `window.indobase.commerce`; other apps: `__INDOBASE_ENV__` + records API. Prefer static publish over Gadget iframe.
+- `contract_verifier_failed` / `functional_verifier_failed` → quote `failure_graph` + `repair_hint`; fix then retry `launchBusiness`. Never invent “publishing service unavailable.”
+- When journey already shows a live url: do **not** re-ask niche (“What will your shop sell?”) or offer Go Live again — advance payments / domain / checklist.
 
 ## Default store ladder (HARD — non-technical operators)
 

@@ -25,6 +25,7 @@ import {
   stripToolCapsuleNoise,
   cleanOperatorMessage,
   injectJourneyNextActionFollowUps,
+  filterChipsForLiveJourney,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -617,5 +618,46 @@ INDOBASE_FOLLOWUPS>>>`
       injectJourneyNextActionFollowUps(input, { label: 'Go Live', message: 'Go Live now' }),
       null,
     )
+  })
+
+  it('when journey is live, niche CHOICES are replaced with post-live chips (no Apparel)', () => {
+    const input = `What will your online shop sell?
+
+<<<INDOBASE_CHOICES
+title: What will your online shop sell?
+Apparel | Niche apparel
+Electronics | Niche electronics
+Food & grocery | Niche food
+Beauty | Niche beauty
+INDOBASE_CHOICES>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyIsLive: true,
+      journeyLiveUrl: 'https://shop.sites.indobase.in',
+      journeyHeadline: 'Your site is live — add payments to start selling',
+      journeyNextAction: {
+        label: 'Add payments',
+        message: 'Add payments — India vs Stripe',
+      },
+    })
+    assert.ok(resolved)
+    assert.ok(!resolved.items.some((i) => /Apparel|Electronics|Beauty|Food/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /payments/i.test(i.label)))
+    assert.ok(!resolved.items.some((i) => /go live/i.test(i.label)))
+  })
+
+  it('filterChipsForLiveJourney strips Go Live chips', () => {
+    const filtered = filterChipsForLiveJourney(
+      {
+        body: 'ok',
+        title: 'Next',
+        items: [
+          { label: 'Go Live on Indobase', message: 'Go Live with launchBusiness' },
+          { label: 'Keep building', message: 'Continue building' },
+        ],
+      },
+      { isLive: true },
+    )
+    assert.equal(filtered.items.length, 1)
+    assert.equal(filtered.items[0]?.label, 'Keep building')
   })
 })

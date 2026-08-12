@@ -126,6 +126,8 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
     return {
       journeyNextAction: journey.next_action,
       journeyHeadline: journey.headline,
+      journeyIsLive: Boolean(journey.flags?.is_live || journey.live_url),
+      journeyLiveUrl: journey.live_url,
     }
   }, [cleaned])
   const resolved = useMemo(() => {

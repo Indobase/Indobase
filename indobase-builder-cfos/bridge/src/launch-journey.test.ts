@@ -60,13 +60,20 @@ describe('buildLaunchJourneyState', () => {
     assert.ok(journey.completed_stages.includes('backend'))
   })
 
-  it('live site with custom domain still prefers Add payments until wired', () => {
-    const journey = buildLaunchJourneyState(memberSession(), {
-      subdomain: 'threadline',
-      customDomain: 'www.threadline.com',
-      url: 'https://www.threadline.com',
-    })
-    assert.equal(journey.current_stage, 'payments')
-    assert.match(journey.next_action?.label || '', /Add payments/i)
+  it('signed-in without backend leaves Preview upcoming', () => {
+    const journey = buildLaunchJourneyState(
+      {
+        gotrueId: 'user1',
+        email: 'founder@example.com',
+        projectRef: 'newshop',
+        projectName: 'New Shop',
+        orgSlug: 'org',
+        studioUrl: 'https://studio.indobase.in',
+      },
+      {},
+    )
+    const preview = journey.stages.find((s) => s.id === 'preview')
+    assert.equal(preview?.status, 'upcoming')
+    assert.equal(journey.flags.is_live, false)
   })
 })

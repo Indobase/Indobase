@@ -1216,6 +1216,15 @@ app.post('/api/os/tools/followups', async (c) => {
   const resolved = resolveFollowUps(message, {
     journeyNextAction: journeyNext,
     journeyHeadline: body.journey_headline ?? null,
+    journeyIsLive: Boolean(
+      (body as { journey_is_live?: boolean }).journey_is_live ||
+        (typeof (body as { journey_live_url?: string }).journey_live_url === 'string' &&
+          (body as { journey_live_url?: string }).journey_live_url?.trim()),
+    ),
+    journeyLiveUrl:
+      typeof (body as { journey_live_url?: string }).journey_live_url === 'string'
+        ? (body as { journey_live_url: string }).journey_live_url
+        : null,
   })
   return c.json({
     ok: true,

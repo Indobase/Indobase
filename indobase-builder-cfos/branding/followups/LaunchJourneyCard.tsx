@@ -18,6 +18,13 @@ type LaunchJourneyState = {
   headline: string
   stages: LaunchJourneyStage[]
   next_action: { label: string; message: string } | null
+  flags?: {
+    is_guest?: boolean
+    is_backend_ready?: boolean
+    is_live?: boolean
+    is_payments_ready?: boolean
+    is_production_ready?: boolean
+  }
 }
 
 export function readLaunchJourneyFromWindow(): LaunchJourneyState | null {
