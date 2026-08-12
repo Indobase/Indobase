@@ -31,6 +31,11 @@ import {
   smokeProveArchitecture,
 } from './pocketbase/architecture.js'
 import { buildManagedShopAdminHtml } from './pocketbase/shop-admin-html.js'
+import { autoWireLaunchArtifacts } from './wire-proof.js'
+import type { BackendConfig } from './auth.js'
+
+/** Openverse resolve budget on the ecommerce critical path (then placeholders). */
+export const PRODUCT_IMAGES_TIMEOUT_MS = 8_000
 
 export const GUIDED_BACKEND_TOOL = {
   name: 'guidedBackend',
@@ -221,13 +226,79 @@ function progressMarkdown(steps: GuidedBackendStep[]): string {
   return lines.join('\n')
 }
 
+type SessionLike = { gotrueId: string; email: string; projectRef: string }
+
 function seedProductsFromVertical(vertical: AppVertical): VerticalSeedProduct[] {
   return vertical.products ? [...vertical.products] : []
+}
+
+/** Brand-safe placeholder when Openverse times out or returns nothing. */
+export function placeholderProductImageUrl(label: string): string {
+  const text = encodeURIComponent((label || 'Product').trim().slice(0, 28) || 'Product')
+  return `https://placehold.co/800x800/e8eef5/3B8FD6/png?text=${text}`
+}
+
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  onTimeout: () => T,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(onTimeout()), ms)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+type ProductImageResolveResult = Awaited<ReturnType<typeof executeResolveProductImages>> & {
+  timed_out?: boolean
+}
+
+/** Critical-path imagery: wait up to timeout, then fall through for placeholders. */
+export async function resolveProductImagesCriticalPath(
+  session: SessionLike,
+  products: VerticalSeedProduct[],
+  timeoutMs: number = PRODUCT_IMAGES_TIMEOUT_MS,
+): Promise<ProductImageResolveResult> {
+  const queries = products.map((p) => p.image_query || p.name).filter(Boolean)
+  if (!queries.length) {
+    return {
+      ok: false,
+      tool: 'resolveProductImages',
+      message: 'No product image queries',
+      timed_out: false,
+    } as ProductImageResolveResult
+  }
+
+  const pending = executeResolveProductImages(session, {
+    queries,
+    page_size: 2,
+  })
+
+  return withTimeout(
+    pending.then((r) => ({ ...r, timed_out: false as const })),
+    timeoutMs,
+    () =>
+      ({
+        ok: false,
+        tool: 'resolveProductImages' as const,
+        message: `Image resolve timed out after ${timeoutMs}ms — using placeholders`,
+        timed_out: true,
+        results: [],
+      }) as ProductImageResolveResult,
+  )
 }
 
 function attachImageUrls(
   products: VerticalSeedProduct[],
   imageResult: { ok?: boolean; results?: Array<{ query?: string; urls?: string[] }> } | null,
+  opts?: { placeholders?: boolean },
 ): Array<Record<string, unknown>> {
   const byQuery = new Map<string, string>()
   for (const row of imageResult?.results || []) {
@@ -235,11 +306,12 @@ function attachImageUrls(
     const url = row.urls?.[0]
     if (q && url) byQuery.set(q, url)
   }
+  const usePlaceholders = opts?.placeholders !== false
   return products.map((p) => {
     const image_url =
       byQuery.get(p.image_query.toLowerCase()) ||
       byQuery.get(p.name.toLowerCase()) ||
-      undefined
+      (usePlaceholders ? placeholderProductImageUrl(p.name) : undefined)
     return {
       slug: p.slug,
       name: p.name,
@@ -251,8 +323,6 @@ function attachImageUrls(
     }
   })
 }
-
-type SessionLike = { gotrueId: string; email: string; projectRef: string }
 
 type EnsureBackendPayload = GuidedBackendResult['backend']
 
@@ -269,6 +339,32 @@ function backendPayloadFromEnsure(
     storage_url: b.storage_url,
     project_ref: b.project_ref,
     project_name: b.project_name,
+  }
+}
+
+function backendConfigForWire(snapshot: EnsureBackendPayload, projectRef: string): BackendConfig | null {
+  if (!snapshot?.api_url?.trim() || !snapshot?.anon_key?.trim()) return null
+  const api = snapshot.api_url.replace(/\/+$/, '')
+  const ref = snapshot.project_ref || projectRef
+  const managed =
+    snapshot.anon_key === 'public' ||
+    snapshot.anon_key === 'indobase-backend' ||
+    (snapshot.rest_url || '').includes('/api/collections')
+  return {
+    api_url: snapshot.api_url,
+    anon_key: snapshot.anon_key,
+    auth_url: snapshot.auth_url || (managed ? `${api}/api/collections/users` : `${api}/auth/v1`),
+    rest_url: snapshot.rest_url || (managed ? `${api}/api/collections` : `${api}/rest/v1/`),
+    storage_url: snapshot.storage_url || (managed ? `${api}/api/files` : `${api}/storage/v1`),
+    project_ref: ref,
+    project_name: snapshot.project_name || ref,
+    public_env: managed
+      ? {
+          INDOBASE_BACKEND_KIND: 'records',
+          INDOBASE_COLLECTION_PREFIX: `ib_${ref}_`,
+          INDOBASE_RECORDS_BASE: `${api}/api/collections`,
+        }
+      : undefined,
   }
 }
 
@@ -331,6 +427,9 @@ export async function executeGuidedBackend(
     const vertical = findEcommerceVertical(verticalId) || ECOMMERCE_VERTICALS[0]
     const products = seedProductsFromVertical(vertical)
 
+    // Start Openverse resolve in parallel with schema seed (critical path + timeout).
+    const imagesPromise = resolveProductImagesCriticalPath(session, products)
+
     if (isManagedBackendConfigured()) {
       try {
         const applied = await applyArchitectureBlueprint({
@@ -352,29 +451,19 @@ export async function executeGuidedBackend(
       }
     }
 
-    // 2) resolveProductImages (best-effort)
-    let imageResult: Awaited<ReturnType<typeof executeResolveProductImages>> | null = null
-    try {
-      imageResult = await executeResolveProductImages(session, {
-        queries: products.map((p) => p.image_query),
-        page_size: 2,
-      })
-      steps.push({
-        id: 'resolveProductImages',
-        status: imageResult.ok ? 'ok' : 'skipped',
-        message: imageResult.ok
-          ? `Resolved images for ${products.length} products`
-          : imageResult.message || 'Image resolve skipped — seeding without image_url',
-      })
-    } catch (err) {
-      steps.push({
-        id: 'resolveProductImages',
-        status: 'skipped',
-        message: err instanceof Error ? err.message : 'Image resolve skipped',
-      })
-    }
+    const imageResult = await imagesPromise
+    const openverseHits = (imageResult.results || []).filter((r) => r.urls?.length).length
+    steps.push({
+      id: 'resolveProductImages',
+      status: imageResult.ok || openverseHits > 0 ? 'ok' : imageResult.timed_out ? 'ok' : 'skipped',
+      message: imageResult.timed_out
+        ? `Image resolve timed out (${PRODUCT_IMAGES_TIMEOUT_MS}ms) — seeded with placeholders`
+        : imageResult.ok || openverseHits > 0
+          ? `Resolved commercial images for ${openverseHits}/${products.length} products (placeholders for the rest)`
+          : imageResult.message || 'Image resolve skipped — seeding with placeholders',
+    })
 
-    const seeded = attachImageUrls(products, imageResult)
+    const seeded = attachImageUrls(products, imageResult, { placeholders: true })
 
     // 3) setupShopCatalog — prefer managed backend seed when Studio shop API is unavailable
     let catalogOk = false
@@ -584,6 +673,25 @@ async function maybeLaunch(
     claim_login_ready?: boolean
   },
 ): Promise<GuidedBackendResult> {
+  // Auto-wire admin / html with session.backend public_env (wire-proof automation).
+  if (base.backend) {
+    const backendCfg = backendConfigForWire(base.backend, session.projectRef)
+    const wired = autoWireLaunchArtifacts({
+      html: input.html,
+      files: input.files,
+      admin_html: base.admin_html,
+      backend: backendCfg,
+    })
+    if (wired.admin_html) base.admin_html = wired.admin_html
+    if (wired.html) input = { ...input, html: wired.html }
+    if (wired.files) input = { ...input, files: wired.files }
+    base.steps.push({
+      id: 'wireProof',
+      status: wired.wired || wired.admin_html ? 'ok' : 'skipped',
+      message: wired.message,
+    })
+  }
+
   const hasHtml = typeof input.html === 'string' && input.html.trim().length > 0
   const hasFiles = input.files && typeof input.files === 'object' && Object.keys(input.files).length > 0
 
@@ -592,13 +700,13 @@ async function maybeLaunch(
       id: 'launchBusiness',
       status: 'skipped',
       message:
-        'Publish skipped — call launchBusiness (or guidedBackend with html/files) when the storefront is ready. Do not invent a live URL.',
+        'Publish skipped — call launchBusiness (or guidedBackend with html/files) when the storefront is ready. Prefer *.sites.indobase.in over Gadget iframe (localStorage SecurityError). Do not invent a live URL.',
     })
     const progress = progressMarkdown(base.steps)
     const wireHint =
       base.mode === 'generic'
         ? 'Wire Sign-in + data to session.backend records API: physical collection = INDOBASE_COLLECTION_PREFIX + table; POST/GET {api}/api/collections/{physical}/records; OTP auth on users (Bearer user token). Do not use localStorage auth or /rest/v1.'
-        : 'Wire storefront to catalog_json / session.backend records API (collection prefix + /api/collections/…/records), not localStorage-only.'
+        : 'Wire storefront to catalog_json / session.backend records API (collection prefix + /api/collections/…/records), not localStorage-only. Prefer launchBusiness static preview over Gadget iframe.'
     return {
       ok: true,
       tool: 'guidedBackend',
@@ -607,7 +715,7 @@ async function maybeLaunch(
       brand: base.brand,
       steps: base.steps,
       progress,
-      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT: (1) ${wireHint} (2) emit FOLLOWUPS Wire → Go Live → Admin (3) launchBusiness on Go Live — do not invent a live URL. Payments only when they ask.`,
+      message: `${progress}\n\nBackend ready (claim_backend_ready). NEXT: (1) ${wireHint} (2) emit FOLLOWUPS Wire → Go Live → Admin (3) launchBusiness on Go Live — do not invent a live URL. Payments only when they ask (BYOK Razorpay/Stripe).`,
       claim_backend_ready: true,
       claim_login_ready: base.claim_login_ready,
       backend: base.backend,

@@ -41,6 +41,8 @@ export const CONNECT_GATEWAY_TOOL = {
 export const CONNECT_GATEWAY_AGENT_HARD_RULES = `
 ## Connect payment gateway keys (HARD PATH — when operator pastes keys)
 
+Indobase payments are **BYOK** (bring your own Razorpay/Stripe keys). We do not host shared PSP credentials or invent checkout.
+
 When the operator pastes Razorpay or Stripe API keys (after PSP dashboard KYC):
 
 1. You MUST call the **connectGateway** tool (alias **connectPaymentGateway**) —
@@ -50,7 +52,7 @@ When the operator pastes Razorpay or Stripe API keys (after PSP dashboard KYC):
 2. Do NOT use webFetch for this (GET-only, no cookies). Do NOT invent or guess keys.
 3. Quote the tool JSON: ok, gateway_keys_configured, can_go_live, message.
 4. Only then call **wireCheckout** (POST /api/os/tools/wireCheckout) and patch the site CTA to checkout_url.
-5. Studio UI Connect gateway is a fallback; prefer this OS tool when keys are in chat.
+5. If keys are missing: explain BYOK clearly + offer CHOICES (India Razorpay / International Stripe / skip payments). Studio UI Connect gateway is a fallback.
 `.trim()
 
 export type ConnectGatewayToolInput = {

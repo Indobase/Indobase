@@ -30,10 +30,11 @@ export const RESOLVE_PRODUCT_IMAGES_TOOL = {
 export const PRODUCT_IMAGES_AGENT_HARD_RULES = `
 ## Product / catalog imagery (HARD PATH)
 
-1. Call **resolveProductImages** with product name queries before seeding a catalog.
+1. Call **resolveProductImages** with product name queries before seeding a catalog (or rely on guidedBackend which runs it on the critical path with timeout + placeholders).
 2. Set each product \`image_url\` from the returned HTTPS urls (Openverse / CC commercial).
 3. For logos/brand graphics use Design format (\`format.design\`) — not this tool.
 4. Never invent Unsplash/Pexels/stock IDs. Never claim native AI product photography unless you actually generated assets.
+5. If resolve times out, placeholders are OK for first seed — do not block catalog/Go Live on imagery alone.
 `.trim()
 
 export function resolveProductImagesToolCatalog() {

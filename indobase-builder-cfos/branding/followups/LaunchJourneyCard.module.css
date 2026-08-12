@@ -6,6 +6,13 @@
   background: color-mix(in srgb, var(--color-kumo-brand) 6%, var(--color-kumo-tint));
 }
 
+.sticky {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 2;
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--color-kumo-tint) 65%, transparent);
+}
+
 .header {
   display: flex;
   align-items: flex-start;

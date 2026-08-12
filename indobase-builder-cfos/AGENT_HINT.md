@@ -45,8 +45,18 @@ Respect **Journey state** on `/api/session` agent_hint when present (backend rea
 After the first HTML/files exist for a landing or store UI:
 
 - Prefer **launchBusiness** static URL (`*.sites.indobase.in`) for operator preview — shareable, no iframe sandbox issues.
-- Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin).
+- Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin). Never tell the operator to “open the Gadget preview” for a shareable link.
 - Gadget iframe is codegen-only fallback during build; once html is ready, Go Live early for preview or use `/live/{project_ref}/` draft lane when offered on `/api/session`.
+- `/api/session.launch.enforce_static_over_gadget` is true — honor it.
+
+## Governance gates (HARD — clear operator copy)
+
+When a tool/path is blocked, quote `/api/session.governance` (or tool `governance` / `message`) — do not fail silently:
+
+- `prompt_quota_exceeded` → Free 5-prompt limit; offer upgradePlan CHOICES (Basic/Pro/Studio).
+- `account_required` → Create account / OTP first.
+- `gateway_not_ready` / payments BYOK → explain operators bring Razorpay/Stripe keys after KYC; never invent hosted PSP credentials.
+- `wire_required` → inject `__INDOBASE_ENV__` / records API; prefer static publish over Gadget iframe.
 
 ## Default store ladder (HARD — non-technical operators)
 

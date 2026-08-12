@@ -129,6 +129,9 @@ describe('session-payload', () => {
     assert.equal(payload.journey.current_stage, 'live')
     assert.match(payload.journey.next_action?.label || '', /Go Live/i)
     assert.match(payload.launch.preview_policy || '', /launchBusiness/)
+    assert.equal(payload.launch.enforce_static_over_gadget, true)
+    assert.ok(payload.governance?.gateway_not_ready?.choices?.length)
+    assert.equal(payload.payments.byok, true)
     assert.ok(payload.actions.some((a) => a.id === 'static-preview'))
   })
 

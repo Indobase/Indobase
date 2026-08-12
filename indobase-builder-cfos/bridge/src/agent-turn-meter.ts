@@ -4,6 +4,8 @@
  * non-empty user send unless marked as internal/orchestrator.
  */
 
+import { explainGovernanceGate } from './governance-gates.js'
+
 export const BRIDGE_AGENT_BEGIN_TURN_PATH = '/api/os/agent/begin-turn'
 
 const ORCHESTRATOR_MARKERS = [
@@ -52,9 +54,7 @@ export function interpretBeginTurnResult(
       accountRequired: false,
       quota,
       code: code || 'prompt_quota_exceeded',
-      message:
-        message ||
-        'Free agent limit reached (5 prompts). Upgrade your plan to continue building with Indobase.',
+      message: message || explainGovernanceGate({ code: 'prompt_quota_exceeded' }).message,
       httpStatus: 402,
     }
   }
@@ -66,9 +66,7 @@ export function interpretBeginTurnResult(
       accountRequired: true,
       quota,
       code: code || 'account_required',
-      message:
-        message ||
-        'Create your Indobase account first — finish verification in chat (or Create account), then continue.',
+      message: message || explainGovernanceGate({ code: 'account_required' }).message,
       httpStatus: 403,
     }
   }

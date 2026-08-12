@@ -1,9 +1,12 @@
 /**
  * Prove published HTML/files are wired to Indobase backend (not localStorage-only).
+ * Also auto-inject session.backend public_env after guidedBackend (P1 wire-proof automation).
  */
 
 import { isManagedPublicKey } from './pocketbase/managed.js'
 import type { BackendConfig } from './auth.js'
+import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
+import { explainGovernanceGate } from './governance-gates.js'
 
 const WIRE_MARKERS =
   /__INDOBASE_ENV__|INDOBASE_URL|INDOBASE_COLLECTION_PREFIX|INDOBASE_RECORDS_BASE|\/api\/collections\/|ib_[a-z0-9]+_|VITE_INDOBASE_URL|NEXT_PUBLIC_INDOBASE_URL|auth-with-otp|request-otp/i
@@ -79,18 +82,78 @@ export function assertLaunchWireReady(input: {
     const prefix =
       input.backend?.public_env?.INDOBASE_COLLECTION_PREFIX ||
       (input.backend?.project_ref ? `ib_${input.backend.project_ref}_` : 'ib_<project_ref>_')
+    const governance = explainGovernanceGate({ code: 'wire_required' })
     return {
       ok: false,
       code: 'wire_required',
       message:
-        `UI is not wired to the Indobase backend. Use ${api} with collection prefix ${prefix}` +
+        `${governance.message} Use ${api} with collection prefix ${prefix}` +
         ` (GET/POST ${api.replace(/\/+$/, '')}/api/collections/{prefix}{table}/records)` +
         (isManagedPublicKey(input.backend?.anon_key)
           ? '; auth via users OTP + Bearer user token (no Kong anon key).'
           : '.') +
-        ' Replace localStorage-only data, then launchBusiness again.',
+        ' Prefer launchBusiness *.sites.indobase.in over Gadget iframe (localStorage SecurityError).',
     }
   }
 
   return { ok: true, wired: true }
+}
+
+/**
+ * After guidedBackend / before launchBusiness: inject __INDOBASE_ENV__ into html/files
+ * so storefront + admin are backend-wired without a separate agent patch turn.
+ */
+export function autoWireLaunchArtifacts(input: {
+  html?: string | null
+  files?: Record<string, string> | null
+  admin_html?: string | null
+  backend?: BackendConfig | null
+}): {
+  html?: string
+  files?: Record<string, string>
+  admin_html?: string
+  wired: boolean
+  message: string
+} {
+  if (!input.backend?.api_url?.trim() || !input.backend.anon_key?.trim()) {
+    return {
+      html: input.html ?? undefined,
+      files: input.files ?? undefined,
+      admin_html: input.admin_html ?? undefined,
+      wired: false,
+      message: 'No session.backend — skip wire inject until ensureDatabase / guidedBackend completes.',
+    }
+  }
+
+  const files: Record<string, string> = { ...(input.files || {}) }
+  if (typeof input.admin_html === 'string' && input.admin_html.trim() && !files['admin.html']) {
+    files['admin.html'] = input.admin_html.trim()
+  }
+  const html =
+    typeof input.html === 'string' && input.html.trim() ? input.html.trim() : undefined
+
+  const injected = injectIndobaseEnvIntoLaunchContent({
+    html,
+    files: Object.keys(files).length ? files : undefined,
+    backend: input.backend,
+  })
+
+  const adminFromFiles =
+    typeof injected.files?.['admin.html'] === 'string' ? injected.files['admin.html'] : undefined
+  const proof = assertLaunchWireReady({
+    html: injected.html,
+    files: injected.files,
+    backend: input.backend,
+    requireWire: Boolean(injected.html || (injected.files && Object.keys(injected.files).length)),
+  })
+
+  return {
+    html: injected.html,
+    files: injected.files,
+    admin_html: adminFromFiles || (input.admin_html ?? undefined),
+    wired: proof.ok === true && proof.wired === true,
+    message: proof.ok
+      ? 'Injected session.backend public_env (__INDOBASE_ENV__) into publish artifacts.'
+      : proof.message,
+  }
 }

@@ -123,8 +123,8 @@ Companion architecture doc: [`ZERO-TO-ONE-LAUNCH-ARCHITECTURE.md`](./ZERO-TO-ONE
 | P1 #1 | **Single-turn Go Live** for clear landing asks | “Website for my bakery” → preview + `launchBusiness` in one agent turn when html ready | `guided-backend-chain.ts`, `launch-business-tool.ts`, `AGENT_HINT.md` |
 | P1 #2 | **Journey-driven chips** ✅ | `LaunchJourneyCard.next_action` injects chip matching `launch-journey.ts` stage | `launch-journey.ts`, `FollowUpRecommendations.tsx`, `followups.ts` |
 | P1 #3 | **Static preview lane** ✅ | After HTML exists, agent quotes `launchBusiness` URL not Gadget iframe; `launch.preview_policy` on `/api/session` | `session-payload.ts`, `AGENT_HINT.md`, `business-os-nav.ts` |
-| P1 #4 | **Gadget iframe localStorage** | No SecurityError on preview; fallback to static draft lane | `rebrand-cloudflare-os.mjs` (ChatInterface), `publish-env-inject.ts` |
-| P1 #5 | **Wire-proof automation** | After backend, agent auto-patches storefront env from `session.backend.public_env` | `wire-proof.ts`, `publish-env-inject.ts` |
+| P1 #4 | **Gadget iframe localStorage** ✅ | No SecurityError on preview; prefer static draft lane (`enforce_static_over_gadget`, HARD preview_policy) | `session-payload.ts`, `rebrand-cloudflare-os.mjs`, `AGENT_HINT.md` |
+| P1 #5 | **Wire-proof automation** ✅ | After backend, auto-inject `__INDOBASE_ENV__` via `autoWireLaunchArtifacts` in guidedBackend | `wire-proof.ts`, `publish-env-inject.ts`, `guided-backend-chain.ts` |
 | P1 #6 | **Vertical catalog sync** | `vertical-catalog.ts` ecommerce chips align with auto-chain policy | `vertical-catalog.ts`, `followups.ts` |
 | P1 #7 | **Chat noise reduction** ✅ | Strip sessionStatus / blueprint list dumps from operator markdown | `followups.ts`, `FollowUpRecommendations.tsx` |
 
@@ -146,14 +146,22 @@ Manual (signed-in on builder.indobase.in):
 
 ---
 
-### P2 — Scale & enterprise
+### P2 — Polish (Naïve UX parity) ✅ this roll
+
+| ID | Item | Acceptance | Owner files |
+| --- | --- | --- | --- |
+| P2 #1 | **Parallel product imagery** ✅ | `guidedBackend` ecommerce starts `resolveProductImages` in parallel with schema seed; 8s timeout → placeholders | `guided-backend-chain.ts`, `product-images-tool.ts` |
+| P2 #2 | **Persistent journey card** ✅ | `LaunchJourneyCard` sticky singleton on all signed-in turns (`showLaunchJourney={true}`), not J2-only | `LaunchJourneyCard.tsx`, `FollowUpRecommendations.tsx`, `rebrand-cloudflare-os.mjs` |
+| P2 #3 | **Governance / BYOK gates** ✅ | Clear operator copy + choices for quota, account, payments BYOK, wire_required (`governance-gates.ts` on `/api/session`) | `governance-gates.ts`, `prompt-quota.ts`, `wire-checkout-tool.ts`, `session-payload.ts` |
+
+### P2 — Scale & enterprise (later)
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| P2 #1 | Custom domain auto-verify | Domains product integration |
-| P2 #2 | Multi-environment (staging tenant) | Per-project PB isolation |
-| P2 #3 | Prompt quota upsell UX | In-chat upgrade without leaving CFOS |
-| P2 #4 | Analytics auto-wire | `ensureAnalytics` post-Go Live |
+| P2E #1 | Custom domain auto-verify | Domains product integration |
+| P2E #2 | Multi-environment (staging tenant) | Per-project PB isolation |
+| P2E #3 | Prompt quota upsell UX | In-chat upgrade without leaving CFOS (partial: governance choices → upgradePlan) |
+| P2E #4 | Analytics auto-wire | `ensureAnalytics` post-Go Live |
 
 ---
 
@@ -216,5 +224,6 @@ Manual script:
 ## Recommended next actions (after this PR)
 
 1. **P1 #1** — single-turn Go Live for clear landing asks when html is ready in one agent turn.
-2. **P1 #4** — reproduce gadget iframe localStorage SecurityError in staging; validate static preview lane end-to-end.
-3. **P1 #5** — wire-proof automation after guidedBackend.
+2. **P1 #6** — vertical-catalog ecommerce chips align with auto-chain (remaining P1).
+3. **P2E** — custom domain auto-verify, multi-env PB, analytics auto-wire.
+4. Soft-provision CFOS after branding/rebrand/seed changes so ChatInterface gets persistent journey.

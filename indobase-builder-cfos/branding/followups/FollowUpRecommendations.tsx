@@ -97,7 +97,7 @@ type Props = {
    * When false, parseFollowUps only (no stage gate / injection).
    */
   allowFallback?: boolean
-  /** When true, show the Naive-style launch progress card (latest completed turn only). */
+  /** When true, prefer showing journey on this turn; singleton still keeps one sticky card. */
   showLaunchJourney?: boolean
   onPick: (message: string) => void
   disabled?: boolean
@@ -109,11 +109,12 @@ type Props = {
  * Splits agent text into markdown body + chip grid.
  * Chips come from agent FOLLOWUPS/CHOICES, or Naive deliverable fallback.
  * Never show chips during guest/auth turns (even if the agent emits CHOICES).
+ * Launch journey card is persistent (sticky singleton) whenever signed-in — not latest-turn only.
  */
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,
   allowFallback = true,
-  showLaunchJourney = false,
+  showLaunchJourney = true,
   onPick,
   disabled,
   children,
@@ -144,13 +145,12 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
     return raw
   }, [allowFallback, cleaned, journeyOpts])
   const body = resolved?.body ?? cleaned
+  const showJourney = showLaunchJourney && !isBrowserGuestSession()
 
   return (
     <>
       {children ? children(body, resolved) : null}
-      {showLaunchJourney && !isBrowserGuestSession() && (
-        <LaunchJourneyCard onPick={onPick} disabled={disabled} />
-      )}
+      {showJourney && <LaunchJourneyCard onPick={onPick} disabled={disabled} sticky />}
       {resolved && resolved.items.length > 0 && (
         <FollowUpChipGrid
           title={resolved.title}

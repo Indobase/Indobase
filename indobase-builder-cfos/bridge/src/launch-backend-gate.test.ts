@@ -7,7 +7,7 @@ import {
   normalizeLaunchAppType,
   resolveEffectiveAppType,
 } from './launch-backend-gate.ts'
-import { assertLaunchWireReady } from './wire-proof.ts'
+import { assertLaunchWireReady, autoWireLaunchArtifacts } from './wire-proof.ts'
 import { rewriteManagedBackendPath } from './indobase-proxy.ts'
 
 describe('launch-backend-gate', () => {
@@ -71,6 +71,27 @@ describe('launch-backend-gate', () => {
       requireWire: true,
     })
     assert.equal(wire.ok, true)
+  })
+
+  it('autoWireLaunchArtifacts injects __INDOBASE_ENV__ into admin html', () => {
+    const out = autoWireLaunchArtifacts({
+      admin_html: '<html><head></head><body>admin</body></html>',
+      backend: {
+        api_url: 'https://backend.indobase.in',
+        anon_key: 'public',
+        project_ref: 'abc',
+        project_name: 'A',
+        project_url: 'https://backend.indobase.in',
+        public_env: {
+          INDOBASE_BACKEND_KIND: 'records',
+          INDOBASE_COLLECTION_PREFIX: 'ib_abc_',
+          INDOBASE_RECORDS_BASE: 'https://backend.indobase.in/api/collections',
+        },
+      },
+    })
+    assert.equal(out.wired, true)
+    assert.match(out.admin_html || '', /__INDOBASE_ENV__/)
+    assert.match(out.admin_html || '', /ib_abc_/)
   })
 
   it('rewrites rest/v1 to physical collections', () => {

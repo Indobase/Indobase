@@ -4,6 +4,7 @@
  */
 
 import { platformPaymentsWireCheckout } from './platform-api-client.js'
+import { explainGovernanceGate, operatorMessageForGovernanceCode } from './governance-gates.js'
 
 export const WIRE_CHECKOUT_TOOL = {
   name: 'wireCheckout',
@@ -61,9 +62,10 @@ When the operator wants pricing/checkout on the live site (after connectGateway)
    or { "plan_version_id": "…", "customer_id": "…" }.
 2. Do NOT use webFetch. Do NOT invent checkout URLs.
 3. ONLY use checkout_url from the tool JSON (ok:true). Patch the site Subscribe/Buy CTA href to that URL.
-4. If tool returns gateway_not_ready: finish connectGateway first, then retry.
+4. If tool returns gateway_not_ready: explain BYOK clearly (India Razorpay vs International Stripe KYC → connectGateway), then retry wireCheckout.
 5. For inventory-backed shops: call setupShopCatalog first, then wireCheckout mode one_time per SKU (or shared Buy flow).
 6. Claim “checkout is live” only after ok:true + non-empty checkout_url and the CTA is wired into the published site.
+7. Never invent Stripe/Razorpay “hosted by Indobase” — operators always bring their own PSP keys.
 `.trim()
 
 export type WireCheckoutToolInput = {
@@ -91,7 +93,8 @@ export type WireCheckoutToolResult = {
   message: string
   code?: string
   status?: number
-  next_steps?: Array<{ id: string; label: string }>
+  next_steps?: Array<{ id: string; label: string; message?: string }>
+  governance?: ReturnType<typeof explainGovernanceGate>
 }
 
 export async function executeWireCheckoutTool(
@@ -124,6 +127,14 @@ export async function executeWireCheckoutTool(
       ? result.checkout_url
       : undefined
   const claim = result.ok === true && Boolean(checkoutUrl)
+  const code = typeof result.code === 'string' ? result.code : undefined
+  const governanceMessage = operatorMessageForGovernanceCode(code, {
+    fallback:
+      typeof result.message === 'string' && result.message.trim()
+        ? result.message
+        : undefined,
+  })
+  const byokFallback = explainGovernanceGate({ code: 'gateway_not_ready' })
 
   return {
     ok: claim,
@@ -135,15 +146,24 @@ export async function executeWireCheckoutTool(
       typeof result.plan_version_id === 'string' ? result.plan_version_id : undefined,
     plan_id: typeof result.plan_id === 'string' ? result.plan_id : undefined,
     customer_id: typeof result.customer_id === 'string' ? result.customer_id : undefined,
-    message:
-      typeof result.message === 'string'
+    message: claim
+      ? typeof result.message === 'string' && result.message.trim()
         ? result.message
-        : claim
-          ? 'Checkout ready'
-          : 'Wire checkout failed',
-    code: typeof result.code === 'string' ? result.code : undefined,
+        : 'Checkout ready'
+      : governanceMessage ||
+        (code === 'gateway_not_ready' ? byokFallback.message : null) ||
+        (typeof result.message === 'string' ? result.message : 'Wire checkout failed'),
+    code,
     status: result.status,
-    next_steps: result.next_steps,
+    next_steps:
+      result.next_steps ||
+      (!claim && (code === 'gateway_not_ready' || code === 'payments_byok_required')
+        ? byokFallback.choices.map((c) => ({ id: c.label, label: c.label, message: c.message }))
+        : undefined),
+    governance:
+      !claim && (code === 'gateway_not_ready' || code === 'payments_byok_required')
+        ? byokFallback
+        : undefined,
   }
 }
 

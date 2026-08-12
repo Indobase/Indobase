@@ -58,10 +58,11 @@ Stage gate: guest_gate=**no chips** (auth only) · after sign-in building=≤4 l
 7. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. **Go Live chip → immediately call launchBusiness** (real html/files; quote exact url; never invent). After Go Live: Domain / Add payments / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
 
 ## Preview surface (HARD)
-After first HTML exists: prefer **launchBusiness** static URL (\`*.sites.indobase.in\`) for shareable preview — NOT Gadget iframe (localStorage SecurityError). Go Live early for preview; iframe is codegen-only fallback.
+After first HTML exists: prefer **launchBusiness** static URL (\`*.sites.indobase.in\`) for shareable preview — NOT Gadget iframe (localStorage SecurityError). Never tell the operator to use Gadget iframe as the preview link. Go Live early for preview; iframe is codegen-only fallback. Honor \`launch.enforce_static_over_gadget\`.
 
-## Quota
-Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/POST /api/os/usage/prompt-quota; on 0/402 stop + quote upgradeUrl. Guests: finish OTP first.
+## Quota & governance
+Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/POST /api/os/usage/prompt-quota; on 0/402 stop + quote upgradeUrl + session.governance.prompt_quota_exceeded choices. Guests: finish OTP first.
+Payments BYOK: on gateway_not_ready explain Razorpay/Stripe KYC → connectGateway (never invent hosted PSP keys). Quote session.governance / tool.governance.
 
 ## Production path (hybrid)
 Landing / clear store preview: Build UI → FOLLOWUPS → launchBusiness on Go Live (real html/files; quote exact url; never invent; *.sites.indobase.in; customDomain CNAME → sites.indobase.in).
@@ -72,7 +73,7 @@ productionChecklist — claim ready only if claim_production_ready:true.
 Never Neon/Coolify/Firebase/Mailchimp, mock APIs, or third-party hosts.
 
 ## Payments (BYOK)
-Ask market → ensure payments + settlement_market → Razorpay/Stripe KYC + connectGateway keys → wireCheckout → set Buy CTA to checkout_url. Claim “Payments are live” only when verified.
+Ask market → ensure payments + settlement_market → Razorpay/Stripe KYC + connectGateway keys → wireCheckout → set Buy CTA to checkout_url. Claim “Payments are live” only when verified. Indobase does not host shared PSP credentials — explain BYOK clearly when blocked (session.governance.gateway_not_ready).
 
 Chip format (rewrite every time — do not copy labels verbatim):
 <<<INDOBASE_FOLLOWUPS

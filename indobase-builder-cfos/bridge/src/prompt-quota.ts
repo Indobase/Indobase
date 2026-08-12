@@ -7,11 +7,13 @@
  * the UI begin-turn hook meters ordinary chat sends.
  */
 import type { OsPromptQuota, OsPromptQuotaResponse } from '@indobase/platform-api'
+import { explainGovernanceGate } from './governance-gates.js'
 
 export const BRIDGE_PROMPT_QUOTA_PATH = '/api/os/usage/prompt-quota'
 
-export const PROMPT_QUOTA_EXHAUSTED_MESSAGE =
-  'Free agent limit reached (5 prompts). Upgrade your plan to continue building with Indobase.'
+export const PROMPT_QUOTA_EXHAUSTED_MESSAGE = explainGovernanceGate({
+  code: 'prompt_quota_exceeded',
+}).message
 
 export type SessionPromptQuotaBlock = {
   path: typeof BRIDGE_PROMPT_QUOTA_PATH
@@ -36,10 +38,10 @@ export function isPromptQuotaExhausted(
 export function upgradeCopyForQuota(
   quota: Pick<OsPromptQuota, 'upgradeUrl'> | null | undefined,
 ): string {
-  const base = PROMPT_QUOTA_EXHAUSTED_MESSAGE
-  const url = typeof quota?.upgradeUrl === 'string' ? quota.upgradeUrl.trim() : ''
-  if (!url) return base
-  return `${base} Open billing: ${url}`
+  return explainGovernanceGate({
+    code: 'prompt_quota_exceeded',
+    upgradeUrl: typeof quota?.upgradeUrl === 'string' ? quota.upgradeUrl : null,
+  }).message
 }
 
 /** Shape agents / UI read from /api/session.usage */
@@ -96,7 +98,7 @@ export function interpretPromptQuotaResponse(
       quota,
       operatorMessage:
         (typeof body?.message === 'string' && body.message.trim()) ||
-        'Create your Indobase account before using agent prompts.',
+        explainGovernanceGate({ code: 'account_required' }).message,
       code: code || 'account_required',
     }
   }

@@ -58,6 +58,7 @@ import {
   promptQuotaToolCatalog,
   type SessionPromptQuotaBlock,
 } from './prompt-quota.js'
+import { explainGovernanceGate } from './governance-gates.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -237,10 +238,11 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       tool: '/api/os/tools/launchBusiness',
       tool_alias: '/api/os/tools/goLive',
       rules: LAUNCH_AGENT_HARD_RULES,
-      /** Prefer static lane over Gadget iframe after first HTML exists. */
+      /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
-        'After first HTML exists, prefer launchBusiness static URL (*.sites.indobase.in) over Gadget iframe preview — iframe localStorage can SecurityError.',
+        'HARD: After first HTML exists, call launchBusiness and quote *.sites.indobase.in — never tell the operator to use Gadget iframe preview (cross-origin localStorage SecurityError). Gadget is codegen-only fallback.',
       draft_preview_path: journey.live_url ? null : `/live/${session.projectRef}/`,
+      enforce_static_over_gadget: true,
     },
     payments: {
       ensure: '/api/os/runtime/ensure',
@@ -251,6 +253,12 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       wire_checkout_tool: '/api/os/tools/wireCheckout',
       rules: CONNECT_GATEWAY_AGENT_HARD_RULES,
       wire_checkout_rules: WIRE_CHECKOUT_AGENT_HARD_RULES,
+      /** BYOK clarity — never invent hosted PSP credentials. */
+      byok: true,
+      governance: {
+        gateway_not_ready: explainGovernanceGate({ code: 'gateway_not_ready' }),
+        payments_byok_required: explainGovernanceGate({ code: 'payments_byok_required' }),
+      },
     },
     shop: {
       catalog: '/api/os/shop/catalog',
@@ -284,6 +292,18 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     usage: {
       prompt_quota: usage.path,
       ...usage,
+      governance: usage.exhausted
+        ? explainGovernanceGate({
+            code: 'prompt_quota_exceeded',
+            upgradeUrl: usage.quota?.upgradeUrl,
+          })
+        : null,
+    },
+    governance: {
+      account_required: explainGovernanceGate({ code: 'account_required' }),
+      prompt_quota_exceeded: explainGovernanceGate({ code: 'prompt_quota_exceeded' }),
+      gateway_not_ready: explainGovernanceGate({ code: 'gateway_not_ready' }),
+      wire_required: explainGovernanceGate({ code: 'wire_required' }),
     },
     actions,
     command_palette: actions,

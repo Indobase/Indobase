@@ -2250,13 +2250,33 @@ ${injection}`
         text = text.replace(oldAllow, newAllow)
       }
       const oldJourney =
-        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  disabled={isAgentActive}'
-      const newJourney =
         'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  showLaunchJourney={actionMessageSeq === J2}\n                                  disabled={isAgentActive}'
-      if (text.includes(oldJourney) && !text.includes('showLaunchJourney')) {
+      const newJourney =
+        'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  showLaunchJourney={true}\n                                  disabled={isAgentActive}'
+      if (text.includes(oldJourney)) {
         text = text.replace(oldJourney, newJourney)
         write(chatPath, text)
-        console.log('  ChatInterface ← launch journey card on latest turn')
+        console.log('  ChatInterface ← persistent launch journey card (all turns, singleton sticky)')
+      } else if (text.includes('showLaunchJourney={actionMessageSeq === J2}')) {
+        text = text.replace(
+          'showLaunchJourney={actionMessageSeq === J2}',
+          'showLaunchJourney={true}',
+        )
+        write(chatPath, text)
+        console.log('  ChatInterface ← persistent launch journey (replaced J2-only)')
+      } else if (text.includes(oldAllow) && !text.includes('showLaunchJourney')) {
+        const oldIdle =
+          'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  disabled={isAgentActive}'
+        const withJourney =
+          'allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}\n                                  showLaunchJourney={true}\n                                  disabled={isAgentActive}'
+        if (text.includes(oldIdle)) {
+          text = text.replace(oldIdle, withJourney)
+          write(chatPath, text)
+          console.log('  ChatInterface ← launch journey card persistent')
+        } else {
+          write(chatPath, text)
+          console.log('  ChatInterface ← follow-up allowFallback when agent idle')
+        }
       } else if (text.includes(oldAllow) && text.includes(newAllow) && !text.includes('showLaunchJourney')) {
         write(chatPath, text)
         console.log('  ChatInterface ← follow-up allowFallback when agent idle')
@@ -2280,7 +2300,7 @@ ${injection}`
                                 <FollowUpRecommendations
                                   message={msg.message}
                                   allowFallback={completedAgentTurnMessageSeqs.has(actionMessageSeq) || !isAgentActive}
-                                  showLaunchJourney={actionMessageSeq === J2}
+                                  showLaunchJourney={true}
                                   disabled={isAgentActive}
                                   onPick={(next) => {
                                     void handleSend(next)

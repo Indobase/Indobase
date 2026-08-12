@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { parseGuidedBackendIntent } from './guided-backend-chain.ts'
+import {
+  parseGuidedBackendIntent,
+  placeholderProductImageUrl,
+  withTimeout,
+  PRODUCT_IMAGES_TIMEOUT_MS,
+} from './guided-backend-chain.ts'
 
 describe('guided-backend-chain', () => {
   it('parseGuidedBackendIntent detects Add a real backend as generic', () => {
@@ -34,5 +39,26 @@ describe('guided-backend-chain', () => {
     const parsed = parseGuidedBackendIntent('Take my store live with backend catalog wired')
     assert.ok(parsed)
     assert.equal(parsed.mode, 'ecommerce')
+  })
+
+  it('placeholderProductImageUrl is brand-safe HTTPS', () => {
+    const url = placeholderProductImageUrl('Wool Coat')
+    assert.match(url, /^https:\/\/placehold\.co\//)
+    assert.match(url, /Wool/)
+    assert.equal(PRODUCT_IMAGES_TIMEOUT_MS, 8_000)
+  })
+
+  it('withTimeout falls back when slow', async () => {
+    const result = await withTimeout(
+      new Promise<string>((resolve) => setTimeout(() => resolve('late'), 200)),
+      20,
+      () => 'fallback',
+    )
+    assert.equal(result, 'fallback')
+  })
+
+  it('withTimeout returns fast promise', async () => {
+    const result = await withTimeout(Promise.resolve('ok'), 200, () => 'fallback')
+    assert.equal(result, 'ok')
   })
 })
