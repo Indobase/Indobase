@@ -4,22 +4,20 @@ import { describe, it } from 'node:test'
 import { buildManagedShopStorefrontHtml } from './shop-storefront-html.ts'
 
 describe('buildManagedShopStorefrontHtml', () => {
-  it('wires live products + order POST to records API', () => {
+  it('binds to indobase.commerce runtime — not PocketBase orders create', () => {
     const html = buildManagedShopStorefrontHtml({
       brand: 'By Samosa Shop',
       appId: 'rosamasa01',
       publicUrl: 'https://backend.indobase.in',
-      products: [{ slug: 'samosa-plate', name: 'Samosa Plate', price: 99, stock: 40 }],
+      commerceBaseUrl: 'https://builder.indobase.in',
+      products: [{ id: 'p1', slug: 'samosa-plate', name: 'Samosa Plate', price: 99, stock: 40 }],
     })
     assert.match(html, /By Samosa Shop/)
-    assert.match(html, /Samosa Plate/)
-    assert.match(html, /INDOBASE_COLLECTION_PREFIX/)
-    assert.match(html, /__INDOBASE_COLLECTION__\('products'\)/)
-    assert.match(html, /__INDOBASE_COLLECTION__\('orders'\)/)
-    assert.match(html, /fetch\(API\+'\/'\+col\+'\/records/)
-    assert.match(html, /method:'POST'/)
-    assert.match(html, /email/)
-    assert.doesNotMatch(html, /localStorage/)
-    assert.doesNotMatch(html, /shop_products/)
+    assert.match(html, /window\.indobase\.commerce/)
+    assert.match(html, /commerce\.products\.list/)
+    assert.match(html, /commerce\.checkout\.create/)
+    assert.match(html, /INDOBASE_COMMERCE_URL/)
+    assert.doesNotMatch(html, /__INDOBASE_COLLECTION__\('orders'\)/)
+    assert.doesNotMatch(html, /\/api\/collections\/.+\/orders/)
   })
 })

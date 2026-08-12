@@ -51,6 +51,16 @@ import {
   executeLaunchBusinessTool,
   LAUNCH_AGENT_HARD_RULES,
 } from './launch-business-tool.js'
+import {
+  handleCommerceCheckout,
+  handleCommerceMarkFailed,
+  handleCommerceMarkPaid,
+  handleCommerceOptions,
+  handleCommerceOrderGet,
+  handleCommerceProductGet,
+  handleCommerceProductsList,
+  handleCommerceRuntimeJs,
+} from './commerce/http.js'
 import { executeConnectGatewayTool } from './connect-gateway-tool.js'
 import { executeWireCheckoutTool } from './wire-checkout-tool.js'
 import {
@@ -1609,6 +1619,17 @@ app.post('/api/os/tools/goLive', async (c) => {
   if (sessionOrErr instanceof Response) return sessionOrErr
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
+
+/** Indobase Commerce capability — public ABI for storefronts (CORS). */
+app.options('/api/os/commerce/*', handleCommerceOptions)
+app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
+app.get('/api/os/commerce/products', handleCommerceProductsList)
+app.get('/api/os/commerce/products/:id', handleCommerceProductGet)
+app.post('/api/os/commerce/checkout', handleCommerceCheckout)
+app.get('/api/os/commerce/orders/:id', handleCommerceOrderGet)
+app.post('/api/os/commerce/orders/:id/mark-paid', handleCommerceMarkPaid)
+app.post('/api/os/commerce/orders/mark-paid', handleCommerceMarkPaid)
+app.post('/api/os/commerce/orders/:id/mark-failed', handleCommerceMarkFailed)
 
 /** Attach a domain the customer already owns (CNAME → Indobase). */
 app.post('/api/os/domains/attach', async (c) => {

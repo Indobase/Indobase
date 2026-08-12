@@ -50,7 +50,7 @@ Respect **Journey state** on `/api/session` agent_hint when present (backend rea
 After the first HTML/files exist for a landing or store UI:
 
 - Prefer **launchBusiness** static URL (`*.sites.indobase.in`) for operator preview — shareable, no iframe sandbox issues.
-- **Ecommerce + backend:** use `guidedBackend` **storefront_html** (managed shell that fetches products / posts orders). Do **not** Go Live with localStorage-only carts — bridge will replace unwired shop HTML with the managed storefront.
+- **Ecommerce + backend:** use `guidedBackend` **storefront_html** (managed shell). Storefront uses only **`window.indobase.commerce`** (products / cart / checkout / orders) — **never** PocketBase order creates. Checkout is `POST /api/os/commerce/checkout` (server prices + reserves stock).
 - Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin). Never tell the operator to “open the Gadget preview” for a shareable link.
 - Gadget iframe is codegen-only fallback during build; once html is ready, Go Live early for preview or use `/live/{project_ref}/` draft lane when offered on `/api/session`.
 - `/api/session.launch.enforce_static_over_gadget` is true — honor it.

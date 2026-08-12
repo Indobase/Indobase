@@ -1,23 +1,52 @@
 import { buildManagedPublicEnv } from './managed.js'
+import { buildCommerceRuntimeJs } from '../commerce/runtime.js'
 
 export type ManagedShopStorefrontRow = Record<string, unknown>
 
 /**
- * Functional storefront shell for managed PocketBase ecommerce.
- * Loads products from ib_{app}_products and POSTs orders to ib_{app}_orders.
- * Canonical fields: name, slug, price, currency, stock, image_url, email.
+ * Functional storefront — Presentation + Commerce Runtime ABI only.
+ * Does NOT call PocketBase records API for cart/checkout/orders.
  */
 export function buildManagedShopStorefrontHtml(opts: {
   brand?: string
   tagline?: string
   appId: string
   publicUrl: string
+  /** Bridge public origin for commerce API (default builder.indobase.in). */
+  commerceBaseUrl?: string
   products?: ManagedShopStorefrontRow[]
 }): string {
   const brand = (opts.brand || 'Shop').replace(/[<>&"]/g, '')
-  const tagline = (opts.tagline || 'Order online — live inventory from Indobase.').replace(/[<>&"]/g, '')
+  const tagline = (opts.tagline || 'Order online — powered by Indobase Commerce.').replace(
+    /[<>&"]/g,
+    '',
+  )
   const env = buildManagedPublicEnv({ publicUrl: opts.publicUrl, appId: opts.appId })
-  const productsJson = JSON.stringify(opts.products || [])
+  const bridge =
+    (opts.commerceBaseUrl ||
+      process.env.INDOBASE_BRIDGE_PUBLIC_URL ||
+      process.env.BRIDGE_PUBLIC_URL ||
+      'https://builder.indobase.in'
+    ).replace(/\/+$/, '')
+  const commerceBase = `${bridge}/api/os/commerce`
+  env.INDOBASE_COMMERCE_URL = commerceBase
+  const runtime = buildCommerceRuntimeJs({
+    commerceBaseUrl: commerceBase,
+    projectRef: opts.appId,
+  })
+  const snapshot = JSON.stringify(
+    (opts.products || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      description: p.description,
+      priceMinor: Math.round(Number(p.price || 0) * 100),
+      currency: p.currency || 'INR',
+      stock: Number(p.stock || 0),
+      imageUrl: p.image_url || '',
+      active: p.active !== false,
+    })),
+  )
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -59,7 +88,8 @@ export function buildManagedShopStorefrontHtml(opts: {
   .dlg .actions .primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
   .empty { color:var(--muted); padding:28px 8px; text-align:center; }
 </style>
-<script>window.__INDOBASE_ENV__=${JSON.stringify(env)};window.__INDOBASE_COLLECTION__=function(n){var p=(window.__INDOBASE_ENV__||{}).INDOBASE_COLLECTION_PREFIX||'';return p+String(n||'').toLowerCase().replace(/[^a-z0-9_]/g,'_');};window.__INDOBASE_CONFIG__={baseUrl:${JSON.stringify(env.INDOBASE_RECORDS_BASE||'')},prefix:${JSON.stringify(env.INDOBASE_COLLECTION_PREFIX||'')},collections:{products:window.__INDOBASE_COLLECTION__('products'),orders:window.__INDOBASE_COLLECTION__('orders'),orderItems:window.__INDOBASE_COLLECTION__('order_items')}};</script>
+<script>window.__INDOBASE_ENV__=${JSON.stringify(env)};</script>
+<script>${runtime}</script>
 </head>
 <body>
 <header>
@@ -76,105 +106,97 @@ export function buildManagedShopStorefrontHtml(opts: {
 </main>
 <dialog id="cartDlg">
   <form method="dialog" class="dlg" id="checkoutForm">
-    <h2>Your cart</h2>
+    <h2>Checkout</h2>
     <ul id="cartList"></ul>
-    <div class="row"><strong>Total</strong><strong id="cartTotal">₹0</strong></div>
+    <div class="row"><strong>Estimated</strong><strong id="cartTotal">—</strong></div>
+    <p class="meta">Final price is calculated by Indobase Commerce (not from this page).</p>
+    <label>Name<input type="text" name="name" placeholder="Your name" autocomplete="name"/></label>
     <label>Email<input required type="email" name="email" placeholder="you@example.com" autocomplete="email"/></label>
-    <p class="meta" id="checkoutNote">Places a real order on your Indobase backend (pay later via Razorpay/Stripe).</p>
+    <p class="meta" id="checkoutNote">Creates a real order via commerce.checkout — never writes PocketBase directly.</p>
     <div class="actions">
       <button type="button" id="closeCart">Close</button>
-      <button class="primary" type="submit" id="placeOrder">Place order</button>
+      <button class="primary" type="submit" id="placeOrder">Checkout</button>
     </div>
   </form>
 </dialog>
 <script>
-const API=(window.__INDOBASE_ENV__||{}).INDOBASE_RECORDS_BASE||'';
-let products=${productsJson};
-const cart=[];
-function pbItems(payload){if(Array.isArray(payload))return payload;if(payload&&Array.isArray(payload.items))return payload.items;if(payload&&Array.isArray(payload.records))return payload.records.map(x=>x.record||x);return []}
-function money(v,c){const n=Number(v||0);const cur=c||'INR';try{return new Intl.NumberFormat('en-IN',{style:'currency',currency:cur}).format(n)}catch(e){return '₹'+n.toLocaleString('en-IN')}}
-function setError(msg){const el=document.querySelector('#error');if(!msg){el.hidden=true;el.textContent='';return}el.hidden=false;el.textContent=msg}
-function cartQty(){return cart.reduce((s,i)=>s+i.qty,0)}
-function cartSum(){return cart.reduce((s,i)=>s+i.qty*Number(i.price||0),0)}
+const commerce=window.indobase.commerce;
+let products=${snapshot};
+function moneyMinor(minor,c){
+  var n=Number(minor||0)/100; var cur=c||'INR';
+  try{return new Intl.NumberFormat('en-IN',{style:'currency',currency:cur}).format(n)}catch(e){return '₹'+n.toLocaleString('en-IN')}
+}
+function setError(msg){var el=document.querySelector('#error'); if(!msg){el.hidden=true;el.textContent='';return} el.hidden=false; el.textContent=msg}
+function productById(id){return products.find(function(p){return p.id===id})}
 function renderCart(){
-  document.querySelector('#cartCount').textContent=String(cartQty());
-  document.querySelector('#cartTotal').textContent=money(cartSum(), (cart[0]&&cart[0].currency)||'INR');
-  const list=document.querySelector('#cartList');
-  list.innerHTML=cart.length?cart.map(i=>'<li><span>'+i.name+' × '+i.qty+'</span><span>'+money(i.qty*Number(i.price||0),i.currency)+'</span></li>').join(''):'<li class="meta">Cart is empty</li>';
+  var items=commerce.cart.get();
+  var count=items.reduce(function(s,i){return s+i.quantity},0);
+  document.querySelector('#cartCount').textContent=String(count);
+  var list=document.querySelector('#cartList');
+  var est=0; var cur='INR';
+  list.innerHTML=items.length?items.map(function(i){
+    var p=productById(i.productId); var name=p?p.name:i.productId;
+    var line=p?(p.priceMinor*i.quantity):0; est+=line; if(p)cur=p.currency||cur;
+    return '<li><span>'+name+' × '+i.quantity+'</span><span>'+moneyMinor(line,cur)+'</span></li>';
+  }).join(''):'<li class="meta">Cart is empty</li>';
+  document.querySelector('#cartTotal').textContent=items.length?moneyMinor(est,cur):'—';
 }
 function render(){
-  const grid=document.querySelector('#grid');
-  if(!products.length){grid.innerHTML='<p class="empty">No products yet. Seed catalog via Indobase Builder, then refresh.</p>';return}
-  grid.innerHTML=products.map((p,idx)=>{
-    const stock=Number(p.stock||0);
-    const img=p.image_url?('<img src="'+String(p.image_url).replace(/"/g,'&quot;')+'" alt=""/>'):'<img alt="" src="data:image/svg+xml,'+encodeURIComponent('<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"400\\" height=\\"300\\"><rect fill=\\"#e5e7eb\\" width=\\"100%\\" height=\\"100%\\"/><text x=\\"50%\\" y=\\"50%\\" text-anchor=\\"middle\\" fill=\\"#9ca3af\\" font-family=\\"sans-serif\\" font-size=\\"18\\">No image</text></svg>')+'"/>';
-    return '<article class="card">'+img+'<div class="body"><h2>'+(p.name||'Product')+'</h2><div class="meta">'+(p.description||p.slug||'')+'</div><div class="row"><span class="price">'+money(p.price,p.currency)+'</span><span class="meta">'+stock+' in stock</span></div><button type="button" class="add" data-i="'+idx+'" '+(stock>0?'':'disabled')+'>Add to cart</button></div></article>';
+  var grid=document.querySelector('#grid');
+  if(!products.length){grid.innerHTML='<p class="empty">No products yet.</p>';return}
+  grid.innerHTML=products.map(function(p){
+    var stock=Number(p.stock||0);
+    var img=p.imageUrl?('<img src="'+String(p.imageUrl).replace(/"/g,'&quot;')+'" alt=""/>'):'<div class="food" style="height:140px;background:#eee"></div>';
+    return '<article class="card">'+img+'<div class="body"><h2>'+(p.name||'Product')+'</h2><div class="meta">'+(p.description||p.slug||'')+'</div><div class="row"><span class="price">'+moneyMinor(p.priceMinor,p.currency)+'</span><span class="meta">'+stock+' in stock</span></div><button type="button" class="add" data-id="'+p.id+'" '+(stock>0?'':'disabled')+'>Add to cart</button></div></article>';
   }).join('');
-  grid.querySelectorAll('button.add').forEach(btn=>btn.addEventListener('click',()=>{
-    const p=products[Number(btn.getAttribute('data-i'))];
-    if(!p||Number(p.stock||0)<=0)return;
-    const slug=String(p.slug||p.id||'');
-    const existing=cart.find(c=>c.slug===slug);
-    if(existing){if(existing.qty<Number(p.stock||0))existing.qty+=1}else{cart.push({slug,name:String(p.name||slug),price:Number(p.price||0),currency:String(p.currency||'INR'),qty:1})}
-    renderCart();
-  }));
+  grid.querySelectorAll('button.add').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      commerce.cart.add(btn.getAttribute('data-id'), 1);
+      renderCart();
+    });
+  });
 }
 async function loadProducts(){
   setError('');
-  if(!API||!window.__INDOBASE_COLLECTION__){render();document.querySelector('#status').textContent='Snapshot catalog';return}
   try{
-    const col=window.__INDOBASE_COLLECTION__('products');
-    const res=await fetch(API+'/'+col+'/records?perPage=200&sort=-created_at');
-    const json=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error((json&&json.message)||('Catalog HTTP '+res.status));
-    const live=pbItems(json).filter(p=>p.active!==false);
-    if(live.length)products=live;
+    var live=await commerce.products.list();
+    if(live&&live.length) products=live;
     render();
-    document.querySelector('#status').textContent='Live catalog · '+products.length+' products · updated '+new Date().toLocaleTimeString();
+    document.querySelector('#status').textContent='Live catalog via Indobase Commerce · '+products.length+' products';
   }catch(e){
     render();
-    document.querySelector('#status').textContent='Showing snapshot — live refresh failed';
-    setError(e&&e.message?e.message:'Could not load live catalog');
+    document.querySelector('#status').textContent='Showing snapshot — catalog refresh failed';
+    setError(e&&e.message?e.message:'Could not load catalog');
   }
+  renderCart();
 }
-async function placeOrder(email){
-  if(!cart.length)throw new Error('Cart is empty');
-  if(!API||!window.__INDOBASE_COLLECTION__)throw new Error('Backend not configured');
-  const ordersCol=window.__INDOBASE_COLLECTION__('orders');
-  const itemsCol=window.__INDOBASE_COLLECTION__('order_items');
-  const currency=(cart[0]&&cart[0].currency)||'INR';
-  const total=cartSum();
-  const orderBody={email,status:'pending',total,currency,items_json:cart.map(i=>({product_slug:i.slug,quantity:i.qty,unit_price:i.price}))};
-  const or=await fetch(API+'/'+ordersCol+'/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(orderBody)});
-  const oj=await or.json().catch(()=>({}));
-  if(!or.ok)throw new Error((oj&&(oj.message||oj.data&&oj.data.message))||('Order HTTP '+or.status));
-  const orderId=oj.id||(oj.record&&oj.record.id);
-  if(orderId&&itemsCol){
-    await Promise.all(cart.map(i=>fetch(API+'/'+itemsCol+'/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:orderId,product_slug:i.slug,quantity:i.qty,unit_price:i.price})})));
-  }
-  return orderId||'ok';
-}
-document.querySelector('#openCart').addEventListener('click',()=>{renderCart();document.querySelector('#cartDlg').showModal()});
-document.querySelector('#closeCart').addEventListener('click',()=>document.querySelector('#cartDlg').close());
-document.querySelector('#checkoutForm').addEventListener('submit',async(ev)=>{
+document.querySelector('#openCart').addEventListener('click', function(){ renderCart(); document.querySelector('#cartDlg').showModal(); });
+document.querySelector('#closeCart').addEventListener('click', function(){ document.querySelector('#cartDlg').close(); });
+document.querySelector('#checkoutForm').addEventListener('submit', async function(ev){
   ev.preventDefault();
-  const email=new FormData(ev.target).get('email');
-  const btn=document.querySelector('#placeOrder');
-  btn.disabled=true;
-  setError('');
+  var fd=new FormData(ev.target);
+  var btn=document.querySelector('#placeOrder');
+  btn.disabled=true; setError('');
+  document.querySelector('#checkoutNote').textContent='Creating checkout…';
   try{
-    const id=await placeOrder(String(email||'').trim());
-    cart.length=0;renderCart();
-    document.querySelector('#checkoutNote').textContent='Order placed ('+id+'). Check Admin for status.';
-    setTimeout(()=>document.querySelector('#cartDlg').close(),900);
+    var result=await commerce.checkout.create({
+      customer: { email: String(fd.get('email')||'').trim(), name: String(fd.get('name')||'').trim() }
+    });
+    commerce.cart.clear(); renderCart();
+    document.querySelector('#checkoutNote').textContent=result.message||('Order '+result.orderId);
+    if(result.paymentUrl){
+      window.location.href=result.paymentUrl;
+      return;
+    }
+    // Pending payment / gateway not ready — still a real order id
+    alert((result.message||'Order created')+'\\nOrder: '+result.orderId+'\\nAmount: '+moneyMinor(result.amountMinor, result.currency));
+    document.querySelector('#cartDlg').close();
   }catch(e){
     setError(e&&e.message?e.message:'Checkout failed');
     document.querySelector('#checkoutNote').textContent=e&&e.message?e.message:'Checkout failed';
-  }finally{btn.disabled=false}
+  }finally{ btn.disabled=false; }
 });
-render();
-renderCart();
-loadProducts();
+render(); renderCart(); loadProducts();
 </script>
 </body>
 </html>`

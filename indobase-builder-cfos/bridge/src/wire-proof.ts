@@ -11,11 +11,11 @@ import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
 import { explainGovernanceGate } from './governance-gates.js'
 
 const ENV_MARKERS =
-  /__INDOBASE_ENV__|INDOBASE_URL|INDOBASE_COLLECTION_PREFIX|INDOBASE_RECORDS_BASE|\/api\/collections\/|ib_[a-z0-9]+_|VITE_INDOBASE_URL|NEXT_PUBLIC_INDOBASE_URL|auth-with-otp|request-otp/i
+  /__INDOBASE_ENV__|INDOBASE_URL|INDOBASE_COMMERCE_URL|INDOBASE_COLLECTION_PREFIX|INDOBASE_RECORDS_BASE|\/api\/collections\/|\/api\/os\/commerce|ib_[a-z0-9]+_|VITE_INDOBASE_URL|NEXT_PUBLIC_INDOBASE_URL|auth-with-otp|request-otp|indobase\.commerce/i
 
-/** Must actually call the records API — not just include env JSON / COLLECTION_HINT copy. */
+/** Must call Commerce ABI or records API — not env JSON / COLLECTION_HINT alone. */
 const LIVE_DATA_MARKERS =
-  /__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]\s*\)|__INDOBASE_COLLECTION__\s*\(\s*['"]orders['"]\s*\)|fetch\s*\(\s*[^;]{0,200}\/records/i
+  /window\.indobase\.commerce|indobase\.commerce\.(products|cart|checkout|orders)|\/api\/os\/commerce\/|__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]\s*\)|__INDOBASE_COLLECTION__\s*\(\s*['"]orders['"]\s*\)|fetch\s*\(\s*[^;]{0,200}\/records/i
 
 const LOCAL_ONLY = /localStorage|sessionStorage/i
 

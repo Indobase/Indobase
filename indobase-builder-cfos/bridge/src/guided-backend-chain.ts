@@ -797,7 +797,11 @@ async function maybeLaunch(
   // Prefer managed storefront for ecommerce index when agent HTML is still localStorage-only.
   if (base.mode === 'ecommerce' && base.storefront_html) {
     const indexText = files['index.html'] || ''
-    if (!indexText || !/__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]/.test(indexText)) {
+    if (
+      !indexText ||
+      (!/indobase\.commerce/.test(indexText) &&
+        !/__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]/.test(indexText))
+    ) {
       files['index.html'] = base.storefront_html
     }
   }

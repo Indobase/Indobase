@@ -103,9 +103,9 @@ describe('launch-backend-gate', () => {
     })
     assert.equal(out.wired, true)
     assert.equal(out.replaced_storefront, true)
-    assert.match(out.html || '', /__INDOBASE_COLLECTION__\('products'\)/)
-    assert.match(out.html || '', /fetch\(API/)
-    assert.doesNotMatch(out.html || '', /localStorage/)
+    assert.match(out.html || '', /indobase\.commerce/)
+    assert.match(out.html || '', /commerce\.checkout\.create/)
+    assert.match(out.html || '', /\/api\/os\/commerce/)
   })
 
   it('autoWireLaunchArtifacts injects __INDOBASE_ENV__ into admin html', () => {
