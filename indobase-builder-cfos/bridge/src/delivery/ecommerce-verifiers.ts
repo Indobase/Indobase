@@ -9,6 +9,7 @@ import {
   contentHasCommerceCheckoutAbi,
   contentHasForbiddenStorefrontCheckout,
 } from '../wire-proof.js'
+import { runEcommerceFunctionalVerifiers } from './ecommerce-functional-verifiers.js'
 
 export type VerifierSeverity = 'error' | 'warning' | 'info'
 
@@ -43,6 +44,15 @@ export type EcommerceVerifierInput = {
   /** Base URL for optional live probe (bridge public origin). */
   commerceBaseUrl?: string | null
   projectRef?: string | null
+  /** When true, force functional pack (tests / ops). */
+  enableFunctionalVerify?: boolean
+  /** Override functional required policy (tests). */
+  functionalRequireOverride?: boolean | null
+  pocketBasePublicUrl?: string | null
+  fetchFn?: (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => Promise<Response>
 }
 
 function verifyCommerceAbiBound(text: string): VerifierResult {
@@ -209,7 +219,7 @@ export function runEcommerceStaticVerifiers(input: EcommerceVerifierInput): Veri
   ]
 }
 
-/** Full pack: required static + optional live probe. */
+/** Full pack: required static + optional live probe + functional (policy-gated). */
 export async function runEcommerceVerifiers(
   input: EcommerceVerifierInput,
 ): Promise<VerifierResult[]> {
@@ -219,7 +229,15 @@ export async function runEcommerceVerifiers(
     projectRef: input.projectRef,
     enabled: input.enableLiveProbe,
   })
-  return [...staticResults, live]
+  const functional = await runEcommerceFunctionalVerifiers({
+    projectRef: input.projectRef || '',
+    commerceBaseUrl: input.commerceBaseUrl,
+    pocketBasePublicUrl: input.pocketBasePublicUrl,
+    force: input.enableFunctionalVerify,
+    requireOverride: input.functionalRequireOverride,
+    fetchFn: input.fetchFn,
+  })
+  return [...staticResults, live, ...functional]
 }
 
 export function requiredVerifiersFailed(results: VerifierResult[]): VerifierResult[] {

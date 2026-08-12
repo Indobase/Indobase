@@ -28,6 +28,16 @@ export {
 } from './ecommerce-verifiers.js'
 
 export {
+  ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
+  requiredFunctionalVerifiersFailed,
+  runEcommerceFunctionalVerifiers,
+  shouldRequireEcommerceFunctionalVerifiers,
+  type EcommerceFunctionalVerifierId,
+  type EcommerceFunctionalVerifierInput,
+  type FunctionalFetch,
+} from './ecommerce-functional-verifiers.js'
+
+export {
   assertEcommerceReleaseGate,
   assertEcommerceReleaseGateAsync,
   buildReleaseManifest,

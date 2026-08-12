@@ -8,15 +8,19 @@ import { buildManagedShopStorefrontHtml } from '../pocketbase/shop-storefront-ht
 import {
   ECOMMERCE_APPLICATION_CONTRACT,
   ECOMMERCE_CONTRACT_VERSION,
+  ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
   ECOMMERCE_REQUIRED_VERIFIER_IDS,
   assertEcommerceReleaseGate,
+  assertEcommerceReleaseGateAsync,
   buildReleaseManifest,
   clearReleaseManifestsForTests,
   getReleaseManifest,
   resolveApplicationContract,
   resolveContractAppType,
+  runEcommerceFunctionalVerifiers,
   runEcommerceStaticVerifiers,
   shouldRunEcommerceReleaseGate,
+  type FunctionalFetch,
 } from './index.ts'
 
 describe('ApplicationContract resolution', () => {
@@ -173,5 +177,357 @@ describe('Go Live release gate', () => {
     assert.equal(manifest.url, 'https://manif01.sites.indobase.in')
     assert.ok(manifest.timestamp)
     assert.equal(getReleaseManifest('manif01')?.projectRef, 'manif01')
+  })
+})
+
+describe('Ecommerce functional verifier pack', () => {
+  const product = {
+    id: 'prodabc1234567',
+    name: 'Tea',
+    slug: 'tea',
+    priceMinor: 4000,
+    currency: 'INR',
+    stock: 5,
+    imageUrl: '',
+    active: true,
+  }
+
+  function mockFetchPass(): FunctionalFetch {
+    const orders = new Map<string, string>()
+    let paidOnce = false
+    return async (input, init) => {
+      const url = String(input)
+      const method = (init?.method || 'GET').toUpperCase()
+      if (url.includes('/api/os/commerce/products') && method === 'GET') {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/api/os/commerce/checkout') && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}')) as {
+          idempotencyKey?: string
+          items?: Array<{ quantity?: number }>
+        }
+        const qty = Number(body.items?.[0]?.quantity || 0)
+        if (qty > product.stock) {
+          return new Response(
+            JSON.stringify({ ok: false, code: 'out_of_stock', message: 'Insufficient stock' }),
+            { status: 400 },
+          )
+        }
+        const key = body.idempotencyKey || ''
+        if (orders.has(key)) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              orderId: orders.get(key),
+              amountMinor: product.priceMinor,
+              currency: 'INR',
+            }),
+            { status: 200 },
+          )
+        }
+        const orderId = `ord${orders.size + 1}abcdefgh`
+        orders.set(key, orderId)
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            orderId,
+            amountMinor: product.priceMinor,
+            currency: 'INR',
+          }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid') && method === 'POST') {
+        if (paidOnce) {
+          return new Response(JSON.stringify({ ok: true, already: true }), { status: 200 })
+        }
+        paidOnce = true
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/') && url.includes('orders') && method === 'POST') {
+        return new Response(JSON.stringify({ message: 'Only superusers can perform this action.' }), {
+          status: 403,
+        })
+      }
+      return new Response(JSON.stringify({ ok: false }), { status: 404 })
+    }
+  }
+
+  it('skips cleanly when not required', async () => {
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'skipref01',
+      requireOverride: false,
+    })
+    assert.equal(results.length, ECOMMERCE_FUNCTIONAL_VERIFIER_IDS.length)
+    for (const r of results) {
+      assert.equal(r.ok, true)
+      assert.match(String(r.actual), /Skipped/)
+    }
+  })
+
+  it('passes full pack with mocked commerce + PB denial', async () => {
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'funcref01',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn: mockFetchPass(),
+    })
+    for (const id of ECOMMERCE_FUNCTIONAL_VERIFIER_IDS) {
+      const row = results.find((r) => r.id === id)
+      assert.ok(row, id)
+      assert.equal(row!.ok, true, `${id}: ${row!.actual}`)
+    }
+  })
+
+  it('fails GUEST_CHECKOUT_OK when checkout returns error', async () => {
+    const fetchFn: FunctionalFetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        return new Response(JSON.stringify({ ok: false, code: 'checkout_failed' }), { status: 502 })
+      }
+      if (url.includes('/api/collections/')) {
+        return new Response('{}', { status: 403 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'failchk01',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'GUEST_CHECKOUT_OK')?.ok, false)
+    assert.equal(results.find((r) => r.id === 'GUEST_CHECKOUT_OK')?.code, 'guest_checkout_failed')
+  })
+
+  it('fails FAKE_PRICE_IGNORED when server echoes client amount', async () => {
+    const fetchFn: FunctionalFetch = async (input, init) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        const body = JSON.parse(String(init?.body || '{}')) as { amountMinor?: number }
+        // Evil server trusts client amountMinor when present
+        const amountMinor =
+          typeof body.amountMinor === 'number' ? body.amountMinor : product.priceMinor
+        return new Response(
+          JSON.stringify({ ok: true, orderId: 'ordfakeprice0001', amountMinor }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid')) {
+        return new Response(JSON.stringify({ ok: true, already: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/')) {
+        return new Response('{}', { status: 403 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'fakep01',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'FAKE_PRICE_IGNORED')?.ok, false)
+    assert.equal(results.find((r) => r.id === 'FAKE_PRICE_IGNORED')?.code, 'fake_price_accepted')
+  })
+
+  it('fails OUT_OF_STOCK_REJECTED when huge qty succeeds', async () => {
+    const fetchFn: FunctionalFetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        return new Response(
+          JSON.stringify({ ok: true, orderId: 'ordoos000000001', amountMinor: product.priceMinor }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid')) {
+        return new Response(JSON.stringify({ ok: true, already: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/')) {
+        return new Response('{}', { status: 403 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'oosfail01',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'OUT_OF_STOCK_REJECTED')?.ok, false)
+  })
+
+  it('fails IDEMPOTENT_CHECKOUT when second call mints new orderId', async () => {
+    let n = 0
+    const fetchFn: FunctionalFetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        n += 1
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            orderId: `ordnew${n}00000000`,
+            amountMinor: product.priceMinor,
+          }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid')) {
+        return new Response(JSON.stringify({ ok: true, already: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/')) {
+        return new Response('{}', { status: 403 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'idemfail1',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'IDEMPOTENT_CHECKOUT')?.ok, false)
+    assert.equal(results.find((r) => r.id === 'IDEMPOTENT_CHECKOUT')?.code, 'checkout_not_idempotent')
+  })
+
+  it('fails MARK_PAID_IDEMPOTENT when second lacks already:true', async () => {
+    const fetchFn: FunctionalFetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        return new Response(
+          JSON.stringify({ ok: true, orderId: 'ordmarkpaid0001', amountMinor: product.priceMinor }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid')) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/')) {
+        return new Response('{}', { status: 403 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'markfail1',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'MARK_PAID_IDEMPOTENT')?.ok, false)
+  })
+
+  it('fails DIRECT_PB_ORDER_POST_DENIED when PB allows create', async () => {
+    const fetchFn: FunctionalFetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/products')) {
+        return new Response(JSON.stringify({ ok: true, products: [product] }), { status: 200 })
+      }
+      if (url.includes('/checkout')) {
+        return new Response(
+          JSON.stringify({ ok: true, orderId: 'ordpbdeny000001', amountMinor: product.priceMinor }),
+          { status: 200 },
+        )
+      }
+      if (url.includes('/mark-paid')) {
+        return new Response(JSON.stringify({ ok: true, already: true }), { status: 200 })
+      }
+      if (url.includes('/api/collections/') && url.includes('orders')) {
+        return new Response(JSON.stringify({ id: 'evil' }), { status: 200 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const results = await runEcommerceFunctionalVerifiers({
+      projectRef: 'pbdeny01',
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      requireOverride: true,
+      fetchFn,
+    })
+    assert.equal(results.find((r) => r.id === 'DIRECT_PB_ORDER_POST_DENIED')?.ok, false)
+    assert.equal(
+      results.find((r) => r.id === 'DIRECT_PB_ORDER_POST_DENIED')?.code,
+      'direct_pb_order_write_allowed',
+    )
+  })
+
+  it('async release gate fails with functional_verifier_failed + failure_graph', async () => {
+    const html = buildManagedShopStorefrontHtml({
+      brand: 'Func Gate',
+      appId: 'funcgate1',
+      publicUrl: 'https://backend.indobase.in',
+      commerceBaseUrl: 'https://builder.indobase.in',
+    })
+    const gate = await assertEcommerceReleaseGateAsync({
+      app_type: 'ecommerce',
+      projectRef: 'funcgate1',
+      html,
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      functionalRequireOverride: true,
+      fetchFn: async (input) => {
+        const url = String(input)
+        if (url.includes('/products')) {
+          return new Response(JSON.stringify({ ok: true, products: [] }), { status: 200 })
+        }
+        return new Response('{}', { status: 404 })
+      },
+    })
+    assert.equal(gate.ok, false)
+    if (!gate.ok) {
+      assert.equal(gate.code, 'functional_verifier_failed')
+      assert.ok(gate.failure_graph.some((n) => n.id === 'GUEST_CHECKOUT_OK'))
+      assert.ok(gate.failure_graph.every((n) => typeof n.repair_hint === 'string' || n.repair_hint === undefined))
+      assert.match(gate.message, /Do not invent a live URL/)
+    }
+  })
+
+  it('async release gate PASS includes functional results in pack for manifest', async () => {
+    const html = buildManagedShopStorefrontHtml({
+      brand: 'Func Pass',
+      appId: 'funcpass1',
+      publicUrl: 'https://backend.indobase.in',
+      commerceBaseUrl: 'https://builder.indobase.in',
+    })
+    const gate = await assertEcommerceReleaseGateAsync({
+      app_type: 'ecommerce',
+      projectRef: 'funcpass1',
+      html,
+      commerceBaseUrl: 'https://builder.indobase.in',
+      pocketBasePublicUrl: 'https://backend.indobase.in',
+      functionalRequireOverride: true,
+      fetchFn: mockFetchPass(),
+    })
+    assert.equal(gate.ok, true)
+    if (!gate.ok) return
+    for (const id of ECOMMERCE_FUNCTIONAL_VERIFIER_IDS) {
+      assert.equal(gate.results.find((r) => r.id === id)?.ok, true, id)
+    }
+    const manifest = buildReleaseManifest({
+      projectRef: 'funcpass1',
+      results: gate.results,
+      url: 'https://funcpass1.sites.indobase.in',
+    })
+    assert.ok(manifest.verifierResults.some((r) => r.id === 'GUEST_CHECKOUT_OK' && r.ok))
   })
 })
