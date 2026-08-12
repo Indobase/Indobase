@@ -17,10 +17,17 @@ import {
 } from './static-launch.js'
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
 import { isManagedBackendConfigured } from './pocketbase/managed.js'
-import { assertLaunchArchitectureReady } from './launch-backend-gate.js'
+import { assertLaunchArchitectureReady, resolveEffectiveAppType } from './launch-backend-gate.js'
 import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
+import {
+  assertEcommerceReleaseGateAsync,
+  buildReleaseManifest,
+  type ReleaseFailureNode,
+  type ReleaseManifest,
+  type VerifierResult,
+} from './delivery/index.js'
 
 export { LAUNCH_AGENT_HARD_RULES, LAUNCH_BUSINESS_TOOL }
 
@@ -55,6 +62,13 @@ export type LaunchBusinessToolResult = {
   claim_live: boolean
   tool: 'launchBusiness'
   code?: string
+  /** Ecommerce ApplicationContract verifier pack results (when gate applied). */
+  verifier_results?: VerifierResult[]
+  failure_graph?: ReleaseFailureNode[]
+  repair_hints?: string[]
+  /** Present after successful ecommerce Go Live. */
+  release_manifest?: ReleaseManifest
+  contract_version?: string
 }
 
 function resolveCustomDomain(input: LaunchBusinessToolInput): string | undefined {
@@ -88,6 +102,19 @@ export async function executeLaunchBusinessTool(
     }
   }
 
+  // Resolve app type from agent input / original content BEFORE autoWire.
+  // Env inject can add ANON_KEY markers that would falsely reclassify landing → saas.
+  const effectiveAppType =
+    (typeof input.app_type === 'string' && input.app_type.trim()
+      ? input.app_type.trim()
+      : null) ||
+    resolveEffectiveAppType({
+      app_type: input.app_type,
+      require_backend: input.require_backend,
+      html: typeof input.html === 'string' ? input.html : undefined,
+      files: input.files,
+    })
+
   // Auto-wire / replace localStorage storefront BEFORE backend gate (env inject alone is not enough).
   let launchHtml = typeof input.html === 'string' ? input.html : undefined
   let launchFiles = input.files && typeof input.files === 'object' ? { ...input.files } : undefined
@@ -102,6 +129,7 @@ export async function executeLaunchBusinessTool(
       brand: typeof input.title === 'string' ? input.title : defaults.title,
       replaceUnwiredStorefront:
         looksShop ||
+        effectiveAppType === 'ecommerce' ||
         input.app_type === 'ecommerce' ||
         input.app_type === 'shop' ||
         input.app_type === 'store',
@@ -111,7 +139,7 @@ export async function executeLaunchBusinessTool(
   }
 
   const backendGate = await assertLaunchArchitectureReady(defaults?.backend, {
-    app_type: input.app_type,
+    app_type: effectiveAppType,
     require_backend: input.require_backend,
     projectRef: workspaceRef,
     html: launchHtml,
@@ -126,6 +154,29 @@ export async function executeLaunchBusinessTool(
       claim_live: false,
       tool: 'launchBusiness',
       code: backendGate.code,
+    }
+  }
+
+  // Ecommerce ApplicationContract release gate — FAIL blocks publish (machine-owned DoD).
+  const releaseGate = await assertEcommerceReleaseGateAsync({
+    projectRef: workspaceRef,
+    app_type: effectiveAppType,
+    html: launchHtml,
+    files: launchFiles,
+  })
+  if (!releaseGate.ok) {
+    return {
+      ok: false,
+      status: 'rejected',
+      message: releaseGate.message,
+      lane: 'static',
+      claim_live: false,
+      tool: 'launchBusiness',
+      code: releaseGate.code,
+      verifier_results: releaseGate.results,
+      failure_graph: releaseGate.failure_graph,
+      repair_hints: releaseGate.repair_hints,
+      contract_version: releaseGate.contract.version,
     }
   }
 
@@ -208,8 +259,22 @@ export async function executeLaunchBusinessTool(
       ? 'static+platform'
       : 'static'
 
+  const claimLive = result.ok && claim.allowed
+  let releaseManifest: ReleaseManifest | undefined
+  if (claimLive && releaseGate.applied && releaseGate.contract) {
+    releaseManifest = buildReleaseManifest({
+      projectRef: workspaceRef,
+      results: releaseGate.results,
+      url: liveUrl,
+      lane,
+      subdomain: result.subdomain,
+      artifact_ref: result.artifactRef,
+      contractVersion: releaseGate.contract.version,
+    })
+  }
+
   return {
-    ok: result.ok && claim.allowed,
+    ok: claimLive,
     status: result.ok && !claim.allowed ? 'failed' : result.status,
     url: liveUrl,
     preview_url: result.previewUrl,
@@ -222,6 +287,9 @@ export async function executeLaunchBusinessTool(
     platform_url: platformUrl || appHostUrl,
     claim_live: claim.allowed,
     tool: 'launchBusiness',
+    verifier_results: releaseGate.applied ? releaseGate.results : undefined,
+    release_manifest: releaseManifest,
+    contract_version: releaseGate.contract?.version,
   }
 }
 

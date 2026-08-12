@@ -124,6 +124,8 @@ Prefer **guidedBackend mode=generic** for SaaS/booking/dashboard (ensureLogin + 
 
 **Go Live gate:** if you pass `app_type` saas/booking/dashboard/ecommerce/blog to **launchBusiness**, session.backend must be ready first or the API returns `backend_required` — run guidedBackend/ensure* first (shops: Commerce storefront). Landing previews may omit app_type.
 
+**Ecommerce release gate:** Go Live for ecommerce runs ApplicationContract verifiers (`COMMERCE_ABI_BOUND`, `NO_DIRECT_PB_ORDER_WRITE`, schema locks). On `contract_verifier_failed`, do **not** invent a URL — fix via storefront_html / guidedBackend, then retry launchBusiness.
+
 ## Discoverable hard tools
 
 | Tool | When |

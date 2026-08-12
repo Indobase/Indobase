@@ -4,6 +4,7 @@
  * Layers under test:
  *   3–4 Build/publish validation (wire-proof)
  *   5 Runtime authorization (blueprint rules — admin-only orders/reservations)
+ *   6 ApplicationContract release gate (ecommerce verifiers)
  *
  * Live PB adversarial probes (anon POST, cross-tenant) belong in a separate
  * ops runbook against backend.indobase.in once schema is re-applied.
@@ -18,6 +19,11 @@ import {
   contentHasForbiddenStorefrontCheckout,
   contentHasCommerceCheckoutAbi,
 } from '../wire-proof.ts'
+import {
+  ECOMMERCE_CONTRACT_VERSION,
+  assertEcommerceReleaseGate,
+  runEcommerceStaticVerifiers,
+} from '../delivery/index.ts'
 import { majorToMinor } from './money.ts'
 import { buildCommerceRuntimeJs } from './runtime.ts'
 
@@ -98,5 +104,44 @@ describe('Commerce certification — ABI contract', () => {
     // Server prices from catalog majors → minors; client cannot submit authoritative total.
     assert.equal(majorToMinor(99.5, 'INR'), 9950)
     assert.equal(majorToMinor('40', 'INR'), 4000)
+  })
+})
+
+describe('Commerce certification — ApplicationContract release gate', () => {
+  it('managed storefront passes ecommerce-contract/v1 verifiers', () => {
+    const html = buildManagedShopStorefrontHtml({
+      brand: 'Cert Gate',
+      appId: 'certgate1',
+      publicUrl: 'https://backend.indobase.in',
+      commerceBaseUrl: 'https://builder.indobase.in',
+    })
+    const results = runEcommerceStaticVerifiers({ html })
+    for (const id of [
+      'COMMERCE_ABI_BOUND',
+      'NO_DIRECT_PB_ORDER_WRITE',
+      'SCHEMA_LOCKS_ORDERS_ADMIN_ONLY',
+      'PRODUCTS_PUBLIC_READ_ADMIN_WRITE',
+    ]) {
+      assert.equal(results.find((r) => r.id === id)?.ok, true, id)
+    }
+    const gate = assertEcommerceReleaseGate({ app_type: 'ecommerce', html })
+    assert.equal(gate.ok, true)
+    assert.equal(gate.contract?.version, ECOMMERCE_CONTRACT_VERSION)
+  })
+
+  it('forbidden order POST fails release gate with contract_verifier_failed', () => {
+    const html = `<button>Add to cart</button><script>
+      fetch('/api/collections/ib_x_orders/records',{method:'POST',body:'{}'})
+    </script>`
+    const gate = assertEcommerceReleaseGate({ app_type: 'ecommerce', html })
+    assert.equal(gate.ok, false)
+    if (!gate.ok) {
+      assert.equal(gate.code, 'contract_verifier_failed')
+      assert.ok(
+        gate.failures.some(
+          (f) => f.id === 'NO_DIRECT_PB_ORDER_WRITE' || f.id === 'COMMERCE_ABI_BOUND',
+        ),
+      )
+    }
   })
 })
