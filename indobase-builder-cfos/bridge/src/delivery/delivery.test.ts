@@ -10,16 +10,26 @@ import {
   ECOMMERCE_CONTRACT_VERSION,
   ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
   ECOMMERCE_REQUIRED_VERIFIER_IDS,
+  ECOMMERCE_TASK_GRAPH_VERSION,
+  ECOMMERCE_TASK_IDS,
+  GUIDED_STEP_TO_TASK,
+  applyGuidedStepsToTaskGraph,
+  applyLaunchGateToTaskGraph,
   assertEcommerceReleaseGate,
   assertEcommerceReleaseGateAsync,
+  buildEcommerceTaskGraph,
   buildReleaseManifest,
   clearReleaseManifestsForTests,
   getReleaseManifest,
+  getTask,
+  markTask,
   resolveApplicationContract,
   resolveContractAppType,
   runEcommerceFunctionalVerifiers,
   runEcommerceStaticVerifiers,
   shouldRunEcommerceReleaseGate,
+  summarizeTaskGraph,
+  taskGraphDependenciesSatisfied,
   type FunctionalFetch,
 } from './index.ts'
 
@@ -529,5 +539,106 @@ describe('Ecommerce functional verifier pack', () => {
       url: 'https://funcpass1.sites.indobase.in',
     })
     assert.ok(manifest.verifierResults.some((r) => r.id === 'GUEST_CHECKOUT_OK' && r.ok))
+  })
+})
+
+describe('Ecommerce task graph v1', () => {
+  it('builds ordered graph with expected task ids and dependency order', () => {
+    const graph = buildEcommerceTaskGraph()
+    assert.equal(graph.version, ECOMMERCE_TASK_GRAPH_VERSION)
+    assert.equal(graph.applicationType, 'ecommerce')
+    assert.deepEqual(
+      graph.tasks.map((t) => t.id),
+      [...ECOMMERCE_TASK_IDS],
+    )
+    assert.equal(taskGraphDependenciesSatisfied(graph), true)
+    for (const t of graph.tasks) {
+      assert.equal(t.status, 'pending')
+    }
+    const gate = graph.tasks.find((t) => t.id === 'T_GO_LIVE_GATE')
+    assert.ok(gate?.boundVerifierIds?.includes('COMMERCE_ABI_BOUND'))
+    assert.ok(gate?.boundVerifierIds?.includes('GUEST_CHECKOUT_OK'))
+  })
+
+  it('maps guidedBackend steps onto task ids', () => {
+    const graph = applyGuidedStepsToTaskGraph(
+      [
+        { id: 'ensureDatabase', status: 'ok', message: 'db ready' },
+        { id: 'architectureBoilerplate', status: 'ok' },
+        { id: 'setupShopCatalog', status: 'ok' },
+        { id: 'placeTestShopOrder', status: 'skipped', message: 'soft skip' },
+        { id: 'wireProof', status: 'ok' },
+      ],
+      { hasAdminHtml: true, hasStorefrontHtml: true },
+    )
+    assert.equal(getTask(graph, 'T_PROVISION_BACKEND')?.status, 'ok')
+    assert.equal(getTask(graph, 'T_SCHEMA')?.status, 'ok')
+    assert.equal(getTask(graph, 'T_SEED_CATALOG')?.status, 'ok')
+    assert.equal(getTask(graph, 'T_PROOF_ORDER')?.status, 'skipped')
+    assert.equal(getTask(graph, 'T_STOREFRONT_BIND')?.status, 'ok')
+    assert.equal(getTask(graph, 'T_ADMIN')?.status, 'ok')
+    assert.equal(getTask(graph, 'T_GO_LIVE_GATE')?.status, 'pending')
+    assert.equal(getTask(graph, 'T_PUBLISH')?.status, 'pending')
+    const summary = summarizeTaskGraph(graph)
+    assert.equal(summary.counts.ok, 5)
+    assert.equal(summary.counts.skipped, 1)
+    assert.equal(summary.next_pending, 'T_GO_LIVE_GATE')
+    assert.equal(GUIDED_STEP_TO_TASK.ensureDatabase, 'T_PROVISION_BACKEND')
+    assert.equal(GUIDED_STEP_TO_TASK.launchBusiness, 'T_PUBLISH')
+  })
+
+  it('marks T_GO_LIVE_GATE failed with failure_graph on gate fail', () => {
+    const base = applyGuidedStepsToTaskGraph([
+      { id: 'ensureDatabase', status: 'ok' },
+      { id: 'architectureBoilerplate', status: 'ok' },
+      { id: 'setupShopCatalog', status: 'ok' },
+      { id: 'wireProof', status: 'ok' },
+    ])
+    const failed = applyLaunchGateToTaskGraph(base, {
+      gateApplied: true,
+      gateOk: false,
+      published: false,
+      manifestOk: false,
+      message: 'gate failed',
+      failure_graph: [
+        {
+          id: 'COMMERCE_ABI_BOUND',
+          code: 'commerce_abi_unbound',
+          severity: 'error',
+          repair_hint: 'Use window.indobase.commerce',
+        },
+      ],
+    })
+    const gateTask = getTask(failed, 'T_GO_LIVE_GATE')
+    assert.equal(gateTask?.status, 'failed')
+    assert.ok(gateTask?.failure_graph?.some((n) => n.id === 'COMMERCE_ABI_BOUND'))
+    assert.equal(getTask(failed, 'T_PUBLISH')?.status, 'pending')
+    const summary = summarizeTaskGraph(failed)
+    assert.deepEqual(summary.failed_ids, ['T_GO_LIVE_GATE'])
+    assert.ok(summary.repair_hints?.some((h) => /commerce/i.test(h)))
+  })
+
+  it('marks gate + publish + manifest ok on successful launch path', () => {
+    const base = applyGuidedStepsToTaskGraph([
+      { id: 'ensureDatabase', status: 'ok' },
+      { id: 'setupShopCatalog', status: 'ok' },
+      { id: 'managedStorefront', status: 'ok' },
+    ])
+    const passed = applyLaunchGateToTaskGraph(base, {
+      gateApplied: true,
+      gateOk: true,
+      published: true,
+      manifestOk: true,
+    })
+    assert.equal(getTask(passed, 'T_GO_LIVE_GATE')?.status, 'ok')
+    assert.equal(getTask(passed, 'T_PUBLISH')?.status, 'ok')
+    assert.equal(getTask(passed, 'T_RELEASE_MANIFEST')?.status, 'ok')
+  })
+
+  it('markTask updates status immutably', () => {
+    const g0 = buildEcommerceTaskGraph()
+    const g1 = markTask(g0, 'T_PROVISION_BACKEND', 'running')
+    assert.equal(getTask(g0, 'T_PROVISION_BACKEND')?.status, 'pending')
+    assert.equal(getTask(g1, 'T_PROVISION_BACKEND')?.status, 'running')
   })
 })

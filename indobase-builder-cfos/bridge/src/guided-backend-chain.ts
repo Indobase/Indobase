@@ -34,6 +34,13 @@ import { buildManagedShopAdminHtml } from './pocketbase/shop-admin-html.js'
 import { buildManagedShopStorefrontHtml } from './pocketbase/shop-storefront-html.js'
 import { autoWireLaunchArtifacts } from './wire-proof.js'
 import type { BackendConfig } from './auth.js'
+import {
+  applyGuidedStepsToTaskGraph,
+  summarizeTaskGraph,
+  type EcommerceTaskGraph,
+  type EcommerceTaskGraphSummary,
+  type ReleaseFailureNode,
+} from './delivery/index.js'
 
 /** Openverse resolve budget on the ecommerce critical path (then placeholders). */
 export const PRODUCT_IMAGES_TIMEOUT_MS = 8_000
@@ -88,8 +95,8 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
 3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
-5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend — storefront must use **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** hand-roll checkout, POST \`/api/collections/…/orders\`, trust browser price/stock. launchBusiness on Go Live with storefront_html or app_type=ecommerce. Ecommerce Go Live is a **release gate** (ApplicationContract + optional functional verifiers); on \`contract_verifier_failed\` / \`functional_verifier_failed\` fix per \`failure_graph[].repair_hint\` then retry — do not invent a URL.
-6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
+5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend — storefront must use **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** hand-roll checkout, POST \`/api/collections/…/orders\`, trust browser price/stock. launchBusiness on Go Live with storefront_html or app_type=ecommerce. Ecommerce Go Live is a **release gate** (ApplicationContract + optional functional verifiers); on \`contract_verifier_failed\` / \`functional_verifier_failed\` fix per \`failure_graph[].repair_hint\` then retry — do not invent a URL. Respect tool \`task_graph\` / \`task_graph_summary\`: on a failed task use \`failure_graph\` repair_hint; do not invent a live URL.
+6. Quote tool \`progress\` / \`message\` / \`task_graph_summary\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 7. Email / Analytics optional — do not block Go Live on them. After live url, offer **ensureAnalytics** chip (non-blocking).
 8. Payments remain BYOK — guidedBackend does not skip KYC; hosted paymentUrl comes from commerce.checkout when gateway ready.
 `.trim()
@@ -141,6 +148,9 @@ export type GuidedBackendResult = {
   url?: string
   claim_live: boolean
   code?: string
+  /** Ecommerce task graph progress snapshot (mode=ecommerce only). */
+  task_graph?: EcommerceTaskGraph
+  task_graph_summary?: EcommerceTaskGraphSummary
 }
 
 export function guidedBackendToolCatalog() {
@@ -229,6 +239,32 @@ function progressMarkdown(steps: GuidedBackendStep[]): string {
     lines.push(`${icon} **${step.id}** — ${step.message}`)
   }
   return lines.join('\n')
+}
+
+function attachEcommerceTaskGraph(
+  mode: 'ecommerce' | 'generic',
+  result: GuidedBackendResult,
+  extras?: {
+    launchOk?: boolean
+    releaseManifestOk?: boolean
+    gateFailed?: boolean
+    failure_graph?: ReleaseFailureNode[]
+  },
+): GuidedBackendResult {
+  if (mode !== 'ecommerce') return result
+  const task_graph = applyGuidedStepsToTaskGraph(result.steps, {
+    hasStorefrontHtml: Boolean(result.storefront_html),
+    hasAdminHtml: Boolean(result.admin_html),
+    launchOk: extras?.launchOk ?? Boolean(result.claim_live && result.url),
+    releaseManifestOk: extras?.releaseManifestOk,
+    gateFailed: extras?.gateFailed,
+    failure_graph: extras?.failure_graph,
+  })
+  return {
+    ...result,
+    task_graph,
+    task_graph_summary: summarizeTaskGraph(task_graph),
+  }
 }
 
 type SessionLike = { gotrueId: string; email: string; projectRef: string }
@@ -771,7 +807,7 @@ async function maybeLaunch(
       base.mode === 'generic'
         ? 'Wire Sign-in + data to session.backend records API: physical collection = INDOBASE_COLLECTION_PREFIX + table; POST/GET {api}/api/collections/{physical}/records; OTP auth on users (Bearer user token). Do not use localStorage auth or /rest/v1.'
         : 'Publish storefront_html from this result (or call launchBusiness with it) — window.indobase.commerce only; never POST PocketBase orders. Prefer launchBusiness static preview over Gadget iframe.'
-    return {
+    return attachEcommerceTaskGraph(base.mode, {
       ok: true,
       tool: 'guidedBackend',
       mode: base.mode,
@@ -787,7 +823,7 @@ async function maybeLaunch(
       admin_html: base.admin_html,
       storefront_html: base.storefront_html,
       claim_live: false,
-    }
+    })
   }
 
   const files: Record<string, string> = { ...(input.files || {}) }
@@ -836,22 +872,34 @@ async function maybeLaunch(
       message: launched.message || 'Launch failed — do not invent a URL',
     })
     const progress = progressMarkdown(base.steps)
-    return {
-      ok: false,
-      tool: 'guidedBackend',
-      mode: base.mode,
-      vertical: base.vertical,
-      brand: base.brand,
-      steps: base.steps,
-      progress,
-      message: `${progress}\n\n${launched.message || 'Launch failed'}`,
-      claim_backend_ready: true,
-      catalog_json: base.catalog_json,
-      admin_html: base.admin_html,
-      storefront_html: base.storefront_html,
-      claim_live: false,
-      code: 'launch_failed',
-    }
+    const gateFailed =
+      launched.code === 'contract_verifier_failed' ||
+      launched.code === 'functional_verifier_failed'
+    return attachEcommerceTaskGraph(
+      base.mode,
+      {
+        ok: false,
+        tool: 'guidedBackend',
+        mode: base.mode,
+        vertical: base.vertical,
+        brand: base.brand,
+        steps: base.steps,
+        progress,
+        message: `${progress}\n\n${launched.message || 'Launch failed'}`,
+        claim_backend_ready: true,
+        catalog_json: base.catalog_json,
+        admin_html: base.admin_html,
+        storefront_html: base.storefront_html,
+        claim_live: false,
+        code: launched.code || 'launch_failed',
+      },
+      {
+        gateFailed,
+        failure_graph: launched.failure_graph,
+        releaseManifestOk: false,
+        launchOk: false,
+      },
+    )
   }
 
   base.steps.push({
@@ -860,24 +908,31 @@ async function maybeLaunch(
     message: `Live at ${launched.url}`,
   })
   const progress = progressMarkdown(base.steps)
-  return {
-    ok: true,
-    tool: 'guidedBackend',
-    mode: base.mode,
-    vertical: base.vertical,
-    brand: base.brand,
-    steps: base.steps,
-    progress,
-    message: `${progress}\n\nYour business is live: ${launched.url}`,
-    claim_backend_ready: true,
-    claim_login_ready: base.claim_login_ready,
-    backend: base.backend,
-    catalog_json: base.catalog_json,
-    admin_html: base.admin_html,
-    storefront_html: base.storefront_html,
-    url: launched.url,
-    claim_live: true,
-  }
+  return attachEcommerceTaskGraph(
+    base.mode,
+    {
+      ok: true,
+      tool: 'guidedBackend',
+      mode: base.mode,
+      vertical: base.vertical,
+      brand: base.brand,
+      steps: base.steps,
+      progress,
+      message: `${progress}\n\nYour business is live: ${launched.url}`,
+      claim_backend_ready: true,
+      claim_login_ready: base.claim_login_ready,
+      backend: base.backend,
+      catalog_json: base.catalog_json,
+      admin_html: base.admin_html,
+      storefront_html: base.storefront_html,
+      url: launched.url,
+      claim_live: true,
+    },
+    {
+      launchOk: true,
+      releaseManifestOk: Boolean(launched.release_manifest),
+    },
+  )
 }
 
 function failResult(
@@ -889,7 +944,7 @@ function failResult(
 ): GuidedBackendResult {
   const progress = progressMarkdown(steps)
   const last = steps[steps.length - 1]
-  return {
+  return attachEcommerceTaskGraph(mode, {
     ok: false,
     tool: 'guidedBackend',
     mode,
@@ -901,7 +956,7 @@ function failResult(
     claim_backend_ready: false,
     claim_live: false,
     code,
-  }
+  })
 }
 
 /** Detect vertical-ask agent messages for chip fallback. */

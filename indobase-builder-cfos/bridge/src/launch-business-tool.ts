@@ -22,8 +22,13 @@ import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 import {
+  applyLaunchGateToTaskGraph,
   assertEcommerceReleaseGateAsync,
+  buildEcommerceTaskGraph,
   buildReleaseManifest,
+  summarizeTaskGraph,
+  type EcommerceTaskGraph,
+  type EcommerceTaskGraphSummary,
   type ReleaseFailureNode,
   type ReleaseManifest,
   type VerifierResult,
@@ -69,6 +74,9 @@ export type LaunchBusinessToolResult = {
   /** Present after successful ecommerce Go Live. */
   release_manifest?: ReleaseManifest
   contract_version?: string
+  /** Ecommerce task graph progress (gate / publish / manifest). */
+  task_graph?: EcommerceTaskGraph
+  task_graph_summary?: EcommerceTaskGraphSummary
 }
 
 function resolveCustomDomain(input: LaunchBusinessToolInput): string | undefined {
@@ -165,6 +173,14 @@ export async function executeLaunchBusinessTool(
     files: launchFiles,
   })
   if (!releaseGate.ok) {
+    const failedGraph = applyLaunchGateToTaskGraph(buildEcommerceTaskGraph(), {
+      gateApplied: true,
+      gateOk: false,
+      published: false,
+      manifestOk: false,
+      failure_graph: releaseGate.failure_graph,
+      message: releaseGate.message,
+    })
     return {
       ok: false,
       status: 'rejected',
@@ -177,6 +193,8 @@ export async function executeLaunchBusinessTool(
       failure_graph: releaseGate.failure_graph,
       repair_hints: releaseGate.repair_hints,
       contract_version: releaseGate.contract.version,
+      task_graph: failedGraph,
+      task_graph_summary: summarizeTaskGraph(failedGraph),
     }
   }
 
@@ -273,6 +291,19 @@ export async function executeLaunchBusinessTool(
     })
   }
 
+  let taskGraph: EcommerceTaskGraph | undefined
+  let taskGraphSummary: EcommerceTaskGraphSummary | undefined
+  if (releaseGate.applied) {
+    taskGraph = applyLaunchGateToTaskGraph(buildEcommerceTaskGraph(), {
+      gateApplied: true,
+      gateOk: true,
+      published: claimLive,
+      manifestOk: Boolean(releaseManifest),
+      message: claimLive ? 'Release gate passed' : message,
+    })
+    taskGraphSummary = summarizeTaskGraph(taskGraph)
+  }
+
   return {
     ok: claimLive,
     status: result.ok && !claim.allowed ? 'failed' : result.status,
@@ -290,6 +321,8 @@ export async function executeLaunchBusinessTool(
     verifier_results: releaseGate.applied ? releaseGate.results : undefined,
     release_manifest: releaseManifest,
     contract_version: releaseGate.contract?.version,
+    task_graph: taskGraph,
+    task_graph_summary: taskGraphSummary,
   }
 }
 

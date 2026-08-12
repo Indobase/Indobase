@@ -55,3 +55,22 @@ export {
   getReleaseManifest,
   rememberReleaseManifest,
 } from './release-manifest-store.js'
+
+export {
+  ECOMMERCE_TASK_GRAPH_VERSION,
+  ECOMMERCE_TASK_IDS,
+  GUIDED_STEP_TO_TASK,
+  applyGuidedStepsToTaskGraph,
+  applyLaunchGateToTaskGraph,
+  buildEcommerceTaskGraph,
+  cloneTaskGraph,
+  getTask,
+  markTask,
+  summarizeTaskGraph,
+  taskGraphDependenciesSatisfied,
+  type EcommerceTask,
+  type EcommerceTaskGraph,
+  type EcommerceTaskGraphSummary,
+  type EcommerceTaskId,
+  type EcommerceTaskStatus,
+} from './task-graph.js'
