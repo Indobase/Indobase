@@ -204,7 +204,7 @@ export function autoChainStoreFollowups(brand?: string | null): StageFollowUps {
     title: name !== 'this' ? `Launch ${name} — full backend path` : AUTO_CHAIN_STORE_TITLE,
     items: ECOMMERCE_AUTO_CHAIN_VERTICALS.map((v) => ({
       label: v.label,
-      message: `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`,
+      message: `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, publish storefront_html (Commerce ABI), then emit Go Live chips`,
     })),
   }
 }
@@ -243,7 +243,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
     items: [
       {
         label: 'Launch with real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true — seed catalog, prove order, wire storefront to session.backend, then emit Go Live chips`,
+        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true — seed catalog, prove order, publish storefront_html (Commerce ABI), then emit Go Live chips`,
       },
       {
         label: 'Go Live on Indobase',
@@ -255,7 +255,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Wire then Go Live',
-        message: `Wire ${name} storefront to session.backend catalog_json then Go Live with launchBusiness in one pass`,
+        message: `Publish ${name} storefront_html (window.indobase.commerce) then Go Live with launchBusiness in one pass`,
       },
     ],
   }
@@ -503,9 +503,9 @@ export const SHOP_BACKEND_TITLE = 'Shop backend is live — what next?'
 
 export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
-    label: 'Wire storefront to this catalog',
+    label: 'Publish commerce storefront',
     message:
-      'Wire the storefront product grid to catalog_json / session.backend REST — keep Buy CTA placeholder until payments are connected; then emit Go Live chips',
+      'Publish storefront_html with window.indobase.commerce — keep Buy CTA via commerce.checkout; then emit Go Live chips',
   },
   {
     label: 'Go Live on Indobase',
@@ -519,7 +519,7 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   },
   {
     label: 'Wire then Go Live',
-    message: 'Wire the storefront to session.backend then Go Live with launchBusiness — full launch is the goal',
+    message: 'Publish storefront_html (window.indobase.commerce) then Go Live with launchBusiness — full launch is the goal',
   },
 ] as const
 
@@ -561,7 +561,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Wire + Go Live',
-        message: `If catalog exists, wire the ${name} storefront to session.backend then Go Live with launchBusiness`,
+        message: `If catalog exists, publish ${name} storefront_html (Commerce ABI) then Go Live with launchBusiness`,
       },
     ],
   }
@@ -603,8 +603,8 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
     title: whereNextTitle(brand),
     items: [
       {
-        label: 'Wire storefront to this catalog',
-        message: `Wire the ${name} storefront to catalog_json / session.backend REST (product grid + cart); Buy CTA placeholder until payments; then emit Go Live chips`,
+        label: 'Publish commerce storefront',
+        message: `Publish ${name} storefront_html with window.indobase.commerce (product grid + cart + checkout); then emit Go Live chips`,
       },
       {
         label: 'Go Live on Indobase',
@@ -616,7 +616,7 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Wire then Go Live',
-        message: `Wire ${name} to session.backend then Go Live with launchBusiness in one pass — full launch is the goal`,
+        message: `Publish ${name} storefront_html then Go Live with launchBusiness in one pass — full launch is the goal`,
       },
     ],
   }
@@ -662,7 +662,7 @@ export function postGoLiveFollowups(brand?: string | null, opts?: { store?: bool
       },
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend for ${name} if not done — then wire the live site to session.backend`,
+        message: `Call guidedBackend for ${name} if not done — then publish storefront_html (Commerce ABI) and Go Live`,
       },
       {
         label: 'Production checklist',

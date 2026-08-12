@@ -110,13 +110,13 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
   }
   lines.push('## Default store ladder (when building a shop)')
   lines.push(
-    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional backend/wire → Go Live → Add payments → wireCheckout → productionChecklist. ≤4 chips; rewrite for brand.',
+    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional guidedBackend → publish storefront_html (Commerce ABI) → Go Live → Add payments → productionChecklist. ≤4 chips; rewrite for brand.',
   )
   if (backendReady) {
     const ref = session.backend?.project_ref || session.projectRef
     lines.push(`- Backend project_ref: ${ref}`)
     lines.push(
-      '- Prefer chips (order): Wire storefront → Go Live (launchBusiness) → Domain / Add payments / Checklist — keep advancing until live.',
+      '- Prefer chips (order): Go Live with storefront_html (window.indobase.commerce) → Domain / Add payments / Checklist — keep advancing until live. Do not invent PB order POSTs.',
     )
   } else {
     lines.push(

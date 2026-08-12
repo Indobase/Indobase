@@ -116,7 +116,7 @@ export function buildLaunchJourneyState(
         ? {
             label: 'Add a real backend',
             message:
-              'Add a real product backend — call guidedBackend, wire the storefront to session.backend, prove inventory if ecommerce, then continue toward payments and production checklist.',
+              'Add a real product backend — call guidedBackend, publish storefront_html (window.indobase.commerce), prove inventory if ecommerce, then continue toward payments and production checklist.',
           }
         : !paymentsDone
           ? {

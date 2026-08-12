@@ -159,7 +159,7 @@ describe('session-payload', () => {
     }
     const hint = composeAgentHintForSession(withBackend, 'Operator hint.')
     assert.match(hint, /Backend: ready/)
-    assert.match(hint, /Wire storefront/)
+    assert.match(hint, /storefront_html|Commerce ABI|window\.indobase\.commerce/)
     assert.match(hint, /Default store ladder/)
     assert.match(hint, /Payments: keys appear configured/)
   })

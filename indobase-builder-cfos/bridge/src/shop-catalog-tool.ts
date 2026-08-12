@@ -95,11 +95,11 @@ When the operator wants a real product backend (not just a static storefront) �
 
 1. Prefer **guidedBackend** mode=ecommerce (or: ensureDatabase → resolveProductImages → setupShopCatalog).
 2. Prove inventory: **placeTestShopOrder** with cleanup:true (default) — quote order_number + stock proof.
-3. Emit FOLLOWUPS: Wire storefront → Go Live → Publish admin (≤4). Do **not** jump to wireCheckout yet.
-4. **Wire storefront** to catalog_json / session.backend records API (\`INDOBASE_COLLECTION_PREFIX\` + \`/api/collections/{physical}/records\`). Buy CTA may stay placeholder until payments.
-5. **Go Live** with launchBusiness (real html/files) — quote exact url.
+3. Emit FOLLOWUPS: Go Live (publish storefront_html) → Publish admin (≤4). Do **not** invent checkout APIs.
+4. **Publish storefront_html** from guidedBackend — storefront uses **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** PocketBase order POSTs, client-trusted price/stock.
+5. **Go Live** with launchBusiness (prefer storefront_html as index.html) — quote exact url.
 6. Publish **admin_html** once as \`admin.html\` when asked — use the \`admin_html\` string returned by setupShopCatalog/listShopOrders (do NOT hand-roll shop_products or PostgREST paths). Live REST refresh; do NOT republish just to refresh orders.
-7. **Payments last** (when asked): India vs International → ensure → KYC → **connectGateway** → **wireCheckout** mode one_time (prefer INR for India) → patch Buy CTA. Never invent checkout URLs.
+7. **Payments last** (when asked): India vs International → ensure → KYC → **connectGateway**; checkout via Commerce when gateway ready. Never invent checkout URLs.
 8. Never invent Unsplash/Pexels URLs. Claim “real backend” only after setupShopCatalog/guidedBackend ok + (optional) placeTestShopOrder ok.
 `.trim()
 

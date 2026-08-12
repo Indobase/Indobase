@@ -131,14 +131,14 @@ export function explainGovernanceGate(
       return {
         code: 'wire_required',
         title: 'Wire storefront to Indobase backend',
-        reason: 'Go Live rejected a localStorage-only or unwired UI when a real backend is required.',
+        reason: 'Go Live rejected a localStorage-only, invent-checkout, or unwired UI when a real backend is required.',
         message:
-          'UI is not wired to the Indobase backend. Inject session.backend public_env (__INDOBASE_ENV__ / collection prefix / records API), replace localStorage-only data, then launchBusiness again. Prefer *.sites.indobase.in static preview over Gadget iframe.',
+          'UI is not wired correctly. Ecommerce: use window.indobase.commerce (publish guidedBackend storefront_html) — never POST PocketBase orders. Other apps: inject session.backend public_env + records API. Prefer *.sites.indobase.in over Gadget iframe.',
         choices: [
           {
-            label: 'Wire then Go Live',
+            label: 'Publish commerce storefront',
             message:
-              'Wire the storefront to session.backend records API + __INDOBASE_ENV__, then call launchBusiness',
+              'Call guidedBackend if needed, then launchBusiness with storefront_html (window.indobase.commerce checkout) — do not invent PocketBase order creates',
           },
           {
             label: 'Static preview',

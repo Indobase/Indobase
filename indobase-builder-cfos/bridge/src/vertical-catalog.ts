@@ -400,14 +400,14 @@ export function ecommerceVerticalFollowups(
       ...ECOMMERCE_VERTICALS.map((v) => ({
         label: v.label,
         message: autoChain
-          ? `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, wire storefront to session.backend, then emit Go Live chips`
+          ? `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, publish storefront_html (Commerce ABI), then emit Go Live chips`
           : `Niche ${v.label}${brandBit} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
             `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
       })),
       {
         label: "I'll type my specific niche",
         message: autoChain
-          ? `I'll type my specific niche — INDOBASE_GUIDED_BACKEND mode=ecommerce place_test_order=true${brandArg} — seed catalog, prove order, wire storefront, then Go Live`
+          ? `I'll type my specific niche — INDOBASE_GUIDED_BACKEND mode=ecommerce place_test_order=true${brandArg} — seed catalog, prove order, publish storefront_html, then Go Live`
           : "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend",
       },
     ],

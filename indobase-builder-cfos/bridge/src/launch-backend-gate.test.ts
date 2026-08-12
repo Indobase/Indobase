@@ -74,9 +74,43 @@ describe('launch-backend-gate', () => {
     if (!wire.ok) assert.equal(wire.code, 'wire_required')
   })
 
-  it('accepts records API wiring', () => {
+  it('accepts records API wiring for non-shop apps', () => {
     const wire = assertLaunchWireReady({
-      html: '<script>window.__INDOBASE_ENV__={};fetch(window.__INDOBASE_ENV__.INDOBASE_RECORDS_BASE+"/ib_abc_products/records")</script>',
+      html: '<script>window.__INDOBASE_ENV__={};fetch(window.__INDOBASE_ENV__.INDOBASE_RECORDS_BASE+"/ib_abc_orgs/records")</script>',
+      requireWire: true,
+    })
+    assert.equal(wire.ok, true)
+  })
+
+  it('rejects ecommerce storefront that only fetches products records', () => {
+    const wire = assertLaunchWireReady({
+      html: '<button>Add to cart</button><script>window.__INDOBASE_ENV__={};fetch("/api/collections/ib_abc_products/records")</script>',
+      requireWire: true,
+    })
+    assert.equal(wire.ok, false)
+    if (!wire.ok) assert.equal(wire.code, 'wire_required')
+  })
+
+  it('rejects PocketBase order POST without Commerce ABI', () => {
+    const wire = assertLaunchWireReady({
+      html: `<button>checkout</button><script>
+        window.__INDOBASE_ENV__={};
+        fetch('/api/collections/ib_abc_orders/records',{method:'POST',body:'{}'})
+      </script>`,
+      requireWire: true,
+    })
+    assert.equal(wire.ok, false)
+    if (!wire.ok) assert.match(wire.message, /commerce/i)
+  })
+
+  it('accepts Commerce ABI checkout wiring', () => {
+    const wire = assertLaunchWireReady({
+      html: `<button>Add to cart</button><script>
+        window.__INDOBASE_ENV__={INDOBASE_URL:'https://backend.indobase.in'};
+        window.indobase={commerce:{checkout:{create:async()=>({})}}};
+        commerce.checkout.create({items:[]});
+        fetch('/api/os/commerce/checkout',{method:'POST'})
+      </script>`,
       requireWire: true,
     })
     assert.equal(wire.ok, true)

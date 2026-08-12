@@ -80,7 +80,7 @@ export const GUIDED_BACKEND_AGENT_HARD_RULES = `
 
 **AUTO-CHAIN (HARD):** when the operator says launch store/shop, add real backend, take live (with store/backend), or create admin → call **guidedBackend mode=ecommerce** + **placeTestShopOrder** in the **same turn** — do not emit preview-only niche chips (“Do NOT call guidedBackend yet”). Niche chips must use vertical ids from the catalog (apparel, electronics, food-grocery, beauty, …).
 
-**Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → Wire storefront → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway → wireCheckout. Do not skip wire or invent checkout URLs.
+**Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → publish **storefront_html** (Commerce ABI) → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway. Do not invent checkout APIs or PocketBase order POSTs.
 
 When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
 
@@ -88,10 +88,10 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
 3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
-5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend (managed live catalog) — do **not** ship localStorage-only carts. launchBusiness on Go Live with storefront_html or app_type=ecommerce.
+5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend — storefront must use **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** hand-roll checkout, POST \`/api/collections/…/orders\`, trust browser price/stock. launchBusiness on Go Live with storefront_html or app_type=ecommerce.
 6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 7. Email / Analytics optional — do not block Go Live on them. After live url, offer **ensureAnalytics** chip (non-blocking).
-8. Payments remain BYOK — guidedBackend does not skip KYC.
+8. Payments remain BYOK — guidedBackend does not skip KYC; hosted paymentUrl comes from commerce.checkout when gateway ready.
 `.trim()
 
 export type GuidedBackendStep = {
@@ -136,7 +136,7 @@ export type GuidedBackendResult = {
   }
   catalog_json?: unknown
   admin_html?: string
-  /** Functional storefront wired to records API — prefer this over agent localStorage HTML. */
+  /** Functional storefront via Commerce ABI — prefer this over agent localStorage HTML. */
   storefront_html?: string
   url?: string
   claim_live: boolean
@@ -770,7 +770,7 @@ async function maybeLaunch(
     const wireHint =
       base.mode === 'generic'
         ? 'Wire Sign-in + data to session.backend records API: physical collection = INDOBASE_COLLECTION_PREFIX + table; POST/GET {api}/api/collections/{physical}/records; OTP auth on users (Bearer user token). Do not use localStorage auth or /rest/v1.'
-        : 'Publish storefront_html from this result (or call launchBusiness with it) — do not ship localStorage-only carts. Prefer launchBusiness static preview over Gadget iframe.'
+        : 'Publish storefront_html from this result (or call launchBusiness with it) — window.indobase.commerce only; never POST PocketBase orders. Prefer launchBusiness static preview over Gadget iframe.'
     return {
       ok: true,
       tool: 'guidedBackend',

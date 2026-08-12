@@ -17,6 +17,16 @@ const ENV_MARKERS =
 const LIVE_DATA_MARKERS =
   /window\.indobase\.commerce|indobase\.commerce\.(products|cart|checkout|orders)|\/api\/os\/commerce\/|__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]\s*\)|__INDOBASE_COLLECTION__\s*\(\s*['"]orders['"]\s*\)|fetch\s*\(\s*[^;]{0,200}\/records/i
 
+/** Ecommerce storefronts must checkout via Commerce service — not invent APIs. */
+const COMMERCE_CHECKOUT_ABI =
+  /indobase\.commerce\.checkout|commerce\.checkout\.create|\/api\/os\/commerce\/checkout/i
+
+/**
+ * Storefront inventing PocketBase order creates (POST …/orders…/records) without Commerce ABI.
+ */
+const FORBIDDEN_STOREFRONT_ORDER_WRITE =
+  /(?:method\s*[:=]\s*['"]POST['"][\s\S]{0,220}(?:\/api\/collections\/[^"'\\\s]*orders|orders[^"'\\\s]*\/records)|(?:\/api\/collections\/[^"'\\\s]*orders|orders[^"'\\\s]*\/records)[\s\S]{0,220}method\s*[:=]\s*['"]POST['"]|fetch\s*\(\s*[^)]*orders[^)]*records[^)]*\)[\s\S]{0,80}POST)/i
+
 const LOCAL_ONLY = /localStorage|sessionStorage/i
 
 export function collectLaunchText(input: {
@@ -57,13 +67,28 @@ export function contentHasLiveDataWire(text: string): boolean {
   return LIVE_DATA_MARKERS.test(text) && ENV_MARKERS.test(text)
 }
 
+export function contentHasCommerceCheckoutAbi(text: string): boolean {
+  return COMMERCE_CHECKOUT_ABI.test(text)
+}
+
+export function contentHasForbiddenStorefrontCheckout(text: string): boolean {
+  if (!text.trim()) return false
+  if (contentHasCommerceCheckoutAbi(text)) return false
+  return FORBIDDEN_STOREFRONT_ORDER_WRITE.test(text)
+}
+
+export function contentNeedsCommerceAbi(text: string): boolean {
+  return inferAppTypeFromContent(text) === 'ecommerce' && !contentHasCommerceCheckoutAbi(text)
+}
+
 export type WireProofResult =
   | { ok: true; wired: boolean }
   | { ok: false; code: 'wire_required'; message: string }
 
 /**
- * When a backend is required, content must call Indobase records API (products/orders).
- * Env-only inject or pure localStorage carts fail the gate.
+ * When a backend is required, content must call live Indobase APIs.
+ * Ecommerce: Commerce ABI checkout (not public PocketBase order creates).
+ * Other apps: records API is fine. Env-only / localStorage-only fail.
  */
 export function assertLaunchWireReady(input: {
   html?: string | null
@@ -79,29 +104,38 @@ export function assertLaunchWireReady(input: {
       ok: false,
       code: 'wire_required',
       message:
-        'Go Live needs html/files wired to session.backend (INDOBASE_URL / __INDOBASE_ENV__ / /api/collections). Rebuild the UI against the Indobase backend, then launchBusiness again.',
+        'Go Live needs html/files wired to session.backend (INDOBASE_URL / __INDOBASE_ENV__ / Commerce ABI or /api/collections). Rebuild the UI against the Indobase backend, then launchBusiness again.',
     }
   }
 
   const hasEnv = ENV_MARKERS.test(text)
   const hasLive = LIVE_DATA_MARKERS.test(text)
   const onlyLocal = LOCAL_ONLY.test(text) && !hasLive
+  const isShop = inferAppTypeFromContent(text) === 'ecommerce'
+  const forbiddenCheckout = contentHasForbiddenStorefrontCheckout(text)
+  const missingCommerce = contentNeedsCommerceAbi(text)
 
-  if (onlyLocal || !hasEnv || !hasLive) {
+  if (forbiddenCheckout || missingCommerce || onlyLocal || !hasEnv || !hasLive) {
     const api = input.backend?.api_url || 'session.backend.api_url'
     const prefix =
       input.backend?.public_env?.INDOBASE_COLLECTION_PREFIX ||
       (input.backend?.project_ref ? `ib_${input.backend.project_ref}_` : 'ib_<project_ref>_')
     const governance = explainGovernanceGate({ code: 'wire_required' })
+    const commerceHint =
+      isShop || forbiddenCheckout || missingCommerce
+        ? ' Ecommerce storefronts must use window.indobase.commerce (commerce.checkout.create → /api/os/commerce/checkout). Do not POST PocketBase /api/collections/…/orders. Prefer guidedBackend storefront_html.'
+        : ''
     return {
       ok: false,
       code: 'wire_required',
       message:
-        `${governance.message} Use ${api} with collection prefix ${prefix}` +
-        ` (GET/POST ${api.replace(/\/+$/, '')}/api/collections/{prefix}{table}/records)` +
+        `${governance.message}${commerceHint} Use ${api} with collection prefix ${prefix}` +
+        (isShop
+          ? ` and Commerce runtime (${api.replace(/\/+$/, '')}/api/os/commerce/…).`
+          : ` (GET/POST ${api.replace(/\/+$/, '')}/api/collections/{prefix}{table}/records).`) +
         (isManagedPublicKey(input.backend?.anon_key)
-          ? '; auth via users OTP + Bearer user token (no Kong anon key).'
-          : '.') +
+          ? ' Auth via users OTP + Bearer user token (no Kong anon key).'
+          : '') +
         ' Prefer the managed storefront from guidedBackend (storefront_html) or launchBusiness *.sites.indobase.in — env inject alone is not enough.',
     }
   }
@@ -202,7 +236,10 @@ export function autoWireLaunchArtifacts(input: {
   const shouldReplace =
     allowReplace &&
     Boolean(storefront) &&
-    (!proof.ok || !contentHasLiveDataWire(liveText))
+    (!proof.ok ||
+      !contentHasLiveDataWire(liveText) ||
+      contentNeedsCommerceAbi(liveText) ||
+      contentHasForbiddenStorefrontCheckout(liveText))
 
   // Always publish a functional storefront when we only have admin.html or empty index.
   const indexMissing =
@@ -246,7 +283,7 @@ export function autoWireLaunchArtifacts(input: {
     message: !proof.ok
       ? proof.message
       : replaced
-        ? 'Replaced unwired/localStorage storefront with managed Indobase storefront (live products + orders).'
-        : 'Injected session.backend public_env and verified live records API wiring.',
+        ? 'Replaced unwired/localStorage storefront with managed Indobase commerce storefront (window.indobase.commerce).'
+        : 'Injected session.backend public_env and verified live Commerce ABI / records API wiring.',
   }
 }
