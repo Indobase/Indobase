@@ -144,6 +144,11 @@ swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_DOMAIN_SUFFIX "sites.ind
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_CNAME_TARGET "sites.indobase.in"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_PUBLIC_URL "https://sites.indobase.in"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_ROOT "\${LAUNCH_ROOT}"
+# Ecommerce functional verify pack (GUEST_CHECKOUT_OK, FAKE_PRICE_IGNORED, …) burns
+# catalog stock on Go Live — leave INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY unset/off on
+# prod by default. To enable on the CFOS Swarm service only when ops intentionally wants it:
+#   swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY "1"
+# then re-apply managed env / service update. Do not force-enable in this script.
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_USE_PATH_URL "0"
 swarm_upsert_env_file_kv "\${ENV_FILE}" INDOBASE_LAUNCH_TRAEFIK_DYNAMIC_DIR "\${TRAEFIK_CUSTOM_CONTAINER}"
 if [[ -n "\${CLOUDFLARE_OS_URL_VALUE}" ]]; then

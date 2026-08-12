@@ -81,7 +81,9 @@ function resolvePbPublic(input: EcommerceFunctionalVerifierInput): string {
 }
 
 /**
- * Functional pack is required when INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY=1/true
+ * Functional pack is required when INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY=1/true.
+ * Prod default: leave unset/off (burns catalog stock on Go Live). Ops enable via
+ * CFOS service env on .249 — see deploy-indobase-builder-cfos-on-vps.sh comment.
  * (or force/requireOverride). Not auto-required on every managed Go Live — checkout
  * + mark-paid mutate stock/reservations; ops/cert runs set the env or call
  * runEcommerceFunctionalVerifiers directly.

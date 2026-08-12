@@ -29,6 +29,8 @@ export type ReleaseManifest = {
   verifierResults: Array<{ id: string; ok: boolean; code?: string; severity: string }>
   url?: string
   timestamp: string
+  /** Bridge GIT_SHA / BUILDER_CFOS_VERSION when set at publish time. */
+  gitSha?: string
   deploy?: {
     lane?: string
     subdomain?: string
@@ -234,6 +236,8 @@ export function buildReleaseManifest(input: {
   artifact_ref?: string
   contractVersion?: string
 }): ReleaseManifest {
+  const gitSha =
+    (process.env.GIT_SHA || process.env.BUILDER_CFOS_VERSION || '').trim() || undefined
   const manifest: ReleaseManifest = {
     projectRef: input.projectRef,
     contractVersion: input.contractVersion || ECOMMERCE_CONTRACT_VERSION,
@@ -246,6 +250,7 @@ export function buildReleaseManifest(input: {
     })),
     url: input.url,
     timestamp: new Date().toISOString(),
+    ...(gitSha ? { gitSha } : {}),
     deploy: {
       lane: input.lane,
       subdomain: input.subdomain,
