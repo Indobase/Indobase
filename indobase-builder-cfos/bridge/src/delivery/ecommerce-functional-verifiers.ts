@@ -214,7 +214,7 @@ export async function runEcommerceFunctionalVerifiers(
     return ECOMMERCE_FUNCTIONAL_VERIFIER_IDS.map((id) =>
       skipped(
         id,
-        'Skipped (set INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY=1 or ensure managed backend + projectRef)',
+        'Skipped (set INDOBASE_ECOMMERCE_FUNCTIONAL_VERIFY=1 to require; or call with force/requireOverride)',
       ),
     )
   }
