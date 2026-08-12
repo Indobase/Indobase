@@ -89,6 +89,52 @@ describe('agent-principal-store', () => {
     assert.equal(found?.guest, false)
   })
 
+  it('preserves backend snapshot across remember refreshes', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_backend',
+      gotrueId: 'user-1',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: false,
+    })
+    const { updateAgentPrincipalBackend } = await import('./agent-principal-store.ts')
+    await updateAgentPrincipalBackend('ib_backend', {
+      api_url: 'https://backend.indobase.in',
+      anon_key: 'public',
+      auth_url: 'https://backend.indobase.in/api/collections/users',
+      rest_url: 'https://backend.indobase.in/api/collections',
+      storage_url: 'https://backend.indobase.in/api/files',
+      project_ref: 'ws-1',
+      project_name: 'Workspace',
+      project_url: 'https://backend.indobase.in',
+    })
+    await rememberAgentPrincipal({
+      username: 'ib_backend',
+      gotrueId: 'user-1',
+      projectRef: 'ws-1',
+      email: 'a@x.com',
+      guest: false,
+    })
+    const found = await lookupAgentPrincipal('ib_backend')
+    assert.equal(found?.backend?.api_url, 'https://backend.indobase.in')
+    assert.equal(found?.backend?.anon_key, 'public')
+  })
+
+  it('ignores remembers with empty projectRef', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_empty',
+      gotrueId: 'user-1',
+      projectRef: '   ',
+      email: 'a@x.com',
+      guest: false,
+    })
+    assert.equal(await lookupAgentPrincipal('ib_empty'), null)
+  })
+
   it('updateAgentPrincipalBackend stores api_url and anon_key', async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
     process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir

@@ -9,6 +9,7 @@ import type { OsWorkspaceSession } from '@indobase/platform-api'
 
 import {
   adminAuth,
+  adminAuthHeader,
   createAppId,
   ensureManagedBackend,
   getManagedBackendConfig,
@@ -129,7 +130,7 @@ async function ensureSmtpConfigured(config: ManagedBackendConfig, token: string)
     'Indobase'
 
   const current = await fetch(`${config.adminUrl}/api/settings`, {
-    headers: { Authorization: token },
+    headers: { Authorization: adminAuthHeader(token) },
   })
   const settings = (await current.json().catch(() => ({}))) as {
     smtp?: { enabled?: boolean; password?: string; host?: string }
@@ -139,7 +140,7 @@ async function ensureSmtpConfigured(config: ManagedBackendConfig, token: string)
   await fetch(`${config.adminUrl}/api/settings`, {
     method: 'PATCH',
     headers: {
-      Authorization: token,
+      Authorization: adminAuthHeader(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -173,26 +174,38 @@ const OTP_CREATE_RULE = 'email != ""'
 
 async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<string> {
   const token = await adminAuth(config)
+  const auth = adminAuthHeader(token)
   await ensureSmtpConfigured(config, token)
 
-  const listResponse = await fetch(`${config.adminUrl}/api/collections?page=1&perPage=50`, {
-    headers: { Authorization: token },
-  })
-  const listPayload = (await listResponse.json().catch(() => ({}))) as {
-    items?: Array<{
-      id: string
-      name: string
-      type?: string
-      otp?: { enabled?: boolean; length?: number }
-      createRule?: string | null
-    }>
-    message?: string
-  }
-  if (!listResponse.ok) {
-    throw new Error(listPayload.message || 'Failed to load auth collections')
+  const items: Array<{
+    id: string
+    name: string
+    type?: string
+    otp?: { enabled?: boolean; length?: number }
+    createRule?: string | null
+  }> = []
+  let page = 1
+  for (;;) {
+    const listResponse = await fetch(
+      `${config.adminUrl}/api/collections?page=${page}&perPage=200`,
+      { headers: { Authorization: auth } },
+    )
+    const listPayload = (await listResponse.json().catch(() => ({}))) as {
+      items?: typeof items
+      totalPages?: number
+      message?: string
+    }
+    if (!listResponse.ok) {
+      throw new Error(listPayload.message || 'Failed to load auth collections')
+    }
+    items.push(...(listPayload.items || []))
+    const totalPages = typeof listPayload.totalPages === 'number' ? listPayload.totalPages : page
+    if (page >= totalPages || !(listPayload.items || []).length) break
+    page += 1
+    if (page > 50) break
   }
 
-  const users = listPayload.items?.find((item) => item.name === 'users' && item.type === 'auth')
+  const users = items.find((item) => item.name === 'users' && item.type === 'auth')
   if (!users) {
     throw new Error('Indobase backend auth collection is missing')
   }
@@ -209,7 +222,7 @@ async function ensureAuthCollectionReady(config: ManagedBackendConfig): Promise<
     const patch = await fetch(`${config.adminUrl}/api/collections/${users.id}`, {
       method: 'PATCH',
       headers: {
-        Authorization: token,
+        Authorization: auth,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -236,7 +249,7 @@ async function ensureAuthUserForOtp(
   const filter = encodeURIComponent(`email="${email.replace(/"/g, '\\"')}"`)
   const list = await fetch(
     `${config.adminUrl}/api/collections/users/records?page=1&perPage=1&filter=${filter}`,
-    { headers: { Authorization: token } },
+    { headers: { Authorization: adminAuthHeader(token) } },
   )
   const listPayload = (await list.json().catch(() => ({}))) as {
     items?: Array<{ id: string; name?: string }>
@@ -249,7 +262,7 @@ async function ensureAuthUserForOtp(
       await fetch(`${config.adminUrl}/api/collections/users/records/${existing.id}`, {
         method: 'PATCH',
         headers: {
-          Authorization: token,
+          Authorization: adminAuthHeader(token),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ name }),
@@ -262,7 +275,7 @@ async function ensureAuthUserForOtp(
   const create = await fetch(`${config.adminUrl}/api/collections/users/records`, {
     method: 'POST',
     headers: {
-      Authorization: token,
+      Authorization: adminAuthHeader(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -313,7 +326,7 @@ export async function managedBackendOtpStart(input: {
     // Fake otpIds resolve with no _otps row — treat that as failure.
     const otpCheck = await fetch(
       `${config.adminUrl}/api/collections/_otps/records/${payload.otpId}`,
-      { headers: { Authorization: token } },
+      { headers: { Authorization: adminAuthHeader(token) } },
     )
     if (!otpCheck.ok) {
       return {
@@ -374,10 +387,15 @@ export async function managedBackendOtpVerify(input: {
     }
 
     if (!response.ok || !payload.token || !payload.record?.id) {
+      const raw = (payload.message || '').trim()
+      const friendly =
+        /validating the submitted data|cannot be blank/i.test(raw)
+          ? 'Invalid or expired verification code. Request a new code and try again.'
+          : raw || 'Invalid or expired verification code'
       return {
         ok: false,
         status: 401,
-        message: payload.message || 'Invalid or expired verification code',
+        message: friendly,
       }
     }
 

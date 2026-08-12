@@ -71,6 +71,8 @@ export async function rememberAgentPrincipal(
 ): Promise<void> {
   const username = record.username.trim()
   if (!username) return
+  const projectRef = (record.projectRef || '').trim()
+  if (!projectRef) return
   const store = await readStore()
   const existing = store.principals[username]
   // Never clobber a verified member principal with a guest rewrite for the same CFOS
@@ -83,10 +85,12 @@ export async function rememberAgentPrincipal(
   store.principals[username] = {
     username,
     gotrueId: record.gotrueId,
-    projectRef: record.projectRef,
+    projectRef,
     email: record.email,
     guest: incomingGuest,
-    projectName: record.projectName,
+    projectName: record.projectName ?? existing?.projectName,
+    // Preserve ensure* backend snapshot across credential refreshes.
+    backend: record.backend ?? existing?.backend,
     updatedAt: record.updatedAt || new Date().toISOString(),
   }
   await writeStore(store)

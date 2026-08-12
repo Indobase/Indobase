@@ -51,14 +51,15 @@ export function isManagedPublicKey(key: string | null | undefined): boolean {
 
 /** Stable, PB-safe app id from any workspace ref / email seed. */
 export function sanitizeAppId(raw: string): string {
-  const cleaned = raw
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-  if (/^[a-z][a-z0-9]{5,15}$/.test(cleaned)) {
+  const trimmed = raw.trim().toLowerCase()
+  const cleaned = trimmed.replace(/[^a-z0-9]/g, '')
+  // Only accept already-alnum ids as-is. If the input had separators (draft_foo,
+  // emails, slugs), always hash so my-app / my_app / my.app cannot collide.
+  const hadSeparators = /[^a-z0-9]/.test(trimmed)
+  if (!hadSeparators && /^[a-z][a-z0-9]{5,15}$/.test(cleaned)) {
     return cleaned.slice(0, 16)
   }
-  const hash = createHash('sha256').update(raw.trim().toLowerCase()).digest('hex').slice(0, 10)
+  const hash = createHash('sha256').update(trimmed).digest('hex').slice(0, 10)
   const prefix = (cleaned.slice(0, 4) || 'app').replace(/^[^a-z]+/, '') || 'app'
   return `${prefix}${hash}`.slice(0, 14)
 }
@@ -84,6 +85,51 @@ export function physicalCollectionName(appId: string, logicalName: string): stri
 
 export function collectionPrefix(appId: string): string {
   return `ib_${sanitizeAppId(appId)}_`
+}
+
+/** Normalize admin/user tokens for PocketBase (accepts raw or Bearer). */
+export function adminAuthHeader(token: string): string {
+  const t = token.trim()
+  if (!t) return ''
+  return t.toLowerCase().startsWith('bearer ') ? t : `Bearer ${t}`
+}
+
+export type PbErrorPayload = {
+  message?: string
+  data?: Record<string, unknown>
+  status?: number
+}
+
+/** Human-readable PocketBase error including field validation `data`. */
+export function formatPbError(
+  payload: PbErrorPayload | null | undefined,
+  fallback: string,
+): string {
+  const message = (payload?.message || '').trim() || fallback
+  if (payload?.data && typeof payload.data === 'object' && Object.keys(payload.data).length) {
+    try {
+      return `${message} ${JSON.stringify(payload.data)}`
+    } catch {
+      return message
+    }
+  }
+  return message
+}
+
+/** True when create-collection failed because the name already exists. */
+export function isCollectionNameConflict(payload: PbErrorPayload | null | undefined): boolean {
+  if (!payload) return false
+  const message = String(payload.message || '')
+  if (/unique|already|exists/i.test(message)) return true
+  const data = payload.data
+  if (!data || typeof data !== 'object') return false
+  const nameErr = data.name
+  if (nameErr && typeof nameErr === 'object') {
+    const code = String((nameErr as { code?: string }).code || '')
+    const msg = String((nameErr as { message?: string }).message || '')
+    if (/unique|exists/i.test(code) || /unique|exists/i.test(msg)) return true
+  }
+  return false
 }
 
 export async function adminAuth(config: ManagedBackendConfig): Promise<string> {
@@ -201,20 +247,49 @@ export type SchemaField = {
   required?: boolean
 }
 
+/**
+ * Map logical column types → PocketBase field types.
+ * Prefer exact tokens; avoid substring traps (e.g. "interface" → number via "int").
+ * relation/select/file need extra schema options — map those to text unless fully specified elsewhere.
+ */
 export function mapFieldTypeToPb(type?: string): string {
-  const t = (type || 'text').toLowerCase()
-  if (t.includes('bool')) return 'bool'
-  if (t.includes('int') || t.includes('numeric') || t.includes('float') || t.includes('double') || t.includes('number')) {
+  const t = (type || 'text').trim().toLowerCase()
+  const exact: Record<string, string> = {
+    text: 'text',
+    string: 'text',
+    uuid: 'text',
+    editor: 'editor',
+    bool: 'bool',
+    boolean: 'bool',
+    number: 'number',
+    int: 'number',
+    integer: 'number',
+    float: 'number',
+    double: 'number',
+    numeric: 'number',
+    json: 'json',
+    email: 'email',
+    date: 'date',
+    datetime: 'date',
+    time: 'date',
+    url: 'url',
+    // Without collectionId/values, PB rejects relation/select/file — keep as text.
+    file: 'text',
+    image: 'text',
+    upload: 'text',
+    relation: 'text',
+    ref: 'text',
+    select: 'text',
+    enum: 'text',
+  }
+  if (exact[t]) return exact[t]
+  if (t === 'bool' || t.endsWith('_bool')) return 'bool'
+  if (t === 'json' || t.endsWith('_json')) return 'json'
+  if (t === 'email' || t.endsWith('_email')) return 'email'
+  if (t === 'url' || t.endsWith('_url')) return 'url'
+  if (t === 'number' || t.endsWith('_number') || t.endsWith('_count') || t.endsWith('_price')) {
     return 'number'
   }
-  if (t.includes('json')) return 'json'
-  if (t.includes('email')) return 'email'
-  if (t.includes('date') || t.includes('time')) return 'date'
-  if (t.includes('url')) return 'url'
-  if (t.includes('file') || t.includes('image') || t.includes('upload')) return 'file'
-  if (t.includes('relation') || t.includes('ref')) return 'relation'
-  if (t.includes('select') || t.includes('enum')) return 'select'
-  if (t.includes('uuid')) return 'text'
   return 'text'
 }
 

@@ -1007,7 +1007,7 @@ ${injection}`
             claim_live: false,
             code: "launch_not_configured",
             message:
-              "Indobase launch is not configured on this runtime (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET). Ask the operator to reload after ops restores Launch.",
+              "Indobase launch is not configured on this runtime (missing INDOBASE_BRIDGE_URL and/or INDOBASE_OS_SECRET). Tools exist — ask the operator to reseed CFOS vars and reload; this is not a missing catalog tool.",
           }));
         }
         const html = typeof args.html === "string" ? args.html : undefined;
@@ -1128,7 +1128,7 @@ ${injection}`
             claim_gateway_ready: false,
             code: "bridge_not_configured",
             message:
-              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET).",
+              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL and/or INDOBASE_OS_SECRET). Tools exist — operator must reseed CFOS .dev.vars; this is not a missing tool.",
           }));
         }
         const market = typeof args.settlement_market === "string" ? args.settlement_market.trim() : "";
@@ -1271,7 +1271,7 @@ ${injection}`
             claim_checkout_ready: false,
             code: "bridge_not_configured",
             message:
-              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL / INDOBASE_OS_SECRET).",
+              "Indobase bridge is not configured (missing INDOBASE_BRIDGE_URL and/or INDOBASE_OS_SECRET). Tools exist — operator must reseed CFOS .dev.vars; this is not a missing tool.",
           }));
         }
         const agentUsername = initiator?.id;
@@ -1439,7 +1439,7 @@ ${injection}`
             ok: false,
             claim_catalog_ready: false,
             code: "shop_catalog_network_error",
-            message: err instanceof Error ? err.message : "setupShopCatalog failed",
+            message: err instanceof Error ? `Bridge unreachable for setupShopCatalog (${cfg.bridgeUrl}): ${err.message}. Catalog tool exists — retry; if this persists, check INDOBASE_BRIDGE_URL / DNS.` : "setupShopCatalog failed",
           }));
         }
         let body: Record<string, unknown> = {};
@@ -1518,7 +1518,7 @@ ${injection}`
           catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
           return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureLogin" }));
         } catch (err) {
-          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureLogin failed" }));
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? `Bridge unreachable for ensureLogin (${cfg.bridgeUrl}): ${err.message}. Tools are configured — retry; if this persists, operator should check INDOBASE_BRIDGE_URL / DNS.` : "ensureLogin failed" }));
         }
       },
     }),
@@ -1548,7 +1548,7 @@ ${injection}`
           catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
           return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureDatabase" }));
         } catch (err) {
-          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureDatabase failed" }));
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? `Bridge unreachable for ensureDatabase (${cfg.bridgeUrl}): ${err.message}. Tools are configured — retry; if this persists, operator should check INDOBASE_BRIDGE_URL / DNS.` : "ensureDatabase failed" }));
         }
       },
     }),
@@ -1578,7 +1578,7 @@ ${injection}`
           catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
           return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureEmail" }));
         } catch (err) {
-          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureEmail failed" }));
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? `Bridge unreachable for ensureEmail (${cfg.bridgeUrl}): ${err.message}. Tools are configured — retry.` : "ensureEmail failed" }));
         }
       },
     }),
@@ -1608,7 +1608,7 @@ ${injection}`
           catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
           return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "ensureAnalytics" }));
         } catch (err) {
-          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? err.message : "ensureAnalytics failed" }));
+          return toolResult(jsonToolResultText({ ok: false, code: "ensure_network_error", message: err instanceof Error ? `Bridge unreachable for ensureAnalytics (${cfg.bridgeUrl}): ${err.message}. Tools are configured — retry.` : "ensureAnalytics failed" }));
         }
       },
     }),
@@ -1743,7 +1743,7 @@ ${injection}`
           catch { body = { ok: false, message: await resp.text().catch(() => "non-JSON") }; }
           return toolResult(jsonToolResultText({ ...body, ok: resp.ok && body.ok === true, httpStatus: resp.status, tool: "placeTestShopOrder" }));
         } catch (err) {
-          return toolResult(jsonToolResultText({ ok: false, code: "shop_order_network_error", message: err instanceof Error ? err.message : "placeTestShopOrder failed" }));
+          return toolResult(jsonToolResultText({ ok: false, code: "shop_order_network_error", message: err instanceof Error ? `Bridge unreachable for placeTestShopOrder (${cfg.bridgeUrl}): ${err.message}. Tool exists — retry; not a missing catalog tool.` : "placeTestShopOrder failed" }));
         }
       },
     }),

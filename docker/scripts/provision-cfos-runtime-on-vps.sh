@@ -263,14 +263,25 @@ set -euo pipefail
 CFOS="${CFOS_DIR:-/opt/indobase-cfos-runtime/cloudflare-os}"
 WB="$CFOS/packages/workshop-backend"
 ROOT_ENV=/opt/indobase-builder-cfos.runtime.env
+# Load operator overrides first so systemd ExecStartPre keeps the intended bridge URL.
+# Do NOT default to http://127.0.0.1:8791 — host publish is unreliable and resets wipe tools.
+if [[ -f "$ROOT_ENV" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_ENV"
+  set +a
+fi
+# Prefer HTTPS via local Traefik. Pin builder.indobase.in → 127.0.0.1 in /etc/hosts on the
+# CFOS host so workerd avoids flaky public DNS timeouts that surface as "tools unavailable".
 BRIDGE_URL="${INDOBASE_BRIDGE_URL:-https://builder.indobase.in}"
-OS_SECRET=""
-if [[ -f "$WB/.dev.vars" ]]; then
+OS_SECRET="${INDOBASE_OS_SECRET:-}"
+if [[ -z "$OS_SECRET" && -f "$WB/.dev.vars" ]]; then
   OS_SECRET="$(grep -E '^INDOBASE_OS_SECRET=' "$WB/.dev.vars" | head -1 | cut -d= -f2- || true)"
 fi
 if [[ -z "$OS_SECRET" && -f "$ROOT_ENV" ]]; then
   OS_SECRET="$(grep -E '^BUILDER_CFOS_HANDOFF_SECRET=' "$ROOT_ENV" | head -1 | cut -d= -f2- || true)"
 fi
+OS_SECRET="${OS_SECRET:-${BUILDER_CFOS_HANDOFF_SECRET:-}}"
 if [[ -z "$OS_SECRET" || ${#OS_SECRET} -lt 32 ]]; then
   echo "indobase-cfos-seed: missing OS secret; skip"
   exit 0
@@ -314,9 +325,20 @@ if wrangler.exists():
       text = re.sub(r'("vars"\\s*:\\s*\\{)', rf'\\1\\n    "{k}": {lit},', text, count=1)
   wrangler.write_text(text)
   wrangler.chmod(0o600)
-print("indobase-cfos-seed: ok")
+print("indobase-cfos-seed: ok bridge=" + """$BRIDGE_URL""")
 PY
 SEED
+# Pin Builder hostname to loopback on the CFOS host (DNS flake → agent tool network errors).
+if ! grep -qE '[[:space:]]builder\.indobase\.in([[:space:]]|$)' /etc/hosts; then
+  echo '127.0.0.1 builder.indobase.in' >> /etc/hosts
+fi
+if [[ -f /opt/indobase-builder-cfos.runtime.env ]]; then
+  if grep -q '^INDOBASE_BRIDGE_URL=' /opt/indobase-builder-cfos.runtime.env; then
+    sed -i 's|^INDOBASE_BRIDGE_URL=.*|INDOBASE_BRIDGE_URL=https://builder.indobase.in|' /opt/indobase-builder-cfos.runtime.env
+  else
+    echo 'INDOBASE_BRIDGE_URL=https://builder.indobase.in' >> /opt/indobase-builder-cfos.runtime.env
+  fi
+fi
 /usr/local/sbin/indobase-cfos-seed-indobase-vars.sh || true
 
 UNIT_CHANGED=0

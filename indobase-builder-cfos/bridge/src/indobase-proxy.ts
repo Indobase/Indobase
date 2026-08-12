@@ -85,6 +85,33 @@ export function rewriteManagedBackendPath(
   return p
 }
 
+/** Map GoTrue-style OTP verify bodies onto PocketBase auth-with-otp. */
+export function rewriteManagedOtpVerifyBody(
+  path: string,
+  rawBody: string,
+): string | null {
+  if (!/auth-with-otp/i.test(path)) return null
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(rawBody) as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const otpId =
+    (typeof parsed.otpId === 'string' && parsed.otpId) ||
+    (typeof parsed.otp_id === 'string' && parsed.otp_id) ||
+    (typeof parsed.id === 'string' && parsed.id) ||
+    ''
+  const password =
+    (typeof parsed.password === 'string' && parsed.password) ||
+    (typeof parsed.token === 'string' && parsed.token) ||
+    (typeof parsed.otp === 'string' && parsed.otp) ||
+    (typeof parsed.code === 'string' && parsed.code) ||
+    ''
+  if (!otpId || !password) return null
+  return JSON.stringify({ otpId, password })
+}
+
 export async function proxyIndobaseApi(
   c: Context,
   session: Session,
@@ -119,8 +146,14 @@ export async function proxyIndobaseApi(
     headers.set(key, value)
   })
 
-  if (clientAuth.toLowerCase().startsWith('bearer ')) {
-    headers.set('Authorization', clientAuth)
+  if (clientAuth.trim()) {
+    // PocketBase accepts raw or Bearer; normalize so managed writes keep user JWT.
+    headers.set(
+      'Authorization',
+      clientAuth.toLowerCase().startsWith('bearer ')
+        ? clientAuth
+        : `Bearer ${clientAuth.trim()}`,
+    )
   } else if (!managed) {
     headers.set('apikey', session.backend.anon_key)
     headers.set('Authorization', `Bearer ${session.backend.anon_key}`)
@@ -136,9 +169,19 @@ export async function proxyIndobaseApi(
     redirect: 'manual',
   }
   if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
-    init.body = c.req.raw.body
-    // @ts-expect-error duplex for streaming
-    init.duplex = 'half'
+    const contentType = (c.req.header('content-type') || '').toLowerCase()
+    if (managed && contentType.includes('application/json')) {
+      const raw = await c.req.text()
+      const rewritten = rewriteManagedOtpVerifyBody(path, raw)
+      init.body = rewritten || raw
+      if (!headers.has('content-type')) {
+        headers.set('content-type', 'application/json')
+      }
+    } else {
+      init.body = c.req.raw.body
+      // @ts-expect-error duplex for streaming
+      init.duplex = 'half'
+    }
   }
 
   try {

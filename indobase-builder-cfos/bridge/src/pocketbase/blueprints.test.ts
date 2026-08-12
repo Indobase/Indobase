@@ -28,6 +28,17 @@ describe('backend blueprints', () => {
     assert.equal(isOpenWriteRule(rules.createRule), false)
     assert.equal(isOpenWriteRule(''), true)
     assert.equal(isOpenWriteRule(null), false)
+    assert.equal(isOpenWriteRule('true'), true)
+    assert.equal(isOpenWriteRule('1 = 1'), true)
+  })
+
+  it('owner/org create rules avoid deprecated @request.data.* (PB rejects them)', () => {
+    const owner = rulesForProfile('owner')
+    const org = rulesForProfile('members_of_org')
+    assert.doesNotMatch(owner.createRule || '', /@request\.data\./)
+    assert.doesNotMatch(org.createRule || '', /@request\.data\./)
+    assert.match(owner.createRule || '', /owner = @request\.auth\.id/)
+    assert.match(org.createRule || '', /org_id != ""/)
   })
 
   it('public_read_auth_write keeps writes authenticated', () => {

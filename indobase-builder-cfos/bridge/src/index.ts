@@ -699,6 +699,18 @@ app.post('/auth/verify', async (c) => {
       email: session.email,
       guest: false,
       projectName: session.projectName,
+      backend: session.backend
+        ? {
+            api_url: session.backend.api_url,
+            anon_key: session.backend.anon_key,
+            auth_url: session.backend.auth_url,
+            rest_url: session.backend.rest_url,
+            storage_url: session.backend.storage_url,
+            project_ref: session.backend.project_ref,
+            project_name: session.backend.project_name,
+            public_env: session.backend.public_env,
+          }
+        : undefined,
     })
     return c.json({
       ...buildAuthVerifySuccessPayload(session, ws.provision_state),
@@ -1671,7 +1683,22 @@ app.get('/api/os/runtime/agent-credentials', async (c) => {
     email: sessionOrErr.email || '',
     guest: isGuestSession(sessionOrErr),
     projectName: sessionOrErr.projectName,
+    backend: sessionOrErr.backend
+      ? {
+          api_url: sessionOrErr.backend.api_url,
+          anon_key: sessionOrErr.backend.anon_key,
+          auth_url: sessionOrErr.backend.auth_url,
+          rest_url: sessionOrErr.backend.rest_url,
+          storage_url: sessionOrErr.backend.storage_url,
+          project_ref: sessionOrErr.backend.project_ref,
+          project_name: sessionOrErr.backend.project_name,
+          public_env: sessionOrErr.backend.public_env,
+        }
+      : undefined,
   })
+  if (sessionOrErr.backend?.api_url && sessionOrErr.backend?.anon_key) {
+    await updateAgentPrincipalBackend(creds.username, sessionOrErr.backend)
+  }
   // Seed OpenRouter models for this principal (model picker removed — without this, chat is silent).
   const displayName = profileDisplayName(sessionOrErr)
   ensureAgentModelsAsync({

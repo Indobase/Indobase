@@ -38,10 +38,12 @@ export type BackendBlueprint = {
 export function rulesForProfile(profile: RuleProfile): CollectionRules {
   switch (profile) {
     case 'owner':
+      // PocketBase rejects @request.data.* in API rules; use record field names
+      // (or @request.body.*) so createRule validates against the submitted row.
       return {
         listRule: '@request.auth.id != "" && owner = @request.auth.id',
         viewRule: '@request.auth.id != "" && owner = @request.auth.id',
-        createRule: '@request.auth.id != "" && @request.data.owner = @request.auth.id',
+        createRule: '@request.auth.id != "" && owner = @request.auth.id',
         updateRule: '@request.auth.id != "" && owner = @request.auth.id',
         deleteRule: '@request.auth.id != "" && owner = @request.auth.id',
       }
@@ -66,8 +68,7 @@ export function rulesForProfile(profile: RuleProfile): CollectionRules {
       return {
         listRule: '@request.auth.id != "" && org_id != ""',
         viewRule: '@request.auth.id != "" && org_id != ""',
-        createRule:
-          '@request.auth.id != "" && @request.data.owner = @request.auth.id && @request.data.org_id != ""',
+        createRule: '@request.auth.id != "" && owner = @request.auth.id && org_id != ""',
         updateRule: '@request.auth.id != "" && owner = @request.auth.id && org_id != ""',
         deleteRule: '@request.auth.id != "" && owner = @request.auth.id && org_id != ""',
       }
@@ -87,6 +88,17 @@ export function isOpenWriteRule(rule: string | null | undefined): boolean {
   if (rule === null || rule === undefined) return false
   const trimmed = rule.trim()
   if (trimmed === '') return true
+  const normalized = trimmed.toLowerCase().replace(/\s+/g, '')
+  // Common allow-all / always-true expressions agents might invent.
+  if (
+    normalized === 'true' ||
+    normalized === '1=1' ||
+    normalized === '1==1' ||
+    normalized === '@request.auth.id!=""||true' ||
+    normalized === '""=""'
+  ) {
+    return true
+  }
   return false
 }
 
