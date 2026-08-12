@@ -115,8 +115,9 @@ export function injectIndobaseEnvIntoLaunchContent(input: {
   }
   const env = buildIndobasePublicEnv(input.backend)
 
+  let files = input.files
   if (input.files && typeof input.files === 'object') {
-    const files = { ...input.files }
+    files = { ...input.files }
     for (const [relPath, content] of Object.entries(files)) {
       if (typeof content !== 'string') continue
       if (/\.html?$/i.test(relPath)) {
@@ -127,12 +128,14 @@ export function injectIndobaseEnvIntoLaunchContent(input: {
         files[relPath] = injectIntoEnvFile(content, env)
       }
     }
-    return { files }
   }
 
+  let html = input.html
   if (typeof input.html === 'string' && input.html.trim()) {
-    return { html: injectIndobaseEnvIntoHtml(input.html, env) }
+    html = injectIndobaseEnvIntoHtml(input.html, env)
+  } else if (typeof files?.['index.html'] === 'string') {
+    html = files['index.html']
   }
 
-  return { html: input.html, files: input.files }
+  return { html, files }
 }

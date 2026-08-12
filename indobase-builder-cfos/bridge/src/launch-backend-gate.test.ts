@@ -65,12 +65,47 @@ describe('launch-backend-gate', () => {
     if (!wire.ok) assert.equal(wire.code, 'wire_required')
   })
 
+  it('rejects env-inject-only without records fetch', () => {
+    const wire = assertLaunchWireReady({
+      html: '<script>window.__INDOBASE_ENV__={"INDOBASE_URL":"https://backend.indobase.in"};localStorage.setItem("cart","[]")</script>',
+      requireWire: true,
+    })
+    assert.equal(wire.ok, false)
+    if (!wire.ok) assert.equal(wire.code, 'wire_required')
+  })
+
   it('accepts records API wiring', () => {
     const wire = assertLaunchWireReady({
-      html: '<script>fetch(window.__INDOBASE_ENV__.INDOBASE_RECORDS_BASE+"/ib_abc_products/records")</script>',
+      html: '<script>window.__INDOBASE_ENV__={};fetch(window.__INDOBASE_ENV__.INDOBASE_RECORDS_BASE+"/ib_abc_products/records")</script>',
       requireWire: true,
     })
     assert.equal(wire.ok, true)
+  })
+
+  it('autoWireLaunchArtifacts replaces localStorage storefront with managed shell', () => {
+    const out = autoWireLaunchArtifacts({
+      html: '<html><body><button>Add to cart</button><script>localStorage.setItem("cart","[]")</script></body></html>',
+      backend: {
+        api_url: 'https://backend.indobase.in',
+        anon_key: 'public',
+        project_ref: 'abc',
+        project_name: 'A',
+        project_url: 'https://backend.indobase.in',
+        public_env: {
+          INDOBASE_BACKEND_KIND: 'records',
+          INDOBASE_COLLECTION_PREFIX: 'ib_abc_',
+          INDOBASE_RECORDS_BASE: 'https://backend.indobase.in/api/collections',
+          INDOBASE_URL: 'https://backend.indobase.in',
+        },
+      },
+      brand: 'Test Shop',
+      replaceUnwiredStorefront: true,
+    })
+    assert.equal(out.wired, true)
+    assert.equal(out.replaced_storefront, true)
+    assert.match(out.html || '', /__INDOBASE_COLLECTION__\('products'\)/)
+    assert.match(out.html || '', /fetch\(API/)
+    assert.doesNotMatch(out.html || '', /localStorage/)
   })
 
   it('autoWireLaunchArtifacts injects __INDOBASE_ENV__ into admin html', () => {
@@ -88,8 +123,9 @@ describe('launch-backend-gate', () => {
           INDOBASE_RECORDS_BASE: 'https://backend.indobase.in/api/collections',
         },
       },
+      replaceUnwiredStorefront: false,
     })
-    assert.equal(out.wired, true)
+    // admin-only without live fetch markers stays unwired unless storefront is added
     assert.match(out.admin_html || '', /__INDOBASE_ENV__/)
     assert.match(out.admin_html || '', /ib_abc_/)
   })

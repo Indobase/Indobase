@@ -18,7 +18,7 @@ import {
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
 import { isManagedBackendConfigured } from './pocketbase/managed.js'
 import { assertLaunchArchitectureReady } from './launch-backend-gate.js'
-import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
+import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 
@@ -76,12 +76,46 @@ export async function executeLaunchBusinessTool(
   input: LaunchBusinessToolInput,
   defaults?: { title?: string; backend?: BackendConfig | null },
 ): Promise<LaunchBusinessToolResult> {
+  const content = assertLaunchHasContent(input)
+  if (!content.ok) {
+    return {
+      ok: false,
+      status: 'rejected',
+      message: content.message || 'html or files required',
+      lane: 'static',
+      claim_live: false,
+      tool: 'launchBusiness',
+    }
+  }
+
+  // Auto-wire / replace localStorage storefront BEFORE backend gate (env inject alone is not enough).
+  let launchHtml = typeof input.html === 'string' ? input.html : undefined
+  let launchFiles = input.files && typeof input.files === 'object' ? { ...input.files } : undefined
+  if (defaults?.backend) {
+    const looksShop = /add to cart|storefront|product grid|checkout|inventory/i.test(
+      `${launchHtml || ''}${JSON.stringify(launchFiles || {})}`,
+    )
+    const wired = autoWireLaunchArtifacts({
+      html: launchHtml,
+      files: launchFiles,
+      backend: defaults.backend,
+      brand: typeof input.title === 'string' ? input.title : defaults.title,
+      replaceUnwiredStorefront:
+        looksShop ||
+        input.app_type === 'ecommerce' ||
+        input.app_type === 'shop' ||
+        input.app_type === 'store',
+    })
+    launchHtml = wired.html
+    launchFiles = wired.files
+  }
+
   const backendGate = await assertLaunchArchitectureReady(defaults?.backend, {
     app_type: input.app_type,
     require_backend: input.require_backend,
     projectRef: workspaceRef,
-    html: typeof input.html === 'string' ? input.html : undefined,
-    files: input.files && typeof input.files === 'object' ? input.files : undefined,
+    html: launchHtml,
+    files: launchFiles,
   })
   if (!backendGate.ok) {
     return {
@@ -95,31 +129,13 @@ export async function executeLaunchBusinessTool(
     }
   }
 
-  const content = assertLaunchHasContent(input)
-  if (!content.ok) {
-    return {
-      ok: false,
-      status: 'rejected',
-      message: content.message || 'html or files required',
-      lane: 'static',
-      claim_live: false,
-      tool: 'launchBusiness',
-    }
-  }
-
-  const injected = injectIndobaseEnvIntoLaunchContent({
-    html: typeof input.html === 'string' ? input.html : undefined,
-    files: input.files && typeof input.files === 'object' ? input.files : undefined,
-    backend: defaults?.backend ?? undefined,
-  })
-
   const launchInput: StaticLaunchInput = {
     workspaceRef,
     title: typeof input.title === 'string' && input.title.trim() ? input.title : defaults?.title,
     subdomain: typeof input.subdomain === 'string' ? input.subdomain : undefined,
     customDomain: resolveCustomDomain(input),
-    html: injected.html ?? (typeof input.html === 'string' ? input.html : undefined),
-    files: injected.files ?? (input.files && typeof input.files === 'object' ? input.files : undefined),
+    html: launchHtml,
+    files: launchFiles,
   }
 
   const result = await launchStaticBusiness(launchInput)

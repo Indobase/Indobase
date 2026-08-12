@@ -31,6 +31,7 @@ import {
   smokeProveArchitecture,
 } from './pocketbase/architecture.js'
 import { buildManagedShopAdminHtml } from './pocketbase/shop-admin-html.js'
+import { buildManagedShopStorefrontHtml } from './pocketbase/shop-storefront-html.js'
 import { autoWireLaunchArtifacts } from './wire-proof.js'
 import type { BackendConfig } from './auth.js'
 
@@ -87,7 +88,7 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
 3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
-5. After claim_backend_ready: emit FOLLOWUPS Wire → Go Live → Admin (≤4). Wire UI to session.backend **records API** (collection prefix + \`/api/collections/{physical}/records\`, OTP user Bearer). launchBusiness on Go Live — omit app_type only for pure landing; shops/SaaS must pass app_type or content must be wired (localStorage-only Go Live is rejected).
+5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend (managed live catalog) — do **not** ship localStorage-only carts. launchBusiness on Go Live with storefront_html or app_type=ecommerce.
 6. Quote tool \`progress\` / \`message\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
 7. Email / Analytics optional — do not block Go Live on them. After live url, offer **ensureAnalytics** chip (non-blocking).
 8. Payments remain BYOK — guidedBackend does not skip KYC.
@@ -135,6 +136,8 @@ export type GuidedBackendResult = {
   }
   catalog_json?: unknown
   admin_html?: string
+  /** Functional storefront wired to records API — prefer this over agent localStorage HTML. */
+  storefront_html?: string
   url?: string
   claim_live: boolean
   code?: string
@@ -424,6 +427,8 @@ export async function executeGuidedBackend(
 
   let catalog_json: unknown
   let admin_html: string | undefined
+  let storefront_html: string | undefined
+  let storefrontProducts: Array<Record<string, unknown>> | undefined
 
   if (mode === 'ecommerce') {
     const vertical = findEcommerceVertical(verticalId) || ECOMMERCE_VERTICALS[0]
@@ -489,12 +494,20 @@ export async function executeGuidedBackend(
         const config = getManagedBackendConfig()
         if (config) {
           const snapshot = await listManagedShopSnapshot({ appId: session.projectRef })
+          const products = local.products?.length ? local.products : snapshot.ok ? snapshot.products : []
+          storefrontProducts = products
+          storefront_html = buildManagedShopStorefrontHtml({
+            brand: brand || vertical.label,
+            appId: session.projectRef,
+            publicUrl: config.publicUrl,
+            products,
+          })
           if (snapshot.ok) {
             admin_html = buildManagedShopAdminHtml({
               brand: brand || vertical.label,
               appId: session.projectRef,
               publicUrl: config.publicUrl,
-              products: local.products?.length ? local.products : snapshot.products,
+              products,
               orders: snapshot.orders,
             })
           }
@@ -528,7 +541,35 @@ export async function executeGuidedBackend(
       })
       catalog_json = catalog.catalog_json ?? catalog.products
       admin_html = typeof catalog.admin_html === 'string' ? catalog.admin_html : undefined
+      const catalogProducts = Array.isArray(catalog.products)
+        ? (catalog.products as Array<Record<string, unknown>>)
+        : Array.isArray(seeded)
+          ? (seeded as Array<Record<string, unknown>>)
+          : undefined
+      storefrontProducts = catalogProducts
+      const config = getManagedBackendConfig()
+      if (config && !storefront_html) {
+        storefront_html = buildManagedShopStorefrontHtml({
+          brand: brand || vertical.label,
+          appId: session.projectRef,
+          publicUrl: config.publicUrl,
+          products: catalogProducts,
+        })
+      }
       catalogOk = true
+    }
+
+    // Ensure storefront shell exists even if admin snapshot was skipped.
+    if (!storefront_html) {
+      const config = getManagedBackendConfig()
+      if (config) {
+        storefront_html = buildManagedShopStorefrontHtml({
+          brand: brand || vertical.label,
+          appId: session.projectRef,
+          publicUrl: config.publicUrl,
+          products: storefrontProducts || seeded,
+        })
+      }
     }
 
     // 4) optional test order
@@ -594,6 +635,8 @@ export async function executeGuidedBackend(
       steps,
       catalog_json,
       admin_html,
+      storefront_html,
+      storefront_products: storefrontProducts || seeded,
       backend: backendSnapshot,
       claim_login_ready: claimLoginReady,
     })
@@ -671,44 +714,63 @@ async function maybeLaunch(
     steps: GuidedBackendStep[]
     catalog_json?: unknown
     admin_html?: string
+    storefront_html?: string
+    storefront_products?: Array<Record<string, unknown>>
     backend?: EnsureBackendPayload
     claim_login_ready?: boolean
   },
 ): Promise<GuidedBackendResult> {
-  // Auto-wire admin / html with session.backend public_env (wire-proof automation).
+  // Auto-wire admin / html with session.backend public_env; replace localStorage with managed storefront.
   if (base.backend) {
     const backendCfg = backendConfigForWire(base.backend, session.projectRef)
     const wired = autoWireLaunchArtifacts({
       html: input.html,
       files: input.files,
       admin_html: base.admin_html,
+      storefront_html: base.storefront_html,
       backend: backendCfg,
+      brand: base.brand || input.title,
+      products: base.storefront_products,
+      replaceUnwiredStorefront: base.mode === 'ecommerce',
     })
     if (wired.admin_html) base.admin_html = wired.admin_html
+    if (wired.storefront_html) base.storefront_html = wired.storefront_html
     if (wired.html) input = { ...input, html: wired.html }
     if (wired.files) input = { ...input, files: wired.files }
     base.steps.push({
       id: 'wireProof',
-      status: wired.wired || wired.admin_html ? 'ok' : 'skipped',
+      status: wired.wired || wired.admin_html || wired.storefront_html ? 'ok' : 'skipped',
       message: wired.message,
     })
   }
 
-  const hasHtml = typeof input.html === 'string' && input.html.trim().length > 0
-  const hasFiles = input.files && typeof input.files === 'object' && Object.keys(input.files).length > 0
+  let hasHtml = typeof input.html === 'string' && input.html.trim().length > 0
+  let hasFiles = input.files && typeof input.files === 'object' && Object.keys(input.files).length > 0
+
+  // Ecommerce: always publish managed storefront when backend is ready (even if agent omitted html).
+  if (base.mode === 'ecommerce' && base.storefront_html && !hasHtml && !hasFiles) {
+    input = { ...input, html: base.storefront_html, files: { 'index.html': base.storefront_html } }
+    hasHtml = true
+    hasFiles = true
+    base.steps.push({
+      id: 'managedStorefront',
+      status: 'ok',
+      message: 'Using managed Indobase storefront (live catalog + place order).',
+    })
+  }
 
   if (!hasHtml && !hasFiles) {
     base.steps.push({
       id: 'launchBusiness',
       status: 'skipped',
       message:
-        'Publish skipped — call launchBusiness (or guidedBackend with html/files) when the storefront is ready. Prefer *.sites.indobase.in over Gadget iframe (localStorage SecurityError). Do not invent a live URL.',
+        'Publish skipped — call launchBusiness with storefront_html / real html/files when ready. Prefer *.sites.indobase.in over Gadget iframe (localStorage SecurityError). Do not invent a live URL.',
     })
     const progress = progressMarkdown(base.steps)
     const wireHint =
       base.mode === 'generic'
         ? 'Wire Sign-in + data to session.backend records API: physical collection = INDOBASE_COLLECTION_PREFIX + table; POST/GET {api}/api/collections/{physical}/records; OTP auth on users (Bearer user token). Do not use localStorage auth or /rest/v1.'
-        : 'Wire storefront to catalog_json / session.backend records API (collection prefix + /api/collections/…/records), not localStorage-only. Prefer launchBusiness static preview over Gadget iframe.'
+        : 'Publish storefront_html from this result (or call launchBusiness with it) — do not ship localStorage-only carts. Prefer launchBusiness static preview over Gadget iframe.'
     return {
       ok: true,
       tool: 'guidedBackend',
@@ -723,6 +785,7 @@ async function maybeLaunch(
       backend: base.backend,
       catalog_json: base.catalog_json,
       admin_html: base.admin_html,
+      storefront_html: base.storefront_html,
       claim_live: false,
     }
   }
@@ -730,6 +793,13 @@ async function maybeLaunch(
   const files: Record<string, string> = { ...(input.files || {}) }
   if (hasHtml && !files['index.html']) {
     files['index.html'] = input.html!.trim()
+  }
+  // Prefer managed storefront for ecommerce index when agent HTML is still localStorage-only.
+  if (base.mode === 'ecommerce' && base.storefront_html) {
+    const indexText = files['index.html'] || ''
+    if (!indexText || !/__INDOBASE_COLLECTION__\s*\(\s*['"]products['"]/.test(indexText)) {
+      files['index.html'] = base.storefront_html
+    }
   }
   const adminPath = (input.admin_html_as || 'admin.html').replace(/^\/+/, '') || 'admin.html'
   if (base.admin_html && !files[adminPath]) {
@@ -743,9 +813,16 @@ async function maybeLaunch(
       subdomain: input.subdomain || undefined,
       files,
       html: files['index.html'],
+      app_type: base.mode === 'ecommerce' ? 'ecommerce' : 'saas',
       gotrueId: session.gotrueId,
       email: session.email,
     },
+    base.backend
+      ? {
+          title: input.title || base.brand || undefined,
+          backend: backendConfigForWire(base.backend, session.projectRef),
+        }
+      : undefined,
   )
 
   if (!launched.ok || !launched.claim_live || !launched.url) {
@@ -767,6 +844,7 @@ async function maybeLaunch(
       claim_backend_ready: true,
       catalog_json: base.catalog_json,
       admin_html: base.admin_html,
+      storefront_html: base.storefront_html,
       claim_live: false,
       code: 'launch_failed',
     }
@@ -792,6 +870,7 @@ async function maybeLaunch(
     backend: base.backend,
     catalog_json: base.catalog_json,
     admin_html: base.admin_html,
+    storefront_html: base.storefront_html,
     url: launched.url,
     claim_live: true,
   }
