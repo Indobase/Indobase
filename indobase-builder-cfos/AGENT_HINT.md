@@ -45,6 +45,16 @@ Indobase seeds an **approved OpenRouter pool** only: **Luna** (code/build), **Te
 
 Respect **Journey state** on `/api/session` agent_hint when present (backend ready or not).
 
+## Chips / FOLLOWUPS vs journey flags (HARD)
+
+Chips must match `/api/session` journey flags — never invent a parallel ladder:
+
+- **Never** emit payments market CHOICES / “Add payments” **before** `is_live` (site published).
+- **Never** emit niche CHOICES or “Go Live” chips **after** `is_live` — advance domain / payments / checklist.
+- **Never** invent “publishing unavailable” / mysterious host failures — quote real gate codes (`contract_verifier_failed`, `functional_verifier_failed`, `backend_required`, `account_required`, `wire_required`, `gateway_not_ready`, …) and call **`launchBusiness`** (or the blocked tool) again after fixing.
+- When `is_backend_ready`, do not re-offer “Add a real backend” / guidedBackend ensure chips — prefer Go Live.
+- When `is_payments_ready`, skip Add payments — prefer checklist / domain / analytics.
+
 ## Preview surface (HARD)
 
 After the first HTML/files exist for a landing or store UI:

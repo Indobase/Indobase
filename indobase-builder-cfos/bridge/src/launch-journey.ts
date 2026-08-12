@@ -86,19 +86,22 @@ export function buildLaunchJourneyState(
   const previewDone = liveDone || backendDone
   const paymentsDone = paymentsReady
 
+  const productionDone = liveDone && backendDone && paymentsDone
+
   let currentStage: LaunchJourneyStageId = 'account'
   if (!guest && !liveDone) currentStage = 'live'
-  else if (liveDone && !paymentsDone) currentStage = 'payments'
-  else if (liveDone && paymentsDone) currentStage = 'production'
+  else if (liveDone && !backendDone) currentStage = 'backend'
+  else if (liveDone && backendDone && !paymentsDone) currentStage = 'payments'
+  else if (productionDone) currentStage = 'production'
   else if (!guest) currentStage = 'live'
 
   const stages: LaunchJourneyStage[] = [
     stage('account', 'Account', accountDone, currentStage === 'account'),
     stage('preview', 'Preview', previewDone, false),
-    stage('backend', 'Backend', backendDone, false),
+    stage('backend', 'Backend', backendDone, currentStage === 'backend'),
     stage('live', 'Go Live', liveDone, currentStage === 'live'),
     stage('payments', 'Payments', paymentsDone, currentStage === 'payments'),
-    stage('production', 'Production', false, currentStage === 'production'),
+    stage('production', 'Production', productionDone, currentStage === 'production'),
   ]
 
   const next_action = guest
@@ -134,20 +137,22 @@ export function buildLaunchJourneyState(
 
   const headline = guest
     ? 'Sign in to publish your site on Indobase'
-    : liveDone
-      ? paymentsDone
-        ? 'Your business is live — finish production checklist'
-        : 'Your site is live — add payments to start selling'
-      : backendDone
-        ? 'Backend ready — publish to your Indobase subdomain'
-        : 'Preview ready — go live when you are'
+    : liveDone && !backendDone
+      ? 'Your site is live — add a real backend'
+      : liveDone
+        ? paymentsDone
+          ? 'Your business is live — finish production checklist'
+          : 'Your site is live — add payments to start selling'
+        : backendDone
+          ? 'Backend ready — publish to your Indobase subdomain'
+          : 'Preview ready — go live when you are'
 
   const flags: LaunchJourneyFlags = {
     is_guest: guest,
     is_backend_ready: backendDone,
     is_live: liveDone,
     is_payments_ready: paymentsDone,
-    is_production_ready: liveDone && backendDone && paymentsDone,
+    is_production_ready: productionDone,
   }
 
   const completed_stages = stages.filter((s) => s.status === 'done').map((s) => s.id)

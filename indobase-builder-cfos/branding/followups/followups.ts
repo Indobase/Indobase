@@ -32,12 +32,21 @@ export type JourneyNextAction = {
   message: string
 }
 
+export type JourneyChipFlags = {
+  isGuest?: boolean
+  isLive?: boolean
+  isBackendReady?: boolean
+  isPaymentsReady?: boolean
+  liveUrl?: string | null
+}
+
 export type ResolveFollowUpsOptions = {
   journeyNextAction?: JourneyNextAction | null
   journeyHeadline?: string | null
-  /** When the launch registry shows a live url — suppress niche + Go Live chips. */
+  /** @deprecated prefer journeyFlags.isLive */
   journeyIsLive?: boolean
   journeyLiveUrl?: string | null
+  journeyFlags?: JourneyChipFlags | null
 }
 
 export type ParsedFollowUps = {
@@ -369,12 +378,35 @@ function isGoLiveChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\bgo live\b/.test(label) ||
-    (/\blaunchbusiness\b/.test(msg) && /\bgo live\b/.test(msg) && !/\bcustomdomain\b/.test(msg))
+    (/\blaunchbusiness\b/.test(msg) && /\bgo live\b/.test(msg) && !/\bcustomdomain\b/.test(msg) && !/\badmin\.html\b/.test(msg))
   )
 }
 
 function isNicheCategoryChip(item: FollowUpItem): boolean {
   return /^(apparel|electronics|food|beauty|grocery|fashion|i'?ll type)/i.test(item.label.trim())
+}
+
+function isPaymentsChip(item: FollowUpItem): boolean {
+  const label = item.label.toLowerCase()
+  const msg = item.message.toLowerCase()
+  return (
+    /\badd payments\b/.test(label) ||
+    /\bindia\b.*\brazorpay\b|\brazorpay\b.*\bindia\b/.test(label) ||
+    /\binternational\b.*\bstripe\b|\bstripe\b.*\binternational\b/.test(label) ||
+    /\bconnectgateway\b|\bwirecheckout\b|\bpaste api keys\b|\bcomplete kyc\b/.test(label + ' ' + msg) ||
+    (/settlement_market/.test(msg) && /\bpayments\b/.test(msg))
+  )
+}
+
+function isBackendEnsureChip(item: FollowUpItem): boolean {
+  const label = item.label.toLowerCase()
+  const msg = item.message.toLowerCase()
+  return (
+    /\badd a real backend\b/.test(label) ||
+    /\bguidedbackend\b/.test(msg) ||
+    /\bpublish commerce storefront\b/.test(label) ||
+    (/\bensuredatabase\b/.test(msg) && /\bapplyschema\b/.test(msg))
+  )
 }
 
 function looksLikeNicheChipSet(parsed: ParsedFollowUps): boolean {
@@ -386,14 +418,70 @@ function looksLikeNicheChipSet(parsed: ParsedFollowUps): boolean {
   return nicheCount >= 2
 }
 
-/** After publish, never push operators back to Go Live / niche. */
+function looksLikePaymentsChipSet(parsed: ParsedFollowUps): boolean {
+  const title = (parsed.title || '').toLowerCase()
+  if (/where will customers pay|finish payments|payments are live/.test(title)) return true
+  return parsed.items.filter(isPaymentsChip).length >= 2
+}
+
+function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChipFlags {
+  if (!opts) return {}
+  const f = opts.journeyFlags || {}
+  const liveUrl = (f.liveUrl || opts.journeyLiveUrl || null) as string | null
+  // Only treat live as authoritative when the caller passed journey live signals.
+  // No opts → undefined isLive (prose heuristics / agent chips stay).
+  const liveAuthoritative =
+    opts.journeyFlags != null ||
+    opts.journeyIsLive !== undefined ||
+    Boolean(liveUrl && String(liveUrl).trim())
+  return {
+    isGuest: f.isGuest,
+    isLive: liveAuthoritative
+      ? Boolean(f.isLive || opts.journeyIsLive || (liveUrl && String(liveUrl).trim()))
+      : undefined,
+    isBackendReady: f.isBackendReady,
+    isPaymentsReady: f.isPaymentsReady,
+    liveUrl,
+  }
+}
+
+/**
+ * Platform allowlist: chips must match journey flags, not only agent prose.
+ * - isLive === false → no payments market / Add payments
+ * - isLive === true → no Go Live / niche
+ * - backend ready → no "Add a real backend" / guidedBackend ensure chips
+ * - payments ready → no Add payments / KYC / connectGateway chips
+ * - isLive undefined → do not apply live/payments stage filters (no journey authority)
+ */
+export function filterChipsForJourneyState(
+  parsed: ParsedFollowUps,
+  flags?: JourneyChipFlags | null,
+): ParsedFollowUps {
+  if (!flags) return parsed
+  if (flags.isGuest) {
+    return { ...parsed, title: '', items: [] }
+  }
+  let items = [...parsed.items]
+  if (flags.isLive === true) {
+    items = items.filter((i) => !isGoLiveChip(i) && !isNicheCategoryChip(i))
+  } else if (flags.isLive === false) {
+    items = items.filter((i) => !isPaymentsChip(i))
+  }
+  if (flags.isBackendReady) {
+    items = items.filter((i) => !isBackendEnsureChip(i))
+  }
+  if (flags.isPaymentsReady) {
+    items = items.filter((i) => !isPaymentsChip(i))
+  }
+  return { ...parsed, items: items.slice(0, MAX_VISIBLE_CHIPS) }
+}
+
+/** @deprecated use filterChipsForJourneyState */
 export function filterChipsForLiveJourney(
   parsed: ParsedFollowUps,
   opts?: { isLive?: boolean },
 ): ParsedFollowUps {
-  if (!opts?.isLive) return parsed
-  const items = parsed.items.filter((i) => !isGoLiveChip(i) && !isNicheCategoryChip(i))
-  return { ...parsed, items: items.slice(0, MAX_VISIBLE_CHIPS) }
+  return filterChipsForJourneyState(parsed, { isLive: opts?.isLive })
 }
 
 function prependJourneyChip(parsed: ParsedFollowUps, nextAction: JourneyNextAction): ParsedFollowUps {
@@ -665,10 +753,18 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
 /**
  * Example chips after launchBusiness returned a live url — agent must rewrite.
  * Store path prefers Add payments (India/Razorpay ask) over re-doing backend.
+ * When paymentsReady, skip Add payments and prefer checklist / domain / analytics.
  */
-export function postGoLiveFollowups(brand?: string | null, opts?: { store?: boolean }): StageFollowUps {
+export function postGoLiveFollowups(
+  brand?: string | null,
+  opts?: { store?: boolean; paymentsReady?: boolean },
+): StageFollowUps {
   const name = brandLabel(brand)
   const store = opts?.store !== false
+  const paymentsReady = Boolean(opts?.paymentsReady)
+  if (store && paymentsReady) {
+    return postPaymentsFollowups(brand)
+  }
   const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
   const analyticsMsg = `Call ensureAnalytics for ${name} after the live url (non-blocking) — quote launch_url / pending_setup; do not claim Analytics live from ensure alone`
   const items: FollowUpItem[] = []
@@ -969,19 +1065,30 @@ export function extractBrandFromMessage(message: string): string | null {
 /**
  * When the agent finished a deliverable but omitted FOLLOWUPS, inject Naive-style
  * next-ladder chips so operators keep moving toward full launch.
+ *
+ * opts.isLive === false → never inject post-live / post-payments (treat false "live" prose as preview).
+ * opts.backendReady → prefer Go Live ladder over postBackend / "Add a real backend".
  */
-export function injectDeliverableFollowUps(message: string): ParsedFollowUps | null {
+export function injectDeliverableFollowUps(
+  message: string,
+  opts?: { backendReady?: boolean; isLive?: boolean },
+): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   // Guest-gate turns may inject niche instead; don't also inject post-preview walls.
   if (looksLikePreBuildClarification(message) && !bodyHasDeliverableSignal(message)) return null
   if (!looksLikeCompletedDeliverable(message) && !bodyHasDeliverableSignal(message)) return null
 
   const brand = extractBrandFromMessage(message)
+  const backendReady = Boolean(opts?.backendReady)
+  const forceNotLive = opts?.isLive === false
   let stage: StageFollowUps
   const lower = message.toLowerCase()
-  if (/checkout_url|payments are live|wirecheckout|claim_production_ready/.test(lower)) {
+  if (
+    !forceNotLive &&
+    /checkout_url|payments are live|wirecheckout|claim_production_ready/.test(lower)
+  ) {
     stage = postPaymentsFollowups(brand)
-  } else if (looksLikeLivePublished(message)) {
+  } else if (!forceNotLive && looksLikeLivePublished(message)) {
     const landing = looksLikeClearLandingAsk(message)
     stage = postGoLiveFollowups(brand, { store: !landing })
   } else if (
@@ -989,18 +1096,43 @@ export function injectDeliverableFollowUps(message: string): ParsedFollowUps | n
       lower,
     )
   ) {
-    stage = postBackendFollowups(brand)
+    // Backend already ready → Go Live ladder (not another ensure-backend wall).
+    stage = backendReady ? postPreviewFollowups(brand) : postBackendFollowups(brand)
+    if (backendReady) {
+      stage = {
+        ...stage,
+        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
+      }
+    }
   } else if (
     looksLikeSaaSOrBackendAppAsk(message) &&
     !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
   ) {
-    stage = postSaasEnsureFirstFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand) : postSaasEnsureFirstFollowups(brand)
+    if (backendReady) {
+      stage = {
+        ...stage,
+        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
+      }
+    }
   } else if (looksLikeLandingSingleTurnIntent(message)) {
     stage = landingSingleTurnFollowups(brand)
   } else if (looksLikeAutoChainIntent(message) && !/claim_backend_ready|catalog seeded|place.?test.?shop.?order/.test(lower)) {
-    stage = autoChainBackendFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand) : autoChainBackendFollowups(brand)
+    if (backendReady) {
+      stage = {
+        ...stage,
+        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
+      }
+    }
   } else {
     stage = postPreviewFollowups(brand)
+    if (backendReady) {
+      stage = {
+        ...stage,
+        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
+      }
+    }
   }
   return {
     body: stripLeakedCot(message),
@@ -1065,7 +1197,9 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
  */
 export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions): ParsedFollowUps | null {
   const cleaned = cleanOperatorMessage(message)
-  const isLive = Boolean(opts?.journeyIsLive || opts?.journeyLiveUrl)
+  const flags = resolveJourneyFlags(opts)
+  const isLive = flags.isLive === true
+  const notLive = flags.isLive === false
   const journeyNext = opts?.journeyNextAction?.label?.trim()
     ? {
         label: opts.journeyNextAction.label.trim(),
@@ -1075,7 +1209,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
 
   const finish = (parsed: ParsedFollowUps | null): ParsedFollowUps | null => {
     if (!parsed) return null
-    return filterChipsForLiveJourney(parsed, { isLive })
+    return filterChipsForJourneyState(parsed, flags)
   }
 
   const parsed = parseFollowUps(cleaned)
@@ -1084,6 +1218,13 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     // Agent-authored niche while live → replace with post-live ladder (not merge with journey).
     if (isLive && looksLikeNicheChipSet(gated)) {
       // fall through to isLive post-live injection
+    } else if (notLive && looksLikePaymentsChipSet(gated)) {
+      // Strip payments CHOICES before publish; keep remaining non-payment chips if any.
+      const finished = finish(
+        journeyNext ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline)) : gated,
+      )
+      if (finished && finished.items.length > 0) return finished
+      // else fall through to deliverable / journey injection
     } else {
       return finish(
         journeyNext ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline)) : gated,
@@ -1099,10 +1240,13 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     )
   }
 
-  // Already live + agent asked niche (or omitted FOLLOWUPS): payments / post-live ladder.
+  // Already live (journey authority) + agent asked niche (or omitted FOLLOWUPS): post-live ladder.
   if (isLive) {
     const brand = extractBrandFromMessage(cleaned)
-    const postLive = postGoLiveFollowups(brand, { store: true })
+    const postLive = postGoLiveFollowups(brand, {
+      store: true,
+      paymentsReady: flags.isPaymentsReady,
+    })
     const injected: ParsedFollowUps = {
       body: stripLeakedCot(cleaned),
       title: opts?.journeyHeadline?.trim() || postLive.title,
@@ -1111,10 +1255,15 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     const withJourney = journeyNext
       ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)
       : injected
-    return finish(applyStageGate(withJourney, 'payments'))
+    return finish(applyStageGate(withJourney, flags.isPaymentsReady ? 'deliverable' : 'payments'))
   }
 
-  const injected = injectDeliverableFollowUps(cleaned)
+  // Prefer deliverable / journey / keep-building.
+  // When journey explicitly says !live, never inject post-live/payments from false "live" prose.
+  const injected = injectDeliverableFollowUps(cleaned, {
+    backendReady: flags.isBackendReady,
+    isLive: notLive ? false : undefined,
+  })
   if (injected) {
     const withJourney = journeyNext
       ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)

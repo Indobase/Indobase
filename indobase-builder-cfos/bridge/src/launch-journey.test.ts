@@ -58,6 +58,56 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.flags.is_live, true)
     assert.ok(journey.completed_stages.includes('live'))
     assert.ok(journey.completed_stages.includes('backend'))
+    const payments = journey.stages.find((s) => s.id === 'payments')
+    assert.equal(payments?.status, 'current')
+  })
+
+  it('live without backend current is backend with backend headline', () => {
+    const journey = buildLaunchJourneyState(
+      {
+        gotrueId: 'user1',
+        email: 'founder@example.com',
+        projectRef: 'staticshop',
+        projectName: 'Static Shop',
+        orgSlug: 'org',
+        studioUrl: 'https://studio.indobase.in',
+      },
+      {
+        subdomain: 'staticshop',
+        url: 'https://staticshop.sites.indobase.in',
+      },
+    )
+    assert.equal(journey.current_stage, 'backend')
+    assert.equal(journey.flags.is_live, true)
+    assert.equal(journey.flags.is_backend_ready, false)
+    assert.match(journey.next_action?.label || '', /Add a real backend/i)
+    assert.match(journey.headline || '', /add a real backend/i)
+    const backend = journey.stages.find((s) => s.id === 'backend')
+    assert.equal(backend?.status, 'current')
+    const payments = journey.stages.find((s) => s.id === 'payments')
+    assert.equal(payments?.status, 'upcoming')
+  })
+
+  it('production done when live + backend + payments ready', () => {
+    const session = memberSession()
+    session.backend = {
+      ...session.backend!,
+      public_env: {
+        PAYMENTS_READY: '1',
+        GATEWAY_KEYS: 'razorpay',
+      },
+    }
+    const journey = buildLaunchJourneyState(session, {
+      subdomain: 'threadline',
+      url: 'https://threadline.sites.indobase.in',
+    })
+    assert.equal(journey.current_stage, 'production')
+    assert.equal(journey.flags.is_production_ready, true)
+    assert.equal(journey.flags.is_payments_ready, true)
+    const production = journey.stages.find((s) => s.id === 'production')
+    assert.equal(production?.status, 'done')
+    assert.match(journey.next_action?.label || '', /production checklist/i)
+    assert.match(journey.headline || '', /production checklist/i)
   })
 
   it('signed-in without backend leaves Preview upcoming', () => {

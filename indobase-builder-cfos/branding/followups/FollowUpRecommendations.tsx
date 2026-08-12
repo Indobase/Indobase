@@ -122,12 +122,28 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   const cleaned = useMemo(() => cleanOperatorMessage(message), [message])
   const journeyOpts = useMemo(() => {
     const journey = readLaunchJourneyFromWindow()
-    if (!journey?.next_action?.label || journey.guest) return undefined
+    if (!journey) return undefined
+    const isLive = Boolean(journey.flags?.is_live || journey.live_url)
+    const journeyFlags = {
+      isGuest: Boolean(journey.guest || journey.flags?.is_guest),
+      isLive,
+      isBackendReady: Boolean(journey.flags?.is_backend_ready || journey.backend_ready),
+      isPaymentsReady: Boolean(journey.flags?.is_payments_ready || journey.payments_ready),
+      liveUrl: journey.live_url,
+    }
+    // Pass flags even for guests (resolve filters chips); still attach next_action when present.
     return {
-      journeyNextAction: journey.next_action,
+      journeyNextAction:
+        !journey.guest && journey.next_action?.label
+          ? {
+              label: journey.next_action.label,
+              message: journey.next_action.message || journey.next_action.label,
+            }
+          : null,
       journeyHeadline: journey.headline,
-      journeyIsLive: Boolean(journey.flags?.is_live || journey.live_url),
+      journeyIsLive: isLive,
       journeyLiveUrl: journey.live_url,
+      journeyFlags,
     }
   }, [cleaned])
   const resolved = useMemo(() => {

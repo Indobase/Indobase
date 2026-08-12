@@ -26,6 +26,7 @@ import {
   cleanOperatorMessage,
   injectJourneyNextActionFollowUps,
   filterChipsForLiveJourney,
+  filterChipsForJourneyState,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -659,5 +660,114 @@ INDOBASE_CHOICES>>>`
     )
     assert.equal(filtered.items.length, 1)
     assert.equal(filtered.items[0]?.label, 'Keep building')
+  })
+
+  it('pre-live payments CHOICES are stripped; non-payment chips can remain', () => {
+    const paymentsOnly = `Where will customers pay?
+
+<<<INDOBASE_CHOICES
+title: Where will customers pay?
+India (Razorpay) | settlement_market=india payments
+International (Stripe) | settlement_market=intl payments
+INDOBASE_CHOICES>>>`
+    const stripped = resolveFollowUps(paymentsOnly, {
+      journeyFlags: { isLive: false },
+      journeyNextAction: {
+        label: 'Go Live on Indobase',
+        message: 'Go Live with launchBusiness',
+      },
+    })
+    assert.ok(stripped)
+    assert.ok(!stripped.items.some((i) => /razorpay|stripe|settlement_market/i.test(i.label + i.message)))
+    assert.ok(stripped.items.some((i) => /go live/i.test(i.label)))
+
+    const mixed = `Preview ready.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where next?
+Go Live on Indobase | Go Live with launchBusiness
+Add payments | Connect payments settlement_market
+Refine the design | Polish branding
+INDOBASE_FOLLOWUPS>>>`
+    const kept = resolveFollowUps(mixed, { journeyFlags: { isLive: false } })
+    assert.ok(kept)
+    assert.ok(!kept.items.some((i) => /add payments/i.test(i.label)))
+    assert.ok(kept.items.some((i) => /go live/i.test(i.label)))
+    assert.ok(kept.items.some((i) => /refine/i.test(i.label)))
+  })
+
+  it('Add payments stripped when paymentsReady + live', () => {
+    const input = `Live at https://shop.sites.indobase.in
+
+<<<INDOBASE_FOLLOWUPS
+title: Where next?
+Add payments | Connect payments
+Connect my domain | connect domain
+Production checklist | checklist
+INDOBASE_FOLLOWUPS>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyFlags: {
+        isLive: true,
+        isPaymentsReady: true,
+        liveUrl: 'https://shop.sites.indobase.in',
+      },
+    })
+    assert.ok(resolved)
+    assert.ok(!resolved.items.some((i) => /add payments/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /domain|checklist|analytics|wire/i.test(i.label)))
+  })
+
+  it('backend ensure chips stripped when backendReady', () => {
+    const input = `Catalog seeded — claim_backend_ready.
+
+<<<INDOBASE_FOLLOWUPS
+title: Where next?
+Add a real backend | Call guidedBackend then applySchema
+Go Live on Indobase | Go Live with launchBusiness
+INDOBASE_FOLLOWUPS>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyFlags: { isLive: false, isBackendReady: true },
+    })
+    assert.ok(resolved)
+    assert.ok(!resolved.items.some((i) => /add a real backend/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /go live/i.test(i.label)))
+  })
+
+  it('filterChipsForJourneyState enforces live/backend/payments flags', () => {
+    const base = {
+      body: 'ok',
+      title: 'Next',
+      items: [
+        { label: 'Go Live on Indobase', message: 'Go Live with launchBusiness' },
+        { label: 'Add payments', message: 'connectGateway + wireCheckout' },
+        { label: 'Add a real backend', message: 'Call guidedBackend then ensureDatabase applySchema' },
+        { label: 'Connect my domain', message: 'customDomain CNAME' },
+      ],
+    }
+    const preLive = filterChipsForJourneyState(base, { isLive: false })
+    assert.ok(!preLive.items.some((i) => /add payments/i.test(i.label)))
+    assert.ok(preLive.items.some((i) => /go live/i.test(i.label)))
+
+    const live = filterChipsForJourneyState(base, { isLive: true })
+    assert.ok(!live.items.some((i) => /go live/i.test(i.label)))
+    assert.ok(live.items.some((i) => /add payments/i.test(i.label)))
+
+    const backendReady = filterChipsForJourneyState(base, {
+      isLive: false,
+      isBackendReady: true,
+    })
+    assert.ok(!backendReady.items.some((i) => /add a real backend/i.test(i.label)))
+
+    const paymentsReady = filterChipsForJourneyState(base, {
+      isLive: true,
+      isPaymentsReady: true,
+    })
+    assert.ok(!paymentsReady.items.some((i) => /add payments/i.test(i.label)))
+  })
+
+  it('postGoLiveFollowups skips Add payments when paymentsReady', () => {
+    const ready = postGoLiveFollowups('Aural', { store: true, paymentsReady: true })
+    assert.ok(!ready.items.some((i) => /add payments/i.test(i.label)))
+    assert.ok(ready.items.some((i) => /checklist|domain|wire|admin/i.test(i.label)))
   })
 })

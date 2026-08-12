@@ -1199,6 +1199,17 @@ app.post('/api/os/tools/followups', async (c) => {
     message?: string
     journey_next_action?: { label?: string; message?: string } | null
     journey_headline?: string | null
+    journey_is_live?: boolean
+    journey_live_url?: string | null
+    journey_is_backend_ready?: boolean
+    journey_is_payments_ready?: boolean
+    journey_flags?: {
+      isGuest?: boolean
+      isLive?: boolean
+      isBackendReady?: boolean
+      isPaymentsReady?: boolean
+      liveUrl?: string | null
+    } | null
   }
   const message = typeof body.message === 'string' ? body.message : ''
   if (!message.trim()) {
@@ -1213,18 +1224,27 @@ app.post('/api/os/tools/followups', async (c) => {
           message: (body.journey_next_action.message || body.journey_next_action.label).trim(),
         }
       : null
+  const liveUrl =
+    typeof body.journey_live_url === 'string'
+      ? body.journey_live_url
+      : typeof body.journey_flags?.liveUrl === 'string'
+        ? body.journey_flags.liveUrl
+        : null
+  const journeyFlags = {
+    isGuest: Boolean(body.journey_flags?.isGuest),
+    isLive: Boolean(
+      body.journey_flags?.isLive || body.journey_is_live || (typeof liveUrl === 'string' && liveUrl.trim()),
+    ),
+    isBackendReady: Boolean(body.journey_flags?.isBackendReady || body.journey_is_backend_ready),
+    isPaymentsReady: Boolean(body.journey_flags?.isPaymentsReady || body.journey_is_payments_ready),
+    liveUrl,
+  }
   const resolved = resolveFollowUps(message, {
     journeyNextAction: journeyNext,
     journeyHeadline: body.journey_headline ?? null,
-    journeyIsLive: Boolean(
-      (body as { journey_is_live?: boolean }).journey_is_live ||
-        (typeof (body as { journey_live_url?: string }).journey_live_url === 'string' &&
-          (body as { journey_live_url?: string }).journey_live_url?.trim()),
-    ),
-    journeyLiveUrl:
-      typeof (body as { journey_live_url?: string }).journey_live_url === 'string'
-        ? (body as { journey_live_url: string }).journey_live_url
-        : null,
+    journeyIsLive: journeyFlags.isLive,
+    journeyLiveUrl: liveUrl,
+    journeyFlags,
   })
   return c.json({
     ok: true,
