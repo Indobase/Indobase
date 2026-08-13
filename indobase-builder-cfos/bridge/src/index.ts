@@ -1917,8 +1917,10 @@ app.post('/api/os/usage/prompt-quota', async (c) => {
  * Signed-in Free: consumes Builder meter when shouldConsumeAgentTurn.
  */
 app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
-  const sessionOrErr = requireSession(c)
-  if (sessionOrErr instanceof Response) return sessionOrErr
+  const resolved = await resolveSessionOrAgentPrincipal(c)
+  if (resolved instanceof Response) return resolved
+  const session = resolved.session
+  const guest = resolved.guest
 
   let message: string | undefined
   try {
@@ -1930,15 +1932,15 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     message = undefined
   }
 
-  const facts = await loadAuthoritativeLaunchFacts(sessionOrErr)
+  const facts = await loadAuthoritativeLaunchFacts(session)
 
   // Guests must be able to chat (account OTP gate). Meter only after verify.
   // Remember the original ask so OTP verify can create spec + preview.
-  if (isGuestSession(sessionOrErr)) {
+  if (guest) {
     let execution = null
     try {
       execution = await applyOperatorIntent({
-        session: sessionOrErr,
+        session,
         message: message || '',
         guest: true,
         snapshot: facts.snapshot,
@@ -1948,7 +1950,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     } catch {
       execution = null
     }
-    const agentHint = composeAgentHintForSession(sessionOrErr, execution?.agentContext || '', {
+    const agentHint = composeAgentHintForSession(session, execution?.agentContext || '', {
       launch: facts.launchStatus,
       snapshot: facts.snapshot,
       runtime: execution?.businessRuntime || null,
@@ -1980,9 +1982,9 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
 
   const consume = shouldConsumeAgentTurn({ message })
   const result = await platformPromptQuota({
-    gotrueId: sessionOrErr.gotrueId,
-    email: sessionOrErr.email,
-    workspaceRef: sessionOrErr.projectRef,
+    gotrueId: session.gotrueId,
+    email: session.email,
+    workspaceRef: session.projectRef,
     consume,
   })
 
@@ -2001,7 +2003,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
   if (interpreted.ok) {
     try {
       execution = await applyOperatorIntent({
-        session: sessionOrErr,
+        session,
         message: message || '',
         guest: false,
         snapshot: facts.snapshot,
@@ -2013,7 +2015,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     }
   }
 
-  const agentHint = composeAgentHintForSession(sessionOrErr, execution?.agentContext || '', {
+  const agentHint = composeAgentHintForSession(session, execution?.agentContext || '', {
     launch: facts.launchStatus,
     snapshot: facts.snapshot,
     runtime: execution?.businessRuntime || null,
@@ -2029,7 +2031,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
       guest: false,
       stage: 'member',
       signed_in: true,
-      email: sessionOrErr.email || null,
+      email: session.email || null,
       quota: interpreted.quota ?? result.quota ?? null,
       code: interpreted.code,
       message: interpreted.message ?? (interpreted.ok ? null : result.message ?? null),
