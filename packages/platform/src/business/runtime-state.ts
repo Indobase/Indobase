@@ -192,7 +192,13 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
   const orderLines = state.orders.slice(0, 8).map((o) => {
     const id = o.orderNumber || o.id || '?'
     const status = o.paymentStatus || o.status || ''
-    return `- #${id} ${status}`.trim()
+    const amount =
+      typeof o.amountMinor === 'number' && Number.isFinite(o.amountMinor)
+        ? String(Math.round(o.amountMinor / 100))
+        : ''
+    const who = o.customerName || o.email || ''
+    const items = o.itemsSummary || ''
+    return `- #${id} ${status} ${amount} ${who} ${items}`.replace(/\s+/g, ' ').trim()
   })
   const customerLines = state.customers
     .slice(0, 8)
@@ -266,8 +272,9 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
   lines.push(
     [
       'Rules:',
-      '- Answer “show latest order” / SCREEN show-order from BusinessRuntimeState.orders only. If an order id is listed, describe it.',
-      '- Never invent “connection unavailable” when this object lists the entity.',
+      '- Answer “show latest order” / SCREEN show-order from BusinessRuntimeState.orders only. If an order id is listed, describe it (customer, amount, items, status).',
+      '- Never invent “connection unavailable”, “commerce admin isn’t available”, or “no order data was returned” when this object lists the entity.',
+      '- Never say the store is “not in this workspace” / “isn’t currently available” when preview.status is ready or live.isLive is yes.',
       '- Never describe a preview as available unless preview.status is ready and preview.url is set.',
       '- Never claim LIVE unless live.isLive is yes and live.url is set.',
       '- Never claim a capability ready unless capabilities.status is ready. “Customer database enabled” is forbidden until then.',

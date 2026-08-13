@@ -220,4 +220,31 @@ describe('session-payload', () => {
     assert.match(hint, /Never ask them to refresh|do not ask them to refresh/i)
     assert.match(hint, /launchProductionApp/)
   })
+
+  it('composeAgentHintForSession includes BusinessRuntimeState orders from snapshot', () => {
+    const hint = composeAgentHintForSession(signedIn, 'Operator hint.', {
+      snapshot: {
+        products: [{ id: 'thread-one', name: 'Thread One/Bone', priceMinor: 18900 }],
+        orders: [
+          {
+            id: 'zvka8renspuyufi',
+            orderNumber: 'zvka8renspuyufi',
+            status: 'pending',
+            amount_minor: 18900,
+            email: 'priya@shopper.test',
+            customer_name: 'Priya Shopper',
+            items: 'Thread One/Bone',
+          },
+        ],
+      },
+      previewStatus: 'ready',
+      previewUrl: 'https://urbanthread-aaf13e89.sites.indobase.in',
+      projectState: 'live',
+      liveUrl: 'https://urbanthread-aaf13e89.sites.indobase.in',
+    })
+    assert.match(hint, /#zvka8renspuyufi/)
+    assert.match(hint, /Priya Shopper/)
+    assert.match(hint, /Thread One\/Bone/)
+    assert.match(hint, /commerce admin isn’t available|Never invent/)
+  })
 })

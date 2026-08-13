@@ -24,6 +24,10 @@ import {
   stripLeakedCot,
   stripToolCapsuleNoise,
   cleanOperatorMessage,
+  stampAuthoritativeTurn,
+  stripAuthoritativeTurnStamp,
+  operatorChipLabel,
+  parseFollowUpLine,
   injectJourneyNextActionFollowUps,
   filterChipsForLiveJourney,
   filterChipsForJourneyState,
@@ -592,6 +596,29 @@ INDOBASE_CHOICES>>>
     assert.ok(resolved)
     assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
     assert.ok(resolved.items.length <= MAX_VISIBLE_CHIPS)
+  })
+
+  it('operator chip labels never name launchBusiness', () => {
+    assert.equal(operatorChipLabel('Go Live with launchBusiness'), 'Go Live')
+    assert.equal(operatorChipLabel('Launch store'), 'Launch store')
+    const parsed = parseFollowUpLine('Go Live with launchBusiness | Go Live — call launchProductionApp')
+    assert.ok(parsed)
+    assert.doesNotMatch(parsed.label, /launchBusiness/)
+    assert.match(parsed.message, /launchProductionApp/)
+  })
+
+  it('stamps authoritative runtime onto the outbound turn and strips it from operator display', () => {
+    const stamped = stampAuthoritativeTurn(
+      'Show me order #zvka8renspuyufi',
+      'orders (from BusinessRuntimeState):\n- #zvka8renspuyufi pending Priya Shopper',
+    )
+    assert.match(stamped, /<<<INDOBASE_RUNTIME>>>/)
+    assert.match(stamped, /#zvka8renspuyufi/)
+    assert.match(stamped, /Show me order #zvka8renspuyufi/)
+    const visible = cleanOperatorMessage(stamped)
+    assert.doesNotMatch(visible, /INDOBASE_RUNTIME/)
+    assert.match(visible, /Show me order #zvka8renspuyufi/)
+    assert.equal(stripAuthoritativeTurnStamp(stamped), 'Show me order #zvka8renspuyufi')
   })
 
   it('stripToolCapsuleNoise removes sessionStatus dumps and blueprint list lines', () => {

@@ -647,23 +647,22 @@ export async function platformShopOrders(input: {
         status: test.ok ? 200 : 502,
       } as ShopCatalogResponse & { status?: number }
     }
-    const catalog = await seedEcommerceCatalog({
-      appId,
-      ownerId: input.gotrueId,
-      products: [],
-    })
-    if (!catalog.ok) {
-      return { ok: false, message: catalog.message, status: 502 }
+    const snapshot = await listManagedShopSnapshot({ appId })
+    if (!snapshot.ok) {
+      return { ok: false, message: snapshot.message, status: 502 }
     }
     return {
       ok: true,
-      message: 'Shop orders snapshot from Indobase backend',
-      products: catalog.products,
-      catalog_json: catalog.catalog_json,
+      message: snapshot.orders.length
+        ? 'Shop orders snapshot from BusinessRuntimeState'
+        : 'Shop orders snapshot from Indobase backend',
+      products: snapshot.products,
+      orders: snapshot.orders,
+      catalog_json: snapshot.products,
       admin_html: await managedShopAdminHtml({
         appId,
         brand: input.brand,
-        products: catalog.products,
+        products: snapshot.products,
       }),
       status: 200,
     } as ShopCatalogResponse & { status?: number }

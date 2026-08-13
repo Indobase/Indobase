@@ -15,6 +15,7 @@ import {
 import type { Session } from '../auth.js'
 import {
   executeProductionLaunchJob,
+  getLatestProductionLaunchJob,
   type ProductionLaunchDeps,
   type ProductionLaunchExecuteResult,
 } from '../production-launch/index.js'
@@ -24,7 +25,7 @@ import {
   rememberBusinessSpec,
   type BusinessSpec,
 } from './business-spec.js'
-import { toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
+import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
 import { materializePreview } from './preview-artifact.js'
 import { probePreviewHttp } from '../static-launch.js'
 import {
@@ -115,7 +116,11 @@ function toSessionRuntime(
   snapshot?: BusinessSnapshotSummary | null,
   launch?: ProductionLaunchExecuteResult | null,
 ): BusinessRuntimeState {
-  const liveUrl = launch?.job.status === 'live' && launch.url ? launch.url : null
+  const latestJob = launch?.job || getLatestProductionLaunchJob(session.projectRef)
+  const liveUrl =
+    (launch?.job.status === 'live' && launch.url) ||
+    (latestJob?.status === 'live' && latestJob.url) ||
+    null
   const previewReady = persisted.preview.status === 'ready' && Boolean(persisted.preview.url)
   const projectState = liveUrl ? 'live' : previewReady ? 'preview_ready' : persisted.spec ? 'building' : 'empty'
   return toBusinessRuntimeState({
@@ -123,7 +128,10 @@ function toSessionRuntime(
     previewStatus: persisted.preview.status,
     previewUrl: persisted.preview.url || liveUrl,
     liveUrl,
-    catalogReady: Boolean(snapshot?.products?.length) || Boolean(launch?.job.evidence?.catalog_seeded),
+    catalogReady:
+      Boolean(snapshot?.products?.length) ||
+      Boolean(launch?.job.evidence?.catalog_seeded) ||
+      Boolean(latestJob?.evidence?.catalog_seeded),
     spec: persisted.spec || getBusinessSpec(session.projectRef),
     snapshot: snapshot || null,
     identity: {
@@ -137,10 +145,10 @@ function toSessionRuntime(
       kind: persisted.spec?.businessType || 'unknown',
       state: projectState,
     },
-    deployment: launch?.job
-      ? { status: launch.job.status, jobId: launch.job.jobId }
+    deployment: latestJob
+      ? { status: latestJob.status, jobId: latestJob.jobId }
       : undefined,
-    jobs: launch?.job ? [{ id: launch.job.jobId, status: launch.job.status }] : [],
+    jobs: latestJob ? [{ id: latestJob.jobId, status: latestJob.status }] : [],
     workspace: { ref: session.projectRef, slug: session.orgSlug },
     capabilities: Object.entries(persisted.capabilities).map(([id, status]) => ({
       id,
@@ -160,6 +168,7 @@ function composeAgentContext(result: {
   intent: OperatorIntentKind
   spec: BusinessSpec | null
   runtime: PersistedWorkspaceRuntime
+  businessRuntime: BusinessRuntimeState
   launch?: ProductionLaunchExecuteResult | null
 }): string {
   const spec = result.spec
@@ -167,6 +176,7 @@ function composeAgentContext(result: {
   const job = result.launch?.job
   const lines = [
     'INDOBASE_RUNTIME (authoritative this turn — chat history is not):',
+    composeRuntimeStateHint(result.businessRuntime),
     spec
       ? `BusinessSpec: name=${spec.businessName}; vertical=${spec.catalog.verticalId}; positioning=${spec.visualStyle}; type=${spec.businessType}`
       : 'BusinessSpec: none',
@@ -175,6 +185,10 @@ function composeAgentContext(result: {
   ]
   if (job) {
     lines.push(`production_job=${job.jobId}; status=${job.status}; url=${job.url || 'none'}`)
+  } else if (result.businessRuntime.deployment.jobId) {
+    lines.push(
+      `production_job=${result.businessRuntime.deployment.jobId}; status=${result.businessRuntime.deployment.status || 'unknown'}`,
+    )
   } else {
     lines.push('production_job=null')
   }
@@ -185,13 +199,32 @@ function composeAgentContext(result: {
     lines.push('FORBIDDEN: do not claim customer database enabled / ready.')
   }
   if (!job || job.status !== 'live' || !job.claim_live) {
-    lines.push('FORBIDDEN: do not claim LIVE or invent a live URL.')
+    if (!result.businessRuntime.live.isLive) {
+      lines.push('FORBIDDEN: do not claim LIVE or invent a live URL.')
+    }
+  }
+  if (result.businessRuntime.orders.length > 0) {
+    lines.push(
+      'FORBIDDEN: do not say commerce admin / database / orders are unavailable. Quote BusinessRuntimeState.orders.',
+    )
   }
   if (result.intent === 'create_business' && preview.status === 'ready') {
     lines.push('Say the preview is ready only if preview.status=ready. Offer Launch when they want it live.')
   }
   if (result.intent === 'launch_production' && job?.status === 'live' && job.url) {
     lines.push(`LIVE confirmed at ${job.url}. Operate from BusinessRuntimeState.`)
+  }
+  if (result.intent === 'preview_edit') {
+    if (preview.status === 'ready' && preview.url) {
+      lines.push(
+        `PREVIEW_EDIT is allowed. preview.status=ready. The store IS this workspace (${spec?.businessName || result.businessRuntime.business.name || 'this business'} at ${preview.url}). Edit the persisted artifact. FORBIDDEN: “not in this workspace” / “isn’t currently available”.`,
+      )
+    } else {
+      lines.push('PREVIEW_EDIT: preview is not ready. Do not claim the storefront exists yet.')
+    }
+  }
+  if (result.intent === 'operate' && result.businessRuntime.orders.length > 0) {
+    lines.push('SCREEN / Ask AI: answer from BusinessRuntimeState.orders. Do not call a missing admin service.')
   }
   return lines.join('\n')
 }
@@ -347,7 +380,12 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       runtime,
       businessRuntime,
       recovered: false,
-      agentContext: composeAgentContext({ intent: 'other', spec: runtime.spec, runtime }),
+      agentContext: composeAgentContext({
+        intent: 'other',
+        spec: runtime.spec,
+        runtime,
+        businessRuntime,
+      }),
       operatorMessage: 'Finish account setup first. I already have your request.',
     }
   }
@@ -392,7 +430,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
   spec = runtime.spec || spec
   const businessRuntime = toSessionRuntime(session, runtime, input.snapshot, launch)
-  const agentContext = composeAgentContext({ intent, spec, runtime, launch })
+  const agentContext = composeAgentContext({ intent, spec, runtime, businessRuntime, launch })
   const operatorMessage =
     intent === 'launch_production' && launch?.ok && launch.url
       ? `Your store is live — ${launch.url}`

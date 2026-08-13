@@ -42,7 +42,15 @@ describe('agent truth reconciliation', () => {
       spec,
       snapshot: {
         products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900 }],
-        orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', amount_minor: 480000 }],
+        orders: [
+          {
+            id: 'fxeuxgfdcoq8dzs',
+            status: 'pending',
+            amount_minor: 480000,
+            customer_name: 'Priya Shopper',
+            items: 'Apex Runner',
+          },
+        ],
       },
     })
     assert.equal(
@@ -59,6 +67,7 @@ describe('agent truth reconciliation', () => {
     assert.match(hint, /sneakers/)
     assert.match(hint, /Apex Runner/)
     assert.match(hint, /#fxeuxgfdcoq8dzs/)
+    assert.match(hint, /Priya Shopper/)
     assert.match(hint, /orders \(from BusinessRuntimeState\)/)
     assert.match(hint, /Answer “show latest order”/)
     const runtime = toBusinessRuntimeState({

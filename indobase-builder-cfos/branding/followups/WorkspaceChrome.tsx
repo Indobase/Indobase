@@ -171,6 +171,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
         w.__INDOBASE_PROJECT_REF__ = s.project_ref || null
         if (s.project) w.__INDOBASE_PROJECT__ = s.project
         if (s.runtime) w.__INDOBASE_RUNTIME__ = s.runtime
+        if (typeof s.agent_hint === 'string' && s.agent_hint.trim()) {
+          w.__INDOBASE_AGENT_HINT__ = s.agent_hint
+        }
         if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object') {
           ;(w.__INDOBASE__ as { guest?: boolean }).guest = !!s.guest
         } else {

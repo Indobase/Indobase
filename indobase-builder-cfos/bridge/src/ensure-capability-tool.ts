@@ -176,7 +176,7 @@ export async function executeEnsureDatabase(session: {
       typeof result.message === 'string'
         ? result.message
         : claim
-          ? 'Customer database ready — applySchema (or guidedBackend) next, then build UI against session.backend'
+          ? 'Business data is ready — applySchema (or guidedBackend) next, then build UI against session.backend'
           : 'Could not enable database',
     next_hint: claim
       ? 'ENSURE_FIRST_OK: applySchema or guidedBackend, then build UI against session.backend records API (INDOBASE_COLLECTION_PREFIX + /api/collections/…/records). Do not invent third-party databases or /rest/v1 on managed backend.'

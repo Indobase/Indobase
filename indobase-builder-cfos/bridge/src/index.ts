@@ -91,6 +91,7 @@ import {
   buildAuthVerifySuccessPayload,
   buildClaimSessionSuccessPayload,
   buildSessionApiPayload,
+  composeAgentHintForSession,
 } from './session-payload.js'
 import { accountRequiredBody } from './guest-gates.js'
 import { authErrorJsonBody, normalizeAuthRouteError } from './auth-errors.js'
@@ -102,8 +103,7 @@ import {
 } from './agent-turn-meter.js'
 import { deriveAgentCredentials } from './agent-credentials.js'
 import {
-  lookupAgentPrincipal,
-  lookupMemberPrincipalForProject,
+  reconcileAgentPrincipal,
   rehydrateSessionBackend,
   rememberAgentPrincipal,
   updateAgentPrincipalBackend,
@@ -126,7 +126,7 @@ import { rememberPendingSession, takePendingSessionForClaim } from './pending-se
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
 import { setWorkspaceScreen } from './ux-screen-store.js'
-import { listCommerceOrders, listCommerceProducts } from './commerce/pb-adapter.js'
+import { loadAuthoritativeLaunchFacts } from './ux/authoritative-turn.js'
 
 initBridgeSentry('builder-cfos')
 
@@ -279,7 +279,7 @@ async function requireSignedInSessionOrAgentTool(c: Context): Promise<Session | 
     return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
   }
 
-  const principal = await lookupAgentPrincipal(username)
+  const principal = await reconcileAgentPrincipal(username)
   if (!principal) {
     return c.json(
       {
@@ -341,7 +341,7 @@ async function resolveSessionOrAgentPrincipal(
     return c.json({ message: 'Unauthorized — open Indobase OS and continue in chat' }, 401)
   }
 
-  let principal = await lookupAgentPrincipal(username)
+  const principal = await reconcileAgentPrincipal(username)
   if (!principal) {
     return c.json(
       {
@@ -352,16 +352,6 @@ async function resolveSessionOrAgentPrincipal(
       },
       401,
     )
-  }
-
-  // OTP upgrades the browser to a member, but AgentTool may still present the
-  // pre-claim guest username. Prefer a member principal for the same workspace.
-  const looksGuest = Boolean(
-    principal.guest || principal.projectRef.startsWith('draft_') || !principal.email?.includes('@'),
-  )
-  if (looksGuest && !principal.projectRef.startsWith('draft_')) {
-    const member = await lookupMemberPrincipalForProject(principal.projectRef)
-    if (member) principal = member
   }
 
   const guest = Boolean(
@@ -839,6 +829,20 @@ app.get('/api/os/runtime/session-status', async (c) => {
   const resolved = await resolveSessionOrAgentPrincipal(c)
   if (resolved instanceof Response) return resolved
   const { session, guest } = resolved
+  const facts = await loadAuthoritativeLaunchFacts(session)
+  const agent = buildAgentSessionContext(session)
+  const payload = buildSessionApiPayload({
+    session,
+    agentHint: agent.agentHint,
+    generation: agent.generation,
+    agentRuntimeConfigured: Boolean(resolveCloudflareOsBase()),
+    agentRuntimeUrl: resolveCloudflareOsBase() || null,
+    osProxyPath: `${OS_PREFIX}/`,
+    indobaseProxyPath: '/api/indobase/proxy/',
+    launchStatus: facts.launchStatus,
+    productionJob: facts.productionJob,
+    businessSnapshot: facts.snapshot,
+  })
   return c.json({
     ok: true,
     guest,
@@ -847,9 +851,13 @@ app.get('/api/os/runtime/session-status', async (c) => {
     project_ref: session.projectRef,
     project_name: session.projectName || null,
     signed_in: !guest,
+    runtime: payload.runtime,
+    agent_hint: payload.agent_hint,
+    agent_context: payload.agent_hint,
+    snapshot: facts.snapshot,
     message: guest
       ? 'Unsigned-in: complete account in chat (name+email+DPDP → authStart+authVerify) or Create account. Do not emit niche/recommendation cards until after verify. Then continue the original request.'
-      : 'Signed in — do not ask for signup/OTP/Create account again. Continue the operator request immediately. Niche CHOICES are OK only after this point.',
+      : 'Signed in — do not ask for signup/OTP/Create account again. Continue the operator request immediately. Speak only from runtime / BusinessRuntimeState. Niche CHOICES are OK only after this point.',
   })
 })
 
@@ -1922,6 +1930,8 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
     message = undefined
   }
 
+  const facts = await loadAuthoritativeLaunchFacts(sessionOrErr)
+
   // Guests must be able to chat (account OTP gate). Meter only after verify.
   // Remember the original ask so OTP verify can create spec + preview.
   if (isGuestSession(sessionOrErr)) {
@@ -1931,10 +1941,16 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         session: sessionOrErr,
         message: message || '',
         guest: true,
+        snapshot: facts.snapshot,
       })
     } catch {
       execution = null
     }
+    const agentHint = composeAgentHintForSession(sessionOrErr, execution?.agentContext || '', {
+      launch: facts.launchStatus,
+      snapshot: facts.snapshot,
+      runtime: execution?.businessRuntime || null,
+    })
     return c.json({
       ok: true,
       guest: true,
@@ -1955,7 +1971,8 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
           }
         : null,
       runtime: execution?.businessRuntime || null,
-      agent_context: execution?.agentContext || null,
+      agent_context: execution?.agentContext || agentHint,
+      agent_hint: agentHint,
     })
   }
 
@@ -1985,11 +2002,22 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         session: sessionOrErr,
         message: message || '',
         guest: false,
+        snapshot: facts.snapshot,
       })
     } catch {
       execution = null
     }
   }
+
+  const agentHint = composeAgentHintForSession(sessionOrErr, execution?.agentContext || '', {
+    launch: facts.launchStatus,
+    snapshot: facts.snapshot,
+    runtime: execution?.businessRuntime || null,
+    previewStatus:
+      execution?.runtime.preview.status ||
+      (facts.launchStatus?.previewReady ? 'ready' : undefined),
+    catalogReady: Boolean(facts.snapshot?.products?.length || facts.launchStatus?.catalogReady),
+  })
 
   return c.json(
     {
@@ -2027,7 +2055,8 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
           }
         : null,
       runtime: execution?.businessRuntime || null,
-      agent_context: execution?.agentContext || null,
+      agent_context: execution?.agentContext || agentHint,
+      agent_hint: agentHint,
     },
     status,
   )
@@ -2209,34 +2238,7 @@ app.get('/api/session', async (c) => {
     }
   }
 
-  let launchStatus = null
-  try {
-    launchStatus = await getLaunchStatus(session.projectRef)
-  } catch {
-    launchStatus = null
-  }
-
-  const productionJob = guest ? null : getLatestProductionLaunchJob(session.projectRef)
-
-  let businessSnapshot = null
-  const catalogReady = Boolean(
-    productionJob?.evidence?.catalog_seeded || productionJob?.evidence?.backend_ready || productionJob?.status === 'live',
-  )
-  if (!guest) {
-    try {
-      const [products, orders] = await Promise.all([
-        listCommerceProducts(session.projectRef),
-        listCommerceOrders(session.projectRef),
-      ])
-      businessSnapshot = { products, orders }
-    } catch {
-      businessSnapshot = { products: [], orders: [] }
-    }
-  }
-
-  if (launchStatus) {
-    launchStatus = { ...launchStatus, catalogReady }
-  }
+  const facts = await loadAuthoritativeLaunchFacts(session)
 
   return c.json(
     buildSessionApiPayload({
@@ -2248,9 +2250,9 @@ app.get('/api/session', async (c) => {
       osProxyPath: `${OS_PREFIX}/`,
       indobaseProxyPath: '/api/indobase/proxy/',
       promptQuota,
-      launchStatus,
-      productionJob,
-      businessSnapshot,
+      launchStatus: facts.launchStatus,
+      productionJob: facts.productionJob,
+      businessSnapshot: facts.snapshot,
     }),
   )
 })

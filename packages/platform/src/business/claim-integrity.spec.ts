@@ -47,4 +47,39 @@ describe('claim integrity', () => {
     const hits = detectFabricatedClaims('Orders are available in your store.', empty)
     expect(hits).toContain('orders')
   })
+
+  it('forbids “orders unavailable” speech when snapshot lists an order', () => {
+    const withOrder = emptyBusinessRuntimeState({
+      orders: [
+        {
+          id: 'zvka8renspuyufi',
+          orderNumber: 'zvka8renspuyufi',
+          status: 'pending',
+          amountMinor: 18900,
+          customerName: 'Priya Shopper',
+          itemsSummary: 'Thread One/Bone',
+        },
+      ],
+    })
+    const speech =
+      'The commerce admin service isn’t available. No order data was returned.'
+    expect(detectFabricatedClaims(speech, withOrder)).toContain('orders-unavailable')
+    expect(completedClaimAllowed(withOrder, 'orders-unavailable')).toBe(false)
+    const cleaned = sanitizeAgentNarration(speech, withOrder)
+    expect(cleaned).not.toMatch(/isn.?t available|no order data/i)
+    expect(cleaned).toMatch(/zvka8renspuyufi/)
+    expect(cleaned).toMatch(/Priya Shopper/)
+  })
+
+  it('forbids “store not in this workspace” when preview is ready', () => {
+    const ready = emptyBusinessRuntimeState({
+      preview: { status: 'ready', url: 'https://builder.indobase.in/live/x/' },
+      health: { catalogReady: false, paymentsReady: false, previewReady: true },
+    })
+    const speech = 'That store is not in this workspace and isn’t currently available.'
+    expect(detectFabricatedClaims(speech, ready)).toContain('store-missing')
+    const cleaned = sanitizeAgentNarration(speech, ready)
+    expect(cleaned).not.toMatch(/not in this workspace/i)
+    expect(cleaned).toMatch(/this workspace/)
+  })
 })

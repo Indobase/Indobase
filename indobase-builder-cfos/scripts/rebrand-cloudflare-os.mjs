@@ -773,7 +773,14 @@ void (async () => {
     const hasGuestSync =
       text.includes('__INDOBASE_GUEST__') && text.includes('meter.clone().json()')
     const hasTurnContext = text.includes('__INDOBASE_TURN_CONTEXT__')
-    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync && hasTurnContext) {
+    const hasRuntimeStamp = text.includes('<<<INDOBASE_RUNTIME>>>')
+    let dirty = false
+    if (text.includes('const inputValue =') && text.includes('/api/os/agent/begin-turn')) {
+      text = text.replace('const inputValue =', 'let inputValue =')
+      dirty = true
+    }
+    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync && hasTurnContext && hasRuntimeStamp) {
+      if (dirty) write(path, text)
       console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
     } else {
       const meterBlockRe =
@@ -805,6 +812,7 @@ void (async () => {
             stage?: string
             signed_in?: boolean
             agent_context?: string
+            agent_hint?: string
             runtime?: unknown
             execution?: { operator_message?: string }
           }
@@ -813,12 +821,22 @@ void (async () => {
             __INDOBASE_GUEST__?: boolean
             __INDOBASE_SESSION_STAGE__?: string
             __INDOBASE_TURN_CONTEXT__?: string
+            __INDOBASE_AGENT_HINT__?: string
             __INDOBASE_RUNTIME__?: unknown
           }
           w.__INDOBASE_GUEST__ = isGuest
           w.__INDOBASE_SESSION_STAGE__ = j?.stage || (isGuest ? 'guest' : 'member')
-          if (typeof j?.agent_context === 'string' && j.agent_context.trim()) {
-            w.__INDOBASE_TURN_CONTEXT__ = j.agent_context
+          const turnCtx = (typeof j?.agent_context === 'string' && j.agent_context.trim())
+            ? j.agent_context.trim()
+            : (typeof j?.agent_hint === 'string' && j.agent_hint.trim() ? j.agent_hint.trim() : '')
+          if (turnCtx) {
+            w.__INDOBASE_TURN_CONTEXT__ = turnCtx
+            if (!inputValue.includes('<<<INDOBASE_RUNTIME>>>')) {
+              inputValue = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + inputValue
+            }
+          }
+          if (typeof j?.agent_hint === 'string' && j.agent_hint.trim()) {
+            w.__INDOBASE_AGENT_HINT__ = j.agent_hint
           }
           if (j?.runtime) w.__INDOBASE_RUNTIME__ = j.runtime
           window.dispatchEvent(new CustomEvent('indobase:runtime-updated'))

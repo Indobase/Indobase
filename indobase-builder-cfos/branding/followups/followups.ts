@@ -337,10 +337,45 @@ export function stripLeakedCot(message: string): string {
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
+export const INDOBASE_RUNTIME_STAMP_OPEN = '<<<INDOBASE_RUNTIME>>>'
+export const INDOBASE_RUNTIME_STAMP_CLOSE = '<<<END_INDOBASE_RUNTIME>>>'
+
+/** Prefix the outbound agent turn with authoritative state (stripped from operator display). */
+export function stampAuthoritativeTurn(userMessage: string, agentContext: string): string {
+  const ctx = (agentContext || '').trim()
+  const msg = userMessage || ''
+  if (!ctx) return msg
+  if (msg.includes(INDOBASE_RUNTIME_STAMP_OPEN)) return msg
+  return `${INDOBASE_RUNTIME_STAMP_OPEN}\n${ctx}\n${INDOBASE_RUNTIME_STAMP_CLOSE}\n\n${msg}`
+}
+
+export function stripAuthoritativeTurnStamp(message: string): string {
+  if (!message) return message
+  return message
+    .replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*?<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+const CHIP_TOOL_NAMES =
+  /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase)\b/gi
+
+/** Operator-visible chip labels must never name internal tools. */
+export function operatorChipLabel(label: string): string {
+  let out = (label || '')
+    .replace(/\s+with\s+launchBusiness\b/gi, '')
+    .replace(CHIP_TOOL_NAMES, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+[—–-]\s*$/g, '')
+    .trim()
+  if (!out || /^with$/i.test(out)) out = 'Continue'
+  return out
+}
+
 /** Hide raw tool capsule dumps from operator-visible markdown (keep dev capsules intact). */
 export function stripToolCapsuleNoise(message: string): string {
   if (!message) return message
-  let t = message
+  let t = stripAuthoritativeTurnStamp(message)
   t = t.replace(/```(?:json)?\s*\{[\s\S]*?"tool"\s*:\s*"sessionStatus"[\s\S]*?\}\s*```/gi, '')
   t = t.replace(
     /```(?:json)?\s*\{[\s\S]*?"(?:signed_in|stage|guest)"[\s\S]*?"sessionStatus"[\s\S]*?\}\s*```/gi,
@@ -886,10 +921,10 @@ export function parseFollowUpLine(line: string): FollowUpItem | null {
 
   const pipe = trimmed.indexOf('|')
   if (pipe === -1) {
-    return { label: trimmed, message: trimmed }
+    return { label: operatorChipLabel(trimmed), message: trimmed }
   }
 
-  const label = trimmed.slice(0, pipe).trim()
+  const label = operatorChipLabel(trimmed.slice(0, pipe).trim())
   const message = trimmed.slice(pipe + 1).trim() || label
   if (!label) return null
   return { label, message }
@@ -1253,7 +1288,15 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
 
   const finish = (parsed: ParsedFollowUps | null): ParsedFollowUps | null => {
     if (!parsed) return null
-    return filterChipsForJourneyState(parsed, flags)
+    const filtered = filterChipsForJourneyState(parsed, flags)
+    if (!filtered) return null
+    return {
+      ...filtered,
+      items: filtered.items.map((item) => ({
+        ...item,
+        label: operatorChipLabel(item.label),
+      })),
+    }
   }
 
   const parsed = parseFollowUps(cleaned)

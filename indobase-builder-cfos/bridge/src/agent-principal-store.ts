@@ -107,6 +107,25 @@ export async function lookupAgentPrincipal(
 }
 
 /**
+ * Cookie session and AgentTool username must resolve to the same workspace.
+ * After OTP the workerd initiator may still be the pre-claim guest username.
+ */
+export async function reconcileAgentPrincipal(
+  username: string,
+): Promise<AgentPrincipalRecord | null> {
+  let principal = await lookupAgentPrincipal(username)
+  if (!principal) return null
+  const looksGuest = Boolean(
+    principal.guest || principal.projectRef.startsWith('draft_') || !principal.email?.includes('@'),
+  )
+  if (looksGuest && !principal.projectRef.startsWith('draft_')) {
+    const member = await lookupMemberPrincipalForProject(principal.projectRef)
+    if (member) return member
+  }
+  return principal
+}
+
+/**
  * After OTP, CFOS may still call tools as the pre-verify guest username while the
  * browser cookie is already a member. Prefer any non-guest principal for the same
  * workspace so sessionStatus does not restart signup.

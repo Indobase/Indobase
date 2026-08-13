@@ -30,6 +30,8 @@ export type FabricatedClaim =
   | 'orders'
   | 'products'
   | 'catalog'
+  | 'orders-unavailable'
+  | 'store-missing'
 
 const PREVIEW_READY_SPEECH =
   /\b(preview is ready|your (?:store|shop|site|app) is ready|everything is ready|storefront is (?:ready|live)|you can (?:view|browse|preview) (?:it|your store))\b/i
@@ -46,6 +48,12 @@ const ORDERS_SPEECH =
 const PRODUCTS_SPEECH =
   /\b(catalog is ready|products are (?:live|ready|in the database))\b/i
 
+const ORDERS_UNAVAILABLE_SPEECH =
+  /\b(?:commerce admin|admin service).{0,80}(?:isn['’]?t|is not|not) available|no order data (?:was )?returned|orders? (?:are|is|connection|data).{0,40}(?:unavailable|not (?:available|connected|returned))|(?:the )?(?:database|backend) isn['’]?t (?:connected|available)\b/i
+
+const STORE_MISSING_SPEECH =
+  /\b(?:not in this workspace|isn['’]?t currently available|(?:store|shop|site) (?:is )?(?:not|isn['’]?t) (?:in this workspace|currently available))\b/i
+
 export function detectFabricatedClaims(
   text: string,
   state: BusinessRuntimeState,
@@ -61,9 +69,11 @@ export function detectFabricatedClaims(
   )
   if (!dataReady && DATABASE_SPEECH.test(body)) hits.push('capability')
   if (state.orders.length === 0 && ORDERS_SPEECH.test(body)) hits.push('orders')
+  if (state.orders.length > 0 && ORDERS_UNAVAILABLE_SPEECH.test(body)) hits.push('orders-unavailable')
   if (state.products.length === 0 && !state.health.catalogReady && PRODUCTS_SPEECH.test(body)) {
     hits.push('products')
   }
+  if (agentMayClaimPreview(state) && STORE_MISSING_SPEECH.test(body)) hits.push('store-missing')
   return hits
 }
 
@@ -80,6 +90,10 @@ export function completedClaimAllowed(
       return state.capabilities.some((c) => c.status === 'ready' || c.enabled)
     case 'orders':
       return state.orders.length > 0
+    case 'orders-unavailable':
+      return state.orders.length === 0
+    case 'store-missing':
+      return !agentMayClaimPreview(state)
     case 'products':
     case 'catalog':
       return state.health.catalogReady || state.products.length > 0
@@ -95,6 +109,22 @@ const NO_DATABASE =
 const NO_ORDERS = 'I do not have any orders in BusinessRuntimeState yet.'
 const NO_PRODUCTS = 'The catalog is not ready in BusinessRuntimeState yet.'
 
+function describeListedOrders(state: BusinessRuntimeState): string {
+  return state.orders
+    .slice(0, 3)
+    .map((o) => {
+      const id = o.orderNumber || o.id
+      const who = o.customerName || o.email || ''
+      const amt =
+        typeof o.amountMinor === 'number' && Number.isFinite(o.amountMinor)
+          ? String(Math.round(o.amountMinor / 100))
+          : ''
+      const items = o.itemsSummary || ''
+      return `#${id}${who ? ` ${who}` : ''}${amt ? ` ${amt}` : ''}${items ? ` ${items}` : ''}`.trim()
+    })
+    .join('; ')
+}
+
 /**
  * Rewrite fabricated success speech. Never invent preview/live/database/orders.
  */
@@ -106,6 +136,17 @@ export function sanitizeAgentNarration(text: string, state: BusinessRuntimeState
   if (hits.includes('live')) out = out.replace(LIVE_SPEECH, NOT_LIVE)
   if (hits.includes('capability')) out = out.replace(DATABASE_SPEECH, NO_DATABASE)
   if (hits.includes('orders')) out = out.replace(ORDERS_SPEECH, NO_ORDERS)
+  if (hits.includes('orders-unavailable')) {
+    const listed = describeListedOrders(state)
+    out = out.replace(
+      ORDERS_UNAVAILABLE_SPEECH,
+      listed ? `order ${listed} is listed in BusinessRuntimeState` : NO_ORDERS,
+    )
+  }
+  if (hits.includes('store-missing')) {
+    const url = state.preview.url || state.live.url || 'this workspace'
+    out = out.replace(STORE_MISSING_SPEECH, `the store is in this workspace (${url})`)
+  }
   if (hits.includes('products')) out = out.replace(PRODUCTS_SPEECH, NO_PRODUCTS)
   if (detectFabricatedClaims(out, state).length === 0) return out
   return [PREPARING, hits.includes('capability') ? NO_DATABASE : '', hits.includes('live') ? NOT_LIVE : '']

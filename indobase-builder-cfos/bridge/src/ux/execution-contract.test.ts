@@ -6,7 +6,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 
 import type { Session } from '../auth.ts'
-import { detectFabricatedClaims, sanitizeAgentNarration } from '@indobase/platform'
+import { detectFabricatedClaims, isForbiddenAgentClaim, sanitizeAgentNarration } from '@indobase/platform'
 import { clearProductionLaunchJobsForTests } from '../production-launch/index.ts'
 import { readLiveFile } from '../static-launch.ts'
 import {
@@ -306,6 +306,66 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(
       classifyOperatorIntent('Go Live — call launchProductionApp for UrbanThread', null),
       'launch_production',
+    )
+  })
+
+  it('Ask AI / SCREEN includes snapshot orders in begin-turn agentContext', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const turn = await applyOperatorIntent({
+      session,
+      message: 'SCREEN\nsection: orders\nentity: zvka8renspuyufi\nrequest: Show me order #zvka8renspuyufi',
+      guest: false,
+      snapshot: {
+        products: [{ id: 'thread-one', name: 'Thread One/Bone', priceMinor: 18900 }],
+        orders: [
+          {
+            id: 'zvka8renspuyufi',
+            orderNumber: 'zvka8renspuyufi',
+            status: 'pending',
+            amount_minor: 18900,
+            email: 'priya@shopper.test',
+            customer_name: 'Priya Shopper',
+            items: 'Thread One/Bone',
+          },
+        ],
+      },
+    })
+    assert.equal(turn.intent, 'operate')
+    assert.equal(turn.businessRuntime.orders[0]?.id, 'zvka8renspuyufi')
+    assert.equal(turn.businessRuntime.orders[0]?.customerName, 'Priya Shopper')
+    assert.match(turn.agentContext, /#zvka8renspuyufi/)
+    assert.match(turn.agentContext, /Priya Shopper/)
+    assert.match(turn.agentContext, /Thread One\/Bone/)
+    assert.match(turn.agentContext, /FORBIDDEN: do not say commerce admin/)
+    assert.equal(isForbiddenAgentClaim(turn.businessRuntime, 'orders-unavailable'), true)
+    assert.ok(
+      detectFabricatedClaims(
+        'The commerce admin service isn’t available. No order data was returned.',
+        turn.businessRuntime,
+      ).includes('orders-unavailable'),
+    )
+  })
+
+  it('PREVIEW_EDIT is allowed when preview.status=ready', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const turn = await applyOperatorIntent({
+      session,
+      message:
+        'PREVIEW_EDIT\ntarget: section / hero (Hero)\nsource: preview\nintent: rewrite\nrequest: make hero shorter',
+      guest: false,
+    })
+    assert.equal(turn.intent, 'preview_edit')
+    assert.equal(turn.runtime.preview.status, 'ready')
+    assert.equal(turn.businessRuntime.preview.status, 'ready')
+    assert.match(turn.agentContext, /PREVIEW_EDIT is allowed/)
+    assert.match(turn.agentContext, /UrbanThread/)
+    assert.match(turn.agentContext, /FORBIDDEN: .*(not in this workspace|isn.t currently available)/)
+    assert.equal(
+      detectFabricatedClaims(
+        'That store is not in this workspace and isn’t currently available.',
+        turn.businessRuntime,
+      ).includes('store-missing'),
+      true,
     )
   })
 })

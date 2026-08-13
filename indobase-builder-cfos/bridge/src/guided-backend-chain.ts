@@ -231,12 +231,35 @@ function inputHasPlaceTestOrderTrue(text: string): boolean {
   return /place_test_order\s*=\s*true/i.test(text) || /\bprove (with )?placeTestShopOrder\b/i.test(text)
 }
 
+const OPERATOR_STEP_LABELS: Record<string, string> = {
+  architectureBoilerplate: 'Business data model',
+  ensureDatabase: 'Business data',
+  ensureLogin: 'Customer login',
+  ensureEmail: 'Email',
+  setupShopCatalog: 'Catalog',
+  placeTestShopOrder: 'Test order',
+  resolveProductImages: 'Product photos',
+  launchBusiness: 'Preview publish',
+  launchProductionApp: 'Launch',
+}
+
+function operatorStepLabel(id: string): string {
+  return OPERATOR_STEP_LABELS[id] || id.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).trim()
+}
+
+function operatorStepMessage(message: string): string {
+  return (message || '')
+    .replace(/\bCustomer database (?:ready|enabled|created)\b/gi, 'Business data is ready')
+    .replace(/\barchitectureBoilerplate\b/gi, 'Business data model')
+    .replace(/\bPocketBase\b/gi, 'business data')
+}
+
 function progressMarkdown(steps: GuidedBackendStep[]): string {
-  const lines = ['### Guided backend progress']
+  const lines = ['### Setup progress']
   for (const step of steps) {
     const icon =
       step.status === 'ok' ? '✅' : step.status === 'failed' ? '❌' : step.status === 'skipped' ? '⏭️' : '…'
-    lines.push(`${icon} **${step.id}** — ${step.message}`)
+    lines.push(`${icon} **${operatorStepLabel(step.id)}** — ${operatorStepMessage(step.message)}`)
   }
   return lines.join('\n')
 }
@@ -457,7 +480,7 @@ export async function executeGuidedBackend(
   steps.push({
     id: 'ensureDatabase',
     status: 'ok',
-    message: db.message || 'Customer database ready',
+    message: db.message || 'Business data is ready',
   })
   backendSnapshot = backendPayloadFromEnsure(db) ?? backendSnapshot
 

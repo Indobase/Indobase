@@ -26,6 +26,8 @@ export type BusinessOrder = {
   paymentStatus?: string
   amountMinor?: number
   email?: string
+  customerName?: string
+  itemsSummary?: string
 }
 
 export type BusinessInventoryItem = {

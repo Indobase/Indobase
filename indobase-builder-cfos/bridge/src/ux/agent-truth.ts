@@ -19,7 +19,7 @@ export type { BusinessRuntimeState }
 export { isForbiddenAgentClaim }
 
 export type BusinessSnapshotSummary = {
-  products: Array<{ id?: string; name?: string; priceMinor?: number }>
+  products: Array<{ id?: string; name?: string; priceMinor?: number; slug?: string }>
   orders: Array<{
     id?: string
     orderNumber?: string
@@ -27,6 +27,8 @@ export type BusinessSnapshotSummary = {
     payment_status?: string
     amount_minor?: number
     email?: string
+    customer_name?: string
+    items?: string
   }>
   customers?: Array<{ id?: string; email?: string; name?: string }>
 }
@@ -101,6 +103,8 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
         paymentStatus: o.payment_status,
         amountMinor: o.amount_minor,
         email: o.email,
+        customerName: o.customer_name,
+        itemsSummary: o.items,
       })),
     capabilities: truth.capabilities,
     jobs: truth.jobs,

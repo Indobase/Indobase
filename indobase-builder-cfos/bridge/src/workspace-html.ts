@@ -115,6 +115,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
         tool_alias: '/api/os/tools/goLive',
       };
       window.__INDOBASE_PREVIEW_STATUS__ = (s.preview && s.preview.status) || null;
+      if (s.runtime) window.__INDOBASE_RUNTIME__ = s.runtime;
       window.__INDOBASE_PREVIEW_URL__ =
         (s.preview && s.preview.status === 'ready' && s.preview.url) ||
         (s.project && s.project.state === 'live' && s.journey && s.journey.live_url) ||
@@ -203,6 +204,16 @@ export function injectIndobaseContextBootstrap(html: string): string {
           var row = el.closest('[class*="rounded-xl"]') || el;
           row.setAttribute('data-ib-hidden-tool', '1');
           row.style.display = 'none';
+        }
+        var walk = (root || document).querySelectorAll('p, li, div, span');
+        for (var j = 0; j < walk.length; j++) {
+          var node = walk[j];
+          var raw = node.childNodes && node.childNodes.length === 1 && node.childNodes[0].nodeType === 3
+            ? (node.textContent || '')
+            : '';
+          if (!raw || raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1) continue;
+          var stripped = raw.replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*?<<<END_INDOBASE_RUNTIME>>>\\s*/g, '').trim();
+          if (stripped !== raw) node.textContent = stripped;
         }
       } catch (_) {}
     }

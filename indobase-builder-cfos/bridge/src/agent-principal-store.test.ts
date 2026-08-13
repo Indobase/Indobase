@@ -4,7 +4,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, it } from 'node:test'
 
-import { lookupAgentPrincipal, rememberAgentPrincipal } from './agent-principal-store.ts'
+import {
+  lookupAgentPrincipal,
+  reconcileAgentPrincipal,
+  rememberAgentPrincipal,
+} from './agent-principal-store.ts'
 
 describe('agent-principal-store', () => {
   let dir = ''
@@ -192,5 +196,29 @@ describe('agent-principal-store', () => {
     })
     assert.equal(hydrated.backend?.api_url, 'https://backend.indobase.in')
     assert.equal(hydrated.backend?.anon_key, 'public')
+  })
+
+  it('reconcileAgentPrincipal prefers the member principal for the same workspace', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_guest_old',
+      gotrueId: 'guest_abc',
+      projectRef: 'roshfdaaf13e89',
+      email: '',
+      guest: true,
+    })
+    await rememberAgentPrincipal({
+      username: 'ib_member_new',
+      gotrueId: 'user-real',
+      projectRef: 'roshfdaaf13e89',
+      email: 'op@indobase.in',
+      guest: false,
+    })
+    const reconciled = await reconcileAgentPrincipal('ib_guest_old')
+    assert.equal(reconciled?.guest, false)
+    assert.equal(reconciled?.email, 'op@indobase.in')
+    assert.equal(reconciled?.projectRef, 'roshfdaaf13e89')
+    assert.equal(reconciled?.gotrueId, 'user-real')
   })
 })
