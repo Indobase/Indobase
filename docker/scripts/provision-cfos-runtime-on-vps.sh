@@ -70,13 +70,17 @@ wait_cfos_ready() {
         curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 15 \
           -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
           -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
-          http://127.0.0.1:8787/api 2>/dev/null || echo 000
+          http://127.0.0.1:8787/api 2>/dev/null || true
       )"
+      ws_code="${ws_code:-000}"
       # 101 = ready; 400 = HTTP hit without completing upgrade still proves listener+handler.
-      if [[ "$ws_code" == "101" || "$ws_code" == "400" ]]; then
-        echo "Runtime is up (HTTP 200, /api → ${ws_code})."
-        return 0
-      fi
+      # curl WS upgrade often exits non-zero after 101; never append a second code.
+      case "$ws_code" in
+        101*|400*)
+          echo "Runtime is up (HTTP 200, /api → ${ws_code})."
+          return 0
+          ;;
+      esac
       echo "  (HTTP up; /api returned ${ws_code}, waiting… $i)"
     elif ss -lntp 2>/dev/null | grep -q ':8787'; then
       echo "  (listener up; still warming HTTP… $i)"
