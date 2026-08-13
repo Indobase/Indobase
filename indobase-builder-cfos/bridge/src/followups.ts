@@ -400,11 +400,54 @@ export function stripToolCapsuleNoise(message: string): string {
   )
   t = t.replace(/^.*\bListed \d+ blueprints?\b.*$/gim, '')
   t = t.replace(/^.*\bsessionStatus\b.*(?:signed_in|member|guest).*$/gim, '')
+  t = t.replace(/^.*\bUsing (?:the )?(?:tool|authStart|authVerify|launchProductionApp|launchBusiness)\b.*$/gim, '')
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function cleanOperatorMessage(message: string): string {
-  return stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))
+const BLOCKED_BUILD_SPEECH =
+  /\b(?:(?:launch|preview|persisted-preview|editing) command|launchProductionApp|launchBusiness|preview|launch)\b.{0,60}isn['’]?t (?:currently )?available|\bcommand isn['’]?t (?:currently )?available\b|\bpersisted-preview editing command isn['’]?t available\b/i
+
+const DEFAULT_CONDUCTOR_REPLY =
+  'That’s already in progress. Preview is ready — tell me what to change, or launch when you want it live.'
+
+export type BuilderChatRewriteOpts = {
+  conductorReply?: string | null
+  businessName?: string | null
+}
+
+function readWindowString(key: '__INDOBASE_OPERATOR_MESSAGE__' | '__INDOBASE_BUSINESS_NAME__'): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const value = (window as unknown as Record<string, unknown>)[key]
+    return typeof value === 'string' && value.trim() ? value.trim() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The conductor already built this turn. If the model still talks like a missing tool,
+ * replace that speech with the conductor reply so chat never looks like a blocked API.
+ */
+export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRewriteOpts): string {
+  let t = (message || '').trim()
+  if (!t) return t
+  const reply = (opts?.conductorReply || readWindowString('__INDOBASE_OPERATOR_MESSAGE__') || '').trim()
+  const name = (opts?.businessName || readWindowString('__INDOBASE_BUSINESS_NAME__') || '').trim()
+  if (BLOCKED_BUILD_SPEECH.test(t)) {
+    t = reply || DEFAULT_CONDUCTOR_REPLY
+  }
+  if (name && !/^your business$/i.test(name)) {
+    t = t.replace(/\byour business\b/gi, name)
+  }
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+export function cleanOperatorMessage(message: string, opts?: BuilderChatRewriteOpts): string {
+  return rewriteBlockedBuildSpeech(
+    stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message))),
+    opts,
+  )
 }
 
 function journeyChipTitle(headline?: string | null): string {

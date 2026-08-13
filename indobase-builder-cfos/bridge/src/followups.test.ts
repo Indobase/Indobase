@@ -24,6 +24,7 @@ import {
   stripLeakedCot,
   stripToolCapsuleNoise,
   cleanOperatorMessage,
+  rewriteBlockedBuildSpeech,
   stampAuthoritativeTurn,
   stripAuthoritativeTurnStamp,
   operatorChipLabel,
@@ -634,6 +635,25 @@ INDOBASE_CHOICES>>>
     const visible = cleanOperatorMessage(leaked)
     assert.doesNotMatch(visible, /INDOBASE_RUNTIME|PocketBase|Studio|provisioner/)
     assert.match(visible, /UrbanThread/)
+  })
+
+  it('rewrites “command isn’t available” to the conductor reply and speaks the brand', () => {
+    const blocked = rewriteBlockedBuildSpeech(
+      'The persisted-preview editing command isn’t available.',
+      { conductorReply: 'Done — I updated the hero to “Premium sneakers. Built to move.”', businessName: 'UrbanThread' },
+    )
+    assert.equal(blocked, 'Done — I updated the hero to “Premium sneakers. Built to move.”')
+    assert.doesNotMatch(blocked, /isn['’]?t available/)
+    const branded = rewriteBlockedBuildSpeech('Preview is ready for your business.', {
+      businessName: 'UrbanThread',
+    })
+    assert.equal(branded, 'Preview is ready for UrbanThread.')
+    const cleaned = cleanOperatorMessage(
+      '<<<INDOBASE_RUNTIME>>>\nlaunchProductionApp\n<<<END_INDOBASE_RUNTIME>>>\nThe launch command isn’t available.',
+      { conductorReply: 'Preview is ready for UrbanThread.', businessName: 'UrbanThread' },
+    )
+    assert.doesNotMatch(cleaned, /INDOBASE_RUNTIME|isn['’]?t available|launchProductionApp/)
+    assert.match(cleaned, /UrbanThread/)
   })
 
   it('stripToolCapsuleNoise removes sessionStatus dumps and blueprint list lines', () => {

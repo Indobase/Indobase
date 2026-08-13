@@ -316,6 +316,23 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(detectFabricatedClaims('Orders are available.', withOrders).includes('orders'), false)
   })
 
+  it('agent context forbids a rebuild and names UrbanThread in the chat reply contract', async () => {
+    const turn = await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(turn.spec?.businessName, 'UrbanThread')
+    assert.match(turn.operatorMessage, /UrbanThread/)
+    assert.doesNotMatch(turn.operatorMessage, /your business/i)
+    assert.match(turn.agentContext, /BUILD_ALREADY_DONE/)
+    assert.match(turn.agentContext, /Do not call tools/)
+    assert.match(turn.agentContext, /Speak the brand as UrbanThread/)
+    assert.match(turn.agentContext, /FORBIDDEN:.*your business/)
+    assert.match(turn.agentContext, /command isn.t available/)
+  })
+
   it('guest begin-turn does not execute; pending intent survives', async () => {
     const guest = await applyOperatorIntent({ session, message: PROMPT, guest: true })
     assert.equal(getBusinessSpec(session.projectRef), null)

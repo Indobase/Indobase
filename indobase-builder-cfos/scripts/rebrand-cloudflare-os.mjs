@@ -778,6 +778,7 @@ void (async () => {
     const stampsModelPayloadOnly = text.includes('Stamp runtime onto model payload only')
     const stampsHintFallback = text.includes("j?.agent_hint.trim() ? j.agent_hint.trim()")
     const compactStampOnly = text.includes('Compact agent_context only')
+    const storesOperatorMessage = text.includes('__INDOBASE_OPERATOR_MESSAGE__')
     if (
       text.includes('/api/os/agent/begin-turn') &&
       hasGuestSync &&
@@ -785,6 +786,7 @@ void (async () => {
       hasRuntimeStamp &&
       stampsModelPayloadOnly &&
       compactStampOnly &&
+      storesOperatorMessage &&
       !leakedStampToDisplay &&
       !stampsHintFallback
     ) {
@@ -824,7 +826,7 @@ void (async () => {
             agent_context?: string
             agent_hint?: string
             runtime?: unknown
-            execution?: { operator_message?: string }
+            execution?: { operator_message?: string; spec?: { name?: string } | null }
           }
           const isGuest = j?.signed_in === false || j?.guest === true || j?.stage === 'guest'
           const w = window as unknown as {
@@ -833,6 +835,8 @@ void (async () => {
             __INDOBASE_TURN_CONTEXT__?: string
             __INDOBASE_AGENT_HINT__?: string
             __INDOBASE_RUNTIME__?: unknown
+            __INDOBASE_OPERATOR_MESSAGE__?: string
+            __INDOBASE_BUSINESS_NAME__?: string
           }
           w.__INDOBASE_GUEST__ = isGuest
           w.__INDOBASE_SESSION_STAGE__ = j?.stage || (isGuest ? 'guest' : 'member')
@@ -844,6 +848,14 @@ void (async () => {
             w.__INDOBASE_AGENT_HINT__ = j.agent_hint
           }
           if (j?.runtime) w.__INDOBASE_RUNTIME__ = j.runtime
+          const opMsg = j?.execution?.operator_message
+          if (typeof opMsg === 'string' && opMsg.trim()) {
+            w.__INDOBASE_OPERATOR_MESSAGE__ = opMsg.trim()
+          }
+          const brand = j?.execution?.spec?.name
+          if (typeof brand === 'string' && brand.trim()) {
+            w.__INDOBASE_BUSINESS_NAME__ = brand.trim()
+          }
           window.dispatchEvent(new CustomEvent('indobase:runtime-updated'))
         } catch { /* ignore */ }
       }
@@ -2476,6 +2488,22 @@ ${injection}`
     if (text.includes('cleanOperatorMessage')) {
       write(chatPath, text)
       console.log('  ChatInterface ← strip INDOBASE_RUNTIME from operator-visible messages')
+    }
+
+    text = read(chatPath)
+    if (text.includes('Indobase: hide token/cost from operator chat')) {
+      console.log('  ChatInterface token/cost already hidden (skip)')
+    } else if (text.includes('currentChatMetadata?.totalTokens != null')) {
+      text = text.replace(
+        '{currentChatMetadata?.totalTokens != null && (',
+        '{/* Indobase: hide token/cost from operator chat */ false && currentChatMetadata?.totalTokens != null && (',
+      )
+      text = text.replace(
+        '{currentChatMetadata?.totalCost != null && (',
+        '{false && currentChatMetadata?.totalCost != null && (',
+      )
+      write(chatPath, text)
+      console.log('  ChatInterface ← hide token/cost summary')
     }
     const composerNeedle = '{/* ── Bottom: input, update state, and cost ──────────────── */}'
     if (text.includes(composerNeedle) && !text.includes('<WorkspaceChrome')) {

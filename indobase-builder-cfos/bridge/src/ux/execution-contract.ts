@@ -302,10 +302,13 @@ function composeAgentContext(result: {
   runtime: PersistedWorkspaceRuntime
   businessRuntime: BusinessRuntimeState
   launch?: ProductionLaunchExecuteResult | null
+  operatorMessage?: string
 }): string {
   const spec = result.spec
   const preview = result.runtime.preview
   const job = result.launch?.job
+  const named =
+    spec?.businessName && !isPlaceholderBusinessName(spec.businessName) ? spec.businessName : ''
   const lines = [
     'INDOBASE_RUNTIME (authoritative this turn — chat history is not):',
     composeRuntimeStateHint(result.businessRuntime),
@@ -315,7 +318,19 @@ function composeAgentContext(result: {
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
     'Never print INDOBASE_RUNTIME, Studio, PocketBase, or provisioner in operator-visible replies.',
+    'The execution path already ran this turn. Do not call tools. Do not write files. Do not rebuild the app.',
   ]
+  if (named) {
+    lines.push(`Speak the brand as ${named}. FORBIDDEN: “your business” as the store name.`)
+  }
+  if (result.operatorMessage) {
+    lines.push(
+      `BUILD_ALREADY_DONE. Reply in one short paragraph with this meaning (do not contradict it): ${result.operatorMessage}`,
+    )
+    lines.push(
+      'FORBIDDEN: “command isn’t available” / “preview isn’t available” / “launch isn’t available” / “persisted-preview editing command isn’t available”.',
+    )
+  }
   if (job) {
     lines.push(`production_job=${job.jobId}; status=${job.status}; url=${job.url || 'none'}`)
   } else if (result.businessRuntime.deployment.jobId) {
@@ -641,6 +656,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       rememberPendingIntentForSession(session, message)
     }
     const businessRuntime = toSessionRuntime(session, runtime, input.snapshot)
+    const operatorMessage = 'Finish account setup first. I already have your request.'
     return {
       ok: true,
       intent: 'other',
@@ -653,8 +669,9 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
         spec: runtime.spec,
         runtime,
         businessRuntime,
+        operatorMessage,
       }),
-      operatorMessage: 'Finish account setup first. I already have your request.',
+      operatorMessage,
     }
   }
 
@@ -741,22 +758,33 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
   spec = runtime.spec || spec
   const businessRuntime = toSessionRuntime(session, runtime, input.snapshot, launch)
-  let agentContext = composeAgentContext({ intent, spec, runtime, businessRuntime, launch })
-  if (mutatedHeadline && recovered) {
-    agentContext += `\nMUTATION_APPLIED: hero headline is now “${mutatedHeadline}”. Persisted to the preview artifact. Do not say the store is missing.`
-  }
+  const named =
+    spec?.businessName && !isPlaceholderBusinessName(spec.businessName)
+      ? spec.businessName
+      : ''
   const operatorMessage =
     intent === 'launch_production' && launch?.ok && launch.url
       ? `Your store is live — ${launch.url}`
       : mutatedHeadline && recovered
         ? `Done — I updated the hero to “${mutatedHeadline}”.`
       : runtime.preview.status === 'ready'
-        ? `Preview is ready for ${spec?.businessName || 'your business'}.`
+        ? `Preview is ready for ${named || 'your store'}.`
         : runtime.preview.status === 'failed'
           ? 'Preview did not come up. I am retrying automatically.'
           : spec
-            ? `Preparing ${spec.businessName}…`
+            ? `Preparing ${named || spec.businessName}…`
             : 'How can I help?'
+  let agentContext = composeAgentContext({
+    intent,
+    spec,
+    runtime,
+    businessRuntime,
+    launch,
+    operatorMessage,
+  })
+  if (mutatedHeadline && recovered) {
+    agentContext += `\nMUTATION_APPLIED: hero headline is now “${mutatedHeadline}”. Persisted to the preview artifact. Do not say the store is missing.`
+  }
 
   if (pending && spec && !isPlaceholderBusinessName(spec.businessName)) {
     takePendingAcrossAuth([

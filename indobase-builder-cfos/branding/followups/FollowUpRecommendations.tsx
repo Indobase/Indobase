@@ -2,7 +2,7 @@
  * Follow-up / clarifying choice chips (competitor-style guided next steps).
  * Copied into CFOS workshop-frontend by rebrand-cloudflare-os.mjs.
  */
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { memo, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 
 import {
   inferChipStage,
@@ -55,6 +55,55 @@ function readProjectState(): string | null {
   } catch {
     return null
   }
+}
+
+const CHIP_HOST_ATTR = 'data-indobase-chip-host'
+
+/** Only the latest assistant turn shows chips — older turns keep the prose. */
+function useLatestChipHost(instanceId: string): boolean {
+  const [active, setActive] = useState(true)
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const nodes = Array.from(document.querySelectorAll(`[${CHIP_HOST_ATTR}]`))
+        const last = nodes[nodes.length - 1] as HTMLElement | undefined
+        setActive(Boolean(last && last.getAttribute(CHIP_HOST_ATTR) === instanceId))
+      } catch {
+        setActive(true)
+      }
+    }
+    refresh()
+    const t = window.setTimeout(refresh, 0)
+    return () => {
+      window.clearTimeout(t)
+      window.setTimeout(() => {
+        try {
+          document
+            .querySelectorAll(`[${CHIP_HOST_ATTR}]`)
+            .forEach((el) => el.dispatchEvent(new Event('indobase-chip-refresh')))
+        } catch {
+          /* ignore */
+        }
+      }, 0)
+    }
+  }, [instanceId])
+
+  useEffect(() => {
+    const onRefresh = () => {
+      try {
+        const nodes = Array.from(document.querySelectorAll(`[${CHIP_HOST_ATTR}]`))
+        const last = nodes[nodes.length - 1] as HTMLElement | undefined
+        setActive(Boolean(last && last.getAttribute(CHIP_HOST_ATTR) === instanceId))
+      } catch {
+        setActive(true)
+      }
+    }
+    window.addEventListener('indobase-chip-refresh', onRefresh)
+    return () => window.removeEventListener('indobase-chip-refresh', onRefresh)
+  }, [instanceId])
+
+  return active
 }
 
 export const FollowUpChipGrid = memo(function FollowUpChipGrid({
@@ -135,6 +184,8 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   disabled,
   children,
 }: Props) {
+  const instanceId = useId()
+  const isLatest = useLatestChipHost(instanceId)
   const cleaned = useMemo(() => cleanOperatorMessage(message), [message])
   const journeyOpts = useMemo(() => {
     const journey = readLaunchJourneyFromWindow()
@@ -187,16 +238,17 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   const body = resolved?.body ?? cleaned
   const showJourney =
     showLaunchJourney &&
+    isLatest &&
     shouldShowLaunchJourneyCard({
       isGuest: isBrowserGuestSession(),
       chipStage: inferChipStage(cleaned),
     })
 
   return (
-    <>
+    <div data-indobase-chip-host={instanceId}>
       {children ? children(body, resolved) : null}
       {showJourney && <LaunchJourneyCard onPick={onPick} disabled={disabled} sticky />}
-      {resolved && resolved.items.length > 0 && (
+      {isLatest && resolved && resolved.items.length > 0 && (
         <FollowUpChipGrid
           title={resolved.title}
           items={resolved.items}
@@ -204,6 +256,6 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
           disabled={disabled}
         />
       )}
-    </>
+    </div>
   )
 })
