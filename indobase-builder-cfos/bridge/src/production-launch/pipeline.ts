@@ -23,6 +23,12 @@ import {
   type ProductionLaunchJob,
   type ProductionLaunchStageId,
 } from './job-store.js'
+import {
+  emptyProductionEvidence,
+  evidenceFromVerifiers,
+  finalizeEvidence,
+  mergeEvidence,
+} from './evidence.js'
 
 export type ProductionLaunchInput = {
   jobId?: string | null
@@ -151,6 +157,7 @@ function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunc
     vertical: input.vertical?.trim() || undefined,
     backend: session.backend ?? null,
     claim_live: false,
+    evidence: emptyProductionEvidence(),
     repairAttempts: 0,
     failures: [],
     createdAt: nowIso(),
@@ -211,10 +218,18 @@ export async function executeProductionLaunchJob(
   // 3. Provision
   job = patchStage(job, 'provision', { status: 'running', startedAt: nowIso() })
   if (!job.plan.backendRequired) {
-    job = patchStage(job, 'provision', {
-      status: 'skipped',
-      message: 'Landing — no tenant backend',
-      finishedAt: nowIso(),
+    job = rememberProductionLaunchJob({
+      ...patchStage(job, 'provision', {
+        status: 'skipped',
+        message: 'Landing — no tenant backend',
+        finishedAt: nowIso(),
+      }),
+      evidence: mergeEvidence(job.evidence, {
+        backend_ready: true,
+        catalog_seeded: true,
+        test_order_ok: true,
+        storefront_bound: true,
+      }),
     })
   } else {
     const guided = await guidedFn(session, {
@@ -236,6 +251,9 @@ export async function executeProductionLaunchJob(
       })
       return blocked(job)
     }
+    const testOrderOk = (guided.steps || []).some(
+      (s) => s.id === 'placeTestShopOrder' && s.status === 'ok',
+    )
     job = rememberProductionLaunchJob({
       ...patchStage(job, 'provision', {
         status: 'ok',
@@ -244,6 +262,12 @@ export async function executeProductionLaunchJob(
       }),
       backend,
       html: job.html || guided.storefront_html,
+      evidence: mergeEvidence(job.evidence, {
+        backend_ready: true,
+        catalog_seeded: job.appType !== 'ecommerce' || Boolean(guided.catalog_json) || testOrderOk,
+        storefront_bound: Boolean(job.html || guided.storefront_html),
+        test_order_ok: job.appType !== 'ecommerce' || testOrderOk,
+      }),
     })
   }
 
@@ -346,6 +370,14 @@ export async function executeProductionLaunchJob(
       })
       return blocked(job)
     }
+    job = rememberProductionLaunchJob({
+      ...job,
+      evidence: mergeEvidence(job.evidence, {
+        storefront_bound: true,
+        ...evidenceFromVerifiers(gate.results),
+        test_order_ok: job.evidence?.test_order_ok === true,
+      }),
+    })
   }
   job = patchStage(job, 'verify', {
     status: 'ok',
@@ -410,7 +442,7 @@ export async function executeProductionLaunchJob(
   })
 
   // 9. LIVE
-  job = rememberProductionLaunchJob({
+  const liveJob: ProductionLaunchJob = {
     ...patchStage(job, 'live', {
       status: 'ok',
       message: 'LIVE',
@@ -419,7 +451,10 @@ export async function executeProductionLaunchJob(
     }),
     status: 'live',
     claim_live: true,
-  })
+    evidence: mergeEvidence(job.evidence, { smoke_ok: true }),
+  }
+  liveJob.evidence = finalizeEvidence(liveJob)
+  job = rememberProductionLaunchJob(liveJob)
 
   return {
     ok: true,

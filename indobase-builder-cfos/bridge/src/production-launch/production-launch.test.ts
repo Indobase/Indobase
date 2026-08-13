@@ -192,6 +192,59 @@ describe('production launch job pipeline', () => {
     )
   })
 
+  it('ecommerce job provisions internally and records certification evidence', async () => {
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch a sneaker store called Velocity',
+        appType: 'ecommerce',
+        brand: 'Velocity',
+        html: '<html><body><script>window.indobase={commerce:{checkout:{create:function(){}}}}</script></body></html>',
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'ecommerce',
+          steps: [
+            { id: 'ensureDatabase', status: 'ok', message: 'ok' },
+            { id: 'setupShopCatalog', status: 'ok', message: 'ok' },
+            { id: 'placeTestShopOrder', status: 'ok', message: 'ok' },
+          ],
+          progress: 'catalog + test order',
+          message: 'backend ready',
+          claim_backend_ready: true,
+          claim_live: false,
+          catalog_json: [{ slug: 'runner', name: 'Runner', stock: 10 }],
+          storefront_html: '<html>commerce</html>',
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async () => ({
+          ok: true,
+          status: 'published',
+          url: 'https://velocity.sites.indobase.in',
+          message: 'published',
+          lane: 'static',
+          claim_live: true,
+          tool: 'launchBusiness',
+        }),
+        smoke: async () => ({ ok: true, message: 'commerce smoke' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.equal(result.job.evidence?.backend_ready, true)
+    assert.equal(result.job.evidence?.catalog_seeded, true)
+    assert.equal(result.job.evidence?.test_order_ok, true)
+    assert.equal(result.job.evidence?.smoke_ok, true)
+    assert.equal(result.job.evidence?.claim_production_ready, true)
+  })
+
   it('blocks LIVE when smoke fails and does not invent a URL claim', async () => {
     const result = await executeProductionLaunchJob(
       session,

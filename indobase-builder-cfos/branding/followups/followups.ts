@@ -71,7 +71,8 @@ export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
 export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Go Live on Indobase',
-    message: 'Go Live — publish this business to my Indobase subdomain with launchBusiness',
+    message:
+      'Go Live — POST /api/os/apps/launch { production: true } and quote the job live URL only when status=live',
   },
   {
     label: 'Connect my domain',
@@ -110,17 +111,17 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
     message:
-      'This is a landing/marketing site — build UI and call launchBusiness app_type=landing in the same turn (skip guidedBackend); SEO + legal; optional domain; then productionChecklist (skip ensureAnalytics — unavailable on CFOS)',
+      'This is a landing/marketing site — POST /api/os/apps/launch { appType: "landing", production: true }. The job deploys; do not call launchBusiness yourself.',
   },
   {
     label: 'SaaS / web app',
     message:
-      'This is a SaaS web app — ensureLogin + ensureDatabase + applySchema FIRST, then build UI against session.backend, then Go Live; productionChecklist app_type saas',
+      'This is a SaaS web app — POST /api/os/apps/launch { appType: "saas", production: true }. The job provisions auth+database, generates a wired UI, verifies, and deploys. Do not call ensure* yourself.',
   },
   {
     label: 'Ecommerce / store',
     message:
-      'This is an ecommerce store — niche CHOICES if needed, preview storefront first (localStorage cart); guidedBackend only on Add a real backend, then Wire → Go Live → payments when asked; productionChecklist app_type ecommerce',
+      'This is an ecommerce store — POST /api/os/apps/launch { appType: "ecommerce", production: true, vertical if known }. The job provisions catalog + commerce ABI and deploys. Do not call guidedBackend yourself.',
   },
   {
     label: 'Booking / appointments',
@@ -229,7 +230,7 @@ export function landingSingleTurnFollowups(brand?: string | null): StageFollowUp
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live now — call launchBusiness app_type=landing for ${name} with real html/files in this turn (skip guidedBackend / PocketBase ecommerce). Quote the exact url, then emit Domain / Checklist chips — no continue/take-live micro-prompts`,
+        message: `Go Live now — POST /api/os/apps/launch { appType: "landing", production: true } for ${name} (skip guidedBackend / PocketBase ecommerce). Quote the job live URL when status=live, then emit Domain / Checklist chips — no continue/take-live micro-prompts`,
       },
       {
         label: 'Connect my domain',
@@ -255,7 +256,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} with launchBusiness (real html/files), quote exact url, then Domain / Add payments / Checklist chips`,
+        message: `Go Live — call launchProductionApp for ${name} (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then Domain / Add payments / Checklist chips`,
       },
       {
         label: 'Create admin dashboard',
@@ -634,7 +635,7 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Go Live on Indobase',
     message:
-      'Go Live — publish this store with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips',
+      'Go Live — call launchProductionApp (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then emit Domain / Add payments / Checklist chips',
   },
   {
     label: 'Publish admin dashboard',

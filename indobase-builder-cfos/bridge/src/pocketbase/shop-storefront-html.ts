@@ -87,6 +87,11 @@ export function buildManagedShopStorefrontHtml(opts: {
   .dlg .actions button { padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; font:inherit; cursor:pointer; }
   .dlg .actions .primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
   .empty { color:var(--muted); padding:28px 8px; text-align:center; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
+  .toolbar input { flex:1; min-width:180px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  .card { cursor:pointer; }
+  @media (max-width:720px) { .grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); } header { padding:16px; } }
+  @media (min-width:1100px) { .grid { grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); } }
 </style>
 <script>window.__INDOBASE_ENV__=${JSON.stringify(env)};</script>
 <script>${runtime}</script>
@@ -102,8 +107,30 @@ export function buildManagedShopStorefrontHtml(opts: {
 <main>
   <p id="status">Loading catalog…</p>
   <p id="error" hidden></p>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Search products" aria-label="Search products"/>
+  </div>
   <div class="grid" id="grid"></div>
 </main>
+<dialog id="pdpDlg">
+  <div class="dlg">
+    <h2 id="pdpName">Product</h2>
+    <p class="meta" id="pdpMeta"></p>
+    <div class="row"><span class="price" id="pdpPrice"></span><span class="meta" id="pdpStock"></span></div>
+    <div class="actions">
+      <button type="button" id="closePdp">Close</button>
+      <button class="primary" type="button" id="pdpAdd">Add to cart</button>
+    </div>
+  </div>
+</dialog>
+<dialog id="confirmDlg">
+  <div class="dlg">
+    <h2>Order confirmed</h2>
+    <p class="meta" id="confirmNote">Your order was created by Indobase Commerce.</p>
+    <p><strong id="confirmOrderId"></strong></p>
+    <div class="actions"><button type="button" id="closeConfirm">Done</button></div>
+  </div>
+</dialog>
 <dialog id="cartDlg">
   <form method="dialog" class="dlg" id="checkoutForm">
     <h2>Checkout</h2>
@@ -141,18 +168,43 @@ function renderCart(){
   }).join(''):'<li class="meta">Cart is empty</li>';
   document.querySelector('#cartTotal').textContent=items.length?moneyMinor(est,cur):'—';
 }
+function visibleProducts(){
+  var q=(document.querySelector('#search')&&document.querySelector('#search').value||'').trim().toLowerCase();
+  if(!q) return products;
+  return products.filter(function(p){
+    return String(p.name||'').toLowerCase().indexOf(q)>=0 || String(p.description||p.slug||'').toLowerCase().indexOf(q)>=0;
+  });
+}
+function openPdp(id){
+  var p=productById(id); if(!p) return;
+  document.querySelector('#pdpName').textContent=p.name||'Product';
+  document.querySelector('#pdpMeta').textContent=p.description||p.slug||'';
+  document.querySelector('#pdpPrice').textContent=moneyMinor(p.priceMinor,p.currency);
+  document.querySelector('#pdpStock').textContent=Number(p.stock||0)+' in stock';
+  document.querySelector('#pdpAdd').setAttribute('data-id', p.id);
+  document.querySelector('#pdpAdd').disabled=Number(p.stock||0)<=0;
+  document.querySelector('#pdpDlg').showModal();
+}
 function render(){
   var grid=document.querySelector('#grid');
-  if(!products.length){grid.innerHTML='<p class="empty">No products yet.</p>';return}
-  grid.innerHTML=products.map(function(p){
+  var list=visibleProducts();
+  if(!list.length){grid.innerHTML='<p class="empty">No products yet.</p>';return}
+  grid.innerHTML=list.map(function(p){
     var stock=Number(p.stock||0);
     var img=p.imageUrl?('<img src="'+String(p.imageUrl).replace(/"/g,'&quot;')+'" alt=""/>'):'<div class="food" style="height:140px;background:#eee"></div>';
     return '<article class="card">'+img+'<div class="body"><h2>'+(p.name||'Product')+'</h2><div class="meta">'+(p.description||p.slug||'')+'</div><div class="row"><span class="price">'+moneyMinor(p.priceMinor,p.currency)+'</span><span class="meta">'+stock+' in stock</span></div><button type="button" class="add" data-id="'+p.id+'" '+(stock>0?'':'disabled')+'>Add to cart</button></div></article>';
   }).join('');
   grid.querySelectorAll('button.add').forEach(function(btn){
-    btn.addEventListener('click', function(){
+    btn.addEventListener('click', function(ev){
+      ev.stopPropagation();
       commerce.cart.add(btn.getAttribute('data-id'), 1);
       renderCart();
+    });
+  });
+  grid.querySelectorAll('article.card').forEach(function(card){
+    card.addEventListener('click', function(){
+      var id=card.querySelector('button.add')&&card.querySelector('button.add').getAttribute('data-id');
+      if(id) openPdp(id);
     });
   });
 }
@@ -188,14 +240,23 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
       window.location.href=result.paymentUrl;
       return;
     }
-    // Pending payment / gateway not ready — still a real order id
-    alert((result.message||'Order created')+'\\nOrder: '+result.orderId+'\\nAmount: '+moneyMinor(result.amountMinor, result.currency));
     document.querySelector('#cartDlg').close();
+    document.querySelector('#confirmNote').textContent=result.message||('Amount '+moneyMinor(result.amountMinor, result.currency));
+    document.querySelector('#confirmOrderId').textContent='Order '+result.orderId;
+    document.querySelector('#confirmDlg').showModal();
   }catch(e){
     setError(e&&e.message?e.message:'Checkout failed');
     document.querySelector('#checkoutNote').textContent=e&&e.message?e.message:'Checkout failed';
   }finally{ btn.disabled=false; }
 });
+document.querySelector('#search').addEventListener('input', render);
+document.querySelector('#closePdp').addEventListener('click', function(){ document.querySelector('#pdpDlg').close(); });
+document.querySelector('#pdpAdd').addEventListener('click', function(){
+  commerce.cart.add(document.querySelector('#pdpAdd').getAttribute('data-id'), 1);
+  renderCart();
+  document.querySelector('#pdpDlg').close();
+});
+document.querySelector('#closeConfirm').addEventListener('click', function(){ document.querySelector('#confirmDlg').close(); });
 render(); renderCart(); loadProducts();
 </script>
 </body>

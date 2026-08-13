@@ -49,8 +49,8 @@ export const GUIDED_BACKEND_TOOL = {
   name: 'guidedBackend',
   aliases: ['runGuidedBackend', 'autoBackend', 'guided_backend'] as const,
   description:
-    'ENSURE-FIRST: generic → ensureLogin + ensureDatabase + applySchema; ecommerce → ensureDatabase + catalog. ' +
-    'Call BEFORE building UI that needs auth or data. Optional placeTestShopOrder and launchBusiness when html is ready. Do not invent live URLs.',
+    'PLATFORM-INTERNAL provisioner (generic → login+db+schema; ecommerce → db+catalog+commerce). ' +
+    'Agents must call launchProductionApp for production — do not choose this tool. Do not invent live URLs.',
   method: 'POST' as const,
   path: '/api/os/tools/guidedBackend',
   parameters: {

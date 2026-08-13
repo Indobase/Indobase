@@ -1,14 +1,16 @@
 /**
  * productionChecklist — claim gate before saying any web app is production ready.
+ * Ecommerce/SaaS/landing jobs: claim is derived from launch job evidence, not agent booleans.
  */
 
 import { platformProductionChecklist } from './platform-api-client.js'
+import { deriveProductionChecklist, getLatestProductionLaunchJob } from './production-launch/index.js'
 
 export const PRODUCTION_CHECKLIST_TOOL = {
   name: 'productionChecklist',
   aliases: ['claimProductionReady', 'production_checklist'] as const,
   description:
-    'Evaluate whether this web app is production ready for its app_type (landing|saas|ecommerce|booking|blog|dashboard|other). ' +
+    'Evaluate whether this web app is production ready. For production jobs, claim_production_ready is derived from launch evidence — do not invent checks. ' +
     'ONLY claim “production ready” when claim_production_ready is true. Do not use webFetch.',
   method: 'POST' as const,
   path: '/api/os/tools/productionChecklist',
@@ -39,15 +41,10 @@ You build full web apps on Indobase (landing, SaaS, ecommerce, booking, blog, da
 
 Before you say “production ready” / “shipped” / “ready for customers”:
 
-1. Call **productionChecklist** with app_type + live_url + honest checks.
+1. Call **productionChecklist** after a production job. The tool reads job evidence.
 2. ONLY claim production ready when the tool returns claim_production_ready:true.
-3. If missing checks: do the work (launchBusiness, ensureLogin, applySchema, wireCheckout, SEO/legal), then re-check.
-4. App-type requirements (server-enforced):
-   - landing: live_url + seo + legal
-   - saas / booking / dashboard: + login_wired + schema_applied
-   - ecommerce: + schema_applied + checkout_wired
-   - blog: + schema_applied + seo + legal
-5. Stay on Indobase hosting. Never Vercel/Netlify/Firebase as the production host.
+3. If false: quote missing evidence / retry the same launchProductionApp jobId. Do not invent checks.
+4. Stay on Indobase hosting. Never Vercel/Netlify/Firebase as the production host.
 `.trim()
 
 export function productionChecklistToolCatalog() {
@@ -72,6 +69,23 @@ export async function executeProductionChecklist(
     checks?: Record<string, unknown> | null
   },
 ) {
+  const job = getLatestProductionLaunchJob(session.projectRef)
+  if (job) {
+    const derived = deriveProductionChecklist(job)
+    return {
+      ok: true,
+      tool: 'productionChecklist' as const,
+      claim_production_ready: derived.claim_production_ready,
+      source: derived.source,
+      jobId: derived.jobId,
+      app_type: derived.appType,
+      live_url: derived.live_url,
+      evidence: derived.evidence,
+      message: derived.claim_production_ready
+        ? 'Production ready — derived from launch job evidence'
+        : 'Not production ready — launch job evidence is incomplete',
+    }
+  }
   const result = await platformProductionChecklist({
     gotrueId: session.gotrueId,
     email: session.email,
@@ -85,5 +99,6 @@ export async function executeProductionChecklist(
     ...result,
     tool: 'productionChecklist' as const,
     claim_production_ready: result.claim_production_ready === true,
+    source: 'legacy_checks',
   }
 }

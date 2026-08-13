@@ -94,6 +94,17 @@ describe('Ecommerce verifier pack', () => {
     }
   })
 
+  it('fails NO_CLIENT_PRICE_AUTHORITY when checkout uses localStorage totals', () => {
+    const html = `<script>
+      window.indobase={commerce:{checkout:{create:function(){}}}}
+      const amountMinor = Number(localStorage.getItem('cart_total'));
+    </script>`
+    const results = runEcommerceStaticVerifiers({ html })
+    const price = results.find((r) => r.id === 'NO_CLIENT_PRICE_AUTHORITY')
+    assert.equal(price?.ok, false)
+    assert.equal(price?.code, 'client_price_authority')
+  })
+
   it('fails COMMERCE_ABI_BOUND and NO_DIRECT_PB_ORDER_WRITE on bad HTML', () => {
     const html = `<button>Add to cart</button><script>
       window.__INDOBASE_ENV__={};

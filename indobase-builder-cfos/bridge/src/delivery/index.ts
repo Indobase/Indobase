@@ -28,6 +28,19 @@ export {
 } from './ecommerce-verifiers.js'
 
 export {
+  ECOMMERCE_CERT_CORPUS,
+  type EcommerceCertStore,
+} from './ecommerce-cert-corpus.js'
+export {
+  ECOMMERCE_CERT_VERSION,
+  certifyStore,
+  formatEcommerceCertReport,
+  runEcommerceCertification,
+  type CertCheck,
+  type EcommerceCertReport,
+  type StoreCertResult,
+} from './ecommerce-certification.js'
+export {
   ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
   requiredFunctionalVerifiersFailed,
   runEcommerceFunctionalVerifiers,

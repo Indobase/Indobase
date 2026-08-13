@@ -1703,7 +1703,15 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
   const isGoLive = c.req.path.includes('goLive')
   const draft = body.draft === true || body.production === false
-  if (!draft && (isGoLive || body.production === true)) {
+  const appTypeHint =
+    typeof body.appType === 'string'
+      ? body.appType
+      : typeof body.app_type === 'string'
+        ? body.app_type
+        : null
+  const ecommerceProduction =
+    !draft && /^(ecommerce|store|shop)$/i.test(String(appTypeHint || ''))
+  if (!draft && (isGoLive || body.production === true || ecommerceProduction)) {
     const result = await executeProductionLaunchJob(session, {
       jobId: typeof body.jobId === 'string' ? body.jobId : null,
       intent: typeof body.intent === 'string' ? body.intent : typeof body.message === 'string' ? body.message : null,

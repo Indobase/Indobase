@@ -20,39 +20,25 @@ import {
   connectGatewayToolCatalog,
 } from './connect-gateway-tool.js'
 import { launchBusinessToolCatalog } from './launch-business-tool.js'
+import { wireCheckoutToolCatalog } from './wire-checkout-tool.js'
 import {
-  WIRE_CHECKOUT_AGENT_HARD_RULES,
-  wireCheckoutToolCatalog,
-} from './wire-checkout-tool.js'
-import {
-  SHOP_CATALOG_AGENT_HARD_RULES,
   listShopOrdersToolCatalog,
   placeTestShopOrderToolCatalog,
   setupShopCatalogToolCatalog,
 } from './shop-catalog-tool.js'
 import {
-  ENSURE_CAPABILITY_AGENT_HARD_RULES,
   ensureAnalyticsToolCatalog,
   ensureDatabaseToolCatalog,
   ensureEmailToolCatalog,
   ensureLoginToolCatalog,
 } from './ensure-capability-tool.js'
-import {
-  APPLY_SCHEMA_AGENT_HARD_RULES,
-  applySchemaToolCatalog,
-} from './apply-schema-tool.js'
-import {
-  GUIDED_BACKEND_AGENT_HARD_RULES,
-  guidedBackendToolCatalog,
-} from './guided-backend-chain.js'
+import { applySchemaToolCatalog } from './apply-schema-tool.js'
+import { guidedBackendToolCatalog } from './guided-backend-chain.js'
 import {
   PRODUCTION_CHECKLIST_AGENT_HARD_RULES,
   productionChecklistToolCatalog,
 } from './production-checklist-tool.js'
-import {
-  PRODUCT_IMAGES_AGENT_HARD_RULES,
-  resolveProductImagesToolCatalog,
-} from './product-images-tool.js'
+import { resolveProductImagesToolCatalog } from './product-images-tool.js'
 import {
   buildSessionPromptQuotaBlock,
   promptQuotaToolCatalog,
@@ -60,6 +46,7 @@ import {
 } from './prompt-quota.js'
 import { explainGovernanceGate } from './governance-gates.js'
 import {
+  AGENT_SURFACE_HARD_RULES,
   LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
   launchProductionAppToolCatalog,
   summarizeProductionLaunchJob,
@@ -105,7 +92,7 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
     '- After every completed stage: emit 2–4 next FOLLOWUPS. Never stop after 1–2 chip rounds. Never restart guest/auth once signed in.',
     `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
     `- Journey stage: ${journey.current_stage}`,
-    `- Preview policy: after first HTML exists, quote **launchBusiness** \`*.sites.indobase.in\` url — NOT Gadget iframe (localStorage SecurityError).`,
+    `- Preview policy: production LIVE is **launchProductionApp**. launchBusiness is preview/draft only (production:false).`,
   ]
   if (journey.next_action) {
     lines.push(
@@ -117,27 +104,24 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
   }
   lines.push('## Default store ladder (when building a shop)')
   lines.push(
-    'niche CHOICES (preview only) → preview FOLLOWUPS (Go Live first) → optional guidedBackend → publish storefront_html (Commerce ABI) → Go Live → Add payments → productionChecklist. ≤4 chips; rewrite for brand.',
+    'Clear launch/store ask → launchProductionApp { appType:"ecommerce" }. The job owns guidedBackend + catalog + Commerce ABI + verify + deploy. After LIVE: Domain / Add payments / checklist. ≤4 chips; rewrite for brand.',
   )
   if (backendReady) {
     const ref = session.backend?.project_ref || session.projectRef
     lines.push(`- Backend project_ref: ${ref}`)
     lines.push(
-      '- Prefer chips (order): Go Live with storefront_html (window.indobase.commerce) → Domain / Add payments / Checklist — keep advancing until live. Do not invent PB order POSTs.',
+      '- Prefer chips: Go Live via launchProductionApp → Domain / Add payments / Checklist. Do not call guidedBackend/ensure* yourself.',
     )
   } else {
     lines.push(
-      '- Prefer path: preview-first → FOLLOWUPS with **Go Live first** (Add a real backend / Refine then Go Live). Niche pick must NOT call guidedBackend. Do not dead-end on Leave as-is.',
-    )
-    lines.push(
-      '- **SaaS / booking / dashboard / client app with accounts:** ensure-first — call ensureLogin + ensureDatabase + applySchema (or guidedBackend mode=generic) BEFORE auth/data UI; never ship localStorage-only login for production.',
+      '- Prefer path: launchProductionApp for production. Preview-only HTML may use launchBusiness production:false. Niche pick must NOT call guidedBackend.',
     )
   }
   if (paymentsReady) {
-    lines.push('- Payments: keys appear configured — prefer wireCheckout (INR if India) + patch Buy CTA + productionChecklist.')
+    lines.push('- Payments: keys appear configured — connectGateway already done; productionChecklist reads job evidence.')
   } else {
     lines.push(
-      '- Payments: after Go Live, ALWAYS offer Add payments CHOICES (India/Razorpay vs Stripe) — full launch includes a checkout path.',
+      '- Payments: after LIVE, offer Add payments CHOICES (India/Razorpay vs Stripe) then connectGateway. Full launch includes a checkout path.',
     )
   }
   return lines.join('\n')
@@ -162,7 +146,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session)
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -260,7 +244,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       production_rules: LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
       /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
-        'HARD: After first HTML exists, call launchBusiness and quote *.sites.indobase.in — never tell the operator to use Gadget iframe preview (cross-origin localStorage SecurityError). Gadget is codegen-only fallback.',
+        'HARD: Production LIVE is launchProductionApp (POST /api/os/apps/launch). launchBusiness is preview/draft only (production:false). Never tell the operator to use Gadget iframe preview.',
       draft_preview_path: journey.live_url ? null : `/live/${session.projectRef}/`,
       enforce_static_over_gadget: true,
     },
@@ -280,7 +264,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       tool_alias: '/api/os/tools/connectPaymentGateway',
       wire_checkout_tool: '/api/os/tools/wireCheckout',
       rules: CONNECT_GATEWAY_AGENT_HARD_RULES,
-      wire_checkout_rules: WIRE_CHECKOUT_AGENT_HARD_RULES,
+      owner: 'platform_job',
       /** BYOK clarity — never invent hosted PSP credentials. */
       byok: true,
       governance: {
@@ -294,7 +278,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       setup_tool: '/api/os/tools/setupShopCatalog',
       list_orders_tool: '/api/os/tools/listShopOrders',
       place_test_tool: '/api/os/tools/placeTestShopOrder',
-      rules: SHOP_CATALOG_AGENT_HARD_RULES,
+      owner: 'platform_job',
     },
     data: {
       apply_schema: '/api/os/data/apply-schema',
@@ -304,13 +288,12 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       ensure_database_tool: '/api/os/tools/ensureDatabase',
       ensure_email_tool: '/api/os/tools/ensureEmail',
       ensure_analytics_tool: '/api/os/tools/ensureAnalytics',
-      rules: APPLY_SCHEMA_AGENT_HARD_RULES,
-      guided_backend_rules: GUIDED_BACKEND_AGENT_HARD_RULES,
+      owner: 'platform_job',
     },
     media: {
       product_images: '/api/os/media/product-images',
       tool: '/api/os/tools/resolveProductImages',
-      rules: PRODUCT_IMAGES_AGENT_HARD_RULES,
+      owner: 'platform_job',
     },
     production: {
       checklist: '/api/os/production/checklist',
@@ -339,20 +322,23 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     tools: {
       launchProductionApp: launchProductionAppToolCatalog(),
       launchBusiness: launchBusinessToolCatalog(),
+      connectGateway: connectGatewayToolCatalog(),
+      productionChecklist: productionChecklistToolCatalog(),
+      promptQuota: promptQuotaToolCatalog(),
+    },
+    /** Implementation primitives — job-owned. Not for agent production decisions. */
+    platform_primitives: {
+      guidedBackend: guidedBackendToolCatalog(),
       ensureLogin: ensureLoginToolCatalog(),
       ensureDatabase: ensureDatabaseToolCatalog(),
       ensureEmail: ensureEmailToolCatalog(),
       ensureAnalytics: ensureAnalyticsToolCatalog(),
       applySchema: applySchemaToolCatalog(),
-      guidedBackend: guidedBackendToolCatalog(),
-      connectGateway: connectGatewayToolCatalog(),
-      wireCheckout: wireCheckoutToolCatalog(),
       setupShopCatalog: setupShopCatalogToolCatalog(),
       listShopOrders: listShopOrdersToolCatalog(),
       placeTestShopOrder: placeTestShopOrderToolCatalog(),
       resolveProductImages: resolveProductImagesToolCatalog(),
-      productionChecklist: productionChecklistToolCatalog(),
-      promptQuota: promptQuotaToolCatalog(),
+      wireCheckout: wireCheckoutToolCatalog(),
     },
   }
 }

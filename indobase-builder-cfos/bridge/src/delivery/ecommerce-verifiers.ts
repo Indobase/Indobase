@@ -6,6 +6,8 @@
 import { getBlueprint } from '../pocketbase/blueprints.js'
 import {
   collectLaunchText,
+  contentHasClientPriceAuthority,
+  contentHasClientStockAuthority,
   contentHasCommerceCheckoutAbi,
   contentHasForbiddenStorefrontCheckout,
 } from '../wire-proof.js'
@@ -27,6 +29,8 @@ export type VerifierResult = {
 export const ECOMMERCE_REQUIRED_VERIFIER_IDS = [
   'COMMERCE_ABI_BOUND',
   'NO_DIRECT_PB_ORDER_WRITE',
+  'NO_CLIENT_PRICE_AUTHORITY',
+  'NO_CLIENT_STOCK_AUTHORITY',
   'SCHEMA_LOCKS_ORDERS_ADMIN_ONLY',
   'PRODUCTS_PUBLIC_READ_ADMIN_WRITE',
 ] as const
@@ -86,6 +90,44 @@ function verifyNoDirectPbOrderWrite(text: string): VerifierResult {
     repair_hint: ok
       ? undefined
       : 'Remove PocketBase order creates from storefront. Use indobase.commerce.checkout.create only.',
+    file: 'index.html',
+  }
+}
+
+function verifyNoClientPriceAuthority(text: string): VerifierResult {
+  const forbidden = contentHasClientPriceAuthority(text)
+  const ok = !forbidden
+  return {
+    id: 'NO_CLIENT_PRICE_AUTHORITY',
+    ok,
+    code: ok ? undefined : 'client_price_authority',
+    severity: 'error',
+    expected: 'Checkout prices come from CheckoutService, not localStorage/DOM totals',
+    actual: ok
+      ? 'No client price authority'
+      : 'Storefront treats localStorage/DOM price as checkout authority',
+    repair_hint: ok
+      ? undefined
+      : 'Send only productId + quantity to commerce.checkout.create. Never POST client totals.',
+    file: 'index.html',
+  }
+}
+
+function verifyNoClientStockAuthority(text: string): VerifierResult {
+  const forbidden = contentHasClientStockAuthority(text)
+  const ok = !forbidden
+  return {
+    id: 'NO_CLIENT_STOCK_AUTHORITY',
+    ok,
+    code: ok ? undefined : 'client_stock_authority',
+    severity: 'error',
+    expected: 'Inventory mutations only via CheckoutService',
+    actual: ok
+      ? 'No client stock writes'
+      : 'Storefront PATCHes PocketBase product stock',
+    repair_hint: ok
+      ? undefined
+      : 'Remove product stock writes from the storefront. CheckoutService reserves stock.',
     file: 'index.html',
   }
 }
@@ -214,6 +256,8 @@ export function runEcommerceStaticVerifiers(input: EcommerceVerifierInput): Veri
   return [
     verifyCommerceAbiBound(text),
     verifyNoDirectPbOrderWrite(text),
+    verifyNoClientPriceAuthority(text),
+    verifyNoClientStockAuthority(text),
     verifyOrdersAdminOnly(),
     verifyProductsPublicReadAdminWrite(),
   ]

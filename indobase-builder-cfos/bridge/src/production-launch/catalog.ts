@@ -8,7 +8,8 @@ export const LAUNCH_PRODUCTION_APP_TOOL = {
   description:
     'Enqueue the Indobase Production Launch Job (POST /api/os/apps/launch). ' +
     'The job owns classify → provision → generate → wire → verify → deploy → smoke. ' +
-    'Do NOT call ensureLogin, ensureDatabase, guidedBackend, or launchBusiness yourself for production.',
+    'Do NOT call ensureLogin, ensureDatabase, guidedBackend, or launchBusiness yourself for production. ' +
+    'The job owns provision (guidedBackend/catalog/commerce), verify, deploy, and smoke.',
   method: 'POST' as const,
   path: '/api/os/apps/launch',
   parameters: {
@@ -38,6 +39,8 @@ Do **not** assemble production yourself from ensure*/guidedBackend/launchBusines
 4. If status=awaiting_generate: implement the ApplicationContract, then POST the same jobId with html/files.
 5. If status=blocked: quote failures[].code + repair_hint. Retry the same jobId (max 3 repairs). Never invent a URL.
 6. Draft/preview (production:false) may still use launchBusiness. Production Go Live is this job.
+7. Ecommerce: the job runs guidedBackend + catalog + Commerce ABI + placeTestShopOrder internally. Do not pick those tools.
+8. claim_production_ready comes from job evidence after LIVE — never invent it.
 `.trim()
 
 export function launchProductionAppToolCatalog() {

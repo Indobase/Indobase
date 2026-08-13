@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto'
 import type { BackendConfig } from '../auth.js'
 import type { ApplicationPlan, ProductionAppType } from './application-planner.js'
 import type { ProductionApplicationContract } from './production-contract.js'
+import type { ProductionLaunchEvidence } from './evidence.js'
 
 export const PRODUCTION_LAUNCH_JOB_VERSION = 'production-launch-job/v1' as const
 export const MAX_REPAIR_ATTEMPTS = 3
@@ -72,6 +73,8 @@ export type ProductionLaunchJob = {
   backend?: BackendConfig | null
   url?: string
   claim_live: boolean
+  /** Machine-owned certification — never agent-authored. */
+  evidence?: ProductionLaunchEvidence
   repairAttempts: number
   failures: ProductionLaunchFailure[]
   createdAt: string

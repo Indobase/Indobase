@@ -114,7 +114,7 @@ export function buildLaunchJourneyState(
       ? {
           label: 'Go Live on Indobase',
           message:
-            'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url, then emit Domain / Add payments / Production checklist chips.',
+            'Go Live — POST /api/os/apps/launch (launchProductionApp) with production:true. Quote job status and the live url only when status=live, then emit Domain / Add payments / Production checklist chips.',
         }
       : !backendDone
         ? {

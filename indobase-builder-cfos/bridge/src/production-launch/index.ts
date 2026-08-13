@@ -36,3 +36,16 @@ export {
   LAUNCH_PRODUCTION_APP_TOOL,
   launchProductionAppToolCatalog,
 } from './catalog.js'
+export {
+  AGENT_FACING_TOOL_NAMES,
+  AGENT_SURFACE_HARD_RULES,
+  PLATFORM_PRIMITIVE_TOOL_NAMES,
+} from './agent-surface.js'
+export {
+  deriveProductionChecklist,
+  emptyProductionEvidence,
+  evidenceFromVerifiers,
+  finalizeEvidence,
+  mergeEvidence,
+  type ProductionLaunchEvidence,
+} from './evidence.js'

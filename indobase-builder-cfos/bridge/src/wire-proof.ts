@@ -29,6 +29,14 @@ const FORBIDDEN_STOREFRONT_ORDER_WRITE =
 
 const LOCAL_ONLY = /localStorage|sessionStorage/i
 
+/** Client sending its own price/total into checkout (server must price). */
+const CLIENT_PRICE_AUTHORITY =
+  /(?:amountMinor|unitPrice|clientPrice)\s*[:=]\s*(?:[^;\n]{0,60}(?:localStorage|sessionStorage|cart\.total|item\.price|line\.price))|(?:localStorage|sessionStorage)\.getItem\([^)]*(?:total|price|amount)/i
+
+/** Client mutating inventory / stock outside Commerce ABI. */
+const CLIENT_STOCK_AUTHORITY =
+  /(?:\/api\/collections\/[^"'\\\s]*products[^"'\\\s]*\/records|products[^"'\\\s]*\/records)[\s\S]{0,200}(?:PATCH|PUT|POST)/i
+
 export function collectLaunchText(input: {
   html?: string | null
   files?: Record<string, string> | null
@@ -75,6 +83,16 @@ export function contentHasForbiddenStorefrontCheckout(text: string): boolean {
   if (!text.trim()) return false
   if (contentHasCommerceCheckoutAbi(text)) return false
   return FORBIDDEN_STOREFRONT_ORDER_WRITE.test(text)
+}
+
+export function contentHasClientPriceAuthority(text: string): boolean {
+  if (!text.trim()) return false
+  return CLIENT_PRICE_AUTHORITY.test(text)
+}
+
+export function contentHasClientStockAuthority(text: string): boolean {
+  if (!text.trim()) return false
+  return CLIENT_STOCK_AUTHORITY.test(text)
 }
 
 export function contentNeedsCommerceAbi(text: string): boolean {

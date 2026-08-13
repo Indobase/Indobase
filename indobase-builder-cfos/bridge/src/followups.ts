@@ -256,7 +256,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} with launchBusiness (real html/files), quote exact url, then Domain / Add payments / Checklist chips`,
+        message: `Go Live — call launchProductionApp for ${name} (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then Domain / Add payments / Checklist chips`,
       },
       {
         label: 'Create admin dashboard',
@@ -635,7 +635,7 @@ export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Go Live on Indobase',
     message:
-      'Go Live — publish this store with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips',
+      'Go Live — call launchProductionApp (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then emit Domain / Add payments / Checklist chips',
   },
   {
     label: 'Publish admin dashboard',
