@@ -33,6 +33,7 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/IndobaseMark.tsx" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/NOTICE" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/indobase-mark.svg" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/HomeTaskSuggestions.tsx" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/"
 scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/followups.ts" \
