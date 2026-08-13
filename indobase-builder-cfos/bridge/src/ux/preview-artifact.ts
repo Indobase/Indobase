@@ -92,7 +92,8 @@ export function extractRequestedHeadline(message: string): string | null {
     /request:\s*(?:change\s+(?:the\s+)?(?:hero(?:\s+headline)?|headline)\s+to\s+)?[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(
       text,
     ) ||
-    /rewrite(?:\s+the)?(?:\s+hero)?(?:\s+headline)?\s+to\s+[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text)
+    /rewrite(?:\s+the)?(?:\s+hero)?(?:\s+headline)?\s+to\s+[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text) ||
+    /(?:hero\s+)?headline\s+to\s+([^\n]+)/i.exec(text)
   const fromQuote = tidyHeadline(quoted?.[1])
   if (fromQuote) return fromQuote
   const requestLine = /^request:\s*(.+)$/im.exec(text)

@@ -327,11 +327,44 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(afterAuth.runtime.preview.status, 'ready')
   })
 
+  it('OTP / auth noise after verify still uses pending UrbanThread intent', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: true })
+    const afterOtp = await applyOperatorIntent({
+      session,
+      message: '809952',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(afterOtp.spec?.businessName, 'UrbanThread')
+    assert.notEqual(afterOtp.spec?.businessName, 'your business')
+    assert.equal(afterOtp.runtime.preview.status, 'ready')
+  })
+
+  it('Go Live after pending create keeps UrbanThread, not the workspace placeholder', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: true })
+    const live = await applyOperatorIntent({
+      session,
+      message: 'Go Live',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: true }),
+    })
+    assert.equal(live.intent, 'launch_production')
+    assert.equal(live.spec?.businessName, 'UrbanThread')
+    assert.equal(live.launch?.ok, true)
+  })
+
   it('classifies UrbanThread create vs Go Live', () => {
     assert.equal(classifyOperatorIntent(PROMPT, null), 'create_business')
     assert.equal(
       classifyOperatorIntent('Go Live — call launchProductionApp for UrbanThread', null),
       'launch_production',
+    )
+    assert.equal(
+      classifyOperatorIntent(
+        '<<<INDOBASE_RUNTIME>>>\npreview.status=ready\n<<<END_INDOBASE_RUNTIME>>>\n\nPREVIEW_EDIT\ntarget: section / hero (Hero)\nrequest: Change the hero headline to Midnight drops',
+        null,
+      ),
+      'preview_edit',
     )
   })
 
@@ -509,6 +542,25 @@ describe('FTU execution contract A–Q', () => {
     assert.match(reloaded.runtime.artifactHtml || '', /Premium Sneakers\. Built to Move\./)
     const disk2 = await readLiveFile(session.projectRef, 'index.html')
     assert.match(disk2?.body.toString('utf8') || '', /Premium Sneakers\. Built to Move\./)
+  })
+
+  it('PREVIEW_EDIT persists an unquoted hero headline', async () => {
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    const turn = await applyOperatorIntent({
+      session,
+      message:
+        'PREVIEW_EDIT\ntarget: section / hero (Hero)\nsource: preview\nintent: rewrite\nrequest: Change the hero headline to Midnight drops',
+      guest: false,
+    })
+    assert.equal(turn.intent, 'preview_edit')
+    assert.match(turn.operatorMessage, /Midnight drops/)
+    assert.match(turn.runtime.artifactHtml || '', /Midnight drops/)
+    assert.doesNotMatch(turn.operatorMessage, /isn.t available/i)
   })
 
   it('fresh snapshot replaces a stale order count on the next turn', async () => {

@@ -89,11 +89,11 @@ function preserveOrTitleCase(raw: string): string {
 }
 
 const NAME_PATTERNS = [
-  /\bcalled\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:\s+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
-  /\bnamed\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:\s+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
-  /\bbrand(?:ed)?\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:\s+[A-Za-z][A-Za-z0-9&'-]*){0,2})/,
-  /["“]([A-Za-z][A-Za-z0-9&'-]*(?:\s+[A-Za-z][A-Za-z0-9&'-]*){0,3})["”]/,
-  /['‘]([A-Za-z][A-Za-z0-9&'-]*(?:\s+[A-Za-z][A-Za-z0-9&'-]*){0,3})['’]/,
+  /\bcalled\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
+  /\bnamed\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
+  /\bbrand(?:ed)?\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,2})/,
+  /["“]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})["”]/,
+  /['‘]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})['’]/,
 ]
 
 function takeBrandTokens(raw: string): string {

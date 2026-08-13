@@ -211,17 +211,25 @@ export function injectIndobaseContextBootstrap(html: string): string {
           out = out.replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*/gi, '');
           out = out.replace(/<<<END_INDOBASE_RUNTIME>>>\\s*/gi, '');
           out = out.replace(/\\bINDOBASE_RUNTIME\\b/gi, '');
+          out = out.replace(/\\b(?:PocketBase|provisioner)\\b/gi, '');
           return out.replace(/\\n{3,}/g, '\\n\\n').trim();
         }
-        var walk = (root || document).querySelectorAll('p, li, div, span, pre, code, article, [class*="markdown"], [class*="message"]');
-        for (var j = 0; j < walk.length; j++) {
-          var node = walk[j];
-          var raw = node.textContent || '';
-          if (!raw || (raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1 && raw.indexOf('INDOBASE_RUNTIME') === -1)) continue;
-          if (node.querySelector && node.querySelector('button, iframe, input, textarea, img')) continue;
-          var stripped = stripRuntimeLeak(raw);
-          if (stripped !== raw) node.textContent = stripped;
+        function walkText(node) {
+          if (!node) return;
+          if (node.nodeType === 3) {
+            var raw = node.nodeValue || '';
+            if (!raw || (raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1 && raw.indexOf('INDOBASE_RUNTIME') === -1 && raw.indexOf('PocketBase') === -1)) return;
+            var stripped = stripRuntimeLeak(raw);
+            if (stripped !== raw) node.nodeValue = stripped;
+            return;
+          }
+          if (node.nodeType !== 1) return;
+          var tag = String(node.tagName || '').toLowerCase();
+          if (tag === 'script' || tag === 'style' || tag === 'textarea' || tag === 'input') return;
+          var kids = node.childNodes;
+          for (var k = 0; k < kids.length; k++) walkText(kids[k]);
         }
+        walkText(root || document.body);
       } catch (_) {}
     }
     try {

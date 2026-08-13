@@ -45,6 +45,10 @@ describe('BusinessSpec', () => {
       inferBusinessSpec('Launch a premium sneaker store called UrbanThread').businessName,
       'your business',
     )
+    assert.equal(
+      inferBusinessSpec('Launch a premium sneaker store called UrbanThread\nGo Live').businessName,
+      'UrbanThread',
+    )
   })
 
   it('does not let a placeholder name overwrite UrbanThread', () => {

@@ -774,9 +774,8 @@ void (async () => {
       text.includes('__INDOBASE_GUEST__') && text.includes('meter.clone().json()')
     const hasTurnContext = text.includes('__INDOBASE_TURN_CONTEXT__')
     const hasRuntimeStamp = text.includes('<<<INDOBASE_RUNTIME>>>')
-    const stampsOutbound =
-      text.includes('let outboundMessage = inputValue') &&
-      text.includes('let messageInput = outboundMessage')
+    const leakedStampToDisplay = text.includes('let messageInput = outboundMessage')
+    const stampsModelPayloadOnly = text.includes('Stamp runtime onto model payload only')
     const stampsHintFallback = text.includes("j?.agent_hint.trim() ? j.agent_hint.trim()")
     const compactStampOnly = text.includes('Compact agent_context only')
     if (
@@ -784,8 +783,9 @@ void (async () => {
       hasGuestSync &&
       hasTurnContext &&
       hasRuntimeStamp &&
-      stampsOutbound &&
+      stampsModelPayloadOnly &&
       compactStampOnly &&
+      !leakedStampToDisplay &&
       !stampsHintFallback
     ) {
       console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
@@ -796,8 +796,9 @@ void (async () => {
     // Indobase begin-turn meter (hard Free-plan enforce).
     // Guests get 200 (no consume) so OTP signup chat works. Fail-closed on 402 only.
     // Fail-open on 5xx/network. Do not abort on 403 — guests must be able to chat.
-    // Stamp runtime onto a local copy — inputValue is React state and cannot be reassigned.
-    let outboundMessage = inputValue
+    // Compact agent_context only — never stamp agent_hint (operator chat leak).
+    // turnCtx is stamped onto the model payload after trim; the transcript stays on inputValue.
+    let turnCtx = ''
     try {
       const meter = await fetch('/api/os/agent/begin-turn', {
         method: 'POST',
@@ -835,14 +836,10 @@ void (async () => {
           }
           w.__INDOBASE_GUEST__ = isGuest
           w.__INDOBASE_SESSION_STAGE__ = j?.stage || (isGuest ? 'guest' : 'member')
-          // Compact agent_context only — never stamp agent_hint (operator chat leak).
-          const turnCtx = (typeof j?.agent_context === 'string' && j.agent_context.trim())
+          turnCtx = (typeof j?.agent_context === 'string' && j.agent_context.trim())
             ? j.agent_context.trim()
             : ''
           if (turnCtx) w.__INDOBASE_TURN_CONTEXT__ = turnCtx
-          if (turnCtx && !outboundMessage.includes('<<<INDOBASE_RUNTIME>>>')) {
-            outboundMessage = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + outboundMessage
-          }
           if (typeof j?.agent_hint === 'string' && j.agent_hint.trim()) {
             w.__INDOBASE_AGENT_HINT__ = j.agent_hint
           }
@@ -860,7 +857,6 @@ void (async () => {
     sendInFlightRef.current = true;`
       if (meterBlockRe.test(text)) {
         text = text.replace(meterBlockRe, injection)
-        text = text.replace('let messageInput = inputValue;', 'let messageInput = outboundMessage;')
         write(path, text)
         console.log('  ChatInterface ← begin-turn meter + guest sync (upgrade)')
       } else {
@@ -877,12 +873,39 @@ void (async () => {
 ${injection}`
         if (text.includes(anchor)) {
           text = text.replace(anchor, full)
-          text = text.replace('let messageInput = inputValue;', 'let messageInput = outboundMessage;')
           write(path, text)
           console.log('  ChatInterface ← begin-turn meter + guest sync')
         } else {
           console.warn('  skip: ChatInterface handleSend meter anchor drifted')
         }
+      }
+    }
+
+    text = read(path)
+    if (text.includes('let messageInput = outboundMessage;')) {
+      text = text.replaceAll('let messageInput = outboundMessage;', 'let messageInput = inputValue;')
+      write(path, text)
+      console.log('  ChatInterface ← keep transcript on inputValue (do not display runtime stamp)')
+    }
+    if (!text.includes('Stamp runtime onto model payload only') && text.includes('let turnCtx')) {
+      const afterTrim = `        message = message.trim();
+      }
+
+      // Positions are resolved against the text as sent`
+      const afterTrimPatched = `        message = message.trim();
+      }
+      // Stamp runtime onto model payload only — transcript stays on the operator's words.
+      if (typeof message === "string" && turnCtx && !message.includes("<<<INDOBASE_RUNTIME>>>")) {
+        message = "<<<INDOBASE_RUNTIME>>>\\n" + turnCtx + "\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n" + message;
+      }
+
+      // Positions are resolved against the text as sent`
+      if (text.includes(afterTrim)) {
+        text = text.replace(afterTrim, afterTrimPatched)
+        write(path, text)
+        console.log('  ChatInterface ← stamp model payload only (hidden from operator chat)')
+      } else {
+        console.warn('  skip: ChatInterface onSend trim anchor drifted')
       }
     }
   }
@@ -2436,6 +2459,12 @@ ${injection}`
     }
     if (text.includes('cleanOperatorMessage') && text.includes('message={msg.message}')) {
       text = text.replaceAll('message={msg.message}', 'message={cleanOperatorMessage(msg.message)}')
+    }
+    if (text.includes('cleanOperatorMessage') && text.includes('handleCopyMessage(msg.message)')) {
+      text = text.replaceAll(
+        'handleCopyMessage(msg.message)',
+        'handleCopyMessage(cleanOperatorMessage(msg.message))',
+      )
     }
     if (text.includes('Indobase follow-up chips') && !text.includes('Indobase chat+preview workspace')) {
       text = text.replace(

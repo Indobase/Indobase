@@ -80,6 +80,23 @@ export type ApplyOperatorIntentInput = {
   probe?: typeof probePreviewHttp
 }
 
+function stripRuntimeStamp(message: string): string {
+  return (message || '')
+    .replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*?<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
+    .replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*$/gi, '')
+    .replace(/<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
+    .trim()
+}
+
+function looksLikeAuthNoise(text: string): boolean {
+  const t = (text || '').trim()
+  if (!t) return true
+  if (/^\d{4,8}$/.test(t)) return true
+  if (/^(verify|otp|continue|ok|yes|done|thanks)$/i.test(t)) return true
+  if (/\b(authVerify|authStart|verification code|one-time(?:\s+password)?)\b/i.test(t)) return true
+  return false
+}
+
 function looksLikeCreateBusiness(text: string): boolean {
   const q = text.toLowerCase()
   if (/\blaunch a\b/.test(q) || /\bbuild (?:me )?(?:a|an)\b/.test(q)) return true
@@ -108,7 +125,7 @@ export function classifyOperatorIntent(
   message: string,
   runtime: PersistedWorkspaceRuntime | null,
 ): OperatorIntentKind {
-  const text = (message || '').trim()
+  const text = stripRuntimeStamp(message || '').trim()
   if (!text) return 'other'
   if (/^PREVIEW_EDIT\b/.test(text)) return 'preview_edit'
   if (/\b(hero headline|change the hero|headline to)\b/i.test(text)) return 'preview_edit'
@@ -294,6 +311,7 @@ function composeAgentContext(result: {
       : 'BusinessSpec: none',
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
+    'Never print INDOBASE_RUNTIME, Studio, PocketBase, or provisioner in operator-visible replies.',
   ]
   if (job) {
     lines.push(`production_job=${job.jobId}; status=${job.status}; url=${job.url || 'none'}`)
@@ -609,7 +627,7 @@ async function applyPersistedPreviewEdit(
 
 export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Promise<ExecutionTurnResult> {
   const { session, guest } = input
-  const message = (input.message || '').trim()
+  const message = stripRuntimeStamp(input.message || '').trim()
   let runtime = await rehydrateWorkspaceRuntime(session, {
     launchStatus: input.launchStatus,
     productionJob: input.productionJob,
@@ -638,9 +656,20 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   }
 
   const pending = peekPendingIntent(session.projectRef)
-  const effectiveMessage = message || pending || ''
+  const effectiveMessage =
+    (!message || looksLikeAuthNoise(message)) && pending ? pending : message || pending || ''
+  const specSource =
+    pending && looksLikeCreateBusiness(pending)
+      ? pending
+      : [pending, message || effectiveMessage].filter(Boolean).join('\n') || effectiveMessage
   const intent = classifyOperatorIntent(effectiveMessage, runtime)
-  if (pending && (intent === 'create_business' || intent === 'launch_production' || !message)) {
+  if (
+    pending &&
+    (intent === 'create_business' ||
+      intent === 'launch_production' ||
+      !message ||
+      looksLikeAuthNoise(message))
+  ) {
     takePendingIntent(session.projectRef)
   }
 
@@ -651,19 +680,22 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
 
   if (
     !spec &&
-    effectiveMessage &&
+    specSource &&
     (intent === 'other' || intent === 'operate') &&
-    (inferName(effectiveMessage) || looksLikeCreateBusiness(effectiveMessage))
+    (inferName(specSource) || looksLikeCreateBusiness(specSource))
   ) {
-    const created = await ensureSpecAndPreview(session, effectiveMessage, input.probe)
+    const created = await ensureSpecAndPreview(session, specSource, input.probe)
     spec = created.spec
     runtime = created.runtime
     recovered = created.recovered
     commandId = created.commandId
   }
 
-  if (intent === 'create_business' || (intent === 'launch_production' && !runtime.spec && effectiveMessage)) {
-    const created = await ensureSpecAndPreview(session, effectiveMessage, input.probe)
+  if (
+    intent === 'create_business' ||
+    (intent === 'launch_production' && (!runtime.spec || isPlaceholderBusinessName(runtime.spec.businessName)) && specSource)
+  ) {
+    const created = await ensureSpecAndPreview(session, specSource, input.probe)
     spec = created.spec
     runtime = created.runtime
     recovered = created.recovered
@@ -678,14 +710,14 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     if (runtime.preview.status !== 'ready' || !runtime.artifactHtml) {
       const created = await ensureSpecAndPreview(
         session,
-        effectiveMessage || spec?.sourceIntent || message,
+        specSource || spec?.sourceIntent || message,
         input.probe,
       )
       spec = created.spec
       runtime = created.runtime
       recovered = recovered || created.recovered
     }
-    const launched = await runProductionLaunch(session, effectiveMessage || message, runtime, input.launchDeps)
+    const launched = await runProductionLaunch(session, specSource || message, runtime, input.launchDeps)
     launch = launched.launch
     runtime = launched.runtime
     commandId = launched.commandId
