@@ -70,6 +70,7 @@ import {
 } from './ux/agent-truth.js'
 import { getBusinessSpec, type BusinessSpec } from './ux/business-spec.js'
 import { resolvePreviewGate, type PreviewStatus } from './ux/preview-gate.js'
+import { getWorkspaceRuntime } from './ux/runtime-store.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -233,12 +234,14 @@ function buildAuthoritativeProject(
   const paymentsReady = Boolean(journey.flags.is_payments_ready || sessionLooksPaymentsReady(session))
   const live = job?.status === 'live' || journey.flags.is_live
   const liveUrl = live ? job?.url || journey.live_url || null : null
+  const persisted = getWorkspaceRuntime(session.projectRef)
   const preview = resolvePreviewGate({
     jobStatus: job?.status || null,
-    artifactExists: Boolean(launch?.previewReady),
+    artifactExists: Boolean(launch?.previewReady || persisted?.preview.artifactRef),
     published: Boolean(launch?.subdomain || launch?.customDomain),
-    previewUrl: launch?.previewUrl || null,
+    previewUrl: persisted?.preview.url || launch?.previewUrl || null,
     liveUrl,
+    httpOk: persisted?.preview.httpOk ?? null,
   })
   const state = resolveWorkspaceState({
     live,
@@ -304,7 +307,8 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     catalogReady: catalogReady || input.launchStatus?.catalogReady,
   })
   const authority = buildAuthoritativeProject(session, journey, input.productionJob, input.launchStatus)
-  const spec = getBusinessSpec(session.projectRef)
+  const persistedRuntime = getWorkspaceRuntime(session.projectRef)
+  const spec = persistedRuntime?.spec || getBusinessSpec(session.projectRef)
   const productionJob = input.productionJob
     ? {
         ...summarizeProductionLaunchJob(input.productionJob),
@@ -321,6 +325,12 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     catalogReady: authority.catalogReady,
     spec,
     snapshot: input.businessSnapshot || null,
+    events: persistedRuntime?.events.map((e) => ({
+      at: e.at,
+      kind: e.kind,
+      message: e.message,
+      commandId: e.commandId,
+    })),
     paymentsReady: Boolean(
       journey.flags.is_payments_ready || sessionLooksPaymentsReady(session),
     ),
@@ -340,7 +350,20 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       status: input.productionJob?.status || null,
       jobId: input.productionJob?.jobId || null,
     },
-    capabilities: authority.capabilities.map((id) => ({ id, enabled: true })),
+    capabilities: [
+      ...authority.capabilities.map((id) => ({
+        id,
+        enabled: true,
+        status: 'ready' as const,
+      })),
+      ...Object.entries(persistedRuntime?.capabilities || {})
+        .filter(([id]) => !authority.capabilities.includes(id))
+        .map(([id, status]) => ({
+          id,
+          enabled: status === 'ready',
+          status,
+        })),
+    ],
     jobs: input.productionJob
       ? [{ id: input.productionJob.jobId, status: input.productionJob.status }]
       : [],

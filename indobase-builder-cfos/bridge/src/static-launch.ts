@@ -87,9 +87,69 @@ function cnameTarget(): string {
   ).toLowerCase()
 }
 
-function sanitizeRef(ref: string): string {
+export function sanitizeLaunchRef(ref: string): string {
   const cleaned = ref.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64)
   return cleaned || 'site'
+}
+
+function sanitizeRef(ref: string): string {
+  return sanitizeLaunchRef(ref)
+}
+
+export function launchPublicBase(): string {
+  return publicBase()
+}
+
+export function draftPreviewUrl(workspaceRef: string): string {
+  return `${publicBase()}/live/${sanitizeRef(workspaceRef)}/`
+}
+
+/**
+ * Draft preview only — write files, do not assign a live subdomain / claim LIVE.
+ */
+export async function writeDraftPreview(input: {
+  workspaceRef: string
+  title?: string
+  html?: string
+  files?: Record<string, string>
+}): Promise<{
+  ok: boolean
+  artifactRef: string
+  previewUrl: string
+  contentHash: string
+  files: Record<string, string>
+  message: string
+}> {
+  const adapter = createDiskStaticDeploymentAdapter()
+  await adapter.prepare(input.workspaceRef)
+  const deployed = await adapter.deploy(input)
+  const files = normalizeFiles(input)
+  const contentHash = deployed.artifactRef.split(':').pop() || ''
+  return {
+    ok: true,
+    artifactRef: deployed.artifactRef,
+    previewUrl: draftPreviewUrl(input.workspaceRef),
+    contentHash,
+    files,
+    message: 'Preview files written',
+  }
+}
+
+export async function probePreviewHttp(
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+  const target = (url || '').trim()
+  if (!target) return false
+  try {
+    const res = await fetchImpl(target, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(6_000),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export function sanitizeSubdomain(raw: string): string {

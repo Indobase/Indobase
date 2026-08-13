@@ -45,6 +45,7 @@ export type AuthoritativeTruth = {
   deployment?: Partial<BusinessRuntimeState['deployment']>
   capabilities?: BusinessRuntimeState['capabilities']
   jobs?: BusinessRuntimeState['jobs']
+  events?: BusinessRuntimeState['events']
   paymentsReady?: boolean
 }
 
@@ -103,6 +104,7 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       })),
     capabilities: truth.capabilities,
     jobs: truth.jobs,
+    events: truth.events,
     health: {
       catalogReady: truth.catalogReady,
       paymentsReady: Boolean(truth.paymentsReady),

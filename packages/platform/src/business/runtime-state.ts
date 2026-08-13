@@ -57,7 +57,16 @@ export type BusinessRuntimeLive = {
 export type BusinessRuntimeCapability = {
   id: string
   enabled: boolean
+  /** requested → planned → executing → ready → failed. Only ready may be narrated as done. */
+  status?: 'requested' | 'planned' | 'executing' | 'ready' | 'failed'
   label?: string
+}
+
+export type BusinessRuntimeEvent = {
+  at: string
+  kind: string
+  message: string
+  commandId?: string
 }
 
 export type BusinessRuntimeJob = {
@@ -85,6 +94,7 @@ export type BusinessRuntimeState = {
   capabilities: BusinessRuntimeCapability[]
   jobs: BusinessRuntimeJob[]
   health: BusinessRuntimeHealth
+  events: BusinessRuntimeEvent[]
 }
 
 export type AgentRuntimeClaim =
@@ -122,6 +132,7 @@ export function emptyBusinessRuntimeState(
     orders: overrides.orders ?? [],
     capabilities: overrides.capabilities ?? [],
     jobs: overrides.jobs ?? [],
+    events: overrides.events ?? [],
     health: {
       catalogReady: false,
       paymentsReady: false,
@@ -212,20 +223,33 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     `health.paymentsReady: ${state.health.paymentsReady ? 'yes' : 'no'}`,
     `health.previewReady: ${state.health.previewReady ? 'yes' : 'no'}`,
   ]
-  if (capLines.length) {
-    lines.push(`capabilities.enabled: ${capLines.join(', ')}`)
-  }
-  if (jobLines.length) {
-    lines.push(`jobs: ${jobLines.join(', ')}`)
-  }
   if (state.spec) {
     const spec = state.spec
     lines.push(
-      `business.spec: ${spec.businessName} / ${spec.businessType} / ${spec.category || spec.industry || ''} / ${spec.visualStyle || ''} / ${spec.currency || ''}`.trim(),
+      `business.spec: ${spec.businessName} / ${spec.businessType} / ${spec.category || spec.industry || ''} / ${spec.verticalId || ''} / ${spec.visualStyle || ''} / ${spec.currency || ''}`.trim(),
     )
     lines.push(
       'Honor BusinessSpec. Do not substitute a generic apparel catalog when the spec is sneakers (or any other niche).',
     )
+  } else {
+    lines.push('business.spec: none')
+  }
+  if (capLines.length) {
+    lines.push(`capabilities.enabled: ${capLines.join(', ')}`)
+  }
+  const capStatus = state.capabilities
+    .map((c) => `${c.id}:${c.status || (c.enabled ? 'ready' : 'absent')}`)
+    .slice(0, 8)
+  if (capStatus.length) {
+    lines.push(`capabilities.status: ${capStatus.join(', ')}`)
+  }
+  if (jobLines.length) {
+    lines.push(`jobs: ${jobLines.join(', ')}`)
+  }
+  const eventLines = state.events.slice(-6).map((e) => `- ${e.kind}: ${e.message}`)
+  if (eventLines.length) {
+    lines.push('recent execution events:')
+    lines.push(...eventLines)
   }
   if (productLines.length) {
     lines.push('products (from BusinessRuntimeState):')
@@ -246,7 +270,9 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
       '- Never invent “connection unavailable” when this object lists the entity.',
       '- Never describe a preview as available unless preview.status is ready and preview.url is set.',
       '- Never claim LIVE unless live.isLive is yes and live.url is set.',
-      '- Launch / Go Live → immediately call launchProductionApp with this BusinessSpec. Do not ask the operator to refresh.',
+      '- Never claim a capability ready unless capabilities.status is ready. “Customer database enabled” is forbidden until then.',
+      '- COMPLETED claims require a command result plus this object. Chat history is not authoritative.',
+      '- Launch / Go Live is a launch command (launchProductionApp / business.launch). Do not ask the operator to refresh.',
       '- After sign-in: continue the original request immediately. Do not ask them to wait or refresh Indobase.',
       '- Customer language: Business / Workspace / Live. Never say Studio, PocketBase, tenant, provisioner, or “backend ready”.',
       '- If a tool fails, quote the humanized failure and offer Fix it automatically. Never invent “service unavailable”.',

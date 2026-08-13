@@ -116,6 +116,11 @@ import {
   getProductionLaunchJob,
   summarizeProductionLaunchJob,
 } from './production-launch/index.js'
+import {
+  applyOperatorIntent,
+  applyPendingIntentAfterAuth,
+} from './ux/execution-contract.js'
+import { rememberPendingIntent, takePendingIntent } from './ux/runtime-store.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -771,6 +776,14 @@ app.post('/auth/verify', async (c) => {
     previous,
   )
   const sessionToken = createSessionToken(session, secret)
+
+  const guestPending = previous ? takePendingIntent(previous.projectRef) : null
+  if (guestPending) rememberPendingIntent(session.projectRef, guestPending)
+  try {
+    await applyPendingIntentAfterAuth(session)
+  } catch {
+    // OTP must succeed even if preview orchestration fails; recovery retries next turn.
+  }
 
   // Agent tool verify: stash for browser claim (no Set-Cookie from workerd).
   const provided =
@@ -1910,7 +1923,18 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
   }
 
   // Guests must be able to chat (account OTP gate). Meter only after verify.
+  // Remember the original ask so OTP verify can create spec + preview.
   if (isGuestSession(sessionOrErr)) {
+    let execution = null
+    try {
+      execution = await applyOperatorIntent({
+        session: sessionOrErr,
+        message: message || '',
+        guest: true,
+      })
+    } catch {
+      execution = null
+    }
     return c.json({
       ok: true,
       guest: true,
@@ -1921,6 +1945,17 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
       quota: null,
       code: null,
       message: null,
+      execution: execution
+        ? {
+            intent: execution.intent,
+            operator_message: execution.operatorMessage,
+            agent_context: execution.agentContext,
+            preview: execution.runtime.preview,
+            spec: execution.spec,
+          }
+        : null,
+      runtime: execution?.businessRuntime || null,
+      agent_context: execution?.agentContext || null,
     })
   }
 
@@ -1943,6 +1978,19 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
           ? result.httpStatus
           : 502
 
+  let execution = null
+  if (interpreted.ok) {
+    try {
+      execution = await applyOperatorIntent({
+        session: sessionOrErr,
+        message: message || '',
+        guest: false,
+      })
+    } catch {
+      execution = null
+    }
+  }
+
   return c.json(
     {
       ok: interpreted.ok,
@@ -1954,6 +2002,32 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
       code: interpreted.code,
       message: interpreted.message ?? (interpreted.ok ? null : result.message ?? null),
       consumed: consume && interpreted.ok,
+      execution: execution
+        ? {
+            intent: execution.intent,
+            operator_message: execution.operatorMessage,
+            agent_context: execution.agentContext,
+            preview: execution.runtime.preview,
+            spec: execution.spec
+              ? {
+                  name: execution.spec.businessName,
+                  vertical: execution.spec.catalog.verticalId,
+                  positioning: execution.spec.visualStyle,
+                }
+              : null,
+            launch: execution.launch
+              ? {
+                  ok: execution.launch.ok,
+                  jobId: execution.launch.job.jobId,
+                  status: execution.launch.job.status,
+                  url: execution.launch.url || null,
+                  claim_live: execution.launch.claim_live,
+                }
+              : null,
+          }
+        : null,
+      runtime: execution?.businessRuntime || null,
+      agent_context: execution?.agentContext || null,
     },
     status,
   )

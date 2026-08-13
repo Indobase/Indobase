@@ -24,6 +24,7 @@ describe('agent truth reconciliation', () => {
     const hint = composeAuthoritativeStateHint(empty)
     assert.match(hint, /BusinessRuntimeState/)
     assert.match(hint, /preview.status: absent/)
+    assert.match(hint, /business.spec: none/)
     assert.match(hint, /Never describe a preview as available/)
     assert.match(hint, /Never invent “connection unavailable”/)
     assert.doesNotMatch(hint, /Commerce ABI|guidedBackend/)

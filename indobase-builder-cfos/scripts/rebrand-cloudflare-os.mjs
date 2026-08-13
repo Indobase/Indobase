@@ -772,7 +772,8 @@ void (async () => {
     let text = read(path)
     const hasGuestSync =
       text.includes('__INDOBASE_GUEST__') && text.includes('meter.clone().json()')
-    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync) {
+    const hasTurnContext = text.includes('__INDOBASE_TURN_CONTEXT__')
+    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync && hasTurnContext) {
       console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
     } else {
       const meterBlockRe =
@@ -799,11 +800,28 @@ void (async () => {
       }
       if (meter.ok) {
         try {
-          const j = await meter.clone().json() as { guest?: boolean; stage?: string; signed_in?: boolean }
+          const j = await meter.clone().json() as {
+            guest?: boolean
+            stage?: string
+            signed_in?: boolean
+            agent_context?: string
+            runtime?: unknown
+            execution?: { operator_message?: string }
+          }
           const isGuest = j?.signed_in === false || j?.guest === true || j?.stage === 'guest'
-          ;(window as unknown as { __INDOBASE_GUEST__?: boolean }).__INDOBASE_GUEST__ = isGuest
-          ;(window as unknown as { __INDOBASE_SESSION_STAGE__?: string }).__INDOBASE_SESSION_STAGE__ =
-            j?.stage || (isGuest ? 'guest' : 'member')
+          const w = window as unknown as {
+            __INDOBASE_GUEST__?: boolean
+            __INDOBASE_SESSION_STAGE__?: string
+            __INDOBASE_TURN_CONTEXT__?: string
+            __INDOBASE_RUNTIME__?: unknown
+          }
+          w.__INDOBASE_GUEST__ = isGuest
+          w.__INDOBASE_SESSION_STAGE__ = j?.stage || (isGuest ? 'guest' : 'member')
+          if (typeof j?.agent_context === 'string' && j.agent_context.trim()) {
+            w.__INDOBASE_TURN_CONTEXT__ = j.agent_context
+          }
+          if (j?.runtime) w.__INDOBASE_RUNTIME__ = j.runtime
+          window.dispatchEvent(new CustomEvent('indobase:runtime-updated'))
         } catch { /* ignore */ }
       }
       if (!meter.ok && meter.status >= 500) {

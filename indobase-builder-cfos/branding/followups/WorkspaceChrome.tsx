@@ -140,7 +140,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     refresh()
     const onCtx = () => refresh()
     window.addEventListener('indobase:context', onCtx)
-    return () => window.removeEventListener('indobase:context', onCtx)
+    window.addEventListener('indobase:runtime-updated', onCtx)
+    return () => {
+      window.removeEventListener('indobase:context', onCtx)
+      window.removeEventListener('indobase:runtime-updated', onCtx)
+    }
   }, [refresh])
 
   useEffect(() => {
@@ -166,6 +170,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
         w.__INDOBASE_DISPLAY_NAME__ = s.display_name || null
         w.__INDOBASE_PROJECT_REF__ = s.project_ref || null
         if (s.project) w.__INDOBASE_PROJECT__ = s.project
+        if (s.runtime) w.__INDOBASE_RUNTIME__ = s.runtime
         if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object') {
           ;(w.__INDOBASE__ as { guest?: boolean }).guest = !!s.guest
         } else {
@@ -177,11 +182,14 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
       }
     }
     void pull()
-    const hot = view.state === 'building' || view.state === 'publishing'
+    const onRuntime = () => void pull()
+    window.addEventListener('indobase:runtime-updated', onRuntime)
+    const hot = view.state === 'building' || view.state === 'publishing' || view.state === 'empty'
     const id = window.setInterval(() => void pull(), hot ? 2500 : 10000)
     return () => {
       cancelled = true
       window.clearInterval(id)
+      window.removeEventListener('indobase:runtime-updated', onRuntime)
     }
   }, [view.state])
 
