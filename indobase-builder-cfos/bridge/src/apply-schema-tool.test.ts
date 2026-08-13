@@ -27,25 +27,21 @@ describe('general web-app production tools', () => {
     assert.equal(ensureDatabaseToolCatalog().path, '/api/os/tools/ensureDatabase')
     assert.equal(ensureEmailToolCatalog().path, '/api/os/tools/ensureEmail')
     assert.equal(ensureAnalyticsToolCatalog().path, '/api/os/tools/ensureAnalytics')
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureLogin/)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureEmail/)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /Do NOT offer ensureAnalytics/)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /applySchema/)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensure-first|BEFORE building|before.*UI/i)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /guidedBackend/)
+    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /Not agent tools/i)
+    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /must not call/)
     assert.match(ensureAnalyticsToolCatalog().description, /unavailable|stripped/i)
   })
 
-  it('guidedBackend allows preview-first then chip-triggered ensure', async () => {
+  it('guidedBackend catalog stays internal and does not instruct the agent to call it', async () => {
     const { GUIDED_BACKEND_AGENT_HARD_RULES, guidedBackendToolCatalog } = await import(
       './guided-backend-chain.ts'
     )
     const catalog = guidedBackendToolCatalog()
     assert.equal(catalog.name, 'guidedBackend')
     assert.equal(catalog.path, '/api/os/tools/guidedBackend')
-    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /Preview-first is OK/i)
-    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /Add a real backend/i)
-    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /BEFORE.*wiring UI to a live API/i)
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /Not an agent tool/i)
+    assert.match(GUIDED_BACKEND_AGENT_HARD_RULES, /must not name or call/i)
+    assert.doesNotMatch(GUIDED_BACKEND_AGENT_HARD_RULES, /Call \*\*guidedBackend|then call \*\*guidedBackend/i)
   })
 
   it('resolveProductImages points at OS media tool', () => {
@@ -60,8 +56,8 @@ describe('general web-app production tools', () => {
     const catalog = applySchemaToolCatalog()
     assert.equal(catalog.name, 'applySchema')
     assert.equal(catalog.path, '/api/os/tools/applySchema')
-    assert.match(APPLY_SCHEMA_AGENT_HARD_RULES, /ensureDatabase/)
-    assert.match(APPLY_SCHEMA_AGENT_HARD_RULES, /Do not send arbitrary SQL|declarative/i)
+    assert.match(APPLY_SCHEMA_AGENT_HARD_RULES, /Not an agent tool/i)
+    assert.match(APPLY_SCHEMA_AGENT_HARD_RULES, /declarative/i)
   })
 
   it('productionChecklist is the claim gate', () => {

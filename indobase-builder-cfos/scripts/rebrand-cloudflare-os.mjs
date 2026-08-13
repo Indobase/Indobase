@@ -1344,7 +1344,9 @@ ${injection}`
   // --- Agent tool: wireCheckout (hosted checkout_url after connectGateway) ---
   if (existsSync(agentPath)) {
     let text = readFileSync(agentPath, 'utf8')
-    if (
+    if (text.includes('Indobase five-tool freeze applied')) {
+      console.log('  wireCheckout AgentTool skipped (five-tool freeze)')
+    } else if (
       text.includes('Indobase wireCheckout tool') ||
       text.includes('name: "wireCheckout"')
     ) {
@@ -1490,7 +1492,9 @@ ${injection}`
   // --- Agent tool: setupShopCatalog (tenant DB inventory; webFetch cannot POST) ---
   if (existsSync(agentPath)) {
     let text = readFileSync(agentPath, 'utf8')
-    if (
+    if (text.includes('Indobase five-tool freeze applied')) {
+      console.log('  setupShopCatalog AgentTool skipped (five-tool freeze)')
+    } else if (
       text.includes('Indobase setupShopCatalog tool') ||
       text.includes('name: "setupShopCatalog"')
     ) {
@@ -1601,7 +1605,9 @@ ${injection}`
   // --- Agent tools: ensure* / applySchema / productionChecklist / resolveProductImages / shop orders ---
   if (existsSync(agentPath)) {
     let text = readFileSync(agentPath, 'utf8')
-    if (
+    if (text.includes('Indobase five-tool freeze applied')) {
+      console.log('  ensure* AgentTools skipped (five-tool freeze)')
+    } else if (
       text.includes('Indobase ensureLogin tool') ||
       text.includes('name: "ensureLogin"')
     ) {
@@ -2154,6 +2160,72 @@ ${injection}`
     }
   }
 
+  // --- Five-tool freeze: strip platform primitives from the CFOS agent catalog ---
+  if (existsSync(agentPath)) {
+    let text = readFileSync(agentPath, 'utf8')
+    const primitiveTools = [
+      'ensureLogin',
+      'ensureDatabase',
+      'ensureEmail',
+      'ensureAnalytics',
+      'applySchema',
+      'guidedBackend',
+      'setupShopCatalog',
+      'seedShopCatalog',
+      'listShopOrders',
+      'listShopCatalog',
+      'placeTestShopOrder',
+      'resolveProductImages',
+      'wireCheckout',
+      'wirePricing',
+    ]
+    const stripNamedTool = (source, toolName) => {
+      const needle = `    ${toolName}: defineTool({`
+      const start = source.indexOf(needle)
+      if (start < 0) return source
+      let depth = 0
+      const braceAt = source.indexOf('{', start)
+      if (braceAt < 0) return source
+      for (let i = braceAt; i < source.length; i++) {
+        const ch = source[i]
+        if (ch === '{') depth++
+        else if (ch === '}') {
+          depth--
+          if (depth === 0) {
+            let end = i + 1
+            if (source[end] === ')') end++
+            if (source[end] === ',') end++
+            while (source[end] === '\n' || source[end] === '\r') end++
+            let from = start
+            const before = source.slice(0, start)
+            const lastNl = before.lastIndexOf('\n')
+            const prevLineStart = before.lastIndexOf('\n', lastNl - 1)
+            const prevLine = before.slice(prevLineStart + 1, lastNl)
+            if (/^\s*\/\/ Indobase/.test(prevLine)) from = prevLineStart + 1
+            return source.slice(0, from) + source.slice(end)
+          }
+        }
+      }
+      return source
+    }
+    let next = text
+    for (const name of primitiveTools) next = stripNamedTool(next, name)
+    if (next !== text) {
+      if (!next.includes('Indobase five-tool freeze applied')) {
+        next = next.replace(
+          '    launchBusiness: defineTool({',
+          '    // Indobase five-tool freeze applied — primitives stripped from agent catalog.\n    launchBusiness: defineTool({',
+        )
+      }
+      writeFileSync(agentPath, next)
+      console.log('  agent.ts ← five-tool freeze (primitives stripped)')
+    } else if (text.includes('Indobase five-tool freeze applied')) {
+      console.log('  agent.ts five-tool freeze already applied')
+    } else {
+      console.log('  agent.ts five-tool freeze: no primitive defineTool blocks found')
+    }
+  }
+
   if (existsSync(overseerPath)) {
     let text = readFileSync(overseerPath, 'utf8')
     if (text.includes('getIndobaseLaunchConfig()')) {
@@ -2597,15 +2669,18 @@ ${injection}`
     "productionChecklist", "promptQuota", "createGadget",
   ]);
   const name = (tc as { toolName?: string }).toolName || "";
-  if (hidden.has(name)) return { verb: "Working" };
   const labels: Record<string, string> = {
-    launchProductionApp: "Launching your store",
-    launchBusiness: "Publishing preview",
-    connectGateway: "Connecting payments",
-    authStart: "Sending sign-in code",
-    authVerify: "Signing you in",
+    launchProductionApp: "Launching",
+    launchBusiness: "Creating",
+    connectGateway: "Updating",
+    productionChecklist: "Checking",
+    promptQuota: "Checking",
+    authStart: "Checking",
+    authVerify: "Checking",
+    sessionStatus: "Checking",
   };
-  return { verb: labels[name] || "Working" };`
+  if (hidden.has(name)) return { verb: labels[name] || "Creating" };
+  return { verb: labels[name] || "Creating" };`
     if (text.includes('Indobase: never leak internal tool names')) {
       console.log('  ChatInterface tool-name hide already patched (skip)')
     } else if (text.includes(oldFallback)) {
@@ -2628,6 +2703,24 @@ ${injection}`
       console.log('  ChatInterface ← hide internal tool-call rows')
     } else {
       console.warn('  skip: ChatInterface ToolGroupRow return drifted')
+    }
+
+    text = read(path)
+    if (text.includes('labels[name] || "Creating"') || text.includes('Indobase operator status verbs')) {
+      console.log('  ChatInterface Working verbs already replaced')
+    } else {
+      const next = text
+        .replace(/return \{ verb: "Working" \}/g, 'return { verb: "Creating" }')
+        .replace(/labels\[name\] \|\| "Working"/g, 'labels[name] || "Creating"')
+        .replace(/Launching your store/g, 'Launching')
+        .replace(/Publishing preview/g, 'Creating')
+        .replace(/Connecting payments/g, 'Updating')
+        .replace(/Sending sign-in code/g, 'Checking')
+        .replace(/Signing you in/g, 'Checking')
+      if (next !== text) {
+        write(path, next)
+        console.log('  ChatInterface ← replace Working with Creating/Launching/Checking')
+      }
     }
   }
 }

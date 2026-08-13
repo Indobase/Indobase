@@ -58,26 +58,12 @@ export const ENSURE_ANALYTICS_TOOL = {
 } as const
 
 export const ENSURE_CAPABILITY_AGENT_HARD_RULES = `
-## Enable capabilities (HARD — ensure-first for apps that need a backend)
+## Enable capabilities (INTERNAL — job / conductor only)
 
-**Do not build UI against a missing backend.** Classify early, then:
-
-### Landing / marketing only (no accounts, no app data)
-Build UI → launchBusiness. Skip ensure*.
-
-### SaaS / booking / blog-with-CMS / dashboard / any app with login or data
-1. **ensureLogin** (if accounts) and/or **ensureDatabase** FIRST — wait for ok / claim_*_ready.
-2. **applySchema** (or **guidedBackend** / **setupShopCatalog** for shops) BEFORE writing screens that read/write data.
-3. **Build UI** wired to session.backend records API:
-   - \`api_url\` + \`public_env.INDOBASE_COLLECTION_PREFIX\` (physical name = prefix + logical table)
-   - Records: \`GET/POST {api}/api/collections/{physical}/records\`
-   - Auth: users OTP on \`{api}/api/collections/users\` — Bearer **user** token (anon_key is \`public\`, not Kong)
-   Never invent Neon/Firebase URLs or PostgREST \`/rest/v1\` / \`/auth/v1\` paths on the managed backend.
-4. **launchBusiness** when the real UI is ready.
-5. Optional **ensureEmail** only when asked — quote pending_setup + launch_url; do not block Go Live. **Do NOT offer ensureAnalytics / Add analytics chips** — Analytics is stripped on this CFOS path (returns analytics_unavailable).
-6. Do NOT use webFetch for ensure. Do NOT say Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
-7. Do NOT claim “production ready” until productionChecklist returns claim_production_ready:true.
-8. Prefer **guidedBackend** for ecommerce or “Add a real backend” to run ensureDatabase → schema/catalog in one call.
+Not agent tools. Agents must not call ensureLogin, ensureDatabase, ensureEmail, or ensureAnalytics.
+When the operator asks for customer accounts or business data, the launch job / capability adapter runs these.
+Operator copy: “Customer login is enabled.” / “Your store is updated.” Never name these functions.
+Analytics is not offered on this path.
 `.trim()
 
 export function ensureLoginToolCatalog() {

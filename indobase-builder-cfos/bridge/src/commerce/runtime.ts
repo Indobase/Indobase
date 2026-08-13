@@ -50,10 +50,20 @@ async function api(path, init){
   var token=loadCustomerToken();
   if(token) headers.Authorization="Bearer "+token;
   if(init&&init.headers) Object.assign(headers, init.headers);
-  var res=await fetch(BASE+path, Object.assign({}, init||{}, { headers: headers }));
+  var res;
+  try{
+    res=await fetch(BASE+path, Object.assign({}, init||{}, { headers: headers }));
+  }catch(e){
+    var net=new Error("I couldn't complete the order yet. I'll fix the checkout connection.");
+    net.code="checkout_failed"; net.status=0; throw net;
+  }
   var json=await res.json().catch(function(){return {}});
   if(!res.ok){
-    var err=new Error((json&&json.message)||("Commerce HTTP "+res.status));
+    var raw=(json&&json.message)||"";
+    var safe=/fetch failed|paymentStatus|ECONNREFUSED|backend_unavailable|checkout_failed|HTTP /i.test(raw)
+      ? "I couldn't complete the order yet. I'll fix the checkout connection."
+      : (raw||"I couldn't complete the order yet. I'll fix the checkout connection.");
+    var err=new Error(safe);
     err.code=json&&json.code; err.status=res.status; err.body=json;
     throw err;
   }

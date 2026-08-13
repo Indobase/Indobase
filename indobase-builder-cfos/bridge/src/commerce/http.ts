@@ -22,6 +22,7 @@ import {
 } from './pb-adapter.js'
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
+import { customerFacingCheckoutMessage } from './customer-copy.js'
 
 export type ControlCenterSnapshotLoaders = {
   listProducts: (projectRef: string) => Promise<unknown>
@@ -197,12 +198,20 @@ export async function handleCommerceCheckout(c: Context) {
         : result.code === 'gateway_not_ready'
           ? 409
           : 502
-    return c.json(result, status, commerceCorsHeaders())
+    return c.json(
+      {
+        ...result,
+        message: customerFacingCheckoutMessage(result),
+      },
+      status,
+      commerceCorsHeaders(),
+    )
   }
 
   return c.json(
     {
       ...result,
+      message: customerFacingCheckoutMessage(result),
       // Convenience major display (authority remains amountMinor)
       amount: minorToMajor(result.amountMinor, result.currency),
     },

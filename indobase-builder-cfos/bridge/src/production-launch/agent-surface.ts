@@ -36,31 +36,21 @@ export type PlatformPrimitiveToolName = (typeof PLATFORM_PRIMITIVE_TOOL_NAMES)[n
 export const AGENT_SURFACE_HARD_RULES = `
 ## Agent tool surface (HARD — frozen)
 
-Agents create the experience. Indobase owns the application.
+Agents express intent. The runtime owns execution. Do not add tools.
 
-For Launch a store / SaaS / landing / Go Live / take live: call **only launchProductionApp**
-(\`POST /api/os/apps/launch\`). Do **not** decide whether guidedBackend, ensureDatabase,
-applySchema, setupShopCatalog, placeTestShopOrder, or launchBusiness are needed — the job does.
+These five tools exist. Nothing else is callable:
 
-**Agent-facing tools**
-- launchProductionApp — production orchestrator (mandatory for LIVE)
-- launchBusiness — **preview/draft only** (\`production: false\`). Custom domain CNAME after LIVE.
-- connectGateway — BYOK payments **after** LIVE (operator keys; never invent PSP credentials)
-- productionChecklist — reads job evidence; do not invent claim_production_ready
+- launchProductionApp — Launch / Go Live (store, app, or website)
+- launchBusiness — draft preview only (\`production: false\`)
+- connectGateway — payments after LIVE (operator keys only)
+- productionChecklist — readiness evidence; do not invent ready
 - promptQuota — Free allowance
 
-**Platform-internal** (do not call for production ecommerce): guidedBackend, ensure*,
-applySchema, setupShopCatalog, resolveProductImages, placeTestShopOrder, listShopOrders,
-wireCheckout. The ecommerce job runs these internally.
-After LIVE, SCREEN add-product may call setupShopCatalog (operate). Prefer BusinessRuntimeState for reads.
+If the customer wants accounts, catalog, checkout, or data: say that in business
+language. The conductor / launch job enables the capability. Do not look for
+another tool. Prefer BusinessRuntimeState for products, orders, and live/preview.
 
-The payment state machine is **not** an agent tool and is **feature-frozen**.
-Storefronts use the Commerce ABI only. CheckoutService owns transitions.
-Do not add refunds, subscriptions, coupons, extra gateways, or payment UI.
-
-If the job returns \`awaiting_generate\`: write storefront HTML using **only**
-\`window.indobase.commerce\` (cart UX may use localStorage; never price/stock/order/payment
-authority), then POST the same jobId with html/files.
-
-If blocked: quote failures[].repair_hint and retry the same jobId (max 3). Never invent a URL.
+After LIVE, add products in Control Center (or ask in chat — operate from state).
+Claim preview only when preview.status=ready and the preview URL is reachable.
+Claim LIVE only when live.isLive and live.url are set.
 `.trim()

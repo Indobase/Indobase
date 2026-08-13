@@ -28,6 +28,7 @@ import type {
   CommerceCheckoutResult,
   PricedLine,
 } from './types.js'
+import { CHECKOUT_CONNECTION_FAILURE, customerFacingCheckoutMessage } from './customer-copy.js'
 
 const orderPaymentLocks = new Map<string, Promise<unknown>>()
 
@@ -244,7 +245,11 @@ export async function executeCheckout(
     return {
       ok: false,
       code: 'checkout_failed',
-      message: err instanceof Error ? err.message : 'Checkout failed',
+      message: customerFacingCheckoutMessage({
+        ok: false,
+        code: 'checkout_failed',
+        message: err instanceof Error ? err.message : CHECKOUT_CONNECTION_FAILURE,
+      }),
     }
   }
 }

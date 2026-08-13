@@ -79,26 +79,11 @@ export const GUIDED_BACKEND_TOOL = {
 } as const
 
 export const GUIDED_BACKEND_AGENT_HARD_RULES = `
-## Guided backend (HARD PATH — when live data is needed)
+## Guided backend (INTERNAL — job / conductor only)
 
-**LANDING SINGLE-TURN (HARD):** clear landing/marketing / "website for X" (no store/shop/backend ask) → build HTML and call **launchBusiness** \`app_type=landing\` in the **same turn**. Do **not** call guidedBackend. Do **not** ask continue/take-live micro-prompts. Skip PocketBase ecommerce.
-
-**Preview-first is OK** for an **ambiguous** launch-store / landing ask: build the brand + UI first (localStorage cart fine), emit “Where should I take {Brand} next?”, then call **guidedBackend** when they pick **Add a real backend**, ask for login/data, or need live REST.
-
-**AUTO-CHAIN (HARD):** when the operator says launch store/shop, add real backend, take live (with store/backend), or create admin → call **guidedBackend mode=ecommerce** + **placeTestShopOrder** in the **same turn** — do not emit preview-only niche chips (“Do NOT call guidedBackend yet”). Niche chips must use vertical ids from the catalog (apparel, electronics, food-grocery, beauty, …).
-
-**Default store ladder (HARD order):** niche CHOICES (preview only) → preview FOLLOWUPS → Add a real backend → guidedBackend + placeTestShopOrder → publish **storefront_html** (Commerce ABI) → Go Live (launchBusiness) → Add payments (India/Razorpay ask) → connectGateway. Do not invent checkout APIs or PocketBase order POSTs.
-
-When the product needs a real backend (SaaS/data, chip **Add a real backend**, or screens that hit project REST):
-
-1. Call **guidedBackend** (seeds a **starter** saas/ecommerce boilerplate + secure rules) **BEFORE** wiring UI to a live API. Do not invent mock Neon/Firebase URLs.
-2. Ecommerce: \`mode: "ecommerce"\` + \`vertical\`. Prove with placeTestShopOrder when available.
-3. Then **customize** for this customer: call **applySchema** with extra/changed tables (or \`custom_only: true\` to skip re-seeding boilerplate). Shape orgs, inventory, bookings, etc. to match the product.
-4. Prefer owner-scoped / authenticated write rules — never world-open writes.
-5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend — storefront must use **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** hand-roll checkout, POST \`/api/collections/…/orders\`, trust browser price/stock. launchBusiness on Go Live with storefront_html or app_type=ecommerce. Ecommerce Go Live is a **release gate** (ApplicationContract + optional functional verifiers); on \`contract_verifier_failed\` / \`functional_verifier_failed\` fix per \`failure_graph[].repair_hint\` then retry — do not invent a URL. Respect tool \`task_graph\` / \`task_graph_summary\`: on a failed task use \`failure_graph\` repair_hint; do not invent a live URL.
-6. Quote tool \`progress\` / \`message\` / \`task_graph_summary\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
-7. Email optional when asked — do not block Go Live. Do **not** offer ensureAnalytics (stripped on CFOS).
-8. Payments remain BYOK — guidedBackend does not skip KYC; hosted paymentUrl comes from commerce.checkout when gateway ready.
+Not an agent tool. Agents must not name or call this function.
+The production launch job invokes it when the operator asked for accounts, catalog, or data.
+Operator copy: never mention this path. Speak in business language only.
 `.trim()
 
 export type GuidedBackendStep = {

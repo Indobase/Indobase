@@ -37,21 +37,10 @@ export const APPLY_SCHEMA_TOOL = {
 } as const
 
 export const APPLY_SCHEMA_AGENT_HARD_RULES = `
-## applySchema (HARD PATH — after ensureDatabase, before UI that needs data)
+## applySchema (INTERNAL — job / conductor only)
 
-1. Call **ensureDatabase** (or guidedBackend) first if not already ready.
-2. **Starter:** guidedBackend / applySchema with blueprint saas|ecommerce|booking|blog|dashboard seeds a secure boilerplate.
-3. **Customize freely:** pass \`tables\` for this customer's product (extra entities, different fields). Use \`custom_only: true\` when you only want custom tables. Example:
-   { "tables": [
-     { "name": "invoices", "columns": [
-       { "name": "org_id", "type": "text", "required": true },
-       { "name": "amount", "type": "number", "required": true },
-       { "name": "status", "type": "text", "required": true }
-     ] }
-   ] }
-4. Prefer owner-scoped writes; set \`public_read: true\` only for intentional storefront/public lists.
-5. Wire the UI to session.backend. Never invent a third-party database.
-6. Do not send arbitrary SQL; do not request world-open write rules.
+Not an agent tool. Agents must not call this.
+The launch job applies a declarative data model (no arbitrary SQL).
 `.trim()
 
 export function applySchemaToolCatalog() {

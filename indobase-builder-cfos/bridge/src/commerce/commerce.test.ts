@@ -39,6 +39,7 @@ describe('commerce runtime ABI', () => {
     assert.match(js, /guestToken\./)
     assert.doesNotMatch(js, /api\/collections/)
     assert.doesNotMatch(js, /PocketBase/)
+    assert.match(js, /I couldn't complete the order yet/)
   })
 })
 

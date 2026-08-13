@@ -279,13 +279,13 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
       customer: { email: String(fd.get('email')||'').trim(), name: String(fd.get('name')||'').trim() }
     });
     commerce.cart.clear(); renderCart();
-    document.querySelector('#checkoutNote').textContent=result.message||('Order '+result.orderId);
+    document.querySelector('#checkoutNote').textContent='Order received';
     if(result.paymentUrl){
       window.location.href=result.paymentUrl;
       return;
     }
     document.querySelector('#cartDlg').close();
-    document.querySelector('#confirmNote').textContent=result.message||('Amount '+moneyMinor(result.amountMinor, result.currency));
+    document.querySelector('#confirmNote').textContent='Order received. You can close this and we will follow up on payment.';
     document.querySelector('#confirmOrderId').textContent='Order '+result.orderId;
     window.__lastGuestEmail=String(fd.get('email')||'').trim();
     window.__lastGuestName=String(fd.get('name')||'').trim();
@@ -297,14 +297,17 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
       try{
         var verified=await commerce.orders.get(result.orderId, result.guestToken);
         if(verified&&verified.order){
-          document.querySelector('#confirmOrderId').textContent='Order '+result.orderId+' · '+(verified.order.paymentStatus||verified.order.status||'pending');
+          document.querySelector('#confirmOrderId').textContent='Order '+result.orderId;
         }
       }catch(e){}
     }
     document.querySelector('#confirmDlg').showModal();
   }catch(e){
-    setError(e&&e.message?e.message:'Checkout failed');
-    document.querySelector('#checkoutNote').textContent=e&&e.message?e.message:'Checkout failed';
+    var fail="I couldn't complete the order yet. I'll fix the checkout connection.";
+    var raw=e&&e.message?String(e.message):'';
+    if(raw && !/fetch failed|paymentStatus|ECONNREFUSED|backend|checkout_failed|HTTP /i.test(raw) && raw.length<120) fail=raw;
+    setError(fail);
+    document.querySelector('#checkoutNote').textContent=fail;
   }finally{ btn.disabled=false; }
 });
 document.querySelector('#search').addEventListener('input', render);
@@ -349,7 +352,7 @@ async function renderOrders(){
     var orders=await commerce.customer.orders.list();
     note.textContent=orders.length?('Showing '+orders.length+' order(s) for '+me.customer.email):'No orders yet.';
     list.innerHTML=orders.length?orders.map(function(o){
-      return '<li><span>'+(o.id||'')+'</span><span>'+moneyMinor(o.amountMinor,o.currency)+' · '+String(o.paymentStatus||o.status||'')+'</span></li>';
+      return '<li><span>'+(o.id||'')+'</span><span>'+moneyMinor(o.amountMinor,o.currency)+'</span></li>';
     }).join(''):'';
   }catch(e){
     note.textContent=e&&e.message?e.message:'Could not load orders';

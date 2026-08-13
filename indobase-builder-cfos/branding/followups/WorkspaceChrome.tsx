@@ -257,7 +257,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     }
   }, [])
 
-  const previewSrc = withEditQuery(view.previewUrl || view.liveUrl)
+  const previewSrc = withEditQuery(
+    embedPreviewSrc(readProjectRef(), view.previewUrl, view.liveUrl),
+  )
 
   useEffect(() => {
     const html = document.documentElement
@@ -283,7 +285,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
 
   if (typeof document === 'undefined') return null
 
-  const previewSrcReady = Boolean(view.previewUrl || view.liveUrl)
+  const previewSrcReady = Boolean(previewSrc)
   const showIframe = previewSrcReady && (view.state !== 'empty' || Boolean(view.liveUrl))
   const overlay = overlayFor(view)
 
@@ -498,6 +500,26 @@ function hostOf(url: string): string {
   } catch {
     return url.replace(/^https?:\/\//, '')
   }
+}
+
+function embedPreviewSrc(
+  projectRef: string | null,
+  previewUrl: string | null,
+  liveUrl: string | null,
+): string | null {
+  if (projectRef) return `/live/${projectRef}/`
+  const candidate = previewUrl || ''
+  if (candidate.startsWith('/live/')) return candidate
+  try {
+    if (candidate) {
+      const parsed = new URL(candidate, window.location.origin)
+      if (parsed.pathname.startsWith('/live/')) return `${parsed.pathname}${parsed.search}`
+    }
+  } catch {
+    /* ignore */
+  }
+  if (liveUrl && liveUrl.startsWith('/live/')) return liveUrl
+  return null
 }
 
 function withEditQuery(url: string | null): string | null {

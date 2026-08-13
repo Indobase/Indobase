@@ -110,7 +110,7 @@ describe('production launch job pipeline', () => {
     const catalog = launchProductionAppToolCatalog()
     assert.equal(catalog.name, 'launchProductionApp')
     assert.equal(catalog.path, '/api/os/apps/launch')
-    assert.match(catalog.description, /Do NOT call ensureLogin/)
+    assert.match(catalog.description, /Do not assemble production yourself/)
   })
 
   it('landing job skips provision and reaches LIVE', async () => {

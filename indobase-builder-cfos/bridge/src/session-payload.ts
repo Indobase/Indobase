@@ -20,25 +20,10 @@ import {
   connectGatewayToolCatalog,
 } from './connect-gateway-tool.js'
 import { launchBusinessToolCatalog } from './launch-business-tool.js'
-import { wireCheckoutToolCatalog } from './wire-checkout-tool.js'
-import {
-  listShopOrdersToolCatalog,
-  placeTestShopOrderToolCatalog,
-  setupShopCatalogToolCatalog,
-} from './shop-catalog-tool.js'
-import {
-  ensureAnalyticsToolCatalog,
-  ensureDatabaseToolCatalog,
-  ensureEmailToolCatalog,
-  ensureLoginToolCatalog,
-} from './ensure-capability-tool.js'
-import { applySchemaToolCatalog } from './apply-schema-tool.js'
-import { guidedBackendToolCatalog } from './guided-backend-chain.js'
 import {
   PRODUCTION_CHECKLIST_AGENT_HARD_RULES,
   productionChecklistToolCatalog,
 } from './production-checklist-tool.js'
-import { resolveProductImagesToolCatalog } from './product-images-tool.js'
 import {
   buildSessionPromptQuotaBlock,
   promptQuotaToolCatalog,
@@ -112,7 +97,7 @@ export function buildJourneyStateAppendix(
     '## North star (HARD)',
     '- Loop: infer BusinessSpec → create a real preview → iterate → launchProductionApp → operate from BusinessRuntimeState.',
     '- Preview is a hard gate. Never claim preview or LIVE unless BusinessRuntimeState says so.',
-    '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name guidedBackend/ensure*/PocketBase/CAS. Never restart guest/auth once signed in. Never ask them to refresh.',
+    '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name internals. Never restart guest/auth once signed in. Never ask them to refresh.',
     `- Catalog: ${catalogReady ? 'ready' : 'not ready'}`,
     `- Preview: ${previewStatus || (launch?.previewReady ? 'ready' : 'absent')}`,
     `- Journey stage: ${journey.current_stage}`,
@@ -132,11 +117,11 @@ export function buildJourneyStateAppendix(
   )
   if (catalogReady) {
     lines.push(
-      '- Catalog is ready. Prefer chips: Launch store via launchProductionApp (if not live) → Domain / Add payments / Checklist. Do not call guidedBackend/ensure* for production.',
+      '- Catalog is ready. Prefer chips: Launch via launchProductionApp (if not live) → Domain / Add payments / Checklist.',
     )
   } else {
     lines.push(
-      '- Catalog is not ready. Do not claim the store is ready. Build preview or call launchProductionApp on Launch — the job provisions catalog. Niche pick must NOT call guidedBackend.',
+      '- Catalog is not ready. Do not claim the store is ready. Build preview or call launchProductionApp on Launch — the job provisions catalog.',
     )
   }
   if (paymentsReady) {
@@ -440,7 +425,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       preview_policy:
         'HARD: Production LIVE is launchProductionApp (POST /api/os/apps/launch). launchBusiness is preview/draft only (production:false). Never tell the operator to use Gadget iframe preview.',
       draft_preview_path:
-        journey.live_url || authority.preview.status !== 'ready' ? null : `/live/${session.projectRef}/`,
+        authority.preview.status === 'ready' ? `/live/${session.projectRef}/` : null,
       enforce_static_over_gadget: true,
     },
     production_job: productionJob,
@@ -467,15 +452,11 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       ).map((a) => ({ id: a.id, label: a.label, prompt: a.prompt })),
     },
     payments: {
-      ensure: '/api/os/runtime/ensure',
       connect_gateway: '/api/os/payments/connect-gateway',
-      wire_checkout: '/api/os/payments/wire-checkout',
       tool: '/api/os/tools/connectGateway',
       tool_alias: '/api/os/tools/connectPaymentGateway',
-      wire_checkout_tool: '/api/os/tools/wireCheckout',
       rules: CONNECT_GATEWAY_AGENT_HARD_RULES,
       owner: 'platform_job',
-      /** BYOK clarity — never invent hosted PSP credentials. */
       byok: true,
       governance: {
         gateway_not_ready: explainGovernanceGate({ code: 'gateway_not_ready' }),
@@ -485,24 +466,12 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     shop: {
       catalog: '/api/os/shop/catalog',
       orders: '/api/os/shop/orders',
-      setup_tool: '/api/os/tools/setupShopCatalog',
-      list_orders_tool: '/api/os/tools/listShopOrders',
-      place_test_tool: '/api/os/tools/placeTestShopOrder',
       owner: 'platform_job',
     },
     data: {
-      apply_schema: '/api/os/data/apply-schema',
-      apply_schema_tool: '/api/os/tools/applySchema',
-      guided_backend_tool: '/api/os/tools/guidedBackend',
-      ensure_login_tool: '/api/os/tools/ensureLogin',
-      ensure_database_tool: '/api/os/tools/ensureDatabase',
-      ensure_email_tool: '/api/os/tools/ensureEmail',
-      ensure_analytics_tool: '/api/os/tools/ensureAnalytics',
       owner: 'platform_job',
     },
     media: {
-      product_images: '/api/os/media/product-images',
-      tool: '/api/os/tools/resolveProductImages',
       owner: 'platform_job',
     },
     production: {
@@ -535,20 +504,6 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       connectGateway: connectGatewayToolCatalog(),
       productionChecklist: productionChecklistToolCatalog(),
       promptQuota: promptQuotaToolCatalog(),
-    },
-    /** Implementation primitives — job-owned. Not for agent production decisions. */
-    platform_primitives: {
-      guidedBackend: guidedBackendToolCatalog(),
-      ensureLogin: ensureLoginToolCatalog(),
-      ensureDatabase: ensureDatabaseToolCatalog(),
-      ensureEmail: ensureEmailToolCatalog(),
-      ensureAnalytics: ensureAnalyticsToolCatalog(),
-      applySchema: applySchemaToolCatalog(),
-      setupShopCatalog: setupShopCatalogToolCatalog(),
-      listShopOrders: listShopOrdersToolCatalog(),
-      placeTestShopOrder: placeTestShopOrderToolCatalog(),
-      resolveProductImages: resolveProductImagesToolCatalog(),
-      wireCheckout: wireCheckoutToolCatalog(),
     },
   }
 }

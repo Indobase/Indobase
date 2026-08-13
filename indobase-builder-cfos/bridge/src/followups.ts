@@ -82,12 +82,11 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   },
   {
     label: 'Add customer login',
-    message: 'Call ensureLogin and wire a Sign-in CTA for this app',
+    message: 'Add customer login for this app',
   },
   {
     label: 'Add a real backend',
-    message:
-      'Call guidedBackend (or ensureDatabase then applySchema / setupShopCatalog) BEFORE more UI — then wire screens to session.backend / project REST',
+    message: 'Add customer accounts and business data for this app',
   },
   {
     label: 'Add payments',
@@ -122,7 +121,7 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Ecommerce / store',
     message:
-      'This is an ecommerce store — POST /api/os/apps/launch { appType: "ecommerce", production: true, vertical if known }. The job provisions catalog + commerce ABI and deploys. Do not call guidedBackend yourself.',
+      'This is an ecommerce store — POST /api/os/apps/launch { appType: "ecommerce", production: true, vertical if known }. The job provisions catalog and deploys.',
   },
   {
     label: 'Booking / appointments',
@@ -218,7 +217,7 @@ export function autoChainStoreFollowups(brand?: string | null): StageFollowUps {
     title: name !== 'this' ? `Launch ${name} — full backend path` : AUTO_CHAIN_STORE_TITLE,
     items: ECOMMERCE_AUTO_CHAIN_VERTICALS.map((v) => ({
       label: v.label,
-      message: `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, publish storefront_html (Commerce ABI), then emit Go Live chips`,
+      message: `Launch my ${v.label} store on Indobase now. App type ecommerce, vertical=${v.id}${brandArg}.`,
     })),
   }
 }
@@ -231,7 +230,7 @@ export function landingSingleTurnFollowups(brand?: string | null): StageFollowUp
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live now — POST /api/os/apps/launch { appType: "landing", production: true } for ${name} (skip guidedBackend / PocketBase ecommerce). Quote the job live URL when status=live, then emit Domain / Checklist chips — no continue/take-live micro-prompts`,
+        message: `Go Live now — POST /api/os/apps/launch { appType: "landing", production: true } for ${name}. Quote the job live URL when status=live, then emit Domain / Checklist chips.`,
       },
       {
         label: 'Connect my domain',
@@ -253,7 +252,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
     items: [
       {
         label: 'Launch with real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true — seed catalog, prove order, publish storefront_html (Commerce ABI), then emit Go Live chips`,
+        message: `Launch my store on Indobase now — production launch for ${name}`,
       },
       {
         label: 'Go Live on Indobase',
@@ -261,7 +260,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Create admin dashboard',
-        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true, publish admin_html via launchBusiness as admin.html once, then Go Live if storefront not live`,
+        message: `Launch ${name} and open the admin dashboard after it is live`,
       },
       {
         label: 'Wire then Go Live',
@@ -277,12 +276,12 @@ export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
     label: v.label,
     message:
       `Niche ${v.label} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
-      `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
+      `Build a preview first. After preview, emit Go Live–first FOLLOWUPS and keep advancing until live.`,
   })),
   {
     label: "I'll type my specific niche",
     message:
-      "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend; after preview keep emitting Go Live–first launch-ladder chips",
+      "I'll type my specific niche — invent brand + build a preview storefront; after preview keep emitting Go Live–first chips",
   },
 ]
 
@@ -403,6 +402,9 @@ export function stripToolCapsuleNoise(message: string): string {
   t = t.replace(/^.*\bUsing (?:the )?(?:tool|authStart|authVerify|launchProductionApp|launchBusiness|guidedBackend)\b.*$/gim, '')
   t = t.replace(/`guidedBackend[^`]*`/gi, '')
   t = t.replace(/\bguidedBackend(?:\s+mode=\w+)?\b/gi, '')
+  t = t.replace(/\bfetch failed\b/gi, "I couldn't complete the order yet. I'll fix the checkout connection.")
+  t = t.replace(/\bpaymentStatus\b/gi, '')
+  t = t.replace(/\bWorking\b/g, 'Creating')
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -830,7 +832,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name}, prove with placeTestShopOrder, then emit Wire / Go Live chips — do not restart guest/auth`,
+        message: `Add customer accounts and a product catalog for ${name}, then launch`,
       },
       {
         label: 'Refine then Go Live',
@@ -852,7 +854,7 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
     items: [
       {
         label: 'Enable login + database',
-        message: `Call guidedBackend mode=generic for ${name} (ensureLogin + ensureDatabase + applySchema) FIRST — then build UI against session.backend`,
+        message: `Add customer accounts and business data for ${name}`,
       },
       {
         label: 'Wire auth + data UI',
@@ -937,7 +939,7 @@ export function postGoLiveFollowups(
     items.push(
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend for ${name} if not done — then publish storefront_html (Commerce ABI) and Go Live`,
+        message: `Add customer accounts and data for ${name}, then Go Live`,
       },
       {
         label: 'Production checklist',
@@ -1321,7 +1323,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
       {
         label: 'Add a real backend',
         message:
-          'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
+          'Add customer accounts and business data for this app',
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }

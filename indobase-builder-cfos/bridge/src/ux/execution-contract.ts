@@ -229,12 +229,13 @@ export async function rehydrateWorkspaceRuntime(
     }
   }
 
-  const previewUrl =
-    runtime.preview.url ||
-    launch?.previewUrl ||
-    launch?.url ||
-    job?.url ||
+  const existingEmbed =
+    (runtime.preview.url && runtime.preview.url.includes('/live/') && runtime.preview.url) ||
+    (launch?.previewUrl && launch.previewUrl.includes('/live/') && launch.previewUrl) ||
     null
+  const previewUrl =
+    existingEmbed ||
+    (session.projectRef ? `/live/${session.projectRef}/` : launch?.previewUrl || null)
   const durablePreview =
     Boolean(launch?.previewReady) ||
     Boolean(job && (job.status === 'live' || job.html || job.files?.['index.html'])) ||
@@ -404,7 +405,7 @@ function composeAgentContext(result: {
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
     'Never print INDOBASE_RUNTIME, Studio, PocketBase, provisioner, or guidedBackend in operator-visible replies.',
-    'FORBIDDEN: never name or call guidedBackend / ensureDatabase / applySchema. Those are not agent tools. If preview.status=ready, report that — do not say an operation is unavailable.',
+    'FORBIDDEN: do not name internal setup steps. If preview.status=ready, report that — do not say an operation is unavailable.',
   ]
   if (named) {
     lines.push(`Speak the brand as ${named}. FORBIDDEN: “your business” as the store name.`)

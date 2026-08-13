@@ -33,5 +33,7 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.match(html, /Create an account to track your orders/)
     assert.doesNotMatch(html, /__INDOBASE_COLLECTION__\('orders'\)/)
     assert.doesNotMatch(html, /\/api\/collections\/.+\/orders/)
+    assert.match(html, /I couldn't complete the order yet/)
+    assert.doesNotMatch(html, /verified\.order\.paymentStatus|paymentStatus\|\|/)
   })
 })

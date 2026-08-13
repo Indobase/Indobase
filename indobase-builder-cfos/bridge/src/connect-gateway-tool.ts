@@ -51,7 +51,7 @@ When the operator pastes Razorpay or Stripe API keys (after PSP dashboard KYC):
    International: { "settlement_market": "international", "secret_key": "sk_…", "publishable_key": "pk_…" }
 2. Do NOT use webFetch for this (GET-only, no cookies). Do NOT invent or guess keys.
 3. Quote the tool JSON: ok, gateway_keys_configured, can_go_live, message.
-4. Only then call **wireCheckout** (POST /api/os/tools/wireCheckout) and patch the site CTA to checkout_url.
+4. After keys are stored, checkout uses the commerce path automatically. Do not call another tool to wire payments.
 5. If keys are missing: explain BYOK clearly + offer CHOICES (India Razorpay / International Stripe / skip payments). Stay in chat — do not send them to another product.
 `.trim()
 

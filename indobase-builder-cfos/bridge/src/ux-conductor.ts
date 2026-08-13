@@ -721,7 +721,12 @@ export function workspaceViewModel(input: WorkspaceSnapshot): WorkspaceViewModel
   const noun = businessNoun(kind)
   const liveUrl = input.liveUrl || null
   const previewReady = input.previewReady === true || input.previewStatus === 'ready' || state === 'live'
-  const previewUrl = previewReady ? liveUrl || input.previewUrl || null : null
+  const previewUrl = previewReady
+    ? (input.previewUrl && input.previewUrl.includes('/live/') ? input.previewUrl : null) ||
+      input.previewUrl ||
+      liveUrl ||
+      null
+    : null
   const stages = mapWorkspaceStages(input.stages, input.appType)
   const flags: UxJourneyFlags = {
     guest: Boolean(input.guest),

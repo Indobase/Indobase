@@ -43,6 +43,15 @@ export {
   PLATFORM_PRIMITIVE_TOOL_NAMES,
 } from './agent-surface.js'
 export {
+  AGENT_PRIMITIVE_REJECTED_CODE,
+  AGENT_PRIMITIVE_REJECTED_MESSAGE,
+  PLATFORM_PRIMITIVE_TOOL_PATHS,
+  agentPrimitiveRejectedBody,
+  isAgentToolInvocation,
+  isPlatformPrimitiveToolPath,
+  rejectAgentPrimitiveIfNeeded,
+} from './agent-primitive-guard.js'
+export {
   deriveProductionChecklist,
   emptyProductionEvidence,
   evidenceFromVerifiers,

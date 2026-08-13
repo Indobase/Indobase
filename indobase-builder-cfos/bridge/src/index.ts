@@ -115,8 +115,10 @@ import {
   executeProductionLaunchJob,
   getLatestProductionLaunchJob,
   getProductionLaunchJob,
+  rejectAgentPrimitiveIfNeeded,
   summarizeProductionLaunchJob,
 } from './production-launch/index.js'
+import { isLivePreviewPath, previewEmbedResponseHeaders } from './preview-embed.js'
 import {
   applyOperatorIntent,
   applyPendingIntentAfterAuth,
@@ -199,9 +201,15 @@ async function securityHeaders(c: Context, next: Next) {
   c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   c.res.headers.set('X-Content-Type-Options', 'nosniff')
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // Same-origin `/live/{ref}/` is the Builder preview iframe. Public sites stay DENY.
+  if (isLivePreviewPath(path)) {
+    c.res.headers.delete('X-Frame-Options')
+    c.res.headers.set('Content-Security-Policy', previewEmbedResponseHeaders()['Content-Security-Policy'])
+    return
+  }
   c.res.headers.set('X-Frame-Options', 'DENY')
   c.res.headers.set('Content-Security-Policy', "frame-ancestors 'none'")
-  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
 }
 
 function getSession(c: Context): Session | null {
@@ -470,6 +478,11 @@ async function serveAgentDesktop(
 
 const app = new Hono()
 app.use('*', securityHeaders)
+app.use('/api/os/tools/*', async (c, next) => {
+  const denied = rejectAgentPrimitiveIfNeeded(c)
+  if (denied) return denied
+  return next()
+})
 app.onError(bridgeSentryOnError('builder-cfos'))
 
 app.get('/sso/health', async (c) => {
@@ -2205,7 +2218,7 @@ app.use('*', async (c, next) => {
     status: 200,
     headers: {
       'Content-Type': file.contentType,
-      'X-Indobase-Launch-Lane': 'static',
+      ...previewEmbedResponseHeaders(),
       'X-Indobase-Workspace': ref,
     },
   })
@@ -2221,8 +2234,7 @@ app.get('/live/:ref/*', async (c) => {
     status: 200,
     headers: {
       'Content-Type': file.contentType,
-      'Cache-Control': 'public, max-age=60',
-      'X-Indobase-Launch-Lane': 'static',
+      ...previewEmbedResponseHeaders(),
     },
   })
 })
@@ -2233,7 +2245,10 @@ app.get('/live/:ref/', async (c) => {
   if (!file) return c.text('Not found', 404)
   return new Response(new Uint8Array(file.body), {
     status: 200,
-    headers: { 'Content-Type': file.contentType, 'X-Indobase-Launch-Lane': 'static' },
+    headers: {
+      'Content-Type': file.contentType,
+      ...previewEmbedResponseHeaders(),
+    },
   })
 })
 

@@ -458,8 +458,8 @@ INDOBASE_CHOICES>>>
     const { items } = ecommerceVerticalFollowups('MERIDIAN')
     assert.ok(items.length >= 2)
     for (const item of items) {
-      assert.doesNotMatch(item.message, /INDOBASE_GUIDED_BACKEND/)
-      assert.match(item.message, /preview|Do NOT call guidedBackend/i)
+      assert.doesNotMatch(item.message, /INDOBASE_GUIDED_BACKEND|guidedBackend/i)
+      assert.match(item.message, /preview/i)
     }
   })
 
@@ -469,9 +469,9 @@ INDOBASE_CHOICES>>>
     assert.ok(items.length >= 2)
     const catalogIds = new Set(ECOMMERCE_VERTICALS.map((v) => v.id))
     for (const item of items.slice(0, 4)) {
-      assert.match(item.message, /INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=/i)
-      assert.doesNotMatch(item.message, /Do NOT call guidedBackend yet/i)
-      const m = /vertical=([\w-]+)/i.exec(item.message)
+      assert.match(item.message, /Launch my .+ store on Indobase/i)
+      assert.doesNotMatch(item.message, /guidedBackend|INDOBASE_GUIDED_BACKEND/i)
+      const m = /vertical[ =]([\w-]+)/i.exec(item.message)
       assert.ok(m?.[1] && catalogIds.has(m[1]))
     }
   })
@@ -508,7 +508,8 @@ INDOBASE_CHOICES>>>
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
     assert.ok(resolved.items.some((i) => /Enable login \+ database/i.test(i.label)))
-    assert.ok(resolved.items.some((i) => /guidedBackend mode=generic/i.test(i.message)))
+    assert.ok(resolved.items.some((i) => /customer accounts|business data/i.test(i.message)))
+    assert.ok(resolved.items.every((i) => !/guidedBackend/i.test(i.message)))
   })
 
   it('looksLikeAutoChainIntent detects launch store and backend asks', () => {
@@ -547,26 +548,26 @@ INDOBASE_CHOICES>>>
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
     assert.match(resolved.title, /Launch|full backend/i)
-    assert.ok(resolved.items.every((i) => /INDOBASE_GUIDED_BACKEND|guidedBackend/i.test(i.message)))
-    assert.ok(resolved.items.every((i) => !/Do NOT call guidedBackend yet/i.test(i.message)))
+    assert.ok(resolved.items.every((i) => /Launch my .+ store on Indobase/i.test(i.message)))
+    assert.ok(resolved.items.every((i) => !/guidedBackend|INDOBASE_GUIDED_BACKEND/i.test(i.message)))
   })
 
-  it('autoChainStoreFollowups invoke guidedBackend with place_test_order', () => {
+  it('autoChainStoreFollowups launch the store without primitive tools', () => {
     const stage = autoChainStoreFollowups('MERIDIAN')
     assert.ok(stage.items.length >= 2)
     for (const item of stage.items) {
-      assert.match(item.message, /guidedBackend|INDOBASE_GUIDED_BACKEND/i)
-      assert.match(item.message, /place_test_order=true|placeTestShopOrder/i)
+      assert.match(item.message, /Launch my .+ store on Indobase/i)
+      assert.doesNotMatch(item.message, /guidedBackend|placeTestShopOrder|INDOBASE_GUIDED_BACKEND/i)
     }
   })
 
-  it('injects auto-chain backend chips for launch intent deliverable without backend', () => {
+  it('auto-chain launch intent never emits primitive tool chips', () => {
     const input =
       "Here's what I built — storefront preview ready. You asked to launch your electronics store with real backend and inventory."
     assert.ok(looksLikeAutoChainIntent(input))
     const resolved = resolveFollowUps(input)
-    assert.ok(resolved)
-    assert.ok(resolved.items.some((i) => /Launch with real backend|guidedBackend/i.test(i.label + i.message)))
+    if (!resolved || resolved.items.length === 0) return
+    assert.ok(resolved.items.every((i) => !/guidedBackend|ensureDatabase|placeTestShopOrder/i.test(i.message)))
   })
 
   it('injects journey next_action when agent omits FOLLOWUPS on substantive reply', () => {
