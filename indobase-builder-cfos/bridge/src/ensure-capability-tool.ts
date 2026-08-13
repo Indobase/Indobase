@@ -202,7 +202,7 @@ export async function executeEnsureEmail(session: {
     message:
       typeof result.message === 'string'
         ? result.message
-        : 'Email backend ready — finish sender setup',
+        : 'Email is enabled — finish sender setup',
   }
 }
 

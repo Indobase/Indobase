@@ -12,7 +12,7 @@ export const CONNECT_GATEWAY_TOOL = {
   aliases: ['connectPaymentGateway', 'connect_gateway', 'pastePaymentKeys'] as const,
   description:
     'Connect payment gateway keys after the operator finishes KYC on Razorpay or Stripe. ' +
-    'Posts keys to Indobase Studio (validated + stored encrypted). Checkout uses those keys directly. ' +
+    'Posts keys to Indobase Payments (validated + stored encrypted). Checkout uses those keys directly. ' +
     'Never invent keys. Do not use webFetch (GET-only). Alias: connectPaymentGateway.',
   method: 'POST' as const,
   path: '/api/os/tools/connectGateway',
@@ -52,7 +52,7 @@ When the operator pastes Razorpay or Stripe API keys (after PSP dashboard KYC):
 2. Do NOT use webFetch for this (GET-only, no cookies). Do NOT invent or guess keys.
 3. Quote the tool JSON: ok, gateway_keys_configured, can_go_live, message.
 4. Only then call **wireCheckout** (POST /api/os/tools/wireCheckout) and patch the site CTA to checkout_url.
-5. If keys are missing: explain BYOK clearly + offer CHOICES (India Razorpay / International Stripe / skip payments). Studio UI Connect gateway is a fallback.
+5. If keys are missing: explain BYOK clearly + offer CHOICES (India Razorpay / International Stripe / skip payments). Stay in chat — do not send them to another product.
 `.trim()
 
 export type ConnectGatewayToolInput = {

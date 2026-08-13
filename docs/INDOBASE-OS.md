@@ -3,7 +3,7 @@
 **Status:** Binding (Phase 1)  
 **Date:** 2026-08-07  
 **Kernel:** [`packages/platform`](../packages/platform) · **Shell:** [`indobase-builder-cfos`](../indobase-builder-cfos)  
-**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [CAPABILITIES.md](./CAPABILITIES.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md)
+**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [CAPABILITIES.md](./CAPABILITIES.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md) · [adr/0007-pocketbase-invisible-engine.md](./adr/0007-pocketbase-invisible-engine.md)
 
 ---
 
@@ -16,13 +16,13 @@
 ## Customer journey
 
 ```text
-Website → Indobase OS → Build → Launch Business / Go Live → Operate
+Website → Indobase OS → Chat → Build → Launch → Operate
 ```
 
 Not:
 
 ```text
-Website → Studio → Builder → Design → Payments → Deploy
+Website → Studio → Project → Tenant → Provisioner → Deploy
 ```
 
 ---
@@ -53,11 +53,11 @@ Customer and investor story uses **six kernels**. Platform contracts in [PLATFOR
 
 | Kernel | Customer meaning | Substrate (never shown as product UI) |
 |--------|------------------|----------------------------------------|
-| **Identity** | Sign in, who owns the business | OTP, GoTrue, org membership |
+| **Identity** | Sign in, who owns the business | OTP (Studio/GoTrue until OS identity owns it) |
 | **Workspace** | Chat, documents, Design/Docs/Sheets/Slides | CFOS shell, Workspace commands |
 | **Capability** | “Add login”, “Start charging”, analytics | Ensurer · `capability.ensure` |
-| **Execution** | How build / preview / go-live actually run | Adapters, provisioner, static host |
-| **Business Runtime** | The live business after Go Live | Tenant data plane, commerce, CRM engines |
+| **Execution** | How build / preview / go-live actually run | Launch Engine, static/app host |
+| **Business Runtime** | Live business data after Launch | Shared PocketBase (invisible), commerce |
 | **Agent** | AI that plans and operates inside the OS | Agent runtime, tools, workers |
 
 ### `business.launch` vs `execution.publish`
@@ -90,14 +90,13 @@ Products become **agents** internally (Design Agent, Finance Agent, Sales Agent�
 
 ## What the customer never sees
 
-- Studio dashboard (customer destination)
+- Studio, Project, Tenant, Provisioner
+- PocketBase, Coolify, Docker, Traefik, Postgres, Kong
 - Product front doors (`design.*`, `payments.*`, …)
-- Coolify / Dokploy / Kubernetes / Docker
-- Per-tenant provision at signup
 - “Create project” wizards
-- Deploy / publish / hosting jargon
+- Deploy / publish / hosting / “backend ready” jargon
 
-Those are **adapters**, not customer products.
+Those are **adapters**, not customer products. PocketBase is the business-data engine — never an integration the operator connects.
 
 ---
 
@@ -118,16 +117,16 @@ See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md). Static Go Live
 **External implementation → fine. External product experience → not fine.**
 
 ```text
-User: "Add user login"        → ✓ Login enabled
-User: "Add a customer database" → ✓ Customer database created
-User: "Add payments"          → ✓ Payments backend ready — finish checkout setup
-User: "Add email"             → ✓ Email backend ready — finish sender setup
+User: "Add customer login"    → ✓ Customer login is enabled
+User: "Add these 20 products" → ✓ Products are in your store
+User: "Add payments"          → ✓ Payments are enabled — finish checkout setup
+User: "Add email"             → ✓ Email is enabled — finish sender setup
 User: "Launch my business"    → ✓ Your business is live
 ```
 
 Never in customer chrome, agent copy, or Enable flows:
 
-- Connect Neon / Coolify / Stripe / Postgres / “Supabase” / Docker / Kubernetes
+- Studio / PocketBase / tenant / provisioner / Neon / Coolify / Stripe / Postgres / Docker / Kubernetes / “backend ready”
 
 Architecture: Chat → Planner → **Capability Orchestrator** → Internal Capability API → **hidden** Auth/DB/Deploy/Payments adapters. See [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md).
 
@@ -135,13 +134,15 @@ Customer language: **Customer Login**, **Business Data**, **File Storage**, **Pa
 
 ---
 
-## Control plane: OS services (not “delete Studio” as the goal)
+## Control plane: Studio off the product path (migrate, don’t mass-delete)
 
-**Objective:** split the control plane into small OS services — Identity, Workspace (Businesses), Launch, Capability Engine, Agent Runtime, **Operator Runtime** — behind stable interfaces. Adapters underneath are swappable.
+**Objective:** Indobase OS owns Identity, Workspace (Businesses), Launch, Capability Engine, Agent Runtime, and Operator Runtime. Studio is **not** a customer product and **not** on the new critical runtime path.
 
-Studio UI is not a customer destination. Legacy Studio/`saas.*`/provisioner may remain **one adapter** until each responsibility has a proven replacement; migrate and retire incrementally. Do not market Studio or classic Builder as the product.
+Remove Studio from the journey and from new code paths. Keep Studio-era capabilities (`saas.*`, Platform API host, billing, prompt meter, OTP) as **hidden adapters** until each has a proven OS replacement. Do not market Studio or classic Builder.
 
-Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/0005-two-lane-launch.md) · [adr/0006](./adr/0006-capability-orchestrator.md).
+**Do not** recreate dedicated-per-business infrastructure inside PocketBase (one container + network + deploy per business). Default is shared PocketBase scoped by workspace / business id. Isolate only when scale or security requires it. See [adr/0007](./adr/0007-pocketbase-invisible-engine.md).
+
+Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/0005-two-lane-launch.md) · [adr/0006](./adr/0006-capability-orchestrator.md) · [adr/0007](./adr/0007-pocketbase-invisible-engine.md).
 
 ---
 
@@ -189,18 +190,30 @@ Classic Remix Builder is **archive only**. “Builder” as a product name disap
 ## Architecture layering
 
 ```text
-Indobase OS (CFOS bridge)
-        ↓
-Platform API (/api/os/v1)
-        ↓
-@indobase/platform (Capabilities · Execution · business.launch · …)
-        ↓
-Execution adapters (provisioner, static host, commerce, CRM, …)
-        ↓
-Infrastructure (Postgres, MinIO, Traefik, …)
+                    INDOBASE OS
+                         │
+                 CFOS + Agent Runtime
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+       Workspace       Skills        Documents
+                         │
+                 Business Runtime
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+     PocketBase        Launch          Operator
+      (invisible)      Engine           / Jobs
+        │                │                │
+   Auth / data /     Static / App      Analytics /
+   files / API       hosting          automation
+                         │
+                  Hidden infrastructure
 ```
 
-No adapter imports from OS or bridge. Swap Coolify for another engine without changing OS.
+PocketBase is **not** an external integration. Launch Engine owns `execution.publish`. Studio/`saas.*`/provisioner stay below this line until retired.
+
+No adapter imports from OS or bridge. Swap a host engine without changing OS.
 
 ---
 
@@ -231,4 +244,4 @@ Extension: deepen `agent-runtime` planners/executors and wire `OperatorErrorSign
 
 ## Studio’s role
 
-Studio **UI** is internal admin / support — not a customer destination. Studio **codebase** hosts Platform API routes and `saas.*` control-plane logic until extracted. Existing accounts may still use SSO handoff as a **migration bridge**. See **Studio: absorb as headless control plane** above.
+Studio **must not appear** in the customer journey or in new OS architecture. Studio **codebase** may still host Platform API routes and `saas.*` until extracted. Existing accounts may use SSO handoff as a **migration bridge** only — never as “Open Studio to continue.” See [adr/0007](./adr/0007-pocketbase-invisible-engine.md).

@@ -23,7 +23,8 @@ describe('agent truth reconciliation', () => {
     assert.match(hint, /preview.status: absent/)
     assert.match(hint, /Never describe a preview as available/)
     assert.match(hint, /Never say the launch service/)
-    assert.doesNotMatch(hint, /PocketBase|Commerce ABI|guidedBackend/)
+    assert.doesNotMatch(hint, /Commerce ABI|guidedBackend/)
+    assert.match(hint, /Never say Studio, PocketBase, tenant, provisioner/)
   })
 
   it('injects BusinessSnapshot so Ask AI can see the current order', () => {

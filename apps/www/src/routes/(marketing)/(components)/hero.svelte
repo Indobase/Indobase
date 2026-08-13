@@ -12,7 +12,7 @@
     const {
         titlePrefix = 'Launch Your Business using',
         brand = 'Indobase',
-        subtitle = 'Describe what you want and Indobase builds it — a working app with auth, database, and storage, ready to publish.'
+        subtitle = 'Describe what you want. Indobase builds it, launches it, and lets you run the business — all in one OS.'
     }: Props = $props();
 
     /*

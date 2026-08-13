@@ -17,7 +17,8 @@ describe('governance-gates', () => {
     assert.match(gate.message, /\/org\/acme\/billing/)
     assert.match(gate.message, /Indobase/)
     assert.ok(gate.choices.some((c) => /Pro/i.test(c.label)))
-    assert.doesNotMatch(gate.message, /Supabase|Vercel|Naive|Naïve/i)
+    assert.ok(gate.choices.some((c) => /teams/i.test(c.label)))
+    assert.doesNotMatch(gate.message, /Supabase|Vercel|Naive|Naïve|Studio|PocketBase|tenant|provisioner/i)
   })
 
   it('explains BYOK payments without inventing hosted PSP', () => {
@@ -33,6 +34,14 @@ describe('governance-gates', () => {
     const gate = explainGovernanceGate({ code: 'account_required' })
     assert.match(gate.message, /Indobase account/)
     assert.ok(gate.choices.some((c) => /Create account/i.test(c.label)))
+    assert.doesNotMatch(gate.message, /Studio|PocketBase|backend|tenant/i)
+  })
+
+  it('explains unwired checkout in business language', () => {
+    const gate = explainGovernanceGate({ code: 'wire_required' })
+    assert.match(gate.message, /checkout|products/i)
+    assert.doesNotMatch(gate.message, /PocketBase|guidedBackend|Studio|Gadget/i)
+    assert.doesNotMatch(gate.title, /backend/i)
   })
 
   it('maps known codes to operator messages', () => {

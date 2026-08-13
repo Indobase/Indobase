@@ -49,7 +49,7 @@ export const FTU_LIVE_CERT_ITEMS = [
 
 /** Terms a first-time operator must never need to understand. */
 export const INTERNAL_OPERATOR_LEXICON =
-  /\b(backend|database|schema|deployment|capability|PocketBase|Commerce ABI|guidedBackend|ensureDatabase|applySchema|CAS|payment_revision|wire_required|backend_required)\b/i
+  /\b(backend|database|schema|deployment|capability|PocketBase|Commerce ABI|guidedBackend|ensureDatabase|applySchema|CAS|payment_revision|wire_required|backend_required|Studio|tenant|provisioner|Coolify|Traefik|Docker|Postgres)\b/i
 
 /** Corrections a production builder must not require from the user. */
 export const AGENT_INTERVENTION_ANTI_PATTERNS =

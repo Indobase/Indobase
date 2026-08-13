@@ -10,7 +10,7 @@ export const UPDATE_WORKSPACE_TOOL = {
   name: 'updateWorkspace',
   aliases: ['renameBusiness', 'setBusinessName', 'rename_workspace'] as const,
   description:
-    'Set organization (brand) and/or project workspace display names after verify or when the brand is known. ' +
+    'Set organization (brand) and/or workspace display names after verify or when the brand is known. ' +
     'Silent Free workspace from OTP is fine — call this only when a name is known. ' +
     'Aliases: renameBusiness, setBusinessName.',
   method: 'POST' as const,
@@ -41,9 +41,9 @@ When the operator names their business or you know the brand after verify:
 
 1. Optionally call **updateWorkspace** (aliases **renameBusiness**, **setBusinessName**) —
    POST /api/os/tools/updateWorkspace with { "brand": "…", "name": "…" } (either field is enough).
-2. Do NOT run Studio org/project wizards. Silent Free org + OS workspace from OTP is fine.
+2. Do NOT send them to another product or a create-business wizard. Silent Free workspace from OTP is fine.
 3. Do NOT invent names. Quote tool JSON: ok, organization_name, workspace_name.
-4. Prefer this tool over asking them to open Studio settings.
+4. Prefer this tool over asking them to leave chat.
 `.trim()
 
 export type UpdateWorkspaceToolInput = {

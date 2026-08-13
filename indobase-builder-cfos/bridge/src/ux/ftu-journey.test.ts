@@ -39,8 +39,13 @@ describe('first-time user journey certification', () => {
   it('operator lexicon never includes Indobase internals', () => {
     assert.match('backend', INTERNAL_OPERATOR_LEXICON)
     assert.match('Commerce ABI', INTERNAL_OPERATOR_LEXICON)
+    assert.match('Studio', INTERNAL_OPERATOR_LEXICON)
+    assert.match('tenant', INTERNAL_OPERATOR_LEXICON)
+    assert.match('provisioner', INTERNAL_OPERATOR_LEXICON)
+    assert.match('PocketBase', INTERNAL_OPERATOR_LEXICON)
     assert.doesNotMatch('Launch my store', INTERNAL_OPERATOR_LEXICON)
     assert.doesNotMatch('Your store is live', INTERNAL_OPERATOR_LEXICON)
+    assert.doesNotMatch('Customer login is enabled', INTERNAL_OPERATOR_LEXICON)
   })
 
   it('does not expand the frozen five-tool surface', () => {

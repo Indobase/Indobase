@@ -7,12 +7,14 @@ Capabilities describe **what a business can do** — not which vendor or Indobas
 
 **Binding UX:** customers and agents **enable** Indobase capabilities. They never **connect** external products. Provider choice lives only in hidden adapters.
 
+**Business-data engine:** PocketBase is the default adapter for `auth`, `businessData`, `storage`, and realtime. It is shared infrastructure scoped by workspace / business id — not a product, not a per-business container, never named in chrome. See [adr/0007](./adr/0007-pocketbase-invisible-engine.md).
+
 ## Customer language ↔ ABI
 
 | Customer / chat | Capability id | Not |
 |-----------------|---------------|-----|
-| Customer Login | `auth` | Connect Auth / GoTrue / Clerk |
-| Business Data | `businessData` | Connect Neon / Postgres |
+| Customer Login | `auth` | Connect Auth / GoTrue / Clerk / PocketBase |
+| Business Data | `businessData` | Connect Neon / Postgres / PocketBase |
 | File Storage | `storage` | Connect S3 |
 | Payments | `commerce` | Connect Stripe / Razorpay UI |
 | Analytics | `events` | Connect analytics host |

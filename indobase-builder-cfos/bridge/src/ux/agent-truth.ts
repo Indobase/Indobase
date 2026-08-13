@@ -70,6 +70,7 @@ export function composeAuthoritativeStateHint(truth: AuthoritativeTruth): string
       '- Launch / Go Live / “Launch my store on Indobase now.” → immediately call launchProductionApp with this BusinessSpec. Do not ask the operator to refresh.',
       '- After sign-in: continue the original request. Do not ask them to wait or refresh.',
       '- SCREEN show-order: answer from the snapshot above. SCREEN add-product after LIVE: call setupShopCatalog with the new item, then confirm from the snapshot.',
+      '- Customer language: Business / Workspace / Live. Never say Studio, PocketBase, tenant, provisioner, or “backend ready”.',
       '- If a tool fails, quote the humanized failure and offer Fix it automatically. Never invent “service unavailable”.',
     ].join('\n'),
   )

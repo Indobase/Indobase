@@ -34,7 +34,7 @@ export type ExplainGovernanceGateInput = {
 }
 
 const PLAN_LADDER =
-  'Indobase plans: Free (5 agent prompts) → Basic (frontend) → Pro (backend Studio) → Studio (team).'
+  'Indobase plans: Free (5 agent prompts) → Basic (site) → Pro (customer login + business data) → Team.'
 
 export function explainGovernanceGate(
   input: ExplainGovernanceGateInput,
@@ -50,7 +50,7 @@ export function explainGovernanceGate(
       const billing =
         upgradeUrl != null
           ? ` Open billing to upgrade: ${upgradeUrl}`
-          : ' Open Studio billing to upgrade your plan.'
+          : ' Upgrade in chat to continue.'
       return {
         code: input.code === 'plan_upgrade_required' ? 'plan_upgrade_required' : 'prompt_quota_exceeded',
         title: 'Free agent limit reached',
@@ -65,14 +65,14 @@ export function explainGovernanceGate(
               'Call upgradePlan with plan=pro so I can continue building with a higher Indobase prompt allowance',
           },
           {
-            label: 'Upgrade to Studio',
+            label: 'Upgrade for teams',
             message:
               'Call upgradePlan with plan=studio for team capacity and continue the launch ladder',
           },
           {
             label: 'Show plans',
             message:
-              'Explain Indobase Free / Basic / Pro / Studio and open billing so I can pick a plan',
+              'Explain Indobase Free / Basic / Pro / Team plans and start the upgrade in chat',
           },
         ],
       }
@@ -81,9 +81,9 @@ export function explainGovernanceGate(
       return {
         code: 'account_required',
         title: 'Account required',
-        reason: 'Guests cannot run backend, payments, or publish tools.',
+        reason: 'Guests cannot launch or enable business features.',
         message:
-          'Create your Indobase account first — finish email verification in chat (or Create account), then continue. Signed-in members unlock backend, Go Live, and payments.',
+          'Create your Indobase account first — finish email verification in chat (or Create account), then continue. Signed-in members can launch and enable payments.',
         choices: [
           {
             label: 'Create account',
@@ -130,20 +130,18 @@ export function explainGovernanceGate(
     case 'wire_required':
       return {
         code: 'wire_required',
-        title: 'Wire storefront to Indobase backend',
-        reason: 'Go Live rejected a localStorage-only, invent-checkout, or unwired UI when a real backend is required.',
+        title: "Checkout isn't connected yet",
+        reason: 'The storefront is still using placeholders instead of live products and checkout.',
         message:
-          'UI is not wired correctly. Ecommerce: use window.indobase.commerce (publish guidedBackend storefront_html) — never POST PocketBase orders. Other apps: inject session.backend public_env + records API. Prefer *.sites.indobase.in over Gadget iframe.',
+          "Your storefront isn't connected to live products and checkout yet. I'll finish that setup and continue launch.",
         choices: [
           {
-            label: 'Publish commerce storefront',
-            message:
-              'Call guidedBackend if needed, then launchBusiness with storefront_html (window.indobase.commerce checkout) — do not invent PocketBase order creates',
+            label: 'Fix it automatically',
+            message: 'Connect live products and checkout, then continue launch.',
           },
           {
-            label: 'Static preview',
-            message:
-              'Publish a shareable *.sites.indobase.in preview via launchBusiness — do not rely on Gadget iframe',
+            label: 'Continue editing',
+            message: 'Continue editing the preview.',
           },
         ],
       }

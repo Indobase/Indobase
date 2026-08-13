@@ -40,7 +40,7 @@ export const HOME_INTENTS: readonly HomeIntent[] = [
     label: 'Website',
     description: 'Grow brand',
     appType: 'landing',
-    prompt: 'I want to launch a website for my brand. Make it look live-ready and publish when it is ready.',
+    prompt: 'I want to launch a website for my brand. Make it look live-ready and launch when it is ready.',
   },
   {
     id: 'launch-booking',
@@ -538,7 +538,7 @@ const FAILURE_COPY: Record<string, { title: string; body: string }> = {
   },
   deploy_failed: {
     title: "I couldn't safely launch this yet.",
-    body: "I couldn't publish the site to your Indobase address.",
+    body: "I couldn't put your site live at your Indobase address.",
   },
 }
 
@@ -547,7 +547,7 @@ export function stripInternalFailureCopy(message: string): string {
     .replace(/^LAUNCH BLOCKED\s*[—–-]\s*/i, '')
     .replace(/^production verification failed:\s*/i, '')
     .replace(
-      /\b(backend_required|wire_required|account_required|contract_verifier_failed|functional_verifier_failed|guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|CAS|payment_revision|compare-and-set)\b/gi,
+      /\b(backend_required|wire_required|account_required|contract_verifier_failed|functional_verifier_failed|guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|CAS|payment_revision|compare-and-set|Studio|tenant|provisioner|Coolify|Traefik|Docker|Postgres)\b/gi,
       '',
     )
     .replace(/\s{2,}/g, ' ')
@@ -867,7 +867,7 @@ export const UX_CONDUCTOR_AGENT_RULES = `
 ## UX conductor (HARD — operator experience)
 
 The agent can be complex. The experience cannot.
-Speak only business language to the operator. Never name guidedBackend, ensureDatabase, applySchema, Commerce ABI, PocketBase, reservations, CAS, or job stage ids.
+Speak only business language to the operator. Never name Studio, tenant, project, provisioner, guidedBackend, ensureDatabase, applySchema, Commerce ABI, PocketBase, Coolify, Docker, Traefik, Postgres, reservations, CAS, or job stage ids.
 Never quote raw failure codes (backend_required, wire_required, contract_verifier_failed). Say what the customer cannot do yet, then offer Fix it automatically / Try again / Continue editing.
 
 On a clear launch ask: infer architecture and start. Ask at most 1–2 high-value questions (name, currency, have products?). Do not ask about databases, auth, schema, storage, analytics, or payments unless they asked.

@@ -37,12 +37,12 @@ export const UPGRADE_PLAN_AGENT_HARD_RULES = `
 
 When Free limits block work (402 / prompt_quota_exceeded) or the operator asks to upgrade:
 
-1. Offer CHOICES for the Indobase ladder (Basic / Pro / Studio) — Free is the default, not an “upgrade”.
+1. Offer CHOICES for the Indobase ladder (Basic / Pro / Team) — Free is the default, not an “upgrade”. Team maps to plan=studio internally; never say Studio to the operator.
 2. Call **upgradePlan** (aliases **changePlan**, **startPlanUpgrade**) —
    POST /api/os/tools/upgradePlan with { "plan": "pro" } (or basic | studio).
 3. If the tool returns checkout_url / pending_checkout_url: quote that EXACT URL. Never invent URLs.
-4. NEVER claim they are on Pro/Studio until payment confirms (upgraded:true only for Free downgrade).
-5. NEVER raw-UPDATE plan without this tool / Studio billing. Do NOT invent “you’re on Pro”.
+4. NEVER claim they are on Pro/Team until payment confirms (upgraded:true only for Free downgrade).
+5. NEVER raw-UPDATE plan without this tool. Do NOT invent “you’re on Pro”. Do not send them to another product to pay.
 `.trim()
 
 export type UpgradePlanToolInput = {

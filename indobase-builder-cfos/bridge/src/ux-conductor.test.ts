@@ -39,8 +39,8 @@ describe('UX conductor', () => {
     assert.equal(UX_HOME_HEADLINE, 'What do you want to launch?')
     assert.equal(HOME_INTENTS.length, 6)
     for (const tile of HOME_INTENTS) {
-      assert.doesNotMatch(tile.prompt, /guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|POST \/api/i)
-      assert.doesNotMatch(tile.label, /backend|schema|gadget/i)
+      assert.doesNotMatch(tile.prompt, /guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|Studio|tenant|provisioner|POST \/api/i)
+      assert.doesNotMatch(tile.label, /backend|schema|gadget|Studio/i)
     }
     assert.ok(HOME_INTENTS.some((t) => t.id === 'launch-store' && t.description === 'Sell online'))
   })
