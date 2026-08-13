@@ -72,6 +72,27 @@ export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Recor
   return { 'index.html': html, 'metadata.json': meta }
 }
 
+export function extractRequestedHeadline(message: string): string | null {
+  const text = (message || '').trim()
+  if (!text) return null
+  const quoted =
+    /(?:hero\s+)?headline\s+to\s+[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text) ||
+    /request:\s*(?:change\s+(?:the\s+)?hero(?:\s+headline)?\s+to\s+)?[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text)
+  const raw = quoted?.[1]?.trim()
+  return raw || null
+}
+
+export function mutateHeroHeadline(html: string, headline: string): string {
+  const next = headline.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  if (/data-ib-section=["']hero["'][\s\S]*?<h1\b/i.test(html)) {
+    return html.replace(
+      /(data-ib-section=["']hero["'][\s\S]*?<h1[^>]*>)[\s\S]*?(<\/h1>)/i,
+      `$1${next}$2`,
+    )
+  }
+  return html.replace(/(<h1[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${next}$2`)
+}
+
 export function hashPreviewFiles(files: Record<string, string>): string {
   const hash = createHash('sha256')
   for (const [rel, content] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {

@@ -1942,6 +1942,8 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         message: message || '',
         guest: true,
         snapshot: facts.snapshot,
+        launchStatus: facts.launchStatus,
+        productionJob: facts.productionJob,
       })
     } catch {
       execution = null
@@ -2003,6 +2005,8 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         message: message || '',
         guest: false,
         snapshot: facts.snapshot,
+        launchStatus: facts.launchStatus,
+        productionJob: facts.productionJob,
       })
     } catch {
       execution = null

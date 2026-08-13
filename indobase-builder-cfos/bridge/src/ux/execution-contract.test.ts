@@ -368,4 +368,150 @@ describe('FTU execution contract A–Q', () => {
       true,
     )
   })
+
+  it('rehydrates spec+preview+orders after in-memory runtime is cleared', async () => {
+    const first = await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    assert.equal(first.runtime.preview.status, 'ready')
+    clearWorkspaceRuntimesForTests()
+    clearBusinessSpecsForTests()
+    assert.equal(getWorkspaceRuntime(session.projectRef), null)
+
+    const turn = await applyOperatorIntent({
+      session,
+      message: 'SCREEN\nsection: orders\nrequest: Show me order #zvka8renspuyufi',
+      guest: false,
+      snapshot: {
+        products: [{ id: 'thread-one', name: 'Thread One/Bone', priceMinor: 18900 }],
+        orders: [
+          {
+            id: 'zvka8renspuyufi',
+            orderNumber: 'zvka8renspuyufi',
+            status: 'pending',
+            amount_minor: 18900,
+            email: 'priya@shopper.test',
+            customer_name: 'Priya Shopper',
+            items: 'Thread One/Bone',
+          },
+        ],
+      },
+      launchStatus: {
+        previewReady: true,
+        previewUrl: first.runtime.preview.url,
+        url: 'https://urbanthread-aaf13e89.sites.indobase.in',
+      },
+      productionJob: {
+        version: 'production-launch-job/v1',
+        jobId: 'plj_msrmidq1_1f5ef0b3',
+        projectRef: session.projectRef,
+        gotrueId: session.gotrueId,
+        email: session.email || 'op@indobase.in',
+        intent: PROMPT,
+        production: true,
+        appType: 'ecommerce',
+        plan: {
+          appType: 'ecommerce',
+          backendRequired: true,
+          authRequired: true,
+          databaseRequired: true,
+          commerceRequired: true,
+          source: 'explicit',
+        },
+        contract: { appType: 'ecommerce' } as never,
+        status: 'live',
+        stages: [],
+        html: first.runtime.artifactHtml,
+        files: first.runtime.artifactFiles,
+        title: 'UrbanThread',
+        brand: 'UrbanThread',
+        vertical: 'sneakers',
+        url: 'https://urbanthread-aaf13e89.sites.indobase.in',
+        claim_live: true,
+        repairAttempts: 0,
+        failures: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    })
+    assert.equal(turn.spec?.businessName, 'UrbanThread')
+    assert.equal(turn.runtime.preview.status, 'ready')
+    assert.equal(turn.businessRuntime.orders[0]?.id, 'zvka8renspuyufi')
+    assert.match(turn.agentContext, /#zvka8renspuyufi/)
+    assert.match(turn.agentContext, /Priya Shopper/)
+  })
+
+  it('PREVIEW_EDIT persists the hero headline across reload', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const headline = 'Premium Sneakers. Built to Move.'
+    const turn = await applyOperatorIntent({
+      session,
+      message: `PREVIEW_EDIT\ntarget: section / hero (Hero)\nsource: preview\nintent: rewrite\nrequest: Change the hero headline to \`${headline}\``,
+      guest: false,
+    })
+    assert.equal(turn.intent, 'preview_edit')
+    assert.match(turn.operatorMessage, /Premium Sneakers\. Built to Move\./)
+    assert.match(turn.runtime.artifactHtml || '', /Premium Sneakers\. Built to Move\./)
+    const disk = await readLiveFile(session.projectRef, 'index.html')
+    assert.match(disk?.body.toString('utf8') || '', /Premium Sneakers\. Built to Move\./)
+
+    clearWorkspaceRuntimesForTests()
+    clearBusinessSpecsForTests()
+    const reloaded = await applyOperatorIntent({
+      session,
+      message: 'What is the hero headline?',
+      guest: false,
+    })
+    assert.match(reloaded.runtime.artifactHtml || '', /Premium Sneakers\. Built to Move\./)
+    const disk2 = await readLiveFile(session.projectRef, 'index.html')
+    assert.match(disk2?.body.toString('utf8') || '', /Premium Sneakers\. Built to Move\./)
+  })
+
+  it('fresh snapshot replaces a stale order count on the next turn', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const first = await applyOperatorIntent({
+      session,
+      message: 'What orders do I have?',
+      guest: false,
+      snapshot: {
+        products: [],
+        orders: [{ id: 'zvka8renspuyufi', status: 'pending', amount_minor: 18900 }],
+      },
+    })
+    assert.equal(first.businessRuntime.orders.length, 1)
+    const second = await applyOperatorIntent({
+      session,
+      message: 'How many orders do I have now?',
+      guest: false,
+      snapshot: {
+        products: [],
+        orders: [
+          { id: 'zvka8renspuyufi', status: 'pending', amount_minor: 18900 },
+          { id: 'order_two', status: 'pending', amount_minor: 9900 },
+        ],
+      },
+    })
+    assert.equal(second.businessRuntime.orders.length, 2)
+    assert.match(second.agentContext, /#order_two/)
+    assert.match(second.agentContext, /#zvka8renspuyufi/)
+  })
+
+  it('workspace B cannot read A’s spec, artifact, or orders', async () => {
+    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const other: Session = {
+      ...session,
+      gotrueId: 'user-b',
+      email: 'b@indobase.in',
+      projectRef: 'otherwsb1',
+      projectName: 'Other',
+    }
+    const turn = await applyOperatorIntent({
+      session: other,
+      message: 'Show me order zvka8renspuyufi',
+      guest: false,
+      snapshot: { products: [], orders: [] },
+    })
+    assert.notEqual(turn.spec?.businessName, 'UrbanThread')
+    assert.equal(turn.businessRuntime.orders.length, 0)
+    assert.doesNotMatch(turn.agentContext, /#zvka8renspuyufi/)
+    assert.equal(turn.businessRuntime.workspace.ref, 'otherwsb1')
+  })
 })

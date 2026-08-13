@@ -6,6 +6,7 @@ import { afterEach, describe, it } from 'node:test'
 
 import {
   lookupAgentPrincipal,
+  lookupMemberPrincipalForProject,
   reconcileAgentPrincipal,
   rememberAgentPrincipal,
 } from './agent-principal-store.ts'
@@ -220,5 +221,31 @@ describe('agent-principal-store', () => {
     assert.equal(reconciled?.email, 'op@indobase.in')
     assert.equal(reconciled?.projectRef, 'roshfdaaf13e89')
     assert.equal(reconciled?.gotrueId, 'user-real')
+  })
+
+  it('user B principal cannot reconcile onto user A’s workspace', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ib-principals-'))
+    process.env.INDOBASE_AGENT_PRINCIPAL_DIR = dir
+    await rememberAgentPrincipal({
+      username: 'ib_user_a',
+      gotrueId: 'user-a',
+      projectRef: 'roshfdaaf13e89',
+      email: 'a@indobase.in',
+      guest: false,
+    })
+    await rememberAgentPrincipal({
+      username: 'ib_user_b',
+      gotrueId: 'user-b',
+      projectRef: 'otherwsb1',
+      email: 'b@indobase.in',
+      guest: false,
+    })
+    const b = await reconcileAgentPrincipal('ib_user_b')
+    assert.equal(b?.projectRef, 'otherwsb1')
+    assert.equal(b?.email, 'b@indobase.in')
+    assert.notEqual(b?.projectRef, 'roshfdaaf13e89')
+    const a = await lookupMemberPrincipalForProject('roshfdaaf13e89')
+    assert.equal(a?.email, 'a@indobase.in')
+    assert.equal(a?.projectRef, 'roshfdaaf13e89')
   })
 })

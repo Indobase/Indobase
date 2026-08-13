@@ -774,13 +774,16 @@ void (async () => {
       text.includes('__INDOBASE_GUEST__') && text.includes('meter.clone().json()')
     const hasTurnContext = text.includes('__INDOBASE_TURN_CONTEXT__')
     const hasRuntimeStamp = text.includes('<<<INDOBASE_RUNTIME>>>')
-    let dirty = false
-    if (text.includes('const inputValue =') && text.includes('/api/os/agent/begin-turn')) {
-      text = text.replace('const inputValue =', 'let inputValue =')
-      dirty = true
-    }
-    if (text.includes('/api/os/agent/begin-turn') && hasGuestSync && hasTurnContext && hasRuntimeStamp) {
-      if (dirty) write(path, text)
+    const stampsOutbound =
+      text.includes('let outboundMessage = inputValue') &&
+      text.includes('let messageInput = outboundMessage')
+    if (
+      text.includes('/api/os/agent/begin-turn') &&
+      hasGuestSync &&
+      hasTurnContext &&
+      hasRuntimeStamp &&
+      stampsOutbound
+    ) {
       console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
     } else {
       const meterBlockRe =
@@ -789,6 +792,8 @@ void (async () => {
     // Indobase begin-turn meter (hard Free-plan enforce).
     // Guests get 200 (no consume) so OTP signup chat works. Fail-closed on 402 only.
     // Fail-open on 5xx/network. Do not abort on 403 — guests must be able to chat.
+    // Stamp runtime onto a local copy — inputValue is React state and cannot be reassigned.
+    let outboundMessage = inputValue
     try {
       const meter = await fetch('/api/os/agent/begin-turn', {
         method: 'POST',
@@ -831,8 +836,8 @@ void (async () => {
             : (typeof j?.agent_hint === 'string' && j.agent_hint.trim() ? j.agent_hint.trim() : '')
           if (turnCtx) {
             w.__INDOBASE_TURN_CONTEXT__ = turnCtx
-            if (!inputValue.includes('<<<INDOBASE_RUNTIME>>>')) {
-              inputValue = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + inputValue
+            if (!outboundMessage.includes('<<<INDOBASE_RUNTIME>>>')) {
+              outboundMessage = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + outboundMessage
             }
           }
           if (typeof j?.agent_hint === 'string' && j.agent_hint.trim()) {
@@ -852,6 +857,7 @@ void (async () => {
     sendInFlightRef.current = true;`
       if (meterBlockRe.test(text)) {
         text = text.replace(meterBlockRe, injection)
+        text = text.replace('let messageInput = inputValue;', 'let messageInput = outboundMessage;')
         write(path, text)
         console.log('  ChatInterface ← begin-turn meter + guest sync (upgrade)')
       } else {
@@ -868,6 +874,7 @@ void (async () => {
 ${injection}`
         if (text.includes(anchor)) {
           text = text.replace(anchor, full)
+          text = text.replace('let messageInput = inputValue;', 'let messageInput = outboundMessage;')
           write(path, text)
           console.log('  ChatInterface ← begin-turn meter + guest sync')
         } else {

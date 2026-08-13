@@ -13,11 +13,14 @@ import {
 } from '@indobase/platform'
 
 import type { Session } from '../auth.js'
+import type { LaunchStatusSnapshot } from '../launch-journey.js'
 import {
   executeProductionLaunchJob,
   getLatestProductionLaunchJob,
+  rememberProductionLaunchJob,
   type ProductionLaunchDeps,
   type ProductionLaunchExecuteResult,
+  type ProductionLaunchJob,
 } from '../production-launch/index.js'
 import {
   getBusinessSpec,
@@ -26,8 +29,8 @@ import {
   type BusinessSpec,
 } from './business-spec.js'
 import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
-import { materializePreview } from './preview-artifact.js'
-import { probePreviewHttp } from '../static-launch.js'
+import { extractRequestedHeadline, materializePreview, mutateHeroHeadline } from './preview-artifact.js'
+import { probePreviewHttp, readLiveFile, writeDraftPreview } from '../static-launch.js'
 import {
   appendRuntimeEvent,
   emptyPersistedRuntime,
@@ -66,6 +69,8 @@ export type ApplyOperatorIntentInput = {
   message: string
   guest?: boolean
   snapshot?: BusinessSnapshotSummary | null
+  launchStatus?: LaunchStatusSnapshot | null
+  productionJob?: ProductionLaunchJob | null
   launchDeps?: ProductionLaunchDeps
   probe?: typeof probePreviewHttp
 }
@@ -94,11 +99,101 @@ export function classifyOperatorIntent(
   const text = (message || '').trim()
   if (!text) return 'other'
   if (/^PREVIEW_EDIT\b/.test(text)) return 'preview_edit'
+  if (/\b(hero headline|change the hero|headline to)\b/i.test(text)) return 'preview_edit'
   if (/^SCREEN\b/.test(text)) return 'operate'
   if (looksLikeGoLive(text)) return 'launch_production'
   if (looksLikeCreateBusiness(text)) return 'create_business'
-  if (runtime?.spec && /\b(order|product|customer|inventory|sales)\b/i.test(text)) return 'operate'
+  if (/\b(order|product|customer|inventory|sales)\b/i.test(text)) return 'operate'
   return 'other'
+}
+
+function specFromProductionJob(job: ProductionLaunchJob): BusinessSpec {
+  const inferred = inferBusinessSpec(job.intent || `Launch a ${job.vertical || 'store'} called ${job.title || job.brand || 'Store'}`)
+  return {
+    ...inferred,
+    businessName: job.title || job.brand || inferred.businessName,
+    businessType:
+      job.appType === 'saas' || job.appType === 'landing' || job.appType === 'ecommerce'
+        ? job.appType
+        : inferred.businessType,
+    brand: job.brand || inferred.brand,
+    catalog: {
+      ...inferred.catalog,
+      verticalId: job.vertical || inferred.catalog.verticalId,
+    },
+    sourceIntent: job.intent || inferred.sourceIntent,
+  }
+}
+
+/** Rebuild in-memory runtime from the durable job + launch status after a process restart. */
+export async function rehydrateWorkspaceRuntime(
+  session: Session,
+  input: {
+    launchStatus?: LaunchStatusSnapshot | null
+    productionJob?: ProductionLaunchJob | null
+  } = {},
+): Promise<PersistedWorkspaceRuntime> {
+  const existing = getWorkspaceRuntime(session.projectRef)
+  let runtime = existing || emptyPersistedRuntime(session.projectRef)
+  const job = input.productionJob || getLatestProductionLaunchJob(session.projectRef)
+  const launch = input.launchStatus
+  let dirty = !existing
+
+  if (!runtime.spec) {
+    const remembered = getBusinessSpec(session.projectRef)
+    if (remembered) {
+      runtime = { ...runtime, spec: remembered, plan: runtime.plan || planFromSpec(remembered) }
+      dirty = true
+    } else if (job) {
+      const spec = rememberBusinessSpec(session.projectRef, specFromProductionJob(job))
+      runtime = { ...runtime, spec, plan: planFromSpec(spec) }
+      dirty = true
+    }
+  }
+
+  let artifactHtml = runtime.artifactHtml || job?.html || job?.files?.['index.html'] || ''
+  let artifactFiles = runtime.artifactFiles || job?.files
+  if (!artifactHtml) {
+    const disk = await readLiveFile(session.projectRef, 'index.html')
+    const body = disk?.body?.toString('utf8') || ''
+    if (body.includes('<html') || body.includes('<!DOCTYPE')) {
+      artifactHtml = body
+      artifactFiles = { ...(artifactFiles || {}), 'index.html': body }
+    }
+  }
+
+  const previewUrl =
+    runtime.preview.url ||
+    launch?.previewUrl ||
+    launch?.url ||
+    job?.url ||
+    null
+  const durablePreview =
+    Boolean(launch?.previewReady) ||
+    Boolean(job && (job.status === 'live' || job.html || job.files?.['index.html'])) ||
+    Boolean(artifactHtml) ||
+    Boolean(previewUrl)
+  if (runtime.preview.status !== 'ready' && durablePreview) {
+    runtime = {
+      ...runtime,
+      preview: {
+        status: 'ready',
+        url: previewUrl,
+        artifactRef: runtime.preview.artifactRef || job?.jobId || null,
+        contentHash: runtime.preview.contentHash,
+        httpOk: Boolean(job?.url || launch?.url || launch?.previewReady || artifactHtml),
+      },
+      artifactHtml: artifactHtml || runtime.artifactHtml,
+      artifactFiles: artifactFiles || runtime.artifactFiles,
+    }
+    dirty = true
+  } else if (artifactHtml && !runtime.artifactHtml) {
+    runtime = { ...runtime, artifactHtml, artifactFiles }
+    dirty = true
+  }
+
+  if (dirty) return rememberWorkspaceRuntime(runtime)
+  return runtime
 }
 
 function planFromSpec(spec: BusinessSpec): PersistedWorkspaceRuntime['plan'] {
@@ -360,13 +455,70 @@ async function runProductionLaunch(
   }
 }
 
+async function applyPersistedPreviewEdit(
+  session: Session,
+  message: string,
+  runtime: PersistedWorkspaceRuntime,
+): Promise<{ runtime: PersistedWorkspaceRuntime; commandId?: string; mutated: boolean; headline: string | null }> {
+  const headline = extractRequestedHeadline(message)
+  if (!headline) return { runtime, mutated: false, headline: null }
+
+  let html = runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || ''
+  if (!html) {
+    const disk = await readLiveFile(session.projectRef, 'index.html')
+    html = disk?.body?.toString('utf8') || ''
+  }
+  if (!html) return { runtime, mutated: false, headline }
+
+  const nextHtml = mutateHeroHeadline(html, headline)
+  if (!nextHtml || nextHtml === html) return { runtime, mutated: false, headline }
+
+  const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
+  const written = await writeDraftPreview({
+    workspaceRef: session.projectRef,
+    title: runtime.spec?.businessName || session.projectName || 'Preview',
+    files,
+  })
+  const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
+    mutation: 'hero_headline',
+    headline,
+  })
+  runtime = patchWorkspaceRuntime(session.projectRef, {
+    preview: {
+      ...runtime.preview,
+      status: 'ready',
+      url: runtime.preview.url || written.previewUrl,
+      artifactRef: written.artifactRef,
+      contentHash: written.contentHash,
+      httpOk: true,
+    },
+    artifactHtml: nextHtml,
+    artifactFiles: files,
+    lastCommandId: command.id,
+  })
+  appendRuntimeEvent(session.projectRef, {
+    kind: 'runtime.preview.mutate',
+    message: `Hero headline → ${headline}`,
+    commandId: command.id,
+  })
+  const job = getLatestProductionLaunchJob(session.projectRef)
+  if (job) {
+    rememberProductionLaunchJob({
+      ...job,
+      html: nextHtml,
+      files: { ...(job.files || {}), 'index.html': nextHtml },
+    })
+  }
+  return { runtime: getWorkspaceRuntime(session.projectRef) || runtime, commandId: command.id, mutated: true, headline }
+}
+
 export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Promise<ExecutionTurnResult> {
   const { session, guest } = input
   const message = (input.message || '').trim()
-  let runtime = getWorkspaceRuntime(session.projectRef) || emptyPersistedRuntime(session.projectRef)
-  if (!getWorkspaceRuntime(session.projectRef)) {
-    rememberWorkspaceRuntime(runtime)
-  }
+  let runtime = await rehydrateWorkspaceRuntime(session, {
+    launchStatus: input.launchStatus,
+    productionJob: input.productionJob,
+  })
 
   if (guest) {
     if (looksLikeCreateBusiness(message) || looksLikeGoLive(message)) {
@@ -427,13 +579,27 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     commandId = launched.commandId
   }
 
+  let mutatedHeadline: string | null = null
+  if (intent === 'preview_edit' && runtime.preview.status === 'ready') {
+    const edited = await applyPersistedPreviewEdit(session, effectiveMessage || message, runtime)
+    runtime = edited.runtime
+    mutatedHeadline = edited.headline
+    if (edited.commandId) commandId = edited.commandId
+    recovered = recovered || edited.mutated
+  }
+
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
   spec = runtime.spec || spec
   const businessRuntime = toSessionRuntime(session, runtime, input.snapshot, launch)
-  const agentContext = composeAgentContext({ intent, spec, runtime, businessRuntime, launch })
+  let agentContext = composeAgentContext({ intent, spec, runtime, businessRuntime, launch })
+  if (mutatedHeadline && recovered) {
+    agentContext += `\nMUTATION_APPLIED: hero headline is now “${mutatedHeadline}”. Persisted to the preview artifact. Do not say the store is missing.`
+  }
   const operatorMessage =
     intent === 'launch_production' && launch?.ok && launch.url
       ? `Your store is live — ${launch.url}`
+      : mutatedHeadline && recovered
+        ? `Done — I updated the hero to “${mutatedHeadline}”.`
       : runtime.preview.status === 'ready'
         ? `Preview is ready for ${spec?.businessName || 'your business'}.`
         : runtime.preview.status === 'failed'
@@ -458,7 +624,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
 
 export function applyPendingIntentAfterAuth(
   session: Session,
-  deps?: Pick<ApplyOperatorIntentInput, 'launchDeps' | 'probe' | 'snapshot'>,
+  deps?: Pick<ApplyOperatorIntentInput, 'launchDeps' | 'probe' | 'snapshot' | 'launchStatus' | 'productionJob'>,
 ): Promise<ExecutionTurnResult | null> {
   const pending = peekPendingIntent(session.projectRef)
   if (!pending) return Promise.resolve(null)
@@ -467,6 +633,8 @@ export function applyPendingIntentAfterAuth(
     message: pending,
     guest: false,
     snapshot: deps?.snapshot,
+    launchStatus: deps?.launchStatus,
+    productionJob: deps?.productionJob,
     launchDeps: deps?.launchDeps,
     probe: deps?.probe,
   })
