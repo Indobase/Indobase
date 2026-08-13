@@ -35,7 +35,8 @@ describe('Ecommerce production certification v1', () => {
     assert.equal(report.failed, 0)
     for (const row of report.results) {
       assert.equal(row.certified, true, row.store.id)
-      assert.ok(row.gaps.some((g) => g.id === 'customer_signup'))
+      assert.ok(row.gaps.some((g) => g.id === 'failed_payment_recovery_ui'))
+      assert.equal(row.gaps.some((g) => g.id === 'customer_signup'), false)
       assert.ok(row.checks.some((c) => c.id === 'search_filter' && c.status === 'pass'))
       assert.ok(row.checks.some((c) => c.id === 'product_detail' && c.status === 'pass'))
       assert.ok(row.checks.some((c) => c.id === 'job_live' && c.status === 'pass'))

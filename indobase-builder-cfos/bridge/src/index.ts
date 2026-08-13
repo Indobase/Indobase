@@ -62,6 +62,13 @@ import {
   handleCommerceProductsList,
   handleCommerceRuntimeJs,
 } from './commerce/http.js'
+import {
+  handleCustomerLogout,
+  handleCustomerMe,
+  handleCustomerOrdersList,
+  handleCustomerOtpStart,
+  handleCustomerOtpVerify,
+} from './commerce/customer-http.js'
 import { executeConnectGatewayTool } from './connect-gateway-tool.js'
 import { executeWireCheckoutTool } from './wire-checkout-tool.js'
 import {
@@ -1786,6 +1793,11 @@ app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
 app.get('/api/os/commerce/products', handleCommerceProductsList)
 app.get('/api/os/commerce/products/:id', handleCommerceProductGet)
 app.post('/api/os/commerce/checkout', handleCommerceCheckout)
+app.post('/api/os/commerce/customer/otp/start', handleCustomerOtpStart)
+app.post('/api/os/commerce/customer/otp/verify', handleCustomerOtpVerify)
+app.post('/api/os/commerce/customer/logout', handleCustomerLogout)
+app.get('/api/os/commerce/customer/me', handleCustomerMe)
+app.get('/api/os/commerce/customer/orders', handleCustomerOrdersList)
 app.get('/api/os/commerce/orders/:id', handleCommerceOrderGet)
 app.get('/api/os/commerce/admin/snapshot', handleCommerceAdminSnapshot)
 app.post('/api/os/commerce/orders/:id/mark-paid', handleCommerceMarkPaid)

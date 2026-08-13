@@ -66,7 +66,8 @@ Chips must match `/api/session` journey flags — never invent a parallel ladder
 After the first HTML/files exist for a landing or store UI:
 
 - Prefer **launchProductionApp** for LIVE (`*.sites.indobase.in`). `launchBusiness` is preview/draft only (`production:false`).
-- **Ecommerce storefront:** only **`window.indobase.commerce`** (products / cart / checkout / orders) — **never** PocketBase order creates, client prices, or stock writes. Checkout is `POST /api/os/commerce/checkout` (server prices + reserves stock). The job binds the managed storefront.
+- **Ecommerce storefront:** only **`window.indobase.commerce`** (products / cart / checkout / orders / **customer**) — **never** PocketBase order creates, client prices, or stock writes. Checkout is `POST /api/os/commerce/checkout` (server prices + reserves stock). Customer identity is the same ABI (`customer.startOtp` / `verifyOtp` / `orders.list`) — **do not add a new agent tool**. Browse/cart/checkout stay anonymous; OTP is the only proof that may claim guest orders (CUSTOMER-007). Do not invent a claim tool. The job binds the managed storefront.
+- **V1.1 session constraint:** localStorage JWT is an **accepted release constraint** of the static-site ABI, **not** the target security architecture. Backlog (do not implement in V1.1): HttpOnly + Secure + SameSite cookies, CSRF strategy, CSP hardening, XSS regression suite.
 - Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin). Never tell the operator to “open the Gadget preview” for a shareable link.
 - Gadget iframe is codegen-only fallback during build; once html is ready, Go Live early for preview or use `/live/{project_ref}/` draft lane when offered on `/api/session`.
 - `/api/session.launch.enforce_static_over_gadget` is true — honor it.

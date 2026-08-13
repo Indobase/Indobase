@@ -18,6 +18,8 @@ import {
   releaseReservationsForOrder,
   sumActiveReservations,
 } from './pb-adapter.js'
+import { normalizeCustomerEmail } from './customer-identity.js'
+import { resolveCheckoutCustomer } from './customer-service.js'
 import type {
   CommerceCheckoutError,
   CommerceCheckoutRequest,
@@ -44,7 +46,7 @@ export async function executeCheckout(
 
   const projectRef = (input.projectRef || '').trim()
   const idempotencyKey = (input.idempotencyKey || '').trim()
-  const email = (input.customer?.email || '').trim().toLowerCase()
+  const email = normalizeCustomerEmail(input.customerSession?.email || input.customer?.email || '')
   const items = Array.isArray(input.items) ? input.items : []
 
   if (!projectRef || !idempotencyKey || !email || !items.length) {
@@ -128,6 +130,15 @@ export async function executeCheckout(
     const orderId = newOrderId()
     const expiresAt = new Date(Date.now() + RESERVATION_TTL_MS).toISOString()
 
+    const owned = await resolveCheckoutCustomer({
+      projectRef,
+      email,
+      name: input.customer.name,
+      phone: input.customer.phone,
+      session: input.customerSession || null,
+      shippingAddress: input.shippingAddress,
+    })
+
     // Create order first so reservations reference a real order id
     await createOrderRecord({
       projectRef,
@@ -141,6 +152,9 @@ export async function executeCheckout(
       idempotencyKey,
       reservationExpiresAt: expiresAt,
       shippingAddress: input.shippingAddress as Record<string, unknown> | undefined,
+      customerId: owned.customer.id,
+      customerType: owned.customerType,
+      guestTokenHash: owned.guestTokenHash,
     })
 
     for (const line of lines) {
@@ -199,6 +213,9 @@ export async function executeCheckout(
       paymentStatus: 'pending',
       reservationExpiresAt: expiresAt,
       message,
+      customerId: owned.customer.id,
+      customerType: owned.customerType,
+      guestToken: owned.guestToken,
     }
   } catch (err) {
     return {

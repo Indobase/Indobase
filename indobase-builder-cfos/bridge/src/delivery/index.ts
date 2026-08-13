@@ -41,6 +41,17 @@ export {
   type StoreCertResult,
 } from './ecommerce-certification.js'
 export {
+  CUSTOMER_APPLICATION_CONTRACT,
+  CUSTOMER_CONTRACT_VERSION,
+  CUSTOMER_INVARIANT_IDS,
+} from './customer-contract.js'
+export {
+  CUSTOMER_CERT_VERSION,
+  certifyCustomerPlatform,
+  certifyCustomerStorefront,
+  runCustomerCertification,
+} from './customer-certification.js'
+export {
   ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
   requiredFunctionalVerifiersFailed,
   runEcommerceFunctionalVerifiers,

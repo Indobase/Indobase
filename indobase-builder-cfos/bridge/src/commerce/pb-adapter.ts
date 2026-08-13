@@ -227,6 +227,9 @@ export async function createOrderRecord(input: {
   idempotencyKey: string
   reservationExpiresAt: string
   shippingAddress?: Record<string, unknown>
+  customerId?: string
+  customerType?: 'guest' | 'registered'
+  guestTokenHash?: string | null
 }): Promise<{ id: string }> {
   const appId = sanitizeAppId(input.projectRef)
   const { token, base } = await adminToken()
@@ -257,6 +260,9 @@ export async function createOrderRecord(input: {
         reservation_expires_at: pocketBaseDateTime(input.reservationExpiresAt),
         shipping_address: input.shippingAddress || {},
         created_at: pocketBaseDateTime(),
+        customer_id: input.customerId || '',
+        customer_type: input.customerType || '',
+        guest_token_hash: input.guestTokenHash || '',
         items_json: input.lines.map((l) => ({
           product_id: l.productId,
           product_slug: l.slug,

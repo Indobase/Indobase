@@ -26,6 +26,8 @@ export type CommerceCheckoutRequest = {
   idempotencyKey: string
   /** Optional return URL after hosted payment */
   returnUrl?: string
+  /** Registered customer session (V1.1). Absent → guest checkout. */
+  customerSession?: import('./customer-identity.js').CustomerSession | null
 }
 
 export type CommerceCheckoutResult = {
@@ -38,6 +40,9 @@ export type CommerceCheckoutResult = {
   paymentStatus: 'pending' | 'paid' | 'failed' | 'cancelled'
   reservationExpiresAt: string
   message: string
+  customerId?: string
+  customerType?: 'guest' | 'registered'
+  guestToken?: string | null
 }
 
 export type CommerceCheckoutError = {

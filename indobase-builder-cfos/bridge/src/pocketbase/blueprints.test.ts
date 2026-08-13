@@ -55,6 +55,10 @@ describe('backend blueprints', () => {
     assert.equal(byName.orders.rules, 'admin_only')
     assert.equal(byName.order_items.rules, 'admin_only')
     assert.equal(byName.inventory_reservations.rules, 'admin_only')
+    assert.equal(byName.customers.rules, 'admin_only')
+    assert.equal(byName.customer_addresses.rules, 'admin_only')
+    assert.ok(byName.orders.fields.some((f) => f.name === 'customer_id'))
+    assert.ok(byName.customers.fields.some((f) => f.name === 'email_verified'))
 
     const products = rulesForProfile('public_read_admin_write')
     assert.equal(products.listRule, '')

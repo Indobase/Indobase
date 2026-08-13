@@ -104,7 +104,11 @@ export function buildManagedShopStorefrontHtml(opts: {
     <h1>${brand}</h1>
     <p>${tagline}</p>
   </div>
-  <button type="button" class="cart-btn" id="openCart">Cart (<span id="cartCount">0</span>)</button>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button type="button" class="cart-btn" id="openOrders">My Orders</button>
+    <button type="button" class="cart-btn" id="openAccount">Account</button>
+    <button type="button" class="cart-btn" id="openCart">Cart (<span id="cartCount">0</span>)</button>
+  </div>
 </header>
 <main>
   <p id="status">Loading catalog…</p>
@@ -130,7 +134,11 @@ export function buildManagedShopStorefrontHtml(opts: {
     <h2>Order confirmed</h2>
     <p class="meta" id="confirmNote">Your order was created by Indobase Commerce.</p>
     <p><strong id="confirmOrderId"></strong></p>
-    <div class="actions"><button type="button" id="closeConfirm">Done</button></div>
+    <p class="meta" id="confirmAccountHint">Create an account to track your orders.</p>
+    <div class="actions">
+      <button type="button" id="closeConfirm">Done</button>
+      <button class="primary" type="button" id="confirmCreateAccount">Create an account</button>
+    </div>
   </div>
 </dialog>
 <dialog id="cartDlg">
@@ -141,12 +149,34 @@ export function buildManagedShopStorefrontHtml(opts: {
     <p class="meta">Final price is calculated by Indobase Commerce (not from this page).</p>
     <label>Name<input type="text" name="name" placeholder="Your name" autocomplete="name"/></label>
     <label>Email<input required type="email" name="email" placeholder="you@example.com" autocomplete="email"/></label>
-    <p class="meta" id="checkoutNote">Creates a real order via commerce.checkout — never writes PocketBase directly.</p>
+    <p class="meta" id="checkoutNote">Guest checkout — sign in anytime to track this order. Final charge is server-priced.</p>
     <div class="actions">
       <button type="button" id="closeCart">Close</button>
       <button class="primary" type="submit" id="placeOrder">Checkout</button>
     </div>
   </form>
+</dialog>
+<dialog id="accountDlg">
+  <form class="dlg" id="accountForm">
+    <h2 id="accountTitle">Account</h2>
+    <p class="meta" id="accountStatus">Sign in with email to see your orders. Browsing and checkout work without an account.</p>
+    <label>Name<input type="text" name="name" autocomplete="name"/></label>
+    <label>Email<input required type="email" name="email" autocomplete="email"/></label>
+    <label id="otpRow" hidden>Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"/></label>
+    <div class="actions">
+      <button type="button" id="closeAccount">Close</button>
+      <button type="button" id="logoutBtn" hidden>Log out</button>
+      <button class="primary" type="submit" id="accountSubmit">Send code</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="ordersDlg">
+  <div class="dlg">
+    <h2>My Orders</h2>
+    <p class="meta" id="ordersNote">Sign in to see orders for this account.</p>
+    <ul id="ordersList"></ul>
+    <div class="actions"><button type="button" id="closeOrders">Close</button></div>
+  </div>
 </dialog>
 <script>
 const commerce=window.indobase.commerce;
@@ -257,6 +287,20 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
     document.querySelector('#cartDlg').close();
     document.querySelector('#confirmNote').textContent=result.message||('Amount '+moneyMinor(result.amountMinor, result.currency));
     document.querySelector('#confirmOrderId').textContent='Order '+result.orderId;
+    window.__lastGuestEmail=String(fd.get('email')||'').trim();
+    window.__lastGuestName=String(fd.get('name')||'').trim();
+    var hint=document.querySelector('#confirmAccountHint');
+    var createBtn=document.querySelector('#confirmCreateAccount');
+    if(result.customerType==='registered'){ hint.hidden=true; createBtn.hidden=true; }
+    else { hint.hidden=false; createBtn.hidden=false; }
+    if(result.guestToken){
+      try{
+        var verified=await commerce.orders.get(result.orderId, result.guestToken);
+        if(verified&&verified.order){
+          document.querySelector('#confirmOrderId').textContent='Order '+result.orderId+' · '+(verified.order.paymentStatus||verified.order.status||'pending');
+        }
+      }catch(e){}
+    }
     document.querySelector('#confirmDlg').showModal();
   }catch(e){
     setError(e&&e.message?e.message:'Checkout failed');
@@ -271,6 +315,95 @@ document.querySelector('#pdpAdd').addEventListener('click', function(){
   document.querySelector('#pdpDlg').close();
 });
 document.querySelector('#closeConfirm').addEventListener('click', function(){ document.querySelector('#confirmDlg').close(); });
+async function refreshAccountChrome(){
+  var me=await commerce.customer.getCurrent().catch(function(){return {authenticated:false}});
+  var btn=document.querySelector('#openAccount');
+  var logout=document.querySelector('#logoutBtn');
+  if(me&&me.authenticated){
+    btn.textContent='Account';
+    logout.hidden=false;
+    document.querySelector('#accountStatus').textContent='Signed in as '+(me.customer&&me.customer.email||'');
+    document.querySelector('#accountSubmit').hidden=true;
+    var checkoutEmail=document.querySelector('#checkoutForm input[name="email"]');
+    var checkoutName=document.querySelector('#checkoutForm input[name="name"]');
+    if(checkoutEmail&&me.customer&&me.customer.email) checkoutEmail.value=me.customer.email;
+    if(checkoutName&&me.customer&&me.customer.name) checkoutName.value=me.customer.name;
+  } else {
+    btn.textContent='Account';
+    logout.hidden=true;
+    document.querySelector('#accountStatus').textContent='Sign in with email to see your orders. Browsing and checkout work without an account.';
+    document.querySelector('#accountSubmit').hidden=false;
+  }
+  return me;
+}
+async function renderOrders(){
+  var list=document.querySelector('#ordersList');
+  var note=document.querySelector('#ordersNote');
+  var me=await commerce.customer.getCurrent().catch(function(){return {authenticated:false}});
+  if(!me||!me.authenticated){
+    note.textContent='Sign in to see orders for this account.';
+    list.innerHTML='';
+    return;
+  }
+  try{
+    var orders=await commerce.customer.orders.list();
+    note.textContent=orders.length?('Showing '+orders.length+' order(s) for '+me.customer.email):'No orders yet.';
+    list.innerHTML=orders.length?orders.map(function(o){
+      return '<li><span>'+(o.id||'')+'</span><span>'+moneyMinor(o.amountMinor,o.currency)+' · '+String(o.paymentStatus||o.status||'')+'</span></li>';
+    }).join(''):'';
+  }catch(e){
+    note.textContent=e&&e.message?e.message:'Could not load orders';
+    list.innerHTML='';
+  }
+}
+document.querySelector('#openAccount').addEventListener('click', async function(){
+  await refreshAccountChrome();
+  document.querySelector('#otpRow').hidden=true;
+  document.querySelector('#accountDlg').showModal();
+});
+document.querySelector('#closeAccount').addEventListener('click', function(){ document.querySelector('#accountDlg').close(); });
+document.querySelector('#logoutBtn').addEventListener('click', async function(){
+  await commerce.customer.logout();
+  await refreshAccountChrome();
+  document.querySelector('#accountDlg').close();
+});
+document.querySelector('#accountForm').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+  var fd=new FormData(ev.target);
+  var email=String(fd.get('email')||'').trim();
+  var name=String(fd.get('name')||'').trim();
+  var code=String(fd.get('code')||'').trim();
+  var status=document.querySelector('#accountStatus');
+  try{
+    if(!code){
+      await commerce.customer.startOtp({ email:email, name:name });
+      document.querySelector('#otpRow').hidden=false;
+      document.querySelector('#accountSubmit').textContent='Verify';
+      status.textContent='Enter the code we emailed you.';
+      return;
+    }
+    await commerce.customer.verifyOtp({ email:email, name:name, code:code });
+    document.querySelector('#otpRow').hidden=true;
+    document.querySelector('#accountSubmit').textContent='Send code';
+    await refreshAccountChrome();
+    status.textContent='Signed in. Your guest orders for this email are now in My Orders.';
+  }catch(e){
+    status.textContent=e&&e.message?e.message:'Could not verify';
+  }
+});
+document.querySelector('#openOrders').addEventListener('click', async function(){
+  await renderOrders();
+  document.querySelector('#ordersDlg').showModal();
+});
+document.querySelector('#closeOrders').addEventListener('click', function(){ document.querySelector('#ordersDlg').close(); });
+document.querySelector('#confirmCreateAccount').addEventListener('click', function(){
+  document.querySelector('#confirmDlg').close();
+  var form=document.querySelector('#accountForm');
+  if(window.__lastGuestEmail) form.email.value=window.__lastGuestEmail;
+  if(window.__lastGuestName) form.name.value=window.__lastGuestName;
+  document.querySelector('#accountDlg').showModal();
+});
+refreshAccountChrome().catch(function(){});
 render(); renderCart(); loadProducts();
 </script>
 </body>

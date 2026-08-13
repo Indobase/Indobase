@@ -2,7 +2,7 @@
  * Ecommerce Production Certification v1 — application outcome, not orchestration-only.
  *
  * v1 required = product → cart → checkout → order → inventory → admin → LIVE.
- * Stretch gaps (customer OTP, order history) are recorded, not silently passed.
+ * Customer identity lives in ecommerce-cert/v1.1. V1.2 holds payment recovery.
  */
 
 import { planProductionApp } from '../production-launch/application-planner.js'
@@ -147,10 +147,14 @@ export function certifyStorefrontAndAdmin(store: EcommerceCertStore): CertCheck[
     check('admin_customer_order', 'admin', true, /Customer/.test(admin) && /buyer@example.com|email/i.test(admin), 'Admin order has customer field'),
     check('tenant_prefix', 'production', true, /INDOBASE_COLLECTION_PREFIX|ib_/.test(admin + html), 'Tenant collection prefix present'),
     check('https_assets', 'production', true, /https:\/\/backend\.indobase\.in/.test(html), 'Backend origin is HTTPS'),
-    check('customer_signup', 'customer', false, false, 'Storefront has no customer signup/OTP yet', true),
-    check('customer_login_session', 'customer', false, false, 'No persistent customer session UI yet', true),
-    check('customer_order_history', 'customer', false, false, 'No signed-in order history yet', true),
-    check('failed_payment_recovery_ui', 'commerce', false, false, 'Payment failure recovery is CheckoutService-only; no storefront retry UI yet', true),
+    check(
+      'failed_payment_recovery_ui',
+      'commerce',
+      false,
+      false,
+      'V1.2 — payment failure recovery is CheckoutService-only; no storefront retry UI yet',
+      true,
+    ),
   ]
 }
 

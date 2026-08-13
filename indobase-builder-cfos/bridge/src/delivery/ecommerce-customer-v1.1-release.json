@@ -1,0 +1,75 @@
+{
+  "milestone": "Ecommerce V1.1 Release Certification",
+  "title": "Ecommerce V1.1 Release Certification",
+  "contract": "unchanged",
+  "coreV1": "certified",
+  "v1.1": "certified",
+  "realEnvironment": ".249",
+  "realPocketBase": true,
+  "liveBrowser": true,
+  "claim": "Indobase commerce assigns guest or registered order ownership at checkout, and verified OTP may claim same-tenant guest orders.",
+  "notClaimed": "HttpOnly cookie sessions, payment state machine, Shopify-grade customer accounts.",
+  "results": {
+    "guestCheckout": "PASS",
+    "verifiedOwnershipClaim": "PASS",
+    "claimIdempotency": "PASS",
+    "sessionLifecycle": "PASS",
+    "twoUserIsolation": "PASS",
+    "crossTenantIsolation": "PASS"
+  },
+  "knownSecurityConstraint": "localStorage JWT",
+  "acceptedConstraints": [
+    "V1.1 uses localStorage JWT sessions because of the static-site ABI. This is an accepted release constraint, not the target security architecture."
+  ],
+  "deferred": [
+    "HttpOnly cookies",
+    "Secure/SameSite",
+    "CSRF",
+    "CSP",
+    "XSS suite"
+  ],
+  "v1.2PaymentStateMachine": "NOT INCLUDED",
+  "outOfScope": ["V1.2 payment state machine", "V1.3 operational commerce"],
+  "namedInvariants": [
+    "CUSTOMER-001",
+    "CUSTOMER-002",
+    "CUSTOMER-003",
+    "CUSTOMER-004",
+    "CUSTOMER-005",
+    "CUSTOMER-006",
+    "CUSTOMER-007"
+  ],
+  "harness": {
+    "platformRegression": "312/312",
+    "ecommerceCoreV1": "20/20",
+    "ecommerceCustomerV11": "20/20",
+    "stateTransitions": "PASS",
+    "twoBrowserIsolation": "PASS",
+    "liveBrowserGate": "24/24"
+  },
+  "live": {
+    "status": "PASS",
+    "cfosImage": "roshanraghavander/indobase-builder-cfos:v11-livecert",
+    "certifiedWorkingTree": "v11-livecert — 24/24 against this tree before commit",
+    "store": "https://corev1-aug13.sites.indobase.in",
+    "projectRef": "roshb77a4744fa",
+    "crossTenantRef": "v11xtenantb1",
+    "guestThenClaimedOrder": "5nnk3cpfofitwp5",
+    "secondCustomerOrder": "zmvl9nhiar9x32l",
+    "otpEchoDisabledAfterCert": true,
+    "pocketbase": {
+      "orderA": {
+        "id": "5nnk3cpfofitwp5",
+        "customer_type": "registered",
+        "guest_token_cleared": true
+      },
+      "orderB": {
+        "id": "zmvl9nhiar9x32l",
+        "customer_type": "registered",
+        "distinct_customer_id": true
+      },
+      "tenantBHasOrderA": false
+    }
+  },
+  "promoteToMain": true
+}

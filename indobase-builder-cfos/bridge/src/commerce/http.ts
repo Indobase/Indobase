@@ -6,9 +6,9 @@ import { timingSafeEqual } from 'node:crypto'
 import type { Context } from 'hono'
 import { sanitizeAppId } from '../pocketbase/managed.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
+import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
-  getOrderRecord,
   listCommerceOrders,
   listCommerceProducts,
 } from './pb-adapter.js'
@@ -51,7 +51,7 @@ export function commerceCorsHeaders(): Record<string, string> {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, Idempotency-Key, X-Indobase-Project-Ref',
+      'Content-Type, Idempotency-Key, Authorization, X-Indobase-Project-Ref, X-Indobase-Customer-Token, X-Indobase-Guest-Token',
     'Access-Control-Max-Age': '86400',
   }
 }
@@ -132,6 +132,7 @@ export async function handleCommerceCheckout(c: Context) {
 
   const result = await executeCheckout({
     projectRef,
+    customerSession: sessionFromRequest(c, projectRef),
     idempotencyKey,
     items: items.map((it) => {
       const row = it && typeof it === 'object' ? (it as Record<string, unknown>) : {}
@@ -180,39 +181,7 @@ export async function handleCommerceCheckout(c: Context) {
 }
 
 export async function handleCommerceOrderGet(c: Context) {
-  const projectRef = projectRefFrom(c)
-  const orderId = c.req.param('id') || ''
-  if (!projectRef || !orderId) {
-    return c.json({ ok: false, code: 'invalid_request', message: 'projectRef and id required' }, 400, commerceCorsHeaders())
-  }
-  try {
-    const order = await getOrderRecord(projectRef, orderId)
-    if (!order) {
-      return c.json({ ok: false, code: 'invalid_request', message: 'Order not found' }, 404, commerceCorsHeaders())
-    }
-    return c.json(
-      {
-        ok: true,
-        order: {
-          id: order.id,
-          status: order.status,
-          paymentStatus: order.payment_status || 'pending',
-          email: order.email,
-          currency: order.currency,
-          amountMinor: order.amount_minor ?? Math.round(Number(order.total || 0) * 100),
-          total: order.total,
-        },
-      },
-      200,
-      commerceCorsHeaders(),
-    )
-  } catch (err) {
-    return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Get failed' },
-      502,
-      commerceCorsHeaders(),
-    )
-  }
+  return handleCustomerOrderGet(c)
 }
 
 /** Merchant admin snapshot — live products + orders via service role (not anon PB). */

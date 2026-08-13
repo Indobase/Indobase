@@ -40,7 +40,7 @@ describe('Commerce certification — runtime authorization (blueprint)', () => {
   })
 
   it('orders / reservations deny public and authenticated client creates', () => {
-    for (const name of ['orders', 'order_items', 'inventory_reservations'] as const) {
+    for (const name of ['orders', 'order_items', 'inventory_reservations', 'customers', 'customer_addresses'] as const) {
       const col = getBlueprint('ecommerce').collections.find((c) => c.name === name)
       assert.ok(col, name)
       assert.equal(col.rules, 'admin_only')
