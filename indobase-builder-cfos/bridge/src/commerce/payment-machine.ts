@@ -1,5 +1,8 @@
 /**
  * V1.2 Commerce Payment State Machine — contract, not a Razorpay/Stripe integration.
+ * Feature-frozen: no refunds/subscriptions/coupons/extra gateways/UI.
+ * Validated on single-instance topology — not production-certified.
+ * AtomicPaymentGate is in-process only. Distributed authority is CAS (Gate 2).
  *
  * Inventory commit happens at most once. Provider event ids are idempotent.
  * Late provider success after expiry/cancel does not decrement stock.

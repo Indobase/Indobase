@@ -1,15 +1,17 @@
 {
-  "milestone": "Ecommerce V1.2 live webhook/PB certification (staging)",
-  "title": "Ecommerce V1.2 Payment State Machine — not production certified",
+  "milestone": "Ecommerce V1.2 — validated on single-instance production topology",
+  "title": "V1.2 payment state machine is not production-certified",
   "branch": "staging",
+  "featureFreeze": true,
   "promoteToMain": false,
   "productionCertified": false,
+  "verdict": "validated on single-instance production topology",
   "contract": "ecommerce-contract/v1.2",
   "coreV1": "frozen",
   "v1.1": "frozen",
-  "v1.2": "live_webhook_abi_on_249",
-  "claim": "On .249, the V1.2 machine survives real checkout + real PocketBase + real webhook HTTP. Late provider success after reservation expiry does not commit inventory.",
-  "notClaimed": "Razorpay/Stripe hosted checkout and provider-signed webhooks, PocketBase compare-and-set across workers, multi-replica topology, production release.",
+  "v1.2": "frozen_pending_gates",
+  "claim": "The payment state machine is substantially validated on one CFOS process against real PocketBase and the production webhook ABI. Late success after expiry does not commit inventory.",
+  "notClaimed": "Production certification. A production-like webhook ABI is not a real PSP integration. An in-process lock is not a distributed consistency mechanism.",
   "agentSurface": [
     "launchProductionApp",
     "launchBusiness",
@@ -27,6 +29,58 @@
     "PAYMENT-006",
     "PAYMENT-007"
   ],
+  "freeze": {
+    "noRefunds": true,
+    "noSubscriptions": true,
+    "noCoupons": true,
+    "noAdditionalGateways": true,
+    "noPaymentUiRedesign": true,
+    "remainingWork": "infrastructure correctness only"
+  },
+  "gates": {
+    "gate1_realPsp": {
+      "name": "Real PSP authenticity",
+      "status": "OPEN",
+      "required": [
+        "Customer → Commerce checkout → provider sandbox → real signed webhook",
+        "Commerce webhook verifier (cryptographic provider signature, not ABI secret alone)",
+        "atomic payment transition → PocketBase → inventory"
+      ],
+      "minimumCases": [
+        "success",
+        "failure",
+        "duplicate webhook",
+        "invalid signature",
+        "wrong order",
+        "wrong tenant/project",
+        "delayed webhook",
+        "webhook after client timeout"
+      ]
+    },
+    "gate2_distributedCas": {
+      "name": "Distributed compare-and-set",
+      "status": "OPEN",
+      "required": "Persistent conditional transition; database is the authority",
+      "target": "UPDATE orders SET payment_status='paid', payment_revision=payment_revision+1 WHERE id=? AND payment_status='payment_pending' AND payment_revision=?",
+      "win": "affected_rows=1",
+      "lose": "affected_rows=0 — another worker already transitioned",
+      "forbidden": "Do not treat AtomicPaymentGate / withOrderPaymentLock as the distributed primitive"
+    }
+  },
+  "releaseCandidateChecklist": {
+    "336/336 logic": true,
+    "28/28 live PB/webhook ABI": true,
+    "Real PSP sandbox": false,
+    "Real PSP signature verification": false,
+    "Duplicate PSP webhook": false,
+    "Out-of-order PSP webhook": false,
+    "Late success after expiry": true,
+    "Single-instance race": true,
+    "Two-replica race": false,
+    "Persistent CAS": false,
+    "Inventory exactly-once": "single-instance only",
+    "Payment exactly-once": "single-instance only"
+  },
   "levels": {
     "1_logic": {
       "status": "PASS",
@@ -38,18 +92,20 @@
       "realCheckout": "PASS",
       "realPocketBase": "PASS",
       "realWebhookHttpAbi": "PASS 28/28",
-      "razorpayStripeSandbox": "NOT RUN — tenant gateway_not_ready; PaymentAdapter is interface-only; no provider-signed payload receiver on this SHA",
+      "note": "A production-like webhook ABI is not the same thing as a real PSP integration.",
+      "razorpayStripeSandbox": "NOT RUN — tenant gateway_not_ready; PaymentAdapter is interface-only; no provider-signed payload receiver",
       "hostedCheckoutUrl": null
     },
     "3_distributed": {
       "status": "PARTIAL",
+      "note": "An in-process lock is not a distributed consistency mechanism.",
       "singleInstanceConcurrentHttp": "PASS — one inventory commit; expiry+success after TTL is pending + lateSuccess + stockΔ=0",
       "multiReplica": "NOT EXERCISABLE — service publishes host-mode *:8791, replicas=1",
-      "databaseCas": "STILL REQUIRED before production certification"
+      "databaseCas": "MISSING — required before production certification"
     }
   },
   "live": {
-    "status": "PASS_WEBHOOK_ABI",
+    "status": "VALIDATED_SINGLE_INSTANCE",
     "releaseSha": "7ba706cb571bd8f5ca3c1c9342e0be56a3e0e4be",
     "cfosImage": "roshanraghavander/indobase-builder-cfos:7ba706cb5",
     "healthVersion": "7ba706cb5",
@@ -76,7 +132,7 @@
       "webhookDuplicated": "PASS",
       "webhookAfterClientTimeout": "PASS",
       "webhookAfterReservationExpiry": "PASS — lateSuccessAfterTerminal",
-      "invalidWebhookSignature": "PASS HTTP 401",
+      "invalidWebhookSignature": "PASS HTTP 401 (ABI secret, not PSP signature)",
       "wrongOrderProject": "PASS HTTP 400, no corruption",
       "replayOldWebhook": "PASS already=true",
       "inventoryCommittedOnce": "PASS 118→117 then duplicate 117→117",
@@ -87,21 +143,24 @@
   },
   "concurrency": {
     "inProcess": "AtomicPaymentGate + withOrderPaymentLock + payment_revision",
-    "databaseCas": "REQUIRED before production certification — PocketBase PATCH is not a compare-and-set",
+    "databaseCas": "REQUIRED — PocketBase PATCH is not compare-and-set",
     "doNotPromoteAtomicPaymentGateToDistributedPrimitive": true
   },
   "harness": {
     "platformRegression": "336/336",
     "mockedWebhookPack": "PASS",
     "liveWebhookAbi": "28/28",
-    "note": "Live 28/28 is webhook-ABI + PocketBase evidence, not a Razorpay/Stripe release certificate."
+    "note": "Green tests do not lower the certification bar."
   },
-  "releaseProcessRemaining": [
-    "Razorpay/Stripe sandbox + provider-signed webhook delivery",
-    "PocketBase compare-and-set (affected_rows) across workers",
-    "multi-replica race (requires dropping host-mode port or an ingress mesh)",
-    "production certification",
-    "main"
-  ],
-  "outOfScope": ["V1.3 operational commerce", "agent payment tools", "promote to main"]
+  "nextMilestone": "Prove two independent processes cannot corrupt payment/inventory state (Gate 2), then real PSP-signed webhooks (Gate 1). Then certify. Then main.",
+  "outOfScope": [
+    "refunds",
+    "subscriptions",
+    "coupons",
+    "additional gateways",
+    "payment UI redesign",
+    "agent payment tools",
+    "V1.3 operational commerce",
+    "promote to main"
+  ]
 }

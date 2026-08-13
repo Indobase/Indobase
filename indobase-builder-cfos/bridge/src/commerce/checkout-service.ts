@@ -31,7 +31,7 @@ import type {
 
 const orderPaymentLocks = new Map<string, Promise<unknown>>()
 
-/** Serializes payment transitions per order in this process. PocketBase CAS is a live-cert gate. */
+/** Serializes payment transitions per order in this process. Not a distributed primitive — Gate 2 CAS is. */
 async function withOrderPaymentLock<T>(orderId: string, fn: () => Promise<T>): Promise<T> {
   const prev = orderPaymentLocks.get(orderId) || Promise.resolve()
   let release: () => void = () => {}
