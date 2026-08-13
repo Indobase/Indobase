@@ -1,0 +1,112 @@
+{
+  "version": "ftu-journey/v1",
+  "at": "2026-08-13T11:37:40.799Z",
+  "base": "https://builder.indobase.in",
+  "store": "https://corev1-aug13.sites.indobase.in",
+  "liveSha": "6fc490b6e0bdbe8785ee140a34ccb37487809e50",
+  "uxDeployed": true,
+  "operatorWalkthrough": "NOT_RUN",
+  "certified": false,
+  "security": {
+    "anonymousDenied": true,
+    "ownerAllowed": true,
+    "crossProjectDenied": true,
+    "expiredDenied": true
+  },
+  "securityCertified": true,
+  "probeOk": true,
+  "walkthrough": "NOT_RUN",
+  "checks": [
+    {
+      "id": "LIVE-HEALTH",
+      "ok": true,
+      "detail": "CFOS /sso/health 200 sha=6fc490b6e0bdbe8785ee140a34ccb37487809e50",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-SESSION",
+      "ok": true,
+      "detail": "GET /api/session → 401",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-PROJECT",
+      "ok": true,
+      "detail": "unauthenticated (expected); project shape needs a signed-in run",
+      "metric": "cognitive_load"
+    },
+    {
+      "id": "LIVE-HOME",
+      "ok": true,
+      "detail": "builder home 200 bytes=17608",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-UX-SURFACE",
+      "ok": true,
+      "detail": "builder HTML exposes workspace / project authority",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-LEXICON",
+      "ok": true,
+      "detail": "no ABI/backend leak in home HTML",
+      "metric": "cognitive_load"
+    },
+    {
+      "id": "LIVE-STORE",
+      "ok": true,
+      "detail": "storefront 200 catalog=true",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-CHECKOUT",
+      "ok": true,
+      "detail": "guest checkout path present",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-PRODUCTS",
+      "ok": true,
+      "detail": "commerce products 200 count=12",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-10",
+      "ok": true,
+      "detail": "anonymous snapshot 401",
+      "metric": "recovery"
+    },
+    {
+      "id": "LIVE-14",
+      "ok": true,
+      "detail": "A→A snapshot 200 orders=21",
+      "metric": "completion"
+    },
+    {
+      "id": "LIVE-08",
+      "ok": true,
+      "detail": "session.project state=live nav=6",
+      "metric": "cognitive_load"
+    },
+    {
+      "id": "LIVE-11",
+      "ok": true,
+      "detail": "A→B snapshot 403 code=forbidden",
+      "metric": "recovery"
+    },
+    {
+      "id": "LIVE-16",
+      "ok": true,
+      "detail": "expired session snapshot 401",
+      "metric": "recovery"
+    },
+    {
+      "id": "LIVE-WALKTHROUGH",
+      "ok": false,
+      "detail": "Signed-in 16-step operator walkthrough NOT_RUN (click-to-edit → launch → first purchase → Ask AI)",
+      "metric": "agent_intervention"
+    }
+  ],
+  "note": "Control Center authorization holds on .249. 16-step human walkthrough still required before Builder UX certified."
+}
