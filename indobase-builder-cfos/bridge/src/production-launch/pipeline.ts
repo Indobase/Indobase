@@ -11,12 +11,14 @@ import { autoWireLaunchArtifacts } from '../wire-proof.js'
 import { assertEcommerceReleaseGateAsync } from '../delivery/index.js'
 import { humanizeLaunchFailure } from '../ux-conductor.js'
 import {
+  getBusinessSpec,
   inferBusinessSpec,
   inferName,
   isPlaceholderBusinessName,
   pickBusinessName,
   rememberBusinessSpec,
 } from '../ux/business-spec.js'
+import { ensureEcommerceStorefrontFiles } from '../ux/preview-artifact.js'
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
@@ -303,7 +305,21 @@ export async function executeProductionLaunchJob(
 
   // 4. Generate
   job = patchStage(job, 'generate', { status: 'running', startedAt: nowIso() })
-  if (!job.html?.trim() && !(job.files && Object.keys(job.files).length)) {
+  const spec = getBusinessSpec(session.projectRef) || inferBusinessSpec(job.intent || job.title || '')
+  if (job.appType === 'ecommerce' || spec.businessType === 'ecommerce') {
+    const built = ensureEcommerceStorefrontFiles({
+      spec: { ...spec, businessType: 'ecommerce' },
+      projectRef: session.projectRef,
+      html: job.html,
+      files: job.files,
+    })
+    job = rememberProductionLaunchJob({
+      ...job,
+      html: built.html,
+      files: built.files,
+      appType: 'ecommerce',
+    })
+  } else if (!job.html?.trim() && !(job.files && Object.keys(job.files).length)) {
     if (job.appType === 'landing') {
       job = rememberProductionLaunchJob({
         ...job,

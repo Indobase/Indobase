@@ -18,6 +18,7 @@ export {
   clearProductionLaunchJobsForTests,
   getLatestProductionLaunchJob,
   getProductionLaunchJob,
+  rememberLivePublishJob,
   rememberProductionLaunchJob,
   type ProductionLaunchFailure,
   type ProductionLaunchJob,

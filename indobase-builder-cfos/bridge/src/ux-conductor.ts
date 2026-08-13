@@ -423,6 +423,16 @@ export function previewEditSuggestions(target: PreviewEditTarget): UxAction[] {
   ]
 }
 
+export function previewSelectToEditMessage(target: PreviewEditTarget): string {
+  const hay = `${target.id} ${target.label || ''} ${target.component || ''}`
+  const isHero = /\b(hero|banner|header)\b/i.test(hay)
+  return formatPreviewEditMessage({
+    target,
+    intent: isHero ? 'make_premium' : 'edit',
+    request: isHero ? 'make hero more premium' : `Edit the ${target.label || target.component || 'section'}`,
+  })
+}
+
 export function formatPreviewEditMessage(input: {
   target: PreviewEditTarget
   intent: PreviewEditIntent

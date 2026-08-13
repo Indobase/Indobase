@@ -2,7 +2,7 @@
  * Chat + live preview workspace. Preview is a participant in the conversation.
  * Mount once from ChatInterface; polls /api/session so the iframe tracks the job.
  */
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { BusinessControlCenter } from './BusinessControlCenter'
@@ -16,6 +16,7 @@ import {
   type WorkspaceViewModel,
   formatPreviewEditMessage,
   previewEditSuggestions,
+  previewSelectToEditMessage,
   workspaceViewModel,
 } from './ux-conductor'
 
@@ -206,20 +207,8 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     else setPane('preview')
   }, [view.showControlCenter])
 
-  useEffect(() => {
-    const onMsg = (ev: MessageEvent) => {
-      const data = ev.data
-      if (!data || data.type !== 'indobase:preview-select' || !data.target) return
-      setPane('preview')
-      setSelection({
-        target: data.target,
-        rect: data.rect || { top: 48, left: 24, width: 200, height: 80 },
-      })
-      setEditDraft('')
-    }
-    window.addEventListener('message', onMsg)
-    return () => window.removeEventListener('message', onMsg)
-  }, [])
+  const onPickRef = useRef(onPick)
+  onPickRef.current = onPick
 
   const sendPreviewEdit = (intent: PreviewEditIntent, request: string) => {
     if (!selection) return
@@ -233,6 +222,26 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     setSelection(null)
     setEditDraft('')
   }
+
+  useEffect(() => {
+    const onMsg = (ev: MessageEvent) => {
+      const data = ev.data as {
+        type?: string
+        target?: PreviewEditTarget
+        rect?: { top: number; left: number; width: number; height: number }
+      }
+      if (!data || data.type !== 'indobase:preview-select' || !data.target) return
+      setPane('preview')
+      setSelection({
+        target: data.target,
+        rect: data.rect || { top: 48, left: 24, width: 200, height: 80 },
+      })
+      setEditDraft('')
+      onPickRef.current(previewSelectToEditMessage(data.target))
+    }
+    window.addEventListener('message', onMsg)
+    return () => window.removeEventListener('message', onMsg)
+  }, [])
 
   const persistScreen = useCallback((screen: WorkspaceScreen) => {
     try {

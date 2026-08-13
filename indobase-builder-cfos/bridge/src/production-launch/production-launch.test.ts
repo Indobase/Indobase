@@ -5,6 +5,7 @@ import path from 'node:path'
 import { describe, it, beforeEach } from 'node:test'
 
 import type { Session } from '../auth.ts'
+import { clearBusinessSpecsForTests } from '../ux/business-spec.ts'
 import { assertLaunchWireReady } from '../wire-proof.ts'
 import {
   clearProductionLaunchJobsForTests,
@@ -102,6 +103,7 @@ describe('production launch job pipeline', () => {
   beforeEach(() => {
     process.env.INDOBASE_PRODUCTION_JOB_DIR = mkdtempSync(path.join(tmpdir(), 'plj-'))
     clearProductionLaunchJobsForTests()
+    clearBusinessSpecsForTests()
   })
 
   it('catalog points at the platform job, not ensure tools', () => {
@@ -199,6 +201,59 @@ describe('production launch job pipeline', () => {
       result.job.stages.find((s) => s.id === 'wire')?.title,
       'Connecting your data',
     )
+  })
+
+  it('ecommerce stub HTML is replaced with a shop storefront before LIVE', async () => {
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch a premium sneaker store called UrbanThread',
+        appType: 'ecommerce',
+        brand: 'UrbanThread',
+        html: '<html><body><h1>your business</h1><ul><li>One</li></ul></body></html>',
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'ecommerce',
+          steps: [
+            { id: 'ensureDatabase', status: 'ok', message: 'ok' },
+            { id: 'setupShopCatalog', status: 'ok', message: 'ok' },
+            { id: 'placeTestShopOrder', status: 'ok', message: 'ok' },
+          ],
+          progress: 'catalog + test order',
+          message: 'backend ready',
+          claim_backend_ready: true,
+          claim_live: false,
+          catalog_json: [{ slug: 'apex', name: 'Apex', stock: 8 }],
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /Add to cart/)
+          assert.match(input.html || '', /indobase\.commerce|\/api\/os\/commerce/)
+          assert.doesNotMatch(input.html || '', /<h1>your business<\/h1>/)
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://urbanthread.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'commerce smoke' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.match(result.job.html || '', /Add to cart/)
   })
 
   it('ecommerce job provisions internally and records certification evidence', async () => {

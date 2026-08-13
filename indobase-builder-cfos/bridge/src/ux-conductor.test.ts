@@ -17,6 +17,7 @@ import {
   uxJobHeadline,
   workspaceViewModel,
   formatPreviewEditMessage,
+  previewSelectToEditMessage,
   previewEditSuggestions,
   projectCapabilities,
   controlCenterNav,
@@ -200,6 +201,14 @@ describe('UX conductor', () => {
     })
     assert.match(msg, /^PREVIEW_EDIT/)
     assert.doesNotMatch(msg, /launchProductionApp|guidedBackend/)
+    const click = previewSelectToEditMessage({
+      type: 'section',
+      id: 'hero',
+      component: 'Hero',
+      label: 'Hero',
+    })
+    assert.match(click, /^PREVIEW_EDIT/)
+    assert.match(click, /make hero more premium/)
   })
 
   it('session.project authority wins over local UI guesses', () => {

@@ -8,8 +8,8 @@ import { randomBytes } from 'node:crypto'
 
 import type { BackendConfig } from '../auth.js'
 import { PRODUCTION_JOB_STAGE_TITLES, businessJobStageTitle } from '../ux-conductor.js'
-import type { ApplicationPlan, ProductionAppType } from './application-planner.js'
-import type { ProductionApplicationContract } from './production-contract.js'
+import { planProductionApp, type ApplicationPlan, type ProductionAppType } from './application-planner.js'
+import { resolveProductionContract, type ProductionApplicationContract } from './production-contract.js'
 import type { ProductionLaunchEvidence } from './evidence.js'
 
 export const PRODUCTION_LAUNCH_JOB_VERSION = 'production-launch-job/v1' as const
@@ -141,6 +141,62 @@ function readJobFile(jobId: string): ProductionLaunchJob | null {
   } catch {
     return null
   }
+}
+
+export function rememberLivePublishJob(input: {
+  projectRef: string
+  url: string
+  gotrueId?: string
+  email?: string
+  html?: string
+  files?: Record<string, string>
+  title?: string
+  brand?: string
+  intent?: string
+  appType?: string | null
+}): ProductionLaunchJob {
+  const existing = getLatestProductionLaunchJob(input.projectRef)
+  if (existing?.status === 'live' && existing.url === input.url && existing.claim_live) {
+    return rememberProductionLaunchJob({
+      ...existing,
+      html: input.html || existing.html,
+      files: input.files || existing.files,
+      title: input.title || existing.title,
+      url: input.url,
+    })
+  }
+  const plan = existing?.plan || planProductionApp({ appType: input.appType, intent: input.intent || input.title })
+  const contract = existing?.contract || resolveProductionContract(plan.appType)
+  const now = new Date().toISOString()
+  const stages = (existing?.stages || buildEmptyStages(plan.appType)).map((s) => ({
+    ...s,
+    status: 'ok' as const,
+    finishedAt: s.finishedAt || now,
+  }))
+  return rememberProductionLaunchJob({
+    version: PRODUCTION_LAUNCH_JOB_VERSION,
+    jobId: existing?.jobId || createProductionJobId(),
+    projectRef: input.projectRef,
+    gotrueId: input.gotrueId || existing?.gotrueId || '',
+    email: input.email || existing?.email || '',
+    intent: input.intent || existing?.intent || input.title || '',
+    production: true,
+    appType: plan.appType,
+    plan,
+    contract,
+    status: 'live',
+    stages,
+    html: input.html || existing?.html,
+    files: input.files || existing?.files,
+    title: input.title || existing?.title,
+    brand: input.brand || existing?.brand,
+    url: input.url,
+    claim_live: true,
+    repairAttempts: existing?.repairAttempts || 0,
+    failures: existing?.failures || [],
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  })
 }
 
 export function rememberProductionLaunchJob(job: ProductionLaunchJob): ProductionLaunchJob {

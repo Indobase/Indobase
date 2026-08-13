@@ -21,6 +21,9 @@ import { assertLaunchArchitectureReady, resolveEffectiveAppType } from './launch
 import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
+import { getBusinessSpec, inferBusinessSpec } from './ux/business-spec.js'
+import { ensureEcommerceStorefrontFiles } from './ux/preview-artifact.js'
+import { rememberLivePublishJob } from './production-launch/job-store.js'
 import {
   applyLaunchGateToTaskGraph,
   assertEcommerceReleaseGateAsync,
@@ -126,6 +129,23 @@ export async function executeLaunchBusinessTool(
   // Auto-wire / replace localStorage storefront BEFORE backend gate (env inject alone is not enough).
   let launchHtml = typeof input.html === 'string' ? input.html : undefined
   let launchFiles = input.files && typeof input.files === 'object' ? { ...input.files } : undefined
+  const spec = getBusinessSpec(workspaceRef) || inferBusinessSpec(input.title || '')
+  if (
+    spec.businessType === 'ecommerce' ||
+    effectiveAppType === 'ecommerce' ||
+    input.app_type === 'ecommerce' ||
+    input.app_type === 'shop' ||
+    input.app_type === 'store'
+  ) {
+    const built = ensureEcommerceStorefrontFiles({
+      spec: { ...spec, businessType: 'ecommerce' },
+      projectRef: workspaceRef,
+      html: launchHtml,
+      files: launchFiles,
+    })
+    launchHtml = built.html
+    launchFiles = built.files
+  }
   if (defaults?.backend) {
     const looksShop = /add to cart|storefront|product grid|checkout|inventory/i.test(
       `${launchHtml || ''}${JSON.stringify(launchFiles || {})}`,
@@ -302,6 +322,20 @@ export async function executeLaunchBusinessTool(
       message: claimLive ? 'Release gate passed' : message,
     })
     taskGraphSummary = summarizeTaskGraph(taskGraph)
+  }
+
+  if (claimLive && liveUrl) {
+    rememberLivePublishJob({
+      projectRef: workspaceRef,
+      url: liveUrl,
+      gotrueId: input.gotrueId,
+      email: input.email,
+      html: launchHtml,
+      files: launchFiles,
+      title: launchInput.title,
+      intent: spec.sourceIntent || input.title,
+      appType: spec.businessType === 'ecommerce' ? 'ecommerce' : effectiveAppType,
+    })
   }
 
   return {

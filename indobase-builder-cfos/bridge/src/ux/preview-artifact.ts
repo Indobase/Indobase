@@ -41,6 +41,31 @@ function metadataFor(spec: BusinessSpec): string {
   )}\n`
 }
 
+export function storefrontHasCommerceAbi(html: string | null | undefined): boolean {
+  return /indobase\.commerce|\/api\/os\/commerce/i.test(html || '')
+}
+
+export function ensureEcommerceStorefrontFiles(input: {
+  spec: BusinessSpec
+  projectRef: string
+  html?: string | null
+  files?: Record<string, string> | null
+}): { html: string; files: Record<string, string>; rebuilt: boolean } {
+  const current = input.files?.['index.html'] || input.html || ''
+  if (input.spec.businessType === 'ecommerce' && storefrontHasCommerceAbi(current)) {
+    return {
+      html: current,
+      files: { ...(input.files || {}), 'index.html': current },
+      rebuilt: false,
+    }
+  }
+  const files = buildPreviewFiles(
+    { ...input.spec, businessType: input.spec.businessType || 'ecommerce' },
+    input.projectRef,
+  )
+  return { html: files['index.html'], files: { ...(input.files || {}), ...files }, rebuilt: true }
+}
+
 export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Record<string, string> {
   const meta = metadataFor(spec)
   if (spec.businessType === 'ecommerce') {
