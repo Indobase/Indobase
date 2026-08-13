@@ -7,18 +7,18 @@
  *   and never restart guest/auth once signed in.
  *   1. Clear build ask → ack (+ guest gate if unsigned-in)
  *   2. Guest gate → name/email/DPDP/OTP; niche CHOICES OK (store asks)
- *   3. Building → at most goal-tied CHOICES; keep ≤4 personalized launch-ladder chips
+ *   3. Building → at most goal-tied CHOICES; keep ≤3 personalized launch-ladder chips
  *   4. Deliverable / stage done → agent FOLLOWUPS (or inject next ladder stage)
  *   5. Capability path → agent-authored CHOICES for that path
  *
  * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
  * If the agent omits chips after a completed deliverable, resolveFollowUps
- * injects Naive-style postPreview / postBackend / postGoLive chips (≤4).
+ * injects Naive-style postPreview / postBackend / postGoLive chips (≤3).
  * Niche prose without a CHOICES block is injected as ecommerce niche chips.
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
- * guest_gate → niche CHOICES only | building → keep ≤4 ladder chips (strip long walls) |
- * payments / deliverable → show chips, max 4.
+ * guest_gate → niche CHOICES only | building → keep ≤3 ladder chips (strip long walls) |
+ * payments / deliverable → show chips, max 3.
  */
 
 export type FollowUpItem = {
@@ -60,7 +60,7 @@ export type ParsedFollowUps = {
 export type ChipStage = 'guest_gate' | 'building' | 'payments' | 'deliverable'
 
 /** Naive-style brevity: never show a wall of chips. */
-export const MAX_VISIBLE_CHIPS = 4
+export const MAX_VISIBLE_CHIPS = 3
 
 export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
 
@@ -70,9 +70,8 @@ export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
  */
 export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
-    label: 'Go Live on Indobase',
-    message:
-      'Go Live — POST /api/os/apps/launch { production: true } and quote the job live URL only when status=live',
+    label: 'Launch store',
+    message: 'Launch my store on Indobase now.',
   },
   {
     label: 'Connect my domain',
@@ -375,6 +374,7 @@ function isGoLiveChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\bgo live\b/.test(label) ||
+    /\blaunch store\b/.test(label) ||
     (/\blaunchbusiness\b/.test(msg) && /\bgo live\b/.test(msg) && !/\bcustomdomain\b/.test(msg) && !/\badmin\.html\b/.test(msg))
   )
 }
@@ -388,6 +388,7 @@ function isPaymentsChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\badd payments\b/.test(label) ||
+    /\bconnect payments\b/.test(label) ||
     /\bindia\b.*\brazorpay\b|\brazorpay\b.*\bindia\b/.test(label) ||
     /\binternational\b.*\bstripe\b|\bstripe\b.*\binternational\b/.test(label) ||
     /\bconnectgateway\b|\bwirecheckout\b|\bpaste api keys\b|\bcomplete kyc\b/.test(label + ' ' + msg) ||
@@ -400,6 +401,7 @@ function isBackendEnsureChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\badd a real backend\b/.test(label) ||
+    /\bconnect products/.test(label) ||
     /\bguidedbackend\b/.test(msg) ||
     /\bpublish commerce storefront\b/.test(label) ||
     (/\bensuredatabase\b/.test(msg) && /\bapplyschema\b/.test(msg))
@@ -688,7 +690,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
         label: 'Wire + Go Live',
         message: `If catalog exists, publish ${name} storefront_html (Commerce ABI) then Go Live with launchBusiness`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -714,7 +716,7 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
         label: 'Production checklist',
         message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -743,7 +745,7 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
         label: 'Wire then Go Live',
         message: `Publish ${name} storefront_html then Go Live with launchBusiness in one pass — full launch is the goal`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -1005,8 +1007,8 @@ export function stripDeadEndChips(parsed: ParsedFollowUps): ParsedFollowUps {
 /**
  * Enforce Naive-style timing + brevity.
  * Guest/auth turn: strip ALL chips (no niche cards while signing up).
- * Building: strip only long canned walls — keep ≤4 personalized launch-ladder chips
- * so the operator can keep advancing to full Go Live.
+ * Building: strip only long canned walls — keep ≤3 personalized launch-ladder chips
+ * so the operator can keep advancing to launch.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
   const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
@@ -1169,7 +1171,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
         message:
           'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 

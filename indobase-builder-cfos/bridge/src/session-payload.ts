@@ -53,6 +53,7 @@ import {
   type ProductionLaunchJob,
 } from './production-launch/index.js'
 import { OS_ACHIEVEMENTS, OS_HOME_HEADLINE, OS_HOME_SUBHEAD } from './os-home.js'
+import { UX_CONDUCTOR_AGENT_RULES } from './ux-conductor.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -89,7 +90,7 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
     '## Journey state (session)',
     '## North star (HARD)',
     '- Always take the operator to a **production launch job** (POST /api/os/apps/launch) — not a chip ladder of ensure* tools.',
-    '- After every completed stage: emit 2–4 next FOLLOWUPS. Never stop after 1–2 chip rounds. Never restart guest/auth once signed in.',
+    '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name guidedBackend/ensure*/PocketBase/CAS. Never restart guest/auth once signed in.',
     `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
     `- Journey stage: ${journey.current_stage}`,
     `- Preview policy: production LIVE is **launchProductionApp**. launchBusiness is preview/draft only (production:false).`,
@@ -146,7 +147,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session)
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -253,7 +254,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       headline: OS_HOME_HEADLINE,
       subhead: OS_HOME_SUBHEAD,
       tiles: OS_ACHIEVEMENTS.filter((a) =>
-        a.id === 'launch-saas' || a.id === 'launch-store' || a.id === 'launch-landing',
+        a.id.startsWith('launch-') && a.id !== 'go-live',
       ).map((a) => ({ id: a.id, label: a.label, prompt: a.prompt })),
     },
     payments: {

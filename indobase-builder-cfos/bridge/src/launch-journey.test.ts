@@ -37,13 +37,15 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.guest, true)
     assert.equal(journey.current_stage, 'account')
     assert.match(journey.next_action?.label || '', /Create account/i)
+    assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
   })
 
   it('signed-in without publish pushes Go Live first', () => {
     const journey = buildLaunchJourneyState(memberSession(), {})
     assert.equal(journey.current_stage, 'live')
-    assert.match(journey.next_action?.label || '', /Go Live/i)
+    assert.match(journey.next_action?.label || '', /Launch store/i)
     assert.equal(journey.backend_ready, true)
+    assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
   })
 
   it('live site advances to Add payments (domain is secondary chip)', () => {
@@ -53,8 +55,9 @@ describe('buildLaunchJourneyState', () => {
     })
     assert.equal(journey.current_stage, 'payments')
     assert.equal(journey.live_url, 'https://threadline.sites.indobase.in')
-    assert.match(journey.next_action?.label || '', /Add payments/i)
+    assert.match(journey.next_action?.label || '', /Connect payments/i)
     assert.match(journey.headline || '', /payments/i)
+    assert.doesNotMatch(journey.headline || '', /backend|checklist/i)
     assert.equal(journey.flags.is_live, true)
     assert.ok(journey.completed_stages.includes('live'))
     assert.ok(journey.completed_stages.includes('backend'))
@@ -80,8 +83,9 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.current_stage, 'backend')
     assert.equal(journey.flags.is_live, true)
     assert.equal(journey.flags.is_backend_ready, false)
-    assert.match(journey.next_action?.label || '', /Add a real backend/i)
-    assert.match(journey.headline || '', /add a real backend/i)
+    assert.match(journey.next_action?.label || '', /Connect products/i)
+    assert.match(journey.headline || '', /connect products/i)
+    assert.doesNotMatch(journey.headline || '', /backend/i)
     const backend = journey.stages.find((s) => s.id === 'backend')
     assert.equal(backend?.status, 'current')
     const payments = journey.stages.find((s) => s.id === 'payments')
@@ -106,8 +110,9 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.flags.is_payments_ready, true)
     const production = journey.stages.find((s) => s.id === 'production')
     assert.equal(production?.status, 'done')
-    assert.match(journey.next_action?.label || '', /production checklist/i)
-    assert.match(journey.headline || '', /production checklist/i)
+    assert.match(journey.next_action?.label || '', /Open store|Manage store/i)
+    assert.match(journey.headline || '', /is live/i)
+    assert.doesNotMatch(journey.headline || '', /checklist|backend/i)
   })
 
   it('signed-in without backend leaves Preview upcoming', () => {

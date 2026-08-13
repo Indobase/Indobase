@@ -1,6 +1,7 @@
 /**
- * Outcome-centric home — launch a production application.
+ * Outcome-centric home — tell us what business you want to launch.
  */
+import { HOME_INTENTS, UX_HOME_HEADLINE, UX_HOME_SUBHEAD } from './ux-conductor.js'
 
 export type OsAchievement = {
   id: string
@@ -10,50 +11,32 @@ export type OsAchievement = {
   formatHint?: 'design' | 'website' | 'commerce' | 'auth' | 'database'
 }
 
-const LAUNCH_JOB_PROMPT = (appType: 'saas' | 'ecommerce' | 'landing', label: string) =>
-  `Launch a production-ready ${label}. After account verify if needed, POST /api/os/apps/launch { appType: "${appType}", production: true, intent: their ask }. Do NOT call ensureLogin, guidedBackend, or launchBusiness yourself — the job owns those stages. Quote job status and ONLY the live URL when status=live.`
-
 export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
-  {
-    id: 'launch-saas',
-    label: 'Launch a SaaS',
-    prompt: LAUNCH_JOB_PROMPT('saas', 'SaaS with customer accounts and saved data'),
-    navId: 'launch',
-  },
-  {
-    id: 'launch-store',
-    label: 'Launch a store',
-    prompt: LAUNCH_JOB_PROMPT('ecommerce', 'online store'),
-    navId: 'commerce',
-    formatHint: 'commerce',
-  },
-  {
-    id: 'launch-landing',
-    label: 'Launch a landing page',
-    prompt: LAUNCH_JOB_PROMPT('landing', 'landing page'),
-    navId: 'website',
-    formatHint: 'website',
-  },
+  ...HOME_INTENTS.map((tile) => ({
+    id: tile.id,
+    label: tile.label,
+    prompt: tile.prompt,
+    navId: tile.appType === 'ecommerce' ? 'commerce' : tile.appType === 'landing' ? 'website' : 'launch',
+    formatHint:
+      tile.appType === 'ecommerce' ? ('commerce' as const) : tile.appType === 'landing' ? ('website' as const) : undefined,
+  })),
   {
     id: 'logo',
     label: 'Create a logo',
-    prompt:
-      'ALWAYS use Design format (format.design). Create a professional logo for my business.',
+    prompt: 'Create a professional logo for my business.',
     navId: 'brand',
     formatHint: 'design',
   },
   {
     id: 'go-live',
-    label: 'Go Live',
-    prompt:
-      'Make this production — POST /api/os/apps/launch { production: true } with current html/files if any. Quote job stages. ONLY claim a URL when status=live.',
+    label: 'Launch store',
+    prompt: 'Launch my store on Indobase now.',
     navId: 'launch',
   },
   {
     id: 'create-account',
     label: 'Create account',
-    prompt:
-      'Create Indobase account in chat (name + email + DPDP → POST /auth/start → OTP → POST /auth/verify) or via Create account.',
+    prompt: 'Create my Indobase account so I can launch (name, email, and privacy consent).',
   },
 ] as const
 
@@ -71,6 +54,5 @@ function escapeAttr(value: string): string {
     .replace(/</g, '&lt;')
 }
 
-export const OS_HOME_HEADLINE = 'What do you want to launch?'
-export const OS_HOME_SUBHEAD =
-  'Launch a production-ready application from one prompt — accounts, data, and hosting included when the app needs them.'
+export const OS_HOME_HEADLINE = UX_HOME_HEADLINE
+export const OS_HOME_SUBHEAD = UX_HOME_SUBHEAD

@@ -276,7 +276,7 @@ console.log('  chrome logos → IndobaseMark')
   )
   if (existsSync(suggestionsSrc) && existsSync(suggestionsDest)) {
     copyFileSync(suggestionsSrc, suggestionsDest)
-    console.log('  HomeTaskSuggestions ← Launch a SaaS / Store / Landing')
+    console.log('  HomeTaskSuggestions ← Store / SaaS / Website / Booking / Ordering / Agency')
   }
 }
 

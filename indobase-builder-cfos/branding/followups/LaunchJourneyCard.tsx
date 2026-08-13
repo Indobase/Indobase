@@ -79,21 +79,24 @@ function jobToJourney(job: ProductionJobSnapshot): LaunchJourneyState {
   const live = job.status === 'live' && job.url ? job.url : null
   const blocked = job.status === 'blocked'
   const lastFail = job.failures?.[job.failures.length - 1]
+  const noun = job.appType === 'landing' ? 'website' : job.appType === 'saas' ? 'app' : 'store'
   return {
     guest: false,
     live_url: live,
     headline: blocked
-      ? `Launch blocked — ${lastFail?.message || 'fix and retry'}`
+      ? lastFail?.message || 'Launch hit a snag — I can retry'
       : live
-        ? 'Your application is live'
-        : `Launching ${job.appType || 'app'}…`,
+        ? `Your ${noun} is live`
+        : `Building your ${noun}`,
     stages,
     next_action: blocked
       ? {
           label: 'Retry launch',
-          message: `Retry production launch job ${job.jobId} — POST /api/os/apps/launch { jobId: "${job.jobId}", production: true }`,
+          message: 'Retry launching my store now.',
         }
-      : null,
+      : live
+        ? { label: 'Open store', message: live }
+        : null,
     flags: {
       is_guest: false,
       is_backend_ready: true,
@@ -183,12 +186,12 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
     >
       <div className={styles.header}>
         <div>
-          <div className={styles.kicker}>Launch progress</div>
+          <div className={styles.kicker}>{live_url ? 'Your store' : 'Building'}</div>
           <div className={styles.headline}>{headline}</div>
         </div>
         {live_url ? (
           <a className={styles.liveLink} href={live_url} target="_blank" rel="noreferrer">
-            Open live site
+            Visit store
           </a>
         ) : null}
       </div>

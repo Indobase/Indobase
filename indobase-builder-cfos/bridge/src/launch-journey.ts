@@ -3,6 +3,12 @@
  */
 import type { Session } from './auth.js'
 import { isGuestSession } from './auth.js'
+import {
+  businessJourneyStageLabel,
+  uxContextualActions,
+  uxHeadline,
+  type UxJourneyFlags,
+} from './ux-conductor.js'
 
 export type LaunchJourneyStageId =
   | 'account'
@@ -96,56 +102,25 @@ export function buildLaunchJourneyState(
   else if (!guest) currentStage = 'live'
 
   const stages: LaunchJourneyStage[] = [
-    stage('account', 'Account', accountDone, currentStage === 'account'),
-    stage('preview', 'Preview', previewDone, false),
-    stage('backend', 'Backend', backendDone, currentStage === 'backend'),
-    stage('live', 'Go Live', liveDone, currentStage === 'live'),
-    stage('payments', 'Payments', paymentsDone, currentStage === 'payments'),
-    stage('production', 'Production', productionDone, currentStage === 'production'),
+    stage('account', businessJourneyStageLabel('account'), accountDone, currentStage === 'account'),
+    stage('preview', businessJourneyStageLabel('preview'), previewDone, false),
+    stage('backend', businessJourneyStageLabel('backend'), backendDone, currentStage === 'backend'),
+    stage('live', businessJourneyStageLabel('live'), liveDone, currentStage === 'live'),
+    stage('payments', businessJourneyStageLabel('payments'), paymentsDone, currentStage === 'payments'),
+    stage('production', businessJourneyStageLabel('production'), productionDone, currentStage === 'production'),
   ]
 
-  const next_action = guest
-    ? {
-        label: 'Create account to launch',
-        message:
-          'Create my Indobase account in chat (name + email + DPDP consent), verify OTP, then continue building my business site toward Go Live.',
-      }
-    : !liveDone
-      ? {
-          label: 'Go Live on Indobase',
-          message:
-            'Go Live — POST /api/os/apps/launch (launchProductionApp) with production:true. Quote job status and the live url only when status=live, then emit Domain / Add payments / Production checklist chips.',
-        }
-      : !backendDone
-        ? {
-            label: 'Add a real backend',
-            message:
-              'Add a real product backend — call guidedBackend, publish storefront_html (window.indobase.commerce), prove inventory if ecommerce, then continue toward payments and production checklist.',
-          }
-        : !paymentsDone
-          ? {
-              // Payments stage CTA must match stepper/headline — domain is a secondary chip.
-              label: 'Add payments',
-              message:
-                'Add payments — ask me India (Razorpay) vs International (Stripe), enable payments, guide KYC, connectGateway with my keys, then wireCheckout for Buy CTAs. Domain can wait until checkout works.',
-            }
-          : {
-              label: 'Run production checklist',
-              message:
-                'Run productionChecklist with the live_url and honest checks — only claim production ready if claim_production_ready is true.',
-            }
-
-  const headline = guest
-    ? 'Sign in to publish your site on Indobase'
-    : liveDone && !backendDone
-      ? 'Your site is live — add a real backend'
-      : liveDone
-        ? paymentsDone
-          ? 'Your business is live — finish production checklist'
-          : 'Your site is live — add payments to start selling'
-        : backendDone
-          ? 'Backend ready — publish to your Indobase subdomain'
-          : 'Preview ready — go live when you are'
+  const flagsForUx: UxJourneyFlags = {
+    guest,
+    live: liveDone,
+    backendReady: backendDone,
+    paymentsReady: paymentsDone,
+    liveUrl,
+    appKind: 'store',
+  }
+  const actions = uxContextualActions(flagsForUx)
+  const next_action = actions[0] || null
+  const headline = uxHeadline(flagsForUx)
 
   const flags: LaunchJourneyFlags = {
     is_guest: guest,

@@ -255,7 +255,7 @@ INDOBASE_FOLLOWUPS>>>
     assert.equal(looksLikePreBuildClarification(input), false)
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.equal(resolved.items.length, 4)
+    assert.equal(resolved.items.length, MAX_VISIBLE_CHIPS)
     assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
   })
 
@@ -350,7 +350,7 @@ INDOBASE_FOLLOWUPS>>>
     assert.match(resolved.body, /headphone landing/)
   })
 
-  it('building stage keeps ≤4 personalized launch-ladder chips', () => {
+  it('building stage keeps ≤3 personalized launch-ladder chips', () => {
     const input = `Polished the hero a bit — ready when you are.
 
 <<<INDOBASE_FOLLOWUPS
@@ -363,7 +363,7 @@ INDOBASE_FOLLOWUPS>>>
 `
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.equal(resolved.items.length, 4)
+    assert.equal(resolved.items.length, MAX_VISIBLE_CHIPS)
     assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
   })
 
@@ -378,15 +378,15 @@ INDOBASE_FOLLOWUPS>>>
   it('postPreviewFollowups formats a Naive-style where-next block', () => {
     const stage = postPreviewFollowups('MERIDIAN')
     assert.equal(stage.title, 'Where should I take MERIDIAN next?')
-    assert.equal(stage.items.length, 4)
-    assert.ok(stage.items.some((i) => /Add a real backend/i.test(i.label)))
+    assert.equal(stage.items.length, MAX_VISIBLE_CHIPS)
+    assert.ok(stage.items.some((i) => /Add a real backend|Go Live|Launch store/i.test(i.label)))
     assert.ok(stage.items.every((i) => !/leave it as-is/i.test(i.label)))
     const block = formatFollowUpsBlock(stage.title, stage.items)
     assert.match(block, /<<<INDOBASE_FOLLOWUPS/)
-    assert.match(block, /guidedBackend/)
+    assert.match(block, /guidedBackend|launchBusiness|Launch/i)
     const parsed = parseFollowUps(`Preview ready.\n\n${block}`)
     assert.ok(parsed)
-    assert.equal(parsed.items.length, 4)
+    assert.equal(parsed.items.length, MAX_VISIBLE_CHIPS)
   })
 
   it('deliverable stage caps long agent walls at MAX_VISIBLE_CHIPS', () => {
@@ -396,7 +396,7 @@ INDOBASE_FOLLOWUPS>>>
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
     assert.equal(resolved.items.length, MAX_VISIBLE_CHIPS)
-    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /Go Live|Launch store/i.test(i.label)))
   })
 
   it('payments stage keeps market CHOICES', () => {

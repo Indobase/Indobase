@@ -7,6 +7,7 @@ import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 
 import type { BackendConfig } from '../auth.js'
+import { PRODUCTION_JOB_STAGE_TITLES } from '../ux-conductor.js'
 import type { ApplicationPlan, ProductionAppType } from './application-planner.js'
 import type { ProductionApplicationContract } from './production-contract.js'
 import type { ProductionLaunchEvidence } from './evidence.js'
@@ -81,17 +82,9 @@ export type ProductionLaunchJob = {
   updatedAt: string
 }
 
-const STAGE_DEFS: Array<{ id: ProductionLaunchStageId; title: string }> = [
-  { id: 'classify', title: 'Classify application' },
-  { id: 'contract', title: 'Create application contract' },
-  { id: 'provision', title: 'Provision auth + database' },
-  { id: 'generate', title: 'Generate production UI' },
-  { id: 'wire', title: 'Bind runtime APIs' },
-  { id: 'verify', title: 'Verify contract' },
-  { id: 'deploy', title: 'Deploy' },
-  { id: 'smoke', title: 'Production smoke test' },
-  { id: 'live', title: 'Mark LIVE' },
-]
+const STAGE_DEFS: Array<{ id: ProductionLaunchStageId; title: string }> = (
+  Object.entries(PRODUCTION_JOB_STAGE_TITLES) as Array<[ProductionLaunchStageId, string]>
+).map(([id, title]) => ({ id, title }))
 
 const jobs = new Map<string, ProductionLaunchJob>()
 const latestByProject = new Map<string, string>()

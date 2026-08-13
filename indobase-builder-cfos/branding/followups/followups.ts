@@ -60,7 +60,7 @@ export type ParsedFollowUps = {
 export type ChipStage = 'guest_gate' | 'building' | 'payments' | 'deliverable'
 
 /** Naive-style brevity: never show a wall of chips. */
-export const MAX_VISIBLE_CHIPS = 4
+export const MAX_VISIBLE_CHIPS = 3
 
 export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
 
@@ -375,6 +375,7 @@ function isGoLiveChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\bgo live\b/.test(label) ||
+    /\blaunch store\b/.test(label) ||
     (/\blaunchbusiness\b/.test(msg) && /\bgo live\b/.test(msg) && !/\bcustomdomain\b/.test(msg) && !/\badmin\.html\b/.test(msg))
   )
 }
@@ -388,6 +389,7 @@ function isPaymentsChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\badd payments\b/.test(label) ||
+    /\bconnect payments\b/.test(label) ||
     /\bindia\b.*\brazorpay\b|\brazorpay\b.*\bindia\b/.test(label) ||
     /\binternational\b.*\bstripe\b|\bstripe\b.*\binternational\b/.test(label) ||
     /\bconnectgateway\b|\bwirecheckout\b|\bpaste api keys\b|\bcomplete kyc\b/.test(label + ' ' + msg) ||
@@ -400,6 +402,7 @@ function isBackendEnsureChip(item: FollowUpItem): boolean {
   const msg = item.message.toLowerCase()
   return (
     /\badd a real backend\b/.test(label) ||
+    /\bconnect products/.test(label) ||
     /\bguidedbackend\b/.test(msg) ||
     /\bpublish commerce storefront\b/.test(label) ||
     (/\bensuredatabase\b/.test(msg) && /\bapplyschema\b/.test(msg))
