@@ -27,6 +27,23 @@ type LaunchJourneyState = {
   }
 }
 
+type ProductionJobStage = {
+  id: string
+  title?: string
+  status: 'pending' | 'running' | 'ok' | 'skipped' | 'failed'
+  message?: string
+}
+
+type ProductionJobSnapshot = {
+  jobId: string
+  status: string
+  appType?: string
+  claim_live?: boolean
+  url?: string | null
+  stages?: ProductionJobStage[]
+  failures?: Array<{ code?: string; message?: string; repair_hint?: string }>
+}
+
 export function readLaunchJourneyFromWindow(): LaunchJourneyState | null {
   try {
     const w = window as unknown as { __INDOBASE_JOURNEY__?: LaunchJourneyState | null }
@@ -34,6 +51,56 @@ export function readLaunchJourneyFromWindow(): LaunchJourneyState | null {
     return journey && typeof journey === 'object' ? journey : null
   } catch {
     return null
+  }
+}
+
+export function readProductionJobFromWindow(): ProductionJobSnapshot | null {
+  try {
+    const w = window as unknown as { __INDOBASE_PRODUCTION_JOB__?: ProductionJobSnapshot | null }
+    const job = w.__INDOBASE_PRODUCTION_JOB__
+    return job && typeof job === 'object' && typeof job.jobId === 'string' ? job : null
+  } catch {
+    return null
+  }
+}
+
+function jobToJourney(job: ProductionJobSnapshot): LaunchJourneyState {
+  const stages =
+    job.stages?.map((s) => ({
+      id: s.id,
+      label: s.title || s.id,
+      status:
+        s.status === 'ok' || s.status === 'skipped'
+          ? ('done' as const)
+          : s.status === 'running' || s.status === 'failed'
+            ? ('current' as const)
+            : ('upcoming' as const),
+    })) || []
+  const live = job.status === 'live' && job.url ? job.url : null
+  const blocked = job.status === 'blocked'
+  const lastFail = job.failures?.[job.failures.length - 1]
+  return {
+    guest: false,
+    live_url: live,
+    headline: blocked
+      ? `Launch blocked — ${lastFail?.message || 'fix and retry'}`
+      : live
+        ? 'Your application is live'
+        : `Launching ${job.appType || 'app'}…`,
+    stages,
+    next_action: blocked
+      ? {
+          label: 'Retry launch',
+          message: `Retry production launch job ${job.jobId} — POST /api/os/apps/launch { jobId: "${job.jobId}", production: true }`,
+        }
+      : null,
+    flags: {
+      is_guest: false,
+      is_backend_ready: true,
+      is_live: Boolean(live),
+      is_payments_ready: false,
+      is_production_ready: Boolean(live),
+    },
   }
 }
 
@@ -102,7 +169,8 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
 }) {
   const instanceId = useId()
   const isActive = useJourneySingleton(instanceId)
-  const journey = readLaunchJourneyFromWindow()
+  const job = readProductionJobFromWindow()
+  const journey = job ? jobToJourney(job) : readLaunchJourneyFromWindow()
   if (!journey || journey.guest || !isActive) return null
 
   const { stages, next_action, headline, live_url } = journey

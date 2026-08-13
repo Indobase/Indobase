@@ -112,7 +112,7 @@ export const BUSINESS_OS_NAV: readonly BusinessOsNavItem[] = [
     label: 'Launch Business',
     icon: '▶',
     prompt:
-      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API response. Never invent a URL or use a third-party host.',
+      'Make this production — POST /api/os/apps/launch { production: true }. The job owns provision → generate → wire → verify → deploy → smoke. Quote the live URL only when status=live.',
   },
   {
     id: 'settings',
@@ -156,7 +156,7 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
     label: 'Go Live',
     audience: 'signed_in',
     prompt:
-      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API. Never invent a URL.',
+      'Go Live means make this production — POST /api/os/apps/launch { production: true, html/files if ready }. Do not call ensure* or launchBusiness yourself. Quote status=live URL only.',
   },
   {
     id: 'static-preview',
@@ -170,7 +170,7 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
     label: 'Launch Business',
     audience: 'signed_in',
     prompt:
-      'Launch my business — call launchBusiness with real html/files and quote the API url only.',
+      'Launch this application — POST /api/os/apps/launch { production: true }. Quote the job live URL only.',
   },
   {
     id: 'add-login',

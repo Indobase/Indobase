@@ -254,14 +254,29 @@ console.log('  chrome logos → IndobaseMark')
   const path = join(OS, 'packages/workshop-frontend/src/routes/index.tsx')
   if (existsSync(path)) {
     let text = read(path)
-    text = replaceAll(text, 'What are we working on?', 'Describe Your Business Idea')
+    text = replaceAll(text, 'What are we working on?', 'What do you want to launch?')
+    text = replaceAll(text, 'Describe Your Business Idea', 'What do you want to launch?')
     text = replaceAll(
       text,
       'Ask a question, create an output, or create an app that works with your tools and data.',
+      'Launch a production-ready application from one prompt.',
+    )
+    text = replaceAll(
+      text,
       'Tell Indobase what you want to build — we’ll create the site, backend, and go live with you.',
+      'Launch a production-ready application from one prompt.',
     )
     write(path, text)
-    console.log('  home landing hero → agentic business OS copy')
+    console.log('  home landing hero → launch a production application')
+  }
+  const suggestionsSrc = join(BRAND, 'HomeTaskSuggestions.tsx')
+  const suggestionsDest = join(
+    OS,
+    'packages/workshop-frontend/src/components/AppShell/HomeTaskSuggestions.tsx',
+  )
+  if (existsSync(suggestionsSrc) && existsSync(suggestionsDest)) {
+    copyFileSync(suggestionsSrc, suggestionsDest)
+    console.log('  HomeTaskSuggestions ← Launch a SaaS / Store / Landing')
   }
 }
 

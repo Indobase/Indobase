@@ -102,6 +102,12 @@ import {
 } from './agent-principal-store.js'
 import { ensureAgentModelsWithTimeout, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
+import {
+  executeProductionLaunchJob,
+  getLatestProductionLaunchJob,
+  getProductionLaunchJob,
+  summarizeProductionLaunchJob,
+} from './production-launch/index.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -1605,13 +1611,129 @@ app.post('/api/os/launch', async (c) => {
   return handleStaticGoLive(c, sessionOrErr)
 })
 
+function parseLaunchFiles(body: Record<string, unknown>): Record<string, string> | undefined {
+  if (!body.files || typeof body.files !== 'object' || Array.isArray(body.files)) return undefined
+  return body.files as Record<string, string>
+}
+
+/** Production Launch Job — platform owns stages. */
+async function handleProductionLaunch(c: Context, session: Session) {
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const result = await executeProductionLaunchJob(session, {
+    jobId: typeof body.jobId === 'string' ? body.jobId : typeof body.job_id === 'string' ? body.job_id : null,
+    intent:
+      typeof body.intent === 'string'
+        ? body.intent
+        : typeof body.message === 'string'
+          ? body.message
+          : null,
+    appType:
+      typeof body.appType === 'string'
+        ? body.appType
+        : typeof body.app_type === 'string'
+          ? body.app_type
+          : null,
+    production: body.production !== false,
+    html: typeof body.html === 'string' ? body.html : null,
+    files: parseLaunchFiles(body),
+    title: typeof body.title === 'string' ? body.title : null,
+    brand: typeof body.brand === 'string' ? body.brand : null,
+    vertical: typeof body.vertical === 'string' ? body.vertical : null,
+    subdomain: typeof body.subdomain === 'string' ? body.subdomain : null,
+  })
+  if (result.job.backend) {
+    await syncBackendAfterEnsure(c, getSession(c), {
+      ok: true,
+      backend: result.job.backend,
+    })
+  }
+  const http = result.ok ? 200 : result.code === 'awaiting_generate' ? 202 : result.job.status === 'blocked' ? 409 : 502
+  return c.json(
+    {
+      ok: result.ok,
+      tool: 'launchProductionApp',
+      message: result.message,
+      url: result.url,
+      claim_live: result.claim_live,
+      code: result.code,
+      job: result.job,
+      job_summary: summarizeProductionLaunchJob(result.job),
+    },
+    http,
+  )
+}
+
+app.post('/api/os/apps/launch', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleProductionLaunch(c, sessionOrErr)
+})
+
+app.post('/api/os/tools/launchProductionApp', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  return handleProductionLaunch(c, sessionOrErr)
+})
+
+app.get('/api/os/apps/launch', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const job = getLatestProductionLaunchJob(sessionOrErr.projectRef)
+  if (!job) return c.json({ ok: false, message: 'No production launch job for this workspace' }, 404)
+  return c.json({ ok: true, job, job_summary: summarizeProductionLaunchJob(job) })
+})
+
+app.get('/api/os/apps/launch/:jobId', async (c) => {
+  const sessionOrErr = await requireSignedInSessionOrAgentTool(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const job = getProductionLaunchJob(c.req.param('jobId'))
+  if (!job || job.projectRef !== sessionOrErr.projectRef) {
+    return c.json({ ok: false, message: 'Production launch job not found' }, 404)
+  }
+  return c.json({ ok: true, job, job_summary: summarizeProductionLaunchJob(job) })
+})
+
 /**
  * Agent tool: launchBusiness / goLive — HARD PATH.
- * Requires real html or files; claim_live only when API returns a real URL.
+ * Go Live and production:true enqueue the Production Launch Job.
+ * Draft preview: production:false keeps static launchBusiness.
  * Cookie session OR CFOS AgentTool headers (secret + ib_ username).
  */
 async function handleLaunchBusinessTool(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const isGoLive = c.req.path.includes('goLive')
+  const draft = body.draft === true || body.production === false
+  if (!draft && (isGoLive || body.production === true)) {
+    const result = await executeProductionLaunchJob(session, {
+      jobId: typeof body.jobId === 'string' ? body.jobId : null,
+      intent: typeof body.intent === 'string' ? body.intent : typeof body.message === 'string' ? body.message : null,
+      appType: typeof body.appType === 'string' ? body.appType : typeof body.app_type === 'string' ? body.app_type : null,
+      production: true,
+      html: typeof body.html === 'string' ? body.html : null,
+      files: parseLaunchFiles(body),
+      title: typeof body.title === 'string' ? body.title : null,
+      brand: typeof body.brand === 'string' ? body.brand : null,
+      vertical: typeof body.vertical === 'string' ? body.vertical : null,
+      subdomain: typeof body.subdomain === 'string' ? body.subdomain : null,
+    })
+    if (result.job.backend) {
+      await syncBackendAfterEnsure(c, getSession(c), { ok: true, backend: result.job.backend })
+    }
+    const http = result.ok ? 200 : result.code === 'awaiting_generate' ? 202 : result.job.status === 'blocked' ? 409 : 502
+    return c.json(
+      {
+        ok: result.ok,
+        tool: 'launchProductionApp',
+        message: result.message,
+        url: result.url,
+        claim_live: result.claim_live,
+        code: result.code,
+        job: result.job,
+        job_summary: summarizeProductionLaunchJob(result.job),
+      },
+      http,
+    )
+  }
   const result = await executeLaunchBusinessTool(
     session.projectRef,
     {
@@ -1979,6 +2101,8 @@ app.get('/api/session', async (c) => {
     launchStatus = null
   }
 
+  const productionJob = guest ? null : getLatestProductionLaunchJob(session.projectRef)
+
   return c.json(
     buildSessionApiPayload({
       session,
@@ -1990,6 +2114,7 @@ app.get('/api/session', async (c) => {
       indobaseProxyPath: '/api/indobase/proxy/',
       promptQuota,
       launchStatus,
+      productionJob,
     }),
   )
 })

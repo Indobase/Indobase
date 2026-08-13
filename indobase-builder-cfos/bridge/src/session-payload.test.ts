@@ -91,6 +91,14 @@ describe('session-payload', () => {
       payload.actions.some((a) => a.id === 'create-account'),
       false,
     )
+    assert.equal(payload.launch.production, '/api/os/apps/launch')
+    assert.equal(payload.tools.launchProductionApp.path, '/api/os/apps/launch')
+    assert.match(payload.agent_hint, /Production Launch Job/)
+    assert.equal(payload.production_job, null)
+    assert.equal(payload.home.headline, 'What do you want to launch?')
+    assert.ok(payload.home.tiles.some((t) => t.id === 'launch-saas'))
+    assert.ok(payload.home.tiles.some((t) => t.id === 'launch-store'))
+    assert.ok(payload.home.tiles.some((t) => t.id === 'launch-landing'))
     assert.equal(payload.tools.promptQuota.check.path, '/api/os/usage/prompt-quota')
     assert.equal(payload.tools.connectGateway.name, 'connectGateway')
     assert.equal(payload.tools.connectGateway.path, '/api/os/tools/connectGateway')

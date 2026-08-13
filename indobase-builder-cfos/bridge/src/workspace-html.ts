@@ -91,6 +91,8 @@ export function injectIndobaseContextBootstrap(html: string): string {
       window.__INDOBASE_AGENT_HINT__ = s.agent_hint || '';
       window.__INDOBASE_ONBOARDING__ = s.onboarding || null;
       window.__INDOBASE_JOURNEY__ = s.journey || null;
+      window.__INDOBASE_PRODUCTION_JOB__ = s.production_job || null;
+      window.__INDOBASE_HOME__ = s.home || null;
       window.__INDOBASE_USAGE__ = s.usage || null;
       window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
       window.__INDOBASE_GUEST__ = !!s.guest;
@@ -104,6 +106,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
       window.__INDOBASE_LAUNCH__ = s.launch || {
         api: '/api/os/launch',
         status: '/api/os/launch/status',
+        production: '/api/os/apps/launch',
         tool: '/api/os/tools/launchBusiness',
         tool_alias: '/api/os/tools/goLive',
       };
@@ -131,12 +134,15 @@ export function injectIndobaseContextBootstrap(html: string): string {
               AGENT_HINT: window.__INDOBASE_AGENT_HINT__,
               ONBOARDING: window.__INDOBASE_ONBOARDING__,
               JOURNEY: window.__INDOBASE_JOURNEY__,
+              PRODUCTION_JOB: window.__INDOBASE_PRODUCTION_JOB__,
+              HOME: window.__INDOBASE_HOME__,
               USAGE: window.__INDOBASE_USAGE__,
               ACTIONS: window.__INDOBASE_ACTIONS__,
               LAUNCH_API: '/api/os/launch',
               LAUNCH_TOOL: '/api/os/tools/launchBusiness',
+              PRODUCTION_LAUNCH: '/api/os/apps/launch',
               LAUNCH_RULES:
-                'HARD PATH: launchBusiness with real html/files. Claim live only after ok+url. Indobase subdomain (*.indobase.in) or domain you own (CNAME → sites.indobase.in). Never third-party hosts. Enable ≠ Connect.',
+                'HARD PATH: production Go Live is POST /api/os/apps/launch. Claim live only when job status=live. Draft preview may use launchBusiness with production:false. Indobase subdomain or a domain you own. Never third-party hosts.',
               PREVIEW_POLICY: (s.launch && s.launch.preview_policy) || '',
               LIVE_URL: (s.journey && s.journey.live_url) || null,
               PROMPT_QUOTA: '/api/os/usage/prompt-quota',

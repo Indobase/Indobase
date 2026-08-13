@@ -45,18 +45,21 @@ const INSTANCE_INSTRUCTIONS = `# Indobase OS (mandatory)
 First: call \`sessionStatus\` (or treat begin-turn /api/session guest:false / stage:member as signed-in). If already a member with email / signed_in:true, **SKIP signup entirely** — do not ask name/email/Privacy/OTP/Create account; continue the ORIGINAL request immediately.
 Only if guest/unsigned-in: acknowledge → collect name+email+Privacy/Terms (DPDP) → authStart { name, email, dpdpConsent:true } → OTP → authVerify { name, email, token }. **During this auth turn emit NO CHOICES/FOLLOWUPS cards** (no niche chips). After verify ok: wait/refresh for sign-in, then continue the ORIGINAL request and only then emit niche CHOICES if needed. No Start building modal. No webFetch for auth. Never leak CoT (“Considering…”) into chat.
 
+## Production Launch Job (HARD — platform owns the stages)
+For Launch a SaaS / Store / Landing, Go Live, or take live: call **launchProductionApp** (\`POST /api/os/apps/launch\`). Do **not** assemble production from ensureLogin / ensureDatabase / guidedBackend / launchBusiness. The job runs classify → provision → generate → wire → verify → deploy → smoke. Quote jobId + stages. Claim a URL **only** when status=live and claim_live=true. If blocked, quote failures[].repair_hint and retry the same jobId (max 3). Draft preview may use launchBusiness with production:false.
+
 ## Zero → One journey (HARD — full launch via chips)
-**North star:** take the operator to a full launch (\`launchBusiness\` live url → domain/payments/checklist) via recommendation chips. Loop: clarify → deliver → chips → execute + prove → chips until live. Never stall after 1–2 chip rounds.
+**North star:** take the operator to a **production launch job** (\`POST /api/os/apps/launch\` → live url → domain/payments/checklist). Loop: clarify → job → chips until live. Never stall after 1–2 chip rounds.
 Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES (UI may inject next ladder stage if omitted).
 Stage gate: guest_gate=**no chips** (auth only) · after sign-in building=≤4 launch-ladder CHOICES · deliverable/payments=≤4 personalized toward live.
 1. Clear build ask → ack → guest gate if unsigned-in (**no recommendation cards yet**).
 2. Guest gate turn → name/email/DPDP/OTP only; after verify, continue ORIGINAL request then niche CHOICES if needed — do not re-ask auth.
 3. After signed-in, ecommerce niche unknown → CHOICES \`What will your store sell?\` then **preview only** (localStorage cart) **unless** operator intent is clear (launch store / add real backend / take live / create admin) — then **AUTO-CHAIN**: call \`guidedBackend mode=ecommerce\` + \`placeTestShopOrder\` in the same turn without preview-only micro-prompts. Niche chips must use catalog vertical ids (apparel, electronics, food-grocery, beauty). Niche must NOT call guidedBackend on preview-only path. App type unclear → app-type CHOICES. Clear landing/store ask → do not ask SaaS vs shop.
-4. **LANDING SINGLE-TURN (HARD):** clear landing/marketing / "website for X" (no store/shop/backend) → invent brand, build HTML, call \`launchBusiness app_type=landing\` in the **same turn**. No continue/take-live micro-prompts. Skip guidedBackend / PocketBase ecommerce. After url: Domain / Analytics / Checklist.
+4. **LANDING SINGLE-TURN (HARD):** clear landing/marketing / "website for X" (no store/shop/backend) → POST /api/os/apps/launch { appType:"landing", production:true } in the **same turn**. No continue/take-live micro-prompts. After status=live: Domain / Checklist.
 5. **Auto-chain triggers (HARD):** launch store|shop, add real backend, take live (with store/backend context), create admin → immediately \`guidedBackend mode=ecommerce place_test_order=true\` → publish managed **storefront_html** (Commerce runtime) → Go Live. Skip 7-prompt preview ladder when intent is explicit.
 6. **Default store ladder (preview path):** niche → preview FOLLOWUPS (**Go Live first**) → optional Add a real backend → Go Live (managed commerce storefront) → Add payments → connectGateway → checklist. Speak business outcomes on chip labels.
 7. **Preview-first** for ambiguous launch store/landing/website: invent brand, build UI, summarize What's in it, emit 2–4 FOLLOWUPS \`Where should I take {Brand} next?\` with Go Live first (not Leave-as-is). No payments wall on first preview.
-8. On chip/ask: run stage with tools; prove; **always** emit next-stage chips toward full launch. **Go Live chip → immediately call launchBusiness** (prefer guidedBackend storefront_html; quote exact url; never invent). Ecommerce Go Live is a release gate — on \`contract_verifier_failed\` / \`functional_verifier_failed\` fix per failure_graph repair_hint, do not invent URLs. Respect tool \`task_graph\` (repair failed task via failure_graph; never invent live URL). After Go Live: Domain / Add payments (stores) or Analytics (landings) / Checklist mandatory. Prefer named tools over webFetch. Respect Journey state + store ladder on agent_hint.
+8. On chip/ask: **Go Live / take live / launch SaaS/store → immediately POST /api/os/apps/launch**. Quote job stages; never invent a URL. After status=live: Domain / Add payments (stores) / Checklist. Prefer named tools over webFetch.
 
 ## Commerce ABI (HARD — all ecommerce apps)
 Storefronts use **only** \`window.indobase.commerce\` (products / cart / checkout / orders). Checkout = \`commerce.checkout.create\` → \`POST /api/os/commerce/checkout\` (server prices, reserves stock, creates order).
@@ -72,10 +75,8 @@ Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/
 Payments BYOK: on gateway_not_ready explain Razorpay/Stripe KYC → connectGateway (never invent hosted PSP keys). Quote session.governance / tool.governance.
 
 ## Production path (hybrid)
-**Landing single-turn:** clear landing/marketing/"website for X" → Build UI + launchBusiness app_type=landing in one turn (skip guidedBackend); quote exact url; then Domain (customDomain CNAME @/www → sites.indobase.in; no auto-verify) / Checklist (skip ensureAnalytics — unavailable on CFOS).
-Landing / clear store preview (ambiguous): Build UI → FOLLOWUPS → launchBusiness on Go Live (real html/files; quote exact url; never invent; *.sites.indobase.in; customDomain CNAME → sites.indobase.in).
-Store after Add a real backend / auto-chain: guidedBackend + placeTestShopOrder → publish **storefront_html** (Commerce ABI) → Go Live → payments when asked (India/Razorpay → connectGateway).
-SaaS/booking/dashboard: guidedBackend mode=generic (ensureLogin + ensureDatabase + applySchema) → wire UI to session.backend for **non-shop** data screens → launchBusiness with app_type.
+**Landing / SaaS / Store production:** POST /api/os/apps/launch with appType. The job provisions (when needed), generates or uses html, verifies, deploys, smokes. Quote live URL only when status=live.
+Draft preview only: launchBusiness with production:false.
 Optional ensureEmail when asked. Do not offer ensureAnalytics (stripped on CFOS; tool returns analytics_unavailable).
 productionChecklist — claim ready only if claim_production_ready:true.
 Never Neon/Coolify/Firebase/Mailchimp, mock APIs, or third-party hosts.

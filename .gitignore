@@ -197,3 +197,6 @@ indobase-analytics/docker/deploy/.env
 # @indobase/platform local install
 packages/platform/node_modules
 packages/platform/package-lock.json
+
+# Local production-launch / static-launch scratch
+.indobase-launches/

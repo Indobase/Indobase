@@ -1,5 +1,5 @@
 /**
- * Achievement-oriented home — “What do you want to achieve today?”
+ * Outcome-centric home — launch a production application.
  */
 
 export type OsAchievement = {
@@ -7,15 +7,32 @@ export type OsAchievement = {
   label: string
   prompt: string
   navId?: string
-  formatHint?: 'design' | 'website' | 'commerce' | 'auth'
+  formatHint?: 'design' | 'website' | 'commerce' | 'auth' | 'database'
 }
+
+const LAUNCH_JOB_PROMPT = (appType: 'saas' | 'ecommerce' | 'landing', label: string) =>
+  `Launch a production-ready ${label}. After account verify if needed, POST /api/os/apps/launch { appType: "${appType}", production: true, intent: their ask }. Do NOT call ensureLogin, guidedBackend, or launchBusiness yourself — the job owns those stages. Quote job status and ONLY the live URL when status=live.`
 
 export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
   {
     id: 'launch-saas',
-    label: 'Launch my SaaS',
-    prompt: 'Help me launch my SaaS business end to end inside Indobase OS.',
+    label: 'Launch a SaaS',
+    prompt: LAUNCH_JOB_PROMPT('saas', 'SaaS with customer accounts and saved data'),
     navId: 'launch',
+  },
+  {
+    id: 'launch-store',
+    label: 'Launch a store',
+    prompt: LAUNCH_JOB_PROMPT('ecommerce', 'online store'),
+    navId: 'commerce',
+    formatHint: 'commerce',
+  },
+  {
+    id: 'launch-landing',
+    label: 'Launch a landing page',
+    prompt: LAUNCH_JOB_PROMPT('landing', 'landing page'),
+    navId: 'website',
+    formatHint: 'website',
   },
   {
     id: 'logo',
@@ -26,38 +43,10 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
     formatHint: 'design',
   },
   {
-    id: 'landing',
-    label: 'Design landing page',
-    prompt: 'Build a high-converting landing page for my business.',
-    navId: 'website',
-    formatHint: 'website',
-  },
-  {
-    id: 'login',
-    label: 'Add login',
-    prompt: 'Add user login to my business — Enable Customer Login (never connect an external auth product).',
-    formatHint: 'auth',
-  },
-  {
-    id: 'shop-backend',
-    label: 'Add a real backend',
-    prompt:
-      'Add a real product backend — ensureDatabase, resolveProductImages, setupShopCatalog, placeTestShopOrder, publish admin_html once via launchBusiness (live REST refresh)',
-    formatHint: 'database',
-  },
-  {
-    id: 'payments',
-    label: 'Add payments',
-    prompt:
-      'Add payments — ask me India (Razorpay) vs International (Stripe), Enable Payments via runtime/ensure with settlement_market, send me to finish KYC on their dashboard, then call connectGateway (POST /api/os/tools/connectGateway) with my API keys and wireCheckout (POST /api/os/tools/wireCheckout, mode one_time for Buy) to get checkout_url for this site.',
-    navId: 'commerce',
-    formatHint: 'commerce',
-  },
-  {
     id: 'go-live',
     label: 'Go Live',
     prompt:
-      'Launch my business — call launchBusiness (POST /api/os/tools/launchBusiness) with real html/files, then return ONLY the live URL from the API.',
+      'Make this production — POST /api/os/apps/launch { production: true } with current html/files if any. Quote job stages. ONLY claim a URL when status=live.',
     navId: 'launch',
   },
   {
@@ -65,17 +54,6 @@ export const OS_ACHIEVEMENTS: readonly OsAchievement[] = [
     label: 'Create account',
     prompt:
       'Create Indobase account in chat (name + email + DPDP → POST /auth/start → OTP → POST /auth/verify) or via Create account.',
-  },
-  {
-    id: 'crm',
-    label: 'Import customers',
-    prompt: 'Set up my customer CRM: contacts, pipeline, and follow-ups.',
-    navId: 'customers',
-  },
-  {
-    id: 'invoices',
-    label: 'Generate invoices',
-    prompt: 'Create professional invoices and billing documents for my business.',
   },
 ] as const
 
@@ -93,4 +71,6 @@ function escapeAttr(value: string): string {
     .replace(/</g, '&lt;')
 }
 
-export const OS_HOME_HEADLINE = 'What do you want to achieve today?'
+export const OS_HOME_HEADLINE = 'What do you want to launch?'
+export const OS_HOME_SUBHEAD =
+  'Launch a production-ready application from one prompt — accounts, data, and hosting included when the app needs them.'

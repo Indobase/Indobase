@@ -46,9 +46,8 @@ describe('business-os-nav', () => {
   it('launch catalog entry speaks go-live (substrate stays publish)', () => {
     const launch = businessOsNavById('launch')
     assert.equal(launch?.label, 'Launch Business')
-    assert.match(launch?.prompt || '', /launchBusiness|go live/i)
-    assert.match(launch?.prompt || '', /\/api\/os\/tools\/launchBusiness|live URL/i)
-    assert.doesNotMatch(launch?.prompt || '', /\bdeploy\b|\bhosting\b/i)
+    assert.match(launch?.prompt || '', /\/api\/os\/apps\/launch|production/i)
+    assert.match(launch?.prompt || '', /live URL|status=live/i)
   })
 
   it('exposes discoverable SaaS actions (Go Live, Create account, Add login)', () => {
@@ -131,6 +130,7 @@ describe('core workspace chrome', () => {
     assert.match(html, /__INDOBASE_ACTIONS__/)
     assert.match(html, /__INDOBASE_LAUNCH__/)
     assert.match(html, /\/api\/os\/tools\/launchBusiness/)
+    assert.match(html, /\/api\/os\/apps\/launch/)
     assert.match(html, /\/api\/os\/launch/)
     assert.match(html, /PROMPT_QUOTA/)
     assert.match(html, /\/api\/os\/usage\/prompt-quota/)

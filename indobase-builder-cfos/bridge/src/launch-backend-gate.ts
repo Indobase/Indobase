@@ -98,7 +98,7 @@ export function assertLaunchBackendReady(
       ok: false,
       code: 'backend_required',
       message:
-        `${label} apps need a real Indobase backend before Go Live. Call guidedBackend or ensureLogin + applySchema (starter blueprint + any custom tables), wire UI to session.backend (collection prefix + /api/collections/…/records), then launchBusiness.`,
+        `${label} apps need a real Indobase backend before Go Live. POST /api/os/apps/launch (production job) — do not call ensure* yourself.`,
     }
   }
 

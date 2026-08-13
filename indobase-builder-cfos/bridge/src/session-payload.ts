@@ -59,6 +59,13 @@ import {
   type SessionPromptQuotaBlock,
 } from './prompt-quota.js'
 import { explainGovernanceGate } from './governance-gates.js'
+import {
+  LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
+  launchProductionAppToolCatalog,
+  summarizeProductionLaunchJob,
+  type ProductionLaunchJob,
+} from './production-launch/index.js'
+import { OS_ACHIEVEMENTS, OS_HOME_HEADLINE, OS_HOME_SUBHEAD } from './os-home.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -94,7 +101,7 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
   const lines = [
     '## Journey state (session)',
     '## North star (HARD)',
-    '- Always take the operator to a **full launch** via recommendation chips (preview → Go Live → domain/payments/checklist).',
+    '- Always take the operator to a **production launch job** (POST /api/os/apps/launch) — not a chip ladder of ensure* tools.',
     '- After every completed stage: emit 2–4 next FOLLOWUPS. Never stop after 1–2 chip rounds. Never restart guest/auth once signed in.',
     `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
     `- Journey stage: ${journey.current_stage}`,
@@ -155,7 +162,7 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session)
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${LAUNCH_AGENT_HARD_RULES}\n\n${ENSURE_CAPABILITY_AGENT_HARD_RULES}\n\n${GUIDED_BACKEND_AGENT_HARD_RULES}\n\n${APPLY_SCHEMA_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${WIRE_CHECKOUT_AGENT_HARD_RULES}\n\n${SHOP_CATALOG_AGENT_HARD_RULES}\n\n${PRODUCT_IMAGES_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -177,6 +184,7 @@ export type BuildSessionApiPayloadInput = {
   /** Live quota for signed-in operators; omit/null for guests. */
   promptQuota?: OsPromptQuota | null
   launchStatus?: LaunchStatusSnapshot | null
+  productionJob?: ProductionLaunchJob | null
 }
 
 export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
@@ -189,6 +197,14 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
   )
   const actions = discoverableActionsForSession({ guest })
   const journey = buildLaunchJourneyState(session, input.launchStatus)
+  const productionJob = input.productionJob
+    ? {
+        ...summarizeProductionLaunchJob(input.productionJob),
+        stages: input.productionJob.stages,
+        contract: input.productionJob.contract,
+        intent: input.productionJob.intent,
+      }
+    : null
 
   return {
     email: session.email,
@@ -234,15 +250,27 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       api: '/api/os/launch',
       domains_attach: '/api/os/domains/attach',
       status: '/api/os/launch/status',
+      production: '/api/os/apps/launch',
+      production_status: '/api/os/apps/launch/:jobId',
       options: ['indobase_subdomain', 'custom_domain'],
       tool: '/api/os/tools/launchBusiness',
       tool_alias: '/api/os/tools/goLive',
+      production_tool: '/api/os/tools/launchProductionApp',
       rules: LAUNCH_AGENT_HARD_RULES,
+      production_rules: LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
       /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
         'HARD: After first HTML exists, call launchBusiness and quote *.sites.indobase.in — never tell the operator to use Gadget iframe preview (cross-origin localStorage SecurityError). Gadget is codegen-only fallback.',
       draft_preview_path: journey.live_url ? null : `/live/${session.projectRef}/`,
       enforce_static_over_gadget: true,
+    },
+    production_job: productionJob,
+    home: {
+      headline: OS_HOME_HEADLINE,
+      subhead: OS_HOME_SUBHEAD,
+      tiles: OS_ACHIEVEMENTS.filter((a) =>
+        a.id === 'launch-saas' || a.id === 'launch-store' || a.id === 'launch-landing',
+      ).map((a) => ({ id: a.id, label: a.label, prompt: a.prompt })),
     },
     payments: {
       ensure: '/api/os/runtime/ensure',
@@ -309,6 +337,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     command_palette: actions,
     discoverable_actions: BUSINESS_OS_DISCOVERABLE_ACTIONS,
     tools: {
+      launchProductionApp: launchProductionAppToolCatalog(),
       launchBusiness: launchBusinessToolCatalog(),
       ensureLogin: ensureLoginToolCatalog(),
       ensureDatabase: ensureDatabaseToolCatalog(),

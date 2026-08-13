@@ -517,7 +517,7 @@ INDOBASE_CHOICES>>>
     assert.ok(looksLikeLandingSingleTurnIntent('Build a landing page for my cafe'))
     assert.equal(looksLikeClearLandingAsk('Launch my apparel store'), false)
     const stage = landingSingleTurnFollowups('CRUMB')
-    assert.ok(stage.items.some((i) => /launchBusiness app_type=landing/i.test(i.message)))
+    assert.ok(stage.items.some((i) => /\/api\/os\/apps\/launch|appType:\s*"landing"|launchBusiness app_type=landing/i.test(i.message)))
     assert.ok(stage.items.every((i) => !/guidedBackend mode=ecommerce/i.test(i.message)))
     assert.ok(stage.items.every((i) => !/ensureAnalytics|Add analytics/i.test(i.label + i.message)))
   })
@@ -529,7 +529,7 @@ INDOBASE_CHOICES>>>
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
     assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
-    assert.ok(resolved.items.some((i) => /launchBusiness app_type=landing|skip guidedBackend/i.test(i.message)))
+    assert.ok(resolved.items.some((i) => /\/api\/os\/apps\/launch|appType:\s*"landing"|launchBusiness app_type=landing|skip guidedBackend/i.test(i.message)))
     assert.ok(resolved.items.every((i) => !/INDOBASE_GUIDED_BACKEND mode=ecommerce/i.test(i.message)))
   })
 

@@ -17,8 +17,10 @@ export const OS_ACCOUNT_REQUIRED_PATHS = [
   '/api/os/runtime/ensure',
   '/api/os/deploy/publish',
   '/api/os/launch',
+  '/api/os/apps/launch',
   '/api/os/tools/launchBusiness',
   '/api/os/tools/goLive',
+  '/api/os/tools/launchProductionApp',
   '/api/os/domains/attach',
   // Metered / paid-adjacent
   '/api/os/usage/prompt-quota',
@@ -91,6 +93,7 @@ export function accountRequiredBody() {
 
 export function pathRequiresSignedInAccount(pathname: string): boolean {
   const path = pathname.split('?')[0] || pathname
+  if (path === '/api/os/apps/launch' || path.startsWith('/api/os/apps/launch/')) return true
   return (OS_ACCOUNT_REQUIRED_PATHS as readonly string[]).includes(path)
 }
 
