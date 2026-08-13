@@ -1981,6 +1981,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
       execution: execution
         ? {
             intent: execution.intent,
+            turn_class: execution.turnClass,
             operator_message: execution.operatorMessage,
             agent_context: execution.agentContext,
             preview: execution.runtime.preview,
@@ -2052,6 +2053,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
       execution: execution
         ? {
             intent: execution.intent,
+            turn_class: execution.turnClass,
             operator_message: execution.operatorMessage,
             agent_context: execution.agentContext,
             preview: execution.runtime.preview,

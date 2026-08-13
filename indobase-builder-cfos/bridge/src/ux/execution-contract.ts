@@ -57,9 +57,19 @@ export type OperatorIntentKind =
   | 'operate'
   | 'other'
 
+/**
+ * One owner per turn. Claims always come from BusinessRuntimeState.
+ *   build   → conductor owns first generation
+ *   modify  → command system owns subsequent mutations
+ *   launch  → execution owns deploy
+ *   operate → BusinessRuntimeState owns what the agent may claim
+ */
+export type ExecutionTurnClass = 'account' | 'build' | 'modify' | 'launch' | 'operate' | 'other'
+
 export type ExecutionTurnResult = {
   ok: boolean
   intent: OperatorIntentKind
+  turnClass: ExecutionTurnClass
   spec: BusinessSpec | null
   runtime: PersistedWorkspaceRuntime
   businessRuntime: BusinessRuntimeState
@@ -68,6 +78,26 @@ export type ExecutionTurnResult = {
   agentContext: string
   operatorMessage: string
   commandId?: string
+}
+
+export function turnClassForIntent(
+  intent: OperatorIntentKind,
+  input: { guest?: boolean; launched?: boolean } = {},
+): ExecutionTurnClass {
+  if (input.guest) return 'account'
+  if (input.launched) return 'launch'
+  switch (intent) {
+    case 'create_business':
+      return 'build'
+    case 'preview_edit':
+      return 'modify'
+    case 'launch_production':
+      return 'launch'
+    case 'operate':
+      return 'operate'
+    default:
+      return 'other'
+  }
 }
 
 export type ApplyOperatorIntentInput = {
@@ -135,7 +165,7 @@ export function classifyOperatorIntent(
   if (/^SCREEN\b/.test(text)) return 'operate'
   if (looksLikeGoLive(text)) return 'launch_production'
   if (looksLikeCreateBusiness(text)) return 'create_business'
-  if (/\b(order|product|customer|inventory|sales)\b/i.test(text)) return 'operate'
+  if (/\b(orders?|products?|customers?|inventory|sales)\b/i.test(text)) return 'operate'
   return 'other'
 }
 
@@ -296,8 +326,59 @@ function toSessionRuntime(
   })
 }
 
+function operateReply(state: BusinessRuntimeState, named: string): string {
+  const latest = state.orders[0]
+  if (!latest) return named ? `${named} has no orders yet.` : 'No orders yet.'
+  const id = latest.orderNumber || latest.id
+  const who = latest.customerName || latest.email
+  const items = latest.itemsSummary
+  let out = `Latest order ${id}`
+  if (who) out += ` from ${who}`
+  if (items) out += ` — ${items}`
+  return `${out}.`
+}
+
+function operatorMessageForTurn(input: {
+  turnClass: ExecutionTurnClass
+  intent: OperatorIntentKind
+  named: string
+  specName?: string
+  previewStatus: PersistedWorkspaceRuntime['preview']['status']
+  launch?: ProductionLaunchExecuteResult | null
+  mutatedHeadline: string | null
+  mutated: boolean
+  businessRuntime: BusinessRuntimeState
+}): string {
+  if (input.turnClass === 'launch' && input.launch?.ok && input.launch.url) {
+    return `Your store is live — ${input.launch.url}`
+  }
+  if (input.turnClass === 'modify') {
+    if (input.mutated && input.mutatedHeadline) {
+      return `Done — I updated the hero to “${input.mutatedHeadline}”.`
+    }
+    return 'I applied the preview change in this workspace.'
+  }
+  if (input.turnClass === 'operate') {
+    return operateReply(input.businessRuntime, input.named)
+  }
+  if (input.turnClass === 'build' || input.intent === 'create_business') {
+    if (input.previewStatus === 'ready') {
+      return `Preview is ready for ${input.named || 'your store'}.`
+    }
+    if (input.previewStatus === 'failed') {
+      return 'Preview did not come up. I am retrying automatically.'
+    }
+    return `Preparing ${input.named || input.specName || 'your store'}…`
+  }
+  if (input.turnClass === 'launch') {
+    return input.named ? `Publishing ${input.named}…` : 'Publishing your store…'
+  }
+  return 'How can I help?'
+}
+
 function composeAgentContext(result: {
   intent: OperatorIntentKind
+  turnClass: ExecutionTurnClass
   spec: BusinessSpec | null
   runtime: PersistedWorkspaceRuntime
   businessRuntime: BusinessRuntimeState
@@ -311,6 +392,7 @@ function composeAgentContext(result: {
     spec?.businessName && !isPlaceholderBusinessName(spec.businessName) ? spec.businessName : ''
   const lines = [
     'INDOBASE_RUNTIME (authoritative this turn — chat history is not):',
+    `TURN_CLASS=${result.turnClass}`,
     composeRuntimeStateHint(result.businessRuntime),
     spec
       ? `BusinessSpec: name=${spec.businessName}; vertical=${spec.catalog.verticalId}; positioning=${spec.visualStyle}; type=${spec.businessType}`
@@ -318,18 +400,53 @@ function composeAgentContext(result: {
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
     'Never print INDOBASE_RUNTIME, Studio, PocketBase, or provisioner in operator-visible replies.',
-    'The execution path already ran this turn. Do not call tools. Do not write files. Do not rebuild the app.',
   ]
   if (named) {
     lines.push(`Speak the brand as ${named}. FORBIDDEN: “your business” as the store name.`)
   }
-  if (result.operatorMessage) {
+  if (result.turnClass === 'build') {
     lines.push(
-      `BUILD_ALREADY_DONE. Reply in one short paragraph with this meaning (do not contradict it): ${result.operatorMessage}`,
+      'OWNER=conductor. BUILD turn: conductor already generated the preview. Do not call tools. Do not write files. Do not rebuild the app.',
     )
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
     lines.push(
-      'FORBIDDEN: “command isn’t available” / “preview isn’t available” / “launch isn’t available” / “persisted-preview editing command isn’t available”.',
+      'FORBIDDEN: “command isn’t available” / “preview isn’t available” / “launch isn’t available”.',
     )
+  } else if (result.turnClass === 'modify') {
+    lines.push(
+      'OWNER=command. MODIFY turn: the command system already applied the mutation. Report the verified preview change. Do not rebuild the store from scratch. Subsequent modify turns still run.',
+    )
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
+    lines.push('FORBIDDEN: “persisted-preview editing command isn’t available” / “command isn’t available”.')
+  } else if (result.turnClass === 'launch') {
+    lines.push(
+      'OWNER=execution. LAUNCH turn: execution already ran the production job. Do not rebuild. Claim LIVE only from production_job status=live.',
+    )
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
+    lines.push('FORBIDDEN: “launch command isn’t available”.')
+  } else if (result.turnClass === 'operate') {
+    lines.push(
+      'OWNER=BusinessRuntimeState. OPERATE turn: do not rebuild or relaunch. Quote products/orders from BusinessRuntimeState. You are allowed to answer business questions.',
+    )
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
+  } else if (result.turnClass === 'account') {
+    lines.push('OWNER=account. Finish account setup first. Do not build or launch yet.')
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
+  } else if (result.operatorMessage) {
+    lines.push(
+      'OWNER=none. Answer from BusinessRuntimeState. Do not rebuild unless the operator asks to build, edit, or go live.',
+    )
+    lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
   }
   if (job) {
     lines.push(`production_job=${job.jobId}; status=${job.status}; url=${job.url || 'none'}`)
@@ -660,12 +777,14 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     return {
       ok: true,
       intent: 'other',
+      turnClass: 'account',
       spec: runtime.spec,
       runtime,
       businessRuntime,
       recovered: false,
       agentContext: composeAgentContext({
         intent: 'other',
+        turnClass: 'account',
         spec: runtime.spec,
         runtime,
         businessRuntime,
@@ -762,20 +881,21 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     spec?.businessName && !isPlaceholderBusinessName(spec.businessName)
       ? spec.businessName
       : ''
-  const operatorMessage =
-    intent === 'launch_production' && launch?.ok && launch.url
-      ? `Your store is live — ${launch.url}`
-      : mutatedHeadline && recovered
-        ? `Done — I updated the hero to “${mutatedHeadline}”.`
-      : runtime.preview.status === 'ready'
-        ? `Preview is ready for ${named || 'your store'}.`
-        : runtime.preview.status === 'failed'
-          ? 'Preview did not come up. I am retrying automatically.'
-          : spec
-            ? `Preparing ${named || spec.businessName}…`
-            : 'How can I help?'
+  const turnClass = turnClassForIntent(intent, { launched: Boolean(launch) })
+  const operatorMessage = operatorMessageForTurn({
+    turnClass,
+    intent,
+    named,
+    specName: spec?.businessName,
+    previewStatus: runtime.preview.status,
+    launch,
+    mutatedHeadline,
+    mutated: recovered && Boolean(mutatedHeadline),
+    businessRuntime,
+  })
   let agentContext = composeAgentContext({
     intent,
+    turnClass,
     spec,
     runtime,
     businessRuntime,
@@ -797,6 +917,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   return {
     ok: intent === 'launch_production' ? Boolean(launch?.ok) : runtime.preview.status !== 'failed',
     intent,
+    turnClass,
     spec,
     runtime,
     businessRuntime,

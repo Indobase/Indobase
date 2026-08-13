@@ -14,6 +14,7 @@ import {
   applyOperatorIntent,
   classifyOperatorIntent,
   launchCommandForIntent,
+  turnClassForIntent,
   verifyNarration,
 } from './execution-contract.ts'
 import {
@@ -35,6 +36,7 @@ const session: Session = {
 }
 
 const PROMPT = 'Launch a premium sneaker store called UrbanThread'
+const BUILD_PROMPT = 'Build a premium sneaker store called UrbanThread'
 
 const backend = {
   anon_key: 'public',
@@ -316,21 +318,70 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(detectFabricatedClaims('Orders are available.', withOrders).includes('orders'), false)
   })
 
-  it('agent context forbids a rebuild and names UrbanThread in the chat reply contract', async () => {
+  it('BUILD turn: conductor owns generation; agent must not rebuild', async () => {
     const turn = await applyOperatorIntent({
       session,
-      message: PROMPT,
+      message: BUILD_PROMPT,
       guest: false,
       launchDeps: mockLaunchDeps({ launchProductionApp: false }),
     })
+    assert.equal(turn.turnClass, 'build')
+    assert.equal(turnClassForIntent(turn.intent), 'build')
     assert.equal(turn.spec?.businessName, 'UrbanThread')
-    assert.match(turn.operatorMessage, /UrbanThread/)
+    assert.match(turn.operatorMessage, /Preview is ready for UrbanThread/)
     assert.doesNotMatch(turn.operatorMessage, /your business/i)
-    assert.match(turn.agentContext, /BUILD_ALREADY_DONE/)
+    assert.match(turn.agentContext, /TURN_CLASS=build/)
+    assert.match(turn.agentContext, /OWNER=conductor/)
     assert.match(turn.agentContext, /Do not call tools/)
     assert.match(turn.agentContext, /Speak the brand as UrbanThread/)
-    assert.match(turn.agentContext, /FORBIDDEN:.*your business/)
-    assert.match(turn.agentContext, /command isn.t available/)
+    assert.equal(turn.launch, null)
+  })
+
+  it('MODIFY turn: command system owns mutation; operate does not reuse the build reply', async () => {
+    await applyOperatorIntent({
+      session,
+      message: BUILD_PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    const edited = await applyOperatorIntent({
+      session,
+      message: 'Change the hero headline to Midnight drops',
+      guest: false,
+    })
+    assert.equal(edited.turnClass, 'modify')
+    assert.match(edited.operatorMessage, /Midnight drops/)
+    assert.doesNotMatch(edited.operatorMessage, /Preview is ready/)
+    assert.match(edited.agentContext, /TURN_CLASS=modify/)
+    assert.match(edited.agentContext, /OWNER=command/)
+    assert.doesNotMatch(edited.agentContext, /OWNER=conductor/)
+    assert.match(edited.agentContext, /Subsequent modify turns still run/)
+
+    const orders = await applyOperatorIntent({
+      session,
+      message: 'Show my orders',
+      guest: false,
+      snapshot: {
+        products: [{ id: 'apex-runner', name: 'Apex Runner', priceMinor: 1299900 }],
+        orders: [
+          {
+            id: 'ord_new',
+            orderNumber: '1043',
+            status: 'pending',
+            amount_minor: 1299900,
+            customer_name: 'Priya Shopper',
+            items: 'Apex Runner',
+          },
+        ],
+      },
+    })
+    assert.equal(orders.turnClass, 'operate')
+    assert.match(orders.operatorMessage, /1043/)
+    assert.match(orders.operatorMessage, /Priya Shopper/)
+    assert.doesNotMatch(orders.operatorMessage, /Preview is ready/)
+    assert.match(orders.agentContext, /TURN_CLASS=operate/)
+    assert.match(orders.agentContext, /OWNER=BusinessRuntimeState/)
+    assert.doesNotMatch(orders.agentContext, /Do not call tools/)
   })
 
   it('guest begin-turn does not execute; pending intent survives', async () => {
@@ -401,6 +452,9 @@ describe('FTU execution contract A–Q', () => {
 
   it('classifies UrbanThread create vs Go Live', () => {
     assert.equal(classifyOperatorIntent(PROMPT, null), 'create_business')
+    assert.equal(classifyOperatorIntent(BUILD_PROMPT, null), 'create_business')
+    assert.equal(classifyOperatorIntent('Show my orders', null), 'operate')
+    assert.equal(classifyOperatorIntent('Change the hero headline to Midnight drops', null), 'preview_edit')
     assert.equal(
       classifyOperatorIntent('Go Live — call launchProductionApp for UrbanThread', null),
       'launch_production',

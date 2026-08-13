@@ -23,7 +23,18 @@ Studio stays as a **hidden adapter** until migrated. This ADR does not delete St
 
 4. **CapabilityAdapter** is the public name for hidden ensure (`CapabilityProviderAdapter`). Auth / Business Data / Storage go through it. Provider names never appear in customer copy.
 
-5. **BusinessRuntimeState is mandatory every agent turn.** One object:
+5. **Every execution has exactly one owner.** Claims are derived from the resulting BusinessRuntimeState — never from chat history or a second agent build.
+
+```text
+BUILD   → conductor owns first generation
+MODIFY  → command system owns subsequent mutations (PREVIEW_EDIT / hero)
+LAUNCH  → execution owns launch/deploy
+OPERATE → BusinessRuntimeState owns what the agent may claim
+```
+
+The agent reports verified results. It must not rebuild on a BUILD turn, and must not be forbidden from later MODIFY / OPERATE turns. No new agent tools.
+
+6. **BusinessRuntimeState is mandatory every agent turn.** One object:
 
 ```text
 identity, business, workspace, spec, preview, deployment, live,
@@ -32,9 +43,9 @@ products, customers, orders, capabilities, jobs, health
 
 Injected on `/api/session.runtime` and into `agent_hint`. `composeAuthoritativeStateHint` wraps this block. The agent answers “show latest order” from `BusinessRuntimeState.orders` only. It must not invent “connection unavailable” when the snapshot lists the entity, and must not claim preview/LIVE against it.
 
-6. **PocketBase is replaceable.** Target layout is `packages/adapters/pocketbase` and `packages/adapters/deployment`. This pass lands contracts + a thin CFOS façade. Do not mass-move the PB tree.
+7. **PocketBase is replaceable.** Target layout is `packages/adapters/pocketbase` and `packages/adapters/deployment`. This pass lands contracts + a thin CFOS façade. Do not mass-move the PB tree.
 
-7. **Five-tool freeze stays.** No new agent tools. No tenant dashboards, backend-setup screens, or per-business PocketBase provisioners.
+8. **Five-tool freeze stays.** No new agent tools. No tenant dashboards, backend-setup screens, or per-business PocketBase provisioners.
 
 ## Consequences
 
