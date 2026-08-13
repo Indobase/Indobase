@@ -38,6 +38,7 @@ export type CapabilityEnsureResult = {
 /**
  * Hidden provider adapter. Implementations may use any engine;
  * they must not leak vendor names into CapabilityEnsureResult.message.
+ * Preferred public name: CapabilityAdapter (ADR 0008).
  */
 export type CapabilityProviderAdapter = {
   ensure(input: {

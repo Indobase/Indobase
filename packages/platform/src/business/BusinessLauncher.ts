@@ -181,6 +181,9 @@ export class DefaultBusinessLauncher implements BusinessLauncher {
     ctx: StageContext,
   ): Promise<BusinessLaunchResult | void> {
     const capabilities = ctx.requiredCapabilities ?? []
+    // Static / hosting-only Launch (requiredCapabilities: []) must not touch
+    // the hidden data engine. Capability lane only when login/data/payments
+    // were asked for — see resolveLaunchLane / adr/0008.
     if (capabilities.length === 0) return
 
     const result = await this.ensureCapabilitiesPort.ensureCapabilities({

@@ -3,7 +3,7 @@
 **Status:** Binding (Phase 1)  
 **Date:** 2026-08-07  
 **Kernel:** [`packages/platform`](../packages/platform) · **Shell:** [`indobase-builder-cfos`](../indobase-builder-cfos)  
-**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [CAPABILITIES.md](./CAPABILITIES.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md) · [adr/0007-pocketbase-invisible-engine.md](./adr/0007-pocketbase-invisible-engine.md)
+**Companion:** [PLATFORM.md](./PLATFORM.md) · [BUILDER-GEN3.md](./BUILDER-GEN3.md) · [CAPABILITIES.md](./CAPABILITIES.md) · [adr/0002-os-first-control-plane.md](./adr/0002-os-first-control-plane.md) · [adr/0004-business-launch.md](./adr/0004-business-launch.md) · [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md) · [adr/0007-pocketbase-invisible-engine.md](./adr/0007-pocketbase-invisible-engine.md) · [adr/0008-business-runtime-state.md](./adr/0008-business-runtime-state.md)
 
 ---
 
@@ -53,12 +53,12 @@ Customer and investor story uses **six kernels**. Platform contracts in [PLATFOR
 
 | Kernel | Customer meaning | Substrate (never shown as product UI) |
 |--------|------------------|----------------------------------------|
-| **Identity** | Sign in, who owns the business | OTP (Studio/GoTrue until OS identity owns it) |
+| **Identity** | Sign in, who owns the business | `IdentityAdapter` (PocketBase OTP today; Studio-era OTP is a hidden fallback) |
 | **Workspace** | Chat, documents, Design/Docs/Sheets/Slides | CFOS shell, Workspace commands |
-| **Capability** | “Add login”, “Start charging”, analytics | Ensurer · `capability.ensure` |
-| **Execution** | How build / preview / go-live actually run | Launch Engine, static/app host |
-| **Business Runtime** | Live business data after Launch | Shared PocketBase (invisible), commerce |
-| **Agent** | AI that plans and operates inside the OS | Agent runtime, tools, workers |
+| **Capability** | “Add login”, “Start charging”, analytics | `CapabilityAdapter` · `capability.ensure` |
+| **Execution** | How build / preview / go-live actually run | Launch Engine, static/app host — **not** PocketBase |
+| **Business Runtime** | Live business data after Launch | `BusinessDataAdapter` → shared PocketBase (invisible) |
+| **Agent** | AI that plans and operates inside the OS | Agent runtime, tools, workers — **BusinessRuntimeState every turn** |
 
 ### `business.launch` vs `execution.publish`
 
@@ -108,7 +108,7 @@ business.launch()
  └─ Capability Launch (on demand)   → Capability Orchestrator → Provider Adapters
 ```
 
-See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md). Static Go Live does **not** require a tenant BaaS stack.
+See [adr/0005-two-lane-launch.md](./adr/0005-two-lane-launch.md) · [adr/0008](./adr/0008-business-runtime-state.md). Static / landing Go Live does **not** require PocketBase provision. Capability lane only when they ask for login, data, or payments.
 
 ---
 
@@ -128,7 +128,7 @@ Never in customer chrome, agent copy, or Enable flows:
 
 - Studio / PocketBase / tenant / provisioner / Neon / Coolify / Stripe / Postgres / Docker / Kubernetes / “backend ready”
 
-Architecture: Chat → Planner → **Capability Orchestrator** → Internal Capability API → **hidden** Auth/DB/Deploy/Payments adapters. See [adr/0006-capability-orchestrator.md](./adr/0006-capability-orchestrator.md).
+Architecture: Chat → Planner → **Capability Orchestrator** → `CapabilityAdapter` → hidden Auth / Business Data / Storage / Payments impl (PocketBase today). See [adr/0006](./adr/0006-capability-orchestrator.md) · [adr/0008](./adr/0008-business-runtime-state.md).
 
 Customer language: **Customer Login**, **Business Data**, **File Storage**, **Payments**, **Launch** — not provider names. Status UI is Indobase-shaped (Enabled / Healthy / region label). Compliance questions answer in Indobase terms first; provider IDs only in advanced/support contexts.
 
@@ -142,7 +142,7 @@ Remove Studio from the journey and from new code paths. Keep Studio-era capabili
 
 **Do not** recreate dedicated-per-business infrastructure inside PocketBase (one container + network + deploy per business). Default is shared PocketBase scoped by workspace / business id. Isolate only when scale or security requires it. See [adr/0007](./adr/0007-pocketbase-invisible-engine.md).
 
-Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/0005-two-lane-launch.md) · [adr/0006](./adr/0006-capability-orchestrator.md) · [adr/0007](./adr/0007-pocketbase-invisible-engine.md).
+Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/0005-two-lane-launch.md) · [adr/0006](./adr/0006-capability-orchestrator.md) · [adr/0007](./adr/0007-pocketbase-invisible-engine.md) · [adr/0008](./adr/0008-business-runtime-state.md).
 
 ---
 
@@ -158,7 +158,7 @@ Decision history: [adr/0004](./adr/0004-business-launch.md) · [adr/0005](./adr/
 
 - Customer Login · Business Data · File Storage · Payments · Email · Analytics · …
 
-Example: landing page → **no backend**. User says “Add login” → Orchestrator `ensure(auth)` → Auth Adapter → **Login enabled** (provider never named).
+Example: landing page → **no data engine**. User says “Add login” → Orchestrator `ensure(auth)` → `CapabilityAdapter` → **Login enabled** (provider never named).
 
 ---
 
@@ -184,36 +184,54 @@ Classic Remix Builder is **archive only**. “Builder” as a product name disap
 3. Design opens as a **native document** (`format.design`), not `design.indobase.in`.
 4. Finish every task **inside Indobase OS** ([PLATFORM.md](./PLATFORM.md) principle).
 5. Customer chrome says **Launch Business / Go Live** — never deploy / publish / hosting.
+6. Every agent turn receives **one** `BusinessRuntimeState`. Never invent preview, LIVE, or “connection unavailable” against it.
+
+---
+
+## 10-minute journey (product SLA)
+
+Encode in agent hint — do not add tools to make this true:
+
+| Min | Outcome |
+|-----|---------|
+| 0–1 | Intent |
+| 1–3 | Business identity / site / brand / products |
+| 3–5 | Storefront / cart / checkout / data model |
+| 5–7 | Real preview + click-to-edit |
+| 7–8 | Silent `ensure(auth)` only if they need login |
+| 8–9 | `launchProductionApp` → `business.launch` → `execution.publish` |
+| 9–10 | LIVE + operate from `BusinessRuntimeState` |
+
+---
+
+## BusinessRuntimeState (binding — ADR 0008)
+
+One object per turn on `/api/session.runtime` and `agent_hint`:
+
+```text
+identity · business · workspace · spec · preview · deployment · live
+products · customers · orders · capabilities · jobs · health
+```
+
+Answer “show latest order” from `orders` only. Chat, Control Center, preview, and launch are projections of this object — not competing truths.
+
+**Adapters (contracts now; physical `packages/adapters/*` later):** `IdentityAdapter` · `BusinessDataAdapter` · `CapabilityAdapter` · `DeploymentAdapter`. PocketBase is today’s impl and is replaceable.
 
 ---
 
 ## Architecture layering
 
 ```text
-                    INDOBASE OS
-                         │
-                 CFOS + Agent Runtime
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-       Workspace       Skills        Documents
-                         │
-                 Business Runtime
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-     PocketBase        Launch          Operator
-      (invisible)      Engine           / Jobs
-        │                │                │
-   Auth / data /     Static / App      Analytics /
-   files / API       hosting          automation
-                         │
-                  Hidden infrastructure
+INDOBASE OS (Chat/Agent: Ask → Build → Run → Launch → Operate)
+        │
+  CFOS Runtime
+        │
+  PocketBase (hidden) | Launch | Capabilities
+        │
+  hidden infrastructure  (Studio / saas.* / provisioner until retired)
 ```
 
-PocketBase is **not** an external integration. Launch Engine owns `execution.publish`. Studio/`saas.*`/provisioner stay below this line until retired.
-
-No adapter imports from OS or bridge. Swap a host engine without changing OS.
+Launch Engine owns `execution.publish` and does **not** require PocketBase for a static/landing business. No adapter imports from OS or bridge. Swap a host engine without changing OS.
 
 ---
 

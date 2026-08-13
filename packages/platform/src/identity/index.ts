@@ -2,8 +2,11 @@ import type { AgentId, OrganizationId, ProjectRef, UserId } from '../ids'
 
 /**
  * Identity — Organization, Project, User, Agent, Role, Permission.
- * Studio remains source of membership truth; kernel wraps claims.
+ * OS identity is IdentityAdapter (OTP → session). Studio-era claims remain a
+ * hidden adapter until migrated — not a customer product.
  */
+
+export * from './adapter'
 
 export type Role = 'owner' | 'admin' | 'developer' | 'viewer' | (string & {})
 

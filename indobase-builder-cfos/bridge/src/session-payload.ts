@@ -62,7 +62,12 @@ import {
   resolveWorkspaceState,
 } from './ux-conductor.js'
 import { getWorkspaceScreen } from './ux-screen-store.js'
-import { composeAuthoritativeStateHint, type BusinessSnapshotSummary } from './ux/agent-truth.js'
+import type { BusinessRuntimeState } from '@indobase/platform'
+import {
+  composeRuntimeStateHint,
+  toBusinessRuntimeState,
+  type BusinessSnapshotSummary,
+} from './ux/agent-truth.js'
 import { getBusinessSpec, type BusinessSpec } from './ux/business-spec.js'
 import { resolvePreviewGate, type PreviewStatus } from './ux/preview-gate.js'
 
@@ -104,8 +109,8 @@ export function buildJourneyStateAppendix(
   const lines = [
     '## Journey state (session)',
     '## North star (HARD)',
-    '- Loop: infer BusinessSpec → create a real preview → iterate → launchProductionApp → operate from BusinessSnapshot.',
-    '- Preview is a hard gate. Never claim preview or LIVE unless Authoritative state says so.',
+    '- Loop: infer BusinessSpec → create a real preview → iterate → launchProductionApp → operate from BusinessRuntimeState.',
+    '- Preview is a hard gate. Never claim preview or LIVE unless BusinessRuntimeState says so.',
     '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name guidedBackend/ensure*/PocketBase/CAS. Never restart guest/auth once signed in. Never ask them to refresh.',
     `- Catalog: ${catalogReady ? 'ready' : 'not ready'}`,
     `- Preview: ${previewStatus || (launch?.previewReady ? 'ready' : 'absent')}`,
@@ -171,20 +176,38 @@ export function composeAgentHintForSession(
     catalogReady?: boolean
     spec?: BusinessSpec | null
     snapshot?: BusinessSnapshotSummary | null
+    runtime?: BusinessRuntimeState | null
+    paymentsReady?: boolean
   },
 ): string {
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session, truth?.launch, truth?.previewStatus)
   const screenHint = composeScreenHint(getWorkspaceScreen(session.projectRef))
-  const truthHint = composeAuthoritativeStateHint({
-    projectState: truth?.projectState || 'empty',
-    previewStatus: truth?.previewStatus || 'absent',
-    previewUrl: truth?.previewUrl || null,
-    liveUrl: truth?.liveUrl || null,
-    catalogReady: Boolean(truth?.catalogReady),
-    spec: truth?.spec || getBusinessSpec(session.projectRef),
-    snapshot: truth?.snapshot || null,
-  })
+  const runtime =
+    truth?.runtime ||
+    toBusinessRuntimeState({
+      projectState: truth?.projectState || 'empty',
+      previewStatus: truth?.previewStatus || 'absent',
+      previewUrl: truth?.previewUrl || null,
+      liveUrl: truth?.liveUrl || null,
+      catalogReady: Boolean(truth?.catalogReady),
+      spec: truth?.spec || getBusinessSpec(session.projectRef),
+      snapshot: truth?.snapshot || null,
+      paymentsReady: truth?.paymentsReady,
+      identity: {
+        signedIn: !guest,
+        email: session.email || null,
+        displayName: profileDisplayName(session) || null,
+      },
+      business: {
+        ref: session.projectRef,
+        name: session.projectName || getBusinessSpec(session.projectRef)?.businessName || '',
+        kind: 'unknown',
+        state: truth?.projectState || 'empty',
+      },
+      workspace: { ref: session.projectRef, slug: session.orgSlug },
+    })
+  const truthHint = composeRuntimeStateHint(runtime)
   const agentHintBody = `${agentHint}\n\n${journey}\n\n${truthHint}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
@@ -290,6 +313,38 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
         intent: input.productionJob.intent,
       }
     : null
+  const runtime = toBusinessRuntimeState({
+    projectState: authority.state,
+    previewStatus: authority.preview.status,
+    previewUrl: authority.preview.url,
+    liveUrl: authority.liveUrl,
+    catalogReady: authority.catalogReady,
+    spec,
+    snapshot: input.businessSnapshot || null,
+    paymentsReady: Boolean(
+      journey.flags.is_payments_ready || sessionLooksPaymentsReady(session),
+    ),
+    identity: {
+      signedIn: !guest,
+      email: session.email || null,
+      displayName: profileDisplayName(session) || null,
+    },
+    business: {
+      ref: session.projectRef,
+      name: spec?.businessName || session.projectName || '',
+      kind: authority.kind,
+      state: authority.state,
+    },
+    workspace: { ref: session.projectRef, slug: session.orgSlug },
+    deployment: {
+      status: input.productionJob?.status || null,
+      jobId: input.productionJob?.jobId || null,
+    },
+    capabilities: authority.capabilities.map((id) => ({ id, enabled: true })),
+    jobs: input.productionJob
+      ? [{ id: input.productionJob.jobId, status: input.productionJob.status }]
+      : [],
+  })
 
   return {
     email: session.email,
@@ -332,7 +387,10 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       catalogReady: authority.catalogReady,
       spec,
       snapshot: input.businessSnapshot || null,
+      runtime,
+      paymentsReady: runtime.health.paymentsReady,
     }),
+    runtime,
     onboarding,
     journey,
     auth: {

@@ -52,7 +52,7 @@ applySchema, setupShopCatalog, placeTestShopOrder, or launchBusiness are needed 
 **Platform-internal** (do not call for production ecommerce): guidedBackend, ensure*,
 applySchema, setupShopCatalog, resolveProductImages, placeTestShopOrder, listShopOrders,
 wireCheckout. The ecommerce job runs these internally.
-After LIVE, SCREEN add-product may call setupShopCatalog (operate). Prefer BusinessSnapshot for reads.
+After LIVE, SCREEN add-product may call setupShopCatalog (operate). Prefer BusinessRuntimeState for reads.
 
 The payment state machine is **not** an agent tool and is **feature-frozen**.
 Storefronts use the Commerce ABI only. CheckoutService owns transitions.

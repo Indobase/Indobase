@@ -1,10 +1,22 @@
 /**
  * Authoritative state the agent must speak from.
- * UI, Control Center, and chat consume the same snapshot — never two truths.
+ * UI, Control Center, and chat consume BusinessRuntimeState — never two truths.
  */
+
+import {
+  agentMayClaimLive as runtimeMayClaimLive,
+  agentMayClaimPreview as runtimeMayClaimPreview,
+  composeBusinessRuntimeStateHint,
+  emptyBusinessRuntimeState,
+  isForbiddenAgentClaim,
+  type BusinessRuntimeState,
+} from '@indobase/platform'
 
 import type { BusinessSpec } from './business-spec.js'
 import type { PreviewStatus } from './preview-gate.js'
+
+export type { BusinessRuntimeState }
+export { isForbiddenAgentClaim }
 
 export type BusinessSnapshotSummary = {
   products: Array<{ id?: string; name?: string; priceMinor?: number }>
@@ -16,6 +28,7 @@ export type BusinessSnapshotSummary = {
     amount_minor?: number
     email?: string
   }>
+  customers?: Array<{ id?: string; email?: string; name?: string }>
 }
 
 export type AuthoritativeTruth = {
@@ -26,61 +39,90 @@ export type AuthoritativeTruth = {
   catalogReady: boolean
   spec?: BusinessSpec | null
   snapshot?: BusinessSnapshotSummary | null
+  identity?: BusinessRuntimeState['identity']
+  business?: Partial<BusinessRuntimeState['business']>
+  workspace?: Partial<BusinessRuntimeState['workspace']>
+  deployment?: Partial<BusinessRuntimeState['deployment']>
+  capabilities?: BusinessRuntimeState['capabilities']
+  jobs?: BusinessRuntimeState['jobs']
+  paymentsReady?: boolean
+}
+
+export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRuntimeState {
+  const snap = truth.snapshot
+  const live = Boolean(truth.liveUrl) && truth.projectState === 'live'
+  return emptyBusinessRuntimeState({
+    identity: truth.identity,
+    business: {
+      ref: truth.business?.ref || truth.workspace?.ref || '',
+      name: truth.business?.name || truth.spec?.businessName || '',
+      kind: truth.business?.kind || truth.spec?.businessType || 'unknown',
+      state: truth.projectState,
+    },
+    workspace: truth.workspace,
+    spec: truth.spec
+      ? {
+          businessName: truth.spec.businessName,
+          businessType: truth.spec.businessType,
+          industry: truth.spec.industry,
+          category: truth.spec.catalog.category,
+          verticalId: truth.spec.catalog.verticalId,
+          visualStyle: truth.spec.visualStyle,
+          currency: truth.spec.currency,
+        }
+      : null,
+    preview: {
+      status: truth.previewStatus === 'failed' ? 'error' : truth.previewStatus,
+      url: truth.previewUrl,
+    },
+    deployment: truth.deployment,
+    live: { isLive: live, url: live ? truth.liveUrl : null },
+    products: (snap?.products || [])
+      .filter((p) => p.id || p.name)
+      .map((p) => ({
+        id: p.id || p.name || '',
+        name: p.name || p.id || '',
+        priceMinor: p.priceMinor,
+      })),
+    customers: (snap?.customers || [])
+      .filter((c) => c.id || c.email)
+      .map((c) => ({
+        id: c.id || c.email || '',
+        email: c.email,
+        name: c.name,
+      })),
+    orders: (snap?.orders || [])
+      .filter((o) => o.id || o.orderNumber)
+      .map((o) => ({
+        id: o.id || o.orderNumber || '',
+        orderNumber: o.orderNumber || o.id,
+        status: o.status,
+        paymentStatus: o.payment_status,
+        amountMinor: o.amount_minor,
+        email: o.email,
+      })),
+    capabilities: truth.capabilities,
+    jobs: truth.jobs,
+    health: {
+      catalogReady: truth.catalogReady,
+      paymentsReady: Boolean(truth.paymentsReady),
+      previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl),
+    },
+  })
 }
 
 export function composeAuthoritativeStateHint(truth: AuthoritativeTruth): string {
-  const spec = truth.spec
-  const snap = truth.snapshot
-  const productLines = (snap?.products || []).slice(0, 8).map((p) => `- ${p.name || p.id}`)
-  const orderLines = (snap?.orders || []).slice(0, 8).map((o) => {
-    const id = o.orderNumber || o.id || '?'
-    const status = o.payment_status || o.status || ''
-    return `- #${id} ${status}`.trim()
-  })
-  const lines = [
-    '## Authoritative state (HARD — speak only from this)',
-    `project.state: ${truth.projectState}`,
-    `preview.status: ${truth.previewStatus}`,
-    `preview.url: ${truth.previewUrl || 'none'}`,
-    `live.url: ${truth.liveUrl || 'none'}`,
-    `catalog.ready: ${truth.catalogReady ? 'yes' : 'no'}`,
-  ]
-  if (spec) {
-    lines.push(
-      `business.spec: ${spec.businessName} / ${spec.businessType} / ${spec.catalog.category} / ${spec.visualStyle} / ${spec.currency}`,
-    )
-    lines.push(
-      'Honor BusinessSpec. Do not substitute a generic apparel catalog when the spec is sneakers (or any other niche).',
-    )
-  }
-  if (productLines.length) {
-    lines.push('products (from BusinessSnapshot):')
-    lines.push(...productLines)
-  }
-  if (orderLines.length) {
-    lines.push('orders (from BusinessSnapshot):')
-    lines.push(...orderLines)
-  }
-  lines.push(
-    [
-      'Rules:',
-      '- Never describe a preview as available unless preview.status is ready.',
-      '- Never claim LIVE unless project.state is live and live.url is set.',
-      '- Never say the launch service, catalog, or orders connection is unavailable when this block lists them. If an order id is listed, describe it — do not invent a missing connection.',
-      '- Launch / Go Live / “Launch my store on Indobase now.” → immediately call launchProductionApp with this BusinessSpec. Do not ask the operator to refresh. Do not say production-launch is unavailable.',
-      '- After sign-in: continue the original request immediately. Do not ask them to wait ~15 seconds or refresh Indobase.',
-      '- SCREEN show-order: answer from the snapshot above. Ask AI / SCREEN: read products and orders from BusinessSnapshot. SCREEN add-product after LIVE: call setupShopCatalog with the new item, then confirm from the snapshot.',
-      '- Customer language: Business / Workspace / Live. Never say Studio, PocketBase, tenant, provisioner, or “backend ready”.',
-      '- If a tool fails, quote the humanized failure and offer Fix it automatically. Never invent “service unavailable”.',
-    ].join('\n'),
-  )
-  return lines.join('\n')
+  return composeBusinessRuntimeStateHint(toBusinessRuntimeState(truth))
+}
+
+export function composeRuntimeStateHint(state: BusinessRuntimeState): string {
+  return composeBusinessRuntimeStateHint(state)
 }
 
 export function agentMayClaimPreview(truth: AuthoritativeTruth): boolean {
-  return truth.previewStatus === 'ready' && Boolean(truth.previewUrl)
+  return runtimeMayClaimPreview(toBusinessRuntimeState(truth))
 }
 
 export function agentMayClaimLive(truth: AuthoritativeTruth): boolean {
-  return truth.projectState === 'live' && Boolean(truth.liveUrl)
+  return runtimeMayClaimLive(toBusinessRuntimeState(truth))
 }

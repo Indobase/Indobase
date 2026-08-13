@@ -225,6 +225,29 @@ describe('business.launch pipeline (PR1+PR2)', () => {
     )
   })
 
+  it('hosting-only launch never calls the data-engine ensure port', async () => {
+    const executionPublisher = stubExecutionPublisher({
+      ok: true,
+      liveUrl: 'https://landing.sites.indobase.in',
+      stage: 'EmitEvents' as never,
+      publishStatus: 'published',
+    })
+    const ensureCapabilities = {
+      ensureCapabilities: vi.fn().mockResolvedValue({ ok: true }),
+    }
+    const launcher = createBusinessLauncher({
+      executionPublisher,
+      ensureCapabilities,
+    })
+    const result = await launcher.launch({
+      workspaceRef: 'ws_landing',
+      reason: 'os_launch',
+      requiredCapabilities: [],
+    })
+    expect(result.ok).toBe(true)
+    expect(ensureCapabilities.ensureCapabilities).not.toHaveBeenCalled()
+  })
+
   it('stops when planner port fails before publish', async () => {
     const executionPublisher = stubExecutionPublisher({
       ok: true,

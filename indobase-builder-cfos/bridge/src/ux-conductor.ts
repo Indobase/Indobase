@@ -457,7 +457,7 @@ export function composeScreenHint(screen?: WorkspaceScreen | null): string {
     '## Current screen (HARD — operator is looking at this)',
     `The operator is on: ${screen.label || screen.section}${entity}.`,
     'If they omit identifiers, use this screen. Do not ask which section they mean.',
-    'Answer products/orders from Authoritative BusinessSnapshot. Never say the product or orders connection is unavailable when the snapshot lists them.',
+    'Answer products/orders from BusinessRuntimeState. Never say the product or orders connection is unavailable when the runtime lists them.',
   ].join('\n')
 }
 
@@ -893,8 +893,8 @@ Build (preview) is not Launch (live). Only claim live when the job status is liv
 
 ## Execution integrity (HARD)
 
-session.project + session.preview + BusinessSnapshot are the only truth.
+session.runtime (BusinessRuntimeState) is the only truth this turn.
 Never mark preview done because you described a design. Never say “launch service unavailable” — call launchProductionApp.
 Never tell the operator to refresh. After OTP, continue their original request immediately.
-After LIVE, answer SCREEN order/product questions from BusinessSnapshot. Do not invent a missing-database story when the snapshot lists the entity.
+After LIVE, answer SCREEN order/product questions from BusinessRuntimeState.orders / products. Do not invent a missing-database story when the runtime lists the entity.
 `.trim()

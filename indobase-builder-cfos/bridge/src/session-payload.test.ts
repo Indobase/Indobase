@@ -145,6 +145,41 @@ describe('session-payload', () => {
     assert.ok(payload.governance?.gateway_not_ready?.choices?.length)
     assert.equal(payload.payments.byok, true)
     assert.ok(payload.actions.some((a) => a.id === 'static-preview'))
+    assert.ok(payload.runtime)
+    assert.equal(payload.runtime.identity.signedIn, true)
+    assert.equal(payload.runtime.identity.email, 'op@indobase.in')
+    assert.equal(payload.runtime.business.ref, 'proj_abc')
+    assert.equal(payload.runtime.preview.status, 'absent')
+    assert.equal(payload.runtime.live.isLive, false)
+    assert.match(payload.agent_hint, /BusinessRuntimeState/)
+    assert.equal(Object.keys(payload.tools).sort().join(','), 'connectGateway,launchBusiness,launchProductionApp,productionChecklist,promptQuota')
+  })
+
+  it('BusinessRuntimeState on session forbids live/preview/unavailable against listed entities', () => {
+    const payload = buildSessionApiPayload({
+      session: signedIn,
+      agentHint: 'Operator signed in as op@indobase.in.',
+      generation: { schemaVersion: 1 },
+      agentRuntimeConfigured: true,
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+      osProxyPath: '/os/app/',
+      indobaseProxyPath: '/api/indobase/proxy/',
+      businessSnapshot: {
+        products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900 }],
+        orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', amount_minor: 480000 }],
+      },
+    })
+    assert.equal(payload.runtime.orders[0]?.id, 'fxeuxgfdcoq8dzs')
+    assert.equal(payload.runtime.products[0]?.name, 'Apex Runner')
+    assert.equal(payload.runtime.live.isLive, false)
+    assert.equal(payload.runtime.preview.status, 'absent')
+    assert.match(payload.agent_hint, /#fxeuxgfdcoq8dzs/)
+    assert.match(payload.agent_hint, /Apex Runner/)
+    assert.match(payload.agent_hint, /Never invent “connection unavailable”/)
+    assert.match(payload.agent_hint, /Never claim LIVE/)
+    assert.match(payload.agent_hint, /Never describe a preview as available/)
+    assert.match(payload.agent_hint, /Never say Studio, PocketBase, tenant, provisioner/)
+    assert.doesNotMatch(JSON.stringify(payload.runtime), /PocketBase|GoTrue|Supabase|Coolify/)
   })
 
   it('composeAgentHintForSession re-asserts guest gate at the front', () => {
@@ -171,11 +206,11 @@ describe('session-payload', () => {
     }
     const hint = composeAgentHintForSession(withBackend, 'Operator hint.')
     assert.match(hint, /Catalog: not ready/)
-    assert.match(hint, /Authoritative state/)
+    assert.match(hint, /BusinessRuntimeState/)
     assert.match(hint, /launchProductionApp|Commerce ABI|window\.indobase\.commerce/)
     assert.match(hint, /Default store ladder/)
     assert.match(hint, /Payments: keys appear configured/)
-    assert.match(hint, /Never say the launch service/)
+    assert.match(hint, /Never invent “connection unavailable”/)
   })
 
   it('signed-in agent_hint does not ask to refresh or claim backend is attached', () => {

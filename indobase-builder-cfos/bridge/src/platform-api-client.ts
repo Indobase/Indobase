@@ -27,7 +27,10 @@ import {
   isManagedBackendConfigured,
   sanitizeAppId,
 } from './pocketbase/managed.js'
-import { managedBackendOtpStart, managedBackendOtpVerify } from './pocketbase/otp.js'
+import {
+  osWorkspaceFromIdentitySession,
+  pocketBaseIdentityAdapter,
+} from './pocketbase/identity-adapter.js'
 import {
   applyArchitectureBlueprint,
   seedEcommerceCatalog,
@@ -132,9 +135,13 @@ export async function platformOtpStart(input: {
   | { ok: true; email: string }
   | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
 > {
-  // Preferred path: managed Indobase backend (no Studio / GoTrue).
+  // Preferred path: IdentityAdapter (PocketBase impl — never call PB HTTP here).
   if (isManagedBackendConfigured()) {
-    const local = await managedBackendOtpStart({ name: input.name, email: input.email })
+    const local = await pocketBaseIdentityAdapter.startOtp({
+      name: input.name,
+      email: input.email,
+      dpdpConsent: input.dpdpConsent,
+    })
     if (local.ok) {
       return { ok: true, email: local.email }
     }
@@ -171,9 +178,9 @@ export async function platformOtpVerify(input: {
   | { ok: false; status: number; message: string; code?: string; retryAfterSeconds?: number }
 > {
   if (isManagedBackendConfigured()) {
-    const local = await managedBackendOtpVerify(input)
+    const local = await pocketBaseIdentityAdapter.verifyOtp(input)
     if (local.ok) {
-      return { ok: true, session: local.session }
+      return { ok: true, session: osWorkspaceFromIdentitySession(local.session) }
     }
     return { ok: false, status: local.status, message: local.message }
   }
