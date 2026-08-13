@@ -9,9 +9,18 @@ import {
   businessJobStageTitle,
   businessJourneyStageLabel,
   businessReadiness,
+  humanizeLaunchFailure,
+  resolveWorkspaceState,
+  stripInternalFailureCopy,
   uxContextualActions,
   uxHeadline,
   uxJobHeadline,
+  workspaceViewModel,
+  formatPreviewEditMessage,
+  previewEditSuggestions,
+  projectCapabilities,
+  controlCenterNav,
+  viewProjectsAuthority,
 } from './ux-conductor.ts'
 
 describe('UX conductor', () => {
@@ -36,12 +45,18 @@ describe('UX conductor', () => {
     assert.ok(HOME_INTENTS.some((t) => t.id === 'launch-store' && t.description === 'Sell online'))
   })
 
-  it('maps job stages to business titles', () => {
-    assert.equal(businessJobStageTitle('provision'), 'Store foundation')
+  it('maps job stages to business-specific titles', () => {
+    assert.equal(businessJobStageTitle('classify'), 'Understanding your brand')
+    assert.equal(businessJobStageTitle('provision'), 'Setting up products & inventory')
     assert.equal(businessJobStageTitle('wire'), 'Connecting checkout')
-    assert.equal(businessJobStageTitle('verify'), 'Quality checks')
-    assert.doesNotMatch(businessJobStageTitle('provision'), /ensureDatabase|auth \+ database/i)
-    assert.equal(businessJobStageTitle('generate', 'landing'), 'Building website')
+    assert.equal(businessJobStageTitle('verify'), 'Testing your store')
+    assert.equal(businessJobStageTitle('deploy'), 'Preparing launch')
+    assert.doesNotMatch(businessJobStageTitle('provision'), /ensureDatabase|auth \+ database|Store foundation/i)
+    assert.equal(businessJobStageTitle('classify', 'saas'), 'Understanding your product')
+    assert.equal(businessJobStageTitle('provision', 'saas'), 'Setting up accounts')
+    assert.equal(businessJobStageTitle('wire', 'saas'), 'Connecting your data')
+    assert.equal(businessJobStageTitle('verify', 'landing'), 'Checking responsiveness')
+    assert.equal(businessJobStageTitle('generate', 'landing'), 'Building your website')
   })
 
   it('maps journey stages away from Backend / Go Live jargon', () => {
@@ -86,5 +101,110 @@ describe('UX conductor', () => {
   it('job card never says Launching ecommerce', () => {
     assert.equal(uxJobHeadline({ status: 'running', appType: 'ecommerce' }), 'Building your store')
     assert.equal(uxJobHeadline({ status: 'live', appType: 'ecommerce', url: 'https://x.sites.indobase.in' }), 'Your store is live')
+  })
+
+  it('resolves workspace project states in business order', () => {
+    assert.equal(resolveWorkspaceState({}), 'empty')
+    assert.equal(resolveWorkspaceState({ jobStatus: 'running', jobStage: 'generate' }), 'building')
+    assert.equal(resolveWorkspaceState({ jobStatus: 'running', jobStage: 'deploy' }), 'publishing')
+    assert.equal(resolveWorkspaceState({ previewUrl: '/live/abc/' }), 'preview_ready')
+    assert.equal(resolveWorkspaceState({ backendReady: true }), 'production_ready')
+    assert.equal(
+      resolveWorkspaceState({ live: true, liveUrl: 'https://urbanthread.sites.indobase.in' }),
+      'live',
+    )
+    assert.equal(
+      resolveWorkspaceState({ jobStatus: 'blocked', failureCode: 'backend_required' }),
+      'needs_attention',
+    )
+  })
+
+  it('humanizes launch failures and never leaks internal codes', () => {
+    const fail = humanizeLaunchFailure({
+      code: 'backend_required',
+      message: 'production verification failed: backend_required',
+      repairable: true,
+    })
+    assert.equal(fail.title, "I couldn't safely launch this yet.")
+    assert.match(fail.body, /customer accounts/i)
+    assert.doesNotMatch(fail.title + fail.body, /backend_required|production verification failed/i)
+    assert.ok(fail.actions.some((a) => a.label === 'Fix it automatically'))
+    assert.equal(
+      stripInternalFailureCopy('LAUNCH BLOCKED — production verification failed: backend_required'),
+      '',
+    )
+    const stuck = humanizeLaunchFailure({
+      code: 'functional_verifier_failed',
+      repairable: false,
+    })
+    assert.ok(stuck.actions.some((a) => a.label === 'Try again'))
+    assert.ok(stuck.actions.some((a) => a.label === 'Continue editing'))
+  })
+
+  it('workspace view model is state-driven and keeps chat after live', () => {
+    const empty = workspaceViewModel({})
+    assert.equal(empty.state, 'empty')
+    assert.equal(empty.headline, UX_HOME_HEADLINE)
+    assert.ok(empty.actions.some((a) => a.label === 'Store'))
+
+    const building = workspaceViewModel({
+      jobStatus: 'running',
+      appType: 'ecommerce',
+      stages: [
+        { id: 'classify', status: 'ok' },
+        { id: 'provision', status: 'running' },
+      ],
+    })
+    assert.equal(building.state, 'building')
+    assert.match(building.headline, /Building your store/)
+    assert.equal(building.stages[1]?.label, 'Setting up products & inventory')
+
+    const ready = workspaceViewModel({ backendReady: true, appType: 'ecommerce', previewUrl: '/live/x/' })
+    assert.equal(ready.state, 'production_ready')
+    assert.ok(ready.actions.some((a) => /Launch store/i.test(a.label)))
+
+    const live = workspaceViewModel({
+      live: true,
+      liveUrl: 'https://urbanthread.sites.indobase.in',
+      backendReady: true,
+      paymentsReady: true,
+      appType: 'ecommerce',
+    })
+    assert.equal(live.state, 'live')
+    assert.match(live.headline, /live/i)
+    assert.ok(live.actions.some((a) => /Open store/i.test(a.label)))
+    assert.ok(live.actions.some((a) => /Manage store/i.test(a.label)))
+    assert.match(live.previewHint, /change it|manage the business/i)
+    assert.equal(live.showControlCenter, true)
+    assert.ok(live.nav.some((n) => n.id === 'products'))
+    assert.ok(live.capabilities.includes('commerce'))
+  })
+
+  it('click-to-edit messages stay on the chat pipeline', () => {
+    const chips = previewEditSuggestions({ type: 'section', id: 'hero', component: 'Hero', label: 'Hero' })
+    assert.ok(chips.length <= 3)
+    const msg = formatPreviewEditMessage({
+      target: { type: 'section', id: 'hero', component: 'Hero' },
+      intent: 'modify_copy',
+      request: 'Make the headline shorter and more premium.',
+    })
+    assert.match(msg, /^PREVIEW_EDIT/)
+    assert.doesNotMatch(msg, /launchProductionApp|guidedBackend/)
+  })
+
+  it('session.project authority wins over local UI guesses', () => {
+    const authority = {
+      state: 'live' as const,
+      kind: 'store' as const,
+      capabilities: projectCapabilities({ appType: 'ecommerce', paymentsReady: true }),
+      nav: controlCenterNav('store', projectCapabilities({ appType: 'ecommerce', paymentsReady: true })),
+    }
+    const view = workspaceViewModel({ appType: 'landing', authority })
+    assert.equal(view.state, 'live')
+    assert.equal(view.kind, 'store')
+    assert.ok(view.nav.some((n) => n.id === 'products'))
+    assert.ok(!view.nav.some((n) => n.id === 'website'))
+    assert.equal(view.showControlCenter, true)
+    assert.ok(viewProjectsAuthority(view, authority))
   })
 })

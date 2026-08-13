@@ -120,6 +120,7 @@ import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-ap
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
+import { setWorkspaceScreen } from './ux-screen-store.js'
 
 initBridgeSentry('builder-cfos')
 
@@ -1803,6 +1804,23 @@ app.get('/api/os/commerce/admin/snapshot', handleCommerceAdminSnapshot)
 app.post('/api/os/commerce/orders/:id/mark-paid', handleCommerceMarkPaid)
 app.post('/api/os/commerce/orders/mark-paid', handleCommerceMarkPaid)
 app.post('/api/os/commerce/orders/:id/mark-failed', handleCommerceMarkFailed)
+
+/** Control Center current screen — UX context for agent_hint, not an agent tool. */
+app.post('/api/os/ux/screen', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const body = (await c.req.json().catch(() => ({}))) as {
+    section?: string
+    entityId?: string | null
+    label?: string | null
+  }
+  const screen = setWorkspaceScreen(sessionOrErr.projectRef, {
+    section: typeof body.section === 'string' ? body.section : 'overview',
+    entityId: typeof body.entityId === 'string' ? body.entityId : null,
+    label: typeof body.label === 'string' ? body.label : null,
+  })
+  return c.json({ ok: true, screen })
+})
 
 /** Attach a domain the customer already owns (CNAME → Indobase). */
 app.post('/api/os/domains/attach', async (c) => {

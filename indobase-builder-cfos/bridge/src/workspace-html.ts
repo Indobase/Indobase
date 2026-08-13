@@ -110,6 +110,12 @@ export function injectIndobaseContextBootstrap(html: string): string {
         tool: '/api/os/tools/launchBusiness',
         tool_alias: '/api/os/tools/goLive',
       };
+      window.__INDOBASE_PREVIEW_URL__ =
+        (s.journey && s.journey.live_url) ||
+        (s.production_job && s.production_job.url) ||
+        (s.launch && s.launch.draft_preview_path) ||
+        null;
+      window.__INDOBASE_PROJECT__ = s.project || null;
       // ChatInterface meters each user send via this path (hard Free-plan enforce).
       window.__INDOBASE_BEGIN_TURN__ = '/api/os/agent/begin-turn';
       window.__INDOBASE__ = s.backend
@@ -145,6 +151,8 @@ export function injectIndobaseContextBootstrap(html: string): string {
                 'HARD PATH: production Go Live is POST /api/os/apps/launch. Claim live only when job status=live. Draft preview may use launchBusiness with production:false. Indobase subdomain or a domain you own. Never third-party hosts.',
               PREVIEW_POLICY: (s.launch && s.launch.preview_policy) || '',
               LIVE_URL: (s.journey && s.journey.live_url) || null,
+              PREVIEW_URL: window.__INDOBASE_PREVIEW_URL__,
+              PROJECT: window.__INDOBASE_PROJECT__,
               PROMPT_QUOTA: '/api/os/usage/prompt-quota',
               BEGIN_TURN: window.__INDOBASE_BEGIN_TURN__,
               AUTH: window.__INDOBASE_AUTH__,

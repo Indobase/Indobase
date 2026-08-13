@@ -99,7 +99,7 @@ export function buildManagedShopStorefrontHtml(opts: {
 <script>${runtime}</script>
 </head>
 <body>
-<header>
+<header data-ib-section="hero" data-ib-component="Hero" data-ib-label="Hero">
   <div class="brand">
     <h1>${brand}</h1>
     <p>${tagline}</p>
@@ -110,7 +110,7 @@ export function buildManagedShopStorefrontHtml(opts: {
     <button type="button" class="cart-btn" id="openCart">Cart (<span id="cartCount">0</span>)</button>
   </div>
 </header>
-<main>
+<main data-ib-section="products" data-ib-component="Products" data-ib-label="Products">
   <p id="status">Loading catalog…</p>
   <p id="error" hidden></p>
   <div class="toolbar">

@@ -7,7 +7,7 @@ import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 
 import type { BackendConfig } from '../auth.js'
-import { PRODUCTION_JOB_STAGE_TITLES } from '../ux-conductor.js'
+import { PRODUCTION_JOB_STAGE_TITLES, businessJobStageTitle } from '../ux-conductor.js'
 import type { ApplicationPlan, ProductionAppType } from './application-planner.js'
 import type { ProductionApplicationContract } from './production-contract.js'
 import type { ProductionLaunchEvidence } from './evidence.js'
@@ -82,9 +82,7 @@ export type ProductionLaunchJob = {
   updatedAt: string
 }
 
-const STAGE_DEFS: Array<{ id: ProductionLaunchStageId; title: string }> = (
-  Object.entries(PRODUCTION_JOB_STAGE_TITLES) as Array<[ProductionLaunchStageId, string]>
-).map(([id, title]) => ({ id, title }))
+const STAGE_IDS = Object.keys(PRODUCTION_JOB_STAGE_TITLES) as ProductionLaunchStageId[]
 
 const jobs = new Map<string, ProductionLaunchJob>()
 const latestByProject = new Map<string, string>()
@@ -118,8 +116,12 @@ export function createProductionJobId(): string {
   return `plj_${Date.now().toString(36)}_${randomBytes(4).toString('hex')}`
 }
 
-export function buildEmptyStages(): ProductionLaunchStage[] {
-  return STAGE_DEFS.map((s) => ({ id: s.id, title: s.title, status: 'pending' as const }))
+export function buildEmptyStages(appType?: string | null): ProductionLaunchStage[] {
+  return STAGE_IDS.map((id) => ({
+    id,
+    title: businessJobStageTitle(id, appType),
+    status: 'pending' as const,
+  }))
 }
 
 function writeJobFile(job: ProductionLaunchJob): void {

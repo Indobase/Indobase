@@ -34,13 +34,13 @@ export function buildProductionLandingHtml(opts: { brand?: string | null; intent
 </style>
 </head>
 <body>
-<header>
+<header data-ib-section="hero" data-ib-component="Hero" data-ib-label="Hero">
   <p>Indobase</p>
   <h1>${brand}</h1>
   <p>${blurb}</p>
   <a class="cta" href="#contact">Get in touch</a>
 </header>
-<main id="contact">
+<main id="contact" data-ib-section="content" data-ib-component="Content" data-ib-label="Content">
   <h2>Ready when you are</h2>
   <p>This site is live on Indobase. Add a domain or grow into a full app when you need accounts and saved data.</p>
 </main>

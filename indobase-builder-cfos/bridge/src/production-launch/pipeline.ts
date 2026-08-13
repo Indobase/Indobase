@@ -9,6 +9,7 @@ import { executeLaunchBusinessTool } from '../launch-business-tool.js'
 import { assertLaunchArchitectureReady } from '../launch-backend-gate.js'
 import { autoWireLaunchArtifacts } from '../wire-proof.js'
 import { assertEcommerceReleaseGateAsync } from '../delivery/index.js'
+import { humanizeLaunchFailure } from '../ux-conductor.js'
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
@@ -149,7 +150,7 @@ function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunc
     plan,
     contract,
     status: 'queued',
-    stages: buildEmptyStages(),
+    stages: buildEmptyStages(plan.appType),
     html: typeof input.html === 'string' ? input.html : undefined,
     files: input.files || undefined,
     title: input.title?.trim() || undefined,
@@ -184,19 +185,25 @@ export async function executeProductionLaunchJob(
   if (input.title) job = rememberProductionLaunchJob({ ...job, title: input.title })
 
   if (job.status === 'blocked' && job.repairAttempts >= MAX_REPAIR_ATTEMPTS) {
+    const last = job.failures.at(-1)
+    const human = humanizeLaunchFailure({
+      code: last?.code || 'launch_blocked',
+      message: last?.message,
+      repairable: false,
+    })
     return {
       ok: false,
       job,
-      message: `LAUNCH BLOCKED — ${MAX_REPAIR_ATTEMPTS} repair attempts exhausted. ${job.failures.at(-1)?.message || ''}`.trim(),
+      message: `${human.title} ${human.body} I couldn't safely resolve this automatically.`,
       claim_live: false,
-      code: 'launch_blocked',
+      code: last?.code || 'launch_blocked',
     }
   }
 
   job = rememberProductionLaunchJob({
     ...job,
     status: 'running',
-    stages: job.status === 'blocked' ? buildEmptyStages() : job.stages,
+    stages: job.status === 'blocked' ? buildEmptyStages(job.appType) : job.stages,
   })
 
   // 1. Classify (already done at create; re-assert)
@@ -468,12 +475,21 @@ export async function executeProductionLaunchJob(
 function blocked(job: ProductionLaunchJob): ProductionLaunchExecuteResult {
   const last = job.failures[job.failures.length - 1]
   const retriesLeft = Math.max(0, MAX_REPAIR_ATTEMPTS - job.repairAttempts)
+  const human = humanizeLaunchFailure({
+    code: last?.code,
+    message: last?.message,
+    repairable: last?.repairable !== false && retriesLeft > 0,
+  })
+  const next =
+    retriesLeft && human.repairable
+      ? ' I will retry automatically if you ask me to fix it.'
+      : retriesLeft
+        ? ' You can try again or keep editing.'
+        : ''
   return {
     ok: false,
     job,
-    message: `LAUNCH BLOCKED — ${last?.message || 'contract not satisfied'}${
-      retriesLeft ? ` Retry the same jobId (${retriesLeft} repair${retriesLeft === 1 ? '' : 's'} left).` : ''
-    }`,
+    message: `${human.title} ${human.body}${next}`,
     claim_live: false,
     code: last?.code || job.status,
   }
@@ -482,6 +498,7 @@ function blocked(job: ProductionLaunchJob): ProductionLaunchExecuteResult {
 export function summarizeProductionLaunchJob(job: ProductionLaunchJob) {
   const counts = { pending: 0, running: 0, ok: 0, skipped: 0, failed: 0, total: job.stages.length }
   for (const s of job.stages) counts[s.status] += 1
+  const last = job.failures[job.failures.length - 1]
   return {
     jobId: job.jobId,
     status: job.status,
@@ -492,5 +509,13 @@ export function summarizeProductionLaunchJob(job: ProductionLaunchJob) {
     counts,
     next_pending: job.stages.find((s) => s.status === 'pending' || s.status === 'running')?.id,
     failures: job.failures,
+    operator_failure:
+      job.status === 'blocked' && last
+        ? humanizeLaunchFailure({
+            code: last.code,
+            message: last.message,
+            repairable: last.repairable,
+          })
+        : null,
   }
 }

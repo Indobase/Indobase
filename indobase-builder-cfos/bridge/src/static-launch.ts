@@ -4,6 +4,7 @@
  */
 
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises'
+import { injectPreviewInspector } from './preview-inspector.js'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 
@@ -171,6 +172,11 @@ function normalizeFiles(input: StaticLaunchInput): Record<string, string> {
     const firstHtml = Object.entries(out).find(([p]) => p.endsWith('.html'))
     if (firstHtml) out['index.html'] = firstHtml[1]
     else out['index.html'] = defaultHtml(input.title || input.workspaceRef)
+  }
+  for (const [rel, content] of Object.entries(out)) {
+    if (/\.html?$/i.test(rel) && typeof content === 'string') {
+      out[rel] = injectPreviewInspector(content)
+    }
   }
   return out
 }
@@ -493,7 +499,12 @@ export async function readLiveFile(
   try {
     await access(abs)
     const body = await readFile(abs)
-    return { body, contentType: contentTypeFor(rel) }
+    const contentType = contentTypeFor(rel)
+    if (contentType.includes('text/html')) {
+      const html = injectPreviewInspector(body.toString('utf8'))
+      return { body: Buffer.from(html, 'utf8'), contentType }
+    }
+    return { body, contentType }
   } catch {
     if (!rel.endsWith('index.html')) {
       return readLiveFile(ref, path.posix.join(path.posix.dirname(rel), 'index.html'))

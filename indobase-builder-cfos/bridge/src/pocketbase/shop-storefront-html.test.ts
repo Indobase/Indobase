@@ -24,6 +24,8 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.match(html, /data-act="rm"/)
     assert.match(html, /id="openOrders"/)
     assert.match(html, /id="openAccount"/)
+    assert.match(html, /data-ib-section="hero"/)
+    assert.match(html, /data-ib-section="products"/)
     assert.match(html, /customer\.startOtp/)
     assert.match(html, /customer\.verifyOtp/)
     assert.match(html, /customer\.orders\.list/)

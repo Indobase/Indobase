@@ -80,6 +80,7 @@ describe('production contracts + shells', () => {
     assert.match(html, /<title>Cafe<\/title>/)
     assert.match(html, /meta name="description"/)
     assert.match(html, /Privacy Policy/)
+    assert.match(html, /data-ib-section="hero"/)
     assert.match(html, /Terms of Service/)
   })
 
@@ -190,6 +191,14 @@ describe('production launch job pipeline', () => {
       result.job.stages.every((s) => s.status === 'ok' || s.status === 'skipped'),
       true,
     )
+    assert.equal(
+      result.job.stages.find((s) => s.id === 'provision')?.title,
+      'Setting up accounts',
+    )
+    assert.equal(
+      result.job.stages.find((s) => s.id === 'wire')?.title,
+      'Connecting your data',
+    )
   })
 
   it('ecommerce job provisions internally and records certification evidence', async () => {
@@ -266,7 +275,9 @@ describe('production launch job pipeline', () => {
     assert.equal(result.claim_live, false)
     assert.equal(result.job.claim_live, false)
     assert.equal(result.job.status, 'blocked')
-    assert.match(result.message, /LAUNCH BLOCKED/)
+    assert.match(result.message, /couldn't safely launch/i)
+    assert.doesNotMatch(result.message, /LAUNCH BLOCKED|smoke_failed|backend_required/i)
     assert.equal(result.job.failures[0]?.code, 'smoke_failed')
+    assert.equal(result.code, 'smoke_failed')
   })
 })

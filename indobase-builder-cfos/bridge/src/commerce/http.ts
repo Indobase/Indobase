@@ -4,8 +4,16 @@
 import { timingSafeEqual } from 'node:crypto'
 
 import type { Context } from 'hono'
+import {
+  SESSION_COOKIE,
+  isGuestSession,
+  readCookie,
+  readSessionToken,
+  resolveHandoffSecret,
+} from '../auth.js'
 import { sanitizeAppId } from '../pocketbase/managed.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
+import { authorizeControlCenterAccess } from './control-center-auth.js'
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
@@ -14,6 +22,29 @@ import {
 } from './pb-adapter.js'
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
+
+export type ControlCenterSnapshotLoaders = {
+  listProducts: (projectRef: string) => Promise<unknown>
+  listOrders: (projectRef: string) => Promise<unknown>
+}
+
+const defaultSnapshotLoaders: ControlCenterSnapshotLoaders = {
+  listProducts: listCommerceProducts,
+  listOrders: listCommerceOrders,
+}
+
+function osSessionFromRequest(c: Context) {
+  try {
+    const secret = resolveHandoffSecret()
+    const raw = readCookie(c.req.header('cookie'), SESSION_COOKIE)
+    if (!raw) return { session: null, guest: false as const }
+    const session = readSessionToken(raw, secret)
+    if (!session) return { session: null, guest: false as const }
+    return { session, guest: isGuestSession(session) }
+  } catch {
+    return { session: null, guest: false as const }
+  }
+}
 
 function timingSafeEqualString(a: string, b: string): boolean {
   const left = Buffer.from(a)
@@ -184,16 +215,25 @@ export async function handleCommerceOrderGet(c: Context) {
   return handleCustomerOrderGet(c)
 }
 
-/** Merchant admin snapshot — live products + orders via service role (not anon PB). */
-export async function handleCommerceAdminSnapshot(c: Context) {
-  const projectRef = projectRefFrom(c)
-  if (!projectRef) {
-    return c.json({ ok: false, code: 'invalid_request', message: 'projectRef required' }, 400, commerceCorsHeaders())
+/** Merchant Control Center snapshot — OS session bound; never a public projectRef selector. */
+export async function handleCommerceAdminSnapshot(
+  c: Context,
+  loaders: ControlCenterSnapshotLoaders = defaultSnapshotLoaders,
+) {
+  const { session, guest } = osSessionFromRequest(c)
+  const requested = c.req.query('projectRef') || c.req.header('X-Indobase-Project-Ref') || ''
+  const auth = authorizeControlCenterAccess({
+    session,
+    guest,
+    requestedProjectRef: requested,
+  })
+  if (!auth.ok) {
+    return c.json({ ok: false, code: auth.code }, auth.status, commerceCorsHeaders())
   }
   try {
     const [products, orders] = await Promise.all([
-      listCommerceProducts(projectRef),
-      listCommerceOrders(projectRef),
+      loaders.listProducts(auth.projectRef),
+      loaders.listOrders(auth.projectRef),
     ])
     return c.json({ ok: true, products, orders }, 200, commerceCorsHeaders())
   } catch (err) {

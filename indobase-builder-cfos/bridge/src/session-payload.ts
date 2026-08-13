@@ -53,7 +53,15 @@ import {
   type ProductionLaunchJob,
 } from './production-launch/index.js'
 import { OS_ACHIEVEMENTS, OS_HOME_HEADLINE, OS_HOME_SUBHEAD } from './os-home.js'
-import { UX_CONDUCTOR_AGENT_RULES } from './ux-conductor.js'
+import {
+  UX_CONDUCTOR_AGENT_RULES,
+  appTypeToKind,
+  composeScreenHint,
+  controlCenterNav,
+  projectCapabilities,
+  resolveWorkspaceState,
+} from './ux-conductor.js'
+import { getWorkspaceScreen } from './ux-screen-store.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -147,7 +155,8 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
 export function composeAgentHintForSession(session: Session, agentHint: string): string {
   const guest = isGuestSession(session)
   const journey = buildJourneyStateAppendix(session)
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const screenHint = composeScreenHint(getWorkspaceScreen(session.projectRef))
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -156,6 +165,41 @@ export function composeAgentHintForSession(session: Session, agentHint: string):
   return agentHintBody.startsWith('GUEST ACCOUNT GATE')
     ? agentHintBody
     : `${GUEST_ACCOUNT_FIRST_HINT}\n\n${agentHintBody}`
+}
+
+function buildAuthoritativeProject(
+  session: Session,
+  journey: ReturnType<typeof buildLaunchJourneyState>,
+  job?: ProductionLaunchJob | null,
+) {
+  const appType = job?.appType || null
+  const kind = appTypeToKind(appType)
+  const backendReady = Boolean(session.backend?.api_url || journey.flags.is_backend_ready)
+  const paymentsReady = Boolean(journey.flags.is_payments_ready || sessionLooksPaymentsReady(session))
+  const liveUrl = job?.url || journey.live_url || null
+  const state = resolveWorkspaceState({
+    live: Boolean(job?.status === 'live' || journey.flags.is_live || liveUrl),
+    liveUrl,
+    previewUrl: liveUrl,
+    backendReady,
+    paymentsReady,
+    jobStatus: job?.status || null,
+    appType,
+    failureCode: job?.status === 'blocked' ? job.failures.at(-1)?.code : null,
+  })
+  const capabilities = projectCapabilities({
+    appType,
+    kind,
+    backendReady,
+    paymentsReady,
+    contractCapabilityIds: job?.contract?.capabilities?.map((c) => c.id) || null,
+  })
+  return {
+    state,
+    kind,
+    capabilities,
+    nav: controlCenterNav(kind, capabilities),
+  }
 }
 
 export type BuildSessionApiPayloadInput = {
@@ -250,6 +294,8 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       enforce_static_over_gadget: true,
     },
     production_job: productionJob,
+    project: buildAuthoritativeProject(session, journey, input.productionJob),
+    screen: getWorkspaceScreen(session.projectRef),
     home: {
       headline: OS_HOME_HEADLINE,
       subhead: OS_HOME_SUBHEAD,

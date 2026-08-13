@@ -41,7 +41,15 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/FollowUpRecommendations.module.css" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/LaunchJourneyCard.tsx" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/LaunchJourneyCard.module.css" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/WorkspaceChrome.tsx" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/WorkspaceChrome.module.css" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/BusinessControlCenter.tsx" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/BusinessControlCenter.module.css" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/followups/"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/bridge/src"
+scp "${SSH_OPTS[@]}" \
+  "${REPO_ROOT}/indobase-builder-cfos/bridge/src/ux-conductor.ts" \
+  "${SSH_HOST}:/opt/indobase-builder-cfos/bridge/src/"
 # Formats tree (gadgets + Design source). Exclude AppleDouble junk.
 rsync -az --delete \
   -e "ssh ${SSH_OPTS[*]}" \

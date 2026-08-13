@@ -107,7 +107,7 @@ export default function HomeTaskSuggestions({
   return (
     <section aria-label="What do you want to launch?" className="flex flex-col gap-2">
       <h3 className="px-1 text-[12px] font-medium uppercase tracking-[0.06em] text-kumo-inactive">
-        Build with AI
+        What do you want to launch?
       </h3>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {visible.map((suggestion) => (

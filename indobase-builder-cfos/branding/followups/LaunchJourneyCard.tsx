@@ -5,6 +5,13 @@
 import { memo, useEffect, useId, useState } from 'react'
 
 import styles from './LaunchJourneyCard.module.css'
+import {
+  type AuthoritativeProject,
+  businessJobStageTitle,
+  humanizeLaunchFailure,
+  uxJobHeadline,
+  workspaceViewModel,
+} from './ux-conductor'
 
 type LaunchJourneyStage = {
   id: string
@@ -64,39 +71,62 @@ export function readProductionJobFromWindow(): ProductionJobSnapshot | null {
   }
 }
 
+function readAuthority(): AuthoritativeProject | null {
+  try {
+    const project = (window as unknown as { __INDOBASE_PROJECT__?: AuthoritativeProject | null })
+      .__INDOBASE_PROJECT__
+    return project?.state ? project : null
+  } catch {
+    return null
+  }
+}
+
 function jobToJourney(job: ProductionJobSnapshot): LaunchJourneyState {
-  const stages =
-    job.stages?.map((s) => ({
-      id: s.id,
-      label: s.title || s.id,
-      status:
-        s.status === 'ok' || s.status === 'skipped'
-          ? ('done' as const)
-          : s.status === 'running' || s.status === 'failed'
-            ? ('current' as const)
-            : ('upcoming' as const),
-    })) || []
-  const live = job.status === 'live' && job.url ? job.url : null
-  const blocked = job.status === 'blocked'
   const lastFail = job.failures?.[job.failures.length - 1]
-  const noun = job.appType === 'landing' ? 'website' : job.appType === 'saas' ? 'app' : 'store'
+  const live = job.status === 'live' && job.url ? job.url : null
+  const view = workspaceViewModel({
+    live: Boolean(live),
+    liveUrl: live,
+    jobStatus: job.status,
+    jobStage: job.stages?.find((s) => s.status === 'running' || s.status === 'pending')?.id,
+    appType: job.appType,
+    failureCode: lastFail?.code,
+    failureMessage: lastFail?.message,
+    repairable: lastFail?.repairable,
+    stages: job.stages,
+    authority: typeof window === 'undefined' ? null : readAuthority(),
+  })
+  const stages =
+    view.stages.length > 0
+      ? view.stages
+      : (job.stages || []).map((s) => ({
+          id: s.id,
+          label: businessJobStageTitle(s.id, job.appType),
+          status:
+            s.status === 'ok' || s.status === 'skipped'
+              ? ('done' as const)
+              : s.status === 'running' || s.status === 'failed'
+                ? ('current' as const)
+                : ('upcoming' as const),
+        }))
+  const blocked = job.status === 'blocked'
+  const failure = blocked
+    ? humanizeLaunchFailure({
+        code: lastFail?.code,
+        message: lastFail?.message,
+        repairable: lastFail?.repairable,
+      })
+    : null
   return {
     guest: false,
     live_url: live,
-    headline: blocked
-      ? lastFail?.message || 'Launch hit a snag — I can retry'
-      : live
-        ? `Your ${noun} is live`
-        : `Building your ${noun}`,
+    headline: failure
+      ? failure.title
+      : uxJobHeadline({ status: job.status, appType: job.appType, url: live }),
     stages,
-    next_action: blocked
-      ? {
-          label: 'Retry launch',
-          message: 'Retry launching my store now.',
-        }
-      : live
-        ? { label: 'Open store', message: live }
-        : null,
+    next_action: failure
+      ? failure.actions[0] || null
+      : view.actions[0] || (live ? { label: 'Open store', message: live } : null),
     flags: {
       is_guest: false,
       is_backend_ready: true,
@@ -177,6 +207,15 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
   if (!journey || journey.guest || !isActive) return null
 
   const { stages, next_action, headline, live_url } = journey
+  const lastFail = job?.failures?.[job.failures.length - 1]
+  const failure =
+    job?.status === 'blocked'
+      ? humanizeLaunchFailure({
+          code: lastFail?.code,
+          message: lastFail?.message,
+          repairable: lastFail?.repairable,
+        })
+      : null
 
   return (
     <section
@@ -186,8 +225,9 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
     >
       <div className={styles.header}>
         <div>
-          <div className={styles.kicker}>{live_url ? 'Your store' : 'Building'}</div>
+          <div className={styles.kicker}>{live_url ? 'LIVE' : failure ? 'Needs attention' : 'Building'}</div>
           <div className={styles.headline}>{headline}</div>
+          {failure?.body ? <p className={styles.failureBody}>{failure.body}</p> : null}
         </div>
         {live_url ? (
           <a className={styles.liveLink} href={live_url} target="_blank" rel="noreferrer">

@@ -2253,6 +2253,10 @@ ${injection}`
       'FollowUpRecommendations.module.css',
       'LaunchJourneyCard.tsx',
       'LaunchJourneyCard.module.css',
+      'WorkspaceChrome.tsx',
+      'WorkspaceChrome.module.css',
+      'BusinessControlCenter.tsx',
+      'BusinessControlCenter.module.css',
     ]) {
       const from = join(brandFollowups, name)
       const to = join(followupsDir, name)
@@ -2266,7 +2270,11 @@ ${injection}`
       copyFileSync(bridgeParser, join(followupsDir, 'followups.ts'))
       copyFileSync(bridgeParser, join(brandFollowups, 'followups.ts'))
     }
-    console.log('  copied FollowUpRecommendations → workshop-frontend/src')
+    const uxConductor = join(ROOT, 'bridge/src/ux-conductor.ts')
+    if (existsSync(uxConductor)) {
+      copyFileSync(uxConductor, join(followupsDir, 'ux-conductor.ts'))
+    }
+    console.log('  copied FollowUpRecommendations + WorkspaceChrome → workshop-frontend/src')
   }
 
   if (existsSync(chatPath)) {
@@ -2274,7 +2282,8 @@ ${injection}`
     const importNeedle = 'import styles from "./ChatInterface.module.css";'
     const importInjection =
       'import styles from "./ChatInterface.module.css";\n' +
-      'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips'
+      'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips\n' +
+      'import { WorkspaceChrome } from "./WorkspaceChrome"; // Indobase chat+preview workspace'
 
     if (text.includes('FollowUpRecommendations') && text.includes('Indobase follow-up chips')) {
       const oldAllow =
@@ -2368,6 +2377,31 @@ ${injection}`
       }
     } else if (!text.includes(importNeedle)) {
       throw new Error('ChatInterface styles import drifted — cannot inject FollowUpRecommendations')
+    }
+
+    text = read(chatPath)
+    if (text.includes('Indobase follow-up chips') && !text.includes('Indobase chat+preview workspace')) {
+      text = text.replace(
+        'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips',
+        'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips\n' +
+          'import { WorkspaceChrome } from "./WorkspaceChrome"; // Indobase chat+preview workspace',
+      )
+    }
+    const composerNeedle = '{/* ── Bottom: input, update state, and cost ──────────────── */}'
+    if (text.includes(composerNeedle) && !text.includes('<WorkspaceChrome')) {
+      text = text.replace(
+        composerNeedle,
+        '<WorkspaceChrome onPick={(next) => { void handleSend(next) }} disabled={isAgentActive} />\n\n                  ' +
+          composerNeedle,
+      )
+      write(chatPath, text)
+      console.log('  ChatInterface ← WorkspaceChrome (chat + live preview)')
+    } else if (text.includes('<WorkspaceChrome')) {
+      write(chatPath, text)
+      console.log('  ChatInterface WorkspaceChrome already patched (skip)')
+    } else {
+      write(chatPath, text)
+      console.warn('  skip: ChatInterface composer needle drifted — WorkspaceChrome not mounted')
     }
   } else {
     throw new Error(`ChatInterface.tsx missing at ${chatPath}`)

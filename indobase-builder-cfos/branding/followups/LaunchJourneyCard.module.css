@@ -38,6 +38,13 @@
   color: var(--text-color-kumo-strong);
 }
 
+.failureBody {
+  margin: 0.35rem 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-color-kumo-default, #374151);
+}
+
 .liveLink {
   flex-shrink: 0;
   font-size: 12px;

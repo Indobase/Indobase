@@ -71,19 +71,55 @@ export const HOME_INTENTS: readonly HomeIntent[] = [
 export const UX_HOME_HEADLINE = 'What do you want to launch?'
 export const UX_HOME_SUBHEAD = 'Tell me what business you want. I will build it, show a preview, then launch it.'
 
+/** Default (store) job titles — production conductor ids stay the same. */
 export const PRODUCTION_JOB_STAGE_TITLES = {
-  classify: 'Understanding your business',
-  contract: 'Setting up your store',
-  provision: 'Store foundation',
-  generate: 'Building storefront',
+  classify: 'Understanding your brand',
+  contract: 'Creating your storefront',
+  provision: 'Setting up products & inventory',
+  generate: 'Building your pages',
   wire: 'Connecting checkout',
-  verify: 'Quality checks',
-  deploy: 'Publishing',
-  smoke: 'Testing store',
+  verify: 'Testing your store',
+  deploy: 'Preparing launch',
+  smoke: 'Checking your store',
   live: 'Live',
 } as const
 
 export type ProductionJobStageId = keyof typeof PRODUCTION_JOB_STAGE_TITLES
+
+export type WorkspaceProjectState =
+  | 'empty'
+  | 'building'
+  | 'preview_ready'
+  | 'production_ready'
+  | 'publishing'
+  | 'live'
+  | 'needs_attention'
+
+const STORE_JOB_TITLES: Record<string, string> = { ...PRODUCTION_JOB_STAGE_TITLES }
+
+const SAAS_JOB_TITLES: Record<string, string> = {
+  classify: 'Understanding your product',
+  contract: 'Creating your interface',
+  provision: 'Setting up accounts',
+  generate: 'Building your application',
+  wire: 'Connecting your data',
+  verify: 'Testing core flows',
+  deploy: 'Preparing launch',
+  smoke: 'Testing core flows',
+  live: 'Live',
+}
+
+const WEBSITE_JOB_TITLES: Record<string, string> = {
+  classify: 'Understanding your brand',
+  contract: 'Creating the design',
+  provision: 'Writing your content',
+  generate: 'Building your website',
+  wire: 'Connecting your pages',
+  verify: 'Checking responsiveness',
+  deploy: 'Preparing launch',
+  smoke: 'Checking responsiveness',
+  live: 'Live',
+}
 
 const JOURNEY_STAGE_LABELS = {
   account: 'Account',
@@ -121,20 +157,14 @@ export function appTypeToKind(appType?: string | null): BusinessAppKind {
   return 'store'
 }
 
+export function jobTitlesForKind(kind: BusinessAppKind = 'store'): Record<string, string> {
+  if (kind === 'app' || kind === 'booking') return SAAS_JOB_TITLES
+  if (kind === 'website' || kind === 'agency') return WEBSITE_JOB_TITLES
+  return STORE_JOB_TITLES
+}
+
 export function businessJobStageTitle(id: string, appType?: string | null): string {
-  const kind = appTypeToKind(appType)
-  const noun = businessNoun(kind)
-  const titles: Record<string, string> = {
-    classify: 'Understanding your business',
-    contract: kind === 'store' ? 'Setting up your store' : `Setting up your ${noun}`,
-    provision: kind === 'store' ? 'Store foundation' : `${noun[0].toUpperCase()}${noun.slice(1)} foundation`,
-    generate: kind === 'store' ? 'Building storefront' : `Building ${noun}`,
-    wire: kind === 'store' ? 'Connecting checkout' : 'Connecting accounts',
-    verify: 'Quality checks',
-    deploy: 'Publishing',
-    smoke: kind === 'store' ? 'Testing store' : `Testing ${noun}`,
-    live: 'Live',
-  }
+  const titles = jobTitlesForKind(appTypeToKind(appType))
   return titles[id] || id
 }
 
@@ -242,19 +272,611 @@ export function businessReadiness(flags: UxJourneyFlags): BusinessReadinessItem[
   ]
 }
 
+export type ProjectCapability =
+  | 'commerce'
+  | 'auth'
+  | 'customers'
+  | 'payments'
+  | 'analytics'
+  | 'storefront'
+  | 'bookings'
+  | 'services'
+  | 'calendar'
+  | 'content'
+  | 'leads'
+  | 'domains'
+  | 'data'
+  | 'activity'
+
+export type ControlCenterSection = {
+  id: string
+  label: string
+  capability: ProjectCapability | 'overview' | 'settings'
+}
+
+const CONTRACT_CAPABILITY_MAP: Record<string, ProjectCapability[]> = {
+  product_catalogue: ['commerce', 'storefront'],
+  cart: ['commerce'],
+  checkout_commerce_abi: ['commerce'],
+  inventory_reservations: ['commerce'],
+  admin_orders: ['commerce'],
+  payments_byok: ['payments'],
+  auth: ['auth', 'customers'],
+  user_profile: ['auth', 'customers'],
+  database: ['data'],
+  crud_foundation: ['data'],
+  public_site: ['storefront', 'content'],
+  seo_basics: ['content'],
+  legal_links: ['content'],
+}
+
+export function projectCapabilities(input: {
+  appType?: string | null
+  kind?: BusinessAppKind
+  backendReady?: boolean
+  paymentsReady?: boolean
+  contractCapabilityIds?: string[] | null
+}): ProjectCapability[] {
+  const kind = input.kind || appTypeToKind(input.appType)
+  const found = new Set<ProjectCapability>()
+  if (input.contractCapabilityIds?.length) {
+    for (const id of input.contractCapabilityIds) {
+      for (const cap of CONTRACT_CAPABILITY_MAP[id] || []) found.add(cap)
+    }
+  } else if (kind === 'app') {
+    found.add('auth')
+    found.add('customers')
+    found.add('data')
+    found.add('activity')
+    found.add('storefront')
+  } else if (kind === 'website' || kind === 'agency') {
+    found.add('storefront')
+    found.add('content')
+    found.add('leads')
+    found.add('domains')
+  } else if (kind === 'booking') {
+    found.add('bookings')
+    found.add('customers')
+    found.add('services')
+    found.add('calendar')
+    found.add('auth')
+  } else {
+    found.add('commerce')
+    found.add('storefront')
+    found.add('auth')
+    found.add('customers')
+  }
+  if (input.paymentsReady) found.add('payments')
+  else if (kind === 'store' || kind === 'ordering') found.add('payments')
+  if (input.backendReady && (kind === 'app' || kind === 'booking')) {
+    found.add('auth')
+    found.add('data')
+  }
+  return [...found]
+}
+
+export function controlCenterNav(
+  kind: BusinessAppKind,
+  capabilities: readonly ProjectCapability[],
+): ControlCenterSection[] {
+  const has = (id: ProjectCapability) => capabilities.includes(id)
+  const nav: ControlCenterSection[] = [{ id: 'overview', label: 'Overview', capability: 'overview' }]
+  if (kind === 'app') {
+    if (has('auth') || has('customers')) nav.push({ id: 'users', label: 'Users', capability: 'auth' })
+    if (has('data')) nav.push({ id: 'data', label: 'Data', capability: 'data' })
+    if (has('activity')) nav.push({ id: 'activity', label: 'Activity', capability: 'activity' })
+    nav.push({ id: 'application', label: 'Application', capability: 'storefront' })
+  } else if (kind === 'booking') {
+    if (has('bookings')) nav.push({ id: 'bookings', label: 'Bookings', capability: 'bookings' })
+    if (has('customers')) nav.push({ id: 'customers', label: 'Customers', capability: 'customers' })
+    if (has('services')) nav.push({ id: 'services', label: 'Services', capability: 'services' })
+    if (has('calendar')) nav.push({ id: 'calendar', label: 'Calendar', capability: 'calendar' })
+  } else if (kind === 'website' || kind === 'agency') {
+    nav.push({ id: 'website', label: 'Website', capability: 'storefront' })
+    if (has('content')) nav.push({ id: 'content', label: 'Content', capability: 'content' })
+    if (has('leads')) nav.push({ id: 'leads', label: 'Leads', capability: 'leads' })
+    if (has('domains')) nav.push({ id: 'domains', label: 'Domains', capability: 'domains' })
+  } else {
+    if (has('commerce')) nav.push({ id: 'products', label: 'Products', capability: 'commerce' })
+    if (has('commerce')) nav.push({ id: 'orders', label: 'Orders', capability: 'commerce' })
+    if (has('customers') || has('auth')) nav.push({ id: 'customers', label: 'Customers', capability: 'customers' })
+    nav.push({ id: 'storefront', label: 'Storefront', capability: 'storefront' })
+    if (has('payments')) nav.push({ id: 'payments', label: 'Payments', capability: 'payments' })
+  }
+  nav.push({ id: 'settings', label: 'Settings', capability: 'settings' })
+  return nav
+}
+
+export type PreviewEditIntent =
+  | 'modify_copy'
+  | 'change_image'
+  | 'make_premium'
+  | 'duplicate'
+  | 'hide'
+  | 'move'
+  | 'delete'
+  | 'edit'
+
+export type PreviewEditTarget = {
+  type: string
+  id: string
+  component: string
+  label?: string
+  source?: 'preview'
+  text?: string | null
+}
+
+export type WorkspaceScreen = {
+  section: string
+  entityId?: string | null
+  label?: string | null
+}
+
+export function previewEditSuggestions(target: PreviewEditTarget): UxAction[] {
+  const name = target.label || target.component || 'this section'
+  return [
+    { label: 'Make it more premium', message: `Make the ${name} more premium.` },
+    { label: 'Change headline', message: `Change the ${name} headline.` },
+    { label: 'Change image', message: `Change the ${name} image.` },
+  ]
+}
+
+export function formatPreviewEditMessage(input: {
+  target: PreviewEditTarget
+  intent: PreviewEditIntent
+  request: string
+}): string {
+  const request = input.request.trim()
+  const label = input.target.label || input.target.component || input.target.id
+  return [
+    'PREVIEW_EDIT',
+    `target: ${input.target.type} / ${input.target.id} (${input.target.component || label})`,
+    'source: preview',
+    `intent: ${input.intent}`,
+    input.target.text ? `current: ${input.target.text}` : null,
+    `request: ${request}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+export function formatScreenMessage(screen: WorkspaceScreen, request: string): string {
+  const lines = ['SCREEN', `section: ${screen.section}`]
+  if (screen.entityId) lines.push(`entity: ${screen.entityId}`)
+  if (screen.label) lines.push(`label: ${screen.label}`)
+  lines.push(`request: ${request.trim()}`)
+  return lines.join('\n')
+}
+
+export function composeScreenHint(screen?: WorkspaceScreen | null): string {
+  if (!screen?.section) return ''
+  const entity = screen.entityId ? ` → ${screen.entityId}` : ''
+  return [
+    '## Current screen (HARD — operator is looking at this)',
+    `The operator is on: ${screen.label || screen.section}${entity}.`,
+    'If they omit identifiers, use this screen. Do not ask which section they mean.',
+  ].join('\n')
+}
+
+export type AuthoritativeProject = {
+  state: WorkspaceProjectState
+  kind: BusinessAppKind
+  capabilities: ProjectCapability[]
+  nav: ControlCenterSection[]
+}
+
+export type WorkspaceSnapshot = {
+  guest?: boolean
+  live?: boolean
+  liveUrl?: string | null
+  previewUrl?: string | null
+  backendReady?: boolean
+  paymentsReady?: boolean
+  jobStatus?: string | null
+  jobStage?: string | null
+  appType?: string | null
+  failureCode?: string | null
+  failureMessage?: string | null
+  repairable?: boolean
+  stages?: Array<{ id: string; status: string; title?: string }>
+  contractCapabilityIds?: string[] | null
+  screen?: WorkspaceScreen | null
+  displayName?: string | null
+  /** When set, UI must project this — never invent a parallel isLive/hasCommerce. */
+  authority?: AuthoritativeProject | null
+}
+
+export type HumanLaunchFailure = {
+  title: string
+  body: string
+  code: string
+  repairable: boolean
+  actions: UxAction[]
+}
+
+const FAILURE_COPY: Record<string, { title: string; body: string }> = {
+  backend_required: {
+    title: "I couldn't safely launch this yet.",
+    body: "Your customer accounts aren't connected to the application.",
+  },
+  account_required: {
+    title: 'Create an account to launch.',
+    body: 'I need you signed in before this can go live.',
+  },
+  wire_required: {
+    title: "I couldn't safely launch this yet.",
+    body: "Checkout isn't connected to the storefront yet.",
+  },
+  contract_verifier_failed: {
+    title: "I couldn't safely launch this yet.",
+    body: "A required part of the application isn't ready.",
+  },
+  functional_verifier_failed: {
+    title: "I couldn't safely launch this yet.",
+    body: "A customer flow (like cart or checkout) didn't work correctly.",
+  },
+  gateway_not_ready: {
+    title: "Payments aren't connected yet.",
+    body: "Customers can still place orders, but online payment won't be available until you add your payment keys.",
+  },
+  payments_byok_required: {
+    title: "Payments aren't connected yet.",
+    body: "Customers can still place orders, but online payment won't be available until you add your payment keys.",
+  },
+  launch_blocked: {
+    title: 'Launch paused',
+    body: "I found an issue I couldn't safely resolve automatically.",
+  },
+  smoke_failed: {
+    title: "I couldn't safely launch this yet.",
+    body: "The live site didn't respond correctly when I checked it.",
+  },
+  deploy_failed: {
+    title: "I couldn't safely launch this yet.",
+    body: "I couldn't publish the site to your Indobase address.",
+  },
+}
+
+export function stripInternalFailureCopy(message: string): string {
+  return message
+    .replace(/^LAUNCH BLOCKED\s*[—–-]\s*/i, '')
+    .replace(/^production verification failed:\s*/i, '')
+    .replace(
+      /\b(backend_required|wire_required|account_required|contract_verifier_failed|functional_verifier_failed|guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|CAS|payment_revision|compare-and-set)\b/gi,
+      '',
+    )
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[:.—–-]+\s*/, '')
+    .trim()
+}
+
+export function humanizeLaunchFailure(input: {
+  code?: string | null
+  message?: string | null
+  repairable?: boolean
+}): HumanLaunchFailure {
+  const code = (input.code || 'launch_blocked').trim() || 'launch_blocked'
+  const known = FAILURE_COPY[code]
+  const repairable = input.repairable !== false && code !== 'account_required'
+  const stripped = input.message ? stripInternalFailureCopy(input.message) : ''
+  const title = known?.title || "I couldn't safely launch this yet."
+  const body =
+    known?.body || stripped || 'I found an issue I need to fix before this can go live.'
+  const actions: UxAction[] = repairable
+    ? [
+        {
+          label: 'Fix it automatically',
+          message: 'Fix the launch issue automatically and continue. Retry the same launch.',
+        },
+        { label: 'Continue editing', message: 'Continue editing the preview.' },
+      ]
+    : [
+        { label: 'Try again', message: 'Try launching again.' },
+        { label: 'Continue editing', message: 'Continue editing the preview.' },
+      ]
+  if (code === 'account_required') {
+    return {
+      title,
+      body,
+      code,
+      repairable: false,
+      actions: [
+        {
+          label: 'Create account',
+          message: 'Create my Indobase account so I can launch (name, email, and privacy consent).',
+        },
+      ],
+    }
+  }
+  return { title, body, code, repairable, actions: actions.slice(0, 3) }
+}
+
+export function resolveWorkspaceState(input: WorkspaceSnapshot): WorkspaceProjectState {
+  if (input.jobStatus === 'blocked' || (input.failureCode && input.jobStatus !== 'live')) {
+    return 'needs_attention'
+  }
+  if (input.jobStatus === 'live' || (input.live && input.liveUrl)) return 'live'
+  const stage = (input.jobStage || '').toLowerCase()
+  if (
+    input.jobStatus === 'running' &&
+    (stage === 'deploy' || stage === 'smoke' || stage === 'live')
+  ) {
+    return 'publishing'
+  }
+  if (
+    input.jobStatus === 'queued' ||
+    input.jobStatus === 'running' ||
+    input.jobStatus === 'awaiting_generate'
+  ) {
+    return 'building'
+  }
+  if (input.backendReady && !input.live) return 'production_ready'
+  if (input.previewUrl) return 'preview_ready'
+  return 'empty'
+}
+
+export type WorkspaceStageView = {
+  id: string
+  label: string
+  status: 'done' | 'current' | 'upcoming'
+}
+
+export type WorkspaceViewModel = {
+  state: WorkspaceProjectState
+  kind: BusinessAppKind
+  noun: string
+  kicker: string
+  headline: string
+  body: string
+  previewUrl: string | null
+  liveUrl: string | null
+  actions: UxAction[]
+  stages: WorkspaceStageView[]
+  failure: HumanLaunchFailure | null
+  showPreview: boolean
+  previewHint: string
+  capabilities: ProjectCapability[]
+  nav: ControlCenterSection[]
+  showControlCenter: boolean
+}
+
+function mapWorkspaceStages(
+  stages: WorkspaceSnapshot['stages'],
+  appType?: string | null,
+): WorkspaceStageView[] {
+  if (!stages?.length) return []
+  return stages.map((s) => ({
+    id: s.id,
+    label: businessJobStageTitle(s.id, appType),
+    status:
+      s.status === 'ok' || s.status === 'skipped'
+        ? ('done' as const)
+        : s.status === 'running' || s.status === 'failed'
+          ? ('current' as const)
+          : ('upcoming' as const),
+  }))
+}
+
+export function viewProjectsAuthority(view: WorkspaceViewModel, authority: AuthoritativeProject): boolean {
+  return (
+    view.state === authority.state &&
+    view.kind === authority.kind &&
+    view.capabilities.join('|') === authority.capabilities.join('|') &&
+    view.nav.map((n) => n.id).join('|') === authority.nav.map((n) => n.id).join('|')
+  )
+}
+
+export function workspaceViewModel(input: WorkspaceSnapshot): WorkspaceViewModel {
+  let kind = appTypeToKind(input.appType)
+  let state = resolveWorkspaceState(input)
+  let capabilities = projectCapabilities({
+    appType: input.appType,
+    kind,
+    backendReady: input.backendReady,
+    paymentsReady: input.paymentsReady,
+    contractCapabilityIds: input.contractCapabilityIds,
+  })
+  let nav = controlCenterNav(kind, capabilities)
+  if (input.authority) {
+    state = input.authority.state
+    kind = input.authority.kind
+    capabilities = input.authority.capabilities
+    nav = input.authority.nav
+  }
+  const noun = businessNoun(kind)
+  const liveUrl = input.liveUrl || null
+  const previewUrl = liveUrl || input.previewUrl || null
+  const stages = mapWorkspaceStages(input.stages, input.appType)
+  const flags: UxJourneyFlags = {
+    guest: Boolean(input.guest),
+    live: Boolean(state === 'live' || input.live),
+    backendReady: input.authority
+      ? input.authority.capabilities.some((c) => c === 'commerce' || c === 'auth' || c === 'data')
+      : Boolean(input.backendReady),
+    paymentsReady: input.authority
+      ? input.authority.capabilities.includes('payments')
+      : Boolean(input.paymentsReady),
+    liveUrl,
+    appKind: kind,
+  }
+  const failure =
+    state === 'needs_attention'
+      ? humanizeLaunchFailure({
+          code: input.failureCode,
+          message: input.failureMessage,
+          repairable: input.repairable,
+        })
+      : null
+  const base = { capabilities, nav, showControlCenter: state === 'live' }
+
+  if (state === 'empty') {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'Indobase',
+      headline: UX_HOME_HEADLINE,
+      body: UX_HOME_SUBHEAD,
+      previewUrl: null,
+      liveUrl: null,
+      actions: HOME_INTENTS.slice(0, 3).map((t) => ({ label: t.label, message: t.prompt })),
+      stages: [],
+      failure: null,
+      showPreview: true,
+      previewHint: 'Your preview will appear here as we build.',
+      showControlCenter: false,
+    }
+  }
+
+  if (state === 'building') {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'Building',
+      headline: `Building your ${noun}…`,
+      body: 'Watch the preview update as each part lands.',
+      previewUrl,
+      liveUrl: null,
+      actions: [],
+      stages,
+      failure: null,
+      showPreview: true,
+      previewHint: previewUrl ? 'Updating preview…' : 'Creating your preview…',
+      showControlCenter: false,
+    }
+  }
+
+  if (state === 'publishing') {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'Launch',
+      headline: `Publishing your ${noun}…`,
+      body: 'Final checks, then your live link.',
+      previewUrl,
+      liveUrl: null,
+      actions: [],
+      stages,
+      failure: null,
+      showPreview: true,
+      previewHint: 'Going live…',
+      showControlCenter: false,
+    }
+  }
+
+  if (state === 'needs_attention' && failure) {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'Needs attention',
+      headline: failure.title,
+      body: failure.body,
+      previewUrl,
+      liveUrl,
+      actions: failure.actions,
+      stages,
+      failure,
+      showPreview: Boolean(previewUrl),
+      previewHint: 'Launch paused until this is fixed.',
+      showControlCenter: false,
+    }
+  }
+
+  if (state === 'live') {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'LIVE',
+      headline: `Your ${noun} is live`,
+      body: liveUrl || `Your ${noun} is on Indobase.`,
+      previewUrl: liveUrl || previewUrl,
+      liveUrl,
+      actions: uxContextualActions(flags),
+      stages,
+      failure: null,
+      showPreview: true,
+      previewHint: 'Click anything to change it — or manage the business here.',
+      showControlCenter: true,
+    }
+  }
+
+  if (state === 'production_ready') {
+    return {
+      ...base,
+      state,
+      kind,
+      noun,
+      kicker: 'Ready',
+      headline: 'Everything is ready.',
+      body: `Your ${noun} can go live when you are.`,
+      previewUrl,
+      liveUrl: null,
+      actions: [
+        { label: `Launch ${noun}`, message: `Launch my ${noun} on Indobase now.` },
+        { label: 'Continue editing', message: 'Continue editing the preview.' },
+      ],
+      stages,
+      failure: null,
+      showPreview: true,
+      previewHint: 'Click a section to change it, then launch.',
+      showControlCenter: false,
+    }
+  }
+
+  return {
+    ...base,
+    state: 'preview_ready',
+    kind,
+    noun,
+    kicker: 'Preview',
+    headline: `Your ${noun} is ready to review.`,
+    body: 'Keep editing, or launch when it looks right.',
+    previewUrl,
+    liveUrl: null,
+    actions: [
+      { label: 'Continue editing', message: 'Continue editing the preview.' },
+      { label: `Launch ${noun}`, message: `Launch my ${noun} on Indobase now.` },
+    ],
+    stages,
+    failure: null,
+    showPreview: true,
+    previewHint: 'Click anything in the preview to change it.',
+    showControlCenter: false,
+  }
+}
+
 export const UX_CONDUCTOR_AGENT_RULES = `
 ## UX conductor (HARD — operator experience)
 
 The agent can be complex. The experience cannot.
 Speak only business language to the operator. Never name guidedBackend, ensureDatabase, applySchema, Commerce ABI, PocketBase, reservations, CAS, or job stage ids.
+Never quote raw failure codes (backend_required, wire_required, contract_verifier_failed). Say what the customer cannot do yet, then offer Fix it automatically / Try again / Continue editing.
 
 On a clear launch ask: infer architecture and start. Ask at most 1–2 high-value questions (name, currency, have products?). Do not ask about databases, auth, schema, storage, analytics, or payments unless they asked.
 
-While launchProductionApp runs, describe progress as:
-Understanding your business → Store foundation → Product catalog → Checkout → Storefront → Quality checks → Publishing.
+The operator sees chat beside a live preview. They can click a section in the preview; that sends a PREVIEW_EDIT block (target + intent + request). The target is authoritative — do not ask which element they meant. After the change, reply in one short sentence: “Done — I updated the hero.” They should see it in the preview immediately.
+
+When a message starts with SCREEN, the operator is on that Control Center section (and optional entity). Use it. Example: SCREEN / section: orders / entity: 1042 / request: Refund this → refund order 1042.
+
+Click-to-edit and Control Center are the same chat pipeline. Do not call a new tool for them. Visual UI still exists — do not tell them to “only ask AI” for products/orders.
+
+While launchProductionApp runs, describe progress in the vocabulary for that business:
+Store: Understanding your brand → Creating your storefront → Setting up products & inventory → Connecting checkout → Testing your store → Preparing launch.
+SaaS: Understanding your product → Creating your interface → Setting up accounts → Connecting your data → Testing core flows → Preparing launch.
+Website: Understanding your brand → Creating the design → Writing your content → Checking responsiveness → Preparing launch.
 Never quote raw stage ids.
 
-Chips: **1–3** relevant actions only. Labels like Launch store / Preview / Connect payments / Open store.
+Chips: **1–3** relevant actions only. Labels like Launch store / Preview / Connect payments / Open store / Manage store.
+After LIVE: chat stays on the Control Center. The operator can keep asking (“add 20 products”, “show today’s orders”, “change the homepage”). Do not send them away to a different product. Honor SCREEN / PREVIEW_EDIT context.
 After LIVE without payments: "Payments aren't connected yet. Customers can still place orders, but online payment won't be available."
 
 Build (preview) is not Launch (live). Only claim live when the job status is live.
