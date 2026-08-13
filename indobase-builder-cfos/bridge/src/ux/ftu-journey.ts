@@ -139,7 +139,9 @@ export function certifyFtuLogic(): { version: typeof FTU_CERT_VERSION; certified
   pass('FTU-04', resolveWorkspaceState({ jobStatus: 'running' }) === 'building', 'Builder start → building', 'completion')
   pass(
     'FTU-04b',
-    ['preview_ready', 'production_ready'].includes(resolveWorkspaceState({ previewUrl: '/live/x/' })),
+    ['preview_ready', 'production_ready'].includes(
+      resolveWorkspaceState({ previewUrl: '/live/x/', previewReady: true }),
+    ),
     'Preview URL → preview_ready',
     'completion',
   )
@@ -157,6 +159,7 @@ export function certifyFtuLogic(): { version: typeof FTU_CERT_VERSION; certified
     backendReady: true,
     appType: 'ecommerce',
     previewUrl: '/live/x/',
+    previewReady: true,
     stages: [
       { id: 'verify', status: 'ok' },
       { id: 'deploy', status: 'pending' },

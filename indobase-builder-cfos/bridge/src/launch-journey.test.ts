@@ -40,18 +40,33 @@ describe('buildLaunchJourneyState', () => {
     assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
   })
 
-  it('signed-in without publish pushes Go Live first', () => {
+  it('signed-in without a real preview stays on preview — managed backend is not a store', () => {
     const journey = buildLaunchJourneyState(memberSession(), {})
+    assert.equal(journey.current_stage, 'preview')
+    assert.match(journey.next_action?.label || '', /Start building/i)
+    assert.equal(journey.backend_ready, false)
+    assert.equal(journey.stages.find((s) => s.id === 'preview')?.status, 'current')
+    assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
+  })
+
+  it('confirmed preview without publish offers Launch store', () => {
+    const journey = buildLaunchJourneyState(memberSession(), {
+      previewReady: true,
+      previewUrl: 'https://builder.indobase.in/live/threadline/',
+      catalogReady: true,
+    })
     assert.equal(journey.current_stage, 'live')
     assert.match(journey.next_action?.label || '', /Launch store/i)
     assert.equal(journey.backend_ready, true)
-    assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
+    assert.ok(journey.completed_stages.includes('preview'))
   })
 
   it('live site advances to Add payments (domain is secondary chip)', () => {
     const journey = buildLaunchJourneyState(memberSession(), {
       subdomain: 'threadline',
       url: 'https://threadline.sites.indobase.in',
+      catalogReady: true,
+      previewReady: true,
     })
     assert.equal(journey.current_stage, 'payments')
     assert.equal(journey.live_url, 'https://threadline.sites.indobase.in')
@@ -104,6 +119,8 @@ describe('buildLaunchJourneyState', () => {
     const journey = buildLaunchJourneyState(session, {
       subdomain: 'threadline',
       url: 'https://threadline.sites.indobase.in',
+      catalogReady: true,
+      previewReady: true,
     })
     assert.equal(journey.current_stage, 'production')
     assert.equal(journey.flags.is_production_ready, true)
@@ -128,7 +145,8 @@ describe('buildLaunchJourneyState', () => {
       {},
     )
     const preview = journey.stages.find((s) => s.id === 'preview')
-    assert.equal(preview?.status, 'upcoming')
+    assert.equal(preview?.status, 'current')
+    assert.equal(journey.current_stage, 'preview')
     assert.equal(journey.flags.is_live, false)
   })
 })

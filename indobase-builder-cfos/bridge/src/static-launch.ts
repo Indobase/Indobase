@@ -307,27 +307,41 @@ export async function resolveWorkspaceRefForHost(hostname: string): Promise<stri
   return null
 }
 
+export async function previewArtifactExists(workspaceRef: string): Promise<boolean> {
+  try {
+    await access(path.join(launchRoot(), sanitizeRef(workspaceRef), 'index.html'))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function getLaunchStatus(workspaceRef: string): Promise<{
   subdomain?: string
   customDomain?: string
-  previewUrl: string
+  previewUrl: string | null
+  previewReady: boolean
   url?: string
 }> {
   const ref = sanitizeRef(workspaceRef)
   const reg = await loadRegistry()
   const row = reg.byRef[ref] || {}
-  const previewUrl = `${publicBase()}/live/${ref}/`
+  const hasArtifact = await previewArtifactExists(ref)
+  const published = Boolean(row.subdomain || row.customDomain)
   const suffix = domainSuffix()
-  const url = row.customDomain
+  const liveUrl = row.customDomain
     ? `https://${row.customDomain}`
     : row.subdomain
       ? `https://${row.subdomain}.${suffix}`
-      : previewUrl
+      : null
+  const draftUrl = `${publicBase()}/live/${ref}/`
+  const previewReady = hasArtifact || published
   return {
     subdomain: row.subdomain,
     customDomain: row.customDomain,
-    previewUrl,
-    url,
+    previewUrl: previewReady ? liveUrl || draftUrl : null,
+    previewReady,
+    url: liveUrl || undefined,
   }
 }
 

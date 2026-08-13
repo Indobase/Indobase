@@ -107,8 +107,13 @@ describe('UX conductor', () => {
     assert.equal(resolveWorkspaceState({}), 'empty')
     assert.equal(resolveWorkspaceState({ jobStatus: 'running', jobStage: 'generate' }), 'building')
     assert.equal(resolveWorkspaceState({ jobStatus: 'running', jobStage: 'deploy' }), 'publishing')
-    assert.equal(resolveWorkspaceState({ previewUrl: '/live/abc/' }), 'preview_ready')
-    assert.equal(resolveWorkspaceState({ backendReady: true }), 'production_ready')
+    assert.equal(resolveWorkspaceState({ previewUrl: '/live/abc/' }), 'empty')
+    assert.equal(resolveWorkspaceState({ previewReady: true, previewUrl: '/live/abc/' }), 'preview_ready')
+    assert.equal(resolveWorkspaceState({ backendReady: true }), 'building')
+    assert.equal(
+      resolveWorkspaceState({ backendReady: true, previewReady: true, previewUrl: '/live/abc/' }),
+      'production_ready',
+    )
     assert.equal(
       resolveWorkspaceState({ live: true, liveUrl: 'https://urbanthread.sites.indobase.in' }),
       'live',
@@ -159,7 +164,12 @@ describe('UX conductor', () => {
     assert.match(building.headline, /Building your store/)
     assert.equal(building.stages[1]?.label, 'Setting up products & inventory')
 
-    const ready = workspaceViewModel({ backendReady: true, appType: 'ecommerce', previewUrl: '/live/x/' })
+    const ready = workspaceViewModel({
+      backendReady: true,
+      appType: 'ecommerce',
+      previewUrl: '/live/x/',
+      previewReady: true,
+    })
     assert.equal(ready.state, 'production_ready')
     assert.ok(ready.actions.some((a) => /Launch store/i.test(a.label)))
 

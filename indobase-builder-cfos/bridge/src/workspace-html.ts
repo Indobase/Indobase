@@ -111,9 +111,9 @@ export function injectIndobaseContextBootstrap(html: string): string {
         tool_alias: '/api/os/tools/goLive',
       };
       window.__INDOBASE_PREVIEW_URL__ =
+        (s.preview && s.preview.status === 'ready' && s.preview.url) ||
         (s.journey && s.journey.live_url) ||
-        (s.production_job && s.production_job.url) ||
-        (s.launch && s.launch.draft_preview_path) ||
+        (s.production_job && s.production_job.status === 'live' && s.production_job.url) ||
         null;
       window.__INDOBASE_PROJECT__ = s.project || null;
       // ChatInterface meters each user send via this path (hard Free-plan enforce).

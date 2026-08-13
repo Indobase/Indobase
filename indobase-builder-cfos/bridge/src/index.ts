@@ -121,6 +121,7 @@ import { rememberPendingSession, takePendingSessionForClaim } from './pending-se
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
 import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
 import { setWorkspaceScreen } from './ux-screen-store.js'
+import { listCommerceOrders, listCommerceProducts } from './commerce/pb-adapter.js'
 
 initBridgeSentry('builder-cfos')
 
@@ -807,7 +808,7 @@ app.post('/auth/verify', async (c) => {
       ...buildAuthVerifySuccessPayload(session, ws.provision_state),
       pending_claim: true,
       message:
-        'Verified. Your browser will finish sign-in automatically in a moment (or refresh Indobase OS).',
+        "You're signed in. I'll continue with what you asked for.",
     })
   }
 
@@ -2143,6 +2144,26 @@ app.get('/api/session', async (c) => {
 
   const productionJob = guest ? null : getLatestProductionLaunchJob(session.projectRef)
 
+  let businessSnapshot = null
+  const catalogReady = Boolean(
+    productionJob?.evidence?.catalog_seeded || productionJob?.evidence?.backend_ready || productionJob?.status === 'live',
+  )
+  if (!guest && catalogReady) {
+    try {
+      const [products, orders] = await Promise.all([
+        listCommerceProducts(session.projectRef),
+        listCommerceOrders(session.projectRef),
+      ])
+      businessSnapshot = { products, orders }
+    } catch {
+      businessSnapshot = { products: [], orders: [] }
+    }
+  }
+
+  if (launchStatus) {
+    launchStatus = { ...launchStatus, catalogReady }
+  }
+
   return c.json(
     buildSessionApiPayload({
       session,
@@ -2155,6 +2176,7 @@ app.get('/api/session', async (c) => {
       promptQuota,
       launchStatus,
       productionJob,
+      businessSnapshot,
     }),
   )
 })

@@ -74,7 +74,7 @@ export function injectAuthChrome(html: string): string {
   <div id="ib-auth-backdrop" hidden></div>
   <div id="ib-auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ib-auth-title">
     <h2 id="ib-auth-title">Create your Indobase account</h2>
-    <p class="lead" id="ib-auth-lead">Create your Indobase account to publish, enable backends, and keep building.</p>
+    <p class="lead" id="ib-auth-lead">Create your Indobase account to launch and keep building.</p>
     <div id="ib-auth-err" role="alert"></div>
     <div id="ib-auth-ok"></div>
     <div id="ib-auth-step-start">

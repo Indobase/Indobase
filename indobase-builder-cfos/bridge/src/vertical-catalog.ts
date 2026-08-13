@@ -248,6 +248,50 @@ export const ECOMMERCE_VERTICALS: readonly AppVertical[] = [
     ],
   },
   {
+    id: 'sneakers',
+    label: 'Premium sneakers',
+    app_types: ['ecommerce'],
+    copy_hint: 'Premium sneaker storefront — editorial hero, limited drops, performance + lifestyle pairs.',
+    products: [
+      {
+        slug: 'apex-runner',
+        name: 'Apex Runner',
+        description: 'Lightweight premium runner with a sculpted sole.',
+        price: '12999',
+        currency: 'INR',
+        stock: 28,
+        image_query: 'premium running sneaker white',
+      },
+      {
+        slug: 'city-court',
+        name: 'City Court',
+        description: 'Clean court sneaker for everyday wear.',
+        price: '8999',
+        currency: 'INR',
+        stock: 36,
+        image_query: 'minimal white court sneaker',
+      },
+      {
+        slug: 'night-shift',
+        name: 'Night Shift',
+        description: 'Black-on-black runner for after-hours.',
+        price: '11999',
+        currency: 'INR',
+        stock: 22,
+        image_query: 'black premium sneaker product',
+      },
+      {
+        slug: 'studio-low',
+        name: 'Studio Low',
+        description: 'Low-profile leather sneaker with a quiet silhouette.',
+        price: '14999',
+        currency: 'INR',
+        stock: 18,
+        image_query: 'leather luxury sneaker product',
+      },
+    ],
+  },
+  {
     id: 'sports',
     label: 'Sports & outdoors',
     app_types: ['ecommerce'],
@@ -366,18 +410,49 @@ export const DEFAULT_GENERIC_SCHEMA_TABLES: Array<Record<string, unknown>> = [
   },
 ]
 
-export function findEcommerceVertical(raw: string | null | undefined): AppVertical | null {
+const VERTICAL_ALIASES: Record<string, string> = {
+  sneaker: 'sneakers',
+  sneakers: 'sneakers',
+  kicks: 'sneakers',
+  trainer: 'sneakers',
+  trainers: 'sneakers',
+  footwear: 'sneakers',
+  shoe: 'sneakers',
+  shoes: 'sneakers',
+  streetwear: 'apparel',
+  fashion: 'apparel',
+  clothing: 'apparel',
+  gadget: 'electronics',
+  gadgets: 'electronics',
+  grocery: 'food-grocery',
+  skincare: 'beauty',
+  yoga: 'sports',
+  fitness: 'sports',
+  outdoor: 'sports',
+  outdoors: 'sports',
+  decor: 'home',
+}
+
+export function resolveEcommerceVerticalId(raw: string | null | undefined): string | null {
   const q = (raw || '').trim().toLowerCase()
   if (!q) return null
+  for (const [alias, id] of Object.entries(VERTICAL_ALIASES)) {
+    if (q === alias || q === id) return id
+    if (new RegExp(`\\b${alias}s?\\b`, 'i').test(q)) return id
+  }
   for (const v of ECOMMERCE_VERTICALS) {
-    if (v.id === q) return v
-    if (v.label.toLowerCase() === q) return v
-    if (q.includes(v.id)) return v
-    // Apparel / fashion → apparel
-    const first = v.label.split('/')[0]?.trim().toLowerCase()
-    if (first && q.includes(first)) return v
+    if (v.id === q || v.label.toLowerCase() === q) return v.id
+    if (q.includes(v.id)) return v.id
+    const first = v.label.split(/[/&]/)[0]?.trim().toLowerCase()
+    if (first && first.length > 3 && q.includes(first)) return v.id
   }
   return null
+}
+
+export function findEcommerceVertical(raw: string | null | undefined): AppVertical | null {
+  const id = resolveEcommerceVerticalId(raw)
+  if (!id) return null
+  return ECOMMERCE_VERTICALS.find((v) => v.id === id) || null
 }
 
 export function ecommerceVerticalFollowups(

@@ -58,6 +58,11 @@ export type LaunchStatusSnapshot = {
   subdomain?: string
   customDomain?: string
   url?: string
+  previewUrl?: string | null
+  /** Artifact exists and is the session preview — not a guessed path. */
+  previewReady?: boolean
+  /** This project's catalog/commerce is provisioned — not merely managed PocketBase attached. */
+  catalogReady?: boolean
 }
 
 function sessionLooksPaymentsReady(session: Session): boolean {
@@ -75,7 +80,7 @@ export function buildLaunchJourneyState(
   launch?: LaunchStatusSnapshot | null,
 ): LaunchJourneyState {
   const guest = isGuestSession(session)
-  const backendReady = Boolean(session.backend?.api_url || session.backend?.rest_url)
+  const catalogReady = Boolean(launch?.catalogReady)
   const paymentsReady = sessionLooksPaymentsReady(session)
   const published = Boolean(launch?.subdomain || launch?.customDomain)
   const liveUrl =
@@ -86,24 +91,25 @@ export function buildLaunchJourneyState(
     (published && launch?.customDomain ? `https://${launch.customDomain}` : null)
 
   const accountDone = !guest
-  const backendDone = backendReady
+  const backendDone = catalogReady
   const liveDone = published
-  // Preview is not "signed in" — require backend or a published site.
-  const previewDone = liveDone || backendDone
+  const previewDone = Boolean(launch?.previewReady) || liveDone
   const paymentsDone = paymentsReady
 
   const productionDone = liveDone && backendDone && paymentsDone
 
   let currentStage: LaunchJourneyStageId = 'account'
-  if (!guest && !liveDone) currentStage = 'live'
+  if (guest) currentStage = 'account'
+  else if (!previewDone && !liveDone) currentStage = 'preview'
+  else if (previewDone && !liveDone) currentStage = 'live'
   else if (liveDone && !backendDone) currentStage = 'backend'
   else if (liveDone && backendDone && !paymentsDone) currentStage = 'payments'
   else if (productionDone) currentStage = 'production'
-  else if (!guest) currentStage = 'live'
+  else currentStage = 'preview'
 
   const stages: LaunchJourneyStage[] = [
     stage('account', businessJourneyStageLabel('account'), accountDone, currentStage === 'account'),
-    stage('preview', businessJourneyStageLabel('preview'), previewDone, false),
+    stage('preview', businessJourneyStageLabel('preview'), previewDone, currentStage === 'preview'),
     stage('backend', businessJourneyStageLabel('backend'), backendDone, currentStage === 'backend'),
     stage('live', businessJourneyStageLabel('live'), liveDone, currentStage === 'live'),
     stage('payments', businessJourneyStageLabel('payments'), paymentsDone, currentStage === 'payments'),
@@ -115,6 +121,7 @@ export function buildLaunchJourneyState(
     live: liveDone,
     backendReady: backendDone,
     paymentsReady: paymentsDone,
+    previewReady: previewDone,
     liveUrl,
     appKind: 'store',
   }
@@ -135,7 +142,7 @@ export function buildLaunchJourneyState(
   return {
     guest,
     live_url: liveUrl,
-    backend_ready: backendReady,
+    backend_ready: backendDone,
     payments_ready: paymentsReady,
     current_stage: currentStage,
     stages,

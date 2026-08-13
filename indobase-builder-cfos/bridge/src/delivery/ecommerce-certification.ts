@@ -141,7 +141,7 @@ export function certifyStorefrontAndAdmin(store: EcommerceCertStore): CertCheck[
     check('responsive', 'storefront', true, /viewport/.test(html) && /@media/.test(html), 'Viewport + responsive breakpoints'),
     check('no_runtime_pb_orders', 'storefront', true, !/\/api\/collections\/[^"'/\s]*orders/.test(html), 'No PocketBase order POSTs'),
     check('commerce_verifiers', 'commerce', true, verifiersOk, verifiersOk ? 'Static commerce verifiers pass' : verifiers.filter((v) => !v.ok).map((v) => v.id).join(',')),
-    check('server_pricing_copy', 'commerce', true, /Final price is calculated by Indobase Commerce/.test(html), 'UI states server-authoritative price'),
+    check('server_pricing_copy', 'commerce', true, /Final price is confirmed at checkout/.test(html), 'UI states server-authoritative price'),
     check('admin_products', 'admin', true, /id="products"/.test(admin) && /Inventory/.test(admin), 'Admin shows inventory'),
     check('admin_orders', 'admin', true, /id="orders"/.test(admin) && /Orders/.test(admin), 'Admin shows orders'),
     check('admin_customer_order', 'admin', true, /Customer/.test(admin) && /buyer@example.com|email/i.test(admin), 'Admin order has customer field'),

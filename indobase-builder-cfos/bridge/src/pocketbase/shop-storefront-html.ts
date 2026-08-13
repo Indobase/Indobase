@@ -17,7 +17,7 @@ export function buildManagedShopStorefrontHtml(opts: {
   products?: ManagedShopStorefrontRow[]
 }): string {
   const brand = (opts.brand || 'Shop').replace(/[<>&"]/g, '')
-  const tagline = (opts.tagline || 'Order online — powered by Indobase Commerce.').replace(
+  const tagline = (opts.tagline || 'Order online.').replace(
     /[<>&"]/g,
     '',
   )
@@ -132,7 +132,7 @@ export function buildManagedShopStorefrontHtml(opts: {
 <dialog id="confirmDlg">
   <div class="dlg">
     <h2>Order confirmed</h2>
-    <p class="meta" id="confirmNote">Your order was created by Indobase Commerce.</p>
+    <p class="meta" id="confirmNote">Your order is confirmed.</p>
     <p><strong id="confirmOrderId"></strong></p>
     <p class="meta" id="confirmAccountHint">Create an account to track your orders.</p>
     <div class="actions">
@@ -146,7 +146,7 @@ export function buildManagedShopStorefrontHtml(opts: {
     <h2>Checkout</h2>
     <ul id="cartList"></ul>
     <div class="row"><strong>Estimated</strong><strong id="cartTotal">—</strong></div>
-    <p class="meta">Final price is calculated by Indobase Commerce (not from this page).</p>
+    <p class="meta">Final price is confirmed at checkout.</p>
     <label>Name<input type="text" name="name" placeholder="Your name" autocomplete="name"/></label>
     <label>Email<input required type="email" name="email" placeholder="you@example.com" autocomplete="email"/></label>
     <p class="meta" id="checkoutNote">Guest checkout — sign in anytime to track this order. Final charge is server-priced.</p>
@@ -246,7 +246,7 @@ async function loadProducts(){
     var live=await commerce.products.list();
     if(live&&live.length) products=live;
     render();
-    document.querySelector('#status').textContent='Live catalog via Indobase Commerce · '+products.length+' products';
+    document.querySelector('#status').textContent=products.length+' products';
   }catch(e){
     render();
     document.querySelector('#status').textContent='Showing snapshot — catalog refresh failed';

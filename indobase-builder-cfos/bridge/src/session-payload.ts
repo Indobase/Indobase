@@ -62,6 +62,9 @@ import {
   resolveWorkspaceState,
 } from './ux-conductor.js'
 import { getWorkspaceScreen } from './ux-screen-store.js'
+import { composeAuthoritativeStateHint, type BusinessSnapshotSummary } from './ux/agent-truth.js'
+import { getBusinessSpec, type BusinessSpec } from './ux/business-spec.js'
+import { resolvePreviewGate, type PreviewStatus } from './ux/preview-gate.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -90,16 +93,22 @@ export function sessionLooksPaymentsReady(session: Session): boolean {
 /**
  * Compact Zero→One journey appendix for agent_hint (steers chips; does not invent UI cards).
  */
-export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatusSnapshot | null): string {
-  const backendReady = Boolean(session.backend?.api_url || session.backend?.rest_url)
+export function buildJourneyStateAppendix(
+  session: Session,
+  launch?: LaunchStatusSnapshot | null,
+  previewStatus?: PreviewStatus,
+): string {
   const paymentsReady = sessionLooksPaymentsReady(session)
   const journey = buildLaunchJourneyState(session, launch)
+  const catalogReady = Boolean(launch?.catalogReady || journey.flags.is_backend_ready)
   const lines = [
     '## Journey state (session)',
     '## North star (HARD)',
-    '- Always take the operator to a **production launch job** (POST /api/os/apps/launch) — not a chip ladder of ensure* tools.',
-    '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name guidedBackend/ensure*/PocketBase/CAS. Never restart guest/auth once signed in.',
-    `- Backend: ${backendReady ? 'ready' : 'not ready'}`,
+    '- Loop: infer BusinessSpec → create a real preview → iterate → launchProductionApp → operate from BusinessSnapshot.',
+    '- Preview is a hard gate. Never claim preview or LIVE unless Authoritative state says so.',
+    '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name guidedBackend/ensure*/PocketBase/CAS. Never restart guest/auth once signed in. Never ask them to refresh.',
+    `- Catalog: ${catalogReady ? 'ready' : 'not ready'}`,
+    `- Preview: ${previewStatus || (launch?.previewReady ? 'ready' : 'absent')}`,
     `- Journey stage: ${journey.current_stage}`,
     `- Preview policy: production LIVE is **launchProductionApp**. launchBusiness is preview/draft only (production:false).`,
   ]
@@ -113,17 +122,15 @@ export function buildJourneyStateAppendix(session: Session, launch?: LaunchStatu
   }
   lines.push('## Default store ladder (when building a shop)')
   lines.push(
-    'Clear launch/store ask → launchProductionApp { appType:"ecommerce" }. The job owns guidedBackend + catalog + Commerce ABI + verify + deploy. After LIVE: Domain / Add payments / checklist. ≤4 chips; rewrite for brand.',
+    'After account: infer BusinessSpec from their words (sneakers stay sneakers). Create a reachable preview first. On Launch / Go Live → launchProductionApp { appType:"ecommerce", vertical from spec }. The job owns catalog + commerce. After LIVE: Domain / Add payments / checklist. ≤4 chips.',
   )
-  if (backendReady) {
-    const ref = session.backend?.project_ref || session.projectRef
-    lines.push(`- Backend project_ref: ${ref}`)
+  if (catalogReady) {
     lines.push(
-      '- Prefer chips: Go Live via launchProductionApp → Domain / Add payments / Checklist. Do not call guidedBackend/ensure* yourself.',
+      '- Catalog is ready. Prefer chips: Launch store via launchProductionApp (if not live) → Domain / Add payments / Checklist. Do not call guidedBackend/ensure* for production.',
     )
   } else {
     lines.push(
-      '- Prefer path: launchProductionApp for production. Preview-only HTML may use launchBusiness production:false. Niche pick must NOT call guidedBackend.',
+      '- Catalog is not ready. Do not claim the store is ready. Build preview or call launchProductionApp on Launch — the job provisions catalog. Niche pick must NOT call guidedBackend.',
     )
   }
   if (paymentsReady) {
@@ -152,11 +159,33 @@ export function buildOnboardingGate(session: Session): SessionOnboardingGate | n
   }
 }
 
-export function composeAgentHintForSession(session: Session, agentHint: string): string {
+export function composeAgentHintForSession(
+  session: Session,
+  agentHint: string,
+  truth?: {
+    launch?: LaunchStatusSnapshot | null
+    previewStatus?: PreviewStatus
+    projectState?: string
+    liveUrl?: string | null
+    previewUrl?: string | null
+    catalogReady?: boolean
+    spec?: BusinessSpec | null
+    snapshot?: BusinessSnapshotSummary | null
+  },
+): string {
   const guest = isGuestSession(session)
-  const journey = buildJourneyStateAppendix(session)
+  const journey = buildJourneyStateAppendix(session, truth?.launch, truth?.previewStatus)
   const screenHint = composeScreenHint(getWorkspaceScreen(session.projectRef))
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const truthHint = composeAuthoritativeStateHint({
+    projectState: truth?.projectState || 'empty',
+    previewStatus: truth?.previewStatus || 'absent',
+    previewUrl: truth?.previewUrl || null,
+    liveUrl: truth?.liveUrl || null,
+    catalogReady: Boolean(truth?.catalogReady),
+    spec: truth?.spec || getBusinessSpec(session.projectRef),
+    snapshot: truth?.snapshot || null,
+  })
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${truthHint}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -171,17 +200,30 @@ function buildAuthoritativeProject(
   session: Session,
   journey: ReturnType<typeof buildLaunchJourneyState>,
   job?: ProductionLaunchJob | null,
+  launch?: LaunchStatusSnapshot | null,
 ) {
   const appType = job?.appType || null
   const kind = appTypeToKind(appType)
-  const backendReady = Boolean(session.backend?.api_url || journey.flags.is_backend_ready)
+  const catalogReady = Boolean(
+    job?.evidence?.catalog_seeded || job?.evidence?.backend_ready || launch?.catalogReady || journey.flags.is_backend_ready,
+  )
   const paymentsReady = Boolean(journey.flags.is_payments_ready || sessionLooksPaymentsReady(session))
-  const liveUrl = job?.url || journey.live_url || null
-  const state = resolveWorkspaceState({
-    live: Boolean(job?.status === 'live' || journey.flags.is_live || liveUrl),
+  const live = job?.status === 'live' || journey.flags.is_live
+  const liveUrl = live ? job?.url || journey.live_url || null : null
+  const preview = resolvePreviewGate({
+    jobStatus: job?.status || null,
+    artifactExists: Boolean(launch?.previewReady),
+    published: Boolean(launch?.subdomain || launch?.customDomain),
+    previewUrl: launch?.previewUrl || null,
     liveUrl,
-    previewUrl: liveUrl,
-    backendReady,
+  })
+  const state = resolveWorkspaceState({
+    live,
+    liveUrl,
+    previewUrl: preview.url,
+    previewReady: preview.status === 'ready',
+    previewStatus: preview.status,
+    backendReady: catalogReady,
     paymentsReady,
     jobStatus: job?.status || null,
     appType,
@@ -190,7 +232,7 @@ function buildAuthoritativeProject(
   const capabilities = projectCapabilities({
     appType,
     kind,
-    backendReady,
+    backendReady: catalogReady,
     paymentsReady,
     contractCapabilityIds: job?.contract?.capabilities?.map((c) => c.id) || null,
   })
@@ -199,6 +241,9 @@ function buildAuthoritativeProject(
     kind,
     capabilities,
     nav: controlCenterNav(kind, capabilities),
+    preview,
+    catalogReady,
+    liveUrl,
   }
 }
 
@@ -214,6 +259,7 @@ export type BuildSessionApiPayloadInput = {
   promptQuota?: OsPromptQuota | null
   launchStatus?: LaunchStatusSnapshot | null
   productionJob?: ProductionLaunchJob | null
+  businessSnapshot?: BusinessSnapshotSummary | null
 }
 
 export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
@@ -225,7 +271,17 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     guest ? null : input.promptQuota ?? null,
   )
   const actions = discoverableActionsForSession({ guest })
-  const journey = buildLaunchJourneyState(session, input.launchStatus)
+  const catalogReady = Boolean(
+    input.productionJob?.evidence?.catalog_seeded ||
+      input.productionJob?.evidence?.backend_ready ||
+      input.launchStatus?.catalogReady,
+  )
+  const journey = buildLaunchJourneyState(session, {
+    ...input.launchStatus,
+    catalogReady: catalogReady || input.launchStatus?.catalogReady,
+  })
+  const authority = buildAuthoritativeProject(session, journey, input.productionJob, input.launchStatus)
+  const spec = getBusinessSpec(session.projectRef)
   const productionJob = input.productionJob
     ? {
         ...summarizeProductionLaunchJob(input.productionJob),
@@ -264,7 +320,19 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     os_proxy_path: input.osProxyPath,
     indobase_proxy_path: input.indobaseProxyPath,
     generation_context: input.generation,
-    agent_hint: composeAgentHintForSession(session, input.agentHint),
+    agent_hint: composeAgentHintForSession(session, input.agentHint, {
+      launch: {
+        ...input.launchStatus,
+        catalogReady,
+      },
+      previewStatus: authority.preview.status,
+      projectState: authority.state,
+      liveUrl: authority.liveUrl,
+      previewUrl: authority.preview.url,
+      catalogReady: authority.catalogReady,
+      spec,
+      snapshot: input.businessSnapshot || null,
+    }),
     onboarding,
     journey,
     auth: {
@@ -290,11 +358,25 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
         'HARD: Production LIVE is launchProductionApp (POST /api/os/apps/launch). launchBusiness is preview/draft only (production:false). Never tell the operator to use Gadget iframe preview.',
-      draft_preview_path: journey.live_url ? null : `/live/${session.projectRef}/`,
+      draft_preview_path:
+        journey.live_url || authority.preview.status !== 'ready' ? null : `/live/${session.projectRef}/`,
       enforce_static_over_gadget: true,
     },
     production_job: productionJob,
-    project: buildAuthoritativeProject(session, journey, input.productionJob),
+    project: {
+      state: authority.state,
+      kind: authority.kind,
+      capabilities: authority.capabilities,
+      nav: authority.nav,
+    },
+    preview: {
+      status: authority.preview.status,
+      url: authority.preview.url,
+    },
+    business: {
+      spec,
+      snapshot: input.businessSnapshot || null,
+    },
     screen: getWorkspaceScreen(session.projectRef),
     home: {
       headline: OS_HOME_HEADLINE,

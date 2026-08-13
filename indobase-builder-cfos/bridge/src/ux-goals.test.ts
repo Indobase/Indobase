@@ -113,7 +113,11 @@ describe('UX goal certification', () => {
 
   it('project state is derived from the job/journey — UI does not invent a parallel model', () => {
     assert.equal(resolveWorkspaceState({ jobStatus: 'running', jobStage: 'generate' }), 'building')
-    assert.equal(resolveWorkspaceState({ backendReady: true }), 'production_ready')
+    assert.equal(resolveWorkspaceState({ backendReady: true }), 'building')
+    assert.equal(
+      resolveWorkspaceState({ backendReady: true, previewReady: true, previewUrl: '/live/x/' }),
+      'production_ready',
+    )
     assert.equal(
       resolveWorkspaceState({ live: true, liveUrl: 'https://x.sites.indobase.in' }),
       'live',

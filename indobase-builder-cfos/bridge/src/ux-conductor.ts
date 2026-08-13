@@ -135,6 +135,8 @@ export type UxJourneyFlags = {
   live: boolean
   backendReady: boolean
   paymentsReady: boolean
+  /** Confirmed reachable preview — never a constructed /live/{ref}/ path. */
+  previewReady?: boolean
   liveUrl?: string | null
   appKind?: BusinessAppKind
 }
@@ -184,7 +186,7 @@ export function uxHeadline(flags: UxJourneyFlags): string {
   if (flags.live && !flags.paymentsReady) {
     return `Your ${noun} is live — payments are optional until you connect them`
   }
-  if (flags.backendReady) return `Preview ready — launch your ${noun} when you are`
+  if (flags.previewReady) return `Preview ready — launch your ${noun} when you are`
   return `Tell me what to build — then watch the preview`
 }
 
@@ -239,10 +241,10 @@ export function uxContextualActions(flags: UxJourneyFlags): UxAction[] {
       { label: 'Customize design', message: 'Make the storefront look more premium.' },
     ]
   }
-  if (flags.backendReady) {
+  if (flags.previewReady) {
     return [
       { label: 'Launch store', message: 'Launch my store on Indobase now.' },
-      { label: 'Preview store', message: 'Show me the preview of my store.' },
+      { label: 'Continue editing', message: 'Continue editing the preview.' },
     ]
   }
   return [
@@ -470,6 +472,9 @@ export type WorkspaceSnapshot = {
   live?: boolean
   liveUrl?: string | null
   previewUrl?: string | null
+  /** Hard gate — a URL string is not enough. */
+  previewReady?: boolean
+  previewStatus?: 'absent' | 'building' | 'ready' | 'failed'
   backendReady?: boolean
   paymentsReady?: boolean
   jobStatus?: string | null
@@ -610,8 +615,10 @@ export function resolveWorkspaceState(input: WorkspaceSnapshot): WorkspaceProjec
   ) {
     return 'building'
   }
-  if (input.backendReady && !input.live) return 'production_ready'
-  if (input.previewUrl) return 'preview_ready'
+  const previewReady = input.previewReady === true || input.previewStatus === 'ready'
+  if (input.backendReady && previewReady && !input.live) return 'production_ready'
+  if (previewReady && !input.live) return 'preview_ready'
+  if (input.backendReady && !previewReady) return 'building'
   return 'empty'
 }
 
@@ -685,7 +692,8 @@ export function workspaceViewModel(input: WorkspaceSnapshot): WorkspaceViewModel
   }
   const noun = businessNoun(kind)
   const liveUrl = input.liveUrl || null
-  const previewUrl = liveUrl || input.previewUrl || null
+  const previewReady = input.previewReady === true || input.previewStatus === 'ready' || state === 'live'
+  const previewUrl = previewReady ? liveUrl || input.previewUrl || null : null
   const stages = mapWorkspaceStages(input.stages, input.appType)
   const flags: UxJourneyFlags = {
     guest: Boolean(input.guest),
@@ -696,6 +704,7 @@ export function workspaceViewModel(input: WorkspaceSnapshot): WorkspaceViewModel
     paymentsReady: input.authority
       ? input.authority.capabilities.includes('payments')
       : Boolean(input.paymentsReady),
+    previewReady,
     liveUrl,
     appKind: kind,
   }
@@ -880,4 +889,11 @@ After LIVE: chat stays on the Control Center. The operator can keep asking (“a
 After LIVE without payments: "Payments aren't connected yet. Customers can still place orders, but online payment won't be available."
 
 Build (preview) is not Launch (live). Only claim live when the job status is live.
+
+## Execution integrity (HARD)
+
+session.project + session.preview + BusinessSnapshot are the only truth.
+Never mark preview done because you described a design. Never say “launch service unavailable” — call launchProductionApp.
+Never tell the operator to refresh. After OTP, continue their original request immediately.
+After LIVE, answer SCREEN order/product questions from BusinessSnapshot. Do not invent a missing-database story when the snapshot lists the entity.
 `.trim()
