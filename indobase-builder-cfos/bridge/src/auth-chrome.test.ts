@@ -32,4 +32,16 @@ describe('auth-chrome', () => {
     assert.match(html, /__INDOBASE_PROJECT__/)
     assert.match(html, /PROJECT:/)
   })
+
+  it('hides the guest auth modal when signed in and never says enable backends', () => {
+    const html = injectAuthChrome('<html><body><div id="app"></div></body></html>')
+    assert.doesNotMatch(html, /enable backends/i)
+    assert.match(html, /data-ib-signed-in/)
+    assert.match(html, /signedInFromWindow/)
+    assert.match(html, /GUEST === false/)
+    const boot = injectIndobaseContextBootstrap('<html><body><main></main></body></html>')
+    assert.doesNotMatch(boot, /enable backends/i)
+    assert.match(boot, /hideOperatorToolPills/)
+    assert.match(boot, /__INDOBASE_PREVIEW_STATUS__/)
+  })
 })

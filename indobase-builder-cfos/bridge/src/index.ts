@@ -2148,7 +2148,7 @@ app.get('/api/session', async (c) => {
   const catalogReady = Boolean(
     productionJob?.evidence?.catalog_seeded || productionJob?.evidence?.backend_ready || productionJob?.status === 'live',
   )
-  if (!guest && catalogReady) {
+  if (!guest) {
     try {
       const [products, orders] = await Promise.all([
         listCommerceProducts(session.projectRef),

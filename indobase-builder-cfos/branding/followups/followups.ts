@@ -7,18 +7,18 @@
  *   and never restart guest/auth once signed in.
  *   1. Clear build ask → ack (+ guest gate if unsigned-in)
  *   2. Guest gate → name/email/DPDP/OTP; niche CHOICES OK (store asks)
- *   3. Building → at most goal-tied CHOICES; keep ≤4 personalized launch-ladder chips
+ *   3. Building → at most goal-tied CHOICES; keep ≤3 personalized launch-ladder chips
  *   4. Deliverable / stage done → agent FOLLOWUPS (or inject next ladder stage)
  *   5. Capability path → agent-authored CHOICES for that path
  *
  * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
  * If the agent omits chips after a completed deliverable, resolveFollowUps
- * injects Naive-style postPreview / postBackend / postGoLive chips (≤4).
+ * injects Naive-style postPreview / postBackend / postGoLive chips (≤3).
  * Niche prose without a CHOICES block is injected as ecommerce niche chips.
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
- * guest_gate → niche CHOICES only | building → keep ≤4 ladder chips (strip long walls) |
- * payments / deliverable → show chips, max 4.
+ * guest_gate → niche CHOICES only | building → keep ≤3 ladder chips (strip long walls) |
+ * payments / deliverable → show chips, max 3.
  */
 
 export type FollowUpItem = {
@@ -38,6 +38,8 @@ export type JourneyChipFlags = {
   isBackendReady?: boolean
   isPaymentsReady?: boolean
   liveUrl?: string | null
+  /** Authoritative /api/session.project.state — live cards require `live`. */
+  projectState?: string | null
 }
 
 export type ResolveFollowUpsOptions = {
@@ -70,9 +72,8 @@ export const DEFAULT_POST_BUILD_TITLE = 'Where should I take this next?'
  */
 export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
-    label: 'Go Live on Indobase',
-    message:
-      'Go Live — POST /api/os/apps/launch { production: true } and quote the job live URL only when status=live',
+    label: 'Launch store',
+    message: 'Launch my store on Indobase now.',
   },
   {
     label: 'Connect my domain',
@@ -424,6 +425,34 @@ function looksLikePaymentsChipSet(parsed: ParsedFollowUps): boolean {
   return parsed.items.filter(isPaymentsChip).length >= 2
 }
 
+/**
+ * Live operator cards (headline + payments/domain chips) require verified live state.
+ * Guest/auth turns never qualify. A live_url string without project.state=live is not enough
+ * when we have an authoritative project state.
+ */
+export function operatorMayClaimLive(
+  flags?: JourneyChipFlags | null,
+  projectState?: string | null,
+): boolean {
+  if (!flags) return false
+  if (flags.isGuest) return false
+  const state = (projectState || flags.projectState || '').trim()
+  const url = String(flags.liveUrl || '').trim()
+  if (state && state !== 'live') return false
+  if (state === 'live') return Boolean(url || flags.isLive === true)
+  return flags.isLive === true && Boolean(url)
+}
+
+/** Sticky launch ladder is fine after sign-in; hide it during guest/auth turns. */
+export function shouldShowLaunchJourneyCard(opts: {
+  isGuest?: boolean
+  chipStage?: ChipStage | null
+}): boolean {
+  if (opts.isGuest) return false
+  if (opts.chipStage === 'guest_gate') return false
+  return true
+}
+
 function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChipFlags {
   if (!opts) return {}
   const f = opts.journeyFlags || {}
@@ -434,7 +463,7 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     opts.journeyFlags != null ||
     opts.journeyIsLive !== undefined ||
     Boolean(liveUrl && String(liveUrl).trim())
-  return {
+  const tentative: JourneyChipFlags = {
     isGuest: f.isGuest,
     isLive: liveAuthoritative
       ? Boolean(f.isLive || opts.journeyIsLive || (liveUrl && String(liveUrl).trim()))
@@ -442,7 +471,12 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     isBackendReady: f.isBackendReady,
     isPaymentsReady: f.isPaymentsReady,
     liveUrl,
+    projectState: f.projectState || null,
   }
+  if (liveAuthoritative) {
+    tentative.isLive = operatorMayClaimLive(tentative)
+  }
+  return tentative
 }
 
 /**
@@ -453,6 +487,24 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
  * - payments ready → no Add payments / KYC / connectGateway chips
  * - isLive undefined → do not apply live/payments stage filters (no journey authority)
  */
+function paymentsCtaDedupeKey(item: FollowUpItem): string | null {
+  const label = item.label.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (/^(add|connect) payments$/.test(label)) return 'payments-cta'
+  return null
+}
+
+function dedupeFollowUpItems(items: readonly FollowUpItem[]): FollowUpItem[] {
+  const seen = new Set<string>()
+  const out: FollowUpItem[] = []
+  for (const item of items) {
+    const key = paymentsCtaDedupeKey(item) || item.label.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(item)
+  }
+  return out
+}
+
 export function filterChipsForJourneyState(
   parsed: ParsedFollowUps,
   flags?: JourneyChipFlags | null,
@@ -473,7 +525,7 @@ export function filterChipsForJourneyState(
   if (flags.isPaymentsReady) {
     items = items.filter((i) => !isPaymentsChip(i))
   }
-  return { ...parsed, items: items.slice(0, MAX_VISIBLE_CHIPS) }
+  return { ...parsed, items: dedupeFollowUpItems(items).slice(0, MAX_VISIBLE_CHIPS) }
 }
 
 /** @deprecated use filterChipsForJourneyState */
@@ -691,7 +743,7 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
         label: 'Wire + Go Live',
         message: `If catalog exists, publish ${name} storefront_html (Commerce ABI) then Go Live with launchBusiness`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -717,7 +769,7 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
         label: 'Production checklist',
         message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -746,7 +798,7 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
         label: 'Wire then Go Live',
         message: `Publish ${name} storefront_html then Go Live with launchBusiness in one pass — full launch is the goal`,
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 
@@ -926,17 +978,16 @@ export function looksLikePreBuildClarification(message: string): boolean {
   // Explicitly past auth — keep launch chips (checked before authAsk so
   // "past the guest gate" does not re-trigger the gate).
   if (
-    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|continue(ing)? (with )?the original|preview ready|here's what i built|sites\.indobase\.in|past the guest( account)? gate|guest checkout/.test(
+    /you('re| are) verified|already signed in|signed[- ]in|otp (verified|ok|success)|account (is )?ready|name and email are on file|continue(ing)? (with )?the original|past the guest( account)? gate|guest checkout/.test(
       text,
     )
   ) {
     return false
   }
-  if (bodyHasDeliverableSignal(message)) return false
 
-  // Auth/DPDP ask wins even when the agent also says "I'll build…" (common false-negative).
+  // Auth/DPDP/OTP ask wins even when the same turn also claims "your store is live".
   const authAsk =
-    /clarifying guest|before i (begin|start)|please (share|send):|dpdp consent|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:/.test(
+    /clarifying guest|before i (begin|start)|please (share|send):|dpdp consent|privacy policy|terms of (use|service)|verification otp|authstart|authverify|collect.*(name|email|consent)|fill in:|code sent to|check your (email|inbox)|enter (the )?(verification )?code|i('ve| have|'m)? sent (a |the )?(verification )?code|please wait.{0,80}refresh|refresh indobase/.test(
       text,
     ) ||
     // Require ask/collect context — bare "name and email" mentions must not strip launch chips.
@@ -952,6 +1003,8 @@ export function looksLikePreBuildClarification(message: string): boolean {
       !/(?:checkout|past the guest|already)/.test(text))
 
   if (authAsk) return true
+  if (bodyHasDeliverableSignal(message)) return false
+  if (/preview ready|here's what i built|sites\.indobase\.in/.test(text)) return false
 
   return false
 }
@@ -990,8 +1043,9 @@ export function inferChipStage(body: string): ChipStage {
 }
 
 function capChips(parsed: ParsedFollowUps): ParsedFollowUps {
-  if (parsed.items.length <= MAX_VISIBLE_CHIPS) return parsed
-  return { ...parsed, items: parsed.items.slice(0, MAX_VISIBLE_CHIPS) }
+  const items = dedupeFollowUpItems(parsed.items)
+  if (items.length <= MAX_VISIBLE_CHIPS) return { ...parsed, items }
+  return { ...parsed, items: items.slice(0, MAX_VISIBLE_CHIPS) }
 }
 
 /** Drop Leave-as-is / skip-for-now dead-ends so the ladder keeps moving to full launch. */
@@ -1008,8 +1062,8 @@ export function stripDeadEndChips(parsed: ParsedFollowUps): ParsedFollowUps {
 /**
  * Enforce Naive-style timing + brevity.
  * Guest/auth turn: strip ALL chips (no niche cards while signing up).
- * Building: strip only long canned walls — keep ≤4 personalized launch-ladder chips
- * so the operator can keep advancing to full Go Live.
+ * Building: strip only long canned walls — keep ≤3 personalized launch-ladder chips
+ * so the operator can keep advancing to launch.
  */
 export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = inferChipStage(parsed.body)): ParsedFollowUps {
   const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
@@ -1172,7 +1226,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
         message:
           'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
       },
-    ],
+    ].slice(0, MAX_VISIBLE_CHIPS),
   }
 }
 

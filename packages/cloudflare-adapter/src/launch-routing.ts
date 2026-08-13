@@ -80,9 +80,11 @@ export const LAUNCH_BUSINESS_TOOL = {
 export const LAUNCH_AGENT_HARD_RULES = `
 ## Go Live / Launch Business (HARD PATH — mandatory)
 
+Production LIVE is **launchProductionApp** (\`POST /api/os/apps/launch\`). Never say the launch service is unavailable — call it. Never ask the operator to refresh. launchBusiness is preview/draft only (\`production:false\`) or custom domain after LIVE.
+
 When the operator says take live, launch, publish, go live, or launch my business:
 
-1. You MUST call the launchBusiness tool (alias goLive) — same-origin POST /api/os/tools/launchBusiness
+1. For production: call launchProductionApp immediately. For a draft preview only, call the launchBusiness tool (alias goLive) — same-origin POST /api/os/tools/launchBusiness
    OR POST /api/os/launch — with REAL content:
    { "title": "…", "subdomain": "aquaharvest", "customDomain": "www.theirbusiness.com" (optional), "html": "…" }
    or { "files": { "index.html": "…" } }. Never call with empty html/files.
@@ -102,7 +104,7 @@ When the operator says take live, launch, publish, go live, or launch my busines
 
 /** Compact one-liner for session hint bags. */
 export const LAUNCH_SESSION_HINT =
-  'Go Live HARD PATH: call launchBusiness (POST /api/os/tools/launchBusiness or /api/os/launch) with real html/files. Claim live ONLY after ok:true + url from the response. Apps that need login/data: ensure* + applySchema/guidedBackend before UI. Landing may Go Live without ensure*. Indobase subdomain (*.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Enable ≠ Connect.'
+  'Go Live HARD PATH: production is launchProductionApp (POST /api/os/apps/launch). launchBusiness (POST /api/os/tools/launchBusiness or /api/os/launch) is preview/draft only. Claim live ONLY after job status=live + url. The job runs ensure* internally. Never ask the operator to refresh. Never say the launch service is unavailable. Indobase subdomain (*.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Enable ≠ Connect.'
 
 export function promptLooksLikeGoLiveIntent(prompt: string): boolean {
   const text = String(prompt || '').toLowerCase()

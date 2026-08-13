@@ -27,6 +27,8 @@ import {
   injectJourneyNextActionFollowUps,
   filterChipsForLiveJourney,
   filterChipsForJourneyState,
+  operatorMayClaimLive,
+  shouldShowLaunchJourneyCard,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -769,5 +771,93 @@ INDOBASE_FOLLOWUPS>>>`
     const ready = postGoLiveFollowups('Aural', { store: true, paymentsReady: true })
     assert.ok(!ready.items.some((i) => /add payments/i.test(i.label)))
     assert.ok(ready.items.some((i) => /checklist|domain|wire|admin/i.test(i.label)))
+  })
+
+  it('does not show live cards for guest/auth even when the store is already live', () => {
+    const otp = `I sent a verification code to your email. Enter the code so I can continue.
+
+<<<INDOBASE_FOLLOWUPS
+title: Your store is live — payments are optional until you connect them
+Connect payments | Connect payments
+Add payments | Add payments
+Connect my domain | Connect my domain
+INDOBASE_FOLLOWUPS>>>`
+    assert.equal(inferChipStage(otp), 'guest_gate')
+    assert.equal(shouldShowLaunchJourneyCard({ isGuest: true, chipStage: 'guest_gate' }), false)
+    assert.equal(
+      operatorMayClaimLive({
+        isGuest: true,
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'live',
+      }),
+      false,
+    )
+    const resolved = resolveFollowUps(otp, {
+      journeyFlags: {
+        isGuest: true,
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'live',
+      },
+      journeyHeadline: 'Your store is live — payments are optional until you connect them',
+    })
+    assert.ok(!resolved || resolved.items.length === 0)
+  })
+
+  it('does not inject live cards without verified live state', () => {
+    const preview = `Here's what I built — UrbanThread preview is ready. Where should I take it next?`
+    assert.equal(
+      operatorMayClaimLive({
+        isGuest: false,
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'preview_ready',
+      }),
+      false,
+    )
+    const resolved = resolveFollowUps(preview, {
+      journeyFlags: {
+        isGuest: false,
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'preview_ready',
+      },
+    })
+    assert.ok(!resolved || !resolved.items.some((i) => /add payments|connect payments/i.test(i.label)))
+    assert.equal(
+      operatorMayClaimLive({
+        isGuest: false,
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'live',
+      }),
+      true,
+    )
+  })
+
+  it('dedupes Connect payments / Add payments chips', () => {
+    const input = `Your store is live at https://urbanthread.sites.indobase.in
+
+<<<INDOBASE_FOLLOWUPS
+title: Where next?
+Connect payments | Connect payments so customers can pay
+Add payments | Connect payments settlement_market
+Connect my domain | connect domain
+INDOBASE_FOLLOWUPS>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyFlags: {
+        isLive: true,
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        projectState: 'live',
+      },
+      journeyNextAction: {
+        label: 'Connect payments',
+        message: 'Connect payments so customers can pay online.',
+      },
+    })
+    assert.ok(resolved)
+    const pay = resolved.items.filter((i) => /payments/i.test(i.label))
+    assert.equal(pay.length, 1)
   })
 })

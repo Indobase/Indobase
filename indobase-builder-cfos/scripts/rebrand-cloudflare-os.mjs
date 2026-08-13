@@ -2463,5 +2463,93 @@ ${injection}`
   }
 }
 
+// --- Hide internal tool-call pills from the operator chat ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/ChatInterface.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    const oldFallback =
+      '  // Compile-time exhaustiveness check.\n  const _exhaustive: never = tc;\n  return { verb: (_exhaustive as { toolName: string }).toolName };'
+    const newFallback = `  // Indobase: never leak internal tool names into operator chat.
+  const hidden = new Set([
+    "authStart", "authVerify", "sessionStatus", "ensureDatabase", "ensureLogin",
+    "ensureEmail", "ensureAnalytics", "resolveProductImages", "guidedBackend",
+    "applySchema", "setupShopCatalog", "placeTestShopOrder", "listShopOrders",
+    "wireCheckout", "launchBusiness", "launchProductionApp", "connectGateway",
+    "productionChecklist", "promptQuota", "createGadget",
+  ]);
+  const name = (tc as { toolName?: string }).toolName || "";
+  if (hidden.has(name)) return { verb: "Working" };
+  const labels: Record<string, string> = {
+    launchProductionApp: "Launching your store",
+    launchBusiness: "Publishing preview",
+    connectGateway: "Connecting payments",
+    authStart: "Sending sign-in code",
+    authVerify: "Signing you in",
+  };
+  return { verb: labels[name] || "Working" };`
+    if (text.includes('Indobase: never leak internal tool names')) {
+      console.log('  ChatInterface tool-name hide already patched (skip)')
+    } else if (text.includes(oldFallback)) {
+      text = text.replace(oldFallback, newFallback)
+      write(path, text)
+      console.log('  ChatInterface ← hide internal tool-call labels')
+    } else {
+      console.warn('  skip: ChatInterface getToolCallSummary fallback drifted')
+    }
+
+    text = read(path)
+    const groupReturn = '  const footerLabel = footerChangeSequence !== undefined\n    ? getDiscardLabel(footerIsTrailing, footerCreatedGadgetTitles)\n    : null;\n  return ('
+    const hiddenGroupReturn =
+      '  const footerLabel = footerChangeSequence !== undefined\n    ? getDiscardLabel(footerIsTrailing, footerCreatedGadgetTitles)\n    : null;\n  // Indobase: hide tool rows that only name internal tools.\n  const operatorHidden = /\\b(authStart|authVerify|sessionStatus|ensureDatabase|ensureLogin|resolveProductImages|guidedBackend|applySchema|launchBusiness|launchProductionApp|createGadget|PocketBase)\\b/;\n  if (operatorHidden.test(group.label) && !/Launch store|Open store|Connect payments/i.test(group.label)) {\n    return null;\n  }\n  return ('
+    if (text.includes('Indobase: hide tool rows that only name internal tools')) {
+      console.log('  ChatInterface tool-row hide already patched (skip)')
+    } else if (text.includes(groupReturn)) {
+      text = text.replace(groupReturn, hiddenGroupReturn)
+      write(path, text)
+      console.log('  ChatInterface ← hide internal tool-call rows')
+    } else {
+      console.warn('  skip: ChatInterface ToolGroupRow return drifted')
+    }
+  }
+}
+
+// --- Hide CFOS "No gadgets yet" when live/preview chrome is present ---
+{
+  const path = join(OS, 'packages/workshop-frontend/src/GadgetEditor.tsx')
+  if (existsSync(path)) {
+    let text = read(path)
+    const oldPh = `function NoGadgetPlaceholder({ height }: { height: string }) {
+  return (`
+    const newPh = `function NoGadgetPlaceholder({ height }: { height: string }) {
+  // Indobase: never show the empty gadget pane when a live/preview URL exists.
+  try {
+    const w = window as unknown as {
+      __INDOBASE_PREVIEW_URL__?: string | null
+      __INDOBASE_JOURNEY__?: { live_url?: string | null } | null
+      __INDOBASE_PROJECT__?: { state?: string } | null
+    }
+    const live =
+      Boolean(w.__INDOBASE_PREVIEW_URL__) ||
+      Boolean(w.__INDOBASE_JOURNEY__?.live_url) ||
+      w.__INDOBASE_PROJECT__?.state === 'live' ||
+      document.documentElement.classList.contains('indobase-workspace-split')
+    if (live) return null
+  } catch {
+    /* ignore */
+  }
+  return (`
+    if (text.includes('Indobase: never show the empty gadget pane')) {
+      console.log('  GadgetEditor empty placeholder already patched (skip)')
+    } else if (text.includes(oldPh)) {
+      text = text.replace(oldPh, newPh)
+      write(path, text)
+      console.log('  GadgetEditor ← hide empty gadget when live/preview exists')
+    } else {
+      console.warn('  skip: GadgetEditor NoGadgetPlaceholder drifted')
+    }
+  }
+}
+
 console.log('Done. UI chrome reads as Indobase; LICENSE / Apache attribution untouched.')
 console.log(`Smoke: cd ${OS} && pnpm run-local  →  http://localhost:8787`)

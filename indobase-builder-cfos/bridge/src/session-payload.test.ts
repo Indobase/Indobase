@@ -177,4 +177,12 @@ describe('session-payload', () => {
     assert.match(hint, /Payments: keys appear configured/)
     assert.match(hint, /Never say the launch service/)
   })
+
+  it('signed-in agent_hint does not ask to refresh or claim backend is attached', () => {
+    const hint = composeAgentHintForSession(signedIn, 'Operator hint.')
+    assert.doesNotMatch(hint, /wait about 15 seconds or refresh|wait\/refresh for sign-in/i)
+    assert.doesNotMatch(hint, /Backend is attached/)
+    assert.match(hint, /Never ask them to refresh|do not ask them to refresh/i)
+    assert.match(hint, /launchProductionApp/)
+  })
 })

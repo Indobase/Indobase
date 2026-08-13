@@ -190,6 +190,20 @@ function useJourneySingleton(instanceId: string): boolean {
   return active
 }
 
+function isSignedOut(): boolean {
+  try {
+    const w = window as unknown as {
+      __INDOBASE_SESSION_STAGE__?: string
+      __INDOBASE_GUEST__?: boolean
+    }
+    if (w.__INDOBASE_SESSION_STAGE__ === 'member' || w.__INDOBASE_GUEST__ === false) return false
+    if (w.__INDOBASE_SESSION_STAGE__ === 'guest' || w.__INDOBASE_GUEST__ === true) return true
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
 export const LaunchJourneyCard = memo(function LaunchJourneyCard({
   onPick,
   disabled,
@@ -204,9 +218,18 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
   const isActive = useJourneySingleton(instanceId)
   const job = readProductionJobFromWindow()
   const journey = job ? jobToJourney(job) : readLaunchJourneyFromWindow()
-  if (!journey || journey.guest || !isActive) return null
+  if (!journey || journey.guest || isSignedOut() || !isActive) return null
 
-  const { stages, next_action, headline, live_url } = journey
+  const authority = readAuthority()
+  const verifiedLive =
+    authority?.state === 'live' || (job?.status === 'live' && Boolean(job.url))
+  const live_url = verifiedLive ? journey.live_url || job?.url || null : null
+  const headline = verifiedLive
+    ? journey.headline
+    : /is live/i.test(journey.headline)
+      ? 'Building your store'
+      : journey.headline
+  const { stages, next_action } = journey
   const lastFail = job?.failures?.[job.failures.length - 1]
   const failure =
     job?.status === 'blocked'

@@ -58,22 +58,32 @@ function readSnapshot(): WorkspaceSnapshot {
       __INDOBASE__?: { PROJECT_REF?: string } | null
       __INDOBASE_DISPLAY_NAME__?: string | null
       __INDOBASE_PROJECT__?: AuthoritativeProject | null
+      __INDOBASE_PREVIEW_STATUS__?: 'absent' | 'building' | 'ready' | 'failed' | null
     }
     const journey = w.__INDOBASE_JOURNEY__
     const job = w.__INDOBASE_PRODUCTION_JOB__
     const launch = w.__INDOBASE_LAUNCH__
     const lastFail = job?.failures?.[job.failures.length - 1]
-    const liveUrl = (job?.status === 'live' && job.url) || journey?.live_url || null
-    const hasJob = Boolean(job?.jobId)
+    const authority = w.__INDOBASE_PROJECT__?.state ? w.__INDOBASE_PROJECT__ : null
+    const liveUrl =
+      (authority?.state === 'live' && (journey?.live_url || job?.url || w.__INDOBASE_PREVIEW_URL__ || null)) ||
+      (job?.status === 'live' && job.url) ||
+      (authority?.state === 'live' ? journey?.live_url || null : null) ||
+      null
+    const previewReady = w.__INDOBASE_PREVIEW_STATUS__ === 'ready' || Boolean(liveUrl)
     const publishedOrJobPreview =
+      (previewReady && (w.__INDOBASE_PREVIEW_URL__ || liveUrl)) ||
       liveUrl ||
       (typeof job?.url === 'string' && job.url.startsWith('http') ? job.url : null) ||
-      (hasJob ? launch?.draft_preview_path || w.__INDOBASE_PREVIEW_URL__ || null : null)
-    const authority = w.__INDOBASE_PROJECT__?.state ? w.__INDOBASE_PROJECT__ : null
+      launch?.draft_preview_path ||
+      w.__INDOBASE_PREVIEW_URL__ ||
+      null
     return {
       guest: Boolean(w.__INDOBASE_GUEST__ || journey?.guest || journey?.flags?.is_guest),
       liveUrl,
       previewUrl: publishedOrJobPreview,
+      previewReady,
+      previewStatus: w.__INDOBASE_PREVIEW_STATUS__ || (previewReady ? 'ready' : undefined),
       jobStatus: job?.status || null,
       jobStage: job?.next_pending || null,
       appType: job?.appType || null,
@@ -144,14 +154,23 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
         w.__INDOBASE_PRODUCTION_JOB__ = s.production_job || null
         w.__INDOBASE_LAUNCH__ = s.launch || null
         w.__INDOBASE_GUEST__ = !!s.guest
+        w.__INDOBASE_SESSION_STAGE__ = s.stage || (s.guest ? 'guest' : 'member')
+        w.__INDOBASE_PREVIEW_STATUS__ = (s.preview && s.preview.status) || null
         w.__INDOBASE_PREVIEW_URL__ =
+          (s.preview && s.preview.status === 'ready' && s.preview.url) ||
+          (s.project && s.project.state === 'live' && s.journey && s.journey.live_url) ||
           (s.journey && s.journey.live_url) ||
-          (s.production_job && s.production_job.url) ||
+          (s.production_job && s.production_job.status === 'live' && s.production_job.url) ||
           (s.launch && s.launch.draft_preview_path) ||
           null
         w.__INDOBASE_DISPLAY_NAME__ = s.display_name || null
         w.__INDOBASE_PROJECT_REF__ = s.project_ref || null
         if (s.project) w.__INDOBASE_PROJECT__ = s.project
+        if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object') {
+          ;(w.__INDOBASE__ as { guest?: boolean }).guest = !!s.guest
+        } else {
+          w.__INDOBASE__ = { guest: !!s.guest, PROJECT_REF: s.project_ref || null }
+        }
         window.dispatchEvent(new CustomEvent('indobase:context'))
       } catch {
         /* ignore */
@@ -218,7 +237,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     }
   }, [])
 
-  const previewSrc = withEditQuery(view.previewUrl)
+  const previewSrc = withEditQuery(view.previewUrl || view.liveUrl)
 
   useEffect(() => {
     const html = document.documentElement
@@ -231,7 +250,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
       const el = document.createElement('style')
       el.id = styleId
       el.textContent =
-        '@media (min-width: 960px){html.indobase-workspace-split body{margin-right:min(52vw,820px)!important;}}'
+        '@media (min-width: 960px){html.indobase-workspace-split body{margin-right:min(52vw,820px)!important;}}' +
+        'html.indobase-workspace-split[data-indobase-workspace-chrome]:not([data-indobase-workspace-chrome="empty"]) [class*="NoGadget"],' +
+        'html.indobase-workspace-split[data-indobase-workspace-chrome]:not([data-indobase-workspace-chrome="empty"]) [data-indobase-gadget-empty]{display:none!important;}'
       document.head.appendChild(el)
     }
     return () => {
@@ -242,7 +263,8 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
 
   if (typeof document === 'undefined') return null
 
-  const showIframe = Boolean(view.previewUrl) && view.state !== 'empty'
+  const previewSrcReady = Boolean(view.previewUrl || view.liveUrl)
+  const showIframe = previewSrcReady && (view.state !== 'empty' || Boolean(view.liveUrl))
   const overlay = overlayFor(view)
 
   return createPortal(

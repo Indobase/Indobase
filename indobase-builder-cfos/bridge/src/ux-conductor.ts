@@ -457,6 +457,7 @@ export function composeScreenHint(screen?: WorkspaceScreen | null): string {
     '## Current screen (HARD — operator is looking at this)',
     `The operator is on: ${screen.label || screen.section}${entity}.`,
     'If they omit identifiers, use this screen. Do not ask which section they mean.',
+    'Answer products/orders from Authoritative BusinessSnapshot. Never say the product or orders connection is unavailable when the snapshot lists them.',
   ].join('\n')
 }
 

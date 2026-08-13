@@ -95,11 +95,11 @@ export function sessionToAgentContext(
     'You are operating inside Indobase OS (Agentic Business OS).',
     `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
     isGuest
-      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds. Do not emit niche/recommendation cards during auth.'
-      : `Operator signed in as ${session.email}. Do NOT re-ask name/email/OTP/Create account.`,
+      ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds. Do not emit niche/recommendation cards during auth. After verify, continue the original request immediately — do not ask them to wait or refresh.'
+      : `Operator signed in as ${session.email}. Do NOT re-ask name/email/OTP/Create account. Do not ask them to refresh. Launch / Go Live → launchProductionApp. Read products/orders from BusinessSnapshot.`,
     dataPlane
-      ? `Backend is attached (Capability lane). Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs. Wire Sign-in and data screens to session.backend — never localStorage auth or mock APIs.`
-      : 'No backend yet — landing/marketing may Static Launch only. For SaaS, booking, dashboard, or any app with login/data: call ensureLogin + ensureDatabase + applySchema (or guidedBackend mode=generic) BEFORE building auth/data UI.',
+      ? `Business data for this workspace is available. Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs. Speak business language — never tell the operator a database or backend is attached or missing when BusinessSnapshot lists products/orders.`
+      : 'Preview/catalog may still be empty. On Launch / Go Live call launchProductionApp — the job provisions what the business needs. launchBusiness is preview/draft only. Do not tell the operator a backend is missing.',
     LAUNCH_SESSION_HINT,
     LAUNCH_AGENT_HARD_RULES,
     ...(isGuest ? [] : [PROMPT_QUOTA_SESSION_HINT, PROMPT_QUOTA_AGENT_RULES]),

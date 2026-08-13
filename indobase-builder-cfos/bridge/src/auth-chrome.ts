@@ -63,6 +63,8 @@ const AUTH_CHROME_CSS = `
   color: #9eddb8; font-size: .8rem; line-height: 1.4;
 }
 #ib-auth-ok[data-show="1"] { display: block; }
+html[data-ib-signed-in="1"] #ib-auth-modal,
+html[data-ib-signed-in="1"] #ib-auth-backdrop { display: none !important; }
 `
 
 /**
@@ -146,8 +148,18 @@ export function injectAuthChrome(html: string): string {
       okEl.removeAttribute('data-show');
     }
   }
+  function signedInFromWindow() {
+    try {
+      if (window.__INDOBASE_SESSION_STAGE__ === 'member') return true;
+      if (window.__INDOBASE_GUEST__ === false) return true;
+    } catch (_) {}
+    return false;
+  }
   function openModal() {
-    if (!guest) return;
+    if (!guest || signedInFromWindow()) {
+      closeModal();
+      return;
+    }
     if (backdrop) backdrop.hidden = false;
     if (modal) modal.hidden = false;
     setErr('');
@@ -163,12 +175,21 @@ export function injectAuthChrome(html: string): string {
     if (stepVerify) stepVerify.hidden = !on;
   }
   function applySession(detail) {
-    guest = !!(detail && detail.GUEST);
+    var stage = detail && detail.STAGE;
+    var signedIn =
+      signedInFromWindow() ||
+      stage === 'member' ||
+      (detail && detail.GUEST === false);
+    guest = signedIn ? false : !!(detail && detail.GUEST);
     if (detail && detail.AUTH) {
       if (detail.AUTH.start) authPaths.start = detail.AUTH.start;
       if (detail.AUTH.verify) authPaths.verify = detail.AUTH.verify;
     }
     if (!guest) closeModal();
+    try {
+      if (guest) document.documentElement.removeAttribute('data-ib-signed-in');
+      else document.documentElement.setAttribute('data-ib-signed-in', '1');
+    } catch (_) {}
   }
 
   async function readJson(res) {
@@ -288,14 +309,28 @@ export function injectAuthChrome(html: string): string {
   window.__INDOBASE_OPEN_AUTH__ = openModal;
 
   // Prefer session pulled by bootstrap; fall back to a direct check.
+  // Never treat leftover onboarding as guest when the operator is already signed in.
   if (window.__INDOBASE_SESSION_STAGE__ === 'member' || window.__INDOBASE_GUEST__ === false) {
-    applySession({ GUEST: false, AUTH: window.__INDOBASE_AUTH__ || authPaths });
-  } else if (window.__INDOBASE_GUEST__ === true || window.__INDOBASE_ONBOARDING__) {
+    applySession({ GUEST: false, STAGE: 'member', AUTH: window.__INDOBASE_AUTH__ || authPaths });
+  } else if (window.__INDOBASE_GUEST__ === true || window.__INDOBASE_SESSION_STAGE__ === 'guest') {
     applySession({
       GUEST: true,
+      STAGE: 'guest',
       AUTH: (window.__INDOBASE__ && window.__INDOBASE__.AUTH) || window.__INDOBASE_AUTH__ || authPaths,
     });
   }
+
+  fetch('/api/session', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (s) {
+      if (!s) return;
+      applySession({
+        GUEST: !!s.guest,
+        STAGE: s.stage || (s.guest ? 'guest' : 'member'),
+        AUTH: s.auth || window.__INDOBASE_AUTH__ || authPaths,
+      });
+    })
+    .catch(function () {});
 
   try {
     var qs = new URLSearchParams(window.location.search || '');

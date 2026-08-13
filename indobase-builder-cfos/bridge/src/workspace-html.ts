@@ -97,6 +97,10 @@ export function injectIndobaseContextBootstrap(html: string): string {
       window.__INDOBASE_ACTIONS__ = s.actions || s.command_palette || [];
       window.__INDOBASE_GUEST__ = !!s.guest;
       window.__INDOBASE_SESSION_STAGE__ = s.stage || (s.guest ? 'guest' : 'member');
+      try {
+        if (s.guest) document.documentElement.removeAttribute('data-ib-signed-in');
+        else document.documentElement.setAttribute('data-ib-signed-in', '1');
+      } catch (_) {}
       window.__INDOBASE_AUTH__ = s.auth || {
         start: '/auth/start',
         verify: '/auth/verify',
@@ -110,29 +114,34 @@ export function injectIndobaseContextBootstrap(html: string): string {
         tool: '/api/os/tools/launchBusiness',
         tool_alias: '/api/os/tools/goLive',
       };
+      window.__INDOBASE_PREVIEW_STATUS__ = (s.preview && s.preview.status) || null;
       window.__INDOBASE_PREVIEW_URL__ =
         (s.preview && s.preview.status === 'ready' && s.preview.url) ||
+        (s.project && s.project.state === 'live' && s.journey && s.journey.live_url) ||
         (s.journey && s.journey.live_url) ||
         (s.production_job && s.production_job.status === 'live' && s.production_job.url) ||
         null;
       window.__INDOBASE_PROJECT__ = s.project || null;
       // ChatInterface meters each user send via this path (hard Free-plan enforce).
       window.__INDOBASE_BEGIN_TURN__ = '/api/os/agent/begin-turn';
-      window.__INDOBASE__ = s.backend
-        ? Object.assign(
-            {
+      window.__INDOBASE__ = Object.assign(
+        {
+          guest: !!s.guest,
+          PROJECT_REF: s.project_ref || (s.backend && s.backend.project_ref) || null,
+        },
+        s.backend
+          ? {
               INDOBASE_URL: s.backend.api_url,
               INDOBASE_ANON_KEY: s.backend.anon_key,
               VITE_INDOBASE_URL: s.backend.api_url,
               VITE_INDOBASE_ANON_KEY: s.backend.anon_key,
               INDOBASE_PROXY: '/api/indobase/proxy',
-              PROJECT_REF: s.project_ref || s.backend.project_ref,
               INDOBASE_AUTH_URL: s.backend.auth_url,
               INDOBASE_REST_URL: s.backend.rest_url,
-            },
-            s.backend.public_env || {},
-          )
-        : null;
+            }
+          : {},
+        (s.backend && s.backend.public_env) || {},
+      );
       try {
         window.dispatchEvent(
           new CustomEvent('indobase:context', {
@@ -179,6 +188,38 @@ export function injectIndobaseContextBootstrap(html: string): string {
   }
   pull();
   setInterval(pull, 15000);
+
+  // Hide CFOS tool-call pills that leak internal names (authStart, ensureDatabase, …).
+  (function hideOperatorToolPills() {
+    var HIDE = /\\b(authStart|authVerify|sessionStatus|ensureDatabase|ensureLogin|ensureEmail|ensureAnalytics|launchBusiness|launchProductionApp|resolveProductImages|guidedBackend|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|createGadget|PocketBase)\\b/;
+    function scrub(root) {
+      try {
+        var nodes = (root || document).querySelectorAll('button, [aria-expanded]');
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          var t = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+          if (!t || t.length > 140 || !HIDE.test(t)) continue;
+          if (/Launch store|Open store|Connect payments|Create account|Go Live/i.test(t) && t.length < 40) continue;
+          var row = el.closest('[class*="rounded-xl"]') || el;
+          row.setAttribute('data-ib-hidden-tool', '1');
+          row.style.display = 'none';
+        }
+      } catch (_) {}
+    }
+    try {
+      var css = document.createElement('style');
+      css.id = 'ib-hide-internal-tools';
+      css.textContent = '[data-ib-hidden-tool="1"]{display:none!important}';
+      document.head.appendChild(css);
+    } catch (_) {}
+    if (document.body) scrub(document.body);
+    try {
+      new MutationObserver(function () { scrub(document.body); }).observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    } catch (_) {}
+  })();
 
   // Create account action → open auth modal (FAB removed).
   window.addEventListener('indobase:run-action', function (ev) {

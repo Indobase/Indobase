@@ -9,6 +9,7 @@ import {
   parseFollowUps,
   resolveFollowUps,
   cleanOperatorMessage,
+  shouldShowLaunchJourneyCard,
   type FollowUpItem,
   type ParsedFollowUps,
 } from './followups'
@@ -29,16 +30,31 @@ function isBrowserGuestSession(): boolean {
   try {
     const w = window as unknown as {
       __INDOBASE_SESSION_STAGE__?: string
+      __INDOBASE_GUEST__?: boolean
       __INDOBASE__?: { guest?: boolean } | null
+      __INDOBASE_JOURNEY__?: { guest?: boolean; flags?: { is_guest?: boolean } } | null
     }
+    if (w.__INDOBASE_SESSION_STAGE__ === 'member' || w.__INDOBASE_GUEST__ === false) return false
     if (w.__INDOBASE_SESSION_STAGE__ === 'guest') return true
-    if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object' && (w.__INDOBASE__ as { guest?: boolean }).guest === true) {
+    if (w.__INDOBASE_GUEST__ === true) return true
+    if (w.__INDOBASE__ && typeof w.__INDOBASE__ === 'object' && w.__INDOBASE__.guest === true) {
       return true
     }
+    if (w.__INDOBASE_JOURNEY__?.guest || w.__INDOBASE_JOURNEY__?.flags?.is_guest) return true
   } catch {
     /* ignore */
   }
   return false
+}
+
+function readProjectState(): string | null {
+  try {
+    const state = (window as unknown as { __INDOBASE_PROJECT__?: { state?: string } | null })
+      .__INDOBASE_PROJECT__?.state
+    return typeof state === 'string' && state.trim() ? state.trim() : null
+  } catch {
+    return null
+  }
 }
 
 export const FollowUpChipGrid = memo(function FollowUpChipGrid({
@@ -122,27 +138,33 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   const cleaned = useMemo(() => cleanOperatorMessage(message), [message])
   const journeyOpts = useMemo(() => {
     const journey = readLaunchJourneyFromWindow()
-    if (!journey) return undefined
-    const isLive = Boolean(journey.flags?.is_live || journey.live_url)
+    const guest = isBrowserGuestSession() || Boolean(journey?.guest || journey?.flags?.is_guest)
+    const projectState = readProjectState()
+    const liveUrl = journey?.live_url || null
+    const isLive =
+      !guest &&
+      (projectState === 'live' ||
+        (!projectState && Boolean(journey?.flags?.is_live && liveUrl)))
     const journeyFlags = {
-      isGuest: Boolean(journey.guest || journey.flags?.is_guest),
+      isGuest: guest,
       isLive,
-      isBackendReady: Boolean(journey.flags?.is_backend_ready || journey.backend_ready),
-      isPaymentsReady: Boolean(journey.flags?.is_payments_ready || journey.payments_ready),
-      liveUrl: journey.live_url,
+      isBackendReady: Boolean(journey?.flags?.is_backend_ready || journey?.backend_ready),
+      isPaymentsReady: Boolean(journey?.flags?.is_payments_ready || journey?.payments_ready),
+      liveUrl,
+      projectState,
     }
-    // Pass flags even for guests (resolve filters chips); still attach next_action when present.
+    if (!journey && !guest && !projectState) return undefined
     return {
       journeyNextAction:
-        !journey.guest && journey.next_action?.label
+        !guest && journey?.next_action?.label
           ? {
               label: journey.next_action.label,
               message: journey.next_action.message || journey.next_action.label,
             }
           : null,
-      journeyHeadline: journey.headline,
+      journeyHeadline: journey?.headline || null,
       journeyIsLive: isLive,
-      journeyLiveUrl: journey.live_url,
+      journeyLiveUrl: liveUrl,
       journeyFlags,
     }
   }, [cleaned])
@@ -163,7 +185,12 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
     return raw
   }, [allowFallback, cleaned, journeyOpts])
   const body = resolved?.body ?? cleaned
-  const showJourney = showLaunchJourney && !isBrowserGuestSession()
+  const showJourney =
+    showLaunchJourney &&
+    shouldShowLaunchJourneyCard({
+      isGuest: isBrowserGuestSession(),
+      chipStage: inferChipStage(cleaned),
+    })
 
   return (
     <>
